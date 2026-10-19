@@ -1,0 +1,21 @@
+[package]
+name = "cosin-server"
+version.workspace = true
+edition.workspace = true
+description = "Axum API with a Vite frontend and an Orval-generated client"
+default-run = "cosin-server"
+
+[features]
+default = []
+frontend-dev = ["axum-frontend/dev"]
+
+[dependencies]
+axum.workspace = true
+axum-frontend.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+utoipa.workspace = true
+utoipa-axum.workspace = true

@@ -1,0 +1,34 @@
+{
+  "name": "cosin",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=11"
+  },
+  "scripts": {
+    "dev": "cargo run -p cosin-server --features frontend-dev",
+    "dev:vite": "pnpm run generate:api && vite",
+    "generate:api": "cargo run --quiet -p cosin-server --bin export-openapi -- openapi.json && orval --config orval.config.ts",
+    "build": "pnpm run generate:api && tsc -b && vite build && cargo build --release -p cosin-server",
+    "start": "cargo run --release -p cosin-server",
+    "lint": "oxlint",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "orval": "^8.43.0",
+    "oxlint": "^1.88.0",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.4"
+  },
+  "packageManager": "pnpm@11.11.0+sha512.4463f65fd80ed80d69bc1d4bf163ee94f605c7380fc318bb5b2ebe15f8cd12d49c51a4d59e951b401e764d3b6ca751cbf51bc50ed7001a6bcb4935e684c34882"
+}

@@ -1,0 +1,25 @@
+# Rust
+/target
+
+# JavaScript
+/node_modules
+/.pnpm-store
+/dist
+/openapi.json
+*.local
+*.log
+
+# Editors and operating systems
+.idea
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# The generated API client is intentionally versioned.
+!/src/contract/
+!/src/contract/api.ts

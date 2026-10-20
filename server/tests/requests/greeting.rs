@@ -1,3 +1,4 @@
+use cosin_postgres::Connection as PostgresConnection;
 use cosin_server::app::App;
 use loco_rs::testing::prelude::*;
 use serial_test::serial;
@@ -5,7 +6,13 @@ use serial_test::serial;
 #[tokio::test]
 #[serial]
 async fn can_get_default_greeting() {
-    request::<App, _, _>(|request, _ctx| async move {
+    request::<App, _, _>(|request, ctx| async move {
+        let postgres = PostgresConnection::from_context(&ctx);
+        postgres
+            .ping()
+            .await
+            .expect("PostgreSQL should be reachable");
+
         let response = request.get("/api/greeting").await;
 
         assert_eq!(response.status_code(), 200);

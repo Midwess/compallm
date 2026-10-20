@@ -1,0 +1,12 @@
+[package]
+name = "cosin-postgres"
+version.workspace = true
+edition.workspace = true
+description = "PostgreSQL connection, SeaORM schema and Loco migrations for Cosin"
+publish = false
+
+[dependencies]
+axum.workspace = true
+loco-rs.workspace = true
+sea-orm.workspace = true
+sea-orm-migration.workspace = true

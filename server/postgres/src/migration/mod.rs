@@ -1,7 +1,7 @@
 #![allow(elided_lifetimes_in_paths)]
 #![allow(clippy::wildcard_imports)]
 
-pub use sea_orm_migration::prelude::*;
+use sea_orm_migration::prelude::*;
 
 pub struct Migrator;
 

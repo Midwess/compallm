@@ -16,7 +16,7 @@ A root React/Vite application backed by a Loco server. Loco owns application boo
 |-- dist/                    # Vite production build
 `-- server/
     |-- Cargo.toml
-    |-- migration/           # SeaORM migrations managed by Loco
+    |-- postgres/            # connection, schema and migrations
     |-- src/app.rs           # Loco Hooks implementation
     |-- src/controllers/     # Axum + utoipa controllers
     |-- src/dtos/
@@ -42,6 +42,16 @@ pnpm db:up
 Development and tests read `DATABASE_URL`, defaulting to
 `postgres://root:shh@127.0.0.1:7887/cosin` to match `docker-compose.yaml`.
 Production requires `DATABASE_URL` to be set explicitly.
+
+The `cosin-postgres` crate owns the database boundary. It exports the SeaORM
+schema modules, Loco migrator and a cloneable connection handle backed by the
+single pool that Loco creates. Controllers can extract the handle with Axum's
+`State<cosin_postgres::Connection>`; it does not create a second pool.
+
+Loco's runtime commands (`db migrate`, `db status`, and related commands) use
+the relocated migrator normally. Loco 1.2's scaffold generator still assumes a
+`server/migration` directory, so new migrations should be added under
+`server/postgres/src/migration/` and registered in its `Migrator` manually.
 
 Start Loco and Vite with a single public origin at `http://127.0.0.1:3000`:
 

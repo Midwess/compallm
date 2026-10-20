@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use axum::Router as AxumRouter;
 #[cfg(feature = "frontend-dev")]
 use axum_frontend::{DevConfig, shutdown_requested};
+use cosin_postgres::Migrator;
 #[cfg(feature = "frontend-dev")]
 use loco_rs::boot::ServeParams;
 use loco_rs::{
@@ -14,7 +15,6 @@ use loco_rs::{
     environment::Environment,
     task::Tasks,
 };
-use migration::Migrator;
 use std::path::Path;
 
 use crate::{controllers, controllers::greeting::RequestCounter};

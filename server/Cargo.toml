@@ -14,8 +14,8 @@ frontend-dev = ["axum-frontend/dev"]
 async-trait.workspace = true
 axum.workspace = true
 axum-frontend.workspace = true
+cosin-postgres = { path = "postgres" }
 loco-rs = { workspace = true, features = ["cli"] }
-migration = { path = "migration" }
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

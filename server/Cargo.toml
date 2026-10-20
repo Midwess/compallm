@@ -2,16 +2,19 @@
 name = "cosin-server"
 version.workspace = true
 edition.workspace = true
-description = "Axum API with a Vite frontend and an Orval-generated client"
-default-run = "cosin-server"
+description = "Loco and Axum API with a Vite frontend and an Orval-generated client"
+publish = false
+default-run = "cosin-server-cli"
 
 [features]
 default = []
 frontend-dev = ["axum-frontend/dev"]
 
 [dependencies]
+async-trait.workspace = true
 axum.workspace = true
 axum-frontend.workspace = true
+loco-rs = { workspace = true, features = ["cli"] }
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
@@ -19,3 +22,11 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 utoipa.workspace = true
 utoipa-axum.workspace = true
+
+[[bin]]
+name = "cosin-server-cli"
+path = "src/bin/main.rs"
+
+[dev-dependencies]
+loco-rs = { workspace = true, features = ["testing"] }
+serial_test = "3.2"

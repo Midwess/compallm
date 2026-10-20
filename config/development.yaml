@@ -1,0 +1,16 @@
+logger:
+  enable: true
+  pretty_backtrace: true
+  level: <%= get_env(name="LOG_LEVEL", default="debug") %>
+  format: compact
+
+server:
+  port: <%= get_env(name="PORT", default="3000") %>
+  binding: <%= get_env(name="BINDING", default="127.0.0.1") %>
+  host: http://127.0.0.1:3000
+  middlewares:
+    fallback:
+      enable: false
+
+workers:
+  mode: BackgroundAsync

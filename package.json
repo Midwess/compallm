@@ -8,11 +8,13 @@
     "pnpm": ">=11"
   },
   "scripts": {
-    "dev": "cargo run -p cosin-server --features frontend-dev",
+    "dev": "cargo run -p cosin-server --features frontend-dev -- start",
     "dev:vite": "pnpm run generate:api && vite",
     "generate:api": "cargo run --quiet -p cosin-server --bin export-openapi -- openapi.json && orval --config orval.config.ts",
     "build": "pnpm run generate:api && tsc -b && vite build && cargo build --release -p cosin-server",
-    "start": "cargo run --release -p cosin-server",
+    "start": "cargo run --release -p cosin-server -- --environment production start",
+    "server:routes": "cargo loco routes",
+    "server:doctor": "cargo loco --environment production doctor",
     "lint": "oxlint",
     "preview": "vite preview"
   },

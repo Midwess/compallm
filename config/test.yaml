@@ -1,0 +1,16 @@
+logger:
+  enable: false
+  pretty_backtrace: true
+  level: debug
+  format: compact
+
+server:
+  port: 3001
+  binding: 127.0.0.1
+  host: http://127.0.0.1:3001
+  middlewares:
+    fallback:
+      enable: false
+
+workers:
+  mode: ForegroundBlocking

@@ -1,70 +1,89 @@
-# Axum + Vite server functions
+# Loco + Axum + Vite
 
-A root Vite/React application with an Axum server in the `server` Cargo workspace member. TypeScript API functions are generated from the handlers' OpenAPI metadata.
+A root React/Vite application backed by a Loco server. Loco owns application boot, configuration, health checks, middleware and `AppContext`; documented API endpoints remain ordinary Axum handlers registered through `utoipa-axum`. Orval generates the committed TypeScript client from that OpenAPI contract.
 
 ```text
 .
 |-- package.json
 |-- vite.config.ts
+|-- orval.config.ts
 |-- Cargo.toml
-|-- src/                  # React frontend
+|-- config/                  # Loco environment configuration
+|-- src/                     # React frontend
+|   `-- contract/api.ts      # committed Orval client
 |-- public/
-|-- dist/                 # Vite production build
+|-- dist/                    # Vite production build
 `-- server/
     |-- Cargo.toml
-    `-- src/              # Axum server
+    |-- src/app.rs           # Loco Hooks implementation
+    |-- src/controllers/     # Axum + utoipa controllers
+    |-- src/dtos/
+    |-- src/initializers/
+    |-- src/tasks/
+    `-- src/workers/
 ```
 
 ## Commands
 
-Install JavaScript dependencies once:
+Install dependencies:
 
 ```bash
 pnpm install
 ```
 
-Start Axum and the Vite development server:
+Start Loco and Vite with a single public origin at `http://127.0.0.1:3000`:
 
 ```bash
 pnpm dev
 ```
 
-Open `http://127.0.0.1:3000`. Axum owns that port and proxies non-API traffic, including Vite's HMR WebSocket, to Vite on port 5173.
+Loco starts Vite internally and reverse-proxies the UI and HMR WebSocket. Vite also proxies `/api` to Loco, so opening its internal `5173` address during debugging still reaches the Rust API.
 
-Build both the frontend and release server:
+Build the generated contract, frontend and release server:
 
 ```bash
 pnpm build
 ```
 
-Start the production server, which serves `dist/` and the Rust API:
+Start with Loco's production configuration and serve `dist/` from the Rust process:
 
 ```bash
 pnpm start
 ```
 
-## Generated API client
+Useful Loco commands:
 
-Rust DTOs derive `utoipa::ToSchema` in `server/src/api_types.rs`. Handlers in `server/src/api.rs` use `#[utoipa::path]`, and `utoipa-axum` uses those declarations for both Axum routing and the OpenAPI document.
+```bash
+pnpm server:routes
+pnpm server:doctor
+cargo loco middleware --config
+```
 
-Regenerate the OpenAPI document and Orval client manually with:
+`server:routes` lists Loco-managed routes such as health checks. The documented API router is mounted through `Hooks::before_routes`; inspect its complete contract with `pnpm generate:api` and `src/contract/api.ts`.
+
+## API contract
+
+DTOs derive `utoipa::ToSchema` under `server/src/dtos/`. Controllers use `#[utoipa::path]` and are registered by `utoipa-axum` in `server/src/controllers/`.
+
+Regenerate the OpenAPI document and TypeScript client with:
 
 ```bash
 pnpm generate:api
 ```
 
-This writes the temporary `openapi.json` document and the tracked `src/contract/api.ts` client. Commit changes to `src/contract/` whenever the Rust API contract changes.
+The intermediate `openapi.json` is ignored. Commit changes to `src/contract/api.ts` whenever the Rust API contract changes.
 
-The React application imports normal generated functions:
+The generated functions use relative `/api/...` URLs, so the browser automatically calls the same host and port that served the page.
 
-```ts
-const greeting = await createGreeting({ name: 'Ada' })
+## Architecture boundary
+
+```text
+Loco Hooks
+|-- builds AppContext and middleware
+|-- mounts utoipa-axum API router before Loco routes
+|-- exposes /_ping, /_health and /_readiness
+|-- proxies Vite in development
+`-- serves dist/ in production
 ```
 
-The call is a typed HTTP request to the corresponding Axum handler. It resembles a server function at the call site, but it is not React's RSC Server Function protocol.
-
-For automatic Rust restarts while developing server code, install `cargo-watch` and use:
-
-```bash
-cargo watch -w server/src -w server/Cargo.toml -x 'run -p cosin-server --features frontend-dev'
-```
+The Utoipa router is mounted through `Hooks::before_routes`, so it receives Loco's configured middleware. Loco's own `Routes` builder remains available for non-OpenAPI controllers and generated Loco resources.

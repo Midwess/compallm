@@ -5,7 +5,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nth(1)
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("openapi.json"));
-    let document = serde_json::to_string_pretty(&cosin_server::api::openapi())?;
+    let document = serde_json::to_string_pretty(&cosin_server::controllers::openapi())?;
 
     fs::write(&output, document)?;
     println!("wrote {}", output.display());

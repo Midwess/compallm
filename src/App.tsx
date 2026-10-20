@@ -23,9 +23,9 @@ function App() {
       setError(
         caught instanceof Error
           ? requestError.status
-            ? `Axum returned HTTP ${requestError.status}.`
-            : `Axum request failed: ${caught.message}`
-          : 'Could not reach the Axum server.',
+            ? `Loco returned HTTP ${requestError.status}.`
+            : `Loco request failed: ${caught.message}`
+          : 'Could not reach the Loco server.',
       )
     } finally {
       setIsPending(false)
@@ -40,13 +40,13 @@ function App() {
   return (
     <main className="shell">
       <header className="masthead">
-        <a className="wordmark" href="/" aria-label="Axum and Vite home">
+        <a className="wordmark" href="/" aria-label="Loco and Vite home">
           <span>A</span>
           <span>+</span>
           <span>V</span>
         </a>
         <div className="runtime-badges" aria-label="Runtime architecture">
-          <span>Rust owns port 3000</span>
+          <span>Loco owns port 3000</span>
           <span>Vite HMR via proxy</span>
         </div>
       </header>
@@ -56,9 +56,9 @@ function App() {
           <p className="eyebrow">One origin. Two toolchains.</p>
           <h1>Rust functions, called like local TypeScript.</h1>
           <p className="lede">
-            Axum owns the API and the public port. During development it forwards
-            the UI to Vite, including the Fast Refresh WebSocket. In production,
-            it serves Vite's compiled files itself.
+            Loco and Axum own the API and public port. During development they
+            forward the UI to Vite, including the Fast Refresh WebSocket. In
+            production, they serve Vite's compiled files directly.
           </p>
 
           <div className="flow" aria-label="Request flow">
@@ -66,7 +66,7 @@ function App() {
             <b aria-hidden="true">-&gt;</b>
             <span>generated function</span>
             <b aria-hidden="true">-&gt;</b>
-            <span>Axum</span>
+            <span>Loco</span>
           </div>
         </div>
 
@@ -74,7 +74,7 @@ function App() {
           <div className="console-heading">
             <div>
               <p className="kicker">Live contract</p>
-              <h2 id="console-title">Call Axum</h2>
+              <h2 id="console-title">Call Loco</h2>
             </div>
             <span className="status-dot">connected through /api</span>
           </div>
@@ -127,7 +127,7 @@ function App() {
           <h2>Edit the UI</h2>
           <p>
             Change <code>src/App.tsx</code>. Vite updates the browser without
-            restarting Axum.
+            restarting Loco.
           </p>
         </article>
         <article>
@@ -142,7 +142,7 @@ function App() {
           <span>03</span>
           <h2>Ship one server</h2>
           <p>
-            Build Vite, then run the Rust release binary. Axum serves the API and
+            Build Vite, then run the Rust release binary. Loco serves the API and
             the static application.
           </p>
         </article>

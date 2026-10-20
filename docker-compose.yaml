@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    ports:
+      - "7887:5432"
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: shh
+      POSTGRES_DB: cosin
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d cosin"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:

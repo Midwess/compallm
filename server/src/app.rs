@@ -14,6 +14,7 @@ use loco_rs::{
     environment::Environment,
     task::Tasks,
 };
+use migration::Migrator;
 use std::path::Path;
 
 use crate::{controllers, controllers::greeting::RequestCounter};
@@ -44,7 +45,7 @@ impl Hooks for App {
         environment: &Environment,
         config: Config,
     ) -> Result<BootResult> {
-        create_app::<Self>(mode, environment, config).await
+        create_app::<Self, Migrator>(mode, environment, config).await
     }
 
     async fn load_config(environment: &Environment) -> Result<Config> {
@@ -119,4 +120,12 @@ impl Hooks for App {
     }
 
     fn register_tasks(_tasks: &mut Tasks) {}
+
+    async fn truncate(_ctx: &AppContext) -> Result<()> {
+        Ok(())
+    }
+
+    async fn seed(_ctx: &AppContext, _base: &Path) -> Result<()> {
+        Ok(())
+    }
 }

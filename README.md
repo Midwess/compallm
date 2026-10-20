@@ -8,6 +8,7 @@ A root React/Vite application backed by a Loco server. Loco owns application boo
 |-- vite.config.ts
 |-- orval.config.ts
 |-- Cargo.toml
+|-- docker-compose.yaml     # local PostgreSQL on port 7887
 |-- config/                  # Loco environment configuration
 |-- src/                     # React frontend
 |   `-- contract/api.ts      # committed Orval client
@@ -15,6 +16,7 @@ A root React/Vite application backed by a Loco server. Loco owns application boo
 |-- dist/                    # Vite production build
 `-- server/
     |-- Cargo.toml
+    |-- migration/           # SeaORM migrations managed by Loco
     |-- src/app.rs           # Loco Hooks implementation
     |-- src/controllers/     # Axum + utoipa controllers
     |-- src/dtos/
@@ -30,6 +32,16 @@ Install dependencies:
 ```bash
 pnpm install
 ```
+
+Start the local PostgreSQL database:
+
+```bash
+pnpm db:up
+```
+
+Development and tests read `DATABASE_URL`, defaulting to
+`postgres://root:shh@127.0.0.1:7887/cosin` to match `docker-compose.yaml`.
+Production requires `DATABASE_URL` to be set explicitly.
 
 Start Loco and Vite with a single public origin at `http://127.0.0.1:3000`:
 
@@ -54,6 +66,8 @@ pnpm start
 Useful Loco commands:
 
 ```bash
+pnpm db:status
+pnpm db:migrate
 pnpm server:routes
 pnpm server:doctor
 cargo loco middleware --config

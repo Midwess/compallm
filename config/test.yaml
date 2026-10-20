@@ -14,3 +14,14 @@ server:
 
 workers:
   mode: ForegroundBlocking
+
+database:
+  uri: <%= get_env(name="DATABASE_URL", default="postgres://root:shh@127.0.0.1:7887/cosin") %>
+  enable_logging: false
+  connect_timeout: 500
+  idle_timeout: 500
+  min_connections: 1
+  max_connections: 5
+  auto_migrate: true
+  dangerously_truncate: false
+  dangerously_recreate: false

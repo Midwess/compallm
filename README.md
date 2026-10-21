@@ -17,6 +17,7 @@ A root React/Vite application backed by a Loco server. Loco owns application boo
 `-- server/
     |-- Cargo.toml
     |-- postgres/            # connection, schema and migrations
+    |-- src/main.rs          # only server entrypoint
     |-- src/app.rs           # Loco Hooks implementation
     |-- src/controllers/     # Axum + utoipa controllers
     |-- src/dtos/
@@ -87,7 +88,7 @@ pnpm server:doctor
 cargo loco middleware --config
 ```
 
-`server:routes` lists Loco-managed routes such as health checks. The documented API router is mounted through `Hooks::before_routes`; inspect its complete contract with `pnpm generate:api` and `src/contract/api.ts`.
+`server:routes` lists Loco-managed routes such as health checks. The documented API router is mounted through `Hooks::before_routes`; inspect its complete contract with `pnpm generate` and `src/contract/api.ts`.
 
 ## API contract
 
@@ -96,10 +97,21 @@ DTOs derive `utoipa::ToSchema` under `server/src/dtos/`. Controllers use `#[utoi
 Regenerate the OpenAPI document and TypeScript client with:
 
 ```bash
-pnpm generate:api
+pnpm generate
 ```
 
-The intermediate `openapi.json` is ignored. Commit changes to `src/contract/api.ts` whenever the Rust API contract changes.
+The command exports the Utoipa contract to the ignored intermediate
+`openapi.json`, then runs Orval to regenerate `src/contract/api.ts`. Commit the
+generated TypeScript file whenever the Rust API contract changes.
+
+The pipeline lives in Rust and can also be invoked directly:
+
+```bash
+cargo run -p cosin-server -- generate
+```
+
+Loco scaffolding remains available when a component follows `generate`, for
+example `cargo loco generate model user`.
 
 The generated functions use relative `/api/...` URLs, so the browser automatically calls the same host and port that served the page.
 

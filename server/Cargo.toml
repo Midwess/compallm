@@ -4,7 +4,6 @@ version.workspace = true
 edition.workspace = true
 description = "Loco and Axum API with a Vite frontend and an Orval-generated client"
 publish = false
-default-run = "cosin-server-cli"
 
 [features]
 default = []
@@ -14,6 +13,7 @@ frontend-dev = ["axum-frontend/dev"]
 async-trait.workspace = true
 axum.workspace = true
 axum-frontend.workspace = true
+clap.workspace = true
 cosin-postgres = { path = "postgres" }
 loco-rs = { workspace = true, features = ["cli"] }
 serde.workspace = true
@@ -23,10 +23,6 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 utoipa.workspace = true
 utoipa-axum.workspace = true
-
-[[bin]]
-name = "cosin-server-cli"
-path = "src/bin/main.rs"
 
 [dev-dependencies]
 loco-rs = { workspace = true, features = ["testing"] }

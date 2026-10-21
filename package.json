@@ -9,9 +9,9 @@
   },
   "scripts": {
     "dev": "cargo run -p cosin-server --features frontend-dev -- start",
-    "dev:vite": "pnpm run generate:api && vite",
-    "generate:api": "cargo run --quiet -p cosin-server --bin export-openapi -- openapi.json && orval --config orval.config.ts",
-    "build": "pnpm run generate:api && tsc -b && vite build && cargo build --release -p cosin-server",
+    "dev:vite": "pnpm run generate && vite",
+    "generate": "cargo run --quiet -p cosin-server -- generate",
+    "build": "pnpm run generate && tsc -b && vite build && cargo build --release -p cosin-server",
     "start": "cargo run --release -p cosin-server -- --environment production start",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",

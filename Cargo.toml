@@ -10,6 +10,7 @@ edition = "2024"
 async-trait = "0.1"
 axum = "0.8"
 axum-frontend = "0.1.3"
+hero = { package = "midwess-hero", version = "1", default-features = false, features = ["distributed-id"] }
 loco-rs = { version = "1.2" }
 sea-orm = { version = "2.0", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros"] }
 sea-orm-migration = { version = "2.0", features = ["sqlx-postgres", "runtime-tokio-rustls"] }

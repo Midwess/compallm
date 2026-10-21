@@ -1,4 +1,4 @@
-use cosin_postgres::Connection as PostgresConnection;
+use cosin_postgres::{Connection as PostgresConnection, from_bigint, next_id, to_bigint};
 use cosin_server::app::App;
 use loco_rs::testing::prelude::*;
 use serial_test::serial;
@@ -12,6 +12,9 @@ async fn can_get_default_greeting() {
             .ping()
             .await
             .expect("PostgreSQL should be reachable");
+        let id = next_id().await.expect("Snowflake ID should generate");
+        let database_id = to_bigint(id).expect("generated ID should fit PostgreSQL BIGINT");
+        assert_eq!(from_bigint(database_id), Ok(id));
 
         let response = request.get("/api/greeting").await;
 

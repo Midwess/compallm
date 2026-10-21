@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use axum::Router as AxumRouter;
 #[cfg(feature = "frontend-dev")]
 use axum_frontend::{DevConfig, shutdown_requested};
-use cosin_postgres::Migrator;
+use cosin_postgres::{Migrator, init_id_generator};
 #[cfg(feature = "frontend-dev")]
 use loco_rs::boot::ServeParams;
 use loco_rs::{
@@ -87,6 +87,8 @@ impl Hooks for App {
     }
 
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        init_id_generator(Self::app_name())
+            .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
         ctx.shared_store.insert(RequestCounter::default());
         Ok(ctx)
     }

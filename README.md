@@ -48,6 +48,10 @@ schema modules, Loco migrator and a cloneable connection handle backed by the
 single pool that Loco creates. Controllers can extract the handle with Axum's
 `State<cosin_postgres::Connection>`; it does not create a second pool.
 
+Database IDs come from `midwess-hero`'s scoped Snowflake generator. Loco
+initializes the single-instance generator during boot, so no etcd coordinator
+or worker registration is required.
+
 Loco's runtime commands (`db migrate`, `db status`, and related commands) use
 the relocated migrator normally. Loco 1.2's scaffold generator still assumes a
 `server/migration` directory, so new migrations should be added under

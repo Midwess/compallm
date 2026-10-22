@@ -7,6 +7,7 @@ services:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: shh
       POSTGRES_DB: cosin
+      PGDATA: /var/lib/postgresql/data/pgdata
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U root -d cosin"]
       interval: 2s

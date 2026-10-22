@@ -31,13 +31,17 @@ A root React/Vite application backed by a Loco server. Loco owns application boo
 Install dependencies:
 
 ```bash
-pnpm install
+npm install
 ```
+
+npm is the documented baseline, but the scripts do not invoke a package
+manager internally. Developers may run the same scripts with Yarn, pnpm, Bun,
+or another compatible Node package manager.
 
 Start the local PostgreSQL database:
 
 ```bash
-pnpm db:up
+docker compose up -d postgres
 ```
 
 Development and tests read `DATABASE_URL`, defaulting to
@@ -61,7 +65,7 @@ the relocated migrator normally. Loco 1.2's scaffold generator still assumes a
 Start Loco and Vite with a single public origin at `http://127.0.0.1:3000`:
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 Loco starts Vite internally and reverse-proxies the UI and HMR WebSocket. Vite also proxies `/api` to Loco, so opening its internal `5173` address during debugging still reaches the Rust API.
@@ -69,26 +73,26 @@ Loco starts Vite internally and reverse-proxies the UI and HMR WebSocket. Vite a
 Build the generated contract, frontend and release server:
 
 ```bash
-pnpm build
+npm run build
 ```
 
 Start with Loco's production configuration and serve `dist/` from the Rust process:
 
 ```bash
-pnpm start
+npm run start
 ```
 
 Useful Loco commands:
 
 ```bash
-pnpm db:status
-pnpm db:migrate
-pnpm server:routes
-pnpm server:doctor
+cargo loco db status
+cargo loco db migrate
+npm run server:routes
+npm run server:doctor
 cargo loco middleware --config
 ```
 
-`server:routes` lists Loco-managed routes such as health checks. The documented API router is mounted through `Hooks::before_routes`; inspect its complete contract with `pnpm generate` and `src/contract/api.ts`.
+`server:routes` lists Loco-managed routes such as health checks. The documented API router is mounted through `Hooks::before_routes`; inspect its complete contract with `npm run generate` and `src/contract/api.ts`.
 
 ## API contract
 
@@ -97,7 +101,7 @@ DTOs derive `utoipa::ToSchema` under `server/src/dtos/`. Controllers use `#[utoi
 Regenerate the OpenAPI document and TypeScript client with:
 
 ```bash
-pnpm generate
+npm run generate
 ```
 
 The command exports the Utoipa contract to the ignored intermediate

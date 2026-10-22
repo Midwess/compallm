@@ -39,6 +39,15 @@ fn project_root() -> PathBuf {
         .to_path_buf()
 }
 
+pub(crate) fn node_binary(root: &Path, name: &str) -> PathBuf {
+    let executable = if cfg!(windows) {
+        format!("{name}.cmd")
+    } else {
+        name.to_owned()
+    };
+    root.join("node_modules").join(".bin").join(executable)
+}
+
 fn export_openapi(output: &Path) -> Result<(), Box<dyn Error>> {
     let document = serde_json::to_string_pretty(&controllers::openapi())?;
     fs::write(output, document)?;
@@ -46,12 +55,12 @@ fn export_openapi(output: &Path) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn generate_contract() -> Result<(), Box<dyn Error>> {
+pub(crate) fn generate_contract() -> Result<(), Box<dyn Error>> {
     let root = project_root();
     export_openapi(&root.join("openapi.json"))?;
 
-    let status = Command::new("pnpm")
-        .args(["exec", "orval", "--config", "orval.config.ts"])
+    let status = Command::new(node_binary(&root, "orval"))
+        .args(["--config", "orval.config.ts"])
         .current_dir(&root)
         .status()?;
 

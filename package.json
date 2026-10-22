@@ -4,19 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "engines": {
-    "node": ">=22",
-    "pnpm": ">=11"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "cargo run -p cosin-server --features frontend-dev -- start",
-    "dev:vite": "pnpm run generate && vite",
+    "dev:vite": "cargo run --quiet -p cosin-server -- generate && vite",
     "generate": "cargo run --quiet -p cosin-server -- generate",
-    "build": "pnpm run generate && tsc -b && vite build && cargo build --release -p cosin-server",
+    "build": "cargo run --quiet -p cosin-server -- generate && tsc -b && vite build && cargo build --release -p cosin-server",
     "start": "cargo run --release -p cosin-server -- --environment production start",
-    "db:up": "docker compose up -d postgres",
-    "db:down": "docker compose down",
-    "db:migrate": "cargo loco db migrate",
-    "db:status": "cargo loco db status",
     "server:routes": "cargo loco routes",
     "server:doctor": "cargo loco --environment production doctor",
     "lint": "oxlint",
@@ -35,6 +30,5 @@
     "oxlint": "^1.88.0",
     "typescript": "~7.0.2",
     "vite": "^8.3.4"
-  },
-  "packageManager": "pnpm@11.11.0+sha512.4463f65fd80ed80d69bc1d4bf163ee94f605c7380fc318bb5b2ebe15f8cd12d49c51a4d59e951b401e764d3b6ca751cbf51bc50ed7001a6bcb4935e684c34882"
+  }
 }

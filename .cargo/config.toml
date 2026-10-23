@@ -1,2 +1,2 @@
 [alias]
-loco = "run -p cosin-server --"
+loco = "run -p compallm-server --"

@@ -45,13 +45,13 @@ docker compose up -d postgres
 ```
 
 Development and tests read `DATABASE_URL`, defaulting to
-`postgres://root:shh@127.0.0.1:7887/cosin` to match `docker-compose.yaml`.
+`postgres://root:shh@127.0.0.1:7887/compallm` to match `docker-compose.yaml`.
 Production requires `DATABASE_URL` to be set explicitly.
 
-The `cosin-postgres` crate owns the database boundary. It exports the SeaORM
+The `compallm-postgres` crate owns the database boundary. It exports the SeaORM
 schema modules, Loco migrator and a cloneable connection handle backed by the
 single pool that Loco creates. Controllers can extract the handle with Axum's
-`State<cosin_postgres::Connection>`; it does not create a second pool.
+`State<compallm_postgres::Connection>`; it does not create a second pool.
 
 Database IDs come from `midwess-hero`'s scoped Snowflake generator. Loco
 initializes the single-instance generator during boot, so no etcd coordinator
@@ -111,7 +111,7 @@ generated TypeScript file whenever the Rust API contract changes.
 The pipeline lives in Rust and can also be invoked directly:
 
 ```bash
-cargo run -p cosin-server -- generate
+cargo run -p compallm-server -- generate
 ```
 
 Loco scaffolding remains available when a component follows `generate`, for
@@ -131,3 +131,8 @@ Loco Hooks
 ```
 
 The Utoipa router is mounted through `Hooks::before_routes`, so it receives Loco's configured middleware. Loco's own `Routes` builder remains available for non-OpenAPI controllers and generated Loco resources.
+
+## License
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for the
+full text and [NOTICE](NOTICE) for attribution details.

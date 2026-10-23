@@ -16,7 +16,7 @@ workers:
   mode: BackgroundAsync
 
 database:
-  uri: <%= get_env(name="DATABASE_URL", default="postgres://root:shh@127.0.0.1:7887/cosin") %>
+  uri: <%= get_env(name="DATABASE_URL", default="postgres://root:shh@127.0.0.1:7887/compallm") %>
   enable_logging: false
   connect_timeout: 500
   idle_timeout: 500

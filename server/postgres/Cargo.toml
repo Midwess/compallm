@@ -1,8 +1,9 @@
 [package]
-name = "cosin-postgres"
+name = "compallm-postgres"
 version.workspace = true
 edition.workspace = true
-description = "PostgreSQL connection, SeaORM schema and Loco migrations for Cosin"
+license.workspace = true
+description = "PostgreSQL connection, SeaORM schema and Loco migrations for Compallm"
 publish = false
 
 [dependencies]

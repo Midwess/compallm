@@ -6,6 +6,7 @@ services:
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: shh
+      POSTGRES_DB: compallm
     volumes:
       - postgres-data:/var/lib/postgresql
 

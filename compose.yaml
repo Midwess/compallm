@@ -2,10 +2,10 @@ services:
   postgres:
     image: docker.io/library/postgres:18-alpine
     ports:
-      - "5432:5432"
+      - "7887:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: shh
     volumes:
       - postgres-data:/var/lib/postgresql
 

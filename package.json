@@ -1,17 +1,18 @@
 {
-  "name": "cosin",
+  "name": "compallm",
   "private": true,
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "dev": "cargo run -p cosin-server --features frontend-dev -- start",
-    "dev:vite": "cargo run --quiet -p cosin-server -- generate && vite",
-    "generate": "cargo run --quiet -p cosin-server -- generate",
-    "build": "cargo run --quiet -p cosin-server -- generate && tsc -b && vite build && cargo build --release -p cosin-server",
-    "start": "cargo run --release -p cosin-server -- --environment production start",
+    "dev": "cargo run -p compallm-server --features frontend-dev -- start",
+    "dev:vite": "cargo run --quiet -p compallm-server -- generate && vite",
+    "generate": "cargo run --quiet -p compallm-server -- generate",
+    "build": "cargo run --quiet -p compallm-server -- generate && tsc -b && vite build && cargo build --release -p compallm-server",
+    "start": "cargo run --release -p compallm-server -- --environment production start",
     "server:routes": "cargo loco routes",
     "server:doctor": "cargo loco --environment production doctor",
     "lint": "oxlint",

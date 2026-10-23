@@ -1,5 +1,5 @@
 use crate::app::App;
-use cosin_postgres::{Connection as PostgresConnection, from_bigint, next_id, to_bigint};
+use compallm_postgres::{Connection as PostgresConnection, from_bigint, next_id, to_bigint};
 use loco_rs::testing::prelude::*;
 use serial_test::serial;
 

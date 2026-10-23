@@ -9,7 +9,7 @@ mod tests;
 
 use app::App;
 use clap::{Parser, Subcommand};
-use cosin_postgres::Migrator;
+use compallm_postgres::Migrator;
 use loco_rs::cli;
 use std::{
     error::Error,
@@ -19,14 +19,14 @@ use std::{
 };
 
 #[derive(Parser)]
-#[command(name = "cosin-server")]
-struct CosinCli {
+#[command(name = "compallm-server")]
+struct CompallmCli {
     #[command(subcommand)]
-    command: CosinCommand,
+    command: CompallmCommand,
 }
 
 #[derive(Subcommand)]
-enum CosinCommand {
+enum CompallmCommand {
     /// Generate OpenAPI and the TypeScript API client.
     Generate,
 }
@@ -71,13 +71,13 @@ pub(crate) fn generate_contract() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn cosin_command() -> Option<CosinCommand> {
-    CosinCli::try_parse().ok().map(|cli| cli.command)
+fn compallm_command() -> Option<CompallmCommand> {
+    CompallmCli::try_parse().ok().map(|cli| cli.command)
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    if let Some(CosinCommand::Generate) = cosin_command() {
+    if let Some(CompallmCommand::Generate) = compallm_command() {
         return generate_contract();
     }
 

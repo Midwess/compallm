@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use axum::Router as AxumRouter;
 #[cfg(feature = "frontend-dev")]
 use axum_frontend::{DevConfig, shutdown_requested};
-use cosin_postgres::{Migrator, init_id_generator};
+use compallm_postgres::{Migrator, init_id_generator};
 #[cfg(feature = "frontend-dev")]
 use loco_rs::boot::ServeParams;
 use loco_rs::{

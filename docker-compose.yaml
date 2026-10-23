@@ -6,10 +6,10 @@ services:
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: shh
-      POSTGRES_DB: cosin
+      POSTGRES_DB: compallm
       PGDATA: /var/lib/postgresql/data/pgdata
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U root -d cosin"]
+      test: ["CMD-SHELL", "pg_isready -U root -d compallm"]
       interval: 2s
       timeout: 5s
       retries: 20

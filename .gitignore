@@ -3,6 +3,11 @@
 
 # JavaScript
 /node_modules
+/docs/web/node_modules
+/docs/web/public
+/docs/web/.quartz-cache
+/docs/web/quartz/.quartz-cache
+/docs/web/tsconfig.tsbuildinfo
 /.pnpm-store
 /dist
 /openapi.json

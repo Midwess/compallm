@@ -6,22 +6,10 @@ title: Product overview
 
 Compallm helps individuals and teams work, learn, and build with LLMs in an organization workspace. It combines model access and usage governance with chat, interactive content, plugins, and knowledge notebooks.
 
-## Core features
+## Feature availability
 
-- [LLM Router](features/llm-router.md)
-- [LLM Gateway](features/llm-gateway.md)
-- [LLM Chat](features/llm-chat.md)
-- [Interactive UI](features/interactive-ui.md)
-- [Organization plugins](features/organization-plugins.md)
-- [Notebook](features/notebook.md)
-
-## Supporting capabilities
-
-- [Organization and membership](features/organization-membership.md)
-- [Passwordless login](features/passwordless-login.md)
-- [Usage and administration](features/usage-administration.md)
-- [Data and privacy](features/data-privacy.md)
+The filter beside Compallm shows **Available** by default. Select **All** to explore work in progress. Every feature defaults to **Under development** and becomes available only when its page explicitly sets `status: available`.
 
 ## Planning status
 
-These pages describe intended scope. Use [business decisions](decisions.md) for unresolved rules and [roadmap](roadmap.md) for review tasks and release planning. No release commitment is implied by listing a feature.
+Development features describe intended scope. Use [business decisions](decisions.md) for unresolved rules and [roadmap](roadmap.md) for review tasks. No release commitment is implied by listing a development feature.

@@ -22,6 +22,8 @@ npm run dev
 
 Open http://localhost:8080. Edit Markdown in `docs/content/`; changes reload automatically. To build static pages, run `npm run build` inside `docs/web/`.
 
+GitHub Actions deploys the documentation on every push to `main` at https://midwess.github.io/compallm/. Enable **Settings → Pages → Build and deployment → Source: GitHub Actions** once in the repository. The workflow can also be started manually from the Actions tab.
+
 ## Development
 
 See the [development guide](docs/content/development.md) for application setup, database configuration, build commands, and API generation.

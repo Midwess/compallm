@@ -1,6 +1,9 @@
 import { QuartzConfig } from "./quartz/cfg"
 import * as Plugin from "./quartz/plugins"
-import { DevelopmentLinks, FeatureAvailability, PreviewReload } from "./feature-status"
+import { DevelopmentLinks, FeatureAvailability, PreviewReload, includeDevelopment } from "./feature-status"
+
+const docsBaseUrl = (process.env.DOCS_BASE_URL || "https://midwess.github.io/compallm")
+  .replace(/^https?:\/\//, "").replace(/\/$/, "")
 
 /**
  * Quartz 4 Configuration
@@ -11,6 +14,7 @@ const config: QuartzConfig = {
   configuration: {
     pageTitle: "Compallm",
     pageTitleSuffix: "",
+    baseUrl: `${docsBaseUrl}${includeDevelopment ? "/planning" : ""}`,
     enableSPA: true,
     enablePopovers: true,
     analytics: null,

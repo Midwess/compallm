@@ -4,29 +4,25 @@ Help individuals and teams work, learn, and build with LLMs through an organizat
 
 Compallm combines access to multiple providers, governed API usage, chat, interactive responses, plugins, and knowledge notebooks.
 
-## Read the product plan
+## Product plan
 
-[Browse the Markdown documentation](docs/content/index.md), starting with the [product overview](docs/content/product.md), [roadmap](docs/content/roadmap.md), and [business decisions](docs/content/decisions.md).
-
-All content remains standard Markdown in `docs/content/`. Feature pages describe planned scope rather than completed implementation.
-
-## Run the documentation website
-
-Requires Node.js 22 or newer. From the repository root:
-
-```bash
-cd docs/web
-npm ci
-npm run dev
-```
-
-Open http://localhost:8080. Edit Markdown in `docs/content/`; changes reload automatically. To build static pages, run `npm run build` inside `docs/web/`.
-
-GitHub Actions deploys the documentation on every push to `main` at https://midwess.github.io/compallm/. Enable **Settings → Pages → Build and deployment → Source: GitHub Actions** once in the repository. The workflow can also be started manually from the Actions tab.
+See the [product overview](docs/content/product.md), [roadmap](docs/content/roadmap.md), and [business decisions](docs/content/decisions.md).
 
 ## Development
 
-See the [development guide](docs/content/development.md) for application setup, database configuration, build commands, and API generation.
+The frontend uses React with Vite, and the Rust server uses Loco and Axum. PostgreSQL is accessed through SeaORM; Utoipa and Orval generate the TypeScript API client.
+
+Axum serves the frontend in both local development and production. In development, it proxies the Vite dev server, including hot reload. In production, it directly serves Vite's built static files. The frontend and API share the same public origin.
+
+Requires Rust, Node.js 22 or newer, and Docker Compose. From the repository root:
+
+```bash
+npm ci
+docker compose up -d
+cargo run -p compallm-server --features frontend-dev -- start
+```
+
+Compose starts the backing services, including PostgreSQL on port `7887`. Open http://127.0.0.1:3000; Cargo starts the backend and Vite with frontend hot reload.
 
 ## License
 

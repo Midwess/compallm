@@ -14,7 +14,6 @@ A workspace for teams to use LLMs across providers, govern usage, and develop sh
 
 ## Work on the project
 
-- [Development guide](development.md): application setup and commands.
 - [Documentation guide](documentation.md): run the site and edit Markdown.
 
 The feature filter defaults to **Available**. Choose **All** to see the work in progress. Every feature is under development unless explicitly marked available. The filter applies to the feature list, navigation, search, and graph.

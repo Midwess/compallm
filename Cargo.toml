@@ -1,5 +1,5 @@
 [workspace]
-members = ["server", "server/postgres"]
+members = ["api", "libs/postgres"]
 resolver = "3"
 
 [workspace.package]

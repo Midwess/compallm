@@ -19,7 +19,7 @@ use std::{
 };
 
 #[derive(Parser)]
-#[command(name = "compallm-server")]
+#[command(name = "compallm-api")]
 struct CompallmCli {
     #[command(subcommand)]
     command: CompallmCommand,
@@ -34,8 +34,12 @@ enum CompallmCommand {
 fn project_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
-        .expect("server crate should live below the project root")
+        .expect("api crate should live below the project root")
         .to_path_buf()
+}
+
+pub(crate) fn portal_root() -> PathBuf {
+    project_root().join("portal")
 }
 
 pub(crate) fn node_binary(root: &Path, name: &str) -> PathBuf {
@@ -55,19 +59,19 @@ fn export_openapi(output: &Path) -> Result<(), Box<dyn Error>> {
 }
 
 pub(crate) fn generate_contract() -> Result<(), Box<dyn Error>> {
-    let root = project_root();
-    export_openapi(&root.join("openapi.json"))?;
+    let portal = portal_root();
+    export_openapi(&portal.join("openapi.json"))?;
 
-    let status = Command::new(node_binary(&root, "orval"))
+    let status = Command::new(node_binary(&portal, "orval"))
         .args(["--config", "orval.config.ts"])
-        .current_dir(&root)
+        .current_dir(&portal)
         .status()?;
 
     if !status.success() {
         return Err(io::Error::other(format!("Orval exited with status {status}")).into());
     }
 
-    println!("generated {}", root.join("src/contract/api.ts").display());
+    println!("generated {}", portal.join("src/contract/api.ts").display());
     Ok(())
 }
 

@@ -126,7 +126,7 @@ function App() {
           <span>01</span>
           <h2>Edit the UI</h2>
           <p>
-            Change <code>src/App.tsx</code>. Vite updates the browser without
+            Change <code>portal/src/App.tsx</code>. Vite updates the browser without
             restarting Loco.
           </p>
         </article>
@@ -134,8 +134,8 @@ function App() {
           <span>02</span>
           <h2>Edit the contract</h2>
           <p>
-            Annotate handlers in <code>src/api.rs</code>. Utoipa emits OpenAPI,
-            then Orval regenerates <code>src/contract/api.ts</code>.
+            Annotate handlers in <code>api/src/controllers/</code>. Utoipa emits
+            OpenAPI, then Orval regenerates <code>portal/src/contract/api.ts</code>.
           </p>
         </article>
         <article>

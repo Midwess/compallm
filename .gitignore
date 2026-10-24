@@ -3,14 +3,16 @@
 
 # JavaScript
 /node_modules
+/portal/node_modules
 /docs/web/node_modules
 /docs/web/public
 /docs/web/.quartz-cache
 /docs/web/quartz/.quartz-cache
 /docs/web/tsconfig.tsbuildinfo
 /.pnpm-store
-/dist
-/openapi.json
+/portal/.pnpm-store
+/portal/dist
+/portal/openapi.json
 *.local
 *.log
 
@@ -26,5 +28,5 @@
 *.sw?
 
 # The generated API client is intentionally versioned.
-!/src/contract/
-!/src/contract/api.ts
+!/portal/src/contract/
+!/portal/src/contract/api.ts

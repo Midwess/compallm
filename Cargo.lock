@@ -970,18 +970,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "compallm-postgres"
-version = "0.1.0"
-dependencies = [
- "axum",
- "loco-rs",
- "midwess-hero",
- "sea-orm",
- "sea-orm-migration",
-]
-
-[[package]]
-name = "compallm-server"
+name = "compallm-api"
 version = "0.1.0"
 dependencies = [
  "async-trait",
@@ -998,6 +987,17 @@ dependencies = [
  "tracing-subscriber",
  "utoipa",
  "utoipa-axum",
+]
+
+[[package]]
+name = "compallm-postgres"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "loco-rs",
+ "midwess-hero",
+ "sea-orm",
+ "sea-orm-migration",
 ]
 
 [[package]]

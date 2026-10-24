@@ -20,7 +20,7 @@ use std::path::Path;
 use crate::{controllers, controllers::greeting::RequestCounter};
 
 #[cfg(feature = "frontend-dev")]
-const PROJECT_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
+const PORTAL_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../portal");
 
 pub struct App;
 
@@ -57,12 +57,12 @@ impl Hooks for App {
         use std::net::SocketAddr;
 
         crate::generate_contract().map_err(|error| loco_rs::Error::Message(error.to_string()))?;
-        let vite = crate::node_binary(Path::new(PROJECT_ROOT), "vite")
+        let vite = crate::node_binary(Path::new(PORTAL_ROOT), "vite")
             .to_string_lossy()
             .into_owned();
         let dev_server = DevConfig::vite()
             .command([vite])
-            .cwd(PROJECT_ROOT)
+            .cwd(PORTAL_ROOT)
             .port(5173)
             .spawn()
             .await?;
@@ -109,7 +109,7 @@ impl Hooks for App {
 
             return Ok(router.merge(static_router(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../dist"
+                "/../portal/dist"
             ))));
         }
 

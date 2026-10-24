@@ -1,2 +1,2 @@
 [alias]
-loco = "run -p compallm-server --"
+loco = "run -p compallm-api --"

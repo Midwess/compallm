@@ -1,5 +1,6 @@
 import { QuartzConfig } from "./quartz/cfg"
 import * as Plugin from "./quartz/plugins"
+import { DevelopmentLinks, FeatureAvailability, PreviewReload } from "./feature-status"
 
 /**
  * Quartz 4 Configuration
@@ -14,7 +15,7 @@ const config: QuartzConfig = {
     enablePopovers: true,
     analytics: null,
     locale: "en-US",
-    ignorePatterns: ["private", "templates", ".obsidian"],
+    ignorePatterns: ["private", "templates", ".obsidian", "releases"],
     defaultDateType: "modified",
     theme: {
       fontOrigin: "local",
@@ -67,9 +68,11 @@ const config: QuartzConfig = {
       Plugin.GitHubFlavoredMarkdown(),
       Plugin.TableOfContents(),
       Plugin.CrawlLinks({ markdownLinkResolution: "relative" }),
+      DevelopmentLinks(),
       Plugin.Description(),
+      PreviewReload(),
     ],
-    filters: [Plugin.RemoveDrafts()],
+    filters: [Plugin.RemoveDrafts(), FeatureAvailability()],
     emitters: [
       Plugin.AliasRedirects(),
       Plugin.ComponentResources(),

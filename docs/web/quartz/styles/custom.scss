@@ -1,0 +1,69 @@
+@use "./base.scss";
+
+// System fonts need no downloads and match the reader's operating system.
+:root,
+:root[saved-theme="dark"] {
+  color-scheme: only dark;
+  --bodyFont: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial,
+    sans-serif;
+  --headerFont: var(--bodyFont);
+  --titleFont: var(--bodyFont);
+  --codeFont: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
+
+body {
+  font-size: 1rem;
+  -webkit-font-smoothing: antialiased;
+}
+
+article {
+  line-height: 1.75;
+
+  p,
+  li {
+    line-height: 1.75;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.025em;
+    line-height: 1.3;
+  }
+
+  h2 {
+    margin-top: 2.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--lightgray);
+  }
+
+  a.internal {
+    background: transparent;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--secondary) 35%, transparent);
+    text-underline-offset: 0.2em;
+  }
+}
+
+pre {
+  background: #191d25;
+  border: 1px solid var(--lightgray);
+  border-radius: 0.75rem;
+
+  > code {
+    padding: 1.25rem 1.5rem;
+    line-height: 1.65;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

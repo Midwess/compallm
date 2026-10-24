@@ -10,6 +10,8 @@ See the [product overview](docs/content/product.md), [roadmap](docs/content/road
 
 ## Development
 
+Read the [architecture guidelines](docs/content/architecture.md) before changing the code.
+
 The frontend uses React with Vite, and the Rust server uses Loco and Axum. PostgreSQL is accessed through SeaORM; Utoipa and Orval generate the TypeScript API client.
 
 Axum serves the frontend in both local development and production. In development, it proxies the Vite dev server, including hot reload. In production, it directly serves Vite's built static files. The frontend and API share the same public origin.

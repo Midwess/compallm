@@ -2,4 +2,5 @@
 
 pub use super::organization_members::Entity as OrganizationMembers;
 pub use super::organizations::Entity as Organizations;
+pub use super::providers::Entity as Providers;
 pub use super::users::Entity as Users;

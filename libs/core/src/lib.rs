@@ -7,4 +7,5 @@ pub mod auth;
 pub mod mail;
 pub mod organization;
 pub mod persistent;
+pub mod provider;
 pub mod user;

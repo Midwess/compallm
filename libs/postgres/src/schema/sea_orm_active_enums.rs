@@ -3,6 +3,16 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "api_protocol")]
+pub enum ApiProtocol {
+    #[sea_orm(string_value = "anthropic")]
+    Anthropic,
+    #[sea_orm(string_value = "openai")]
+    Openai,
+    #[sea_orm(string_value = "openai_compatible")]
+    OpenaiCompatible,
+}
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "organization_role")]
 pub enum OrganizationRole {
     #[sea_orm(string_value = "owner")]

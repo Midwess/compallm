@@ -2,11 +2,14 @@
 
 mod organization_members;
 mod organizations;
+mod providers;
 mod sea_orm_active_enums;
 mod users;
 
 pub use self::organization_members::Model as OrganizationMemberSchema;
 pub use self::organizations::Model as OrganizationSchema;
+pub use self::providers::Model as ProviderSchema;
+pub use self::sea_orm_active_enums::ApiProtocol as ApiProtocolSchema;
 pub use self::sea_orm_active_enums::OrganizationRole as OrganizationRoleSchema;
 pub use self::sea_orm_active_enums::OrganizationStatus as OrganizationStatusSchema;
 pub use self::sea_orm_active_enums::UserStatus as UserStatusSchema;

@@ -20,6 +20,8 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::organization_members::Entity")]
     OrganizationMembers,
+    #[sea_orm(has_many = "super::providers::Entity")]
+    Providers,
     #[sea_orm(
         belongs_to = "super::users::Entity",
         from = "Column::CreatedBy",
@@ -33,6 +35,12 @@ pub enum Relation {
 impl Related<super::organization_members::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OrganizationMembers.def()
+    }
+}
+
+impl Related<super::providers::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Providers.def()
     }
 }
 

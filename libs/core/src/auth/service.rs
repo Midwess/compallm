@@ -6,7 +6,7 @@ use super::{
 };
 use crate::persistent::{
     DbContext,
-    user::{UserPersistentError, UserRepository},
+    user::{UserRepository, UserRepositoryError},
 };
 use crate::transaction;
 use crate::user::{User, UserStatus};
@@ -100,7 +100,7 @@ impl AuthService {
         }
         transaction!(self.db, {
             if self.users.find_by_email(&claims.email).await?.is_some() {
-                return Err(UserPersistentError::EmailAlreadyExists.into());
+                return Err(UserRepositoryError::EmailAlreadyExists.into());
             }
             let user = self
                 .users

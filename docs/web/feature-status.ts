@@ -11,8 +11,10 @@ import { pathToRoot } from "./quartz/util/path";
 
 export const includeDevelopment =
   process.env.DOCS_INCLUDE_DEVELOPMENT === "true";
+// Feature pages live under `Features/`. Slugs keep the folder casing, so the
+// comparison stays case-insensitive to survive folder renames.
 export const isFeature = (slug: string) =>
-  slug.startsWith("features/") && !slug.endsWith("/index");
+  slug.toLowerCase().startsWith("features/") && !slug.endsWith("/index");
 export const isAvailable = (available: unknown) => available === true;
 
 export const PageAvailability: QuartzFilterPlugin = () => ({

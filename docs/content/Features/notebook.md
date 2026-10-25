@@ -33,6 +33,6 @@ The system should let authorized members organize sources into notebooks and ide
 
 ## Related pages
 
-- [LLM Chat](llm-chat.md)
+- [LLM Chat](Chat/llm-chat.md)
 - [Product overview](../product.md)
 - [Business decisions](../decisions.md)

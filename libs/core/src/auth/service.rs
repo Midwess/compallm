@@ -2,8 +2,12 @@ use std::time::Duration;
 
 use super::{
     AuthError,
-    token::{AccessToken, EmailOtpAccessToken, EncryptedAccessToken, RefreshToken, UserTokens},
+    token::{
+        AccessToken, EmailOtpAccessToken, EmailOtpChallenge, EncryptedAccessToken, RefreshToken,
+        UserTokens,
+    },
 };
+use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode};
 use crate::persistent::{
     DbContext,
     user::{UserRepository, UserRepositoryError},
@@ -20,20 +24,25 @@ pub struct TokenLifetimes {
 }
 
 pub struct AuthService {
-    db: DbContext,
-    users: Box<dyn UserRepository>,
+    db: &'static DbContext,
+    #[allow(clippy::borrowed_box)]
+    users: &'static Box<dyn UserRepository>,
     jwt_secret: String,
     allowed_email_domain: String,
     lifetimes: TokenLifetimes,
+    #[allow(clippy::borrowed_box)]
+    email: Option<&'static Box<dyn EmailService>>,
 }
 
 impl AuthService {
+    #[allow(clippy::borrowed_box)]
     pub fn new(
-        db: DbContext,
-        users: Box<dyn UserRepository>,
+        db: &'static DbContext,
+        users: &'static Box<dyn UserRepository>,
         jwt_secret: String,
         allowed_email_domain: String,
         lifetimes: TokenLifetimes,
+        email: Option<&'static Box<dyn EmailService>>,
     ) -> Result<Self, AuthError> {
         if lifetimes.user.as_secs() == 0 || lifetimes.refresh.as_secs() == 0 {
             return Err(AuthError::InvalidConfiguration);
@@ -48,7 +57,26 @@ impl AuthService {
             jwt_secret,
             allowed_email_domain,
             lifetimes,
+            email,
         })
+    }
+
+    /// Issue an encrypted proof token only after requesting OTP delivery.
+    pub async fn signup_email(&self, email: &str) -> Result<String, AuthError> {
+        let challenge =
+            EmailOtpChallenge::new(email, &self.allowed_email_domain, &self.jwt_secret)?;
+        let sender = self.email.as_ref().ok_or(EmailError::Unavailable)?;
+        sender
+            .send(EmailRequest {
+                to: compallm_utils::email::normalize_email(email)?,
+                subject: "Your Compallm signup code".into(),
+                text: EmailTemplate::OtpCode(OtpCode::new(
+                    challenge.code,
+                    Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),
+                )),
+            })
+            .await?;
+        Ok(challenge.access_token)
     }
 
     pub async fn signin(&self, email_token: &str, code: &str) -> Result<UserTokens, AuthError> {
@@ -70,6 +98,7 @@ impl AuthService {
             if user.status != UserStatus::Active {
                 return Err(AuthError::UserDisabled);
             }
+            self.users.record_login(user.id).await?;
             UserTokens::new(
                 user.id,
                 &self.jwt_secret,

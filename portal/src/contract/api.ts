@@ -5,61 +5,38 @@
  * Loco and Axum API with a Vite frontend and an Orval-generated client
  * OpenAPI spec version: 0.1.0
  */
-export interface CreateGreeting {
-  name: string;
+export interface AuthTokensResponse {
+  accessToken: string;
+  refreshToken: string;
 }
 
-export interface Greeting {
+export interface ConfirmSignupOtpRequest {
+  code: string;
+  displayName: string;
+  token: string;
+}
+
+export interface ErrorResponse {
   message: string;
-  /** @minimum 0 */
-  requestCount: number;
-  servedBy: string;
 }
 
-export const getGetGreetingUrl = () => {
-
-
-
-
-  return `/api/greeting`
+export interface SignupEmailRequest {
+  email: string;
 }
 
-export const getGreeting = async ( options?: RequestInit): Promise<Greeting> => {
-
-  const res = await fetch(getGetGreetingUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  if (!res.ok) {
-
-    const err: globalThis.Error & {info?: any, status?: number} = new globalThis.Error();
-    const data  = body ? JSON.parse(body) : {}
-    err.info = data;
-    err.status = res.status;
-    throw err;
-  }
-  const data: Greeting = body ? JSON.parse(body) : {}
-  return data
+export interface SignupEmailResponse {
+  token: string;
 }
 
-
-
-export const getCreateGreetingUrl = () => {
+export const getSignupEmailUrl = () => {
 
 
 
 
-  return `/api/greeting`
+  return `/api/auth/signup/email`
 }
 
-export const createGreeting = async (createGreetingBody: CreateGreeting, options?: RequestInit): Promise<Greeting> => {
+export const signupEmail = async (signupEmailRequest: SignupEmailRequest, options?: RequestInit): Promise<SignupEmailResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -75,12 +52,12 @@ export const createGreeting = async (createGreetingBody: CreateGreeting, options
     }
     return headers;
   };
-const res = await fetch(getCreateGreetingUrl(),
+const res = await fetch(getSignupEmailUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(createGreetingBody)
+    body: JSON.stringify(signupEmailRequest)
   }
 )
 
@@ -88,12 +65,61 @@ const res = await fetch(getCreateGreetingUrl(),
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
   if (!res.ok) {
 
-    const err: globalThis.Error & {info?: any, status?: number} = new globalThis.Error();
-    const data  = body ? JSON.parse(body) : {}
+    const err: globalThis.Error & {info?: SignupEmailResponse, status?: number} = new globalThis.Error();
+    const data : SignupEmailResponse = body ? JSON.parse(body) : {}
     err.info = data;
     err.status = res.status;
     throw err;
   }
-  const data: Greeting = body ? JSON.parse(body) : {}
+  const data: SignupEmailResponse = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+export const getConfirmSignupOtpUrl = () => {
+
+
+
+
+  return `/api/auth/signup/email/confirmation/otp`
+}
+
+export const confirmSignupOtp = async (confirmSignupOtpRequest: ConfirmSignupOtpRequest, options?: RequestInit): Promise<AuthTokensResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getConfirmSignupOtpUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(confirmSignupOtpRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: AuthTokensResponse, status?: number} = new globalThis.Error();
+    const data : AuthTokensResponse = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: AuthTokensResponse = body ? JSON.parse(body) : {}
   return data
 }

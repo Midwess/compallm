@@ -17,7 +17,7 @@ use loco_rs::{
 };
 use std::path::Path;
 
-use crate::{controllers, controllers::greeting::RequestCounter};
+use crate::di::Di;
 
 #[cfg(feature = "frontend-dev")]
 const PORTAL_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../portal");
@@ -93,12 +93,13 @@ impl Hooks for App {
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
         init_id_generator(Self::app_name())
             .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
-        ctx.shared_store.insert(RequestCounter::default());
+        Di::init(&ctx).await?;
         Ok(ctx)
     }
 
     async fn before_routes(_ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
-        let (router, _) = controllers::api_router().split_for_parts();
+        let mut router = AxumRouter::new();
+        Di::instance().inject(&mut router);
         Ok(router)
     }
 

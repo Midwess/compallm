@@ -26,6 +26,8 @@ struct State {
     contexts: Vec<usize>,
     created: Option<(String, String)>,
     fail_create: bool,
+    fail_record_login: bool,
+    logins: Vec<u64>,
 }
 
 #[derive(Clone)]
@@ -62,6 +64,20 @@ impl UserRepository for Repository {
         state.created = Some((user.email.clone(), user.display_name.clone()));
         Ok(user)
     }
+
+    async fn record_login(&self, user_id: u64) -> Result<(), UserRepositoryError> {
+        let mut state = self.0.lock().unwrap();
+        state
+            .contexts
+            .push(PostgresConnection::from_context(&DbContext::current()?)? as *const _ as usize);
+        if state.fail_record_login {
+            return Err(UserRepositoryError::database(DbErr::Custom(
+                "record login failed".into(),
+            )));
+        }
+        state.logins.push(user_id);
+        Ok(())
+    }
 }
 
 struct Fixture {
@@ -88,15 +104,22 @@ impl Fixture {
     }
 
     fn service(&self) -> AuthService {
+        // Static dependencies mirror the application container. Test-only
+        // allocations live for this test process and never touch a real DB.
+        let db: &'static DbContext = Box::leak(Box::new(self.repo.1.clone()));
+        let users = Box::leak(Box::new(
+            Box::new(self.repo.clone()) as Box<dyn UserRepository>
+        ));
         AuthService::new(
-            self.repo.1.clone(),
-            Box::new(self.repo.clone()),
+            db,
+            users,
             SECRET.into(),
             "midwess.com".into(),
             TokenLifetimes {
                 user: Duration::from_secs(60),
                 refresh: REFRESH_LIFETIME,
             },
+            None,
         )
         .unwrap()
     }
@@ -113,9 +136,7 @@ impl Fixture {
     fn assert_transaction(self, finish: &str) {
         drop(self.repo);
         assert_eq!(
-            Arc::try_unwrap(self.db)
-                .expect("pool still borrowed")
-                .into_transaction_log(),
+            self.db.as_ref().clone().into_transaction_log(),
             vec![Transaction::many([
                 Statement::from_string(DbBackend::Postgres, "BEGIN"),
                 Statement::from_string(DbBackend::Postgres, finish),
@@ -141,7 +162,8 @@ async fn signin_checks_user_and_commits() {
         1
     );
     let contexts = fixture.repo.0.lock().unwrap().contexts.clone();
-    assert_eq!(contexts.len(), 1);
+    assert_eq!(contexts.len(), 2);
+    assert_eq!(fixture.repo.0.lock().unwrap().logins, [1]);
     assert!(contexts.iter().all(|context| *context == contexts[0]));
     fixture.assert_transaction("COMMIT");
 }
@@ -169,6 +191,7 @@ async fn signup_requires_verified_email_and_creates_on_one_transaction() {
             Some(("james@midwess.com".into(), "James".into()))
         );
         assert_eq!(state.contexts.len(), 2);
+        assert!(state.logins.is_empty());
         assert!(
             state
                 .contexts
@@ -203,6 +226,23 @@ async fn duplicate_signup_and_disabled_signin_are_rejected() {
             .await,
         Err(AuthError::UserDisabled)
     ));
+    assert!(fixture.repo.0.lock().unwrap().logins.is_empty());
+    fixture.assert_transaction("ROLLBACK");
+}
+
+#[tokio::test]
+async fn failed_login_record_rolls_back_signin_without_returning_tokens() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    fixture.repo.0.lock().unwrap().fail_record_login = true;
+    let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+    assert!(matches!(
+        fixture
+            .service()
+            .signin(&challenge.access_token, &challenge.code)
+            .await,
+        Err(AuthError::Persistence(UserRepositoryError::Database(_)))
+    ));
+    assert!(fixture.repo.0.lock().unwrap().logins.is_empty());
     fixture.assert_transaction("ROLLBACK");
 }
 
@@ -242,8 +282,10 @@ async fn invalid_otp_or_empty_display_name_does_not_reach_persistence() {
     assert!(fixture.repo.0.lock().unwrap().contexts.is_empty());
     drop(fixture.repo);
     assert!(
-        Arc::try_unwrap(fixture.db)
-            .expect("pool still borrowed")
+        fixture
+            .db
+            .as_ref()
+            .clone()
             .into_transaction_log()
             .is_empty()
     );

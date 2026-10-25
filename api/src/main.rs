@@ -1,6 +1,7 @@
 mod app;
 mod controllers;
-mod dtos;
+mod di;
+mod error;
 mod tasks;
 mod workers;
 

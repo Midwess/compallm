@@ -1018,15 +1018,21 @@ dependencies = [
 name = "compallm-api"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "axum",
  "axum-frontend",
+ "axum-test",
  "clap",
+ "compallm-core",
  "compallm-postgres",
+ "compallm-utils",
  "loco-rs",
+ "sea-orm",
  "serde",
  "serde_json",
  "serial_test",
+ "thiserror 2.0.21",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -1044,6 +1050,7 @@ dependencies = [
  "chacha20poly1305",
  "compallm-utils",
  "hkdf 0.12.4",
+ "maud",
  "midwess-hero",
  "rand 0.9.5",
  "serde",
@@ -1061,11 +1068,18 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum",
+ "clap",
  "compallm-core",
+ "compallm-utils",
+ "heck 0.5.0",
  "loco-rs",
  "midwess-hero",
+ "pluralizer",
  "sea-orm",
+ "sea-orm-cli",
  "sea-orm-migration",
+ "syn 2.0.119",
+ "tokio",
 ]
 
 [[package]]
@@ -1081,6 +1095,7 @@ dependencies = [
  "midwess-hero",
  "sea-orm",
  "serde_json",
+ "tempfile",
  "tokio",
 ]
 
@@ -3147,6 +3162,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
+name = "maud"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8156733e27020ea5c684db5beac5d1d611e1272ab17901a49466294b84fc217e"
+dependencies = [
+ "itoa",
+ "maud_macros",
+]
+
+[[package]]
+name = "maud_macros"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7261b00f3952f617899bc012e3dbd56e4f0110a038175929fa5d18e5a19913ca"
+dependencies = [
+ "proc-macro2",
+ "proc-macro2-diagnostics",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "md-5"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3969,6 +4006,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "prettyplease"
+version = "0.2.37"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "479ca8adacdd7ce8f1fb39ce9ecccbfe93a3f1344b3d0d97f20bc0196208f62b"
+dependencies = [
+ "proc-macro2",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "primeorder"
 version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4546,12 +4593,29 @@ dependencies = [
  "glob",
  "indoc",
  "regex",
+ "sea-orm-codegen",
  "sea-schema",
  "sqlx",
  "tokio",
  "tracing",
  "tracing-subscriber",
  "url",
+]
+
+[[package]]
+name = "sea-orm-codegen"
+version = "2.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1419e7cb642571df02f711b0016044adfe455d85ef405c27d22eb0f54a7204b7"
+dependencies = [
+ "heck 0.5.0",
+ "pluralizer",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "sea-query",
+ "syn 2.0.119",
+ "tracing",
 ]
 
 [[package]]
@@ -5404,6 +5468,19 @@ name = "tagptr"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b2093cf4c8eb1e67749a6762251bc9cd836b6fc171623bd0a9d324d37af2417"
+
+[[package]]
+name = "tempfile"
+version = "3.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
+dependencies = [
+ "fastrand",
+ "getrandom 0.4.3",
+ "once_cell",
+ "rustix",
+ "windows-sys 0.61.2",
+]
 
 [[package]]
 name = "tendril"

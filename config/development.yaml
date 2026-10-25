@@ -1,3 +1,10 @@
+settings:
+  auth:
+    jwt_secret: "<%= get_env(name="AUTH_JWT_SECRET", default="local-development-signing-secret-change-before-production") %>"
+    allowed_email_domain: <%= get_env(name="AUTH_EMAIL_DOMAIN", default="midwess.com") %>
+    user_token_ttl_seconds: 900
+    refresh_token_ttl_seconds: 2592000
+
 logger:
   enable: true
   pretty_backtrace: true

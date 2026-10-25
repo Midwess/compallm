@@ -32,6 +32,10 @@ impl TransactionState {
 }
 
 impl PostgresConnection {
+    pub fn context(database: DatabaseConnection) -> DbContext {
+        DbContext::new(Arc::new(Self::new(Arc::new(database))))
+    }
+
     pub fn new(database: Arc<DatabaseConnection>) -> Self {
         Self::Database(database)
     }

@@ -17,7 +17,7 @@ use crate::{
 const SECRET: &str = "test-signing-secret-at-least-32-bytes";
 
 #[derive(Default)]
-struct Mailbox(Mutex<Vec<EmailRequest>>);
+struct Mailbox(Arc<Mutex<Vec<EmailRequest>>>);
 
 #[async_trait::async_trait]
 impl EmailService for Mailbox {
@@ -39,7 +39,7 @@ impl Fixture {
         }
     }
 
-    fn di(mailbox: Option<Arc<dyn EmailService>>) -> Di {
+    fn di(mailbox: Option<Box<dyn EmailService>>) -> &'static Di {
         let now = "2026-10-25T00:00:00Z"
             .parse::<sea_orm::prelude::DateTimeWithTimeZone>()
             .unwrap();
@@ -60,23 +60,18 @@ impl Fixture {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![], vec![row], vec![]])
             .into_connection();
-        Di::new(
+        let di: &'static Di = Box::leak(Box::new(Di::new(
             DbContext::new(Arc::new(PostgresConnection::new(Arc::new(db)))),
             Self::settings(),
             mailbox,
-        )
-        .unwrap()
+        )));
+        di.initialize_services().unwrap();
+        di
     }
 
-    fn server(di: Di) -> TestServer {
-        let db = di.db_context().clone();
-        let (router, _) = controllers::api_router().split_for_parts();
-        let router = router.with_state(di).layer(axum::middleware::from_fn(
-            move |request: axum::extract::Request, next: axum::middleware::Next| {
-                let db = db.clone();
-                async move { db.scope(next.run(request)).await }
-            },
-        ));
+    fn server(di: &'static Di) -> TestServer {
+        let mut router = axum::Router::new();
+        di.inject(&mut router);
         TestServer::new(router).unwrap()
     }
 }
@@ -94,7 +89,7 @@ impl EmailService for FailingEmail {
 
 #[tokio::test]
 async fn failed_email_delivery_does_not_return_a_challenge() {
-    let server = Fixture::server(Fixture::di(Some(Arc::new(FailingEmail))));
+    let server = Fixture::server(Fixture::di(Some(Box::new(FailingEmail))));
     let response = server
         .post("/api/auth/signup/email")
         .json(&serde_json::json!({"email":"james@midwess.com"}))
@@ -118,9 +113,14 @@ async fn test_and_development_auth_configuration_load_without_connecting() {
 #[tokio::test]
 async fn signup_delivers_code_and_confirmation_creates_user() {
     compallm_postgres::init_id_generator("api-tests").unwrap();
-    let mailbox = Arc::new(Mailbox::default());
-    let di = Fixture::di(Some(mailbox.clone()));
-    assert!(Arc::ptr_eq(&Di::user_repository(), &Di::user_repository()));
+    let mailbox = Mailbox::default();
+    let messages = mailbox.0.clone();
+    let di = Fixture::di(Some(Box::new(mailbox)));
+    assert!(std::ptr::eq(di.user_repository(), di.user_repository()));
+    assert!(std::ptr::eq(di.auth_service(), di.auth_service()));
+    let service = di.auth_service();
+    di.initialize_services().unwrap();
+    assert!(std::ptr::eq(service, di.auth_service()));
     let server = Fixture::server(di);
     let response = server
         .post("/api/auth/signup/email")
@@ -134,7 +134,7 @@ async fn signup_delivers_code_and_confirmation_creates_user() {
     let claims =
         EmailOtpAccessToken::try_from(AccessToken::decode(token, SECRET).unwrap()).unwrap();
     {
-        let messages = mailbox.0.lock().unwrap();
+        let messages = messages.lock().unwrap();
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].to, "james@midwess.com");
         assert!(messages[0].text.to_string().contains(&claims.code));

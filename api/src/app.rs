@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
-use axum::extract::FromRef;
 #[cfg(feature = "frontend-dev")]
 use axum_frontend::{DevConfig, shutdown_requested};
 use compallm_postgres::{Migrator, init_id_generator};
@@ -18,7 +17,7 @@ use loco_rs::{
 };
 use std::path::Path;
 
-use crate::{controllers, di::Di};
+use crate::di::Di;
 
 #[cfg(feature = "frontend-dev")]
 const PORTAL_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../portal");
@@ -94,23 +93,17 @@ impl Hooks for App {
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
         init_id_generator(Self::app_name())
             .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
-        ctx.shared_store.insert(Di::init(&ctx).await?);
+        Di::init(&ctx).await?;
         Ok(ctx)
     }
 
-    async fn before_routes(ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
-        let (router, _) = controllers::api_router().split_for_parts();
-        Ok(router.with_state(Di::from_ref(ctx)))
+    async fn before_routes(_ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
+        let mut router = AxumRouter::new();
+        Di::instance().inject(&mut router);
+        Ok(router)
     }
 
-    async fn after_routes(router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
-        let di = Di::from_ref(ctx);
-        let router = router.layer(axum::middleware::from_fn(
-            move |request: axum::extract::Request, next: axum::middleware::Next| {
-                let db = di.db_context().clone();
-                async move { db.scope(next.run(request)).await }
-            },
-        ));
+    async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
         #[cfg(not(feature = "frontend-dev"))]
         {
             use axum_frontend::static_router;

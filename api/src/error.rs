@@ -6,7 +6,10 @@ use axum::{
 };
 use compallm_core::{auth::AuthError, mail::EmailError, persistent::user::UserRepositoryError};
 
-use crate::dtos::auth::ErrorResponse;
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct ErrorResponse {
+    pub message: String,
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum ApiError {

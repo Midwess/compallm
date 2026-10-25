@@ -4,21 +4,30 @@ use axum::{
     http::{StatusCode, header::CACHE_CONTROL},
     response::IntoResponse,
 };
+use compallm_core::auth::AuthService;
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 use crate::{
-    di::Di,
-    dtos::auth::{
-        AuthTokensResponse, ConfirmSignupOtpRequest, ErrorResponse, SignupEmailRequest,
-        SignupEmailResponse,
-    },
-    error::ApiError,
+    di::ServiceState,
+    error::{ApiError, ErrorResponse},
 };
 
-pub fn router() -> OpenApiRouter<Di> {
+pub fn router() -> OpenApiRouter<ServiceState> {
     OpenApiRouter::new()
         .routes(routes!(signup_email))
         .routes(routes!(confirm_signup_otp))
+}
+
+#[derive(Deserialize, ToSchema)]
+pub struct SignupEmailRequest {
+    pub email: String,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct SignupEmailResponse {
+    pub token: String,
 }
 
 #[utoipa::path(
@@ -31,15 +40,30 @@ pub fn router() -> OpenApiRouter<Di> {
     )
 )]
 async fn signup_email(
-    State(di): State<Di>,
+    State(auth): State<&'static AuthService>,
     input: Result<Json<SignupEmailRequest>, JsonRejection>,
 ) -> Result<impl IntoResponse, ApiError> {
     let Json(input) = input?;
-    let token = di.auth_service().signup_email(&input.email).await?;
+    let token = auth.signup_email(&input.email).await?;
     Ok((
         [(CACHE_CONTROL, "no-store")],
         Json(SignupEmailResponse { token }),
     ))
+}
+
+#[derive(Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfirmSignupOtpRequest {
+    pub token: String,
+    pub code: String,
+    pub display_name: String,
+}
+
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthTokensResponse {
+    pub access_token: String,
+    pub refresh_token: String,
 }
 
 #[utoipa::path(
@@ -54,12 +78,11 @@ async fn signup_email(
     )
 )]
 async fn confirm_signup_otp(
-    State(di): State<Di>,
+    State(auth): State<&'static AuthService>,
     input: Result<Json<ConfirmSignupOtpRequest>, JsonRejection>,
 ) -> Result<impl IntoResponse, ApiError> {
     let Json(input) = input?;
-    let tokens = di
-        .auth_service()
+    let tokens = auth
         .signup(&input.token, &input.code, &input.display_name)
         .await?;
     Ok((

@@ -104,9 +104,15 @@ impl Fixture {
     }
 
     fn service(&self) -> AuthService {
+        // Static dependencies mirror the application container. Test-only
+        // allocations live for this test process and never touch a real DB.
+        let db: &'static DbContext = Box::leak(Box::new(self.repo.1.clone()));
+        let users = Box::leak(Box::new(
+            Box::new(self.repo.clone()) as Box<dyn UserRepository>
+        ));
         AuthService::new(
-            self.repo.1.clone(),
-            Box::new(self.repo.clone()),
+            db,
+            users,
             SECRET.into(),
             "midwess.com".into(),
             TokenLifetimes {
@@ -130,9 +136,7 @@ impl Fixture {
     fn assert_transaction(self, finish: &str) {
         drop(self.repo);
         assert_eq!(
-            Arc::try_unwrap(self.db)
-                .expect("pool still borrowed")
-                .into_transaction_log(),
+            self.db.as_ref().clone().into_transaction_log(),
             vec![Transaction::many([
                 Statement::from_string(DbBackend::Postgres, "BEGIN"),
                 Statement::from_string(DbBackend::Postgres, finish),
@@ -278,8 +282,10 @@ async fn invalid_otp_or_empty_display_name_does_not_reach_persistence() {
     assert!(fixture.repo.0.lock().unwrap().contexts.is_empty());
     drop(fixture.repo);
     assert!(
-        Arc::try_unwrap(fixture.db)
-            .expect("pool still borrowed")
+        fixture
+            .db
+            .as_ref()
+            .clone()
             .into_transaction_log()
             .is_empty()
     );

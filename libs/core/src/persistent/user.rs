@@ -1,7 +1,6 @@
 use super::connection::ConnectionError;
 use crate::user::User;
 use async_trait::async_trait;
-use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error)]
 pub enum UserRepositoryError {
@@ -38,23 +37,4 @@ pub trait UserRepository: Send + Sync {
 
     /// Record a successful signin using the current transaction context.
     async fn record_login(&self, user_id: u64) -> Result<(), UserRepositoryError>;
-}
-
-#[async_trait]
-impl<R: UserRepository + ?Sized> UserRepository for Arc<R> {
-    async fn find_by_email(&self, email: &str) -> Result<Option<User>, UserRepositoryError> {
-        self.as_ref().find_by_email(email).await
-    }
-
-    async fn find_by_id(&self, user_id: u64) -> Result<Option<User>, UserRepositoryError> {
-        self.as_ref().find_by_id(user_id).await
-    }
-
-    async fn create(&self, user: User) -> Result<User, UserRepositoryError> {
-        self.as_ref().create(user).await
-    }
-
-    async fn record_login(&self, user_id: u64) -> Result<(), UserRepositoryError> {
-        self.as_ref().record_login(user_id).await
-    }
 }

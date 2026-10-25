@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use super::{
     AuthError,
@@ -24,22 +24,25 @@ pub struct TokenLifetimes {
 }
 
 pub struct AuthService {
-    db: DbContext,
-    users: Box<dyn UserRepository>,
+    db: &'static DbContext,
+    #[allow(clippy::borrowed_box)]
+    users: &'static Box<dyn UserRepository>,
     jwt_secret: String,
     allowed_email_domain: String,
     lifetimes: TokenLifetimes,
-    email: Option<Arc<dyn EmailService>>,
+    #[allow(clippy::borrowed_box)]
+    email: Option<&'static Box<dyn EmailService>>,
 }
 
 impl AuthService {
+    #[allow(clippy::borrowed_box)]
     pub fn new(
-        db: DbContext,
-        users: Box<dyn UserRepository>,
+        db: &'static DbContext,
+        users: &'static Box<dyn UserRepository>,
         jwt_secret: String,
         allowed_email_domain: String,
         lifetimes: TokenLifetimes,
-        email: Option<Arc<dyn EmailService>>,
+        email: Option<&'static Box<dyn EmailService>>,
     ) -> Result<Self, AuthError> {
         if lifetimes.user.as_secs() == 0 || lifetimes.refresh.as_secs() == 0 {
             return Err(AuthError::InvalidConfiguration);

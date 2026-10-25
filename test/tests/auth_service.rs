@@ -258,6 +258,17 @@ impl Fixture {
         .unwrap()
     }
 
+    async fn refresh(
+        &self,
+        token: &str,
+        organization_id: Option<u64>,
+    ) -> Result<UserTokens, AuthError> {
+        self.repo
+            .1
+            .scope(self.service().refresh(token, organization_id))
+            .await
+    }
+
     fn registration(&self) -> RegistrationService {
         let db = Box::leak(Box::new(self.repo.1.clone()));
         let users = Box::leak(Box::new(
@@ -565,6 +576,44 @@ async fn signup_derives_user_name_and_default_organization_from_the_email() {
 }
 
 #[tokio::test]
+async fn refresh_requires_a_context_from_the_application_entry_point() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let service = fixture.service();
+    let tokens = UserTokens::new(
+        1,
+        84,
+        OrganizationRole::Owner,
+        SECRET,
+        Duration::from_secs(60),
+        REFRESH_LIFETIME,
+    )
+    .unwrap();
+
+    assert!(matches!(
+        service.refresh(&tokens.refresh_token, None).await,
+        Err(AuthError::Persistence(UserRepositoryError::Database(_)))
+    ));
+    assert!(fixture.repo.0.lock().unwrap().contexts.is_empty());
+
+    fixture
+        .repo
+        .1
+        .scope(service.refresh(&tokens.refresh_token, None))
+        .await
+        .unwrap();
+    assert_eq!(fixture.repo.0.lock().unwrap().contexts.len(), 1);
+    assert!(DbContext::current().is_err());
+    assert!(
+        fixture
+            .db
+            .as_ref()
+            .clone()
+            .into_transaction_log()
+            .is_empty()
+    );
+}
+
+#[tokio::test]
 async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let original = UserTokens::new(
@@ -589,7 +638,7 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
         .encode(SECRET, REFRESH_LIFETIME)
         .unwrap();
     let before_refresh = compallm_utils::time::unix_timestamp();
-    let issued = fixture.service().refresh(&old_refresh, None).await.unwrap();
+    let issued = fixture.refresh(&old_refresh, None).await.unwrap();
     let after_refresh = compallm_utils::time::unix_timestamp();
     let renewed =
         RefreshToken::try_from(AccessToken::decode(&issued.refresh_token, SECRET).unwrap())
@@ -613,17 +662,11 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
     );
     fixture.repo.0.lock().unwrap().user.as_mut().unwrap().status = UserStatus::Disabled;
     assert!(matches!(
-        fixture
-            .service()
-            .refresh(&original.refresh_token, None)
-            .await,
+        fixture.refresh(&original.refresh_token, None).await,
         Err(AuthError::UserDisabled)
     ));
     assert!(matches!(
-        fixture
-            .service()
-            .refresh(&original.access_token, None)
-            .await,
+        fixture.refresh(&original.access_token, None).await,
         Err(AuthError::WrongTokenVariant)
     ));
 }
@@ -640,7 +683,7 @@ async fn expired_refresh_requires_signin_before_reading_the_user() {
         hero::token::jwt::create_jwt_token(AccessToken::Refresh(expired), SECRET, REFRESH_LIFETIME)
             .unwrap();
     assert!(matches!(
-        fixture.service().refresh(&encoded, None).await,
+        fixture.refresh(&encoded, None).await,
         Err(AuthError::ExpiredToken)
     ));
     assert!(fixture.repo.0.lock().unwrap().contexts.is_empty());
@@ -692,7 +735,7 @@ async fn refresh_can_switch_organizations_using_current_membership_roles() {
     let refresh = AccessToken::Refresh(RefreshToken::new(1, REFRESH_LIFETIME).unwrap())
         .encode(SECRET, REFRESH_LIFETIME)
         .unwrap();
-    let tokens = fixture.service().refresh(&refresh, Some(85)).await.unwrap();
+    let tokens = fixture.refresh(&refresh, Some(85)).await.unwrap();
     let claims =
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
@@ -701,7 +744,6 @@ async fn refresh_can_switch_organizations_using_current_membership_roles() {
     // Membership changes are checked again instead of copying role from an old JWT.
     fixture.repo.0.lock().unwrap().memberships[1].role = OrganizationRole::Admin;
     let tokens = fixture
-        .service()
         .refresh(&tokens.refresh_token, Some(85))
         .await
         .unwrap();
@@ -710,7 +752,7 @@ async fn refresh_can_switch_organizations_using_current_membership_roles() {
             .unwrap();
     assert_eq!(claims.organization_role, OrganizationRole::Admin);
     assert!(matches!(
-        fixture.service().refresh(&refresh, Some(999)).await,
+        fixture.refresh(&refresh, Some(999)).await,
         Err(AuthError::OrganizationAccessDenied)
     ));
     fixture
@@ -721,7 +763,7 @@ async fn refresh_can_switch_organizations_using_current_membership_roles() {
         .disabled_organizations
         .push(85);
     assert!(matches!(
-        fixture.service().refresh(&refresh, Some(85)).await,
+        fixture.refresh(&refresh, Some(85)).await,
         Err(AuthError::OrganizationAccessDenied)
     ));
 }
@@ -765,7 +807,7 @@ async fn refresh_without_selection_uses_first_active_membership() {
     let refresh = AccessToken::Refresh(RefreshToken::new(1, REFRESH_LIFETIME).unwrap())
         .encode(SECRET, REFRESH_LIFETIME)
         .unwrap();
-    let tokens = fixture.service().refresh(&refresh, None).await.unwrap();
+    let tokens = fixture.refresh(&refresh, None).await.unwrap();
     let claims =
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();

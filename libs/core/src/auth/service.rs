@@ -141,30 +141,26 @@ impl AuthService {
         if organization_id.is_some_and(|id| id == 0 || id > i64::MAX as u64) {
             return Err(AuthError::OrganizationAccessDenied);
         }
-        self.db
-            .scope(async {
-                let user = self
-                    .users
-                    .find_by_id(claims.user_id)
-                    .await?
-                    .ok_or(AuthError::UserNotFound)?;
-                if user.status != UserStatus::Active {
-                    return Err(AuthError::UserDisabled);
-                }
-                let membership = match organization_id {
-                    Some(id) => self.organizations.find_membership(id, user.id).await?,
-                    None => self.organizations.find_first_membership(user.id).await?,
-                }
-                .ok_or(AuthError::OrganizationAccessDenied)?;
-                UserTokens::new(
-                    user.id,
-                    membership.organization_id,
-                    membership.role,
-                    &self.jwt_secret,
-                    self.lifetimes.user,
-                    self.lifetimes.refresh,
-                )
-            })
-            .await
+        let user = self
+            .users
+            .find_by_id(claims.user_id)
+            .await?
+            .ok_or(AuthError::UserNotFound)?;
+        if user.status != UserStatus::Active {
+            return Err(AuthError::UserDisabled);
+        }
+        let membership = match organization_id {
+            Some(id) => self.organizations.find_membership(id, user.id).await?,
+            None => self.organizations.find_first_membership(user.id).await?,
+        }
+        .ok_or(AuthError::OrganizationAccessDenied)?;
+        UserTokens::new(
+            user.id,
+            membership.organization_id,
+            membership.role,
+            &self.jwt_secret,
+            self.lifetimes.user,
+            self.lifetimes.refresh,
+        )
     }
 }

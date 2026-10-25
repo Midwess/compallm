@@ -171,6 +171,25 @@ test('tool and context budgets prevent unbounded model requests', async () => {
   assert.equal(requests, 2);
 });
 
+test('exploration cannot consume the rounds reserved for checks, publication, and validation repair', async () => {
+  const available = [];
+  let attempts = 0;
+  const client = { chat: { completions: { create: async request => {
+    const names = request.tools.map(tool => tool.function.name);
+    available.push(names);
+    if (names.includes('read_file')) return completion([call('diff', 'get_pr_diff')]);
+    assert.equal(request.tool_choice, 'required');
+    return completion([call('finalize', names[0], names[0] === 'publish_explanation' ? { body } : {})]);
+  } } } };
+  await runAgent({ client, model: 'model', messages: [], maxRounds: 5, handlers: {
+    get_pr_diff: async () => 'diff', get_pr_checks: async () => ({ status: 'pending' }),
+    publish_explanation: async () => { if (++attempts === 1) throw new Error('Correct the diagram'); return { ok: true }; },
+  } });
+  assert.equal(available.length, 5);
+  assert.deepEqual(available.slice(-3), [['get_pr_checks'], ['publish_explanation'], ['publish_explanation']]);
+  assert.equal(attempts, 2);
+});
+
 test('runner publishes once, skips matching inputs, restores a deleted comment, and refreshes changed PR metadata', async t => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'pr-explainer-runner-'));
   const savedEnv = { ...process.env };

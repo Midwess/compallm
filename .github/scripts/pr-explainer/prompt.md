@@ -41,3 +41,6 @@ of correctness. Do not claim tests were executed by you.
 
 Use publish_explanation(body) when ready. If it returns a validation error, fix the body
 and try again. Do not output private reasoning, tool logs, or a duplicate final comment.
+You have at most seven rounds to inspect code. Prefer independent reads in the same
+round. Do not attempt an exhaustive audit: sample the significant behavior changes,
+explain them, and disclose any gaps. Reserve the remaining rounds for checks and publication.

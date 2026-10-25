@@ -73,8 +73,15 @@ export async function runAgent({ client, model, messages, handlers, maxRounds = 
   let published = false;
   for (let round = 0; round < maxRounds; round++) {
     onProgress(`LLM round ${round + 1}/${maxRounds}`);
+    // Reserve rounds for current checks, publication, and one validation repair.
+    const finalizing = maxRounds >= 4 && round >= maxRounds - 3;
+    const allowed = finalizing ? tools.filter(tool => tool.function.name ===
+      (round === maxRounds - 3 ? 'get_pr_checks' : 'publish_explanation')) : tools;
+    if (finalizing) messages.push({ role: 'user', content: round === maxRounds - 3
+      ? 'Code inspection is complete. Read current checks now, then publish a concise explanation from the evidence gathered. Disclose any uninspected areas.'
+      : 'Publish the explanation now using publish_explanation. If a previous publication had a validation error, correct it first. Do not inspect more code.' });
     if (JSON.stringify(messages).length > maxCharacters) throw new Error('LLM context budget exceeded; no further request sent.');
-    const response = await client.chat.completions.create({ model, messages, tools, tool_choice: 'auto' });
+    const response = await client.chat.completions.create({ model, messages, tools: allowed, tool_choice: finalizing ? 'required' : 'auto' });
     const choice = response.choices?.[0];
     const message = choice?.message;
     if (!message || choice.finish_reason === 'length' || choice.finish_reason === 'content_filter') {
@@ -96,6 +103,7 @@ export async function runAgent({ client, model, messages, handlers, maxRounds = 
         if (call.type !== 'function') throw new Error('Only function tools are available.');
         const args = JSON.parse(call.function.arguments);
         validateArgs(call.function.name, args);
+        if (!allowed.some(tool => tool.function.name === call.function.name)) throw new Error('Inspection budget is exhausted; use the currently available tool.');
         onProgress(`Executing tool: ${call.function.name}`);
         if (published) return { ok: true, already_published: true };
         const result = await handlers[call.function.name](args);

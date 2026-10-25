@@ -79,6 +79,8 @@ PR run make that visible and replace the old explanation.
   with at most one SDK retry; `gh` requests time out after 45 seconds. The job has a
   15-minute ceiling, ten model rounds, forty tool calls, and a 240,000-character
   conversation budget. These are character limits, not a token guarantee for every model.
+  The final three rounds are reserved for fresh checks, publication, and a validation
+  repair, so code exploration cannot consume the entire conversation budget.
 - Initial diffs are capped at 60,000 characters, individual patches at 24,000, files
   at 256 KB, and reads at 300 lines/18,000 characters. Truncation is explicit. GitHub's
   comparison manifest covers at most 300 files; the prompt requires disclosure of

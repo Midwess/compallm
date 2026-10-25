@@ -34,6 +34,8 @@ struct State {
     owner: Option<OrganizationMember>,
     fail_organization: bool,
     fail_membership: bool,
+    memberships: Vec<OrganizationMember>,
+    disabled_organizations: Vec<u64>,
 }
 
 #[derive(Clone)]
@@ -43,6 +45,65 @@ struct OrganizationRepositoryStub(Arc<Mutex<State>>);
 
 #[async_trait::async_trait]
 impl OrganizationRepository for OrganizationRepositoryStub {
+    async fn find_membership(
+        &self,
+        organization_id: u64,
+        user_id: u64,
+    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
+        DbContext::current()?;
+        let state = self.0.lock().unwrap();
+        Ok(state
+            .memberships
+            .iter()
+            .find(|member| {
+                member.user_id == user_id
+                    && member.organization_id == organization_id
+                    && !state
+                        .disabled_organizations
+                        .contains(&member.organization_id)
+            })
+            .cloned())
+    }
+
+    async fn find_first_membership(
+        &self,
+        user_id: u64,
+    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
+        DbContext::current()?;
+        let state = self.0.lock().unwrap();
+        Ok(state
+            .memberships
+            .iter()
+            .find(|member| {
+                member.user_id == user_id
+                    && !state
+                        .disabled_organizations
+                        .contains(&member.organization_id)
+            })
+            .cloned())
+    }
+
+    async fn find_first_admin_membership(
+        &self,
+        user_id: u64,
+    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
+        DbContext::current()?;
+        let state = self.0.lock().unwrap();
+        Ok(state
+            .memberships
+            .iter()
+            .find(|member| {
+                member.user_id == user_id
+                    && matches!(
+                        member.role,
+                        OrganizationRole::Owner | OrganizationRole::Admin
+                    )
+                    && !state
+                        .disabled_organizations
+                        .contains(&member.organization_id)
+            })
+            .cloned())
+    }
     async fn update_name(
         &self,
         organization_id: u64,
@@ -84,6 +145,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
             )));
         }
         state.owner = Some(member.clone());
+        state.memberships.push(member.clone());
         Ok(member)
     }
 }
@@ -148,9 +210,20 @@ impl Fixture {
             Err(error) => panic!("{error}"),
         }
         let db = Arc::new(MockDatabase::new(DbBackend::Postgres).into_connection());
+        let memberships = user
+            .as_ref()
+            .map(|user| {
+                vec![OrganizationMember {
+                    organization_id: 84,
+                    user_id: user.id,
+                    role: OrganizationRole::Owner,
+                }]
+            })
+            .unwrap_or_default();
         let repo = Repository(
             Arc::new(Mutex::new(State {
                 user,
+                memberships,
                 ..State::default()
             })),
             DbContext::new(Arc::new(PostgresConnection::new(db.clone()))),
@@ -173,6 +246,7 @@ impl Fixture {
         AuthService::new(
             db,
             users,
+            organizations,
             registration,
             SECRET.into(),
             "midwess.com".into(),
@@ -277,6 +351,11 @@ async fn signin_checks_user_and_commits() {
         1
     );
     let contexts = fixture.repo.0.lock().unwrap().contexts.clone();
+    let access =
+        UserAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
+            .unwrap();
+    assert_eq!(access.organization_id, 84);
+    assert_eq!(access.organization_role, OrganizationRole::Owner);
     assert_eq!(contexts.len(), 2);
     assert_eq!(fixture.repo.0.lock().unwrap().logins, [1]);
     assert!(contexts.iter().all(|context| *context == contexts[0]));
@@ -314,6 +393,11 @@ async fn signup_requires_verified_email_and_creates_on_one_transaction() {
         assert_eq!(organization.created_by, owner.user_id);
         assert_eq!(organization.id, owner.organization_id);
         assert_eq!(owner.role, OrganizationRole::Owner);
+        let access =
+            UserAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
+                .unwrap();
+        assert_eq!(access.organization_id, organization.id);
+        assert_eq!(access.organization_role, OrganizationRole::Owner);
         assert!(
             state
                 .contexts
@@ -483,7 +567,15 @@ async fn email_style_user_names_produce_valid_bounded_default_organization_names
 #[tokio::test]
 async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let original = UserTokens::new(1, SECRET, Duration::from_secs(60), REFRESH_LIFETIME).unwrap();
+    let original = UserTokens::new(
+        1,
+        84,
+        OrganizationRole::Owner,
+        SECRET,
+        Duration::from_secs(60),
+        REFRESH_LIFETIME,
+    )
+    .unwrap();
     let mut previous =
         RefreshToken::try_from(AccessToken::decode(&original.refresh_token, SECRET).unwrap())
             .unwrap();
@@ -497,7 +589,7 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
         .encode(SECRET, REFRESH_LIFETIME)
         .unwrap();
     let before_refresh = compallm_utils::time::unix_timestamp();
-    let issued = fixture.service().refresh(&old_refresh).await.unwrap();
+    let issued = fixture.service().refresh(&old_refresh, None).await.unwrap();
     let after_refresh = compallm_utils::time::unix_timestamp();
     let renewed =
         RefreshToken::try_from(AccessToken::decode(&issued.refresh_token, SECRET).unwrap())
@@ -521,11 +613,17 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
     );
     fixture.repo.0.lock().unwrap().user.as_mut().unwrap().status = UserStatus::Disabled;
     assert!(matches!(
-        fixture.service().refresh(&original.refresh_token).await,
+        fixture
+            .service()
+            .refresh(&original.refresh_token, None)
+            .await,
         Err(AuthError::UserDisabled)
     ));
     assert!(matches!(
-        fixture.service().refresh(&original.access_token).await,
+        fixture
+            .service()
+            .refresh(&original.access_token, None)
+            .await,
         Err(AuthError::WrongTokenVariant)
     ));
 }
@@ -542,8 +640,135 @@ async fn expired_refresh_requires_signin_before_reading_the_user() {
         hero::token::jwt::create_jwt_token(AccessToken::Refresh(expired), SECRET, REFRESH_LIFETIME)
             .unwrap();
     assert!(matches!(
-        fixture.service().refresh(&encoded).await,
+        fixture.service().refresh(&encoded, None).await,
         Err(AuthError::ExpiredToken)
     ));
     assert!(fixture.repo.0.lock().unwrap().contexts.is_empty());
+}
+
+#[tokio::test]
+async fn signin_selects_an_admin_organization_instead_of_a_member_organization() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    fixture.repo.0.lock().unwrap().memberships = vec![
+        OrganizationMember {
+            organization_id: 80,
+            user_id: 1,
+            role: OrganizationRole::Member,
+        },
+        OrganizationMember {
+            organization_id: 85,
+            user_id: 1,
+            role: OrganizationRole::Admin,
+        },
+    ];
+    let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .service()
+        .signin(&challenge.access_token, &challenge.code)
+        .await
+        .unwrap();
+    let claims =
+        UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
+            .unwrap();
+    assert_eq!(claims.organization_id, 85);
+    assert_eq!(claims.organization_role, OrganizationRole::Admin);
+    fixture.assert_transaction("COMMIT");
+}
+
+#[tokio::test]
+async fn refresh_can_switch_organizations_using_current_membership_roles() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .memberships
+        .push(OrganizationMember {
+            organization_id: 85,
+            user_id: 1,
+            role: OrganizationRole::Member,
+        });
+    let refresh = AccessToken::Refresh(RefreshToken::new(1, REFRESH_LIFETIME).unwrap())
+        .encode(SECRET, REFRESH_LIFETIME)
+        .unwrap();
+    let tokens = fixture.service().refresh(&refresh, Some(85)).await.unwrap();
+    let claims =
+        UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
+            .unwrap();
+    assert_eq!(claims.organization_id, 85);
+    assert_eq!(claims.organization_role, OrganizationRole::Member);
+    // Membership changes are checked again instead of copying role from an old JWT.
+    fixture.repo.0.lock().unwrap().memberships[1].role = OrganizationRole::Admin;
+    let tokens = fixture
+        .service()
+        .refresh(&tokens.refresh_token, Some(85))
+        .await
+        .unwrap();
+    let claims =
+        UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
+            .unwrap();
+    assert_eq!(claims.organization_role, OrganizationRole::Admin);
+    assert!(matches!(
+        fixture.service().refresh(&refresh, Some(999)).await,
+        Err(AuthError::OrganizationAccessDenied)
+    ));
+    fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .disabled_organizations
+        .push(85);
+    assert!(matches!(
+        fixture.service().refresh(&refresh, Some(85)).await,
+        Err(AuthError::OrganizationAccessDenied)
+    ));
+}
+
+#[tokio::test]
+async fn signin_rejects_missing_or_disabled_administrator_memberships() {
+    for disabled in [false, true] {
+        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+        {
+            let mut state = fixture.repo.0.lock().unwrap();
+            if disabled {
+                state.disabled_organizations.push(84);
+            } else {
+                state.memberships[0].role = OrganizationRole::Member;
+            }
+        }
+        let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+        assert!(matches!(
+            fixture
+                .service()
+                .signin(&challenge.access_token, &challenge.code)
+                .await,
+            Err(AuthError::OrganizationAccessDenied)
+        ));
+        assert!(fixture.repo.0.lock().unwrap().logins.is_empty());
+        fixture.assert_transaction("ROLLBACK");
+    }
+}
+
+#[tokio::test]
+async fn refresh_without_selection_uses_first_active_membership() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    fixture.repo.0.lock().unwrap().memberships.insert(
+        0,
+        OrganizationMember {
+            organization_id: 80,
+            user_id: 1,
+            role: OrganizationRole::Member,
+        },
+    );
+    let refresh = AccessToken::Refresh(RefreshToken::new(1, REFRESH_LIFETIME).unwrap())
+        .encode(SECRET, REFRESH_LIFETIME)
+        .unwrap();
+    let tokens = fixture.service().refresh(&refresh, None).await.unwrap();
+    let claims =
+        UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
+            .unwrap();
+    assert_eq!(claims.organization_id, 80);
+    assert_eq!(claims.organization_role, OrganizationRole::Member);
 }

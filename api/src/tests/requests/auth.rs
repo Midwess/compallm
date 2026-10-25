@@ -83,7 +83,13 @@ impl Fixture {
             member.into_mock_row().into_column_value_tuples().collect();
         member.insert("role".to_string(), "owner".into());
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([vec![], vec![row], vec![organization], vec![member], vec![]])
+            .append_query_results([
+                vec![],
+                vec![row],
+                vec![organization],
+                vec![member.clone()],
+                vec![member],
+            ])
             .into_connection();
         let di: &'static Di = Box::leak(Box::new(Di::new(
             DbContext::new(Arc::new(PostgresConnection::new(Arc::new(db)))),
@@ -176,6 +182,15 @@ async fn signup_delivers_code_and_confirmation_creates_user() {
         .await;
     response.assert_status(axum::http::StatusCode::CREATED);
     let tokens: serde_json::Value = response.json();
+    let access = compallm_core::auth::UserAccessToken::try_from(
+        AccessToken::decode(tokens["accessToken"].as_str().unwrap(), SECRET).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(access.organization_id, 84);
+    assert_eq!(
+        access.organization_role,
+        compallm_core::organization::OrganizationRole::Owner
+    );
     assert!(matches!(
         AccessToken::decode(tokens["accessToken"].as_str().unwrap(), SECRET).unwrap(),
         AccessToken::User(_)

@@ -8,7 +8,7 @@ use super::{
     },
 };
 use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode};
-use crate::persistent::{DbContext, user::UserRepository};
+use crate::persistent::{DbContext, organization::OrganizationRepository, user::UserRepository};
 use crate::transaction;
 use crate::user::{RegistrationService, UserStatus};
 use compallm_utils::email::verify_email;
@@ -24,6 +24,8 @@ pub struct AuthService {
     db: &'static DbContext,
     #[allow(clippy::borrowed_box)]
     users: &'static Box<dyn UserRepository>,
+    #[allow(clippy::borrowed_box)]
+    organizations: &'static Box<dyn OrganizationRepository>,
     registration: &'static RegistrationService,
     jwt_secret: String,
     allowed_email_domain: String,
@@ -33,10 +35,11 @@ pub struct AuthService {
 }
 
 impl AuthService {
-    #[allow(clippy::borrowed_box)]
+    #[allow(clippy::borrowed_box, clippy::too_many_arguments)]
     pub fn new(
         db: &'static DbContext,
         users: &'static Box<dyn UserRepository>,
+        organizations: &'static Box<dyn OrganizationRepository>,
         registration: &'static RegistrationService,
         jwt_secret: String,
         allowed_email_domain: String,
@@ -53,6 +56,7 @@ impl AuthService {
         Ok(Self {
             db,
             users,
+            organizations,
             registration,
             jwt_secret,
             allowed_email_domain,
@@ -98,9 +102,16 @@ impl AuthService {
             if user.status != UserStatus::Active {
                 return Err(AuthError::UserDisabled);
             }
+            let membership = self
+                .organizations
+                .find_first_admin_membership(user.id)
+                .await?
+                .ok_or(AuthError::OrganizationAccessDenied)?;
             self.users.record_login(user.id).await?;
             UserTokens::new(
                 user.id,
+                membership.organization_id,
+                membership.role,
                 &self.jwt_secret,
                 self.lifetimes.user,
                 self.lifetimes.refresh,
@@ -131,8 +142,15 @@ impl AuthService {
             if user.status != UserStatus::Active {
                 return Err(AuthError::UserDisabled);
             }
+            let membership = self
+                .organizations
+                .find_first_admin_membership(user.id)
+                .await?
+                .ok_or(AuthError::OrganizationAccessDenied)?;
             UserTokens::new(
                 user.id,
+                membership.organization_id,
+                membership.role,
                 &self.jwt_secret,
                 self.lifetimes.user,
                 self.lifetimes.refresh,
@@ -143,21 +161,39 @@ impl AuthService {
     /// Renew both credentials with a full refresh lifetime starting now.
     /// Configure the refresh lifetime as 30 days for the sliding one-month policy.
     /// Previous-token invalidation still requires persistent token tracking.
-    pub async fn refresh(&self, refresh_token: &str) -> Result<UserTokens, AuthError> {
+    pub async fn refresh(
+        &self,
+        refresh_token: &str,
+        organization_id: Option<u64>,
+    ) -> Result<UserTokens, AuthError> {
         let claims = RefreshToken::try_from(AccessToken::decode(refresh_token, &self.jwt_secret)?)?;
-        let user = self
-            .db
-            .scope(self.users.find_by_id(claims.user_id))
-            .await?
-            .ok_or(AuthError::UserNotFound)?;
-        if user.status != UserStatus::Active {
-            return Err(AuthError::UserDisabled);
+        if organization_id.is_some_and(|id| id == 0 || id > i64::MAX as u64) {
+            return Err(AuthError::OrganizationAccessDenied);
         }
-        UserTokens::new(
-            user.id,
-            &self.jwt_secret,
-            self.lifetimes.user,
-            self.lifetimes.refresh,
-        )
+        self.db
+            .scope(async {
+                let user = self
+                    .users
+                    .find_by_id(claims.user_id)
+                    .await?
+                    .ok_or(AuthError::UserNotFound)?;
+                if user.status != UserStatus::Active {
+                    return Err(AuthError::UserDisabled);
+                }
+                let membership = match organization_id {
+                    Some(id) => self.organizations.find_membership(id, user.id).await?,
+                    None => self.organizations.find_first_membership(user.id).await?,
+                }
+                .ok_or(AuthError::OrganizationAccessDenied)?;
+                UserTokens::new(
+                    user.id,
+                    membership.organization_id,
+                    membership.role,
+                    &self.jwt_secret,
+                    self.lifetimes.user,
+                    self.lifetimes.refresh,
+                )
+            })
+            .await
     }
 }

@@ -91,6 +91,7 @@ impl Di {
         let service = Box::new(AuthService::new(
             self.db_context(),
             self.user_repository(),
+            self.organization_repository(),
             self.registration_service(),
             self.settings.jwt_secret.clone(),
             self.settings.allowed_email_domain.clone(),

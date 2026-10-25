@@ -7,7 +7,8 @@ use compallm_core::{
     },
 };
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, ModelTrait, QueryFilter, Set, sea_query::Expr,
+    ActiveModelTrait, ColumnTrait, EntityTrait, ModelTrait, QueryFilter, QueryOrder, Set,
+    sea_query::Expr,
 };
 
 use crate::{
@@ -23,11 +24,45 @@ type OrganizationActiveModel = <Organizations as EntityTrait>::ActiveModel;
 type OrganizationColumn = <Organizations as EntityTrait>::Column;
 type Members = <OrganizationMemberSchema as ModelTrait>::Entity;
 type MemberActiveModel = <Members as EntityTrait>::ActiveModel;
+type MemberColumn = <Members as EntityTrait>::Column;
 
 #[derive(Default)]
 pub struct OrganizationRepository;
 
 impl OrganizationRepository {
+    async fn membership(
+        &self,
+        user_id: u64,
+        organization_id: Option<u64>,
+        admin_only: bool,
+    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
+        let user_id = Self::database_id(user_id)?;
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let mut query = Members::find()
+            .inner_join(Organizations::default())
+            .filter(MemberColumn::UserId.eq(user_id))
+            .filter(OrganizationColumn::Status.eq(OrganizationStatusSchema::Active));
+        if let Some(organization_id) = organization_id {
+            query =
+                query.filter(MemberColumn::OrganizationId.eq(Self::database_id(organization_id)?));
+        }
+        if admin_only {
+            query = query.filter(
+                MemberColumn::Role
+                    .is_in([OrganizationRoleSchema::Owner, OrganizationRoleSchema::Admin]),
+            );
+        }
+        query
+            .order_by_asc(MemberColumn::CreatedAt)
+            .order_by_asc(MemberColumn::OrganizationId)
+            .one(db)
+            .await
+            .map_err(OrganizationRepositoryError::database)?
+            .map(OrganizationMember::try_from)
+            .transpose()
+    }
+
     fn database_id(id: u64) -> Result<i64, OrganizationRepositoryError> {
         if id == 0 {
             return Err(OrganizationRepositoryError::database(anyhow::anyhow!(
@@ -40,6 +75,27 @@ impl OrganizationRepository {
 
 #[async_trait::async_trait]
 impl CoreRepository for OrganizationRepository {
+    async fn find_membership(
+        &self,
+        organization_id: u64,
+        user_id: u64,
+    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
+        self.membership(user_id, Some(organization_id), false).await
+    }
+
+    async fn find_first_membership(
+        &self,
+        user_id: u64,
+    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
+        self.membership(user_id, None, false).await
+    }
+
+    async fn find_first_admin_membership(
+        &self,
+        user_id: u64,
+    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
+        self.membership(user_id, None, true).await
+    }
     async fn update_name(
         &self,
         organization_id: u64,

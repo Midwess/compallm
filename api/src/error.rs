@@ -35,6 +35,9 @@ impl IntoResponse for ApiError {
                 (StatusCode::CONFLICT, "Email is already registered")
             }
             Self::Auth(AuthError::UserDisabled) => (StatusCode::FORBIDDEN, "User is disabled"),
+            Self::Auth(AuthError::OrganizationAccessDenied) => {
+                (StatusCode::FORBIDDEN, "Organization access denied")
+            }
             Self::Auth(AuthError::UserNotFound) => (StatusCode::NOT_FOUND, "User not found"),
             Self::Auth(AuthError::Email(EmailError::Unavailable | EmailError::Delivery(_))) => (
                 StatusCode::SERVICE_UNAVAILABLE,

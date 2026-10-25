@@ -26,6 +26,22 @@ impl From<ConnectionError> for OrganizationRepositoryError {
 /// Use the current DbContext and leave transaction ownership to the caller.
 #[async_trait]
 pub trait OrganizationRepository: Send + Sync {
+    /// Return an active organization membership, using the compound key.
+    async fn find_membership(
+        &self,
+        organization_id: u64,
+        user_id: u64,
+    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError>;
+    /// Oldest membership in an active organization, with organization ID as a tie-breaker.
+    async fn find_first_membership(
+        &self,
+        user_id: u64,
+    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError>;
+    /// Oldest owner/admin membership in an active organization.
+    async fn find_first_admin_membership(
+        &self,
+        user_id: u64,
+    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError>;
     async fn update_name(
         &self,
         organization_id: u64,

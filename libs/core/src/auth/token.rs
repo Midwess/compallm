@@ -159,13 +159,20 @@ impl UserTokens {
     /// Call after the workflow authorizes the user.
     pub fn new(
         user_id: u64,
+        organization_id: u64,
+        organization_role: crate::organization::OrganizationRole,
         secret: &str,
         user_lifetime: Duration,
         refresh_lifetime: Duration,
     ) -> Result<Self, AuthError> {
         Ok(Self {
-            access_token: AccessToken::User(UserAccessToken::new(user_id, user_lifetime)?)
-                .encode(secret, user_lifetime)?,
+            access_token: AccessToken::User(UserAccessToken::new(
+                user_id,
+                organization_id,
+                organization_role,
+                user_lifetime,
+            )?)
+            .encode(secret, user_lifetime)?,
             refresh_token: AccessToken::Refresh(RefreshToken::new(user_id, refresh_lifetime)?)
                 .encode(secret, refresh_lifetime)?,
         })

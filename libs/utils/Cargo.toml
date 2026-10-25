@@ -8,4 +8,4 @@ publish = false
 
 [dependencies]
 email_address.workspace = true
-thiserror.workspace = true
+thiserror = { workspace = true, features = ["std"] }

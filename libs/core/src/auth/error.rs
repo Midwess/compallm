@@ -22,13 +22,17 @@ impl From<crate::user::RegistrationError> for AuthError {
 
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {
+    #[error("user has no access to the selected organization")]
+    OrganizationAccessDenied,
+    #[error(transparent)]
+    OrganizationRepository(#[from] crate::persistent::organization::OrganizationRepositoryError),
     #[error(transparent)]
     Organization(#[from] crate::organization::OrganizationCreationError),
     #[error(transparent)]
     Email(#[from] crate::mail::EmailError),
     #[error("invalid authentication configuration")]
     InvalidConfiguration,
-    #[error("invalid or unauthorized email address")]
+    #[error("invalid email address")]
     InvalidEmail,
     #[error("user not found")]
     UserNotFound,

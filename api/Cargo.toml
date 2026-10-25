@@ -6,6 +6,9 @@ license.workspace = true
 description = "Loco and Axum API with a Vite frontend and an Orval-generated client"
 publish = false
 
+[lints]
+workspace = true
+
 [features]
 default = []
 frontend-dev = ["axum-frontend/dev"]

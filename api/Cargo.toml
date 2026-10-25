@@ -15,6 +15,7 @@ async-trait.workspace = true
 axum.workspace = true
 axum-frontend.workspace = true
 clap.workspace = true
+compallm-core = { path = "../libs/core" }
 compallm-postgres = { path = "../libs/postgres" }
 loco-rs = { workspace = true, features = ["cli"] }
 serde.workspace = true

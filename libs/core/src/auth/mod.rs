@@ -1,0 +1,47 @@
+//! Authentication workflows and the token claims they operate on.
+
+pub mod service;
+pub mod token;
+
+pub use service::{AuthService, TokenLifetimes};
+pub use token::{
+    AccessToken, EmailOtpAccessToken, EncryptedAccessToken, EncryptedToken, RefreshToken,
+    UserAccessToken,
+};
+pub use token::{EmailOtpChallenge, TokenCodec, UserTokens};
+
+#[derive(Debug, thiserror::Error)]
+pub enum AuthError {
+    #[error("invalid authentication configuration")]
+    InvalidConfiguration,
+    #[error("invalid or unauthorized email address")]
+    InvalidEmail,
+    #[error("user not found")]
+    UserNotFound,
+    #[error("user is disabled")]
+    UserDisabled,
+    #[error("display name must not be empty")]
+    InvalidDisplayName,
+    #[error(transparent)]
+    Persistence(#[from] crate::persistent::error::PersistenceError),
+    #[error("ID generation failed")]
+    IdGeneration(#[from] hero::distributed_id::generator::DistributedIdError),
+    #[error("invalid access token")]
+    InvalidToken,
+    #[error("access token expired")]
+    ExpiredToken,
+    #[error("incorrect access token variant")]
+    WrongTokenVariant,
+    #[error("incorrect email code")]
+    IncorrectCode,
+    #[error("system clock is invalid")]
+    InvalidClock(#[from] std::time::SystemTimeError),
+    #[error("invalid token encoding")]
+    TokenEncoding(#[from] base64::DecodeError),
+    #[error("invalid token payload")]
+    TokenPayload(#[from] serde_json::Error),
+    #[error("token encryption or authentication failed")]
+    TokenCrypto(#[from] chacha20poly1305::Error),
+    #[error("authentication operation failed")]
+    Unexpected(#[from] anyhow::Error),
+}

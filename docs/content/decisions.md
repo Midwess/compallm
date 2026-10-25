@@ -20,7 +20,7 @@ These questions remain open. A feature being listed in the product plan does not
 
 ## Agreed direction
 
-- [Passwordless login](features/passwordless-login.md): organization domain set through an environment variable; emailed codes expire after 15 minutes and can only be used once.
+- [Passwordless login](features/passwordless-login.md): organization domain set through an environment variable; signed email access tokens carry separately encrypted OTP claims valid for 10 minutes. Previous matching token/code pairs remain valid after resend and may be reused until expiry.
 - [LLM Router](features/llm-router.md): supported client API format is independent of provider; translate both directions through a unified internal representation and explicitly reject unsupported capabilities.
 - [Router](features/llm-router.md) selects providers and translates formats; [Gateway](features/llm-gateway.md) enforces access, allowances, and usage attribution.
 

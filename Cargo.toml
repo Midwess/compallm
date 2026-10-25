@@ -1,5 +1,5 @@
 [workspace]
-members = ["api", "libs/postgres"]
+members = ["api", "libs/core", "libs/postgres", "libs/utils", "test"]
 resolver = "3"
 
 [workspace.package]
@@ -9,6 +9,15 @@ license = "Apache-2.0"
 
 [workspace.dependencies]
 async-trait = "0.1"
+anyhow = "1"
+base64 = "0.22"
+chacha20poly1305 = { version = "0.10", features = ["std"] }
+hkdf = { version = "0.12", features = ["std"] }
+sha2 = "0.10"
+email_address = "0.2"
+rand = "0.9"
+subtle = "2"
+thiserror = "2"
 axum = "0.8"
 axum-frontend = "0.1.3"
 clap = { version = "4", features = ["derive"] }

@@ -1,0 +1,297 @@
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
+
+use compallm_core::{
+    auth::{AuthError, AuthService, TokenCodec, TokenLifetimes},
+    entity::user::{NewUser, User, UserStatus},
+    persistent::{DbContext, PersistenceError, user::UserRepository},
+};
+use sea_orm::{DatabaseConnection, DbBackend, DbErr, MockDatabase, Statement, Transaction};
+
+const SECRET: &str = "test-signing-secret-at-least-32-bytes";
+
+#[derive(Default)]
+struct State {
+    user: Option<User>,
+    contexts: Vec<usize>,
+    created: Option<(String, String)>,
+    fail_record: bool,
+}
+
+#[derive(Clone)]
+struct Repository(Arc<Mutex<State>>, DbContext);
+
+#[async_trait::async_trait]
+impl UserRepository for Repository {
+    async fn find_by_email(&self, email: &str) -> Result<Option<User>, PersistenceError> {
+        let mut state = self.0.lock().unwrap();
+        state
+            .contexts
+            .push(DbContext::current()?.postgres() as *const _ as usize);
+        Ok(state.user.clone().filter(|u| u.email == email))
+    }
+
+    async fn find_by_id(&self, id: u64) -> Result<Option<User>, PersistenceError> {
+        let mut state = self.0.lock().unwrap();
+        state
+            .contexts
+            .push(DbContext::current()?.postgres() as *const _ as usize);
+        Ok(state.user.clone().filter(|u| u.id == id))
+    }
+
+    async fn create(&self, user: NewUser) -> Result<User, PersistenceError> {
+        let mut state = self.0.lock().unwrap();
+        state
+            .contexts
+            .push(DbContext::current()?.postgres() as *const _ as usize);
+        state.created = Some((user.email.clone(), user.display_name.clone()));
+        assert!(user.verified_at > 0);
+        Ok(User {
+            id: user.id,
+            email: user.email,
+            display_name: user.display_name,
+            status: UserStatus::Active,
+        })
+    }
+
+    async fn record_signin(&self, _id: u64, _at: u64) -> Result<(), PersistenceError> {
+        let mut state = self.0.lock().unwrap();
+        state
+            .contexts
+            .push(DbContext::current()?.postgres() as *const _ as usize);
+        if state.fail_record {
+            return Err(PersistenceError::database(DbErr::Custom(
+                "test storage failure".into(),
+            )));
+        }
+        Ok(())
+    }
+}
+
+struct Fixture {
+    db: Arc<DatabaseConnection>,
+    repo: Repository,
+}
+
+impl Fixture {
+    fn new(user: Option<User>) -> Self {
+        match hero::distributed_id::init_scoped_id_generator("auth-tests") {
+            Ok(())
+            | Err(hero::distributed_id::generator::DistributedIdError::AlreadyInitialized) => {}
+            Err(error) => panic!("{error}"),
+        }
+        let db = Arc::new(MockDatabase::new(DbBackend::Postgres).into_connection());
+        let repo = Repository(
+            Arc::new(Mutex::new(State {
+                user,
+                ..State::default()
+            })),
+            DbContext::new(db.clone()),
+        );
+        Self { db, repo }
+    }
+
+    fn codec() -> TokenCodec {
+        TokenCodec::new(SECRET.into(), "midwess.com").unwrap()
+    }
+
+    fn service(&self) -> AuthService<Repository> {
+        AuthService::new(
+            self.repo.1.clone(),
+            self.repo.clone(),
+            Self::codec(),
+            TokenLifetimes {
+                user: Duration::from_secs(60),
+                refresh: Duration::from_secs(600),
+            },
+        )
+        .unwrap()
+    }
+
+    fn user(status: UserStatus) -> User {
+        User {
+            id: 1,
+            email: "james@midwess.com".into(),
+            display_name: "James".into(),
+            status,
+        }
+    }
+
+    fn assert_transaction(self, finish: &str) {
+        drop(self.repo);
+        assert_eq!(
+            Arc::try_unwrap(self.db)
+                .expect("pool still borrowed")
+                .into_transaction_log(),
+            vec![Transaction::many([
+                Statement::from_string(DbBackend::Postgres, "BEGIN"),
+                Statement::from_string(DbBackend::Postgres, finish),
+            ])]
+        );
+    }
+}
+
+#[tokio::test]
+async fn signin_checks_user_records_login_and_commits() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = Fixture::codec()
+        .issue_email_otp("james@midwess.com")
+        .unwrap();
+    let issued = fixture
+        .service()
+        .signin(&challenge.access_token, &challenge.code)
+        .await
+        .unwrap();
+    assert_eq!(
+        Fixture::codec()
+            .parse_user(&issued.access_token)
+            .unwrap()
+            .user_id,
+        1
+    );
+    let contexts = fixture.repo.0.lock().unwrap().contexts.clone();
+    assert_eq!(contexts.len(), 2);
+    assert!(contexts.iter().all(|context| *context == contexts[0]));
+    fixture.assert_transaction("COMMIT");
+}
+
+#[tokio::test]
+async fn signup_requires_verified_email_and_creates_on_one_transaction() {
+    let fixture = Fixture::new(None);
+    let challenge = Fixture::codec()
+        .issue_email_otp("James@MIDWESS.COM")
+        .unwrap();
+    let issued = fixture
+        .service()
+        .signup(&challenge.access_token, &challenge.code, " James ")
+        .await
+        .unwrap();
+    assert!(
+        Fixture::codec()
+            .parse_user(&issued.access_token)
+            .unwrap()
+            .user_id
+            > 0
+    );
+    {
+        let state = fixture.repo.0.lock().unwrap();
+        assert_eq!(
+            state.created,
+            Some(("james@midwess.com".into(), "James".into()))
+        );
+        assert_eq!(state.contexts.len(), 3);
+        assert!(
+            state
+                .contexts
+                .iter()
+                .all(|context| *context == state.contexts[0])
+        );
+    }
+    fixture.assert_transaction("COMMIT");
+}
+
+#[tokio::test]
+async fn duplicate_signup_and_disabled_signin_are_rejected() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = Fixture::codec()
+        .issue_email_otp("james@midwess.com")
+        .unwrap();
+    assert!(matches!(
+        fixture
+            .service()
+            .signup(&challenge.access_token, &challenge.code, "James")
+            .await,
+        Err(AuthError::Persistence(PersistenceError::EmailAlreadyExists))
+    ));
+    assert!(fixture.repo.0.lock().unwrap().created.is_none());
+    fixture.assert_transaction("ROLLBACK");
+
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Disabled)));
+    assert!(matches!(
+        fixture
+            .service()
+            .signin(&challenge.access_token, &challenge.code)
+            .await,
+        Err(AuthError::UserDisabled)
+    ));
+    fixture.assert_transaction("ROLLBACK");
+}
+
+#[tokio::test]
+async fn failed_repository_operation_rolls_back_and_returns_no_tokens() {
+    let fixture = Fixture::new(None);
+    fixture.repo.0.lock().unwrap().fail_record = true;
+    let challenge = Fixture::codec()
+        .issue_email_otp("james@midwess.com")
+        .unwrap();
+    assert!(matches!(
+        fixture
+            .service()
+            .signup(&challenge.access_token, &challenge.code, "James")
+            .await,
+        Err(AuthError::Persistence(PersistenceError::Database(_)))
+    ));
+    fixture.assert_transaction("ROLLBACK");
+}
+
+#[tokio::test]
+async fn invalid_otp_or_empty_display_name_does_not_reach_persistence() {
+    let fixture = Fixture::new(None);
+    let challenge = Fixture::codec()
+        .issue_email_otp("james@midwess.com")
+        .unwrap();
+    assert!(matches!(
+        fixture
+            .service()
+            .signin(&challenge.access_token, "wrong")
+            .await,
+        Err(AuthError::IncorrectCode)
+    ));
+    assert!(matches!(
+        fixture
+            .service()
+            .signup(&challenge.access_token, &challenge.code, "  ")
+            .await,
+        Err(AuthError::InvalidDisplayName)
+    ));
+    assert!(fixture.repo.0.lock().unwrap().contexts.is_empty());
+    drop(fixture.repo);
+    assert!(
+        Arc::try_unwrap(fixture.db)
+            .expect("pool still borrowed")
+            .into_transaction_log()
+            .is_empty()
+    );
+}
+
+#[tokio::test]
+async fn refresh_checks_current_user_and_keeps_original_refresh_expiry() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let original = Fixture::codec()
+        .issue_user_tokens(1, 2, Duration::from_secs(60), Duration::from_secs(600))
+        .unwrap();
+    let issued = fixture
+        .service()
+        .refresh(&original.refresh_token)
+        .await
+        .unwrap();
+    assert_eq!(issued.refresh_token, original.refresh_token);
+    assert_eq!(
+        Fixture::codec()
+            .parse_user(&issued.access_token)
+            .unwrap()
+            .session_id,
+        2
+    );
+    fixture.repo.0.lock().unwrap().user.as_mut().unwrap().status = UserStatus::Disabled;
+    assert!(matches!(
+        fixture.service().refresh(&original.refresh_token).await,
+        Err(AuthError::UserDisabled)
+    ));
+    assert!(matches!(
+        fixture.service().refresh(&original.access_token).await,
+        Err(AuthError::WrongTokenVariant)
+    ));
+}

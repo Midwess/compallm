@@ -1,13 +1,13 @@
 pub mod auth;
 
-use crate::di::ServiceState;
+use compallm_core::auth::AuthService;
 use utoipa::openapi::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
 
 #[derive(utoipa::OpenApi)]
 struct ApiDoc;
 
-pub fn api_router() -> OpenApiRouter<ServiceState> {
+pub fn api_router() -> OpenApiRouter<&'static AuthService> {
     OpenApiRouter::with_openapi(<ApiDoc as utoipa::OpenApi>::openapi()).merge(auth::router())
 }
 

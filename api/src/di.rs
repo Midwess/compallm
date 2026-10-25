@@ -1,4 +1,4 @@
-use axum::{Router, extract::FromRef};
+use axum::Router;
 use compallm_core::{
     auth::{AuthError, AuthService, TokenLifetimes},
     mail::EmailService,
@@ -33,15 +33,6 @@ pub struct Di {
     settings: AuthSettings,
     // Filled after Di reaches its permanent address so services can borrow it.
     auth: OnceLock<Box<AuthService>>,
-}
-
-/// Axum state only carries references; ownership remains with Di.
-#[derive(Clone, Copy)]
-#[allow(clippy::borrowed_box)]
-pub struct ServiceState {
-    auth: &'static AuthService,
-    users: &'static Box<dyn UserRepository>,
-    db: &'static DbContext,
 }
 
 impl Di {
@@ -124,37 +115,15 @@ impl Di {
     where
         S: Clone + Send + Sync + 'static,
     {
-        let state = ServiceState {
-            auth: self.auth_service(),
-            users: self.user_repository(),
-            db: self.db_context(),
-        };
         let (routes, _) = crate::controllers::api_router().split_for_parts();
         let db = self.db_context();
-        let routes = routes.with_state(state).layer(axum::middleware::from_fn(
-            move |request: axum::extract::Request, next: axum::middleware::Next| async move {
-                db.scope(next.run(request)).await
-            },
-        ));
+        let routes = routes
+            .with_state(self.auth_service())
+            .layer(axum::middleware::from_fn(
+                move |request: axum::extract::Request, next: axum::middleware::Next| async move {
+                    db.scope(next.run(request)).await
+                },
+            ));
         *router = std::mem::take(router).merge(routes);
-    }
-}
-
-impl FromRef<ServiceState> for &'static AuthService {
-    fn from_ref(state: &ServiceState) -> Self {
-        state.auth
-    }
-}
-
-impl FromRef<ServiceState> for &'static DbContext {
-    fn from_ref(state: &ServiceState) -> Self {
-        state.db
-    }
-}
-
-#[allow(clippy::borrowed_box)]
-impl FromRef<ServiceState> for &'static Box<dyn UserRepository> {
-    fn from_ref(state: &ServiceState) -> Self {
-        state.users
     }
 }

@@ -9,12 +9,9 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
-use crate::{
-    di::ServiceState,
-    error::{ApiError, ErrorResponse},
-};
+use crate::error::{ApiError, ErrorResponse};
 
-pub fn router() -> OpenApiRouter<ServiceState> {
+pub fn router() -> OpenApiRouter<&'static AuthService> {
     OpenApiRouter::new()
         .routes(routes!(signup_email))
         .routes(routes!(confirm_signup_otp))

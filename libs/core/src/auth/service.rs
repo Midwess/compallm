@@ -8,12 +8,9 @@ use super::{
     },
 };
 use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode};
-use crate::persistent::{
-    DbContext,
-    user::{UserRepository, UserRepositoryError},
-};
+use crate::persistent::{DbContext, user::UserRepository};
 use crate::transaction;
-use crate::user::{User, UserStatus};
+use crate::user::{RegistrationService, UserStatus};
 use compallm_utils::email::verify_email;
 use compallm_utils::time::unix_timestamp;
 
@@ -27,6 +24,7 @@ pub struct AuthService {
     db: &'static DbContext,
     #[allow(clippy::borrowed_box)]
     users: &'static Box<dyn UserRepository>,
+    registration: &'static RegistrationService,
     jwt_secret: String,
     allowed_email_domain: String,
     lifetimes: TokenLifetimes,
@@ -39,6 +37,7 @@ impl AuthService {
     pub fn new(
         db: &'static DbContext,
         users: &'static Box<dyn UserRepository>,
+        registration: &'static RegistrationService,
         jwt_secret: String,
         allowed_email_domain: String,
         lifetimes: TokenLifetimes,
@@ -54,6 +53,7 @@ impl AuthService {
         Ok(Self {
             db,
             users,
+            registration,
             jwt_secret,
             allowed_email_domain,
             lifetimes,
@@ -123,22 +123,10 @@ impl AuthService {
             return Err(AuthError::InvalidEmail);
         }
         claims.verify_code(code, unix_timestamp())?;
-        let display_name = display_name.trim();
-        if display_name.is_empty() {
-            return Err(AuthError::InvalidDisplayName);
-        }
         transaction!(self.db, {
-            if self.users.find_by_email(&claims.email).await?.is_some() {
-                return Err(UserRepositoryError::EmailAlreadyExists.into());
-            }
             let user = self
-                .users
-                .create(User {
-                    id: hero::distributed_id::try_gen_id().await?,
-                    email: claims.email,
-                    display_name: display_name.into(),
-                    status: UserStatus::Active,
-                })
+                .registration
+                .register(&claims.email, display_name)
                 .await?;
             if user.status != UserStatus::Active {
                 return Err(AuthError::UserDisabled);

@@ -27,9 +27,10 @@ impl IntoResponse for ApiError {
                 StatusCode::BAD_REQUEST,
                 "Invalid or unauthorized email address",
             ),
-            Self::Auth(AuthError::InvalidDisplayName) => {
-                (StatusCode::BAD_REQUEST, "Display name is required")
-            }
+            Self::Auth(AuthError::InvalidDisplayName) => (
+                StatusCode::BAD_REQUEST,
+                "User name must contain 1 to 256 email local-part characters; dots cannot be first, last, or repeated",
+            ),
             Self::Auth(AuthError::Persistence(UserRepositoryError::EmailAlreadyExists)) => {
                 (StatusCode::CONFLICT, "Email is already registered")
             }

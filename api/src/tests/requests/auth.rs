@@ -6,7 +6,10 @@ use compallm_core::{
     mail::{EmailError, EmailRequest, EmailService},
     persistent::DbContext,
 };
-use compallm_postgres::{UserSchema, UserStatusSchema, postgres_connection::PostgresConnection};
+use compallm_postgres::{
+    OrganizationMemberSchema, OrganizationRoleSchema, OrganizationSchema, OrganizationStatusSchema,
+    UserSchema, UserStatusSchema, postgres_connection::PostgresConnection,
+};
 use sea_orm::{ActiveEnum, DbBackend, IntoMockRow, MockDatabase};
 
 use crate::{
@@ -57,8 +60,30 @@ impl Fixture {
         let mut row: std::collections::BTreeMap<_, _> =
             row.into_mock_row().into_column_value_tuples().collect();
         row.insert("status".to_string(), status.into());
+        let organization = OrganizationSchema {
+            id: 84,
+            name: "james-workspace".into(),
+            status: OrganizationStatusSchema::Active,
+            created_by: 42,
+            created_at: now,
+            updated_at: now,
+        };
+        let mut organization: std::collections::BTreeMap<_, _> = organization
+            .into_mock_row()
+            .into_column_value_tuples()
+            .collect();
+        organization.insert("status".to_string(), "active".into());
+        let member = OrganizationMemberSchema {
+            organization_id: 84,
+            user_id: 42,
+            role: OrganizationRoleSchema::Owner,
+            created_at: now,
+        };
+        let mut member: std::collections::BTreeMap<_, _> =
+            member.into_mock_row().into_column_value_tuples().collect();
+        member.insert("role".to_string(), "owner".into());
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([vec![], vec![row], vec![]])
+            .append_query_results([vec![], vec![row], vec![organization], vec![member], vec![]])
             .into_connection();
         let di: &'static Di = Box::leak(Box::new(Di::new(
             DbContext::new(Arc::new(PostgresConnection::new(Arc::new(db)))),

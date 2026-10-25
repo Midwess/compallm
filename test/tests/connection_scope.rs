@@ -68,6 +68,38 @@ async fn concurrent_scopes_are_isolated_and_spawn_does_not_inherit() {
     );
 }
 
+#[tokio::test(flavor = "current_thread")]
+async fn concurrent_transactions_stay_isolated_on_the_same_thread() {
+    let one = Fixture::connection();
+    let two = Fixture::connection();
+    let (first, second) = tokio::join!(
+        one.transaction(async {
+            let transaction = DbContext::current()?;
+            tokio::task::yield_now().await;
+            assert!(DbContext::current()?.same_context(&transaction));
+            one.transaction(async {
+                assert!(DbContext::current()?.same_context(&transaction));
+                Ok::<_, ConnectionError>(())
+            })
+            .await
+        }),
+        two.transaction(async {
+            let transaction = DbContext::current()?;
+            tokio::task::yield_now().await;
+            assert!(DbContext::current()?.same_context(&transaction));
+            two.transaction(async {
+                Err::<(), _>(ConnectionError::database(anyhow::anyhow!(
+                    "independent transaction failed"
+                )))
+            })
+            .await
+        }),
+    );
+    assert!(first.is_ok());
+    assert!(second.is_err());
+    assert!(DbContext::current().is_err());
+}
+
 #[tokio::test]
 async fn transaction_can_borrow_and_return_local_data_without_move() {
     let connection = Fixture::connection();

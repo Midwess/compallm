@@ -5,7 +5,7 @@ use sea_orm::{ConnectionTrait, DbBackend, MockDatabase, Statement, Transaction};
 use std::sync::Arc;
 
 #[tokio::test]
-async fn nested_transaction_uses_savepoint_and_restores_outer() {
+async fn nested_transaction_reuses_outer_context_without_savepoints() {
     let db = Arc::new(MockDatabase::new(DbBackend::Postgres).into_connection());
     let connection = DbContext::new(Arc::new(PostgresConnection::new(db.clone())));
     connection
@@ -13,7 +13,7 @@ async fn nested_transaction_uses_savepoint_and_restores_outer() {
             let outer = DbContext::current()?;
             connection
                 .transaction(async {
-                    assert!(!DbContext::current()?.same_context(&outer));
+                    assert!(DbContext::current()?.same_context(&outer));
                     Ok::<_, ConnectionError>(())
                 })
                 .await?;
@@ -27,9 +27,100 @@ async fn nested_transaction_uses_savepoint_and_restores_outer() {
         Arc::try_unwrap(db).unwrap().into_transaction_log(),
         [Transaction::many([
             Statement::from_string(DbBackend::Postgres, "BEGIN"),
-            Statement::from_string(DbBackend::Postgres, "SAVEPOINT savepoint_1"),
-            Statement::from_string(DbBackend::Postgres, "RELEASE SAVEPOINT savepoint_1"),
             Statement::from_string(DbBackend::Postgres, "COMMIT"),
+        ])]
+    );
+}
+
+#[tokio::test]
+async fn caught_nested_error_still_rolls_back_the_outer_transaction() {
+    let db = Arc::new(MockDatabase::new(DbBackend::Postgres).into_connection());
+    let connection = DbContext::new(Arc::new(PostgresConnection::new(db.clone())));
+    let result = connection
+        .transaction(async {
+            let nested = connection
+                .transaction(async {
+                    Err::<(), _>(ConnectionError::database(anyhow::anyhow!(
+                        "nested operation failed"
+                    )))
+                })
+                .await;
+            assert!(nested.is_err());
+            // Swallowing an inner error must never commit partial work.
+            Ok::<_, ConnectionError>(())
+        })
+        .await;
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("database operation failed")
+    );
+    drop(connection);
+    assert_eq!(
+        Arc::try_unwrap(db).unwrap().into_transaction_log(),
+        [Transaction::many([
+            Statement::from_string(DbBackend::Postgres, "BEGIN"),
+            Statement::from_string(DbBackend::Postgres, "ROLLBACK"),
+        ])]
+    );
+}
+
+#[tokio::test]
+async fn cancelled_nested_operation_prevents_outer_commit() {
+    let db = Arc::new(MockDatabase::new(DbBackend::Postgres).into_connection());
+    let connection = DbContext::new(Arc::new(PostgresConnection::new(db.clone())));
+    let result = connection
+        .transaction(async {
+            {
+                let nested =
+                    connection.transaction(std::future::pending::<Result<(), ConnectionError>>());
+                tokio::pin!(nested);
+                tokio::select! { biased;
+                    _ = &mut nested => panic!("nested future must remain pending"),
+                    _ = std::future::ready(()) => {}
+                }
+            }
+            Ok::<_, ConnectionError>(())
+        })
+        .await;
+    assert!(result.is_err());
+    drop(connection);
+    assert_eq!(
+        Arc::try_unwrap(db).unwrap().into_transaction_log(),
+        [Transaction::many([
+            Statement::from_string(DbBackend::Postgres, "BEGIN"),
+            Statement::from_string(DbBackend::Postgres, "ROLLBACK"),
+        ])]
+    );
+}
+
+#[tokio::test]
+async fn unfinished_nested_future_cannot_escape_a_successful_commit() {
+    let db = Arc::new(MockDatabase::new(DbBackend::Postgres).into_connection());
+    let connection = DbContext::new(Arc::new(PostgresConnection::new(db.clone())));
+    let mut unfinished = None;
+    let result = connection
+        .transaction(async {
+            let mut nested = Box::pin(
+                connection.transaction(std::future::pending::<Result<(), ConnectionError>>()),
+            );
+            tokio::select! { biased;
+                _ = &mut nested => panic!("nested future must remain pending"),
+                _ = std::future::ready(()) => {}
+            }
+            unfinished = Some(nested);
+            Ok::<_, ConnectionError>(())
+        })
+        .await;
+    assert!(result.is_err());
+    drop(unfinished);
+    drop(connection);
+    assert_eq!(
+        Arc::try_unwrap(db).unwrap().into_transaction_log(),
+        [Transaction::many([
+            Statement::from_string(DbBackend::Postgres, "BEGIN"),
+            Statement::from_string(DbBackend::Postgres, "ROLLBACK"),
         ])]
     );
 }

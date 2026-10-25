@@ -160,6 +160,10 @@ impl Connection for PostgresConnection {
         self
     }
 
+    fn is_transaction(&self) -> bool {
+        matches!(self, Self::Transaction(_))
+    }
+
     fn ensure_open(&self) -> Result<(), ConnectionError> {
         PostgresConnection::ensure_open(self)
     }

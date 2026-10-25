@@ -94,7 +94,6 @@ impl Hooks for App {
         init_id_generator(Self::app_name())
             .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
         ctx.shared_store.insert(RequestCounter::default());
-        ctx.shared_store.insert(crate::di::Dependencies::new(&ctx));
         Ok(ctx)
     }
 
@@ -103,17 +102,7 @@ impl Hooks for App {
         Ok(router)
     }
 
-    async fn after_routes(router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
-        let dependencies = ctx
-            .shared_store
-            .get::<crate::di::Dependencies>()
-            .ok_or_else(|| loco_rs::Error::Message("dependencies were not initialized".into()))?;
-        let router = router.layer(axum::middleware::from_fn(
-            move |request: axum::extract::Request, next: axum::middleware::Next| {
-                let db_context = dependencies.db_context.clone();
-                async move { db_context.scope(next.run(request)).await }
-            },
-        ));
+    async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
         #[cfg(not(feature = "frontend-dev"))]
         {
             use axum_frontend::static_router;

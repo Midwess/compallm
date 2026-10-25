@@ -1022,7 +1022,6 @@ dependencies = [
  "axum",
  "axum-frontend",
  "clap",
- "compallm-core",
  "compallm-postgres",
  "loco-rs",
  "serde",

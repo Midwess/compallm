@@ -74,14 +74,12 @@ async fn concurrent_scopes_are_isolated_and_spawn_does_not_inherit() {
 async fn transaction_can_borrow_and_return_local_data_without_move() {
     let connection = Fixture::connection();
     let email = String::from("james@midwess.com");
-    let borrowed = connection
-        .transaction(async {
-            tokio::task::yield_now().await;
-            assert!(!DbContext::current()?.same_context(&connection));
-            Ok::<_, PersistenceError>(email.as_str())
-        })
-        .await
-        .unwrap();
+    let borrowed = compallm_core::transaction!(connection, {
+        tokio::task::yield_now().await;
+        assert!(!DbContext::current()?.same_context(&connection));
+        Ok::<_, PersistenceError>(email.as_str())
+    })
+    .unwrap();
     assert_eq!(borrowed, email.as_str());
 }
 

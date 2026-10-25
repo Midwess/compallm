@@ -1,8 +1,8 @@
-use super::AccessToken;
+use super::TokenValidity;
 use crate::auth::AuthError;
+use compallm_utils::email::verify_email;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use subtle::ConstantTimeEq;
 
 /// Never return these plaintext claims to a browser or log them.
@@ -10,31 +10,27 @@ use subtle::ConstantTimeEq;
 pub struct EmailOtpAccessToken {
     pub email: String,
     pub code: String,
-    pub issued_at: u64,
-    pub expires_at: u64,
+    pub validity: TokenValidity,
 }
 
 impl EmailOtpAccessToken {
     pub const TTL_SECONDS: u64 = 10 * 60;
 
-    pub fn new(email: String, now: u64) -> Result<Self, AuthError> {
-        if !email_address::EmailAddress::is_valid(&email) {
-            return Err(AuthError::InvalidEmail);
-        }
+    pub fn new(email: String) -> Result<Self, AuthError> {
+        verify_email(&email)?;
         Ok(Self {
             email,
             code: format!("{:06}", rand::rng().random_range(0..1_000_000)),
-            issued_at: now,
-            expires_at: AccessToken::expiration(now, Duration::from_secs(Self::TTL_SECONDS))?,
+            validity: TokenValidity::new(std::time::Duration::from_secs(Self::TTL_SECONDS))?,
         })
     }
 
     pub fn validate(&self, now: u64) -> Result<(), AuthError> {
-        AccessToken::validate_times(self.issued_at, self.expires_at, now)?;
-        if self.expires_at - self.issued_at != Self::TTL_SECONDS
+        self.validity.validate(now)?;
+        if self.validity.expires_at - self.validity.issued_at != Self::TTL_SECONDS
             || self.code.len() != 6
             || !self.code.bytes().all(|b| b.is_ascii_digit())
-            || !email_address::EmailAddress::is_valid(&self.email)
+            || verify_email(&self.email).is_err()
         {
             return Err(AuthError::InvalidToken);
         }

@@ -8,9 +8,8 @@ use hkdf::Hkdf;
 use rand::RngCore;
 use sha2::Sha256;
 
-use super::{AccessToken, EncryptedToken};
 use crate::auth::AuthError;
-use compallm_utils::time::unix_timestamp;
+use serde::{Serialize, de::DeserializeOwned};
 
 const AAD: &[u8] = b"compallm:auth:encrypted-access-token:v1";
 
@@ -34,9 +33,7 @@ impl EncryptedAccessToken {
         })
     }
 
-    pub fn encrypt(&self, token: AccessToken) -> Result<AccessToken, AuthError> {
-        let now = unix_timestamp();
-        token.validate_plain(now)?;
+    pub fn encrypt<T: Serialize>(&self, token: &T) -> Result<EncryptedToken, AuthError> {
         let plaintext = serde_json::to_vec(&token)
             .context("failed to serialize access-token claims for encryption")?;
         if plaintext.len() > 4096 {
@@ -53,21 +50,16 @@ impl EncryptedAccessToken {
         )?;
         let mut bytes = nonce.to_vec();
         bytes.extend(ciphertext);
-        Ok(AccessToken::Encrypted(EncryptedToken(format!(
+        Ok(EncryptedToken(format!(
             "v1.{}",
             URL_SAFE_NO_PAD.encode(bytes)
-        ))))
+        )))
     }
 
-    pub fn decrypt(&self, token: EncryptedToken) -> Result<AccessToken, AuthError> {
-        if token.0.len() > 8192 {
-            return Err(AuthError::InvalidToken);
-        }
+    pub fn decrypt<T: DeserializeOwned>(&self, token: &EncryptedToken) -> Result<T, AuthError> {
+        token.validate()?;
         let encoded = token.0.strip_prefix("v1.").ok_or(AuthError::InvalidToken)?;
         let bytes = URL_SAFE_NO_PAD.decode(encoded)?;
-        if bytes.len() < 28 {
-            return Err(AuthError::InvalidToken);
-        }
         let plaintext = self.cipher.decrypt(
             Nonce::from_slice(&bytes[..12]),
             Payload {
@@ -75,8 +67,24 @@ impl EncryptedAccessToken {
                 aad: AAD,
             },
         )?;
-        let token: AccessToken = serde_json::from_slice(&plaintext)?;
-        token.validate_plain(unix_timestamp())?;
-        Ok(token)
+        Ok(serde_json::from_slice(&plaintext)?)
+    }
+}
+
+/// Opaque ciphertext nested in the signed JWT. Deliberately not Debug.
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
+pub struct EncryptedToken(pub String);
+
+impl EncryptedToken {
+    pub fn validate(&self) -> Result<(), AuthError> {
+        if self.0.len() > 8192 {
+            return Err(AuthError::InvalidToken);
+        }
+        let encoded = self.0.strip_prefix("v1.").ok_or(AuthError::InvalidToken)?;
+        if URL_SAFE_NO_PAD.decode(encoded)?.len() < 28 {
+            return Err(AuthError::InvalidToken);
+        }
+        Ok(())
     }
 }

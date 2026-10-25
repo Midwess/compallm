@@ -1,4 +1,4 @@
-use super::AccessToken;
+use super::TokenValidity;
 use crate::auth::AuthError;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -6,40 +6,24 @@ use std::time::Duration;
 #[derive(Clone, Serialize, Deserialize)]
 pub struct UserAccessToken {
     pub user_id: u64,
-    pub session_id: u64,
-    pub issued_at: u64,
-    pub expires_at: u64,
+    pub validity: TokenValidity,
 }
 
 impl UserAccessToken {
-    pub fn new(
-        user_id: u64,
-        session_id: u64,
-        now: u64,
-        lifetime: Duration,
-    ) -> Result<Self, AuthError> {
+    pub fn new(user_id: u64, lifetime: Duration) -> Result<Self, AuthError> {
         let token = Self {
             user_id,
-            session_id,
-            issued_at: now,
-            expires_at: AccessToken::expiration(now, lifetime)?,
+            validity: TokenValidity::new(lifetime)?,
         };
-        token.validate(now)?;
+        token.validate(token.validity.issued_at)?;
         Ok(token)
     }
 
     pub fn validate(&self, now: u64) -> Result<(), AuthError> {
-        AccessToken::validate_ids(self.user_id, self.session_id)?;
-        AccessToken::validate_times(self.issued_at, self.expires_at, now)
-    }
-}
-
-impl TryFrom<AccessToken> for UserAccessToken {
-    type Error = AuthError;
-    fn try_from(token: AccessToken) -> Result<Self, Self::Error> {
-        match token {
-            AccessToken::User(token) => Ok(token),
-            _ => Err(AuthError::WrongTokenVariant),
+        if self.user_id == 0 || self.user_id > i64::MAX as u64 {
+            return Err(AuthError::InvalidToken);
         }
+        self.validity.validate(now)?;
+        Ok(())
     }
 }

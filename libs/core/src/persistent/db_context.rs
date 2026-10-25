@@ -10,6 +10,29 @@ tokio::task_local! {
     static CURRENT: DbContext;
 }
 
+/// Await a scoped transaction without an explicit async block or `.await`.
+/// The body may borrow local data and use `?`; it must return a `Result`.
+/// `return` inside the body exits the transaction body, not the enclosing function.
+///
+/// ```
+/// # use compallm_core::{transaction, persistent::{DbContext, PersistenceError}};
+/// # async fn example(db: &DbContext) -> Result<(), PersistenceError> {
+/// let email = String::from("james@midwess.com");
+/// let borrowed = transaction!(db, {
+///     let _context = DbContext::current()?;
+///     Ok::<_, PersistenceError>(email.as_str())
+/// })?;
+/// assert_eq!(borrowed, email.as_str());
+/// # Ok(())
+/// # }
+/// ```
+#[macro_export]
+macro_rules! transaction {
+    ($context:expr, $body:block $(,)?) => {
+        ($context).transaction(async { $body }).await
+    };
+}
+
 /// Shared context. Add other concrete database handles here when needed.
 #[derive(Clone)]
 pub struct DbContext {

@@ -6,9 +6,18 @@ pub mod token;
 pub use service::{AuthService, TokenLifetimes};
 pub use token::{
     AccessToken, EmailOtpAccessToken, EncryptedAccessToken, EncryptedToken, RefreshToken,
-    UserAccessToken,
+    TokenValidity, UserAccessToken,
 };
-pub use token::{EmailOtpChallenge, TokenCodec, UserTokens};
+pub use token::{EmailOtpChallenge, UserTokens};
+
+impl From<compallm_utils::email::EmailError> for AuthError {
+    fn from(error: compallm_utils::email::EmailError) -> Self {
+        match error {
+            compallm_utils::email::EmailError::InvalidEmail => Self::InvalidEmail,
+            compallm_utils::email::EmailError::InvalidDomain => Self::InvalidConfiguration,
+        }
+    }
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {

@@ -1,27 +1,33 @@
 use std::time::Duration;
 
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use hero::token::jwt::create_jwt_token;
-
 use compallm_core::auth::{
-    AuthError, TokenCodec,
-    token::{
-        AccessToken, EmailOtpAccessToken, EncryptedAccessToken, EncryptedToken, RefreshToken,
-        UserAccessToken,
-    },
+    AccessToken, AuthError, EmailOtpAccessToken, EmailOtpChallenge, EncryptedAccessToken,
+    EncryptedToken, RefreshToken, UserAccessToken, UserTokens,
 };
+use compallm_utils::time::unix_timestamp;
+use hero::token::jwt::create_jwt_token;
 
 const SECRET: &str = "test-signing-secret-at-least-32-bytes";
 
-fn service() -> TokenCodec {
-    TokenCodec::new(SECRET.into(), "midwess.com").unwrap()
+struct Fixture;
+
+impl Fixture {
+    fn challenge() -> EmailOtpChallenge {
+        EmailOtpChallenge::new(" James@MIDWESS.COM ", "midwess.com", SECRET).unwrap()
+    }
+
+    fn tokens() -> UserTokens {
+        UserTokens::new(1, SECRET, Duration::from_secs(60), Duration::from_secs(600)).unwrap()
+    }
 }
 
 #[test]
 fn email_jwt_exposes_ciphertext_not_email_or_code() {
-    let challenge = service().issue_email_otp(" James@MIDWESS.COM ").unwrap();
-    let payload = challenge.access_token.split('.').nth(1).unwrap();
-    let decoded = URL_SAFE_NO_PAD.decode(payload).unwrap();
+    let challenge = Fixture::challenge();
+    let decoded = URL_SAFE_NO_PAD
+        .decode(challenge.access_token.split('.').nth(1).unwrap())
+        .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&decoded).unwrap();
     assert!(
         json["data"]["encrypted"]
@@ -29,30 +35,31 @@ fn email_jwt_exposes_ciphertext_not_email_or_code() {
             .unwrap()
             .starts_with("v1.")
     );
-    assert!(json["data"].get("user").is_none());
-    assert!(
-        !String::from_utf8(decoded)
-            .unwrap()
-            .contains("james@midwess.com")
-    );
-    let claims = service()
-        .verify_email_otp(&challenge.access_token, &challenge.code)
+    let body = String::from_utf8(decoded).unwrap();
+    assert!(!body.contains("james@midwess.com"));
+    assert!(!body.contains("\"code\""));
+    let claims = EmailOtpAccessToken::try_from(
+        AccessToken::decode(&challenge.access_token, SECRET).unwrap(),
+    )
+    .unwrap();
+    claims
+        .verify_code(&challenge.code, unix_timestamp())
         .unwrap();
     assert_eq!(claims.email, "james@midwess.com");
-    assert_eq!(claims.code, challenge.code);
-    assert_eq!(claims.expires_at - claims.issued_at, 600);
+    assert_eq!(claims.validity.expires_at - claims.validity.issued_at, 600);
 }
 
 #[test]
 fn otp_comparison_and_expiration_are_strict() {
-    let claims = EmailOtpAccessToken::new("james@midwess.com".into(), 1000).unwrap();
-    assert!(claims.verify_code(&claims.code, 1599).is_ok());
+    let claims = EmailOtpAccessToken::new("james@midwess.com".into()).unwrap();
+    let now = claims.validity.issued_at;
+    assert!(claims.verify_code(&claims.code, now + 599).is_ok());
     assert!(matches!(
-        claims.verify_code(&claims.code, 1600),
+        claims.verify_code(&claims.code, now + 600),
         Err(AuthError::ExpiredToken)
     ));
     assert!(matches!(
-        claims.verify_code("wrong", 1000),
+        claims.verify_code("wrong", now),
         Err(AuthError::IncorrectCode)
     ));
     let wrong = if claims.code == "000000" {
@@ -61,34 +68,36 @@ fn otp_comparison_and_expiration_are_strict() {
         "000000"
     };
     assert!(matches!(
-        claims.verify_code(wrong, 1000),
+        claims.verify_code(wrong, now),
         Err(AuthError::IncorrectCode)
     ));
 }
 
 #[test]
 fn old_otp_pairs_remain_valid_after_another_is_issued() {
-    let auth = service();
-    let old = auth.issue_email_otp("james@midwess.com").unwrap();
-    let new = auth.issue_email_otp("james@midwess.com").unwrap();
+    let old = Fixture::challenge();
+    let new = Fixture::challenge();
     assert_ne!(old.access_token, new.access_token);
-    assert!(auth.verify_email_otp(&old.access_token, &old.code).is_ok());
-    assert!(auth.verify_email_otp(&new.access_token, &new.code).is_ok());
-    assert!(auth.verify_email_otp(&old.access_token, &old.code).is_ok());
+    for challenge in [&old, &new, &old] {
+        let claims = EmailOtpAccessToken::try_from(
+            AccessToken::decode(&challenge.access_token, SECRET).unwrap(),
+        )
+        .unwrap();
+        claims
+            .verify_code(&challenge.code, unix_timestamp())
+            .unwrap();
+    }
 }
 
 #[test]
 fn jwt_signature_and_payload_tampering_are_rejected() {
-    let auth = service();
-    let challenge = auth.issue_email_otp("james@midwess.com").unwrap();
-    let other = TokenCodec::new(
-        "another-signing-secret-at-least-32-bytes".into(),
-        "midwess.com",
-    )
-    .unwrap();
+    let challenge = Fixture::challenge();
     assert!(matches!(
-        other.parse_access_token(&challenge.access_token).err(),
-        Some(AuthError::InvalidToken)
+        AccessToken::decode(
+            &challenge.access_token,
+            "another-signing-secret-at-least-32-bytes"
+        ),
+        Err(AuthError::InvalidToken)
     ));
     let mut parts: Vec<String> = challenge
         .access_token
@@ -97,26 +106,24 @@ fn jwt_signature_and_payload_tampering_are_rejected() {
         .collect();
     parts[1] = URL_SAFE_NO_PAD.encode(br#"{"data":{"user":{}},"exp":9999999999,"iat":1}"#);
     assert!(matches!(
-        auth.parse_access_token(&parts.join(".")).err(),
-        Some(AuthError::InvalidToken)
+        AccessToken::decode(&parts.join("."), SECRET),
+        Err(AuthError::InvalidToken)
     ));
 }
 
 #[test]
 fn ciphertext_requires_its_configured_secret_and_integrity_tag() {
-    let now = compallm_utils::time::unix_timestamp();
-    let claims = EmailOtpAccessToken::new("james@midwess.com".into(), now).unwrap();
+    let claims = EmailOtpAccessToken::new("james@midwess.com".into()).unwrap();
     let cipher = EncryptedAccessToken::new(SECRET).unwrap();
-    let AccessToken::Encrypted(payload) = cipher.encrypt(AccessToken::EmailOtp(claims)).unwrap()
-    else {
-        panic!("expected encrypted wrapper")
-    };
+    // The cipher can work directly with an inner struct; it knows no enum.
+    let payload = cipher.encrypt(&claims).unwrap();
+    let decrypted: EmailOtpAccessToken = cipher.decrypt(&payload).unwrap();
+    assert_eq!(decrypted.code, claims.code);
     assert!(matches!(
         EncryptedAccessToken::new("another-signing-secret-at-least-32-bytes")
             .unwrap()
-            .decrypt(payload.clone())
-            .err(),
-        Some(AuthError::TokenCrypto(_))
+            .decrypt::<EmailOtpAccessToken>(&payload),
+        Err(AuthError::TokenCrypto(_))
     ));
     let mut bytes = URL_SAFE_NO_PAD
         .decode(payload.0.strip_prefix("v1.").unwrap())
@@ -124,56 +131,52 @@ fn ciphertext_requires_its_configured_secret_and_integrity_tag() {
     *bytes.last_mut().unwrap() ^= 1;
     let altered = EncryptedToken(format!("v1.{}", URL_SAFE_NO_PAD.encode(bytes)));
     assert!(matches!(
-        cipher.decrypt(altered).err(),
-        Some(AuthError::TokenCrypto(_))
+        cipher.decrypt::<EmailOtpAccessToken>(&altered),
+        Err(AuthError::TokenCrypto(_))
     ));
 }
 
 #[test]
 fn valid_jwt_cannot_extend_expired_inner_claims() {
-    let now = compallm_utils::time::unix_timestamp();
-    let claims = UserAccessToken::new(1, 2, now - 61, Duration::from_secs(60)).unwrap();
+    let mut claims = UserAccessToken::new(1, Duration::from_secs(60)).unwrap();
+    claims.validity.issued_at -= 61;
+    claims.validity.expires_at -= 61;
     let jwt =
         create_jwt_token(AccessToken::User(claims), SECRET, Duration::from_secs(600)).unwrap();
     assert!(matches!(
-        service().parse_user(&jwt).err(),
-        Some(AuthError::ExpiredToken)
+        AccessToken::decode(&jwt, SECRET),
+        Err(AuthError::ExpiredToken)
     ));
 }
 
 #[test]
 fn token_variants_cannot_authorize_each_other() {
-    let auth = service();
-    let challenge = auth.issue_email_otp("james@midwess.com").unwrap();
+    let challenge = Fixture::challenge();
+    let otp = AccessToken::decode(&challenge.access_token, SECRET).unwrap();
     assert!(matches!(
-        auth.parse_user(&challenge.access_token).err(),
-        Some(AuthError::WrongTokenVariant)
+        UserAccessToken::try_from(otp.clone()),
+        Err(AuthError::WrongTokenVariant)
     ));
     assert!(matches!(
-        auth.parse_refresh(&challenge.access_token).err(),
-        Some(AuthError::WrongTokenVariant)
+        RefreshToken::try_from(otp),
+        Err(AuthError::WrongTokenVariant)
     ));
-    let issued = auth
-        .issue_user_tokens(1, 2, Duration::from_secs(60), Duration::from_secs(600))
-        .unwrap();
-    assert_eq!(auth.parse_user(&issued.access_token).unwrap().user_id, 1);
-    assert_eq!(
-        auth.parse_refresh(&issued.refresh_token)
-            .unwrap()
-            .session_id,
-        2
-    );
+    let issued = Fixture::tokens();
+    let user = AccessToken::decode(&issued.access_token, SECRET).unwrap();
+    let refresh = AccessToken::decode(&issued.refresh_token, SECRET).unwrap();
+    assert_eq!(UserAccessToken::try_from(user.clone()).unwrap().user_id, 1);
+    assert_eq!(RefreshToken::try_from(refresh.clone()).unwrap().user_id, 1);
     assert!(matches!(
-        auth.parse_email_otp(&issued.access_token).err(),
-        Some(AuthError::WrongTokenVariant)
+        EmailOtpAccessToken::try_from(user.clone()),
+        Err(AuthError::WrongTokenVariant)
     ));
     assert!(matches!(
-        auth.parse_user(&issued.refresh_token).err(),
-        Some(AuthError::WrongTokenVariant)
+        RefreshToken::try_from(user),
+        Err(AuthError::WrongTokenVariant)
     ));
     assert!(matches!(
-        auth.parse_refresh(&issued.access_token).err(),
-        Some(AuthError::WrongTokenVariant)
+        UserAccessToken::try_from(refresh),
+        Err(AuthError::WrongTokenVariant)
     ));
 }
 
@@ -187,39 +190,36 @@ fn organization_email_domain_must_match_exactly() {
         "not an email",
     ] {
         assert!(matches!(
-            service().issue_email_otp(email).err(),
-            Some(AuthError::InvalidEmail)
+            EmailOtpChallenge::new(email, "midwess.com", SECRET),
+            Err(AuthError::InvalidEmail)
         ));
     }
-    let issued = service().issue_email_otp("james@midwess.com").unwrap();
-    let changed_domain = TokenCodec::new(SECRET.into(), "another.com").unwrap();
+    let issued = Fixture::challenge();
+    let claims =
+        EmailOtpAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
+            .unwrap();
     assert!(matches!(
-        changed_domain
-            .verify_email_otp(&issued.access_token, &issued.code)
-            .err(),
-        Some(AuthError::InvalidEmail)
+        compallm_utils::email::verify_email_domain(&claims.email, "another.com"),
+        Err(compallm_utils::email::EmailError::InvalidEmail)
     ));
 }
 
 #[test]
 fn ids_round_trip_as_u64_and_refresh_tokens_have_distinct_ids() {
-    let auth = service();
-    let one = auth
-        .issue_user_tokens(
-            9_007_199_254_740_993,
-            2,
-            Duration::from_secs(60),
-            Duration::from_secs(600),
-        )
-        .unwrap();
-    let two = auth
-        .issue_user_tokens(
-            9_007_199_254_740_993,
-            2,
-            Duration::from_secs(60),
-            Duration::from_secs(600),
-        )
-        .unwrap();
+    let one = UserTokens::new(
+        9_007_199_254_740_993,
+        SECRET,
+        Duration::from_secs(60),
+        Duration::from_secs(600),
+    )
+    .unwrap();
+    let two = UserTokens::new(
+        9_007_199_254_740_993,
+        SECRET,
+        Duration::from_secs(60),
+        Duration::from_secs(600),
+    )
+    .unwrap();
     let payload = URL_SAFE_NO_PAD
         .decode(one.access_token.split('.').nth(1).unwrap())
         .unwrap();
@@ -229,130 +229,187 @@ fn ids_round_trip_as_u64_and_refresh_tokens_have_distinct_ids() {
         Some(9_007_199_254_740_993)
     );
     assert_eq!(
-        auth.parse_user(&one.access_token).unwrap().user_id,
+        UserAccessToken::try_from(AccessToken::decode(&one.access_token, SECRET).unwrap())
+            .unwrap()
+            .user_id,
         9_007_199_254_740_993
     );
     assert_ne!(
-        auth.parse_refresh(&one.refresh_token).unwrap().token_id,
-        auth.parse_refresh(&two.refresh_token).unwrap().token_id
+        RefreshToken::try_from(AccessToken::decode(&one.refresh_token, SECRET).unwrap())
+            .unwrap()
+            .token_id,
+        RefreshToken::try_from(AccessToken::decode(&two.refresh_token, SECRET).unwrap())
+            .unwrap()
+            .token_id
     );
 }
 
 #[test]
 fn malformed_tokens_and_invalid_lifetimes_are_rejected() {
-    let auth = service();
     for input in ["", "not.jwt", "a.b.c"] {
         assert!(matches!(
-            auth.parse_access_token(input).err(),
-            Some(AuthError::InvalidToken)
+            AccessToken::decode(input, SECRET),
+            Err(AuthError::InvalidToken)
         ));
     }
     assert!(matches!(
-        auth.issue_user_tokens(1, 2, Duration::ZERO, Duration::from_secs(60))
-            .err(),
-        Some(AuthError::InvalidConfiguration)
+        UserTokens::new(1, SECRET, Duration::ZERO, Duration::from_secs(60)),
+        Err(AuthError::InvalidConfiguration)
     ));
     assert!(matches!(
-        UserAccessToken::new(
-            0,
-            2,
-            compallm_utils::time::unix_timestamp(),
-            Duration::from_secs(60)
-        )
-        .err(),
-        Some(AuthError::InvalidToken)
+        UserAccessToken::new(0, Duration::from_secs(60)),
+        Err(AuthError::InvalidToken)
     ));
 }
 
 #[test]
-fn encryption_supports_typed_conversion_and_fallback_for_multiple_variants() {
+fn encryption_preserves_the_variant_for_typed_conversion() {
     let cipher = EncryptedAccessToken::new(SECRET).unwrap();
-    let user = UserAccessToken::new(
-        1,
-        2,
-        compallm_utils::time::unix_timestamp(),
-        Duration::from_secs(60),
-    )
-    .unwrap();
-    let encrypted = cipher.encrypt(AccessToken::User(user)).unwrap();
-    let AccessToken::Encrypted(encrypted) = encrypted else {
-        panic!("expected encrypted wrapper")
-    };
-    let decrypted = cipher.decrypt(encrypted).unwrap();
-    assert!(matches!(decrypted, AccessToken::User(_)));
-    let user = UserAccessToken::try_from(decrypted).unwrap();
-    assert_eq!(user.user_id, 1);
-    let refresh = RefreshToken::new(
-        1,
-        2,
-        compallm_utils::time::unix_timestamp(),
-        Duration::from_secs(600),
-    )
-    .unwrap();
-    let encrypted = cipher.encrypt(AccessToken::Refresh(refresh)).unwrap();
-    let AccessToken::Encrypted(encrypted) = encrypted else {
-        panic!("expected encrypted wrapper")
-    };
-    let refresh = RefreshToken::try_from(cipher.decrypt(encrypted).unwrap()).unwrap();
-    assert_eq!(refresh.session_id, 2);
+    let user = UserAccessToken::new(1, Duration::from_secs(60)).unwrap();
+    let jwt = AccessToken::User(user)
+        .encrypt(&cipher)
+        .unwrap()
+        .encode(SECRET, Duration::from_secs(60))
+        .unwrap();
+    assert_eq!(
+        UserAccessToken::try_from(AccessToken::decode(&jwt, SECRET).unwrap())
+            .unwrap()
+            .user_id,
+        1
+    );
+    let refresh = RefreshToken::new(1, Duration::from_secs(600)).unwrap();
+    let jwt = AccessToken::Refresh(refresh)
+        .encrypt(&cipher)
+        .unwrap()
+        .encode(SECRET, Duration::from_secs(600))
+        .unwrap();
+    assert_eq!(
+        RefreshToken::try_from(AccessToken::decode(&jwt, SECRET).unwrap())
+            .unwrap()
+            .user_id,
+        1
+    );
 }
 
 #[test]
 fn plaintext_otp_and_nested_encryption_are_rejected() {
-    let claims = EmailOtpAccessToken::new(
-        "james@midwess.com".into(),
-        compallm_utils::time::unix_timestamp(),
-    )
-    .unwrap();
-    let jwt = create_jwt_token(
-        AccessToken::EmailOtp(claims.clone()),
-        SECRET,
-        Duration::from_secs(600),
-    )
-    .unwrap();
+    let claims = EmailOtpAccessToken::new("james@midwess.com".into()).unwrap();
+    let plaintext = AccessToken::EmailOtp(claims.clone());
     assert!(matches!(
-        service().parse_access_token(&jwt).err(),
-        Some(AuthError::WrongTokenVariant)
+        plaintext.encode(SECRET, Duration::from_secs(600)),
+        Err(AuthError::WrongTokenVariant)
     ));
+    let jwt = create_jwt_token(plaintext, SECRET, Duration::from_secs(600)).unwrap();
     assert!(matches!(
-        service().parse_email_otp(&jwt).err(),
-        Some(AuthError::WrongTokenVariant)
+        AccessToken::decode(&jwt, SECRET),
+        Err(AuthError::WrongTokenVariant)
     ));
     let cipher = EncryptedAccessToken::new(SECRET).unwrap();
-    let encrypted = cipher.encrypt(AccessToken::EmailOtp(claims)).unwrap();
+    let encrypted = AccessToken::EmailOtp(claims).encrypt(&cipher).unwrap();
     assert!(matches!(
-        cipher.encrypt(encrypted).err(),
-        Some(AuthError::InvalidToken)
+        encrypted.clone().encrypt(&cipher),
+        Err(AuthError::InvalidToken)
+    ));
+    // Even valid authenticated nested ciphertext cannot bypass enum validation.
+    let nested = AccessToken::Encrypted(cipher.encrypt(&encrypted).unwrap());
+    let jwt = nested.encode(SECRET, Duration::from_secs(600)).unwrap();
+    assert!(matches!(
+        AccessToken::decode(&jwt, SECRET),
+        Err(AuthError::InvalidToken)
     ));
 }
 
 #[test]
 fn injected_secret_controls_both_jwt_and_encryption() {
     assert!(matches!(
-        EncryptedAccessToken::new("short").err(),
-        Some(AuthError::InvalidConfiguration)
+        EncryptedAccessToken::new("short"),
+        Err(AuthError::InvalidConfiguration)
     ));
-    let cipher = EncryptedAccessToken::new(SECRET).unwrap();
-    let email = EmailOtpAccessToken::new(
-        "james@midwess.com".into(),
-        compallm_utils::time::unix_timestamp(),
-    )
-    .unwrap();
-    let encrypted = cipher.encrypt(AccessToken::EmailOtp(email)).unwrap();
-    let jwt = create_jwt_token(encrypted, SECRET, Duration::from_secs(600)).unwrap();
-    let parsed = service().parse_email_otp(&jwt).unwrap();
-    assert_eq!(parsed.email, "james@midwess.com");
+    let challenge = Fixture::challenge();
+    assert_eq!(
+        EmailOtpAccessToken::try_from(
+            AccessToken::decode(&challenge.access_token, SECRET).unwrap()
+        )
+        .unwrap()
+        .email,
+        "james@midwess.com"
+    );
 }
 
 #[test]
 fn encrypted_token_errors_preserve_their_source() {
     use std::error::Error;
-
-    let cipher = EncryptedAccessToken::new(SECRET).unwrap();
-    let error = cipher
-        .decrypt(EncryptedToken("v1.!!!!".into()))
+    let error = EncryptedAccessToken::new(SECRET)
+        .unwrap()
+        .decrypt::<EmailOtpAccessToken>(&EncryptedToken("v1.!!!!".into()))
         .err()
         .unwrap();
     assert!(matches!(&error, AuthError::TokenEncoding(_)));
     assert!(error.source().unwrap().is::<base64::DecodeError>());
+}
+
+#[test]
+fn enum_checks_common_timestamps_then_inner_invariants() {
+    let mut user = UserAccessToken::new(1, Duration::from_secs(60)).unwrap();
+    user.user_id = 0;
+    assert!(matches!(
+        AccessToken::User(user).validate(unix_timestamp()),
+        Err(AuthError::InvalidToken)
+    ));
+    let mut otp = EmailOtpAccessToken::new("james@midwess.com".into()).unwrap();
+    otp.code = "abcdef".into();
+    assert!(matches!(
+        AccessToken::EmailOtp(otp).validate(unix_timestamp()),
+        Err(AuthError::InvalidToken)
+    ));
+    let mut refresh = RefreshToken::new(1, Duration::from_secs(60)).unwrap();
+    refresh.token_id = "invalid".into();
+    assert!(matches!(
+        AccessToken::Refresh(refresh).validate(unix_timestamp()),
+        Err(AuthError::InvalidToken)
+    ));
+    let mut future = UserAccessToken::new(1, Duration::from_secs(60)).unwrap();
+    future.validity.issued_at += 100;
+    future.validity.expires_at += 100;
+    assert!(matches!(
+        AccessToken::User(future).validate(unix_timestamp()),
+        Err(AuthError::InvalidToken)
+    ));
+}
+
+#[test]
+fn token_validity_owns_expiration_and_timestamp_validation() {
+    use compallm_core::auth::token::TokenValidity;
+
+    let validity = TokenValidity::new(Duration::from_secs(60)).unwrap();
+    let now = validity.issued_at;
+    assert!(validity.validate(now).is_ok());
+    assert!(validity.validate(now + 59).is_ok());
+    assert!(matches!(
+        validity.validate(now + 60),
+        Err(AuthError::ExpiredToken)
+    ));
+    assert!(matches!(
+        validity.validate(now - 1),
+        Err(AuthError::InvalidToken)
+    ));
+    assert!(matches!(
+        TokenValidity::new(Duration::ZERO),
+        Err(AuthError::InvalidConfiguration)
+    ));
+    assert!(matches!(
+        TokenValidity::new(Duration::from_secs(u64::MAX)),
+        Err(AuthError::InvalidConfiguration)
+    ));
+
+    for expires_at in [999, 1000] {
+        let invalid = TokenValidity {
+            issued_at: 1000,
+            expires_at,
+        };
+        assert!(matches!(
+            invalid.validate(unix_timestamp()),
+            Err(AuthError::InvalidToken)
+        ));
+    }
 }

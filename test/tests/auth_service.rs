@@ -26,6 +26,8 @@ struct State {
     contexts: Vec<usize>,
     created: Option<(String, String)>,
     fail_create: bool,
+    fail_record_login: bool,
+    logins: Vec<u64>,
 }
 
 #[derive(Clone)]
@@ -61,6 +63,20 @@ impl UserRepository for Repository {
         }
         state.created = Some((user.email.clone(), user.display_name.clone()));
         Ok(user)
+    }
+
+    async fn record_login(&self, user_id: u64) -> Result<(), UserRepositoryError> {
+        let mut state = self.0.lock().unwrap();
+        state
+            .contexts
+            .push(PostgresConnection::from_context(&DbContext::current()?)? as *const _ as usize);
+        if state.fail_record_login {
+            return Err(UserRepositoryError::database(DbErr::Custom(
+                "record login failed".into(),
+            )));
+        }
+        state.logins.push(user_id);
+        Ok(())
     }
 }
 
@@ -141,7 +157,8 @@ async fn signin_checks_user_and_commits() {
         1
     );
     let contexts = fixture.repo.0.lock().unwrap().contexts.clone();
-    assert_eq!(contexts.len(), 1);
+    assert_eq!(contexts.len(), 2);
+    assert_eq!(fixture.repo.0.lock().unwrap().logins, [1]);
     assert!(contexts.iter().all(|context| *context == contexts[0]));
     fixture.assert_transaction("COMMIT");
 }
@@ -169,6 +186,7 @@ async fn signup_requires_verified_email_and_creates_on_one_transaction() {
             Some(("james@midwess.com".into(), "James".into()))
         );
         assert_eq!(state.contexts.len(), 2);
+        assert!(state.logins.is_empty());
         assert!(
             state
                 .contexts
@@ -203,6 +221,23 @@ async fn duplicate_signup_and_disabled_signin_are_rejected() {
             .await,
         Err(AuthError::UserDisabled)
     ));
+    assert!(fixture.repo.0.lock().unwrap().logins.is_empty());
+    fixture.assert_transaction("ROLLBACK");
+}
+
+#[tokio::test]
+async fn failed_login_record_rolls_back_signin_without_returning_tokens() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    fixture.repo.0.lock().unwrap().fail_record_login = true;
+    let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+    assert!(matches!(
+        fixture
+            .service()
+            .signin(&challenge.access_token, &challenge.code)
+            .await,
+        Err(AuthError::Persistence(UserRepositoryError::Database(_)))
+    ));
+    assert!(fixture.repo.0.lock().unwrap().logins.is_empty());
     fixture.assert_transaction("ROLLBACK");
 }
 

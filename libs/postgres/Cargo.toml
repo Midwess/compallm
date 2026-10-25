@@ -6,12 +6,28 @@ license.workspace = true
 description = "PostgreSQL connection, SeaORM schema and Loco migrations for Compallm"
 publish = false
 
+[features]
+default = []
+cli = ["dep:clap", "dep:heck", "dep:pluralizer", "dep:sea-orm-cli", "dep:syn", "dep:tokio", "sea-orm-migration/cli"]
+
+[[bin]]
+name = "compallm-postgres"
+path = "src/main.rs"
+required-features = ["cli"]
+
 [dependencies]
 anyhow = { workspace = true, features = ["std"] }
 async-trait.workspace = true
+clap = { workspace = true, optional = true, features = ["std", "derive", "env", "help", "usage", "error-context"] }
 compallm-core.workspace = true
+compallm-utils.workspace = true
 axum.workspace = true
 hero = { workspace = true, features = ["distributed-id"] }
 loco-rs = { workspace = true, features = ["with-db"] }
-sea-orm = { workspace = true, features = ["sqlx-postgres", "runtime-tokio-rustls", "macros"] }
+sea-orm = { workspace = true, features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono"] }
 sea-orm-migration = { workspace = true, features = ["sqlx-postgres", "runtime-tokio-rustls"] }
+sea-orm-cli = { workspace = true, optional = true, features = ["codegen", "sqlx-postgres", "runtime-tokio-rustls"] }
+tokio = { workspace = true, optional = true, features = ["macros", "rt-multi-thread"] }
+heck = { workspace = true, optional = true }
+pluralizer = { workspace = true, optional = true }
+syn = { workspace = true, optional = true, features = ["full", "parsing"] }

@@ -70,6 +70,7 @@ impl AuthService {
             if user.status != UserStatus::Active {
                 return Err(AuthError::UserDisabled);
             }
+            self.users.record_login(user.id).await?;
             UserTokens::new(
                 user.id,
                 &self.jwt_secret,

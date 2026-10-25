@@ -70,6 +70,8 @@ jobs:
         run: cargo test --workspace --locked
       - name: Check the development frontend proxy
         run: cargo check -p compallm-api --features frontend-dev --locked
+      - name: Check the PostgreSQL management CLI
+        run: cargo clippy -p compallm-postgres --all-targets --features cli --locked -- -D warnings
 
   portal:
     name: Frontend checks

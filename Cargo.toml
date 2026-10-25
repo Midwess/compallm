@@ -28,6 +28,7 @@ hero = { package = "midwess-hero", version = "1", default-features = false }
 loco-rs = { version = "1.2", default-features = false }
 sea-orm = { version = "2.0", default-features = false }
 sea-orm-migration = { version = "2.0", default-features = false }
+sea-orm-cli = { version = "2.0", default-features = false }
 serde = { version = "1", default-features = false }
 serde_json = { version = "1", default-features = false }
 tokio = { version = "1", default-features = false }
@@ -36,3 +37,7 @@ tracing-subscriber = { version = "0.3", default-features = false }
 utoipa = { version = "6", default-features = false }
 utoipa-axum = { version = "0.3", default-features = false }
 serial_test = { version = "3.2", default-features = false }
+heck = { version = "0.5", default-features = false }
+pluralizer = { version = "0.5", default-features = false }
+syn = { version = "2", default-features = false }
+tempfile = { version = "3", default-features = false }

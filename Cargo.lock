@@ -1061,11 +1061,18 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum",
+ "clap",
  "compallm-core",
+ "compallm-utils",
+ "heck 0.5.0",
  "loco-rs",
  "midwess-hero",
+ "pluralizer",
  "sea-orm",
+ "sea-orm-cli",
  "sea-orm-migration",
+ "syn 2.0.119",
+ "tokio",
 ]
 
 [[package]]
@@ -1081,6 +1088,7 @@ dependencies = [
  "midwess-hero",
  "sea-orm",
  "serde_json",
+ "tempfile",
  "tokio",
 ]
 
@@ -3969,6 +3977,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "prettyplease"
+version = "0.2.37"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "479ca8adacdd7ce8f1fb39ce9ecccbfe93a3f1344b3d0d97f20bc0196208f62b"
+dependencies = [
+ "proc-macro2",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "primeorder"
 version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4546,12 +4564,29 @@ dependencies = [
  "glob",
  "indoc",
  "regex",
+ "sea-orm-codegen",
  "sea-schema",
  "sqlx",
  "tokio",
  "tracing",
  "tracing-subscriber",
  "url",
+]
+
+[[package]]
+name = "sea-orm-codegen"
+version = "2.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1419e7cb642571df02f711b0016044adfe455d85ef405c27d22eb0f54a7204b7"
+dependencies = [
+ "heck 0.5.0",
+ "pluralizer",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "sea-query",
+ "syn 2.0.119",
+ "tracing",
 ]
 
 [[package]]
@@ -5404,6 +5439,19 @@ name = "tagptr"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b2093cf4c8eb1e67749a6762251bc9cd836b6fc171623bd0a9d324d37af2417"
+
+[[package]]
+name = "tempfile"
+version = "3.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
+dependencies = [
+ "fastrand",
+ "getrandom 0.4.3",
+ "once_cell",
+ "rustix",
+ "windows-sys 0.61.2",
+]
 
 [[package]]
 name = "tendril"

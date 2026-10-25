@@ -16,9 +16,6 @@ export async function validateExplanation(body) {
   for (const heading of ['Idea', 'What changes', 'Review focus', 'Checks / coverage']) {
     if (!body.includes(`## ${heading}\n`)) throw new Error(`Missing heading: ## ${heading}`);
   }
-  if (/<!--|<\/?[a-z][^>]*>|@(?:[\w-]+)|!\[/i.test(body)) {
-    throw new Error('Do not include HTML, mentions, hidden markers, or images.');
-  }
   const blocks = [...body.matchAll(/^```mermaid\s*\n([\s\S]*?)^```\s*$/gm)];
   const openings = [...body.matchAll(/^```mermaid\b/gm)];
   if (blocks.length !== openings.length || blocks.length > 1) {
@@ -27,7 +24,14 @@ export async function validateExplanation(body) {
   const prose = body.replace(/^```mermaid\s*\n[\s\S]*?^```\s*$/gm, '')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
   const words = prose.trim().split(/\s+/).length;
-  if (words > 350) throw new Error(`Explanation has ${words} words. Use at most 350 outside the diagram; shorten the bullets and coverage notes.`);
+  const visible = prose.replace(/`[^`\n]*`/g, '');
+  const errors = [];
+  if (words > 350) errors.push(`Explanation has ${words} words. Use at most 350 outside the diagram; shorten the bullets and coverage notes.`);
+  if (/<!--/.test(body)) errors.push('Remove hidden HTML comments.');
+  if (/<\/?[a-z][^>]*>/i.test(visible)) errors.push('Remove HTML tags; put code types in backticks.');
+  if (/(^|[\s(])@[\w-]+/m.test(visible)) errors.push('Remove GitHub mentions. Email addresses and inline code are allowed.');
+  if (/!\[/.test(visible)) errors.push('Remove embedded images.');
+  if (errors.length) throw new Error(errors.join(' '));
   for (const [, source] of blocks) {
     if (!/^\s*(flowchart\s+(TD|TB|LR|RL|BT)|sequenceDiagram)\b/.test(source)
       || /%%|\bclick\b|https?:|\binit\b|^\s*---/im.test(source)

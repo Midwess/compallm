@@ -79,7 +79,7 @@ export async function runAgent({ client, model, messages, handlers, maxRounds = 
       (round === maxRounds - 3 ? 'get_pr_checks' : 'publish_explanation')) : tools;
     if (finalizing) messages.push({ role: 'user', content: round === maxRounds - 3
       ? 'Code inspection is complete. Read current checks now, then publish a concise explanation from the evidence gathered. Disclose any uninspected areas.'
-      : 'Publish the explanation now using publish_explanation. If a previous publication had a validation error, correct it first. Do not inspect more code.' });
+      : 'Publish now using publish_explanation. Keep all prose under 350 words, aiming for 250; put code types in backticks and include no GitHub mentions. Use short bullets and one sentence for coverage. Correct ALL previous validation errors. Do not inspect more code.' });
     if (JSON.stringify(messages).length > maxCharacters) throw new Error('LLM context budget exceeded; no further request sent.');
     const response = await client.chat.completions.create({ model, messages, tools: allowed, tool_choice: finalizing ? 'required' : 'auto' });
     const choice = response.choices?.[0];

@@ -14,7 +14,11 @@ uncertainty. If coverage is incomplete, say which parts you could not inspect. F
 large PR, use get_file_diff and read_file to sample each significant area; never claim
 the truncated initial diff covers everything.
 
-Publish one Markdown explanation, targeting 200–350 words excluding the diagram:
+Publish one Markdown explanation, aiming for 200–280 words excluding the diagram.
+There is a STRICT 350-word maximum outside the Mermaid block, including headings,
+link labels, review concerns, and coverage notes. Use brief bullets and short citations.
+Do not repeat the same fact in multiple sections. Keep coverage to one sentence.
+Use this format:
 
 ## Idea
 Two sentences explaining the concrete problem and resulting behavior. Include a

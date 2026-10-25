@@ -7,6 +7,9 @@ description = "PostgreSQL connection, SeaORM schema and Loco migrations for Comp
 publish = false
 
 [dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+compallm-core = { path = "../core" }
 axum.workspace = true
 hero.workspace = true
 loco-rs.workspace = true

@@ -13,6 +13,8 @@
 /portal/.pnpm-store
 /portal/dist
 /portal/openapi.json
+/dist
+/openapi.json
 *.local
 *.log
 

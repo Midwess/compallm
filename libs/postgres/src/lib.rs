@@ -1,6 +1,7 @@
 pub mod connection;
 pub mod id;
 pub mod migration;
+pub mod postgres_connection;
 pub mod schema;
 
 pub use connection::Connection;

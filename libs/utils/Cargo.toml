@@ -1,0 +1,11 @@
+[package]
+name = "compallm-utils"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Shared stateless utilities without application business rules"
+publish = false
+
+[dependencies]
+email_address.workspace = true
+thiserror.workspace = true

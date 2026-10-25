@@ -6,7 +6,9 @@ use compallm_core::{
         organization::{OrganizationRepository as CoreRepository, OrganizationRepositoryError},
     },
 };
-use sea_orm::{ActiveModelTrait, EntityTrait, ModelTrait, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, ModelTrait, QueryFilter, Set, sea_query::Expr,
+};
 
 use crate::{
     postgres_connection::PostgresConnection,
@@ -18,6 +20,7 @@ use crate::{
 
 type Organizations = <OrganizationSchema as ModelTrait>::Entity;
 type OrganizationActiveModel = <Organizations as EntityTrait>::ActiveModel;
+type OrganizationColumn = <Organizations as EntityTrait>::Column;
 type Members = <OrganizationMemberSchema as ModelTrait>::Entity;
 type MemberActiveModel = <Members as EntityTrait>::ActiveModel;
 
@@ -37,6 +40,24 @@ impl OrganizationRepository {
 
 #[async_trait::async_trait]
 impl CoreRepository for OrganizationRepository {
+    async fn update_name(
+        &self,
+        organization_id: u64,
+        name: &str,
+    ) -> Result<Organization, OrganizationRepositoryError> {
+        let id = Self::database_id(organization_id)?;
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let mut rows = Organizations::update_many()
+            .col_expr(OrganizationColumn::Name, Expr::value(name))
+            .col_expr(OrganizationColumn::UpdatedAt, Expr::current_timestamp())
+            .filter(OrganizationColumn::Id.eq(id))
+            .exec_with_returning(db)
+            .await
+            .map_err(OrganizationRepositoryError::database)?;
+        Organization::try_from(rows.pop().ok_or(OrganizationRepositoryError::NotFound)?)
+    }
+
     async fn create(
         &self,
         organization: Organization,

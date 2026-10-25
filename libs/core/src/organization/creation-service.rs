@@ -31,7 +31,7 @@ impl CreationService {
         user: &User,
     ) -> Result<Organization, OrganizationCreationError> {
         let name = name.trim();
-        if name.is_empty() {
+        if !Organization::is_valid_name(name) {
             return Err(OrganizationCreationError::InvalidName);
         }
         transaction!(self.db, {
@@ -59,7 +59,24 @@ impl CreationService {
         &self,
         user: &User,
     ) -> Result<Organization, OrganizationCreationError> {
-        self.create(&format!("{}'s workspace", user.display_name.trim()), user)
+        let base = user
+            .display_name
+            .split(|character: char| !character.is_ascii_alphanumeric())
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>()
+            .join("-")
+            .to_ascii_lowercase();
+        let base = if base.is_empty() {
+            format!("user-{}", user.id)
+        } else {
+            base
+        };
+        let suffix = "-workspace";
+        let base: String = base
+            .chars()
+            .take(Organization::MAX_NAME_LENGTH - suffix.len())
+            .collect();
+        self.create(&format!("{}{suffix}", base.trim_end_matches('-')), user)
             .await
     }
 }

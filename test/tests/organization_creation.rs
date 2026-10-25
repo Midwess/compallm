@@ -25,7 +25,7 @@ impl Fixture {
             .unwrap();
         let model = OrganizationSchema {
             id: 84,
-            name: "James's workspace".into(),
+            name: "james-workspace".into(),
             status: OrganizationStatusSchema::Active,
             created_by: 42,
             created_at: now,
@@ -87,7 +87,7 @@ async fn default_organization_and_owner_are_inserted_in_one_transaction() {
     let transactions = fixture.database.as_ref().clone().into_transaction_log();
     assert_eq!(transactions.len(), 1);
     let sql = format!("{transactions:?}");
-    assert!(sql.contains("James's workspace"));
+    assert!(sql.contains("james-workspace"));
     assert!(sql.contains("organization_members"));
     assert!(sql.contains("owner"));
     assert!(sql.contains("BEGIN"));

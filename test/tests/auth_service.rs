@@ -32,7 +32,6 @@ struct State {
     logins: Vec<u64>,
     organization: Option<Organization>,
     owner: Option<OrganizationMember>,
-    organization_attempted: bool,
     fail_organization: bool,
     fail_membership: bool,
 }
@@ -44,13 +43,26 @@ struct OrganizationRepositoryStub(Arc<Mutex<State>>);
 
 #[async_trait::async_trait]
 impl OrganizationRepository for OrganizationRepositoryStub {
+    async fn update_name(
+        &self,
+        organization_id: u64,
+        name: &str,
+    ) -> Result<Organization, OrganizationRepositoryError> {
+        let mut state = self.0.lock().unwrap();
+        let organization = state
+            .organization
+            .as_mut()
+            .filter(|organization| organization.id == organization_id)
+            .ok_or(OrganizationRepositoryError::NotFound)?;
+        organization.name = name.into();
+        Ok(organization.clone())
+    }
     async fn create(
         &self,
         organization: Organization,
     ) -> Result<Organization, OrganizationRepositoryError> {
         DbContext::current()?;
         let mut state = self.0.lock().unwrap();
-        state.organization_attempted = true;
         if state.fail_organization {
             return Err(OrganizationRepositoryError::database(anyhow::anyhow!(
                 "organization insert failed"
@@ -157,7 +169,7 @@ impl Fixture {
             self.repo.0.clone(),
         )) as Box<dyn OrganizationRepository>));
         let creation = Box::leak(Box::new(CreationService::new(db, organizations)));
-        let registration = Box::leak(Box::new(RegistrationService::new(users, creation)));
+        let registration = Box::leak(Box::new(RegistrationService::new(db, users, creation)));
         AuthService::new(
             db,
             users,
@@ -173,6 +185,18 @@ impl Fixture {
         .unwrap()
     }
 
+    fn registration(&self) -> RegistrationService {
+        let db = Box::leak(Box::new(self.repo.1.clone()));
+        let users = Box::leak(Box::new(
+            Box::new(self.repo.clone()) as Box<dyn UserRepository>
+        ));
+        let organizations = Box::leak(Box::new(Box::new(OrganizationRepositoryStub(
+            self.repo.0.clone(),
+        )) as Box<dyn OrganizationRepository>));
+        let creation = Box::leak(Box::new(CreationService::new(db, organizations)));
+        RegistrationService::new(db, users, creation)
+    }
+
     fn user(status: UserStatus) -> User {
         User {
             id: 1,
@@ -183,28 +207,56 @@ impl Fixture {
     }
 
     fn assert_transaction(self, finish: &str) {
-        let organization_attempted = self.repo.0.lock().unwrap().organization_attempted;
         drop(self.repo);
         let mut statements = vec![Statement::from_string(DbBackend::Postgres, "BEGIN")];
-        if organization_attempted {
-            statements.push(Statement::from_string(
-                DbBackend::Postgres,
-                "SAVEPOINT savepoint_1",
-            ));
-            statements.push(Statement::from_string(
-                DbBackend::Postgres,
-                if finish == "COMMIT" {
-                    "RELEASE SAVEPOINT savepoint_1"
-                } else {
-                    "ROLLBACK TO SAVEPOINT savepoint_1"
-                },
-            ));
-        }
         statements.push(Statement::from_string(DbBackend::Postgres, finish));
         assert_eq!(
             self.db.as_ref().clone().into_transaction_log(),
             vec![Transaction::many(statements)]
         );
+    }
+}
+
+#[tokio::test]
+async fn direct_registration_commits_user_organization_and_owner_together() {
+    let fixture = Fixture::new(None);
+    let user = fixture
+        .registration()
+        .register("james@midwess.com", "James")
+        .await
+        .unwrap();
+    {
+        let state = fixture.repo.0.lock().unwrap();
+        assert!(state.created.is_some());
+        let organization = state.organization.as_ref().unwrap();
+        let owner = state.owner.as_ref().unwrap();
+        assert_eq!(organization.created_by, user.id);
+        assert_eq!(owner.user_id, user.id);
+        assert_eq!(owner.organization_id, organization.id);
+        assert_eq!(owner.role, OrganizationRole::Owner);
+    }
+    fixture.assert_transaction("COMMIT");
+}
+
+#[tokio::test]
+async fn direct_registration_rolls_back_when_default_organization_or_owner_fails() {
+    for fail_membership in [false, true] {
+        let fixture = Fixture::new(None);
+        {
+            let mut state = fixture.repo.0.lock().unwrap();
+            state.fail_organization = !fail_membership;
+            state.fail_membership = fail_membership;
+        }
+        assert!(matches!(
+            fixture
+                .registration()
+                .register("james@midwess.com", "James")
+                .await,
+            Err(compallm_core::user::RegistrationError::Organization(_))
+        ));
+        assert!(fixture.repo.0.lock().unwrap().created.is_some());
+        assert!(fixture.repo.0.lock().unwrap().owner.is_none());
+        fixture.assert_transaction("ROLLBACK");
     }
 }
 
@@ -257,7 +309,7 @@ async fn signup_requires_verified_email_and_creates_on_one_transaction() {
         assert!(state.logins.is_empty());
         let organization = state.organization.as_ref().unwrap();
         let owner = state.owner.as_ref().unwrap();
-        assert_eq!(organization.name, "James's workspace");
+        assert_eq!(organization.name, "james-workspace");
         assert!(organization.id > 0);
         assert_eq!(organization.created_by, owner.user_id);
         assert_eq!(organization.id, owner.organization_id);
@@ -373,6 +425,59 @@ async fn invalid_otp_or_empty_display_name_does_not_reach_persistence() {
     ));
     assert!(fixture.repo.0.lock().unwrap().contexts.is_empty());
     fixture.assert_transaction("ROLLBACK");
+}
+
+#[tokio::test]
+async fn invalid_user_name_characters_are_rejected_before_persistence() {
+    for name in [
+        "James Dang",
+        ".James",
+        "James.",
+        "James..Dang",
+        "James@Dang",
+        "James<Dang>",
+        "Jämés",
+    ] {
+        let fixture = Fixture::new(None);
+        let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+        assert!(
+            matches!(
+                fixture
+                    .service()
+                    .signup(&challenge.access_token, &challenge.code, name)
+                    .await,
+                Err(AuthError::InvalidDisplayName)
+            ),
+            "accepted invalid user name {name:?}"
+        );
+        assert!(fixture.repo.0.lock().unwrap().contexts.is_empty());
+        fixture.assert_transaction("ROLLBACK");
+    }
+}
+
+#[tokio::test]
+async fn email_style_user_names_produce_valid_bounded_default_organization_names() {
+    for name in [
+        "James.Dang+dev".to_string(),
+        "!+~".to_string(),
+        "a".repeat(256),
+    ] {
+        let fixture = Fixture::new(None);
+        let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+        fixture
+            .service()
+            .signup(&challenge.access_token, &challenge.code, &name)
+            .await
+            .unwrap();
+        {
+            let state = fixture.repo.0.lock().unwrap();
+            let organization = state.organization.as_ref().unwrap();
+            assert!(Organization::is_valid_name(&organization.name));
+            assert!(organization.name.ends_with("-workspace"));
+            assert_eq!(state.created.as_ref().unwrap().1, name);
+        }
+        fixture.assert_transaction("COMMIT");
+    }
 }
 
 #[tokio::test]

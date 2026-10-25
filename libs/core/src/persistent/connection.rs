@@ -19,6 +19,7 @@ impl ConnectionError {
 pub trait Connection: Any + Send + Sync {
     /// Adapter access without exposing its concrete types to Core.
     fn as_any(&self) -> &dyn Any;
+    fn is_transaction(&self) -> bool;
     fn ensure_open(&self) -> Result<(), ConnectionError>;
     async fn begin(&self) -> Result<Arc<dyn Connection>, ConnectionError>;
     async fn commit(&self) -> Result<(), ConnectionError>;

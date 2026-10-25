@@ -2,7 +2,7 @@ use axum::Router;
 use compallm_core::{
     auth::{AuthError, AuthService, TokenLifetimes},
     mail::EmailService,
-    organization::CreationService,
+    organization::{ConfigService, CreationService},
     persistent::{DbContext, organization::OrganizationRepository, user::UserRepository},
     user::RegistrationService,
 };
@@ -38,6 +38,7 @@ pub struct Di {
     auth: OnceLock<Box<AuthService>>,
     registration: OnceLock<Box<RegistrationService>>,
     organization_creation: OnceLock<Box<CreationService>>,
+    organization_config: OnceLock<Box<ConfigService>>,
 }
 
 impl Di {
@@ -78,10 +79,12 @@ impl Di {
             auth: OnceLock::new(),
             registration: OnceLock::new(),
             organization_creation: OnceLock::new(),
+            organization_config: OnceLock::new(),
         }
     }
 
     pub fn initialize_services(&'static self) -> Result<(), AuthError> {
+        self.organization_config_service();
         if self.auth.get().is_some() {
             return Ok(());
         }
@@ -124,6 +127,7 @@ impl Di {
     pub fn registration_service(&'static self) -> &'static RegistrationService {
         self.registration.get_or_init(|| {
             Box::new(RegistrationService::new(
+                self.db_context(),
                 self.user_repository(),
                 self.organization_creation_service(),
             ))
@@ -138,6 +142,15 @@ impl Di {
     pub fn organization_creation_service(&'static self) -> &'static CreationService {
         self.organization_creation.get_or_init(|| {
             Box::new(CreationService::new(
+                self.db_context(),
+                self.organization_repository(),
+            ))
+        })
+    }
+
+    pub fn organization_config_service(&'static self) -> &'static ConfigService {
+        self.organization_config.get_or_init(|| {
+            Box::new(ConfigService::new(
                 self.db_context(),
                 self.organization_repository(),
             ))

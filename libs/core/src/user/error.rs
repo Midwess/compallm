@@ -1,8 +1,12 @@
 #[derive(Debug, thiserror::Error)]
 pub enum RegistrationError {
     #[error(transparent)]
+    Connection(#[from] crate::persistent::ConnectionError),
+    #[error(transparent)]
     Organization(#[from] crate::organization::OrganizationCreationError),
-    #[error("display name must contain between 1 and 256 characters")]
+    #[error(
+        "user name must contain 1 to 256 email local-part characters; dots cannot be first, last, or repeated"
+    )]
     InvalidDisplayName,
     #[error("invalid email address")]
     InvalidEmail(#[from] compallm_utils::error::EmailError),

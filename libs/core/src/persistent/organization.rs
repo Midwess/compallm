@@ -5,6 +5,8 @@ use crate::organization::{Organization, OrganizationMember};
 
 #[derive(Debug, thiserror::Error)]
 pub enum OrganizationRepositoryError {
+    #[error("organization not found")]
+    NotFound,
     #[error("database operation failed")]
     Database(#[from] anyhow::Error),
 }
@@ -24,6 +26,11 @@ impl From<ConnectionError> for OrganizationRepositoryError {
 /// Use the current DbContext and leave transaction ownership to the caller.
 #[async_trait]
 pub trait OrganizationRepository: Send + Sync {
+    async fn update_name(
+        &self,
+        organization_id: u64,
+        name: &str,
+    ) -> Result<Organization, OrganizationRepositoryError>;
     async fn create(
         &self,
         organization: Organization,

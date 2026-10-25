@@ -19,6 +19,16 @@ pub struct Organization {
     pub created_by: u64,
 }
 
+impl Organization {
+    pub const MAX_NAME_LENGTH: usize = 63;
+
+    pub fn is_valid_name(name: &str) -> bool {
+        !name.is_empty()
+            && name.len() <= Self::MAX_NAME_LENGTH
+            && !compallm_utils::text::has_special_characters(name, "-")
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct OrganizationMember {
     pub organization_id: u64,

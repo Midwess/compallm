@@ -10,6 +10,7 @@ impl From<crate::user::RegistrationError> for AuthError {
     fn from(error: crate::user::RegistrationError) -> Self {
         use crate::user::RegistrationError;
         match error {
+            RegistrationError::Connection(error) => Self::Connection(error),
             RegistrationError::Organization(error) => Self::Organization(error),
             RegistrationError::InvalidDisplayName => Self::InvalidDisplayName,
             RegistrationError::InvalidEmail(error) => error.into(),

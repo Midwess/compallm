@@ -2,7 +2,13 @@
 //! local data; they do not need `move`, `Send`, or a `'static` lifetime.
 
 use anyhow::Context;
-use std::{future::Future, sync::Arc};
+use std::{
+    future::Future,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+    },
+};
 
 use super::{Connection, ConnectionError};
 
@@ -37,12 +43,26 @@ macro_rules! transaction {
 #[derive(Clone)]
 pub struct DbContext {
     postgres: Arc<dyn Connection>,
+    transaction: Option<Arc<TransactionState>>,
+}
+
+#[derive(Default)]
+struct TransactionState {
+    closed: AtomicBool,
+    rollback_only: AtomicBool,
+    participants: AtomicUsize,
 }
 
 impl DbContext {
     /// Application dependency wiring supplies the already configured database.
     pub fn new(postgres: Arc<dyn Connection>) -> Self {
-        Self { postgres }
+        let transaction = postgres
+            .is_transaction()
+            .then(|| Arc::new(TransactionState::default()));
+        Self {
+            postgres,
+            transaction,
+        }
     }
 
     pub fn current() -> Result<Self, ConnectionError> {
@@ -50,6 +70,7 @@ impl DbContext {
             .try_with(Clone::clone)
             .context("no database connection scope is active")?;
         context.postgres.ensure_open()?;
+        context.ensure_active()?;
         Ok(context)
     }
 
@@ -69,9 +90,9 @@ impl DbContext {
         CURRENT.scope(context, operation).await
     }
 
-    /// Share one transaction across repositories; nested calls use savepoints.
-    /// Commit on success and rollback on error. Dropping a cancelled future
-    /// releases the transaction so its adapter can roll it back.
+    /// Nested calls join the current transaction without another BEGIN or savepoint.
+    /// Only the outermost call commits or rolls back. A failed, panicked, or
+    /// cancelled nested operation marks the shared transaction for rollback.
     pub async fn transaction<F, T, E>(&self, operation: F) -> Result<T, E>
     where
         F: Future<Output = Result<T, E>>,
@@ -81,12 +102,52 @@ impl DbContext {
             .try_with(Clone::clone)
             .unwrap_or_else(|_| self.clone());
         source.postgres.ensure_open()?;
+        source.ensure_active()?;
+        if let Some(state) = &source.transaction {
+            state.participants.fetch_add(1, Ordering::AcqRel);
+            let mut participant = TransactionParticipant {
+                state: state.clone(),
+                succeeded: false,
+            };
+            // Register before rechecking closure, so commit cannot race with
+            // a participant entering through an explicitly propagated scope.
+            source.ensure_active()?;
+            let result = CURRENT.scope(source.clone(), operation).await;
+            participant.succeeded = result.is_ok();
+            return result;
+        }
         let transaction = source.postgres().begin().await?;
         let context = Self {
             postgres: transaction,
+            transaction: Some(Arc::new(TransactionState::default())),
         };
         let guard = TransactionScope(context.clone());
         let result = CURRENT.scope(context.clone(), operation).await;
+        context
+            .transaction
+            .as_ref()
+            .expect("transaction state exists")
+            .closed
+            .store(true, Ordering::Release);
+        // Do not commit partial work when an inner error was caught or an
+        // unfinished participating future escaped the outer operation.
+        let result = result.and_then(|value| {
+            context.ensure_committable()?;
+            if context
+                .transaction
+                .as_ref()
+                .expect("transaction state exists")
+                .participants
+                .load(Ordering::Acquire)
+                != 0
+            {
+                return Err(ConnectionError::database(anyhow::anyhow!(
+                    "transaction still has unfinished nested operations"
+                ))
+                .into());
+            }
+            Ok(value)
+        });
         let result = match result {
             Ok(value) => {
                 context.postgres().commit().await?;
@@ -104,12 +165,55 @@ impl DbContext {
         drop(guard);
         result
     }
+
+    fn ensure_committable(&self) -> Result<(), ConnectionError> {
+        if self
+            .transaction
+            .as_ref()
+            .is_some_and(|state| state.rollback_only.load(Ordering::Acquire))
+        {
+            return Err(ConnectionError::database(anyhow::anyhow!(
+                "transaction is marked for rollback after a nested failure"
+            )));
+        }
+        Ok(())
+    }
+
+    fn ensure_active(&self) -> Result<(), ConnectionError> {
+        if self
+            .transaction
+            .as_ref()
+            .is_some_and(|state| state.closed.load(Ordering::Acquire))
+        {
+            return Err(ConnectionError::database(anyhow::anyhow!(
+                "transaction scope has already ended"
+            )));
+        }
+        self.ensure_committable()
+    }
+}
+
+struct TransactionParticipant {
+    state: Arc<TransactionState>,
+    succeeded: bool,
+}
+
+impl Drop for TransactionParticipant {
+    fn drop(&mut self) {
+        if !self.succeeded {
+            self.state.rollback_only.store(true, Ordering::Release);
+        }
+        self.state.participants.fetch_sub(1, Ordering::AcqRel);
+    }
 }
 
 struct TransactionScope(DbContext);
 
 impl Drop for TransactionScope {
     fn drop(&mut self) {
+        if let Some(state) = &self.0.transaction {
+            state.closed.store(true, Ordering::Release);
+        }
         self.0.postgres().cancel();
     }
 }

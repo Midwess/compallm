@@ -62,7 +62,7 @@ impl Fixture {
         row.insert("status".to_string(), status.into());
         let organization = OrganizationSchema {
             id: 84,
-            name: "James's workspace".into(),
+            name: "james-workspace".into(),
             status: OrganizationStatusSchema::Active,
             created_by: 42,
             created_at: now,

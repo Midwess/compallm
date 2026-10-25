@@ -147,7 +147,7 @@ export async function main({ request = api, createClient = options => new OpenAI
     }) },
   ];
   const client = createClient({ apiKey: process.env.LLM_API_KEY, baseURL: baseURL.href, timeout: 90000, maxRetries: 1 });
-  await runAgent({ client, model: process.env.LLM_MODEL, messages, handlers });
+  await runAgent({ client, model: process.env.LLM_MODEL, messages, handlers, onProgress: message => console.log(message) });
   console.log('PR explanation published.');
 }
 

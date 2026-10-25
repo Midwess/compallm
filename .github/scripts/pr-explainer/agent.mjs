@@ -67,10 +67,12 @@ export function validateArgs(name, args) {
   }
 }
 
-export async function runAgent({ client, model, messages, handlers, maxRounds = 10, maxCalls = 40, maxCharacters = 240000 }) {
+export async function runAgent({ client, model, messages, handlers, maxRounds = 10, maxCalls = 40,
+  maxCharacters = 240000, onProgress = () => {} }) {
   let calls = 0;
   let published = false;
   for (let round = 0; round < maxRounds; round++) {
+    onProgress(`LLM round ${round + 1}/${maxRounds}`);
     if (JSON.stringify(messages).length > maxCharacters) throw new Error('LLM context budget exceeded; no further request sent.');
     const response = await client.chat.completions.create({ model, messages, tools, tool_choice: 'auto' });
     const choice = response.choices?.[0];
@@ -81,6 +83,7 @@ export async function runAgent({ client, model, messages, handlers, maxRounds = 
     // Preserve provider-returned fields (including reasoning fields) for compatible endpoints.
     messages.push(message);
     const requested = message.tool_calls ?? [];
+    onProgress(`Response: ${requested.length} tool calls (finish: ${choice.finish_reason})`);
     if (!requested.length) {
       messages.push({ role: 'user', content: 'Use the supplied tools to inspect the PR and publish_explanation to finish.' });
       continue;
@@ -93,12 +96,14 @@ export async function runAgent({ client, model, messages, handlers, maxRounds = 
         if (call.type !== 'function') throw new Error('Only function tools are available.');
         const args = JSON.parse(call.function.arguments);
         validateArgs(call.function.name, args);
+        onProgress(`Executing tool: ${call.function.name}`);
         if (published) return { ok: true, already_published: true };
         const result = await handlers[call.function.name](args);
         if (call.function.name === 'publish_explanation') published = true;
         return result;
       } catch (error) {
         if (error instanceof StalePullRequest) throw error;
+        onProgress(`Tool failed: ${call.function?.name ?? 'unknown'}: ${error instanceof SyntaxError ? 'Invalid JSON' : error.message}`);
         // Tool implementations expose only safe errors; never return raw CLI/provider errors.
         return { error: error instanceof SyntaxError ? 'Arguments must be valid JSON.' : error.message };
       }

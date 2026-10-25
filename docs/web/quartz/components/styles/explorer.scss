@@ -90,6 +90,33 @@
   }
 }
 
+.explorer.root-tree {
+  .root-tree-title {
+    font-size: 1rem;
+    margin: 0;
+  }
+
+  @media all and ($mobile) {
+    box-sizing: border-box;
+    order: initial;
+    width: 100%;
+    align-self: stretch;
+    margin: 1rem 0 0;
+
+    .explorer-content {
+      position: static;
+      width: auto;
+      height: auto;
+      max-height: none;
+      margin-top: 0.5rem;
+      padding: 0;
+      transform: none;
+      visibility: visible;
+      overflow-y: visible;
+    }
+  }
+}
+
 button.mobile-explorer,
 button.desktop-explorer {
   background-color: transparent;

@@ -1,14 +1,13 @@
 ---
 title: Organization plugins
-tags:
-  - features
+available: false
 ---
 
 # Organization plugins
 
 ## Status
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Release priorities and unresolved rules are tracked in [the roadmap](../roadmap.md) and [business decisions](../decisions.md).
+Planned scope for discussion. The examples describe intended behavior, not completed implementation. Release priorities and unresolved rules are tracked in [the roadmap](../../roadmap.md) and [business decisions](../../decisions.md).
 
 ## Scope
 
@@ -33,6 +32,6 @@ The system should restrict plugin invocation according to organization configura
 
 ## Related pages
 
-- [Data and privacy](data-privacy.md)
-- [Product overview](../product.md)
-- [Business decisions](../decisions.md)
+- [Data and privacy](../data-privacy.md)
+- [Product overview](../../product.md)
+- [Business decisions](../../decisions.md)

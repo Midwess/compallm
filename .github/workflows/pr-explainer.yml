@@ -1,6 +1,8 @@
 name: AI PR explanation
 
 on:
+  push:
+    branches: [ci/pr-explainer]
   pull_request_target:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review, edited]
@@ -25,7 +27,7 @@ jobs:
   explain:
     # Forks and dependency bots do not receive LLM credentials or consume API budget.
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' || github.event_name == 'workflow_dispatch' ||
       (!github.event.pull_request.draft &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.type != 'Bot')
@@ -38,7 +40,7 @@ jobs:
       - name: Check out trusted runner code only
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ github.event.pull_request.base.sha || github.event.repository.default_branch }}
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
           persist-credentials: false
           sparse-checkout-cone-mode: false
           sparse-checkout: |
@@ -70,6 +72,11 @@ jobs:
           key: pr-explainer-data-v1-${{ github.event.pull_request.number || inputs.pr_number }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             pr-explainer-data-v1-${{ github.event.pull_request.number || inputs.pr_number }}-
+
+      - name: Select bootstrap test PR
+        if: github.event_name == 'push'
+        shell: bash
+        run: node -e 'require("fs").writeFileSync(process.env.GITHUB_EVENT_PATH, JSON.stringify({inputs:{pr_number:"11"}}))'
 
       - name: Explain and comment on the PR
         run: node index.mjs

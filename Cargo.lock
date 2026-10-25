@@ -1317,7 +1317,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78c8292055d1c1df0cce5d180393dc8cce0abec0a7102adb6c7b1eef6016d60a"
 dependencies = [
  "generic-array",
- "rand_core 0.6.4",
  "typenum",
 ]
 
@@ -1795,9 +1794,6 @@ name = "email_address"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e079f19b08ca6239f47f8ba8509c11cf3ea30095831f7fed61441475edd8c449"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "encoding_rs"
@@ -2981,7 +2977,6 @@ version = "0.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1f111c8c41e7c61a49cd34e44c7619462967221a6443b0ec299e0ac30cfb9b1"
 dependencies = [
- "cc",
  "pkg-config",
  "vcpkg",
 ]
@@ -3055,7 +3050,6 @@ dependencies = [
  "heck 0.5.0",
  "http",
  "include_dir",
- "jsonwebtoken",
  "lettre",
  "loco-gen",
  "moka",
@@ -4842,7 +4836,6 @@ checksum = "699f4197115b8a7e7ff19c9a315a4bd6fffec26cc4626ef45ecaea389e081c6d"
 dependencies = [
  "futures-executor",
  "futures-util",
- "log",
  "once_cell",
  "parking_lot",
  "serial_test_derive",

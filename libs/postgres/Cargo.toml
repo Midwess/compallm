@@ -7,11 +7,11 @@ description = "PostgreSQL connection, SeaORM schema and Loco migrations for Comp
 publish = false
 
 [dependencies]
-anyhow.workspace = true
+anyhow = { workspace = true, features = ["std"] }
 async-trait.workspace = true
-compallm-core = { path = "../core" }
+compallm-core.workspace = true
 axum.workspace = true
-hero.workspace = true
-loco-rs.workspace = true
-sea-orm.workspace = true
-sea-orm-migration.workspace = true
+hero = { workspace = true, features = ["distributed-id"] }
+loco-rs = { workspace = true, features = ["with-db"] }
+sea-orm = { workspace = true, features = ["sqlx-postgres", "runtime-tokio-rustls", "macros"] }
+sea-orm-migration = { workspace = true, features = ["sqlx-postgres", "runtime-tokio-rustls"] }

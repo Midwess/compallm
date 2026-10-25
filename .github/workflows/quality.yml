@@ -1,0 +1,130 @@
+name: PR quality
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    name: Rust formatting
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  rust:
+    name: Rust checks and tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      # Only the disposable CI service is migrated by the API tests.
+      DATABASE_URL: postgres://root:shh@127.0.0.1:5432/compallm
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: shh
+          POSTGRES_DB: compallm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U root -d compallm"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          components: clippy
+      - name: Restore Cargo dependencies and compiled dependency artifacts
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          # Main builds seed the cache used by PRs. PR reruns can also reuse
+          # their own cache, including dependencies built before a failed test.
+          cache-on-failure: true
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Test the workspace, including API integration tests
+        run: cargo test --workspace --locked
+      - name: Check the development frontend proxy
+        run: cargo check -p compallm-api --features frontend-dev --locked
+
+  portal:
+    name: Frontend checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: portal
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: portal/package-lock.json
+      - run: npm ci
+      - run: npm run lint -- --deny-warnings
+      - name: Typecheck
+        run: npm exec -- tsc -b
+      - name: Build the frontend
+        run: npm exec -- vite build
+
+  docs:
+    name: Documentation checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: docs/web
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: docs/web/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  quality:
+    name: Quality gate
+    if: ${{ always() }}
+    needs: [format, rust, portal, docs]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      FORMAT_RESULT: ${{ needs.format.result }}
+      RUST_RESULT: ${{ needs.rust.result }}
+      PORTAL_RESULT: ${{ needs.portal.result }}
+      DOCS_RESULT: ${{ needs.docs.result }}
+    steps:
+      - name: Require every quality check to pass
+        run: |
+          test "$FORMAT_RESULT" = success
+          test "$RUST_RESULT" = success
+          test "$PORTAL_RESULT" = success
+          test "$DOCS_RESULT" = success

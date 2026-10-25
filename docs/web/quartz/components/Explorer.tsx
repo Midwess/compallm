@@ -1,33 +1,39 @@
-import { QuartzComponent, QuartzComponentConstructor, QuartzComponentProps } from "./types"
-import style from "./styles/explorer.scss"
+import {
+  QuartzComponent,
+  QuartzComponentConstructor,
+  QuartzComponentProps,
+} from "./types";
+import style from "./styles/explorer.scss";
 
 // @ts-ignore
-import script from "./scripts/explorer.inline"
-import { classNames } from "../util/lang"
-import { i18n } from "../i18n"
-import { FileTrieNode } from "../util/fileTrie"
-import OverflowListFactory from "./OverflowList"
-import { concatenateResources } from "../util/resources"
+import script from "./scripts/explorer.inline";
+import { classNames } from "../util/lang";
+import { i18n } from "../i18n";
+import { FileTrieNode } from "../util/fileTrie";
+import OverflowListFactory from "./OverflowList";
+import { concatenateResources } from "../util/resources";
 
-type OrderEntries = "sort" | "filter" | "map"
+type OrderEntries = "sort" | "filter" | "map";
 
 export interface Options {
-  title?: string
-  folderDefaultState: "collapsed" | "open"
-  folderClickBehavior: "collapse" | "link"
-  useSavedState: boolean
-  sortFn: (a: FileTrieNode, b: FileTrieNode) => number
-  filterFn: (node: FileTrieNode) => boolean
-  mapFn: (node: FileTrieNode) => void
-  order: OrderEntries[]
+  title?: string;
+  alwaysVisible: boolean;
+  folderDefaultState: "collapsed" | "open";
+  folderClickBehavior: "collapse" | "link";
+  useSavedState: boolean;
+  sortFn: (a: FileTrieNode, b: FileTrieNode) => number;
+  filterFn: (node: FileTrieNode) => boolean;
+  mapFn: (node: FileTrieNode) => void;
+  order: OrderEntries[];
 }
 
 const defaultOptions: Options = {
+  alwaysVisible: false,
   folderDefaultState: "collapsed",
   folderClickBehavior: "link",
   useSavedState: true,
   mapFn: (node) => {
-    return node
+    return node;
   },
   sortFn: (a, b) => {
     // Sort order: folders first, then files. Sort folders and files alphabeticall
@@ -37,35 +43,42 @@ const defaultOptions: Options = {
       return a.displayName.localeCompare(b.displayName, undefined, {
         numeric: true,
         sensitivity: "base",
-      })
+      });
     }
 
     if (!a.isFolder && b.isFolder) {
-      return 1
+      return 1;
     } else {
-      return -1
+      return -1;
     }
   },
   filterFn: (node) => node.slugSegment !== "tags",
   order: ["filter", "map", "sort"],
-}
+};
 
 export type FolderState = {
-  path: string
-  collapsed: boolean
-}
+  path: string;
+  collapsed: boolean;
+};
 
-let numExplorers = 0
+let numExplorers = 0;
 export default ((userOpts?: Partial<Options>) => {
-  const opts: Options = { ...defaultOptions, ...userOpts }
-  const { OverflowList, overflowListAfterDOMLoaded } = OverflowListFactory()
+  const opts: Options = { ...defaultOptions, ...userOpts };
+  const { OverflowList, overflowListAfterDOMLoaded } = OverflowListFactory();
 
-  const Explorer: QuartzComponent = ({ cfg, displayClass }: QuartzComponentProps) => {
-    const id = `explorer-${numExplorers++}`
+  const Explorer: QuartzComponent = ({
+    cfg,
+    displayClass,
+  }: QuartzComponentProps) => {
+    const id = `explorer-${numExplorers++}`;
 
     return (
       <div
-        class={classNames(displayClass, "explorer")}
+        class={classNames(
+          displayClass,
+          "explorer",
+          ...(opts.alwaysVisible ? ["root-tree"] : []),
+        )}
         data-behavior={opts.folderClickBehavior}
         data-collapsed={opts.folderDefaultState}
         data-savestate={opts.useSavedState}
@@ -76,50 +89,65 @@ export default ((userOpts?: Partial<Options>) => {
           mapFn: opts.mapFn.toString(),
         })}
       >
-        <button
-          type="button"
-          class="explorer-toggle mobile-explorer hide-until-loaded"
-          data-mobile={true}
-          aria-controls={id}
+        {opts.alwaysVisible ? (
+          <h2 class="root-tree-title">
+            {opts.title ?? i18n(cfg.locale).components.explorer.title}
+          </h2>
+        ) : (
+          <>
+            <button
+              type="button"
+              class="explorer-toggle mobile-explorer hide-until-loaded"
+              data-mobile={true}
+              aria-controls={id}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="lucide-menu"
+              >
+                <line x1="4" x2="20" y1="12" y2="12" />
+                <line x1="4" x2="20" y1="6" y2="6" />
+                <line x1="4" x2="20" y1="18" y2="18" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="title-button explorer-toggle desktop-explorer"
+              data-mobile={false}
+              aria-expanded={true}
+            >
+              <h2>
+                {opts.title ?? i18n(cfg.locale).components.explorer.title}
+              </h2>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="5 8 14 8"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="fold"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </>
+        )}
+        <div
+          id={id}
+          class="explorer-content"
+          aria-expanded={opts.alwaysVisible}
+          role="group"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="lucide-menu"
-          >
-            <line x1="4" x2="20" y1="12" y2="12" />
-            <line x1="4" x2="20" y1="6" y2="6" />
-            <line x1="4" x2="20" y1="18" y2="18" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          class="title-button explorer-toggle desktop-explorer"
-          data-mobile={false}
-          aria-expanded={true}
-        >
-          <h2>{opts.title ?? i18n(cfg.locale).components.explorer.title}</h2>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
-            viewBox="5 8 14 8"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="fold"
-          >
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </button>
-        <div id={id} class="explorer-content" aria-expanded={false} role="group">
           <OverflowList class="explorer-ul" />
         </div>
         <template id="template-file">
@@ -156,10 +184,13 @@ export default ((userOpts?: Partial<Options>) => {
           </li>
         </template>
       </div>
-    )
-  }
+    );
+  };
 
-  Explorer.css = style
-  Explorer.afterDOMLoaded = concatenateResources(script, overflowListAfterDOMLoaded)
-  return Explorer
-}) satisfies QuartzComponentConstructor
+  Explorer.css = style;
+  Explorer.afterDOMLoaded = concatenateResources(
+    script,
+    overflowListAfterDOMLoaded,
+  );
+  return Explorer;
+}) satisfies QuartzComponentConstructor;

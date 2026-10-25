@@ -1,7 +1,6 @@
 ---
 title: LLM Router
-tags:
-  - features
+available: false
 ---
 
 # LLM Router

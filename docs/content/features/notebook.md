@@ -1,7 +1,6 @@
 ---
 title: Notebook
-tags:
-  - features
+available: false
 ---
 
 # Notebook

@@ -28,4 +28,4 @@ Compose starts the backing services, including PostgreSQL on port `7887`. Open h
 
 ## License
 
-Compallm is licensed under Apache 2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE). The vendored Quartz source retains its [MIT license](docs/web/LICENSE.txt).
+Compallm is source available under the [Elastic License 2.0](LICENSE); see [NOTICE](NOTICE) for attribution and third-party licensing information. The license permits use, modification, and redistribution but prohibits providing Compallm to third parties as a hosted or managed service that exposes a substantial set of its features. The vendored Quartz source retains its [MIT license](docs/web/LICENSE.txt).

@@ -24,6 +24,10 @@ export async function validateExplanation(body) {
   if (blocks.length !== openings.length || blocks.length > 1) {
     throw new Error('Use at most one correctly closed Mermaid block.');
   }
+  const prose = body.replace(/^```mermaid\s*\n[\s\S]*?^```\s*$/gm, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+  const words = prose.trim().split(/\s+/).length;
+  if (words > 350) throw new Error(`Explanation has ${words} words. Use at most 350 outside the diagram; shorten the bullets and coverage notes.`);
   for (const [, source] of blocks) {
     if (!/^\s*(flowchart\s+(TD|TB|LR|RL|BT)|sequenceDiagram)\b/.test(source)
       || /%%|\bclick\b|https?:|\binit\b|^\s*---/im.test(source)

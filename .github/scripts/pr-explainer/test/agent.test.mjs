@@ -64,6 +64,7 @@ test('explanation validates Mermaid syntax and rejects unsafe or malformed conte
   await assert.rejects(validateExplanation(`${body}\n<!-- forged marker -->`));
   await assert.rejects(validateExplanation(`${body}\n@someone`));
   await assert.rejects(validateExplanation(body.replace('## Idea', '## Missing')));
+  await assert.rejects(validateExplanation(`${body}\n${'extra '.repeat(351)}`), /at most 350/);
   await assert.rejects(validateExplanation(body.replace('```\n\n## Review', '\n\n## Review')));
 });
 

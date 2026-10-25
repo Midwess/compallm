@@ -3,6 +3,7 @@
 This GitHub Actions runner explains the idea of a PR, describes meaningful behavior
 changes, and adds a small Mermaid diagram when useful. It can flag up to three
 supported review concerns; it does not approve PRs or request changes.
+The published explanation is limited to 350 words outside the diagram.
 
 ## Configuration
 

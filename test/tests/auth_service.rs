@@ -11,7 +11,7 @@ use compallm_core::{
     },
     persistent::{
         DbContext,
-        user::{UserPersistentError, UserRepository},
+        user::{UserRepository, UserRepositoryError},
     },
     user::{User, UserStatus},
 };
@@ -33,7 +33,7 @@ struct Repository(Arc<Mutex<State>>, DbContext);
 
 #[async_trait::async_trait]
 impl UserRepository for Repository {
-    async fn find_by_email(&self, email: &str) -> Result<Option<User>, UserPersistentError> {
+    async fn find_by_email(&self, email: &str) -> Result<Option<User>, UserRepositoryError> {
         let mut state = self.0.lock().unwrap();
         state
             .contexts
@@ -41,7 +41,7 @@ impl UserRepository for Repository {
         Ok(state.user.clone().filter(|u| u.email == email))
     }
 
-    async fn find_by_id(&self, id: u64) -> Result<Option<User>, UserPersistentError> {
+    async fn find_by_id(&self, id: u64) -> Result<Option<User>, UserRepositoryError> {
         let mut state = self.0.lock().unwrap();
         state
             .contexts
@@ -49,13 +49,13 @@ impl UserRepository for Repository {
         Ok(state.user.clone().filter(|u| u.id == id))
     }
 
-    async fn create(&self, user: User) -> Result<User, UserPersistentError> {
+    async fn create(&self, user: User) -> Result<User, UserRepositoryError> {
         let mut state = self.0.lock().unwrap();
         state
             .contexts
             .push(PostgresConnection::from_context(&DbContext::current()?)? as *const _ as usize);
         if state.fail_create {
-            return Err(UserPersistentError::database(DbErr::Custom(
+            return Err(UserRepositoryError::database(DbErr::Custom(
                 "test storage failure".into(),
             )));
         }
@@ -189,7 +189,7 @@ async fn duplicate_signup_and_disabled_signin_are_rejected() {
             .signup(&challenge.access_token, &challenge.code, "James")
             .await,
         Err(AuthError::Persistence(
-            UserPersistentError::EmailAlreadyExists
+            UserRepositoryError::EmailAlreadyExists
         ))
     ));
     assert!(fixture.repo.0.lock().unwrap().created.is_none());
@@ -216,7 +216,7 @@ async fn failed_repository_operation_rolls_back_and_returns_no_tokens() {
             .service()
             .signup(&challenge.access_token, &challenge.code, "James")
             .await,
-        Err(AuthError::Persistence(UserPersistentError::Database(_)))
+        Err(AuthError::Persistence(UserRepositoryError::Database(_)))
     ));
     fixture.assert_transaction("ROLLBACK");
 }

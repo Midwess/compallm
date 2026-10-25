@@ -1,4 +1,4 @@
-use compallm_core::persistent::user::UserPersistentError;
+use compallm_core::persistent::user::UserRepositoryError;
 use compallm_core::persistent::{ConnectionError, DbContext};
 use compallm_postgres::postgres_connection::PostgresConnection;
 use sea_orm::{ConnectionTrait, DbBackend, MockDatabase, Statement, Transaction};
@@ -79,7 +79,7 @@ async fn repositories_execute_queries_on_the_same_transaction() {
                 .query_all_raw(Statement::from_string(DbBackend::Postgres, "SELECT 2"))
                 .await
                 .map_err(ConnectionError::database)?;
-            Err::<(), _>(UserPersistentError::EmailAlreadyExists)
+            Err::<(), _>(UserRepositoryError::EmailAlreadyExists)
         })
         .await
         .unwrap_err();

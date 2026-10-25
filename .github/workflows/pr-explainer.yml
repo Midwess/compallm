@@ -73,13 +73,10 @@ jobs:
           restore-keys: |
             pr-explainer-data-v1-${{ github.event.pull_request.number || inputs.pr_number }}-
 
-      - name: Select bootstrap test PR
-        if: github.event_name == 'push'
-        shell: bash
-        run: node -e 'require("fs").writeFileSync(process.env.GITHUB_EVENT_PATH, JSON.stringify({inputs:{pr_number:"11"}}))'
-
       - name: Explain and comment on the PR
-        run: node index.mjs
+        run: |
+          node -e 'require("fs").writeFileSync("/tmp/explainer-test-event.json", JSON.stringify({inputs:{pr_number:"11"}}))'
+          GITHUB_EVENT_PATH=/tmp/explainer-test-event.json node index.mjs
         env:
           GH_TOKEN: ${{ github.token }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}

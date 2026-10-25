@@ -1,14 +1,15 @@
 use compallm_core::persistent::{DbContext, PersistenceError};
-use sea_orm::{ConnectionTrait, DbBackend, MockDatabase};
+use compallm_postgres::postgres_connection::PostgresConnection;
+use sea_orm::{DbBackend, MockDatabase};
 use std::sync::Arc;
 
 struct Fixture;
 
 impl Fixture {
     fn connection() -> DbContext {
-        DbContext::new(Arc::new(
+        DbContext::new(Arc::new(PostgresConnection::new(Arc::new(
             MockDatabase::new(DbBackend::Postgres).into_connection(),
-        ))
+        ))))
     }
 }
 
@@ -17,7 +18,7 @@ async fn scope_shares_context_and_restores_outer_after_transaction() {
     let connection = Fixture::connection();
     assert!(matches!(
         DbContext::current(),
-        Err(PersistenceError::MissingConnection)
+        Err(PersistenceError::Database(_))
     ));
     connection
         .scope(async {
@@ -40,7 +41,7 @@ async fn scope_shares_context_and_restores_outer_after_transaction() {
         .await;
     assert!(matches!(
         DbContext::current(),
-        Err(PersistenceError::MissingConnection)
+        Err(PersistenceError::Database(_))
     ));
 }
 
@@ -54,10 +55,7 @@ async fn concurrent_scopes_are_isolated_and_spawn_does_not_inherit() {
             assert!(DbContext::current().unwrap().same_context(&one));
             assert!(
                 tokio::spawn(async {
-                    matches!(
-                        DbContext::current(),
-                        Err(PersistenceError::MissingConnection)
-                    )
+                    matches!(DbContext::current(), Err(PersistenceError::Database(_)))
                 })
                 .await
                 .unwrap()
@@ -90,24 +88,18 @@ async fn completed_transaction_context_cannot_query_or_start_another_transaction
         .transaction(async { DbContext::current() })
         .await
         .unwrap();
-    assert!(
-        escaped
-            .postgres()
-            .execute_unprepared("SELECT 1")
-            .await
-            .is_err()
-    );
+    assert!(PostgresConnection::from_context(&escaped).is_err());
     escaped
         .scope(async {
             assert!(matches!(
                 DbContext::current(),
-                Err(PersistenceError::ClosedConnection)
+                Err(PersistenceError::Database(_))
             ));
             assert!(matches!(
                 connection
                     .transaction(async { Ok::<_, PersistenceError>(()) })
                     .await,
-                Err(PersistenceError::ClosedConnection)
+                Err(PersistenceError::Database(_))
             ));
         })
         .await;

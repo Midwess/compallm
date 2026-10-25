@@ -2,17 +2,21 @@ use compallm_core::persistent::PersistenceError;
 use std::{error::Error, io};
 
 #[test]
-fn general_error_preserves_message_and_source() {
+fn database_error_preserves_context_and_source() {
     let source = anyhow::Error::new(io::Error::other("underlying failure"));
-    let error = PersistenceError::general("could not load user", source);
-    assert_eq!(error.to_string(), "could not load user");
-    assert!(error.source().unwrap().is::<io::Error>());
+    let error = PersistenceError::database(source.context("could not load user"));
+    assert_eq!(error.to_string(), "database operation failed");
+    let PersistenceError::Database(source) = error else {
+        panic!("expected database error")
+    };
+    assert_eq!(source.to_string(), "could not load user");
+    assert!(source.downcast_ref::<io::Error>().is_some());
 }
 
 #[test]
-fn anyhow_errors_convert_to_general_persistence_errors() {
+fn anyhow_errors_convert_to_database_errors() {
     let error: PersistenceError = anyhow::anyhow!("repository failure").into();
-    assert!(matches!(error, PersistenceError::General { .. }));
+    assert!(matches!(error, PersistenceError::Database(_)));
     assert_eq!(error.source().unwrap().to_string(), "repository failure");
 }
 

@@ -1,11 +1,12 @@
 use compallm_core::persistent::{DbContext, PersistenceError};
+use compallm_postgres::postgres_connection::PostgresConnection;
 use sea_orm::{ConnectionTrait, DbBackend, MockDatabase, Statement, Transaction};
 use std::sync::Arc;
 
 #[tokio::test]
 async fn nested_transaction_uses_savepoint_and_restores_outer() {
     let db = Arc::new(MockDatabase::new(DbBackend::Postgres).into_connection());
-    let connection = DbContext::new(db.clone());
+    let connection = DbContext::new(Arc::new(PostgresConnection::new(db.clone())));
     connection
         .transaction(async {
             let outer = DbContext::current()?;
@@ -35,7 +36,7 @@ async fn nested_transaction_uses_savepoint_and_restores_outer() {
 #[tokio::test]
 async fn cancellation_rolls_back_and_closes_escaped_context() {
     let db = Arc::new(MockDatabase::new(DbBackend::Postgres).into_connection());
-    let connection = DbContext::new(db.clone());
+    let connection = DbContext::new(Arc::new(PostgresConnection::new(db.clone())));
     let mut escaped = None;
     {
         let transaction = connection.transaction(async {
@@ -48,14 +49,7 @@ async fn cancellation_rolls_back_and_closes_escaped_context() {
             _ = std::future::ready(()) => {}
         }
     }
-    assert!(
-        escaped
-            .unwrap()
-            .postgres()
-            .execute_unprepared("SELECT 1")
-            .await
-            .is_err()
-    );
+    assert!(PostgresConnection::from_context(&escaped.unwrap()).is_err());
     drop(connection);
     assert_eq!(
         Arc::try_unwrap(db).unwrap().into_transaction_log(),
@@ -73,16 +67,14 @@ async fn repositories_execute_queries_on_the_same_transaction() {
             .append_query_results([Vec::<sea_orm::MockRow>::new(), Vec::new()])
             .into_connection(),
     );
-    let connection = DbContext::new(db.clone());
+    let connection = DbContext::new(Arc::new(PostgresConnection::new(db.clone())));
     connection
         .transaction(async {
-            DbContext::current()?
-                .postgres()
+            PostgresConnection::from_context(&DbContext::current()?)?
                 .query_all_raw(Statement::from_string(DbBackend::Postgres, "SELECT 1"))
                 .await
                 .map_err(PersistenceError::database)?;
-            DbContext::current()?
-                .postgres()
+            PostgresConnection::from_context(&DbContext::current()?)?
                 .query_all_raw(Statement::from_string(DbBackend::Postgres, "SELECT 2"))
                 .await
                 .map_err(PersistenceError::database)?;

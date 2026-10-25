@@ -1046,7 +1046,6 @@ dependencies = [
  "hkdf 0.12.4",
  "midwess-hero",
  "rand 0.9.5",
- "sea-orm",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -1059,7 +1058,10 @@ dependencies = [
 name = "compallm-postgres"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "async-trait",
  "axum",
+ "compallm-core",
  "loco-rs",
  "midwess-hero",
  "sea-orm",

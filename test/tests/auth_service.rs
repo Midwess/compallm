@@ -1,3 +1,4 @@
+use compallm_postgres::postgres_connection::PostgresConnection;
 use std::{
     sync::{Arc, Mutex},
     time::Duration,
@@ -33,7 +34,7 @@ impl UserRepository for Repository {
         let mut state = self.0.lock().unwrap();
         state
             .contexts
-            .push(DbContext::current()?.postgres() as *const _ as usize);
+            .push(PostgresConnection::from_context(&DbContext::current()?)? as *const _ as usize);
         Ok(state.user.clone().filter(|u| u.email == email))
     }
 
@@ -41,7 +42,7 @@ impl UserRepository for Repository {
         let mut state = self.0.lock().unwrap();
         state
             .contexts
-            .push(DbContext::current()?.postgres() as *const _ as usize);
+            .push(PostgresConnection::from_context(&DbContext::current()?)? as *const _ as usize);
         Ok(state.user.clone().filter(|u| u.id == id))
     }
 
@@ -49,7 +50,7 @@ impl UserRepository for Repository {
         let mut state = self.0.lock().unwrap();
         state
             .contexts
-            .push(DbContext::current()?.postgres() as *const _ as usize);
+            .push(PostgresConnection::from_context(&DbContext::current()?)? as *const _ as usize);
         state.created = Some((user.email.clone(), user.display_name.clone()));
         Ok(user)
     }
@@ -58,7 +59,7 @@ impl UserRepository for Repository {
         let mut state = self.0.lock().unwrap();
         state
             .contexts
-            .push(DbContext::current()?.postgres() as *const _ as usize);
+            .push(PostgresConnection::from_context(&DbContext::current()?)? as *const _ as usize);
         if state.fail_record {
             return Err(PersistenceError::database(DbErr::Custom(
                 "test storage failure".into(),
@@ -86,7 +87,7 @@ impl Fixture {
                 user,
                 ..State::default()
             })),
-            DbContext::new(db.clone()),
+            DbContext::new(Arc::new(PostgresConnection::new(db.clone()))),
         );
         Self { db, repo }
     }

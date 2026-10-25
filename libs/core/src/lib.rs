@@ -4,5 +4,5 @@
 //! email delivery, and persisted refresh-session handling remain separate work.
 
 pub mod auth;
-pub mod entity;
 pub mod persistent;
+pub mod user;

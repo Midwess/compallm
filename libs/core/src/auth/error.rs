@@ -19,7 +19,9 @@ pub enum AuthError {
     #[error("display name must not be empty")]
     InvalidDisplayName,
     #[error(transparent)]
-    Persistence(#[from] crate::persistent::error::PersistenceError),
+    Persistence(#[from] crate::persistent::user::UserPersistentError),
+    #[error(transparent)]
+    Connection(#[from] crate::persistent::connection::ConnectionError),
     #[error("ID generation failed")]
     IdGeneration(#[from] hero::distributed_id::generator::DistributedIdError),
     #[error("invalid access token")]

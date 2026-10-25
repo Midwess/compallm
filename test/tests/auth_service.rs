@@ -9,8 +9,11 @@ use compallm_core::{
         AccessToken, AuthError, AuthService, EmailOtpChallenge, RefreshToken, TokenLifetimes,
         UserAccessToken, UserTokens,
     },
-    entity::user::{User, UserStatus},
-    persistent::{DbContext, PersistenceError, user::UserRepository},
+    persistent::{
+        DbContext,
+        user::{UserPersistentError, UserRepository},
+    },
+    user::{User, UserStatus},
 };
 use sea_orm::{DatabaseConnection, DbBackend, DbErr, MockDatabase, Statement, Transaction};
 
@@ -22,7 +25,7 @@ struct State {
     user: Option<User>,
     contexts: Vec<usize>,
     created: Option<(String, String)>,
-    fail_record: bool,
+    fail_create: bool,
 }
 
 #[derive(Clone)]
@@ -30,7 +33,7 @@ struct Repository(Arc<Mutex<State>>, DbContext);
 
 #[async_trait::async_trait]
 impl UserRepository for Repository {
-    async fn find_by_email(&self, email: &str) -> Result<Option<User>, PersistenceError> {
+    async fn find_by_email(&self, email: &str) -> Result<Option<User>, UserPersistentError> {
         let mut state = self.0.lock().unwrap();
         state
             .contexts
@@ -38,7 +41,7 @@ impl UserRepository for Repository {
         Ok(state.user.clone().filter(|u| u.email == email))
     }
 
-    async fn find_by_id(&self, id: u64) -> Result<Option<User>, PersistenceError> {
+    async fn find_by_id(&self, id: u64) -> Result<Option<User>, UserPersistentError> {
         let mut state = self.0.lock().unwrap();
         state
             .contexts
@@ -46,26 +49,18 @@ impl UserRepository for Repository {
         Ok(state.user.clone().filter(|u| u.id == id))
     }
 
-    async fn create(&self, user: User) -> Result<User, PersistenceError> {
+    async fn create(&self, user: User) -> Result<User, UserPersistentError> {
         let mut state = self.0.lock().unwrap();
         state
             .contexts
             .push(PostgresConnection::from_context(&DbContext::current()?)? as *const _ as usize);
-        state.created = Some((user.email.clone(), user.display_name.clone()));
-        Ok(user)
-    }
-
-    async fn record_signin(&self, _id: u64, _at: u64) -> Result<(), PersistenceError> {
-        let mut state = self.0.lock().unwrap();
-        state
-            .contexts
-            .push(PostgresConnection::from_context(&DbContext::current()?)? as *const _ as usize);
-        if state.fail_record {
-            return Err(PersistenceError::database(DbErr::Custom(
+        if state.fail_create {
+            return Err(UserPersistentError::database(DbErr::Custom(
                 "test storage failure".into(),
             )));
         }
-        Ok(())
+        state.created = Some((user.email.clone(), user.display_name.clone()));
+        Ok(user)
     }
 }
 
@@ -130,7 +125,7 @@ impl Fixture {
 }
 
 #[tokio::test]
-async fn signin_checks_user_records_login_and_commits() {
+async fn signin_checks_user_and_commits() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
     let issued = fixture
@@ -146,7 +141,7 @@ async fn signin_checks_user_records_login_and_commits() {
         1
     );
     let contexts = fixture.repo.0.lock().unwrap().contexts.clone();
-    assert_eq!(contexts.len(), 2);
+    assert_eq!(contexts.len(), 1);
     assert!(contexts.iter().all(|context| *context == contexts[0]));
     fixture.assert_transaction("COMMIT");
 }
@@ -173,7 +168,7 @@ async fn signup_requires_verified_email_and_creates_on_one_transaction() {
             state.created,
             Some(("james@midwess.com".into(), "James".into()))
         );
-        assert_eq!(state.contexts.len(), 3);
+        assert_eq!(state.contexts.len(), 2);
         assert!(
             state
                 .contexts
@@ -193,7 +188,9 @@ async fn duplicate_signup_and_disabled_signin_are_rejected() {
             .service()
             .signup(&challenge.access_token, &challenge.code, "James")
             .await,
-        Err(AuthError::Persistence(PersistenceError::EmailAlreadyExists))
+        Err(AuthError::Persistence(
+            UserPersistentError::EmailAlreadyExists
+        ))
     ));
     assert!(fixture.repo.0.lock().unwrap().created.is_none());
     fixture.assert_transaction("ROLLBACK");
@@ -212,14 +209,14 @@ async fn duplicate_signup_and_disabled_signin_are_rejected() {
 #[tokio::test]
 async fn failed_repository_operation_rolls_back_and_returns_no_tokens() {
     let fixture = Fixture::new(None);
-    fixture.repo.0.lock().unwrap().fail_record = true;
+    fixture.repo.0.lock().unwrap().fail_create = true;
     let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
     assert!(matches!(
         fixture
             .service()
             .signup(&challenge.access_token, &challenge.code, "James")
             .await,
-        Err(AuthError::Persistence(PersistenceError::Database(_)))
+        Err(AuthError::Persistence(UserPersistentError::Database(_)))
     ));
     fixture.assert_transaction("ROLLBACK");
 }

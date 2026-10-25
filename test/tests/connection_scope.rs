@@ -1,4 +1,4 @@
-use compallm_core::persistent::{DbContext, PersistenceError};
+use compallm_core::persistent::{ConnectionError, DbContext};
 use compallm_postgres::postgres_connection::PostgresConnection;
 use sea_orm::{DbBackend, MockDatabase};
 use std::sync::Arc;
@@ -18,7 +18,7 @@ async fn scope_shares_context_and_restores_outer_after_transaction() {
     let connection = Fixture::connection();
     assert!(matches!(
         DbContext::current(),
-        Err(PersistenceError::Database(_))
+        Err(ConnectionError::Database(_))
     ));
     connection
         .scope(async {
@@ -32,7 +32,7 @@ async fn scope_shares_context_and_restores_outer_after_transaction() {
                             assert!(DbContext::current().unwrap().same_context(&transaction));
                         })
                         .await;
-                    Ok::<_, PersistenceError>(())
+                    Ok::<_, ConnectionError>(())
                 })
                 .await
                 .unwrap();
@@ -41,7 +41,7 @@ async fn scope_shares_context_and_restores_outer_after_transaction() {
         .await;
     assert!(matches!(
         DbContext::current(),
-        Err(PersistenceError::Database(_))
+        Err(ConnectionError::Database(_))
     ));
 }
 
@@ -55,7 +55,7 @@ async fn concurrent_scopes_are_isolated_and_spawn_does_not_inherit() {
             assert!(DbContext::current().unwrap().same_context(&one));
             assert!(
                 tokio::spawn(async {
-                    matches!(DbContext::current(), Err(PersistenceError::Database(_)))
+                    matches!(DbContext::current(), Err(ConnectionError::Database(_)))
                 })
                 .await
                 .unwrap()
@@ -75,7 +75,7 @@ async fn transaction_can_borrow_and_return_local_data_without_move() {
     let borrowed = compallm_core::transaction!(connection, {
         tokio::task::yield_now().await;
         assert!(!DbContext::current()?.same_context(&connection));
-        Ok::<_, PersistenceError>(email.as_str())
+        Ok::<_, ConnectionError>(email.as_str())
     })
     .unwrap();
     assert_eq!(borrowed, email.as_str());
@@ -93,13 +93,13 @@ async fn completed_transaction_context_cannot_query_or_start_another_transaction
         .scope(async {
             assert!(matches!(
                 DbContext::current(),
-                Err(PersistenceError::Database(_))
+                Err(ConnectionError::Database(_))
             ));
             assert!(matches!(
                 connection
-                    .transaction(async { Ok::<_, PersistenceError>(()) })
+                    .transaction(async { Ok::<_, ConnectionError>(()) })
                     .await,
-                Err(PersistenceError::Database(_))
+                Err(ConnectionError::Database(_))
             ));
         })
         .await;

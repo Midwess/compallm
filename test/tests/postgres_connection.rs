@@ -1,4 +1,5 @@
-use compallm_core::persistent::{DbContext, PersistenceError};
+use compallm_core::persistent::user::UserPersistentError;
+use compallm_core::persistent::{ConnectionError, DbContext};
 use compallm_postgres::postgres_connection::PostgresConnection;
 use sea_orm::{ConnectionTrait, DbBackend, MockDatabase, Statement, Transaction};
 use std::sync::Arc;
@@ -13,11 +14,11 @@ async fn nested_transaction_uses_savepoint_and_restores_outer() {
             connection
                 .transaction(async {
                     assert!(!DbContext::current()?.same_context(&outer));
-                    Ok::<_, PersistenceError>(())
+                    Ok::<_, ConnectionError>(())
                 })
                 .await?;
             assert!(DbContext::current()?.same_context(&outer));
-            Ok::<_, PersistenceError>(())
+            Ok::<_, ConnectionError>(())
         })
         .await
         .unwrap();
@@ -41,7 +42,7 @@ async fn cancellation_rolls_back_and_closes_escaped_context() {
     {
         let transaction = connection.transaction(async {
             escaped = Some(DbContext::current()?);
-            std::future::pending::<Result<(), PersistenceError>>().await
+            std::future::pending::<Result<(), ConnectionError>>().await
         });
         tokio::pin!(transaction);
         tokio::select! { biased;
@@ -73,12 +74,12 @@ async fn repositories_execute_queries_on_the_same_transaction() {
             PostgresConnection::from_context(&DbContext::current()?)?
                 .query_all_raw(Statement::from_string(DbBackend::Postgres, "SELECT 1"))
                 .await
-                .map_err(PersistenceError::database)?;
+                .map_err(ConnectionError::database)?;
             PostgresConnection::from_context(&DbContext::current()?)?
                 .query_all_raw(Statement::from_string(DbBackend::Postgres, "SELECT 2"))
                 .await
-                .map_err(PersistenceError::database)?;
-            Err::<(), _>(PersistenceError::EmailAlreadyExists)
+                .map_err(ConnectionError::database)?;
+            Err::<(), _>(UserPersistentError::EmailAlreadyExists)
         })
         .await
         .unwrap_err();

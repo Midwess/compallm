@@ -4,7 +4,7 @@
 use anyhow::Context;
 use std::{future::Future, sync::Arc};
 
-use super::{Connection, PersistenceError};
+use super::{Connection, ConnectionError};
 
 tokio::task_local! {
     static CURRENT: DbContext;
@@ -15,12 +15,12 @@ tokio::task_local! {
 /// `return` inside the body exits the transaction body, not the enclosing function.
 ///
 /// ```
-/// # use compallm_core::{transaction, persistent::{DbContext, PersistenceError}};
-/// # async fn example(db: &DbContext) -> Result<(), PersistenceError> {
+/// # use compallm_core::{transaction, persistent::{DbContext, ConnectionError}};
+/// # async fn example(db: &DbContext) -> Result<(), ConnectionError> {
 /// let email = String::from("james@midwess.com");
 /// let borrowed = transaction!(db, {
 ///     let _context = DbContext::current()?;
-///     Ok::<_, PersistenceError>(email.as_str())
+///     Ok::<_, ConnectionError>(email.as_str())
 /// })?;
 /// assert_eq!(borrowed, email.as_str());
 /// # Ok(())
@@ -45,7 +45,7 @@ impl DbContext {
         Self { postgres }
     }
 
-    pub fn current() -> Result<Self, PersistenceError> {
+    pub fn current() -> Result<Self, ConnectionError> {
         let context = CURRENT
             .try_with(Clone::clone)
             .context("no database connection scope is active")?;
@@ -75,7 +75,7 @@ impl DbContext {
     pub async fn transaction<F, T, E>(&self, operation: F) -> Result<T, E>
     where
         F: Future<Output = Result<T, E>>,
-        E: From<PersistenceError> + std::fmt::Display,
+        E: From<ConnectionError> + std::fmt::Display,
     {
         let source = CURRENT
             .try_with(Clone::clone)
@@ -94,7 +94,7 @@ impl DbContext {
             }
             Err(error) => match context.postgres().rollback().await {
                 Ok(()) => Err(error),
-                Err(rollback) => Err(PersistenceError::database(
+                Err(rollback) => Err(ConnectionError::database(
                     anyhow::Error::new(rollback)
                         .context(format!("operation failed ({error}); rollback also failed")),
                 )

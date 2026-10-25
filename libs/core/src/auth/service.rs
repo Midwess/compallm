@@ -4,9 +4,12 @@ use super::{
     AuthError,
     token::{AccessToken, EmailOtpAccessToken, EncryptedAccessToken, RefreshToken, UserTokens},
 };
-use crate::entity::user::{User, UserStatus};
-use crate::persistent::{DbContext, PersistenceError, user::UserRepository};
+use crate::persistent::{
+    DbContext,
+    user::{UserPersistentError, UserRepository},
+};
 use crate::transaction;
+use crate::user::{User, UserStatus};
 use compallm_utils::email::verify_email;
 use compallm_utils::time::unix_timestamp;
 
@@ -67,14 +70,12 @@ impl AuthService {
             if user.status != UserStatus::Active {
                 return Err(AuthError::UserDisabled);
             }
-            let tokens = UserTokens::new(
+            UserTokens::new(
                 user.id,
                 &self.jwt_secret,
                 self.lifetimes.user,
                 self.lifetimes.refresh,
-            )?;
-            self.users.record_signin(user.id, unix_timestamp()).await?;
-            Ok(tokens)
+            )
         })
     }
 
@@ -99,7 +100,7 @@ impl AuthService {
         }
         transaction!(self.db, {
             if self.users.find_by_email(&claims.email).await?.is_some() {
-                return Err(PersistenceError::EmailAlreadyExists.into());
+                return Err(UserPersistentError::EmailAlreadyExists.into());
             }
             let user = self
                 .users
@@ -113,14 +114,12 @@ impl AuthService {
             if user.status != UserStatus::Active {
                 return Err(AuthError::UserDisabled);
             }
-            let tokens = UserTokens::new(
+            UserTokens::new(
                 user.id,
                 &self.jwt_secret,
                 self.lifetimes.user,
                 self.lifetimes.refresh,
-            )?;
-            self.users.record_signin(user.id, unix_timestamp()).await?;
-            Ok(tokens)
+            )
         })
     }
 

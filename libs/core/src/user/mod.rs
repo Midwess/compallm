@@ -1,4 +1,4 @@
-//! User identity and state used by business services and repository contracts.
+//! User domain identity and state used by services and repository contracts.
 //! Persistence adapters map their storage models into these types.
 
 #[derive(Clone, Debug, PartialEq, Eq)]

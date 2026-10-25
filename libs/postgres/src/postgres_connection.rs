@@ -6,7 +6,7 @@ use sea_orm::{
 };
 use std::sync::{Arc, Mutex};
 
-use compallm_core::persistent::{Connection, DbContext, PersistenceError};
+use compallm_core::persistent::{Connection, ConnectionError, DbContext};
 use std::any::Any;
 
 /// SeaORM's `ConnectionTrait` has generic methods and is not object safe.
@@ -19,14 +19,14 @@ pub enum PostgresConnection {
 pub struct TransactionState(Mutex<Option<Arc<DatabaseTransaction>>>);
 
 impl TransactionState {
-    pub(crate) fn get(&self) -> Result<Arc<DatabaseTransaction>, PersistenceError> {
+    pub(crate) fn get(&self) -> Result<Arc<DatabaseTransaction>, ConnectionError> {
         self.0
             .lock()
             .expect("transaction mutex poisoned")
             .as_ref()
             .cloned()
             .ok_or_else(|| {
-                PersistenceError::database(anyhow::anyhow!("transaction scope has already ended"))
+                ConnectionError::database(anyhow::anyhow!("transaction scope has already ended"))
             })
     }
 }
@@ -37,23 +37,20 @@ impl PostgresConnection {
     }
 
     /// Use only inside the PostgreSQL adapter to access the active executor.
-    pub fn from_context(context: &DbContext) -> Result<&Self, PersistenceError> {
+    pub fn from_context(context: &DbContext) -> Result<&Self, ConnectionError> {
         context.postgres().ensure_open()?;
         context
             .postgres()
             .as_any()
             .downcast_ref::<Self>()
             .ok_or_else(|| {
-                PersistenceError::database(anyhow::anyhow!(
-                    "context is not a PostgreSQL connection"
-                ))
+                ConnectionError::database(anyhow::anyhow!("context is not a PostgreSQL connection"))
             })
     }
 
-    fn query_error(error: PersistenceError) -> DbErr {
+    fn query_error(error: ConnectionError) -> DbErr {
         match error {
-            PersistenceError::Database(source) => DbErr::Custom(format!("{source:#}")),
-            error => DbErr::Custom(error.to_string()),
+            ConnectionError::Database(source) => DbErr::Custom(format!("{source:#}")),
         }
     }
 
@@ -61,16 +58,16 @@ impl PostgresConnection {
         Self::Transaction(TransactionState(Mutex::new(Some(Arc::new(transaction)))))
     }
 
-    pub(crate) fn ensure_open(&self) -> Result<(), PersistenceError> {
+    pub(crate) fn ensure_open(&self) -> Result<(), ConnectionError> {
         if let Self::Transaction(state) = self {
             state.get()?;
         }
         Ok(())
     }
 
-    pub(crate) fn take_transaction(&self) -> Result<DatabaseTransaction, PersistenceError> {
+    pub(crate) fn take_transaction(&self) -> Result<DatabaseTransaction, ConnectionError> {
         let Self::Transaction(state) = self else {
-            return Err(PersistenceError::database(anyhow::anyhow!(
+            return Err(ConnectionError::database(anyhow::anyhow!(
                 "only transaction scopes can finish a transaction"
             )));
         };
@@ -80,10 +77,10 @@ impl PostgresConnection {
             .expect("transaction mutex poisoned")
             .take()
             .ok_or_else(|| {
-                PersistenceError::database(anyhow::anyhow!("transaction scope has already ended"))
+                ConnectionError::database(anyhow::anyhow!("transaction scope has already ended"))
             })?;
         Arc::try_unwrap(transaction).map_err(|_| {
-            PersistenceError::database(anyhow::anyhow!(
+            ConnectionError::database(anyhow::anyhow!(
                 "transaction still has running database operations"
             ))
         })
@@ -159,32 +156,32 @@ impl Connection for PostgresConnection {
         self
     }
 
-    fn ensure_open(&self) -> Result<(), PersistenceError> {
+    fn ensure_open(&self) -> Result<(), ConnectionError> {
         PostgresConnection::ensure_open(self)
     }
 
-    async fn begin(&self) -> Result<Arc<dyn Connection>, PersistenceError> {
+    async fn begin(&self) -> Result<Arc<dyn Connection>, ConnectionError> {
         use sea_orm::TransactionTrait;
         let transaction = match self {
             Self::Database(db) => db.begin().await,
             Self::Transaction(state) => state.get()?.begin().await,
         }
-        .map_err(PersistenceError::database)?;
+        .map_err(ConnectionError::database)?;
         Ok(Arc::new(Self::transaction(transaction)))
     }
 
-    async fn commit(&self) -> Result<(), PersistenceError> {
+    async fn commit(&self) -> Result<(), ConnectionError> {
         self.take_transaction()?
             .commit()
             .await
-            .map_err(PersistenceError::database)
+            .map_err(ConnectionError::database)
     }
 
-    async fn rollback(&self) -> Result<(), PersistenceError> {
+    async fn rollback(&self) -> Result<(), ConnectionError> {
         self.take_transaction()?
             .rollback()
             .await
-            .map_err(PersistenceError::database)
+            .map_err(ConnectionError::database)
     }
 
     fn cancel(&self) {

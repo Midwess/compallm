@@ -78,7 +78,7 @@ PR run make that visible and replace the old explanation.
   caching is opportunistic; no provider-specific cache parameters are sent.
 - Superseded runs are canceled per PR. Model requests time out after 90 seconds
   with at most one SDK retry; `gh` requests time out after 45 seconds. The job has a
-  15-minute ceiling, ten model rounds, forty tool calls, and a 240,000-character
+  15-minute ceiling, twenty model rounds, eighty tool calls, and a 240,000-character
   conversation budget. These are character limits, not a token guarantee for every model.
   The final three rounds are reserved for fresh checks, publication, and a validation
   repair, so code exploration cannot consume the entire conversation budget.

@@ -75,7 +75,7 @@ jobs:
 
       - name: Explain and comment on the PR
         run: |
-          node -e 'require("fs").writeFileSync("/tmp/explainer-test-event.json", JSON.stringify({inputs:{pr_number:"11"}}))'
+          node -e 'require("fs").writeFileSync("/tmp/explainer-test-event.json", JSON.stringify({inputs:{pr_number:"12"}}))'
           GITHUB_EVENT_PATH=/tmp/explainer-test-event.json node index.mjs
         env:
           GH_TOKEN: ${{ github.token }}

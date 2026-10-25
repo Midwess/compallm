@@ -67,7 +67,7 @@ export function validateArgs(name, args) {
   }
 }
 
-export async function runAgent({ client, model, messages, handlers, maxRounds = 10, maxCalls = 40,
+export async function runAgent({ client, model, messages, handlers, maxRounds = 20, maxCalls = 80,
   maxCharacters = 240000, onProgress = () => {} }) {
   let calls = 0;
   let published = false;

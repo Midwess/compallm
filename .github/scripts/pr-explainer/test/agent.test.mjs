@@ -193,6 +193,24 @@ test('exploration cannot consume the rounds reserved for checks, publication, an
   assert.equal(attempts, 2);
 });
 
+test('default budget allows twenty rounds with the last three reserved for completion', async () => {
+  const phases = [];
+  const client = { chat: { completions: { create: async request => {
+    const names = request.tools.map(tool => tool.function.name);
+    phases.push(names);
+    const name = names.includes('get_pr_diff') ? 'get_pr_diff' : names[0];
+    return completion([call('next', name, name === 'publish_explanation' ? { body } : {})]);
+  } } } };
+  let attempts = 0;
+  await runAgent({ client, model: 'model', messages: [], handlers: {
+    get_pr_diff: async () => 'diff', get_pr_checks: async () => ({ status: 'pending' }),
+    publish_explanation: async () => { if (++attempts === 1) throw new Error('Correct draft'); return { ok: true }; },
+  } });
+  assert.equal(phases.length, 20);
+  assert.equal(phases.slice(0, 17).filter(names => names.includes('read_file')).length, 17);
+  assert.deepEqual(phases.slice(-3), [['get_pr_checks'], ['publish_explanation'], ['publish_explanation']]);
+});
+
 test('runner publishes once, skips matching inputs, restores a deleted comment, and refreshes changed PR metadata', async t => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'pr-explainer-runner-'));
   const savedEnv = { ...process.env };

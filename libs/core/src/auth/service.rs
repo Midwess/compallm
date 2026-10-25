@@ -7,7 +7,7 @@ use super::{
 use crate::entity::user::{User, UserStatus};
 use crate::persistent::{DbContext, PersistenceError, user::UserRepository};
 use crate::transaction;
-use compallm_utils::email::verify_email_domain;
+use compallm_utils::email::verify_email;
 use compallm_utils::time::unix_timestamp;
 
 /// Explicit policy supplied by application configuration.
@@ -36,10 +36,9 @@ impl AuthService {
             return Err(AuthError::InvalidConfiguration);
         }
         EncryptedAccessToken::new(&jwt_secret)?;
-        verify_email_domain(
-            &format!("user@{}", allowed_email_domain.trim()),
-            &allowed_email_domain,
-        )?;
+        let allowed_email_domain = allowed_email_domain.trim().to_ascii_lowercase();
+        verify_email(&format!("user@{allowed_email_domain}"))
+            .map_err(|_| AuthError::InvalidConfiguration)?;
         Ok(Self {
             db,
             users,
@@ -52,7 +51,12 @@ impl AuthService {
     pub async fn signin(&self, email_token: &str, code: &str) -> Result<UserTokens, AuthError> {
         let claims =
             EmailOtpAccessToken::try_from(AccessToken::decode(email_token, &self.jwt_secret)?)?;
-        verify_email_domain(&claims.email, &self.allowed_email_domain)?;
+        verify_email(&claims.email)?;
+        if claims.email.rsplit_once('@').map(|(_, domain)| domain)
+            != Some(self.allowed_email_domain.as_str())
+        {
+            return Err(AuthError::InvalidEmail);
+        }
         claims.verify_code(code, unix_timestamp())?;
         transaction!(self.db, {
             let user = self
@@ -82,7 +86,12 @@ impl AuthService {
     ) -> Result<UserTokens, AuthError> {
         let claims =
             EmailOtpAccessToken::try_from(AccessToken::decode(email_token, &self.jwt_secret)?)?;
-        verify_email_domain(&claims.email, &self.allowed_email_domain)?;
+        verify_email(&claims.email)?;
+        if claims.email.rsplit_once('@').map(|(_, domain)| domain)
+            != Some(self.allowed_email_domain.as_str())
+        {
+            return Err(AuthError::InvalidEmail);
+        }
         claims.verify_code(code, unix_timestamp())?;
         let display_name = display_name.trim();
         if display_name.is_empty() {

@@ -199,8 +199,8 @@ fn organization_email_domain_must_match_exactly() {
         EmailOtpAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
             .unwrap();
     assert!(matches!(
-        compallm_utils::email::verify_email_domain(&claims.email, "another.com"),
-        Err(compallm_utils::email::EmailError::InvalidEmail)
+        EmailOtpChallenge::new(&claims.email, "another.com", SECRET),
+        Err(AuthError::InvalidEmail)
     ));
 }
 

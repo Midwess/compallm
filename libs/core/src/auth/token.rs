@@ -2,7 +2,7 @@
 //! The enum validates shared rules and delegates to the independent token types.
 
 use super::AuthError;
-use compallm_utils::email::{normalize_email, verify_email_domain};
+use compallm_utils::email::{normalize_email, verify_email};
 use compallm_utils::time::unix_timestamp;
 use hero::token::jwt::{create_jwt_token, decode_jwt_token};
 use serde::{Deserialize, Serialize};
@@ -131,8 +131,13 @@ pub struct EmailOtpChallenge {
 
 impl EmailOtpChallenge {
     pub fn new(email: &str, allowed_domain: &str, secret: &str) -> Result<Self, AuthError> {
-        verify_email_domain(email, allowed_domain)?;
+        let allowed_domain = allowed_domain.trim().to_ascii_lowercase();
+        verify_email(&format!("user@{allowed_domain}"))
+            .map_err(|_| AuthError::InvalidConfiguration)?;
         let email = normalize_email(email)?;
+        if email.rsplit_once('@').map(|(_, domain)| domain) != Some(allowed_domain.as_str()) {
+            return Err(AuthError::InvalidEmail);
+        }
         let claims = EmailOtpAccessToken::new(email)?;
         let code = claims.code.clone();
         let access_token = AccessToken::EmailOtp(claims)

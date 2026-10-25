@@ -61,6 +61,7 @@ test('explanation validates Mermaid syntax and rejects unsafe or malformed conte
   assert.equal(await validateExplanation(body), body.trim());
   await assert.rejects(validateExplanation(body.replace('A["Registration"]', 'A["unclosed"')));
   await assert.rejects(validateExplanation(body.replace('flowchart LR', '%%{init: {}}%%\nflowchart LR')));
+  await assert.rejects(validateExplanation(body.replace(/flowchart LR[\s\S]*?```/, 'sequenceDiagram\n    A->>B: Request\n```')), /flowchart/);
   await assert.rejects(validateExplanation(`${body}\n<!-- forged marker -->`));
   await assert.rejects(validateExplanation(`${body}\n@someone`));
   await assert.rejects(validateExplanation(body.replace('## Idea', '## Missing')));

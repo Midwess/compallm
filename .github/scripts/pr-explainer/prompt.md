@@ -28,8 +28,13 @@ before/after example when helpful. Do not infer business motivation as fact.
 At most three bullets grouped by purpose. Link relevant files.
 
 ## Diagram
-One small Mermaid flowchart or sequence diagram, with roughly 4–8 nodes/participants,
-showing the behavior introduced or changed. Prefer quoted, simple node labels.
+One small Mermaid flowchart (flowchart TD or LR), with roughly 4–8 nodes,
+showing the behavior introduced or changed. Make the execution path easy to scan:
+use arrows for the flow, diamonds for meaningful decisions, and short edge labels
+for branches. Show inputs, the changed processing/validation, and outcomes. Prefer
+quoted, simple node labels. Show before/after branches only when they clarify the change.
+Do not use a sequence, class, or file-tree diagram. Focus on the PR's changed behavior,
+not the AI review process (unless the PR itself changes that process).
 Omit this section only when a diagram adds no explanatory value (e.g. typo-only PR).
 Use a fenced mermaid block. No HTML, Mermaid directives, click actions, or external assets.
 

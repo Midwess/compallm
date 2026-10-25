@@ -33,10 +33,10 @@ export async function validateExplanation(body) {
   if (/!\[/.test(visible)) errors.push('Remove embedded images.');
   if (errors.length) throw new Error(errors.join(' '));
   for (const [, source] of blocks) {
-    if (!/^\s*(flowchart\s+(TD|TB|LR|RL|BT)|sequenceDiagram)\b/.test(source)
+    if (!/^\s*flowchart\s+(TD|TB|LR|RL|BT)\b/.test(source)
       || /%%|\bclick\b|https?:|\binit\b|^\s*---/im.test(source)
       || source.length > 4000) {
-      throw new Error('Use a small flowchart or sequence diagram without directives or external links.');
+      throw new Error('Use a small Mermaid flowchart with decision branches, without directives or external links.');
     }
     try {
       await mermaid.parse(source);

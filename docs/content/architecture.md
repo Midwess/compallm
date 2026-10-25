@@ -59,6 +59,8 @@ Use concrete SeaORM repositories. Repository operations that can participate in 
 
 The application service decides the transaction boundary. When a workflow spans multiple repositories, start one transaction and pass that same transaction to every repository operation. Commit only after all required operations succeed.
 
+Application entry points (HTTP middleware, CLI commands, background jobs, and tests) establish the database context with `DbContext::scope`. Services and repositories use that active context without adding their own routine `scope()` wrappers. Services still define transaction boundaries; nested transactions share the active transaction.
+
 For example, completing authentication may need user lookup/creation, session creation, and refresh-token persistence in the same transaction. These are planned operations, not claims that session storage already exists.
 
 - A repository must not silently switch from the supplied transaction to a separate connection.

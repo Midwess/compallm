@@ -6,6 +6,9 @@ license.workspace = true
 description = "Compallm cross-crate behavior tests"
 publish = false
 
+[lints]
+workspace = true
+
 [dev-dependencies]
 anyhow = { workspace = true, features = ["std"] }
 async-trait.workspace = true

@@ -12,6 +12,7 @@ use sea_orm::{DbBackend, DbErr, IntoMockRow, MockDatabase};
 use std::{collections::BTreeMap, sync::Arc};
 
 struct Fixture {
+    context: &'static DbContext,
     database: Arc<sea_orm::DatabaseConnection>,
     service: ConfigService,
 }
@@ -53,6 +54,7 @@ impl Fixture {
             compallm_postgres::repository::organization::OrganizationRepository,
         ) as Box<dyn OrganizationRepository>));
         Self {
+            context,
             database,
             service: ConfigService::new(context, organizations),
         }
@@ -62,7 +64,11 @@ impl Fixture {
 #[tokio::test]
 async fn rename_updates_only_name_and_timestamp_in_one_transaction() {
     let fixture = Fixture::new(Ok(Some("New-Team")));
-    let organization = fixture.service.update_name(84, " New-Team ").await.unwrap();
+    let organization = fixture
+        .context
+        .transaction(fixture.service.update_name(84, " New-Team "))
+        .await
+        .unwrap();
     assert_eq!(organization.id, 84);
     assert_eq!(organization.created_by, 42);
     assert_eq!(organization.name, "New-Team");
@@ -103,8 +109,8 @@ async fn missing_organization_or_query_failure_rolls_back() {
         let missing = result.is_ok();
         let fixture = Fixture::new(result);
         let error = fixture
-            .service
-            .update_name(84, "New-Team")
+            .context
+            .transaction(fixture.service.update_name(84, "New-Team"))
             .await
             .unwrap_err();
         if missing {

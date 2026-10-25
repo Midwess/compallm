@@ -18,7 +18,7 @@ These questions remain open. A feature being listed in the product plan does not
 8. Which plugin types are supported, and which external actions require confirmation?
 9. What are the retention and deletion rules, including files sent to external providers?
 10. Which capabilities belong in the first release, and which are later product scope?
-11. May a GitHub or GitLab account whose email address is outside the allowed organization domain sign in, and does an OAuth login satisfy the same membership rules as an email-code login?
+11. Does a GitHub or GitLab OAuth login satisfy the same membership rules as an email-code login?
 
 ## Agreed direction
 

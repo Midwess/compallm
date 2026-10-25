@@ -53,7 +53,6 @@ async fn signup_email(
 pub struct ConfirmSignupOtpRequest {
     pub token: String,
     pub code: String,
-    pub display_name: String,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -68,7 +67,7 @@ pub struct AuthTokensResponse {
     request_body = ConfirmSignupOtpRequest,
     responses(
         (status = 201, description = "User created", body = AuthTokensResponse),
-        (status = 400, description = "Invalid display name or request", body = ErrorResponse),
+        (status = 400, description = "Invalid email or request", body = ErrorResponse),
         (status = 401, description = "Invalid or expired token or OTP", body = ErrorResponse),
         (status = 409, description = "Email already registered", body = ErrorResponse),
         (status = 500, description = "Database or internal error", body = ErrorResponse)
@@ -79,9 +78,7 @@ async fn confirm_signup_otp(
     input: Result<Json<ConfirmSignupOtpRequest>, JsonRejection>,
 ) -> Result<impl IntoResponse, ApiError> {
     let Json(input) = input?;
-    let tokens = auth
-        .signup(&input.token, &input.code, &input.display_name)
-        .await?;
+    let tokens = auth.signup(&input.token, &input.code).await?;
     Ok((
         StatusCode::CREATED,
         [(CACHE_CONTROL, "no-store")],

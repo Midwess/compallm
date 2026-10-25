@@ -4,7 +4,6 @@ import './App.css'
 
 function App() {
   const [email, setEmail] = useState('')
-  const [displayName, setDisplayName] = useState('')
   const [token, setToken] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [isPending, setIsPending] = useState(false)
@@ -18,7 +17,7 @@ function App() {
     setError(null)
     try {
       if (token) {
-        await confirmSignupOtp({ token, code, displayName })
+        await confirmSignupOtp({ token, code })
         setToken(null)
         setCode('')
         setIsComplete(true)
@@ -43,7 +42,7 @@ function App() {
         <div className="intro">
           <p className="eyebrow">Your organization workspace</p>
           <h1>Work with LLMs, together.</h1>
-          <p className="lede">Create your account with your organization email. No password required.</p>
+          <p className="lede">Create your account with your email. No password required.</p>
         </div>
         <section className="console" aria-labelledby="signup-title">
           <div className="console-heading">
@@ -66,13 +65,7 @@ function App() {
                 </>
               ) : (
                 <>
-                  <label htmlFor="displayName">Display name</label>
-                  <div className="input-row">
-                    <input id="displayName" name="displayName" value={displayName}
-                      onChange={(event) => setDisplayName(event.target.value)}
-                      autoComplete="name" required disabled={isPending} />
-                  </div>
-                  <label htmlFor="email">Organization email</label>
+                  <label htmlFor="email">Email address</label>
                   <div className="input-row">
                     <input id="email" name="email" type="email" value={email}
                       onChange={(event) => setEmail(event.target.value)}

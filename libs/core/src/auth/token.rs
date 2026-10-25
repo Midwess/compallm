@@ -2,7 +2,7 @@
 //! The enum validates shared rules and delegates to the independent token types.
 
 use super::AuthError;
-use compallm_utils::email::{normalize_email, verify_email};
+use compallm_utils::email::normalize_email;
 use compallm_utils::time::unix_timestamp;
 use hero::token::jwt::{create_jwt_token, decode_jwt_token};
 use serde::{Deserialize, Serialize};
@@ -130,14 +130,8 @@ pub struct EmailOtpChallenge {
 }
 
 impl EmailOtpChallenge {
-    pub fn new(email: &str, allowed_domain: &str, secret: &str) -> Result<Self, AuthError> {
-        let allowed_domain = allowed_domain.trim().to_ascii_lowercase();
-        verify_email(&format!("user@{allowed_domain}"))
-            .map_err(|_| AuthError::InvalidConfiguration)?;
+    pub fn new(email: &str, secret: &str) -> Result<Self, AuthError> {
         let email = normalize_email(email)?;
-        if email.rsplit_once('@').map(|(_, domain)| domain) != Some(allowed_domain.as_str()) {
-            return Err(AuthError::InvalidEmail);
-        }
         let claims = EmailOtpAccessToken::new(email)?;
         let code = claims.code.clone();
         let access_token = AccessToken::EmailOtp(claims)
@@ -159,13 +153,20 @@ impl UserTokens {
     /// Call after the workflow authorizes the user.
     pub fn new(
         user_id: u64,
+        organization_id: u64,
+        organization_role: crate::organization::OrganizationRole,
         secret: &str,
         user_lifetime: Duration,
         refresh_lifetime: Duration,
     ) -> Result<Self, AuthError> {
         Ok(Self {
-            access_token: AccessToken::User(UserAccessToken::new(user_id, user_lifetime)?)
-                .encode(secret, user_lifetime)?,
+            access_token: AccessToken::User(UserAccessToken::new(
+                user_id,
+                organization_id,
+                organization_role,
+                user_lifetime,
+            )?)
+            .encode(secret, user_lifetime)?,
             refresh_token: AccessToken::Refresh(RefreshToken::new(user_id, refresh_lifetime)?)
                 .encode(secret, refresh_lifetime)?,
         })

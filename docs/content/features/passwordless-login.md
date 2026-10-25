@@ -27,11 +27,11 @@ Shared behavior across methods:
 
 Method-specific behavior:
 
-- **Email code**: the user enters an organization email address; there is no password. The allowed organization email domain is configured through an environment variable. The application sends a one-time code to that address through the SMTP server. A code expires after 15 minutes and can only be used once. Supporting controls are resend limits and verification-attempt limits.
+- **Email code**: the user enters a valid email address from any domain; there is no password. The application sends a one-time code to that address through the SMTP server. A code expires after 15 minutes and can only be used once. Supporting controls are resend limits and verification-attempt limits.
 - **GitHub OAuth**: the application redirects the user to GitHub's authorization endpoint and handles the redirect callback with an authorization code. The client ID and secret are configured through environment variables.
 - **GitLab OAuth**: the application redirects the user to GitLab's authorization endpoint and handles the redirect callback with an authorization code. The client ID and secret are configured through environment variables.
 
-The OAuth providers supply the user's verified email address, so an OAuth login does not send an email code. Whether an OAuth account whose email address is outside the allowed organization domain may sign in is an open business decision.
+The OAuth providers supply the user's verified email address, so an OAuth login does not send an email code. There is no organization email-domain allowlist.
 
 Authentication proves control of the identity only. Whether that grants workspace access or creates membership remains an open business decision.
 
@@ -74,7 +74,7 @@ Credentials are read from the environment, are never exposed in logs or browser 
 
 ### Email code
 
-The system should authenticate eligible organization emails through emailed single-use codes without passwords; the allowed domain should be configured through an environment variable.
+The system should authenticate valid email addresses from any domain through emailed single-use codes without passwords.
 
 #### Example: Expired code
 - **WHEN** a code is submitted at or after 15 minutes from issuance
@@ -89,9 +89,9 @@ The system should authenticate eligible organization emails through emailed sing
 - **WHEN** a user resubmits a previously consumed code
 - **THEN** the system rejects it without establishing another session
 
-#### Example: Domain mismatch
-- **WHEN** an email domain does not exactly match the configured allowed domain, ignoring case
-- **THEN** the system rejects the login request without sending a code
+#### Example: Any email domain
+- **WHEN** a user submits a valid email address
+- **THEN** the system can send a verification code regardless of its domain
 
 #### Example: Delivery failure
 - **WHEN** the SMTP server rejects or fails to accept the message

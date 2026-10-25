@@ -7,6 +7,9 @@ version = "0.1.0"
 edition = "2024"
 license = "Elastic-2.0"
 
+[workspace.lints.clippy]
+borrowed_box = "allow"
+
 [workspace.dependencies]
 compallm-core = { path = "libs/core", default-features = false }
 compallm-postgres = { path = "libs/postgres", default-features = false }

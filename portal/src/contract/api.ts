@@ -12,7 +12,6 @@ export interface AuthTokensResponse {
 
 export interface ConfirmSignupOtpRequest {
   code: string;
-  displayName: string;
   token: string;
 }
 

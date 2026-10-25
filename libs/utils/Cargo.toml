@@ -6,6 +6,9 @@ license.workspace = true
 description = "Shared stateless utilities without application business rules"
 publish = false
 
+[lints]
+workspace = true
+
 [dependencies]
 email_address.workspace = true
 thiserror = { workspace = true, features = ["std"] }

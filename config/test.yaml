@@ -1,7 +1,6 @@
 settings:
   auth:
     jwt_secret: "test-signing-secret-at-least-32-bytes"
-    allowed_email_domain: <%= get_env(name="AUTH_EMAIL_DOMAIN", default="midwess.com") %>
     user_token_ttl_seconds: 900
     refresh_token_ttl_seconds: 2592000
 

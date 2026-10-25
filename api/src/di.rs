@@ -17,7 +17,6 @@ static DI: OnceCell<Di> = OnceCell::const_new();
 #[derive(Deserialize)]
 pub struct AuthSettings {
     pub jwt_secret: String,
-    pub allowed_email_domain: String,
     pub user_token_ttl_seconds: u64,
     pub refresh_token_ttl_seconds: u64,
 }
@@ -94,7 +93,6 @@ impl Di {
             self.organization_repository(),
             self.registration_service(),
             self.settings.jwt_secret.clone(),
-            self.settings.allowed_email_domain.clone(),
             TokenLifetimes {
                 user: Duration::from_secs(self.settings.user_token_ttl_seconds),
                 refresh: Duration::from_secs(self.settings.refresh_token_ttl_seconds),
@@ -111,12 +109,10 @@ impl Di {
         &self.db
     }
 
-    #[allow(clippy::borrowed_box)]
     pub fn user_repository(&'static self) -> &'static Box<dyn UserRepository> {
         &self.users
     }
 
-    #[allow(clippy::borrowed_box)]
     pub fn email_service(&'static self) -> Option<&'static Box<dyn EmailService>> {
         self.email.as_ref()
     }
@@ -135,7 +131,6 @@ impl Di {
         })
     }
 
-    #[allow(clippy::borrowed_box)]
     pub fn organization_repository(&'static self) -> &'static Box<dyn OrganizationRepository> {
         &self.organizations
     }

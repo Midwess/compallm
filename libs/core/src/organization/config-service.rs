@@ -1,23 +1,21 @@
-use crate::{
-    persistent::{DbContext, organization::OrganizationRepository},
-    transaction,
-};
+use crate::persistent::{DbContext, organization::OrganizationRepository};
 
 use super::{Organization, OrganizationConfigError};
 
 pub struct ConfigService {
-    db: &'static DbContext,
-    #[allow(clippy::borrowed_box)]
+    _db: &'static DbContext,
     organizations: &'static Box<dyn OrganizationRepository>,
 }
 
 impl ConfigService {
-    #[allow(clippy::borrowed_box)]
     pub fn new(
         db: &'static DbContext,
         organizations: &'static Box<dyn OrganizationRepository>,
     ) -> Self {
-        Self { db, organizations }
+        Self {
+            _db: db,
+            organizations,
+        }
     }
 
     /// The caller must authorize configuration access before invoking this service.
@@ -30,11 +28,10 @@ impl ConfigService {
         if !Organization::is_valid_name(name) {
             return Err(OrganizationConfigError::InvalidName);
         }
-        transaction!(self.db, {
-            Ok(self
-                .organizations
-                .update_name(organization_id, name)
-                .await?)
-        })
+
+        Ok(self
+            .organizations
+            .update_name(organization_id, name)
+            .await?)
     }
 }

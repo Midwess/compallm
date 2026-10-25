@@ -36,7 +36,6 @@ impl Fixture {
     fn settings() -> AuthSettings {
         AuthSettings {
             jwt_secret: SECRET.into(),
-            allowed_email_domain: "midwess.com".into(),
             user_token_ttl_seconds: 900,
             refresh_token_ttl_seconds: 30 * 24 * 60 * 60,
         }
@@ -49,7 +48,7 @@ impl Fixture {
         let row = UserSchema {
             id: 42,
             email: "james@midwess.com".into(),
-            display_name: "James".into(),
+            display_name: "james".into(),
             status: UserStatusSchema::Active,
             email_verified_at: now,
             last_login_at: None,
@@ -62,7 +61,7 @@ impl Fixture {
         row.insert("status".to_string(), status.into());
         let organization = OrganizationSchema {
             id: 84,
-            name: "james-workspace".into(),
+            name: "james's organization".into(),
             status: OrganizationStatusSchema::Active,
             created_by: 42,
             created_at: now,
@@ -173,12 +172,12 @@ async fn signup_delivers_code_and_confirmation_creates_user() {
     }
     server
         .post("/api/auth/signup/email/confirmation/otp")
-        .json(&serde_json::json!({"token": token, "code": "wrong", "displayName": "James"}))
+        .json(&serde_json::json!({"token": token, "code": "wrong"}))
         .await
         .assert_status_unauthorized();
     let response = server
         .post("/api/auth/signup/email/confirmation/otp")
-        .json(&serde_json::json!({"token": token, "code": claims.code, "displayName": "James"}))
+        .json(&serde_json::json!({"token": token, "code": claims.code}))
         .await;
     response.assert_status(axum::http::StatusCode::CREATED);
     let tokens: serde_json::Value = response.json();
@@ -207,7 +206,7 @@ async fn email_endpoint_rejects_bad_inputs_and_unconfigured_delivery() {
     let server = Fixture::server(Fixture::di(None));
     server
         .post("/api/auth/signup/email")
-        .json(&serde_json::json!({"email":"a@elsewhere.com"}))
+        .json(&serde_json::json!({"email":"not-an-email"}))
         .await
         .assert_status_bad_request();
     server
@@ -223,10 +222,38 @@ async fn email_endpoint_rejects_bad_inputs_and_unconfigured_delivery() {
     assert!(response.json::<serde_json::Value>().get("token").is_none());
 }
 
+#[tokio::test]
+async fn signup_email_accepts_addresses_from_any_domain() {
+    let mailbox = Mailbox::default();
+    let messages = mailbox.0.clone();
+    let server = Fixture::server(Fixture::di(Some(Box::new(mailbox))));
+    for email in [
+        "james@gmail.com",
+        "james@example.org",
+        "james@sub.midwess.com",
+    ] {
+        let response = server
+            .post("/api/auth/signup/email")
+            .json(&serde_json::json!({"email":email}))
+            .await;
+        response.assert_status_ok();
+        let body: serde_json::Value = response.json();
+        let claims = EmailOtpAccessToken::try_from(
+            AccessToken::decode(body["token"].as_str().unwrap(), SECRET).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(claims.email, email);
+    }
+    assert_eq!(messages.lock().unwrap().len(), 3);
+}
+
 #[test]
 fn openapi_exposes_only_signup_routes() {
     let document = serde_json::to_value(controllers::openapi()).unwrap();
     let paths = document["paths"].as_object().unwrap();
+    let confirmation = &document["components"]["schemas"]["ConfirmSignupOtpRequest"];
+    assert!(confirmation["properties"].get("displayName").is_none());
+    assert_eq!(confirmation["required"].as_array().unwrap().len(), 2);
     assert_eq!(paths.len(), 2);
     assert!(paths["/api/auth/signup/email"].get("post").is_some());
     assert!(

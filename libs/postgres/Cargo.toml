@@ -6,6 +6,9 @@ license.workspace = true
 description = "PostgreSQL connection, SeaORM schema and Loco migrations for Compallm"
 publish = false
 
+[lints]
+workspace = true
+
 [features]
 default = []
 cli = ["dep:clap", "dep:heck", "dep:pluralizer", "dep:sea-orm-cli", "dep:syn", "dep:tokio", "sea-orm-migration/cli"]

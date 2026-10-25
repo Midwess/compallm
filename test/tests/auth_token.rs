@@ -15,7 +15,7 @@ struct Fixture;
 
 impl Fixture {
     fn challenge() -> EmailOtpChallenge {
-        EmailOtpChallenge::new(" James@MIDWESS.COM ", "midwess.com", SECRET).unwrap()
+        EmailOtpChallenge::new(" James@MIDWESS.COM ", SECRET).unwrap()
     }
 
     fn tokens() -> UserTokens {
@@ -191,27 +191,27 @@ fn token_variants_cannot_authorize_each_other() {
 }
 
 #[test]
-fn organization_email_domain_must_match_exactly() {
+fn email_otp_accepts_valid_addresses_from_any_domain() {
     for email in [
+        "a@gmail.com",
+        "a@example.org",
+        "a@sub.midwess.com",
         "a@evilmidwess.com",
         "a@midwess.com.evil",
-        "a@sub.midwess.com",
-        "@midwess.com",
-        "not an email",
     ] {
+        let challenge = EmailOtpChallenge::new(email, SECRET).unwrap();
+        let claims = EmailOtpAccessToken::try_from(
+            AccessToken::decode(&challenge.access_token, SECRET).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(claims.email, email);
+    }
+    for email in ["@midwess.com", "not an email", "a@@example.org"] {
         assert!(matches!(
-            EmailOtpChallenge::new(email, "midwess.com", SECRET),
+            EmailOtpChallenge::new(email, SECRET),
             Err(AuthError::InvalidEmail)
         ));
     }
-    let issued = Fixture::challenge();
-    let claims =
-        EmailOtpAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
-            .unwrap();
-    assert!(matches!(
-        EmailOtpChallenge::new(&claims.email, "another.com", SECRET),
-        Err(AuthError::InvalidEmail)
-    ));
 }
 
 #[test]

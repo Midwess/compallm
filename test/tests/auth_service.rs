@@ -249,7 +249,6 @@ impl Fixture {
             organizations,
             registration,
             SECRET.into(),
-            "midwess.com".into(),
             TokenLifetimes {
                 user: Duration::from_secs(60),
                 refresh: REFRESH_LIFETIME,
@@ -296,7 +295,7 @@ async fn direct_registration_commits_user_organization_and_owner_together() {
     let fixture = Fixture::new(None);
     let user = fixture
         .registration()
-        .register("james@midwess.com", "James")
+        .register("james@midwess.com")
         .await
         .unwrap();
     {
@@ -322,10 +321,7 @@ async fn direct_registration_rolls_back_when_default_organization_or_owner_fails
             state.fail_membership = fail_membership;
         }
         assert!(matches!(
-            fixture
-                .registration()
-                .register("james@midwess.com", "James")
-                .await,
+            fixture.registration().register("james@midwess.com").await,
             Err(compallm_core::user::RegistrationError::Organization(_))
         ));
         assert!(fixture.repo.0.lock().unwrap().created.is_some());
@@ -337,7 +333,7 @@ async fn direct_registration_rolls_back_when_default_organization_or_owner_fails
 #[tokio::test]
 async fn signin_checks_user_and_commits() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
     let issued = fixture
         .service()
         .signin(&challenge.access_token, &challenge.code)
@@ -365,10 +361,10 @@ async fn signin_checks_user_and_commits() {
 #[tokio::test]
 async fn signup_requires_verified_email_and_creates_on_one_transaction() {
     let fixture = Fixture::new(None);
-    let challenge = EmailOtpChallenge::new("James@MIDWESS.COM", "midwess.com", SECRET).unwrap();
+    let challenge = EmailOtpChallenge::new("James@MIDWESS.COM", SECRET).unwrap();
     let issued = fixture
         .service()
-        .signup(&challenge.access_token, &challenge.code, " James ")
+        .signup(&challenge.access_token, &challenge.code)
         .await
         .unwrap();
     assert!(
@@ -382,13 +378,13 @@ async fn signup_requires_verified_email_and_creates_on_one_transaction() {
         let state = fixture.repo.0.lock().unwrap();
         assert_eq!(
             state.created,
-            Some(("james@midwess.com".into(), "James".into()))
+            Some(("james@midwess.com".into(), "james".into()))
         );
         assert_eq!(state.contexts.len(), 2);
         assert!(state.logins.is_empty());
         let organization = state.organization.as_ref().unwrap();
         let owner = state.owner.as_ref().unwrap();
-        assert_eq!(organization.name, "james-workspace");
+        assert_eq!(organization.name, "james's organization");
         assert!(organization.id > 0);
         assert_eq!(organization.created_by, owner.user_id);
         assert_eq!(organization.id, owner.organization_id);
@@ -417,11 +413,11 @@ async fn organization_or_owner_failure_rolls_back_the_entire_signup() {
             state.fail_organization = !fail_membership;
             state.fail_membership = fail_membership;
         }
-        let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+        let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
         assert!(matches!(
             fixture
                 .service()
-                .signup(&challenge.access_token, &challenge.code, "James")
+                .signup(&challenge.access_token, &challenge.code)
                 .await,
             Err(AuthError::Organization(_))
         ));
@@ -433,11 +429,11 @@ async fn organization_or_owner_failure_rolls_back_the_entire_signup() {
 #[tokio::test]
 async fn duplicate_signup_and_disabled_signin_are_rejected() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
     assert!(matches!(
         fixture
             .service()
-            .signup(&challenge.access_token, &challenge.code, "James")
+            .signup(&challenge.access_token, &challenge.code)
             .await,
         Err(AuthError::Persistence(
             UserRepositoryError::EmailAlreadyExists
@@ -462,7 +458,7 @@ async fn duplicate_signup_and_disabled_signin_are_rejected() {
 async fn failed_login_record_rolls_back_signin_without_returning_tokens() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     fixture.repo.0.lock().unwrap().fail_record_login = true;
-    let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
     assert!(matches!(
         fixture
             .service()
@@ -478,11 +474,11 @@ async fn failed_login_record_rolls_back_signin_without_returning_tokens() {
 async fn failed_repository_operation_rolls_back_and_returns_no_tokens() {
     let fixture = Fixture::new(None);
     fixture.repo.0.lock().unwrap().fail_create = true;
-    let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
     assert!(matches!(
         fixture
             .service()
-            .signup(&challenge.access_token, &challenge.code, "James")
+            .signup(&challenge.access_token, &challenge.code)
             .await,
         Err(AuthError::Persistence(UserRepositoryError::Database(_)))
     ));
@@ -490,9 +486,9 @@ async fn failed_repository_operation_rolls_back_and_returns_no_tokens() {
 }
 
 #[tokio::test]
-async fn invalid_otp_or_empty_display_name_does_not_reach_persistence() {
+async fn invalid_otp_does_not_reach_persistence() {
     let fixture = Fixture::new(None);
-    let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
     assert!(matches!(
         fixture
             .service()
@@ -500,65 +496,69 @@ async fn invalid_otp_or_empty_display_name_does_not_reach_persistence() {
             .await,
         Err(AuthError::IncorrectCode)
     ));
-    assert!(matches!(
-        fixture
-            .service()
-            .signup(&challenge.access_token, &challenge.code, "  ")
-            .await,
-        Err(AuthError::InvalidDisplayName)
-    ));
     assert!(fixture.repo.0.lock().unwrap().contexts.is_empty());
-    fixture.assert_transaction("ROLLBACK");
+    assert!(
+        fixture
+            .db
+            .as_ref()
+            .clone()
+            .into_transaction_log()
+            .is_empty()
+    );
 }
 
 #[tokio::test]
-async fn invalid_user_name_characters_are_rejected_before_persistence() {
-    for name in [
-        "James Dang",
-        ".James",
-        "James.",
-        "James..Dang",
-        "James@Dang",
-        "James<Dang>",
-        "Jämés",
+async fn invalid_registration_emails_are_rejected_before_persistence() {
+    for email in [
+        "not-an-email",
+        "@midwess.com",
+        "james dang@midwess.com",
+        "james@midwess.com@elsewhere.com",
     ] {
         let fixture = Fixture::new(None);
-        let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
-        assert!(
-            matches!(
-                fixture
-                    .service()
-                    .signup(&challenge.access_token, &challenge.code, name)
-                    .await,
-                Err(AuthError::InvalidDisplayName)
-            ),
-            "accepted invalid user name {name:?}"
-        );
+        assert!(fixture.registration().register(email).await.is_err());
         assert!(fixture.repo.0.lock().unwrap().contexts.is_empty());
-        fixture.assert_transaction("ROLLBACK");
+        assert!(
+            fixture
+                .db
+                .as_ref()
+                .clone()
+                .into_transaction_log()
+                .is_empty()
+        );
     }
 }
 
 #[tokio::test]
-async fn email_style_user_names_produce_valid_bounded_default_organization_names() {
-    for name in [
+async fn signup_derives_user_name_and_default_organization_from_the_email() {
+    for local_part in [
         "James.Dang+dev".to_string(),
         "!+~".to_string(),
-        "a".repeat(256),
+        "a".repeat(64),
     ] {
         let fixture = Fixture::new(None);
-        let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+        let email = format!("{local_part}@midwess.com");
+        let challenge = EmailOtpChallenge::new(&email, SECRET).unwrap();
         fixture
             .service()
-            .signup(&challenge.access_token, &challenge.code, &name)
+            .signup(&challenge.access_token, &challenge.code)
             .await
             .unwrap();
         {
             let state = fixture.repo.0.lock().unwrap();
-            let organization = state.organization.as_ref().unwrap();
-            assert!(Organization::is_valid_name(&organization.name));
-            assert!(organization.name.ends_with("-workspace"));
+            let name = local_part.to_ascii_lowercase();
+            assert_eq!(
+                state.created.as_ref().unwrap().0,
+                email.to_ascii_lowercase()
+            );
             assert_eq!(state.created.as_ref().unwrap().1, name);
+            let prefix: String = name
+                .chars()
+                .take(Organization::MAX_NAME_LENGTH - "'s organization".len())
+                .collect();
+            let organization = state.organization.as_ref().unwrap();
+            assert_eq!(organization.name, format!("{prefix}'s organization"));
+            assert!(organization.name.chars().count() <= Organization::MAX_NAME_LENGTH);
         }
         fixture.assert_transaction("COMMIT");
     }
@@ -661,7 +661,7 @@ async fn signin_selects_an_admin_organization_instead_of_a_member_organization()
             role: OrganizationRole::Admin,
         },
     ];
-    let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
     let tokens = fixture
         .service()
         .signin(&challenge.access_token, &challenge.code)
@@ -738,7 +738,7 @@ async fn signin_rejects_missing_or_disabled_administrator_memberships() {
                 state.memberships[0].role = OrganizationRole::Member;
             }
         }
-        let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+        let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
         assert!(matches!(
             fixture
                 .service()

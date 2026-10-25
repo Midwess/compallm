@@ -32,7 +32,7 @@ pub enum AuthError {
     Email(#[from] crate::mail::EmailError),
     #[error("invalid authentication configuration")]
     InvalidConfiguration,
-    #[error("invalid or unauthorized email address")]
+    #[error("invalid email address")]
     InvalidEmail,
     #[error("user not found")]
     UserNotFound,

@@ -1,1 +1,1 @@
-mod greeting;
+mod auth;

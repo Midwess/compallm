@@ -7,13 +7,25 @@ use compallm_core::{
 };
 use compallm_postgres::{
     UserSchema, postgres_connection::PostgresConnection, repository::user::UserRepository,
+    schema::UserStatusSchema,
 };
-use sea_orm::{DbBackend, DbErr, MockDatabase, MockExecResult, RuntimeErr};
-use std::{borrow::Cow, error::Error, fmt, sync::Arc};
+use sea_orm::{
+    ActiveEnum, DbBackend, DbErr, IntoMockRow, MockDatabase, MockExecResult, RuntimeErr,
+};
+use std::{borrow::Cow, collections::BTreeMap, error::Error, fmt, sync::Arc};
 
 struct Fixture;
 
 impl Fixture {
+    fn mock_row(model: UserSchema) -> BTreeMap<String, sea_orm::Value> {
+        // PostgreSQL returns enum labels as strings; SeaORM's mock row builder
+        // otherwise stores its internal Enum value, which cannot decode as text.
+        let status = model.status.to_value().value.to_string();
+        let mut row: BTreeMap<_, _> = model.into_mock_row().into_column_value_tuples().collect();
+        row.insert("status".into(), status.into());
+        row
+    }
+
     fn row() -> UserSchema {
         let at = "2026-10-25T00:00:00+00:00"
             .parse::<sea_orm::prelude::DateTimeWithTimeZone>()
@@ -22,7 +34,7 @@ impl Fixture {
             id: 42,
             email: "james@midwess.com".into(),
             display_name: "James".into(),
-            status: "active".into(),
+            status: UserStatusSchema::Active,
             email_verified_at: at,
             last_login_at: None,
             created_at: at,
@@ -48,7 +60,7 @@ impl Fixture {
 async fn lookup_and_login_record_use_one_scoped_transaction() {
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([vec![Fixture::row()]])
+            .append_query_results([vec![Fixture::mock_row(Fixture::row())]])
             .append_exec_results([MockExecResult {
                 last_insert_id: 0,
                 rows_affected: 1,
@@ -86,7 +98,7 @@ async fn lookup_and_login_record_use_one_scoped_transaction() {
 async fn create_normalizes_email_and_sets_verification_timestamp() {
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([vec![Fixture::row()]])
+            .append_query_results([vec![Fixture::mock_row(Fixture::row())]])
             .into_connection(),
     );
     let context = Fixture::context(db.clone());
@@ -107,10 +119,10 @@ async fn create_normalizes_email_and_sets_verification_timestamp() {
 #[tokio::test]
 async fn find_by_id_maps_disabled_users_and_missing_rows() {
     let mut disabled = Fixture::row();
-    disabled.status = "disabled".into();
+    disabled.status = UserStatusSchema::Disabled;
     let context = Fixture::context(Arc::new(
         MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([vec![disabled], vec![]])
+            .append_query_results([vec![Fixture::mock_row(disabled)], vec![]])
             .into_connection(),
     ));
     context
@@ -145,14 +157,17 @@ async fn invalid_ids_and_missing_login_targets_are_database_errors() {
 }
 
 #[tokio::test]
-async fn corrupt_rows_are_rejected_instead_of_becoming_active_users() {
-    let mut unknown_status = Fixture::row();
-    unknown_status.status = "unexpected".into();
+async fn invalid_database_ids_are_rejected() {
+    let mut zero_id = Fixture::row();
+    zero_id.id = 0;
     let mut invalid_id = Fixture::row();
     invalid_id.id = -1;
     let context = Fixture::context(Arc::new(
         MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([vec![unknown_status], vec![invalid_id]])
+            .append_query_results([
+                vec![Fixture::mock_row(zero_id)],
+                vec![Fixture::mock_row(invalid_id)],
+            ])
             .into_connection(),
     ));
     context

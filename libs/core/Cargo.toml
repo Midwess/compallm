@@ -14,6 +14,7 @@ chacha20poly1305 = { workspace = true, features = ["std"] }
 compallm-utils.workspace = true
 hero = { workspace = true, features = ["distributed-id", "token"] }
 hkdf = { workspace = true, features = ["std"] }
+maud.workspace = true
 rand = { workspace = true, features = ["std", "thread_rng"] }
 serde = { workspace = true, features = ["std", "derive"] }
 serde_json = { workspace = true, features = ["std"] }

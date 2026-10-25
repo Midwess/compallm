@@ -1,14 +1,14 @@
-pub mod greeting;
+pub mod auth;
 
-use loco_rs::app::AppContext;
+use crate::di::Di;
 use utoipa::openapi::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
 
 #[derive(utoipa::OpenApi)]
 struct ApiDoc;
 
-pub fn api_router() -> OpenApiRouter<AppContext> {
-    OpenApiRouter::with_openapi(<ApiDoc as utoipa::OpenApi>::openapi()).merge(greeting::router())
+pub fn api_router() -> OpenApiRouter<Di> {
+    OpenApiRouter::with_openapi(<ApiDoc as utoipa::OpenApi>::openapi()).merge(auth::router())
 }
 
 pub fn openapi() -> OpenApi {

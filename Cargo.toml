@@ -22,6 +22,7 @@ rand = { version = "0.9", default-features = false }
 subtle = { version = "2", default-features = false }
 thiserror = { version = "2", default-features = false }
 axum = { version = "0.8", default-features = false }
+axum-test = { version = "17.3", default-features = false }
 axum-frontend = { version = "0.1.3", default-features = false }
 clap = { version = "4", default-features = false }
 hero = { package = "midwess-hero", version = "1", default-features = false }
@@ -41,3 +42,4 @@ heck = { version = "0.5", default-features = false }
 pluralizer = { version = "0.5", default-features = false }
 syn = { version = "2", default-features = false }
 tempfile = { version = "3", default-features = false }
+maud = { version = "0.27", default-features = false }

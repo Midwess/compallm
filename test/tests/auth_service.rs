@@ -113,6 +113,7 @@ impl Fixture {
                 user: Duration::from_secs(60),
                 refresh: REFRESH_LIFETIME,
             },
+            None,
         )
         .unwrap()
     }

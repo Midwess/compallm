@@ -1,9 +1,13 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use super::{
     AuthError,
-    token::{AccessToken, EmailOtpAccessToken, EncryptedAccessToken, RefreshToken, UserTokens},
+    token::{
+        AccessToken, EmailOtpAccessToken, EmailOtpChallenge, EncryptedAccessToken, RefreshToken,
+        UserTokens,
+    },
 };
+use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode};
 use crate::persistent::{
     DbContext,
     user::{UserRepository, UserRepositoryError},
@@ -25,6 +29,7 @@ pub struct AuthService {
     jwt_secret: String,
     allowed_email_domain: String,
     lifetimes: TokenLifetimes,
+    email: Option<Arc<dyn EmailService>>,
 }
 
 impl AuthService {
@@ -34,6 +39,7 @@ impl AuthService {
         jwt_secret: String,
         allowed_email_domain: String,
         lifetimes: TokenLifetimes,
+        email: Option<Arc<dyn EmailService>>,
     ) -> Result<Self, AuthError> {
         if lifetimes.user.as_secs() == 0 || lifetimes.refresh.as_secs() == 0 {
             return Err(AuthError::InvalidConfiguration);
@@ -48,7 +54,26 @@ impl AuthService {
             jwt_secret,
             allowed_email_domain,
             lifetimes,
+            email,
         })
+    }
+
+    /// Issue an encrypted proof token only after requesting OTP delivery.
+    pub async fn signup_email(&self, email: &str) -> Result<String, AuthError> {
+        let challenge =
+            EmailOtpChallenge::new(email, &self.allowed_email_domain, &self.jwt_secret)?;
+        let sender = self.email.as_ref().ok_or(EmailError::Unavailable)?;
+        sender
+            .send(EmailRequest {
+                to: compallm_utils::email::normalize_email(email)?,
+                subject: "Your Compallm signup code".into(),
+                text: EmailTemplate::OtpCode(OtpCode::new(
+                    challenge.code,
+                    Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),
+                )),
+            })
+            .await?;
+        Ok(challenge.access_token)
     }
 
     pub async fn signin(&self, email_token: &str, code: &str) -> Result<UserTokens, AuthError> {

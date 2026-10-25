@@ -8,6 +8,8 @@ impl From<compallm_utils::error::EmailError> for AuthError {
 
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {
+    #[error(transparent)]
+    Email(#[from] crate::mail::EmailError),
     #[error("invalid authentication configuration")]
     InvalidConfiguration,
     #[error("invalid or unauthorized email address")]

@@ -1,1 +1,1 @@
-pub mod greeting;
+pub mod auth;

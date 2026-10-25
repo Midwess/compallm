@@ -1,0 +1,80 @@
+name: AI PR explanation
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to explain
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: read
+  statuses: read
+
+concurrency:
+  group: pr-explanation-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: true
+
+jobs:
+  explain:
+    # Forks and dependency bots do not receive LLM credentials or consume API budget.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (!github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.type != 'Bot')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: .github/scripts/pr-explainer
+    steps:
+      - name: Check out trusted runner code only
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /.github/scripts/pr-explainer/
+            /docs/content/architecture.md
+
+      - name: Set up Node.js and cache npm downloads
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: .github/scripts/pr-explainer/package-lock.json
+
+      - name: Restore installed dependencies
+        id: dependencies
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .github/scripts/pr-explainer/node_modules
+          key: pr-explainer-deps-${{ runner.os }}-${{ runner.arch }}-node22-${{ hashFiles('.github/scripts/pr-explainer/package-lock.json') }}
+
+      - name: Install dependencies on cache miss
+        if: steps.dependencies.outputs.cache-hit != 'true'
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Restore immutable reads and completed explanations
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .github/scripts/pr-explainer/.cache
+          key: pr-explainer-data-v1-${{ github.event.pull_request.number || inputs.pr_number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            pr-explainer-data-v1-${{ github.event.pull_request.number || inputs.pr_number }}-
+
+      - name: Explain and comment on the PR
+        run: node index.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}

@@ -1,8 +1,10 @@
 ---
-title: Architecture
+title: "Development: ADR"
 ---
 
-# Architecture
+# Development: ADR
+
+This page records shared engineering decisions. Documentation is organized directly by feature under `docs/content/<feature-name>/`: `adr.md` owns decisions and open questions, while `<sub-feature>.md` explains a focused flow and its configuration. Each record distinguishes its decision status from its implementation status. Existing feature plans remain proposals until their decisions are explicitly accepted.
 
 Compallm follows pragmatic domain-driven design (DDD). Organize code around business capabilities and keep rules close to the types they govern. Use modules, concrete services, and focused clients before adding abstraction layers.
 
@@ -71,6 +73,10 @@ For example, completing authentication may need user lookup/creation, session cr
 
 A database transaction does not cover email delivery or other HTTP calls. Avoid holding a transaction open during slow network requests. If delivery must be durably coordinated with a database change, evaluate an outbox for that specific workflow.
 
+## Browser authentication
+
+The [login ADR](../login/adr.md) owns browser session decisions, including cookies, refresh, organization selection, and logout. Method-specific flows live alongside it: [Email](../login/email.md), [GitHub](../login/github.md), and [GitLab](../login/gitlab.md).
+
 ## External APIs and network clients
 
 Follow the concrete-client approach demonstrated by [Zero to Production's EmailClient](https://github.com/LukeMathWalker/zero-to-production/blob/main/src/email_client.rs).
@@ -102,4 +108,4 @@ Retries must be chosen per operation. Do not blindly retry actions that could se
 
 [Zero to Production](https://github.com/LukeMathWalker/zero-to-production) is a practical reference, not a strict persistence-isolation architecture. It uses validated domain types, a concrete `reqwest` email client, and handlers/helpers that directly use SQLx transactions. Compallm applies those pragmatic ideas with Loco, Axum, and SeaORM and retains its own business decisions.
 
-See [business decisions](decisions.md) for open rules, [product overview](product.md) for capability scope, and the root repository README for local development commands.
+See the [product overview](../overview.md) for feature plans and the root repository README for local development commands. Decisions and open questions belong in the feature they affect.

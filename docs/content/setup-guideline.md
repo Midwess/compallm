@@ -133,6 +133,8 @@ The `postgres-data` volume contains the database. Deleting that volume permanent
 
 ## Related pages
 
-- [Authentication](features/passwordless-login.md)
-- [Architecture](architecture.md)
-- [Documentation guide](documentation.md)
+- [Login](login/adr.md)
+- [Email login](login/email.md)
+- [GitHub login](login/github.md)
+- [GitLab login](login/gitlab.md)
+- [Development](development/adr.md)

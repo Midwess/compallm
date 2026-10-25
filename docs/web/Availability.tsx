@@ -51,7 +51,7 @@ export function Brand() {
 const Availability: QuartzComponent = ({ fileData, allFiles }) => {
   const slug = fileData.slug!;
   const available = isAvailable(fileData.frontmatter?.available);
-  const catalog = ["index", "product", "features/index"].includes(slug);
+  const catalog = ["index", "overview"].includes(slug);
   const features = allFiles
     .filter((file) => isFeature(file.slug ?? ""))
     .sort((a, b) =>

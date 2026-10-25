@@ -16,4 +16,19 @@ The filter beside Compallm shows **Available** by default. Select **All** to exp
 
 ## Planning status
 
-Development features describe intended scope. Use [business decisions](decisions.md) for unresolved rules and [roadmap](roadmap.md) for review tasks. No release commitment is implied by listing a development feature.
+Development features describe intended scope. Each feature's `adr.md` records its agreed decisions, open questions, and release priorities. No release commitment is implied by listing a development feature.
+
+## Feature plans
+
+Each feature has its own folder directly under `docs/content/`, with shared decisions in `adr.md` and focused flows in sibling pages.
+
+- [Login](login/adr.md): [Email](login/email.md), [GitHub](login/github.md), and [GitLab](login/gitlab.md).
+- [Organization and membership](organization/adr.md).
+- [LLM Router](llm-router/adr.md).
+- [LLM Gateway](llm-gateway/adr.md).
+- [LLM Chat](llm-chat/adr.md).
+- [Interactive UI](interactive-ui/adr.md).
+- [Organization plugins](plugins/adr.md).
+- [Notebook](notebook/adr.md).
+- [Usage and administration](usage-administration/adr.md).
+- [Data and privacy](data-privacy/adr.md).

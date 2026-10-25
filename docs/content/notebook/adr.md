@@ -7,9 +7,11 @@ available: false
 
 ## Status
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Release priorities and unresolved rules are tracked in [the roadmap](../roadmap.md) and [business decisions](../decisions.md).
+Decision status: Proposed. Implementation status: Under development.
 
-## Scope
+Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
+
+## Context and proposed scope
 
 Build a reusable knowledge collection for focused work, research, and study.
 
@@ -22,6 +24,10 @@ Build a reusable knowledge collection for focused work, research, and study.
 - Save useful answers as notes and reuse notebook knowledge in chat.
 - Share notebooks with authorized organization members.
 
+## Consequences
+
+Answers must distinguish source-backed content from general model knowledge. Source retrieval and sharing remain subject to the notebook's access rules.
+
 ## Behavior examples
 
 ### Source-grounded answers
@@ -31,8 +37,11 @@ The system should let authorized members organize sources into notebooks and ide
 - **WHEN** a member asks a question supported by selected notebook sources
 - **THEN** the answer includes citations to those sources
 
+## Open questions
+
+Which source types and notebook capabilities ship first, and how do the [privacy and sharing rules](../data-privacy/adr.md) apply to notebooks?
+
 ## Related pages
 
-- [LLM Chat](llm-chat.md)
-- [Product overview](../product.md)
-- [Business decisions](../decisions.md)
+- [LLM Chat](../llm-chat/adr.md)
+- [Product overview](../overview.md)

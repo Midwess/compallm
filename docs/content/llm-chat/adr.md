@@ -7,9 +7,11 @@ available: false
 
 ## Status
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Release priorities and unresolved rules are tracked in [the roadmap](../roadmap.md) and [business decisions](../decisions.md).
+Decision status: Proposed. Implementation status: Under development.
 
-## Scope
+Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
+
+## Context and proposed scope
 
 Provide a familiar chat experience across multiple providers, with access to richer model capabilities.
 
@@ -22,6 +24,10 @@ Provide a familiar chat experience across multiple providers, with access to ric
 - Show usage and estimated cost for a conversation.
 - Share conversations within the organization according to access rules.
 
+## Consequences
+
+Conversation sharing, model access, plugins, and notebook context remain subject to organization permissions and privacy rules.
+
 ## Behavior examples
 
 ### Conversation interaction
@@ -31,8 +37,11 @@ The system should let members create conversations, select supported models, sen
 - **WHEN** an authorized member submits a message to a supported model
 - **THEN** the conversation displays the response and identifies the model that produced it
 
+## Open questions
+
+Which chat capabilities ship first, and how do the [privacy and sharing rules](../data-privacy/adr.md) apply to conversations?
+
 ## Related pages
 
-- [Data and privacy](data-privacy.md)
-- [Product overview](../product.md)
-- [Business decisions](../decisions.md)
+- [Data and privacy](../data-privacy/adr.md)
+- [Product overview](../overview.md)

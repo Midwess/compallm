@@ -7,9 +7,11 @@ available: false
 
 ## Status
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Release priorities and unresolved rules are tracked in [the roadmap](../roadmap.md) and [business decisions](../decisions.md).
+Decision status: Proposed. Implementation status: Under development.
 
-## Scope
+Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
+
+## Context and proposed scope
 
 - Give members a view of their own usage and administrators a view of organization usage.
 - Break down usage by member, application, model, provider, and time period.
@@ -17,6 +19,10 @@ Planned scope for discussion. The examples describe intended behavior, not compl
 - Notify members and administrators about approaching limits and provider failures.
 - Record administrative changes, API key lifecycle events, and plugin actions for auditing.
 - Distinguish provider-reported usage and prices from estimates when exact values are unavailable.
+
+## Consequences
+
+Members and administrators see different usage scopes. Reports must distinguish provider measurements from estimates and follow Gateway accounting rules.
 
 ## Behavior examples
 
@@ -27,8 +33,11 @@ The system should expose members' own usage and organization usage to authorized
 - **WHEN** an authenticated member opens their usage history
 - **THEN** the system shows that member's usage and identifies estimates
 
+## Open questions
+
+Which reports, notifications, and audit events ship first? Access rules depend on [organization roles](../organization/adr.md), and accounting follows the [Gateway's allowance decisions](../llm-gateway/adr.md).
+
 ## Related pages
 
-- [Data and privacy](data-privacy.md)
-- [Product overview](../product.md)
-- [Business decisions](../decisions.md)
+- [Data and privacy](../data-privacy/adr.md)
+- [Product overview](../overview.md)

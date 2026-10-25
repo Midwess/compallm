@@ -7,9 +7,11 @@ available: false
 
 ## Status
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Release priorities and unresolved rules are tracked in [the roadmap](../../roadmap.md) and [business decisions](../../decisions.md).
+Decision status: Proposed. Implementation status: Under development.
 
-## Scope
+Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
+
+## Context and proposed scope
 
 Extend what models can do through tools and integrations managed by the organization.
 
@@ -21,6 +23,10 @@ Extend what models can do through tools and integrations managed by the organiza
 - Show tool activity, results, failures, and action history.
 - Manage plugin versions and revoke access when an integration is removed.
 
+## Consequences
+
+Enabling a tool does not grant every member permission to invoke it. External actions require the organization's permission and confirmation policies.
+
 ## Behavior examples
 
 ### Controlled plugin access
@@ -30,8 +36,13 @@ The system should restrict plugin invocation according to organization configura
 - **WHEN** a conversation attempts to invoke a plugin disabled by its organization
 - **THEN** the system rejects the invocation without executing the external tool
 
+## Open questions
+
+- Which plugin types are supported first?
+- Which external actions require confirmation, and who defines the policy?
+- Which plugin capabilities belong in the first release?
+
 ## Related pages
 
-- [Data and privacy](../data-privacy.md)
-- [Product overview](../../product.md)
-- [Business decisions](../../decisions.md)
+- [Data and privacy](../data-privacy/adr.md)
+- [Product overview](../overview.md)

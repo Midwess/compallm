@@ -7,9 +7,11 @@ available: false
 
 ## Status
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Release priorities and unresolved rules are tracked in [the roadmap](../roadmap.md) and [business decisions](../decisions.md).
+Decision status: Proposed. Implementation status: Under development.
 
-## Scope
+Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
+
+## Context and proposed scope
 
 Let models explain ideas through interactive content alongside ordinary text.
 
@@ -21,6 +23,10 @@ Let models explain ideas through interactive content alongside ordinary text.
 - Run generated content in an isolated environment with a text fallback when rendering is unavailable.
 - Support saving or exporting useful outputs where the output format allows it.
 
+## Consequences
+
+Model-generated UI requires an isolated execution boundary and a text fallback. Rendering content does not implicitly authorize data access or external actions.
+
 ## Behavior examples
 
 ### Interactive response content
@@ -30,8 +36,11 @@ The system should display supported model-generated interactive content within a
 - **WHEN** a response contains a supported interactive visualization
 - **THEN** the member can interact with it while it remains associated with the response
 
+## Open questions
+
+Which interactive content types ship first, and which data access and external actions may they request?
+
 ## Related pages
 
-- [Data and privacy](data-privacy.md)
-- [Product overview](../product.md)
-- [Business decisions](../decisions.md)
+- [Data and privacy](../data-privacy/adr.md)
+- [Product overview](../overview.md)

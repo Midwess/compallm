@@ -7,9 +7,11 @@ available: false
 
 ## Status
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Release priorities and unresolved rules are tracked in [the roadmap](../roadmap.md) and [business decisions](../decisions.md).
+Decision status: Unified format translation and the Router/Gateway boundary are accepted directions; remaining scope is proposed. Implementation status: Under development.
 
-## Scope
+Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
+
+## Context and proposed scope
 
 Connect multiple providers and offer a consistent way to select and call their models.
 
@@ -24,6 +26,18 @@ Connect multiple providers and offer a consistent way to select and call their m
 - Preserve supported provider capabilities during translation and explicitly report unsupported features or options instead of silently discarding them.
 
 For example, a client using an OpenAI-compatible format could select an Anthropic or Gemini model. Compallm translates the request for that provider and returns the result in the same OpenAI-compatible format the client expects. The exact supported API formats and translation coverage remain to be defined; format conversion does not give a model capabilities it does not support.
+
+## Agreed direction and open questions
+
+The client API format is independent of the provider. Translate both directions through a unified internal representation and explicitly reject unsupported capabilities. Router selects providers and translates formats; [Gateway](../llm-gateway/adr.md) enforces access, allowances, and usage attribution.
+
+Before implementation, decide which API compatibility standard, providers, and model capabilities ship first, and whether credentials are organization-owned only or members may bring personal credentials.
+
+The 9Router comparison also surfaced routing profiles, credential pools, quota awareness, OAuth refresh, self-hosted policies, compression and prompt presets, client setup helpers, and configuration sync. These remain candidates, not accepted scope.
+
+## Consequences
+
+Provider adapters must preserve supported capabilities and report translation limits explicitly. A unified format does not make unsupported provider capabilities available.
 
 ## Behavior examples
 
@@ -43,6 +57,5 @@ The Router should explicitly report unsupported requested features or options ra
 
 ## Related pages
 
-- [LLM Gateway](llm-gateway.md)
-- [Product overview](../product.md)
-- [Business decisions](../decisions.md)
+- [LLM Gateway](../llm-gateway/adr.md)
+- [Product overview](../overview.md)

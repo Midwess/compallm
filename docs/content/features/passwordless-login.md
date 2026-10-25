@@ -16,8 +16,8 @@ The agreed login direction is:
 
 - A user enters an organization email address; there is no password.
 - The allowed organization email domain is configured through an environment variable.
-- The application emails a verification code and returns a signed access token containing an encrypted email-OTP payload.
-- The token and its matching code expire after 10 minutes. Requesting another code does not invalidate previous pairs, and a matching pair may be reused until it expires.
+- The application sends a one-time code to that address.
+- A code expires after 15 minutes and can only be used once.
 - Successful verification establishes the user's authenticated session.
 
 The proposed supporting controls are resend limits, verification-attempt limits, session expiration, logout, and administrative session revocation. Authentication proves control of the email address; whether that grants workspace access or creates membership remains an open business decision.
@@ -25,21 +25,20 @@ The proposed supporting controls are resend limits, verification-attempt limits,
 ## Behavior examples
 
 ### Organization email verification
-The system should authenticate eligible organization emails through emailed verification codes without passwords; startup supplies the configured allowed domain. OTP payload encryption and JWT signing share one configured secret passed through constructors; the cipher key is derived from that secret. Token modules do not read environment variables.
+The system should authenticate eligible organization emails through emailed single-use codes without passwords; the allowed domain should be configured through an environment variable.
 
 #### Example: Expired code
-- **WHEN** a token and code are submitted at or after 10 minutes from issuance
+- **WHEN** a code is submitted at or after 15 minutes from issuance
 - **THEN** the system rejects the code without establishing a new session
 
 #### Example: Unexpired code
-- **WHEN** a user submits an authentic email access token and its matching code before expiration
-- **THEN** the system verifies email control so the login workflow can establish an authenticated session
+- **WHEN** a user submits a matching unused code before expiration
+- **THEN** the system consumes the code and establishes an authenticated session
 - **AND** workspace access remains subject to the membership policy to be decided
 
-#### Example: Previous code remains valid
-- **WHEN** a user requests another code and later submits an older authentic token with its original matching code before expiration
-- **THEN** the system accepts that pair
-- **AND** successfully verifying a pair does not prevent its reuse before expiration
+#### Example: Consumed code
+- **WHEN** a user resubmits a previously consumed code
+- **THEN** the system rejects it without establishing another session
 
 #### Example: Domain mismatch
 - **WHEN** an email domain does not exactly match the configured allowed domain, ignoring case

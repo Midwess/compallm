@@ -1,7 +1,6 @@
 ---
 title: LLM Gateway
-tags:
-  - features
+available: false
 ---
 
 # LLM Gateway

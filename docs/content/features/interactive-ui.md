@@ -1,7 +1,6 @@
 ---
 title: Interactive UI
-tags:
-  - features
+available: false
 ---
 
 # Interactive UI

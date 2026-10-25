@@ -1,7 +1,6 @@
 ---
 title: LLM Chat
-tags:
-  - features
+available: false
 ---
 
 # LLM Chat

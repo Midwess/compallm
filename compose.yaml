@@ -10,5 +10,11 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql
 
+  maildev:
+    image: docker.io/maildev/maildev:latest
+    ports:
+      - "1080:1080"
+      - "1025:1025"
+
 volumes:
   postgres-data:

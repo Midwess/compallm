@@ -1,7 +1,6 @@
 ---
 title: Data and privacy
-tags:
-  - features
+available: false
 ---
 
 # Data and privacy
@@ -29,6 +28,6 @@ The system should exclude upstream provider credentials and plugin secrets from 
 
 ## Related pages
 
-- [Organization and membership](organization-membership.md)
+- [Organization and membership](organization/organization-membership.md)
 - [Product overview](../product.md)
 - [Business decisions](../decisions.md)

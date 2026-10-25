@@ -1,9 +1,17 @@
-import { QuartzConfig } from "./quartz/cfg"
-import * as Plugin from "./quartz/plugins"
-import { DevelopmentLinks, FeatureAvailability, PreviewReload, includeDevelopment } from "./feature-status"
+import { QuartzConfig } from "./quartz/cfg";
+import * as Plugin from "./quartz/plugins";
+import {
+  DevelopmentLinks,
+  PageAvailability,
+  PreviewReload,
+  includeDevelopment,
+} from "./feature-status";
 
-const docsBaseUrl = (process.env.DOCS_BASE_URL || "https://midwess.github.io/compallm")
-  .replace(/^https?:\/\//, "").replace(/\/$/, "")
+const docsBaseUrl = (
+  process.env.DOCS_BASE_URL || "https://midwess.github.io/compallm"
+)
+  .replace(/^https?:\/\//, "")
+  .replace(/\/$/, "");
 
 /**
  * Quartz 4 Configuration
@@ -76,7 +84,7 @@ const config: QuartzConfig = {
       Plugin.Description(),
       PreviewReload(),
     ],
-    filters: [Plugin.RemoveDrafts(), FeatureAvailability()],
+    filters: [Plugin.RemoveDrafts(), PageAvailability()],
     emitters: [
       Plugin.AliasRedirects(),
       Plugin.ComponentResources(),
@@ -94,6 +102,6 @@ const config: QuartzConfig = {
       // Comment out CustomOgImages to speed up build time
     ],
   },
-}
+};
 
-export default config
+export default config;

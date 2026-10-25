@@ -12,7 +12,7 @@ npm run dev
 
 Run `npm run build` in this directory to build static pages.
 
-Feature status is read from Markdown frontmatter. Only `status: available` is available; everything else defaults to under development. The filter defaults to available features and switches to an inclusive planning view at `/planning/`. `site.mjs` builds both views from the same `docs/content/` sources with separate navigation/search/graph indexes, then serves and rebuilds them for `npm run dev`. There is no documentation release versioning. See [availability instructions](../content/documentation.md#feature-availability).
+Page availability is read from Markdown frontmatter and defaults to false when omitted. Only the YAML boolean `available: true` is available; `available: false` and every other value are under development. The filter defaults to available pages and switches to an inclusive planning view at `/planning/`. `site.mjs` builds both views from the same `docs/content/` sources with separate navigation/search/graph indexes, then serves and rebuilds them for `npm run dev`. There is no documentation release versioning. See [availability instructions](../content/documentation.md#page-availability).
 
 The preview runs at http://localhost:8080 and rebuilds when Markdown changes. Static output is written to `docs/web/public/`. Search, graph navigation, backlinks, and popovers are enabled. The site uses dark mode only and standard system fonts, with no theme toggle or external font downloads; analytics are disabled. GitHub Actions deploys pushes to `main` to GitHub Pages after the repository's Pages source is set to GitHub Actions.
 

@@ -6,8 +6,23 @@ impl From<compallm_utils::error::EmailError> for AuthError {
     }
 }
 
+impl From<crate::user::RegistrationError> for AuthError {
+    fn from(error: crate::user::RegistrationError) -> Self {
+        use crate::user::RegistrationError;
+        match error {
+            RegistrationError::Organization(error) => Self::Organization(error),
+            RegistrationError::InvalidDisplayName => Self::InvalidDisplayName,
+            RegistrationError::InvalidEmail(error) => error.into(),
+            RegistrationError::Persistence(error) => Self::Persistence(error),
+            RegistrationError::IdGeneration(error) => Self::IdGeneration(error),
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {
+    #[error(transparent)]
+    Organization(#[from] crate::organization::OrganizationCreationError),
     #[error(transparent)]
     Email(#[from] crate::mail::EmailError),
     #[error("invalid authentication configuration")]

@@ -4,6 +4,7 @@
 use sea_orm_migration::prelude::*;
 
 mod m20261024_000001_create_users;
+mod m20261025_000001_create_organizations;
 
 pub struct Migrator;
 
@@ -12,6 +13,7 @@ impl MigratorTrait for Migrator {
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
         vec![
             Box::new(m20261024_000001_create_users::Migration),
+            Box::new(m20261025_000001_create_organizations::Migration),
             // inject-above (do not remove this comment)
         ]
     }

@@ -9,11 +9,13 @@ use compallm_core::{
         AccessToken, AuthError, AuthService, EmailOtpChallenge, RefreshToken, TokenLifetimes,
         UserAccessToken, UserTokens,
     },
+    organization::{CreationService, Organization, OrganizationMember, OrganizationRole},
     persistent::{
         DbContext,
+        organization::{OrganizationRepository, OrganizationRepositoryError},
         user::{UserRepository, UserRepositoryError},
     },
-    user::{User, UserStatus},
+    user::{RegistrationService, User, UserStatus},
 };
 use sea_orm::{DatabaseConnection, DbBackend, DbErr, MockDatabase, Statement, Transaction};
 
@@ -28,10 +30,51 @@ struct State {
     fail_create: bool,
     fail_record_login: bool,
     logins: Vec<u64>,
+    organization: Option<Organization>,
+    owner: Option<OrganizationMember>,
+    organization_attempted: bool,
+    fail_organization: bool,
+    fail_membership: bool,
 }
 
 #[derive(Clone)]
 struct Repository(Arc<Mutex<State>>, DbContext);
+
+struct OrganizationRepositoryStub(Arc<Mutex<State>>);
+
+#[async_trait::async_trait]
+impl OrganizationRepository for OrganizationRepositoryStub {
+    async fn create(
+        &self,
+        organization: Organization,
+    ) -> Result<Organization, OrganizationRepositoryError> {
+        DbContext::current()?;
+        let mut state = self.0.lock().unwrap();
+        state.organization_attempted = true;
+        if state.fail_organization {
+            return Err(OrganizationRepositoryError::database(anyhow::anyhow!(
+                "organization insert failed"
+            )));
+        }
+        state.organization = Some(organization.clone());
+        Ok(organization)
+    }
+
+    async fn add_member(
+        &self,
+        member: OrganizationMember,
+    ) -> Result<OrganizationMember, OrganizationRepositoryError> {
+        DbContext::current()?;
+        let mut state = self.0.lock().unwrap();
+        if state.fail_membership {
+            return Err(OrganizationRepositoryError::database(anyhow::anyhow!(
+                "owner insert failed"
+            )));
+        }
+        state.owner = Some(member.clone());
+        Ok(member)
+    }
+}
 
 #[async_trait::async_trait]
 impl UserRepository for Repository {
@@ -110,9 +153,15 @@ impl Fixture {
         let users = Box::leak(Box::new(
             Box::new(self.repo.clone()) as Box<dyn UserRepository>
         ));
+        let organizations = Box::leak(Box::new(Box::new(OrganizationRepositoryStub(
+            self.repo.0.clone(),
+        )) as Box<dyn OrganizationRepository>));
+        let creation = Box::leak(Box::new(CreationService::new(db, organizations)));
+        let registration = Box::leak(Box::new(RegistrationService::new(users, creation)));
         AuthService::new(
             db,
             users,
+            registration,
             SECRET.into(),
             "midwess.com".into(),
             TokenLifetimes {
@@ -134,13 +183,27 @@ impl Fixture {
     }
 
     fn assert_transaction(self, finish: &str) {
+        let organization_attempted = self.repo.0.lock().unwrap().organization_attempted;
         drop(self.repo);
+        let mut statements = vec![Statement::from_string(DbBackend::Postgres, "BEGIN")];
+        if organization_attempted {
+            statements.push(Statement::from_string(
+                DbBackend::Postgres,
+                "SAVEPOINT savepoint_1",
+            ));
+            statements.push(Statement::from_string(
+                DbBackend::Postgres,
+                if finish == "COMMIT" {
+                    "RELEASE SAVEPOINT savepoint_1"
+                } else {
+                    "ROLLBACK TO SAVEPOINT savepoint_1"
+                },
+            ));
+        }
+        statements.push(Statement::from_string(DbBackend::Postgres, finish));
         assert_eq!(
             self.db.as_ref().clone().into_transaction_log(),
-            vec![Transaction::many([
-                Statement::from_string(DbBackend::Postgres, "BEGIN"),
-                Statement::from_string(DbBackend::Postgres, finish),
-            ])]
+            vec![Transaction::many(statements)]
         );
     }
 }
@@ -192,6 +255,13 @@ async fn signup_requires_verified_email_and_creates_on_one_transaction() {
         );
         assert_eq!(state.contexts.len(), 2);
         assert!(state.logins.is_empty());
+        let organization = state.organization.as_ref().unwrap();
+        let owner = state.owner.as_ref().unwrap();
+        assert_eq!(organization.name, "James's workspace");
+        assert!(organization.id > 0);
+        assert_eq!(organization.created_by, owner.user_id);
+        assert_eq!(organization.id, owner.organization_id);
+        assert_eq!(owner.role, OrganizationRole::Owner);
         assert!(
             state
                 .contexts
@@ -200,6 +270,28 @@ async fn signup_requires_verified_email_and_creates_on_one_transaction() {
         );
     }
     fixture.assert_transaction("COMMIT");
+}
+
+#[tokio::test]
+async fn organization_or_owner_failure_rolls_back_the_entire_signup() {
+    for fail_membership in [false, true] {
+        let fixture = Fixture::new(None);
+        {
+            let mut state = fixture.repo.0.lock().unwrap();
+            state.fail_organization = !fail_membership;
+            state.fail_membership = fail_membership;
+        }
+        let challenge = EmailOtpChallenge::new("james@midwess.com", "midwess.com", SECRET).unwrap();
+        assert!(matches!(
+            fixture
+                .service()
+                .signup(&challenge.access_token, &challenge.code, "James")
+                .await,
+            Err(AuthError::Organization(_))
+        ));
+        assert!(fixture.repo.0.lock().unwrap().owner.is_none());
+        fixture.assert_transaction("ROLLBACK");
+    }
 }
 
 #[tokio::test]
@@ -280,15 +372,7 @@ async fn invalid_otp_or_empty_display_name_does_not_reach_persistence() {
         Err(AuthError::InvalidDisplayName)
     ));
     assert!(fixture.repo.0.lock().unwrap().contexts.is_empty());
-    drop(fixture.repo);
-    assert!(
-        fixture
-            .db
-            .as_ref()
-            .clone()
-            .into_transaction_log()
-            .is_empty()
-    );
+    fixture.assert_transaction("ROLLBACK");
 }
 
 #[tokio::test]

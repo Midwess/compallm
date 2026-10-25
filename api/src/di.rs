@@ -2,7 +2,9 @@ use axum::Router;
 use compallm_core::{
     auth::{AuthError, AuthService, TokenLifetimes},
     mail::EmailService,
-    persistent::{DbContext, user::UserRepository},
+    organization::CreationService,
+    persistent::{DbContext, organization::OrganizationRepository, user::UserRepository},
+    user::RegistrationService,
 };
 use compallm_postgres::postgres_connection::PostgresConnection;
 use loco_rs::app::AppContext;
@@ -29,10 +31,13 @@ struct Settings {
 pub struct Di {
     db: Box<DbContext>,
     users: Box<dyn UserRepository>,
+    organizations: Box<dyn OrganizationRepository>,
     email: Option<Box<dyn EmailService>>,
     settings: AuthSettings,
     // Filled after Di reaches its permanent address so services can borrow it.
     auth: OnceLock<Box<AuthService>>,
+    registration: OnceLock<Box<RegistrationService>>,
+    organization_creation: OnceLock<Box<CreationService>>,
 }
 
 impl Di {
@@ -65,9 +70,14 @@ impl Di {
         Self {
             db: Box::new(db),
             users: Box::new(compallm_postgres::repository::user::UserRepository),
+            organizations: Box::new(
+                compallm_postgres::repository::organization::OrganizationRepository,
+            ),
             email,
             settings,
             auth: OnceLock::new(),
+            registration: OnceLock::new(),
+            organization_creation: OnceLock::new(),
         }
     }
 
@@ -78,6 +88,7 @@ impl Di {
         let service = Box::new(AuthService::new(
             self.db_context(),
             self.user_repository(),
+            self.registration_service(),
             self.settings.jwt_secret.clone(),
             self.settings.allowed_email_domain.clone(),
             TokenLifetimes {
@@ -108,6 +119,29 @@ impl Di {
 
     pub fn auth_service(&'static self) -> &'static AuthService {
         self.auth.get().expect("Di services must be initialized")
+    }
+
+    pub fn registration_service(&'static self) -> &'static RegistrationService {
+        self.registration.get_or_init(|| {
+            Box::new(RegistrationService::new(
+                self.user_repository(),
+                self.organization_creation_service(),
+            ))
+        })
+    }
+
+    #[allow(clippy::borrowed_box)]
+    pub fn organization_repository(&'static self) -> &'static Box<dyn OrganizationRepository> {
+        &self.organizations
+    }
+
+    pub fn organization_creation_service(&'static self) -> &'static CreationService {
+        self.organization_creation.get_or_init(|| {
+            Box::new(CreationService::new(
+                self.db_context(),
+                self.organization_repository(),
+            ))
+        })
     }
 
     /// Attach typed service state and the scoped database context to API routes.

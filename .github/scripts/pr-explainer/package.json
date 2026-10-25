@@ -1,0 +1,17 @@
+{
+  "name": "compallm-pr-explainer",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "jsdom": "27.0.1",
+    "mermaid": "12.2.0",
+    "openai": "7.43.0"
+  }
+}

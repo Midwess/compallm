@@ -4,7 +4,7 @@ use compallm_core::{
     user::{User, UserStatus},
 };
 
-use crate::schema::UserSchema;
+use crate::schema::{UserSchema, UserStatusSchema};
 
 impl TryFrom<UserSchema> for User {
     type Error = UserRepositoryError;
@@ -16,14 +16,9 @@ impl TryFrom<UserSchema> for User {
                 "user ID in database must be positive"
             )));
         }
-        let status = match model.status.as_str() {
-            "active" => UserStatus::Active,
-            "disabled" => UserStatus::Disabled,
-            status => {
-                return Err(UserRepositoryError::database(anyhow::anyhow!(
-                    "unknown user status: {status}"
-                )));
-            }
+        let status = match model.status {
+            UserStatusSchema::Active => UserStatus::Active,
+            UserStatusSchema::Disabled => UserStatus::Disabled,
         };
         Ok(Self {
             id,

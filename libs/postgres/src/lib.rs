@@ -17,6 +17,10 @@ pub mod repository;
 /// ```compile_fail
 /// use compallm_postgres::schema::users::Model;
 /// ```
+///
+/// ```compile_fail
+/// use compallm_postgres::schema::UserStatus;
+/// ```
 pub mod schema;
 
 pub use connection::Connection;

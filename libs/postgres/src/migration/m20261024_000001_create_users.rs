@@ -1,6 +1,9 @@
 use sea_orm_migration::{
     prelude::*,
-    sea_query::{IndexCreateStatement, TableCreateStatement},
+    sea_query::{
+        IndexCreateStatement, TableCreateStatement,
+        extension::postgres::{Type, TypeCreateStatement},
+    },
 };
 
 #[derive(DeriveMigrationName)]
@@ -9,6 +12,7 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager.create_type(user_status_type()).await?;
         manager.create_table(users_table()).await?;
         manager.create_index(email_index()).await
     }
@@ -17,6 +21,9 @@ impl MigrationTrait for Migration {
         // PostgreSQL removes the table's indexes and constraints with the table.
         manager
             .drop_table(Table::drop().table(Users::Table).to_owned())
+            .await?;
+        manager
+            .drop_type(Type::drop().name(UserStatus::Enum).to_owned())
             .await
     }
 }
@@ -35,7 +42,7 @@ fn users_table() -> TableCreateStatement {
         .col(ColumnDef::new(Users::DisplayName).text().not_null())
         .col(
             ColumnDef::new(Users::Status)
-                .text()
+                .custom(UserStatus::Enum)
                 .not_null()
                 .default("active"),
         )
@@ -64,7 +71,6 @@ fn users_table() -> TableCreateStatement {
         )
         .check(Expr::col(Users::Id).gt(0))
         .check(Expr::col(Users::Email).ne(""))
-        .check(Expr::col(Users::Status).is_in(["active", "disabled"]))
         .to_owned()
 }
 
@@ -75,6 +81,21 @@ fn email_index() -> IndexCreateStatement {
         .col(Func::lower(Expr::col(Users::Email)))
         .unique()
         .to_owned()
+}
+
+fn user_status_type() -> TypeCreateStatement {
+    Type::create()
+        .as_enum(UserStatus::Enum)
+        .values([UserStatus::Active, UserStatus::Disabled])
+        .to_owned()
+}
+
+#[derive(DeriveIden)]
+enum UserStatus {
+    #[sea_orm(iden = "user_status")]
+    Enum,
+    Active,
+    Disabled,
 }
 
 #[derive(DeriveIden)]
@@ -103,7 +124,8 @@ mod tests {
         assert!(!sql.to_lowercase().contains("password"));
         assert!(sql.contains(r#""email_verified_at" timestamp with time zone NOT NULL"#));
         assert!(sql.contains(r#"CHECK ("id" > 0)"#));
-        assert!(sql.contains(r#"CHECK ("status" IN ('active', 'disabled'))"#));
+        assert!(sql.contains(r#""status" user_status NOT NULL DEFAULT 'active'"#));
+        assert!(!sql.contains(r#"CHECK ("status""#));
     }
 
     #[test]
@@ -111,6 +133,14 @@ mod tests {
         assert_eq!(
             email_index().to_string(PostgresQueryBuilder),
             r#"CREATE UNIQUE INDEX "users_email_unique" ON "users" ((LOWER("email")))"#,
+        );
+    }
+
+    #[test]
+    fn user_status_is_a_native_postgres_enum() {
+        assert_eq!(
+            user_status_type().to_string(PostgresQueryBuilder),
+            r#"CREATE TYPE "user_status" AS ENUM ('active', 'disabled')"#
         );
     }
 }

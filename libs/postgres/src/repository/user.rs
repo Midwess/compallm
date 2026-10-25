@@ -13,7 +13,7 @@ use sea_orm::{
     sea_query::{Expr, ExprTrait, Func},
 };
 
-use crate::{UserSchema, postgres_connection::PostgresConnection};
+use crate::{UserSchema, postgres_connection::PostgresConnection, schema::UserStatusSchema};
 
 type Users = <UserSchema as ModelTrait>::Entity;
 type UserColumn = <Users as EntityTrait>::Column;
@@ -85,10 +85,9 @@ impl CoreUserRepository for UserRepository {
             email: Set(email),
             display_name: Set(user.display_name),
             status: Set(match user.status {
-                UserStatus::Active => "active",
-                UserStatus::Disabled => "disabled",
-            }
-            .into()),
+                UserStatus::Active => UserStatusSchema::Active,
+                UserStatus::Disabled => UserStatusSchema::Disabled,
+            }),
             email_verified_at: Set(ChronoUtc::now().fixed_offset()),
             ..Default::default()
         };
@@ -103,7 +102,7 @@ impl CoreUserRepository for UserRepository {
             .col_expr(UserColumn::LastLoginAt, Expr::current_timestamp())
             .col_expr(UserColumn::UpdatedAt, Expr::current_timestamp())
             .filter(UserColumn::Id.eq(id))
-            .filter(UserColumn::Status.eq("active"))
+            .filter(UserColumn::Status.eq(UserStatusSchema::Active))
             .exec(db)
             .await
             .map_err(UserRepositoryError::database)?;

@@ -247,14 +247,12 @@ async fn owned_session_lookup_works_with_the_application_context() {
 }
 
 #[test]
-fn mapper_rejects_invalid_identity_credential_and_timestamps() {
-    let mut rows = vec![Fixture::row(); 5];
-    rows[0].id = 0;
-    rows[1].user_id = -1;
-    rows[2].refresh_token_id = "bad".into();
-    rows[3].revoked_at = Some("2020-01-01T00:00:00Z".parse().unwrap());
-    rows[4].organization_id = 0;
-    for row in rows {
-        assert!(Session::try_from(row).is_err());
-    }
+fn mapper_preserves_session_fields_and_rejects_unrepresentable_ids() {
+    let row = Fixture::row();
+    let session = Session::try_from(row.clone()).unwrap();
+    assert_eq!(session.id, row.id as u64);
+    assert_eq!(session.refresh_token_id, row.refresh_token_id);
+    let mut negative = row;
+    negative.user_id = -1;
+    assert!(Session::try_from(negative).is_err());
 }

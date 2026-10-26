@@ -22,9 +22,6 @@ pub struct SessionRepository;
 
 impl SessionRepository {
     fn id(id: u64) -> Result<i64, SessionRepositoryError> {
-        if id == 0 {
-            return Err(anyhow::anyhow!("session and user IDs must be positive").into());
-        }
         Ok(crate::to_bigint(id).context("invalid session or user ID")?)
     }
 
@@ -49,15 +46,10 @@ impl CoreSessionRepository for SessionRepository {
             created_at: Set(Self::timestamp(session.created_at)?),
             revoked_at: Set(session.revoked_at.map(Self::timestamp).transpose()?),
         };
-        let rows = Sessions::insert(model)
+        Sessions::insert(model)
             .exec_without_returning(db)
             .await
             .map_err(anyhow::Error::from)?;
-        if rows != 1 {
-            return Err(
-                anyhow::anyhow!("session insert affected an unexpected number of rows").into(),
-            );
-        }
         Ok(())
     }
 

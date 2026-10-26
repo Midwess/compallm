@@ -13,7 +13,7 @@ A second login creates another session; refreshing credentials keeps the same se
 
 Device information is optional. A browser description or user-provided label may eventually help recognize a session, but neither proves which physical device or person is using it. Authentication does not require device fingerprinting.
 
-Both token types reference the same database session using its ID, organization ID, and user ID. Access JWTs additionally carry the current membership role; refresh JWTs carry the current credential identifier. The complete JWT is not stored. Every lookup, renewal, and revocation uses the organization and user together, supported by a compound organization/user index.
+Both token types embed the same Session struct. Session owns its ID, organization ID, user ID, current credential identifier, original login time, and revocation state; these fields are not repeated at the token level. Access JWTs additionally carry the current membership role. A signed snapshot does not replace the database record: refresh and organization switching load the current session to enforce revocation and credential changes. The complete JWT is not stored. Every lookup, renewal, and revocation uses the organization and user together, supported by a compound organization/user index.
 
 ## Read-only renewal
 
@@ -54,6 +54,6 @@ HttpOnly blocks cookie reads, but injected scripts can still make requests. Safe
 
 ## Existing users
 
-Refresh tokens issued before sessions carried a session ID cannot be renewed through this flow; those users must sign in again. Old last-login timestamps remain for compatibility and are no longer updated. Historical sessions are not inferred from them. Original login age does not measure inactivity because renewal is read-only; session cleanup needs a separate retention policy, which remains undecided.
+Refresh tokens issued without an embedded session cannot be renewed through this flow; those users must sign in again. Old last-login timestamps remain for compatibility and are no longer updated. Historical sessions are not inferred from them. Original login age does not measure inactivity because renewal is read-only; session cleanup needs a separate retention policy, which remains undecided.
 
 See [Email](email.md), [GitHub](github.md), and [GitLab](gitlab.md) for login-method details.

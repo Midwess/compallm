@@ -32,15 +32,6 @@ pub enum AccessToken {
 
 impl AccessToken {
     pub fn validate(&self, now: u64) -> Result<(), AuthError> {
-        let validity = match self {
-            Self::EmailOtp(token) => Some(&token.validity),
-            Self::User(token) => Some(&token.validity),
-            Self::Refresh(token) => Some(&token.validity),
-            Self::Encrypted(_) => None,
-        };
-        if let Some(validity) = validity {
-            validity.validate(now)?;
-        }
         match self {
             Self::EmailOtp(token) => token.validate(now),
             Self::User(token) => token.validate(now),
@@ -173,9 +164,7 @@ impl UserTokens {
             Duration::from_secs(refresh.validity.expires_at - refresh.validity.issued_at);
         Ok(Self {
             access_token: AccessToken::User(UserAccessToken::new(
-                refresh.user_id,
-                refresh.session_id,
-                refresh.organization_id,
+                refresh.session.clone(),
                 organization_role,
                 user_lifetime,
             )?)

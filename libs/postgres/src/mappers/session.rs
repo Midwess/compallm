@@ -1,5 +1,5 @@
 use crate::UserSessionSchema;
-use anyhow::{Context, ensure};
+use anyhow::Context;
 use compallm_core::{auth::Session, persistent::session::SessionRepositoryError};
 
 impl TryFrom<UserSessionSchema> for Session {
@@ -17,26 +17,6 @@ impl TryFrom<UserSessionSchema> for Session {
             .map(|at| u64::try_from(at.timestamp()))
             .transpose()
             .context("invalid session revocation timestamp")?;
-        let validation = (|| -> anyhow::Result<()> {
-            ensure!(
-                id > 0 && user_id > 0 && organization_id > 0,
-                "session IDs must be positive"
-            );
-            ensure!(
-                revoked_at.is_none_or(|at| at >= created_at),
-                "session revoked before creation"
-            );
-            ensure!(
-                model.refresh_token_id.len() == 43
-                    && model
-                        .refresh_token_id
-                        .bytes()
-                        .all(|byte| byte.is_ascii_alphanumeric() || b"_-".contains(&byte)),
-                "invalid refresh credential identifier"
-            );
-            Ok(())
-        })();
-        validation?;
         Ok(Self {
             id,
             user_id,

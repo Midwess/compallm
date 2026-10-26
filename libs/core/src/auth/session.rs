@@ -1,4 +1,7 @@
 use super::{AuthError, RefreshToken};
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+use rand::RngCore;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 /// Identifies the session within its organization and owner.
@@ -10,7 +13,7 @@ pub struct SessionReference {
 }
 
 /// A persisted login. JWTs own expiry; ordinary renewal does not change this record.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Session {
     pub id: u64,
     pub user_id: u64,
@@ -21,15 +24,21 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn new(refresh: &RefreshToken) -> Self {
+    pub fn new(user_id: u64, id: u64, organization_id: u64) -> Self {
         Self {
-            id: refresh.session_id,
-            user_id: refresh.user_id,
-            organization_id: refresh.organization_id,
-            refresh_token_id: refresh.token_id.clone(),
-            created_at: refresh.validity.issued_at,
+            id,
+            user_id,
+            organization_id,
+            refresh_token_id: Self::new_credential_id(),
+            created_at: compallm_utils::time::unix_timestamp(),
             revoked_at: None,
         }
+    }
+
+    fn new_credential_id() -> String {
+        let mut id = [0u8; 32];
+        rand::rng().fill_bytes(&mut id);
+        URL_SAFE_NO_PAD.encode(id)
     }
 
     pub fn reference(&self) -> SessionReference {
@@ -46,7 +55,9 @@ impl Session {
 
     pub fn validate_credential(&self, presented: &RefreshToken) -> Result<(), AuthError> {
         presented.validate(compallm_utils::time::unix_timestamp())?;
-        if !self.is_active(presented.session()) || self.refresh_token_id != presented.token_id {
+        if !self.is_active(presented.session.reference())
+            || self.refresh_token_id != presented.session.refresh_token_id
+        {
             return Err(AuthError::InvalidSession);
         }
         Ok(())
@@ -68,11 +79,8 @@ impl Session {
         organization_id: u64,
     ) -> Result<(), AuthError> {
         self.validate_credential(presented)?;
-        if organization_id == 0 || organization_id > i64::MAX as u64 {
-            return Err(AuthError::OrganizationAccessDenied);
-        }
         self.organization_id = organization_id;
-        self.refresh_token_id = RefreshToken::new_credential_id();
+        self.refresh_token_id = Self::new_credential_id();
         Ok(())
     }
 

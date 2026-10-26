@@ -189,7 +189,7 @@ async fn signup_delivers_code_and_confirmation_creates_user() {
         AccessToken::decode(tokens["accessToken"].as_str().unwrap(), SECRET).unwrap(),
     )
     .unwrap();
-    assert_eq!(access.organization_id, 84);
+    assert_eq!(access.session.organization_id, 84);
     assert_eq!(
         access.organization_role,
         compallm_core::organization::OrganizationRole::Owner

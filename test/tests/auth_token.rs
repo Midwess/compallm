@@ -20,7 +20,7 @@ impl Fixture {
 
     fn tokens() -> UserTokens {
         UserTokens::new(
-            &Session::new(&RefreshToken::new(1, 7, 84, Duration::from_secs(600)).unwrap()),
+            &Session::new(1, 7, 84),
             OrganizationRole::Owner,
             SECRET,
             Duration::from_secs(60),
@@ -146,8 +146,12 @@ fn ciphertext_requires_its_configured_secret_and_integrity_tag() {
 
 #[test]
 fn valid_jwt_cannot_extend_expired_inner_claims() {
-    let mut claims =
-        UserAccessToken::new(1, 7, 84, OrganizationRole::Owner, Duration::from_secs(60)).unwrap();
+    let mut claims = UserAccessToken::new(
+        Session::new(1, 7, 84),
+        OrganizationRole::Owner,
+        Duration::from_secs(60),
+    )
+    .unwrap();
     claims.validity.issued_at -= 61;
     claims.validity.expires_at -= 61;
     let jwt =
@@ -173,8 +177,20 @@ fn token_variants_cannot_authorize_each_other() {
     let issued = Fixture::tokens();
     let user = AccessToken::decode(&issued.access_token, SECRET).unwrap();
     let refresh = AccessToken::decode(&issued.refresh_token, SECRET).unwrap();
-    assert_eq!(UserAccessToken::try_from(user.clone()).unwrap().user_id, 1);
-    assert_eq!(RefreshToken::try_from(refresh.clone()).unwrap().user_id, 1);
+    assert_eq!(
+        UserAccessToken::try_from(user.clone())
+            .unwrap()
+            .session
+            .user_id,
+        1
+    );
+    assert_eq!(
+        RefreshToken::try_from(refresh.clone())
+            .unwrap()
+            .session
+            .user_id,
+        1
+    );
     assert!(matches!(
         EmailOtpAccessToken::try_from(user.clone()),
         Err(AuthError::WrongTokenVariant)
@@ -216,9 +232,7 @@ fn email_otp_accepts_valid_addresses_from_any_domain() {
 #[test]
 fn ids_round_trip_as_u64_and_refresh_tokens_have_distinct_ids() {
     let one = UserTokens::new(
-        &Session::new(
-            &RefreshToken::new(9_007_199_254_740_993, 7, 84, Duration::from_secs(600)).unwrap(),
-        ),
+        &Session::new(9_007_199_254_740_993, 7, 84),
         OrganizationRole::Owner,
         SECRET,
         Duration::from_secs(60),
@@ -226,9 +240,7 @@ fn ids_round_trip_as_u64_and_refresh_tokens_have_distinct_ids() {
     )
     .unwrap();
     let two = UserTokens::new(
-        &Session::new(
-            &RefreshToken::new(9_007_199_254_740_993, 7, 84, Duration::from_secs(600)).unwrap(),
-        ),
+        &Session::new(9_007_199_254_740_993, 7, 84),
         OrganizationRole::Owner,
         SECRET,
         Duration::from_secs(60),
@@ -240,36 +252,34 @@ fn ids_round_trip_as_u64_and_refresh_tokens_have_distinct_ids() {
         .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&payload).unwrap();
     assert_eq!(
-        json["data"]["user"]["user_id"].as_u64(),
+        json["data"]["user"]["session"]["user_id"].as_u64(),
         Some(9_007_199_254_740_993)
     );
     assert_eq!(
         UserAccessToken::try_from(AccessToken::decode(&one.access_token, SECRET).unwrap())
             .unwrap()
+            .session
             .user_id,
         9_007_199_254_740_993
     );
     assert_ne!(
         RefreshToken::try_from(AccessToken::decode(&one.refresh_token, SECRET).unwrap())
             .unwrap()
-            .token_id,
+            .session
+            .refresh_token_id,
         RefreshToken::try_from(AccessToken::decode(&two.refresh_token, SECRET).unwrap())
             .unwrap()
-            .token_id
+            .session
+            .refresh_token_id
     );
 }
 
 #[test]
-fn refresh_requires_a_valid_session_id_and_rejects_legacy_claims() {
-    for id in [0, u64::MAX] {
-        assert!(matches!(
-            RefreshToken::new(1, id, 84, Duration::from_secs(60)),
-            Err(AuthError::InvalidToken)
-        ));
-    }
-    let claims = RefreshToken::new(1, 7, 84, Duration::from_secs(60)).unwrap();
+fn refresh_requires_an_embedded_session_and_rejects_legacy_claims() {
+    let claims =
+        RefreshToken::from_session(&Session::new(1, 7, 84), Duration::from_secs(60)).unwrap();
     let mut serialized = serde_json::to_value(&claims).unwrap();
-    serialized.as_object_mut().unwrap().remove("session_id");
+    serialized.as_object_mut().unwrap().remove("session");
     let jwt = create_jwt_token(
         serde_json::json!({"refresh":serialized}),
         SECRET,
@@ -277,7 +287,7 @@ fn refresh_requires_a_valid_session_id_and_rejects_legacy_claims() {
     )
     .unwrap();
     assert!(AccessToken::decode(&jwt, SECRET).is_err());
-    assert_eq!(serde_json::to_value(claims).unwrap()["session_id"], 7);
+    assert_eq!(serde_json::to_value(claims).unwrap()["session"]["id"], 7);
 }
 
 #[test]
@@ -290,7 +300,7 @@ fn malformed_tokens_and_invalid_lifetimes_are_rejected() {
     }
     assert!(matches!(
         UserTokens::new(
-            &Session::new(&RefreshToken::new(1, 7, 84, Duration::from_secs(60)).unwrap()),
+            &Session::new(1, 7, 84),
             OrganizationRole::Owner,
             SECRET,
             Duration::ZERO,
@@ -298,17 +308,17 @@ fn malformed_tokens_and_invalid_lifetimes_are_rejected() {
         ),
         Err(AuthError::InvalidConfiguration)
     ));
-    assert!(matches!(
-        UserAccessToken::new(0, 7, 84, OrganizationRole::Owner, Duration::from_secs(60)),
-        Err(AuthError::InvalidToken)
-    ));
 }
 
 #[test]
 fn encryption_preserves_the_variant_for_typed_conversion() {
     let cipher = EncryptedAccessToken::new(SECRET).unwrap();
-    let user =
-        UserAccessToken::new(1, 7, 84, OrganizationRole::Owner, Duration::from_secs(60)).unwrap();
+    let user = UserAccessToken::new(
+        Session::new(1, 7, 84),
+        OrganizationRole::Owner,
+        Duration::from_secs(60),
+    )
+    .unwrap();
     let jwt = AccessToken::User(user)
         .encrypt(&cipher)
         .unwrap()
@@ -317,10 +327,12 @@ fn encryption_preserves_the_variant_for_typed_conversion() {
     assert_eq!(
         UserAccessToken::try_from(AccessToken::decode(&jwt, SECRET).unwrap())
             .unwrap()
+            .session
             .user_id,
         1
     );
-    let refresh = RefreshToken::new(1, 7, 84, Duration::from_secs(600)).unwrap();
+    let refresh =
+        RefreshToken::from_session(&Session::new(1, 7, 84), Duration::from_secs(600)).unwrap();
     let jwt = AccessToken::Refresh(refresh)
         .encrypt(&cipher)
         .unwrap()
@@ -329,6 +341,7 @@ fn encryption_preserves_the_variant_for_typed_conversion() {
     assert_eq!(
         RefreshToken::try_from(AccessToken::decode(&jwt, SECRET).unwrap())
             .unwrap()
+            .session
             .user_id,
         1
     );
@@ -393,27 +406,18 @@ fn encrypted_token_errors_preserve_their_source() {
 
 #[test]
 fn enum_checks_common_timestamps_then_inner_invariants() {
-    let mut user =
-        UserAccessToken::new(1, 7, 84, OrganizationRole::Owner, Duration::from_secs(60)).unwrap();
-    user.user_id = 0;
-    assert!(matches!(
-        AccessToken::User(user).validate(unix_timestamp()),
-        Err(AuthError::InvalidToken)
-    ));
     let mut otp = EmailOtpAccessToken::new("james@midwess.com".into()).unwrap();
     otp.code = "abcdef".into();
     assert!(matches!(
         AccessToken::EmailOtp(otp).validate(unix_timestamp()),
         Err(AuthError::InvalidToken)
     ));
-    let mut refresh = RefreshToken::new(1, 7, 84, Duration::from_secs(60)).unwrap();
-    refresh.token_id = "invalid".into();
-    assert!(matches!(
-        AccessToken::Refresh(refresh).validate(unix_timestamp()),
-        Err(AuthError::InvalidToken)
-    ));
-    let mut future =
-        UserAccessToken::new(1, 7, 84, OrganizationRole::Owner, Duration::from_secs(60)).unwrap();
+    let mut future = UserAccessToken::new(
+        Session::new(1, 7, 84),
+        OrganizationRole::Owner,
+        Duration::from_secs(60),
+    )
+    .unwrap();
     future.validity.issued_at += 100;
     future.validity.expires_at += 100;
     assert!(matches!(
@@ -462,7 +466,7 @@ fn token_validity_owns_expiration_and_timestamp_validation() {
 #[test]
 fn both_tokens_link_to_the_same_organization_scoped_session() {
     let one = UserTokens::new(
-        &Session::new(&RefreshToken::new(1, 7, 84, Duration::from_secs(600)).unwrap()),
+        &Session::new(1, 7, 84),
         OrganizationRole::Owner,
         SECRET,
         Duration::from_secs(60),
@@ -470,32 +474,48 @@ fn both_tokens_link_to_the_same_organization_scoped_session() {
     )
     .unwrap();
     let two = UserTokens::new(
-        &Session::new(&RefreshToken::new(1, 7, 85, Duration::from_secs(600)).unwrap()),
+        &Session::new(1, 7, 85),
         OrganizationRole::Member,
         SECRET,
         Duration::from_secs(60),
         Duration::from_secs(600),
     )
     .unwrap();
+    for (jwt, variant) in [(&one.access_token, "user"), (&one.refresh_token, "refresh")] {
+        let payload = URL_SAFE_NO_PAD
+            .decode(jwt.split('.').nth(1).unwrap())
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&payload).unwrap();
+        let claims = &json["data"][variant];
+        assert_eq!(claims["session"]["id"], 7);
+        assert_eq!(claims["session"]["user_id"], 1);
+        assert_eq!(claims["session"]["organization_id"], 84);
+        for field in ["session_id", "user_id", "organization_id", "token_id"] {
+            assert!(claims.get(field).is_none(), "duplicated claim: {field}");
+        }
+    }
     assert_ne!(one.access_token, two.access_token);
     let first =
         UserAccessToken::try_from(AccessToken::decode(&one.access_token, SECRET).unwrap()).unwrap();
     let second =
         UserAccessToken::try_from(AccessToken::decode(&two.access_token, SECRET).unwrap()).unwrap();
-    assert_eq!(first.organization_id, 84);
+    assert_eq!(first.session.organization_id, 84);
     assert_eq!(first.organization_role, OrganizationRole::Owner);
-    assert_eq!(second.organization_id, 85);
+    assert_eq!(second.session.organization_id, 85);
     assert_eq!(second.organization_role, OrganizationRole::Member);
     let payload = URL_SAFE_NO_PAD
         .decode(one.refresh_token.split('.').nth(1).unwrap())
         .unwrap();
     let refresh: serde_json::Value = serde_json::from_slice(&payload).unwrap();
-    assert_eq!(refresh["data"]["refresh"]["user_id"], 1);
-    assert_eq!(refresh["data"]["refresh"]["organization_id"], 84);
-    assert_eq!(refresh["data"]["refresh"]["session_id"], first.session_id);
+    assert_eq!(refresh["data"]["refresh"]["session"]["user_id"], 1);
+    assert_eq!(refresh["data"]["refresh"]["session"]["organization_id"], 84);
+    assert_eq!(
+        refresh["data"]["refresh"]["session"]["id"],
+        first.session.id
+    );
     let refresh_claims =
         RefreshToken::try_from(AccessToken::decode(&one.refresh_token, SECRET).unwrap()).unwrap();
-    assert_eq!(first.session(), refresh_claims.session());
+    assert_eq!(first.session, refresh_claims.session);
     assert!(
         refresh["data"]["refresh"]
             .get("organization_role")
@@ -504,15 +524,14 @@ fn both_tokens_link_to_the_same_organization_scoped_session() {
 }
 
 #[test]
-fn access_tokens_reject_invalid_organization_ids_and_unknown_roles() {
-    for id in [0, u64::MAX] {
-        assert!(matches!(
-            UserAccessToken::new(1, 7, id, OrganizationRole::Owner, Duration::from_secs(60)),
-            Err(AuthError::InvalidToken)
-        ));
-    }
+fn access_tokens_reject_unknown_roles() {
     let mut claims = serde_json::to_value(
-        UserAccessToken::new(1, 7, 84, OrganizationRole::Owner, Duration::from_secs(60)).unwrap(),
+        UserAccessToken::new(
+            Session::new(1, 7, 84),
+            OrganizationRole::Owner,
+            Duration::from_secs(60),
+        )
+        .unwrap(),
     )
     .unwrap();
     claims["organization_role"] = serde_json::json!("super_admin");

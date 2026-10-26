@@ -19,7 +19,7 @@ Signup creates a user and personal organization atomically. Signin loads an exis
 
 Use short-lived access JWTs and renewable refresh JWTs in secure HttpOnly cookies. Vite and Axum share one origin, so the browser sends cookies without exposing their values to frontend code.
 
-Each session belongs to an organization and user. Both JWT types carry that session reference; access JWTs also carry the membership role, and refresh JWTs carry the current credential identifier. Every session operation checks organization and user together. Store the current credential identifier, not the complete JWT. Device information is optional.
+Each session belongs to an organization and user. Both JWT types embed Session: its ID, organization ID, user ID, current credential identifier, login time, and revocation state. Access JWTs also carry the membership role. Neither token repeats fields already owned by Session. Every session operation checks organization and user together. Store the current credential identifier, not the complete JWT. Device information is optional.
 
 | Alternative | Why we chose this approach |
 | --- | --- |
@@ -84,7 +84,7 @@ The session owns validation, renewal, organization switching, and revocation beh
 
 Session creation records each successful login. Signup creates its first session together with the user and personal organization; failure leaves no partial account or login record. JWT validity enforces the sliding inactivity window; the database records login creation, scope, current credential, and revocation without pretending to track each renewal.
 
-Changing signup from JSON credentials to cookies will require coordinated API and frontend updates. Existing refresh tokens without a session ID require signin after the session-based flow is deployed.
+Changing signup from JSON credentials to cookies will require coordinated API and frontend updates. Existing tokens without an embedded session require signin after the session-based flow is deployed.
 
 A stolen refresh JWT remains renewable until it expires or the session is explicitly revoked or changed. This is the accepted tradeoff for read-only renewal. No automatic reuse revocation or refresh-specific transaction restriction remains.
 

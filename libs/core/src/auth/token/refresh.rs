@@ -1,85 +1,26 @@
 use super::TokenValidity;
-use crate::auth::{AuthError, Session, SessionReference};
-use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use rand::RngCore;
+use crate::auth::{AuthError, Session};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct RefreshToken {
-    pub user_id: u64,
-    pub session_id: u64,
-    pub organization_id: u64,
-    pub token_id: String,
+    pub session: Session,
     pub validity: TokenValidity,
 }
 
 impl RefreshToken {
-    pub fn new(
-        user_id: u64,
-        session_id: u64,
-        organization_id: u64,
-        lifetime: Duration,
-    ) -> Result<Self, AuthError> {
-        let token = Self {
-            user_id,
-            session_id,
-            organization_id,
-            token_id: Self::new_credential_id(),
-            validity: TokenValidity::new(lifetime)?,
-        };
-        token.validate(token.validity.issued_at)?;
-        Ok(token)
-    }
-
     pub fn validate(&self, now: u64) -> Result<(), AuthError> {
-        if self.user_id == 0
-            || self.user_id > i64::MAX as u64
-            || self.session_id == 0
-            || self.session_id > i64::MAX as u64
-            || self.organization_id == 0
-            || self.organization_id > i64::MAX as u64
-        {
-            return Err(AuthError::InvalidToken);
-        }
-        self.validity.validate(now)?;
-        if URL_SAFE_NO_PAD
-            .decode(&self.token_id)
-            .map_err(|_| AuthError::InvalidToken)?
-            .len()
-            != 32
-        {
-            return Err(AuthError::InvalidToken);
-        }
-        Ok(())
-    }
-
-    pub fn session(&self) -> SessionReference {
-        SessionReference {
-            id: self.session_id,
-            user_id: self.user_id,
-            organization_id: self.organization_id,
-        }
+        self.validity.validate(now)
     }
 
     pub fn from_session(session: &Session, lifetime: Duration) -> Result<Self, AuthError> {
-        let token = Self {
-            user_id: session.user_id,
-            session_id: session.id,
-            organization_id: session.organization_id,
-            token_id: session.refresh_token_id.clone(),
-            validity: TokenValidity::new(lifetime)?,
-        };
-        if !session.is_active(session.reference()) {
+        if session.revoked_at.is_some() {
             return Err(AuthError::InvalidSession);
         }
-        token.validate(compallm_utils::time::unix_timestamp())?;
-        Ok(token)
-    }
-
-    pub(crate) fn new_credential_id() -> String {
-        let mut id = [0u8; 32];
-        rand::rng().fill_bytes(&mut id);
-        URL_SAFE_NO_PAD.encode(id)
+        Ok(Self {
+            session: session.clone(),
+            validity: TokenValidity::new(lifetime)?,
+        })
     }
 }

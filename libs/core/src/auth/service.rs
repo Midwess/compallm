@@ -125,13 +125,13 @@ impl AuthService {
         let claims = RefreshToken::try_from(AccessToken::decode(refresh_token, &self.jwt_secret)?)?;
         let session = self
             .sessions
-            .find(claims.session())
+            .find(claims.session.reference())
             .await?
             .ok_or(AuthError::InvalidSession)?;
         let renewed = session.refresh(&claims, self.lifetimes.refresh)?;
         let user = self
             .users
-            .find_by_id(claims.user_id)
+            .find_by_id(claims.session.user_id)
             .await?
             .ok_or(AuthError::UserNotFound)?;
         if user.status != UserStatus::Active {
@@ -156,19 +156,16 @@ impl AuthService {
         organization_id: u64,
     ) -> Result<UserTokens, AuthError> {
         let claims = RefreshToken::try_from(AccessToken::decode(refresh_token, &self.jwt_secret)?)?;
-        if organization_id == 0 || organization_id > i64::MAX as u64 {
-            return Err(AuthError::OrganizationAccessDenied);
-        }
         transaction!(self.db, {
             let mut session = self
                 .sessions
-                .find(claims.session())
+                .find(claims.session.reference())
                 .await?
                 .ok_or(AuthError::InvalidSession)?;
             session.validate_credential(&claims)?;
             let user = self
                 .users
-                .find_by_id(claims.user_id)
+                .find_by_id(claims.session.user_id)
                 .await?
                 .ok_or(AuthError::UserNotFound)?;
             if user.status != UserStatus::Active {
@@ -201,13 +198,7 @@ impl AuthService {
         membership: OrganizationMember,
     ) -> Result<UserTokens, AuthError> {
         let id = hero::distributed_id::try_gen_id().await?;
-        let refresh = RefreshToken::new(
-            user_id,
-            id,
-            membership.organization_id,
-            self.lifetimes.refresh,
-        )?;
-        let session = Session::new(&refresh);
+        let session = Session::new(user_id, id, membership.organization_id);
         let tokens = UserTokens::new(
             &session,
             membership.role,

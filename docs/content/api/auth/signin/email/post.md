@@ -28,7 +28,7 @@ Email address to receive a signin verification code.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| email | string | true | Valid email address. Account existence is checked only at confirmation. |
+| email | string | true | Trimmed and ASCII-lowercased before email validation. Account existence is checked only at confirmation. |
 
 <details>
 <summary>JSON schema</summary>
@@ -38,7 +38,7 @@ Email address to receive a signin verification code.
   "description": "Email address to receive a signin verification code.",
   "properties": {
     "email": {
-      "description": "Valid email address. Account existence is checked only at confirmation.",
+      "description": "Trimmed and ASCII-lowercased before email validation. Account existence is checked only at confirmation.",
       "example": "reader@example.com",
       "type": "string"
     }
@@ -119,7 +119,7 @@ Example (synthetic values):
 
 ### 400
 
-Invalid email or JSON request
+Malformed JSON or invalid field format
 
 Content type: `application/json`.
 

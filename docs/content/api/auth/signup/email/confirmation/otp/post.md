@@ -54,7 +54,7 @@ Email challenge and code used to confirm signup.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| code | string | true | Six-digit code received by email. Submit it before the challenge expires. |
+| code | string | true | Six ASCII digits received by email; surrounding whitespace is trimmed. Submit before expiry. |
 | delivery | string | false | How signup/signin confirmation delivers credentials. Never stored in JWT claims. |
 | token | string | true | Encrypted challenge returned by the email signup request. |
 
@@ -66,8 +66,11 @@ Email challenge and code used to confirm signup.
   "description": "Email challenge and code used to confirm signup.",
   "properties": {
     "code": {
-      "description": "Six-digit code received by email. Submit it before the challenge expires.",
+      "description": "Six ASCII digits received by email; surrounding whitespace is trimmed. Submit before expiry.",
       "example": "123456",
+      "maxLength": 6,
+      "minLength": 6,
+      "pattern": "^[0-9]{6}$",
       "type": "string"
     },
     "delivery": {
@@ -81,6 +84,8 @@ Email challenge and code used to confirm signup.
     "token": {
       "description": "Encrypted challenge returned by the email signup request.",
       "example": "example-email-challenge",
+      "maxLength": 16384,
+      "minLength": 1,
       "type": "string"
     }
   },
@@ -170,7 +175,7 @@ Example (synthetic values):
 
 ### 400
 
-Invalid email or JSON request. Correct the input before retrying.
+Malformed JSON or invalid field format. Correct the input before retrying.
 
 Content type: `application/json`.
 

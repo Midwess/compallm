@@ -51,7 +51,7 @@ Email challenge, verification code, and credential delivery for an existing user
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| code | string | true | Six-digit emailed code, valid for ten minutes. |
+| code | string | true | Six ASCII digits received by email; surrounding whitespace is trimmed. Valid for ten minutes. |
 | delivery | string | false | How signup/signin confirmation delivers credentials. Never stored in JWT claims. |
 | token | string | true | Encrypted challenge returned by the email code request. |
 
@@ -63,8 +63,11 @@ Email challenge, verification code, and credential delivery for an existing user
   "description": "Email challenge, verification code, and credential delivery for an existing user.",
   "properties": {
     "code": {
-      "description": "Six-digit emailed code, valid for ten minutes.",
+      "description": "Six ASCII digits received by email; surrounding whitespace is trimmed. Valid for ten minutes.",
       "example": "123456",
+      "maxLength": 6,
+      "minLength": 6,
+      "pattern": "^[0-9]{6}$",
       "type": "string"
     },
     "delivery": {
@@ -78,6 +81,8 @@ Email challenge, verification code, and credential delivery for an existing user
     "token": {
       "description": "Encrypted challenge returned by the email code request.",
       "example": "example-email-challenge",
+      "maxLength": 16384,
+      "minLength": 1,
       "type": "string"
     }
   },
@@ -167,7 +172,7 @@ Example (synthetic values):
 
 ### 400
 
-Invalid JSON request
+Malformed JSON or invalid field format
 
 Content type: `application/json`.
 

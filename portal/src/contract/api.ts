@@ -36,11 +36,20 @@ export const TokenDelivery = {
  * Email challenge, verification code, and credential delivery for an existing user.
  */
 export interface ConfirmSigninOtpRequest {
-  /** Six-digit emailed code, valid for ten minutes. */
+  /**
+     * Six ASCII digits received by email; surrounding whitespace is trimmed. Valid for ten minutes.
+     * @minLength 6
+     * @maxLength 6
+     * @pattern ^[0-9]{6}$
+     */
   code: string;
   /** Cookie (default) sets HttpOnly cookies; token returns both JWTs in JSON. */
   delivery?: TokenDelivery;
-  /** Encrypted challenge returned by the email code request. */
+  /**
+     * Encrypted challenge returned by the email code request.
+     * @minLength 1
+     * @maxLength 16384
+     */
   token: string;
 }
 
@@ -48,14 +57,23 @@ export interface ConfirmSigninOtpRequest {
  * Email challenge and code used to confirm signup.
  */
 export interface ConfirmSignupOtpRequest {
-  /** Six-digit code received by email. Submit it before the challenge expires. */
+  /**
+     * Six ASCII digits received by email; surrounding whitespace is trimmed. Submit before expiry.
+     * @minLength 6
+     * @maxLength 6
+     * @pattern ^[0-9]{6}$
+     */
   code: string;
   /**
      * Credential delivery: cookie (default) sets HttpOnly cookies and requires Origin;
      * token returns both JWTs in JSON without setting cookies.
      */
   delivery?: TokenDelivery;
-  /** Encrypted challenge returned by the email signup request. */
+  /**
+     * Encrypted challenge returned by the email signup request.
+     * @minLength 1
+     * @maxLength 16384
+     */
   token: string;
 }
 
@@ -68,7 +86,7 @@ export interface ErrorResponse {
  * Email address to receive a signin verification code.
  */
 export interface SigninEmailRequest {
-  /** Valid email address. Account existence is checked only at confirmation. */
+  /** Trimmed and ASCII-lowercased before email validation. Account existence is checked only at confirmation. */
   email: string;
 }
 
@@ -76,7 +94,7 @@ export interface SigninEmailRequest {
  * Email address to receive a signup verification code.
  */
 export interface SignupEmailRequest {
-  /** Valid email address. Addresses from any domain are accepted. */
+  /** Trimmed and ASCII-lowercased before email validation. Any valid domain is accepted. */
   email: string;
 }
 

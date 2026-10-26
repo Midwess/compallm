@@ -30,6 +30,12 @@ Core owns domain entities and the database lifecycle contract without depending 
 
 A domain module is not automatically a crate or bounded context. Split it when responsibilities or dependencies justify the boundary. Each token owns its claims and validation; `AuthService` coordinates authentication.
 
+## Request validation
+
+Use Validify on HTTP request DTOs and axum-valid extraction to normalize fields before validating them. Keep Serde for JSON shape and Utoipa for documented constraints. Email input is trimmed and ASCII-lowercased, then checked with the shared email policy. Never normalize signed token contents. Return safe 400 errors for malformed fields without echoing submitted credentials.
+
+Core remains callable outside HTTP: keep domain invariants, cryptographic checks, expiry, and authorization there. Remove repeated service checks already guaranteed by validated domain operations; do not make Core trust a controller-only DTO.
+
 ## Persistence and transactions
 
 Application entry points establish `DbContext::scope`. Services and repositories use that context without routine scope wrappers. Services choose transaction boundaries; nested transactions join the active transaction. Multiple repositories in one workflow share it, and only the outermost boundary commits.

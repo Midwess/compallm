@@ -1,17 +1,21 @@
 use axum::{
     Extension, Json,
-    extract::{State, rejection::JsonRejection},
+    extract::State,
     http::{HeaderMap, StatusCode, header::CACHE_CONTROL},
     response::IntoResponse,
 };
+use axum_valid::ValidifiedByRef;
 use compallm_core::auth::AuthService;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
+use validify::Validify;
 
 use crate::error::{ApiError, ErrorResponse};
 pub mod delivery;
+mod validation;
 use delivery::{AuthTokensResponse, TokenDelivery, TokenDeliverySettings};
+use validation::{AuthInput, ValidatedJson};
 
 pub fn router() -> OpenApiRouter<&'static AuthService> {
     OpenApiRouter::new()
@@ -22,10 +26,12 @@ pub fn router() -> OpenApiRouter<&'static AuthService> {
 }
 
 /// Email address to receive a signup verification code.
-#[derive(Deserialize, ToSchema)]
+#[derive(Deserialize, ToSchema, Validify)]
 pub struct SignupEmailRequest {
-    /// Valid email address. Addresses from any domain are accepted.
+    /// Trimmed and ASCII-lowercased before email validation. Any valid domain is accepted.
     #[schema(example = "reader@example.com")]
+    #[modify(trim, custom(AuthInput::ascii_lowercase))]
+    #[validate(custom(function = AuthInput::email))]
     pub email: String,
 }
 
@@ -53,7 +59,7 @@ pub struct SignupEmailResponse {
     request_body = SignupEmailRequest,
     responses(
         (status = 200, description = "OTP delivery requested; use this token to confirm", body = SignupEmailResponse),
-        (status = 400, description = "Invalid email or JSON request. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid email address"})),
+        (status = 400, description = "Malformed JSON or invalid field format. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid request fields"})),
         (status = 429, description = "Recipient throttled. Keep the existing challenge and retry after the configured cooldown (30 seconds by default).", body = ErrorResponse, example = json!({"message": "Email recipient is throttled; keep the existing challenge and retry later"})),
         (status = 503, description = "Email admission unavailable or queue remained full until the configured timeout (30 seconds by default). Retry later; no challenge was issued.", body = ErrorResponse, example = json!({"message": "Email delivery is unavailable"})),
         (status = 500, description = "Internal error. Retry later.", body = ErrorResponse, example = json!({"message": "Internal server error"}))
@@ -61,9 +67,9 @@ pub struct SignupEmailResponse {
 )]
 async fn signup_email(
     State(auth): State<&'static AuthService>,
-    input: Result<Json<SignupEmailRequest>, JsonRejection>,
+    input: ValidatedJson<SignupEmailRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let Json(input) = input?;
+    let ValidifiedByRef(Json(input)) = input?;
     let token = auth.signup_email(&input.email).await?;
     Ok((
         [(CACHE_CONTROL, "no-store")],
@@ -72,14 +78,19 @@ async fn signup_email(
 }
 
 /// Email challenge and code used to confirm signup.
-#[derive(Deserialize, ToSchema)]
+#[derive(Deserialize, ToSchema, Validify)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfirmSignupOtpRequest {
     /// Encrypted challenge returned by the email signup request.
     #[schema(example = "example-email-challenge")]
+    #[validate(length(min = 1, max = 16384))]
+    #[schema(min_length = 1, max_length = 16384)]
     pub token: String,
-    /// Six-digit code received by email. Submit it before the challenge expires.
+    /// Six ASCII digits received by email; surrounding whitespace is trimmed. Submit before expiry.
     #[schema(example = "123456")]
+    #[modify(trim)]
+    #[validate(length(equal = 6), custom(function = AuthInput::otp))]
+    #[schema(min_length = 6, max_length = 6, pattern = "^[0-9]{6}$")]
     pub code: String,
     /// Credential delivery: cookie (default) sets HttpOnly cookies and requires Origin;
     /// token returns both JWTs in JSON without setting cookies.
@@ -104,7 +115,7 @@ pub struct ConfirmSignupOtpRequest {
     request_body(content = ConfirmSignupOtpRequest, example = json!({"token":"example-email-challenge","code":"123456","delivery":"token"})),
     responses(
         (status = 201, description = "User created; cookie mode returns {} and sets both cookies; token mode returns both credentials", body = AuthTokensResponse),
-        (status = 400, description = "Invalid email or JSON request. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid JSON request body"})),
+        (status = 400, description = "Malformed JSON or invalid field format. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid JSON request body"})),
         (status = 401, description = "Invalid or expired challenge or code. Check the code or request a new challenge.", body = ErrorResponse, example = json!({"message": "Invalid or expired token or OTP code"})),
         (status = 403, description = "Untrusted cookie Origin or user/organization access disabled.", body = ErrorResponse, example = json!({"message": "Organization access denied"})),
         (status = 409, description = "Email already registered. Use signin instead of signup.", body = ErrorResponse, example = json!({"message": "Email is already registered"})),
@@ -115,9 +126,9 @@ async fn confirm_signup_otp(
     State(auth): State<&'static AuthService>,
     Extension(settings): Extension<&'static TokenDeliverySettings>,
     headers: HeaderMap,
-    input: Result<Json<ConfirmSignupOtpRequest>, JsonRejection>,
+    input: ValidatedJson<ConfirmSignupOtpRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let Json(input) = input?;
+    let ValidifiedByRef(Json(input)) = input?;
     input.delivery.validate_origin(&headers, settings)?;
     let tokens = auth.signup(&input.token, &input.code).await?;
     input
@@ -126,10 +137,12 @@ async fn confirm_signup_otp(
 }
 
 /// Email address to receive a signin verification code.
-#[derive(Deserialize, ToSchema)]
+#[derive(Deserialize, ToSchema, Validify)]
 pub struct SigninEmailRequest {
-    /// Valid email address. Account existence is checked only at confirmation.
+    /// Trimmed and ASCII-lowercased before email validation. Account existence is checked only at confirmation.
     #[schema(example = "reader@example.com")]
+    #[modify(trim, custom(AuthInput::ascii_lowercase))]
+    #[validate(custom(function = AuthInput::email))]
     pub email: String,
 }
 
@@ -144,16 +157,16 @@ pub struct SigninEmailRequest {
     security(), request_body = SigninEmailRequest,
     responses(
         (status = 200, description = "Code queued; submit the challenge with the emailed code", body = SignupEmailResponse),
-        (status = 400, description = "Invalid email or JSON request", body = ErrorResponse),
+        (status = 400, description = "Malformed JSON or invalid field format", body = ErrorResponse),
         (status = 429, description = "Recipient throttled; keep the earlier challenge", body = ErrorResponse),
         (status = 503, description = "Email admission unavailable or queue full", body = ErrorResponse)
     )
 )]
 async fn signin_email(
     State(auth): State<&'static AuthService>,
-    input: Result<Json<SigninEmailRequest>, JsonRejection>,
+    input: ValidatedJson<SigninEmailRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let Json(input) = input?;
+    let ValidifiedByRef(Json(input)) = input?;
     let token = auth.signup_email(&input.email).await?;
     Ok((
         [(CACHE_CONTROL, "no-store")],
@@ -162,13 +175,18 @@ async fn signin_email(
 }
 
 /// Email challenge, verification code, and credential delivery for an existing user.
-#[derive(Deserialize, ToSchema)]
+#[derive(Deserialize, ToSchema, Validify)]
 pub struct ConfirmSigninOtpRequest {
     /// Encrypted challenge returned by the email code request.
     #[schema(example = "example-email-challenge")]
+    #[validate(length(min = 1, max = 16384))]
+    #[schema(min_length = 1, max_length = 16384)]
     pub token: String,
-    /// Six-digit emailed code, valid for ten minutes.
+    /// Six ASCII digits received by email; surrounding whitespace is trimmed. Valid for ten minutes.
     #[schema(example = "123456")]
+    #[modify(trim)]
+    #[validate(length(equal = 6), custom(function = AuthInput::otp))]
+    #[schema(min_length = 6, max_length = 6, pattern = "^[0-9]{6}$")]
     pub code: String,
     /// Cookie (default) sets HttpOnly cookies; token returns both JWTs in JSON.
     #[serde(default)]
@@ -189,7 +207,7 @@ pub struct ConfirmSigninOtpRequest {
     request_body(content = ConfirmSigninOtpRequest, example = json!({"token":"example-email-challenge","code":"123456","delivery":"token"})),
     responses(
         (status = 200, description = "Signed in; cookie mode returns {} and sets both cookies; token mode returns both credentials", body = AuthTokensResponse),
-        (status = 400, description = "Invalid JSON request", body = ErrorResponse),
+        (status = 400, description = "Malformed JSON or invalid field format", body = ErrorResponse),
         (status = 401, description = "Invalid or expired challenge or code", body = ErrorResponse),
         (status = 403, description = "Untrusted cookie Origin or user/organization access disabled", body = ErrorResponse),
         (status = 404, description = "No account for the verified email; signup first", body = ErrorResponse),
@@ -200,9 +218,9 @@ async fn confirm_signin_otp(
     State(auth): State<&'static AuthService>,
     Extension(settings): Extension<&'static TokenDeliverySettings>,
     headers: HeaderMap,
-    input: Result<Json<ConfirmSigninOtpRequest>, JsonRejection>,
+    input: ValidatedJson<ConfirmSigninOtpRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let Json(input) = input?;
+    let ValidifiedByRef(Json(input)) = input?;
     input.delivery.validate_origin(&headers, settings)?;
     let tokens = auth.signin(&input.token, &input.code).await?;
     input.delivery.response(tokens, StatusCode::OK, settings)

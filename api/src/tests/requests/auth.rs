@@ -204,14 +204,19 @@ async fn signup_delivers_code_and_confirmation_creates_user() {
         assert!(messages[0].text.to_string().contains(&claims.code));
         assert!(messages[0].text.plain_text().contains(&claims.code));
     }
+    let wrong_code = if claims.code == "000000" {
+        "000001"
+    } else {
+        "000000"
+    };
     server
         .post("/api/auth/signup/email/confirmation/otp")
-        .json(&serde_json::json!({"token": token, "code": "wrong", "delivery":"token"}))
+        .json(&serde_json::json!({"token": token, "code": wrong_code, "delivery":"token"}))
         .await
         .assert_status_unauthorized();
     let response = server
         .post("/api/auth/signup/email/confirmation/otp")
-        .json(&serde_json::json!({"token": token, "code": claims.code, "delivery":"token"}))
+        .json(&serde_json::json!({"token": token, "code": format!(" {} ", claims.code), "delivery":"token"}))
         .await;
     response.assert_status(axum::http::StatusCode::CREATED);
     let tokens: serde_json::Value = response.json();
@@ -417,7 +422,9 @@ async fn signin_delivers_email_and_returns_json_tokens_only_when_requested() {
     );
     let response = server
         .post("/api/auth/signin/email/confirmation/otp")
-        .json(&serde_json::json!({"token":token,"code":otp.code,"delivery":"token"}))
+        .json(
+            &serde_json::json!({"token":token,"code":format!(" {} ", otp.code),"delivery":"token"}),
+        )
         .await;
     response.assert_status_ok();
     assert!(response.headers().get("set-cookie").is_none());
@@ -538,4 +545,122 @@ async fn secure_cookie_mode_requires_the_configured_origin() {
         .json(&serde_json::json!({"token":"invalid","code":"123456"}))
         .await
         .assert_status_forbidden();
+}
+
+#[tokio::test]
+async fn dto_validation_rejects_bad_formats_without_echoing_credentials() {
+    let mailbox = Mailbox::default();
+    let messages = mailbox.0.clone();
+    let server = Fixture::server(Fixture::di(Some(Box::new(mailbox))));
+    for path in ["/api/auth/signup/email", "/api/auth/signin/email"] {
+        for email in [" ", "a@@example.com", "sensitive-invalid-email"] {
+            let response = server
+                .post(path)
+                .json(&serde_json::json!({"email":email}))
+                .await;
+            response.assert_status_bad_request();
+            assert_eq!(
+                response.json::<serde_json::Value>(),
+                serde_json::json!({"message":"Invalid request fields"})
+            );
+        }
+        server
+            .post(path)
+            .json(&serde_json::json!({"email":42}))
+            .await
+            .assert_status_bad_request();
+        server
+            .post(path)
+            .json(&serde_json::json!({}))
+            .await
+            .assert_status_bad_request();
+    }
+    assert!(messages.lock().unwrap().is_empty());
+    for path in [
+        "/api/auth/signup/email/confirmation/otp",
+        "/api/auth/signin/email/confirmation/otp",
+    ] {
+        for code in ["", "12345", "1234567", "abcdef", "１２３４５６"] {
+            let response = server.post(path).json(&serde_json::json!({"token":"private-challenge-value","code":code,"delivery":"token"})).await;
+            response.assert_status_bad_request();
+            assert_eq!(
+                response.json::<serde_json::Value>(),
+                serde_json::json!({"message":"Invalid request fields"})
+            );
+            assert!(response.headers().get("set-cookie").is_none());
+        }
+        for token in [String::new(), "a".repeat(16385)] {
+            let response = server
+                .post(path)
+                .json(&serde_json::json!({"token":token,"code":"123456","delivery":"token"}))
+                .await;
+            response.assert_status_bad_request();
+            assert_eq!(
+                response.json::<serde_json::Value>(),
+                serde_json::json!({"message":"Invalid request fields"})
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn both_email_request_dtos_normalize_before_delivery() {
+    let mailbox = Mailbox::default();
+    let messages = mailbox.0.clone();
+    let server = Fixture::server(Fixture::di(Some(Box::new(mailbox))));
+    for path in ["/api/auth/signup/email", "/api/auth/signin/email"] {
+        let response = server
+            .post(path)
+            .json(&serde_json::json!({"email":"  James@MIDWESS.COM  "}))
+            .await;
+        response.assert_status_ok();
+        let body: serde_json::Value = response.json();
+        let otp = EmailOtpAccessToken::try_from(
+            AccessToken::decode(body["token"].as_str().unwrap(), SECRET).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(otp.email, "james@midwess.com");
+    }
+    assert_eq!(messages.lock().unwrap().len(), 2);
+    assert!(
+        messages
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|message| message.to == "james@midwess.com")
+    );
+}
+
+#[test]
+fn dto_email_normalization_keeps_ascii_case_policy() {
+    use validify::Validify;
+    for input in [
+        "  İ@EXAMPLE.COM  ",
+        " James@EXÄMPLE.COM ",
+        " James@MIDWESS.COM ",
+    ] {
+        let mut dto = controllers::auth::SignupEmailRequest {
+            email: input.into(),
+        };
+        let expected = input.trim().to_ascii_lowercase();
+        let result = dto.validify();
+        assert_eq!(dto.email, expected);
+        assert_eq!(
+            result.is_ok(),
+            compallm_utils::email::verify_email(&expected).is_ok()
+        );
+    }
+}
+
+#[tokio::test]
+async fn dto_does_not_trim_signed_challenges() {
+    let server = Fixture::server(Fixture::di(None));
+    let challenge =
+        compallm_core::auth::EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    for path in [
+        "/api/auth/signup/email/confirmation/otp",
+        "/api/auth/signin/email/confirmation/otp",
+    ] {
+        server.post(path).json(&serde_json::json!({"token":format!(" {} ", challenge.access_token),"code":challenge.code,"delivery":"token"})).await.assert_status_unauthorized();
+    }
 }

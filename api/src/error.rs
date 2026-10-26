@@ -20,15 +20,20 @@ pub enum ApiError {
     Header(#[from] axum::http::header::InvalidHeaderValue),
     #[error(transparent)]
     Auth(#[from] AuthError),
-    #[error("invalid JSON request body")]
-    Json(#[from] JsonRejection),
+    #[error("invalid request input")]
+    Input(#[from] axum_valid::ValidifyRejection<JsonRejection>),
 }
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, message) = match &self {
             Self::UntrustedOrigin => (StatusCode::FORBIDDEN, "Untrusted browser origin"),
-            Self::Json(_) => (StatusCode::BAD_REQUEST, "Invalid JSON request body"),
+            Self::Input(axum_valid::ValidifyRejection::Inner(_)) => {
+                (StatusCode::BAD_REQUEST, "Invalid JSON request body")
+            }
+            Self::Input(axum_valid::ValidifyRejection::Valid(_)) => {
+                (StatusCode::BAD_REQUEST, "Invalid request fields")
+            }
             Self::Auth(AuthError::InvalidEmail) => {
                 (StatusCode::BAD_REQUEST, "Invalid email address")
             }

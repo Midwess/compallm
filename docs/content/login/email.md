@@ -17,6 +17,12 @@ Queued SMTP delivery and signup/signin confirmation with cookie or token deliver
 
 The current stateless challenge allows reuse until its 10-minute expiry. The older product plan's 15-minute single-use policy remains unresolved; mailing does not change it. See the [mailing ADR](../mailing/adr.md) for queue limits. Duplicate recipients are throttled while pending and for the configured cooldown after SMTP acceptance (30 seconds by default); the API returns 429 without issuing a replacement challenge.
 
+## Input normalization and validation
+
+Signup and signin requests use Validify during extraction. Email addresses are trimmed, ASCII-lowercased, and validated using the existing shared email policy. Confirmation trims surrounding code whitespace and requires exactly six ASCII digits. The challenge must be nonempty and at most 16,384 characters; its contents are not modified. Delivery remains an enum.
+
+Malformed JSON or invalid field formats return 400 before mail or persistence is called. A well-formed but incorrect code, expired challenge, or invalid signature still returns 401 through Core authentication. Validation errors do not echo emails, codes, or token values. Request rules are also described in the generated API guide and TypeScript hover documentation.
+
 ## SMTP configuration
 
 | Environment variable | Required | Development default | Purpose |

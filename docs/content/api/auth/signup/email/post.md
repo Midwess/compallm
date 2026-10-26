@@ -31,7 +31,7 @@ Email address to receive a signup verification code.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| email | string | true | Valid email address. Addresses from any domain are accepted. |
+| email | string | true | Trimmed and ASCII-lowercased before email validation. Any valid domain is accepted. |
 
 <details>
 <summary>JSON schema</summary>
@@ -41,7 +41,7 @@ Email address to receive a signup verification code.
   "description": "Email address to receive a signup verification code.",
   "properties": {
     "email": {
-      "description": "Valid email address. Addresses from any domain are accepted.",
+      "description": "Trimmed and ASCII-lowercased before email validation. Any valid domain is accepted.",
       "example": "reader@example.com",
       "type": "string"
     }
@@ -122,7 +122,7 @@ Example (synthetic values):
 
 ### 400
 
-Invalid email or JSON request. Correct the input before retrying.
+Malformed JSON or invalid field format. Correct the input before retrying.
 
 Content type: `application/json`.
 
@@ -154,7 +154,7 @@ Example (synthetic values):
 
 ```json
 {
-  "message": "Invalid email address"
+  "message": "Invalid request fields"
 }
 ```
 

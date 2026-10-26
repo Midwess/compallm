@@ -14,7 +14,6 @@ use crate::persistent::session::SessionRepository;
 use crate::persistent::{DbContext, organization::OrganizationRepository, user::UserRepository};
 use crate::transaction;
 use crate::user::{RegistrationService, UserStatus};
-use compallm_utils::email::verify_email;
 use compallm_utils::time::unix_timestamp;
 
 /// Explicit policy supplied by application configuration.
@@ -81,7 +80,6 @@ impl AuthService {
     pub async fn signin(&self, email_token: &str, code: &str) -> Result<UserTokens, AuthError> {
         let claims =
             EmailOtpAccessToken::try_from(AccessToken::decode(email_token, &self.jwt_secret)?)?;
-        verify_email(&claims.email)?;
         claims.verify_code(code, unix_timestamp())?;
         transaction!(self.db, {
             let user = self
@@ -104,7 +102,6 @@ impl AuthService {
     pub async fn signup(&self, email_token: &str, code: &str) -> Result<UserTokens, AuthError> {
         let claims =
             EmailOtpAccessToken::try_from(AccessToken::decode(email_token, &self.jwt_secret)?)?;
-        verify_email(&claims.email)?;
         claims.verify_code(code, unix_timestamp())?;
         transaction!(self.db, {
             let user = self.registration.register(&claims.email).await?;

@@ -65,7 +65,7 @@ These variables are supported by the current production configuration:
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
 | `DATABASE_URL` | Yes | None | PostgreSQL connection URL |
-| `PORT` | No | `3000` | HTTP server port inside the container |
+| `PORT` | No | `3000` | Preferred HTTP starting port; Hero selects the first available port at or above it, up to `50100` |
 | `LOG_LEVEL` | No | `info` | Application log level |
 
 The password in `DATABASE_URL` must match `POSTGRES_PASSWORD`. Use only letters and numbers so it is safe in the connection URL without encoding.
@@ -108,7 +108,7 @@ docker compose ps
 docker compose logs -f compallm
 ```
 
-Open port `3000` on the deployment host, such as `http://server.example.com:3000`.
+The API logs its selected listening port and listens on all IPv4/IPv6 interfaces. With the Compose mapping above, keep container port `3000` available and open `http://server.example.com:3000`. If the server selects another port, update the container mapping or reverse-proxy target to match it.
 
 ## Update
 

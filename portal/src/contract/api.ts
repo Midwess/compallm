@@ -5,25 +5,48 @@
  * Loco and Axum API with a Vite frontend and an Orval-generated client
  * OpenAPI spec version: 0.1.0
  */
+/**
+ * User credentials returned by the current signup API.
+ * Cookie transport is planned separately and is not implemented by this response.
+ */
 export interface AuthTokensResponse {
+  /** Signed access JWT scoped to the user's initial organization and membership role. */
   accessToken: string;
+  /** Refresh JWT used to renew the same organization-scoped session as the access token. */
   refreshToken: string;
 }
 
+/**
+ * Email challenge and code used to confirm signup.
+ */
 export interface ConfirmSignupOtpRequest {
+  /** Six-digit code received by email. Submit it before the challenge expires. */
   code: string;
+  /** Encrypted challenge returned by the email signup request. */
   token: string;
 }
 
 export interface ErrorResponse {
+  /** Human-readable explanation of the failed request. Use the HTTP status to classify the error. */
   message: string;
 }
 
+/**
+ * Email address to receive a signup verification code.
+ */
 export interface SignupEmailRequest {
+  /** Valid email address. Addresses from any domain are accepted. */
   email: string;
 }
 
+/**
+ * Verification challenge returned after email delivery is requested.
+ */
 export interface SignupEmailResponse {
+  /**
+     * Encrypted challenge to submit with the emailed code. Expires after 10 minutes.
+     * This is not a user access credential and must not be used to call protected APIs.
+     */
   token: string;
 }
 
@@ -35,6 +58,14 @@ export const getSignupEmailUrl = () => {
   return `/api/auth/signup/email`
 }
 
+/**
+ * Sends a six-digit verification code to the supplied email address and returns an encrypted
+ * challenge for confirmation. Submit the challenge and code to
+ * `POST /api/auth/signup/email/confirmation/otp` within 10 minutes.
+ * This public endpoint does not create a user or establish a signed-in session.
+ * Email delivery must be configured; if delivery is unavailable, no challenge is returned.
+ * @summary Request an email signup code.
+ */
 export const signupEmail = async (signupEmailRequest: SignupEmailRequest, options?: RequestInit): Promise<SignupEmailResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
@@ -84,6 +115,13 @@ export const getConfirmSignupOtpUrl = () => {
   return `/api/auth/signup/email/confirmation/otp`
 }
 
+/**
+ * Validates the encrypted challenge and emailed code, then creates the user and their personal
+ * organization atomically. The display name is derived from the email address.
+ * Returns access and refresh credentials in JSON; this endpoint does not set authentication cookies.
+ * An existing email is rejected rather than signed in. Request a new code if the challenge expired.
+ * @summary Confirm email signup with a verification code.
+ */
 export const confirmSignupOtp = async (confirmSignupOtpRequest: ConfirmSignupOtpRequest, options?: RequestInit): Promise<AuthTokensResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {

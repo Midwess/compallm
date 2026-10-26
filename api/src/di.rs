@@ -3,6 +3,7 @@ use compallm_core::{
     auth::{AuthError, AuthService, TokenLifetimes},
     mail::EmailService,
     organization::{ConfigService, CreationService},
+    persistent::session::SessionRepository,
     persistent::{DbContext, organization::OrganizationRepository, user::UserRepository},
     user::RegistrationService,
 };
@@ -31,6 +32,7 @@ pub struct Di {
     db: Box<DbContext>,
     users: Box<dyn UserRepository>,
     organizations: Box<dyn OrganizationRepository>,
+    sessions: Box<dyn SessionRepository>,
     email: Option<Box<dyn EmailService>>,
     settings: AuthSettings,
     // Filled after Di reaches its permanent address so services can borrow it.
@@ -73,6 +75,7 @@ impl Di {
             organizations: Box::new(
                 compallm_postgres::repository::organization::OrganizationRepository,
             ),
+            sessions: Box::new(compallm_postgres::repository::session::SessionRepository),
             email,
             settings,
             auth: OnceLock::new(),
@@ -91,6 +94,7 @@ impl Di {
             self.db_context(),
             self.user_repository(),
             self.organization_repository(),
+            self.session_repository(),
             self.registration_service(),
             self.settings.jwt_secret.clone(),
             TokenLifetimes {
@@ -111,6 +115,10 @@ impl Di {
 
     pub fn user_repository(&'static self) -> &'static Box<dyn UserRepository> {
         &self.users
+    }
+
+    pub fn session_repository(&'static self) -> &'static Box<dyn SessionRepository> {
+        &self.sessions
     }
 
     pub fn email_service(&'static self) -> Option<&'static Box<dyn EmailService>> {

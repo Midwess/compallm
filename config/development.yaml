@@ -12,7 +12,7 @@ logger:
 
 server:
   port: <%= get_env(name="PORT", default="3000") %>
-  binding: <%= get_env(name="BINDING", default="127.0.0.1") %>
+  binding: '::'
   host: http://127.0.0.1:3000
   middlewares:
     fallback:

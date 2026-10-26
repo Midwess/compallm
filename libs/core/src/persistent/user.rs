@@ -34,7 +34,4 @@ pub trait UserRepository: Send + Sync {
     /// EmailAlreadyExists. Set verification and creation timestamps on insert;
     /// the signup workflow verifies email ownership before calling this method.
     async fn create(&self, user: User) -> Result<User, UserRepositoryError>;
-
-    /// Record a successful signin using the current transaction context.
-    async fn record_login(&self, user_id: u64) -> Result<(), UserRepositoryError>;
 }

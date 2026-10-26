@@ -22,6 +22,10 @@ impl From<crate::user::RegistrationError> for AuthError {
 
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {
+    #[error("session is invalid, expired, or revoked")]
+    InvalidSession,
+    #[error(transparent)]
+    SessionPersistence(#[from] crate::persistent::session::SessionRepositoryError),
     #[error("user has no access to the selected organization")]
     OrganizationAccessDenied,
     #[error(transparent)]

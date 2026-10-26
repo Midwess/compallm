@@ -3,7 +3,6 @@ use axum::Router as AxumRouter;
 #[cfg(feature = "frontend-dev")]
 use axum_frontend::{DevConfig, shutdown_requested};
 use compallm_postgres::{Migrator, init_id_generator};
-#[cfg(feature = "frontend-dev")]
 use loco_rs::boot::ServeParams;
 use loco_rs::{
     Result,
@@ -23,6 +22,38 @@ use crate::di::Di;
 const PORTAL_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../portal");
 
 pub struct App;
+
+impl App {
+    pub(crate) fn with_api_fallback(router: AxumRouter) -> AxumRouter {
+        let not_found = || async {
+            (
+                axum::http::StatusCode::NOT_FOUND,
+                axum::Json(crate::error::ErrorResponse {
+                    message: "API endpoint not found".into(),
+                }),
+            )
+        };
+        router
+            .route("/api", axum::routing::any(not_found))
+            .route("/api/{*unmatched}", axum::routing::any(not_found))
+    }
+
+    pub(crate) async fn tcp_listener(port: i32) -> Result<tokio::net::TcpListener> {
+        let start = u16::try_from(port)
+            .ok()
+            .filter(|port| (1..=50100).contains(port))
+            .ok_or_else(|| {
+                loco_rs::Error::Message("API starting port must be between 1 and 50100".into())
+            })?;
+        let connection = hero::tcp::listener::find_tcp_listener(Some(start))
+            .await
+            .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
+        let address = connection.listener.local_addr()?;
+        tracing::info!(requested_port=start,port=address.port(),binding=%address.ip(),
+            url=%format!("http://127.0.0.1:{}",address.port()),"API server listening");
+        Ok(connection.listener)
+    }
+}
 
 #[async_trait]
 impl Hooks for App {
@@ -52,37 +83,55 @@ impl Hooks for App {
         environment.load_from_folder(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../config")))
     }
 
-    #[cfg(feature = "frontend-dev")]
     async fn serve(app: AxumRouter, ctx: &AppContext, serve_params: &ServeParams) -> Result<()> {
         use std::net::SocketAddr;
 
-        crate::generate_contract().map_err(|error| loco_rs::Error::Message(error.to_string()))?;
-        let vite = crate::node_binary(Path::new(PORTAL_ROOT), "vite")
-            .to_string_lossy()
-            .into_owned();
-        let dev_server = DevConfig::vite()
-            .command([vite])
-            .cwd(PORTAL_ROOT)
-            .port(5173)
-            .spawn()
-            .await?;
+        #[cfg(feature = "frontend-dev")]
+        let dev_server = {
+            crate::generate_contract()
+                .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
+            let vite = crate::node_binary(Path::new(PORTAL_ROOT), "vite")
+                .to_string_lossy()
+                .into_owned();
+            DevConfig::vite()
+                .command([vite])
+                .cwd(PORTAL_ROOT)
+                .port(5173)
+                .spawn()
+                .await?
+        };
+        let listener = Self::tcp_listener(serve_params.port).await?;
+        #[cfg(feature = "frontend-dev")]
         let app = app.merge(dev_server.router(["/"]));
-        let listener = tokio::net::TcpListener::bind(format!(
-            "{}:{}",
-            serve_params.binding, serve_params.port
-        ))
-        .await?;
 
-        tokio::select! {
-            result = axum::serve(
-                listener,
-                app.into_make_service_with_connect_info::<SocketAddr>(),
-            ) => result?,
-            () = shutdown_requested() => {}
+        #[cfg(feature = "frontend-dev")]
+        {
+            tokio::select! {
+                result = axum::serve(
+                    listener,
+                    app.into_make_service_with_connect_info::<SocketAddr>(),
+                ) => result?,
+                () = shutdown_requested() => {}
+            }
+
+            drop(dev_server);
+            Self::on_shutdown(ctx).await;
         }
 
-        drop(dev_server);
-        Self::on_shutdown(ctx).await;
+        #[cfg(not(feature = "frontend-dev"))]
+        {
+            let shutdown_context = ctx.clone();
+            axum::serve(
+                listener,
+                app.into_make_service_with_connect_info::<SocketAddr>(),
+            )
+            .with_graceful_shutdown(async move {
+                loco_rs::boot::shutdown_signal().await;
+                tracing::info!("shutting down...");
+                Self::on_shutdown(&shutdown_context).await;
+            })
+            .await?;
+        }
         Ok(())
     }
 
@@ -104,6 +153,7 @@ impl Hooks for App {
     }
 
     async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+        let router = Self::with_api_fallback(router);
         #[cfg(not(feature = "frontend-dev"))]
         {
             use axum_frontend::static_router;

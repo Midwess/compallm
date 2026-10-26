@@ -24,7 +24,7 @@ docker compose up -d
 cargo run -p compallm-server --features frontend-dev -- start
 ```
 
-Compose starts the backing services, including PostgreSQL on port `7887`. Open http://127.0.0.1:3000; Cargo starts the backend and Vite with frontend hot reload.
+Compose starts the backing services, including PostgreSQL on port `7887`. Cargo starts the backend and Vite with frontend hot reload. Open the URL logged by the API server: it prefers port `3000` and chooses the next available port when occupied. `PORT` or the server CLI port option sets the starting point, within `1–50100`. The API listens on all IPv4/IPv6 interfaces in development and production; deployment port mappings must match the selected port.
 
 ## License
 

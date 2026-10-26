@@ -17,23 +17,39 @@ pub fn router() -> OpenApiRouter<&'static AuthService> {
         .routes(routes!(confirm_signup_otp))
 }
 
+/// Email address to receive a signup verification code.
 #[derive(Deserialize, ToSchema)]
 pub struct SignupEmailRequest {
+    /// Valid email address. Addresses from any domain are accepted.
+    #[schema(example = "reader@example.com")]
     pub email: String,
 }
 
+/// Verification challenge returned after email delivery is requested.
 #[derive(Serialize, ToSchema)]
 pub struct SignupEmailResponse {
+    /// Encrypted challenge to submit with the emailed code. Expires after 10 minutes.
+    /// This is not a user access credential and must not be used to call protected APIs.
+    #[schema(example = "example-email-challenge")]
     pub token: String,
 }
 
+/// Request an email signup code.
+///
+/// Sends a six-digit verification code to the supplied email address and returns an encrypted
+/// challenge for confirmation. Submit the challenge and code to
+/// `POST /api/auth/signup/email/confirmation/otp` within 10 minutes.
+/// This public endpoint does not create a user or establish a signed-in session.
+/// Email delivery must be configured; if delivery is unavailable, no challenge is returned.
 #[utoipa::path(
     post, path = "/api/auth/signup/email", operation_id = "signupEmail", tag = "auth",
+    security(),
     request_body = SignupEmailRequest,
     responses(
         (status = 200, description = "OTP delivery requested; use this token to confirm", body = SignupEmailResponse),
-        (status = 400, description = "Invalid email or request", body = ErrorResponse),
-        (status = 503, description = "Email delivery unavailable", body = ErrorResponse)
+        (status = 400, description = "Invalid email or JSON request. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid email address"})),
+        (status = 503, description = "Email delivery unavailable. Retry later; no verification challenge was issued.", body = ErrorResponse, example = json!({"message": "Email delivery is unavailable"})),
+        (status = 500, description = "Internal error. Retry later.", body = ErrorResponse, example = json!({"message": "Internal server error"}))
     )
 )]
 async fn signup_email(
@@ -48,29 +64,48 @@ async fn signup_email(
     ))
 }
 
+/// Email challenge and code used to confirm signup.
 #[derive(Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfirmSignupOtpRequest {
+    /// Encrypted challenge returned by the email signup request.
+    #[schema(example = "example-email-challenge")]
     pub token: String,
+    /// Six-digit code received by email. Submit it before the challenge expires.
+    #[schema(example = "123456")]
     pub code: String,
 }
 
+/// User credentials returned by the current signup API.
+/// Cookie transport is planned separately and is not implemented by this response.
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthTokensResponse {
+    /// Signed access JWT scoped to the user's initial organization and membership role.
+    #[schema(example = "example-user-access-token")]
     pub access_token: String,
+    /// Refresh JWT used to renew the same organization-scoped session as the access token.
+    #[schema(example = "example-refresh-token")]
     pub refresh_token: String,
 }
 
+/// Confirm email signup with a verification code.
+///
+/// Validates the encrypted challenge and emailed code, then creates the user and their personal
+/// organization atomically. The display name is derived from the email address.
+/// Returns access and refresh credentials in JSON; this endpoint does not set authentication cookies.
+/// An existing email is rejected rather than signed in. Request a new code if the challenge expired.
 #[utoipa::path(
     post, path = "/api/auth/signup/email/confirmation/otp", operation_id = "confirmSignupOtp", tag = "auth",
+    security(),
     request_body = ConfirmSignupOtpRequest,
     responses(
         (status = 201, description = "User created", body = AuthTokensResponse),
-        (status = 400, description = "Invalid email or request", body = ErrorResponse),
-        (status = 401, description = "Invalid or expired token or OTP", body = ErrorResponse),
-        (status = 409, description = "Email already registered", body = ErrorResponse),
-        (status = 500, description = "Database or internal error", body = ErrorResponse)
+        (status = 400, description = "Invalid email or JSON request. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid JSON request body"})),
+        (status = 401, description = "Invalid or expired challenge or code. Check the code or request a new challenge.", body = ErrorResponse, example = json!({"message": "Invalid or expired token or OTP code"})),
+        (status = 403, description = "User or organization access is disabled. Contact the administrator.", body = ErrorResponse, example = json!({"message": "Organization access denied"})),
+        (status = 409, description = "Email already registered. Use signin instead of signup.", body = ErrorResponse, example = json!({"message": "Email is already registered"})),
+        (status = 500, description = "Database or internal error. Retry later.", body = ErrorResponse, example = json!({"message": "Internal server error"}))
     )
 )]
 async fn confirm_signup_otp(

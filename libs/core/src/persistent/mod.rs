@@ -4,6 +4,7 @@ pub mod connection;
 pub mod db_context;
 pub mod organization;
 pub mod provider;
+pub mod session;
 pub mod user;
 
 pub use connection::{Connection, ConnectionError};

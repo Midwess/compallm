@@ -5,7 +5,7 @@ available: false
 
 # Login: ADR
 
-Decision: Accepted on 2026-10-26. Implementation: Partial. Email signup currently returns tokens in JSON; OAuth, cookie delivery, and persistent refresh sessions are planned.
+Decision: Accepted on 2026-10-26. Implementation: Partial. Core authentication records sessions; normal renewal is read-only and organization switching is separate. The signup API still returns tokens in JSON; OAuth and cookie delivery remain planned.
 
 ## Problem and requirements
 
@@ -17,14 +17,14 @@ Signup creates a user and personal organization atomically. Signin loads an exis
 
 ## Decision and rationale
 
-Use short-lived access JWTs and rotating refresh credentials in secure HttpOnly cookies. Vite and Axum share one origin, so the browser sends cookies without exposing their values to frontend code.
+Use short-lived access JWTs and renewable refresh JWTs in secure HttpOnly cookies. Vite and Axum share one origin, so the browser sends cookies without exposing their values to frontend code.
 
-Access JWTs contain the user ID, organization ID, and membership role. Refresh JWTs contain the user ID, a stable session ID, and a rotating credential identifier, without organization claims. Each successful login creates a `user_sessions` row; store the current credential identifier, not the complete refresh token. Device information is optional.
+Each session belongs to an organization and user. Both JWT types embed Session: its ID, organization ID, user ID, current credential identifier, login time, and revocation state. Access JWTs also carry the membership role. Neither token repeats fields already owned by Session. Every session operation checks organization and user together. Store the current credential identifier, not the complete JWT. Device information is optional.
 
 | Alternative | Why we chose this approach |
 | --- | --- |
 | Credentials stored in frontend JavaScript | HttpOnly cookies prevent scripts from reading credential values; CSRF protection is then required. |
-| Stateless refresh JWTs alone | Database state lets the server invalidate replaced credentials and revoke refresh sessions. |
+| Stateless refresh JWTs alone | Database state supports revocation and invalidating credentials when switching organizations. |
 
 Cookies do not prevent injected scripts from making requests. The design still requires HTTPS, secure cookie attributes, Origin checks against CSRF, safe rendering, and a Content Security Policy.
 
@@ -59,33 +59,38 @@ Signup rejects an existing email. Signin starts in an active owner/admin organiz
 
 ```mermaid
 flowchart TD
-    Expired["Access token expires"] --> Refresh["Browser requests refresh"]
-    Refresh --> Valid{"Refresh credential and session valid?"}
-    Valid -->|No| Signin["Require signin; revoke session on credential reuse"]
-    Valid -->|Yes| Member{"User active and selected membership valid?"}
-    Member -->|No| Denied["Reject without new credentials"]
-    Member -->|Yes| Rotate["Rotate refresh credential and extend expiry by 30 days"]
-    Rotate --> Cookies["Replace both cookies using the current role"]
-    Logout["Logout or administrative revocation"] --> Revoke["Revoke refresh session"]
-    Revoke --> Stop["Reject further refreshes"]
+    AccessExpired["Access token expires"] --> Refresh["Request normal refresh"]
+    Refresh --> Valid{"JWT, session, user, and membership valid?"}
+    Valid -->|No| Deny["Reject; no database change"]
+    Valid -->|Yes| Renew["Issue renewed JWTs; keep organization and credential ID"]
+    Switch["Request organization switch"] --> Target{"Target membership valid?"}
+    Target -->|No| Deny
+    Target -->|Yes| Save["Save new organization and credential ID"]
+    Save --> NewTokens["Return tokens for the updated session after commit"]
+    Logout["Logout or administrative revocation"] --> Revoke["Revoke the session"]
 ```
 
-Refresh updates the same session; it does not record another login. Routine refresh supplies the current organization. If omitted, select the oldest active membership, breaking ties by organization ID. Logout revokes that session and clears both cookies.
+Normal refresh keeps the organization and credential identifier and performs no database write. It issues JWTs valid for another 30 days. Older refresh JWTs remain usable until their own expiry; renewal does not consume them. Expired or revoked credentials are rejected without another revocation write.
+
+Organization switching is a separate operation: validate the target membership, change the stored organization and credential identifier, and return both new tokens after commit. Old credentials then fail validation. Logout explicitly revokes the session and clears its cookies.
 
 A copied access JWT remains usable until expiry, including its cached role. Immediate invalidation requires an additional server-side check. This is the cost of validating normal requests without consulting refresh-session state.
 
-## Implementation impact
+## Responsibilities and compatibility
 
-Axum owns cookies and browser request protections; Core owns authentication and membership rules; PostgreSQL owns refresh-session persistence and atomic rotation. The frontend coordinates renewal without reading credentials.
+Axum owns cookies and browser request protections; Core owns authentication and membership rules; PostgreSQL owns session persistence and conditional updates. The frontend coordinates renewal without reading credentials.
 
-Replace `UserRepository::record_login` with session creation through a dedicated `SessionRepository`. Signup records its first session in the same transaction as user and personal-organization creation. Failed authentication or a failed transaction creates no login record and returns no credentials. The session's creation time records the login; refresh only updates activity and expiry.
+The session owns validation, renewal, organization switching, and revocation behavior. Persistence provides create, find, and conditional update; saving stale state cannot undo revocation or overwrite a concurrent credential change.
 
-Changing signup from JSON credentials to cookies changes the frontend contract. Deliver the API and generated client updates together, and document the new transport in the public reference. Add refresh persistence before relying on rotation or revocation; issuing a new JWT alone does not invalidate the old one.
+Session creation records each successful login. Signup creates its first session together with the user and personal organization; failure leaves no partial account or login record. JWT validity enforces the sliding inactivity window; the database records login creation, scope, current credential, and revocation without pretending to track each renewal.
+
+Changing signup from JSON credentials to cookies will require coordinated API and frontend updates. Existing tokens without an embedded session require signin after the session-based flow is deployed.
+
+A stolen refresh JWT remains renewable until it expires or the session is explicitly revoked or changed. This is the accepted tradeoff for read-only renewal. No automatic reuse revocation or refresh-specific transaction restriction remains.
 
 ## Unresolved before implementation
 
 - Exact access lifetime within 5–15 minutes, plus any operations requiring immediate revocation.
-- Concurrent refreshes across tabs and recovery when a rotation response is lost.
 - Cross-provider account linking and which login methods ship first.
 - The [email-code expiry and reuse discrepancy](email.md).
 

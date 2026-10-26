@@ -14,7 +14,10 @@ use std::sync::{
     atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 use std::time::Duration;
-use tokio::{sync::watch, time::timeout};
+use tokio::{
+    sync::watch,
+    time::{Instant, MissedTickBehavior, interval_at, timeout},
+};
 
 struct Job {
     message: Message,
@@ -104,10 +107,26 @@ impl MailingService {
                 (0..self.settings.concurrency).map(|_| self.consume()),
             );
             tokio::pin!(consumers);
-            tokio::select! {
-                _ = &mut consumers => {},
-                _ = self.tx.closed() => {
-                    let _ = timeout(Duration::from_secs(self.settings.shutdown_timeout_seconds), &mut consumers).await;
+            let minute = Duration::from_secs(60);
+            let mut report = interval_at(Instant::now() + minute, minute);
+            report.set_missed_tick_behavior(MissedTickBehavior::Skip);
+            let mut previously_sent = 0;
+            loop {
+                tokio::select! {
+                    _ = &mut consumers => break,
+                    _ = self.tx.closed() => {
+                        let _ = timeout(Duration::from_secs(self.settings.shutdown_timeout_seconds), &mut consumers).await;
+                        break;
+                    }
+                    _ = report.tick() => {
+                        let total_sent = self.sent.load(Ordering::Acquire);
+                        tracing::info!(
+                            sent_since_last_report = total_sent - previously_sent,
+                            total_sent,
+                            "Mailing delivery summary"
+                        );
+                        previously_sent = total_sent;
+                    }
                 }
             }
         }

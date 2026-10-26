@@ -13,6 +13,8 @@ Email delivery must not create an unbounded number of tasks or let repeated OTP 
 
 Queue acceptance is asynchronous: a successful request means the email was admitted, not delivered. AuthService decides when to request mail and retains ownership of its verification challenge. SMTP failures after admission are logged without exposing credentials, recipients, message bodies, or OTPs.
 
+While running, the service logs successful SMTP sends every minute, including the count since the previous report and the total since startup.
+
 All limits belong to SMTP settings supplied to the service constructor. The defaults are:
 
 ## Delivery limits

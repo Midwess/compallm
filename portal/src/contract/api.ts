@@ -22,7 +22,7 @@ export interface AuthTokensResponse {
 }
 
 /**
- * How signup/signin confirmation delivers credentials. Never stored in JWT claims.
+ * How each signup/signin step delivers access credentials. Never stored in JWT claims.
  */
 export type TokenDelivery = typeof TokenDelivery[keyof typeof TokenDelivery];
 
@@ -97,6 +97,8 @@ export interface ErrorResponse {
  * Email address to receive a signin verification code.
  */
 export interface SigninEmailRequest {
+  /** Cookie (default) sets the OTP access cookie and returns {}; token returns it in JSON. */
+  delivery?: TokenDelivery;
   /** Trimmed and ASCII-lowercased before email validation. Account existence is checked only at confirmation. */
   email: string;
 }
@@ -105,6 +107,8 @@ export interface SigninEmailRequest {
  * Email address to receive a signup verification code.
  */
 export interface SignupEmailRequest {
+  /** Cookie (default) sets the OTP access cookie and returns {}; token returns it in JSON. */
+  delivery?: TokenDelivery;
   /** Trimmed and ASCII-lowercased before email validation. Any valid domain is accepted. */
   email: string;
 }
@@ -114,10 +118,11 @@ export interface SignupEmailRequest {
  */
 export interface SignupEmailResponse {
   /**
-     * Encrypted challenge to submit with the emailed code. Expires after 10 minutes.
+     * Encrypted OTP access token, present only in token delivery. Expires after 10 minutes.
      * This is not a user access credential and must not be used to call protected APIs.
+     * @nullable
      */
-  token: string;
+  token?: string | null;
 }
 
 export const getCurrentUserUrl = () => {
@@ -177,7 +182,9 @@ export const getSigninEmailUrl = () => {
  * Enqueues a six-digit code and returns a ten-minute encrypted challenge.
  * Admission does not guarantee delivery. Pending recipients and the configured cooldown
  * are shared with signup; throttling returns no replacement challenge.
- * Requesting a code neither creates a user nor checks whether the account exists.
+ * Cookie delivery (default) sets the ten-minute OTP access cookie, clears any refresh cookie,
+ * and returns {}; explicit token delivery returns the challenge in JSON without setting cookies.
+ * Cookie delivery requires an allowed Origin. Requesting a code does not check account existence.
  * @summary Request an email signin code.
  */
 export const signinEmail = async (signinEmailRequest: SigninEmailRequest, options?: RequestInit): Promise<SignupEmailResponse> => {
@@ -230,7 +237,7 @@ export const getConfirmSigninOtpUrl = () => {
 }
 
 /**
- * Requires an email-OTP challenge in Authorization: Bearer, verified by middleware.
+ * Requires an email-OTP access token in the access cookie or Authorization: Bearer, verified by middleware.
  * JSON contains only code and delivery; token fields in JSON are rejected.
  * Requires an existing active user and an active owner/admin organization membership.
  * Records a new session. Cookie delivery (default) requires an allowed Origin, sets both
@@ -291,7 +298,9 @@ export const getSignupEmailUrl = () => {
  * Enqueues a six-digit verification code for the supplied email address and returns an encrypted
  * challenge for confirmation. Submit the challenge and code to
  * `POST /api/auth/signup/email/confirmation/otp` within 10 minutes.
- * This public endpoint does not create a user or establish a signed-in session.
+ * Delivery defaults to cookie: set a ten-minute HttpOnly OTP access cookie, clear any refresh
+ * cookie and return {}. Explicit delivery token returns the challenge in JSON and sets no cookies.
+ * Cookie delivery requires an allowed Origin. No signed-in session exists until confirmation.
  * Queue acceptance does not guarantee SMTP or inbox delivery. Recipients already pending or sent
  * during the configured cooldown (30 seconds by default) are throttled; keep the earlier challenge. Admission waits up to the configured timeout (30 seconds by default)
  * when the queue is full. Admission failure returns no new challenge.
@@ -347,7 +356,7 @@ export const getConfirmSignupOtpUrl = () => {
 }
 
 /**
- * Requires the encrypted email-OTP challenge in Authorization: Bearer, verified by middleware.
+ * Requires an email-OTP access token in the access cookie or Authorization: Bearer, verified by middleware.
  * JSON contains only code and delivery; token fields in JSON are rejected.
  * Validates the emailed code, then creates the user and their personal
  * organization atomically. The display name is derived from the email address.

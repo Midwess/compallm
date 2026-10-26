@@ -5,7 +5,7 @@ available: false
 
 # Login: ADR
 
-Decision: Accepted on 2026-10-26. Implementation: Partial. Core authentication records sessions; normal renewal is read-only and organization switching is separate. Signup/signin confirmation requires a Bearer OTP challenge and supports controller-selected cookie or JSON token delivery. Protected API middleware accepts access cookies or Bearer access tokens and automatically renews expired/missing cookie access. Logout endpoints and OAuth remain planned.
+Decision: Accepted on 2026-10-26. Implementation: Partial. Core authentication records sessions; normal renewal is read-only and organization switching is separate. Signup/signin code requests and confirmation support controller-selected cookie or JSON token delivery. Confirmation requires an OTP access token from the access cookie or Bearer header. Protected API middleware accepts access cookies or Bearer access tokens and automatically renews expired/missing cookie access. Logout endpoints and OAuth remain planned.
 
 ## Problem and requirements
 
@@ -17,7 +17,7 @@ Signup creates a user and personal organization atomically. Signin loads an exis
 
 ## Decision and rationale
 
-Default to short-lived access JWTs and renewable refresh JWTs in secure HttpOnly cookies. Signup/signin confirmation accepts `delivery: "cookie" | "token"`: cookie mode omits token values from JSON; token mode returns them and sets no cookies. Delivery is an HTTP concern, never a Core property or JWT claim. Vite and Axum share one origin, so the browser sends cookies without exposing their values to frontend code.
+Default to short-lived access JWTs and renewable refresh JWTs in secure HttpOnly cookies. Each signup/signin step accepts `delivery: "cookie" | "token"`: cookie mode omits token values from JSON; token mode returns them and sets no cookies. Delivery is an HTTP concern, never a Core property or JWT claim. Vite and Axum share one origin, so the browser sends cookies without exposing their values to frontend code.
 
 Each session belongs to an organization and user. Both JWT types embed Session: its ID, organization ID, user ID, current credential identifier, login time, and revocation state. Access JWTs also carry the membership role. Neither token repeats fields already owned by Session. Every session operation checks organization and user together. Store the current credential identifier, not the complete JWT. Device information is optional.
 

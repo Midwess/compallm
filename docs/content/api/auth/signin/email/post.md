@@ -12,11 +12,36 @@ Request an email signin code.
 Enqueues a six-digit code and returns a ten-minute encrypted challenge.
 Admission does not guarantee delivery. Pending recipients and the configured cooldown
 are shared with signup; throttling returns no replacement challenge.
-Requesting a code neither creates a user nor checks whether the account exists.
+Cookie delivery (default) sets the ten-minute OTP access cookie, clears any refresh cookie,
+and returns {}; explicit token delivery returns the challenge in JSON without setting cookies.
+Cookie delivery requires an allowed Origin. Requesting a code does not check account existence.
 
 ## Authentication
 
 Public endpoint. No user access credential is required.
+
+## Parameters
+
+| Name | Location | Required | Description |
+| --- | --- | --- | --- |
+| Origin | header | false | Required for cookie delivery; must match the configured browser origin |
+
+### Parameter: Origin
+
+```json
+{
+  "description": "Required for cookie delivery; must match the configured browser origin",
+  "in": "header",
+  "name": "Origin",
+  "required": false,
+  "schema": {
+    "type": [
+      "string",
+      "null"
+    ]
+  }
+}
+```
 
 ## Request body
 
@@ -28,6 +53,7 @@ Email address to receive a signin verification code.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| delivery | string | false | How each signup/signin step delivers access credentials. Never stored in JWT claims. |
 | email | string | true | Trimmed and ASCII-lowercased before email validation. Account existence is checked only at confirmation. |
 
 <details>
@@ -35,8 +61,17 @@ Email address to receive a signin verification code.
 
 ```json
 {
+  "additionalProperties": false,
   "description": "Email address to receive a signin verification code.",
   "properties": {
+    "delivery": {
+      "description": "How each signup/signin step delivers access credentials. Never stored in JWT claims.",
+      "enum": [
+        "cookie",
+        "token"
+      ],
+      "type": "string"
+    },
     "email": {
       "description": "Trimmed and ASCII-lowercased before email validation. Account existence is checked only at confirmation.",
       "example": "reader@example.com",
@@ -56,6 +91,7 @@ Example (synthetic values):
 
 ```json
 {
+  "delivery": "token",
   "email": "reader@example.com"
 }
 ```
@@ -67,6 +103,7 @@ curl --request POST \
   'https://compallm.example/api/auth/signin/email' \
   --header 'Content-Type: application/json' \
   --data '{
+  "delivery": "token",
   "email": "reader@example.com"
 }'
 ```
@@ -85,7 +122,7 @@ Verification challenge returned after email delivery is requested.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| token | string | true | Encrypted challenge to submit with the emailed code. Expires after 10 minutes. This is not a user access credential and must not be used to call protected APIs. |
+| token | ["string","null"] | false | Encrypted OTP access token, present only in token delivery. Expires after 10 minutes. This is not a user access credential and must not be used to call protected APIs. |
 
 <details>
 <summary>JSON schema</summary>
@@ -95,14 +132,14 @@ Verification challenge returned after email delivery is requested.
   "description": "Verification challenge returned after email delivery is requested.",
   "properties": {
     "token": {
-      "description": "Encrypted challenge to submit with the emailed code. Expires after 10 minutes.\nThis is not a user access credential and must not be used to call protected APIs.",
+      "description": "Encrypted OTP access token, present only in token delivery. Expires after 10 minutes.\nThis is not a user access credential and must not be used to call protected APIs.",
       "example": "example-email-challenge",
-      "type": "string"
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
-  "required": [
-    "token"
-  ],
   "type": "object"
 }
 ```
@@ -120,6 +157,36 @@ Example (synthetic values):
 ### 400
 
 Malformed JSON or invalid field format
+
+Content type: `application/json`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+
+<details>
+<summary>JSON schema</summary>
+
+```json
+{
+  "properties": {
+    "message": {
+      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "message"
+  ],
+  "type": "object"
+}
+```
+
+</details>
+
+### 403
+
+Untrusted Origin for cookie delivery
 
 Content type: `application/json`.
 

@@ -107,8 +107,11 @@ impl Authorization {
             if !safe {
                 settings.validate_cookie_request(headers, false)?;
             }
-            match auth.authenticate_access(&token) {
-                Ok(user) => return Ok((AccessToken::User(user), None)),
+            match auth.authenticate_token(&token) {
+                Ok(token @ (AccessToken::User(_) | AccessToken::EmailOtp(_))) => {
+                    return Ok((token, None));
+                }
+                Ok(_) => return Err(AuthError::WrongTokenVariant.into()),
                 Err(AuthError::ExpiredToken) => {}
                 Err(error) => return Err(error.into()),
             }

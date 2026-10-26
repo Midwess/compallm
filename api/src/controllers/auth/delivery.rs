@@ -1,3 +1,4 @@
+use super::SignupEmailResponse;
 use crate::error::ApiError;
 use axum::{
     Json,
@@ -7,12 +8,12 @@ use axum::{
     },
     response::{IntoResponse, Response},
 };
-use compallm_core::auth::UserTokens;
+use compallm_core::auth::{EmailOtpAccessToken, UserTokens};
 use cookie::{Cookie, SameSite, time::Duration};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-/// How signup/signin confirmation delivers credentials. Never stored in JWT claims.
+/// How each signup/signin step delivers access credentials. Never stored in JWT claims.
 #[derive(Clone, Copy, Default, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TokenDelivery {
@@ -68,6 +69,13 @@ impl TokenDeliverySettings {
             .build();
         headers.append(SET_COOKIE, HeaderValue::from_str(&cookie.to_string())?);
         Ok(())
+    }
+
+    pub fn set_otp_cookie(&self, headers: &mut HeaderMap, token: String) -> Result<(), ApiError> {
+        let names = self.cookie_names();
+        self.append_cookie(headers, names.0, token, EmailOtpAccessToken::TTL_SECONDS)?;
+        // An OTP access token has no session refresh credential.
+        self.append_cookie(headers, names.1, String::new(), 0)
     }
 
     pub fn set_cookies(&self, headers: &mut HeaderMap, tokens: UserTokens) -> Result<(), ApiError> {
@@ -142,6 +150,23 @@ impl TokenDelivery {
         } else {
             Err(ApiError::UntrustedOrigin)
         }
+    }
+
+    pub fn otp_response(
+        self,
+        token: String,
+        settings: &TokenDeliverySettings,
+    ) -> Result<Response, ApiError> {
+        let mut headers = HeaderMap::new();
+        headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
+        let token = match self {
+            Self::Token => Some(token),
+            Self::Cookie => {
+                settings.set_otp_cookie(&mut headers, token)?;
+                None
+            }
+        };
+        Ok((headers, Json(SignupEmailResponse { token })).into_response())
     }
 
     pub fn response(

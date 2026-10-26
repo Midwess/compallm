@@ -288,7 +288,7 @@ async fn public_routes_stay_public_but_missing_credentials_are_rejected() {
     server
         .post("/api/auth/signup/email")
         .add_header(AUTHORIZATION, "Bearer stale")
-        .json(&serde_json::json!({"email":"james@example.com"}))
+        .json(&serde_json::json!({"delivery":"token","email":"james@example.com"}))
         .await
         .assert_status_service_unavailable();
     assert_eq!(fixture.log(), "[]");
@@ -851,4 +851,35 @@ async fn selected_credentials_cannot_inherit_token_extensions_from_another_layer
         )
         .await
         .assert_status_unauthorized();
+}
+
+#[tokio::test]
+async fn otp_access_cookie_populates_only_the_otp_type_without_refresh_or_database_work() {
+    let fixture = Fixture::new(RefreshState::Valid);
+    let server = fixture.typed_server();
+    let challenge = EmailOtpChallenge::new("james@example.com", SECRET).unwrap();
+    let cookies = format!("compallm-access={}", challenge.access_token);
+    server
+        .get("/otp")
+        .add_header(COOKIE, &cookies)
+        .await
+        .assert_status(StatusCode::NO_CONTENT);
+    server
+        .get("/user")
+        .add_header(COOKIE, &cookies)
+        .await
+        .assert_status_unauthorized();
+    server
+        .get("/refresh")
+        .add_header(COOKIE, &cookies)
+        .await
+        .assert_status_unauthorized();
+    let response = server.get("/raw").add_header(COOKIE, &cookies).await;
+    response.assert_status_ok();
+    assert_eq!(
+        response.json::<serde_json::Value>(),
+        serde_json::json!({"user":false,"refresh":false,"otp":true})
+    );
+    assert!(response.headers().get("set-cookie").is_none());
+    assert_eq!(fixture.log(), "[]");
 }

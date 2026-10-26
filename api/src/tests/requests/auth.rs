@@ -141,7 +141,7 @@ async fn failed_email_delivery_does_not_return_a_challenge() {
     let server = Fixture::server(Fixture::di(Some(Box::new(FailingEmail))));
     let response = server
         .post("/api/auth/signup/email")
-        .json(&serde_json::json!({"email":"james@midwess.com"}))
+        .json(&serde_json::json!({"delivery":"token","email":"james@midwess.com"}))
         .await;
     response.assert_status_service_unavailable();
     assert!(response.json::<serde_json::Value>().get("token").is_none());
@@ -189,7 +189,7 @@ async fn signup_delivers_code_and_confirmation_creates_user() {
     let server = Fixture::server(di);
     let response = server
         .post("/api/auth/signup/email")
-        .json(&serde_json::json!({"email": " James@MIDWESS.COM "}))
+        .json(&serde_json::json!({"delivery":"token","email": " James@MIDWESS.COM "}))
         .await;
     response.assert_status_ok();
     assert_eq!(response.header("cache-control"), "no-store");
@@ -249,7 +249,7 @@ async fn email_endpoint_rejects_bad_inputs_and_unconfigured_delivery() {
     let server = Fixture::server(Fixture::di(None));
     server
         .post("/api/auth/signup/email")
-        .json(&serde_json::json!({"email":"not-an-email"}))
+        .json(&serde_json::json!({"delivery":"token","email":"not-an-email"}))
         .await
         .assert_status_bad_request();
     server
@@ -259,7 +259,7 @@ async fn email_endpoint_rejects_bad_inputs_and_unconfigured_delivery() {
         .assert_status_bad_request();
     let response = server
         .post("/api/auth/signup/email")
-        .json(&serde_json::json!({"email":"james@midwess.com"}))
+        .json(&serde_json::json!({"delivery":"token","email":"james@midwess.com"}))
         .await;
     response.assert_status(axum::http::StatusCode::SERVICE_UNAVAILABLE);
     assert!(response.json::<serde_json::Value>().get("token").is_none());
@@ -278,7 +278,7 @@ async fn throttled_recipient_returns_429_without_a_replacement_challenge() {
     let server = Fixture::server(Fixture::di(Some(Box::new(ThrottledEmail))));
     let response = server
         .post("/api/auth/signup/email")
-        .json(&serde_json::json!({"email":"reader@example.com"}))
+        .json(&serde_json::json!({"delivery":"token","email":"reader@example.com"}))
         .await;
     response.assert_status(axum::http::StatusCode::TOO_MANY_REQUESTS);
     let body: serde_json::Value = response.json();
@@ -303,7 +303,7 @@ async fn signup_email_accepts_addresses_from_any_domain() {
     ] {
         let response = server
             .post("/api/auth/signup/email")
-            .json(&serde_json::json!({"email":email}))
+            .json(&serde_json::json!({"delivery":"token","email":email}))
             .await;
         response.assert_status_ok();
         let body: serde_json::Value = response.json();
@@ -413,7 +413,7 @@ async fn signin_delivers_email_and_returns_json_tokens_only_when_requested() {
     ));
     let challenge = server
         .post("/api/auth/signin/email")
-        .json(&serde_json::json!({"email":"james@midwess.com"}))
+        .json(&serde_json::json!({"delivery":"token","email":"james@midwess.com"}))
         .await;
     challenge.assert_status_ok();
     let body: serde_json::Value = challenge.json();
@@ -600,7 +600,7 @@ async fn dto_validation_rejects_bad_formats_without_echoing_credentials() {
         for email in [" ", "a@@example.com", "sensitive-invalid-email"] {
             let response = server
                 .post(path)
-                .json(&serde_json::json!({"email":email}))
+                .json(&serde_json::json!({"delivery":"token","email":email}))
                 .await;
             response.assert_status_bad_request();
             assert_eq!(
@@ -610,7 +610,7 @@ async fn dto_validation_rejects_bad_formats_without_echoing_credentials() {
         }
         server
             .post(path)
-            .json(&serde_json::json!({"email":42}))
+            .json(&serde_json::json!({"delivery":"token","email":42}))
             .await
             .assert_status_bad_request();
         server
@@ -665,7 +665,7 @@ async fn both_email_request_dtos_normalize_before_delivery() {
     for path in ["/api/auth/signup/email", "/api/auth/signin/email"] {
         let response = server
             .post(path)
-            .json(&serde_json::json!({"email":"  James@MIDWESS.COM  "}))
+            .json(&serde_json::json!({"delivery":"token","email":"  James@MIDWESS.COM  "}))
             .await;
         response.assert_status_ok();
         let body: serde_json::Value = response.json();
@@ -695,6 +695,7 @@ fn dto_email_normalization_keeps_ascii_case_policy() {
     ] {
         let mut dto = controllers::auth::SignupEmailRequest {
             email: input.into(),
+            delivery: Default::default(),
         };
         let expected = input.trim().to_ascii_lowercase();
         let result = dto.validify();
@@ -787,5 +788,126 @@ async fn confirmation_rejects_expired_or_tampered_otp_bearer_before_registration
                     .is_none()
             );
         }
+    }
+}
+
+#[tokio::test]
+async fn cookie_otp_flow_works_without_a_refresh_cookie_or_exposing_the_challenge() {
+    compallm_postgres::init_id_generator("api-tests").unwrap();
+    for signin in [false, true] {
+        for secure in [false, true] {
+            let mailbox = Mailbox::default();
+            let messages = mailbox.0.clone();
+            let mut settings = Fixture::settings();
+            settings.cookie_secure = secure;
+            settings.public_origin = "https://app.example.com".into();
+            let server =
+                Fixture::server(Fixture::di_for(Some(Box::new(mailbox)), signin, settings));
+            let path = if signin {
+                "/api/auth/signin/email"
+            } else {
+                "/api/auth/signup/email"
+            };
+            let response = server
+                .post(path)
+                .add_header(axum::http::header::ORIGIN, "https://app.example.com")
+                .json(&serde_json::json!({"email":" James@MIDWESS.COM "}))
+                .await;
+            response.assert_status_ok();
+            assert_eq!(response.json::<serde_json::Value>(), serde_json::json!({}));
+            let names = if secure {
+                ["__Host-access", "__Host-refresh"]
+            } else {
+                ["compallm-access", "compallm-refresh"]
+            };
+            let access = response.cookie(names[0]);
+            assert_eq!(access.http_only(), Some(true));
+            assert_eq!(access.secure().unwrap_or(false), secure);
+            assert_eq!(access.path(), Some("/"));
+            assert_eq!(access.max_age().unwrap().whole_seconds(), 600);
+            assert_eq!(
+                response.cookie(names[1]).max_age().unwrap().whole_seconds(),
+                0
+            );
+            let claims =
+                EmailOtpAccessToken::try_from(AccessToken::decode(access.value(), SECRET).unwrap())
+                    .unwrap();
+            assert!(
+                messages.lock().unwrap()[0]
+                    .text
+                    .plain_text()
+                    .contains(&claims.code)
+            );
+            // Only the access cookie exists; no Bearer header or refresh token is needed.
+            server
+                .get("/api/auth/me")
+                .add_header(
+                    axum::http::header::COOKIE,
+                    format!("{}={}", names[0], access.value()),
+                )
+                .await
+                .assert_status_unauthorized();
+            let confirmed = server
+                .post(&format!("{path}/confirmation/otp"))
+                .add_header(
+                    axum::http::header::COOKIE,
+                    format!("{}={}", names[0], access.value()),
+                )
+                .add_header(axum::http::header::ORIGIN, "https://app.example.com")
+                .json(&serde_json::json!({"code":claims.code}))
+                .await;
+            confirmed.assert_status(if signin {
+                axum::http::StatusCode::OK
+            } else {
+                axum::http::StatusCode::CREATED
+            });
+            assert_eq!(confirmed.json::<serde_json::Value>(), serde_json::json!({}));
+            assert!(matches!(
+                AccessToken::decode(confirmed.cookie(names[0]).value(), SECRET).unwrap(),
+                AccessToken::User(_)
+            ));
+            assert!(matches!(
+                AccessToken::decode(confirmed.cookie(names[1]).value(), SECRET).unwrap(),
+                AccessToken::Refresh(_)
+            ));
+        }
+    }
+}
+
+#[tokio::test]
+async fn otp_cookie_delivery_requires_origin_and_rejects_misspelled_delivery() {
+    let mailbox = Mailbox::default();
+    let messages = mailbox.0.clone();
+    let server = Fixture::server(Fixture::di(Some(Box::new(mailbox))));
+    for path in ["/api/auth/signup/email", "/api/auth/signin/email"] {
+        let response = server
+            .post(path)
+            .json(&serde_json::json!({"email":"james@example.com","delivery":"cookie"}))
+            .await;
+        response.assert_status_forbidden();
+        assert!(response.headers().get("set-cookie").is_none());
+        assert!(response.json::<serde_json::Value>().get("token").is_none());
+        server
+            .post(path)
+            .json(&serde_json::json!({"email":"james@example.com","deliver":"token"}))
+            .await
+            .assert_status_bad_request();
+    }
+    assert!(messages.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn failed_cookie_code_request_keeps_the_existing_challenge() {
+    let server = Fixture::server(Fixture::di(Some(Box::new(ThrottledEmail))));
+    for path in ["/api/auth/signup/email", "/api/auth/signin/email"] {
+        let response = server
+            .post(path)
+            .add_header(axum::http::header::ORIGIN, "http://localhost:3000")
+            .add_header(axum::http::header::HOST, "localhost:3000")
+            .json(&serde_json::json!({"email":"james@example.com","delivery":"cookie"}))
+            .await;
+        response.assert_status(axum::http::StatusCode::TOO_MANY_REQUESTS);
+        assert!(response.headers().get("set-cookie").is_none());
+        assert!(response.json::<serde_json::Value>().get("token").is_none());
     }
 }

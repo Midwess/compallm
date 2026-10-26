@@ -9,7 +9,7 @@ available: false
 
 Confirm email signup with a verification code.
 
-Requires the encrypted email-OTP challenge in Authorization: Bearer, verified by middleware.
+Requires an email-OTP access token in the access cookie or Authorization: Bearer, verified by middleware.
 JSON contains only code and delivery; token fields in JSON are rejected.
 Validates the emailed code, then creates the user and their personal
 organization atomically. The display name is derived from the email address.
@@ -32,6 +32,18 @@ Encrypted email OTP challenge returned by the code request. Requires the email-O
   "description": "Encrypted email OTP challenge returned by the code request. Requires the email-OTP token variant; user access and refresh tokens are rejected. Supply it as Authorization: Bearer <challenge>.",
   "scheme": "bearer",
   "type": "http"
+}
+```
+- `{"emailOtpCookie":[]}`
+
+HttpOnly OTP access cookie from the email code request. Nonsecure local development uses compallm-access. This token can confirm OTP but cannot authorize normal user APIs.
+
+```json
+{
+  "description": "HttpOnly OTP access cookie from the email code request. Nonsecure local development uses compallm-access. This token can confirm OTP but cannot authorize normal user APIs.",
+  "in": "cookie",
+  "name": "__Host-access",
+  "type": "apiKey"
 }
 ```
 
@@ -69,7 +81,7 @@ Email challenge and code used to confirm signup.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | code | string | true | Six ASCII digits received by email; surrounding whitespace is trimmed. Submit before expiry. |
-| delivery | string | false | How signup/signin confirmation delivers credentials. Never stored in JWT claims. |
+| delivery | string | false | How each signup/signin step delivers access credentials. Never stored in JWT claims. |
 
 <details>
 <summary>JSON schema</summary>
@@ -88,7 +100,7 @@ Email challenge and code used to confirm signup.
       "type": "string"
     },
     "delivery": {
-      "description": "How signup/signin confirmation delivers credentials. Never stored in JWT claims.",
+      "description": "How each signup/signin step delivers access credentials. Never stored in JWT claims.",
       "enum": [
         "cookie",
         "token"

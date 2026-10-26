@@ -4,8 +4,7 @@ use compallm_core::{
         provider::{ProviderRepository, ProviderRepositoryError},
     },
     provider::{
-        ApiProtocol, ManagementService, NewProvider, Provider, ProviderApiKey,
-        ProviderManagementError, ProviderUpdate,
+        ApiProtocol, OrganizationProviderService, Provider, ProviderApiKey, ProviderManagementError,
     },
 };
 use compallm_postgres::postgres_connection::PostgresConnection;
@@ -42,7 +41,11 @@ impl ProviderRepository for Repository {
             .collect())
     }
 
-    async fn insert(&self, provider: NewProvider) -> Result<Provider, ProviderRepositoryError> {
+    async fn insert(
+        &self,
+        provider: Provider,
+        api_key: ProviderApiKey,
+    ) -> Result<Provider, ProviderRepositoryError> {
         let context = DbContext::current()?;
         let mut state = self.0.lock().unwrap();
         state
@@ -53,37 +56,29 @@ impl ProviderRepository for Repository {
                 "insert failed"
             )));
         }
-        state.stored_api_key = Some(provider.api_key.into_storage_value());
-        let provider = Provider {
-            id: provider.id,
-            organization_id: provider.organization_id,
-            name: provider.name,
-            url: provider.url,
-            api_protocol: provider.api_protocol,
-        };
+        state.stored_api_key = Some(api_key.into_storage_value());
         state.providers.push(provider.clone());
         Ok(provider)
     }
 
     async fn update(
         &self,
-        organization_id: u64,
-        provider_id: u64,
-        update: ProviderUpdate,
+        update: Provider,
+        api_key: Option<ProviderApiKey>,
     ) -> Result<Provider, ProviderRepositoryError> {
         let context = DbContext::current()?;
         let mut state = self.0.lock().unwrap();
         state
             .writes_in_transaction
             .push(context.postgres().is_transaction());
-        if let Some(api_key) = update.api_key {
+        if let Some(api_key) = api_key {
             state.stored_api_key = Some(api_key.into_storage_value());
         }
         let provider = state
             .providers
             .iter_mut()
             .find(|provider| {
-                provider.id == provider_id && provider.organization_id == organization_id
+                provider.id == update.id && provider.organization_id == update.organization_id
             })
             .ok_or(ProviderRepositoryError::NotFound)?;
         provider.name = update.name;
@@ -96,20 +91,20 @@ impl ProviderRepository for Repository {
         &self,
         organization_id: u64,
         provider_id: u64,
-    ) -> Result<(), ProviderRepositoryError> {
+    ) -> Result<Provider, ProviderRepositoryError> {
         let context = DbContext::current()?;
         let mut state = self.0.lock().unwrap();
         state
             .writes_in_transaction
             .push(context.postgres().is_transaction());
-        let before = state.providers.len();
-        state.providers.retain(|provider| {
-            provider.id != provider_id || provider.organization_id != organization_id
-        });
-        if state.providers.len() == before {
-            return Err(ProviderRepositoryError::NotFound);
-        }
-        Ok(())
+        let index = state
+            .providers
+            .iter()
+            .position(|provider| {
+                provider.id == provider_id && provider.organization_id == organization_id
+            })
+            .ok_or(ProviderRepositoryError::NotFound)?;
+        Ok(state.providers.remove(index))
     }
 }
 
@@ -117,7 +112,7 @@ struct Fixture {
     db: &'static DbContext,
     database: Arc<sea_orm::DatabaseConnection>,
     state: Arc<Mutex<State>>,
-    service: ManagementService,
+    service: OrganizationProviderService,
 }
 
 impl Fixture {
@@ -139,33 +134,55 @@ impl Fixture {
             db,
             database,
             state,
-            service: ManagementService::new(db, providers),
+            service: OrganizationProviderService::new(db, providers),
         }
     }
 }
 
 #[tokio::test]
-async fn create_normalizes_input_generates_an_id_and_uses_a_transaction() {
+async fn protocol_specific_additions_generate_ids_and_use_transactions() {
     let fixture = Fixture::new(State::default());
-    let provider = fixture
+    let openai = fixture
         .service
-        .create(
+        .add_openai_api(
             84,
             " Primary ",
             " https://provider.example/v1 ",
             ProviderApiKey::new("protected-key").unwrap(),
-            ApiProtocol::OpenaiCompatible,
+        )
+        .await
+        .unwrap();
+    let anthropic = fixture
+        .service
+        .add_anthropic_api(
+            84,
+            "Anthropic",
+            "https://anthropic.example",
+            ProviderApiKey::new("protected-key").unwrap(),
+        )
+        .await
+        .unwrap();
+    let compatible = fixture
+        .service
+        .add_openai_compatible_api(
+            84,
+            "Compatible",
+            "https://compatible.example/v1",
+            ProviderApiKey::new("protected-key").unwrap(),
         )
         .await
         .unwrap();
 
-    assert!(provider.id > 0);
-    assert_eq!(provider.organization_id, 84);
-    assert_eq!(provider.name, "Primary");
-    assert_eq!(provider.url, "https://provider.example/v1");
+    assert!(openai.id > 0);
+    assert_eq!(openai.organization_id, 84);
+    assert_eq!(openai.name, "Primary");
+    assert_eq!(openai.url, "https://provider.example/v1");
+    assert_eq!(openai.api_protocol, ApiProtocol::Openai);
+    assert_eq!(anthropic.api_protocol, ApiProtocol::Anthropic);
+    assert_eq!(compatible.api_protocol, ApiProtocol::OpenaiCompatible);
     let state = fixture.state.lock().unwrap();
     assert_eq!(state.stored_api_key.as_deref(), Some("protected-key"));
-    assert_eq!(state.writes_in_transaction, [true]);
+    assert_eq!(state.writes_in_transaction, [true, true, true]);
     drop(state);
     let log = format!(
         "{:?}",
@@ -176,17 +193,16 @@ async fn create_normalizes_input_generates_an_id_and_uses_a_transaction() {
 }
 
 #[tokio::test]
-async fn invalid_create_or_update_input_does_not_open_a_transaction() {
+async fn invalid_add_input_does_not_open_a_transaction() {
     let fixture = Fixture::new(State::default());
     assert!(matches!(
         fixture
             .service
-            .create(
+            .add_anthropic_api(
                 84,
                 "  ",
                 "https://provider.example/v1",
                 ProviderApiKey::new("protected-key").unwrap(),
-                ApiProtocol::Anthropic,
             )
             .await,
         Err(ProviderManagementError::InvalidName)
@@ -194,7 +210,12 @@ async fn invalid_create_or_update_input_does_not_open_a_transaction() {
     assert!(matches!(
         fixture
             .service
-            .update(84, 100, "Primary", "  ", None, ApiProtocol::Openai)
+            .add_openai_api(
+                84,
+                "Primary",
+                "  ",
+                ProviderApiKey::new("protected-key").unwrap(),
+            )
             .await,
         Err(ProviderManagementError::InvalidUrl)
     ));
@@ -238,7 +259,7 @@ async fn find_all_uses_the_entry_point_scope_and_passes_the_required_limit() {
 }
 
 #[tokio::test]
-async fn update_and_delete_are_organization_scoped_transactional_workflows() {
+async fn delete_is_an_organization_scoped_transactional_workflow() {
     let fixture = Fixture::new(State {
         providers: vec![Provider {
             id: 100,
@@ -250,27 +271,11 @@ async fn update_and_delete_are_organization_scoped_transactional_workflows() {
         stored_api_key: Some("old-protected-key".into()),
         ..State::default()
     });
-    let provider = fixture
-        .service
-        .update(
-            84,
-            100,
-            " Renamed ",
-            " https://provider.example/v2 ",
-            None,
-            ApiProtocol::Anthropic,
-        )
-        .await
-        .unwrap();
-    assert_eq!(provider.name, "Renamed");
-    assert_eq!(
-        fixture.state.lock().unwrap().stored_api_key.as_deref(),
-        Some("old-protected-key")
-    );
-    fixture.service.delete(84, 100).await.unwrap();
+    let deleted = fixture.service.delete(84, 100).await.unwrap();
+    assert_eq!(deleted.id, 100);
     let state = fixture.state.lock().unwrap();
     assert!(state.providers.is_empty());
-    assert_eq!(state.writes_in_transaction, [true, true]);
+    assert_eq!(state.writes_in_transaction, [true]);
 }
 
 #[tokio::test]
@@ -281,12 +286,11 @@ async fn repository_failure_rolls_back_and_preserves_the_typed_error() {
     });
     let error = fixture
         .service
-        .create(
+        .add_openai_api(
             84,
             "Primary",
             "https://provider.example/v1",
             ProviderApiKey::new("protected-key").unwrap(),
-            ApiProtocol::Openai,
         )
         .await
         .unwrap_err();

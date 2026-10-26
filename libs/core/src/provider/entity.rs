@@ -1,5 +1,3 @@
-use std::fmt;
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ApiProtocol {
     Anthropic,
@@ -37,36 +35,4 @@ impl ProviderApiKey {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct ProviderApiKeyError;
-
-impl fmt::Debug for ProviderApiKeyError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("ProviderApiKeyError")
-    }
-}
-
-impl fmt::Display for ProviderApiKeyError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("provider API key must not be empty")
-    }
-}
-
-impl std::error::Error for ProviderApiKeyError {}
-
-pub struct NewProvider {
-    pub id: u64,
-    pub organization_id: u64,
-    pub name: String,
-    pub url: String,
-    pub api_key: ProviderApiKey,
-    pub api_protocol: ApiProtocol,
-}
-
-pub struct ProviderUpdate {
-    pub name: String,
-    pub url: String,
-    /// Preserve the current credential when omitted.
-    pub api_key: Option<ProviderApiKey>,
-    pub api_protocol: ApiProtocol,
-}
+use super::error::ProviderApiKeyError;

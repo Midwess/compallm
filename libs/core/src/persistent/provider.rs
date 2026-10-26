@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use super::ConnectionError;
-use crate::provider::{NewProvider, Provider, ProviderUpdate};
+use crate::provider::{Provider, ProviderApiKey};
 
 pub const MAX_PROVIDERS_PER_ORGANIZATION: u64 = 128;
 pub const MAX_PROVIDER_FIND_LIMIT: u64 = 128;
@@ -43,18 +43,21 @@ pub trait ProviderRepository: Send + Sync {
         limit: u64,
     ) -> Result<Vec<Provider>, ProviderRepositoryError>;
 
-    async fn insert(&self, provider: NewProvider) -> Result<Provider, ProviderRepositoryError>;
+    async fn insert(
+        &self,
+        provider: Provider,
+        api_key: ProviderApiKey,
+    ) -> Result<Provider, ProviderRepositoryError>;
 
     async fn update(
         &self,
-        organization_id: u64,
-        provider_id: u64,
-        update: ProviderUpdate,
+        provider: Provider,
+        api_key: Option<ProviderApiKey>,
     ) -> Result<Provider, ProviderRepositoryError>;
 
     async fn delete(
         &self,
         organization_id: u64,
         provider_id: u64,
-    ) -> Result<(), ProviderRepositoryError>;
+    ) -> Result<Provider, ProviderRepositoryError>;
 }

@@ -7,7 +7,7 @@ use compallm_core::{
             ProviderRepository as CoreProviderRepository, ProviderRepositoryError,
         },
     },
-    provider::{ApiProtocol, NewProvider, Provider, ProviderUpdate},
+    provider::{ApiProtocol, Provider, ProviderApiKey},
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, DbErr, EntityTrait, ModelTrait,
@@ -86,7 +86,11 @@ impl CoreProviderRepository for ProviderRepository {
             .collect()
     }
 
-    async fn insert(&self, provider: NewProvider) -> Result<Provider, ProviderRepositoryError> {
+    async fn insert(
+        &self,
+        provider: Provider,
+        api_key: ProviderApiKey,
+    ) -> Result<Provider, ProviderRepositoryError> {
         let id = Self::database_id(provider.id, "provider ID")?;
         let organization_id = Self::database_id(provider.organization_id, "organization ID")?;
         let context = DbContext::current()?;
@@ -123,7 +127,7 @@ impl CoreProviderRepository for ProviderRepository {
             organization_id: Set(organization_id),
             name: Set(provider.name),
             url: Set(provider.url),
-            api_key: Set(provider.api_key.into_storage_value()),
+            api_key: Set(api_key.into_storage_value()),
             api_protocol: Set(Self::api_protocol(provider.api_protocol)),
             ..Default::default()
         };
@@ -132,12 +136,11 @@ impl CoreProviderRepository for ProviderRepository {
 
     async fn update(
         &self,
-        organization_id: u64,
-        provider_id: u64,
-        update: ProviderUpdate,
+        provider: Provider,
+        api_key: Option<ProviderApiKey>,
     ) -> Result<Provider, ProviderRepositoryError> {
-        let organization_id = Self::database_id(organization_id, "organization ID")?;
-        let provider_id = Self::database_id(provider_id, "provider ID")?;
+        let organization_id = Self::database_id(provider.organization_id, "organization ID")?;
+        let provider_id = Self::database_id(provider.id, "provider ID")?;
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
 
@@ -148,12 +151,12 @@ impl CoreProviderRepository for ProviderRepository {
             .map_err(ProviderRepositoryError::database)?
             .ok_or(ProviderRepositoryError::NotFound)?;
         let mut model: ProviderActiveModel = model.into();
-        model.name = Set(update.name);
-        model.url = Set(update.url);
-        if let Some(api_key) = update.api_key {
+        model.name = Set(provider.name);
+        model.url = Set(provider.url);
+        if let Some(api_key) = api_key {
             model.api_key = Set(api_key.into_storage_value());
         }
-        model.api_protocol = Set(Self::api_protocol(update.api_protocol));
+        model.api_protocol = Set(Self::api_protocol(provider.api_protocol));
         model.updated_at = Set(ChronoUtc::now().fixed_offset());
         Provider::try_from(model.update(db).await.map_err(Self::write_error)?)
     }
@@ -162,21 +165,18 @@ impl CoreProviderRepository for ProviderRepository {
         &self,
         organization_id: u64,
         provider_id: u64,
-    ) -> Result<(), ProviderRepositoryError> {
+    ) -> Result<Provider, ProviderRepositoryError> {
         let organization_id = Self::database_id(organization_id, "organization ID")?;
         let provider_id = Self::database_id(provider_id, "provider ID")?;
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
 
-        let result = Providers::delete_many()
+        let mut providers = Providers::delete_many()
             .filter(ProviderColumn::Id.eq(provider_id))
             .filter(ProviderColumn::OrganizationId.eq(organization_id))
-            .exec(db)
+            .exec_with_returning(db)
             .await
             .map_err(ProviderRepositoryError::database)?;
-        if result.rows_affected != 1 {
-            return Err(ProviderRepositoryError::NotFound);
-        }
-        Ok(())
+        Provider::try_from(providers.pop().ok_or(ProviderRepositoryError::NotFound)?)
     }
 }

@@ -2,11 +2,9 @@
 
 pub mod entity;
 pub mod error;
-#[path = "management-service.rs"]
-pub mod management_service;
+#[path = "organization-provider-service.rs"]
+pub mod organization_provider_service;
 
-pub use entity::{
-    ApiProtocol, NewProvider, Provider, ProviderApiKey, ProviderApiKeyError, ProviderUpdate,
-};
-pub use error::ProviderManagementError;
-pub use management_service::ManagementService;
+pub use entity::{ApiProtocol, Provider, ProviderApiKey};
+pub use error::{ProviderApiKeyError, ProviderManagementError};
+pub use organization_provider_service::OrganizationProviderService;

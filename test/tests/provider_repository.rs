@@ -3,13 +3,13 @@ use compallm_core::{
         DbContext,
         provider::{MAX_PROVIDER_FIND_LIMIT, ProviderRepository as _, ProviderRepositoryError},
     },
-    provider::{ApiProtocol, NewProvider, ProviderApiKey, ProviderUpdate},
+    provider::{ApiProtocol, Provider, ProviderApiKey},
 };
 use compallm_postgres::{
     ApiProtocolSchema, OrganizationSchema, OrganizationStatusSchema, ProviderSchema,
     postgres_connection::PostgresConnection, repository::provider::ProviderRepository,
 };
-use sea_orm::{ActiveEnum, DbBackend, IntoMockRow, MockDatabase, MockExecResult};
+use sea_orm::{ActiveEnum, DbBackend, IntoMockRow, MockDatabase};
 use std::{collections::BTreeMap, sync::Arc};
 
 struct Fixture;
@@ -56,13 +56,12 @@ impl Fixture {
         DbContext::new(Arc::new(PostgresConnection::new(db)))
     }
 
-    fn new_provider() -> NewProvider {
-        NewProvider {
+    fn new_provider() -> Provider {
+        Provider {
             id: 100,
             organization_id: 84,
             name: "Primary".into(),
             url: "https://provider.example/v1".into(),
-            api_key: ProviderApiKey::new("encrypted-key").unwrap(),
             api_protocol: ApiProtocol::OpenaiCompatible,
         }
     }
@@ -118,7 +117,14 @@ async fn insert_locks_the_organization_checks_the_cap_and_writes_the_secret() {
     );
     let context = Fixture::context(db.clone());
     let provider = context
-        .transaction(async { ProviderRepository.insert(Fixture::new_provider()).await })
+        .transaction(async {
+            ProviderRepository
+                .insert(
+                    Fixture::new_provider(),
+                    ProviderApiKey::new("encrypted-key").unwrap(),
+                )
+                .await
+        })
         .await
         .unwrap();
     assert_eq!(provider.id, 100);
@@ -145,7 +151,14 @@ async fn insert_rejects_the_129th_provider_without_an_insert() {
     );
     let context = Fixture::context(db.clone());
     let error = context
-        .transaction(async { ProviderRepository.insert(Fixture::new_provider()).await })
+        .transaction(async {
+            ProviderRepository
+                .insert(
+                    Fixture::new_provider(),
+                    ProviderApiKey::new("encrypted-key").unwrap(),
+                )
+                .await
+        })
         .await
         .unwrap_err();
     assert!(matches!(
@@ -180,14 +193,14 @@ async fn update_preserves_the_secret_when_no_replacement_is_supplied() {
     );
     let provider = Fixture::context(db.clone())
         .scope(ProviderRepository.update(
-            84,
-            100,
-            ProviderUpdate {
+            Provider {
+                id: 100,
+                organization_id: 84,
                 name: "Renamed".into(),
                 url: "https://provider.example/v1".into(),
-                api_key: None,
                 api_protocol: ApiProtocol::Anthropic,
             },
+            None,
         ))
         .await
         .unwrap();
@@ -204,23 +217,22 @@ async fn update_preserves_the_secret_when_no_replacement_is_supplied() {
 async fn delete_is_organization_scoped_and_reports_missing_rows() {
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
-            .append_exec_results([
-                MockExecResult {
-                    last_insert_id: 0,
-                    rows_affected: 1,
-                },
-                MockExecResult {
-                    last_insert_id: 0,
-                    rows_affected: 0,
-                },
+            .append_query_results([
+                vec![Fixture::provider_row(Fixture::provider(
+                    100,
+                    "Primary",
+                    "existing-secret",
+                ))],
+                vec![],
             ])
             .into_connection(),
     );
     let context = Fixture::context(db.clone());
-    context
+    let deleted = context
         .scope(ProviderRepository.delete(84, 100))
         .await
         .unwrap();
+    assert_eq!(deleted.id, 100);
     assert!(matches!(
         context.scope(ProviderRepository.delete(84, 101)).await,
         Err(ProviderRepositoryError::NotFound)

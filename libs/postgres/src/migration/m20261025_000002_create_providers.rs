@@ -14,6 +14,7 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager.create_type(Self::api_protocol_type()).await?;
         manager.create_table(Self::providers_table()).await?;
+        manager.create_index(Self::organization_index()).await?;
         manager.create_index(Self::organization_name_index()).await
     }
 
@@ -92,6 +93,14 @@ impl Migration {
             .unique()
             .to_owned()
     }
+
+    fn organization_index() -> IndexCreateStatement {
+        Index::create()
+            .name("providers_organization_id_index")
+            .table(Providers::Table)
+            .col(Providers::OrganizationId)
+            .to_owned()
+    }
 }
 
 #[derive(DeriveIden)]
@@ -153,6 +162,14 @@ mod tests {
         assert_eq!(
             Migration::organization_name_index().to_string(PostgresQueryBuilder),
             r#"CREATE UNIQUE INDEX "providers_organization_id_name_unique" ON "providers" ("organization_id", "name")"#
+        );
+    }
+
+    #[test]
+    fn provider_is_indexed_by_organization() {
+        assert_eq!(
+            Migration::organization_index().to_string(PostgresQueryBuilder),
+            r#"CREATE INDEX "providers_organization_id_index" ON "providers" ("organization_id")"#
         );
     }
 }

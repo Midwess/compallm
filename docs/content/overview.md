@@ -23,6 +23,7 @@ Development features describe intended scope. Each feature's `adr.md` records it
 Each feature has its own folder directly under `docs/content/`, with shared decisions in `adr.md` and focused flows in sibling pages.
 
 - [Login](login/adr.md): [Email](login/email.md), [GitHub](login/github.md), and [GitLab](login/gitlab.md).
+- [API reference](api/index.md): generated endpoint guide with request and response examples.
 - [Organization and membership](organization/adr.md).
 - [LLM Router](llm-router/adr.md).
 - [LLM Gateway](llm-gateway/adr.md).

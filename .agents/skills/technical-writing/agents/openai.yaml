@@ -1,0 +1,4 @@
+interface:
+  display_name: "Technical Writing"
+  short_description: "Clear ADRs, runbooks, proposals, and API guides"
+  default_prompt: "Use $technical-writing to draft or review concise technical documentation for the intended reader."

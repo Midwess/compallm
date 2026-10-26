@@ -37,4 +37,9 @@ SMTP credentials are optional only when the server permits unauthenticated deliv
 - A valid email is eligible regardless of its domain.
 - Delivery failure reports that the code could not be sent and does not establish a session.
 
+## API reference
+
+- [Request a signup code](../api/auth/signup/email/post.md).
+- [Confirm signup with the code](../api/auth/signup/email/confirmation/otp/post.md).
+
 See [GitHub login](github.md) and [GitLab login](gitlab.md) for the other login methods, and the [login ADR](adr.md) for shared decisions.

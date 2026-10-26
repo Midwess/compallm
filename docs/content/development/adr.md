@@ -4,108 +4,60 @@ title: "Development: ADR"
 
 # Development: ADR
 
-This page records shared engineering decisions. Documentation is organized directly by feature under `docs/content/<feature-name>/`: `adr.md` owns decisions and open questions, while `<sub-feature>.md` explains a focused flow and its configuration. Each record distinguishes its decision status from its implementation status. Existing feature plans remain proposals until their decisions are explicitly accepted.
+Decision status: Accepted engineering direction. Implementation status: Apply to new work; individual feature ADRs distinguish plans from implemented behavior.
 
-Compallm follows pragmatic domain-driven design (DDD). Organize code around business capabilities and keep rules close to the types they govern. Use modules, concrete services, and focused clients before adding abstraction layers.
+## Context and decision
 
-These decisions guide implementation. The current scaffold does not necessarily implement every boundary yet. An architecture discussion or documentation change is not an instruction to implement the discussed feature.
+Use pragmatic domain-driven design: organize around business capabilities, keep rules near their types, and introduce abstractions for concrete needs. Modules and focused services come before strict Clean Architecture layers or a trait around every library.
 
-## Workspace responsibilities
+Axum serves the frontend and API on one origin. It proxies Vite during development, including hot reload, and serves built files in production.
+
+## Responsibilities
 
 | Location | Responsibility |
 | --- | --- |
-| `api/` | Loco/Axum application, controllers, HTTP input/output, cookies, configuration, and dependency wiring |
-| `libs/core/` (planned) | Shared business types, domain services, token behavior, and focused external-service clients |
-| `libs/postgres/` | SeaORM entities, repository queries, connection access, and migrations |
-| `portal/` | React frontend built with Vite |
-| `docs/content/` | Human-readable product plans, decisions, and architecture |
-| `docs/web/` | Quartz documentation website |
+| `api/` | Loco/Axum, HTTP contracts, cookies, configuration, and dependency wiring |
+| `libs/core/` | Domain types, business rules, services, and persistence contracts |
+| `libs/postgres/` | SeaORM connections, transactions, schemas, repositories, mappings, and migrations |
+| `libs/utils/` | Stateless, general-purpose helpers |
+| `portal/` | React and Vite frontend |
+| `docs/content/<feature>/` | Feature ADR and focused flows |
+| `docs/web/` | Quartz publication |
 
-Axum is the public entry point for the frontend and API. In development it proxies Vite and hot reload; in production it serves Vite's built static files.
+Core owns domain entities and the database lifecycle contract without depending on SeaORM. PostgreSQL depends on Core and implements that contract. Keep storage models and queries in PostgreSQL and map them to domain entities. Third-party libraries are welcome where useful; framework-specific HTTP types stay in the API application.
 
-## Organize by business domain
-
-Authentication, users, organizations, routing, and gateway usage are business capabilities. Group their types and behavior together rather than creating project-wide folders for every technical layer.
-
-For example, the planned authentication domain would start with:
-
-```text
-libs/core/src/auth/
-  service.rs
-  token.rs
-  token/
-    email_otp.rs
-    user.rs
-    refresh.rs
-```
-
-`AuthService` coordinates authentication workflows. Each token struct owns its claims, invariants, and validation behavior. `AccessToken` wraps `EmailOtpAccessToken`, `UserAccessToken`, and `RefreshToken` in its `EmailOtp`, `User`, and `Refresh` variants.
-
-A domain module is not automatically a separate crate or bounded context. Split it when its business responsibilities or dependency needs justify that boundary.
-
-## Dependencies and third-party libraries
-
-Core is not required to be dependency-free. Use established libraries for serialization, validation, cryptography, error handling, HTTP communication, and database execution when they support the domain's work.
-
-- Keep framework-specific requests, responses, cookies, and HTTP status mapping in `api/`.
-- Keep query and storage implementation details in `libs/postgres/`.
-- Do not use SeaORM entities as API responses automatically; define the external contract deliberately.
-- Keep provider URLs, authentication headers, and wire formats inside concrete integration clients.
-- Avoid circular crate dependencies. With the pragmatic approach, `api` may depend on Core and Postgres, and Core may depend on Postgres for application services. Postgres must not depend back on Core in that arrangement; map persistence results into business types at the Core boundary.
-
-There is no requirement for a trait around every library or service. Do not introduce repository interfaces, generic HTTP transport traits, or unit-of-work layers merely to imitate Clean Architecture. Add a trait when a concrete need appears, such as interchangeable implementations or a useful testing boundary.
+A domain module is not automatically a crate or bounded context. Split it when responsibilities or dependencies justify the boundary. Each token owns its claims and validation; `AuthService` coordinates authentication.
 
 ## Persistence and transactions
 
-Use concrete SeaORM repositories. Repository operations that can participate in a transaction should accept a connection implementing SeaORM's `ConnectionTrait`; both `DatabaseConnection` and `DatabaseTransaction` implement it.
+Application entry points establish `DbContext::scope`. Services and repositories use that context without routine scope wrappers. Services choose transaction boundaries; nested transactions join the active transaction. Multiple repositories in one workflow share it, and only the outermost boundary commits.
 
-The application service decides the transaction boundary. When a workflow spans multiple repositories, start one transaction and pass that same transaction to every repository operation. Commit only after all required operations succeed.
+Repositories must not switch connections or independently commit a larger operation. Rollback covers failures, but uniqueness constraints and conflict handling must also address concurrent requests.
 
-Application entry points (HTTP middleware, CLI commands, background jobs, and tests) establish the database context with `DbContext::scope`. Services and repositories use that active context without adding their own routine `scope()` wrappers. Services still define transaction boundaries; nested transactions share the active transaction.
+Do not hold a transaction open during slow email or HTTP calls. Database transactions do not cover external delivery; consider an outbox only when durable coordination is required. Avoid an additional unit-of-work layer without a concrete need.
 
-For example, completing authentication may need user lookup/creation, session creation, and refresh-token persistence in the same transaction. These are planned operations, not claims that session storage already exists.
+## External integrations
 
-- A repository must not silently switch from the supplied transaction to a separate connection.
-- Repositories participating in a larger operation must not independently commit it.
-- Let transaction rollback cover errors, and handle uniqueness conflicts and concurrent requests explicitly. Atomicity alone does not prevent duplicate-signup races.
-- SeaORM may appear in Core service signatures. Persistence independence is not a requirement of this architecture.
-- A custom unit of work is not the default. Reconsider it only if we later need a persistence-independent Core or a concrete alternative storage implementation.
+Follow the concrete-client approach in [Zero to Production's EmailClient](https://github.com/LukeMathWalker/zero-to-production/blob/main/src/email_client.rs). Startup supplies configured clients with reused connection pools and bounded timeouts.
 
-A database transaction does not cover email delivery or other HTTP calls. Avoid holding a transaction open during slow network requests. If delivery must be durably coordinated with a database change, evaluate an outbox for that specific workflow.
+Each client owns provider URLs, credentials, wire formats, status handling, and useful error translation. Business services call meaningful methods rather than assembling HTTP requests. Never expose credentials in logs or browser responses.
 
-## Browser authentication
+Retries are operation-specific: repeating a request may resend email, repeat a side effect, or incur charges. Router streaming, cancellation, and fallback rules must be explicit. Introduce interchangeable-provider traits when the Router needs them; avoid a generic network abstraction by default.
 
-The [login ADR](../login/adr.md) owns browser session decisions, including cookies, refresh, organization selection, and logout. Method-specific flows live alongside it: [Email](../login/email.md), [GitHub](../login/github.md), and [GitLab](../login/gitlab.md).
+## Verification
 
-## External APIs and network clients
+Test domain rules without external services. Use Wiremock with real HTTP clients to check payloads, authentication, errors, and timeouts. SeaORM mocks verify query/service flow; PostgreSQL integration tests verify constraints, isolation, and rollback across repositories.
 
-Follow the concrete-client approach demonstrated by [Zero to Production's EmailClient](https://github.com/LukeMathWalker/zero-to-production/blob/main/src/email_client.rs).
+Compilation or SQL-generation checks are appropriate when migrations must not execute. Application startup and database-backed tests may migrate automatically, so respect explicit restrictions.
 
-Use a configured `reqwest::Client` inside a client representing an external capability. For example, an `EmailClient` could expose `send_login_code`, while LLM provider adapters expose the supported generation operations. The email provider and its request contract still need to be selected; no Postmark or other delivery integration is implied by this reference.
+## Documentation before implementation
 
-The concrete client owns:
+Complete the relevant design before changing behavior. Every feature ADR must take **less than six minutes** to read, including diagrams and tables. Aim for 500–800 words or fewer; estimate prose at 200 words per minute plus at least 30 seconds per diagram.
 
-- The provider endpoint and provider-specific request/response structures.
-- Credentials and authentication headers, without exposing them in logs or browser responses.
-- Reused HTTP connection pools, connection/request timeouts, and HTTP status handling.
-- Translation of provider responses and failures into errors useful to its caller.
+Keep the problem, decision, rationale, main flow, consequences, status, and important open questions. Cut repetition and put configuration, contracts, and detailed instructions in linked sub-feature pages. The limit measures reader effort; it does not justify omitting essential decisions. See [Technical writing](writing.md) for the editing standard and reference handbook.
 
-Business services call these meaningful methods instead of constructing HTTP requests. Startup creates the configured clients and supplies them to services. Reuse clients rather than constructing a new connection pool for each request.
+## Related decisions
 
-Do not create a generic networking trait as the starting point. LLM providers can still have separate adapters because their protocols differ; introduce a shared provider interface when the Router actually needs interchangeable implementations.
-
-Retries must be chosen per operation. Do not blindly retry actions that could send duplicate emails, repeat external side effects, or incur additional provider charges. Streaming, cancellation, and fallback behavior require explicit Router rules.
-
-## Testing
-
-- Test domain rules and token validation directly without network or database access.
-- Test concrete HTTP clients against a local Wiremock server using the real client implementation. Verify headers and payloads, successful delivery, non-success responses, and timeouts without sending real email or calling paid APIs.
-- Use SeaORM `MockDatabase` where useful for query results and service flow. It does not reproduce PostgreSQL constraints, locks, or transaction isolation.
-- Use PostgreSQL integration tests for uniqueness, rollback across repositories, and concurrent operations.
-- When asked to write but not execute a migration, use compilation and SQL-generation tests only. Application startup and database-backed tests may auto-apply pending migrations.
-
-## Reference boundaries
-
-[Zero to Production](https://github.com/LukeMathWalker/zero-to-production) is a practical reference, not a strict persistence-isolation architecture. It uses validated domain types, a concrete `reqwest` email client, and handlers/helpers that directly use SQLx transactions. Compallm applies those pragmatic ideas with Loco, Axum, and SeaORM and retains its own business decisions.
-
-See the [product overview](../overview.md) for feature plans and the root repository README for local development commands. Decisions and open questions belong in the feature they affect.
+- [API reference](../api/index.md): Rust/OpenAPI generates TypeScript hover documentation and the public endpoint guide.
+- [Login](../login/adr.md): identity verification, organization scope, cookies, and refresh sessions.
+- [Product overview](../overview.md): feature plans and their own decisions.

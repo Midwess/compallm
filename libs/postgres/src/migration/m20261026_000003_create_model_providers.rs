@@ -14,8 +14,9 @@ impl MigrationTrait for Migration {
             .await?;
         manager.create_table(Self::table()).await?;
         manager.create_index(Self::model_provider_index()).await?;
-        manager.create_index(Self::model_priority_index()).await?;
-        manager.create_index(Self::provider_scope_index()).await
+        manager
+            .create_index(Self::organization_provider_index())
+            .await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
@@ -65,11 +66,6 @@ impl Migration {
                     .not_null(),
             )
             .col(
-                ColumnDef::new(ModelProviders::Priority)
-                    .integer()
-                    .not_null(),
-            )
-            .col(
                 ColumnDef::new(ModelProviders::Enabled)
                     .boolean()
                     .not_null()
@@ -88,7 +84,6 @@ impl Migration {
                     .default(Expr::current_timestamp()),
             )
             .check(Expr::col(ModelProviders::Id).gt(0))
-            .check(Expr::col(ModelProviders::Priority).gt(0))
             .check(Expr::cust("length(btrim(upstream_model_name)) > 0"))
             .foreign_key(
                 ForeignKey::create()
@@ -114,7 +109,10 @@ impl Migration {
     }
 
     fn provider_identity_scope_index() -> IndexCreateStatement {
-        // Required by the composite route-to-provider foreign key.
+        // PostgreSQL requires this exact pair to be unique before
+        // model_providers can reference (provider_id, organization_id) and
+        // thereby reject routes whose provider belongs to another organization.
+        // https://www.postgresql.org/docs/current/sql-createtable.html#SQL-CREATETABLE-PARMS-REFERENCES
         Index::create()
             .name("providers_id_organization_id_unique")
             .table(Providers::Table)
@@ -125,6 +123,8 @@ impl Migration {
     }
 
     fn model_provider_index() -> IndexCreateStatement {
+        // Prevent one logical model from routing to the same provider more than
+        // once, which would create duplicate route configuration.
         Index::create()
             .name("model_providers_model_id_provider_id_unique")
             .table(ModelProviders::Table)
@@ -134,23 +134,15 @@ impl Migration {
             .to_owned()
     }
 
-    fn model_priority_index() -> IndexCreateStatement {
-        // Also supports loading a model's routes in fallback order.
+    fn organization_provider_index() -> IndexCreateStatement {
+        // Support organization-scoped route listing and lookup by provider.
+        // This is a query index; organization integrity is enforced by the
+        // composite foreign keys above.
         Index::create()
-            .name("model_providers_model_id_priority_unique")
+            .name("model_providers_organization_id_provider_id_idx")
             .table(ModelProviders::Table)
-            .col(ModelProviders::ModelId)
-            .col(ModelProviders::Priority)
-            .unique()
-            .to_owned()
-    }
-
-    fn provider_scope_index() -> IndexCreateStatement {
-        Index::create()
-            .name("model_providers_provider_id_organization_id_idx")
-            .table(ModelProviders::Table)
-            .col(ModelProviders::ProviderId)
             .col(ModelProviders::OrganizationId)
+            .col(ModelProviders::ProviderId)
             .to_owned()
     }
 }
@@ -163,7 +155,6 @@ enum ModelProviders {
     ModelId,
     ProviderId,
     UpstreamModelName,
-    Priority,
     Enabled,
     CreatedAt,
     UpdatedAt,
@@ -188,15 +179,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn route_stores_order_and_provider_specific_model_name() {
+    fn route_stores_provider_specific_model_name_and_enabled_state() {
         let sql = Migration::table().to_string(PostgresQueryBuilder);
 
         assert!(sql.contains(r#""id" bigint NOT NULL PRIMARY KEY"#));
         assert!(!sql.to_lowercase().contains("serial"));
         assert!(sql.contains(r#""upstream_model_name" text NOT NULL"#));
-        assert!(sql.contains(r#""priority" integer NOT NULL"#));
         assert!(sql.contains(r#""enabled" bool NOT NULL DEFAULT TRUE"#));
-        assert!(sql.contains(r#""priority" > 0"#));
         assert!(sql.contains("length(btrim(upstream_model_name)) > 0"));
     }
 
@@ -217,22 +206,18 @@ mod tests {
     }
 
     #[test]
-    fn provider_and_priority_are_unique_within_a_model() {
+    fn provider_is_unique_within_a_model() {
         assert_eq!(
             Migration::model_provider_index().to_string(PostgresQueryBuilder),
             r#"CREATE UNIQUE INDEX "model_providers_model_id_provider_id_unique" ON "model_providers" ("model_id", "provider_id")"#
         );
-        assert_eq!(
-            Migration::model_priority_index().to_string(PostgresQueryBuilder),
-            r#"CREATE UNIQUE INDEX "model_providers_model_id_priority_unique" ON "model_providers" ("model_id", "priority")"#
-        );
     }
 
     #[test]
-    fn provider_reverse_lookup_has_an_index() {
+    fn organization_scoped_provider_lookup_has_an_index() {
         assert_eq!(
-            Migration::provider_scope_index().to_string(PostgresQueryBuilder),
-            r#"CREATE INDEX "model_providers_provider_id_organization_id_idx" ON "model_providers" ("provider_id", "organization_id")"#
+            Migration::organization_provider_index().to_string(PostgresQueryBuilder),
+            r#"CREATE INDEX "model_providers_organization_id_provider_id_idx" ON "model_providers" ("organization_id", "provider_id")"#
         );
     }
 }

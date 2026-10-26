@@ -37,21 +37,16 @@ The client API format is independent of the provider. Translate both directions 
 Each organization owns logical models whose names are unique within that
 organization. A logical model gives callers a stable name independent of an
 upstream provider. Each model-provider route stores the provider's upstream
-model name, whether the route is enabled, and a positive priority unique within
-the logical model. Lower priority values are attempted first. A provider may
-appear only once for a logical model, and database constraints prevent routes
-from crossing organization boundaries.
+model name and whether the route is enabled. A provider may appear only once
+for a logical model, and database constraints prevent routes from crossing
+organization boundaries. How the Router selects among multiple enabled routes
+remains unresolved.
 
 Each logical model stores the organization-facing input, output, and cached
 token prices in USD per one million tokens. These are non-negative fixed-point
 rates used for stable billing and reporting regardless of the selected route.
 Upstream provider costs can differ and therefore belong to model-provider
 routing concerns rather than these model prices.
-
-Each logical model also has a non-negative minimum access level, defaulting to
-`0`. A member may use the model when their level in the model's organization is
-greater than or equal to the model's minimum level. Roles continue to govern
-administrative permissions; levels govern model access.
 
 Before implementation, decide which API compatibility standard, providers, and model capabilities ship first, and whether credentials are organization-owned only or members may bring personal credentials.
 

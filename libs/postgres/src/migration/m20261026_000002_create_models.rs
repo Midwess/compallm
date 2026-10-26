@@ -83,6 +83,8 @@ impl Migration {
     }
 
     fn organization_name_index() -> IndexCreateStatement {
+        // A logical model name identifies at most one model within an
+        // organization, while another organization may reuse the same name.
         Index::create()
             .name("models_organization_id_name_unique")
             .table(Models::Table)
@@ -93,8 +95,10 @@ impl Migration {
     }
 
     fn identity_scope_index() -> IndexCreateStatement {
-        // Enables a future route table to enforce model organization ownership
-        // with a composite foreign key.
+        // PostgreSQL requires this exact pair to be unique before
+        // model_providers can reference (model_id, organization_id) and thereby
+        // reject routes whose model belongs to another organization.
+        // https://www.postgresql.org/docs/current/sql-createtable.html#SQL-CREATETABLE-PARMS-REFERENCES
         Index::create()
             .name("models_id_organization_id_unique")
             .table(Models::Table)

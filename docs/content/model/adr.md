@@ -7,8 +7,8 @@ available: true
 
 ## Status
 
-Decision status: Organization ownership, pricing, access levels, and ordered
-provider routes are accepted. Model-management authorization and fallback error
+Decision status: Organization ownership, pricing, and provider routes are
+accepted. Model-management authorization, route selection, and fallback error
 rules remain proposed. Implementation status: Persistence schema under
 development; model services, APIs, and routing are not implemented.
 
@@ -28,29 +28,18 @@ tokens. Prices are non-negative fixed-point USD amounts per one million tokens.
 They are stable billing and reporting rates, not necessarily the organization's
 upstream provider costs.
 
-Each model also records a non-negative minimum access level. A member may use a
-model when their level in that organization is greater than or equal to the
-model's minimum level. Existing and new models default to level `0`. Membership
-roles govern administration separately and do not replace model access levels.
-
 ## Provider routes
 
 A model can have multiple provider routes. Each route records:
 
 - one provider owned by the same organization;
 - the model name expected by that provider;
-- whether the route is enabled;
-- a positive priority unique within the logical model.
+- whether the route is enabled.
 
-Lower priority values are attempted first. A provider may appear only once for
-one logical model. Database ownership constraints prevent a route from joining
-a model and provider from different organizations.
-
-Priority defines preference, not permission to retry every failure. The Router
-may continue to the next enabled route only for an explicitly fallback-eligible
-outcome, such as exhausted upstream quota or temporary unavailability. Reaching
-the requested output-token limit is a successful completion, not a fallback
-condition. Detailed fallback categories remain unresolved.
+A provider may appear only once for one logical model. Database ownership
+constraints prevent a route from joining a model and provider from different
+organizations. The rule for selecting among multiple enabled routes and the
+errors that permit fallback remain unresolved.
 
 ## Consequences
 
@@ -61,22 +50,9 @@ condition. Detailed fallback categories remain unresolved.
   model or route responses.
 - Provider HTTP calls must occur outside database transactions.
 - Upstream cost, health, quota, and cooldown data must not overwrite the
-  organization-facing model price or route priority.
+  organization-facing model price or route configuration.
 
 ## Behavior examples
-
-### Access level
-
-- **WHEN** a member at level `2` requests a model with minimum level `1`
-- **THEN** the model passes the level check
-- **AND WHEN** the member requests a model with minimum level `3`
-- **THEN** access is denied before contacting a provider
-
-### Ordered fallback
-
-- **WHEN** the first enabled route reports an explicitly fallback-eligible
-  failure
-- **THEN** the Router attempts the next enabled route by ascending priority
 
 ### Organization isolation
 
@@ -86,8 +62,9 @@ condition. Detailed fallback categories remain unresolved.
 
 ## Open questions
 
-- May administrators and owners both manage models and route priorities, or do
-  those operations require different permissions?
+- May administrators and owners both manage models and routes, or do those
+  operations require different permissions?
+- How does the Router select among enabled routes?
 - Which provider errors permit fallback, and how are cooldowns represented?
 - Where are upstream provider costs and capability metadata maintained?
 

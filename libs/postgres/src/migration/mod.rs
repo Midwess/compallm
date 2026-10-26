@@ -9,7 +9,6 @@ mod m20261025_000002_create_providers;
 mod m20261026_000001_create_user_sessions;
 mod m20261026_000002_create_models;
 mod m20261026_000003_create_model_providers;
-mod m20261026_000004_add_model_access_levels;
 
 pub struct Migrator;
 
@@ -23,7 +22,6 @@ impl MigratorTrait for Migrator {
             Box::new(m20261026_000001_create_user_sessions::Migration),
             Box::new(m20261026_000002_create_models::Migration),
             Box::new(m20261026_000003_create_model_providers::Migration),
-            Box::new(m20261026_000004_add_model_access_levels::Migration),
             // inject-above (do not remove this comment)
         ]
     }

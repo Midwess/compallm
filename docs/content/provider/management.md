@@ -21,8 +21,7 @@ An ordinary **member** cannot add, change, or remove provider connections. A
 caller must hold the required role in the organization that owns the provider;
 being an owner or administrator in another organization does not grant access.
 
-Authorization uses organization membership and role. Membership access levels
-govern model availability and do not grant provider-management permissions.
+Authorization uses organization membership and role.
 
 ## Credential boundaries
 

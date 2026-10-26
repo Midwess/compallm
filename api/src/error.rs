@@ -8,6 +8,7 @@ use compallm_core::{auth::AuthError, mail::EmailError, persistent::user::UserRep
 
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct ErrorResponse {
+    /// Human-readable explanation of the failed request. Use the HTTP status to classify the error.
     pub message: String,
 }
 

@@ -72,6 +72,19 @@ jobs:
         run: cargo check -p compallm-api --features frontend-dev --locked
       - name: Check the PostgreSQL management CLI
         run: cargo clippy -p compallm-postgres --all-targets --features cli --locked -- -D warnings
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: portal/package-lock.json
+      - name: Install API client generator
+        run: npm ci --prefix portal
+      - name: Check generated client and public API guide
+        run: |
+          cargo run --locked -p compallm-api -- generate
+          git diff --exit-code -- portal/src/contract/api.ts docs/content/api
+          git status --short -- portal/src/contract docs/content/api
+          test -z "$(git ls-files --others --exclude-standard -- portal/src/contract docs/content/api)"
 
   portal:
     name: Frontend checks

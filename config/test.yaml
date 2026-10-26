@@ -12,7 +12,7 @@ logger:
 
 server:
   port: 3001
-  binding: 127.0.0.1
+  binding: '::'
   host: http://127.0.0.1:3001
   middlewares:
     fallback:

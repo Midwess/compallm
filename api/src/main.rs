@@ -1,6 +1,7 @@
 mod app;
 mod controllers;
 mod di;
+mod documentation;
 mod error;
 mod tasks;
 mod workers;
@@ -28,7 +29,7 @@ struct CompallmCli {
 
 #[derive(Subcommand)]
 enum CompallmCommand {
-    /// Generate OpenAPI and the TypeScript API client.
+    /// Generate OpenAPI, the TypeScript API client, and the public API guide.
     Generate,
 }
 
@@ -73,6 +74,10 @@ pub(crate) fn generate_contract() -> Result<(), Box<dyn Error>> {
     }
 
     println!("generated {}", portal.join("src/contract/api.ts").display());
+    let document = serde_json::from_str(&fs::read_to_string(portal.join("openapi.json"))?)?;
+    let output = project_root().join("docs/content/api");
+    let count = documentation::ApiDocumentation::new(&document).generate(&output)?;
+    println!("generated {count} API guide pages in {}", output.display());
     Ok(())
 }
 

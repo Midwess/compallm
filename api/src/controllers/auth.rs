@@ -225,3 +225,52 @@ async fn confirm_signin_otp(
     let tokens = auth.signin(&input.token, &input.code).await?;
     input.delivery.response(tokens, StatusCode::OK, settings)
 }
+
+/// Identity and organization scope from the current signed access credential.
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CurrentUserResponse {
+    /// Current login session identifier.
+    pub session_id: u64,
+    /// Authenticated user identifier.
+    pub user_id: u64,
+    /// Organization selected for this session.
+    pub organization_id: u64,
+    /// Cached membership role from the access JWT, refreshed on renewal.
+    #[schema(value_type = String, example = "owner")]
+    pub organization_role: compallm_core::organization::OrganizationRole,
+}
+
+pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
+    OpenApiRouter::new().routes(routes!(current_user))
+}
+
+/// Read the current authenticated identity and organization scope.
+///
+/// Accepts a user access JWT through Authorization Bearer or the configured access cookie.
+/// An explicit Authorization header takes precedence and never falls back to cookies.
+/// Cookie mode renews missing or expired access through the refresh cookie and returns
+/// replacement HttpOnly cookies when Origin is trusted, or a safe request has
+/// Sec-Fetch-Site: same-origin. No credentials are returned in JSON.
+/// Access claims contain a cached role; session revocation and membership changes are
+/// checked on renewal rather than on every access-token request.
+#[utoipa::path(
+    get, path = "/api/auth/me", operation_id = "currentUser", tag = "auth",
+    security(("bearerAuth" = []), ("accessCookie" = [])),
+    responses(
+        (status = 200, description = "Current identity; cookie renewal may set replacement cookies", body = CurrentUserResponse),
+        (status = 401, description = "Missing, invalid, expired, or wrong-variant credentials", body = ErrorResponse),
+        (status = 403, description = "Untrusted renewal Origin or disabled account/membership", body = ErrorResponse),
+        (status = 500, description = "Temporary database or internal failure; existing cookies are retained", body = ErrorResponse)
+    )
+)]
+async fn current_user(
+    crate::middleware::authorization::CurrentUser(claims): crate::middleware::authorization::CurrentUser,
+) -> Json<CurrentUserResponse> {
+    Json(CurrentUserResponse {
+        session_id: claims.session.id,
+        user_id: claims.session.user_id,
+        organization_id: claims.session.organization_id,
+        organization_role: claims.organization_role,
+    })
+}

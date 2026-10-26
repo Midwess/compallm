@@ -43,6 +43,68 @@ pub struct AuthTokensResponse {
     pub refresh_token: Option<String>,
 }
 
+impl TokenDeliverySettings {
+    pub fn cookie_names(&self) -> (&'static str, &'static str) {
+        if self.secure {
+            ("__Host-access", "__Host-refresh")
+        } else {
+            ("compallm-access", "compallm-refresh")
+        }
+    }
+
+    fn append_cookie(
+        &self,
+        headers: &mut HeaderMap,
+        name: &str,
+        value: String,
+        max_age: u64,
+    ) -> Result<(), ApiError> {
+        let cookie = Cookie::build((name, value))
+            .http_only(true)
+            .secure(self.secure)
+            .same_site(SameSite::Lax)
+            .path("/")
+            .max_age(Duration::seconds(max_age as i64))
+            .build();
+        headers.append(SET_COOKIE, HeaderValue::from_str(&cookie.to_string())?);
+        Ok(())
+    }
+
+    pub fn set_cookies(&self, headers: &mut HeaderMap, tokens: UserTokens) -> Result<(), ApiError> {
+        let names = self.cookie_names();
+        self.append_cookie(
+            headers,
+            names.0,
+            tokens.access_token,
+            self.access_max_age_seconds,
+        )?;
+        self.append_cookie(
+            headers,
+            names.1,
+            tokens.refresh_token,
+            self.refresh_max_age_seconds,
+        )
+    }
+
+    pub fn clear_cookies(&self, headers: &mut HeaderMap) -> Result<(), ApiError> {
+        let names = self.cookie_names();
+        self.append_cookie(headers, names.0, String::new(), 0)?;
+        self.append_cookie(headers, names.1, String::new(), 0)
+    }
+
+    pub fn validate_cookie_request(&self, headers: &HeaderMap, safe: bool) -> Result<(), ApiError> {
+        if !headers.contains_key(ORIGIN)
+            && safe
+            && headers
+                .get("sec-fetch-site")
+                .is_some_and(|value| value == "same-origin")
+        {
+            return Ok(());
+        }
+        TokenDelivery::Cookie.validate_origin(headers, self)
+    }
+}
+
 impl TokenDelivery {
     pub fn validate_origin(
         self,
@@ -96,32 +158,7 @@ impl TokenDelivery {
                 refresh_token: Some(tokens.refresh_token),
             },
             Self::Cookie => {
-                let names = if settings.secure {
-                    ("__Host-access", "__Host-refresh")
-                } else {
-                    ("compallm-access", "compallm-refresh")
-                };
-                for (name, token, max_age) in [
-                    (
-                        names.0,
-                        tokens.access_token,
-                        settings.access_max_age_seconds,
-                    ),
-                    (
-                        names.1,
-                        tokens.refresh_token,
-                        settings.refresh_max_age_seconds,
-                    ),
-                ] {
-                    let cookie = Cookie::build((name, token))
-                        .http_only(true)
-                        .secure(settings.secure)
-                        .same_site(SameSite::Lax)
-                        .path("/")
-                        .max_age(Duration::seconds(max_age as i64))
-                        .build();
-                    headers.append(SET_COOKIE, HeaderValue::from_str(&cookie.to_string())?);
-                }
+                settings.set_cookies(&mut headers, tokens)?;
                 AuthTokensResponse {
                     access_token: None,
                     refresh_token: None,

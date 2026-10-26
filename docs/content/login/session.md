@@ -5,7 +5,7 @@ available: false
 
 # Browser sessions
 
-A session records one successful signup or signin. Core authentication persists sessions, renews JWTs without database writes, and changes organization through a separate operation. Signup/signin confirmation supports cookie and JSON token delivery. Reading authentication cookies, automatic API renewal, logout endpoints, and OAuth remain planned. The [login ADR](adr.md) explains the decisions behind this flow.
+A session records one successful signup or signin. Core authentication persists sessions, renews JWTs without database writes, and changes organization through a separate operation. Signup/signin confirmation supports cookie and JSON token delivery. Protected APIs accept access cookies or Bearer access tokens, with automatic cookie renewal. Logout endpoints and OAuth remain planned. The [login ADR](adr.md) explains the decisions behind this flow.
 
 ## What a session represents
 
@@ -22,6 +22,16 @@ Normal refresh validates the signed JWT, loads its organization/user-scoped sess
 There is no database update, credential consumption, automatic revocation, or transaction started by renewal. It can run inside an existing transaction. Expired JWTs are already invalid and do not require revoking the session.
 
 Older refresh JWTs remain usable until their own expiry. Each valid renewal starts another 30-day JWT lifetime, so continued use can extend beyond 30 days from the original login without a fixed database deadline. A holder, including someone with a copied JWT, can keep renewing before expiry until explicit revocation or a session change.
+
+## Protected API requests
+
+Public signup/signin routes do not require existing credentials. Protected routes validate an access JWT and insert a typed `CurrentUser` request extension. Handlers can extract it directly; missing identity returns 401. Context exposes the signed session and role, with explicit organization/role guards returning 403. `GET /api/auth/me` returns session ID, user ID, organization ID, and role without returning credentials.
+
+An explicit Authorization header takes precedence over cookies. Require one Bearer access token; malformed, expired, duplicate, or wrong-variant Bearer credentials return 401 without cookie fallback or renewal. Refresh and OTP tokens cannot authorize a protected request.
+
+Cookie access is validated without querying the database, preserving the documented short-lived cached-role tradeoff. If access is missing or expired, validate the refresh cookie through Core, use the new access claims for the current request, and set both replacement cookies on the response. Invalid signatures, wrong variants, or ambiguous cookies are rejected. Refresh performs the existing database session/user/membership checks without a write. Credential failures clear authentication cookies; temporary storage failures return a server error and keep cookies. Failed renewal does not revoke sessions.
+
+Cookie-authenticated mutations require an allowed Origin. Automatic renewal also requires an allowed Origin, or, for safe GET/HEAD requests without Origin, the browser's `Sec-Fetch-Site: same-origin`. This supports ordinary same-origin GET fetches without allowing cross-site requests to renew cookies. Bearer-only authentication does not use ambient cookies and does not require browser Origin validation. Protected responses use `Cache-Control: no-store`; 401 responses advertise Bearer authentication. Frontend assets and public routes never trigger automatic renewal.
 
 ## Organization switching
 
@@ -44,7 +54,7 @@ Signup and signin confirmation accept optional `delivery`, defaulting to `cookie
 - `cookie`: set both HttpOnly cookies and return `{}`; token values are absent from JSON.
 - `token`: return `{ "accessToken": "…", "refreshToken": "…" }` and set no cookies. This does not clear an existing browser session.
 
-Both require JSON input. Cookie confirmation requires an allowed Origin; token mode does not rely on browser cookies. Cookies are not yet read by protected API middleware, and automatic refresh remains planned.
+Both require JSON input. Cookie confirmation requires an allowed Origin; token mode does not rely on browser cookies. Protected API middleware reads these cookies and renews them automatically when needed.
 
 | Cookie | Expiry | Production attributes |
 | --- | --- | --- |

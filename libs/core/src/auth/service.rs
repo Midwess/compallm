@@ -5,7 +5,7 @@ use super::{
     AuthError,
     token::{
         AccessToken, EmailOtpAccessToken, EmailOtpChallenge, EncryptedAccessToken, RefreshToken,
-        UserTokens,
+        UserAccessToken, UserTokens,
     },
 };
 use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode};
@@ -112,6 +112,11 @@ impl AuthService {
                 .ok_or(AuthError::OrganizationAccessDenied)?;
             self.start_session(user.id, membership).await
         })
+    }
+
+    /// Verify signed access claims without a database read; session changes apply on renewal.
+    pub fn authenticate_access(&self, token: &str) -> Result<UserAccessToken, AuthError> {
+        UserAccessToken::try_from(AccessToken::decode(token, &self.jwt_secret)?)
     }
 
     /// Read-only renewal: validates JWT/session state and never consumes the credential.

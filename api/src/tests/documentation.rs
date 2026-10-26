@@ -8,7 +8,11 @@ use crate::{controllers, documentation::ApiDocumentation};
 fn current_contract_describes_operations_fields_and_safe_examples() {
     let document = serde_json::to_value(controllers::openapi()).unwrap();
     let pages = ApiDocumentation::new(&document).render().unwrap();
-    assert_eq!(pages.len(), 5);
+    assert_eq!(pages.len(), 6);
+    let me = &pages["auth/me/get.md"];
+    assert!(me.contains("bearerAuth"));
+    assert!(me.contains("accessCookie"));
+    assert!(!me.contains("Public endpoint"));
     let email = &pages["auth/signup/email/post.md"];
     assert!(email.contains("Request an email signup code."));
     assert!(email.contains("Public endpoint"));

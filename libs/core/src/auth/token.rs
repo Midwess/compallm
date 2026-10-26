@@ -67,7 +67,17 @@ impl AccessToken {
         if encoded.len() > 16 * 1024 {
             return Err(AuthError::InvalidToken);
         }
-        let token: Self = decode_jwt_token(encoded, secret).map_err(|_| AuthError::InvalidToken)?;
+        let token: Self = decode_jwt_token(encoded, secret).map_err(|error| match error {
+            hero::token::jwt::JwtErrors::CodingError(error)
+                if matches!(
+                    error.kind(),
+                    jsonwebtoken::errors::ErrorKind::ExpiredSignature
+                ) =>
+            {
+                AuthError::ExpiredToken
+            }
+            _ => AuthError::InvalidToken,
+        })?;
         token.validate(unix_timestamp())?;
         match token {
             Self::Encrypted(payload) => {

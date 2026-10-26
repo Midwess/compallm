@@ -77,6 +77,29 @@ export interface ConfirmSignupOtpRequest {
   token: string;
 }
 
+/**
+ * Identity and organization scope from the current signed access credential.
+ */
+export interface CurrentUserResponse {
+  /**
+     * Organization selected for this session.
+     * @minimum 0
+     */
+  organizationId: number;
+  /** Cached membership role from the access JWT, refreshed on renewal. */
+  organizationRole: string;
+  /**
+     * Current login session identifier.
+     * @minimum 0
+     */
+  sessionId: number;
+  /**
+     * Authenticated user identifier.
+     * @minimum 0
+     */
+  userId: number;
+}
+
 export interface ErrorResponse {
   /** Human-readable explanation of the failed request. Use the HTTP status to classify the error. */
   message: string;
@@ -108,6 +131,51 @@ export interface SignupEmailResponse {
      */
   token: string;
 }
+
+export const getCurrentUserUrl = () => {
+
+
+
+
+  return `/api/auth/me`
+}
+
+/**
+ * Accepts a user access JWT through Authorization Bearer or the configured access cookie.
+ * An explicit Authorization header takes precedence and never falls back to cookies.
+ * Cookie mode renews missing or expired access through the refresh cookie and returns
+ * replacement HttpOnly cookies when Origin is trusted, or a safe request has
+ * Sec-Fetch-Site: same-origin. No credentials are returned in JSON.
+ * Access claims contain a cached role; session revocation and membership changes are
+ * checked on renewal rather than on every access-token request.
+ * @summary Read the current authenticated identity and organization scope.
+ */
+export const currentUser = async ( options?: RequestInit): Promise<CurrentUserResponse> => {
+
+  const res = await fetch(getCurrentUserUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: CurrentUserResponse, status?: number} = new globalThis.Error();
+    const data : CurrentUserResponse = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: CurrentUserResponse = body ? JSON.parse(body) : {}
+  return data
+}
+
+
 
 export const getSigninEmailUrl = () => {
 

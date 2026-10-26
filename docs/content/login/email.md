@@ -5,7 +5,7 @@ available: false
 
 # Email login
 
-Queued SMTP delivery and signup/signin confirmation with cookie or token delivery are implemented; automatic cookie authentication and renewal remain planned. The [login ADR](adr.md) defines the shared authentication decisions.
+Queued SMTP delivery and signup/signin confirmation with cookie or token delivery are implemented; protected APIs support cookie/Bearer authentication and automatic cookie renewal. The [login ADR](adr.md) defines the shared authentication decisions.
 
 ## Flow
 

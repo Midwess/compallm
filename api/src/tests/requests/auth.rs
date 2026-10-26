@@ -320,7 +320,7 @@ fn openapi_exposes_signup_and_signin_delivery() {
     let confirmation = &document["components"]["schemas"]["ConfirmSignupOtpRequest"];
     assert!(confirmation["properties"].get("displayName").is_none());
     assert_eq!(confirmation["required"].as_array().unwrap().len(), 2);
-    assert_eq!(paths.len(), 4);
+    assert_eq!(paths.len(), 5);
     assert!(paths["/api/auth/signup/email"].get("post").is_some());
     assert!(
         paths["/api/auth/signup/email/confirmation/otp"]

@@ -38,6 +38,7 @@ utoipa = { workspace = true, features = ["macros"] }
 utoipa-axum.workspace = true
 
 [dev-dependencies]
+jsonwebtoken.workspace = true
 tempfile.workspace = true
 axum-test.workspace = true
 sea-orm = { workspace = true, features = ["mock"] }

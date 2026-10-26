@@ -210,7 +210,19 @@ impl Di {
     where
         S: Clone + Send + Sync + 'static,
     {
-        let (routes, _) = crate::controllers::api_router().split_for_parts();
+        let (public, _) = crate::controllers::public_router().split_for_parts();
+        let (protected, _) = crate::controllers::protected_router().split_for_parts();
+        let auth = self.auth_service();
+        let delivery = self.delivery.as_ref();
+        let protected = protected.route_layer(axum::middleware::from_fn(
+            move |request: axum::extract::Request, next: axum::middleware::Next| async move {
+                crate::middleware::authorization::Authorization::authenticate(
+                    auth, delivery, request, next,
+                )
+                .await
+            },
+        ));
+        let routes = public.merge(protected);
         let db = self.db_context();
         let routes = routes
             .with_state(self.auth_service())

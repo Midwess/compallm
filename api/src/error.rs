@@ -14,6 +14,10 @@ pub struct ErrorResponse {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ApiError {
+    #[error("authentication required")]
+    Unauthenticated,
+    #[error("access denied")]
+    Forbidden,
     #[error("untrusted browser origin")]
     UntrustedOrigin,
     #[error("invalid response header")]
@@ -27,6 +31,8 @@ pub enum ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, message) = match &self {
+            Self::Unauthenticated => (StatusCode::UNAUTHORIZED, "Authentication required"),
+            Self::Forbidden => (StatusCode::FORBIDDEN, "Access denied"),
             Self::UntrustedOrigin => (StatusCode::FORBIDDEN, "Untrusted browser origin"),
             Self::Input(axum_valid::ValidifyRejection::Inner(_)) => {
                 (StatusCode::BAD_REQUEST, "Invalid JSON request body")

@@ -5,7 +5,7 @@ available: false
 
 # Login: ADR
 
-Decision: Accepted on 2026-10-26. Implementation: Partial. Core authentication records sessions; normal renewal is read-only and organization switching is separate. Signup and signin support controller-selected cookie or JSON token delivery. Cookie authentication middleware, automatic renewal, logout endpoints, and OAuth remain planned.
+Decision: Accepted on 2026-10-26. Implementation: Partial. Core authentication records sessions; normal renewal is read-only and organization switching is separate. Signup and signin support controller-selected cookie or JSON token delivery. Protected API middleware accepts access cookies or Bearer access tokens and automatically renews expired/missing cookie access. Logout endpoints and OAuth remain planned.
 
 ## Problem and requirements
 
@@ -78,7 +78,7 @@ A copied access JWT remains usable until expiry, including its cached role. Imme
 
 ## Responsibilities and compatibility
 
-Axum owns cookies and browser request protections; Core owns authentication and membership rules; PostgreSQL owns session persistence and conditional updates. Automatic API middleware renewal is the intended next step; it is not implemented by confirmation delivery.
+Axum owns cookies and browser request protections; Core owns authentication and membership rules; PostgreSQL owns session persistence and conditional updates. Protected API middleware selects explicit Bearer credentials before cookies, validates access claims, and inserts typed CurrentUser request context. Invalid Bearer credentials never fall back to cookies. Cookie renewal occurs only when access is missing or expired; handlers enforce resource scope and roles.
 
 The session owns validation, renewal, organization switching, and revocation behavior. Persistence provides create, find, and conditional update; saving stale state cannot undo revocation or overwrite a concurrent credential change.
 

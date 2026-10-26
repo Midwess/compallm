@@ -11,6 +11,7 @@ license = "Elastic-2.0"
 borrowed_box = "allow"
 
 [workspace.dependencies]
+jsonwebtoken = { version = "10", default-features = false }
 validify = { version = "2", default-features = false }
 axum-valid = { version = "0.25", default-features = false }
 cookie = { version = "0.18", default-features = false }

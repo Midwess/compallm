@@ -2,27 +2,23 @@ use anyhow::Context;
 use compallm_core::{
     persistent::{
         DbContext,
-        provider::{
-            MAX_PROVIDER_FIND_LIMIT, MAX_PROVIDERS_PER_ORGANIZATION,
-            ProviderRepository as CoreProviderRepository, ProviderRepositoryError,
-        },
+        provider::{ProviderRepository as CoreProviderRepository, ProviderRepositoryError},
     },
     provider::{ApiProtocol, Provider, ProviderApiKey},
 };
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, DbErr, EntityTrait, ModelTrait,
-    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RuntimeErr, prelude::ChronoUtc,
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, DbErr, EntityTrait, ModelTrait, QueryFilter,
+    QueryOrder, QuerySelect, RuntimeErr, prelude::ChronoUtc,
 };
 
 use crate::{
     postgres_connection::PostgresConnection,
-    schema::{ApiProtocolSchema, OrganizationSchema, ProviderSchema},
+    schema::{ApiProtocolSchema, ProviderSchema},
 };
 
 type Providers = <ProviderSchema as ModelTrait>::Entity;
 type ProviderColumn = <Providers as EntityTrait>::Column;
 type ProviderActiveModel = <Providers as EntityTrait>::ActiveModel;
-type Organizations = <OrganizationSchema as ModelTrait>::Entity;
 
 #[derive(Default)]
 pub struct ProviderRepository;
@@ -67,9 +63,6 @@ impl CoreProviderRepository for ProviderRepository {
         organization_id: u64,
         limit: u64,
     ) -> Result<Vec<Provider>, ProviderRepositoryError> {
-        if !(1..=MAX_PROVIDER_FIND_LIMIT).contains(&limit) {
-            return Err(ProviderRepositoryError::InvalidLimit);
-        }
         let organization_id = Self::database_id(organization_id, "organization ID")?;
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
@@ -94,33 +87,7 @@ impl CoreProviderRepository for ProviderRepository {
         let id = Self::database_id(provider.id, "provider ID")?;
         let organization_id = Self::database_id(provider.organization_id, "organization ID")?;
         let context = DbContext::current()?;
-        if !context.postgres().is_transaction() {
-            return Err(ProviderRepositoryError::database(anyhow::anyhow!(
-                "provider insertion requires an active transaction"
-            )));
-        }
         let db = PostgresConnection::from_context(&context)?;
-
-        // Serialize inserts for one organization so count + insert cannot race.
-        let organization = Organizations::find_by_id(organization_id)
-            .lock_exclusive()
-            .one(db)
-            .await
-            .map_err(ProviderRepositoryError::database)?;
-        if organization.is_none() {
-            return Err(ProviderRepositoryError::database(anyhow::anyhow!(
-                "provider organization does not exist"
-            )));
-        }
-
-        let count = Providers::find()
-            .filter(ProviderColumn::OrganizationId.eq(organization_id))
-            .count(db)
-            .await
-            .map_err(ProviderRepositoryError::database)?;
-        if count >= MAX_PROVIDERS_PER_ORGANIZATION {
-            return Err(ProviderRepositoryError::MaximumProvidersReached);
-        }
 
         let model = ProviderActiveModel {
             id: Set(id),

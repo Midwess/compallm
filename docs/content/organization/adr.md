@@ -26,11 +26,17 @@ Accepted on 2026-10-25; implementation is tracked separately from these product 
 
 - Support multiple organizations. The first deployment provisions one initial organization from environment variables; this bootstrap does not limit the platform to one organization.
 - Create a personal organization owned by each user during first-time onboarding. Users may also join other organizations under their membership policies.
+- Each organization membership has a non-negative access level. Existing and
+  new memberships default to level `0`; a user's level can differ between
+  organizations.
+- Owners and administrators may manage their organization's LLM provider
+  connections. Members cannot manage providers, and roles do not grant access
+  across organizations.
 
 ## Open questions
 
 - Does joining another organization require an invitation, administrator approval, or another membership rule?
-- Which roles are needed, and what may each role administer, share, and access?
+- Beyond provider management, what may each role administer, share, and access?
 - Do GitHub and GitLab identities follow exactly the same membership rules as email-code identities?
 - What initial-organization fields are configured, and which capabilities belong in the first release?
 

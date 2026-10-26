@@ -1,13 +1,13 @@
 use compallm_core::{
     persistent::{
         DbContext,
-        provider::{MAX_PROVIDER_FIND_LIMIT, ProviderRepository as _, ProviderRepositoryError},
+        provider::{ProviderRepository as _, ProviderRepositoryError},
     },
     provider::{ApiProtocol, Provider, ProviderApiKey},
 };
 use compallm_postgres::{
-    ApiProtocolSchema, OrganizationSchema, OrganizationStatusSchema, ProviderSchema,
-    postgres_connection::PostgresConnection, repository::provider::ProviderRepository,
+    ApiProtocolSchema, ProviderSchema, postgres_connection::PostgresConnection,
+    repository::provider::ProviderRepository,
 };
 use sea_orm::{ActiveEnum, DbBackend, IntoMockRow, MockDatabase};
 use std::{collections::BTreeMap, sync::Arc};
@@ -17,20 +17,6 @@ struct Fixture;
 impl Fixture {
     fn at() -> sea_orm::prelude::DateTimeWithTimeZone {
         "2026-10-26T00:00:00Z".parse().unwrap()
-    }
-
-    fn organization_row() -> BTreeMap<String, sea_orm::Value> {
-        let model = OrganizationSchema {
-            id: 84,
-            name: "team".into(),
-            status: OrganizationStatusSchema::Active,
-            created_by: 42,
-            created_at: Self::at(),
-            updated_at: Self::at(),
-        };
-        let mut row: BTreeMap<_, _> = model.into_mock_row().into_column_value_tuples().collect();
-        row.insert("status".into(), "active".into());
-        row
     }
 
     fn provider(id: i64, name: &str, api_key: &str) -> ProviderSchema {
@@ -68,14 +54,7 @@ impl Fixture {
 }
 
 #[tokio::test]
-async fn find_all_requires_a_bounded_limit_and_scopes_to_the_organization() {
-    for limit in [0, MAX_PROVIDER_FIND_LIMIT + 1] {
-        assert!(matches!(
-            ProviderRepository.find_all(84, limit).await,
-            Err(ProviderRepositoryError::InvalidLimit)
-        ));
-    }
-
+async fn find_all_applies_the_requested_limit_and_scopes_to_the_organization() {
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![Fixture::provider_row(Fixture::provider(
@@ -101,76 +80,30 @@ async fn find_all_requires_a_bounded_limit_and_scopes_to_the_organization() {
 }
 
 #[tokio::test]
-async fn insert_locks_the_organization_checks_the_cap_and_writes_the_secret() {
+async fn insert_writes_the_provider_and_secret_without_business_validation_queries() {
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([
-                vec![Fixture::organization_row()],
-                vec![BTreeMap::from([("num_items".into(), 0_i64.into())])],
-                vec![Fixture::provider_row(Fixture::provider(
-                    100,
-                    "Primary",
-                    "encrypted-key",
-                ))],
-            ])
+            .append_query_results([vec![Fixture::provider_row(Fixture::provider(
+                100,
+                "Primary",
+                "encrypted-key",
+            ))]])
             .into_connection(),
     );
-    let context = Fixture::context(db.clone());
-    let provider = context
-        .transaction(async {
-            ProviderRepository
-                .insert(
-                    Fixture::new_provider(),
-                    ProviderApiKey::new("encrypted-key").unwrap(),
-                )
-                .await
-        })
+    let provider = Fixture::context(db.clone())
+        .scope(ProviderRepository.insert(
+            Fixture::new_provider(),
+            ProviderApiKey::new("encrypted-key").unwrap(),
+        ))
         .await
         .unwrap();
     assert_eq!(provider.id, 100);
 
-    drop(context);
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
-    assert!(log.contains("BEGIN"));
-    assert!(log.contains("FOR UPDATE"));
-    assert!(log.contains("COUNT(*)"));
     assert!(log.contains("INSERT INTO"));
     assert!(log.contains("encrypted-key"));
-    assert!(log.contains("COMMIT"));
-}
-
-#[tokio::test]
-async fn insert_rejects_the_129th_provider_without_an_insert() {
-    let db = Arc::new(
-        MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([
-                vec![Fixture::organization_row()],
-                vec![BTreeMap::from([("num_items".into(), 128_i64.into())])],
-            ])
-            .into_connection(),
-    );
-    let context = Fixture::context(db.clone());
-    let error = context
-        .transaction(async {
-            ProviderRepository
-                .insert(
-                    Fixture::new_provider(),
-                    ProviderApiKey::new("encrypted-key").unwrap(),
-                )
-                .await
-        })
-        .await
-        .unwrap_err();
-    assert!(matches!(
-        error,
-        ProviderRepositoryError::MaximumProvidersReached
-    ));
-
-    drop(context);
-    let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
-    assert!(log.contains("FOR UPDATE"));
-    assert!(!log.contains("INSERT INTO"));
-    assert!(log.contains("ROLLBACK"));
+    assert!(!log.contains("FOR UPDATE"));
+    assert!(!log.contains("COUNT(*)"));
 }
 
 #[tokio::test]

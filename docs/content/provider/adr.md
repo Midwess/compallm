@@ -7,20 +7,30 @@ available: true
 
 ## Status
 
-Decision status: Proposed. Implementation status: Under development.
+Decision status: Organization ownership and management authorization are
+accepted; credential protection and integration behavior remain proposed.
+Implementation status: Persistence foundation under development; the Core
+management service and API are deferred until their workflows are implemented.
 
-Provider connections belong to one organization. The organization service lists
-and removes its connections and provides explicit operations for adding OpenAI,
-Anthropic, and OpenAI-compatible APIs. It does not expose generic create or
-update operations. Provider API calls and subscription integration belong in
-separate integration services rather than one general provider manager.
+Provider connections belong to one organization. An authenticated owner or
+administrator may manage the LLM providers in that organization. Ordinary
+members cannot add, change, or remove provider connections, and a role in one
+organization grants no access to providers in another organization.
+
+Management provides explicit operations for adding OpenAI, Anthropic, and
+OpenAI-compatible APIs. Provider API calls and subscription integration belong
+in separate integration services rather than one general provider manager. See
+[Managing providers](management.md) for the authorized behavior and credential
+boundaries.
 
 ## Consequences
 
-Provider persistence and services require organization scope. Each add operation
-selects its protocol internally, so callers cannot persist a mismatched protocol.
-Credentials stay outside ordinary provider read models and must not appear in
-API responses or logs.
+Provider persistence and services require organization scope. The repository
+only executes requested data operations and maps database outcomes; provider
+counts, query limits, and other business validation belong to the future
+workflow that invokes it. Each add operation selects its protocol internally,
+so callers cannot persist a mismatched protocol. Credentials stay outside
+ordinary provider read models and must not appear in API responses or logs.
 
 ## Open questions
 
@@ -29,5 +39,6 @@ remain unresolved.
 
 ## Related pages
 
-- [Implementation](implementation.md)
+- [Managing providers](management.md)
+- [Model management](../model/adr.md)
 - [Organization and membership](../organization/adr.md)

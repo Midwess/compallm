@@ -1,6 +1,6 @@
 use super::TokenValidity;
 use crate::auth::AuthError;
-use compallm_utils::email::verify_email;
+use crate::user::User;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
@@ -17,7 +17,7 @@ impl EmailOtpAccessToken {
     pub const TTL_SECONDS: u64 = 10 * 60;
 
     pub fn new(email: String) -> Result<Self, AuthError> {
-        verify_email(&email)?;
+        User::validate_email(&email).map_err(|_| AuthError::InvalidEmail)?;
         Ok(Self {
             email,
             code: format!("{:06}", rand::rng().random_range(0..1_000_000)),
@@ -30,7 +30,7 @@ impl EmailOtpAccessToken {
         if self.validity.expires_at - self.validity.issued_at != Self::TTL_SECONDS
             || self.code.len() != 6
             || !self.code.bytes().all(|b| b.is_ascii_digit())
-            || verify_email(&self.email).is_err()
+            || User::validate_email(&self.email).is_err()
         {
             return Err(AuthError::InvalidToken);
         }

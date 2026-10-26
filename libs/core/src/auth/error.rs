@@ -1,11 +1,3 @@
-impl From<compallm_utils::error::EmailError> for AuthError {
-    fn from(error: compallm_utils::error::EmailError) -> Self {
-        match error {
-            compallm_utils::error::EmailError::InvalidEmail => Self::InvalidEmail,
-        }
-    }
-}
-
 impl From<crate::user::RegistrationError> for AuthError {
     fn from(error: crate::user::RegistrationError) -> Self {
         use crate::user::RegistrationError;
@@ -13,7 +5,7 @@ impl From<crate::user::RegistrationError> for AuthError {
             RegistrationError::Connection(error) => Self::Connection(error),
             RegistrationError::Organization(error) => Self::Organization(error),
             RegistrationError::InvalidDisplayName => Self::InvalidDisplayName,
-            RegistrationError::InvalidEmail(error) => error.into(),
+            RegistrationError::InvalidEmail => Self::InvalidEmail,
             RegistrationError::Persistence(error) => Self::Persistence(error),
             RegistrationError::IdGeneration(error) => Self::IdGeneration(error),
         }

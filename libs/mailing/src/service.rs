@@ -48,14 +48,6 @@ pub struct MailingService {
 
 impl MailingService {
     pub fn new(settings: SmtpSettings) -> Result<Self, MailingError> {
-        if settings.host.trim().is_empty() || settings.port == 0 {
-            return Err(MailingError::Configuration("host and port are required"));
-        }
-        if settings.username.is_empty() != settings.password.is_empty() {
-            return Err(MailingError::Configuration(
-                "SMTP_USERNAME and SMTP_PASSWORD must be set together",
-            ));
-        }
         let from = settings.from_address.parse().map_err(|_| {
             MailingError::Configuration("SMTP_FROM_ADDRESS must be a valid mailbox")
         })?;
@@ -147,8 +139,7 @@ impl MailingService {
         if self.tx.is_closed() {
             return Err(EmailError::Unavailable);
         }
-        let email =
-            compallm_utils::email::normalize_email(&request.to).map_err(anyhow::Error::from)?;
+        let email = compallm_utils::email::normalize_email(&request.to);
         let reservation = self.recipients.reserve(email.clone())?;
         let to = email.parse::<Mailbox>().map_err(anyhow::Error::from)?;
         let message = Message::builder()

@@ -19,7 +19,7 @@ The current stateless challenge allows reuse until its 10-minute expiry. The old
 
 ## Input normalization and validation
 
-Signup and signin requests use Validify during extraction. Email addresses are trimmed, ASCII-lowercased, and validated using the existing shared email policy. Confirmation trims surrounding code whitespace and requires exactly six ASCII digits. The challenge must be nonempty and at most 16,384 characters; its contents are not modified. Delivery remains an enum.
+Signup and signin requests use Validify during extraction. Email addresses are trimmed, ASCII-lowercased, and validated using the shared User email rule. Registration prepares the User through the same domain rules; repositories persist that canonical email unchanged. Confirmation trims surrounding code whitespace and requires exactly six ASCII digits. The challenge must be nonempty and at most 16,384 characters; its contents are not modified. Delivery remains an enum.
 
 Malformed JSON or invalid field formats return 400 before mail or persistence is called. A well-formed but incorrect code, expired challenge, or invalid signature still returns 401 through Core authentication. Validation errors do not echo emails, codes, or token values. Request rules are also described in the generated API guide and TypeScript hover documentation.
 

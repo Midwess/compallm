@@ -5,7 +5,7 @@ use axum::{
     response::IntoResponse,
 };
 use axum_valid::ValidifiedByRef;
-use compallm_core::auth::AuthService;
+use compallm_core::{auth::AuthService, user::User};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -30,8 +30,8 @@ pub fn router() -> OpenApiRouter<&'static AuthService> {
 pub struct SignupEmailRequest {
     /// Trimmed and ASCII-lowercased before email validation. Any valid domain is accepted.
     #[schema(example = "reader@example.com")]
-    #[modify(trim, custom(AuthInput::ascii_lowercase))]
-    #[validate(custom(function = AuthInput::email))]
+    #[modify(trim, custom(str::make_ascii_lowercase))]
+    #[validate(custom(function = User::validate_email))]
     pub email: String,
 }
 
@@ -141,8 +141,8 @@ async fn confirm_signup_otp(
 pub struct SigninEmailRequest {
     /// Trimmed and ASCII-lowercased before email validation. Account existence is checked only at confirmation.
     #[schema(example = "reader@example.com")]
-    #[modify(trim, custom(AuthInput::ascii_lowercase))]
-    #[validate(custom(function = AuthInput::email))]
+    #[modify(trim, custom(str::make_ascii_lowercase))]
+    #[validate(custom(function = User::validate_email))]
     pub email: String,
 }
 

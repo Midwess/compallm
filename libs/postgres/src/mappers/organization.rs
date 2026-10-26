@@ -13,11 +13,6 @@ impl TryFrom<OrganizationSchema> for Organization {
         let id = crate::from_bigint(model.id).context("invalid organization ID")?;
         let created_by =
             crate::from_bigint(model.created_by).context("invalid organization creator ID")?;
-        if id == 0 || created_by == 0 {
-            return Err(OrganizationRepositoryError::database(anyhow::anyhow!(
-                "organization and creator IDs must be positive"
-            )));
-        }
         Ok(Self {
             id,
             name: model.name,

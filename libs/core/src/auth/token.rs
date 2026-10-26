@@ -122,7 +122,7 @@ pub struct EmailOtpChallenge {
 
 impl EmailOtpChallenge {
     pub fn new(email: &str, secret: &str) -> Result<Self, AuthError> {
-        let email = normalize_email(email)?;
+        let email = normalize_email(email);
         let claims = EmailOtpAccessToken::new(email)?;
         let code = claims.code.clone();
         let access_token = AccessToken::EmailOtp(claims)

@@ -34,7 +34,7 @@ A domain module is not automatically a crate or bounded context. Split it when r
 
 Use Validify on HTTP request DTOs and axum-valid extraction to normalize fields before validating them. Keep Serde for JSON shape and Utoipa for documented constraints. Email input is trimmed and ASCII-lowercased, then checked with the shared email policy. Never normalize signed token contents. Return safe 400 errors for malformed fields without echoing submitted credentials.
 
-Core remains callable outside HTTP: keep domain invariants, cryptographic checks, expiry, and authorization there. Remove repeated service checks already guaranteed by validated domain operations; do not make Core trust a controller-only DTO.
+Core remains callable outside HTTP: keep domain invariants, cryptographic checks, expiry, and authorization there. Domain types own reusable field rules and Validify-based preparation; services coordinate those operations instead of repeating field checks. Utils contains formatting helpers, not user or organization validation policy. Repositories accept prepared domain values without normalizing or validating their fields again. Keep fallible storage-type conversions, uniqueness handling, and conditional updates; positive-ID checks already enforced by database constraints are not repeated in adapters. Do not make Core trust a controller-only DTO.
 
 ## Persistence and transactions
 

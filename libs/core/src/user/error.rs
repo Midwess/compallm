@@ -9,7 +9,7 @@ pub enum RegistrationError {
     )]
     InvalidDisplayName,
     #[error("invalid email address")]
-    InvalidEmail(#[from] compallm_utils::error::EmailError),
+    InvalidEmail,
     #[error(transparent)]
     Persistence(#[from] crate::persistent::user::UserRepositoryError),
     #[error("ID generation failed")]

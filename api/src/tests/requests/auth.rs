@@ -647,7 +647,7 @@ fn dto_email_normalization_keeps_ascii_case_policy() {
         assert_eq!(dto.email, expected);
         assert_eq!(
             result.is_ok(),
-            compallm_utils::email::verify_email(&expected).is_ok()
+            compallm_core::user::User::validate_email(&expected).is_ok()
         );
     }
 }

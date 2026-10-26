@@ -9,14 +9,6 @@ pub type ValidatedJson<T> = Result<ValidifiedByRef<Json<T>>, ValidifyRejection<J
 pub struct AuthInput;
 
 impl AuthInput {
-    pub fn ascii_lowercase(value: &mut str) {
-        value.make_ascii_lowercase();
-    }
-
-    pub fn email(value: &str) -> Result<(), ValidationError> {
-        compallm_utils::email::verify_email(value).map_err(|_| ValidationError::new_field("email"))
-    }
-
     pub fn otp(value: &str) -> Result<(), ValidationError> {
         if value.bytes().all(|byte| byte.is_ascii_digit()) {
             Ok(())

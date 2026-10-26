@@ -64,11 +64,6 @@ impl OrganizationRepository {
     }
 
     fn database_id(id: u64) -> Result<i64, OrganizationRepositoryError> {
-        if id == 0 {
-            return Err(OrganizationRepositoryError::database(anyhow::anyhow!(
-                "organization and member IDs must be positive"
-            )));
-        }
         Ok(crate::to_bigint(id).context("organization or member ID exceeds PostgreSQL BIGINT")?)
     }
 }

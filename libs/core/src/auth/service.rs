@@ -44,9 +44,6 @@ impl AuthService {
         lifetimes: TokenLifetimes,
         email: Option<&'static Box<dyn EmailService>>,
     ) -> Result<Self, AuthError> {
-        if lifetimes.user.as_secs() == 0 || lifetimes.refresh.as_secs() == 0 {
-            return Err(AuthError::InvalidConfiguration);
-        }
         EncryptedAccessToken::new(&jwt_secret)?;
         Ok(Self {
             db,
@@ -66,7 +63,7 @@ impl AuthService {
         let sender = self.email.as_ref().ok_or(EmailError::Unavailable)?;
         sender
             .send(EmailRequest {
-                to: compallm_utils::email::normalize_email(email)?,
+                to: compallm_utils::email::normalize_email(email),
                 subject: "Your Compallm verification code".into(),
                 text: EmailTemplate::OtpCode(OtpCode::new(
                     challenge.code,

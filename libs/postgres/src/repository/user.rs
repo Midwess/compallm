@@ -6,7 +6,6 @@ use compallm_core::{
     },
     user::{User, UserStatus},
 };
-use compallm_utils::email::normalize_email;
 use sea_orm::{
     ActiveModelTrait, DbErr, EntityTrait, ModelTrait, QueryFilter, RuntimeErr, Set,
     prelude::ChronoUtc,
@@ -25,11 +24,6 @@ pub struct UserRepository;
 
 impl UserRepository {
     fn database_id(id: u64) -> Result<i64, UserRepositoryError> {
-        if id == 0 {
-            return Err(UserRepositoryError::database(anyhow::anyhow!(
-                "user ID must be positive"
-            )));
-        }
         crate::to_bigint(id)
             .context("user ID exceeds PostgreSQL BIGINT")
             .map_err(Into::into)
@@ -51,7 +45,6 @@ impl UserRepository {
 #[async_trait::async_trait]
 impl CoreUserRepository for UserRepository {
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, UserRepositoryError> {
-        let email = normalize_email(email).context("invalid user email")?;
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
         Users::find()
@@ -77,12 +70,11 @@ impl CoreUserRepository for UserRepository {
 
     async fn create(&self, user: User) -> Result<User, UserRepositoryError> {
         let id = Self::database_id(user.id)?;
-        let email = normalize_email(&user.email).context("invalid user email")?;
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
         let model = UserActiveModel {
             id: Set(id),
-            email: Set(email),
+            email: Set(user.email),
             display_name: Set(user.display_name),
             status: Set(match user.status {
                 UserStatus::Active => UserStatusSchema::Active,

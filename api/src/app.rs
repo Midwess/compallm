@@ -144,14 +144,19 @@ impl Hooks for App {
             .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
         Di::init(&ctx).await?;
         if let Some(worker) = Di::instance().mailing_worker() {
-            worker.start();
+            use loco_rs::bgworker::BackgroundWorker;
+            tokio::spawn(async move {
+                if worker.perform(()).await.is_err() {
+                    tracing::error!("mailing worker stopped unexpectedly");
+                }
+            });
         }
         Ok(ctx)
     }
 
     async fn on_shutdown(_ctx: &AppContext) {
-        if let Some(worker) = Di::instance().mailing_worker() {
-            worker.shutdown().await;
+        if let Some(service) = Di::instance().mailing_service() {
+            service.shutdown().await;
         }
     }
 

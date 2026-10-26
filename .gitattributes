@@ -1,0 +1,12 @@
+# Collapse test diffs in GitHub PRs; reviewers can expand them when needed.
+**/test/** linguist-generated=true
+**/tests/** linguist-generated=true
+**/__tests__/** linguist-generated=true
+*.test.* linguist-generated=true
+*.spec.* linguist-generated=true
+*_test.* linguist-generated=true
+*_tests.* linguist-generated=true
+test_*.py linguist-generated=true
+test_*.rs linguist-generated=true
+test.rs linguist-generated=true
+tests.rs linguist-generated=true

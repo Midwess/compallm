@@ -1,0 +1,22 @@
+[package]
+name = "compallm-mailing"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+futures-util = { workspace = true, features = ["std", "async-await"] }
+anyhow = { workspace = true, features = ["std"] }
+async-trait.workspace = true
+async-channel = { workspace = true, features = ["std"] }
+compallm-core.workspace = true
+compallm-utils.workspace = true
+lettre = { workspace = true, features = ["builder", "smtp-transport", "pool", "tokio1-rustls-tls"] }
+serde = { workspace = true, features = ["std", "derive"] }
+tokio = { workspace = true, features = ["rt", "sync", "time"] }
+thiserror = { workspace = true, features = ["std"] }
+tracing = { workspace = true, features = ["std"] }

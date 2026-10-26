@@ -3,6 +3,7 @@ mod controllers;
 mod di;
 mod documentation;
 mod error;
+pub mod middleware;
 mod tasks;
 mod workers;
 

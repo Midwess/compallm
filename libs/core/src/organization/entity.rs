@@ -23,10 +23,19 @@ pub struct Organization {
 impl Organization {
     pub const MAX_NAME_LENGTH: usize = 63;
 
-    pub fn is_valid_name(name: &str) -> bool {
-        !name.is_empty()
-            && name.len() <= Self::MAX_NAME_LENGTH
-            && !compallm_utils::text::has_special_characters(name, "-")
+    pub fn normalize_name(name: &str) -> Result<String, validify::ValidationErrors> {
+        use validify::Validify;
+        let mut name = OrganizationName { value: name.into() };
+        name.validify()?;
+        Ok(name.value)
+    }
+
+    fn validate_name_characters(value: &str) -> Result<(), validify::ValidationError> {
+        if compallm_utils::text::has_special_characters(value, "-") {
+            Err(validify::ValidationError::new_field("organization_name"))
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -35,4 +44,11 @@ pub struct OrganizationMember {
     pub organization_id: u64,
     pub user_id: u64,
     pub role: OrganizationRole,
+}
+
+#[derive(validify::Validify)]
+struct OrganizationName {
+    #[modify(trim)]
+    #[validate(length(min = 1, max = 63), custom(function = Organization::validate_name_characters))]
+    value: String,
 }

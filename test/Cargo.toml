@@ -10,14 +10,16 @@ publish = false
 workspace = true
 
 [dev-dependencies]
+validify.workspace = true
 anyhow = { workspace = true, features = ["std"] }
 async-trait.workspace = true
 compallm-core.workspace = true
 compallm-postgres = { workspace = true, features = ["cli"] }
 compallm-utils.workspace = true
+compallm-mailing.workspace = true
 base64 = { workspace = true, features = ["std"] }
 hero = { workspace = true, features = ["distributed-id", "token"] }
 sea-orm = { workspace = true, features = ["mock"] }
 serde_json = { workspace = true, features = ["std"] }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util", "sync", "time", "test-util"] }
 tempfile = { workspace = true, features = ["getrandom"] }

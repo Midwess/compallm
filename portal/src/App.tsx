@@ -4,7 +4,7 @@ import './App.css'
 
 function App() {
   const [email, setEmail] = useState('')
-  const [token, setToken] = useState<string | null>(null)
+  const [awaitingCode, setAwaitingCode] = useState(false)
   const [code, setCode] = useState('')
   const [isPending, setIsPending] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
@@ -16,14 +16,14 @@ function App() {
     setIsPending(true)
     setError(null)
     try {
-      if (token) {
-        await confirmSignupOtp({ token, code })
-        setToken(null)
+      if (awaitingCode) {
+        await confirmSignupOtp({ code })
+        setAwaitingCode(false)
         setCode('')
         setIsComplete(true)
       } else {
-        const challenge = await signupEmail({ email })
-        setToken(challenge.token)
+        await signupEmail({ email })
+        setAwaitingCode(true)
       }
     } catch (caught) {
       const failure = caught as { info?: { message?: string } }
@@ -46,13 +46,13 @@ function App() {
         </div>
         <section className="console" aria-labelledby="signup-title">
           <div className="console-heading">
-            <h2 id="signup-title">{isComplete ? 'Account created' : token ? 'Check your email' : 'Create an account'}</h2>
+            <h2 id="signup-title">{isComplete ? 'Account created' : awaitingCode ? 'Check your email' : 'Create an account'}</h2>
           </div>
           {isComplete ? (
             <p>Your email is verified and your account is ready.</p>
           ) : (
             <form onSubmit={handleSubmit}>
-              {token ? (
+              {awaitingCode ? (
                 <>
                   <p>Enter the six-digit code sent to {email}. It expires in 10 minutes.</p>
                   <label htmlFor="code">Email code</label>
@@ -75,12 +75,12 @@ function App() {
               )}
               <div className="input-row">
                 <button disabled={isPending} type="submit">
-                  {isPending ? 'Please wait…' : token ? 'Confirm email' : 'Send email code'}
+                  {isPending ? 'Please wait…' : awaitingCode ? 'Confirm email' : 'Send email code'}
                 </button>
               </div>
-              {token ? (
+              {awaitingCode ? (
                 <button className="secondary-action" disabled={isPending} type="button"
-                  onClick={() => { setToken(null); setCode(''); setError(null) }}>
+                  onClick={() => { setAwaitingCode(false); setCode(''); setError(null) }}>
                   Change email or request another code
                 </button>
               ) : null}

@@ -24,14 +24,12 @@ impl ConfigService {
         organization_id: u64,
         name: &str,
     ) -> Result<Organization, OrganizationConfigError> {
-        let name = name.trim();
-        if !Organization::is_valid_name(name) {
-            return Err(OrganizationConfigError::InvalidName);
-        }
+        let name =
+            Organization::normalize_name(name).map_err(|_| OrganizationConfigError::InvalidName)?;
 
         Ok(self
             .organizations
-            .update_name(organization_id, name)
+            .update_name(organization_id, &name)
             .await?)
     }
 }

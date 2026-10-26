@@ -5,7 +5,7 @@ available: false
 
 # Browser sessions
 
-A session records one successful signup or signin. Core authentication persists sessions, renews JWTs without database writes, and changes organization through a separate operation. Browser cookie transport and OAuth remain planned; the current signup API returns credentials in JSON. The [login ADR](adr.md) explains the decisions behind this flow.
+A session records one successful signup or signin. Core authentication persists sessions, renews JWTs without database writes, and changes organization through a separate operation. Signup/signin confirmation supports cookie and JSON token delivery. Protected APIs accept access cookies or Bearer access tokens, with automatic cookie renewal. Logout endpoints and OAuth remain planned. The [login ADR](adr.md) explains the decisions behind this flow.
 
 ## What a session represents
 
@@ -23,6 +23,24 @@ There is no database update, credential consumption, automatic revocation, or tr
 
 Older refresh JWTs remain usable until their own expiry. Each valid renewal starts another 30-day JWT lifetime, so continued use can extend beyond 30 days from the original login without a fixed database deadline. A holder, including someone with a copied JWT, can keep renewing before expiry until explicit revocation or a session change.
 
+## Protected API requests
+
+Public signup/signin code-request routes require no credentials. Their confirmation routes require an email-OTP access token from cookie or Bearer. Middleware verifies the selected credential and inserts its concrete type as a request extension: `UserAccessToken`, `RefreshToken`, or decrypted `EmailOtpAccessToken`. Handlers declare `RequireToken<T>` to require exactly that type; an absent type returns 401. Raw request access uses `extensions().get::<T>()`. User-token extraction exposes organization/role guards returning 403. A route on the authenticated router must explicitly require the token type appropriate for its operation. `GET /api/auth/me` returns session ID, user ID, organization ID, and role without returning credentials.
+
+```rust
+async fn handler(RequireToken(token): RequireToken<UserAccessToken>) {
+    // A verified user access token is present; refresh/OTP tokens cannot satisfy this.
+}
+```
+
+The concrete token is also available through `request.extensions().get::<UserAccessToken>()`. Middleware replaces token extensions on each request so the selected Bearer/cookie identity cannot inherit another credential type from an earlier layer.
+
+An explicit Authorization header takes precedence over cookies. Require one signed, unexpired Bearer token; malformed, expired, or duplicate credentials return 401 without cookie fallback or renewal. Only its actual verified type is inserted. A refresh or OTP token cannot satisfy `RequireToken<UserAccessToken>`. Refresh extraction verifies the signed claims, not current database state; renewal and switching still use Core's session checks. OTP extraction verifies the encrypted challenge, not email ownership; confirmation must still match the emailed code. Confirmation handlers require `RequireToken<EmailOtpAccessToken>` and pass the verified claims to Core; JSON contains only the code and delivery selection. The legacy body token field is rejected.
+
+Cookie access is validated without querying the database, preserving the documented short-lived cached-role tradeoff. If access is missing or expired, validate the refresh cookie through Core, use the new access claims for the current request, and set both replacement cookies on the response. The access cookie may contain a user or email-OTP access token; middleware inserts the actual verified type. An OTP access cookie needs no refresh token, never grants user access, and is not renewed. Invalid signatures, refresh tokens in the access-cookie slot, or ambiguous access cookies are rejected. With valid cookie access, a valid refresh cookie is also inserted as `RefreshToken` only when it matches that access token's session and credential identifier. Invalid or unrelated refresh cookies do not affect valid access, but cannot satisfy refresh extraction. After automatic renewal, both new token types are inserted. Bearer mode never adds cookie credentials. Refresh performs the existing database session/user/membership checks without a write. Any middleware authentication failure in cookie mode clears both authentication cookies, including Origin rejection or temporary storage failure. Bearer-mode errors leave browser cookies untouched. Failed renewal does not revoke sessions.
+
+Cookie-authenticated mutations require an allowed Origin. Automatic renewal also requires an allowed Origin, or, for safe GET/HEAD requests without Origin, the browser's `Sec-Fetch-Site: same-origin`. This supports ordinary same-origin GET fetches without allowing cross-site requests to renew cookies. Bearer-only authentication does not use ambient cookies and does not require browser Origin validation. Protected responses use `Cache-Control: no-store`; 401 responses advertise Bearer authentication. Frontend assets and public routes never trigger automatic renewal.
+
 ## Organization switching
 
 Switching is a separate operation. Verify the current refresh credential and target membership, change the session organization and credential identifier, save conditionally, and return both replacement tokens after commit. Signin starts in an owner/admin organization; switching may select a member organization. Previous refresh credentials are invalidated; already-issued access JWTs retain the short-expiry limitation described below.
@@ -37,16 +55,23 @@ Logout and administrative actions explicitly revoke the session. Logout also cle
 
 A copied access JWT can remain usable until its short expiry, including its cached role. Immediate access-token invalidation requires an additional server-side check. Failed renewal or switching does not automatically revoke a session, and invalid signatures or expired JWTs never authorize changes.
 
-## Planned browser transport
+## Credential delivery
 
-Axum will set HttpOnly cookies after authentication. Frontend code will obtain identity information from the API without reading reusable credentials.
+Signup/signin code requests and confirmation each accept optional `delivery` in JSON, defaulting to `cookie`. Confirmation requires the OTP access cookie or Bearer challenge. Code requests deliver the OTP access token only after email admission succeeds. Confirmation delivers user credentials only after Core authentication succeeds and the session commits. The mode is never stored in Session or JWT claims.
+
+- `cookie`: return `{}` with no token values. A code request sets a ten-minute OTP access cookie and clears the refresh cookie; confirmation replaces it with a user access cookie and sets the refresh cookie. Starting a new cookie login replaces any current browser credentials but does not revoke the previous database session.
+- `token`: code requests return `{ "token": "…" }`; confirmation returns `{ "accessToken": "…", "refreshToken": "…" }`. Neither sets cookies. This does not clear an existing browser session.
+
+Both require JSON input. Cookie delivery at either step requires an allowed Origin; token mode does not rely on browser cookies. Protected API middleware reads these cookies and renews them automatically when needed.
 
 | Cookie | Expiry | Production attributes |
 | --- | --- | --- |
-| `__Host-access` | 5–15 minutes; exact lifetime undecided | `HttpOnly; Secure; SameSite=Lax; Path=/` |
+| `__Host-access` | 15 minutes (configured access lifetime) | `HttpOnly; Secure; SameSite=Lax; Path=/` |
 | `__Host-refresh` | 30 days, renewed after successful refresh | `HttpOnly; Secure; SameSite=Lax; Path=/` |
 
-Production requires HTTPS, no `Domain` attribute, and matching cookie and credential expiries. Local HTTP development uses separate settings without weakening production protections.
+Production requires HTTPS, no `Domain` attribute, and matching cookie and credential expiries. `AUTH_COOKIE_SECURE` defaults to true in production and false in development/tests. Nonsecure local cookies use `compallm-access` and `compallm-refresh` names. `AUTH_PUBLIC_ORIGIN` sets the exact browser origin, including scheme and port, and is required for cookie confirmation in production. No forwarded headers determine cookie security or the allowed origin.
+
+With an empty configured origin in nonsecure local development, only a loopback HTTP Origin matching the request Host is accepted, supporting Hero's selected port. Missing, opaque, or untrusted origins receive 403 before authentication or persistence.
 
 State-changing browser requests, including login confirmation, refresh, and logout, must pass Origin validation. Keep GET free of mutations. `SameSite=Lax` supplements CSRF protection; OAuth callbacks require request binding, including state validation.
 

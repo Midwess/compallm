@@ -5,7 +5,7 @@ available: false
 
 # Login: ADR
 
-Decision: Accepted on 2026-10-26. Implementation: Partial. Core authentication records sessions; normal renewal is read-only and organization switching is separate. The signup API still returns tokens in JSON; OAuth and cookie delivery remain planned.
+Decision: Accepted on 2026-10-26. Implementation: Partial. Core authentication records sessions; normal renewal is read-only and organization switching is separate. Signup/signin code requests and confirmation support controller-selected cookie or JSON token delivery. Confirmation requires an OTP access token from the access cookie or Bearer header. Protected API middleware accepts access cookies or Bearer access tokens and automatically renews expired/missing cookie access. Logout endpoints and OAuth remain planned.
 
 ## Problem and requirements
 
@@ -17,7 +17,7 @@ Signup creates a user and personal organization atomically. Signin loads an exis
 
 ## Decision and rationale
 
-Use short-lived access JWTs and renewable refresh JWTs in secure HttpOnly cookies. Vite and Axum share one origin, so the browser sends cookies without exposing their values to frontend code.
+Default to short-lived access JWTs and renewable refresh JWTs in secure HttpOnly cookies. Each signup/signin step accepts `delivery: "cookie" | "token"`: cookie mode omits token values from JSON; token mode returns them and sets no cookies. Delivery is an HTTP concern, never a Core property or JWT claim. Vite and Axum share one origin, so the browser sends cookies without exposing their values to frontend code.
 
 Each session belongs to an organization and user. Both JWT types embed Session: its ID, organization ID, user ID, current credential identifier, login time, and revocation state. Access JWTs also carry the membership role. Neither token repeats fields already owned by Session. Every session operation checks organization and user together. Store the current credential identifier, not the complete JWT. Device information is optional.
 
@@ -78,19 +78,19 @@ A copied access JWT remains usable until expiry, including its cached role. Imme
 
 ## Responsibilities and compatibility
 
-Axum owns cookies and browser request protections; Core owns authentication and membership rules; PostgreSQL owns session persistence and conditional updates. The frontend coordinates renewal without reading credentials.
+Axum owns cookies and browser request protections; Core owns authentication and membership rules; PostgreSQL owns session persistence and conditional updates. Protected API middleware selects explicit Bearer credentials before cookies, verifies token claims, and inserts verified token structs as separate typed request extensions. Invalid Bearer credentials never fall back to cookies. Cookie renewal occurs only when access is missing or expired; handlers enforce resource scope and roles.
 
 The session owns validation, renewal, organization switching, and revocation behavior. Persistence provides create, find, and conditional update; saving stale state cannot undo revocation or overwrite a concurrent credential change.
 
 Session creation records each successful login. Signup creates its first session together with the user and personal organization; failure leaves no partial account or login record. JWT validity enforces the sliding inactivity window; the database records login creation, scope, current credential, and revocation without pretending to track each renewal.
 
-Changing signup from JSON credentials to cookies will require coordinated API and frontend updates. Existing tokens without an embedded session require signin after the session-based flow is deployed.
+Clients expecting JSON credentials must explicitly request token delivery. Existing tokens without an embedded session require signin after the session-based flow is deployed.
 
 A stolen refresh JWT remains renewable until it expires or the session is explicitly revoked or changed. This is the accepted tradeoff for read-only renewal. No automatic reuse revocation or refresh-specific transaction restriction remains.
 
 ## Unresolved before implementation
 
-- Exact access lifetime within 5–15 minutes, plus any operations requiring immediate revocation.
+- Which operations require immediate access-token revocation; the current access lifetime is 15 minutes.
 - Cross-provider account linking and which login methods ship first.
 - The [email-code expiry and reuse discrepancy](email.md).
 

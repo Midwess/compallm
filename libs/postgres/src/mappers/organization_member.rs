@@ -13,11 +13,6 @@ impl TryFrom<OrganizationMemberSchema> for OrganizationMember {
         let organization_id = crate::from_bigint(model.organization_id)
             .context("invalid membership organization ID")?;
         let user_id = crate::from_bigint(model.user_id).context("invalid membership user ID")?;
-        if organization_id == 0 || user_id == 0 {
-            return Err(OrganizationRepositoryError::database(anyhow::anyhow!(
-                "membership IDs must be positive"
-            )));
-        }
         Ok(Self {
             organization_id,
             user_id,

@@ -26,6 +26,7 @@ impl From<ConnectionError> for UserRepositoryError {
 /// in these operations.
 #[async_trait]
 pub trait UserRepository: Send + Sync {
+    /// Email must already be canonical (trimmed and ASCII-lowercased).
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, UserRepositoryError>;
 
     async fn find_by_id(&self, user_id: u64) -> Result<Option<User>, UserRepositoryError>;
@@ -33,5 +34,6 @@ pub trait UserRepository: Send + Sync {
     /// Enforce email uniqueness atomically; translate conflicts into
     /// EmailAlreadyExists. Set verification and creation timestamps on insert;
     /// the signup workflow verifies email ownership before calling this method.
+    /// Persist a prepared domain User without normalizing or validating its fields again.
     async fn create(&self, user: User) -> Result<User, UserRepositoryError>;
 }

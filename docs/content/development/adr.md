@@ -10,7 +10,7 @@ Decision status: Accepted engineering direction. Implementation status: Apply to
 
 Use pragmatic domain-driven design: organize around business capabilities, keep rules near their types, and introduce abstractions for concrete needs. Modules and focused services come before strict Clean Architecture layers or a trait around every library.
 
-Axum serves the frontend and API on one origin. It proxies Vite during development, including hot reload, and serves built files in production.
+Axum serves the frontend and API on one origin. It proxies Vite during development, including hot reload, and serves built files in production. Vite binds strictly to internal port `41868`; the API starts its listener search at `3000` by default. If Vite's port is occupied, startup fails rather than choosing another port.
 
 The API uses Hero's listener discovery in both modes: start at the configured port, keep the first available socket reserved, and log the actual URL. Hero listens on all IPv4/IPv6 interfaces. Browser API requests use relative URLs on the selected Axum origin; Vite needs no API proxy. Axum keeps the `/api` namespace, including JSON 404 responses, while frontend requests reach Vite in development. Deployments must route to the selected port.
 
@@ -29,6 +29,12 @@ The API uses Hero's listener discovery in both modes: start at the configured po
 Core owns domain entities and the database lifecycle contract without depending on SeaORM. PostgreSQL depends on Core and implements that contract. Keep storage models and queries in PostgreSQL and map them to domain entities. Third-party libraries are welcome where useful; framework-specific HTTP types stay in the API application.
 
 A domain module is not automatically a crate or bounded context. Split it when responsibilities or dependencies justify the boundary. Each token owns its claims and validation; `AuthService` coordinates authentication.
+
+## Request validation
+
+Use Validify on HTTP request DTOs and axum-valid extraction to normalize fields before validating them. Keep Serde for JSON shape and Utoipa for documented constraints. Email input is trimmed and ASCII-lowercased, then checked with the shared email policy. Never normalize signed token contents. Return safe 400 errors for malformed fields without echoing submitted credentials.
+
+Core remains callable outside HTTP: keep domain invariants, cryptographic checks, expiry, and authorization there. Domain types own reusable field rules and Validify-based preparation; services coordinate those operations instead of repeating field checks. Utils contains formatting helpers, not user or organization validation policy. Repositories accept prepared domain values without normalizing or validating their fields again. Keep fallible storage-type conversions, uniqueness handling, and conditional updates; positive-ID checks already enforced by database constraints are not repeated in adapters. Do not make Core trust a controller-only DTO.
 
 ## Persistence and transactions
 
@@ -66,4 +72,5 @@ Keep the problem, decision, rationale, main flow, consequences, status, and impo
 
 - [API reference](../api/index.md): Rust/OpenAPI generates TypeScript hover documentation and the public endpoint guide.
 - [Login](../login/adr.md): identity verification, organization scope, cookies, and refresh sessions.
+- [Mailing](../mailing/adr.md): bounded SMTP delivery, worker concurrency, and recipient throttling.
 - [Product overview](../overview.md): feature plans and their own decisions.

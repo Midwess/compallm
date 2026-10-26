@@ -9,15 +9,42 @@ available: false
 
 Request an email signup code.
 
-Sends a six-digit verification code to the supplied email address and returns an encrypted
+Enqueues a six-digit verification code for the supplied email address and returns an encrypted
 challenge for confirmation. Submit the challenge and code to
 `POST /api/auth/signup/email/confirmation/otp` within 10 minutes.
-This public endpoint does not create a user or establish a signed-in session.
-Email delivery must be configured; if delivery is unavailable, no challenge is returned.
+Delivery defaults to cookie: set a ten-minute HttpOnly OTP access cookie, clear any refresh
+cookie and return {}. Explicit delivery token returns the challenge in JSON and sets no cookies.
+Cookie delivery requires an allowed Origin. No signed-in session exists until confirmation.
+Queue acceptance does not guarantee SMTP or inbox delivery. Recipients already pending or sent
+during the configured cooldown (30 seconds by default) are throttled; keep the earlier challenge. Admission waits up to the configured timeout (30 seconds by default)
+when the queue is full. Admission failure returns no new challenge.
 
 ## Authentication
 
 Public endpoint. No user access credential is required.
+
+## Parameters
+
+| Name | Location | Required | Description |
+| --- | --- | --- | --- |
+| Origin | header | false | Required for cookie delivery; must match the configured browser origin |
+
+### Parameter: Origin
+
+```json
+{
+  "description": "Required for cookie delivery; must match the configured browser origin",
+  "in": "header",
+  "name": "Origin",
+  "required": false,
+  "schema": {
+    "type": [
+      "string",
+      "null"
+    ]
+  }
+}
+```
 
 ## Request body
 
@@ -29,17 +56,27 @@ Email address to receive a signup verification code.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| email | string | true | Valid email address. Addresses from any domain are accepted. |
+| delivery | string | false | How each signup/signin step delivers access credentials. Never stored in JWT claims. |
+| email | string | true | Trimmed and ASCII-lowercased before email validation. Any valid domain is accepted. |
 
 <details>
 <summary>JSON schema</summary>
 
 ```json
 {
+  "additionalProperties": false,
   "description": "Email address to receive a signup verification code.",
   "properties": {
+    "delivery": {
+      "description": "How each signup/signin step delivers access credentials. Never stored in JWT claims.",
+      "enum": [
+        "cookie",
+        "token"
+      ],
+      "type": "string"
+    },
     "email": {
-      "description": "Valid email address. Addresses from any domain are accepted.",
+      "description": "Trimmed and ASCII-lowercased before email validation. Any valid domain is accepted.",
       "example": "reader@example.com",
       "type": "string"
     }
@@ -57,6 +94,7 @@ Example (synthetic values):
 
 ```json
 {
+  "delivery": "token",
   "email": "reader@example.com"
 }
 ```
@@ -68,6 +106,7 @@ curl --request POST \
   'https://compallm.example/api/auth/signup/email' \
   --header 'Content-Type: application/json' \
   --data '{
+  "delivery": "token",
   "email": "reader@example.com"
 }'
 ```
@@ -86,7 +125,7 @@ Verification challenge returned after email delivery is requested.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| token | string | true | Encrypted challenge to submit with the emailed code. Expires after 10 minutes. This is not a user access credential and must not be used to call protected APIs. |
+| token | ["string","null"] | false | Encrypted OTP access token, present only in token delivery. Expires after 10 minutes. This is not a user access credential and must not be used to call protected APIs. |
 
 <details>
 <summary>JSON schema</summary>
@@ -96,14 +135,14 @@ Verification challenge returned after email delivery is requested.
   "description": "Verification challenge returned after email delivery is requested.",
   "properties": {
     "token": {
-      "description": "Encrypted challenge to submit with the emailed code. Expires after 10 minutes.\nThis is not a user access credential and must not be used to call protected APIs.",
+      "description": "Encrypted OTP access token, present only in token delivery. Expires after 10 minutes.\nThis is not a user access credential and must not be used to call protected APIs.",
       "example": "example-email-challenge",
-      "type": "string"
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
-  "required": [
-    "token"
-  ],
   "type": "object"
 }
 ```
@@ -120,7 +159,7 @@ Example (synthetic values):
 
 ### 400
 
-Invalid email or JSON request. Correct the input before retrying.
+Malformed JSON or invalid field format. Correct the input before retrying.
 
 Content type: `application/json`.
 
@@ -152,7 +191,75 @@ Example (synthetic values):
 
 ```json
 {
-  "message": "Invalid email address"
+  "message": "Invalid request fields"
+}
+```
+
+### 403
+
+Untrusted Origin for cookie delivery
+
+Content type: `application/json`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+
+<details>
+<summary>JSON schema</summary>
+
+```json
+{
+  "properties": {
+    "message": {
+      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "message"
+  ],
+  "type": "object"
+}
+```
+
+</details>
+
+### 429
+
+Recipient throttled. Keep the existing challenge and retry after the configured cooldown (30 seconds by default).
+
+Content type: `application/json`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+
+<details>
+<summary>JSON schema</summary>
+
+```json
+{
+  "properties": {
+    "message": {
+      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "message"
+  ],
+  "type": "object"
+}
+```
+
+</details>
+
+Example (synthetic values):
+
+```json
+{
+  "message": "Email recipient is throttled; keep the existing challenge and retry later"
 }
 ```
 
@@ -196,7 +303,7 @@ Example (synthetic values):
 
 ### 503
 
-Email delivery unavailable. Retry later; no verification challenge was issued.
+Email admission unavailable or queue remained full until the configured timeout (30 seconds by default). Retry later; no challenge was issued.
 
 Content type: `application/json`.
 

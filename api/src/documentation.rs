@@ -147,6 +147,20 @@ impl<'a> ApiDocumentation<'a> {
                 page.push('\n');
             }
         }
+        let mut authorization = String::new();
+        for requirement in security.and_then(Value::as_array).into_iter().flatten() {
+            for name in requirement
+                .as_object()
+                .into_iter()
+                .flat_map(|object| object.keys())
+            {
+                let scheme = self.resolve(&self.document["components"]["securitySchemes"][name])?;
+                if scheme["type"] == "http" && scheme["scheme"] == "bearer" {
+                    authorization = " --header 'Authorization: Bearer <token>'".into();
+                    break;
+                }
+            }
+        }
         let mut parameters = BTreeMap::new();
         for source in [item, operation] {
             for parameter in source["parameters"].as_array().into_iter().flatten() {
@@ -192,14 +206,14 @@ impl<'a> ApiDocumentation<'a> {
             {
                 let payload = serde_json::to_string_pretty(&example)?;
                 let curl = format!(
-                    "curl --request {} \\\n  'https://compallm.example{route}' \\\n  --header 'Content-Type: application/json' \\\n  --data {}",
+                    "curl --request {} \\\n  'https://compallm.example{route}'{authorization} \\\n  --header 'Content-Type: application/json' \\\n  --data {}",
                     method.to_uppercase(),
                     Self::shell_quote(&payload)
                 );
                 page.push_str(&format!("### Example request\n\n```bash\n{curl}\n```\n\n"));
             }
         } else {
-            page.push_str(&format!("## Example request\n\n```bash\ncurl --request {} 'https://compallm.example{route}'\n```\n\n", method.to_uppercase()));
+            page.push_str(&format!("## Example request\n\n```bash\ncurl --request {} 'https://compallm.example{route}'{authorization}\n```\n\n", method.to_uppercase()));
         }
         page.push_str("Replace URL parameters and supply any required query values and authentication described above.\n\n");
         page.push_str("## Responses\n\n");

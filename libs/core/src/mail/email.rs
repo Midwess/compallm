@@ -12,5 +12,6 @@ pub struct EmailRequest {
 
 #[async_trait]
 pub trait EmailService: Send + Sync {
+    /// Accept delivery work. Queued implementations return before SMTP delivery.
     async fn send(&self, request: EmailRequest) -> Result<(), EmailError>;
 }

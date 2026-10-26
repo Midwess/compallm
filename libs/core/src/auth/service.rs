@@ -5,7 +5,7 @@ use super::{
     AuthError,
     token::{
         AccessToken, EmailOtpAccessToken, EmailOtpChallenge, EncryptedAccessToken, RefreshToken,
-        UserTokens,
+        UserAccessToken, UserTokens,
     },
 };
 use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode};
@@ -14,7 +14,6 @@ use crate::persistent::session::SessionRepository;
 use crate::persistent::{DbContext, organization::OrganizationRepository, user::UserRepository};
 use crate::transaction;
 use crate::user::{RegistrationService, UserStatus};
-use compallm_utils::email::verify_email;
 use compallm_utils::time::unix_timestamp;
 
 /// Explicit policy supplied by application configuration.
@@ -45,9 +44,6 @@ impl AuthService {
         lifetimes: TokenLifetimes,
         email: Option<&'static Box<dyn EmailService>>,
     ) -> Result<Self, AuthError> {
-        if lifetimes.user.as_secs() == 0 || lifetimes.refresh.as_secs() == 0 {
-            return Err(AuthError::InvalidConfiguration);
-        }
         EncryptedAccessToken::new(&jwt_secret)?;
         Ok(Self {
             db,
@@ -67,8 +63,8 @@ impl AuthService {
         let sender = self.email.as_ref().ok_or(EmailError::Unavailable)?;
         sender
             .send(EmailRequest {
-                to: compallm_utils::email::normalize_email(email)?,
-                subject: "Your Compallm signup code".into(),
+                to: compallm_utils::email::normalize_email(email),
+                subject: "Your Compallm verification code".into(),
                 text: EmailTemplate::OtpCode(OtpCode::new(
                     challenge.code,
                     Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),
@@ -78,10 +74,11 @@ impl AuthService {
         Ok(challenge.access_token)
     }
 
-    pub async fn signin(&self, email_token: &str, code: &str) -> Result<UserTokens, AuthError> {
-        let claims =
-            EmailOtpAccessToken::try_from(AccessToken::decode(email_token, &self.jwt_secret)?)?;
-        verify_email(&claims.email)?;
+    pub async fn signin(
+        &self,
+        claims: &EmailOtpAccessToken,
+        code: &str,
+    ) -> Result<UserTokens, AuthError> {
         claims.verify_code(code, unix_timestamp())?;
         transaction!(self.db, {
             let user = self
@@ -101,10 +98,11 @@ impl AuthService {
         })
     }
 
-    pub async fn signup(&self, email_token: &str, code: &str) -> Result<UserTokens, AuthError> {
-        let claims =
-            EmailOtpAccessToken::try_from(AccessToken::decode(email_token, &self.jwt_secret)?)?;
-        verify_email(&claims.email)?;
+    pub async fn signup(
+        &self,
+        claims: &EmailOtpAccessToken,
+        code: &str,
+    ) -> Result<UserTokens, AuthError> {
         claims.verify_code(code, unix_timestamp())?;
         transaction!(self.db, {
             let user = self.registration.register(&claims.email).await?;
@@ -118,6 +116,16 @@ impl AuthService {
                 .ok_or(AuthError::OrganizationAccessDenied)?;
             self.start_session(user.id, membership).await
         })
+    }
+
+    /// Verify the envelope and inner claims, preserving the concrete token variant.
+    pub fn authenticate_token(&self, token: &str) -> Result<AccessToken, AuthError> {
+        AccessToken::decode(token, &self.jwt_secret)
+    }
+
+    /// Verify signed access claims without a database read; session changes apply on renewal.
+    pub fn authenticate_access(&self, token: &str) -> Result<UserAccessToken, AuthError> {
+        UserAccessToken::try_from(self.authenticate_token(token)?)
     }
 
     /// Read-only renewal: validates JWT/session state and never consumes the credential.

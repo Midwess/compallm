@@ -14,16 +14,42 @@ pub struct ErrorResponse {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ApiError {
+    #[error("authentication required")]
+    Unauthenticated,
+    #[error("access denied")]
+    Forbidden,
+    #[error("untrusted browser origin")]
+    UntrustedOrigin,
+    #[error("invalid response header")]
+    Header(#[from] axum::http::header::InvalidHeaderValue),
     #[error(transparent)]
     Auth(#[from] AuthError),
-    #[error("invalid JSON request body")]
-    Json(#[from] JsonRejection),
+    #[error("invalid request input")]
+    Input(#[from] axum_valid::ValidifyRejection<JsonRejection>),
+}
+
+impl ApiError {
+    /// Authentication does not disclose whether the credential's user still exists.
+    pub fn into_authentication_response(self) -> Response {
+        match self {
+            Self::Auth(AuthError::UserNotFound) => Self::Unauthenticated.into_response(),
+            error => error.into_response(),
+        }
+    }
 }
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, message) = match &self {
-            Self::Json(_) => (StatusCode::BAD_REQUEST, "Invalid JSON request body"),
+            Self::Unauthenticated => (StatusCode::UNAUTHORIZED, "Authentication required"),
+            Self::Forbidden => (StatusCode::FORBIDDEN, "Access denied"),
+            Self::UntrustedOrigin => (StatusCode::FORBIDDEN, "Untrusted browser origin"),
+            Self::Input(axum_valid::ValidifyRejection::Inner(_)) => {
+                (StatusCode::BAD_REQUEST, "Invalid JSON request body")
+            }
+            Self::Input(axum_valid::ValidifyRejection::Valid(_)) => {
+                (StatusCode::BAD_REQUEST, "Invalid request fields")
+            }
             Self::Auth(AuthError::InvalidEmail) => {
                 (StatusCode::BAD_REQUEST, "Invalid email address")
             }
@@ -39,6 +65,14 @@ impl IntoResponse for ApiError {
                 (StatusCode::FORBIDDEN, "Organization access denied")
             }
             Self::Auth(AuthError::UserNotFound) => (StatusCode::NOT_FOUND, "User not found"),
+            Self::Auth(AuthError::Email(EmailError::Throttled)) => (
+                StatusCode::TOO_MANY_REQUESTS,
+                "Email recipient is throttled; keep the existing challenge and retry later",
+            ),
+            Self::Auth(AuthError::Email(EmailError::QueueTimeout)) => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Email queue is full; retry later",
+            ),
             Self::Auth(AuthError::Email(EmailError::Unavailable | EmailError::Delivery(_))) => (
                 StatusCode::SERVICE_UNAVAILABLE,
                 "Email delivery is unavailable",

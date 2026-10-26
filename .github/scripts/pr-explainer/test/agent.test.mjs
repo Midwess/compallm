@@ -212,7 +212,7 @@ test('default budget allows twenty rounds with the last three reserved for compl
   assert.deepEqual(phases.slice(-3), [['get_pr_checks'], ['publish_explanation'], ['publish_explanation']]);
 });
 
-test('runner publishes once, skips matching inputs, restores a deleted comment, and refreshes changed PR metadata', async t => {
+test('runner works without project documentation, reuses cached explanations, and refreshes changed PR metadata', async t => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'pr-explainer-runner-'));
   const savedEnv = { ...process.env };
   t.after(async () => {
@@ -224,9 +224,7 @@ test('runner publishes once, skips matching inputs, restores a deleted comment, 
   const snapshot = { number: 1, state: 'open', draft: false, title: 'Validate registration', body: 'Limit input lengths',
     changed_files: 1, head: { sha: head, repo: { full_name: 'owner/repo' } }, base: { sha: base } };
   const eventFile = path.join(directory, 'event.json');
-  const architectureFile = path.join(directory, 'architecture.md');
   await writeFile(eventFile, JSON.stringify({ pull_request: snapshot }));
-  await writeFile(architectureFile, 'Business rules live in the domain.');
   Object.assign(process.env, { GITHUB_REPOSITORY: 'owner/repo', GITHUB_EVENT_PATH: eventFile,
     LLM_BASE_URL: 'https://compatible.example/v1', LLM_MODEL: 'configured-model', LLM_API_KEY: 'never-cache-this-key',
     GH_TOKEN: 'never-cache-this-token', EXPLAINER_CACHE_DIR: path.join(directory, 'cache') });
@@ -268,7 +266,7 @@ test('runner publishes once, skips matching inputs, restores a deleted comment, 
       ]) : completion([call('publish', 'publish_explanation', { body })]);
     } } } };
   };
-  const run = () => main({ request, createClient, architectureFile });
+  const run = () => main({ request, createClient });
   await run();
   assert.ok(comment.body.startsWith(MARKER));
   assert.equal(modelCalls, 2);

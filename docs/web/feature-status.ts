@@ -12,7 +12,7 @@ import { pathToRoot } from "./quartz/util/path";
 export const includeDevelopment =
   process.env.DOCS_INCLUDE_DEVELOPMENT === "true";
 export const isFeature = (slug: string) =>
-  slug.startsWith("features/") && !slug.endsWith("/index");
+  /^[^/]+\/adr$/.test(slug) && slug !== "development/adr";
 export const isAvailable = (available: unknown) => available === true;
 
 export const PageAvailability: QuartzFilterPlugin = () => ({

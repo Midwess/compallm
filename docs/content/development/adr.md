@@ -46,6 +46,8 @@ Retries are operation-specific: repeating a request may resend email, repeat a s
 
 ## Verification
 
+GitHub PR diffs collapse test directories, conventional test filenames, and documentation by default using `.gitattributes` and `linguist-generated=true`. Reviewers can expand those files; this display setting does not exclude tests from execution or files from the AI explainer's code reads. Documentation website source code stays visible unless it is itself a test or documentation file.
+
 PR explanations use the PR diff and code at pinned commits as their default context. They must not require any project-specific documentation path; additional repository files can be read on demand through the existing tools. This lets documentation move or disappear without breaking the automation.
 
 Test domain rules without external services. Use Wiremock with real HTTP clients to check payloads, authentication, errors, and timeouts. SeaORM mocks verify query/service flow; PostgreSQL integration tests verify constraints, isolation, and rollback across repositories.

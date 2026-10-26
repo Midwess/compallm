@@ -8,16 +8,18 @@ use std::time::Duration;
 #[derive(Clone, Serialize, Deserialize)]
 pub struct RefreshToken {
     pub user_id: u64,
+    pub session_id: u64,
     pub token_id: String,
     pub validity: TokenValidity,
 }
 
 impl RefreshToken {
-    pub fn new(user_id: u64, lifetime: Duration) -> Result<Self, AuthError> {
+    pub fn new(user_id: u64, session_id: u64, lifetime: Duration) -> Result<Self, AuthError> {
         let mut id = [0u8; 32];
         rand::rng().fill_bytes(&mut id);
         let token = Self {
             user_id,
+            session_id,
             token_id: URL_SAFE_NO_PAD.encode(id),
             validity: TokenValidity::new(lifetime)?,
         };
@@ -26,7 +28,11 @@ impl RefreshToken {
     }
 
     pub fn validate(&self, now: u64) -> Result<(), AuthError> {
-        if self.user_id == 0 || self.user_id > i64::MAX as u64 {
+        if self.user_id == 0
+            || self.user_id > i64::MAX as u64
+            || self.session_id == 0
+            || self.session_id > i64::MAX as u64
+        {
             return Err(AuthError::InvalidToken);
         }
         self.validity.validate(now)?;

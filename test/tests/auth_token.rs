@@ -20,12 +20,11 @@ impl Fixture {
 
     fn tokens() -> UserTokens {
         UserTokens::new(
-            1,
+            &RefreshToken::new(1, 7, Duration::from_secs(600)).unwrap(),
             84,
             OrganizationRole::Owner,
             SECRET,
             Duration::from_secs(60),
-            Duration::from_secs(600),
         )
         .unwrap()
     }
@@ -217,21 +216,19 @@ fn email_otp_accepts_valid_addresses_from_any_domain() {
 #[test]
 fn ids_round_trip_as_u64_and_refresh_tokens_have_distinct_ids() {
     let one = UserTokens::new(
-        9_007_199_254_740_993,
+        &RefreshToken::new(9_007_199_254_740_993, 7, Duration::from_secs(600)).unwrap(),
         84,
         OrganizationRole::Owner,
         SECRET,
         Duration::from_secs(60),
-        Duration::from_secs(600),
     )
     .unwrap();
     let two = UserTokens::new(
-        9_007_199_254_740_993,
+        &RefreshToken::new(9_007_199_254_740_993, 7, Duration::from_secs(600)).unwrap(),
         84,
         OrganizationRole::Owner,
         SECRET,
         Duration::from_secs(60),
-        Duration::from_secs(600),
     )
     .unwrap();
     let payload = URL_SAFE_NO_PAD
@@ -259,6 +256,27 @@ fn ids_round_trip_as_u64_and_refresh_tokens_have_distinct_ids() {
 }
 
 #[test]
+fn refresh_requires_a_valid_session_id_and_rejects_legacy_claims() {
+    for id in [0, u64::MAX] {
+        assert!(matches!(
+            RefreshToken::new(1, id, Duration::from_secs(60)),
+            Err(AuthError::InvalidToken)
+        ));
+    }
+    let claims = RefreshToken::new(1, 7, Duration::from_secs(60)).unwrap();
+    let mut serialized = serde_json::to_value(&claims).unwrap();
+    serialized.as_object_mut().unwrap().remove("session_id");
+    let jwt = create_jwt_token(
+        serde_json::json!({"refresh":serialized}),
+        SECRET,
+        Duration::from_secs(60),
+    )
+    .unwrap();
+    assert!(AccessToken::decode(&jwt, SECRET).is_err());
+    assert_eq!(serde_json::to_value(claims).unwrap()["session_id"], 7);
+}
+
+#[test]
 fn malformed_tokens_and_invalid_lifetimes_are_rejected() {
     for input in ["", "not.jwt", "a.b.c"] {
         assert!(matches!(
@@ -268,12 +286,11 @@ fn malformed_tokens_and_invalid_lifetimes_are_rejected() {
     }
     assert!(matches!(
         UserTokens::new(
-            1,
+            &RefreshToken::new(1, 7, Duration::from_secs(60)).unwrap(),
             84,
             OrganizationRole::Owner,
             SECRET,
-            Duration::ZERO,
-            Duration::from_secs(60)
+            Duration::ZERO
         ),
         Err(AuthError::InvalidConfiguration)
     ));
@@ -299,7 +316,7 @@ fn encryption_preserves_the_variant_for_typed_conversion() {
             .user_id,
         1
     );
-    let refresh = RefreshToken::new(1, Duration::from_secs(600)).unwrap();
+    let refresh = RefreshToken::new(1, 7, Duration::from_secs(600)).unwrap();
     let jwt = AccessToken::Refresh(refresh)
         .encrypt(&cipher)
         .unwrap()
@@ -385,7 +402,7 @@ fn enum_checks_common_timestamps_then_inner_invariants() {
         AccessToken::EmailOtp(otp).validate(unix_timestamp()),
         Err(AuthError::InvalidToken)
     ));
-    let mut refresh = RefreshToken::new(1, Duration::from_secs(60)).unwrap();
+    let mut refresh = RefreshToken::new(1, 7, Duration::from_secs(60)).unwrap();
     refresh.token_id = "invalid".into();
     assert!(matches!(
         AccessToken::Refresh(refresh).validate(unix_timestamp()),
@@ -441,21 +458,19 @@ fn token_validity_owns_expiration_and_timestamp_validation() {
 #[test]
 fn access_tokens_are_organization_scoped_and_refresh_tokens_are_not() {
     let one = UserTokens::new(
-        1,
+        &RefreshToken::new(1, 7, Duration::from_secs(600)).unwrap(),
         84,
         OrganizationRole::Owner,
         SECRET,
         Duration::from_secs(60),
-        Duration::from_secs(600),
     )
     .unwrap();
     let two = UserTokens::new(
-        1,
+        &RefreshToken::new(1, 7, Duration::from_secs(600)).unwrap(),
         85,
         OrganizationRole::Member,
         SECRET,
         Duration::from_secs(60),
-        Duration::from_secs(600),
     )
     .unwrap();
     assert_ne!(one.access_token, two.access_token);

@@ -43,7 +43,9 @@ impl IntoResponse for ApiError {
                 "Email delivery is unavailable",
             ),
             Self::Auth(
-                AuthError::InvalidToken
+                AuthError::InvalidSession
+                | AuthError::RefreshTokenReused
+                | AuthError::InvalidToken
                 | AuthError::ExpiredToken
                 | AuthError::WrongTokenVariant
                 | AuthError::IncorrectCode

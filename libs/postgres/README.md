@@ -49,6 +49,8 @@ These commands remove data or roll back schema changes; use them only when inten
 | `cargo run -p compallm-postgres --features cli -- refresh` | Roll back all migrations, then apply them again. |
 | `cargo run -p compallm-postgres --features cli -- reset` | Roll back all applied migrations. |
 
+The additive `user_sessions` migration records each successful signup/signin and stores the current refresh credential identifier. Its schema is checked in alongside the migration without requiring a live database. `users.last_login_at` remains for compatibility but is no longer written. Applying this migration is a deployment step; existing refresh JWTs without a session ID require signin. No historical sessions are inferred from old timestamps.
+
 ## Generate SeaORM entities
 
 After applying the intended migrations, generate database models from the live schema:

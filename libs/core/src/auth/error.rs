@@ -22,6 +22,14 @@ impl From<crate::user::RegistrationError> for AuthError {
 
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {
+    #[error("refresh must own its transaction boundary so revocation can commit")]
+    RefreshTransactionAlreadyActive,
+    #[error("session is invalid, expired, or revoked")]
+    InvalidSession,
+    #[error("refresh credential was already used; signin is required")]
+    RefreshTokenReused,
+    #[error(transparent)]
+    SessionPersistence(#[from] crate::persistent::session::SessionRepositoryError),
     #[error("user has no access to the selected organization")]
     OrganizationAccessDenied,
     #[error(transparent)]

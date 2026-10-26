@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use super::Session;
 use super::{
     AuthError,
     token::{
@@ -8,6 +9,8 @@ use super::{
     },
 };
 use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode};
+use crate::organization::OrganizationMember;
+use crate::persistent::session::SessionRepository;
 use crate::persistent::{DbContext, organization::OrganizationRepository, user::UserRepository};
 use crate::transaction;
 use crate::user::{RegistrationService, UserStatus};
@@ -24,6 +27,7 @@ pub struct AuthService {
     db: &'static DbContext,
     users: &'static Box<dyn UserRepository>,
     organizations: &'static Box<dyn OrganizationRepository>,
+    sessions: &'static Box<dyn SessionRepository>,
     registration: &'static RegistrationService,
     jwt_secret: String,
     lifetimes: TokenLifetimes,
@@ -35,6 +39,7 @@ impl AuthService {
         db: &'static DbContext,
         users: &'static Box<dyn UserRepository>,
         organizations: &'static Box<dyn OrganizationRepository>,
+        sessions: &'static Box<dyn SessionRepository>,
         registration: &'static RegistrationService,
         jwt_secret: String,
         lifetimes: TokenLifetimes,
@@ -48,6 +53,7 @@ impl AuthService {
             db,
             users,
             organizations,
+            sessions,
             registration,
             jwt_secret,
             lifetimes,
@@ -91,15 +97,7 @@ impl AuthService {
                 .find_first_admin_membership(user.id)
                 .await?
                 .ok_or(AuthError::OrganizationAccessDenied)?;
-            self.users.record_login(user.id).await?;
-            UserTokens::new(
-                user.id,
-                membership.organization_id,
-                membership.role,
-                &self.jwt_secret,
-                self.lifetimes.user,
-                self.lifetimes.refresh,
-            )
+            self.start_session(user.id, membership).await
         })
     }
 
@@ -118,20 +116,13 @@ impl AuthService {
                 .find_first_admin_membership(user.id)
                 .await?
                 .ok_or(AuthError::OrganizationAccessDenied)?;
-            UserTokens::new(
-                user.id,
-                membership.organization_id,
-                membership.role,
-                &self.jwt_secret,
-                self.lifetimes.user,
-                self.lifetimes.refresh,
-            )
+            self.start_session(user.id, membership).await
         })
     }
 
     /// Renew both credentials with a full refresh lifetime starting now.
     /// Configure the refresh lifetime as 30 days for the sliding one-month policy.
-    /// Previous-token invalidation still requires persistent token tracking.
+    /// Old-credential reuse revokes the session; denial must not roll back revocation.
     pub async fn refresh(
         &self,
         refresh_token: &str,
@@ -141,26 +132,70 @@ impl AuthService {
         if organization_id.is_some_and(|id| id == 0 || id > i64::MAX as u64) {
             return Err(AuthError::OrganizationAccessDenied);
         }
-        let user = self
-            .users
-            .find_by_id(claims.user_id)
-            .await?
-            .ok_or(AuthError::UserNotFound)?;
-        if user.status != UserStatus::Active {
-            return Err(AuthError::UserDisabled);
+        if DbContext::current()?.postgres().is_transaction() {
+            return Err(AuthError::RefreshTransactionAlreadyActive);
         }
-        let membership = match organization_id {
-            Some(id) => self.organizations.find_membership(id, user.id).await?,
-            None => self.organizations.find_first_membership(user.id).await?,
-        }
-        .ok_or(AuthError::OrganizationAccessDenied)?;
-        UserTokens::new(
-            user.id,
+        transaction!(self.db, {
+            let mut session = self
+                .sessions
+                .find_for_update(claims.session_id, claims.user_id)
+                .await?
+                .ok_or(AuthError::InvalidSession)?;
+            let now = unix_timestamp();
+            if session.id != claims.session_id || !session.is_active(claims.user_id, now) {
+                return Err(AuthError::InvalidSession);
+            }
+            if session.refresh_token_id != claims.token_id {
+                self.sessions
+                    .revoke(session.id, claims.user_id, now)
+                    .await?;
+                // Commit the revocation before returning the authentication error.
+                return Ok::<_, AuthError>(Err(AuthError::RefreshTokenReused));
+            }
+            let user = self
+                .users
+                .find_by_id(claims.user_id)
+                .await?
+                .ok_or(AuthError::UserNotFound)?;
+            if user.status != UserStatus::Active {
+                return Err(AuthError::UserDisabled);
+            }
+            let membership = match organization_id {
+                Some(id) => self.organizations.find_membership(id, user.id).await?,
+                None => self.organizations.find_first_membership(user.id).await?,
+            }
+            .ok_or(AuthError::OrganizationAccessDenied)?;
+            let refresh = RefreshToken::new(user.id, session.id, self.lifetimes.refresh)?;
+            let tokens = UserTokens::new(
+                &refresh,
+                membership.organization_id,
+                membership.role,
+                &self.jwt_secret,
+                self.lifetimes.user,
+            )?;
+            session.renew(&refresh);
+            if !self.sessions.rotate(&session, &claims.token_id).await? {
+                return Err(AuthError::InvalidSession);
+            }
+            Ok(Ok(tokens))
+        })?
+    }
+
+    async fn start_session(
+        &self,
+        user_id: u64,
+        membership: OrganizationMember,
+    ) -> Result<UserTokens, AuthError> {
+        let id = hero::distributed_id::try_gen_id().await?;
+        let refresh = RefreshToken::new(user_id, id, self.lifetimes.refresh)?;
+        let tokens = UserTokens::new(
+            &refresh,
             membership.organization_id,
             membership.role,
             &self.jwt_secret,
             self.lifetimes.user,
-            self.lifetimes.refresh,
-        )
+        )?;
+        self.sessions.create(Session::new(&refresh)).await?;
+        Ok(tokens)
     }
 }

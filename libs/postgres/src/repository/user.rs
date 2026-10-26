@@ -8,7 +8,7 @@ use compallm_core::{
 };
 use compallm_utils::email::normalize_email;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, QueryFilter, RuntimeErr, Set,
+    ActiveModelTrait, DbErr, EntityTrait, ModelTrait, QueryFilter, RuntimeErr, Set,
     prelude::ChronoUtc,
     sea_query::{Expr, ExprTrait, Func},
 };
@@ -92,25 +92,5 @@ impl CoreUserRepository for UserRepository {
             ..Default::default()
         };
         User::try_from(model.insert(db).await.map_err(Self::insert_error)?)
-    }
-
-    async fn record_login(&self, user_id: u64) -> Result<(), UserRepositoryError> {
-        let id = Self::database_id(user_id)?;
-        let context = DbContext::current()?;
-        let db = PostgresConnection::from_context(&context)?;
-        let updated = Users::update_many()
-            .col_expr(UserColumn::LastLoginAt, Expr::current_timestamp())
-            .col_expr(UserColumn::UpdatedAt, Expr::current_timestamp())
-            .filter(UserColumn::Id.eq(id))
-            .filter(UserColumn::Status.eq(UserStatusSchema::Active))
-            .exec(db)
-            .await
-            .map_err(UserRepositoryError::database)?;
-        if updated.rows_affected != 1 {
-            return Err(UserRepositoryError::database(anyhow::anyhow!(
-                "active user was not found while recording login"
-            )));
-        }
-        Ok(())
     }
 }

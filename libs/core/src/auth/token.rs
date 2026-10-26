@@ -152,22 +152,24 @@ pub struct UserTokens {
 impl UserTokens {
     /// Call after the workflow authorizes the user.
     pub fn new(
-        user_id: u64,
+        refresh: &RefreshToken,
         organization_id: u64,
         organization_role: crate::organization::OrganizationRole,
         secret: &str,
         user_lifetime: Duration,
-        refresh_lifetime: Duration,
     ) -> Result<Self, AuthError> {
+        refresh.validate(unix_timestamp())?;
+        let refresh_lifetime =
+            Duration::from_secs(refresh.validity.expires_at - refresh.validity.issued_at);
         Ok(Self {
             access_token: AccessToken::User(UserAccessToken::new(
-                user_id,
+                refresh.user_id,
                 organization_id,
                 organization_role,
                 user_lifetime,
             )?)
             .encode(secret, user_lifetime)?,
-            refresh_token: AccessToken::Refresh(RefreshToken::new(user_id, refresh_lifetime)?)
+            refresh_token: AccessToken::Refresh(refresh.clone())
                 .encode(secret, refresh_lifetime)?,
         })
     }

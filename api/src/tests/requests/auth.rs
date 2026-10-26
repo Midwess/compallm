@@ -10,7 +10,7 @@ use compallm_postgres::{
     OrganizationMemberSchema, OrganizationRoleSchema, OrganizationSchema, OrganizationStatusSchema,
     UserSchema, UserStatusSchema, postgres_connection::PostgresConnection,
 };
-use sea_orm::{ActiveEnum, DbBackend, IntoMockRow, MockDatabase};
+use sea_orm::{ActiveEnum, DbBackend, IntoMockRow, MockDatabase, MockExecResult};
 
 use crate::{
     controllers,
@@ -82,6 +82,10 @@ impl Fixture {
             member.into_mock_row().into_column_value_tuples().collect();
         member.insert("role".to_string(), "owner".into());
         let db = MockDatabase::new(DbBackend::Postgres)
+            .append_exec_results([MockExecResult {
+                last_insert_id: 0,
+                rows_affected: 1,
+            }])
             .append_query_results([
                 vec![],
                 vec![row],

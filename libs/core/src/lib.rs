@@ -1,7 +1,7 @@
 //! Shared business capabilities, organized by domain.
 //!
-//! Authentication coordinates a user repository and token operations. HTTP,
-//! email delivery, and persisted refresh-session handling remain separate work.
+//! Authentication coordinates user, organization, and persisted session workflows.
+//! HTTP cookie transport and concrete email delivery remain separate work.
 
 pub mod auth;
 pub mod mail;

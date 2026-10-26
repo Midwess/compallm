@@ -37,16 +37,6 @@ impl Migration {
                     .not_null(),
             )
             .col(
-                ColumnDef::new(UserSessions::LastUsedAt)
-                    .timestamp_with_time_zone()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(UserSessions::ExpiresAt)
-                    .timestamp_with_time_zone()
-                    .not_null(),
-            )
-            .col(
                 ColumnDef::new(UserSessions::RevokedAt)
                     .timestamp_with_time_zone()
                     .null(),
@@ -67,8 +57,6 @@ impl Migration {
                     .on_delete(ForeignKeyAction::Cascade),
             )
             .check(Expr::cust("refresh_token_id ~ '^[A-Za-z0-9_-]{43}$'"))
-            .check(Expr::col(UserSessions::LastUsedAt).gte(Expr::col(UserSessions::CreatedAt)))
-            .check(Expr::col(UserSessions::ExpiresAt).gt(Expr::col(UserSessions::LastUsedAt)))
             .check(
                 Expr::col(UserSessions::RevokedAt)
                     .is_null()
@@ -109,8 +97,6 @@ enum UserSessions {
     OrganizationId,
     RefreshTokenId,
     CreatedAt,
-    LastUsedAt,
-    ExpiresAt,
     RevokedAt,
 }
 
@@ -119,7 +105,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn postgres_sessions_keep_login_and_activity_separate_without_storing_tokens() {
+    fn postgres_sessions_store_revocation_and_scope_without_duplicating_jwt_expiry() {
         let sql = Migration::table().to_string(PostgresQueryBuilder);
         assert!(sql.contains("\"id\" bigint NOT NULL PRIMARY KEY"));
         assert!(!sql.to_lowercase().contains("serial"));
@@ -130,11 +116,11 @@ mod tests {
         );
         assert!(sql.contains("\"refresh_token_id\" varchar(43) NOT NULL"));
         assert!(sql.contains("\"created_at\" timestamp with time zone NOT NULL"));
-        assert!(sql.contains("\"last_used_at\" timestamp with time zone NOT NULL"));
-        assert!(sql.contains("\"expires_at\" > \"last_used_at\""));
         assert!(sql.contains("\"revoked_at\" timestamp with time zone NULL"));
         assert!(sql.contains("\"organization_id\" bigint NOT NULL"));
         assert!(sql.contains("REFERENCES \"organizations\" (\"id\")"));
+        assert!(!sql.contains("last_used_at"));
+        assert!(!sql.contains("expires_at"));
         let index = Migration::scope_index().to_string(PostgresQueryBuilder);
         assert!(index.contains("(\"organization_id\", \"user_id\")"));
     }

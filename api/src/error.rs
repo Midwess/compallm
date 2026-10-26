@@ -44,7 +44,6 @@ impl IntoResponse for ApiError {
             ),
             Self::Auth(
                 AuthError::InvalidSession
-                | AuthError::RefreshTokenReused
                 | AuthError::InvalidToken
                 | AuthError::ExpiredToken
                 | AuthError::WrongTokenVariant

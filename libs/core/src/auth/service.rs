@@ -120,44 +120,55 @@ impl AuthService {
         })
     }
 
-    /// Renew both credentials with a full refresh lifetime starting now.
-    /// Configure the refresh lifetime as 30 days for the sliding one-month policy.
-    /// Old-credential reuse revokes the session; denial must not roll back revocation.
-    pub async fn refresh(
+    /// Read-only renewal: validates JWT/session state and never consumes the credential.
+    pub async fn refresh(&self, refresh_token: &str) -> Result<UserTokens, AuthError> {
+        let claims = RefreshToken::try_from(AccessToken::decode(refresh_token, &self.jwt_secret)?)?;
+        let session = self
+            .sessions
+            .find(claims.session())
+            .await?
+            .ok_or(AuthError::InvalidSession)?;
+        let renewed = session.refresh(&claims, self.lifetimes.refresh)?;
+        let user = self
+            .users
+            .find_by_id(claims.user_id)
+            .await?
+            .ok_or(AuthError::UserNotFound)?;
+        if user.status != UserStatus::Active {
+            return Err(AuthError::UserDisabled);
+        }
+        let membership = self
+            .organizations
+            .find_membership(session.organization_id, user.id)
+            .await?
+            .ok_or(AuthError::OrganizationAccessDenied)?;
+        UserTokens::from_refresh(
+            &renewed,
+            membership.role,
+            &self.jwt_secret,
+            self.lifetimes.user,
+        )
+    }
+
+    pub async fn switch_organization(
         &self,
         refresh_token: &str,
-        organization_id: Option<u64>,
+        organization_id: u64,
     ) -> Result<UserTokens, AuthError> {
         let claims = RefreshToken::try_from(AccessToken::decode(refresh_token, &self.jwt_secret)?)?;
-        if organization_id.is_some_and(|id| id == 0 || id > i64::MAX as u64) {
+        if organization_id == 0 || organization_id > i64::MAX as u64 {
             return Err(AuthError::OrganizationAccessDenied);
         }
-        if DbContext::current()?.postgres().is_transaction() {
-            return Err(AuthError::RefreshTransactionAlreadyActive);
-        }
         transaction!(self.db, {
-            let reference = claims.session();
             let mut session = self
                 .sessions
-                .find(reference)
+                .find(claims.session())
                 .await?
                 .ok_or(AuthError::InvalidSession)?;
-            let previous = session.clone();
-            let target_organization = organization_id.unwrap_or(session.organization_id);
-            if let Err(error) =
-                session.refresh(&claims, target_organization, self.lifetimes.refresh)
-            {
-                if matches!(error, AuthError::RefreshTokenReused) {
-                    if !self.sessions.update(&session, &previous).await? {
-                        return Err(AuthError::InvalidSession);
-                    }
-                    return Ok::<_, AuthError>(Err(error));
-                }
-                return Err(error);
-            }
+            session.validate_credential(&claims)?;
             let user = self
                 .users
-                .find_by_id(reference.user_id)
+                .find_by_id(claims.user_id)
                 .await?
                 .ok_or(AuthError::UserNotFound)?;
             if user.status != UserStatus::Active {
@@ -165,32 +176,23 @@ impl AuthService {
             }
             let membership = self
                 .organizations
-                .find_membership(session.organization_id, user.id)
+                .find_membership(organization_id, user.id)
                 .await?
                 .ok_or(AuthError::OrganizationAccessDenied)?;
+            let previous = session.clone();
+            session.switch_organization(&claims, organization_id)?;
             let tokens = UserTokens::new(
                 &session,
                 membership.role,
                 &self.jwt_secret,
                 self.lifetimes.user,
+                self.lifetimes.refresh,
             )?;
             if !self.sessions.update(&session, &previous).await? {
-                let now = unix_timestamp();
-                if let Some(mut current) = self.sessions.find(reference).await?
-                    && current.is_active(reference, now)
-                    && current.refresh_token_id != claims.token_id
-                {
-                    let previous = current.clone();
-                    current.revoke();
-                    if !self.sessions.update(&current, &previous).await? {
-                        return Err(AuthError::InvalidSession);
-                    }
-                    return Ok(Err(AuthError::RefreshTokenReused));
-                }
                 return Err(AuthError::InvalidSession);
             }
-            Ok(Ok(tokens))
-        })?
+            Ok(tokens)
+        })
     }
 
     async fn start_session(
@@ -211,6 +213,7 @@ impl AuthService {
             membership.role,
             &self.jwt_secret,
             self.lifetimes.user,
+            self.lifetimes.refresh,
         )?;
         self.sessions.create(session).await?;
         Ok(tokens)

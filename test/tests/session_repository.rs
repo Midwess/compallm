@@ -21,8 +21,6 @@ impl Fixture {
             organization_id: 84,
             refresh_token_id: "A".repeat(43),
             created_at: at,
-            last_used_at: at,
-            expires_at: "2026-11-25T00:00:00Z".parse().unwrap(),
             revoked_at: None,
         }
     }
@@ -53,14 +51,12 @@ async fn owned_lookup_and_conditional_update_preserve_session_guards() {
             let mut session = SessionRepository.find(reference).await?.unwrap();
             let created_at = session.created_at;
             let previous = session.clone();
-            let token = RefreshToken::from_session(&session).unwrap();
-            session
-                .refresh(
-                    &token,
-                    85,
-                    std::time::Duration::from_secs(30 * 24 * 60 * 60),
-                )
-                .unwrap();
+            let token = RefreshToken::from_session(
+                &session,
+                std::time::Duration::from_secs(30 * 24 * 60 * 60),
+            )
+            .unwrap();
+            session.switch_organization(&token, 85).unwrap();
             assert_eq!(session.created_at, created_at);
             assert!(SessionRepository.update(&session, &previous).await?);
             Ok::<_, compallm_core::persistent::session::SessionRepositoryError>(())
@@ -78,13 +74,11 @@ async fn owned_lookup_and_conditional_update_preserve_session_guards() {
     );
     assert!(sql.contains("refresh_token_id"));
     assert!(sql.contains("IS NULL"));
-    assert!(sql.contains("CURRENT_TIMESTAMP"));
     let update = sql.rsplit("UPDATE").next().unwrap();
     assert!(
         !update.contains("created_at"),
         "rotation must not change login time"
     );
-    assert!(update.contains("last_used_at"));
     assert!(sql.contains("COMMIT"));
     let lookup = sql.split("UPDATE").next().unwrap();
     assert!(lookup.contains("\"organization_id\" = $3"));
@@ -139,14 +133,10 @@ async fn stale_update_reports_conflict_without_overwriting_the_session() {
     ));
     let previous = Session::try_from(Fixture::row()).unwrap();
     let mut updated = previous.clone();
-    let token = RefreshToken::from_session(&previous).unwrap();
-    updated
-        .refresh(
-            &token,
-            85,
-            std::time::Duration::from_secs(30 * 24 * 60 * 60),
-        )
-        .unwrap();
+    let token =
+        RefreshToken::from_session(&previous, std::time::Duration::from_secs(30 * 24 * 60 * 60))
+            .unwrap();
+    updated.switch_organization(&token, 85).unwrap();
     assert!(
         !context
             .scope(SessionRepository.update(&updated, &previous))
@@ -258,13 +248,12 @@ async fn owned_session_lookup_works_with_the_application_context() {
 
 #[test]
 fn mapper_rejects_invalid_identity_credential_and_timestamps() {
-    let mut rows = vec![Fixture::row(); 6];
+    let mut rows = vec![Fixture::row(); 5];
     rows[0].id = 0;
     rows[1].user_id = -1;
     rows[2].refresh_token_id = "bad".into();
-    rows[3].expires_at = rows[3].last_used_at;
-    rows[4].revoked_at = Some("2020-01-01T00:00:00Z".parse().unwrap());
-    rows[5].organization_id = 0;
+    rows[3].revoked_at = Some("2020-01-01T00:00:00Z".parse().unwrap());
+    rows[4].organization_id = 0;
     for row in rows {
         assert!(Session::try_from(row).is_err());
     }

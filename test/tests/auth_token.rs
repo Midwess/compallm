@@ -24,6 +24,7 @@ impl Fixture {
             OrganizationRole::Owner,
             SECRET,
             Duration::from_secs(60),
+            Duration::from_secs(600),
         )
         .unwrap()
     }
@@ -221,6 +222,7 @@ fn ids_round_trip_as_u64_and_refresh_tokens_have_distinct_ids() {
         OrganizationRole::Owner,
         SECRET,
         Duration::from_secs(60),
+        Duration::from_secs(600),
     )
     .unwrap();
     let two = UserTokens::new(
@@ -230,6 +232,7 @@ fn ids_round_trip_as_u64_and_refresh_tokens_have_distinct_ids() {
         OrganizationRole::Owner,
         SECRET,
         Duration::from_secs(60),
+        Duration::from_secs(600),
     )
     .unwrap();
     let payload = URL_SAFE_NO_PAD
@@ -290,7 +293,8 @@ fn malformed_tokens_and_invalid_lifetimes_are_rejected() {
             &Session::new(&RefreshToken::new(1, 7, 84, Duration::from_secs(60)).unwrap()),
             OrganizationRole::Owner,
             SECRET,
-            Duration::ZERO
+            Duration::ZERO,
+            Duration::from_secs(600)
         ),
         Err(AuthError::InvalidConfiguration)
     ));
@@ -462,6 +466,7 @@ fn both_tokens_link_to_the_same_organization_scoped_session() {
         OrganizationRole::Owner,
         SECRET,
         Duration::from_secs(60),
+        Duration::from_secs(600),
     )
     .unwrap();
     let two = UserTokens::new(
@@ -469,6 +474,7 @@ fn both_tokens_link_to_the_same_organization_scoped_session() {
         OrganizationRole::Member,
         SECRET,
         Duration::from_secs(60),
+        Duration::from_secs(600),
     )
     .unwrap();
     assert_ne!(one.access_token, two.access_token);

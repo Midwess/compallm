@@ -32,7 +32,6 @@ struct State {
     fail_session: bool,
     fail_rotation: bool,
     competing_rotation: bool,
-    competing_update_during_revocation: bool,
     logins: Vec<u64>,
     sessions: std::collections::BTreeMap<u64, Session>,
     organization: Option<Organization>,
@@ -237,13 +236,6 @@ impl SessionRepository for Repository {
             state.competing_rotation = false;
             return Ok(false);
         }
-        if state.competing_update_during_revocation && session.revoked_at.is_some() {
-            let current = state.sessions.get_mut(&session.id).unwrap();
-            current.refresh_token_id = "C".repeat(43);
-            current.last_used_at += 1;
-            current.expires_at += 1;
-            state.competing_update_during_revocation = false;
-        }
         let Some(current) = state.sessions.get_mut(&session.id) else {
             return Ok(false);
         };
@@ -251,10 +243,6 @@ impl SessionRepository for Repository {
             || current.revoked_at != previous.revoked_at
             || (session.refresh_token_id != previous.refresh_token_id
                 && current.refresh_token_id != previous.refresh_token_id)
-            || (session.last_used_at != previous.last_used_at
-                && current.last_used_at != previous.last_used_at)
-            || (session.expires_at != previous.expires_at
-                && current.expires_at != previous.expires_at)
         {
             return Ok(false);
         }
@@ -263,12 +251,6 @@ impl SessionRepository for Repository {
         }
         if session.refresh_token_id != previous.refresh_token_id {
             current.refresh_token_id = session.refresh_token_id.clone();
-        }
-        if session.last_used_at != previous.last_used_at {
-            current.last_used_at = session.last_used_at;
-        }
-        if session.expires_at != previous.expires_at {
-            current.expires_at = session.expires_at;
         }
         current.revoked_at = session.revoked_at;
         Ok(true)
@@ -339,14 +321,18 @@ impl Fixture {
         .unwrap()
     }
 
-    async fn refresh(
+    async fn refresh(&self, token: &str) -> Result<UserTokens, AuthError> {
+        self.repo.1.scope(self.service().refresh(token)).await
+    }
+
+    async fn switch_organization(
         &self,
         token: &str,
-        organization_id: Option<u64>,
+        organization_id: u64,
     ) -> Result<UserTokens, AuthError> {
         self.repo
             .1
-            .scope(self.service().refresh(token, organization_id))
+            .scope(self.service().switch_organization(token, organization_id))
             .await
     }
 
@@ -677,12 +663,13 @@ async fn refresh_requires_a_context_from_the_application_entry_point() {
         OrganizationRole::Owner,
         SECRET,
         Duration::from_secs(60),
+        REFRESH_LIFETIME,
     )
     .unwrap();
 
     assert!(matches!(
-        service.refresh(&tokens.refresh_token, None).await,
-        Err(AuthError::Connection(_))
+        service.refresh(&tokens.refresh_token).await,
+        Err(AuthError::SessionPersistence(_))
     ));
     assert!(fixture.repo.0.lock().unwrap().contexts.is_empty());
 
@@ -690,12 +677,19 @@ async fn refresh_requires_a_context_from_the_application_entry_point() {
     fixture
         .repo
         .1
-        .scope(service.refresh(&tokens.refresh_token, None))
+        .scope(service.refresh(&tokens.refresh_token))
         .await
         .unwrap();
     assert_eq!(fixture.repo.0.lock().unwrap().contexts.len(), 1);
     assert!(DbContext::current().is_err());
-    fixture.assert_transaction("COMMIT");
+    assert!(
+        fixture
+            .db
+            .as_ref()
+            .clone()
+            .into_transaction_log()
+            .is_empty()
+    );
 }
 
 #[tokio::test]
@@ -706,6 +700,7 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
         OrganizationRole::Owner,
         SECRET,
         Duration::from_secs(60),
+        REFRESH_LIFETIME,
     )
     .unwrap();
     let mut previous =
@@ -722,13 +717,13 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
         .unwrap();
     fixture.remember(&old_refresh);
     let before_refresh = compallm_utils::time::unix_timestamp();
-    let issued = fixture.refresh(&old_refresh, None).await.unwrap();
+    let issued = fixture.refresh(&old_refresh).await.unwrap();
     let after_refresh = compallm_utils::time::unix_timestamp();
     let renewed =
         RefreshToken::try_from(AccessToken::decode(&issued.refresh_token, SECRET).unwrap())
             .unwrap();
     assert_ne!(issued.refresh_token, old_refresh);
-    assert_ne!(renewed.token_id, original_id);
+    assert_eq!(renewed.token_id, original_id);
     assert_eq!(renewed.user_id, 1);
     assert!(renewed.validity.issued_at >= before_refresh);
     assert!(renewed.validity.issued_at <= after_refresh);
@@ -745,8 +740,6 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
             session.created_at,
             previous_expiry - REFRESH_LIFETIME.as_secs()
         );
-        assert_eq!(session.last_used_at, renewed.validity.issued_at);
-        assert_eq!(session.expires_at, renewed.validity.expires_at);
         assert_eq!(session.refresh_token_id, renewed.token_id);
         assert_eq!(state.sessions.len(), 1);
         assert!(state.logins.is_empty(), "refresh is not a new login");
@@ -760,11 +753,11 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
     );
     fixture.repo.0.lock().unwrap().user.as_mut().unwrap().status = UserStatus::Disabled;
     assert!(matches!(
-        fixture.refresh(&issued.refresh_token, None).await,
+        fixture.refresh(&issued.refresh_token).await,
         Err(AuthError::UserDisabled)
     ));
     assert!(matches!(
-        fixture.refresh(&original.access_token, None).await,
+        fixture.refresh(&original.access_token).await,
         Err(AuthError::WrongTokenVariant)
     ));
 }
@@ -781,7 +774,7 @@ async fn expired_refresh_requires_signin_before_reading_the_user() {
         hero::token::jwt::create_jwt_token(AccessToken::Refresh(expired), SECRET, REFRESH_LIFETIME)
             .unwrap();
     assert!(matches!(
-        fixture.refresh(&encoded, None).await,
+        fixture.refresh(&encoded).await,
         Err(AuthError::ExpiredToken)
     ));
     assert!(fixture.repo.0.lock().unwrap().contexts.is_empty());
@@ -817,7 +810,7 @@ async fn signin_selects_an_admin_organization_instead_of_a_member_organization()
 }
 
 #[tokio::test]
-async fn refresh_can_switch_organizations_using_current_membership_roles() {
+async fn organization_switch_is_separate_and_uses_current_membership_roles() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     fixture
         .repo
@@ -834,7 +827,7 @@ async fn refresh_can_switch_organizations_using_current_membership_roles() {
         .encode(SECRET, REFRESH_LIFETIME)
         .unwrap();
     fixture.remember(&refresh);
-    let tokens = fixture.refresh(&refresh, Some(85)).await.unwrap();
+    let tokens = fixture.switch_organization(&refresh, 85).await.unwrap();
     let claims =
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
@@ -849,7 +842,7 @@ async fn refresh_can_switch_organizations_using_current_membership_roles() {
         85
     );
     assert!(matches!(
-        fixture.refresh(&refresh, Some(84)).await,
+        fixture.switch_organization(&refresh, 84).await,
         Err(AuthError::InvalidSession)
     ));
     assert!(
@@ -860,7 +853,7 @@ async fn refresh_can_switch_organizations_using_current_membership_roles() {
     // Membership changes are checked again instead of copying role from an old JWT.
     fixture.repo.0.lock().unwrap().memberships[1].role = OrganizationRole::Admin;
     let tokens = fixture
-        .refresh(&tokens.refresh_token, Some(85))
+        .switch_organization(&tokens.refresh_token, 85)
         .await
         .unwrap();
     let claims =
@@ -868,7 +861,9 @@ async fn refresh_can_switch_organizations_using_current_membership_roles() {
             .unwrap();
     assert_eq!(claims.organization_role, OrganizationRole::Admin);
     assert!(matches!(
-        fixture.refresh(&tokens.refresh_token, Some(999)).await,
+        fixture
+            .switch_organization(&tokens.refresh_token, 999)
+            .await,
         Err(AuthError::OrganizationAccessDenied)
     ));
     fixture
@@ -879,7 +874,7 @@ async fn refresh_can_switch_organizations_using_current_membership_roles() {
         .disabled_organizations
         .push(85);
     assert!(matches!(
-        fixture.refresh(&tokens.refresh_token, Some(85)).await,
+        fixture.switch_organization(&tokens.refresh_token, 85).await,
         Err(AuthError::OrganizationAccessDenied)
     ));
 }
@@ -924,7 +919,7 @@ async fn refresh_without_selection_keeps_the_session_organization() {
         .encode(SECRET, REFRESH_LIFETIME)
         .unwrap();
     fixture.remember(&refresh);
-    let tokens = fixture.refresh(&refresh, None).await.unwrap();
+    let tokens = fixture.refresh(&refresh).await.unwrap();
     let claims =
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
@@ -933,33 +928,30 @@ async fn refresh_without_selection_keeps_the_session_organization() {
 }
 
 #[tokio::test]
-async fn replay_revokes_the_session_and_commits_before_returning_denial() {
+async fn original_and_renewed_refresh_tokens_remain_usable_without_database_writes() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let original = AccessToken::Refresh(RefreshToken::new(1, 7, 84, REFRESH_LIFETIME).unwrap())
         .encode(SECRET, REFRESH_LIFETIME)
         .unwrap();
     fixture.remember(&original);
-    let replacement = fixture.refresh(&original, None).await.unwrap();
-    assert!(matches!(
-        fixture.refresh(&original, None).await,
-        Err(AuthError::RefreshTokenReused)
-    ));
+    let before = fixture.repo.0.lock().unwrap().sessions[&7].clone();
+    fixture.repo.0.lock().unwrap().fail_rotation = true;
+    let replacement = fixture.refresh(&original).await.unwrap();
+    assert!(fixture.refresh(&original).await.is_ok());
+    assert!(fixture.refresh(&replacement.refresh_token).await.is_ok());
+    let stored = fixture.repo.0.lock().unwrap().sessions[&7].clone();
+    assert_eq!(stored.reference(), before.reference());
+    assert_eq!(stored.refresh_token_id, before.refresh_token_id);
+    assert_eq!(stored.created_at, before.created_at);
+    assert!(stored.revoked_at.is_none());
     assert!(
-        fixture.repo.0.lock().unwrap().sessions[&7]
-            .revoked_at
-            .is_some()
+        fixture
+            .db
+            .as_ref()
+            .clone()
+            .into_transaction_log()
+            .is_empty()
     );
-    let log = fixture.db.as_ref().clone().into_transaction_log();
-    assert_eq!(log.len(), 2);
-    assert!(
-        format!("{log:?}").matches("COMMIT").count() == 2,
-        "denying reuse must commit revocation, not roll it back"
-    );
-    assert!(matches!(
-        fixture.refresh(&replacement.refresh_token, None).await,
-        Err(AuthError::InvalidSession)
-    ));
-    assert_eq!(fixture.repo.0.lock().unwrap().sessions.len(), 1);
 }
 
 #[tokio::test]
@@ -1021,15 +1013,15 @@ async fn each_successful_signin_creates_an_independent_session() {
         .encode(SECRET, REFRESH_LIFETIME)
         .unwrap();
     assert!(matches!(
-        fixture.refresh(&one, None).await,
+        fixture.refresh(&one).await,
         Err(AuthError::InvalidSession)
     ));
-    assert!(fixture.refresh(&two, None).await.is_ok());
+    assert!(fixture.refresh(&two).await.is_ok());
 }
 
 #[tokio::test]
-async fn missing_expired_revoked_or_foreign_sessions_cannot_refresh() {
-    for state in ["missing", "expired", "revoked", "foreign"] {
+async fn missing_revoked_or_foreign_sessions_cannot_refresh() {
+    for state in ["missing", "revoked", "foreign"] {
         let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
         let refresh = AccessToken::Refresh(RefreshToken::new(1, 7, 84, REFRESH_LIFETIME).unwrap())
             .encode(SECRET, REFRESH_LIFETIME)
@@ -1040,10 +1032,6 @@ async fn missing_expired_revoked_or_foreign_sessions_cannot_refresh() {
             match state {
                 "missing" => {
                     data.sessions.clear();
-                }
-                "expired" => {
-                    data.sessions.get_mut(&7).unwrap().expires_at =
-                        compallm_utils::time::unix_timestamp();
                 }
                 "revoked" => {
                     data.sessions.get_mut(&7).unwrap().revoked_at =
@@ -1057,7 +1045,7 @@ async fn missing_expired_revoked_or_foreign_sessions_cannot_refresh() {
         }
         assert!(
             matches!(
-                fixture.refresh(&refresh, None).await,
+                fixture.refresh(&refresh).await,
                 Err(AuthError::InvalidSession)
             ),
             "accepted {state} session"
@@ -1066,7 +1054,14 @@ async fn missing_expired_revoked_or_foreign_sessions_cannot_refresh() {
             fixture.repo.0.lock().unwrap().contexts.is_empty(),
             "invalid session must fail before user lookup"
         );
-        fixture.assert_transaction("ROLLBACK");
+        assert!(
+            fixture
+                .db
+                .as_ref()
+                .clone()
+                .into_transaction_log()
+                .is_empty()
+        );
     }
 }
 
@@ -1082,7 +1077,7 @@ async fn invalid_signature_cannot_revoke_a_valid_session() {
         .encode("wrong-key-at-least-32-bytes-long", REFRESH_LIFETIME)
         .unwrap();
     assert!(matches!(
-        fixture.refresh(&forged, None).await,
+        fixture.refresh(&forged).await,
         Err(AuthError::InvalidToken)
     ));
     assert!(
@@ -1101,35 +1096,26 @@ async fn invalid_signature_cannot_revoke_a_valid_session() {
 }
 
 #[tokio::test]
-async fn refresh_refuses_an_enclosing_transaction_that_could_undo_revocation() {
+async fn read_only_refresh_runs_inside_an_enclosing_transaction() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let refresh = AccessToken::Refresh(RefreshToken::new(1, 7, 84, REFRESH_LIFETIME).unwrap())
+    let token = AccessToken::Refresh(RefreshToken::new(1, 7, 84, REFRESH_LIFETIME).unwrap())
         .encode(SECRET, REFRESH_LIFETIME)
         .unwrap();
-    fixture.remember(&refresh);
-    let service = fixture.service();
+    fixture.remember(&token);
     fixture
         .repo
         .1
         .transaction(async {
-            assert!(matches!(
-                service.refresh(&refresh, None).await,
-                Err(AuthError::RefreshTransactionAlreadyActive)
-            ));
+            fixture.service().refresh(&token).await?;
             Ok::<_, AuthError>(())
         })
         .await
         .unwrap();
-    assert!(
-        fixture.repo.0.lock().unwrap().sessions[&7]
-            .revoked_at
-            .is_none()
-    );
     fixture.assert_transaction("COMMIT");
 }
 
 #[tokio::test]
-async fn failed_rotation_returns_no_credentials_and_rolls_back() {
+async fn failed_organization_switch_returns_no_credentials_and_rolls_back() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let claims = RefreshToken::new(1, 7, 84, REFRESH_LIFETIME).unwrap();
     let token = AccessToken::Refresh(claims.clone())
@@ -1138,7 +1124,7 @@ async fn failed_rotation_returns_no_credentials_and_rolls_back() {
     fixture.remember(&token);
     fixture.repo.0.lock().unwrap().fail_rotation = true;
     assert!(matches!(
-        fixture.refresh(&token, None).await,
+        fixture.switch_organization(&token, 84).await,
         Err(AuthError::InvalidSession)
     ));
     assert_eq!(
@@ -1149,22 +1135,21 @@ async fn failed_rotation_returns_no_credentials_and_rolls_back() {
 }
 
 #[tokio::test]
-async fn competing_refresh_after_lookup_revokes_the_winning_session_and_commits() {
+async fn competing_organization_switch_rejects_the_loser_without_revoking_the_winner() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let claims = RefreshToken::new(1, 7, 84, REFRESH_LIFETIME).unwrap();
-    let token = AccessToken::Refresh(claims)
+    let token = AccessToken::Refresh(RefreshToken::new(1, 7, 84, REFRESH_LIFETIME).unwrap())
         .encode(SECRET, REFRESH_LIFETIME)
         .unwrap();
     fixture.remember(&token);
     fixture.repo.0.lock().unwrap().competing_rotation = true;
     assert!(matches!(
-        fixture.refresh(&token, None).await,
-        Err(AuthError::RefreshTokenReused)
+        fixture.switch_organization(&token, 84).await,
+        Err(AuthError::InvalidSession)
     ));
-    let session = fixture.repo.0.lock().unwrap().sessions[&7].clone();
-    assert!(session.revoked_at.is_some());
-    assert_eq!(session.refresh_token_id, "B".repeat(43));
-    fixture.assert_transaction("COMMIT");
+    let stored = fixture.repo.0.lock().unwrap().sessions[&7].clone();
+    assert!(stored.revoked_at.is_none());
+    assert_eq!(stored.refresh_token_id, "B".repeat(43));
+    fixture.assert_transaction("ROLLBACK");
 }
 
 #[tokio::test]
@@ -1178,7 +1163,7 @@ async fn token_for_another_organization_cannot_read_or_revoke_an_owned_session()
         .encode(SECRET, REFRESH_LIFETIME)
         .unwrap();
     assert!(matches!(
-        fixture.refresh(&foreign, None).await,
+        fixture.refresh(&foreign).await,
         Err(AuthError::InvalidSession)
     ));
     assert!(
@@ -1186,33 +1171,83 @@ async fn token_for_another_organization_cannot_read_or_revoke_an_owned_session()
             .revoked_at
             .is_none()
     );
-    assert!(fixture.refresh(&valid, None).await.is_ok());
+    assert!(fixture.refresh(&valid).await.is_ok());
 }
 
 #[tokio::test]
-async fn revocation_preserves_a_refresh_that_commits_after_the_session_read() {
+async fn organization_switch_joins_an_enclosing_transaction() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let original = AccessToken::Refresh(RefreshToken::new(1, 7, 84, REFRESH_LIFETIME).unwrap())
         .encode(SECRET, REFRESH_LIFETIME)
         .unwrap();
     fixture.remember(&original);
-    fixture.refresh(&original, None).await.unwrap();
-    let previous = fixture.repo.0.lock().unwrap().sessions[&7].clone();
     fixture
         .repo
         .0
         .lock()
         .unwrap()
-        .competing_update_during_revocation = true;
+        .memberships
+        .push(OrganizationMember {
+            organization_id: 85,
+            user_id: 1,
+            role: OrganizationRole::Member,
+        });
+    let service = fixture.service();
+    let tokens = fixture
+        .repo
+        .1
+        .transaction(service.switch_organization(&original, 85))
+        .await
+        .unwrap();
+    let claims =
+        RefreshToken::try_from(AccessToken::decode(&tokens.refresh_token, SECRET).unwrap())
+            .unwrap();
+    assert_eq!(claims.organization_id, 85);
     assert!(matches!(
-        fixture.refresh(&original, None).await,
-        Err(AuthError::RefreshTokenReused)
+        fixture.refresh(&original).await,
+        Err(AuthError::InvalidSession)
     ));
-    let persisted = fixture.repo.0.lock().unwrap().sessions[&7].clone();
-    assert!(persisted.revoked_at.is_some());
-    assert_eq!(persisted.refresh_token_id, "C".repeat(43));
-    assert_eq!(persisted.last_used_at, previous.last_used_at + 1);
-    assert_eq!(persisted.expires_at, previous.expires_at + 1);
-    let log = format!("{:?}", fixture.db.as_ref().clone().into_transaction_log());
-    assert_eq!(log.matches("COMMIT").count(), 2);
+    assert!(
+        fixture.repo.0.lock().unwrap().sessions[&7]
+            .revoked_at
+            .is_none()
+    );
+    fixture.assert_transaction("COMMIT");
+}
+
+#[tokio::test]
+async fn expired_refresh_never_writes_or_revokes_a_session() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let mut token = RefreshToken::new(1, 7, 84, REFRESH_LIFETIME).unwrap();
+    let at = token.validity.issued_at;
+    let stored = Session::new(&token);
+    fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .insert(7, stored.clone());
+    token.validity.issued_at = at - REFRESH_LIFETIME.as_secs() - 1;
+    token.validity.expires_at = at - 1;
+    let expired =
+        hero::token::jwt::create_jwt_token(AccessToken::Refresh(token), SECRET, REFRESH_LIFETIME)
+            .unwrap();
+    assert!(matches!(
+        fixture.refresh(&expired).await,
+        Err(AuthError::ExpiredToken)
+    ));
+    assert!(
+        fixture.repo.0.lock().unwrap().sessions[&7]
+            .revoked_at
+            .is_none()
+    );
+    assert!(
+        fixture
+            .db
+            .as_ref()
+            .clone()
+            .into_transaction_log()
+            .is_empty()
+    );
 }

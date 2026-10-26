@@ -21,13 +21,11 @@ impl RefreshToken {
         organization_id: u64,
         lifetime: Duration,
     ) -> Result<Self, AuthError> {
-        let mut id = [0u8; 32];
-        rand::rng().fill_bytes(&mut id);
         let token = Self {
             user_id,
             session_id,
             organization_id,
-            token_id: URL_SAFE_NO_PAD.encode(id),
+            token_id: Self::new_credential_id(),
             validity: TokenValidity::new(lifetime)?,
         };
         token.validate(token.validity.issued_at)?;
@@ -64,21 +62,24 @@ impl RefreshToken {
         }
     }
 
-    pub fn from_session(session: &Session) -> Result<Self, AuthError> {
+    pub fn from_session(session: &Session, lifetime: Duration) -> Result<Self, AuthError> {
         let token = Self {
             user_id: session.user_id,
             session_id: session.id,
             organization_id: session.organization_id,
             token_id: session.refresh_token_id.clone(),
-            validity: TokenValidity {
-                issued_at: session.last_used_at,
-                expires_at: session.expires_at,
-            },
+            validity: TokenValidity::new(lifetime)?,
         };
-        if !session.is_active(session.reference(), compallm_utils::time::unix_timestamp()) {
+        if !session.is_active(session.reference()) {
             return Err(AuthError::InvalidSession);
         }
         token.validate(compallm_utils::time::unix_timestamp())?;
         Ok(token)
+    }
+
+    pub(crate) fn new_credential_id() -> String {
+        let mut id = [0u8; 32];
+        rand::rng().fill_bytes(&mut id);
+        URL_SAFE_NO_PAD.encode(id)
     }
 }

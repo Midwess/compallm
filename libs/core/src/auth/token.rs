@@ -156,8 +156,19 @@ impl UserTokens {
         organization_role: crate::organization::OrganizationRole,
         secret: &str,
         user_lifetime: Duration,
+        refresh_lifetime: Duration,
     ) -> Result<Self, AuthError> {
-        let refresh = RefreshToken::from_session(session)?;
+        let refresh = RefreshToken::from_session(session, refresh_lifetime)?;
+        Self::from_refresh(&refresh, organization_role, secret, user_lifetime)
+    }
+
+    pub fn from_refresh(
+        refresh: &RefreshToken,
+        organization_role: crate::organization::OrganizationRole,
+        secret: &str,
+        user_lifetime: Duration,
+    ) -> Result<Self, AuthError> {
+        refresh.validate(unix_timestamp())?;
         let refresh_lifetime =
             Duration::from_secs(refresh.validity.expires_at - refresh.validity.issued_at);
         Ok(Self {

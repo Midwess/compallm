@@ -9,7 +9,7 @@ pub struct SessionReference {
     pub organization_id: u64,
 }
 
-/// One successful login. Refresh updates activity without creating another login.
+/// A persisted login. JWTs own expiry; ordinary renewal does not change this record.
 #[derive(Clone, Debug)]
 pub struct Session {
     pub id: u64,
@@ -17,8 +17,6 @@ pub struct Session {
     pub organization_id: u64,
     pub refresh_token_id: String,
     pub created_at: u64,
-    pub last_used_at: u64,
-    pub expires_at: u64,
     pub revoked_at: Option<u64>,
 }
 
@@ -30,8 +28,6 @@ impl Session {
             organization_id: refresh.organization_id,
             refresh_token_id: refresh.token_id.clone(),
             created_at: refresh.validity.issued_at,
-            last_used_at: refresh.validity.issued_at,
-            expires_at: refresh.validity.expires_at,
             revoked_at: None,
         }
     }
@@ -44,30 +40,39 @@ impl Session {
         }
     }
 
-    pub fn is_active(&self, reference: SessionReference, now: u64) -> bool {
-        self.reference() == reference && self.revoked_at.is_none() && now < self.expires_at
+    pub fn is_active(&self, reference: SessionReference) -> bool {
+        self.reference() == reference && self.revoked_at.is_none()
     }
 
+    pub fn validate_credential(&self, presented: &RefreshToken) -> Result<(), AuthError> {
+        presented.validate(compallm_utils::time::unix_timestamp())?;
+        if !self.is_active(presented.session()) || self.refresh_token_id != presented.token_id {
+            return Err(AuthError::InvalidSession);
+        }
+        Ok(())
+    }
+
+    /// Renew JWT validity while preserving the database session and credential identifier.
     pub fn refresh(
+        &self,
+        presented: &RefreshToken,
+        lifetime: Duration,
+    ) -> Result<RefreshToken, AuthError> {
+        self.validate_credential(presented)?;
+        RefreshToken::from_session(self, lifetime)
+    }
+
+    pub fn switch_organization(
         &mut self,
         presented: &RefreshToken,
         organization_id: u64,
-        lifetime: Duration,
     ) -> Result<(), AuthError> {
-        let now = compallm_utils::time::unix_timestamp();
-        presented.validate(now)?;
-        if !self.is_active(presented.session(), now) {
-            return Err(AuthError::InvalidSession);
+        self.validate_credential(presented)?;
+        if organization_id == 0 || organization_id > i64::MAX as u64 {
+            return Err(AuthError::OrganizationAccessDenied);
         }
-        if self.refresh_token_id != presented.token_id {
-            self.revoke();
-            return Err(AuthError::RefreshTokenReused);
-        }
-        let refresh = RefreshToken::new(self.user_id, self.id, organization_id, lifetime)?;
         self.organization_id = organization_id;
-        self.refresh_token_id = refresh.token_id;
-        self.last_used_at = refresh.validity.issued_at;
-        self.expires_at = refresh.validity.expires_at;
+        self.refresh_token_id = RefreshToken::new_credential_id();
         Ok(())
     }
 

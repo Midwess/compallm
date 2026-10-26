@@ -5,33 +5,37 @@ available: false
 
 # Browser sessions
 
-A session records one successful signup or signin. Core authentication now persists sessions and rotates refresh credentials. Browser cookie transport and OAuth remain planned; the current signup API returns credentials in JSON. The [login ADR](adr.md) explains the decisions behind this flow.
+A session records one successful signup or signin. Core authentication persists sessions, renews JWTs without database writes, and changes organization through a separate operation. Browser cookie transport and OAuth remain planned; the current signup API returns credentials in JSON. The [login ADR](adr.md) explains the decisions behind this flow.
 
 ## What a session represents
 
-A second login creates another session; refreshing credentials keeps the same session. Each record identifies its owner, current refresh credential, original login time, last refresh time, expiry, and whether it has been revoked. Session history distinguishes a new login from continued activity.
+A second login creates another session; refreshing credentials keeps the same session. Each record identifies its organization, owner, current credential identifier, original login time, and revocation state. Expiry comes from the signed JWT; normal refresh does not write an activity timestamp or expiry to the database. Session history distinguishes a new login from continued activity.
 
 Device information is optional. A browser description or user-provided label may eventually help recognize a session, but neither proves which physical device or person is using it. Authentication does not require device fingerprinting.
 
-Both token types reference the same database session using its ID, organization ID, and user ID. Access JWTs additionally carry the current membership role; refresh JWTs carry the rotating credential identifier. The complete JWT is not stored. Every lookup, renewal, and revocation uses the organization and user together, supported by a compound organization/user index.
+Both token types reference the same database session using its ID, organization ID, and user ID. Access JWTs additionally carry the current membership role; refresh JWTs carry the current credential identifier. The complete JWT is not stored. Every lookup, renewal, and revocation uses the organization and user together, supported by a compound organization/user index.
 
-## Renewal and workspace selection
+## Read-only renewal
 
-Successful refresh replaces both credentials and extends the session for 30 days. It preserves the session ID and original login time. A user must sign in again after 30 days without successful refresh.
+Normal refresh validates the signed JWT, loads its organization/user-scoped session, rejects revocation or a credential mismatch, and checks the active user and current membership. It issues new JWTs for the same session and organization, with the same credential identifier and a new 30-day refresh expiry.
 
-Before renewal, the server verifies the signed credential, session status, user status, and current organization membership. Missing, revoked, expired, or foreign sessions cannot refresh. Only the current refresh credential may advance a session; concurrent requests cannot both replace it.
+There is no database update, credential consumption, automatic revocation, or transaction started by renewal. It can run inside an existing transaction. Expired JWTs are already invalid and do not require revoking the session.
 
-Refresh loads the database session referenced by the verified token. The session's refresh behavior rejects revoked or expired state and rotates the credential. Saving succeeds only if the presented credential is still current; tokens are returned after that save commits.
+Older refresh JWTs remain usable until their own expiry. Each valid renewal starts another 30-day JWT lifetime, so continued use can extend beyond 30 days from the original login without a fixed database deadline. A holder, including someone with a copied JWT, can keep renewing before expiry until explicit revocation or a session change.
 
-If no organization is selected, keep the session's current organization. An explicit switch first verifies the target membership, then moves the same session and issues both credentials with its new reference. Signin starts in an owner/admin organization; later switching may select a member organization. New access credentials reflect the current role.
+## Organization switching
 
-## Reuse, logout, and failure recovery
+Switching is a separate operation. Verify the current refresh credential and target membership, change the session organization and credential identifier, save conditionally, and return both replacement tokens after commit. Signin starts in an owner/admin organization; switching may select a member organization. Previous refresh credentials are invalidated; already-issued access JWTs retain the short-expiry limitation described below.
 
-Presenting an already-used, valid refresh credential in the session's current organization revokes the whole session, including credentials issued by an earlier renewal. This applies to suspected theft, competing refreshes, and retrying after a lost response. After an organization switch, tokens referencing the previous organization fail lookup and cannot mutate the session in its new organization. The client must coordinate renewal across requests and tabs. There is no grace period; recovery from revocation requires signin.
+Old-organization credentials no longer resolve the moved session. Even switching to the same organization replaces the identifier, invalidating previous refresh credentials. Concurrent switches cannot both save changes from the same previous state; a losing request is rejected without revoking the winner.
 
-Logout revokes the current session and clears its cookies when cookie transport is implemented. Administrative revocation blocks further renewal. Sessions from other logins remain independent.
+Ordinary renewal never changes organizations. It uses the current role when issuing an access JWT.
 
-A copied access JWT may still work until its short expiry, including its cached role. Immediate invalidation requires an additional server-side check. Invalid signatures and expired JWTs do not authorize changes to another session.
+## Logout and revocation
+
+Logout and administrative actions explicitly revoke the session. Logout also clears its cookies when cookie transport is implemented. Other login sessions remain independent.
+
+A copied access JWT can remain usable until its short expiry, including its cached role. Immediate access-token invalidation requires an additional server-side check. Failed renewal or switching does not automatically revoke a session, and invalid signatures or expired JWTs never authorize changes.
 
 ## Planned browser transport
 
@@ -50,6 +54,6 @@ HttpOnly blocks cookie reads, but injected scripts can still make requests. Safe
 
 ## Existing users
 
-Refresh tokens issued before sessions carried a session ID cannot be renewed through this flow; those users must sign in again. Old last-login timestamps remain for compatibility and are no longer updated. Historical session records are not inferred from them. Session-history retention remains undecided.
+Refresh tokens issued before sessions carried a session ID cannot be renewed through this flow; those users must sign in again. Old last-login timestamps remain for compatibility and are no longer updated. Historical sessions are not inferred from them. Original login age does not measure inactivity because renewal is read-only; session cleanup needs a separate retention policy, which remains undecided.
 
 See [Email](email.md), [GitHub](github.md), and [GitLab](gitlab.md) for login-method details.

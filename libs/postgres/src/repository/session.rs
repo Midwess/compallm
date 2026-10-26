@@ -10,7 +10,7 @@ use compallm_core::{
 use sea_orm::{
     ColumnTrait, EntityTrait, ModelTrait, QueryFilter, Set,
     prelude::{DateTimeUtc, DateTimeWithTimeZone},
-    sea_query::{Expr, ExprTrait},
+    sea_query::Expr,
 };
 
 type Sessions = <UserSessionSchema as ModelTrait>::Entity;
@@ -47,8 +47,6 @@ impl CoreSessionRepository for SessionRepository {
             organization_id: Set(Self::id(session.organization_id)?),
             refresh_token_id: Set(session.refresh_token_id),
             created_at: Set(Self::timestamp(session.created_at)?),
-            last_used_at: Set(Self::timestamp(session.last_used_at)?),
-            expires_at: Set(Self::timestamp(session.expires_at)?),
             revoked_at: Set(session.revoked_at.map(Self::timestamp).transpose()?),
         };
         let rows = Sessions::insert(model)
@@ -101,8 +99,8 @@ impl CoreSessionRepository for SessionRepository {
             .filter(SessionColumn::UserId.eq(Self::id(previous.user_id)?))
             .filter(SessionColumn::OrganizationId.eq(Self::id(previous.organization_id)?));
 
-        // Write only changed fields. Revocation must not copy an old credential
-        // over a concurrent renewal; renewal must not erase a concurrent revocation.
+        // Write only changed fields. Revocation must not overwrite a concurrent
+        // organization switch, and switching must not erase revocation.
         if session.organization_id != previous.organization_id {
             update = update.col_expr(
                 SessionColumn::OrganizationId,
@@ -117,22 +115,6 @@ impl CoreSessionRepository for SessionRepository {
                 )
                 .filter(SessionColumn::RefreshTokenId.eq(previous.refresh_token_id.clone()));
         }
-        if session.last_used_at != previous.last_used_at {
-            update = update
-                .col_expr(
-                    SessionColumn::LastUsedAt,
-                    Expr::value(Self::timestamp(session.last_used_at)?),
-                )
-                .filter(SessionColumn::LastUsedAt.eq(Self::timestamp(previous.last_used_at)?));
-        }
-        if session.expires_at != previous.expires_at {
-            update = update
-                .col_expr(
-                    SessionColumn::ExpiresAt,
-                    Expr::value(Self::timestamp(session.expires_at)?),
-                )
-                .filter(SessionColumn::ExpiresAt.eq(Self::timestamp(previous.expires_at)?));
-        }
         // Setting the existing value also gives no-op updates a real row check.
         update = update.col_expr(
             SessionColumn::RevokedAt,
@@ -142,10 +124,6 @@ impl CoreSessionRepository for SessionRepository {
             Some(at) => update.filter(SessionColumn::RevokedAt.eq(Self::timestamp(at)?)),
             None => update.filter(SessionColumn::RevokedAt.is_null()),
         };
-        if session.revoked_at.is_none() {
-            update =
-                update.filter(Expr::col(SessionColumn::ExpiresAt).gt(Expr::current_timestamp()));
-        }
         Ok(update
             .exec(db)
             .await

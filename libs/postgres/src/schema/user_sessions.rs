@@ -11,8 +11,6 @@ pub struct Model {
     #[sea_orm(column_type = "String(StringLen::N(43))")]
     pub refresh_token_id: String,
     pub created_at: DateTimeWithTimeZone,
-    pub last_used_at: DateTimeWithTimeZone,
-    pub expires_at: DateTimeWithTimeZone,
     pub revoked_at: Option<DateTimeWithTimeZone>,
 }
 

@@ -45,12 +45,6 @@ export interface ConfirmSigninOtpRequest {
   code: string;
   /** Cookie (default) sets HttpOnly cookies; token returns both JWTs in JSON. */
   delivery?: TokenDelivery;
-  /**
-     * Encrypted challenge returned by the email code request.
-     * @minLength 1
-     * @maxLength 16384
-     */
-  token: string;
 }
 
 /**
@@ -69,12 +63,6 @@ export interface ConfirmSignupOtpRequest {
      * token returns both JWTs in JSON without setting cookies.
      */
   delivery?: TokenDelivery;
-  /**
-     * Encrypted challenge returned by the email signup request.
-     * @minLength 1
-     * @maxLength 16384
-     */
-  token: string;
 }
 
 /**
@@ -242,6 +230,8 @@ export const getConfirmSigninOtpUrl = () => {
 }
 
 /**
+ * Requires an email-OTP challenge in Authorization: Bearer, verified by middleware.
+ * JSON contains only code and delivery; token fields in JSON are rejected.
  * Requires an existing active user and an active owner/admin organization membership.
  * Records a new session. Cookie delivery (default) requires an allowed Origin, sets both
  * HttpOnly cookies and returns an empty JSON object. Explicit delivery token returns
@@ -357,7 +347,9 @@ export const getConfirmSignupOtpUrl = () => {
 }
 
 /**
- * Validates the encrypted challenge and emailed code, then creates the user and their personal
+ * Requires the encrypted email-OTP challenge in Authorization: Bearer, verified by middleware.
+ * JSON contains only code and delivery; token fields in JSON are rejected.
+ * Validates the emailed code, then creates the user and their personal
  * organization atomically. The display name is derived from the email address.
  * Delivery defaults to cookie: sets both HttpOnly cookies and returns an empty JSON object.
  * Send Origin matching AUTH_PUBLIC_ORIGIN (or the local loopback Host in development).

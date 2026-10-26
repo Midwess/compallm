@@ -47,7 +47,7 @@ HttpOnly access cookie; nonsecure local development uses compallm-access. Automa
 ## Example request
 
 ```bash
-curl --request GET 'https://compallm.example/api/auth/me'
+curl --request GET 'https://compallm.example/api/auth/me' --header 'Authorization: Bearer <token>'
 ```
 
 Replace URL parameters and supply any required query values and authentication described above.

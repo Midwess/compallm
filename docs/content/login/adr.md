@@ -5,7 +5,7 @@ available: false
 
 # Login: ADR
 
-Decision: Accepted on 2026-10-26. Implementation: Partial. Core authentication records sessions; normal renewal is read-only and organization switching is separate. Signup and signin support controller-selected cookie or JSON token delivery. Protected API middleware accepts access cookies or Bearer access tokens and automatically renews expired/missing cookie access. Logout endpoints and OAuth remain planned.
+Decision: Accepted on 2026-10-26. Implementation: Partial. Core authentication records sessions; normal renewal is read-only and organization switching is separate. Signup/signin confirmation requires a Bearer OTP challenge and supports controller-selected cookie or JSON token delivery. Protected API middleware accepts access cookies or Bearer access tokens and automatically renews expired/missing cookie access. Logout endpoints and OAuth remain planned.
 
 ## Problem and requirements
 

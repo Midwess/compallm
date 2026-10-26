@@ -9,7 +9,9 @@ available: false
 
 Confirm email signup with a verification code.
 
-Validates the encrypted challenge and emailed code, then creates the user and their personal
+Requires the encrypted email-OTP challenge in Authorization: Bearer, verified by middleware.
+JSON contains only code and delivery; token fields in JSON are rejected.
+Validates the emailed code, then creates the user and their personal
 organization atomically. The display name is derived from the email address.
 Delivery defaults to cookie: sets both HttpOnly cookies and returns an empty JSON object.
 Send Origin matching AUTH_PUBLIC_ORIGIN (or the local loopback Host in development).
@@ -19,7 +21,19 @@ An existing email is rejected rather than signed in. Request a new code if the c
 
 ## Authentication
 
-Public endpoint. No user access credential is required.
+Satisfy one of these alternatives (schemes within one alternative are all required):
+
+- `{"emailOtp":[]}`
+
+Encrypted email OTP challenge returned by the code request. Requires the email-OTP token variant; user access and refresh tokens are rejected. Supply it as Authorization: Bearer <challenge>.
+
+```json
+{
+  "description": "Encrypted email OTP challenge returned by the code request. Requires the email-OTP token variant; user access and refresh tokens are rejected. Supply it as Authorization: Bearer <challenge>.",
+  "scheme": "bearer",
+  "type": "http"
+}
+```
 
 ## Parameters
 
@@ -56,13 +70,13 @@ Email challenge and code used to confirm signup.
 | --- | --- | --- | --- |
 | code | string | true | Six ASCII digits received by email; surrounding whitespace is trimmed. Submit before expiry. |
 | delivery | string | false | How signup/signin confirmation delivers credentials. Never stored in JWT claims. |
-| token | string | true | Encrypted challenge returned by the email signup request. |
 
 <details>
 <summary>JSON schema</summary>
 
 ```json
 {
+  "additionalProperties": false,
   "description": "Email challenge and code used to confirm signup.",
   "properties": {
     "code": {
@@ -80,17 +94,9 @@ Email challenge and code used to confirm signup.
         "token"
       ],
       "type": "string"
-    },
-    "token": {
-      "description": "Encrypted challenge returned by the email signup request.",
-      "example": "example-email-challenge",
-      "maxLength": 16384,
-      "minLength": 1,
-      "type": "string"
     }
   },
   "required": [
-    "token",
     "code"
   ],
   "type": "object"
@@ -104,8 +110,7 @@ Example (synthetic values):
 ```json
 {
   "code": "123456",
-  "delivery": "token",
-  "token": "example-email-challenge"
+  "delivery": "token"
 }
 ```
 
@@ -113,12 +118,11 @@ Example (synthetic values):
 
 ```bash
 curl --request POST \
-  'https://compallm.example/api/auth/signup/email/confirmation/otp' \
+  'https://compallm.example/api/auth/signup/email/confirmation/otp' --header 'Authorization: Bearer <token>' \
   --header 'Content-Type: application/json' \
   --data '{
   "code": "123456",
-  "delivery": "token",
-  "token": "example-email-challenge"
+  "delivery": "token"
 }'
 ```
 

@@ -23,6 +23,9 @@ pub fn api_router() -> OpenApiRouter<&'static AuthService> {
         "bearerAuth",
         SecurityScheme::Http(Http::new(HttpAuthScheme::Bearer)),
     );
+    let mut otp = Http::new(HttpAuthScheme::Bearer);
+    otp.description = Some("Encrypted email OTP challenge returned by the code request. Requires the email-OTP token variant; user access and refresh tokens are rejected. Supply it as Authorization: Bearer <challenge>.".into());
+    components.add_security_scheme("emailOtp", SecurityScheme::Http(otp));
     components.add_security_scheme("accessCookie", SecurityScheme::ApiKey(ApiKey::Cookie(ApiKeyValue::with_description(
         "__Host-access", "HttpOnly access cookie; nonsecure local development uses compallm-access. Automatic renewal additionally requires the configured refresh cookie."
     ))));

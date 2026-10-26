@@ -263,6 +263,13 @@ struct Fixture {
 }
 
 impl Fixture {
+    fn otp(challenge: &EmailOtpChallenge) -> compallm_core::auth::EmailOtpAccessToken {
+        compallm_core::auth::EmailOtpAccessToken::try_from(
+            AccessToken::decode(&challenge.access_token, SECRET).unwrap(),
+        )
+        .unwrap()
+    }
+
     fn new(user: Option<User>) -> Self {
         match hero::distributed_id::init_scoped_id_generator("auth-tests") {
             Ok(())
@@ -424,7 +431,7 @@ async fn signin_checks_user_and_commits() {
     let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
     let issued = fixture
         .service()
-        .signin(&challenge.access_token, &challenge.code)
+        .signin(&Fixture::otp(&challenge), &challenge.code)
         .await
         .unwrap();
     assert_eq!(
@@ -453,7 +460,7 @@ async fn signup_requires_verified_email_and_creates_on_one_transaction() {
     let challenge = EmailOtpChallenge::new("James@MIDWESS.COM", SECRET).unwrap();
     let issued = fixture
         .service()
-        .signup(&challenge.access_token, &challenge.code)
+        .signup(&Fixture::otp(&challenge), &challenge.code)
         .await
         .unwrap();
     assert!(
@@ -507,7 +514,7 @@ async fn organization_or_owner_failure_rolls_back_the_entire_signup() {
         assert!(matches!(
             fixture
                 .service()
-                .signup(&challenge.access_token, &challenge.code)
+                .signup(&Fixture::otp(&challenge), &challenge.code)
                 .await,
             Err(AuthError::Organization(_))
         ));
@@ -523,7 +530,7 @@ async fn duplicate_signup_and_disabled_signin_are_rejected() {
     assert!(matches!(
         fixture
             .service()
-            .signup(&challenge.access_token, &challenge.code)
+            .signup(&Fixture::otp(&challenge), &challenge.code)
             .await,
         Err(AuthError::Persistence(
             UserRepositoryError::EmailAlreadyExists
@@ -536,7 +543,7 @@ async fn duplicate_signup_and_disabled_signin_are_rejected() {
     assert!(matches!(
         fixture
             .service()
-            .signin(&challenge.access_token, &challenge.code)
+            .signin(&Fixture::otp(&challenge), &challenge.code)
             .await,
         Err(AuthError::UserDisabled)
     ));
@@ -552,7 +559,7 @@ async fn failed_session_insert_rolls_back_signin_without_returning_tokens() {
     assert!(matches!(
         fixture
             .service()
-            .signin(&challenge.access_token, &challenge.code)
+            .signin(&Fixture::otp(&challenge), &challenge.code)
             .await,
         Err(AuthError::SessionPersistence(
             SessionRepositoryError::Database(_)
@@ -570,7 +577,7 @@ async fn failed_repository_operation_rolls_back_and_returns_no_tokens() {
     assert!(matches!(
         fixture
             .service()
-            .signup(&challenge.access_token, &challenge.code)
+            .signup(&Fixture::otp(&challenge), &challenge.code)
             .await,
         Err(AuthError::Persistence(UserRepositoryError::Database(_)))
     ));
@@ -584,7 +591,7 @@ async fn invalid_otp_does_not_reach_persistence() {
     assert!(matches!(
         fixture
             .service()
-            .signin(&challenge.access_token, "wrong")
+            .signin(&Fixture::otp(&challenge), "wrong")
             .await,
         Err(AuthError::IncorrectCode)
     ));
@@ -633,7 +640,7 @@ async fn signup_derives_user_name_and_default_organization_from_the_email() {
         let challenge = EmailOtpChallenge::new(&email, SECRET).unwrap();
         fixture
             .service()
-            .signup(&challenge.access_token, &challenge.code)
+            .signup(&Fixture::otp(&challenge), &challenge.code)
             .await
             .unwrap();
         {
@@ -799,7 +806,7 @@ async fn signin_selects_an_admin_organization_instead_of_a_member_organization()
     let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
     let tokens = fixture
         .service()
-        .signin(&challenge.access_token, &challenge.code)
+        .signin(&Fixture::otp(&challenge), &challenge.code)
         .await
         .unwrap();
     let claims =
@@ -898,7 +905,7 @@ async fn signin_rejects_missing_or_disabled_administrator_memberships() {
         assert!(matches!(
             fixture
                 .service()
-                .signin(&challenge.access_token, &challenge.code)
+                .signin(&Fixture::otp(&challenge), &challenge.code)
                 .await,
             Err(AuthError::OrganizationAccessDenied)
         ));
@@ -969,7 +976,7 @@ async fn session_insert_failure_rolls_back_signup_and_returns_no_credentials() {
     assert!(matches!(
         fixture
             .service()
-            .signup(&challenge.access_token, &challenge.code)
+            .signup(&Fixture::otp(&challenge), &challenge.code)
             .await,
         Err(AuthError::SessionPersistence(_))
     ));
@@ -983,11 +990,11 @@ async fn each_successful_signin_creates_an_independent_session() {
     let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
     let service = fixture.service();
     let one = service
-        .signin(&challenge.access_token, &challenge.code)
+        .signin(&Fixture::otp(&challenge), &challenge.code)
         .await
         .unwrap();
     let two = service
-        .signin(&challenge.access_token, &challenge.code)
+        .signin(&Fixture::otp(&challenge), &challenge.code)
         .await
         .unwrap();
     let one =

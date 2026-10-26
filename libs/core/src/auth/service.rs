@@ -74,9 +74,11 @@ impl AuthService {
         Ok(challenge.access_token)
     }
 
-    pub async fn signin(&self, email_token: &str, code: &str) -> Result<UserTokens, AuthError> {
-        let claims =
-            EmailOtpAccessToken::try_from(AccessToken::decode(email_token, &self.jwt_secret)?)?;
+    pub async fn signin(
+        &self,
+        claims: &EmailOtpAccessToken,
+        code: &str,
+    ) -> Result<UserTokens, AuthError> {
         claims.verify_code(code, unix_timestamp())?;
         transaction!(self.db, {
             let user = self
@@ -96,9 +98,11 @@ impl AuthService {
         })
     }
 
-    pub async fn signup(&self, email_token: &str, code: &str) -> Result<UserTokens, AuthError> {
-        let claims =
-            EmailOtpAccessToken::try_from(AccessToken::decode(email_token, &self.jwt_secret)?)?;
+    pub async fn signup(
+        &self,
+        claims: &EmailOtpAccessToken,
+        code: &str,
+    ) -> Result<UserTokens, AuthError> {
         claims.verify_code(code, unix_timestamp())?;
         transaction!(self.db, {
             let user = self.registration.register(&claims.email).await?;

@@ -6,7 +6,7 @@ use axum::{
 };
 use axum_valid::ValidifiedByRef;
 use compallm_core::{
-    auth::{AuthService, UserAccessToken},
+    auth::{AuthService, EmailOtpAccessToken, UserAccessToken},
     user::User,
 };
 use serde::{Deserialize, Serialize};
@@ -26,9 +26,7 @@ use validation::{AuthInput, ValidatedJson};
 pub fn router() -> OpenApiRouter<&'static AuthService> {
     OpenApiRouter::new()
         .routes(routes!(signup_email))
-        .routes(routes!(confirm_signup_otp))
         .routes(routes!(signin_email))
-        .routes(routes!(confirm_signin_otp))
 }
 
 /// Email address to receive a signup verification code.
@@ -85,13 +83,8 @@ async fn signup_email(
 
 /// Email challenge and code used to confirm signup.
 #[derive(Deserialize, ToSchema, Validify)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ConfirmSignupOtpRequest {
-    /// Encrypted challenge returned by the email signup request.
-    #[schema(example = "example-email-challenge")]
-    #[validate(length(min = 1, max = 16384))]
-    #[schema(min_length = 1, max_length = 16384)]
-    pub token: String,
     /// Six ASCII digits received by email; surrounding whitespace is trimmed. Submit before expiry.
     #[schema(example = "123456")]
     #[modify(trim)]
@@ -107,7 +100,9 @@ pub struct ConfirmSignupOtpRequest {
 
 /// Confirm email signup with a verification code.
 ///
-/// Validates the encrypted challenge and emailed code, then creates the user and their personal
+/// Requires the encrypted email-OTP challenge in Authorization: Bearer, verified by middleware.
+/// JSON contains only code and delivery; token fields in JSON are rejected.
+/// Validates the emailed code, then creates the user and their personal
 /// organization atomically. The display name is derived from the email address.
 /// Delivery defaults to cookie: sets both HttpOnly cookies and returns an empty JSON object.
 /// Send Origin matching AUTH_PUBLIC_ORIGIN (or the local loopback Host in development).
@@ -116,9 +111,9 @@ pub struct ConfirmSignupOtpRequest {
 /// An existing email is rejected rather than signed in. Request a new code if the challenge expired.
 #[utoipa::path(
     post, path = "/api/auth/signup/email/confirmation/otp", operation_id = "confirmSignupOtp", tag = "auth",
-    security(),
+    security(("emailOtp" = [])),
     params(("Origin" = Option<String>, Header, description = "Required for cookie delivery; must match the configured browser origin")),
-    request_body(content = ConfirmSignupOtpRequest, example = json!({"token":"example-email-challenge","code":"123456","delivery":"token"})),
+    request_body(content = ConfirmSignupOtpRequest, example = json!({"code":"123456","delivery":"token"})),
     responses(
         (status = 201, description = "User created; cookie mode returns {} and sets both cookies; token mode returns both credentials", body = AuthTokensResponse),
         (status = 400, description = "Malformed JSON or invalid field format. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid JSON request body"})),
@@ -132,11 +127,12 @@ async fn confirm_signup_otp(
     State(auth): State<&'static AuthService>,
     Extension(settings): Extension<&'static TokenDeliverySettings>,
     headers: HeaderMap,
+    RequireToken(challenge): RequireToken<EmailOtpAccessToken>,
     input: ValidatedJson<ConfirmSignupOtpRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
     let ValidifiedByRef(Json(input)) = input?;
     input.delivery.validate_origin(&headers, settings)?;
-    let tokens = auth.signup(&input.token, &input.code).await?;
+    let tokens = auth.signup(&challenge, &input.code).await?;
     input
         .delivery
         .response(tokens, StatusCode::CREATED, settings)
@@ -182,12 +178,8 @@ async fn signin_email(
 
 /// Email challenge, verification code, and credential delivery for an existing user.
 #[derive(Deserialize, ToSchema, Validify)]
+#[serde(deny_unknown_fields)]
 pub struct ConfirmSigninOtpRequest {
-    /// Encrypted challenge returned by the email code request.
-    #[schema(example = "example-email-challenge")]
-    #[validate(length(min = 1, max = 16384))]
-    #[schema(min_length = 1, max_length = 16384)]
-    pub token: String,
     /// Six ASCII digits received by email; surrounding whitespace is trimmed. Valid for ten minutes.
     #[schema(example = "123456")]
     #[modify(trim)]
@@ -202,15 +194,17 @@ pub struct ConfirmSigninOtpRequest {
 
 /// Confirm email signin with a verification code.
 ///
+/// Requires an email-OTP challenge in Authorization: Bearer, verified by middleware.
+/// JSON contains only code and delivery; token fields in JSON are rejected.
 /// Requires an existing active user and an active owner/admin organization membership.
 /// Records a new session. Cookie delivery (default) requires an allowed Origin, sets both
 /// HttpOnly cookies and returns an empty JSON object. Explicit delivery token returns
 /// accessToken and refreshToken in JSON without setting cookies. Delivery is not a JWT claim.
 #[utoipa::path(
     post, path = "/api/auth/signin/email/confirmation/otp", operation_id = "confirmSigninOtp", tag = "auth",
-    security(),
+    security(("emailOtp" = [])),
     params(("Origin" = Option<String>, Header, description = "Required for cookie delivery; must match the configured browser origin")),
-    request_body(content = ConfirmSigninOtpRequest, example = json!({"token":"example-email-challenge","code":"123456","delivery":"token"})),
+    request_body(content = ConfirmSigninOtpRequest, example = json!({"code":"123456","delivery":"token"})),
     responses(
         (status = 200, description = "Signed in; cookie mode returns {} and sets both cookies; token mode returns both credentials", body = AuthTokensResponse),
         (status = 400, description = "Malformed JSON or invalid field format", body = ErrorResponse),
@@ -224,11 +218,12 @@ async fn confirm_signin_otp(
     State(auth): State<&'static AuthService>,
     Extension(settings): Extension<&'static TokenDeliverySettings>,
     headers: HeaderMap,
+    RequireToken(challenge): RequireToken<EmailOtpAccessToken>,
     input: ValidatedJson<ConfirmSigninOtpRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
     let ValidifiedByRef(Json(input)) = input?;
     input.delivery.validate_origin(&headers, settings)?;
-    let tokens = auth.signin(&input.token, &input.code).await?;
+    let tokens = auth.signin(&challenge, &input.code).await?;
     input.delivery.response(tokens, StatusCode::OK, settings)
 }
 
@@ -248,7 +243,10 @@ pub struct CurrentUserResponse {
 }
 
 pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
-    OpenApiRouter::new().routes(routes!(current_user))
+    OpenApiRouter::new()
+        .routes(routes!(current_user))
+        .routes(routes!(confirm_signup_otp))
+        .routes(routes!(confirm_signin_otp))
 }
 
 /// Read the current authenticated identity and organization scope.

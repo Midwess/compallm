@@ -9,6 +9,8 @@ available: false
 
 Confirm email signin with a verification code.
 
+Requires an email-OTP challenge in Authorization: Bearer, verified by middleware.
+JSON contains only code and delivery; token fields in JSON are rejected.
 Requires an existing active user and an active owner/admin organization membership.
 Records a new session. Cookie delivery (default) requires an allowed Origin, sets both
 HttpOnly cookies and returns an empty JSON object. Explicit delivery token returns
@@ -16,7 +18,19 @@ accessToken and refreshToken in JSON without setting cookies. Delivery is not a 
 
 ## Authentication
 
-Public endpoint. No user access credential is required.
+Satisfy one of these alternatives (schemes within one alternative are all required):
+
+- `{"emailOtp":[]}`
+
+Encrypted email OTP challenge returned by the code request. Requires the email-OTP token variant; user access and refresh tokens are rejected. Supply it as Authorization: Bearer <challenge>.
+
+```json
+{
+  "description": "Encrypted email OTP challenge returned by the code request. Requires the email-OTP token variant; user access and refresh tokens are rejected. Supply it as Authorization: Bearer <challenge>.",
+  "scheme": "bearer",
+  "type": "http"
+}
+```
 
 ## Parameters
 
@@ -53,13 +67,13 @@ Email challenge, verification code, and credential delivery for an existing user
 | --- | --- | --- | --- |
 | code | string | true | Six ASCII digits received by email; surrounding whitespace is trimmed. Valid for ten minutes. |
 | delivery | string | false | How signup/signin confirmation delivers credentials. Never stored in JWT claims. |
-| token | string | true | Encrypted challenge returned by the email code request. |
 
 <details>
 <summary>JSON schema</summary>
 
 ```json
 {
+  "additionalProperties": false,
   "description": "Email challenge, verification code, and credential delivery for an existing user.",
   "properties": {
     "code": {
@@ -77,17 +91,9 @@ Email challenge, verification code, and credential delivery for an existing user
         "token"
       ],
       "type": "string"
-    },
-    "token": {
-      "description": "Encrypted challenge returned by the email code request.",
-      "example": "example-email-challenge",
-      "maxLength": 16384,
-      "minLength": 1,
-      "type": "string"
     }
   },
   "required": [
-    "token",
     "code"
   ],
   "type": "object"
@@ -101,8 +107,7 @@ Example (synthetic values):
 ```json
 {
   "code": "123456",
-  "delivery": "token",
-  "token": "example-email-challenge"
+  "delivery": "token"
 }
 ```
 
@@ -110,12 +115,11 @@ Example (synthetic values):
 
 ```bash
 curl --request POST \
-  'https://compallm.example/api/auth/signin/email/confirmation/otp' \
+  'https://compallm.example/api/auth/signin/email/confirmation/otp' --header 'Authorization: Bearer <token>' \
   --header 'Content-Type: application/json' \
   --data '{
   "code": "123456",
-  "delivery": "token",
-  "token": "example-email-challenge"
+  "delivery": "token"
 }'
 ```
 

@@ -25,7 +25,7 @@ Older refresh JWTs remain usable until their own expiry. Each valid renewal star
 
 ## Protected API requests
 
-Public signup/signin routes do not require existing credentials. Middleware verifies the selected credential and inserts its concrete type as a request extension: `UserAccessToken`, `RefreshToken`, or decrypted `EmailOtpAccessToken`. Handlers declare `RequireToken<T>` to require exactly that type; an absent type returns 401. Raw request access uses `extensions().get::<T>()`. User-token extraction exposes organization/role guards returning 403. A route on the authenticated router must explicitly require the token type appropriate for its operation. `GET /api/auth/me` returns session ID, user ID, organization ID, and role without returning credentials.
+Public signup/signin code-request routes require no credentials. Their confirmation routes require a Bearer email-OTP challenge. Middleware verifies the selected credential and inserts its concrete type as a request extension: `UserAccessToken`, `RefreshToken`, or decrypted `EmailOtpAccessToken`. Handlers declare `RequireToken<T>` to require exactly that type; an absent type returns 401. Raw request access uses `extensions().get::<T>()`. User-token extraction exposes organization/role guards returning 403. A route on the authenticated router must explicitly require the token type appropriate for its operation. `GET /api/auth/me` returns session ID, user ID, organization ID, and role without returning credentials.
 
 ```rust
 async fn handler(RequireToken(token): RequireToken<UserAccessToken>) {
@@ -35,7 +35,7 @@ async fn handler(RequireToken(token): RequireToken<UserAccessToken>) {
 
 The concrete token is also available through `request.extensions().get::<UserAccessToken>()`. Middleware replaces token extensions on each request so the selected Bearer/cookie identity cannot inherit another credential type from an earlier layer.
 
-An explicit Authorization header takes precedence over cookies. Require one signed, unexpired Bearer token; malformed, expired, or duplicate credentials return 401 without cookie fallback or renewal. Only its actual verified type is inserted. A refresh or OTP token cannot satisfy `RequireToken<UserAccessToken>`. Refresh extraction verifies the signed claims, not current database state; renewal and switching still use Core's session checks. OTP extraction verifies the encrypted challenge, not email ownership; confirmation must still match the emailed code. Existing public confirmation endpoints continue accepting the challenge in JSON.
+An explicit Authorization header takes precedence over cookies. Require one signed, unexpired Bearer token; malformed, expired, or duplicate credentials return 401 without cookie fallback or renewal. Only its actual verified type is inserted. A refresh or OTP token cannot satisfy `RequireToken<UserAccessToken>`. Refresh extraction verifies the signed claims, not current database state; renewal and switching still use Core's session checks. OTP extraction verifies the encrypted challenge, not email ownership; confirmation must still match the emailed code. Confirmation handlers require `RequireToken<EmailOtpAccessToken>` and pass the verified claims to Core; JSON contains only the code and delivery selection. The legacy body token field is rejected.
 
 Cookie access is validated without querying the database, preserving the documented short-lived cached-role tradeoff. If access is missing or expired, validate the refresh cookie through Core, use the new access claims for the current request, and set both replacement cookies on the response. Invalid signatures, wrong variants in the access-cookie slot, or ambiguous access cookies are rejected. With valid cookie access, a valid refresh cookie is also inserted as `RefreshToken` only when it matches that access token's session and credential identifier. Invalid or unrelated refresh cookies do not affect valid access, but cannot satisfy refresh extraction. After automatic renewal, both new token types are inserted. Bearer mode never adds cookie credentials. Refresh performs the existing database session/user/membership checks without a write. Any middleware authentication failure in cookie mode clears both authentication cookies, including Origin rejection or temporary storage failure. Bearer-mode errors leave browser cookies untouched. Failed renewal does not revoke sessions.
 
@@ -57,7 +57,7 @@ A copied access JWT can remain usable until its short expiry, including its cach
 
 ## Credential delivery
 
-Signup and signin confirmation accept optional `delivery`, defaulting to `cookie`. Axum chooses transport only after Core authentication succeeds and the session commits. The mode is never stored in Session or JWT claims.
+Signup and signin confirmation require a Bearer OTP challenge and accept optional `delivery` in JSON, defaulting to `cookie`. Axum chooses transport only after Core authentication succeeds and the session commits. The mode is never stored in Session or JWT claims.
 
 - `cookie`: set both HttpOnly cookies and return `{}`; token values are absent from JSON.
 - `token`: return `{ "accessToken": "…", "refreshToken": "…" }` and set no cookies. This does not clear an existing browser session.

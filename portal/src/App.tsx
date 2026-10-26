@@ -17,7 +17,7 @@ function App() {
     setError(null)
     try {
       if (token) {
-        await confirmSignupOtp({ token, code })
+        await confirmSignupOtp({ code }, { headers: { Authorization: `Bearer ${token}` } })
         setToken(null)
         setCode('')
         setIsComplete(true)

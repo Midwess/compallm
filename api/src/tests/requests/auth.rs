@@ -1,3 +1,4 @@
+use axum::http::header::AUTHORIZATION;
 use std::sync::{Arc, Mutex};
 
 use axum_test::TestServer;
@@ -211,12 +212,14 @@ async fn signup_delivers_code_and_confirmation_creates_user() {
     };
     server
         .post("/api/auth/signup/email/confirmation/otp")
-        .json(&serde_json::json!({"token": token, "code": wrong_code, "delivery":"token"}))
+        .add_header(AUTHORIZATION, format!("Bearer {}", token))
+        .json(&serde_json::json!({ "code": wrong_code, "delivery":"token"}))
         .await
         .assert_status_unauthorized();
     let response = server
         .post("/api/auth/signup/email/confirmation/otp")
-        .json(&serde_json::json!({"token": token, "code": format!(" {} ", claims.code), "delivery":"token"}))
+        .add_header(AUTHORIZATION, format!("Bearer {}", token))
+        .json(&serde_json::json!({ "code": format!(" {} ", claims.code), "delivery":"token"}))
         .await;
     response.assert_status(axum::http::StatusCode::CREATED);
     let tokens: serde_json::Value = response.json();
@@ -319,7 +322,8 @@ fn openapi_exposes_signup_and_signin_delivery() {
     let paths = document["paths"].as_object().unwrap();
     let confirmation = &document["components"]["schemas"]["ConfirmSignupOtpRequest"];
     assert!(confirmation["properties"].get("displayName").is_none());
-    assert_eq!(confirmation["required"].as_array().unwrap().len(), 2);
+    assert_eq!(confirmation["required"].as_array().unwrap().len(), 1);
+    assert!(confirmation["properties"].get("token").is_none());
     assert_eq!(paths.len(), 5);
     assert!(paths["/api/auth/signup/email"].get("post").is_some());
     assert!(
@@ -358,7 +362,8 @@ async fn cookie_confirmation_sets_both_cookies_without_exposing_credentials() {
                 .post(path)
                 .add_header(axum::http::header::ORIGIN, origin)
                 .add_header(axum::http::header::HOST, "127.0.0.1:3456")
-                .json(&serde_json::json!({"token":challenge.access_token,"code":challenge.code}))
+                .add_header(AUTHORIZATION, format!("Bearer {}", challenge.access_token))
+                .json(&serde_json::json!({"code":challenge.code}))
                 .await;
             response.assert_status(if signin {
                 axum::http::StatusCode::OK
@@ -422,9 +427,8 @@ async fn signin_delivers_email_and_returns_json_tokens_only_when_requested() {
     );
     let response = server
         .post("/api/auth/signin/email/confirmation/otp")
-        .json(
-            &serde_json::json!({"token":token,"code":format!(" {} ", otp.code),"delivery":"token"}),
-        )
+        .add_header(AUTHORIZATION, format!("Bearer {}", token))
+        .json(&serde_json::json!({"code":format!(" {} ", otp.code),"delivery":"token"}))
         .await;
     response.assert_status_ok();
     assert!(response.headers().get("set-cookie").is_none());
@@ -459,7 +463,16 @@ async fn invalid_delivery_or_cookie_origin_never_sets_credentials() {
                 request = request.add_header(axum::http::header::ORIGIN, origin);
             }
             let response = request
-                .json(&serde_json::json!({"token":"invalid","code":"123456","delivery":"cookie"}))
+                .add_header(
+                    AUTHORIZATION,
+                    format!(
+                        "Bearer {}",
+                        compallm_core::auth::EmailOtpChallenge::new("james@midwess.com", SECRET)
+                            .unwrap()
+                            .access_token
+                    ),
+                )
+                .json(&serde_json::json!({"code":"123456","delivery":"cookie"}))
                 .await;
             response.assert_status_forbidden();
             assert!(response.headers().get("set-cookie").is_none());
@@ -472,7 +485,16 @@ async fn invalid_delivery_or_cookie_origin_never_sets_credentials() {
         }
         server
             .post(path)
-            .json(&serde_json::json!({"token":"invalid","code":"123456","delivery":"both"}))
+            .add_header(
+                AUTHORIZATION,
+                format!(
+                    "Bearer {}",
+                    compallm_core::auth::EmailOtpChallenge::new("james@midwess.com", SECRET)
+                        .unwrap()
+                        .access_token
+                ),
+            )
+            .json(&serde_json::json!({"code":"123456","delivery":"both"}))
             .await
             .assert_status_bad_request();
     }
@@ -489,7 +511,8 @@ async fn failed_confirmation_never_sets_cookies_or_returns_tokens() {
             .post(path)
             .add_header(axum::http::header::ORIGIN, "http://localhost:3000")
             .add_header(axum::http::header::HOST, "localhost:3000")
-            .json(&serde_json::json!({"token":"invalid","code":"123456"}))
+            .add_header(AUTHORIZATION, format!("Bearer {}", "invalid"))
+            .json(&serde_json::json!({"code":"123456"}))
             .await;
         response.assert_status_unauthorized();
         assert!(response.headers().get("set-cookie").is_none());
@@ -504,8 +527,11 @@ async fn verified_signin_without_account_returns_not_found_without_credentials()
     let server = Fixture::server(Fixture::di(None));
     let challenge =
         compallm_core::auth::EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
-    let response = server.post("/api/auth/signin/email/confirmation/otp")
-        .json(&serde_json::json!({"token":challenge.access_token,"code":challenge.code,"delivery":"token"})).await;
+    let response = server
+        .post("/api/auth/signin/email/confirmation/otp")
+        .add_header(AUTHORIZATION, format!("Bearer {}", challenge.access_token))
+        .json(&serde_json::json!({"code":challenge.code,"delivery":"token"}))
+        .await;
     response.assert_status_not_found();
     assert!(response.headers().get("set-cookie").is_none());
     assert!(
@@ -530,7 +556,16 @@ async fn secure_cookie_mode_requires_the_configured_origin() {
         let response = server
             .post("/api/auth/signin/email/confirmation/otp")
             .add_header(axum::http::header::ORIGIN, origin)
-            .json(&serde_json::json!({"token":"invalid","code":"123456"}))
+            .add_header(
+                AUTHORIZATION,
+                format!(
+                    "Bearer {}",
+                    compallm_core::auth::EmailOtpChallenge::new("james@midwess.com", SECRET)
+                        .unwrap()
+                        .access_token
+                ),
+            )
+            .json(&serde_json::json!({"code":"123456"}))
             .await;
         response.assert_status_forbidden();
         assert!(response.headers().get("set-cookie").is_none());
@@ -542,7 +577,16 @@ async fn secure_cookie_mode_requires_the_configured_origin() {
         .post("/api/auth/signin/email/confirmation/otp")
         .add_header(axum::http::header::ORIGIN, "http://localhost:3000")
         .add_header(axum::http::header::HOST, "localhost:3000")
-        .json(&serde_json::json!({"token":"invalid","code":"123456"}))
+        .add_header(
+            AUTHORIZATION,
+            format!(
+                "Bearer {}",
+                compallm_core::auth::EmailOtpChallenge::new("james@midwess.com", SECRET)
+                    .unwrap()
+                    .access_token
+            ),
+        )
+        .json(&serde_json::json!({"code":"123456"}))
         .await
         .assert_status_forbidden();
 }
@@ -581,7 +625,19 @@ async fn dto_validation_rejects_bad_formats_without_echoing_credentials() {
         "/api/auth/signin/email/confirmation/otp",
     ] {
         for code in ["", "12345", "1234567", "abcdef", "１２３４５６"] {
-            let response = server.post(path).json(&serde_json::json!({"token":"private-challenge-value","code":code,"delivery":"token"})).await;
+            let response = server
+                .post(path)
+                .add_header(
+                    AUTHORIZATION,
+                    format!(
+                        "Bearer {}",
+                        compallm_core::auth::EmailOtpChallenge::new("james@midwess.com", SECRET)
+                            .unwrap()
+                            .access_token
+                    ),
+                )
+                .json(&serde_json::json!({"code":code,"delivery":"token"}))
+                .await;
             response.assert_status_bad_request();
             assert_eq!(
                 response.json::<serde_json::Value>(),
@@ -592,13 +648,11 @@ async fn dto_validation_rejects_bad_formats_without_echoing_credentials() {
         for token in [String::new(), "a".repeat(16385)] {
             let response = server
                 .post(path)
-                .json(&serde_json::json!({"token":token,"code":"123456","delivery":"token"}))
+                .add_header(AUTHORIZATION, format!("Bearer {token}"))
+                .json(&serde_json::json!({"code":"123456","delivery":"token"}))
                 .await;
-            response.assert_status_bad_request();
-            assert_eq!(
-                response.json::<serde_json::Value>(),
-                serde_json::json!({"message":"Invalid request fields"})
-            );
+            response.assert_status_unauthorized();
+            assert!(response.headers().get("set-cookie").is_none());
         }
     }
 }
@@ -653,14 +707,85 @@ fn dto_email_normalization_keeps_ascii_case_policy() {
 }
 
 #[tokio::test]
-async fn dto_does_not_trim_signed_challenges() {
+async fn otp_confirmation_requires_typed_bearer_and_rejects_legacy_json_tokens() {
     let server = Fixture::server(Fixture::di(None));
     let challenge =
         compallm_core::auth::EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    let tokens = compallm_core::auth::UserTokens::new(
+        &compallm_core::auth::Session::new(42, 7, 84),
+        compallm_core::organization::OrganizationRole::Owner,
+        SECRET,
+        std::time::Duration::from_secs(900),
+        std::time::Duration::from_secs(3600),
+    )
+    .unwrap();
     for path in [
         "/api/auth/signup/email/confirmation/otp",
         "/api/auth/signin/email/confirmation/otp",
     ] {
-        server.post(path).json(&serde_json::json!({"token":format!(" {} ", challenge.access_token),"code":challenge.code,"delivery":"token"})).await.assert_status_unauthorized();
+        let response = server.post(path).json(&serde_json::json!({"token":challenge.access_token,"code":challenge.code,"delivery":"token"})).await;
+        response.assert_status_unauthorized();
+        assert!(
+            response
+                .json::<serde_json::Value>()
+                .get("accessToken")
+                .is_none()
+        );
+        for token in [&tokens.access_token, &tokens.refresh_token, "invalid"] {
+            server
+                .post(path)
+                .add_header(AUTHORIZATION, format!("Bearer {token}"))
+                .json(&serde_json::json!({"code":challenge.code,"delivery":"token"}))
+                .await
+                .assert_status_unauthorized();
+        }
+        server.post(path).add_header(AUTHORIZATION, format!("Bearer {}", challenge.access_token))
+            .json(&serde_json::json!({"token":challenge.access_token,"code":challenge.code,"delivery":"token"})).await.assert_status_bad_request();
+    }
+}
+
+#[tokio::test]
+async fn confirmation_rejects_expired_or_tampered_otp_bearer_before_registration() {
+    use compallm_core::auth::{EmailOtpAccessToken, EncryptedAccessToken};
+    let server = Fixture::server(Fixture::di(None));
+    let mut claims = EmailOtpAccessToken::new("james@midwess.com".into()).unwrap();
+    let code = claims.code.clone();
+    claims.validity.issued_at -= 601;
+    claims.validity.expires_at -= 601;
+    let encrypted = EncryptedAccessToken::new(SECRET)
+        .unwrap()
+        .encrypt(&AccessToken::EmailOtp(claims))
+        .unwrap();
+    let expired = AccessToken::Encrypted(encrypted)
+        .encode(SECRET, std::time::Duration::from_secs(3600))
+        .unwrap();
+    let challenge =
+        compallm_core::auth::EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    let mut parts: Vec<_> = challenge
+        .access_token
+        .split('.')
+        .map(str::to_owned)
+        .collect();
+    parts[2] = "invalid-signature".into();
+    let tampered = parts.join(".");
+    for path in [
+        "/api/auth/signup/email/confirmation/otp",
+        "/api/auth/signin/email/confirmation/otp",
+    ] {
+        for token in [&expired, &tampered] {
+            let response = server
+                .post(path)
+                .add_header(AUTHORIZATION, format!("Bearer {token}"))
+                .json(&serde_json::json!({"code":code,"delivery":"token"}))
+                .await;
+            response.assert_status_unauthorized();
+            assert!(response.headers().get("set-cookie").is_none());
+            assert!(
+                response
+                    .json::<serde_json::Value>()
+                    .get("accessToken")
+                    .is_none()
+            );
+        }
     }
 }

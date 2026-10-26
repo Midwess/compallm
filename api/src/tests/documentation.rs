@@ -28,7 +28,9 @@ fn current_contract_describes_operations_fields_and_safe_examples() {
     assert!(confirmation.contains("never stored in the signed JWTs"));
     assert!(confirmation.contains("accessToken"));
     assert!(confirmation.contains("### 409"));
-    assert!(confirmation.contains("example-email-challenge"));
+    assert!(confirmation.contains("emailOtp"));
+    assert!(confirmation.contains("Authorization: Bearer <token>"));
+    assert!(!confirmation.contains("Public endpoint"));
     assert!(pages["index.md"].contains("auth/signup/email/confirmation/otp/post.md"));
 }
 

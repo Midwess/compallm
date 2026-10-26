@@ -10,3 +10,10 @@ test_*.py linguist-generated=true
 test_*.rs linguist-generated=true
 test.rs linguist-generated=true
 tests.rs linguist-generated=true
+
+# Collapse documentation and its content assets, while keeping website code visible.
+docs/content/** linguist-generated=true
+*.md linguist-generated=true
+*.mdx linguist-generated=true
+*.rst linguist-generated=true
+*.adoc linguist-generated=true

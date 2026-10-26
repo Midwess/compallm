@@ -31,6 +31,7 @@ struct State {
     fail_create: bool,
     fail_session: bool,
     fail_rotation: bool,
+    competing_rotation: bool,
     logins: Vec<u64>,
     sessions: std::collections::BTreeMap<u64, Session>,
     organization: Option<Organization>,
@@ -201,7 +202,7 @@ impl SessionRepository for Repository {
         Ok(())
     }
 
-    async fn find_for_update(
+    async fn find_by_id(
         &self,
         id: u64,
         user_id: u64,
@@ -225,6 +226,15 @@ impl SessionRepository for Repository {
         DbContext::current()?;
         let mut state = self.0.lock().unwrap();
         if state.fail_rotation {
+            return Ok(false);
+        }
+        if state.competing_rotation {
+            state
+                .sessions
+                .get_mut(&session.id)
+                .unwrap()
+                .refresh_token_id = "B".repeat(43);
+            state.competing_rotation = false;
             return Ok(false);
         }
         if let Some(current) = state.sessions.get_mut(&session.id)
@@ -1100,4 +1110,23 @@ async fn failed_rotation_returns_no_credentials_and_rolls_back() {
         claims.token_id
     );
     fixture.assert_transaction("ROLLBACK");
+}
+
+#[tokio::test]
+async fn competing_refresh_after_lookup_revokes_the_winning_session_and_commits() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let claims = RefreshToken::new(1, 7, REFRESH_LIFETIME).unwrap();
+    let token = AccessToken::Refresh(claims)
+        .encode(SECRET, REFRESH_LIFETIME)
+        .unwrap();
+    fixture.remember(&token);
+    fixture.repo.0.lock().unwrap().competing_rotation = true;
+    assert!(matches!(
+        fixture.refresh(&token, None).await,
+        Err(AuthError::RefreshTokenReused)
+    ));
+    let session = fixture.repo.0.lock().unwrap().sessions[&7].clone();
+    assert!(session.revoked_at.is_some());
+    assert_eq!(session.refresh_token_id, "B".repeat(43));
+    fixture.assert_transaction("COMMIT");
 }

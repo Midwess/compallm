@@ -5,7 +5,7 @@ available: false
 
 # Login: ADR
 
-Decision: Accepted on 2026-10-26. Implementation: Partial. Email signup currently returns tokens in JSON; OAuth, cookie delivery, and persistent refresh sessions are planned.
+Decision: Accepted on 2026-10-26. Implementation: Partial. Core authentication now records sessions and rotates refresh credentials. The signup API still returns tokens in JSON; OAuth and cookie delivery remain planned.
 
 ## Problem and requirements
 
@@ -74,18 +74,19 @@ Refresh updates the same session; it does not record another login. Routine refr
 
 A copied access JWT remains usable until expiry, including its cached role. Immediate invalidation requires an additional server-side check. This is the cost of validating normal requests without consulting refresh-session state.
 
-## Implementation impact
+## Responsibilities and compatibility
 
 Axum owns cookies and browser request protections; Core owns authentication and membership rules; PostgreSQL owns refresh-session persistence and atomic rotation. The frontend coordinates renewal without reading credentials.
 
-Replace `UserRepository::record_login` with session creation through a dedicated `SessionRepository`. Signup records its first session in the same transaction as user and personal-organization creation. Failed authentication or a failed transaction creates no login record and returns no credentials. The session's creation time records the login; refresh only updates activity and expiry.
+Session creation records each successful login. Signup creates its first session together with the user and personal organization; failure leaves no partial account or login record. Refresh updates activity and expiry while preserving the original login time.
 
-Changing signup from JSON credentials to cookies changes the frontend contract. Deliver the API and generated client updates together, and document the new transport in the public reference. Add refresh persistence before relying on rotation or revocation; issuing a new JWT alone does not invalidate the old one.
+Changing signup from JSON credentials to cookies will require coordinated API and frontend updates. Existing refresh tokens without a session ID require signin after the session-based flow is deployed.
+
+Reusing an old refresh credential revokes the whole session and requires signin, including after competing refresh requests or a lost renewal response. Clients must coordinate renewal; this version provides no replay grace period.
 
 ## Unresolved before implementation
 
 - Exact access lifetime within 5–15 minutes, plus any operations requiring immediate revocation.
-- Concurrent refreshes across tabs and recovery when a rotation response is lost.
 - Cross-provider account linking and which login methods ship first.
 - The [email-code expiry and reuse discrepancy](email.md).
 

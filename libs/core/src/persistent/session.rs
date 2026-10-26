@@ -17,8 +17,8 @@ impl From<ConnectionError> for SessionRepositoryError {
 pub trait SessionRepository: Send + Sync {
     async fn create(&self, session: Session) -> Result<(), SessionRepositoryError>;
 
-    /// Must run in a transaction and lock the owned row until completion.
-    async fn find_for_update(
+    /// Find a session belonging to the supplied user.
+    async fn find_by_id(
         &self,
         id: u64,
         user_id: u64,

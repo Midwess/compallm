@@ -138,7 +138,7 @@ impl AuthService {
         transaction!(self.db, {
             let mut session = self
                 .sessions
-                .find_for_update(claims.session_id, claims.user_id)
+                .find_by_id(claims.session_id, claims.user_id)
                 .await?
                 .ok_or(AuthError::InvalidSession)?;
             let now = unix_timestamp();
@@ -175,6 +175,23 @@ impl AuthService {
             )?;
             session.renew(&refresh);
             if !self.sessions.rotate(&session, &claims.token_id).await? {
+                // Another refresh may have won after our read. A still-active
+                // session with a different credential must follow the reuse policy.
+                let now = unix_timestamp();
+                if self
+                    .sessions
+                    .find_by_id(claims.session_id, claims.user_id)
+                    .await?
+                    .is_some_and(|current| {
+                        current.is_active(claims.user_id, now)
+                            && current.refresh_token_id != claims.token_id
+                    })
+                {
+                    self.sessions
+                        .revoke(claims.session_id, claims.user_id, now)
+                        .await?;
+                    return Ok(Err(AuthError::RefreshTokenReused));
+                }
                 return Err(AuthError::InvalidSession);
             }
             Ok(Ok(tokens))

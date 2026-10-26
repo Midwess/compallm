@@ -31,7 +31,7 @@ impl Fixture {
 }
 
 #[tokio::test]
-async fn lookup_locks_only_the_owned_row_and_rotation_has_active_credential_guards() {
+async fn owned_lookup_and_conditional_rotation_preserve_session_guards() {
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![Fixture::row()]])
@@ -44,7 +44,7 @@ async fn lookup_locks_only_the_owned_row_and_rotation_has_active_credential_guar
     let context = Fixture::context(db.clone());
     context
         .transaction(async {
-            let mut session = SessionRepository.find_for_update(7, 42).await?.unwrap();
+            let mut session = SessionRepository.find_by_id(7, 42).await?.unwrap();
             let created_at = session.created_at;
             let old = session.refresh_token_id.clone();
             session.renew(
@@ -61,7 +61,7 @@ async fn lookup_locks_only_the_owned_row_and_rotation_has_active_credential_guar
     let log = Arc::try_unwrap(db).unwrap().into_transaction_log();
     assert_eq!(log.len(), 1);
     let sql = format!("{log:?}").replace("\\\"", "\"");
-    assert!(sql.contains("FOR UPDATE"));
+    assert!(!sql.contains("FOR UPDATE"));
     assert!(
         sql.contains("WHERE \"user_sessions\".\"id\" = $1 AND \"user_sessions\".\"user_id\" = $2"),
         "{sql}"
@@ -135,17 +135,20 @@ async fn failed_compare_and_swap_and_repeated_revocation_are_safe() {
 }
 
 #[tokio::test]
-async fn row_lock_requires_a_transaction() {
+async fn owned_session_lookup_works_with_the_application_context() {
     let context = Fixture::context(Arc::new(
-        MockDatabase::new(DbBackend::Postgres).into_connection(),
+        MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([vec![Fixture::row()], vec![]])
+            .into_connection(),
     ));
-    let error = context
-        .scope(SessionRepository.find_for_update(7, 42))
-        .await
-        .unwrap_err();
-    assert!(error.to_string().contains("database"));
-    use std::error::Error;
-    assert!(error.source().unwrap().to_string().contains("transaction"));
+    context
+        .scope(async {
+            let session = SessionRepository.find_by_id(7, 42).await.unwrap().unwrap();
+            assert_eq!(session.id, 7);
+            assert_eq!(session.user_id, 42);
+            assert!(SessionRepository.find_by_id(7, 99).await.unwrap().is_none());
+        })
+        .await;
 }
 
 #[test]

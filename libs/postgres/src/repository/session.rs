@@ -8,7 +8,7 @@ use compallm_core::{
     },
 };
 use sea_orm::{
-    ColumnTrait, EntityTrait, ModelTrait, QueryFilter, QuerySelect, Set,
+    ColumnTrait, EntityTrait, ModelTrait, QueryFilter, Set,
     prelude::{DateTimeUtc, DateTimeWithTimeZone},
     sea_query::{Expr, ExprTrait},
 };
@@ -62,19 +62,15 @@ impl CoreSessionRepository for SessionRepository {
         Ok(())
     }
 
-    async fn find_for_update(
+    async fn find_by_id(
         &self,
         id: u64,
         user_id: u64,
     ) -> Result<Option<Session>, SessionRepositoryError> {
         let context = DbContext::current()?;
-        if !context.postgres().is_transaction() {
-            return Err(anyhow::anyhow!("session row locks require an active transaction").into());
-        }
         let db = PostgresConnection::from_context(&context)?;
         Sessions::find_by_id(Self::id(id)?)
             .filter(SessionColumn::UserId.eq(Self::id(user_id)?))
-            .lock_exclusive()
             .one(db)
             .await
             .map_err(anyhow::Error::from)?

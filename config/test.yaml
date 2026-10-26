@@ -19,6 +19,9 @@ settings:
     tls: |-
       <%= get_env(name="SMTP_TLS", default="starttls") | indent(width=6) %>
   auth:
+    cookie_secure: <%= get_env(name="AUTH_COOKIE_SECURE", default="false") %>
+    public_origin: |-
+      <%= get_env(name="AUTH_PUBLIC_ORIGIN", default="") | indent(width=6) %>
     jwt_secret: "test-signing-secret-at-least-32-bytes"
     user_token_ttl_seconds: 900
     refresh_token_ttl_seconds: 2592000

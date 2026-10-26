@@ -11,12 +11,38 @@ Confirm email signup with a verification code.
 
 Validates the encrypted challenge and emailed code, then creates the user and their personal
 organization atomically. The display name is derived from the email address.
-Returns access and refresh credentials in JSON; this endpoint does not set authentication cookies.
+Delivery defaults to cookie: sets both HttpOnly cookies and returns an empty JSON object.
+Send Origin matching AUTH_PUBLIC_ORIGIN (or the local loopback Host in development).
+Explicit delivery token returns accessToken and refreshToken in JSON and sets no cookies.
+The delivery choice is controller-only and is never stored in the signed JWTs.
 An existing email is rejected rather than signed in. Request a new code if the challenge expired.
 
 ## Authentication
 
 Public endpoint. No user access credential is required.
+
+## Parameters
+
+| Name | Location | Required | Description |
+| --- | --- | --- | --- |
+| Origin | header | false | Required for cookie delivery; must match the configured browser origin |
+
+### Parameter: Origin
+
+```json
+{
+  "description": "Required for cookie delivery; must match the configured browser origin",
+  "in": "header",
+  "name": "Origin",
+  "required": false,
+  "schema": {
+    "type": [
+      "string",
+      "null"
+    ]
+  }
+}
+```
 
 ## Request body
 
@@ -29,6 +55,7 @@ Email challenge and code used to confirm signup.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | code | string | true | Six-digit code received by email. Submit it before the challenge expires. |
+| delivery | string | false | How signup/signin confirmation delivers credentials. Never stored in JWT claims. |
 | token | string | true | Encrypted challenge returned by the email signup request. |
 
 <details>
@@ -41,6 +68,14 @@ Email challenge and code used to confirm signup.
     "code": {
       "description": "Six-digit code received by email. Submit it before the challenge expires.",
       "example": "123456",
+      "type": "string"
+    },
+    "delivery": {
+      "description": "How signup/signin confirmation delivers credentials. Never stored in JWT claims.",
+      "enum": [
+        "cookie",
+        "token"
+      ],
       "type": "string"
     },
     "token": {
@@ -64,6 +99,7 @@ Example (synthetic values):
 ```json
 {
   "code": "123456",
+  "delivery": "token",
   "token": "example-email-challenge"
 }
 ```
@@ -76,6 +112,7 @@ curl --request POST \
   --header 'Content-Type: application/json' \
   --data '{
   "code": "123456",
+  "delivery": "token",
   "token": "example-email-challenge"
 }'
 ```
@@ -86,40 +123,39 @@ Replace URL parameters and supply any required query values and authentication d
 
 ### 201
 
-User created
+User created; cookie mode returns {} and sets both cookies; token mode returns both credentials
 
 Content type: `application/json`.
 
-User credentials returned by the current signup API.
-Cookie transport is planned separately and is not implemented by this response.
+Cookie delivery returns an empty object. Token delivery returns both credentials.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| accessToken | string | true | Signed access JWT scoped to the user's initial organization and membership role. |
-| refreshToken | string | true | Refresh JWT used to renew the same organization-scoped session as the access token. |
+| accessToken | ["string","null"] | false | Access JWT, present only when delivery is token. |
+| refreshToken | ["string","null"] | false | Refresh JWT, present only when delivery is token. |
 
 <details>
 <summary>JSON schema</summary>
 
 ```json
 {
-  "description": "User credentials returned by the current signup API.\nCookie transport is planned separately and is not implemented by this response.",
+  "description": "Cookie delivery returns an empty object. Token delivery returns both credentials.",
   "properties": {
     "accessToken": {
-      "description": "Signed access JWT scoped to the user's initial organization and membership role.",
-      "example": "example-user-access-token",
-      "type": "string"
+      "description": "Access JWT, present only when delivery is token.",
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "refreshToken": {
-      "description": "Refresh JWT used to renew the same organization-scoped session as the access token.",
-      "example": "example-refresh-token",
-      "type": "string"
+      "description": "Refresh JWT, present only when delivery is token.",
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
-  "required": [
-    "accessToken",
-    "refreshToken"
-  ],
   "type": "object"
 }
 ```
@@ -129,10 +165,7 @@ Cookie transport is planned separately and is not implemented by this response.
 Example (synthetic values):
 
 ```json
-{
-  "accessToken": "example-user-access-token",
-  "refreshToken": "example-refresh-token"
-}
+{}
 ```
 
 ### 400
@@ -213,7 +246,7 @@ Example (synthetic values):
 
 ### 403
 
-User or organization access is disabled. Contact the administrator.
+Untrusted cookie Origin or user/organization access disabled.
 
 Content type: `application/json`.
 

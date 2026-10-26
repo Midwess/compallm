@@ -14,6 +14,10 @@ pub struct ErrorResponse {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ApiError {
+    #[error("untrusted browser origin")]
+    UntrustedOrigin,
+    #[error("invalid response header")]
+    Header(#[from] axum::http::header::InvalidHeaderValue),
     #[error(transparent)]
     Auth(#[from] AuthError),
     #[error("invalid JSON request body")]
@@ -23,6 +27,7 @@ pub enum ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, message) = match &self {
+            Self::UntrustedOrigin => (StatusCode::FORBIDDEN, "Untrusted browser origin"),
             Self::Json(_) => (StatusCode::BAD_REQUEST, "Invalid JSON request body"),
             Self::Auth(AuthError::InvalidEmail) => {
                 (StatusCode::BAD_REQUEST, "Invalid email address")

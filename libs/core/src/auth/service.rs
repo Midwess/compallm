@@ -68,7 +68,7 @@ impl AuthService {
         sender
             .send(EmailRequest {
                 to: compallm_utils::email::normalize_email(email)?,
-                subject: "Your Compallm signup code".into(),
+                subject: "Your Compallm verification code".into(),
                 text: EmailTemplate::OtpCode(OtpCode::new(
                     challenge.code,
                     Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),

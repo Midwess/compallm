@@ -36,12 +36,22 @@ impl Fixture {
     fn settings() -> AuthSettings {
         AuthSettings {
             jwt_secret: SECRET.into(),
+            cookie_secure: false,
+            public_origin: String::new(),
             user_token_ttl_seconds: 900,
             refresh_token_ttl_seconds: 30 * 24 * 60 * 60,
         }
     }
 
     fn di(mailbox: Option<Box<dyn EmailService>>) -> &'static Di {
+        Self::di_for(mailbox, false, Self::settings())
+    }
+
+    fn di_for(
+        mailbox: Option<Box<dyn EmailService>>,
+        signin: bool,
+        settings: AuthSettings,
+    ) -> &'static Di {
         let now = "2026-10-25T00:00:00Z"
             .parse::<sea_orm::prelude::DateTimeWithTimeZone>()
             .unwrap();
@@ -86,17 +96,21 @@ impl Fixture {
                 last_insert_id: 0,
                 rows_affected: 1,
             }])
-            .append_query_results([
-                vec![],
-                vec![row],
-                vec![organization],
-                vec![member.clone()],
-                vec![member],
-            ])
+            .append_query_results(if signin {
+                vec![vec![row], vec![member]]
+            } else {
+                vec![
+                    vec![],
+                    vec![row],
+                    vec![organization],
+                    vec![member.clone()],
+                    vec![member],
+                ]
+            })
             .into_connection();
         let di: &'static Di = Box::leak(Box::new(Di::new(
             DbContext::new(Arc::new(PostgresConnection::new(Arc::new(db)))),
-            Self::settings(),
+            settings,
             mailbox,
         )));
         di.initialize_services().unwrap();
@@ -192,15 +206,16 @@ async fn signup_delivers_code_and_confirmation_creates_user() {
     }
     server
         .post("/api/auth/signup/email/confirmation/otp")
-        .json(&serde_json::json!({"token": token, "code": "wrong"}))
+        .json(&serde_json::json!({"token": token, "code": "wrong", "delivery":"token"}))
         .await
         .assert_status_unauthorized();
     let response = server
         .post("/api/auth/signup/email/confirmation/otp")
-        .json(&serde_json::json!({"token": token, "code": claims.code}))
+        .json(&serde_json::json!({"token": token, "code": claims.code, "delivery":"token"}))
         .await;
     response.assert_status(axum::http::StatusCode::CREATED);
     let tokens: serde_json::Value = response.json();
+    assert_eq!(response.headers().get_all("set-cookie").iter().count(), 0);
     let access = compallm_core::auth::UserAccessToken::try_from(
         AccessToken::decode(tokens["accessToken"].as_str().unwrap(), SECRET).unwrap(),
     )
@@ -294,17 +309,233 @@ async fn signup_email_accepts_addresses_from_any_domain() {
 }
 
 #[test]
-fn openapi_exposes_only_signup_routes() {
+fn openapi_exposes_signup_and_signin_delivery() {
     let document = serde_json::to_value(controllers::openapi()).unwrap();
     let paths = document["paths"].as_object().unwrap();
     let confirmation = &document["components"]["schemas"]["ConfirmSignupOtpRequest"];
     assert!(confirmation["properties"].get("displayName").is_none());
     assert_eq!(confirmation["required"].as_array().unwrap().len(), 2);
-    assert_eq!(paths.len(), 2);
+    assert_eq!(paths.len(), 4);
     assert!(paths["/api/auth/signup/email"].get("post").is_some());
     assert!(
         paths["/api/auth/signup/email/confirmation/otp"]
             .get("post")
             .is_some()
     );
+}
+
+#[tokio::test]
+async fn cookie_confirmation_sets_both_cookies_without_exposing_credentials() {
+    compallm_postgres::init_id_generator("api-tests").unwrap();
+    for signin in [false, true] {
+        for secure in [false, true] {
+            let mut settings = Fixture::settings();
+            settings.cookie_secure = secure;
+            settings.public_origin = if secure {
+                "https://app.example.com".into()
+            } else {
+                String::new()
+            };
+            let server = Fixture::server(Fixture::di_for(None, signin, settings));
+            let challenge =
+                compallm_core::auth::EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+            let path = if signin {
+                "/api/auth/signin/email/confirmation/otp"
+            } else {
+                "/api/auth/signup/email/confirmation/otp"
+            };
+            let origin = if secure {
+                "https://app.example.com"
+            } else {
+                "http://127.0.0.1:3456"
+            };
+            let response = server
+                .post(path)
+                .add_header(axum::http::header::ORIGIN, origin)
+                .add_header(axum::http::header::HOST, "127.0.0.1:3456")
+                .json(&serde_json::json!({"token":challenge.access_token,"code":challenge.code}))
+                .await;
+            response.assert_status(if signin {
+                axum::http::StatusCode::OK
+            } else {
+                axum::http::StatusCode::CREATED
+            });
+            assert_eq!(response.json::<serde_json::Value>(), serde_json::json!({}));
+            assert_eq!(response.header("cache-control"), "no-store");
+            assert_eq!(response.headers().get_all("set-cookie").iter().count(), 2);
+            let names = if secure {
+                ["__Host-access", "__Host-refresh"]
+            } else {
+                ["compallm-access", "compallm-refresh"]
+            };
+            for (index, name) in names.iter().enumerate() {
+                let cookie = response.cookie(name);
+                assert_eq!(cookie.http_only(), Some(true));
+                assert_eq!(cookie.secure().unwrap_or(false), secure);
+                assert_eq!(cookie.same_site(), Some(cookie::SameSite::Lax));
+                assert_eq!(cookie.path(), Some("/"));
+                assert_eq!(cookie.domain(), None);
+                assert_eq!(
+                    cookie.max_age().unwrap().whole_seconds(),
+                    if index == 0 { 900 } else { 2_592_000 }
+                );
+                let claims = AccessToken::decode(cookie.value(), SECRET).unwrap();
+                assert!(matches!(
+                    (&claims, index),
+                    (AccessToken::User(_), 0) | (AccessToken::Refresh(_), 1)
+                ));
+                let json = serde_json::to_value(claims).unwrap();
+                assert!(!json.to_string().contains("delivery"));
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn signin_delivers_email_and_returns_json_tokens_only_when_requested() {
+    compallm_postgres::init_id_generator("api-tests").unwrap();
+    let mailbox = Mailbox::default();
+    let messages = mailbox.0.clone();
+    let server = Fixture::server(Fixture::di_for(
+        Some(Box::new(mailbox)),
+        true,
+        Fixture::settings(),
+    ));
+    let challenge = server
+        .post("/api/auth/signin/email")
+        .json(&serde_json::json!({"email":"james@midwess.com"}))
+        .await;
+    challenge.assert_status_ok();
+    let body: serde_json::Value = challenge.json();
+    let token = body["token"].as_str().unwrap();
+    let otp = EmailOtpAccessToken::try_from(AccessToken::decode(token, SECRET).unwrap()).unwrap();
+    assert!(
+        messages.lock().unwrap()[0]
+            .text
+            .plain_text()
+            .contains(&otp.code)
+    );
+    let response = server
+        .post("/api/auth/signin/email/confirmation/otp")
+        .json(&serde_json::json!({"token":token,"code":otp.code,"delivery":"token"}))
+        .await;
+    response.assert_status_ok();
+    assert!(response.headers().get("set-cookie").is_none());
+    let body: serde_json::Value = response.json();
+    assert!(matches!(
+        AccessToken::decode(body["accessToken"].as_str().unwrap(), SECRET).unwrap(),
+        AccessToken::User(_)
+    ));
+    assert!(matches!(
+        AccessToken::decode(body["refreshToken"].as_str().unwrap(), SECRET).unwrap(),
+        AccessToken::Refresh(_)
+    ));
+}
+
+#[tokio::test]
+async fn invalid_delivery_or_cookie_origin_never_sets_credentials() {
+    let server = Fixture::server(Fixture::di(None));
+    for path in [
+        "/api/auth/signup/email/confirmation/otp",
+        "/api/auth/signin/email/confirmation/otp",
+    ] {
+        for origin in [
+            None,
+            Some("null"),
+            Some("https://evil.example"),
+            Some("http://localhost:3456"),
+        ] {
+            let mut request = server
+                .post(path)
+                .add_header(axum::http::header::HOST, "127.0.0.1:3456");
+            if let Some(origin) = origin {
+                request = request.add_header(axum::http::header::ORIGIN, origin);
+            }
+            let response = request
+                .json(&serde_json::json!({"token":"invalid","code":"123456","delivery":"cookie"}))
+                .await;
+            response.assert_status_forbidden();
+            assert!(response.headers().get("set-cookie").is_none());
+            assert!(
+                response
+                    .json::<serde_json::Value>()
+                    .get("accessToken")
+                    .is_none()
+            );
+        }
+        server
+            .post(path)
+            .json(&serde_json::json!({"token":"invalid","code":"123456","delivery":"both"}))
+            .await
+            .assert_status_bad_request();
+    }
+}
+
+#[tokio::test]
+async fn failed_confirmation_never_sets_cookies_or_returns_tokens() {
+    let server = Fixture::server(Fixture::di(None));
+    for path in [
+        "/api/auth/signup/email/confirmation/otp",
+        "/api/auth/signin/email/confirmation/otp",
+    ] {
+        let response = server
+            .post(path)
+            .add_header(axum::http::header::ORIGIN, "http://localhost:3000")
+            .add_header(axum::http::header::HOST, "localhost:3000")
+            .json(&serde_json::json!({"token":"invalid","code":"123456"}))
+            .await;
+        response.assert_status_unauthorized();
+        assert!(response.headers().get("set-cookie").is_none());
+        let body: serde_json::Value = response.json();
+        assert!(body.get("accessToken").is_none());
+        assert!(body.get("refreshToken").is_none());
+    }
+}
+
+#[tokio::test]
+async fn verified_signin_without_account_returns_not_found_without_credentials() {
+    let server = Fixture::server(Fixture::di(None));
+    let challenge =
+        compallm_core::auth::EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    let response = server.post("/api/auth/signin/email/confirmation/otp")
+        .json(&serde_json::json!({"token":challenge.access_token,"code":challenge.code,"delivery":"token"})).await;
+    response.assert_status_not_found();
+    assert!(response.headers().get("set-cookie").is_none());
+    assert!(
+        response
+            .json::<serde_json::Value>()
+            .get("accessToken")
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn secure_cookie_mode_requires_the_configured_origin() {
+    let mut settings = Fixture::settings();
+    settings.cookie_secure = true;
+    settings.public_origin = "https://app.example.com".into();
+    let server = Fixture::server(Fixture::di_for(None, true, settings));
+    for origin in [
+        "https://evil.example",
+        "http://app.example.com",
+        "https://app.example.com.evil.example",
+    ] {
+        let response = server
+            .post("/api/auth/signin/email/confirmation/otp")
+            .add_header(axum::http::header::ORIGIN, origin)
+            .json(&serde_json::json!({"token":"invalid","code":"123456"}))
+            .await;
+        response.assert_status_forbidden();
+        assert!(response.headers().get("set-cookie").is_none());
+    }
+    let mut settings = Fixture::settings();
+    settings.cookie_secure = true;
+    let server = Fixture::server(Fixture::di_for(None, true, settings));
+    server
+        .post("/api/auth/signin/email/confirmation/otp")
+        .add_header(axum::http::header::ORIGIN, "http://localhost:3000")
+        .add_header(axum::http::header::HOST, "localhost:3000")
+        .json(&serde_json::json!({"token":"invalid","code":"123456"}))
+        .await
+        .assert_status_forbidden();
 }

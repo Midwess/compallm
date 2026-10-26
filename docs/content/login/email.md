@@ -5,14 +5,15 @@ available: false
 
 # Email login
 
-Queued SMTP delivery and signup confirmation are implemented; the cookie/session browser flow remains planned. The [login ADR](adr.md) defines the shared authentication decisions.
+Queued SMTP delivery and signup/signin confirmation with cookie or token delivery are implemented; automatic cookie authentication and renewal remain planned. The [login ADR](adr.md) defines the shared authentication decisions.
 
 ## Flow
 
 1. The user enters a valid email address from any domain. There is no organization email-domain allowlist and no password.
 2. The server enqueues a login code for SMTP delivery and returns a verification challenge after admission. Queue acceptance does not guarantee delivery. The challenge cannot authorize normal API requests.
 3. The user submits the challenge and received code. The server verifies them before establishing a session. Signup derives the display name from the email; the user can edit it later.
-4. Successful confirmation follows the registration or signin flow and cookie delivery described in the [login ADR](adr.md).
+4. Signup confirmation (`POST /api/auth/signup/email/confirmation/otp`) creates the user; signin confirmation (`POST /api/auth/signin/email/confirmation/otp`) requires an existing active user. Both accept `delivery: "cookie" | "token"`, defaulting to cookies. Code requests use the corresponding `/signup/email` or `/signin/email` endpoint. Only confirmation chooses credential transport; code requests return the encrypted challenge.
+5. Cookie confirmation requires the browser Origin and sets both HttpOnly cookies, returning `{}`. Token mode returns both credentials in JSON without setting cookies. See [credential delivery](session.md#credential-delivery) for security settings and compatibility.
 
 The current stateless challenge allows reuse until its 10-minute expiry. The older product plan's 15-minute single-use policy remains unresolved; mailing does not change it. See the [mailing ADR](../mailing/adr.md) for queue limits. Duplicate recipients are throttled while pending and for the configured cooldown after SMTP acceptance (30 seconds by default); the API returns 429 without issuing a replacement challenge.
 
@@ -55,5 +56,7 @@ SMTP credentials are optional only when the server permits unauthenticated deliv
 
 - [Request a signup code](../api/auth/signup/email/post.md).
 - [Confirm signup with the code](../api/auth/signup/email/confirmation/otp/post.md).
+- [Request a signin code](../api/auth/signin/email/post.md).
+- [Confirm signin with the code](../api/auth/signin/email/confirmation/otp/post.md).
 
 See [GitHub login](github.md) and [GitLab login](gitlab.md) for the other login methods, and the [login ADR](adr.md) for shared decisions.

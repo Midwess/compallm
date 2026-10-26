@@ -8,7 +8,7 @@ use crate::{controllers, documentation::ApiDocumentation};
 fn current_contract_describes_operations_fields_and_safe_examples() {
     let document = serde_json::to_value(controllers::openapi()).unwrap();
     let pages = ApiDocumentation::new(&document).render().unwrap();
-    assert_eq!(pages.len(), 3);
+    assert_eq!(pages.len(), 5);
     let email = &pages["auth/signup/email/post.md"];
     assert!(email.contains("Request an email signup code."));
     assert!(email.contains("Public endpoint"));
@@ -20,8 +20,9 @@ fn current_contract_describes_operations_fields_and_safe_examples() {
     assert!(!email.lines().any(|line| line.ends_with(' ')));
     assert!(email.contains("\"message\": \"Email delivery is unavailable\""));
     let confirmation = &pages["auth/signup/email/confirmation/otp/post.md"];
-    assert!(confirmation.contains("does not set authentication cookies"));
-    assert!(confirmation.contains("membership role"));
+    assert!(confirmation.contains("Delivery defaults to cookie"));
+    assert!(confirmation.contains("never stored in the signed JWTs"));
+    assert!(confirmation.contains("accessToken"));
     assert!(confirmation.contains("### 409"));
     assert!(confirmation.contains("example-email-challenge"));
     assert!(pages["index.md"].contains("auth/signup/email/confirmation/otp/post.md"));

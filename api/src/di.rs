@@ -20,6 +20,8 @@ pub struct AuthSettings {
     pub jwt_secret: String,
     pub user_token_ttl_seconds: u64,
     pub refresh_token_ttl_seconds: u64,
+    pub cookie_secure: bool,
+    pub public_origin: String,
 }
 
 #[derive(Deserialize)]
@@ -40,6 +42,7 @@ pub struct Di {
     mailing_email: OnceLock<Box<dyn EmailService>>,
     mailing_worker: OnceLock<Box<crate::workers::mailing::MailingWorker>>,
     settings: AuthSettings,
+    delivery: Box<crate::controllers::auth::delivery::TokenDeliverySettings>,
     // Filled after Di reaches its permanent address so services can borrow it.
     auth: OnceLock<Box<AuthService>>,
     registration: OnceLock<Box<RegistrationService>>,
@@ -82,7 +85,14 @@ impl Di {
         settings: AuthSettings,
         email: Option<Box<dyn EmailService>>,
     ) -> Self {
+        let delivery = Box::new(crate::controllers::auth::delivery::TokenDeliverySettings {
+            secure: settings.cookie_secure,
+            public_origin: settings.public_origin.clone(),
+            access_max_age_seconds: settings.user_token_ttl_seconds,
+            refresh_max_age_seconds: settings.refresh_token_ttl_seconds,
+        });
         Self {
+            delivery,
             db: Box::new(db),
             users: Box::new(compallm_postgres::repository::user::UserRepository),
             organizations: Box::new(
@@ -204,6 +214,7 @@ impl Di {
         let db = self.db_context();
         let routes = routes
             .with_state(self.auth_service())
+            .layer(axum::Extension(self.delivery.as_ref()))
             .layer(axum::middleware::from_fn(
                 move |request: axum::extract::Request, next: axum::middleware::Next| async move {
                     db.scope(next.run(request)).await

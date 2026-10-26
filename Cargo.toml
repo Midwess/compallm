@@ -11,6 +11,7 @@ license = "Elastic-2.0"
 borrowed_box = "allow"
 
 [workspace.dependencies]
+cookie = { version = "0.18", default-features = false }
 futures-util = { version = "0.3", default-features = false }
 compallm-core = { path = "libs/core", default-features = false }
 compallm-postgres = { path = "libs/postgres", default-features = false }

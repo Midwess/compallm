@@ -1040,6 +1040,7 @@ dependencies = [
  "compallm-mailing",
  "compallm-postgres",
  "compallm-utils",
+ "cookie",
  "loco-rs",
  "midwess-hero",
  "sea-orm",

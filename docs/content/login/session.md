@@ -5,7 +5,7 @@ available: false
 
 # Browser sessions
 
-A session records one successful signup or signin. Core authentication persists sessions, renews JWTs without database writes, and changes organization through a separate operation. Browser cookie transport and OAuth remain planned; the current signup API returns credentials in JSON. The [login ADR](adr.md) explains the decisions behind this flow.
+A session records one successful signup or signin. Core authentication persists sessions, renews JWTs without database writes, and changes organization through a separate operation. Signup/signin confirmation supports cookie and JSON token delivery. Reading authentication cookies, automatic API renewal, logout endpoints, and OAuth remain planned. The [login ADR](adr.md) explains the decisions behind this flow.
 
 ## What a session represents
 
@@ -37,16 +37,23 @@ Logout and administrative actions explicitly revoke the session. Logout also cle
 
 A copied access JWT can remain usable until its short expiry, including its cached role. Immediate access-token invalidation requires an additional server-side check. Failed renewal or switching does not automatically revoke a session, and invalid signatures or expired JWTs never authorize changes.
 
-## Planned browser transport
+## Credential delivery
 
-Axum will set HttpOnly cookies after authentication. Frontend code will obtain identity information from the API without reading reusable credentials.
+Signup and signin confirmation accept optional `delivery`, defaulting to `cookie`. Axum chooses transport only after Core authentication succeeds and the session commits. The mode is never stored in Session or JWT claims.
+
+- `cookie`: set both HttpOnly cookies and return `{}`; token values are absent from JSON.
+- `token`: return `{ "accessToken": "…", "refreshToken": "…" }` and set no cookies. This does not clear an existing browser session.
+
+Both require JSON input. Cookie confirmation requires an allowed Origin; token mode does not rely on browser cookies. Cookies are not yet read by protected API middleware, and automatic refresh remains planned.
 
 | Cookie | Expiry | Production attributes |
 | --- | --- | --- |
-| `__Host-access` | 5–15 minutes; exact lifetime undecided | `HttpOnly; Secure; SameSite=Lax; Path=/` |
+| `__Host-access` | 15 minutes (configured access lifetime) | `HttpOnly; Secure; SameSite=Lax; Path=/` |
 | `__Host-refresh` | 30 days, renewed after successful refresh | `HttpOnly; Secure; SameSite=Lax; Path=/` |
 
-Production requires HTTPS, no `Domain` attribute, and matching cookie and credential expiries. Local HTTP development uses separate settings without weakening production protections.
+Production requires HTTPS, no `Domain` attribute, and matching cookie and credential expiries. `AUTH_COOKIE_SECURE` defaults to true in production and false in development/tests. Nonsecure local cookies use `compallm-access` and `compallm-refresh` names. `AUTH_PUBLIC_ORIGIN` sets the exact browser origin, including scheme and port, and is required for cookie confirmation in production. No forwarded headers determine cookie security or the allowed origin.
+
+With an empty configured origin in nonsecure local development, only a loopback HTTP Origin matching the request Host is accepted, supporting Hero's selected port. Missing, opaque, or untrusted origins receive 403 before authentication or persistence.
 
 State-changing browser requests, including login confirmation, refresh, and logout, must pass Origin validation. Keep GET free of mutations. `SameSite=Lax` supplements CSRF protection; OAuth callbacks require request binding, including state validation.
 

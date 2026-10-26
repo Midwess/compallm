@@ -59,6 +59,7 @@ pub struct ConfirmSignupOtpRequest {
 #[serde(rename_all = "camelCase")]
 pub struct AuthTokensResponse {
     pub access_token: String,
+    /// Refresh JWT used to renew the same organization-scoped session as the access token.
     pub refresh_token: String,
 }
 

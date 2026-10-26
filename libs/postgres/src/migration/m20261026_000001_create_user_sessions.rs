@@ -22,6 +22,11 @@ impl Migration {
                     .not_null(),
             )
             .col(
+                ColumnDef::new(UserSessions::OrganizationId)
+                    .big_integer()
+                    .not_null(),
+            )
+            .col(
                 ColumnDef::new(UserSessions::RefreshTokenId)
                     .string_len(43)
                     .not_null(),
@@ -54,6 +59,13 @@ impl Migration {
                     .on_delete(ForeignKeyAction::Cascade),
             )
             .check(Expr::col(UserSessions::Id).gt(0))
+            .foreign_key(
+                ForeignKey::create()
+                    .name("user_sessions_organization_fk")
+                    .from(UserSessions::Table, UserSessions::OrganizationId)
+                    .to(Alias::new("organizations"), Alias::new("id"))
+                    .on_delete(ForeignKeyAction::Cascade),
+            )
             .check(Expr::cust("refresh_token_id ~ '^[A-Za-z0-9_-]{43}$'"))
             .check(Expr::col(UserSessions::LastUsedAt).gte(Expr::col(UserSessions::CreatedAt)))
             .check(Expr::col(UserSessions::ExpiresAt).gt(Expr::col(UserSessions::LastUsedAt)))
@@ -65,12 +77,12 @@ impl Migration {
             .to_owned()
     }
 
-    fn history_index() -> IndexCreateStatement {
+    fn scope_index() -> IndexCreateStatement {
         Index::create()
-            .name("user_sessions_user_created_at_idx")
+            .name("user_sessions_organization_user_idx")
             .table(UserSessions::Table)
+            .col(UserSessions::OrganizationId)
             .col(UserSessions::UserId)
-            .col(UserSessions::CreatedAt)
             .to_owned()
     }
 }
@@ -79,7 +91,7 @@ impl Migration {
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager.create_table(Self::table()).await?;
-        manager.create_index(Self::history_index()).await
+        manager.create_index(Self::scope_index()).await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
@@ -94,6 +106,7 @@ enum UserSessions {
     Table,
     Id,
     UserId,
+    OrganizationId,
     RefreshTokenId,
     CreatedAt,
     LastUsedAt,
@@ -120,7 +133,9 @@ mod tests {
         assert!(sql.contains("\"last_used_at\" timestamp with time zone NOT NULL"));
         assert!(sql.contains("\"expires_at\" > \"last_used_at\""));
         assert!(sql.contains("\"revoked_at\" timestamp with time zone NULL"));
-        let index = Migration::history_index().to_string(PostgresQueryBuilder);
-        assert!(index.contains("(\"user_id\", \"created_at\")"));
+        assert!(sql.contains("\"organization_id\" bigint NOT NULL"));
+        assert!(sql.contains("REFERENCES \"organizations\" (\"id\")"));
+        let index = Migration::scope_index().to_string(PostgresQueryBuilder);
+        assert!(index.contains("(\"organization_id\", \"user_id\")"));
     }
 }

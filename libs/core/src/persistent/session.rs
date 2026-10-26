@@ -1,5 +1,5 @@
 use super::ConnectionError;
-use crate::auth::Session;
+use crate::auth::{Session, SessionReference};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SessionRepositoryError {
@@ -17,11 +17,10 @@ impl From<ConnectionError> for SessionRepositoryError {
 pub trait SessionRepository: Send + Sync {
     async fn create(&self, session: Session) -> Result<(), SessionRepositoryError>;
 
-    /// Find a session belonging to the supplied user.
+    /// Match the session, organization, and user together.
     async fn find_by_id(
         &self,
-        id: u64,
-        user_id: u64,
+        reference: SessionReference,
     ) -> Result<Option<Session>, SessionRepositoryError>;
 
     /// Compare-and-swap the current credential of an active, unexpired session.
@@ -29,9 +28,14 @@ pub trait SessionRepository: Send + Sync {
     async fn rotate(
         &self,
         session: &Session,
+        previous: SessionReference,
         expected_token_id: &str,
     ) -> Result<bool, SessionRepositoryError>;
 
     /// Idempotently revoke only a session belonging to this user.
-    async fn revoke(&self, id: u64, user_id: u64, at: u64) -> Result<(), SessionRepositoryError>;
+    async fn revoke(
+        &self,
+        reference: SessionReference,
+        at: u64,
+    ) -> Result<(), SessionRepositoryError>;
 }

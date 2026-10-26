@@ -8,6 +8,8 @@ impl TryFrom<UserSessionSchema> for Session {
     fn try_from(model: UserSessionSchema) -> Result<Self, Self::Error> {
         let id = crate::from_bigint(model.id).context("invalid session ID")?;
         let user_id = crate::from_bigint(model.user_id).context("invalid session user ID")?;
+        let organization_id =
+            crate::from_bigint(model.organization_id).context("invalid session organization ID")?;
         let created_at =
             u64::try_from(model.created_at.timestamp()).context("invalid login timestamp")?;
         let last_used_at = u64::try_from(model.last_used_at.timestamp())
@@ -20,7 +22,10 @@ impl TryFrom<UserSessionSchema> for Session {
             .transpose()
             .context("invalid session revocation timestamp")?;
         let validation = (|| -> anyhow::Result<()> {
-            ensure!(id > 0 && user_id > 0, "session IDs must be positive");
+            ensure!(
+                id > 0 && user_id > 0 && organization_id > 0,
+                "session IDs must be positive"
+            );
             ensure!(
                 created_at <= last_used_at && last_used_at < expires_at,
                 "invalid session timestamps"
@@ -43,6 +48,7 @@ impl TryFrom<UserSessionSchema> for Session {
         Ok(Self {
             id,
             user_id,
+            organization_id,
             refresh_token_id: model.refresh_token_id,
             created_at,
             last_used_at,

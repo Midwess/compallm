@@ -136,60 +136,57 @@ impl AuthService {
             return Err(AuthError::RefreshTransactionAlreadyActive);
         }
         transaction!(self.db, {
+            let reference = claims.session();
             let mut session = self
                 .sessions
-                .find_by_id(claims.session_id, claims.user_id)
+                .find_by_id(reference)
                 .await?
                 .ok_or(AuthError::InvalidSession)?;
-            let now = unix_timestamp();
-            if session.id != claims.session_id || !session.is_active(claims.user_id, now) {
-                return Err(AuthError::InvalidSession);
-            }
-            if session.refresh_token_id != claims.token_id {
-                self.sessions
-                    .revoke(session.id, claims.user_id, now)
-                    .await?;
-                // Commit the revocation before returning the authentication error.
-                return Ok::<_, AuthError>(Err(AuthError::RefreshTokenReused));
+            let target_organization = organization_id.unwrap_or(session.organization_id);
+            if let Err(error) =
+                session.refresh(&claims, target_organization, self.lifetimes.refresh)
+            {
+                if matches!(error, AuthError::RefreshTokenReused) {
+                    self.sessions.revoke(reference, unix_timestamp()).await?;
+                    return Ok::<_, AuthError>(Err(error));
+                }
+                return Err(error);
             }
             let user = self
                 .users
-                .find_by_id(claims.user_id)
+                .find_by_id(reference.user_id)
                 .await?
                 .ok_or(AuthError::UserNotFound)?;
             if user.status != UserStatus::Active {
                 return Err(AuthError::UserDisabled);
             }
-            let membership = match organization_id {
-                Some(id) => self.organizations.find_membership(id, user.id).await?,
-                None => self.organizations.find_first_membership(user.id).await?,
-            }
-            .ok_or(AuthError::OrganizationAccessDenied)?;
-            let refresh = RefreshToken::new(user.id, session.id, self.lifetimes.refresh)?;
+            let membership = self
+                .organizations
+                .find_membership(session.organization_id, user.id)
+                .await?
+                .ok_or(AuthError::OrganizationAccessDenied)?;
             let tokens = UserTokens::new(
-                &refresh,
-                membership.organization_id,
+                &session,
                 membership.role,
                 &self.jwt_secret,
                 self.lifetimes.user,
             )?;
-            session.renew(&refresh);
-            if !self.sessions.rotate(&session, &claims.token_id).await? {
-                // Another refresh may have won after our read. A still-active
-                // session with a different credential must follow the reuse policy.
+            if !self
+                .sessions
+                .rotate(&session, reference, &claims.token_id)
+                .await?
+            {
                 let now = unix_timestamp();
                 if self
                     .sessions
-                    .find_by_id(claims.session_id, claims.user_id)
+                    .find_by_id(reference)
                     .await?
                     .is_some_and(|current| {
-                        current.is_active(claims.user_id, now)
+                        current.is_active(reference, now)
                             && current.refresh_token_id != claims.token_id
                     })
                 {
-                    self.sessions
-                        .revoke(claims.session_id, claims.user_id, now)
-                        .await?;
+                    self.sessions.revoke(reference, now).await?;
                     return Ok(Err(AuthError::RefreshTokenReused));
                 }
                 return Err(AuthError::InvalidSession);
@@ -204,15 +201,20 @@ impl AuthService {
         membership: OrganizationMember,
     ) -> Result<UserTokens, AuthError> {
         let id = hero::distributed_id::try_gen_id().await?;
-        let refresh = RefreshToken::new(user_id, id, self.lifetimes.refresh)?;
-        let tokens = UserTokens::new(
-            &refresh,
+        let refresh = RefreshToken::new(
+            user_id,
+            id,
             membership.organization_id,
+            self.lifetimes.refresh,
+        )?;
+        let session = Session::new(&refresh);
+        let tokens = UserTokens::new(
+            &session,
             membership.role,
             &self.jwt_secret,
             self.lifetimes.user,
         )?;
-        self.sessions.create(Session::new(&refresh)).await?;
+        self.sessions.create(session).await?;
         Ok(tokens)
     }
 }

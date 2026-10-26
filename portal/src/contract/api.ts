@@ -7,6 +7,7 @@
  */
 export interface AuthTokensResponse {
   accessToken: string;
+  /** Refresh JWT used to renew the same organization-scoped session as the access token. */
   refreshToken: string;
 }
 

@@ -19,7 +19,7 @@ Signup creates a user and personal organization atomically. Signin loads an exis
 
 Use short-lived access JWTs and rotating refresh credentials in secure HttpOnly cookies. Vite and Axum share one origin, so the browser sends cookies without exposing their values to frontend code.
 
-Access JWTs contain the user ID, organization ID, and membership role. Refresh JWTs contain the user ID, a stable session ID, and a rotating credential identifier, without organization claims. Each successful login creates a `user_sessions` row; store the current credential identifier, not the complete refresh token. Device information is optional.
+Each session belongs to an organization and user. Both JWT types carry that session reference; access JWTs also carry the membership role, and refresh JWTs carry the current credential identifier. Every session operation checks organization and user together. Store the current credential identifier, not the complete JWT. Device information is optional.
 
 | Alternative | Why we chose this approach |
 | --- | --- |
@@ -70,7 +70,7 @@ flowchart TD
     Revoke --> Stop["Reject further refreshes"]
 ```
 
-Refresh updates the same session; it does not record another login. Routine refresh supplies the current organization. If omitted, select the oldest active membership, breaking ties by organization ID. Logout revokes that session and clears both cookies.
+Refresh updates the same session; it does not record another login. With no organization selection, keep the current session organization. An explicit switch validates the target membership, moves the session, and issues both tokens for the new organization. Logout revokes that session and clears both cookies.
 
 A copied access JWT remains usable until expiry, including its cached role. Immediate invalidation requires an additional server-side check. This is the cost of validating normal requests without consulting refresh-session state.
 
@@ -82,7 +82,7 @@ Session creation records each successful login. Signup creates its first session
 
 Changing signup from JSON credentials to cookies will require coordinated API and frontend updates. Existing refresh tokens without a session ID require signin after the session-based flow is deployed.
 
-Reusing an old refresh credential revokes the whole session and requires signin, including after competing refresh requests or a lost renewal response. Clients must coordinate renewal; this version provides no replay grace period.
+Reusing an old refresh credential in the current organization revokes the session, including after competing refreshes or a lost response. Tokens for a previous organization no longer resolve the session after switching and are rejected. Clients must coordinate renewal; there is no replay grace period.
 
 ## Unresolved before implementation
 

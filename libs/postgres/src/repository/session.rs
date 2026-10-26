@@ -1,7 +1,7 @@
 use crate::{UserSessionSchema, postgres_connection::PostgresConnection};
 use anyhow::Context;
 use compallm_core::{
-    auth::Session,
+    auth::{Session, SessionReference},
     persistent::{
         DbContext,
         session::{SessionRepository as CoreSessionRepository, SessionRepositoryError},
@@ -44,6 +44,7 @@ impl CoreSessionRepository for SessionRepository {
         let model = SessionActiveModel {
             id: Set(Self::id(session.id)?),
             user_id: Set(Self::id(session.user_id)?),
+            organization_id: Set(Self::id(session.organization_id)?),
             refresh_token_id: Set(session.refresh_token_id),
             created_at: Set(Self::timestamp(session.created_at)?),
             last_used_at: Set(Self::timestamp(session.last_used_at)?),
@@ -64,13 +65,13 @@ impl CoreSessionRepository for SessionRepository {
 
     async fn find_by_id(
         &self,
-        id: u64,
-        user_id: u64,
+        reference: SessionReference,
     ) -> Result<Option<Session>, SessionRepositoryError> {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
-        Sessions::find_by_id(Self::id(id)?)
-            .filter(SessionColumn::UserId.eq(Self::id(user_id)?))
+        Sessions::find_by_id(Self::id(reference.id)?)
+            .filter(SessionColumn::UserId.eq(Self::id(reference.user_id)?))
+            .filter(SessionColumn::OrganizationId.eq(Self::id(reference.organization_id)?))
             .one(db)
             .await
             .map_err(anyhow::Error::from)?
@@ -81,11 +82,19 @@ impl CoreSessionRepository for SessionRepository {
     async fn rotate(
         &self,
         session: &Session,
+        previous: SessionReference,
         expected_token_id: &str,
     ) -> Result<bool, SessionRepositoryError> {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
+        if session.id != previous.id || session.user_id != previous.user_id {
+            return Err(anyhow::anyhow!("session identity cannot change during refresh").into());
+        }
         let rows = Sessions::update_many()
+            .col_expr(
+                SessionColumn::OrganizationId,
+                Expr::value(Self::id(session.organization_id)?),
+            )
             .col_expr(
                 SessionColumn::RefreshTokenId,
                 Expr::value(session.refresh_token_id.clone()),
@@ -98,8 +107,9 @@ impl CoreSessionRepository for SessionRepository {
                 SessionColumn::ExpiresAt,
                 Expr::value(Self::timestamp(session.expires_at)?),
             )
-            .filter(SessionColumn::Id.eq(Self::id(session.id)?))
-            .filter(SessionColumn::UserId.eq(Self::id(session.user_id)?))
+            .filter(SessionColumn::Id.eq(Self::id(previous.id)?))
+            .filter(SessionColumn::UserId.eq(Self::id(previous.user_id)?))
+            .filter(SessionColumn::OrganizationId.eq(Self::id(previous.organization_id)?))
             .filter(SessionColumn::RefreshTokenId.eq(expected_token_id))
             .filter(SessionColumn::RevokedAt.is_null())
             .filter(Expr::col(SessionColumn::ExpiresAt).gt(Expr::current_timestamp()))
@@ -109,13 +119,18 @@ impl CoreSessionRepository for SessionRepository {
         Ok(rows.rows_affected == 1)
     }
 
-    async fn revoke(&self, id: u64, user_id: u64, at: u64) -> Result<(), SessionRepositoryError> {
+    async fn revoke(
+        &self,
+        reference: SessionReference,
+        at: u64,
+    ) -> Result<(), SessionRepositoryError> {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
         Sessions::update_many()
             .col_expr(SessionColumn::RevokedAt, Expr::value(Self::timestamp(at)?))
-            .filter(SessionColumn::Id.eq(Self::id(id)?))
-            .filter(SessionColumn::UserId.eq(Self::id(user_id)?))
+            .filter(SessionColumn::Id.eq(Self::id(reference.id)?))
+            .filter(SessionColumn::UserId.eq(Self::id(reference.user_id)?))
+            .filter(SessionColumn::OrganizationId.eq(Self::id(reference.organization_id)?))
             .filter(SessionColumn::RevokedAt.is_null())
             .exec(db)
             .await

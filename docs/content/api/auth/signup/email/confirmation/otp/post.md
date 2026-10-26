@@ -96,7 +96,7 @@ Cookie transport is planned separately and is not implemented by this response.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | accessToken | string | true | Signed access JWT scoped to the user's initial organization and membership role. |
-| refreshToken | string | true | Refresh credential used to obtain new tokens. Contains no organization claims. |
+| refreshToken | string | true | Refresh JWT used to renew the same organization-scoped session as the access token. |
 
 <details>
 <summary>JSON schema</summary>
@@ -111,7 +111,7 @@ Cookie transport is planned separately and is not implemented by this response.
       "type": "string"
     },
     "refreshToken": {
-      "description": "Refresh credential used to obtain new tokens. Contains no organization claims.",
+      "description": "Refresh JWT used to renew the same organization-scoped session as the access token.",
       "example": "example-refresh-token",
       "type": "string"
     }

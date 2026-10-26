@@ -13,7 +13,7 @@ A second login creates another session; refreshing credentials keeps the same se
 
 Device information is optional. A browser description or user-provided label may eventually help recognize a session, but neither proves which physical device or person is using it. Authentication does not require device fingerprinting.
 
-The refresh JWT carries the user ID, stable session ID, rotating credential identifier, and validity timestamps. The complete JWT is not stored. Access JWTs carry the user ID, organization ID, and membership role; refresh credentials contain no organization claims.
+Both token types reference the same database session using its ID, organization ID, and user ID. Access JWTs additionally carry the current membership role; refresh JWTs carry the rotating credential identifier. The complete JWT is not stored. Every lookup, renewal, and revocation uses the organization and user together, supported by a compound organization/user index.
 
 ## Renewal and workspace selection
 
@@ -21,11 +21,13 @@ Successful refresh replaces both credentials and extends the session for 30 days
 
 Before renewal, the server verifies the signed credential, session status, user status, and current organization membership. Missing, revoked, expired, or foreign sessions cannot refresh. Only the current refresh credential may advance a session; concurrent requests cannot both replace it.
 
-The frontend supplies the selected organization during routine refresh. If omitted, use the oldest active membership, breaking ties by organization ID. Signin starts in an owner/admin organization; later switching may select an organization where the user is a member. New access credentials reflect the current role.
+Refresh loads the database session referenced by the verified token. The session's refresh behavior rejects revoked or expired state and rotates the credential. Saving succeeds only if the presented credential is still current; tokens are returned after that save commits.
+
+If no organization is selected, keep the session's current organization. An explicit switch first verifies the target membership, then moves the same session and issues both credentials with its new reference. Signin starts in an owner/admin organization; later switching may select a member organization. New access credentials reflect the current role.
 
 ## Reuse, logout, and failure recovery
 
-Presenting an already-used, valid refresh credential revokes the whole session, including credentials issued by an earlier renewal. This applies to suspected theft, competing refresh requests, and retrying after a lost rotation response. The client must coordinate renewal across requests and tabs. There is no grace period; recovery requires signin.
+Presenting an already-used, valid refresh credential in the session's current organization revokes the whole session, including credentials issued by an earlier renewal. This applies to suspected theft, competing refreshes, and retrying after a lost response. After an organization switch, tokens referencing the previous organization fail lookup and cannot mutate the session in its new organization. The client must coordinate renewal across requests and tabs. There is no grace period; recovery from revocation requires signin.
 
 Logout revokes the current session and clears its cookies when cookie transport is implemented. Administrative revocation blocks further renewal. Sessions from other logins remain independent.
 

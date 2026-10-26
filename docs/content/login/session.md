@@ -5,67 +5,55 @@ available: false
 
 # Browser sessions
 
-This page expands the accepted [login ADR](adr.md). Cookie delivery and persistent refresh sessions remain planned; the current signup API returns credentials in JSON.
+A session records one successful signup or signin. Core authentication persists sessions, renews JWTs without database writes, and changes organization through a separate operation. Browser cookie transport and OAuth remain planned; the current signup API returns credentials in JSON. The [login ADR](adr.md) explains the decisions behind this flow.
 
-## Credential transport
+## What a session represents
 
-Axum sets access and refresh cookies after authentication. Responses may include identity and organization information but must not expose reusable credentials in JSON or URLs once the cookie design is implemented. The frontend obtains its current identity from the API; it never reads the cookies.
+A second login creates another session; refreshing credentials keeps the same session. Each record identifies its organization, owner, current credential identifier, original login time, and revocation state. Expiry comes from the signed JWT; normal refresh does not write an activity timestamp or expiry to the database. Session history distinguishes a new login from continued activity.
+
+Device information is optional. A browser description or user-provided label may eventually help recognize a session, but neither proves which physical device or person is using it. Authentication does not require device fingerprinting.
+
+Both token types embed the same Session struct. Session owns its ID, organization ID, user ID, current credential identifier, original login time, and revocation state; these fields are not repeated at the token level. Access JWTs additionally carry the current membership role. A signed snapshot does not replace the database record: refresh and organization switching load the current session to enforce revocation and credential changes. The complete JWT is not stored. Every lookup, renewal, and revocation uses the organization and user together, supported by a compound organization/user index.
+
+## Read-only renewal
+
+Normal refresh validates the signed JWT, loads its organization/user-scoped session, rejects revocation or a credential mismatch, and checks the active user and current membership. It issues new JWTs for the same session and organization, with the same credential identifier and a new 30-day refresh expiry.
+
+There is no database update, credential consumption, automatic revocation, or transaction started by renewal. It can run inside an existing transaction. Expired JWTs are already invalid and do not require revoking the session.
+
+Older refresh JWTs remain usable until their own expiry. Each valid renewal starts another 30-day JWT lifetime, so continued use can extend beyond 30 days from the original login without a fixed database deadline. A holder, including someone with a copied JWT, can keep renewing before expiry until explicit revocation or a session change.
+
+## Organization switching
+
+Switching is a separate operation. Verify the current refresh credential and target membership, change the session organization and credential identifier, save conditionally, and return both replacement tokens after commit. Signin starts in an owner/admin organization; switching may select a member organization. Previous refresh credentials are invalidated; already-issued access JWTs retain the short-expiry limitation described below.
+
+Old-organization credentials no longer resolve the moved session. Even switching to the same organization replaces the identifier, invalidating previous refresh credentials. Concurrent switches cannot both save changes from the same previous state; a losing request is rejected without revoking the winner.
+
+Ordinary renewal never changes organizations. It uses the current role when issuing an access JWT.
+
+## Logout and revocation
+
+Logout and administrative actions explicitly revoke the session. Logout also clears its cookies when cookie transport is implemented. Other login sessions remain independent.
+
+A copied access JWT can remain usable until its short expiry, including its cached role. Immediate access-token invalidation requires an additional server-side check. Failed renewal or switching does not automatically revoke a session, and invalid signatures or expired JWTs never authorize changes.
+
+## Planned browser transport
+
+Axum will set HttpOnly cookies after authentication. Frontend code will obtain identity information from the API without reading reusable credentials.
 
 | Cookie | Expiry | Production attributes |
 | --- | --- | --- |
 | `__Host-access` | 5–15 minutes; exact lifetime undecided | `HttpOnly; Secure; SameSite=Lax; Path=/` |
 | `__Host-refresh` | 30 days, renewed after successful refresh | `HttpOnly; Secure; SameSite=Lax; Path=/` |
 
-Production uses HTTPS, no `Domain` attribute, and matching cookie and credential expiries. Local HTTP development uses separate cookie names and settings without weakening production protections.
+Production requires HTTPS, no `Domain` attribute, and matching cookie and credential expiries. Local HTTP development uses separate settings without weakening production protections.
 
-An access JWT carries the user ID, organization ID, and membership role. A refresh JWT carries `user_id`, `session_id`, the rotating `token_id`, and validity timestamps without organization claims. The session ID stays unchanged during refresh. Email challenges and refresh tokens cannot authorize normal API operations.
+State-changing browser requests, including login confirmation, refresh, and logout, must pass Origin validation. Keep GET free of mutations. `SameSite=Lax` supplements CSRF protection; OAuth callbacks require request binding, including state validation.
 
-## Session record replaces login recording
+HttpOnly blocks cookie reads, but injected scripts can still make requests. Safe rendering and a Content Security Policy remain necessary. Keep credentials out of browser storage and logs, and prevent caching of private identity or credential-setting responses.
 
-Use one `user_sessions` row for each successful signup or signin. A row represents a login session, not a verified physical device. A second login creates another session; refreshing an existing session does not create another row.
+## Existing users
 
-| Field | Meaning |
-| --- | --- |
-| `id` | Stable session ID, using the project's single-instance Snowflake generator; Core uses `u64`, stored within PostgreSQL BIGINT's positive range |
-| `user_id` | Owning user, with a foreign key to `users.id` |
-| `refresh_token_id` | Current random credential identifier matching the signed JWT's `token_id`; changes on every successful refresh |
-| `created_at` | Time this login succeeded; never advanced by refresh |
-| `last_used_at` | Time of login or most recent successful refresh |
-| `expires_at` | Sliding refresh-session deadline, initially 30 days after login |
-| `revoked_at` | Nullable timestamp; a value means the session cannot refresh |
+Refresh tokens issued without an embedded session cannot be renewed through this flow; those users must sign in again. Old last-login timestamps remain for compatibility and are no longer updated. Historical sessions are not inferred from them. Original login age does not measure inactivity because renewal is read-only; session cleanup needs a separate retention policy, which remains undecided.
 
-The primary key supports refresh and revocation by session ID. Index `(user_id, created_at)` to list a user's logins and find their latest successful login. Do not store the reusable refresh JWT. Its signature must be verified before treating a matching identifier as authorized.
-
-Device information is not required. A user-agent description or user-supplied device label may be added later to help users recognize sessions. Browser metadata is untrusted and must not establish identity; no device fingerprint is required.
-
-Replace `UserRepository::record_login` with `SessionRepository::create` and session lifecycle operations. Core owns the session entity and repository contract; PostgreSQL owns its schema, mapper, and repository implementation. Operations use the caller's database context.
-
-For signin, validate identity, user status, and initial membership before inserting the session. For signup, create the user, personal organization, membership, and first session within one transaction. Generate credentials for that session and return them only after commit; any failure rolls back the session together with the account changes.
-
-Once readers use session records, retire `users.last_login_at` rather than maintaining a second login record. A latest-login query uses `created_at`, including retained revoked sessions; `last_used_at` measures refresh activity instead. Session-history retention and the transition for existing timestamps and stateless refresh tokens must be defined before migration. Do not fabricate historical sessions from the old timestamp.
-
-## Refresh and organization selection
-
-When an access token expires, the frontend coordinates one refresh before retrying requests rejected before execution. Repeated authentication failures must not cause a retry loop. Cross-tab concurrency and lost-response handling need an explicit policy before implementation.
-
-Refresh first validates the JWT signature, variant, and expiry, then loads its `session_id`. Require the stored `user_id` to match the claims, no revocation, an unexpired session deadline, and a matching `refresh_token_id`. Also check the user's status and current membership. An explicit organization must be active and accessible to the user. With no selection, choose the oldest active membership, breaking ties by organization ID. The frontend supplies the current organization during routine refresh to preserve workspace selection.
-
-Signin initially selects an owner/admin organization. Later refreshes may switch to an organization where the user is a member. The new access token carries the current role.
-
-Atomically replace `refresh_token_id`, advance `last_used_at`, and extend `expires_at` to 30 days from successful refresh. The update must match the previous credential identifier and an active session so concurrent requests cannot both rotate it, and logout cannot be undone by a concurrent refresh. Reissuing a JWT alone does not invalidate the predecessor. Treat a validly signed, unexpired credential that no longer matches its session as possible reuse: revoke that session and require signin, subject to the concurrency policy still to be settled.
-
-## Request protections
-
-Validate state-changing browser requests against the configured public `Origin`, including login confirmation, refresh, and logout. Reject untrusted or unverifiable origins. Keep GET free of mutations. `SameSite=Lax` supplements CSRF protection; OAuth callbacks use their own request binding, including state validation.
-
-HttpOnly prevents script access to cookie values, but injected scripts can still send authenticated requests. Safe rendering and a Content Security Policy remain necessary. Keep credentials out of browser storage and logs; prevent caching of credential-setting and private identity responses.
-
-Validate JWT signatures, permitted algorithms, validity, and intended token variants before trusting claims.
-
-## Logout and revocation
-
-Logout revokes the current refresh session and clears both cookies. Administrators can revoke refresh sessions independently. Expired, revoked, or reused refresh credentials require signin; a disabled user or inaccessible organization cannot receive replacement credentials.
-
-Existing access JWTs remain usable until expiry because normal requests do not consult refresh-session state. Role changes have the same bounded delay. Immediate invalidation would require an additional server-side check and is not promised by clearing cookies.
-
-See [Email](email.md), [GitHub](github.md), and [GitLab](gitlab.md) for method-specific flows.
+See [Email](email.md), [GitHub](github.md), and [GitLab](gitlab.md) for login-method details.

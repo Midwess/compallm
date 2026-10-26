@@ -9,9 +9,7 @@ use compallm_postgres::{
     UserSchema, postgres_connection::PostgresConnection, repository::user::UserRepository,
     schema::UserStatusSchema,
 };
-use sea_orm::{
-    ActiveEnum, DbBackend, DbErr, IntoMockRow, MockDatabase, MockExecResult, RuntimeErr,
-};
+use sea_orm::{ActiveEnum, DbBackend, DbErr, IntoMockRow, MockDatabase, RuntimeErr};
 use std::{borrow::Cow, collections::BTreeMap, error::Error, fmt, sync::Arc};
 
 struct Fixture;
@@ -57,14 +55,10 @@ impl Fixture {
 }
 
 #[tokio::test]
-async fn lookup_and_login_record_use_one_scoped_transaction() {
+async fn lookup_uses_the_callers_scoped_transaction() {
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![Fixture::mock_row(Fixture::row())]])
-            .append_exec_results([MockExecResult {
-                last_insert_id: 0,
-                rows_affected: 1,
-            }])
             .into_connection(),
     );
     let context = Fixture::context(db.clone());
@@ -76,21 +70,17 @@ async fn lookup_and_login_record_use_one_scoped_transaction() {
                 .unwrap();
             assert_eq!(user.id, 42);
             assert_eq!(user.status, UserStatus::Active);
-            UserRepository.record_login(user.id).await
+            Ok::<_, UserRepositoryError>(())
         })
         .await
         .unwrap();
     drop(context);
     let log = Arc::try_unwrap(db).unwrap().into_transaction_log();
-    assert_eq!(log.len(), 1, "lookup and update must share one transaction");
+    assert_eq!(log.len(), 1, "lookup must use the supplied transaction");
     let log = format!("{log:?}");
     assert!(log.contains("BEGIN"));
     assert!(log.contains("LOWER"));
     assert!(log.contains("james@midwess.com"));
-    assert!(log.contains("UPDATE"));
-    assert!(log.contains("last_login_at"));
-    assert!(log.contains("updated_at"));
-    assert!(log.contains("CURRENT_TIMESTAMP"));
     assert!(log.contains("COMMIT"));
 }
 
@@ -135,25 +125,13 @@ async fn find_by_id_maps_disabled_users_and_missing_rows() {
 }
 
 #[tokio::test]
-async fn invalid_ids_and_missing_login_targets_are_database_errors() {
+async fn invalid_ids_are_database_errors() {
     for id in [0, u64::MAX] {
         assert!(matches!(
             UserRepository.find_by_id(id).await,
             Err(UserRepositoryError::Database(_))
         ));
     }
-    let context = Fixture::context(Arc::new(
-        MockDatabase::new(DbBackend::Postgres)
-            .append_exec_results([MockExecResult {
-                last_insert_id: 0,
-                rows_affected: 0,
-            }])
-            .into_connection(),
-    ));
-    assert!(matches!(
-        context.scope(UserRepository.record_login(42)).await,
-        Err(UserRepositoryError::Database(_))
-    ));
 }
 
 #[tokio::test]

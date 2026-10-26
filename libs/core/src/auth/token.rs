@@ -32,15 +32,6 @@ pub enum AccessToken {
 
 impl AccessToken {
     pub fn validate(&self, now: u64) -> Result<(), AuthError> {
-        let validity = match self {
-            Self::EmailOtp(token) => Some(&token.validity),
-            Self::User(token) => Some(&token.validity),
-            Self::Refresh(token) => Some(&token.validity),
-            Self::Encrypted(_) => None,
-        };
-        if let Some(validity) = validity {
-            validity.validate(now)?;
-        }
         match self {
             Self::EmailOtp(token) => token.validate(now),
             Self::User(token) => token.validate(now),
@@ -152,22 +143,33 @@ pub struct UserTokens {
 impl UserTokens {
     /// Call after the workflow authorizes the user.
     pub fn new(
-        user_id: u64,
-        organization_id: u64,
+        session: &super::Session,
         organization_role: crate::organization::OrganizationRole,
         secret: &str,
         user_lifetime: Duration,
         refresh_lifetime: Duration,
     ) -> Result<Self, AuthError> {
+        let refresh = RefreshToken::from_session(session, refresh_lifetime)?;
+        Self::from_refresh(&refresh, organization_role, secret, user_lifetime)
+    }
+
+    pub fn from_refresh(
+        refresh: &RefreshToken,
+        organization_role: crate::organization::OrganizationRole,
+        secret: &str,
+        user_lifetime: Duration,
+    ) -> Result<Self, AuthError> {
+        refresh.validate(unix_timestamp())?;
+        let refresh_lifetime =
+            Duration::from_secs(refresh.validity.expires_at - refresh.validity.issued_at);
         Ok(Self {
             access_token: AccessToken::User(UserAccessToken::new(
-                user_id,
-                organization_id,
+                refresh.session.clone(),
                 organization_role,
                 user_lifetime,
             )?)
             .encode(secret, user_lifetime)?,
-            refresh_token: AccessToken::Refresh(RefreshToken::new(user_id, refresh_lifetime)?)
+            refresh_token: AccessToken::Refresh(refresh.clone())
                 .encode(secret, refresh_lifetime)?,
         })
     }

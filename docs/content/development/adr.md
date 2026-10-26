@@ -12,6 +12,8 @@ Use pragmatic domain-driven design: organize around business capabilities, keep 
 
 Axum serves the frontend and API on one origin. It proxies Vite during development, including hot reload, and serves built files in production.
 
+The API uses Hero's listener discovery in both modes: start at the configured port, keep the first available socket reserved, and log the actual URL. Hero listens on all IPv4/IPv6 interfaces. Browser API requests use relative URLs on the selected Axum origin; Vite needs no API proxy. Axum keeps the `/api` namespace, including JSON 404 responses, while frontend requests reach Vite in development. Deployments must route to the selected port.
+
 ## Responsibilities
 
 | Location | Responsibility |

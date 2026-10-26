@@ -86,3 +86,17 @@ fn same_organization_reuse_revokes_the_session_but_foreign_references_do_not() {
     ));
     assert!(session.revoked_at.is_some());
 }
+
+#[test]
+fn revocation_is_idempotent_and_blocks_future_refresh() {
+    let token = RefreshToken::new(1, 7, 84, LIFETIME).unwrap();
+    let mut session = Session::new(&token);
+    session.revoke();
+    let timestamp = session.revoked_at;
+    session.revoke();
+    assert_eq!(session.revoked_at, timestamp);
+    assert!(matches!(
+        session.refresh(&token, 84, LIFETIME),
+        Err(AuthError::InvalidSession)
+    ));
+}

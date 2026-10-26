@@ -32,7 +32,7 @@ impl Fixture {
 }
 
 #[tokio::test]
-async fn owned_lookup_and_conditional_rotation_preserve_session_guards() {
+async fn owned_lookup_and_conditional_update_preserve_session_guards() {
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![Fixture::row()]])
@@ -50,9 +50,9 @@ async fn owned_lookup_and_conditional_rotation_preserve_session_guards() {
                 user_id: 42,
                 organization_id: 84,
             };
-            let mut session = SessionRepository.find_by_id(reference).await?.unwrap();
+            let mut session = SessionRepository.find(reference).await?.unwrap();
             let created_at = session.created_at;
-            let old = session.refresh_token_id.clone();
+            let previous = session.clone();
             let token = RefreshToken::from_session(&session).unwrap();
             session
                 .refresh(
@@ -62,7 +62,7 @@ async fn owned_lookup_and_conditional_rotation_preserve_session_guards() {
                 )
                 .unwrap();
             assert_eq!(session.created_at, created_at);
-            assert!(SessionRepository.rotate(&session, reference, &old).await?);
+            assert!(SessionRepository.update(&session, &previous).await?);
             Ok::<_, compallm_core::persistent::session::SessionRepositoryError>(())
         })
         .await
@@ -128,43 +128,91 @@ async fn session_creation_records_login_without_updating_the_user() {
 }
 
 #[tokio::test]
-async fn failed_compare_and_swap_and_repeated_revocation_are_safe() {
-    let db = Arc::new(
+async fn stale_update_reports_conflict_without_overwriting_the_session() {
+    let context = Fixture::context(Arc::new(
         MockDatabase::new(DbBackend::Postgres)
-            .append_exec_results((0..3).map(|_| MockExecResult {
+            .append_exec_results([MockExecResult {
                 last_insert_id: 0,
                 rows_affected: 0,
-            }))
+            }])
+            .into_connection(),
+    ));
+    let previous = Session::try_from(Fixture::row()).unwrap();
+    let mut updated = previous.clone();
+    let token = RefreshToken::from_session(&previous).unwrap();
+    updated
+        .refresh(
+            &token,
+            85,
+            std::time::Duration::from_secs(30 * 24 * 60 * 60),
+        )
+        .unwrap();
+    assert!(
+        !context
+            .scope(SessionRepository.update(&updated, &previous))
+            .await
+            .unwrap()
+    );
+}
+
+#[tokio::test]
+async fn revocation_update_does_not_overwrite_a_concurrent_credential() {
+    let db = Arc::new(
+        MockDatabase::new(DbBackend::Postgres)
+            .append_exec_results([MockExecResult {
+                last_insert_id: 0,
+                rows_affected: 1,
+            }])
             .into_connection(),
     );
     let context = Fixture::context(db.clone());
-    let session = Session::try_from(Fixture::row()).unwrap();
-    context
-        .scope(async {
-            assert!(
-                !SessionRepository
-                    .rotate(&session, session.reference(), "B".repeat(43).as_str())
-                    .await
-                    .unwrap()
-            );
-            SessionRepository
-                .revoke(session.reference(), session.created_at)
-                .await
-                .unwrap();
-            SessionRepository
-                .revoke(session.reference(), session.created_at)
-                .await
-                .unwrap();
-        })
-        .await;
+    let previous = Session::try_from(Fixture::row()).unwrap();
+    let mut revoked = previous.clone();
+    revoked.revoke();
+    assert!(
+        context
+            .scope(SessionRepository.update(&revoked, &previous))
+            .await
+            .unwrap()
+    );
     drop(context);
-    let log =
+    let sql =
         format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log()).replace("\\\"", "\"");
-    for update in log.split("UPDATE").skip(1) {
-        let conditions = update.split("WHERE").nth(1).unwrap();
-        assert!(conditions.contains("\"user_id\""));
-        assert!(conditions.contains("\"organization_id\""));
+    let set = sql
+        .split(" SET ")
+        .nth(1)
+        .unwrap()
+        .split(" WHERE ")
+        .next()
+        .unwrap();
+    assert!(set.contains("revoked_at"));
+    for field in [
+        "refresh_token_id",
+        "last_used_at",
+        "expires_at",
+        "organization_id",
+    ] {
+        assert!(
+            !set.contains(field),
+            "revocation must preserve concurrent {field}: {sql}"
+        );
     }
+    assert!(
+        !sql.contains("refresh_token_id"),
+        "unchanged credential must not block revocation"
+    );
+    assert!(sql.contains("user_id") && sql.contains("organization_id") && sql.contains("IS NULL"));
+}
+
+#[tokio::test]
+async fn existing_revocation_cannot_be_cleared_or_changed() {
+    let mut previous = Session::try_from(Fixture::row()).unwrap();
+    previous.revoke();
+    let mut active = previous.clone();
+    active.revoked_at = None;
+    assert!(SessionRepository.update(&active, &previous).await.is_err());
+    active.revoked_at = previous.revoked_at.map(|at| at + 1);
+    assert!(SessionRepository.update(&active, &previous).await.is_err());
 }
 
 #[tokio::test]
@@ -181,16 +229,12 @@ async fn owned_session_lookup_works_with_the_application_context() {
                 user_id: 42,
                 organization_id: 84,
             };
-            let session = SessionRepository
-                .find_by_id(reference)
-                .await
-                .unwrap()
-                .unwrap();
+            let session = SessionRepository.find(reference).await.unwrap().unwrap();
             assert_eq!(session.id, 7);
             assert_eq!(session.user_id, 42);
             assert!(
                 SessionRepository
-                    .find_by_id(SessionReference {
+                    .find(SessionReference {
                         user_id: 99,
                         ..reference
                     })
@@ -200,7 +244,7 @@ async fn owned_session_lookup_works_with_the_application_context() {
             );
             assert!(
                 SessionRepository
-                    .find_by_id(SessionReference {
+                    .find(SessionReference {
                         organization_id: 99,
                         ..reference
                     })

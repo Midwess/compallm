@@ -18,24 +18,17 @@ pub trait SessionRepository: Send + Sync {
     async fn create(&self, session: Session) -> Result<(), SessionRepositoryError>;
 
     /// Match the session, organization, and user together.
-    async fn find_by_id(
+    async fn find(
         &self,
         reference: SessionReference,
     ) -> Result<Option<Session>, SessionRepositoryError>;
 
-    /// Compare-and-swap the current credential of an active, unexpired session.
-    /// Preserve created_at; return false if the expected credential is no longer current.
-    async fn rotate(
+    /// Persist changed fields using the previous state for concurrency checks.
+    /// Preserve identity and creation time; revocation is irreversible.
+    /// Return false on a conflict or missing row. Do not overwrite unchanged fields.
+    async fn update(
         &self,
         session: &Session,
-        previous: SessionReference,
-        expected_token_id: &str,
+        previous: &Session,
     ) -> Result<bool, SessionRepositoryError>;
-
-    /// Idempotently revoke only a session belonging to this user.
-    async fn revoke(
-        &self,
-        reference: SessionReference,
-        at: u64,
-    ) -> Result<(), SessionRepositoryError>;
 }

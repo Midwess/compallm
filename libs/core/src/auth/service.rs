@@ -139,15 +139,18 @@ impl AuthService {
             let reference = claims.session();
             let mut session = self
                 .sessions
-                .find_by_id(reference)
+                .find(reference)
                 .await?
                 .ok_or(AuthError::InvalidSession)?;
+            let previous = session.clone();
             let target_organization = organization_id.unwrap_or(session.organization_id);
             if let Err(error) =
                 session.refresh(&claims, target_organization, self.lifetimes.refresh)
             {
                 if matches!(error, AuthError::RefreshTokenReused) {
-                    self.sessions.revoke(reference, unix_timestamp()).await?;
+                    if !self.sessions.update(&session, &previous).await? {
+                        return Err(AuthError::InvalidSession);
+                    }
                     return Ok::<_, AuthError>(Err(error));
                 }
                 return Err(error);
@@ -171,22 +174,17 @@ impl AuthService {
                 &self.jwt_secret,
                 self.lifetimes.user,
             )?;
-            if !self
-                .sessions
-                .rotate(&session, reference, &claims.token_id)
-                .await?
-            {
+            if !self.sessions.update(&session, &previous).await? {
                 let now = unix_timestamp();
-                if self
-                    .sessions
-                    .find_by_id(reference)
-                    .await?
-                    .is_some_and(|current| {
-                        current.is_active(reference, now)
-                            && current.refresh_token_id != claims.token_id
-                    })
+                if let Some(mut current) = self.sessions.find(reference).await?
+                    && current.is_active(reference, now)
+                    && current.refresh_token_id != claims.token_id
                 {
-                    self.sessions.revoke(reference, now).await?;
+                    let previous = current.clone();
+                    current.revoke();
+                    if !self.sessions.update(&current, &previous).await? {
+                        return Err(AuthError::InvalidSession);
+                    }
                     return Ok(Err(AuthError::RefreshTokenReused));
                 }
                 return Err(AuthError::InvalidSession);

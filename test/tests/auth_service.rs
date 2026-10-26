@@ -32,6 +32,7 @@ struct State {
     fail_session: bool,
     fail_rotation: bool,
     competing_rotation: bool,
+    competing_update_during_revocation: bool,
     logins: Vec<u64>,
     sessions: std::collections::BTreeMap<u64, Session>,
     organization: Option<Organization>,
@@ -202,7 +203,7 @@ impl SessionRepository for Repository {
         Ok(())
     }
 
-    async fn find_by_id(
+    async fn find(
         &self,
         reference: SessionReference,
     ) -> Result<Option<Session>, SessionRepositoryError> {
@@ -217,11 +218,10 @@ impl SessionRepository for Repository {
             .cloned())
     }
 
-    async fn rotate(
+    async fn update(
         &self,
         session: &Session,
-        previous_reference: SessionReference,
-        previous: &str,
+        previous: &Session,
     ) -> Result<bool, SessionRepositoryError> {
         DbContext::current()?;
         let mut state = self.0.lock().unwrap();
@@ -237,30 +237,41 @@ impl SessionRepository for Repository {
             state.competing_rotation = false;
             return Ok(false);
         }
-        if let Some(current) = state.sessions.get_mut(&session.id)
-            && current.refresh_token_id == previous
-            && current.reference() == previous_reference
-            && current.revoked_at.is_none()
-        {
-            *current = session.clone();
-            return Ok(true);
+        if state.competing_update_during_revocation && session.revoked_at.is_some() {
+            let current = state.sessions.get_mut(&session.id).unwrap();
+            current.refresh_token_id = "C".repeat(43);
+            current.last_used_at += 1;
+            current.expires_at += 1;
+            state.competing_update_during_revocation = false;
         }
-        Ok(false)
-    }
-
-    async fn revoke(
-        &self,
-        reference: SessionReference,
-        at: u64,
-    ) -> Result<(), SessionRepositoryError> {
-        DbContext::current()?;
-        if let Some(session) = self.0.lock().unwrap().sessions.get_mut(&reference.id)
-            && session.reference() == reference
-            && session.revoked_at.is_none()
+        let Some(current) = state.sessions.get_mut(&session.id) else {
+            return Ok(false);
+        };
+        if current.reference() != previous.reference()
+            || current.revoked_at != previous.revoked_at
+            || (session.refresh_token_id != previous.refresh_token_id
+                && current.refresh_token_id != previous.refresh_token_id)
+            || (session.last_used_at != previous.last_used_at
+                && current.last_used_at != previous.last_used_at)
+            || (session.expires_at != previous.expires_at
+                && current.expires_at != previous.expires_at)
         {
-            session.revoked_at = Some(at);
+            return Ok(false);
         }
-        Ok(())
+        if session.organization_id != previous.organization_id {
+            current.organization_id = session.organization_id;
+        }
+        if session.refresh_token_id != previous.refresh_token_id {
+            current.refresh_token_id = session.refresh_token_id.clone();
+        }
+        if session.last_used_at != previous.last_used_at {
+            current.last_used_at = session.last_used_at;
+        }
+        if session.expires_at != previous.expires_at {
+            current.expires_at = session.expires_at;
+        }
+        current.revoked_at = session.revoked_at;
+        Ok(true)
     }
 }
 
@@ -986,13 +997,23 @@ async fn each_successful_signin_creates_an_independent_session() {
         RefreshToken::try_from(AccessToken::decode(&two.refresh_token, SECRET).unwrap()).unwrap();
     assert_ne!(one.session_id, two.session_id);
     assert_eq!(fixture.repo.0.lock().unwrap().sessions.len(), 2);
-    let now = compallm_utils::time::unix_timestamp();
     fixture
         .repo
         .1
-        .scope(SessionRepository::revoke(&fixture.repo, one.session(), now))
-        .await
-        .unwrap();
+        .scope(async {
+            let previous = SessionRepository::find(&fixture.repo, one.session())
+                .await
+                .unwrap()
+                .unwrap();
+            let mut revoked = previous.clone();
+            revoked.revoke();
+            assert!(
+                SessionRepository::update(&fixture.repo, &revoked, &previous)
+                    .await
+                    .unwrap()
+            );
+        })
+        .await;
     let one = AccessToken::Refresh(one)
         .encode(SECRET, REFRESH_LIFETIME)
         .unwrap();
@@ -1166,4 +1187,32 @@ async fn token_for_another_organization_cannot_read_or_revoke_an_owned_session()
             .is_none()
     );
     assert!(fixture.refresh(&valid, None).await.is_ok());
+}
+
+#[tokio::test]
+async fn revocation_preserves_a_refresh_that_commits_after_the_session_read() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let original = AccessToken::Refresh(RefreshToken::new(1, 7, 84, REFRESH_LIFETIME).unwrap())
+        .encode(SECRET, REFRESH_LIFETIME)
+        .unwrap();
+    fixture.remember(&original);
+    fixture.refresh(&original, None).await.unwrap();
+    let previous = fixture.repo.0.lock().unwrap().sessions[&7].clone();
+    fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .competing_update_during_revocation = true;
+    assert!(matches!(
+        fixture.refresh(&original, None).await,
+        Err(AuthError::RefreshTokenReused)
+    ));
+    let persisted = fixture.repo.0.lock().unwrap().sessions[&7].clone();
+    assert!(persisted.revoked_at.is_some());
+    assert_eq!(persisted.refresh_token_id, "C".repeat(43));
+    assert_eq!(persisted.last_used_at, previous.last_used_at + 1);
+    assert_eq!(persisted.expires_at, previous.expires_at + 1);
+    let log = format!("{:?}", fixture.db.as_ref().clone().into_transaction_log());
+    assert_eq!(log.matches("COMMIT").count(), 2);
 }

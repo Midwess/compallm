@@ -78,6 +78,8 @@ A copied access JWT remains usable until expiry, including its cached role. Imme
 
 Axum owns cookies and browser request protections; Core owns authentication and membership rules; PostgreSQL owns refresh-session persistence and atomic rotation. The frontend coordinates renewal without reading credentials.
 
+The session owns refresh and revocation behavior. Persistence provides create, find, and conditional update; saving stale state cannot undo revocation or overwrite a concurrent credential change.
+
 Session creation records each successful login. Signup creates its first session together with the user and personal organization; failure leaves no partial account or login record. Refresh updates activity and expiry while preserving the original login time.
 
 Changing signup from JSON credentials to cookies will require coordinated API and frontend updates. Existing refresh tokens without a session ID require signin after the session-based flow is deployed.

@@ -60,7 +60,7 @@ impl Session {
             return Err(AuthError::InvalidSession);
         }
         if self.refresh_token_id != presented.token_id {
-            self.revoked_at = Some(now);
+            self.revoke();
             return Err(AuthError::RefreshTokenReused);
         }
         let refresh = RefreshToken::new(self.user_id, self.id, organization_id, lifetime)?;
@@ -69,5 +69,10 @@ impl Session {
         self.last_used_at = refresh.validity.issued_at;
         self.expires_at = refresh.validity.expires_at;
         Ok(())
+    }
+
+    pub fn revoke(&mut self) {
+        self.revoked_at
+            .get_or_insert_with(compallm_utils::time::unix_timestamp);
     }
 }

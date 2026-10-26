@@ -415,7 +415,14 @@ async fn browser_same_origin_get_without_origin_can_refresh_but_cross_site_canno
         }
         let response = request.await;
         response.assert_status_forbidden();
-        assert!(response.headers().get("set-cookie").is_none());
+        assert_eq!(
+            response
+                .cookie("compallm-refresh")
+                .max_age()
+                .unwrap()
+                .whole_seconds(),
+            0
+        );
         assert_eq!(fixture.log(), "[]");
     }
 }
@@ -486,7 +493,7 @@ async fn invalid_refresh_state_clears_cookies_without_rewriting_or_revoking_sess
 }
 
 #[tokio::test]
-async fn database_failure_keeps_browser_credentials_and_hides_internal_details() {
+async fn database_failure_clears_browser_credentials_and_hides_internal_details() {
     let fixture = Fixture::new(RefreshState::DatabaseFailure);
     let response = fixture
         .server()
@@ -498,7 +505,22 @@ async fn database_failure_keeps_browser_credentials_and_hides_internal_details()
         .add_header(ORIGIN, "https://app.example.com")
         .await;
     response.assert_status_internal_server_error();
-    assert!(response.headers().get("set-cookie").is_none());
+    assert_eq!(
+        response
+            .cookie("compallm-access")
+            .max_age()
+            .unwrap()
+            .whole_seconds(),
+        0
+    );
+    assert_eq!(
+        response
+            .cookie("compallm-refresh")
+            .max_age()
+            .unwrap()
+            .whole_seconds(),
+        0
+    );
     assert!(!response.text().contains("private database details"));
 }
 

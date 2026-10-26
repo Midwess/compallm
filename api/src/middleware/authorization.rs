@@ -136,95 +136,89 @@ impl Authorization {
         Ok(())
     }
 
-    pub async fn authenticate(
+    fn insert_refresh(
+        auth: &AuthService,
+        extensions: &mut Extensions,
+        user: &UserAccessToken,
+        encoded: Option<&str>,
+    ) {
+        let Some(encoded) = encoded else {
+            return;
+        };
+        let Ok(AccessToken::Refresh(refresh)) = auth.authenticate_token(encoded) else {
+            return;
+        };
+        if refresh.session.reference() != user.session.reference()
+            || refresh.session.refresh_token_id != user.session.refresh_token_id
+        {
+            return;
+        }
+        extensions.insert(refresh);
+    }
+
+    async fn run(
         auth: &AuthService,
         settings: &TokenDeliverySettings,
         mut request: Request,
         next: Next,
-    ) -> Response {
-        // Token extensions reflect only the credentials selected for this request.
+        cookie_mode: bool,
+    ) -> Result<Response, ApiError> {
+        // Only the selected credentials can populate token extensions.
         request.extensions_mut().remove::<UserAccessToken>();
         request.extensions_mut().remove::<RefreshToken>();
         request.extensions_mut().remove::<EmailOtpAccessToken>();
+        let (token, renewed) =
+            Self::identity(auth, settings, request.headers(), request.method()).await?;
+        if cookie_mode && let AccessToken::User(user) = &token {
+            let refresh = renewed
+                .as_ref()
+                .map(|tokens| tokens.refresh_token.clone())
+                .or_else(|| {
+                    Self::cookie(request.headers(), settings.cookie_names().1)
+                        .ok()
+                        .flatten()
+                });
+            Self::insert_refresh(auth, request.extensions_mut(), user, refresh.as_deref());
+        }
+        Self::insert_token(request.extensions_mut(), token)?;
+        let mut response = next.run(request).await;
+        let Some(tokens) = renewed else {
+            return Ok(response);
+        };
+        // Preserve credentials explicitly set by the handler (for example organization switching).
+        let names = settings.cookie_names();
+        let has_replacement = response.headers().get_all(SET_COOKIE).iter().any(|value| {
+            let Ok(value) = value.to_str() else {
+                return false;
+            };
+            let Ok(cookie) = Cookie::parse(value) else {
+                return false;
+            };
+            cookie.name() == names.0 || cookie.name() == names.1
+        });
+        if !has_replacement {
+            settings.set_cookies(response.headers_mut(), tokens)?;
+        }
+        Ok(response)
+    }
+
+    pub async fn authenticate(
+        auth: &AuthService,
+        settings: &TokenDeliverySettings,
+        request: Request,
+        next: Next,
+    ) -> Response {
         // An explicit Authorization header selects Bearer mode even if malformed.
         let cookie_mode = !request.headers().contains_key(AUTHORIZATION);
-        let mut response = match Self::identity(auth, settings, request.headers(), request.method())
+        let mut response = Self::run(auth, settings, request, next, cookie_mode)
             .await
-        {
-            Ok((token, renewed)) => {
-                if cookie_mode && let AccessToken::User(user) = &token {
-                    // Refresh claims are optional and never establish user authorization on their own.
-                    let refresh = if let Some(tokens) = &renewed {
-                        Some(tokens.refresh_token.clone())
-                    } else {
-                        Self::cookie(request.headers(), settings.cookie_names().1)
-                            .ok()
-                            .flatten()
-                    };
-                    if let Some(refresh) = refresh
-                        && let Ok(AccessToken::Refresh(refresh)) = auth.authenticate_token(&refresh)
-                        && refresh.session.reference() == user.session.reference()
-                        && refresh.session.refresh_token_id == user.session.refresh_token_id
-                    {
-                        request.extensions_mut().insert(refresh);
-                    }
-                }
-                if let Err(error) = Self::insert_token(request.extensions_mut(), token) {
-                    return error.into_response();
-                }
-                let mut response = next.run(request).await;
-                if let Some(tokens) = renewed {
-                    // A handler issuing its own replacement credentials takes precedence.
-                    let names = settings.cookie_names();
-                    let has_replacement =
-                        response.headers().get_all(SET_COOKIE).iter().any(|value| {
-                            value
-                                .to_str()
-                                .ok()
-                                .and_then(|value| Cookie::parse(value).ok())
-                                .is_some_and(|cookie| {
-                                    cookie.name() == names.0 || cookie.name() == names.1
-                                })
-                        });
-                    if !has_replacement
-                        && let Err(error) = settings.set_cookies(response.headers_mut(), tokens)
-                    {
-                        return error.into_response();
-                    }
-                }
-                response
-            }
-            Err(error) => {
-                let invalid_credentials = matches!(
-                    &error,
-                    ApiError::Unauthenticated
-                        | ApiError::Auth(
-                            AuthError::InvalidSession
-                                | AuthError::InvalidToken
-                                | AuthError::ExpiredToken
-                                | AuthError::WrongTokenVariant
-                                | AuthError::UserNotFound
-                                | AuthError::UserDisabled
-                                | AuthError::OrganizationAccessDenied
-                                | AuthError::TokenEncoding(_)
-                                | AuthError::TokenPayload(_)
-                                | AuthError::TokenCrypto(_)
-                        )
-                );
-                let mut response = if matches!(&error, ApiError::Auth(AuthError::UserNotFound)) {
-                    ApiError::Unauthenticated.into_response()
-                } else {
-                    error.into_response()
-                };
-                if cookie_mode
-                    && invalid_credentials
-                    && let Err(error) = settings.clear_cookies(response.headers_mut())
-                {
+            .unwrap_or_else(|error| {
+                let mut response = error.into_authentication_response();
+                if cookie_mode && let Err(error) = settings.clear_cookies(response.headers_mut()) {
                     return error.into_response();
                 }
                 response
-            }
-        };
+            });
         response
             .headers_mut()
             .insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));

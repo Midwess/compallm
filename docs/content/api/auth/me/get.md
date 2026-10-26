@@ -174,7 +174,7 @@ Content type: `application/json`.
 
 ### 500
 
-Temporary database or internal failure; existing cookies are retained
+Database or internal failure; cookie-mode authentication failures clear both cookies
 
 Content type: `application/json`.
 

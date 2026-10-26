@@ -267,7 +267,7 @@ pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
         (status = 200, description = "Current identity; cookie renewal may set replacement cookies", body = CurrentUserResponse),
         (status = 401, description = "Missing, invalid, expired, or wrong-variant credentials", body = ErrorResponse),
         (status = 403, description = "Untrusted renewal Origin or disabled account/membership", body = ErrorResponse),
-        (status = 500, description = "Temporary database or internal failure; existing cookies are retained", body = ErrorResponse)
+        (status = 500, description = "Database or internal failure; cookie-mode authentication failures clear both cookies", body = ErrorResponse)
     )
 )]
 async fn current_user(

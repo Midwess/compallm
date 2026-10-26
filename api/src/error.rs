@@ -28,6 +28,16 @@ pub enum ApiError {
     Input(#[from] axum_valid::ValidifyRejection<JsonRejection>),
 }
 
+impl ApiError {
+    /// Authentication does not disclose whether the credential's user still exists.
+    pub fn into_authentication_response(self) -> Response {
+        match self {
+            Self::Auth(AuthError::UserNotFound) => Self::Unauthenticated.into_response(),
+            error => error.into_response(),
+        }
+    }
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, message) = match &self {

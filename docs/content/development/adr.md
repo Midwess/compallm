@@ -10,7 +10,7 @@ Decision status: Accepted engineering direction. Implementation status: Apply to
 
 Use pragmatic domain-driven design: organize around business capabilities, keep rules near their types, and introduce abstractions for concrete needs. Modules and focused services come before strict Clean Architecture layers or a trait around every library.
 
-Axum serves the frontend and API on one origin. It proxies Vite during development, including hot reload, and serves built files in production.
+Axum serves the frontend and API on one origin. It proxies Vite during development, including hot reload, and serves built files in production. Vite binds strictly to internal port `41868`; the API starts its listener search at `3000` by default. If Vite's port is occupied, startup fails rather than choosing another port.
 
 The API uses Hero's listener discovery in both modes: start at the configured port, keep the first available socket reserved, and log the actual URL. Hero listens on all IPv4/IPv6 interfaces. Browser API requests use relative URLs on the selected Axum origin; Vite needs no API proxy. Axum keeps the `/api` namespace, including JSON 404 responses, while frontend requests reach Vite in development. Deployments must route to the selected port.
 

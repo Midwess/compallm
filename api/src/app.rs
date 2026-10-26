@@ -86,6 +86,7 @@ impl Hooks for App {
     async fn serve(app: AxumRouter, ctx: &AppContext, serve_params: &ServeParams) -> Result<()> {
         use std::net::SocketAddr;
 
+        let listener = Self::tcp_listener(serve_params.port).await?;
         #[cfg(feature = "frontend-dev")]
         let dev_server = {
             crate::generate_contract()
@@ -96,11 +97,10 @@ impl Hooks for App {
             DevConfig::vite()
                 .command([vite])
                 .cwd(PORTAL_ROOT)
-                .port(5173)
+                .port(41868)
                 .spawn()
                 .await?
         };
-        let listener = Self::tcp_listener(serve_params.port).await?;
         #[cfg(feature = "frontend-dev")]
         let app = app.merge(dev_server.router(["/"]));
 

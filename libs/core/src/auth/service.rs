@@ -114,9 +114,14 @@ impl AuthService {
         })
     }
 
+    /// Verify the envelope and inner claims, preserving the concrete token variant.
+    pub fn authenticate_token(&self, token: &str) -> Result<AccessToken, AuthError> {
+        AccessToken::decode(token, &self.jwt_secret)
+    }
+
     /// Verify signed access claims without a database read; session changes apply on renewal.
     pub fn authenticate_access(&self, token: &str) -> Result<UserAccessToken, AuthError> {
-        UserAccessToken::try_from(AccessToken::decode(token, &self.jwt_secret)?)
+        UserAccessToken::try_from(self.authenticate_token(token)?)
     }
 
     /// Read-only renewal: validates JWT/session state and never consumes the credential.

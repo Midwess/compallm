@@ -78,7 +78,7 @@ A copied access JWT remains usable until expiry, including its cached role. Imme
 
 ## Responsibilities and compatibility
 
-Axum owns cookies and browser request protections; Core owns authentication and membership rules; PostgreSQL owns session persistence and conditional updates. Protected API middleware selects explicit Bearer credentials before cookies, validates access claims, and inserts typed CurrentUser request context. Invalid Bearer credentials never fall back to cookies. Cookie renewal occurs only when access is missing or expired; handlers enforce resource scope and roles.
+Axum owns cookies and browser request protections; Core owns authentication and membership rules; PostgreSQL owns session persistence and conditional updates. Protected API middleware selects explicit Bearer credentials before cookies, verifies token claims, and inserts verified token structs as separate typed request extensions. Invalid Bearer credentials never fall back to cookies. Cookie renewal occurs only when access is missing or expired; handlers enforce resource scope and roles.
 
 The session owns validation, renewal, organization switching, and revocation behavior. Persistence provides create, find, and conditional update; saving stale state cannot undo revocation or overwrite a concurrent credential change.
 

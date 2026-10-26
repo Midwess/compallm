@@ -2,7 +2,7 @@ use crate::{controllers::auth::delivery::TokenDeliverySettings, error::ApiError}
 use axum::{
     extract::{FromRequestParts, Request},
     http::{
-        HeaderMap, HeaderValue, Method, StatusCode,
+        Extensions, HeaderMap, HeaderValue, Method, StatusCode,
         header::{AUTHORIZATION, CACHE_CONTROL, COOKIE, SET_COOKIE, WWW_AUTHENTICATE},
         request::Parts,
     },
@@ -10,16 +10,20 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use compallm_core::{
-    auth::{AuthError, AuthService, UserAccessToken, UserTokens},
+    auth::{
+        AccessToken, AuthError, AuthService, EmailOtpAccessToken, RefreshToken, UserAccessToken,
+        UserTokens,
+    },
     organization::OrganizationRole,
 };
 use cookie::Cookie;
 
-/// Identity scoped to this request, never shared as application state.
+/// Require a concrete verified token from this request's extensions.
+/// Missing or different token types return 401; Core token types stay independent of Axum.
 #[derive(Clone)]
-pub struct CurrentUser(pub UserAccessToken);
+pub struct RequireToken<T>(pub T);
 
-impl CurrentUser {
+impl RequireToken<UserAccessToken> {
     pub fn require_organization(&self, organization_id: u64) -> Result<(), ApiError> {
         if self.0.session.organization_id == organization_id {
             Ok(())
@@ -37,13 +41,18 @@ impl CurrentUser {
     }
 }
 
-impl<S: Send + Sync> FromRequestParts<S> for CurrentUser {
+impl<S, T> FromRequestParts<S> for RequireToken<T>
+where
+    S: Send + Sync,
+    T: Clone + Send + Sync + 'static,
+{
     type Rejection = ApiError;
     async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
         parts
             .extensions
-            .get::<Self>()
+            .get::<T>()
             .cloned()
+            .map(Self)
             .ok_or(ApiError::Unauthenticated)
     }
 }
@@ -88,9 +97,9 @@ impl Authorization {
         settings: &TokenDeliverySettings,
         headers: &HeaderMap,
         method: &Method,
-    ) -> Result<(CurrentUser, Option<UserTokens>), ApiError> {
+    ) -> Result<(AccessToken, Option<UserTokens>), ApiError> {
         if let Some(token) = Self::bearer(headers)? {
-            return Ok((CurrentUser(auth.authenticate_access(token)?), None));
+            return Ok((auth.authenticate_token(token)?, None));
         }
         let safe = matches!(*method, Method::GET | Method::HEAD | Method::OPTIONS);
         let names = settings.cookie_names();
@@ -99,7 +108,7 @@ impl Authorization {
                 settings.validate_cookie_request(headers, false)?;
             }
             match auth.authenticate_access(&token) {
-                Ok(user) => return Ok((CurrentUser(user), None)),
+                Ok(user) => return Ok((AccessToken::User(user), None)),
                 Err(AuthError::ExpiredToken) => {}
                 Err(error) => return Err(error.into()),
             }
@@ -108,7 +117,23 @@ impl Authorization {
         settings.validate_cookie_request(headers, matches!(*method, Method::GET | Method::HEAD))?;
         let tokens = auth.refresh(&refresh).await?;
         let user = auth.authenticate_access(&tokens.access_token)?;
-        Ok((CurrentUser(user), Some(tokens)))
+        Ok((AccessToken::User(user), Some(tokens)))
+    }
+
+    fn insert_token(extensions: &mut Extensions, token: AccessToken) -> Result<(), ApiError> {
+        match token {
+            AccessToken::User(token) => {
+                extensions.insert(token);
+            }
+            AccessToken::Refresh(token) => {
+                extensions.insert(token);
+            }
+            AccessToken::EmailOtp(token) => {
+                extensions.insert(token);
+            }
+            AccessToken::Encrypted(_) => return Err(ApiError::Unauthenticated),
+        }
+        Ok(())
     }
 
     pub async fn authenticate(
@@ -117,13 +142,36 @@ impl Authorization {
         mut request: Request,
         next: Next,
     ) -> Response {
+        // Token extensions reflect only the credentials selected for this request.
+        request.extensions_mut().remove::<UserAccessToken>();
+        request.extensions_mut().remove::<RefreshToken>();
+        request.extensions_mut().remove::<EmailOtpAccessToken>();
         // An explicit Authorization header selects Bearer mode even if malformed.
         let cookie_mode = !request.headers().contains_key(AUTHORIZATION);
         let mut response = match Self::identity(auth, settings, request.headers(), request.method())
             .await
         {
-            Ok((user, renewed)) => {
-                request.extensions_mut().insert(user);
+            Ok((token, renewed)) => {
+                if cookie_mode && let AccessToken::User(user) = &token {
+                    // Refresh claims are optional and never establish user authorization on their own.
+                    let refresh = if let Some(tokens) = &renewed {
+                        Some(tokens.refresh_token.clone())
+                    } else {
+                        Self::cookie(request.headers(), settings.cookie_names().1)
+                            .ok()
+                            .flatten()
+                    };
+                    if let Some(refresh) = refresh
+                        && let Ok(AccessToken::Refresh(refresh)) = auth.authenticate_token(&refresh)
+                        && refresh.session.reference() == user.session.reference()
+                        && refresh.session.refresh_token_id == user.session.refresh_token_id
+                    {
+                        request.extensions_mut().insert(refresh);
+                    }
+                }
+                if let Err(error) = Self::insert_token(request.extensions_mut(), token) {
+                    return error.into_response();
+                }
                 let mut response = next.run(request).await;
                 if let Some(tokens) = renewed {
                     // A handler issuing its own replacement credentials takes precedence.

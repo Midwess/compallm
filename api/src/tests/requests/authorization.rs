@@ -2,7 +2,7 @@ use crate::{
     controllers::auth::delivery::TokenDeliverySettings,
     di::{AuthSettings, Di},
     error::ApiError,
-    middleware::authorization::{Authorization, CurrentUser},
+    middleware::authorization::{Authorization, RequireToken},
 };
 use axum::{
     Router,
@@ -12,11 +12,14 @@ use axum::{
         header::{AUTHORIZATION, COOKIE, ORIGIN},
     },
     middleware::Next,
-    routing::post,
+    routing::{get, post},
 };
 use axum_test::TestServer;
 use compallm_core::{
-    auth::{AccessToken, EmailOtpChallenge, Session, UserAccessToken, UserTokens},
+    auth::{
+        AccessToken, EmailOtpAccessToken, EmailOtpChallenge, RefreshToken, Session,
+        UserAccessToken, UserTokens,
+    },
     organization::OrganizationRole,
     persistent::DbContext,
 };
@@ -196,8 +199,55 @@ impl Fixture {
         TestServer::new(router).unwrap()
     }
 
+    fn typed_server(&self) -> TestServer {
+        let settings: &'static TokenDeliverySettings = Box::leak(Box::new(TokenDeliverySettings {
+            secure: false,
+            public_origin: "https://app.example.com".into(),
+            access_max_age_seconds: 900,
+            refresh_max_age_seconds: 2_592_000,
+        }));
+        let auth = self.di.auth_service();
+        let db = self.di.db_context();
+        let router = Router::new()
+            .route("/user", get(Self::requires_user))
+            .route("/refresh", get(Self::requires_refresh))
+            .route("/otp", get(Self::requires_otp))
+            .route("/both", get(Self::requires_both))
+            .route("/raw", get(Self::raw_extensions))
+            .route_layer(axum::middleware::from_fn(move |request: Request, next: Next| async move {
+                Authorization::authenticate(auth, settings, request, next).await
+            }))
+            .layer(axum::middleware::from_fn(move |request: Request, next: Next| async move {
+                db.scope(next.run(request)).await
+            }));
+        TestServer::new(router).unwrap()
+    }
+
+    async fn requires_user(_: RequireToken<UserAccessToken>) -> StatusCode {
+        StatusCode::NO_CONTENT
+    }
+    async fn requires_refresh(_: RequireToken<RefreshToken>) -> StatusCode {
+        StatusCode::NO_CONTENT
+    }
+    async fn requires_otp(_: RequireToken<EmailOtpAccessToken>) -> StatusCode {
+        StatusCode::NO_CONTENT
+    }
+    async fn requires_both(
+        _: RequireToken<UserAccessToken>,
+        _: RequireToken<RefreshToken>,
+    ) -> StatusCode {
+        StatusCode::NO_CONTENT
+    }
+    async fn raw_extensions(request: Request) -> axum::Json<serde_json::Value> {
+        axum::Json(serde_json::json!({
+            "user":request.extensions().get::<UserAccessToken>().is_some(),
+            "refresh":request.extensions().get::<RefreshToken>().is_some(),
+            "otp":request.extensions().get::<EmailOtpAccessToken>().is_some(),
+        }))
+    }
+
     async fn guarded(
-        user: CurrentUser,
+        user: RequireToken<UserAccessToken>,
         Path(organization): Path<u64>,
     ) -> Result<StatusCode, ApiError> {
         user.require_organization(organization)?;
@@ -536,7 +586,7 @@ async fn mutation_origin_and_role_and_organization_guards_are_enforced() {
 }
 
 #[tokio::test]
-async fn current_user_extractor_returns_401_when_middleware_has_not_run() {
+async fn required_token_extractor_returns_401_when_middleware_has_not_run() {
     let server =
         TestServer::new(Router::new().route("/admin/{organization}", post(Fixture::guarded)))
             .unwrap();
@@ -624,4 +674,159 @@ async fn expired_invalid_or_wrong_variant_refresh_cookie_does_not_authenticate()
         );
     }
     assert_eq!(fixture.log(), "[]");
+}
+
+#[tokio::test]
+async fn bearer_inserts_only_its_verified_concrete_token_type() {
+    let fixture = Fixture::new(RefreshState::Valid);
+    let server = fixture.typed_server();
+    let tokens = fixture.tokens();
+    let otp = EmailOtpChallenge::new("james@example.com", SECRET).unwrap();
+    for (token, expected) in [
+        (tokens.access_token, [true, false, false]),
+        (tokens.refresh_token, [false, true, false]),
+        (otp.access_token, [false, false, true]),
+    ] {
+        for (index, path) in ["/user", "/refresh", "/otp"].iter().enumerate() {
+            let response = server
+                .get(path)
+                .add_header(AUTHORIZATION, format!("Bearer {token}"))
+                .await;
+            response.assert_status(if expected[index] {
+                StatusCode::NO_CONTENT
+            } else {
+                StatusCode::UNAUTHORIZED
+            });
+        }
+        let response = server
+            .get("/raw")
+            .add_header(AUTHORIZATION, format!("Bearer {token}"))
+            .await;
+        response.assert_status_ok();
+        assert_eq!(
+            response.json::<serde_json::Value>(),
+            serde_json::json!({"user":expected[0],"refresh":expected[1],"otp":expected[2]})
+        );
+    }
+    assert_eq!(fixture.log(), "[]");
+}
+
+#[tokio::test]
+async fn cookie_extensions_include_only_matching_valid_refresh_claims() {
+    let fixture = Fixture::new(RefreshState::Valid);
+    let server = fixture.typed_server();
+    let tokens = fixture.tokens();
+    let other = UserTokens::new(
+        &Session::new(99, 9, 90),
+        OrganizationRole::Owner,
+        SECRET,
+        Duration::from_secs(900),
+        Duration::from_secs(3600),
+    )
+    .unwrap();
+    let replaced = UserTokens::new(
+        &Session::new(42, 7, 84),
+        OrganizationRole::Owner,
+        SECRET,
+        Duration::from_secs(900),
+        Duration::from_secs(3600),
+    )
+    .unwrap();
+    for (refresh, present) in [
+        (tokens.refresh_token.clone(), true),
+        (other.refresh_token, false),
+        (replaced.refresh_token, false),
+        ("invalid".into(), false),
+        (tokens.access_token.clone(), false),
+    ] {
+        let cookies = format!(
+            "compallm-access={}; compallm-refresh={refresh}",
+            tokens.access_token
+        );
+        let response = server.get("/raw").add_header(COOKIE, &cookies).await;
+        response.assert_status_ok();
+        assert_eq!(
+            response.json::<serde_json::Value>(),
+            serde_json::json!({"user":true,"refresh":present,"otp":false})
+        );
+        server
+            .get("/both")
+            .add_header(COOKIE, cookies)
+            .await
+            .assert_status(if present {
+                StatusCode::NO_CONTENT
+            } else {
+                StatusCode::UNAUTHORIZED
+            });
+    }
+    assert_eq!(fixture.log(), "[]");
+}
+
+#[tokio::test]
+async fn renewal_inserts_both_new_token_types_for_the_current_request() {
+    let fixture = Fixture::new(RefreshState::Valid);
+    let response = fixture
+        .typed_server()
+        .get("/both")
+        .add_header(
+            COOKIE,
+            format!("compallm-refresh={}", fixture.tokens().refresh_token),
+        )
+        .add_header(ORIGIN, "https://app.example.com")
+        .await;
+    response.assert_status(StatusCode::NO_CONTENT);
+    assert_eq!(response.headers().get_all("set-cookie").iter().count(), 2);
+}
+
+#[tokio::test]
+async fn explicit_bearer_does_not_mix_with_cookie_refresh_claims() {
+    let fixture = Fixture::new(RefreshState::Valid);
+    let tokens = fixture.tokens();
+    let response = fixture
+        .typed_server()
+        .get("/raw")
+        .add_header(AUTHORIZATION, format!("Bearer {}", tokens.access_token))
+        .add_header(COOKIE, format!("compallm-refresh={}", tokens.refresh_token))
+        .await;
+    response.assert_status_ok();
+    assert_eq!(
+        response.json::<serde_json::Value>(),
+        serde_json::json!({"user":true,"refresh":false,"otp":false})
+    );
+    assert_eq!(fixture.log(), "[]");
+}
+
+#[tokio::test]
+async fn selected_credentials_cannot_inherit_token_extensions_from_another_layer() {
+    let fixture = Fixture::new(RefreshState::Valid);
+    let auth = fixture.di.auth_service();
+    let settings: &'static TokenDeliverySettings = Box::leak(Box::new(TokenDeliverySettings {
+        secure: false,
+        public_origin: "https://app.example.com".into(),
+        access_max_age_seconds: 900,
+        refresh_max_age_seconds: 2_592_000,
+    }));
+    let inherited = UserAccessToken::new(
+        fixture.session.clone(),
+        OrganizationRole::Owner,
+        Duration::from_secs(900),
+    )
+    .unwrap();
+    let router = Router::new()
+        .route("/user", get(Fixture::requires_user))
+        .route_layer(axum::middleware::from_fn(
+            move |request: Request, next: Next| async move {
+                Authorization::authenticate(auth, settings, request, next).await
+            },
+        ))
+        .layer(axum::Extension(inherited));
+    let server = TestServer::new(router).unwrap();
+    server
+        .get("/user")
+        .add_header(
+            AUTHORIZATION,
+            format!("Bearer {}", fixture.tokens().refresh_token),
+        )
+        .await
+        .assert_status_unauthorized();
 }

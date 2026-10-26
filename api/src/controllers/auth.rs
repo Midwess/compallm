@@ -5,13 +5,19 @@ use axum::{
     response::IntoResponse,
 };
 use axum_valid::ValidifiedByRef;
-use compallm_core::{auth::AuthService, user::User};
+use compallm_core::{
+    auth::{AuthService, UserAccessToken},
+    user::User,
+};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
 use validify::Validify;
 
-use crate::error::{ApiError, ErrorResponse};
+use crate::{
+    error::{ApiError, ErrorResponse},
+    middleware::authorization::RequireToken,
+};
 pub mod delivery;
 mod validation;
 use delivery::{AuthTokensResponse, TokenDelivery, TokenDeliverySettings};
@@ -265,7 +271,7 @@ pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
     )
 )]
 async fn current_user(
-    crate::middleware::authorization::CurrentUser(claims): crate::middleware::authorization::CurrentUser,
+    RequireToken(claims): RequireToken<UserAccessToken>,
 ) -> Json<CurrentUserResponse> {
     Json(CurrentUserResponse {
         session_id: claims.session.id,

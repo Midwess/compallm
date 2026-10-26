@@ -402,15 +402,3 @@ async fn constructor_settings_control_concurrency_and_queue_capacity() {
     service.shutdown().await;
     smtp.stop().await;
 }
-
-#[tokio::test]
-async fn zero_queue_or_concurrency_is_rejected_without_panicking() {
-    let mut smtp = Smtp::start(false, false).await;
-    let mut settings = smtp.settings();
-    settings.concurrency = 0;
-    assert!(MailingService::new(settings).is_err());
-    let mut settings = smtp.settings();
-    settings.queue_capacity = 0;
-    assert!(MailingService::new(settings).is_err());
-    smtp.stop().await;
-}

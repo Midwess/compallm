@@ -39,7 +39,7 @@ Queue and delivery limits are part of the same SMTP settings passed to MailingSe
 | `SMTP_RECIPIENT_COOLDOWN_SECONDS` | `30` | Throttle after successful SMTP acceptance |
 | `SMTP_SHUTDOWN_TIMEOUT_SECONDS` | `60` | Maximum shutdown drain time |
 
-Concurrency, capacity, and timeouts must be positive; cooldown may be zero to disable the post-send delay. Duplicate recipients are still suppressed while pending.
+SMTP settings are passed directly to the queue and transport libraries without a separate numeric-validation layer. Use positive concurrency and queue capacity; cooldown may be zero to disable the post-send delay. Duplicate recipients are still suppressed while pending.
 
 SMTP credentials are optional only when the server permits unauthenticated delivery. Read secrets from the environment and keep them out of logs and browser responses. Production needs an explicit host and sender before enabling mailing. Local messages appear in MailDev at `http://127.0.0.1:1080` after `docker compose up`.
 

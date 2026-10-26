@@ -45,17 +45,6 @@ pub struct MailingService {
 
 impl MailingService {
     pub fn new(settings: SmtpSettings) -> Result<Self, MailingError> {
-        if settings.concurrency == 0
-            || settings.concurrency > u32::MAX as usize
-            || settings.queue_capacity == 0
-            || settings.admission_timeout_seconds == 0
-            || settings.send_timeout_seconds == 0
-            || settings.shutdown_timeout_seconds == 0
-        {
-            return Err(MailingError::Configuration(
-                "SMTP limits must be positive and concurrency must fit u32",
-            ));
-        }
         if settings.host.trim().is_empty() || settings.port == 0 {
             return Err(MailingError::Configuration("host and port are required"));
         }

@@ -6,11 +6,11 @@ Compallm combines access to multiple providers, governed API usage, chat, intera
 
 ## Product plan
 
-See the [product overview](docs/content/product.md), [roadmap](docs/content/roadmap.md), and [business decisions](docs/content/decisions.md).
+See the [product overview](docs/content/overview.md) for feature plans. Each feature's `adr.md` records its decisions and open questions.
 
 ## Development
 
-Read the [architecture guidelines](docs/content/architecture.md) before changing the code.
+Read the [development decisions](docs/content/development/adr.md) before changing the code.
 
 The frontend uses React with Vite, and the Rust server uses Loco and Axum. PostgreSQL is accessed through SeaORM; Utoipa and Orval generate the TypeScript API client.
 

@@ -40,8 +40,7 @@ async function implementationDigest() {
   return hash(await Promise.all(names.map(async name => [name, await readFile(path.join(directory, name), 'utf8')])));
 }
 
-export async function main({ request = api, createClient = options => new OpenAI(options),
-  architectureFile = path.resolve(directory, '../../../docs/content/architecture.md') } = {}) {
+export async function main({ request = api, createClient = options => new OpenAI(options) } = {}) {
   const api = request;
   const repo = process.env.GITHUB_REPOSITORY;
   if (!/^[\w.-]+\/[\w.-]+$/.test(repo ?? '')) throw new Error('Invalid GITHUB_REPOSITORY.');
@@ -68,11 +67,10 @@ export async function main({ request = api, createClient = options => new OpenAI
   }
   const cache = new Cache(process.env.EXPLAINER_CACHE_DIR ?? path.join(directory, '.cache'));
   const prompt = await readFile(path.join(directory, 'prompt.md'), 'utf8');
-  const architecture = await readFile(architectureFile, 'utf8');
   const key = hash({
     repo, number, base, head, title: pr.title, description: pr.body,
     model: process.env.LLM_MODEL, endpoint: baseURL.href,
-    implementation: await implementationDigest(), architecture, tools,
+    implementation: await implementationDigest(), tools,
   });
   const publisher = new Publisher({ api, repo, number, base, head, metadata: { title: pr.title, body: pr.body },
     cache, key, validate: validateExplanation });
@@ -136,7 +134,7 @@ export async function main({ request = api, createClient = options => new OpenAI
   };
   const messages = [
     // Stable prefix helps providers that automatically cache repeated prompt prefixes.
-    { role: 'system', content: `${prompt}\n\nProject architecture (reference evidence):\n${architecture}` },
+    { role: 'system', content: prompt },
     { role: 'user', content: JSON.stringify({
       repository: repo, number, title: pr.title, description: clip(pr.body ?? '', 8000),
       base, head, mergeBase, fileLinkPrefix: `https://github.com/${repo}/blob/`,

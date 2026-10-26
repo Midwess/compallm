@@ -46,6 +46,8 @@ Retries are operation-specific: repeating a request may resend email, repeat a s
 
 ## Verification
 
+PR explanations use the PR diff and code at pinned commits as their default context. They must not require any project-specific documentation path; additional repository files can be read on demand through the existing tools. This lets documentation move or disappear without breaking the automation.
+
 Test domain rules without external services. Use Wiremock with real HTTP clients to check payloads, authentication, errors, and timeouts. SeaORM mocks verify query/service flow; PostgreSQL integration tests verify constraints, isolation, and rollback across repositories.
 
 Compilation or SQL-generation checks are appropriate when migrations must not execute. Application startup and database-backed tests may migrate automatically, so respect explicit restrictions.

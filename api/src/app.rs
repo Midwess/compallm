@@ -143,7 +143,16 @@ impl Hooks for App {
         init_id_generator(Self::app_name())
             .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
         Di::init(&ctx).await?;
+        if let Some(worker) = Di::instance().mailing_worker() {
+            worker.start();
+        }
         Ok(ctx)
+    }
+
+    async fn on_shutdown(_ctx: &AppContext) {
+        if let Some(worker) = Di::instance().mailing_worker() {
+            worker.shutdown().await;
+        }
     }
 
     async fn before_routes(_ctx: &AppContext) -> Result<AxumRouter<AppContext>> {

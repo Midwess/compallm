@@ -39,6 +39,14 @@ impl IntoResponse for ApiError {
                 (StatusCode::FORBIDDEN, "Organization access denied")
             }
             Self::Auth(AuthError::UserNotFound) => (StatusCode::NOT_FOUND, "User not found"),
+            Self::Auth(AuthError::Email(EmailError::Throttled)) => (
+                StatusCode::TOO_MANY_REQUESTS,
+                "Email recipient is throttled; keep the existing challenge and retry later",
+            ),
+            Self::Auth(AuthError::Email(EmailError::QueueTimeout)) => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Email queue is full; retry later",
+            ),
             Self::Auth(AuthError::Email(EmailError::Unavailable | EmailError::Delivery(_))) => (
                 StatusCode::SERVICE_UNAVAILABLE,
                 "Email delivery is unavailable",

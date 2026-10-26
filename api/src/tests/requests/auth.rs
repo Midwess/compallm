@@ -141,6 +141,22 @@ async fn test_and_development_auth_configuration_load_without_connecting() {
         let settings = config.settings.unwrap();
         assert!(settings["auth"]["jwt_secret"].as_str().unwrap().len() >= 32);
         assert_eq!(settings["auth"]["refresh_token_ttl_seconds"], 2_592_000);
+        let smtp: compallm_mailing::SmtpSettings =
+            serde_json::from_value(settings["smtp"].clone()).unwrap();
+        assert!(
+            smtp.password == std::env::var("SMTP_PASSWORD").unwrap_or_default(),
+            "SMTP password must preserve its literal contents"
+        );
+        assert!(
+            smtp.username == std::env::var("SMTP_USERNAME").unwrap_or_default(),
+            "SMTP username must preserve its literal contents"
+        );
+        if environment == Environment::Test {
+            assert!(!smtp.enabled);
+        } else {
+            assert_eq!(smtp.port, 1025);
+            assert!(!smtp.host.is_empty());
+        }
     }
 }
 
@@ -224,6 +240,32 @@ async fn email_endpoint_rejects_bad_inputs_and_unconfigured_delivery() {
         .await;
     response.assert_status(axum::http::StatusCode::SERVICE_UNAVAILABLE);
     assert!(response.json::<serde_json::Value>().get("token").is_none());
+}
+
+struct ThrottledEmail;
+#[async_trait::async_trait]
+impl EmailService for ThrottledEmail {
+    async fn send(&self, _: EmailRequest) -> Result<(), EmailError> {
+        Err(EmailError::Throttled)
+    }
+}
+
+#[tokio::test]
+async fn throttled_recipient_returns_429_without_a_replacement_challenge() {
+    let server = Fixture::server(Fixture::di(Some(Box::new(ThrottledEmail))));
+    let response = server
+        .post("/api/auth/signup/email")
+        .json(&serde_json::json!({"email":"reader@example.com"}))
+        .await;
+    response.assert_status(axum::http::StatusCode::TOO_MANY_REQUESTS);
+    let body: serde_json::Value = response.json();
+    assert!(body.get("token").is_none());
+    assert!(
+        body["message"]
+            .as_str()
+            .unwrap()
+            .contains("existing challenge")
+    );
 }
 
 #[tokio::test]

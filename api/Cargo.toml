@@ -21,6 +21,7 @@ clap = { workspace = true, features = ["std", "derive", "color", "help", "usage"
 compallm-postgres.workspace = true
 compallm-core.workspace = true
 hero = { workspace = true, features = ["tcp"] }
+compallm-mailing.workspace = true
 anyhow = { workspace = true, features = ["std"] }
 thiserror = { workspace = true, features = ["std"] }
 loco-rs = { workspace = true, features = ["cli", "with-db", "cache_inmem", "worker"] }

@@ -5,29 +5,43 @@ available: false
 
 # Email login
 
-Planned behavior. This page owns the email-code flow; the [login ADR](adr.md) defines shared browser sessions, cookies, and security boundaries.
+Queued SMTP delivery and signup confirmation are implemented; the cookie/session browser flow remains planned. The [login ADR](adr.md) defines the shared authentication decisions.
 
 ## Flow
 
 1. The user enters a valid email address from any domain. There is no organization email-domain allowlist and no password.
-2. The server requests delivery of a login code through the configured SMTP server and returns a verification challenge. The challenge cannot authorize normal API requests.
+2. The server enqueues a login code for SMTP delivery and returns a verification challenge after admission. Queue acceptance does not guarantee delivery. The challenge cannot authorize normal API requests.
 3. The user submits the challenge and received code. The server verifies them before establishing a session. Signup derives the display name from the email; the user can edit it later.
 4. Successful confirmation follows the registration or signin flow and cookie delivery described in the [login ADR](adr.md).
 
-The existing product plan specifies a single-use code expiring after 15 minutes, with resend and verification-attempt limits. The current stateless challenge design allows reuse until expiry and uses a 10-minute lifetime. Resolve this discrepancy before implementing delivery or code-consumption behavior; this documentation refactor does not change either rule.
+The current stateless challenge allows reuse until its 10-minute expiry. The older product plan's 15-minute single-use policy remains unresolved; mailing does not change it. See the [mailing ADR](../mailing/adr.md) for queue limits. Duplicate recipients are throttled while pending and for the configured cooldown after SMTP acceptance (30 seconds by default); the API returns 429 without issuing a replacement challenge.
 
-## Planned configuration
+## SMTP configuration
 
 | Environment variable | Required | Development default | Purpose |
 | --- | --- | --- | --- |
 | `SMTP_HOST` | Yes | `127.0.0.1` | SMTP server hostname |
-| `SMTP_PORT` | Yes | `587` | SMTP server port |
+| `SMTP_PORT` | Yes | `1025` | SMTP server port; local MailDev listens on 1025 |
 | `SMTP_USERNAME` | No | None | SMTP authentication username |
 | `SMTP_PASSWORD` | No | None | SMTP authentication password |
-| `SMTP_FROM_ADDRESS` | Yes | None | Sender address for login-code messages |
-| `SMTP_TLS` | No | `false` | Production enables the TLS mode required by its mail server |
+| `SMTP_FROM_ADDRESS` | Yes | `noreply@compallm.local` | Sender address for login-code messages |
+| `SMTP_TLS` | Yes | `none` | `none`, `starttls`, or `tls`; production defaults to `starttls` |
+| `SMTP_ENABLED` | No | `true` | Enable the queued SMTP service; disabled by default in production and tests |
 
-SMTP credentials are optional only when the server permits unauthenticated delivery. Read secrets from the environment and keep them out of logs and browser responses. These settings describe planned integration, not implemented email delivery.
+Queue and delivery limits are part of the same SMTP settings passed to MailingService:
+
+| Environment variable | Default | Purpose |
+| --- | --- | --- |
+| `SMTP_CONCURRENCY` | `10` | Joined receive/send loops in one worker |
+| `SMTP_QUEUE_CAPACITY` | `1024` | Waiting emails, excluding active sends |
+| `SMTP_ADMISSION_TIMEOUT_SECONDS` | `30` | Maximum wait for queue capacity |
+| `SMTP_SEND_TIMEOUT_SECONDS` | `60` | Whole SMTP attempt timeout |
+| `SMTP_RECIPIENT_COOLDOWN_SECONDS` | `30` | Throttle after successful SMTP acceptance |
+| `SMTP_SHUTDOWN_TIMEOUT_SECONDS` | `60` | Maximum shutdown drain time |
+
+Concurrency, capacity, and timeouts must be positive; cooldown may be zero to disable the post-send delay. Duplicate recipients are still suppressed while pending.
+
+SMTP credentials are optional only when the server permits unauthenticated delivery. Read secrets from the environment and keep them out of logs and browser responses. Production needs an explicit host and sender before enabling mailing. Local messages appear in MailDev at `http://127.0.0.1:1080` after `docker compose up`.
 
 ## Expected outcomes
 
@@ -35,7 +49,7 @@ SMTP credentials are optional only when the server permits unauthenticated deliv
 - An expired or incorrect code does not establish a session.
 - Under the planned single-use policy, a consumed code cannot establish another session; enforcement remains unresolved above.
 - A valid email is eligible regardless of its domain.
-- Delivery failure reports that the code could not be sent and does not establish a session.
+- Admission failure returns no challenge. SMTP failure after admission does not establish a session or automatically retry; the user can request another code after the pending recipient reservation clears.
 
 ## API reference
 

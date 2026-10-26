@@ -25,6 +25,8 @@ pub struct AuthSettings {
 #[derive(Deserialize)]
 struct Settings {
     auth: AuthSettings,
+    #[serde(default)]
+    smtp: Option<compallm_mailing::SmtpSettings>,
 }
 
 /// Own all application dependencies in one permanent container.
@@ -34,6 +36,9 @@ pub struct Di {
     organizations: Box<dyn OrganizationRepository>,
     sessions: Box<dyn SessionRepository>,
     email: Option<Box<dyn EmailService>>,
+    mailing: Option<Box<compallm_mailing::MailingService>>,
+    mailing_email: OnceLock<Box<dyn EmailService>>,
+    mailing_worker: OnceLock<Box<crate::workers::mailing::MailingWorker>>,
     settings: AuthSettings,
     // Filled after Di reaches its permanent address so services can borrow it.
     auth: OnceLock<Box<AuthService>>,
@@ -56,7 +61,15 @@ impl Di {
                         loco_rs::Error::Message("auth settings are missing".into())
                     })?)?;
                 let db = PostgresConnection::context(ctx.db.clone());
-                Ok::<_, loco_rs::Error>(Self::new(db, settings.auth, None))
+                let mailing = settings
+                    .smtp
+                    .filter(|settings| settings.enabled)
+                    .map(compallm_mailing::MailingService::new)
+                    .transpose()
+                    .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
+                let mut di = Self::new(db, settings.auth, None);
+                di.mailing = mailing.map(Box::new);
+                Ok::<_, loco_rs::Error>(di)
             })
             .await?;
         di.initialize_services()
@@ -77,6 +90,9 @@ impl Di {
             ),
             sessions: Box::new(compallm_postgres::repository::session::SessionRepository),
             email,
+            mailing: None,
+            mailing_email: OnceLock::new(),
+            mailing_worker: OnceLock::new(),
             settings,
             auth: OnceLock::new(),
             registration: OnceLock::new(),
@@ -86,6 +102,7 @@ impl Di {
     }
 
     pub fn initialize_services(&'static self) -> Result<(), AuthError> {
+        self.mailing_worker();
         self.organization_config_service();
         if self.auth.get().is_some() {
             return Ok(());
@@ -122,7 +139,24 @@ impl Di {
     }
 
     pub fn email_service(&'static self) -> Option<&'static Box<dyn EmailService>> {
-        self.email.as_ref()
+        self.email.as_ref().or_else(|| {
+            self.mailing_service()
+                .map(|service| self.mailing_email.get_or_init(|| Box::new(service)))
+        })
+    }
+
+    pub fn mailing_service(&'static self) -> Option<&'static compallm_mailing::MailingService> {
+        self.mailing.as_deref()
+    }
+
+    pub fn mailing_worker(
+        &'static self,
+    ) -> Option<&'static crate::workers::mailing::MailingWorker> {
+        self.mailing_service().map(|service| {
+            self.mailing_worker
+                .get_or_init(|| Box::new(crate::workers::mailing::MailingWorker::new(service)))
+                .as_ref()
+        })
     }
 
     pub fn auth_service(&'static self) -> &'static AuthService {

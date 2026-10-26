@@ -66,4 +66,5 @@ Keep the problem, decision, rationale, main flow, consequences, status, and impo
 
 - [API reference](../api/index.md): Rust/OpenAPI generates TypeScript hover documentation and the public endpoint guide.
 - [Login](../login/adr.md): identity verification, organization scope, cookies, and refresh sessions.
+- [Mailing](../mailing/adr.md): bounded SMTP delivery, worker concurrency, and recipient throttling.
 - [Product overview](../overview.md): feature plans and their own decisions.

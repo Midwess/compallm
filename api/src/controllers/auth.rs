@@ -36,11 +36,13 @@ pub struct SignupEmailResponse {
 
 /// Request an email signup code.
 ///
-/// Sends a six-digit verification code to the supplied email address and returns an encrypted
+/// Enqueues a six-digit verification code for the supplied email address and returns an encrypted
 /// challenge for confirmation. Submit the challenge and code to
 /// `POST /api/auth/signup/email/confirmation/otp` within 10 minutes.
 /// This public endpoint does not create a user or establish a signed-in session.
-/// Email delivery must be configured; if delivery is unavailable, no challenge is returned.
+/// Queue acceptance does not guarantee SMTP or inbox delivery. Recipients already pending or sent
+/// during the configured cooldown (30 seconds by default) are throttled; keep the earlier challenge. Admission waits up to the configured timeout (30 seconds by default)
+/// when the queue is full. Admission failure returns no new challenge.
 #[utoipa::path(
     post, path = "/api/auth/signup/email", operation_id = "signupEmail", tag = "auth",
     security(),
@@ -48,7 +50,8 @@ pub struct SignupEmailResponse {
     responses(
         (status = 200, description = "OTP delivery requested; use this token to confirm", body = SignupEmailResponse),
         (status = 400, description = "Invalid email or JSON request. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid email address"})),
-        (status = 503, description = "Email delivery unavailable. Retry later; no verification challenge was issued.", body = ErrorResponse, example = json!({"message": "Email delivery is unavailable"})),
+        (status = 429, description = "Recipient throttled. Keep the existing challenge and retry after the configured cooldown (30 seconds by default).", body = ErrorResponse, example = json!({"message": "Email recipient is throttled; keep the existing challenge and retry later"})),
+        (status = 503, description = "Email admission unavailable or queue remained full until the configured timeout (30 seconds by default). Retry later; no challenge was issued.", body = ErrorResponse, example = json!({"message": "Email delivery is unavailable"})),
         (status = 500, description = "Internal error. Retry later.", body = ErrorResponse, example = json!({"message": "Internal server error"}))
     )
 )]

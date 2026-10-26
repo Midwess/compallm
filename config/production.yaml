@@ -1,4 +1,23 @@
 settings:
+  smtp:
+    concurrency: <%= get_env(name="SMTP_CONCURRENCY", default="10") %>
+    queue_capacity: <%= get_env(name="SMTP_QUEUE_CAPACITY", default="1024") %>
+    admission_timeout_seconds: <%= get_env(name="SMTP_ADMISSION_TIMEOUT_SECONDS", default="30") %>
+    send_timeout_seconds: <%= get_env(name="SMTP_SEND_TIMEOUT_SECONDS", default="60") %>
+    recipient_cooldown_seconds: <%= get_env(name="SMTP_RECIPIENT_COOLDOWN_SECONDS", default="30") %>
+    shutdown_timeout_seconds: <%= get_env(name="SMTP_SHUTDOWN_TIMEOUT_SECONDS", default="60") %>
+    enabled: <%= get_env(name="SMTP_ENABLED", default="false") %>
+    host: |-
+      <%= get_env(name="SMTP_HOST", default="") | indent(width=6) %>
+    port: <%= get_env(name="SMTP_PORT", default="587") %>
+    from_address: |-
+      <%= get_env(name="SMTP_FROM_ADDRESS", default="") | indent(width=6) %>
+    username: |-
+      <%= get_env(name="SMTP_USERNAME", default="") | indent(width=6) %>
+    password: |-
+      <%= get_env(name="SMTP_PASSWORD", default="") | indent(width=6) %>
+    tls: |-
+      <%= get_env(name="SMTP_TLS", default="starttls") | indent(width=6) %>
   auth:
     jwt_secret: "<%= get_env(name="AUTH_JWT_SECRET") %>"
     user_token_ttl_seconds: 900

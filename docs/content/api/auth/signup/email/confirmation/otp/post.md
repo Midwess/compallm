@@ -337,7 +337,7 @@ Example (synthetic values):
 
 ```json
 {
-  "message": "Email is already registered"
+  "message": "Email is already registered. Please sign in instead."
 }
 ```
 

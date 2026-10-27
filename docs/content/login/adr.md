@@ -53,7 +53,7 @@ flowchart TD
     Record --> Issue["Commit and set both cookies"]
 ```
 
-Signup rejects an existing email. Signin starts in an active owner/admin organization; later switching may select an organization where the user is a member.
+Signup checks canonical email before sending a code: existing accounts receive 409 with a signin suggestion, with no email or new token. Confirmation still enforces uniqueness to handle concurrent signup. Signin starts in an active owner/admin organization; later switching may select an organization where the user is a member.
 
 ## Renewal and logout
 

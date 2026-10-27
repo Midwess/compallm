@@ -295,7 +295,8 @@ export const getSignupEmailUrl = () => {
 }
 
 /**
- * Enqueues a six-digit verification code for the supplied email address and returns an encrypted
+ * Rejects an already-registered email with 409 and a signin suggestion before mailing or token
+ * delivery. For a new email, enqueues a six-digit verification code and returns an encrypted
  * challenge for confirmation. Submit the challenge and code to
  * `POST /api/auth/signup/email/confirmation/otp` within 10 minutes.
  * Delivery defaults to cookie: set a ten-minute HttpOnly OTP access cookie, clear any refresh

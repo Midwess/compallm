@@ -45,13 +45,22 @@ impl Fixture {
     }
 
     fn di(mailbox: Option<Box<dyn EmailService>>) -> &'static Di {
-        Self::di_for(mailbox, false, Self::settings())
+        Self::di_with_signup_checks(mailbox, false, Self::settings(), 1)
     }
 
     fn di_for(
         mailbox: Option<Box<dyn EmailService>>,
         signin: bool,
         settings: AuthSettings,
+    ) -> &'static Di {
+        Self::di_with_signup_checks(mailbox, signin, settings, 0)
+    }
+
+    fn di_with_signup_checks(
+        mailbox: Option<Box<dyn EmailService>>,
+        signin: bool,
+        settings: AuthSettings,
+        signup_checks: usize,
     ) -> &'static Di {
         let now = "2026-10-25T00:00:00Z"
             .parse::<sea_orm::prelude::DateTimeWithTimeZone>()
@@ -92,7 +101,10 @@ impl Fixture {
         let mut member: std::collections::BTreeMap<_, _> =
             member.into_mock_row().into_column_value_tuples().collect();
         member.insert("role".to_string(), "owner".into());
+        let checks: Vec<Vec<std::collections::BTreeMap<String, sea_orm::Value>>> =
+            vec![vec![]; signup_checks];
         let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results(checks)
             .append_exec_results([MockExecResult {
                 last_insert_id: 0,
                 rows_affected: 1,
@@ -295,7 +307,12 @@ async fn throttled_recipient_returns_429_without_a_replacement_challenge() {
 async fn signup_email_accepts_addresses_from_any_domain() {
     let mailbox = Mailbox::default();
     let messages = mailbox.0.clone();
-    let server = Fixture::server(Fixture::di(Some(Box::new(mailbox))));
+    let server = Fixture::server(Fixture::di_with_signup_checks(
+        Some(Box::new(mailbox)),
+        false,
+        Fixture::settings(),
+        3,
+    ));
     for email in [
         "james@gmail.com",
         "james@example.org",
@@ -801,8 +818,12 @@ async fn cookie_otp_flow_works_without_a_refresh_cookie_or_exposing_the_challeng
             let mut settings = Fixture::settings();
             settings.cookie_secure = secure;
             settings.public_origin = "https://app.example.com".into();
-            let server =
-                Fixture::server(Fixture::di_for(Some(Box::new(mailbox)), signin, settings));
+            let server = Fixture::server(Fixture::di_with_signup_checks(
+                Some(Box::new(mailbox)),
+                signin,
+                settings,
+                usize::from(!signin),
+            ));
             let path = if signin {
                 "/api/auth/signin/email"
             } else {
@@ -910,4 +931,55 @@ async fn failed_cookie_code_request_keeps_the_existing_challenge() {
         assert!(response.headers().get("set-cookie").is_none());
         assert!(response.json::<serde_json::Value>().get("token").is_none());
     }
+}
+
+#[tokio::test]
+async fn registered_email_is_rejected_before_sending_or_issuing_signup_credentials() {
+    for delivery in ["cookie", "token"] {
+        let mailbox = Mailbox::default();
+        let messages = mailbox.0.clone();
+        // The existing-user result must be consumed by the signup preflight lookup.
+        let server = Fixture::server(Fixture::di_for(
+            Some(Box::new(mailbox)),
+            true,
+            Fixture::settings(),
+        ));
+        let response = server
+            .post("/api/auth/signup/email")
+            .add_header(axum::http::header::ORIGIN, "http://127.0.0.1:3000")
+            .add_header(axum::http::header::HOST, "127.0.0.1:3000")
+            .json(&serde_json::json!({"email":" James@MIDWESS.COM ","delivery":delivery}))
+            .await;
+        response.assert_status(axum::http::StatusCode::CONFLICT);
+        assert_eq!(
+            response.json::<serde_json::Value>(),
+            serde_json::json!({"message":"Email is already registered. Please sign in instead."})
+        );
+        assert!(response.headers().get("set-cookie").is_none());
+        assert!(messages.lock().unwrap().is_empty());
+    }
+}
+
+#[tokio::test]
+async fn failed_signup_lookup_does_not_send_mail_or_issue_credentials() {
+    let mailbox = Mailbox::default();
+    let messages = mailbox.0.clone();
+    let db = MockDatabase::new(DbBackend::Postgres)
+        .append_query_errors([sea_orm::DbErr::Custom("private lookup failure".into())])
+        .into_connection();
+    let di: &'static Di = Box::leak(Box::new(Di::new(
+        DbContext::new(Arc::new(PostgresConnection::new(Arc::new(db)))),
+        Fixture::settings(),
+        Some(Box::new(mailbox)),
+    )));
+    di.initialize_services().unwrap();
+    let response = Fixture::server(di)
+        .post("/api/auth/signup/email")
+        .json(&serde_json::json!({"email":"james@example.com","delivery":"token"}))
+        .await;
+    response.assert_status_internal_server_error();
+    assert!(response.headers().get("set-cookie").is_none());
+    assert!(response.json::<serde_json::Value>().get("token").is_none());
+    assert!(!response.text().contains("private lookup failure"));
+    assert!(messages.lock().unwrap().is_empty());
 }

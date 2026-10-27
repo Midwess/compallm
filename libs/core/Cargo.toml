@@ -19,6 +19,7 @@ hero = { workspace = true, features = ["distributed-id", "token"] }
 hkdf = { workspace = true, features = ["std"] }
 maud.workspace = true
 rand = { workspace = true, features = ["std", "thread_rng"] }
+rust_decimal = { workspace = true, features = ["std"] }
 serde = { workspace = true, features = ["std", "derive"] }
 serde_json = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["rt"] }

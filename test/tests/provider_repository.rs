@@ -19,7 +19,7 @@ impl Fixture {
         "2026-10-26T00:00:00Z".parse().unwrap()
     }
 
-    fn provider(id: i64, name: &str, api_key: &str) -> ProviderSchema {
+    fn provider(id: i64, name: &str, api_key: &str, enabled: bool) -> ProviderSchema {
         ProviderSchema {
             id,
             organization_id: 84,
@@ -28,6 +28,7 @@ impl Fixture {
             api_key: api_key.into(),
             api_protocol: ApiProtocolSchema::OpenaiCompatible,
             updated_at: Self::at(),
+            enabled,
         }
     }
 
@@ -49,6 +50,7 @@ impl Fixture {
             name: "Primary".into(),
             url: "https://provider.example/v1".into(),
             api_protocol: ApiProtocol::OpenaiCompatible,
+            enabled: true,
         }
     }
 }
@@ -61,6 +63,7 @@ async fn find_all_applies_the_requested_limit_and_scopes_to_the_organization() {
                 100,
                 "Primary",
                 "must-not-leak",
+                false,
             ))]])
             .into_connection(),
     );
@@ -71,6 +74,7 @@ async fn find_all_applies_the_requested_limit_and_scopes_to_the_organization() {
     assert_eq!(providers.len(), 1);
     assert_eq!(providers[0].organization_id, 84);
     assert_eq!(providers[0].api_protocol, ApiProtocol::OpenaiCompatible);
+    assert!(!providers[0].enabled);
 
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
     assert!(log.contains("organization_id"));
@@ -80,13 +84,14 @@ async fn find_all_applies_the_requested_limit_and_scopes_to_the_organization() {
 }
 
 #[tokio::test]
-async fn insert_writes_the_provider_and_secret_without_business_validation_queries() {
+async fn insert_writes_availability_and_secret_without_business_validation_queries() {
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![Fixture::provider_row(Fixture::provider(
                 100,
                 "Primary",
                 "encrypted-key",
+                true,
             ))]])
             .into_connection(),
     );
@@ -98,10 +103,12 @@ async fn insert_writes_the_provider_and_secret_without_business_validation_queri
         .await
         .unwrap();
     assert_eq!(provider.id, 100);
+    assert!(provider.enabled);
 
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
     assert!(log.contains("INSERT INTO"));
     assert!(log.contains("encrypted-key"));
+    assert!(log.contains("enabled"));
     assert!(!log.contains("FOR UPDATE"));
     assert!(!log.contains("COUNT(*)"));
 }
@@ -115,11 +122,13 @@ async fn update_preserves_the_secret_when_no_replacement_is_supplied() {
                     100,
                     "Primary",
                     "existing-secret",
+                    true,
                 ))],
                 vec![Fixture::provider_row(Fixture::provider(
                     100,
                     "Renamed",
                     "existing-secret",
+                    false,
                 ))],
             ])
             .into_connection(),
@@ -132,18 +141,21 @@ async fn update_preserves_the_secret_when_no_replacement_is_supplied() {
                 name: "Renamed".into(),
                 url: "https://provider.example/v1".into(),
                 api_protocol: ApiProtocol::Anthropic,
+                enabled: false,
             },
             None,
         ))
         .await
         .unwrap();
     assert_eq!(provider.name, "Renamed");
+    assert!(!provider.enabled);
 
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
     assert!(log.contains("organization_id"));
     assert!(log.contains("UPDATE"));
     assert!(!log.contains("existing-secret"));
     assert!(log.contains("updated_at"));
+    assert!(log.contains("enabled"));
 }
 
 #[tokio::test]
@@ -155,6 +167,7 @@ async fn delete_is_organization_scoped_and_reports_missing_rows() {
                     100,
                     "Primary",
                     "existing-secret",
+                    false,
                 ))],
                 vec![],
             ])

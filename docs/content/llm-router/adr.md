@@ -8,9 +8,9 @@ available: false
 ## Status
 
 Decision status: Unified format translation, the Router/Gateway boundary, and
-organization-owned logical model identity are accepted directions; remaining
-scope is proposed. Implementation status: The logical model schema is under
-development; routing is not implemented.
+organization-owned model identity are accepted directions; remaining scope is
+proposed. Implementation status: The model persistence
+foundation exists; routing is not implemented.
 
 Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
 
@@ -34,15 +34,19 @@ For example, a client using an OpenAI-compatible format could select an Anthropi
 
 The client API format is independent of the provider. Translate both directions through a unified internal representation and explicitly reject unsupported capabilities. Router selects providers and translates formats; [Gateway](../llm-gateway/adr.md) enforces access, allowances, and usage attribution.
 
-Each organization owns logical models whose names are unique within that
-organization. A logical model gives callers a stable name independent of an
+Each organization owns models whose names are unique within that organization.
+A model gives callers a stable name independent of an
 upstream provider. Each model-provider route stores the provider's upstream
 model name and whether the route is enabled. A provider may appear only once
-for a logical model, and database constraints prevent routes from crossing
+for a model, and database constraints prevent routes from crossing
 organization boundaries. How the Router selects among multiple enabled routes
 remains unresolved.
 
-Each logical model stores the organization-facing input, output, and cached
+A route is eligible only when the model, provider connection, and route are all
+enabled. A disabled provider remains available to management but cannot serve
+requests through any associated route.
+
+Each model stores the organization-facing input, output, and cached
 token prices in USD per one million tokens. These are non-negative fixed-point
 rates used for stable billing and reporting regardless of the selected route.
 Upstream provider costs can differ and therefore belong to model-provider
@@ -74,6 +78,7 @@ The Router should explicitly report unsupported requested features or options ra
 
 ## Related pages
 
+- [Models and providers](../model/models-and-providers.md)
 - [Model management](../model/adr.md)
 - [LLM Gateway](../llm-gateway/adr.md)
 - [Product overview](../overview.md)

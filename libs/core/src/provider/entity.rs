@@ -12,6 +12,7 @@ pub struct Provider {
     pub name: String,
     pub url: String,
     pub api_protocol: ApiProtocol,
+    pub enabled: bool,
 }
 
 /// Secret value persisted in the provider's `api_key` column.

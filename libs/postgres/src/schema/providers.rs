@@ -6,9 +6,13 @@ use sea_orm::entity::prelude::*;
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(schema_name = "public", table_name = "providers")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false)]
+    #[sea_orm(
+        primary_key,
+        auto_increment = false,
+        unique_key = "providers_id_organization_id_unique"
+    )]
     pub id: i64,
-    #[sea_orm(unique_key = "providers_organization_id_name_unique")]
+    #[sea_orm(unique_key = "providers_id_organization_id_unique")]
     pub organization_id: i64,
     #[sea_orm(
         column_type = "Text",
@@ -21,10 +25,13 @@ pub struct Model {
     pub api_key: String,
     pub api_protocol: ApiProtocol,
     pub updated_at: DateTimeWithTimeZone,
+    pub enabled: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_many = "super::model_providers::Entity")]
+    ModelProviders,
     #[sea_orm(
         belongs_to = "super::organizations::Entity",
         from = "Column::OrganizationId",
@@ -33,6 +40,12 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Organizations,
+}
+
+impl Related<super::model_providers::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ModelProviders.def()
+    }
 }
 
 impl Related<super::organizations::Entity> for Entity {

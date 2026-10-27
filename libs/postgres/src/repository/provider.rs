@@ -96,6 +96,7 @@ impl CoreProviderRepository for ProviderRepository {
             url: Set(provider.url),
             api_key: Set(api_key.into_storage_value()),
             api_protocol: Set(Self::api_protocol(provider.api_protocol)),
+            enabled: Set(provider.enabled),
             ..Default::default()
         };
         Provider::try_from(model.insert(db).await.map_err(Self::write_error)?)
@@ -124,6 +125,7 @@ impl CoreProviderRepository for ProviderRepository {
             model.api_key = Set(api_key.into_storage_value());
         }
         model.api_protocol = Set(Self::api_protocol(provider.api_protocol));
+        model.enabled = Set(provider.enabled);
         model.updated_at = Set(ChronoUtc::now().fixed_offset());
         Provider::try_from(model.update(db).await.map_err(Self::write_error)?)
     }

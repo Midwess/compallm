@@ -29,6 +29,7 @@ impl TryFrom<ProviderSchema> for Provider {
                 ApiProtocolSchema::Openai => ApiProtocol::Openai,
                 ApiProtocolSchema::OpenaiCompatible => ApiProtocol::OpenaiCompatible,
             },
+            enabled: model.enabled,
         })
     }
 }

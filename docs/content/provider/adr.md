@@ -7,8 +7,9 @@ available: true
 
 ## Status
 
-Decision status: Organization ownership and management authorization are
-accepted; credential protection and integration behavior remain proposed.
+Decision status: Organization ownership, management authorization, and provider
+availability are accepted; credential protection and integration behavior
+remain proposed.
 Implementation status: Persistence foundation under development; the Core
 management service and API are deferred until their workflows are implemented.
 
@@ -23,6 +24,12 @@ in separate integration services rather than one general provider manager. See
 [Managing providers](management.md) for the authorized behavior and credential
 boundaries.
 
+Each provider connection has an independent `enabled` flag and defaults to
+enabled. Disabling a provider makes every associated route unavailable without
+deleting the provider, its credential, or its route configuration. Management
+listings retain disabled providers; future routing and discovery workflows must
+exclude them from availability.
+
 ## Consequences
 
 Provider persistence and services require organization scope. The repository
@@ -31,6 +38,7 @@ counts, query limits, and other business validation belong to the future
 workflow that invokes it. Each add operation selects its protocol internally,
 so callers cannot persist a mismatched protocol. Credentials stay outside
 ordinary provider read models and must not appear in API responses or logs.
+Provider persistence round-trips availability without applying routing policy.
 
 ## Open questions
 
@@ -40,5 +48,6 @@ remain unresolved.
 ## Related pages
 
 - [Managing providers](management.md)
+- [Models and providers](../model/models-and-providers.md)
 - [Model management](../model/adr.md)
 - [Organization and membership](../organization/adr.md)

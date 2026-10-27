@@ -15,6 +15,7 @@ An authenticated organization **owner** or **administrator** can:
 - list the organization's provider connections;
 - add an OpenAI, Anthropic, or OpenAI-compatible connection;
 - change a connection's non-secret configuration or replace its credential;
+- enable or disable a connection;
 - remove a connection from the organization.
 
 An ordinary **member** cannot add, change, or remove provider connections. A
@@ -38,6 +39,11 @@ Credential encryption, key rotation, and provider-specific verification remain
 unresolved. Until those decisions are implemented, the existence of a provider
 record does not imply that Compallm has verified the endpoint or credential.
 
+Disabling a provider preserves its configuration, credential, and model routes
+for management, but makes all of those routes unavailable. Enabling the
+provider does not override a disabled model or route; routing requires all
+three availability flags to be enabled.
+
 ## Expected behavior
 
 ### Authorized management
@@ -57,6 +63,13 @@ record does not imply that Compallm has verified the endpoint or credential.
 - **WHEN** a caller attempts to manage a provider owned by another organization
 - **THEN** Compallm denies the operation even if the caller is an owner or
   administrator elsewhere
+
+### Disabled provider retained for management
+
+- **WHEN** an owner or administrator disables a provider connection
+- **THEN** Compallm retains it in management listings without returning its
+  credential
+- **AND THEN** routing does not use any route associated with that provider
 
 ## Related pages
 

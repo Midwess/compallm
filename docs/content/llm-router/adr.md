@@ -37,10 +37,11 @@ The client API format is independent of the provider. Translate both directions 
 Each organization owns models whose names are unique within that organization.
 A model gives callers a stable name independent of an
 upstream provider. Each model-provider route stores the provider's upstream
-model name and whether the route is enabled. A provider may appear only once
-for a model, and database constraints prevent routes from crossing
-organization boundaries. How the Router selects among multiple enabled routes
-remains unresolved.
+model name, a positive priority unique within the model, and whether the route
+is enabled. A provider may appear only once for a model, and database
+constraints prevent routes from crossing organization boundaries. Priority
+expresses route order without yet deciding whether selection must always begin
+with the lowest value or when a later route may be attempted.
 
 A route is eligible only when the model, provider connection, and route are all
 enabled. A disabled provider remains available to management but cannot serve

@@ -10,8 +10,8 @@ available: true
 Decision status: Organization ownership, management authorization, and provider
 availability are accepted; credential protection and integration behavior
 remain proposed.
-Implementation status: Persistence foundation under development; the Core
-management service and API are deferred until their workflows are implemented.
+Implementation status: Persistence schema and repository implemented; the Core
+management service, API, and provider integrations are not implemented.
 
 Provider connections belong to one organization. An authenticated owner or
 administrator may manage the LLM providers in that organization. Ordinary

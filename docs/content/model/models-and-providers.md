@@ -1,137 +1,148 @@
 ---
-title: Models and providers
+title: Models and model providers
 ---
 
-# Models and providers
+# Models and model providers
 
-## Purpose
+## Purpose and status
 
-This page explains how organization-owned models relate to provider
-connections and provider routes. It describes the intended product design so
-model-management and routing behavior can be agreed before those workflows are
-implemented. The persistence foundation exists, but model-management services,
-APIs, route selection, and request forwarding are not implemented.
+This page defines how an organization-facing model relates to an upstream
+provider connection. It is the intended design for future management and
+routing workflows, not a description of an available API.
+
+Decision status: The ownership boundaries, stable model identity, lifecycle
+flags, and model-provider relationship are accepted. Route selection,
+fallback, and model-management authorization remain unresolved.
+
+Implementation status: The model and provider persistence foundation exists.
+Model and route management services, management APIs, route selection, and
+request forwarding are not implemented.
 
 ## Concepts
 
 ### Model
 
-A model is the stable identity that an organization exposes to
-its members and clients. For example, an organization might publish
-`general-chat`. Callers select that logical name without needing to know which
-external provider or upstream model serves it.
+A model is an organization-owned logical identity exposed to members and API
+clients. Its name is unique within that organization. For example, an
+organization can publish `general-chat` without exposing which external
+provider serves each request.
 
-A model owns organization-facing configuration:
+A model owns caller-facing configuration:
 
-- a name unique within its organization;
-- input, output, and cached-token prices used for the organization's billing
-  and reporting;
+- the stable model name;
+- input, output, and cached-token prices used for organization billing and
+  reporting;
 - `enabled`, which determines whether requests may be routed;
-- `hidden`, which controls ordinary discovery without changing direct use;
-- a JSON settings object for model-specific configuration validated by the
-  service that owns each setting.
+- `hidden`, which omits the model from ordinary discovery without preventing
+  direct use of its stable name;
+- non-secret model settings whose shape is validated by the service that
+  introduces each setting.
 
-Settings must not contain provider credentials or other secrets.
+Disabling a model always prevents routing. Hiding it changes discovery only.
+Model settings must not contain provider credentials.
 
 ### Provider connection
 
-A provider connection describes how one organization connects to an external
-LLM service. It owns the provider protocol, operation URL, and credential. A
-provider connection is not itself a caller-facing model: one provider can host
-several upstream models, and one model can use several providers.
+A provider connection is an organization-owned configuration for reaching an
+external LLM service. It owns a management name, API protocol, endpoint URL,
+protected credential, and `enabled` state. OpenAI, Anthropic, and
+OpenAI-compatible connections are planned initially.
 
-The provider's `enabled` flag controls whether any associated route is
-available. Disabling it preserves the connection and route configuration for
-management while preventing routing through that provider.
+A provider connection is not a model. One connection can serve several
+upstream models, and one logical model can use connections from several
+providers. Disabling a connection preserves it for management but makes all
+of its routes unavailable.
 
-Provider credentials remain server-side. Model, route, discovery, and
-usage responses must not expose them.
+Credentials are write-only at the management boundary. They must not appear
+in model, route, discovery, or usage responses, logs, or client-visible errors.
 
-### Provider route
+### Model-provider route
 
-A provider route joins one model to one provider connection in the
-same organization. It records:
+A model-provider route associates one model with one provider connection in
+the same organization. It stores:
 
-- the upstream model name understood by that provider;
-- a positive priority that can express route order;
-- whether the route is enabled.
+- the upstream model name accepted by that provider;
+- a positive priority unique within the model;
+- an independent `enabled` state.
 
-One model cannot use the same provider connection twice, and two routes for the
-same model cannot have the same priority. Database
-constraints reject routes that join records from different organizations.
+A model can have several routes, but it can use a particular provider
+connection only once. Database constraints reject cross-organization routes.
+Priority records an explicit order, but it does not yet decide whether routing
+must always use ascending priority, when a later route may be attempted, or
+whether future health and policy information may affect selection.
 
-## Relationship
+## Relationship and availability
 
 ```text
 Organization
   ├─ Model: general-chat
-  │    ├─ route priority 1 ─> OpenAI provider ─> gpt-5-mini
-  │    └─ route priority 2 ─> Anthropic provider ─> claude-sonnet-4-5
-  └─ Provider connections
-       ├─ OpenAI provider (URL, protocol, secret credential)
-       └─ Anthropic provider (URL, protocol, secret credential)
+  │    ├─ route 1 ─> OpenAI connection ─> gpt-5-mini
+  │    └─ route 2 ─> Anthropic connection ─> claude-sonnet-4-5
+  └─ Provider connections (endpoint, protocol, protected credential)
 ```
 
-The model is the stable contract with the caller. Provider routes are
-replaceable delivery configuration. Changing an upstream model name, disabling
-a route, or moving to another provider does not require changing the logical
-name exposed to callers.
+The model is the stable caller contract. A route is replaceable delivery
+configuration. Changing an upstream model name, disabling a route, or moving
+traffic to another provider does not require clients to select a new logical
+model name.
 
-## Request flow
+A route is available only when all three records are enabled:
 
-The intended flow is:
+```text
+model enabled AND provider enabled AND route enabled
+```
 
-1. An authenticated caller selects a model in its organization.
+Management listings retain disabled and hidden records. Discovery and routing
+workflows apply availability and visibility policy rather than relying on the
+repository to filter management data.
+
+## Intended request flow
+
+1. The Gateway authenticates the caller, establishes its organization, and
+   checks whether it may use the requested logical model.
 2. The Router rejects a disabled model. Ordinary discovery also omits a hidden
-   model, although its stable name can still be used directly.
-3. The Router loads enabled routes whose provider connections are also enabled.
-4. The Router selects one route according to the future route-selection rules.
-5. The provider client uses that route's upstream model name, the provider's
-   protocol and URL, and its protected credential.
-6. Usage records identify both the model requested by the caller and
-   the provider route that served the request.
+   model, although an authorized caller can still use its stable name directly.
+3. The Router loads routes whose provider connections are in the same
+   organization and whose model, provider, and route are enabled.
+4. The Router selects a route according to rules that still need a decision.
+5. A concrete provider client sends the upstream model name using the
+   connection's protocol, endpoint, and protected credential.
+6. Usage records identify the requested model and the route that served the
+   request.
 
-Steps 3–5 describe the intended design, not current implemented behavior.
-Priority exists in persistence, but whether selection is strictly
-lowest-number-first and when another route may be attempted remain open.
+Provider HTTP calls occur outside database transactions. A transaction can
+protect configuration changes, but it cannot make an external inference call
+atomic with a database update.
 
 ## Configuration boundaries
 
-| Information | Owner | Reason |
-| --- | --- | --- |
-| Stable caller-facing name | Model | Remains independent of provider changes |
-| Organization billing prices | Model | Represents the organization's published rates |
-| Model-specific non-secret settings | Model | Applies to the organization-facing model |
-| Provider URL and protocol | Provider connection | Defines one external integration |
-| Provider credential | Provider connection | Keeps secrets out of models and routes |
-| Provider availability | Provider connection | Enables or disables every associated route |
-| Upstream model name | Provider route | Can differ for each provider |
-| Route priority and availability | Provider route | Configures delivery for one model-provider pair |
-| Provider cost, health, quota, cooldown | Separate operational state | Must not overwrite published prices or route configuration |
+| Information | Owner |
+| --- | --- |
+| Stable caller-facing name and published prices | Model |
+| Non-secret model behavior settings | Model |
+| Endpoint, protocol, credential, and connection availability | Provider connection |
+| Upstream model name, route priority, and route availability | Model-provider route |
+| Health, quota, cooldown, and actual upstream cost | Separate operational state |
 
-Provider HTTP calls must occur outside database transactions. Management
-services may change model, provider, and route configuration transactionally,
-but a database transaction cannot make an external inference request atomic.
+Published model prices remain stable across routes and do not necessarily
+equal provider costs. Operational observations must not overwrite model prices
+or route configuration.
 
-## Current status and open questions
+## Open questions
 
-Documented persistence decisions include organization ownership, model and
-provider lifecycle flags, JSON settings storage, provider routes, route
-priority, and same-organization constraints. The schema and model/provider
-repositories form the persistence foundation.
-
-The following behavior must be decided before routing is implemented:
-
-- Which organization roles may manage models and routes?
-- Is the lowest positive priority always attempted first?
-- Which failures permit fallback to another route?
-- How are retries, cooldowns, health, quotas, and request cancellation handled?
-- Where are provider capability metadata and upstream costs maintained?
-- Which keys and validation rules are introduced in model settings?
+- Which organization roles may create, update, and remove models and routes?
+- Must selection always begin with the lowest priority, and can policy or
+  health temporarily change that order?
+- Which provider outcomes permit fallback, and how do retries, cooldowns,
+  cancellation, and charging interact?
+- Where are provider capability metadata and actual upstream costs maintained?
+- Which model setting keys and validation rules are introduced first?
+- What happens when no eligible route remains for an otherwise enabled model?
 
 ## Related decisions
 
 - [Model management](adr.md)
 - [Provider management](../provider/adr.md)
+- [Managing providers](../provider/management.md)
 - [LLM Router](../llm-router/adr.md)
 - [LLM Gateway](../llm-gateway/adr.md)

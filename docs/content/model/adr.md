@@ -7,10 +7,11 @@ available: true
 
 ## Status
 
-Decision status: Organization ownership, pricing, and provider routes are
-accepted. Model-management authorization, route selection, and fallback error
-rules remain proposed. Implementation status: Persistence schema and repository
-implemented; model services, APIs, and routing are not implemented.
+Decision status: Organization ownership, pricing, lifecycle flags, and provider
+route configuration are accepted. Model-management authorization, route
+selection, and fallback error rules remain proposed. Implementation status:
+Persistence schema and repository implemented; model services, route
+management, APIs, and routing are not implemented.
 
 ## Context and decision
 
@@ -47,12 +48,14 @@ A model can have multiple provider routes. Each route records:
 
 - one provider owned by the same organization;
 - the model name expected by that provider;
+- a positive priority unique within the model;
 - whether the route is enabled.
 
 A provider may appear only once for one model. Database ownership
 constraints prevent a route from joining a model and provider from different
-organizations. The rule for selecting among multiple enabled routes and the
-errors that permit fallback remain unresolved.
+organizations. Priority expresses an order without deciding whether the Router
+must always select the lowest value first. Selection and fallback rules remain
+unresolved.
 
 ## Consequences
 
@@ -95,7 +98,8 @@ errors that permit fallback remain unresolved.
 
 - May administrators and owners both manage models and routes, or do those
   operations require different permissions?
-- How does the Router select among enabled routes?
+- Must the Router always begin with the lowest-priority enabled route, and can
+  policy or health change that order?
 - Which provider errors permit fallback, and how are cooldowns represented?
 - Where are upstream provider costs and capability metadata maintained?
 

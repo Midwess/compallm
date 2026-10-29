@@ -29,11 +29,11 @@ impl RegistrationService {
     /// Joins an existing transaction when invoked by another service.
     pub async fn register(&self, email: &str) -> Result<User, RegistrationError> {
         let user = User::from_email(hero::distributed_id::try_gen_id().await?, email)?;
+        if self.users.find_by_email(&user.email).await?.is_some() {
+            return Err(UserRepositoryError::EmailAlreadyExists.into());
+        }
 
         transaction!(self.db, {
-            if self.users.find_by_email(&user.email).await?.is_some() {
-                return Err(UserRepositoryError::EmailAlreadyExists.into());
-            }
             let user = self.users.create(user).await?;
             self.organizations.create_default(&user).await?;
             Ok(user)

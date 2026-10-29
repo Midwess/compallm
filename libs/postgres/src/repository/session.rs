@@ -1,7 +1,7 @@
 use crate::{UserSessionSchema, postgres_connection::PostgresConnection};
 use anyhow::Context;
 use compallm_core::{
-    auth::{Session, SessionReference},
+    auth::Session,
     persistent::{
         DbContext,
         session::{SessionRepository as CoreSessionRepository, SessionRepositoryError},
@@ -53,15 +53,12 @@ impl CoreSessionRepository for SessionRepository {
         Ok(())
     }
 
-    async fn find(
-        &self,
-        reference: SessionReference,
-    ) -> Result<Option<Session>, SessionRepositoryError> {
+    async fn find(&self, session: &Session) -> Result<Option<Session>, SessionRepositoryError> {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
-        Sessions::find_by_id(Self::id(reference.id)?)
-            .filter(SessionColumn::UserId.eq(Self::id(reference.user_id)?))
-            .filter(SessionColumn::OrganizationId.eq(Self::id(reference.organization_id)?))
+        Sessions::find_by_id(Self::id(session.id)?)
+            .filter(SessionColumn::UserId.eq(Self::id(session.user_id)?))
+            .filter(SessionColumn::OrganizationId.eq(Self::id(session.organization_id)?))
             .one(db)
             .await
             .map_err(anyhow::Error::from)?

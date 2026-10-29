@@ -19,7 +19,7 @@ Signup creates a user and personal organization atomically. Signin loads an exis
 
 Default to short-lived access JWTs and renewable refresh JWTs in secure HttpOnly cookies. Each signup/signin step accepts `delivery: "cookie" | "token"`: cookie mode omits token values from JSON; token mode returns them and sets no cookies. Delivery is an HTTP concern, never a Core property or JWT claim. Vite and Axum share one origin, so the browser sends cookies without exposing their values to frontend code.
 
-Each session belongs to an organization and user. Both JWT types embed Session: its ID, organization ID, user ID, current credential identifier, login time, and revocation state. Access JWTs also carry the membership role. Neither token repeats fields already owned by Session. Every session operation checks organization and user together. Store the current credential identifier, not the complete JWT. Device information is optional.
+Each session belongs to an organization and user. Both JWT types embed Session directly: its ID, organization ID, user ID, current credential identifier, login time, and revocation state. Session lookups and validation use that instance without a separate reference type, keeping session identity in one domain type. Access JWTs also carry the membership role. Neither token repeats fields already owned by Session. Every session operation checks organization and user together. Store the current credential identifier, not the complete JWT. Device information is optional.
 
 | Alternative | Why we chose this approach |
 | --- | --- |

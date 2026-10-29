@@ -1,5 +1,5 @@
 use compallm_core::{
-    auth::{RefreshToken, Session, SessionReference},
+    auth::{RefreshToken, Session},
     persistent::{DbContext, session::SessionRepository as _},
 };
 use compallm_postgres::{
@@ -43,12 +43,8 @@ async fn owned_lookup_and_conditional_update_preserve_session_guards() {
     let context = Fixture::context(db.clone());
     context
         .transaction(async {
-            let reference = SessionReference {
-                id: 7,
-                user_id: 42,
-                organization_id: 84,
-            };
-            let mut session = SessionRepository.find(reference).await?.unwrap();
+            let token_session = Session::try_from(Fixture::row()).unwrap();
+            let mut session = SessionRepository.find(&token_session).await?.unwrap();
             let created_at = session.created_at;
             let previous = session.clone();
             let token = RefreshToken::from_session(
@@ -214,19 +210,19 @@ async fn owned_session_lookup_works_with_the_application_context() {
     ));
     context
         .scope(async {
-            let reference = SessionReference {
-                id: 7,
-                user_id: 42,
-                organization_id: 84,
-            };
-            let session = SessionRepository.find(reference).await.unwrap().unwrap();
+            let token_session = Session::try_from(Fixture::row()).unwrap();
+            let session = SessionRepository
+                .find(&token_session)
+                .await
+                .unwrap()
+                .unwrap();
             assert_eq!(session.id, 7);
             assert_eq!(session.user_id, 42);
             assert!(
                 SessionRepository
-                    .find(SessionReference {
+                    .find(&Session {
                         user_id: 99,
-                        ..reference
+                        ..token_session.clone()
                     })
                     .await
                     .unwrap()
@@ -234,9 +230,9 @@ async fn owned_session_lookup_works_with_the_application_context() {
             );
             assert!(
                 SessionRepository
-                    .find(SessionReference {
+                    .find(&Session {
                         organization_id: 99,
-                        ..reference
+                        ..token_session
                     })
                     .await
                     .unwrap()

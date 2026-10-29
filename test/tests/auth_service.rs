@@ -7,7 +7,7 @@ use std::{
 use compallm_core::{
     auth::{
         AccessToken, AuthError, AuthService, EmailOtpChallenge, RefreshToken, Session,
-        SessionReference, TokenLifetimes, UserAccessToken, UserTokens,
+        TokenLifetimes, UserAccessToken, UserTokens,
     },
     organization::{CreationService, Organization, OrganizationMember, OrganizationRole},
     persistent::{
@@ -202,18 +202,15 @@ impl SessionRepository for Repository {
         Ok(())
     }
 
-    async fn find(
-        &self,
-        reference: SessionReference,
-    ) -> Result<Option<Session>, SessionRepositoryError> {
+    async fn find(&self, session: &Session) -> Result<Option<Session>, SessionRepositoryError> {
         DbContext::current()?;
         Ok(self
             .0
             .lock()
             .unwrap()
             .sessions
-            .get(&reference.id)
-            .filter(|session| session.reference() == reference)
+            .get(&session.id)
+            .filter(|stored| stored.has_same_identity(session))
             .cloned())
     }
 
@@ -239,7 +236,7 @@ impl SessionRepository for Repository {
         let Some(current) = state.sessions.get_mut(&session.id) else {
             return Ok(false);
         };
-        if current.reference() != previous.reference()
+        if !current.has_same_identity(previous)
             || current.revoked_at != previous.revoked_at
             || (session.refresh_token_id != previous.refresh_token_id
                 && current.refresh_token_id != previous.refresh_token_id)
@@ -846,7 +843,7 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
     let refreshed =
         RefreshToken::try_from(AccessToken::decode(&tokens.refresh_token, SECRET).unwrap())
             .unwrap();
-    assert_eq!(claims.session.reference(), refreshed.session.reference());
+    assert_eq!(claims.session, refreshed.session);
     assert_eq!(
         fixture.repo.0.lock().unwrap().sessions[&7].organization_id,
         85
@@ -954,10 +951,7 @@ async fn original_and_renewed_refresh_tokens_remain_usable_without_database_writ
     assert!(fixture.refresh(&original).await.is_ok());
     assert!(fixture.refresh(&replacement.refresh_token).await.is_ok());
     let stored = fixture.repo.0.lock().unwrap().sessions[&7].clone();
-    assert_eq!(stored.reference(), before.reference());
-    assert_eq!(stored.refresh_token_id, before.refresh_token_id);
-    assert_eq!(stored.created_at, before.created_at);
-    assert!(stored.revoked_at.is_none());
+    assert_eq!(stored, before);
     assert!(
         fixture
             .db
@@ -1007,7 +1001,7 @@ async fn each_successful_signin_creates_an_independent_session() {
         .repo
         .1
         .scope(async {
-            let previous = SessionRepository::find(&fixture.repo, one.session.reference())
+            let previous = SessionRepository::find(&fixture.repo, &one.session)
                 .await
                 .unwrap()
                 .unwrap();

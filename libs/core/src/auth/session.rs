@@ -4,14 +4,6 @@ use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-/// Identifies the session within its organization and owner.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SessionReference {
-    pub id: u64,
-    pub user_id: u64,
-    pub organization_id: u64,
-}
-
 /// A persisted login. JWTs own expiry; ordinary renewal does not change this record.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Session {
@@ -41,21 +33,20 @@ impl Session {
         URL_SAFE_NO_PAD.encode(id)
     }
 
-    pub fn reference(&self) -> SessionReference {
-        SessionReference {
-            id: self.id,
-            user_id: self.user_id,
-            organization_id: self.organization_id,
-        }
+    /// Match the session within its organization and owner, ignoring credential and revocation state.
+    pub fn has_same_identity(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.user_id == other.user_id
+            && self.organization_id == other.organization_id
     }
 
-    pub fn is_active(&self, reference: SessionReference) -> bool {
-        self.reference() == reference && self.revoked_at.is_none()
+    pub fn is_active(&self, session: &Self) -> bool {
+        self.has_same_identity(session) && self.revoked_at.is_none()
     }
 
     pub fn validate_credential(&self, presented: &RefreshToken) -> Result<(), AuthError> {
         presented.validate(compallm_utils::time::unix_timestamp())?;
-        if !self.is_active(presented.session.reference())
+        if !self.is_active(&presented.session)
             || self.refresh_token_id != presented.session.refresh_token_id
         {
             return Err(AuthError::InvalidSession);

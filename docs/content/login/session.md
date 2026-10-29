@@ -15,6 +15,8 @@ Device information is optional. A browser description or user-provided label may
 
 Both token types embed the same Session struct. Session owns its ID, organization ID, user ID, current credential identifier, original login time, and revocation state; these fields are not repeated at the token level. Access JWTs additionally carry the current membership role. A signed snapshot does not replace the database record: refresh and organization switching load the current session to enforce revocation and credential changes. The complete JWT is not stored. Every lookup, renewal, and revocation uses the organization and user together, supported by a compound organization/user index.
 
+Repository lookups accept the token's Session instance directly and match its ID, organization, and owner. Validation compares those identity fields and the credential identifier against the current record and rejects revoked sessions. No separate session-reference type is needed. This preserves the existing JWT format and database schema.
+
 ## Read-only renewal
 
 Normal refresh validates the signed JWT, loads its organization/user-scoped session, rejects revocation or a credential mismatch, and checks the active user and current membership. It issues new JWTs for the same session and organization, with the same credential identifier and a new 30-day refresh expiry.

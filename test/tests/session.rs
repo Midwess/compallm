@@ -30,8 +30,8 @@ fn switching_changes_scope_and_identifier_and_both_tokens_reference_the_new_sess
     let refresh =
         RefreshToken::try_from(AccessToken::decode(&tokens.refresh_token, SECRET).unwrap())
             .unwrap();
-    assert_eq!(access.session.reference(), session.reference());
-    assert_eq!(refresh.session.reference(), session.reference());
+    assert_eq!(access.session, session);
+    assert_eq!(refresh.session, session);
     assert!(matches!(
         session.refresh(&initial, LIFETIME),
         Err(AuthError::InvalidSession)
@@ -52,7 +52,7 @@ fn renewal_preserves_the_identifier_and_can_continue_beyond_the_original_login_m
         renewed.session.refresh_token_id,
         token.session.refresh_token_id
     );
-    assert_eq!(renewed.session.reference(), token.session.reference());
+    assert_eq!(renewed.session, session);
     assert!(renewed.validity.expires_at > token.validity.expires_at);
     assert!(session.refresh(&token, LIFETIME).is_ok());
     assert!(session.refresh(&renewed, LIFETIME).is_ok());
@@ -78,11 +78,21 @@ fn expired_credentials_are_rejected_without_revoking_the_session() {
 fn foreign_or_replaced_credentials_do_not_revoke_a_session() {
     let token = RefreshToken::from_session(&Session::new(1, 7, 84), LIFETIME).unwrap();
     let mut session = token.session.clone();
-    for foreign in [
-        RefreshToken::from_session(&Session::new(2, 7, 84), LIFETIME).unwrap(),
-        RefreshToken::from_session(&Session::new(1, 7, 85), LIFETIME).unwrap(),
-        RefreshToken::from_session(&Session::new(1, 8, 84), LIFETIME).unwrap(),
+    for foreign_session in [
+        Session {
+            user_id: 2,
+            ..token.session.clone()
+        },
+        Session {
+            organization_id: 85,
+            ..token.session.clone()
+        },
+        Session {
+            id: 8,
+            ..token.session.clone()
+        },
     ] {
+        let foreign = RefreshToken::from_session(&foreign_session, LIFETIME).unwrap();
         assert!(matches!(
             session.refresh(&foreign, LIFETIME),
             Err(AuthError::InvalidSession)

@@ -68,6 +68,24 @@ Complete the relevant design before changing behavior. Every feature ADR must ta
 
 Keep the problem, decision, rationale, main flow, consequences, status, and important open questions. Cut repetition and put configuration, contracts, and detailed instructions in linked sub-feature pages. The limit measures reader effort; it does not justify omitting essential decisions. See [Technical writing](writing.md) for the editing standard and reference handbook.
 
+## Portal design workspace
+
+Decision status: Accepted on 2026-10-27. Implementation status: Storybook workspace, local Codex MCP configuration, and starter component and wireframe previews implemented. Final screen design and application integration remain pending.
+
+Use Storybook in `storybook/` to review real React components and screen prototypes before connecting them to application behavior. Components belong in `portal/` and are imported directly by stories so the production application can reuse the reviewed code. Stories use sample data and must not require Rust, PostgreSQL, authentication, or generated API clients to start.
+
+Keep prompting in Codex CLI. Storybook's local MCP addon exposes component and story context; source edits and hot reload drive iteration. An external Penpot canvas is also supported through its remote MCP server, as accepted on 2026-10-27. Penpot holds editable visual explorations; Storybook remains the reference for implemented components. Translation is explicit, without automatic synchronization. Do not add local Penpot services. Keep token-bearing MCP configuration local and untracked.
+
+Use the ignored `.dev/penpot/` JavaScript workbench for local Penpot automation and agent notes. Scripts run directly with Node, reuse cached design IDs and a serialized MCP connection, and keep credentials in the existing local MCP configuration. Its loopback bridge is a client-side convenience, not a local Penpot deployment. For routine canvas edits, batch the change, check the affected frame, and save once; refresh the catalog or generate extra review artifacts only when needed.
+
+Review wireframes before styling complete screens. Dark mode is the initial design target; pixel details are selective accents rather than the overall website theme. The final palette, typography, and navigation remain proposals until reviewed. Prototype screens do not establish business rules or authorize API integration. See [Design workspace](design-workspace.md) for commands and the review workflow.
+
+Penpot's Design foundations page owns shared visual rules, tokens, and base components only: fields, buttons, dropdown controls, selection controls, feedback primitives, typography, and small content/navigation units. Full screens, complete sidebars, forms, feature panels, and complex assemblies belong on dedicated feature pages. Do not create a Page patterns gallery or define whole pages as shared foundation components. Feature compositions reuse the bases; their internal assemblies stay with the feature. This accepted organization supersedes the earlier complete-sidebar and form/page-pattern galleries on Foundations.
+
+Use token-bound Auto Layout for spacing. Verify component links after transfers and restore temporary propagation-test values before review. Use Inter as the shared Penpot UI font. Sidebar Label is 13 pixels with a 14-pixel icon; root category headings are 10 pixels and the workspace name is 12 pixels. Penpot changes do not automatically update React code. Purchased icon catalogs use a lightweight Icons index and one `icons-<brand>` page per brand, with styles grouped within each brand page.
+
+The [shared spacing policy](../portal/spacing.md) controls library and screen gaps, padding, and margins through one scale and minimum. Current density is half the preceding values, with a 2 px floor for nonzero spacing and zero preserved. Components inherit constants from their masters; geometric control sizes, typography, borders, and radii remain independent. Agents can edit the policy through Penpot MCP, refresh token resolution, and verify the resulting layouts.
+
 ## Related decisions
 
 - [API reference](../api/index.md): Rust/OpenAPI generates TypeScript hover documentation and the public endpoint guide.

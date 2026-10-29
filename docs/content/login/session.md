@@ -66,7 +66,7 @@ Both require JSON input. Cookie delivery at either step requires an allowed Orig
 
 | Cookie | Expiry | Production attributes |
 | --- | --- | --- |
-| `__Host-access` | 15 minutes (configured access lifetime) | `HttpOnly; Secure; SameSite=Lax; Path=/` |
+| `__Host-access` | 30 minutes (configured access lifetime) | `HttpOnly; Secure; SameSite=Lax; Path=/` |
 | `__Host-refresh` | 30 days, renewed after successful refresh | `HttpOnly; Secure; SameSite=Lax; Path=/` |
 
 Production requires HTTPS, no `Domain` attribute, and matching cookie and credential expiries. `AUTH_COOKIE_SECURE` defaults to true in production and false in development/tests. Nonsecure local cookies use `compallm-access` and `compallm-refresh` names. `AUTH_PUBLIC_ORIGIN` sets the exact browser origin, including scheme and port, and is required for cookie confirmation in production. No forwarded headers determine cookie security or the allowed origin.

@@ -1,0 +1,13 @@
+# Provider catalog setup design
+
+The current provider flow follows the user-edited **Add provider · 1 Model selected** frame. Its reference is preserved. Filtered and no-results screens share the full-width search, progress placement, centered pagination, transparent table, and compact **Use custom provider** / **Continue** footer. Repeated titles, counts, selection summaries, and Cancel actions are removed. Preset/custom configuration retains the required fields and numbered step line, with the same alignment and fewer repeated helpers.
+
+See the current [review previews and Penpot verification](../provider-user-minimal/README.md). Full-page patterns remain removed; feature screens are editable compositions on Add provider and reuse the base components in Design foundations.
+
+Open [preview.html](preview.html) for complete interactive filtering, sorting, and pagination across **4,370 captured entries** and **146 provider slugs**. Back preserves filters, selection, and non-secret drafts. Custom configuration starts blank. Credentials are cleared on Back; the reference makes no network requests, tests, or saves. [user-minimal-preview-verification.json](user-minimal-preview-verification.json) covers the current layout and interactions.
+
+[catalog.json](catalog.json) is normalized reference data. [sample-source-entries.json](sample-source-entries.json) preserves the exact source fields used in examples. [source-manifest.json](source-manifest.json) records the download hash and recent source commit information; the SHA-256 identifies the actual captured bytes. A separately checked recent commit differed from the downloaded main-branch snapshot, so it is not represented as the snapshot's verified commit.
+
+Sources: [LiteLLM model cost map](https://docs.litellm.ai/docs/proxy/model_cost_map), [raw registry](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json), [supported endpoints](https://docs.litellm.ai/docs/supported_endpoints), and [provider configuration](https://docs.litellm.ai/docs/proxy/config_settings). The map supplies modes, limits, capabilities, and rates, but does not generally supply base URLs. Unknowns remain blank. Per-token prices are converted to USD per million tokens; video/image/realtime rates retain their actual units. A reasoning-support flag alone does not establish individual thinking levels.
+
+This is design/reference work. It does not install LiteLLM, implement application routes, guarantee every catalog entry is supported in Compallm, send provider requests, or settle billing and credential-ownership rules. See [Add provider design](../../docs/content/portal/add-provider.md) for the intended flow and open decisions.

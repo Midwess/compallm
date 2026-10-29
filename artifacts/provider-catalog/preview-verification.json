@@ -1,0 +1,20 @@
+{
+  "catalogEntries": 4370,
+  "presetPrefill": {
+    "base-url": "https://api.openai.com/v1",
+    "model-id": "gpt-4.1",
+    "context": "1047576",
+    "api-key": "",
+    "input-price": "2",
+    "cached-price": "0.5",
+    "output-price": "8",
+    "mode": "Chat completions"
+  },
+  "backPreservesEdits": true,
+  "customClearsPreset": true,
+  "noResults": true,
+  "realtimeUsesDistinctUnits": true,
+  "realtimeUsesWebSocket": true,
+  "externalRequests": 0,
+  "pageErrors": []
+}

@@ -133,7 +133,7 @@ impl Fixture {
             DbContext::new(Arc::new(PostgresConnection::new(db.clone()))),
             AuthSettings {
                 jwt_secret: SECRET.into(),
-                user_token_ttl_seconds: 900,
+                user_token_ttl_seconds: 1800,
                 refresh_token_ttl_seconds: 2_592_000,
                 cookie_secure: secure,
                 public_origin: "https://app.example.com".into(),
@@ -155,7 +155,7 @@ impl Fixture {
             &self.session,
             OrganizationRole::Owner,
             SECRET,
-            Duration::from_secs(900),
+            Duration::from_secs(1800),
             Duration::from_secs(2_592_000),
         )
         .unwrap()
@@ -165,11 +165,11 @@ impl Fixture {
         let mut claims = UserAccessToken::new(
             self.session.clone(),
             OrganizationRole::Owner,
-            Duration::from_secs(900),
+            Duration::from_secs(1800),
         )
         .unwrap();
-        claims.validity.issued_at -= 901;
-        claims.validity.expires_at -= 901;
+        claims.validity.issued_at -= 1801;
+        claims.validity.expires_at -= 1801;
         hero::token::jwt::create_jwt_token(
             AccessToken::User(claims),
             SECRET,
@@ -186,7 +186,7 @@ impl Fixture {
         let settings: &'static TokenDeliverySettings = Box::leak(Box::new(TokenDeliverySettings {
             secure: false,
             public_origin: "https://app.example.com".into(),
-            access_max_age_seconds: 900,
+            access_max_age_seconds: 1800,
             refresh_max_age_seconds: 2_592_000,
         }));
         let auth = self.di.auth_service();
@@ -203,7 +203,7 @@ impl Fixture {
         let settings: &'static TokenDeliverySettings = Box::leak(Box::new(TokenDeliverySettings {
             secure: false,
             public_origin: "https://app.example.com".into(),
-            access_max_age_seconds: 900,
+            access_max_age_seconds: 1800,
             refresh_max_age_seconds: 2_592_000,
         }));
         let auth = self.di.auth_service();
@@ -335,7 +335,7 @@ async fn bearer_identity_wins_when_cookie_belongs_to_another_user() {
         &Session::new(99, 9, 90),
         OrganizationRole::Member,
         SECRET,
-        Duration::from_secs(900),
+        Duration::from_secs(1800),
         Duration::from_secs(3600),
     )
     .unwrap();
@@ -433,7 +433,7 @@ async fn expired_outer_jwt_envelope_also_triggers_cookie_renewal() {
     let claims = UserAccessToken::new(
         fixture.session.clone(),
         OrganizationRole::Owner,
-        Duration::from_secs(900),
+        Duration::from_secs(1800),
     )
     .unwrap();
     let now = compallm_utils::time::unix_timestamp();
@@ -595,7 +595,7 @@ async fn mutation_origin_and_role_and_organization_guards_are_enforced() {
         &fixture.session,
         OrganizationRole::Member,
         SECRET,
-        Duration::from_secs(900),
+        Duration::from_secs(1800),
         Duration::from_secs(3600),
     )
     .unwrap();
@@ -742,7 +742,7 @@ async fn cookie_extensions_include_only_matching_valid_refresh_claims() {
         &Session::new(99, 9, 90),
         OrganizationRole::Owner,
         SECRET,
-        Duration::from_secs(900),
+        Duration::from_secs(1800),
         Duration::from_secs(3600),
     )
     .unwrap();
@@ -750,7 +750,7 @@ async fn cookie_extensions_include_only_matching_valid_refresh_claims() {
         &Session::new(42, 7, 84),
         OrganizationRole::Owner,
         SECRET,
-        Duration::from_secs(900),
+        Duration::from_secs(1800),
         Duration::from_secs(3600),
     )
     .unwrap();
@@ -825,13 +825,13 @@ async fn selected_credentials_cannot_inherit_token_extensions_from_another_layer
     let settings: &'static TokenDeliverySettings = Box::leak(Box::new(TokenDeliverySettings {
         secure: false,
         public_origin: "https://app.example.com".into(),
-        access_max_age_seconds: 900,
+        access_max_age_seconds: 1800,
         refresh_max_age_seconds: 2_592_000,
     }));
     let inherited = UserAccessToken::new(
         fixture.session.clone(),
         OrganizationRole::Owner,
-        Duration::from_secs(900),
+        Duration::from_secs(1800),
     )
     .unwrap();
     let router = Router::new()

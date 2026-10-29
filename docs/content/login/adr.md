@@ -90,7 +90,9 @@ A stolen refresh JWT remains renewable until it expires or the session is explic
 
 ## Unresolved before implementation
 
-- Which operations require immediate access-token revocation; the current access lifetime is 15 minutes.
+The [login interface](interface.md) records the accepted minimal split layout and email-code interaction; its real input behavior and API integration remain unimplemented.
+
+- Which operations require immediate access-token revocation; the current access lifetime is 30 minutes.
 - Cross-provider account linking and which login methods ship first.
 - The [email-code expiry and reuse discrepancy](email.md).
 

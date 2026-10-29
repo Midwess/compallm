@@ -28,6 +28,16 @@ Compose starts the backing services, including PostgreSQL on port `7887`. Cargo 
 
 Development email uses MailDev: SMTP on `1025`, inbox at http://127.0.0.1:1080. See [mailing](docs/content/mailing/adr.md) for queue limits and [email login](docs/content/login/email.md) for SMTP environment variables.
 
+To design portal components and screen wireframes without starting the backend:
+
+```bash
+cd storybook
+pnpm install
+pnpm start
+```
+
+Open `http://localhost:6006` and use Codex CLI from the repository root to iterate. See the [design workspace guide](docs/content/development/design-workspace.md) for the local MCP connection and review workflow.
+
 ## License
 
 Compallm is source available under the [Elastic License 2.0](LICENSE); see [NOTICE](NOTICE) for attribution and third-party licensing information. The license permits use, modification, and redistribution but prohibits providing Compallm to third parties as a hosted or managed service that exposes a substantial set of its features. The vendored Quartz source retains its [MIT license](docs/web/LICENSE.txt).

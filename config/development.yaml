@@ -23,7 +23,7 @@ settings:
     public_origin: |-
       <%= get_env(name="AUTH_PUBLIC_ORIGIN", default="") | indent(width=6) %>
     jwt_secret: "<%= get_env(name="AUTH_JWT_SECRET", default="local-development-signing-secret-change-before-production") %>"
-    user_token_ttl_seconds: 900
+    user_token_ttl_seconds: 1800
     refresh_token_ttl_seconds: 2592000
 
 logger:

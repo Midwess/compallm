@@ -4,6 +4,11 @@
 # JavaScript
 /node_modules
 /portal/node_modules
+/storybook/node_modules
+/storybook/.pnpm-store
+/storybook/storybook-static
+/storybook/test-results
+/storybook/playwright-report
 /docs/web/node_modules
 /docs/web/public
 /docs/web/.quartz-cache
@@ -18,7 +23,11 @@
 *.local
 *.log
 
+# Local agent workspaces
+/.dev/
+
 # Editors and operating systems
+/.codex/config.toml
 .idea
 .vscode/*
 !.vscode/extensions.json

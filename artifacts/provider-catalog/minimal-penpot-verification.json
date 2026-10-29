@@ -1,0 +1,255 @@
+{
+  "overflow": [],
+  "unbound": [],
+  "belowFloor": [],
+  "tableFills": [],
+  "removedSections": [],
+  "missingComponents": [],
+  "version": {
+    "label": "Minimal model catalog · final review",
+    "createdAt": "2026-10-29T06:45:52.358Z"
+  },
+  "validation": [],
+  "prototypeLinks": [
+    {
+      "from": "5f0632c6-6f9f-80b5-8008-dc0f915f728a",
+      "to": "f4ee18d8-a548-80a9-8008-dbbcbbe6ade8",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcd4a539a125",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d8150d5",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcd4a535285e",
+      "to": "5f0632c6-6f9f-80b5-8008-dc0f912c6ae5",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdace18e7c7",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d1e955d",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdace18e7e0",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba2899a6f",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdace18e7d9",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba31f216c",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcd5036ef6fd",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d8150d5",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcd5036ae025",
+      "to": "5f0632c6-6f9f-80b5-8008-dc0f912c6ae5",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcd5036ae023",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d4254fc",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdad478e497",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d1e955d",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdad47935e9",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba2899a6f",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdad478e4a9",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba31f216c",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcd5b162fb1a",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d8150d5",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcd5b161f64b",
+      "to": "5f0632c6-6f9f-80b5-8008-dc0f912c6ae5",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdadaf5cea8",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d1e955d",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdadaf5cedf",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba2899a6f",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdadaf5ced8",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba31f216c",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdadaf58d77",
+      "to": "f4ee18d8-a548-80a9-8008-dbbcbbe6ade8",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdadaf58d75",
+      "to": "f4ee18d8-a548-80a9-8008-dbbcbbe6ade8",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdadaf58d73",
+      "to": "f4ee18d8-a548-80a9-8008-dbbcbbe6ade8",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcd5b1d58809",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d8150d5",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcd5b1d4dc1d",
+      "to": "5f0632c6-6f9f-80b5-8008-dc0f912c6ae5",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdae507e4fd",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba2899a6f",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdae507e4f6",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba31f216c",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdae507e4ea",
+      "to": "f4ee18d8-a548-80a9-8008-dbbcbbe6ade8",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdba289faca",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba2c6d98d",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdba289fac8",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba301ac10",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcddf6e0b761",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcd5b11d100a",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdba2899a70",
+      "to": "f4ee18d8-a548-80a9-8008-dbbcbbe6ade8",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdba2c711be",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba2899a6f",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdba2c711ba",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba301ac10",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcde04d37af8",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcd5b11d100a",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdba2c6d98e",
+      "to": "f4ee18d8-a548-80a9-8008-dbbcbbe6ade8",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdba301edcd",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba2899a6f",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdba301edcb",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba2c6d98d",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdba301ac11",
+      "to": "f4ee18d8-a548-80a9-8008-dbbcbbe6ade8",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "42def06f-0fb0-80ff-8008-dc4d8d656071",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d1e955d",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "42def06f-0fb0-80ff-8008-dc4f30e320e1",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8edd68e6",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "42def06f-0fb0-80ff-8008-dc4d8dace9d4",
+      "to": "f4ee18d8-a548-80a9-8008-dbbcbbe6ade8",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "42def06f-0fb0-80ff-8008-dc4f3beda455",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8ed4f14c",
+      "type": "open-overlay",
+      "exists": true
+    }
+  ]
+}

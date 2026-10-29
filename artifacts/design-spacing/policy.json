@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "scope": ["Design foundations", "Main", "Login · Split layout", "Signup"],
+  "scale": 0.5,
+  "minimumNonzeroPx": 2,
+  "zeroRemainsZero": true,
+  "formula": "nominal === 0 ? 0 : max(minimumNonzeroPx, nominal * scale)",
+  "tokenSet": "Spacing policy",
+  "scaleToken": "layout.spacing.scale",
+  "minimumToken": "layout.spacing.minimum",
+  "unchangedGeometry": ["control sizes", "typography", "icon artwork", "borders", "corner radii", "viewport sizes"],
+  "checkpoint": "Spacing · foundation masters and inherited samples bound",
+  "lastVerifiedFoundationLayouts": 555,
+  "lastVerifiedUnboundFoundationAutoLayoutProperties": 0,
+  "lastVerifiedFoundationValuesBelowMinimum": 0,
+  "status": "Token policy and foundation Auto Layout bindings saved; final composition reflow and visual verification pending MCP recovery."
+}

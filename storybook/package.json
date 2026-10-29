@@ -1,0 +1,36 @@
+{
+  "name": "compallm-design-workspace",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "license": "Elastic-2.0",
+  "packageManager": "pnpm@11.11.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "start": "storybook dev --port 6006 --host 127.0.0.1 --exact-port --no-open --disable-telemetry",
+    "build": "storybook build --disable-telemetry",
+    "check": "tsc --noEmit",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "pixelarticons": "1.8.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@storybook/addon-a11y": "10.6.4",
+    "@storybook/addon-docs": "10.6.4",
+    "@storybook/addon-mcp": "10.6.4",
+    "@storybook/react-vite": "10.6.4",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "storybook": "10.6.4",
+    "typescript": "6.0.3",
+    "vite": "8.3.4"
+  }
+}

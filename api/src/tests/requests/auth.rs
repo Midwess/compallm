@@ -39,7 +39,7 @@ impl Fixture {
             jwt_secret: SECRET.into(),
             cookie_secure: false,
             public_origin: String::new(),
-            user_token_ttl_seconds: 900,
+            user_token_ttl_seconds: 1800,
             refresh_token_ttl_seconds: 30 * 24 * 60 * 60,
         }
     }
@@ -167,6 +167,7 @@ async fn test_and_development_auth_configuration_load_without_connecting() {
         let config = crate::app::App::load_config(&environment).await.unwrap();
         let settings = config.settings.unwrap();
         assert!(settings["auth"]["jwt_secret"].as_str().unwrap().len() >= 32);
+        assert_eq!(settings["auth"]["user_token_ttl_seconds"], 1800);
         assert_eq!(settings["auth"]["refresh_token_ttl_seconds"], 2_592_000);
         let smtp: compallm_mailing::SmtpSettings =
             serde_json::from_value(settings["smtp"].clone()).unwrap();
@@ -240,6 +241,7 @@ async fn signup_delivers_code_and_confirmation_creates_user() {
         AccessToken::decode(tokens["accessToken"].as_str().unwrap(), SECRET).unwrap(),
     )
     .unwrap();
+    assert_eq!(access.validity.expires_at - access.validity.issued_at, 1800);
     assert_eq!(access.session.organization_id, 84);
     assert_eq!(
         access.organization_role,
@@ -404,7 +406,7 @@ async fn cookie_confirmation_sets_both_cookies_without_exposing_credentials() {
                 assert_eq!(cookie.domain(), None);
                 assert_eq!(
                     cookie.max_age().unwrap().whole_seconds(),
-                    if index == 0 { 900 } else { 2_592_000 }
+                    if index == 0 { 1800 } else { 2_592_000 }
                 );
                 let claims = AccessToken::decode(cookie.value(), SECRET).unwrap();
                 assert!(matches!(
@@ -733,7 +735,7 @@ async fn otp_confirmation_requires_typed_bearer_and_rejects_legacy_json_tokens()
         &compallm_core::auth::Session::new(42, 7, 84),
         compallm_core::organization::OrganizationRole::Owner,
         SECRET,
-        std::time::Duration::from_secs(900),
+        std::time::Duration::from_secs(1800),
         std::time::Duration::from_secs(3600),
     )
     .unwrap();

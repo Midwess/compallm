@@ -35,6 +35,10 @@ Before implementation, decide which API compatibility standard, providers, and m
 
 The 9Router comparison also surfaced routing profiles, credential pools, quota awareness, OAuth refresh, self-hosted policies, compression and prompt presets, client setup helpers, and configuration sync. These remain candidates, not accepted scope.
 
+### Custom model fallback
+
+Decision status: Ordered fallback and observed serving status are accepted for the custom-model design. Implementation status: Penpot/local design work; runtime routing, health detection, and telemetry remain pending. Dragging changes provider priority. Percentages are small read-only measurements of observed serving responsibility, not configurable traffic weights: a first-priority provider that was down throughout the period can show 0%. Down/inactive providers are excluded. The earlier editable-weight interpretation is superseded. Measurement window/aggregation, health recovery, eligible failures, retry/timeout budgets, partial streams, exhaustion, compatibility, and charging remain open. See [Custom model design](custom-model.md).
+
 ## Consequences
 
 Provider adapters must preserve supported capabilities and report translation limits explicitly. A unified format does not make unsupported provider capabilities available.

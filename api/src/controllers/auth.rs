@@ -56,7 +56,8 @@ pub struct SignupEmailResponse {
 
 /// Request an email signup code.
 ///
-/// Enqueues a six-digit verification code for the supplied email address and returns an encrypted
+/// Rejects an already-registered email with 409 and a signin suggestion before mailing or token
+/// delivery. For a new email, enqueues a six-digit verification code and returns an encrypted
 /// challenge for confirmation. Submit the challenge and code to
 /// `POST /api/auth/signup/email/confirmation/otp` within 10 minutes.
 /// Delivery defaults to cookie: set a ten-minute HttpOnly OTP access cookie, clear any refresh
@@ -74,6 +75,7 @@ pub struct SignupEmailResponse {
         (status = 200, description = "OTP delivery requested; use this token to confirm", body = SignupEmailResponse),
         (status = 400, description = "Malformed JSON or invalid field format. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid request fields"})),
         (status = 403, description = "Untrusted Origin for cookie delivery", body = ErrorResponse),
+        (status = 409, description = "Email already registered; sign in instead. No email or token issued.", body = ErrorResponse, example = json!({"message":"Email is already registered. Please sign in instead."})),
         (status = 429, description = "Recipient throttled. Keep the existing challenge and retry after the configured cooldown (30 seconds by default).", body = ErrorResponse, example = json!({"message": "Email recipient is throttled; keep the existing challenge and retry later"})),
         (status = 503, description = "Email admission unavailable or queue remained full until the configured timeout (30 seconds by default). Retry later; no challenge was issued.", body = ErrorResponse, example = json!({"message": "Email delivery is unavailable"})),
         (status = 500, description = "Internal error. Retry later.", body = ErrorResponse, example = json!({"message": "Internal server error"}))
@@ -129,7 +131,7 @@ pub struct ConfirmSignupOtpRequest {
         (status = 400, description = "Malformed JSON or invalid field format. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid JSON request body"})),
         (status = 401, description = "Invalid or expired challenge or code. Check the code or request a new challenge.", body = ErrorResponse, example = json!({"message": "Invalid or expired token or OTP code"})),
         (status = 403, description = "Untrusted cookie Origin or user/organization access disabled.", body = ErrorResponse, example = json!({"message": "Organization access denied"})),
-        (status = 409, description = "Email already registered. Use signin instead of signup.", body = ErrorResponse, example = json!({"message": "Email is already registered"})),
+        (status = 409, description = "Email already registered. Use signin instead of signup.", body = ErrorResponse, example = json!({"message": "Email is already registered. Please sign in instead."})),
         (status = 500, description = "Database or internal error. Retry later.", body = ErrorResponse, example = json!({"message": "Internal server error"}))
     )
 )]
@@ -192,7 +194,7 @@ async fn signin_email(
 ) -> Result<impl IntoResponse, ApiError> {
     let ValidifiedByRef(Json(input)) = input?;
     input.delivery.validate_origin(&headers, settings)?;
-    let token = auth.signup_email(&input.email).await?;
+    let token = auth.signin_email(&input.email).await?;
     input.delivery.otp_response(token, settings)
 }
 

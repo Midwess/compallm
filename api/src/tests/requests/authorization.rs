@@ -286,7 +286,7 @@ async fn public_routes_stay_public_but_missing_credentials_are_rejected() {
     response.assert_status_unauthorized();
     assert_eq!(response.header("www-authenticate"), "Bearer");
     server
-        .post("/api/auth/signup/email")
+        .post("/api/auth/signin/email")
         .add_header(AUTHORIZATION, "Bearer stale")
         .json(&serde_json::json!({"delivery":"token","email":"james@example.com"}))
         .await

@@ -57,9 +57,10 @@ impl IntoResponse for ApiError {
                 StatusCode::BAD_REQUEST,
                 "User name must contain 1 to 256 email local-part characters; dots cannot be first, last, or repeated",
             ),
-            Self::Auth(AuthError::Persistence(UserRepositoryError::EmailAlreadyExists)) => {
-                (StatusCode::CONFLICT, "Email is already registered")
-            }
+            Self::Auth(AuthError::Persistence(UserRepositoryError::EmailAlreadyExists)) => (
+                StatusCode::CONFLICT,
+                "Email is already registered. Please sign in instead.",
+            ),
             Self::Auth(AuthError::UserDisabled) => (StatusCode::FORBIDDEN, "User is disabled"),
             Self::Auth(AuthError::OrganizationAccessDenied) => {
                 (StatusCode::FORBIDDEN, "Organization access denied")

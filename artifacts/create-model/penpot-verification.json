@@ -1,0 +1,373 @@
+{
+  "missingComponents": [],
+  "overflow": [],
+  "unbound": [],
+  "belowFloor": [],
+  "numericControls": [],
+  "breadcrumbs": [],
+  "widths": [
+    {
+      "state": "populated",
+      "addWidth": 892,
+      "routeWidths": [
+        892,
+        892,
+        892
+      ],
+      "addHasHandle": false
+    },
+    {
+      "state": "dragging",
+      "addWidth": 892,
+      "routeWidths": [
+        892,
+        892,
+        892
+      ],
+      "addHasHandle": false
+    },
+    {
+      "state": "reordered",
+      "addWidth": 892,
+      "routeWidths": [
+        892,
+        892,
+        892
+      ],
+      "addHasHandle": false
+    },
+    {
+      "state": "empty",
+      "addWidth": 892,
+      "routeWidths": [],
+      "addHasHandle": false
+    },
+    {
+      "state": "added",
+      "addWidth": 892,
+      "routeWidths": [
+        892,
+        892,
+        892,
+        892
+      ],
+      "addHasHandle": false
+    },
+    {
+      "state": "removed",
+      "addWidth": 892,
+      "routeWidths": [
+        892,
+        892
+      ],
+      "addHasHandle": false
+    },
+    {
+      "state": "single",
+      "addWidth": 892,
+      "routeWidths": [
+        892
+      ],
+      "addHasHandle": false
+    },
+    {
+      "state": "replaced",
+      "addWidth": 892,
+      "routeWidths": [
+        892,
+        892,
+        892
+      ],
+      "addHasHandle": false
+    }
+  ],
+  "preserved": [
+    {
+      "state": "populated",
+      "name": true,
+      "prompt": true
+    },
+    {
+      "state": "dragging",
+      "name": true,
+      "prompt": true
+    },
+    {
+      "state": "reordered",
+      "name": true,
+      "prompt": true
+    },
+    {
+      "state": "empty",
+      "name": true,
+      "prompt": true
+    },
+    {
+      "state": "added",
+      "name": true,
+      "prompt": true
+    },
+    {
+      "state": "removed",
+      "name": true,
+      "prompt": true
+    },
+    {
+      "state": "single",
+      "name": true,
+      "prompt": true
+    },
+    {
+      "state": "replaced",
+      "name": true,
+      "prompt": true
+    }
+  ],
+  "links": [
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd11b14e5edc",
+      "to": "c714cb70-2cf5-80d0-8008-dd13d0b103dc",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd127d790f60",
+      "to": "c714cb70-2cf5-80d0-8008-dd13d0b103dc",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd127d9303b5",
+      "to": "c714cb70-2cf5-80d0-8008-dd13d0b103dc",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd127dc36e84",
+      "to": "c714cb70-2cf5-80d0-8008-dd13d0b103dc",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd127ddb6e5e",
+      "to": "c714cb70-2cf5-80d0-8008-dd13d0b103dc",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd13cfe98f5b",
+      "to": "c714cb70-2cf5-80d0-8008-dd13d0b103dc",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd13d0582309",
+      "to": "c714cb70-2cf5-80d0-8008-dd13d0b103dc",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd11b190d68b",
+      "to": "c714cb70-2cf5-80d0-8008-dd127d790e59",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd127e48277a",
+      "to": "c714cb70-2cf5-80d0-8008-dd127d9302c7",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd127e365a7c",
+      "to": "c714cb70-2cf5-80d0-8008-dd127d9302c7",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd11b19f54b0",
+      "to": "c714cb70-2cf5-80d0-8008-dd127d9302c7",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd11b15c9810",
+      "to": "c714cb70-2cf5-80d0-8008-dd127d9302c7",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd127d9303b2",
+      "to": "2928d947-6270-8013-8008-dd037f71ce40",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd127d9303cc",
+      "to": "2928d947-6270-8013-8008-dd037f71ce40",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd11b160e3d8",
+      "to": "c714cb70-2cf5-80d0-8008-dd127ddb6d70",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd13d024b506",
+      "to": "c714cb70-2cf5-80d0-8008-dd127dab4c5d",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd127f9e49a0",
+      "to": "c714cb70-2cf5-80d0-8008-dd127dc3290c",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd13d0a6b944",
+      "to": "c714cb70-2cf5-80d0-8008-dd13cf74b0bc",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd13d0b103e3",
+      "to": "c714cb70-2cf5-80d0-8008-dd13d0582202",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd156bfe5c52",
+      "to": "c714cb70-2cf5-80d0-8008-dd127f43536d",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd156ce37c81",
+      "to": "c714cb70-2cf5-80d0-8008-dd127f43536d",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd156d5f691b",
+      "to": "c714cb70-2cf5-80d0-8008-dd127f43536d",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd156ddec66f",
+      "to": "c714cb70-2cf5-80d0-8008-dd13d0a6b93d",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd156eb5a9e6",
+      "to": "c714cb70-2cf5-80d0-8008-dd127f43536d",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd156f5d7b6c",
+      "to": "c714cb70-2cf5-80d0-8008-dd127f43536d",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd156fc79911",
+      "to": "c714cb70-2cf5-80d0-8008-dd127f43536d",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "c714cb70-2cf5-80d0-8008-dd15707a8025",
+      "to": "c714cb70-2cf5-80d0-8008-dd127f43536d",
+      "type": "open-overlay",
+      "exists": true
+    }
+  ],
+  "propagation": {
+    "master": "c714cb70-2cf5-80d0-8008-dd119be6ff22",
+    "original": null,
+    "instance": "c714cb70-2cf5-80d0-8008-dd11b148d891",
+    "changed": 0.87,
+    "originalEffective": 1,
+    "restored": 1
+  },
+  "states": {
+    "populated": "2928d947-6270-8013-8008-dd037f71ce40",
+    "dragging": "c714cb70-2cf5-80d0-8008-dd127d790e59",
+    "reordered": "c714cb70-2cf5-80d0-8008-dd127d9302c7",
+    "empty": "c714cb70-2cf5-80d0-8008-dd127dab4c5d",
+    "added": "c714cb70-2cf5-80d0-8008-dd127dc3290c",
+    "removed": "c714cb70-2cf5-80d0-8008-dd127ddb6d70",
+    "single": "c714cb70-2cf5-80d0-8008-dd13cf74b0bc",
+    "replaced": "c714cb70-2cf5-80d0-8008-dd13d0582202"
+  },
+  "validation": [],
+  "version": {
+    "label": "Create model · plain title inline add and fallback roles verified",
+    "createdAt": "2026-10-29T10:53:25.825Z"
+  },
+  "roles": [
+    {
+      "state": "populated",
+      "roles": [
+        "Primary",
+        "Fallback",
+        "Fallback"
+      ]
+    },
+    {
+      "state": "dragging",
+      "roles": [
+        "Primary",
+        "Fallback",
+        "Fallback"
+      ]
+    },
+    {
+      "state": "reordered",
+      "roles": [
+        "Primary",
+        "Fallback",
+        "Fallback"
+      ]
+    },
+    {
+      "state": "empty",
+      "roles": []
+    },
+    {
+      "state": "added",
+      "roles": [
+        "Primary",
+        "Fallback",
+        "Fallback",
+        "Fallback"
+      ]
+    },
+    {
+      "state": "removed",
+      "roles": [
+        "Primary",
+        "Fallback"
+      ]
+    },
+    {
+      "state": "single",
+      "roles": [
+        "Primary"
+      ]
+    },
+    {
+      "state": "replaced",
+      "roles": [
+        "Primary",
+        "Fallback",
+        "Fallback"
+      ]
+    }
+  ]
+}

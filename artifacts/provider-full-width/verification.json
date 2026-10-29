@@ -1,0 +1,112 @@
+{
+  "width": 1120,
+  "forms": [
+    {
+      "name": "Add provider · 2 Configure preset",
+      "x": 276,
+      "width": 1120,
+      "right": 1396
+    },
+    {
+      "name": "Add provider · 2 Custom configuration",
+      "x": 276,
+      "width": 1120,
+      "right": 1396
+    }
+  ],
+  "overflow": [],
+  "missingComponents": [],
+  "changedValues": [],
+  "referenceChanges": [],
+  "links": [
+    {
+      "from": "fa8e91b5-5267-8081-8008-dce22fe69e98",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d8150d5",
+      "type": "navigate-to",
+      "present": true
+    },
+    {
+      "from": "42def06f-0fb0-80ff-8008-dc4f30e320e1",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8edd68e6",
+      "type": "open-overlay",
+      "present": true
+    },
+    {
+      "from": "42def06f-0fb0-80ff-8008-dc4d8d656071",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d1e955d",
+      "type": "navigate-to",
+      "present": true
+    },
+    {
+      "from": "42def06f-0fb0-80ff-8008-dc4f3beda455",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8ed4f14c",
+      "type": "open-overlay",
+      "present": true
+    },
+    {
+      "from": "42def06f-0fb0-80ff-8008-dc4d8dace9d4",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d1e955d",
+      "type": "navigate-to",
+      "present": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdadaf5cedf",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba2899a6f",
+      "type": "open-overlay",
+      "present": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdadaf5ced8",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba31f216c",
+      "type": "open-overlay",
+      "present": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdadaf58d73",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d1e955d",
+      "type": "navigate-to",
+      "present": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdadaf5cea8",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d1e955d",
+      "type": "navigate-to",
+      "present": true
+    },
+    {
+      "from": "74429048-e085-8067-8008-dcf03b669395",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d8150d5",
+      "type": "navigate-to",
+      "present": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdae507e4fd",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba2899a6f",
+      "type": "open-overlay",
+      "present": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdae507e4f6",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba31f216c",
+      "type": "open-overlay",
+      "present": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdae507e4ea",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d1e955d",
+      "type": "navigate-to",
+      "present": true
+    },
+    {
+      "from": "74429048-e085-8067-8008-dcf03ba38342",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d8150d5",
+      "type": "navigate-to",
+      "present": true
+    }
+  ],
+  "validation": [],
+  "version": {
+    "label": "Configure model · full table width verified",
+    "createdAt": "2026-10-29T09:08:19.720Z"
+  }
+}

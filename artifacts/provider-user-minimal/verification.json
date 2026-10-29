@@ -1,0 +1,391 @@
+{
+  "reference": "42def06f-0fb0-80ff-8008-dc4d8d1e955d",
+  "referenceUnchanged": true,
+  "changed": [
+    {
+      "key": "filtered",
+      "id": "1e5b3e5f-2a89-80e3-8008-dcd5b11d100a"
+    },
+    {
+      "key": "empty",
+      "id": "1e5b3e5f-2a89-80e3-8008-dcd5b18c321c"
+    },
+    {
+      "key": "preset",
+      "id": "42def06f-0fb0-80ff-8008-dc4d8d4254fc"
+    },
+    {
+      "key": "custom",
+      "id": "42def06f-0fb0-80ff-8008-dc4d8d8150d5"
+    }
+  ],
+  "missingComponents": [],
+  "overflow": [],
+  "unbound": [],
+  "belowFloor": [],
+  "requiredValues": [
+    {
+      "key": "preset",
+      "fields": [
+        {
+          "name": "Connection name field",
+          "value": "OpenAI · GPT-4.1"
+        },
+        {
+          "name": "Base URL field",
+          "value": "https://api.openai.com/v1"
+        },
+        {
+          "name": "Mode select",
+          "value": "Chat completions"
+        },
+        {
+          "name": "API key * field",
+          "value": "Enter your OpenAI API key"
+        },
+        {
+          "name": "API protocol select",
+          "value": "OpenAI compatible"
+        },
+        {
+          "name": "Model name field",
+          "value": "gpt-4.1"
+        },
+        {
+          "name": "Max context window field",
+          "value": "1047576"
+        },
+        {
+          "name": "Input price field",
+          "value": "2.00"
+        },
+        {
+          "name": "Cached price field",
+          "value": "0.50"
+        },
+        {
+          "name": "Output price field",
+          "value": "8.00"
+        }
+      ]
+    },
+    {
+      "key": "custom",
+      "fields": [
+        {
+          "name": "Connection name field",
+          "value": "Name your connection"
+        },
+        {
+          "name": "Base URL field",
+          "value": "https://api.example.com/v1"
+        },
+        {
+          "name": "Mode select",
+          "value": "Choose mode"
+        },
+        {
+          "name": "API key * field",
+          "value": "Enter API key"
+        },
+        {
+          "name": "API protocol select",
+          "value": "Choose protocol"
+        },
+        {
+          "name": "Model name field",
+          "value": "e.g. model-id"
+        },
+        {
+          "name": "Max context window field",
+          "value": "Enter token limit"
+        },
+        {
+          "name": "Input price field",
+          "value": "Enter price"
+        },
+        {
+          "name": "Cached price field",
+          "value": "Enter price"
+        },
+        {
+          "name": "Output price field",
+          "value": "Enter price"
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "from": "74429048-e085-8067-8008-dcf03b669395",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d8150d5",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdadaf5cedf",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba2899a6f",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdadaf5ced8",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba31f216c",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdadaf5cea8",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d1e955d",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdadaf58d73",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d1e955d",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "74429048-e085-8067-8008-dcf03ba38342",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d8150d5",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdae507e4fd",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba2899a6f",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdae507e4f6",
+      "to": "1e5b3e5f-2a89-80e3-8008-dcdba31f216c",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "1e5b3e5f-2a89-80e3-8008-dcdae507e4ea",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d1e955d",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "42def06f-0fb0-80ff-8008-dc4d8d656071",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d1e955d",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "42def06f-0fb0-80ff-8008-dc4f30e320e1",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8edd68e6",
+      "type": "open-overlay",
+      "exists": true
+    },
+    {
+      "from": "42def06f-0fb0-80ff-8008-dc4d8dace9d4",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8d1e955d",
+      "type": "navigate-to",
+      "exists": true
+    },
+    {
+      "from": "42def06f-0fb0-80ff-8008-dc4f3beda455",
+      "to": "42def06f-0fb0-80ff-8008-dc4d8ed4f14c",
+      "type": "open-overlay",
+      "exists": true
+    }
+  ],
+  "validation": [],
+  "inheritedReferenceShell": {
+    "overflow": [
+      {
+        "parent": "Group / Conversations",
+        "name": "Row / Exploring a new idea",
+        "w": 220,
+        "h": 28
+      },
+      {
+        "parent": "Group / Conversations",
+        "name": "Row / Research notes",
+        "w": 220,
+        "h": 28
+      },
+      {
+        "parent": "Group / Conversations",
+        "name": "Row / Model comparison",
+        "w": 220,
+        "h": 28
+      },
+      {
+        "parent": "Group / Tools",
+        "name": "Section / Tools",
+        "w": 228,
+        "h": 28
+      }
+    ],
+    "unbound": [
+      {
+        "name": "Compallm sidebar",
+        "prop": "columnGap"
+      },
+      {
+        "name": "Navigation sections",
+        "prop": "columnGap"
+      },
+      {
+        "name": "Workspace header",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Workspace header",
+        "prop": "columnGap"
+      },
+      {
+        "name": "Board",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Group / Providers",
+        "prop": "columnGap"
+      },
+      {
+        "name": "Providers category base",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Providers category base",
+        "prop": "columnGap"
+      },
+      {
+        "name": "Providers disclosure",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Add routers button",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Add routers button",
+        "prop": "columnGap"
+      },
+      {
+        "name": "Provider / OpenAI",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Provider / Anthropic",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Provider / Gemini",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Group / Routers",
+        "prop": "columnGap"
+      },
+      {
+        "name": "Routers category base",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Routers category base",
+        "prop": "columnGap"
+      },
+      {
+        "name": "Routers disclosure",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Add routers button",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Add routers button",
+        "prop": "columnGap"
+      },
+      {
+        "name": "Router / Stats",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Router / API key",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Folder / Models",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Nested folder / Models",
+        "prop": "columnGap"
+      },
+      {
+        "name": "Custom model / Fast Chat",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Custom model / Deep Reasoning",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Group / Workspace",
+        "prop": "columnGap"
+      },
+      {
+        "name": "Section / Workspace",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Row / Chat",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Row / Notebooks",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Row / Plugins",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Group / Conversations",
+        "prop": "columnGap"
+      },
+      {
+        "name": "Section / Conversations",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Row / Exploring a new idea",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Row / Research notes",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Row / Model comparison",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Group / Tools",
+        "prop": "columnGap"
+      },
+      {
+        "name": "Section / Tools",
+        "prop": "rowGap"
+      },
+      {
+        "name": "Row / Usage",
+        "prop": "rowGap"
+      }
+    ]
+  },
+  "referencePreserved": true,
+  "version": {
+    "label": "Add provider · minimal user style verified",
+    "createdAt": "2026-10-29T08:12:56.567Z"
+  },
+  "referenceChanges": []
+}

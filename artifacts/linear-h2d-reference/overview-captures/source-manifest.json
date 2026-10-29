@@ -1,0 +1,593 @@
+{
+  "sources": [
+    {
+      "file": "linear-overview.h2d",
+      "bytes": 1496730,
+      "sha256": "2b7cac80570eccd7cc86f7d56f79c7627fd319a656e0ed9ac36698580903c25b"
+    },
+    {
+      "file": "linear_app_dropdown_expand_1.h2d",
+      "bytes": 535440,
+      "sha256": "01e1cddac44583ec94a2ebfff311525abae95decac6d595dee3b81de22fca0e9"
+    },
+    {
+      "file": "linear_app_dropdown_expand_2.h2d",
+      "bytes": 532760,
+      "sha256": "ef15d05cc6ec256ec48a94e480cadf7f9ed909d194e102aa01732a0b3fe6fe30"
+    }
+  ],
+  "views": [
+    {
+      "index": 0,
+      "title": "Compallm \u203a Overview",
+      "url": "https://linear.app/devlogs/project/compallm-96d1dac32260/overview",
+      "width": 1920,
+      "height": 1200,
+      "preview": "overview-0.png"
+    },
+    {
+      "index": 1,
+      "title": "Reviews",
+      "url": "https://linear.app/devlogs/reviews",
+      "width": 1920,
+      "height": 1200,
+      "preview": "overview-1.png"
+    },
+    {
+      "index": 2,
+      "title": "Projects",
+      "url": "https://linear.app/devlogs/projects/all",
+      "width": 1920,
+      "height": 1200,
+      "preview": "overview-2.png"
+    },
+    {
+      "index": 3,
+      "title": "Projects",
+      "url": "https://linear.app/devlogs/projects/all",
+      "width": 1920,
+      "height": 1200,
+      "preview": "overview-3.png"
+    },
+    {
+      "index": 4,
+      "title": "Preferences",
+      "url": "https://linear.app/devlogs/settings/account/preferences",
+      "width": 1920,
+      "height": 1200,
+      "preview": "overview-4.png"
+    },
+    {
+      "index": 5,
+      "title": "Billing",
+      "url": "https://linear.app/devlogs/settings/billing",
+      "width": 1920,
+      "height": 1200,
+      "preview": "overview-5.png"
+    },
+    {
+      "index": 6,
+      "title": "Loops",
+      "url": "https://linear.app/devlogs/settings/loops",
+      "width": 1920,
+      "height": 1200,
+      "preview": "overview-6.png"
+    },
+    {
+      "index": 7,
+      "title": "AI & agents",
+      "url": "https://linear.app/devlogs/settings/ai",
+      "width": 1920,
+      "height": 1200,
+      "preview": "overview-7.png"
+    },
+    {
+      "index": 8,
+      "title": "Agent personalization",
+      "url": "https://linear.app/devlogs/settings/account/agents",
+      "width": 1920,
+      "height": 1200,
+      "preview": "overview-8.png"
+    },
+    {
+      "index": 9,
+      "title": "Agent personalization",
+      "url": "https://linear.app/devlogs/settings/account/agents",
+      "width": 1920,
+      "height": 1200,
+      "preview": "overview-9.png"
+    },
+    {
+      "index": 10,
+      "title": "Documents",
+      "url": "https://linear.app/devlogs/settings/documents",
+      "width": 1920,
+      "height": 1200,
+      "preview": "overview-10.png"
+    },
+    {
+      "index": 11,
+      "title": "New document template",
+      "url": "https://linear.app/devlogs/settings/templates/document/new",
+      "width": 1920,
+      "height": 1200,
+      "preview": "overview-11.png"
+    }
+  ],
+  "componentExcerpts": [
+    {
+      "key": "Page toolbar",
+      "family": "navigation",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0"
+    },
+    {
+      "key": "Breadcrumb trail",
+      "family": "navigation",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.0.0.0.0.0"
+    },
+    {
+      "key": "Tab Selected",
+      "family": "navigation",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.1.0.0.0.0.0.0.0.0.0.0"
+    },
+    {
+      "key": "Tab Default",
+      "family": "navigation",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.1.0.0.0.0.1.0.0.0.0.0"
+    },
+    {
+      "key": "Toolbar Filter",
+      "family": "navigation",
+      "source": 2,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.1.1.0.0.0.0.0"
+    },
+    {
+      "key": "Toolbar Display",
+      "family": "navigation",
+      "source": 2,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.1.1.0.0.1.0"
+    },
+    {
+      "key": "Toolbar Details closed",
+      "family": "navigation",
+      "source": 2,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.1.1.0.1.0"
+    },
+    {
+      "key": "Toolbar Details open",
+      "family": "navigation",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.1.1.0.0"
+    },
+    {
+      "key": "Toolbar Favorite",
+      "family": "navigation",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.0.0.0.1.0"
+    },
+    {
+      "key": "Toolbar More",
+      "family": "navigation",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.0.0.0.2.0"
+    },
+    {
+      "key": "Toolbar Copy URL",
+      "family": "navigation",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.0.0.1.0.0"
+    },
+    {
+      "key": "Toolbar Notifications",
+      "family": "navigation",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.0.0.1.1.0"
+    },
+    {
+      "key": "View pill",
+      "family": "navigation",
+      "source": 2,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.1.0.0.0.0.0.0.0.0.0.0"
+    },
+    {
+      "key": "Back breadcrumb",
+      "family": "navigation",
+      "source": 11,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0"
+    },
+    {
+      "key": "Agent dock",
+      "family": "navigation",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.1.0.0.0.0.0.0.0.0.0.0.0"
+    },
+    {
+      "key": "Project table header",
+      "family": "data",
+      "source": 2,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.0.0.0.0.0.0.0"
+    },
+    {
+      "key": "Project table row",
+      "family": "data",
+      "source": 2,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.0.0.0.0.0.0.1.0.0"
+    },
+    {
+      "key": "Property chip Status",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.0.0.0.0.0.0.0.3.1.0.0"
+    },
+    {
+      "key": "Property chip Priority",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.0.0.0.0.0.0.0.3.1.1.0.0"
+    },
+    {
+      "key": "Property chip Lead",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.0.0.0.0.0.0.0.3.1.2.0"
+    },
+    {
+      "key": "Property chip Date",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.0.0.0.0.0.0.0.3.1.3.0"
+    },
+    {
+      "key": "Property chip Team",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.0.0.0.0.0.0.0.3.1.4.0"
+    },
+    {
+      "key": "Property row Status",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.1.1.0.0.0.0.0.1.0.0.0.0"
+    },
+    {
+      "key": "Property row Priority",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.1.1.0.0.0.0.0.1.0.0.0.1"
+    },
+    {
+      "key": "Property row Lead",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.1.1.0.0.0.0.0.1.0.0.0.2"
+    },
+    {
+      "key": "Property row Members",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.1.1.0.0.0.0.0.1.0.0.0.3"
+    },
+    {
+      "key": "Property row Dates",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.1.1.0.0.0.0.0.1.0.0.0.4"
+    },
+    {
+      "key": "Property row Teams",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.1.1.0.0.0.0.0.1.0.0.0.5"
+    },
+    {
+      "key": "Property row Slack",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.1.1.0.0.0.0.0.1.0.0.0.6"
+    },
+    {
+      "key": "Property row Labels",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.1.1.0.0.0.0.0.1.0.0.0.7"
+    },
+    {
+      "key": "Project properties panel",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.1.1.0.0.0.0.0"
+    },
+    {
+      "key": "Project icon",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.0.0.0.0.0.0.0.0"
+    },
+    {
+      "key": "Project health",
+      "family": "data",
+      "source": 2,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.0.0.0.0.0.0.1.0.0.1.3.0.0"
+    },
+    {
+      "key": "Project progress",
+      "family": "data",
+      "source": 2,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.0.0.0.0.0.0.1.0.0.1.8.0.0.0.0"
+    },
+    {
+      "key": "Resource action",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.0.0.0.0.0.0.0.3.3.0.0.0"
+    },
+    {
+      "key": "Milestone add action",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.0.0.0.0.0.0.2.0"
+    },
+    {
+      "key": "Milestone panel",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.1.1.0.0.0.0.1"
+    },
+    {
+      "key": "Activity panel",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.1.1.0.0.0.0.2"
+    },
+    {
+      "key": "Activity event",
+      "family": "data",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.1.1.0.0.0.0.2.1.0.0.0"
+    },
+    {
+      "key": "Plan summary",
+      "family": "cards",
+      "source": 5,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.0.0.0.0.0"
+    },
+    {
+      "key": "Plan upgrade",
+      "family": "cards",
+      "source": 5,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.0.1.0.0.0.0"
+    },
+    {
+      "key": "Usage link",
+      "family": "cards",
+      "source": 5,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.0.2.0.0"
+    },
+    {
+      "key": "Plan gate",
+      "family": "cards",
+      "source": 6,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.0.0.0.0"
+    },
+    {
+      "key": "Invoice empty",
+      "family": "cards",
+      "source": 5,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.1.1.0.0.0"
+    },
+    {
+      "key": "Collection empty",
+      "family": "cards",
+      "source": 9,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.2.1.0.0.0"
+    },
+    {
+      "key": "Connector collection",
+      "family": "cards",
+      "source": 9,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.3.1.0.0.0"
+    },
+    {
+      "key": "Template collection",
+      "family": "cards",
+      "source": 10,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.1.0.0.0"
+    },
+    {
+      "key": "Integration row Enabled",
+      "family": "cards",
+      "source": 7,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.1.1.0.0.0.0.0"
+    },
+    {
+      "key": "Integration row Setup required",
+      "family": "cards",
+      "source": 7,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.1.1.0.0.0.0.1"
+    },
+    {
+      "key": "Integration row Restricted",
+      "family": "cards",
+      "source": 7,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.1.1.0.0.0.0.2"
+    },
+    {
+      "key": "Integration row Restricted multiline",
+      "family": "cards",
+      "source": 7,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.1.1.0.0.0.0.3"
+    },
+    {
+      "key": "Integration navigation row",
+      "family": "cards",
+      "source": 7,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.3.1.0.0.0"
+    },
+    {
+      "key": "Section with docs link",
+      "family": "cards",
+      "source": 7,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.1.0"
+    },
+    {
+      "key": "Guidance editor",
+      "family": "editors",
+      "source": 9,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.0.1.0.0.0.0.0"
+    },
+    {
+      "key": "Edit timestamp",
+      "family": "editors",
+      "source": 9,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.2.0.1"
+    },
+    {
+      "key": "Inline title editor",
+      "family": "editors",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.0.0.0.0.0.0.0.1.0.0"
+    },
+    {
+      "key": "Inline summary editor",
+      "family": "editors",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.0.0.0.0.0.0.0.2.0.0"
+    },
+    {
+      "key": "Description editor",
+      "family": "editors",
+      "source": 0,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.1.0.0.0.0.0.0.1.1.0.0.0.0.0.0.0.0"
+    },
+    {
+      "key": "Document title editor",
+      "family": "editors",
+      "source": 11,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.3.0.0.0.1.0.0.0"
+    },
+    {
+      "key": "Document body editor",
+      "family": "editors",
+      "source": 11,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.3.0.0.1.0.0.0.0"
+    },
+    {
+      "key": "Document icon",
+      "family": "editors",
+      "source": 11,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.3.0.0.0.0.0.0.1"
+    },
+    {
+      "key": "Document footer",
+      "family": "editors",
+      "source": 11,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.2.0.4"
+    },
+    {
+      "key": "Review feature Guided review",
+      "family": "editors",
+      "source": 1,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.0.0.0.1.0.1.0"
+    },
+    {
+      "key": "Review feature Review inbox",
+      "family": "editors",
+      "source": 1,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.0.0.0.1.0.1.1"
+    },
+    {
+      "key": "Review feature GitHub sync",
+      "family": "editors",
+      "source": 1,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.0.0.0.1.0.1.2"
+    },
+    {
+      "key": "Review feature Iterate",
+      "family": "editors",
+      "source": 1,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.0.0.0.1.0.1.3"
+    },
+    {
+      "key": "Review introduction",
+      "family": "editors",
+      "source": 1,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.0.0.0.1.0.0.0"
+    },
+    {
+      "key": "Guided review step",
+      "family": "editors",
+      "source": 1,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.0.0.0.1.0.0.1.0.0.0.1.0"
+    },
+    {
+      "key": "Changed file Added",
+      "family": "editors",
+      "source": 1,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.0.0.0.1.0.0.1.0.0.0.1.0.3.0"
+    },
+    {
+      "key": "Changed file Modified",
+      "family": "editors",
+      "source": 1,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.0.0.0.1.0.0.1.0.0.0.1.0.3.1"
+    },
+    {
+      "key": "Review preview shell",
+      "family": "editors",
+      "source": 1,
+      "path": "0.0.0.0.0.0.1.0.0.0.1.0.0.0.0.0.0.1.0.0.1.0.0.0"
+    },
+    {
+      "key": "Connector picker",
+      "family": "dropdowns",
+      "source": 9,
+      "path": "0.0.7.0.1.0"
+    },
+    {
+      "key": "Connector search",
+      "family": "dropdowns",
+      "source": 9,
+      "path": "0.0.7.0.1.0.0.0.0"
+    },
+    {
+      "key": "Menu group heading",
+      "family": "dropdowns",
+      "source": 9,
+      "path": "0.0.7.0.1.0.1.0.1.1"
+    },
+    {
+      "key": "Connector option Submenu",
+      "family": "dropdowns",
+      "source": 9,
+      "path": "0.0.7.0.1.0.1.0.1.2"
+    },
+    {
+      "key": "Connector option Metadata",
+      "family": "dropdowns",
+      "source": 9,
+      "path": "0.0.7.0.1.0.1.0.1.3"
+    },
+    {
+      "key": "Connector option Configure",
+      "family": "dropdowns",
+      "source": 9,
+      "path": "0.0.7.0.1.0.1.0.1.8"
+    },
+    {
+      "key": "Theme menu",
+      "family": "dropdowns",
+      "source": "linear_app_dropdown_expand_1",
+      "path": "0"
+    },
+    {
+      "key": "Diagram menu",
+      "family": "dropdowns",
+      "source": "linear_app_dropdown_expand_2",
+      "path": "0"
+    }
+  ]
+}

@@ -1,0 +1,258 @@
+{
+  "frames": [
+    {
+      "id": "5f0632c6-6f9f-80b5-8008-dc0d6d2d6b97",
+      "name": "01 · Foundations",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 2016,
+        "height": 1280
+      },
+      "masters": 0,
+      "groups": 0,
+      "overflow": [],
+      "broken": []
+    },
+    {
+      "id": "5f0632c6-6f9f-80b5-8008-dc0b1dd87299",
+      "name": "02 · Sidebar",
+      "bounds": {
+        "x": 2176,
+        "y": 0,
+        "width": 1600,
+        "height": 1216
+      },
+      "masters": 2,
+      "groups": 1,
+      "overflow": [],
+      "broken": []
+    },
+    {
+      "id": "5f0632c6-6f9f-80b5-8008-dc093d0a28ce",
+      "name": "03 · Text fields",
+      "bounds": {
+        "x": 0,
+        "y": 1440,
+        "width": 2016,
+        "height": 2350
+      },
+      "masters": 36,
+      "groups": 6,
+      "overflow": [],
+      "broken": []
+    },
+    {
+      "id": "5f0632c6-6f9f-80b5-8008-dc09eaab5265",
+      "name": "04 · Buttons & links",
+      "bounds": {
+        "x": 2176,
+        "y": 1440,
+        "width": 1600,
+        "height": 1568
+      },
+      "masters": 23,
+      "groups": 4,
+      "overflow": [],
+      "broken": []
+    },
+    {
+      "id": "5f0632c6-6f9f-80b5-8008-dc0a2844179c",
+      "name": "05 · Dropdowns",
+      "bounds": {
+        "x": 4352,
+        "y": 1440,
+        "width": 2016,
+        "height": 1990
+      },
+      "masters": 31,
+      "groups": 5,
+      "overflow": [],
+      "broken": []
+    },
+    {
+      "id": "5f0632c6-6f9f-80b5-8008-dc0b2a6cc877",
+      "name": "06 · Selection controls",
+      "bounds": {
+        "x": 0,
+        "y": 3950,
+        "width": 1600,
+        "height": 1096
+      },
+      "masters": 14,
+      "groups": 4,
+      "overflow": [],
+      "broken": []
+    },
+    {
+      "id": "5f0632c6-6f9f-80b5-8008-dc0c301b214e",
+      "name": "07 · Feedback & overlays",
+      "bounds": {
+        "x": 2176,
+        "y": 3950,
+        "width": 1600,
+        "height": 1080
+      },
+      "masters": 9,
+      "groups": 0,
+      "overflow": [],
+      "broken": []
+    },
+    {
+      "id": "5f0632c6-6f9f-80b5-8008-dc0d326d4a9e",
+      "name": "08 · Content & code",
+      "bounds": {
+        "x": 0,
+        "y": 5800,
+        "width": 2016,
+        "height": 1420
+      },
+      "masters": 11,
+      "groups": 2,
+      "overflow": [],
+      "broken": []
+    },
+    {
+      "id": "5f0632c6-6f9f-80b5-8008-dc0e5814815f",
+      "name": "09 · Form patterns",
+      "bounds": {
+        "x": 0,
+        "y": 7890,
+        "width": 2016,
+        "height": 2352
+      },
+      "masters": 0,
+      "groups": 0,
+      "overflow": [],
+      "broken": []
+    },
+    {
+      "id": "5f0632c6-6f9f-80b5-8008-dc1bbcd0471d",
+      "name": "10 · Navigation & toolbars",
+      "bounds": {
+        "x": 4352,
+        "y": 0,
+        "width": 2016,
+        "height": 1280
+      },
+      "masters": 15,
+      "groups": 2,
+      "overflow": [],
+      "broken": []
+    },
+    {
+      "id": "5f0632c6-6f9f-80b5-8008-dc1bbcfe6b7f",
+      "name": "11 · Data & properties",
+      "bounds": {
+        "x": 4352,
+        "y": 3950,
+        "width": 2016,
+        "height": 1690
+      },
+      "masters": 25,
+      "groups": 2,
+      "overflow": [],
+      "broken": []
+    },
+    {
+      "id": "5f0632c6-6f9f-80b5-8008-dc1bbd21a7bb",
+      "name": "12 · Cards & collections",
+      "bounds": {
+        "x": 2176,
+        "y": 5800,
+        "width": 2016,
+        "height": 1840
+      },
+      "masters": 14,
+      "groups": 1,
+      "overflow": [],
+      "broken": []
+    },
+    {
+      "id": "5f0632c6-6f9f-80b5-8008-dc1bbd40b0f6",
+      "name": "13 · Editors & reviews",
+      "bounds": {
+        "x": 4352,
+        "y": 5800,
+        "width": 2016,
+        "height": 1930
+      },
+      "masters": 12,
+      "groups": 2,
+      "overflow": [],
+      "broken": []
+    },
+    {
+      "id": "5f0632c6-6f9f-80b5-8008-dc216cc2f603",
+      "name": "14 · Page patterns",
+      "bounds": {
+        "x": 2176,
+        "y": 7890,
+        "width": 4056,
+        "height": 1200
+      },
+      "masters": 0,
+      "groups": 0,
+      "overflow": [],
+      "broken": []
+    }
+  ],
+  "masterCount": 192,
+  "variantGroups": 29,
+  "validation": [],
+  "pageChecks": [
+    {
+      "page": "Main",
+      "rootCount": 2,
+      "componentHeads": 11,
+      "broken": []
+    },
+    {
+      "page": "Login",
+      "rootCount": 3,
+      "componentHeads": 25,
+      "broken": []
+    },
+    {
+      "page": "Signup",
+      "rootCount": 4,
+      "componentHeads": 30,
+      "broken": []
+    },
+    {
+      "page": "Design foundations",
+      "rootCount": 14,
+      "componentHeads": 202,
+      "broken": []
+    }
+  ],
+  "propagation": {
+    "master": "5f0632c6-6f9f-80b5-8008-dc1f55bb6e89",
+    "copy": "5f0632c6-6f9f-80b5-8008-dc1ce18bb0b6",
+    "original": 1,
+    "changed": 0.91,
+    "restored": 1
+  },
+  "fullFontFaces": {
+    "regular": {
+      "id": "custom-280e5b98-9a68-4721-a30f-ca31738bf44d",
+      "name": "Inter UI Regular"
+    },
+    "helper": {
+      "id": "custom-0614078d-f822-4061-a3df-ee364b5ab560",
+      "name": "Inter UI Helper"
+    },
+    "medium": {
+      "id": "custom-03c999bc-4d47-4dbd-9080-246a4f299034",
+      "name": "Inter UI Medium"
+    }
+  },
+  "version": {
+    "label": "Linear overview library · final verified components",
+    "createdAt": "2026-10-28T17:31:38.945Z"
+  },
+  "sourceViews": 12,
+  "addedMasters": 84,
+  "addedVariantGroups": 10,
+  "scope": "Supplied expanded menus and twelve overview views; hidden Linear interactions are not inferred."
+}

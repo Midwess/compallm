@@ -1,0 +1,7 @@
+[mcp_servers.storybook]
+url = "http://127.0.0.1:6006/mcp"
+
+# Optional: copy the URL from your Penpot account integrations into config.toml.
+# The actual config.toml is ignored by Git to keep its userToken private.
+# [mcp_servers.penpot]
+# url = "YOUR_PRIVATE_PENPOT_MCP_URL"

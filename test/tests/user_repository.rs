@@ -35,8 +35,6 @@ impl Fixture {
             status: UserStatusSchema::Active,
             email_verified_at: at,
             last_login_at: None,
-            created_at: at,
-            updated_at: at,
         }
     }
 

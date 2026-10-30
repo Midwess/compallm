@@ -25,16 +25,10 @@ impl Fixture {
                 let rows = name
                     .into_iter()
                     .map(|name| {
-                        let at = "2026-10-25T00:00:00Z"
-                            .parse::<sea_orm::prelude::DateTimeWithTimeZone>()
-                            .unwrap();
                         let model = OrganizationSchema {
                             id: 84,
                             name: name.into(),
                             status: OrganizationStatusSchema::Active,
-                            created_by: 42,
-                            created_at: at,
-                            updated_at: at,
                         };
                         let mut row: BTreeMap<_, _> =
                             model.into_mock_row().into_column_value_tuples().collect();
@@ -62,7 +56,7 @@ impl Fixture {
 }
 
 #[tokio::test]
-async fn rename_updates_only_name_and_timestamp_in_one_transaction() {
+async fn rename_updates_only_name_in_one_transaction() {
     let fixture = Fixture::new(Ok(Some("New-Team")));
     let organization = fixture
         .context
@@ -70,14 +64,11 @@ async fn rename_updates_only_name_and_timestamp_in_one_transaction() {
         .await
         .unwrap();
     assert_eq!(organization.id, 84);
-    assert_eq!(organization.created_by, 42);
     assert_eq!(organization.name, "New-Team");
     let transactions = fixture.database.as_ref().clone().into_transaction_log();
     assert_eq!(transactions.len(), 1);
     let log = format!("{transactions:?}");
     assert!(log.contains("UPDATE"));
-    assert!(log.contains("updated_at"));
-    assert!(log.contains("CURRENT_TIMESTAMP"));
     assert!(log.contains("New-Team"));
     assert!(log.contains("RETURNING"));
     assert!(log.contains("COMMIT"));

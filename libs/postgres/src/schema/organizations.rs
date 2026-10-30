@@ -11,9 +11,6 @@ pub struct Model {
     #[sea_orm(column_type = "Text")]
     pub name: String,
     pub status: OrganizationStatus,
-    pub created_by: i64,
-    pub created_at: DateTimeWithTimeZone,
-    pub updated_at: DateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -22,14 +19,6 @@ pub enum Relation {
     UserSessions,
     #[sea_orm(has_many = "super::organization_members::Entity")]
     OrganizationMembers,
-    #[sea_orm(
-        belongs_to = "super::users::Entity",
-        from = "Column::CreatedBy",
-        to = "super::users::Column::Id",
-        on_update = "NoAction",
-        on_delete = "Restrict"
-    )]
-    Users,
 }
 
 impl Related<super::organization_members::Entity> for Entity {

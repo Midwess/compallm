@@ -17,7 +17,6 @@ pub struct Organization {
     pub id: u64,
     pub name: String,
     pub status: OrganizationStatus,
-    pub created_by: u64,
 }
 
 impl Organization {

@@ -7,7 +7,7 @@ pub mod token;
 
 pub use error::AuthError;
 pub use service::{AuthService, TokenLifetimes};
-pub use session::{Session, SessionReference};
+pub use session::Session;
 pub use token::{
     AccessToken, EmailOtpAccessToken, EncryptedAccessToken, EncryptedToken, RefreshToken,
     TokenValidity, UserAccessToken,

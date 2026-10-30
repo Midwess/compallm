@@ -45,7 +45,6 @@ impl CreationService {
                     id: hero::distributed_id::try_gen_id().await?,
                     name: name.into(),
                     status: OrganizationStatus::Active,
-                    created_by: user.id,
                 })
                 .await?;
             self.organizations

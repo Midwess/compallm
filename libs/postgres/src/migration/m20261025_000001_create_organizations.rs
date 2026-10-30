@@ -20,7 +20,6 @@ impl MigrationTrait for Migration {
         manager
             .create_table(Self::organization_members_table())
             .await?;
-        manager.create_index(Self::creator_index()).await?;
         manager
             .create_index(Self::member_organization_index())
             .await?;
@@ -79,33 +78,8 @@ impl Migration {
                     .not_null()
                     .default("active"),
             )
-            .col(
-                ColumnDef::new(Organizations::CreatedBy)
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Organizations::CreatedAt)
-                    .timestamp_with_time_zone()
-                    .not_null()
-                    .default(Expr::current_timestamp()),
-            )
-            .col(
-                ColumnDef::new(Organizations::UpdatedAt)
-                    .timestamp_with_time_zone()
-                    .not_null()
-                    .default(Expr::current_timestamp()),
-            )
             .check(Expr::col(Organizations::Id).gt(0))
             .check(Expr::cust("length(btrim(name)) > 0"))
-            .foreign_key(
-                ForeignKey::create()
-                    .name("organizations_created_by_fkey")
-                    .from(Organizations::Table, Organizations::CreatedBy)
-                    .to(Users::Table, Users::Id)
-                    // Preserve the identity of the creator for audit purposes.
-                    .on_delete(ForeignKeyAction::Restrict),
-            )
             .to_owned()
     }
 
@@ -126,12 +100,6 @@ impl Migration {
                 ColumnDef::new(OrganizationMembers::Role)
                     .custom(OrganizationRole::Enum)
                     .not_null(),
-            )
-            .col(
-                ColumnDef::new(OrganizationMembers::CreatedAt)
-                    .timestamp_with_time_zone()
-                    .not_null()
-                    .default(Expr::current_timestamp()),
             )
             .primary_key(
                 Index::create()
@@ -156,14 +124,6 @@ impl Migration {
                     .to(Users::Table, Users::Id)
                     .on_delete(ForeignKeyAction::Cascade),
             )
-            .to_owned()
-    }
-
-    fn creator_index() -> IndexCreateStatement {
-        Index::create()
-            .name("organizations_created_by_idx")
-            .table(Organizations::Table)
-            .col(Organizations::CreatedBy)
             .to_owned()
     }
 
@@ -208,9 +168,6 @@ enum Organizations {
     Id,
     Name,
     Status,
-    CreatedBy,
-    CreatedAt,
-    UpdatedAt,
 }
 
 #[derive(DeriveIden)]
@@ -219,7 +176,6 @@ enum OrganizationMembers {
     OrganizationId,
     UserId,
     Role,
-    CreatedAt,
 }
 
 #[derive(DeriveIden)]
@@ -233,21 +189,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn organization_identity_uses_bigint_and_preserves_creator() {
+    fn organization_identity_uses_application_bigint_ids() {
         let sql = Migration::organizations_table().to_string(PostgresQueryBuilder);
         assert!(sql.contains(r#""id" bigint NOT NULL PRIMARY KEY"#));
         assert!(!sql.to_lowercase().contains("serial"));
         assert!(sql.contains(r#""status" organization_status NOT NULL DEFAULT 'active'"#));
-        assert!(sql.contains(
-            r#"FOREIGN KEY ("created_by") REFERENCES "users" ("id") ON DELETE RESTRICT"#
-        ));
         assert!(sql.contains("length(btrim(name)) > 0"));
-        assert!(sql.contains(
-            r#""created_at" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP"#
-        ));
-        assert!(sql.contains(
-            r#""updated_at" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP"#
-        ));
     }
 
     #[test]

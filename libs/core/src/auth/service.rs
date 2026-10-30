@@ -12,7 +12,6 @@ use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode
 use crate::organization::OrganizationMember;
 use crate::persistent::session::SessionRepository;
 use crate::persistent::{DbContext, organization::OrganizationRepository, user::UserRepository};
-use crate::transaction;
 use crate::user::{RegistrationService, UserStatus};
 use compallm_utils::time::unix_timestamp;
 
@@ -23,7 +22,7 @@ pub struct TokenLifetimes {
 }
 
 pub struct AuthService {
-    db: &'static DbContext,
+    _db: &'static DbContext,
     users: &'static Box<dyn UserRepository>,
     organizations: &'static Box<dyn OrganizationRepository>,
     sessions: &'static Box<dyn SessionRepository>,
@@ -46,7 +45,7 @@ impl AuthService {
     ) -> Result<Self, AuthError> {
         EncryptedAccessToken::new(&jwt_secret)?;
         Ok(Self {
-            db,
+            _db: db,
             users,
             organizations,
             sessions,
@@ -93,22 +92,20 @@ impl AuthService {
         code: &str,
     ) -> Result<UserTokens, AuthError> {
         claims.verify_code(code, unix_timestamp())?;
-        transaction!(self.db, {
-            let user = self
-                .users
-                .find_by_email(&claims.email)
-                .await?
-                .ok_or(AuthError::UserNotFound)?;
-            if user.status != UserStatus::Active {
-                return Err(AuthError::UserDisabled);
-            }
-            let membership = self
-                .organizations
-                .find_first_admin_membership(user.id)
-                .await?
-                .ok_or(AuthError::OrganizationAccessDenied)?;
-            self.start_session(user.id, membership).await
-        })
+        let user = self
+            .users
+            .find_by_email(&claims.email)
+            .await?
+            .ok_or(AuthError::UserNotFound)?;
+        if user.status != UserStatus::Active {
+            return Err(AuthError::UserDisabled);
+        }
+        let membership = self
+            .organizations
+            .find_first_admin_membership(user.id)
+            .await?
+            .ok_or(AuthError::OrganizationAccessDenied)?;
+        self.start_session(user.id, membership).await
     }
 
     pub async fn signup(
@@ -117,18 +114,16 @@ impl AuthService {
         code: &str,
     ) -> Result<UserTokens, AuthError> {
         claims.verify_code(code, unix_timestamp())?;
-        transaction!(self.db, {
-            let user = self.registration.register(&claims.email).await?;
-            if user.status != UserStatus::Active {
-                return Err(AuthError::UserDisabled);
-            }
-            let membership = self
-                .organizations
-                .find_first_admin_membership(user.id)
-                .await?
-                .ok_or(AuthError::OrganizationAccessDenied)?;
-            self.start_session(user.id, membership).await
-        })
+        let user = self.registration.register(&claims.email).await?;
+        if user.status != UserStatus::Active {
+            return Err(AuthError::UserDisabled);
+        }
+        let membership = self
+            .organizations
+            .find_first_admin_membership(user.id)
+            .await?
+            .ok_or(AuthError::OrganizationAccessDenied)?;
+        self.start_session(user.id, membership).await
     }
 
     /// Verify the envelope and inner claims, preserving the concrete token variant.
@@ -146,7 +141,7 @@ impl AuthService {
         let claims = RefreshToken::try_from(AccessToken::decode(refresh_token, &self.jwt_secret)?)?;
         let session = self
             .sessions
-            .find(claims.session.reference())
+            .find(&claims.session)
             .await?
             .ok_or(AuthError::InvalidSession)?;
         let renewed = session.refresh(&claims, self.lifetimes.refresh)?;
@@ -177,40 +172,44 @@ impl AuthService {
         organization_id: u64,
     ) -> Result<UserTokens, AuthError> {
         let claims = RefreshToken::try_from(AccessToken::decode(refresh_token, &self.jwt_secret)?)?;
-        transaction!(self.db, {
-            let mut session = self
-                .sessions
-                .find(claims.session.reference())
-                .await?
-                .ok_or(AuthError::InvalidSession)?;
-            session.validate_credential(&claims)?;
-            let user = self
-                .users
-                .find_by_id(claims.session.user_id)
-                .await?
-                .ok_or(AuthError::UserNotFound)?;
-            if user.status != UserStatus::Active {
-                return Err(AuthError::UserDisabled);
-            }
-            let membership = self
-                .organizations
-                .find_membership(organization_id, user.id)
-                .await?
-                .ok_or(AuthError::OrganizationAccessDenied)?;
-            let previous = session.clone();
-            session.switch_organization(&claims, organization_id)?;
-            let tokens = UserTokens::new(
-                &session,
-                membership.role,
-                &self.jwt_secret,
-                self.lifetimes.user,
-                self.lifetimes.refresh,
-            )?;
-            if !self.sessions.update(&session, &previous).await? {
-                return Err(AuthError::InvalidSession);
-            }
-            Ok(tokens)
-        })
+        let mut session = self
+            .sessions
+            .find(&claims.session)
+            .await?
+            .ok_or(AuthError::InvalidSession)?;
+
+        session.validate_credential(&claims)?;
+        let user = self
+            .users
+            .find_by_id(claims.session.user_id)
+            .await?
+            .ok_or(AuthError::UserNotFound)?;
+        if user.status != UserStatus::Active {
+            return Err(AuthError::UserDisabled);
+        }
+
+        let membership = self
+            .organizations
+            .find_membership(organization_id, user.id)
+            .await?
+            .ok_or(AuthError::OrganizationAccessDenied)?;
+
+        let previous = session.clone();
+        session.switch_organization(&claims, organization_id)?;
+
+        let tokens = UserTokens::new(
+            &session,
+            membership.role,
+            &self.jwt_secret,
+            self.lifetimes.user,
+            self.lifetimes.refresh,
+        )?;
+
+        if !self.sessions.update(&session, &previous).await? {
+            return Err(AuthError::InvalidSession);
+        }
+
+        Ok(tokens)
     }
 
     async fn start_session(

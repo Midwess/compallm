@@ -120,7 +120,6 @@ impl CoreRepository for OrganizationRepository {
                 OrganizationStatus::Active => OrganizationStatusSchema::Active,
                 OrganizationStatus::Disabled => OrganizationStatusSchema::Disabled,
             }),
-            ..Default::default()
         };
         Organization::try_from(
             model
@@ -144,7 +143,6 @@ impl CoreRepository for OrganizationRepository {
                 OrganizationRole::Admin => OrganizationRoleSchema::Admin,
                 OrganizationRole::Member => OrganizationRoleSchema::Member,
             }),
-            ..Default::default()
         };
         OrganizationMember::try_from(
             model

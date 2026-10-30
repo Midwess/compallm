@@ -1,7 +1,7 @@
 use crate::{UserSessionSchema, postgres_connection::PostgresConnection};
 use anyhow::Context;
 use compallm_core::{
-    auth::{Session, SessionReference},
+    auth::Session,
     persistent::{
         DbContext,
         session::{SessionRepository as CoreSessionRepository, SessionRepositoryError},
@@ -42,8 +42,6 @@ impl CoreSessionRepository for SessionRepository {
             id: Set(Self::id(session.id)?),
             user_id: Set(Self::id(session.user_id)?),
             organization_id: Set(Self::id(session.organization_id)?),
-            refresh_token_id: Set(session.refresh_token_id),
-            created_at: Set(Self::timestamp(session.created_at)?),
             revoked_at: Set(session.revoked_at.map(Self::timestamp).transpose()?),
         };
         Sessions::insert(model)
@@ -53,15 +51,12 @@ impl CoreSessionRepository for SessionRepository {
         Ok(())
     }
 
-    async fn find(
-        &self,
-        reference: SessionReference,
-    ) -> Result<Option<Session>, SessionRepositoryError> {
+    async fn find(&self, session: &Session) -> Result<Option<Session>, SessionRepositoryError> {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
-        Sessions::find_by_id(Self::id(reference.id)?)
-            .filter(SessionColumn::UserId.eq(Self::id(reference.user_id)?))
-            .filter(SessionColumn::OrganizationId.eq(Self::id(reference.organization_id)?))
+        Sessions::find_by_id(Self::id(session.id)?)
+            .filter(SessionColumn::UserId.eq(Self::id(session.user_id)?))
+            .filter(SessionColumn::OrganizationId.eq(Self::id(session.organization_id)?))
             .one(db)
             .await
             .map_err(anyhow::Error::from)?
@@ -76,13 +71,11 @@ impl CoreSessionRepository for SessionRepository {
     ) -> Result<bool, SessionRepositoryError> {
         if session.id != previous.id
             || session.user_id != previous.user_id
-            || session.created_at != previous.created_at
             || (previous.revoked_at.is_some() && session.revoked_at != previous.revoked_at)
         {
-            return Err(anyhow::anyhow!(
-                "session identity, creation time, and existing revocation cannot change"
-            )
-            .into());
+            return Err(
+                anyhow::anyhow!("session identity and existing revocation cannot change").into(),
+            );
         }
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
@@ -98,14 +91,6 @@ impl CoreSessionRepository for SessionRepository {
                 SessionColumn::OrganizationId,
                 Expr::value(Self::id(session.organization_id)?),
             );
-        }
-        if session.refresh_token_id != previous.refresh_token_id {
-            update = update
-                .col_expr(
-                    SessionColumn::RefreshTokenId,
-                    Expr::value(session.refresh_token_id.clone()),
-                )
-                .filter(SessionColumn::RefreshTokenId.eq(previous.refresh_token_id.clone()));
         }
         // Setting the existing value also gives no-op updates a real row check.
         update = update.col_expr(

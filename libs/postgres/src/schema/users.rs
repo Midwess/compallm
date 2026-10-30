@@ -15,8 +15,6 @@ pub struct Model {
     pub status: UserStatus,
     pub email_verified_at: DateTimeWithTimeZone,
     pub last_login_at: Option<DateTimeWithTimeZone>,
-    pub created_at: DateTimeWithTimeZone,
-    pub updated_at: DateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -25,8 +23,6 @@ pub enum Relation {
     UserSessions,
     #[sea_orm(has_many = "super::organization_members::Entity")]
     OrganizationMembers,
-    #[sea_orm(has_many = "super::organizations::Entity")]
-    Organizations,
 }
 
 impl Related<super::organization_members::Entity> for Entity {

@@ -1,26 +1,21 @@
 use compallm_core::{
-    auth::{RefreshToken, Session, SessionReference},
+    auth::{RefreshToken, Session},
     persistent::{DbContext, session::SessionRepository as _},
 };
 use compallm_postgres::{
     UserSessionSchema, postgres_connection::PostgresConnection,
     repository::session::SessionRepository,
 };
-use sea_orm::{DbBackend, MockDatabase, MockExecResult, prelude::DateTimeWithTimeZone};
+use sea_orm::{DbBackend, MockDatabase, MockExecResult};
 use std::sync::Arc;
 
 struct Fixture;
 impl Fixture {
     fn row() -> UserSessionSchema {
-        let at = "2026-10-26T00:00:00Z"
-            .parse::<DateTimeWithTimeZone>()
-            .unwrap();
         UserSessionSchema {
             id: 7,
             user_id: 42,
             organization_id: 84,
-            refresh_token_id: "A".repeat(43),
-            created_at: at,
             revoked_at: None,
         }
     }
@@ -43,13 +38,8 @@ async fn owned_lookup_and_conditional_update_preserve_session_guards() {
     let context = Fixture::context(db.clone());
     context
         .transaction(async {
-            let reference = SessionReference {
-                id: 7,
-                user_id: 42,
-                organization_id: 84,
-            };
-            let mut session = SessionRepository.find(reference).await?.unwrap();
-            let created_at = session.created_at;
+            let token_session = Session::try_from(Fixture::row()).unwrap();
+            let mut session = SessionRepository.find(&token_session).await?.unwrap();
             let previous = session.clone();
             let token = RefreshToken::from_session(
                 &session,
@@ -57,7 +47,6 @@ async fn owned_lookup_and_conditional_update_preserve_session_guards() {
             )
             .unwrap();
             session.switch_organization(&token, 85).unwrap();
-            assert_eq!(session.created_at, created_at);
             assert!(SessionRepository.update(&session, &previous).await?);
             Ok::<_, compallm_core::persistent::session::SessionRepositoryError>(())
         })
@@ -72,23 +61,13 @@ async fn owned_lookup_and_conditional_update_preserve_session_guards() {
         sql.contains("WHERE \"user_sessions\".\"id\" = $1 AND \"user_sessions\".\"user_id\" = $2"),
         "{sql}"
     );
-    assert!(sql.contains("refresh_token_id"));
     assert!(sql.contains("IS NULL"));
     let update = sql.rsplit("UPDATE").next().unwrap();
-    assert!(
-        !update.contains("created_at"),
-        "rotation must not change login time"
-    );
     assert!(sql.contains("COMMIT"));
     let lookup = sql.split("UPDATE").next().unwrap();
     assert!(lookup.contains("\"organization_id\" = $3"));
     let conditions = update.split("WHERE").nth(1).unwrap();
-    for column in [
-        "\"user_id\"",
-        "\"organization_id\"",
-        "\"refresh_token_id\"",
-        "\"revoked_at\"",
-    ] {
+    for column in ["\"user_id\"", "\"organization_id\"", "\"revoked_at\""] {
         assert!(
             conditions.contains(column),
             "rotation omits {column}: {update}"
@@ -115,8 +94,6 @@ async fn session_creation_records_login_without_updating_the_user() {
     drop(context);
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
     assert!(log.contains("INSERT INTO \\\"public\\\".\\\"user_sessions\\\""));
-    assert!(log.contains("refresh_token_id"));
-    assert!(log.contains("created_at"));
     assert!(!log.contains("last_login_at"));
     assert!(log.contains("COMMIT"));
 }
@@ -146,7 +123,7 @@ async fn stale_update_reports_conflict_without_overwriting_the_session() {
 }
 
 #[tokio::test]
-async fn revocation_update_does_not_overwrite_a_concurrent_credential() {
+async fn revocation_update_does_not_overwrite_a_concurrent_organization() {
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_exec_results([MockExecResult {
@@ -176,21 +153,12 @@ async fn revocation_update_does_not_overwrite_a_concurrent_credential() {
         .next()
         .unwrap();
     assert!(set.contains("revoked_at"));
-    for field in [
-        "refresh_token_id",
-        "last_used_at",
-        "expires_at",
-        "organization_id",
-    ] {
+    for field in ["last_used_at", "expires_at", "organization_id"] {
         assert!(
             !set.contains(field),
             "revocation must preserve concurrent {field}: {sql}"
         );
     }
-    assert!(
-        !sql.contains("refresh_token_id"),
-        "unchanged credential must not block revocation"
-    );
     assert!(sql.contains("user_id") && sql.contains("organization_id") && sql.contains("IS NULL"));
 }
 
@@ -214,19 +182,19 @@ async fn owned_session_lookup_works_with_the_application_context() {
     ));
     context
         .scope(async {
-            let reference = SessionReference {
-                id: 7,
-                user_id: 42,
-                organization_id: 84,
-            };
-            let session = SessionRepository.find(reference).await.unwrap().unwrap();
+            let token_session = Session::try_from(Fixture::row()).unwrap();
+            let session = SessionRepository
+                .find(&token_session)
+                .await
+                .unwrap()
+                .unwrap();
             assert_eq!(session.id, 7);
             assert_eq!(session.user_id, 42);
             assert!(
                 SessionRepository
-                    .find(SessionReference {
+                    .find(&Session {
                         user_id: 99,
-                        ..reference
+                        ..token_session.clone()
                     })
                     .await
                     .unwrap()
@@ -234,9 +202,9 @@ async fn owned_session_lookup_works_with_the_application_context() {
             );
             assert!(
                 SessionRepository
-                    .find(SessionReference {
+                    .find(&Session {
                         organization_id: 99,
-                        ..reference
+                        ..token_session
                     })
                     .await
                     .unwrap()
@@ -251,7 +219,6 @@ fn mapper_preserves_session_fields_and_rejects_unrepresentable_ids() {
     let row = Fixture::row();
     let session = Session::try_from(row.clone()).unwrap();
     assert_eq!(session.id, row.id as u64);
-    assert_eq!(session.refresh_token_id, row.refresh_token_id);
     let mut negative = row;
     negative.user_id = -1;
     assert!(Session::try_from(negative).is_err());

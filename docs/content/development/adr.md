@@ -44,6 +44,8 @@ Repositories must not switch connections or independently commit a larger operat
 
 Do not hold a transaction open during slow email or HTTP calls. Database transactions do not cover external delivery; consider an outbox only when durable coordination is required. Avoid an additional unit-of-work layer without a concrete need.
 
+Generic `created_at` and `updated_at` columns are omitted from every application table (accepted 2026-10-31). Keep timestamps only for explicit business events or validity, such as email verification, revocation, and token expiry. Creation/update history is unavailable. Existing migration definitions and matching models are updated directly; already-migrated databases need separate schema reconciliation before using the revised schema.
+
 ## External integrations
 
 Follow the concrete-client approach in [Zero to Production's EmailClient](https://github.com/LukeMathWalker/zero-to-production/blob/main/src/email_client.rs). Startup supplies configured clients with reused connection pools and bounded timeouts.
@@ -58,7 +60,7 @@ GitHub PR diffs collapse test directories, conventional test filenames, and docu
 
 PR explanations use the PR diff and code at pinned commits as their default context. They must not require any project-specific documentation path; additional repository files can be read on demand through the existing tools. This lets documentation move or disappear without breaking the automation.
 
-Test domain rules without external services. Use Wiremock with real HTTP clients to check payloads, authentication, errors, and timeouts. SeaORM mocks verify query/service flow; PostgreSQL integration tests verify constraints, isolation, and rollback across repositories.
+Keep tests in `tests/` directories, using the existing `test/tests/` suite for shared Rust tests. Do not put tests under `api/` or inline in application source. Focus coverage on core business logic without external services; dependency and framework behavior do not need their own tests. This keeps verification focused on application-owned rules and reduces maintenance of tests for third-party behavior.
 
 Compilation or SQL-generation checks are appropriate when migrations must not execute. Application startup and database-backed tests may migrate automatically, so respect explicit restrictions.
 

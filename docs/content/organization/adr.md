@@ -27,6 +27,10 @@ Accepted on 2026-10-25; implementation is tracked separately from these product 
 - Support multiple organizations. The first deployment provisions one initial organization from environment variables; this bootstrap does not limit the platform to one organization.
 - Create a personal organization owned by each user during first-time onboarding. Users may also join other organizations under their membership policies.
 
+Accepted on 2026-10-31: organizations and memberships omit generic creation/update timestamps. Default membership selection uses the lowest organization ID among eligible active organizations, rather than membership creation time. Signin still requires owner/admin membership. Implementation status: repository selection follows this ordering; membership policy proposals remain open.
+
+Ownership decision accepted on 2026-10-31: `organization_members` entries with role `owner` are the sole ownership record. Organizations have no `created_by` field or separate creator history. Creation saves the organization and its initial owner membership atomically. Removing the creator foreign key also removes its restriction on deleting the original user; membership foreign keys retain their existing cascade behavior. The existing migration and matching models implement this decision; already-migrated databases require separate schema reconciliation.
+
 ## Open questions
 
 - Does joining another organization require an invitation, administrator approval, or another membership rule?

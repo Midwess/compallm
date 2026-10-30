@@ -230,16 +230,8 @@ fn email_otp_accepts_valid_addresses_from_any_domain() {
 }
 
 #[test]
-fn ids_round_trip_as_u64_and_refresh_tokens_have_distinct_ids() {
+fn ids_round_trip_as_u64_in_access_and_refresh_sessions() {
     let one = UserTokens::new(
-        &Session::new(9_007_199_254_740_993, 7, 84),
-        OrganizationRole::Owner,
-        SECRET,
-        Duration::from_secs(60),
-        Duration::from_secs(600),
-    )
-    .unwrap();
-    let two = UserTokens::new(
         &Session::new(9_007_199_254_740_993, 7, 84),
         OrganizationRole::Owner,
         SECRET,
@@ -262,15 +254,14 @@ fn ids_round_trip_as_u64_and_refresh_tokens_have_distinct_ids() {
             .user_id,
         9_007_199_254_740_993
     );
-    assert_ne!(
-        RefreshToken::try_from(AccessToken::decode(&one.refresh_token, SECRET).unwrap())
-            .unwrap()
-            .session
-            .refresh_token_id,
-        RefreshToken::try_from(AccessToken::decode(&two.refresh_token, SECRET).unwrap())
-            .unwrap()
-            .session
-            .refresh_token_id
+    let first =
+        RefreshToken::try_from(AccessToken::decode(&one.refresh_token, SECRET).unwrap()).unwrap();
+    assert_eq!(first.session.id, 7);
+    assert_eq!(first.session.user_id, 9_007_199_254_740_993);
+    assert_eq!(first.session.organization_id, 84);
+    assert_eq!(
+        json["data"]["user"]["session"].as_object().unwrap().len(),
+        4
     );
 }
 

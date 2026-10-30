@@ -17,7 +17,6 @@ impl Fixture {
             organization_id: 84,
             user_id: 1,
             role,
-            created_at: "2026-10-25T00:00:00Z".parse().unwrap(),
         };
         let mut row: BTreeMap<_, _> = row.into_mock_row().into_column_value_tuples().collect();
         row.insert("role".to_string(), "admin".into());
@@ -51,7 +50,6 @@ async fn first_admin_membership_query_filters_active_organizations_and_admin_rol
     assert!(log.contains("owner"));
     assert!(log.contains("admin"));
     assert!(log.contains("ORDER BY"));
-    assert!(log.contains("created_at"));
     assert!(log.contains("organization_id"));
 }
 

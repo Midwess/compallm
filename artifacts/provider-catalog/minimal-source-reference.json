@@ -1,9 +1,0 @@
-{
-  "file": "linear_app_devlogs_team_DEV_all (1).h2d",
-  "sha256": "0fede96ebf36ca0d38cfa9edcedaf4987cb79268c874e3dbe2a898acefd45a12",
-  "bytes": 1321139,
-  "sourceToolbarHeight": 28,
-  "captureShows": "Compact toolbar actions and pill tabs in an optional details pane",
-  "adaptation": "On-demand model filter popovers with Provider, Mode, and Capability tabs",
-  "userDirection": "Transparent table surfaces; remove featured cards and permanent left filter rail"
-}

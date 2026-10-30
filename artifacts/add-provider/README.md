@@ -1,9 +1,0 @@
-# Add provider design preview
-
-This folder preserves the earlier single-page form. The newer [provider catalog flow](../provider-catalog/README.md) supersedes it with two-page selection/configuration, preset defaults, a custom path, and split Base URL/Mode fields.
-
-[screen.png](screen.png) shows the four-section form: Name; URL/API key/API protocol; Model details; Test connection. Model details include maximum context length in tokens, supported thinking levels, and Input/Cached/Output prices in USD per million tokens. Brand cards are removed. [protocol-expanded.png](protocol-expanded.png) shows Anthropic and OpenAI compatible options. [form-bases.png](form-bases.png) shows the reusable introduction, step marker/heading, connector, labels, labeled fields/protocol, and footer. Matching SVGs embed the captured Inter fonts. PNGs are local renders of fresh Penpot SVG exports.
-
-The Main screen has two direct component instances: Main layout and Add provider form. The complete screen contains 69 linked component copies; its visible text and controls inherit from shared bases. Low, Medium, High, Xhigh, and Max use independent shared checkbox options; the empty example selects none. Model/context fields share one row, and responsive pricing fields share a three-column row. [verification.json](verification.json) records component links, bounds, section numbers, context/pricing labels and units, the single Test connection action inside step 4, and the named saved version. Design foundations contains 211 masters in 33 variant groups across the existing fourteen frames.
-
-See [Add provider design](../../docs/content/portal/add-provider.md) for the scope and unresolved interaction rules. The screen remains a Penpot prototype; no provider request, credential persistence, React code, or API integration is included.

@@ -62,6 +62,8 @@ A model-provider route associates one model with one provider connection in
 the same organization. It stores:
 
 - the upstream model name accepted by that provider;
+- configured provider input, output, and cached-token prices in fixed-point USD
+  per one million tokens;
 - a positive priority unique within the model;
 - an independent `enabled` state.
 
@@ -121,12 +123,15 @@ atomic with a database update.
 | Stable caller-facing name and published prices | Model |
 | Non-secret model behavior settings | Model |
 | Endpoint, protocol, credential, and connection availability | Provider connection |
-| Upstream model name, route priority, and route availability | Model-provider route |
-| Health, quota, cooldown, and actual upstream cost | Separate operational state |
+| Upstream model name, configured provider prices, priority, and availability | Model-provider route |
+| Health, quota, cooldown, and observed operational data | Separate operational state |
 
 Published model prices remain stable across routes and do not necessarily
-equal provider costs. Operational observations must not overwrite model prices
-or route configuration.
+equal configured provider prices. Providers return token usage rather than a
+USD cost, so provider cost is estimated from route prices. Operational
+observations must not overwrite model prices or route configuration. Because
+provider usage does not snapshot a route's prices, changing those prices means
+the current schema cannot later reconstruct an exact historical provider cost.
 
 ## Open questions
 
@@ -135,7 +140,9 @@ or route configuration.
   health temporarily change that order?
 - Which provider outcomes permit fallback, and how do retries, cooldowns,
   cancellation, and charging interact?
-- Where are provider capability metadata and actual upstream costs maintained?
+- How are route price changes versioned or snapshotted if exact historical
+  provider cost reporting is required?
+- Where is provider capability metadata maintained?
 - Which model setting keys and validation rules are introduced first?
 - What happens when no eligible route remains for an otherwise enabled model?
 

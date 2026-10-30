@@ -25,15 +25,12 @@ Enum api_protocol {
   openai_compatible
 }
 
-Enum llm_usage_entry_type {
-  charge
-  reversal
-  adjustment
-}
-
-Enum token_measurement_source {
-  provider_reported
-  estimated
+Enum provider_usage_status {
+  in_progress
+  succeeded
+  failed
+  cancelled
+  incomplete
 }
 
 Table users {
@@ -71,7 +68,7 @@ Table organization_members {
   }
 }
 
-Table organization_api_keys [note: 'An organization member can own multiple API keys. Only the SHA-256 digest is stored; the plaintext key is returned once when created.'] {
+Table api_keys [note: 'An organization member can own multiple API keys. Only the SHA-256 digest is stored; the plaintext key is returned once when created.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
   organization_id bigint [not null]
   user_id bigint [not null]
@@ -83,9 +80,10 @@ Table organization_api_keys [note: 'An organization member can own multiple API 
   last_used_at timestamptz
 
   indexes {
-    value [unique, name: 'organization_api_keys_value_unique']
-    (id, organization_id) [unique, name: 'organization_api_keys_id_organization_unique']
-    (organization_id, user_id, created_at) [name: 'organization_api_keys_member_created_at_idx']
+    value [unique, name: 'api_keys_value_unique']
+    (id, organization_id) [unique, name: 'api_keys_id_organization_unique']
+    (id, organization_id, user_id) [unique, name: 'api_keys_id_organization_user_unique']
+    (organization_id, user_id, created_at) [name: 'api_keys_member_created_at_idx']
   }
 }
 
@@ -147,44 +145,68 @@ Table model_providers [note: 'Model-provider route. Composite foreign keys on (m
 
   indexes {
     (id, organization_id) [unique, name: 'model_providers_id_organization_unique']
+    (id, provider_id, organization_id) [unique, name: 'model_providers_id_provider_organization_unique']
   }
 }
 
-Table llm_usage_entries [note: 'Authoritative request-level ledger for token usage and organization-facing LLM charges. Charges have positive token deltas and negative amounts; reversals have the opposite signs. Reports and balances are derived from these entries.'] {
+Table usage [note: 'Authoritative logical-model token usage. Deleting a row also deletes its linked organization-member amount entry.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
-  request_id bigint [note: 'Client-facing request identifier; becomes a foreign key when the request table is added']
-  provider_attempt_id bigint [note: 'Idempotency key for a provider-attempt charge; becomes a foreign key when the attempt table is added']
+  request_id bigint [not null, note: 'Client-facing request identifier. Becomes a foreign key when the request table is added']
 
   organization_id bigint [not null]
   user_id bigint
-  organization_api_key_id bigint
+  api_key_id bigint
   model_id bigint
-  model_provider_id bigint
-  provider_id bigint
 
-  entry_type llm_usage_entry_type [not null]
-  measurement_source token_measurement_source
-
-  input_token_delta bigint [not null, default: 0, note: 'Positive for usage and negative for a reversal']
-  cached_input_token_delta bigint [not null, default: 0, note: 'Subset of the input-token delta when provider cache reads are reported']
-  output_token_delta bigint [not null, default: 0, note: 'Positive for usage and negative for a reversal']
-  amount_usd numeric(24,12) [not null, note: 'Organization-facing signed amount. A charge is negative; a reversal is positive']
-
-  reverses_entry_id bigint [note: 'Original charge reversed by this entry; one reversal per charge']
-  reason text [note: 'Required by application rules for reversals and adjustments; must not contain secrets or prompt content']
-  created_by bigint [note: 'Administrator responsible for a manual reversal or adjustment']
+  input_token bigint [not null, default: 0, note: 'CHECK (input_token >= 0)']
+  cached_token bigint [not null, default: 0, note: 'Cached input subset; CHECK (cached_token >= 0 AND cached_token <= input_token)']
+  output_token bigint [not null, default: 0, note: 'CHECK (output_token >= 0)']
   created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
 
   indexes {
-    provider_attempt_id [unique, name: 'llm_usage_entries_provider_attempt_unique']
-    reverses_entry_id [unique, name: 'llm_usage_entries_reversal_unique']
-    (organization_id, created_at) [name: 'llm_usage_entries_organization_created_at_idx']
-    (organization_api_key_id, created_at) [name: 'llm_usage_entries_api_key_created_at_idx']
-    (user_id, created_at) [name: 'llm_usage_entries_user_created_at_idx']
-    (model_id, created_at) [name: 'llm_usage_entries_model_created_at_idx']
-    (model_provider_id, created_at) [name: 'llm_usage_entries_route_created_at_idx']
-    (provider_id, created_at) [name: 'llm_usage_entries_provider_created_at_idx']
-    request_id [name: 'llm_usage_entries_request_idx']
+    request_id [unique, name: 'usage_request_unique']
+    (id, organization_id, user_id) [unique, name: 'usage_id_organization_user_unique']
+    (organization_id, created_at) [name: 'usage_organization_created_at_idx']
+    (api_key_id, created_at) [name: 'usage_api_key_created_at_idx']
+    (user_id, created_at) [name: 'usage_user_created_at_idx']
+    (model_id, created_at) [name: 'usage_model_created_at_idx']
+  }
+}
+
+Table organization_member_amounts [note: 'Signed amount ledger for an organization member. Positive rows add funds and usage-linked negative rows subtract funds. Current member amount is SUM(amount); no separate mutable balance is stored.'] {
+  id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
+  organization_id bigint [not null]
+  user_id bigint [not null]
+  usage_id bigint [unique, note: 'NULL for added funds; set for a logical-model usage debit']
+  amount numeric(24,12) [not null, note: 'Positive adds member amount; negative subtracts member amount; CHECK (amount <> 0)']
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    usage_id [unique, name: 'organization_member_amounts_usage_unique']
+    (organization_id, user_id, created_at) [name: 'organization_member_amounts_member_created_at_idx']
+  }
+}
+
+Table provider_usage [note: 'One row per upstream provider attempt. Authoritative for provider token consumption, retries, fallback, and result status; it does not determine the organization-member amount.'] {
+  id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
+  request_id bigint [not null, note: 'Client-facing request identifier; becomes a foreign key when the request table is added']
+
+  organization_id bigint [not null]
+  model_provider_id bigint [not null]
+  provider_id bigint [not null]
+  provider_request_id text [note: 'Provider-issued request identifier when available; must not contain credentials']
+
+  status provider_usage_status [not null, default: 'in_progress']
+  input_tokens bigint [note: 'Total input tokens including cached input; NULL means unknown; CHECK (input_tokens >= 0)']
+  cached_input_tokens bigint [note: 'Subset of input_tokens; NULL means unknown; CHECK (cached_input_tokens >= 0 AND cached_input_tokens <= input_tokens)']
+  output_tokens bigint [note: 'NULL means unknown; CHECK (output_tokens >= 0)']
+
+  indexes {
+    request_id [name: 'provider_usage_request_idx']
+    organization_id [name: 'provider_usage_organization_idx']
+    provider_id [name: 'provider_usage_provider_idx']
+    model_provider_id [name: 'provider_usage_route_idx']
+    provider_request_id [name: 'provider_usage_provider_request_id_idx']
   }
 }
 
@@ -194,7 +216,7 @@ Ref organizations_created_by_fkey: organizations.created_by > users.id [delete: 
 
 Ref organization_members_organization_id_fkey: organization_members.organization_id > organizations.id [delete: cascade, update: no action]
 Ref organization_members_user_id_fkey: organization_members.user_id > users.id [delete: cascade, update: no action]
-Ref organization_api_keys_membership_fkey: organization_api_keys.(organization_id, user_id) > organization_members.(organization_id, user_id) [delete: cascade, update: no action]
+Ref api_keys_membership_fkey: api_keys.(organization_id, user_id) > organization_members.(organization_id, user_id) [delete: cascade, update: no action]
 
 Ref user_sessions_organization_fk: user_sessions.organization_id > organizations.id [delete: cascade, update: no action]
 Ref user_sessions_user_fk: user_sessions.user_id > users.id [delete: cascade, update: no action]
@@ -207,11 +229,15 @@ Ref models_organization_id_fkey: models.organization_id > organizations.id [dele
 Ref model_providers_provider_scope_fkey: model_providers.(provider_id, organization_id) > providers.(id, organization_id) [delete: cascade, update: no action]
 Ref model_providers_model_scope_fkey: model_providers.(model_id, organization_id) > models.(id, organization_id) [delete: cascade, update: no action]
 
-Ref llm_usage_entries_organization_fkey: llm_usage_entries.organization_id > organizations.id [delete: restrict, update: no action]
-Ref llm_usage_entries_membership_fkey: llm_usage_entries.(organization_id, user_id) > organization_members.(organization_id, user_id) [delete: restrict, update: no action]
-Ref llm_usage_entries_api_key_scope_fkey: llm_usage_entries.(organization_api_key_id, organization_id) > organization_api_keys.(id, organization_id) [delete: restrict, update: no action]
-Ref llm_usage_entries_model_scope_fkey: llm_usage_entries.(model_id, organization_id) > models.(id, organization_id) [delete: restrict, update: no action]
-Ref llm_usage_entries_model_provider_scope_fkey: llm_usage_entries.(model_provider_id, organization_id) > model_providers.(id, organization_id) [delete: restrict, update: no action]
-Ref llm_usage_entries_provider_scope_fkey: llm_usage_entries.(provider_id, organization_id) > providers.(id, organization_id) [delete: restrict, update: no action]
-Ref llm_usage_entries_reversal_fkey: llm_usage_entries.reverses_entry_id > llm_usage_entries.id [delete: restrict, update: no action]
-Ref llm_usage_entries_created_by_fkey: llm_usage_entries.created_by > users.id [delete: set null, update: no action]
+Ref usage_organization_fkey: usage.organization_id > organizations.id [delete: restrict, update: no action]
+Ref usage_membership_fkey: usage.(organization_id, user_id) > organization_members.(organization_id, user_id) [delete: restrict, update: no action]
+Ref usage_api_key_scope_fkey: usage.(api_key_id, organization_id) > api_keys.(id, organization_id) [delete: restrict, update: no action]
+Ref usage_api_key_owner_fkey: usage.(api_key_id, organization_id, user_id) > api_keys.(id, organization_id, user_id) [delete: restrict, update: no action]
+Ref usage_model_scope_fkey: usage.(model_id, organization_id) > models.(id, organization_id) [delete: restrict, update: no action]
+
+Ref organization_member_amounts_membership_fkey: organization_member_amounts.(organization_id, user_id) > organization_members.(organization_id, user_id) [delete: restrict, update: no action]
+Ref organization_member_amounts_usage_fkey: organization_member_amounts.(usage_id, organization_id, user_id) > usage.(id, organization_id, user_id) [delete: cascade, update: no action]
+
+Ref provider_usage_organization_fkey: provider_usage.organization_id > organizations.id [delete: restrict, update: no action]
+Ref provider_usage_route_provider_scope_fkey: provider_usage.(model_provider_id, provider_id, organization_id) > model_providers.(id, provider_id, organization_id) [delete: restrict, update: no action]
+Ref provider_usage_provider_scope_fkey: provider_usage.(provider_id, organization_id) > providers.(id, organization_id) [delete: restrict, update: no action]

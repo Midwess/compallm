@@ -37,8 +37,8 @@ The client API format is independent of the provider. Translate both directions 
 Each organization owns models whose names are unique within that organization.
 A model gives callers a stable name independent of an
 upstream provider. Each model-provider route stores the provider's upstream
-model name, a positive priority unique within the model, and whether the route
-is enabled. A provider may appear only once for a model, and database
+model name, configured provider token prices, a positive priority unique within
+the model, and whether the route is enabled. A provider may appear only once for a model, and database
 constraints prevent routes from crossing organization boundaries. Priority
 expresses route order without yet deciding whether selection must always begin
 with the lowest value or when a later route may be attempted.
@@ -50,8 +50,10 @@ requests through any associated route.
 Each model stores the organization-facing input, output, and cached
 token prices in USD per one million tokens. These are non-negative fixed-point
 rates used for stable billing and reporting regardless of the selected route.
-Upstream provider costs can differ and therefore belong to model-provider
-routing concerns rather than these model prices.
+Configured upstream provider prices can differ and therefore belong to each
+model-provider route rather than the logical model. Providers report token
+usage rather than USD cost; any upstream cost is an estimate calculated from
+those route prices.
 
 Before implementation, decide which API compatibility standard, providers, and model capabilities ship first, and whether credentials are organization-owned only or members may bring personal credentials.
 

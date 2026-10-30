@@ -48,6 +48,8 @@ A model can have multiple provider routes. Each route records:
 
 - one provider owned by the same organization;
 - the model name expected by that provider;
+- configured provider prices for input, output, and cached tokens in fixed-point
+  USD per one million tokens;
 - a positive priority unique within the model;
 - whether the route is enabled.
 
@@ -65,8 +67,12 @@ unresolved.
 - Provider credentials remain on provider connections and never appear in
   model or route responses.
 - Provider HTTP calls must occur outside database transactions.
-- Upstream cost, health, quota, and cooldown data must not overwrite the
-  organization-facing model price or route configuration.
+- Configured route prices support upstream cost estimates but are not
+  provider-reported costs. They must not overwrite organization-facing model
+  prices.
+- Health, quota, and cooldown data must not overwrite route configuration.
+- Exact historical upstream cost cannot be reconstructed after a route price
+  changes unless a future design versions or snapshots that price.
 - Disabling a model prevents routing regardless of its visibility. Hiding a
   model affects discovery only and does not imply that it is disabled.
 - A route is available only when its model, provider connection, and route are
@@ -101,7 +107,9 @@ unresolved.
 - Must the Router always begin with the lowest-priority enabled route, and can
   policy or health change that order?
 - Which provider errors permit fallback, and how are cooldowns represented?
-- Where are upstream provider costs and capability metadata maintained?
+- How are route price changes versioned or snapshotted if exact historical
+  upstream cost reporting is required?
+- Where is provider capability metadata maintained?
 
 ## Related pages
 

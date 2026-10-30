@@ -1,8 +1,9 @@
 body {
-  color: #eeeeeb;
-  background: #191a18;
-  font-family: system-ui, sans-serif;
+  color-scheme: dark;
+  color: var(--color-text);
+  background: var(--color-background);
+  font-family: var(--font-sans);
 }
 
-.sbdocs-wrapper { background: #191a18; }
+.sbdocs-wrapper { background: var(--color-background); }
 .sbdocs-content { color-scheme: dark; }

@@ -5,7 +5,13 @@ available: false
 
 # Portal: ADR
 
-Decision status: Desktop sidebar design and component-family cleanup are authorized for design review. Navigation labels, grouping, and launch availability remain proposed. Implementation status: Design foundations contains ten base-only families. Complete sidebars, forms, feature panels, and screen compositions live on dedicated feature pages; full-page provider definitions and the Page patterns gallery are removed. Feature screens, login, and signup use shared base instances. No application routing or content implementation is authorized by this design task.
+Decision status: Foundation-first restart accepted on 2026-10-31. The dark neutral/violet palette, shared spacing policy, and Phosphor Regular SVG library are accepted. Navigation labels, grouping, and launch availability remain proposed. Implementation status: Penpot contains foundation tokens and reusable icon masters. The shared Tailwind theme and Phosphor dependencies are configured. React base components and grouped Storybook previews are authorized. Existing Penpot feature explorations remain design references. Application routing and API integration remain separate.
+
+## Foundation-first workflow
+
+Start with **Design foundations** in Penpot: [colors](colors.md), [spacing](spacing.md), and [icons](icons.md). The starter stories and wireframes are removed. The next accepted step is a reusable [component library](components.md) matching the base families in Design foundations, with previews under Storybook’s **Components** folder. Feature screens remain separate.
+
+Use Tailwind v4 with a shared CSS theme in `portal/src/styles/theme.css`; Storybook and the portal's Vite setup compile the same theme. Color utilities use semantic roles from Penpot, and named spacing utilities preserve the half-scale policy with a 2 px nonzero minimum. Control dimensions remain independent. This replaces the earlier olive Storybook palette and Pixelarticons. Penpot-to-code updates remain explicit; no automatic synchronization is introduced.
 
 ## Context
 
@@ -13,11 +19,11 @@ Compallm combines conversations and notebooks with organization-scoped tools and
 
 ## Direction
 
-Retain the reviewed Compallm sidebar and its Uxercon icons. Reuse shared Design foundations color, typography, geometry, and spacing tokens. Keep the complete sidebar assembly on its dedicated Sidebar page; feature screens compose instances of that assembly. A 244-pixel sidebar uses compact desktop rows and independently collapsible sections. Keep the layout base's adjacent canvas empty; feature screens compose their content inside it.
+Retain the reviewed Compallm sidebar as a Penpot reference, using Phosphor Regular icons. Reuse shared Design foundations color, typography, geometry, and spacing tokens. Keep the complete sidebar assembly on its dedicated Sidebar page; feature screens compose instances of that assembly. A 244-pixel sidebar uses compact desktop rows and independently collapsible sections. Keep the layout base's adjacent canvas empty; feature screens compose their content inside it.
 
 Place workspace identity, search, and a small create-chat icon in a 44-pixel header. Proposed destinations are Chat, Notebooks, Plugins, API keys, and Usage. Group destinations into Workspace, Conversations, and Tools; each group has a clickable disclosure header. Recent conversation links illustrate navigation within chat. The sidebar bottom stays empty. Labels represent design intent, not completed features or authorization policy.
 
-Selected navigation uses a quiet neutral surface with white text and icons; unselected rows use secondary gray. Navigation rows are 28 pixels high with 13-pixel Inter labels, 14-pixel icons, and a 6-pixel icon-to-label gap. Keep lightly rounded surfaces. The header create control replaces the oversized primary pill. Use Uxercon Duotone assets for navigation and workspace controls where the set provides a suitable symbol. Root category headings use 10-pixel text. Align first-level icons with the 12-pixel root category inset, including selected rows. Indent only children of an expanded folder. Bind Auto Layout gaps and padding to the existing spacing scale.
+Selected navigation uses a quiet neutral surface with white text and icons; unselected rows use secondary gray. Navigation rows are 28 pixels high with 13-pixel Inter labels, 14-pixel icons, and a 6-pixel icon-to-label gap. Keep lightly rounded surfaces. The header create control replaces the oversized primary pill. Use Phosphor Regular assets for navigation and workspace controls. Root category headings use 10-pixel text. Align first-level icons with the 12-pixel root category inset, including selected rows. Indent only children of an expanded folder. Bind Auto Layout gaps and padding to the existing spacing scale.
 
 ## Consequences
 
@@ -40,5 +46,7 @@ Dedicated Forms and Preferences pages hold the settings and application composit
 The two expanded-dropdown captures establish seven theme choices with swatches and four diagram styles. The overview export supplies twelve views, including project/list states, billing, agents and connector selection, document templates, and reviews. Page examples combine these bases with our sidebar. Captured prices, features, and integration names are reference content; they do not establish Compallm product commitments. Coverage applies to the supplied views, not every unobserved Linear interaction.
 
 The [Add provider design](add-provider.md) has two pages: a minimal searchable model catalog with a transparent table, compact toolbar filters, and a secondary custom-configuration path, then editable configuration with known defaults filled in. The second page retains numbered Name, Connection details, Model, and Test connection sections. Base URL and endpoint mode occupy separate fields. Token prices use USD per million tokens; other modes retain their actual billing units. Shared foundation components and the spacing policy govern both pages. LiteLLM informs catalog metadata; catalog availability, adapter coverage, testing behavior, and runtime integration remain separate decisions.
+
+The configuration design accepts multiple models for one provider. Step 3 opens an Add model popup from a centered empty-state action and lists added model names. Model names are required; context windows are optional. The page title and phase navigation share one row. Test connection shows a shared link icon before the endpoint URL. These are accepted canvas requirements; duplicate handling and runtime persistence remain unresolved.
 
 The [Create model design](../llm-router/custom-model.md) composes foundation controls on its dedicated page. A custom model uses an ordered list of configured provider/model pairs, with small observed serving-time percentages and down/inactive states. Drag handles and insertion indicators are atomic bases; the route editor stays with the feature. Retry and failure policy remain unresolved.

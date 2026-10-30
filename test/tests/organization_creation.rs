@@ -20,16 +20,11 @@ struct Fixture {
 impl Fixture {
     fn new(fail_owner: bool) -> Self {
         compallm_postgres::init_id_generator("organization-tests").unwrap();
-        let now = "2026-10-25T00:00:00Z"
-            .parse::<sea_orm::prelude::DateTimeWithTimeZone>()
-            .unwrap();
+
         let model = OrganizationSchema {
             id: 84,
             name: "James's organization".into(),
             status: OrganizationStatusSchema::Active,
-            created_by: 42,
-            created_at: now,
-            updated_at: now,
         };
         let mut organization: BTreeMap<_, _> =
             model.into_mock_row().into_column_value_tuples().collect();
@@ -38,7 +33,6 @@ impl Fixture {
             organization_id: 84,
             user_id: 42,
             role: OrganizationRoleSchema::Owner,
-            created_at: now,
         };
         let mut membership: BTreeMap<_, _> =
             member.into_mock_row().into_column_value_tuples().collect();
@@ -82,7 +76,6 @@ async fn default_organization_and_owner_are_inserted_in_one_transaction() {
         .await
         .unwrap();
     assert_eq!(organization.id, 84);
-    assert_eq!(organization.created_by, 42);
     assert_eq!(organization.status, OrganizationStatus::Active);
     let transactions = fixture.database.as_ref().clone().into_transaction_log();
     assert_eq!(transactions.len(), 1);
@@ -127,9 +120,6 @@ async fn blank_organization_names_fail_before_any_database_operation() {
 
 #[test]
 fn member_mapper_preserves_roles_and_rejects_invalid_ids() {
-    let now = "2026-10-25T00:00:00Z"
-        .parse::<sea_orm::prelude::DateTimeWithTimeZone>()
-        .unwrap();
     for (schema_role, expected) in [
         (OrganizationRoleSchema::Owner, OrganizationRole::Owner),
         (OrganizationRoleSchema::Admin, OrganizationRole::Admin),
@@ -139,7 +129,6 @@ fn member_mapper_preserves_roles_and_rejects_invalid_ids() {
             organization_id: 84,
             user_id: 42,
             role: schema_role,
-            created_at: now,
         };
         let member = compallm_core::organization::OrganizationMember::try_from(schema).unwrap();
         assert_eq!(member.role, expected);
@@ -148,7 +137,6 @@ fn member_mapper_preserves_roles_and_rejects_invalid_ids() {
         organization_id: 0,
         user_id: -1,
         role: OrganizationRoleSchema::Owner,
-        created_at: now,
     };
     assert!(compallm_core::organization::OrganizationMember::try_from(invalid).is_err());
 }

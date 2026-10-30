@@ -5,14 +5,20 @@ available: false
 
 # Portal icons
 
-Penpot uses an **Icons** index and separate `icons-<set-name>` pages for the purchased collection in `../icons`. It supports visual choice; importing an icon does not replace the reviewed sidebar icons or integrate assets into the application.
+Decision status: Phosphor Regular is the shared UI SVG library, accepted on 2026-10-31. It replaces Pixelarticons and the earlier mixed purchased sets. Penpot's **Design foundations → 11 · Icons · Phosphor** contains editable reusable masters. Reuse those masters rather than importing another copy or creating separate icon-catalog pages.
 
-Import all distinct SVG icons from the purchased collection, including archive contents. Keep families, styles, and source categories separate. Put each brand or set on one page, such as `icons-huge`, `icons-uxercon`, and `icons-emerald`. Keep the same brand’s styles and categories together on that page. The index contains links and counts, without icon grids. Duplicate archive copies and identical IconJar exports share one library entry. Preserve distinct outline, filled, bulk, and duotone variants. SVGs belonging to full website templates or device mockup pages are not automatically standalone icons.
+Use official [Phosphor](https://phosphoricons.com/) geometry. UI icons normally use Regular weight; small disclosure triangles may use Fill when an outlined caret is unclear. Preview icons at their actual size: navigation uses 14 px, compact status indicators use 12 px, and standalone controls may use 16 or 20 px. Set color through semantic foreground tokens. Preserve provider logos and the Compallm workspace mark as branding.
 
-Convert Illustrator and EPS icon artwork to SVG through a vector-preserving converter. For Adobe XD, export actual icon components and resolve their vector geometry, transforms, paints, and opacity; do not import instruction or license pages as icons. Prefer supplied matching SVG exports over duplicate conversions. Unsupported effects or missing references must remain explicit until conversion is verified. Keep conversions separate from the supplied SVG families and compare representative converted icons with their source previews. Normalize non-zero SVG view-box origins into a zero-origin frame before native import, and check visible artwork size; a correct frame size alone does not prove the artwork was scaled correctly.
+## React and SVG use
 
-Imported icons are individually named native vector groups on category boards, with a source hash on each icon and provenance recorded in its batch and the local manifest. The initial curated selection also has reusable library components. Copy a named icon group from the canvas or create a component when adopting it in a control. Preview at 24 pixels on dark surfaces; actual usage must still be checked at the target size, including the sidebar’s 14-pixel navigation icons. The sidebar uses Uxercon Duotone assets: comment-captions, file-code-01, package, server-01, bar-chart-01, key-01, folder-code-01, package-search, and bracket-plus-01. Recolor monochrome paths for visibility while preserving opacity and geometry. Shared spacing and typography rules remain on Design foundations.
+Use `@phosphor-icons/react` in the portal and Storybook. The package renders inline SVG and retains Phosphor's MIT license. Import only the required icon through its supported per-icon export:
 
-Keep gallery captions in bounded, locked preview layers so labels do not create page-sized SVG text wrappers. These caption layers are separate from the editable icon artwork. Three supplied brand SVGs contain embedded bitmap artwork; their canvas entries use faithful previews, while the original SVGs remain in the export.
+```tsx
+import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGlass'
 
-Keep purchased source archives outside the repository. The Icons page is the editable browsing artifact; application asset export is a separate task.
+<MagnifyingGlassIcon size={14} weight="regular" aria-hidden="true" />
+```
+
+Let icons inherit `currentColor`. Decorative icons use `aria-hidden="true"`; an icon-only button needs an accessible name on the button. Do not use an icon font, bitmap export, or a runtime name-to-entire-library registry. Raw vector exports from the Penpot masters remain available for uses outside React.
+
+Component stories use Phosphor icons from this library. Do not copy the entire SVG catalog into application code; import the icons needed by each base.

@@ -5,7 +5,7 @@ available: false
 
 # Shared spacing policy
 
-Decision status: Accepted for the Penpot library and screen designs. Implementation status: Token migration in progress. React and Storybook styles do not synchronize automatically.
+Decision status: Accepted for the Penpot library, screen designs, and shared Tailwind foundation. Implementation status: Penpot tokens and their shared CSS translation are implemented. The foundation reference shows resolved values. Canvas and code do not synchronize automatically.
 
 All shared component and composition gaps, padding, and margins follow the same constants. The current density halves the previous spacing, with a **2 px minimum for every nonzero spacing value**. Zero remains zero. Control dimensions, type sizes/line heights, icon artwork, borders, and corner radii are separate and retain their values.
 
@@ -27,6 +27,12 @@ The **Spacing policy** token set owns `layout.spacing.scale = 0.5` and `layout.s
 | 64 | 32 px |
 
 Bind Auto Layout properties to tokens on masters. Instances inherit those bindings; screen-specific layout overrides also use the constants. Reflow composed forms and editor/card examples so their outer spacing follows the reduced gaps. Keep the foundation galleries legible with token-based insets and separation, and show the resolved values in the spacing reference. Original H2D screenshots remain historical source evidence.
+
+## Tailwind use
+
+The shared `portal/src/styles/theme.css` configures Tailwind v4. `--layout-spacing-scale: 0.5` and `--layout-spacing-minimum: 2px` mirror the policy constants. Named theme tokens follow Penpot's nominal suffix: `layout.spacing.16` becomes `--spacing-space-16`, resolving to 8 px. Use `gap-space-16`, `p-space-24`, and `mt-space-32` for 8, 12, and 16 px respectively; `p-0` remains zero. Names describe the original nominal scale, not the resolved pixel value.
+
+The default numeric Tailwind spacing scale is disabled. Control dimensions use explicit sizes such as `size-[14px]` and `h-[32px]`; they must not inherit density changes. Borders and corner radii also remain independent. The named spacing tokens cover the current Penpot scale, including intermediate values already used by existing layouts.
 
 ## Agent editing
 

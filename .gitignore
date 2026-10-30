@@ -41,3 +41,5 @@
 # The generated API client is intentionally versioned.
 !/portal/src/contract/
 !/portal/src/contract/api.ts
+artifacts
+.codex

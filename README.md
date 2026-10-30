@@ -28,7 +28,7 @@ Compose starts the backing services, including PostgreSQL on port `7887`. Cargo 
 
 Development email uses MailDev: SMTP on `1025`, inbox at http://127.0.0.1:1080. See [mailing](docs/content/mailing/adr.md) for queue limits and [email login](docs/content/login/email.md) for SMTP environment variables.
 
-To design portal components and screen wireframes without starting the backend:
+To review base components in Storybook without starting the backend (foundation colors, spacing, and Phosphor icons are defined in Penpot):
 
 ```bash
 cd storybook

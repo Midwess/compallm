@@ -1,0 +1,11 @@
+.component-preview { display: flex; align-items: flex-start; flex-wrap: wrap; gap: var(--spacing-space-32); padding: var(--spacing-space-32); font-family: var(--font-sans); font-size: 13px; color: var(--color-text); }
+.component-sample { width: 352px; max-width: 100%; min-width: 0; }
+.component-sample > h3 { color: var(--color-muted); font-size: 12px; line-height: 20px; margin: 0 0 var(--spacing-space-16); font-weight: 400; }
+.component-sample-content { display: flex; align-items: flex-start; flex-direction: column; gap: var(--spacing-space-16); width: 100%; }
+.component-sample-content > :where(input, textarea, .base-search, .base-labeled-field, .base-section-heading, .base-settings-row, .base-member-row, .base-callout, .base-empty, .base-code-preview, .base-property-row, .base-section-surface) { width: 100%; }
+.component-sample--wide { width: 720px; }
+.component-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing-space-16); max-width: 100%; }
+.component-preview:has(.base-menu) { min-height: 400px; }
+.component-sample:has(.base-tooltip) { padding-top: var(--spacing-space-64); }
+.component-preview :where(p, h1, h2, h3, figure, ol) { margin-block: 0; }
+.component-sample-content > .base-diff-line { width: 100%; }

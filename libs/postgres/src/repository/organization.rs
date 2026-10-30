@@ -54,7 +54,6 @@ impl OrganizationRepository {
             );
         }
         query
-            .order_by_asc(MemberColumn::CreatedAt)
             .order_by_asc(MemberColumn::OrganizationId)
             .one(db)
             .await
@@ -101,7 +100,6 @@ impl CoreRepository for OrganizationRepository {
         let db = PostgresConnection::from_context(&context)?;
         let mut rows = Organizations::update_many()
             .col_expr(OrganizationColumn::Name, Expr::value(name))
-            .col_expr(OrganizationColumn::UpdatedAt, Expr::current_timestamp())
             .filter(OrganizationColumn::Id.eq(id))
             .exec_with_returning(db)
             .await
@@ -122,7 +120,6 @@ impl CoreRepository for OrganizationRepository {
                 OrganizationStatus::Active => OrganizationStatusSchema::Active,
                 OrganizationStatus::Disabled => OrganizationStatusSchema::Disabled,
             }),
-            created_by: Set(Self::database_id(organization.created_by)?),
             ..Default::default()
         };
         Organization::try_from(

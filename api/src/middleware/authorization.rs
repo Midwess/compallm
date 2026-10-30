@@ -151,9 +151,7 @@ impl Authorization {
         let Ok(AccessToken::Refresh(refresh)) = auth.authenticate_token(encoded) else {
             return;
         };
-        if !refresh.session.has_same_identity(&user.session)
-            || refresh.session.refresh_token_id != user.session.refresh_token_id
-        {
+        if !refresh.session.has_same_identity(&user.session) {
             return;
         }
         extensions.insert(refresh);

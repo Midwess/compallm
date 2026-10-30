@@ -4,7 +4,7 @@ title: Portal design workspace
 
 # Portal design workspace
 
-Use Storybook to design and review actual portal components and screens with Codex CLI. The workbench runs independently of the application backend. It is a live browser preview, not a vector drawing canvas.
+Use Storybook to design and review actual portal components and screens with Codex CLI. The workbench runs independently of the application backend. Storybook groups the requested base-component previews under **Components**. Define colors, spacing, and Phosphor SVG choices in Penpot’s Design foundations before requesting new React components.
 
 ## Start the workspace
 
@@ -38,15 +38,15 @@ Use the [shared spacing policy](../portal/spacing.md) for agent-driven density c
 
 ## Design and review
 
-Begin with the wireframe story. Agree on information hierarchy and screen composition before choosing final colors or adding business behavior. Sample content illustrates layout; it does not establish organization permissions, model access, or release scope.
+The 2026-10-31 reset removes all starter stories, wireframes, and unused starter components. The requested base-component library now replaces that empty starting point; feature screens remain separate. Use the accepted [colors](../portal/colors.md), [spacing](../portal/spacing.md), and [Phosphor icons](../portal/icons.md) from Design foundations. Sample content illustrates layout; it does not establish organization permissions, model access, or release scope.
 
 Ask Codex to inspect existing stories and components, then describe a change:
 
-> Inspect the portal components and wireframe stories. Propose a notebook wireframe using the existing components and sample data. Keep the palette provisional and show an empty state as a separate story.
+> Inspect Design foundations in Penpot. Implement the requested base component using the shared Tailwind theme and Phosphor SVG icons, with sample data and no backend requests.
 
 Edit shared React components in `portal/`; keep stories, sample data, and prototype-only compositions in `storybook/`. Changes appear through hot reload. Save meaningful states as named stories so they remain reviewable. When a screen is approved, compose the real portal page from those same components; routing and API integration are separate authorized tasks.
 
-Dark mode is the initial target. Pixelarticons may supply selected nostalgic accents; do not turn all typography, controls, or animation into a retro theme. Palette samples are proposals, not an accepted brand system. Respect reduced-motion preferences and give controls visible keyboard focus.
+Dark neutral surfaces with violet primary actions are accepted. Tailwind v4 compiles a shared CSS-first theme at `portal/src/styles/theme.css`; Storybook loads it independently of the application stylesheet. Use named spacing utilities such as `gap-space-16` (8 px); control dimensions stay explicit. Phosphor Regular supplies inline SVG icons. Respect reduced-motion preferences and give controls visible keyboard focus.
 
 ## Verify and share
 
@@ -60,7 +60,7 @@ pnpm test
 
 The build produces `storybook-static/`, which can be served as a static review site. It does not build the Rust application or run migrations. Do not publish the development MCP endpoint as a public service.
 
-Browser checks verify story rendering, backend independence, keyboard navigation, and mobile overflow. On a machine without Playwright's browser, run `pnpm exec playwright install chromium` once. The test command starts Storybook automatically if it is not already running.
+Browser review verifies the requested component families, representative input and disclosure behavior, keyboard access, and backend independence. On a machine without Playwright's browser, run `pnpm exec playwright install chromium` once. The test command starts Storybook automatically if it is not already running.
 
 ## References
 

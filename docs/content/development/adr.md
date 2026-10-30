@@ -44,6 +44,8 @@ Repositories must not switch connections or independently commit a larger operat
 
 Do not hold a transaction open during slow email or HTTP calls. Database transactions do not cover external delivery; consider an outbox only when durable coordination is required. Avoid an additional unit-of-work layer without a concrete need.
 
+Generic `created_at` and `updated_at` columns are omitted from every application table (accepted 2026-10-31). Keep timestamps only for explicit business events or validity, such as email verification, revocation, and token expiry. Creation/update history is unavailable. Existing migration definitions and matching models are updated directly; already-migrated databases need separate schema reconciliation before using the revised schema.
+
 ## External integrations
 
 Follow the concrete-client approach in [Zero to Production's EmailClient](https://github.com/LukeMathWalker/zero-to-production/blob/main/src/email_client.rs). Startup supplies configured clients with reused connection pools and bounded timeouts.
@@ -58,7 +60,7 @@ GitHub PR diffs collapse test directories, conventional test filenames, and docu
 
 PR explanations use the PR diff and code at pinned commits as their default context. They must not require any project-specific documentation path; additional repository files can be read on demand through the existing tools. This lets documentation move or disappear without breaking the automation.
 
-Test domain rules without external services. Use Wiremock with real HTTP clients to check payloads, authentication, errors, and timeouts. SeaORM mocks verify query/service flow; PostgreSQL integration tests verify constraints, isolation, and rollback across repositories.
+Keep tests in `tests/` directories, using the existing `test/tests/` suite for shared Rust tests. Do not put tests under `api/` or inline in application source. Focus coverage on core business logic without external services; dependency and framework behavior do not need their own tests. This keeps verification focused on application-owned rules and reduces maintenance of tests for third-party behavior.
 
 Compilation or SQL-generation checks are appropriate when migrations must not execute. Application startup and database-backed tests may migrate automatically, so respect explicit restrictions.
 
@@ -70,19 +72,19 @@ Keep the problem, decision, rationale, main flow, consequences, status, and impo
 
 ## Portal design workspace
 
-Decision status: Accepted on 2026-10-27. Implementation status: Storybook workspace, local Codex MCP configuration, and starter component and wireframe previews implemented. Final screen design and application integration remain pending.
+Decision status: Accepted on 2026-10-27; foundation-first reset accepted on 2026-10-31. Implementation status: Storybook starts empty. Shared Tailwind colors and spacing match Penpot; Phosphor SVG dependencies are installed. Base component translation and Storybook previews are authorized; feature integration remains pending.
 
 Use Storybook in `storybook/` to review real React components and screen prototypes before connecting them to application behavior. Components belong in `portal/` and are imported directly by stories so the production application can reuse the reviewed code. Stories use sample data and must not require Rust, PostgreSQL, authentication, or generated API clients to start.
 
-Keep prompting in Codex CLI. Storybook's local MCP addon exposes component and story context; source edits and hot reload drive iteration. An external Penpot canvas is also supported through its remote MCP server, as accepted on 2026-10-27. Penpot holds editable visual explorations; Storybook remains the reference for implemented components. Translation is explicit, without automatic synchronization. Do not add local Penpot services. Keep token-bearing MCP configuration local and untracked.
+Keep prompting in Codex CLI. Storybook's local MCP addon exposes component and story context; source edits and hot reload drive iteration. Penpot's Design foundations page owns the initial dark neutral/violet palette, spacing, and Phosphor SVG library. Implement requested base components in `portal/src/components/ui/`, grouped by foundation family, and preview them under Storybook’s **Components** folder. Translate the accepted constants into one shared Tailwind v4 CSS theme used by Storybook and available to the portal. Translation is explicit, without automatic synchronization. Do not add local Penpot services. Keep token-bearing MCP configuration local and untracked.
 
 Use the ignored `.dev/penpot/` JavaScript workbench for local Penpot automation and agent notes. Scripts run directly with Node, reuse cached design IDs and a serialized MCP connection, and keep credentials in the existing local MCP configuration. Its loopback bridge is a client-side convenience, not a local Penpot deployment. For routine canvas edits, batch the change, check the affected frame, and save once; refresh the catalog or generate extra review artifacts only when needed.
 
-Review wireframes before styling complete screens. Dark mode is the initial design target; pixel details are selective accents rather than the overall website theme. The final palette, typography, and navigation remain proposals until reviewed. Prototype screens do not establish business rules or authorize API integration. See [Design workspace](design-workspace.md) for commands and the review workflow.
+Review wireframes before styling complete screens. Dark mode uses the accepted foundation palette; Inter remains the shared UI font. Phosphor Regular replaces Pixelarticons and mixed UI icon sets. Navigation and screen composition remain design proposals. Prototype screens do not establish business rules or authorize API integration. See [Design workspace](design-workspace.md) for commands and the review workflow.
 
 Penpot's Design foundations page owns shared visual rules, tokens, and base components only: fields, buttons, dropdown controls, selection controls, feedback primitives, typography, and small content/navigation units. Full screens, complete sidebars, forms, feature panels, and complex assemblies belong on dedicated feature pages. Do not create a Page patterns gallery or define whole pages as shared foundation components. Feature compositions reuse the bases; their internal assemblies stay with the feature. This accepted organization supersedes the earlier complete-sidebar and form/page-pattern galleries on Foundations.
 
-Use token-bound Auto Layout for spacing. Verify component links after transfers and restore temporary propagation-test values before review. Use Inter as the shared Penpot UI font. Sidebar Label is 13 pixels with a 14-pixel icon; root category headings are 10 pixels and the workspace name is 12 pixels. Penpot changes do not automatically update React code. Purchased icon catalogs use a lightweight Icons index and one `icons-<brand>` page per brand, with styles grouped within each brand page.
+Use token-bound Auto Layout for spacing. Verify component links after transfers and restore temporary propagation-test values before review. Use Inter as the shared Penpot UI font. Sidebar Label is 13 pixels with a 14-pixel icon; root category headings are 10 pixels and the workspace name is 12 pixels. Penpot changes do not automatically update React code. Keep reusable Phosphor SVG masters in Design foundations; do not recreate the superseded purchased-icon catalogs.
 
 The [shared spacing policy](../portal/spacing.md) controls library and screen gaps, padding, and margins through one scale and minimum. Current density is half the preceding values, with a 2 px floor for nonzero spacing and zero preserved. Components inherit constants from their masters; geometric control sizes, typography, borders, and radii remain independent. Agents can edit the policy through Penpot MCP, refresh token resolution, and verify the resulting layouts.
 

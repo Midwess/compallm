@@ -23,6 +23,10 @@ The supplied `linear_app_devlogs_reviews.h2d` contains sidebar customization rat
 
 Keep the route assembly on the dedicated Create model page. Design foundations owns only atomic bases, including the drag handle and insertion indicator. Do not introduce a page-pattern component or place the full fallback editor in Foundations.
 
+### Optional custom pricing
+
+Pricing has its own section, separate from Model and Providers, with input, output, and cached-token prices in USD per 1 million tokens. Each shared text field defaults to **Auto**, meaning no explicit custom rate has been entered. A numeric rate overrides Auto; an explicit zero remains distinct. Existing models do not require custom pricing. This is an accepted design requirement; storage, validation, and billing integration remain pending. Whether partial overrides are supported, how automatic prices are resolved, and how custom prices affect charging remain unresolved.
+
 ## Editing order
 
 - Show a small observed serving percentage without a field, tag, or ordinal badge. Drag the grip to reorder priority; preserve the provider/model pair.

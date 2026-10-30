@@ -16,6 +16,10 @@ Every feature ADR must take less than six minutes to read, including diagrams an
 
 Preserve unrelated working-tree changes. Follow explicit instructions not to execute migrations; application startup and database-backed tests can apply them automatically.
 
+Write tests only in `tests/` directories, using the existing `test/tests/` suite for shared Rust tests. Do not add tests under `api/` or inline in application source. Test the application's core business logic; do not write tests that only verify dependency or framework behavior.
+
+Do not add generic `created_at` or `updated_at` columns to migrations or matching models. Keep timestamps only when required by a concrete business rule.
+
 Only use transaction! when there are multiple update command, transaction must be ended as soon as possible while still maintaining correctness
 If there are multiple query before updating data, then the query should performed outside of transaction
 Transaction only for grouping multiple update command

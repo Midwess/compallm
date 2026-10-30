@@ -57,18 +57,6 @@ fn users_table() -> TableCreateStatement {
                 .timestamp_with_time_zone()
                 .null(),
         )
-        .col(
-            ColumnDef::new(Users::CreatedAt)
-                .timestamp_with_time_zone()
-                .not_null()
-                .default(Expr::current_timestamp()),
-        )
-        .col(
-            ColumnDef::new(Users::UpdatedAt)
-                .timestamp_with_time_zone()
-                .not_null()
-                .default(Expr::current_timestamp()),
-        )
         .check(Expr::col(Users::Id).gt(0))
         .check(Expr::col(Users::Email).ne(""))
         .to_owned()
@@ -107,8 +95,6 @@ enum Users {
     Status,
     EmailVerifiedAt,
     LastLoginAt,
-    CreatedAt,
-    UpdatedAt,
 }
 
 #[cfg(test)]

@@ -1,6 +1,4 @@
 use super::{AuthError, RefreshToken};
-use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -10,8 +8,6 @@ pub struct Session {
     pub id: u64,
     pub user_id: u64,
     pub organization_id: u64,
-    pub refresh_token_id: String,
-    pub created_at: u64,
     pub revoked_at: Option<u64>,
 }
 
@@ -21,19 +17,11 @@ impl Session {
             id,
             user_id,
             organization_id,
-            refresh_token_id: Self::new_credential_id(),
-            created_at: compallm_utils::time::unix_timestamp(),
             revoked_at: None,
         }
     }
 
-    fn new_credential_id() -> String {
-        let mut id = [0u8; 32];
-        rand::rng().fill_bytes(&mut id);
-        URL_SAFE_NO_PAD.encode(id)
-    }
-
-    /// Match the session within its organization and owner, ignoring credential and revocation state.
+    /// Match the session within its organization and owner, ignoring revocation state.
     pub fn has_same_identity(&self, other: &Self) -> bool {
         self.id == other.id
             && self.user_id == other.user_id
@@ -46,15 +34,13 @@ impl Session {
 
     pub fn validate_credential(&self, presented: &RefreshToken) -> Result<(), AuthError> {
         presented.validate(compallm_utils::time::unix_timestamp())?;
-        if !self.is_active(&presented.session)
-            || self.refresh_token_id != presented.session.refresh_token_id
-        {
+        if !self.is_active(&presented.session) {
             return Err(AuthError::InvalidSession);
         }
         Ok(())
     }
 
-    /// Renew JWT validity while preserving the database session and credential identifier.
+    /// Renew JWT validity while preserving the database session.
     pub fn refresh(
         &self,
         presented: &RefreshToken,
@@ -71,7 +57,6 @@ impl Session {
     ) -> Result<(), AuthError> {
         self.validate_credential(presented)?;
         self.organization_id = organization_id;
-        self.refresh_token_id = Self::new_credential_id();
         Ok(())
     }
 

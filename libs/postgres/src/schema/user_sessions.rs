@@ -8,9 +8,6 @@ pub struct Model {
     pub id: i64,
     pub user_id: i64,
     pub organization_id: i64,
-    #[sea_orm(column_type = "String(StringLen::N(43))")]
-    pub refresh_token_id: String,
-    pub created_at: DateTimeWithTimeZone,
     pub revoked_at: Option<DateTimeWithTimeZone>,
 }
 

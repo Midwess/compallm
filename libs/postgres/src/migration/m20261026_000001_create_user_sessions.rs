@@ -27,16 +27,6 @@ impl Migration {
                     .not_null(),
             )
             .col(
-                ColumnDef::new(UserSessions::RefreshTokenId)
-                    .string_len(43)
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(UserSessions::CreatedAt)
-                    .timestamp_with_time_zone()
-                    .not_null(),
-            )
-            .col(
                 ColumnDef::new(UserSessions::RevokedAt)
                     .timestamp_with_time_zone()
                     .null(),
@@ -55,12 +45,6 @@ impl Migration {
                     .from(UserSessions::Table, UserSessions::OrganizationId)
                     .to(Alias::new("organizations"), Alias::new("id"))
                     .on_delete(ForeignKeyAction::Cascade),
-            )
-            .check(Expr::cust("refresh_token_id ~ '^[A-Za-z0-9_-]{43}$'"))
-            .check(
-                Expr::col(UserSessions::RevokedAt)
-                    .is_null()
-                    .or(Expr::col(UserSessions::RevokedAt).gte(Expr::col(UserSessions::CreatedAt))),
             )
             .to_owned()
     }
@@ -95,8 +79,6 @@ enum UserSessions {
     Id,
     UserId,
     OrganizationId,
-    RefreshTokenId,
-    CreatedAt,
     RevokedAt,
 }
 
@@ -114,8 +96,6 @@ mod tests {
                 "FOREIGN KEY (\"user_id\") REFERENCES \"users\" (\"id\") ON DELETE CASCADE"
             )
         );
-        assert!(sql.contains("\"refresh_token_id\" varchar(43) NOT NULL"));
-        assert!(sql.contains("\"created_at\" timestamp with time zone NOT NULL"));
         assert!(sql.contains("\"revoked_at\" timestamp with time zone NULL"));
         assert!(sql.contains("\"organization_id\" bigint NOT NULL"));
         assert!(sql.contains("REFERENCES \"organizations\" (\"id\")"));

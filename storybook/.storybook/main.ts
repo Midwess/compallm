@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import type { StorybookConfig } from '@storybook/react-vite'
+import tailwindcss from '@tailwindcss/vite'
 
 const workspace = fileURLToPath(new URL('..', import.meta.url))
 const reactDirectory = dirname(fileURLToPath(import.meta.resolve('react/package.json')))
@@ -16,6 +17,7 @@ const config: StorybookConfig = {
     // Do not inherit portal/vite.config.ts: it belongs to the Rust-backed app.
     const { mergeConfig } = await import('vite')
     return mergeConfig(config, {
+      plugins: [tailwindcss()],
       resolve: {
         dedupe: ['react', 'react-dom'],
         alias: {

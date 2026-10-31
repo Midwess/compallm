@@ -17,7 +17,7 @@ Components and pages use standard Tailwind utilities directly in React, includin
 
 `npm run build` produces minified, tree-shakeable ESM, declarations, and minified Tailwind output. Scan production components and pages for the package stylesheet; preview-only utilities and Storybook code remain outside the published library. `npm run build:storybook` separately builds preview demos and the route examples.
 
-Pages accept a single controller implementing an exported page interface. The controller exposes a stable store and explicit event/action methods. Export a factory function that initializes a fresh vanilla Zustand store from library defaults and optional caller overrides. The interface does not require inheritance; a consumer class can implement it.
+Consumers create a stable controller and wrap pages in the public `AuthControllerContext` from `@compallm/storybook/context`. Pages read the controller from context and do not accept a controller prop or create their own provider. The controller exposes a stable store and explicit event/action methods. Export a factory function that initializes a fresh vanilla Zustand store from library defaults and optional caller overrides. The interface does not require inheritance; a consumer class can implement it.
 
 Pass the stable controller through scoped React Context. Context carries the instance, not a copy of its changing state. UI parts use selectors to subscribe to individual values; avoid whole-store subscriptions at page or form roots. Subscribe to primitive or stable derived values, and use shallow comparison when combining values into a new object. Changing a field or countdown must not rerender unrelated page sections. Local focus and disclosure state can remain in base components.
 

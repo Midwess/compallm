@@ -5,7 +5,9 @@ available: false
 
 # Authentication page integration
 
-The React library exports `SignupPage` and `SigninPage` from their page-specific package entry points. Each page accepts one `controller` implementing `SignupController` or `SigninController`. The library exports `createSignupStore` and `createSigninStore`, which initialize fresh vanilla Zustand stores with defaults and optional initial state overrides. API calls, credential delivery, completion handling, and application routing belong to the consumer. Portal/API integration remains pending.
+The React library exports `SignupPage` and `SigninPage` from their page-specific package entry points. Consumers wrap each page in the public `AuthControllerContext` from `@compallm/storybook/context`, supplying one stable controller implementing `SignupController` or `SigninController`. Pages consume context; they do not create a provider or accept a controller prop. The library exports `createSignupStore` and `createSigninStore`, which initialize fresh vanilla Zustand stores with defaults and optional initial state overrides. API calls, credential delivery, completion handling, and application routing belong to the consumer. The portal mounts signup at `/` and signin at `/login`, with cookie-delivered credentials through the generated API client. Completion displays the library success state; the authenticated destination remains unresolved.
+
+Controllers optionally expose `navigate(href)` for client-side account links. Without it, links use ordinary browser navigation. Modified clicks and new-tab navigation keep native anchor behavior.
 
 Controllers can be classes. They expose a stable store for UI subscriptions and methods for email/code changes, code requests, retry, resend disclosure, and returning to email entry. Page components access that instance through scoped Context and subscribe only to the fields needed by each UI part. The page shell does not subscribe to changing state. Form state has one owner: the controller.
 

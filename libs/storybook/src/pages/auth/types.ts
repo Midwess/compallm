@@ -27,6 +27,7 @@ export type AuthStore = Pick<StoreApi<AuthState>, 'getState' | 'getInitialState'
 export interface AuthController {
   readonly store: AuthStore
   readonly links?: { signup?: string; signin?: string }
+  readonly navigate?: (href: string) => void
   onEmailChanged(email: string): void
   onCodeChanged(code: string): void
   onInvalidEmail(): void
@@ -35,8 +36,4 @@ export interface AuthController {
   retry(): Promise<void>
   showResend(): void
   useDifferentEmail(): void
-}
-
-export interface AuthPageProps {
-  controller: AuthController
 }

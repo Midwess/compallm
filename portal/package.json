@@ -15,21 +15,31 @@
     "start": "cargo run --release -p compallm-api -- --environment production start",
     "api:routes": "cargo loco routes",
     "api:doctor": "cargo loco --environment production doctor",
-    "lint": "oxlint",
-    "preview": "vite preview"
+    "lint": "prettier . --write && eslint . --fix",
+    "preview": "vite preview",
+    "lint:check": "eslint . && prettier . --check",
+    "check": "tsc -b"
   },
   "dependencies": {
+    "@compallm/storybook": "file:../libs/storybook",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "react-router": "^8.5.1",
+    "sonner": "^2.0.8"
   },
   "devDependencies": {
+    "@eslint/js": "^9",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "eslint": "^9",
+    "eslint-plugin-react-hooks": "^7",
+    "globals": "^16",
     "orval": "^8.43.0",
-    "oxlint": "^1.88.0",
-    "typescript": "~7.0.2",
+    "prettier": "^3",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8",
     "vite": "^8.3.4"
   }
 }

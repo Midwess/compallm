@@ -17,7 +17,7 @@ Components and pages use standard Tailwind utilities directly in React, includin
 
 `npm run build` produces minified, tree-shakeable ESM, declarations, and minified Tailwind output. Scan production components and pages for the package stylesheet; preview-only utilities and Storybook code remain outside the published library. `npm run build:storybook` separately builds preview demos and the route examples.
 
-Pages accept a single controller implementing an exported page interface. The controller exposes a stable store and explicit event/action methods. Export a factory function that initializes a fresh vanilla Zustand store from library defaults and optional caller overrides. The interface does not require inheritance; a consumer class can implement it.
+Consumers create a stable controller and wrap pages in the public `AuthControllerContext` from `@compallm/storybook/context`. Pages read the controller from context and do not accept a controller prop or create their own provider. The controller exposes a stable store and explicit event/action methods. Export a factory function that initializes a fresh vanilla Zustand store from library defaults and optional caller overrides. The interface does not require inheritance; a consumer class can implement it.
 
 Pass the stable controller through scoped React Context. Context carries the instance, not a copy of its changing state. UI parts use selectors to subscribe to individual values; avoid whole-store subscriptions at page or form roots. Subscribe to primitive or stable derived values, and use shallow comparison when combining values into a new object. Changing a field or countdown must not rerender unrelated page sections. Local focus and disclosure state can remain in base components.
 
@@ -30,3 +30,9 @@ Form controls expose values, changes, validation, pending state, and disabled st
 Shared styles and assets are packaged with the library. Import only required Phosphor SVG components; avoid a runtime registry that bundles the entire icon catalog. Decorative icons are hidden from assistive technology; icon-only actions have accessible names.
 
 See [authentication page callbacks](../login/interface.md).
+
+## Notifications
+
+`Toast` presents info, error, or warning messages and calls `onDismiss` when dismissed. Consumers own visibility, timing, queueing, deduplication, and recovery actions. Toasts do not retry requests or perform navigation. Informational and warning messages use polite status announcements; errors use an alert. Notifications do not take focus when mounted.
+
+Keep field-specific validation inline. Use toasts for operation-level feedback with safe, actionable messages; never display raw exceptions, credentials, or provider payloads. The portal uses Sonner to host the shared toast UI. Controllers report operation failures through a shared notification function. It displays the API response’s `message` unchanged, uses a safe generic message for unexpected failures, and ignores cancelled requests. API failures are not duplicated as inline status-derived messages.

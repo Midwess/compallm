@@ -101,7 +101,14 @@ jobs:
           cache: npm
           cache-dependency-path: portal/package-lock.json
       - run: npm ci
-      - run: npm run lint -- --deny-warnings
+      - name: Install UI library dependencies
+        run: npm ci --prefix ../libs/storybook
+      - name: Check and build UI library
+        run: |
+          npm --prefix ../libs/storybook run lint:check
+          npm --prefix ../libs/storybook run check
+          npm --prefix ../libs/storybook run build
+      - run: npm run lint:check
       - name: Typecheck
         run: npm exec -- tsc -b
       - name: Build the frontend

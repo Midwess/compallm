@@ -1,4 +1,4 @@
-import { useId, useRef, type FormEvent, type RefObject } from 'react'
+import { useContext, useId, useRef, type FormEvent, type RefObject } from 'react'
 import { CheckCircleIcon } from '@phosphor-icons/react/dist/csr/CheckCircle'
 import { Button, AccountPrompt, TextLink } from '../../components/buttons'
 import { EmailField, CodeEntry } from '../../components/fields'
@@ -6,10 +6,21 @@ import { FormFieldLabel } from '../../components/forms'
 import { InlineError } from '../../components/feedback'
 import { pagePaths } from '../paths'
 import { AuthLayout } from './layout'
-import { AuthControllerProvider, useAuthController, useAuthState } from './context'
-import type { AuthPageProps } from './types'
+import { useStore } from 'zustand'
+import { AuthControllerContext } from '../../context'
+import type { AuthState } from './types'
 
 type Mode = 'signup' | 'signin'
+
+function useAuthController() {
+  const controller = useContext(AuthControllerContext)
+  if (!controller) throw new Error('Authentication UI requires an AuthControllerContext value.')
+  return controller
+}
+
+function useAuthState<T>(selector: (state: AuthState) => T): T {
+  return useStore(useAuthController().store, selector)
+}
 
 const errors = {
   'invalid-email': 'Enter a valid email address.',
@@ -20,13 +31,11 @@ const errors = {
   unavailable: 'Something went wrong. Please try again.',
 }
 
-export function AuthenticationPage({ mode, controller }: AuthPageProps & { mode: Mode }) {
+export function AuthenticationPage({ mode }: { mode: Mode }) {
   return (
-    <AuthControllerProvider controller={controller}>
-      <AuthLayout>
-        <AuthContent mode={mode} />
-      </AuthLayout>
-    </AuthControllerProvider>
+    <AuthLayout>
+      <AuthContent mode={mode} />
+    </AuthLayout>
   )
 }
 
@@ -34,7 +43,7 @@ function AuthContent({ mode }: { mode: Mode }) {
   const step = useAuthState((state) => state.step)
   if (step === 'complete') return <Completion mode={mode} />
   return (
-    <div data-route={pagePaths[mode]} className="flex flex-col gap-4">
+    <div data-route={pagePaths[mode]} className="flex flex-col gap-6">
       <h1 className="m-0 text-[28px] leading-[40px] font-medium tracking-[-0.5px]">
         {step === 'email'
           ? mode === 'signup'
@@ -136,9 +145,27 @@ function AccountLink({ mode }: { mode: Mode }) {
   const target = mode === 'signup' ? 'signin' : 'signup'
   return (
     <AccountPrompt
-      className="min-h-[44px]"
+      className="mt-2 min-h-[44px]"
       action={
-        <TextLink className="inline-flex min-h-[44px] items-center" href={controller.links?.[target] ?? pagePaths[target]}>
+        <TextLink
+          className="inline-flex min-h-[44px] items-center"
+          href={controller.links?.[target] ?? pagePaths[target]}
+          onClick={(event) => {
+            if (
+              !controller.navigate ||
+              event.defaultPrevented ||
+              event.button !== 0 ||
+              event.metaKey ||
+              event.ctrlKey ||
+              event.shiftKey ||
+              event.altKey ||
+              event.currentTarget.target === '_blank'
+            )
+              return
+            event.preventDefault()
+            controller.navigate(event.currentTarget.getAttribute('href')!)
+          }}
+        >
           {mode === 'signup' ? 'Sign in' : 'Sign up'}
         </TextLink>
       }
@@ -160,7 +187,7 @@ function VerificationForm() {
       <Recipient />
       <CodeInput errorId={`${id}-error`} />
       <VerificationFeedback errorId={`${id}-error`} />
-      <div className="mt-4 flex w-full flex-col items-start gap-1">
+      <div className="mt-6 flex w-full flex-col items-start gap-1">
         <ResendControl />
         <BackAction />
       </div>
@@ -217,7 +244,7 @@ export function ResendControl() {
   const remaining = useAuthState((state) => state.remaining)
   const pending = useAuthState((state) => state.pending)
   return (
-    <div className="flex flex-wrap items-center gap-1 text-[12px] text-muted">
+    <div className="flex flex-wrap items-center gap-1 text-[13px] text-muted">
       <span>Didn’t receive a code?</span>
       <Button
         className="h-6"

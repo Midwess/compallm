@@ -82,6 +82,10 @@
     "./pages/signin": {
       "types": "./dist/pages/signin/index.d.ts",
       "import": "./dist/pages/signin.js"
+    },
+    "./context": {
+      "types": "./dist/context.d.ts",
+      "import": "./dist/context.js"
     }
   }
 }

@@ -90,7 +90,7 @@ A stolen refresh JWT remains renewable until it expires or the session is explic
 
 ## Unresolved before implementation
 
-The [authentication pages](interface.md) expose caller-supplied request and verification callbacks. Portal/API integration remains pending.
+The [authentication pages](interface.md) accept consumer controllers with scoped Zustand stores and granular UI subscriptions. Store factories and controller interfaces belong to the UI library; portal/API integration remains pending.
 
 - Which operations require immediate access-token revocation; the current access lifetime is 30 minutes.
 - Cross-provider account linking and which login methods ship first.

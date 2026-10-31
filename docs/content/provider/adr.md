@@ -10,8 +10,10 @@ available: true
 Decision status: Organization ownership, management authorization, and provider
 availability are accepted; credential protection and integration behavior
 remain proposed.
-Implementation status: Persistence schema and repository implemented; the Core
-management service, API, and provider integrations are not implemented.
+Implementation status: Persistence schema and repository implemented. The Core
+provider entity represents its associated provider models, but repository
+relation loading, the Core management service, API, and provider integrations
+are not implemented.
 
 Provider connections belong to one organization. An authenticated owner or
 administrator may manage the LLM providers in that organization. Ordinary

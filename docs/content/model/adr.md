@@ -28,7 +28,8 @@ provider model identifies what a provider accepts.
 Each model records organization-facing prices for input, output, and cached
 tokens. Prices are non-negative fixed-point USD amounts per one million tokens.
 They are stable billing and reporting rates, not necessarily the organization's
-upstream provider costs.
+upstream provider costs. Core represents each rate as a non-negative integer
+count of 10^-8 USD; the PostgreSQL adapter maps that value to `NUMERIC(20,8)`.
 
 Each model also has two independent lifecycle flags. `enabled` determines
 whether Compallm may route requests to the model. `hidden` removes the model

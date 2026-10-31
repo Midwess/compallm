@@ -1,5 +1,5 @@
 use compallm_core::{
-    model::Model,
+    model::{Model, Price},
     persistent::{
         DbContext,
         model::{ModelRepository as _, ModelRepositoryError},
@@ -43,9 +43,9 @@ impl Fixture {
             id: 100,
             organization_id: 84,
             name: "general-chat".into(),
-            input_price_per_million_tokens: Decimal::new(125, 2),
-            output_price_per_million_tokens: Decimal::new(25, 1),
-            cached_price_per_million_tokens: Decimal::new(50, 2),
+            input_price_per_million_tokens: Price::from_scaled(125_000_000),
+            output_price_per_million_tokens: Price::from_scaled(250_000_000),
+            cached_price_per_million_tokens: Price::from_scaled(50_000_000),
             enabled: true,
             hidden: false,
             settings: json!({ "contextWindow": 128_000 }),
@@ -90,7 +90,10 @@ async fn insert_writes_prices_lifecycle_flags_and_settings() {
         .unwrap();
 
     assert_eq!(model.id, 100);
-    assert_eq!(model.input_price_per_million_tokens, Decimal::new(125, 2));
+    assert_eq!(
+        model.input_price_per_million_tokens,
+        Price::from_scaled(125_000_000)
+    );
     assert_eq!(model.settings, json!({ "contextWindow": 128_000 }));
 
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
@@ -115,9 +118,9 @@ async fn update_is_organization_scoped_and_updates_every_mutable_field() {
     );
     let mut update = Fixture::model();
     update.name = "internal-chat".into();
-    update.input_price_per_million_tokens = Decimal::new(2, 0);
-    update.output_price_per_million_tokens = Decimal::new(3, 0);
-    update.cached_price_per_million_tokens = Decimal::new(1, 0);
+    update.input_price_per_million_tokens = Price::from_scaled(200_000_000);
+    update.output_price_per_million_tokens = Price::from_scaled(300_000_000);
+    update.cached_price_per_million_tokens = Price::from_scaled(100_000_000);
     update.enabled = false;
     update.hidden = true;
     update.settings = json!({ "contextWindow": 200_000, "reasoning": true });

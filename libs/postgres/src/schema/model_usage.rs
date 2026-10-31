@@ -37,8 +37,6 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     ApiKeys1,
-    #[sea_orm(has_many = "super::balances::Entity")]
-    Balances,
     #[sea_orm(
         belongs_to = "super::models::Entity",
         from = "(Column::OrganizationId, Column::ModelId)",
@@ -73,12 +71,6 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Users,
-}
-
-impl Related<super::balances::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Balances.def()
-    }
 }
 
 impl Related<super::models::Entity> for Entity {

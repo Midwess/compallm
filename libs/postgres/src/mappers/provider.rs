@@ -30,6 +30,7 @@ impl TryFrom<ProviderSchema> for Provider {
                 ApiProtocolSchema::OpenaiCompatible => ApiProtocol::OpenaiCompatible,
             },
             enabled: model.enabled,
+            models: Vec::new(),
         })
     }
 }

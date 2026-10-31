@@ -19,10 +19,10 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::api_keys::Entity")]
     ApiKeys,
-    #[sea_orm(has_many = "super::balances::Entity")]
-    Balances,
     #[sea_orm(has_many = "super::model_usage::Entity")]
     ModelUsage,
+    #[sea_orm(has_many = "super::model_usage_limit::Entity")]
+    ModelUsageLimit,
     #[sea_orm(
         belongs_to = "super::organizations::Entity",
         from = "Column::OrganizationId",
@@ -47,15 +47,15 @@ impl Related<super::api_keys::Entity> for Entity {
     }
 }
 
-impl Related<super::balances::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Balances.def()
-    }
-}
-
 impl Related<super::model_usage::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ModelUsage.def()
+    }
+}
+
+impl Related<super::model_usage_limit::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ModelUsageLimit.def()
     }
 }
 

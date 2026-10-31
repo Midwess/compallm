@@ -51,6 +51,7 @@ impl Fixture {
             url: "https://provider.example/v1".into(),
             api_protocol: ApiProtocol::OpenaiCompatible,
             enabled: true,
+            models: Vec::new(),
         }
     }
 }
@@ -142,6 +143,7 @@ async fn update_preserves_the_secret_when_no_replacement_is_supplied() {
                 url: "https://provider.example/v1".into(),
                 api_protocol: ApiProtocol::Anthropic,
                 enabled: false,
+                models: Vec::new(),
             },
             None,
         ))

@@ -11,7 +11,9 @@ use sea_orm::{
     QueryOrder, QuerySelect, RuntimeErr, prelude::ChronoUtc,
 };
 
-use crate::{postgres_connection::PostgresConnection, schema::ModelSchema};
+use crate::{
+    mappers::model::price_to_database, postgres_connection::PostgresConnection, schema::ModelSchema,
+};
 
 type Models = <ModelSchema as ModelTrait>::Entity;
 type ModelColumn = <Models as EntityTrait>::Column;
@@ -78,9 +80,15 @@ impl CoreModelRepository for ModelRepository {
             id: Set(id),
             organization_id: Set(organization_id),
             name: Set(model.name),
-            input_price_per_million_tokens: Set(model.input_price_per_million_tokens),
-            output_price_per_million_tokens: Set(model.output_price_per_million_tokens),
-            cached_price_per_million_tokens: Set(model.cached_price_per_million_tokens),
+            input_price_per_million_tokens: Set(price_to_database(
+                model.input_price_per_million_tokens,
+            )?),
+            output_price_per_million_tokens: Set(price_to_database(
+                model.output_price_per_million_tokens,
+            )?),
+            cached_price_per_million_tokens: Set(price_to_database(
+                model.cached_price_per_million_tokens,
+            )?),
             enabled: Set(model.enabled),
             hidden: Set(model.hidden),
             settings: Set(model.settings),
@@ -103,9 +111,12 @@ impl CoreModelRepository for ModelRepository {
             .ok_or(ModelRepositoryError::NotFound)?;
         let mut active_model: ModelActiveModel = stored.into();
         active_model.name = Set(model.name);
-        active_model.input_price_per_million_tokens = Set(model.input_price_per_million_tokens);
-        active_model.output_price_per_million_tokens = Set(model.output_price_per_million_tokens);
-        active_model.cached_price_per_million_tokens = Set(model.cached_price_per_million_tokens);
+        active_model.input_price_per_million_tokens =
+            Set(price_to_database(model.input_price_per_million_tokens)?);
+        active_model.output_price_per_million_tokens =
+            Set(price_to_database(model.output_price_per_million_tokens)?);
+        active_model.cached_price_per_million_tokens =
+            Set(price_to_database(model.cached_price_per_million_tokens)?);
         active_model.enabled = Set(model.enabled);
         active_model.hidden = Set(model.hidden);
         active_model.settings = Set(model.settings);

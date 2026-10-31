@@ -3,28 +3,22 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-#[sea_orm(schema_name = "public", table_name = "balances")]
+#[sea_orm(schema_name = "public", table_name = "model_usage_limit")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: i64,
+    #[sea_orm(unique_key = "model_usage_limit_organization_user_unique")]
     pub organization_id: i64,
+    #[sea_orm(unique_key = "model_usage_limit_organization_user_unique")]
     pub user_id: i64,
-    #[sea_orm(unique)]
-    pub model_usage_id: Option<i64>,
     #[sea_orm(column_type = "Decimal(Some((24, 12)))")]
-    pub amount: Decimal,
+    pub limit_usd: Decimal,
+    #[sea_orm(column_type = "Decimal(Some((24, 12)))")]
+    pub current_usage_usd: Decimal,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::model_usage::Entity",
-        from = "(Column::OrganizationId, Column::UserId, Column::ModelUsageId)",
-        to = "(super::model_usage::Column::Id, super::model_usage::Column::OrganizationId, super::model_usage::Column::UserId, super::model_usage::Column::Id, super::model_usage::Column::OrganizationId, super::model_usage::Column::UserId, super::model_usage::Column::Id, super::model_usage::Column::OrganizationId, super::model_usage::Column::UserId)",
-        on_update = "NoAction",
-        on_delete = "Cascade"
-    )]
-    ModelUsage,
     #[sea_orm(
         belongs_to = "super::organization_members::Entity",
         from = "(Column::OrganizationId, Column::UserId)",
@@ -33,12 +27,6 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     OrganizationMembers,
-}
-
-impl Related<super::model_usage::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ModelUsage.def()
-    }
 }
 
 impl Related<super::organization_members::Entity> for Entity {

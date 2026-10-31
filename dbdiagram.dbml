@@ -150,7 +150,7 @@ Table model_router [note: 'A route binding one system model to one provider mode
   }
 }
 
-Table model_usage [note: 'One client request and its logical-model attribution. Provider attempts are the authoritative token-usage records. Deleting a row also deletes its linked provider attempts and balance entry.'] {
+Table model_usage [note: 'One client request and its logical-model attribution. Provider attempts are the authoritative token-usage records. Deleting a row also deletes its linked provider attempts.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
 
   organization_id bigint [not null]
@@ -166,19 +166,18 @@ Table model_usage [note: 'One client request and its logical-model attribution. 
   }
 }
 
-Table balances [note: 'Signed balance ledger for an organization member. Positive rows add funds and model-usage-linked negative rows subtract funds. Current balance is SUM(amount); no separate mutable balance is stored.'] {
+Table model_usage_limit [note: 'One mutable USD usage-limit record per organization member. Request-level attribution remains in model_usage and provider_usage.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
   organization_id bigint [not null]
   user_id bigint [not null]
-  model_usage_id bigint [note: 'NULL for added funds; set for a logical-model usage debit']
-  amount numeric(24,12) [not null, note: 'Positive adds balance; negative subtracts balance; CHECK (amount <> 0)']
+  limit_usd numeric(24,12) [not null, note: 'Configured USD usage limit; CHECK (limit_usd >= 0)']
+  current_usage_usd numeric(24,12) [not null, note: 'Accumulated USD usage for the active accounting period; CHECK (current_usage_usd >= 0)']
   indexes {
-    model_usage_id [unique, name: 'balances_model_usage_unique']
-    (organization_id, user_id) [name: 'balances_member_idx']
+    (organization_id, user_id) [unique, name: 'model_usage_limit_organization_user_unique']
   }
 }
 
-Table provider_usage [note: 'One row per upstream provider attempt. Authoritative for provider token consumption, retries, fallback, and result status; it does not determine the member balance.'] {
+Table provider_usage [note: 'One row per upstream provider attempt. Authoritative for provider token consumption, retries, fallback, and result status; it does not directly update the member usage limit.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
 
   organization_id bigint [not null]
@@ -229,8 +228,7 @@ Ref model_usage_api_key_scope_fkey: model_usage.(organization_id, api_key_id) > 
 Ref model_usage_api_key_owner_fkey: model_usage.(organization_id, user_id, api_key_id) > api_keys.(organization_id, user_id, id) [delete: restrict, update: no action]
 Ref model_usage_model_scope_fkey: model_usage.(organization_id, model_id) > models.(organization_id, id) [delete: restrict, update: no action]
 
-Ref balances_membership_fkey: balances.(organization_id, user_id) > organization_members.(organization_id, user_id) [delete: restrict, update: no action]
-Ref balances_model_usage_fkey: balances.(organization_id, user_id, model_usage_id) > model_usage.(organization_id, user_id, id) [delete: cascade, update: no action]
+Ref model_usage_limit_membership_fkey: model_usage_limit.(organization_id, user_id) > organization_members.(organization_id, user_id) [delete: restrict, update: no action]
 
 Ref provider_usage_organization_fkey: provider_usage.organization_id > organizations.id [delete: restrict, update: no action]
 Ref provider_usage_model_usage_scope_fkey: provider_usage.(organization_id, model_usage_id) > model_usage.(organization_id, id) [delete: cascade, update: no action]

@@ -58,8 +58,8 @@
       {
         "name": "provider_models",
         "schemaName": "public",
-        "x": 635.3417485314707,
-        "y": 425.4163734234237
+        "x": 934.7164274349832,
+        "y": 437.34797294494047
       },
       {
         "name": "model_router",
@@ -74,10 +74,10 @@
         "y": -1035.6750079703927
       },
       {
-        "name": "balances",
+        "name": "model_usage_limit",
         "schemaName": "public",
-        "x": -227.94524867796326,
-        "y": -1060.3849978853607
+        "x": -482.08677499536776,
+        "y": 1380.200268577721
       }
     ],
     "tableGroupCollapseStates": [],
@@ -241,23 +241,6 @@
           "user_id"
         ],
         "firstTableName": "model_usage",
-        "firstSchemaName": "public",
-        "firstRelation": "*",
-        "secondFieldNames": [
-          "organization_id",
-          "user_id"
-        ],
-        "secondTableName": "organization_members",
-        "secondSchemaName": "public",
-        "secondRelation": "1",
-        "checkPoints": []
-      },
-      {
-        "firstFieldNames": [
-          "organization_id",
-          "user_id"
-        ],
-        "firstTableName": "balances",
         "firstSchemaName": "public",
         "firstRelation": "*",
         "secondFieldNames": [
@@ -448,18 +431,16 @@
       {
         "firstFieldNames": [
           "organization_id",
-          "user_id",
-          "model_usage_id"
+          "user_id"
         ],
-        "firstTableName": "balances",
+        "firstTableName": "model_usage_limit",
         "firstSchemaName": "public",
         "firstRelation": "*",
         "secondFieldNames": [
           "organization_id",
-          "user_id",
-          "id"
+          "user_id"
         ],
-        "secondTableName": "model_usage",
+        "secondTableName": "organization_members",
         "secondSchemaName": "public",
         "secondRelation": "1",
         "checkPoints": []

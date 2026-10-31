@@ -15,6 +15,7 @@ mod m20261031_000003_create_provider_model_routing;
 mod m20261031_000004_create_model_usage;
 mod m20261031_000005_create_balances;
 mod m20261031_000006_create_provider_usage;
+mod m20261101_000001_replace_balances_with_model_usage_limit;
 
 pub struct Migrator;
 
@@ -34,6 +35,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261031_000004_create_model_usage::Migration),
             Box::new(m20261031_000005_create_balances::Migration),
             Box::new(m20261031_000006_create_provider_usage::Migration),
+            Box::new(m20261101_000001_replace_balances_with_model_usage_limit::Migration),
             // inject-above (do not remove this comment)
         ]
     }

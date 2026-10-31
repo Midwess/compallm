@@ -13,6 +13,7 @@ const families = [
   'fields',
   'forms',
   'navigation',
+  'sidebar',
   'selection',
   'surfaces',
 ]
@@ -31,6 +32,7 @@ export default defineConfig({
         styles: source('styles.ts'),
         'pages/signup': source('pages/signup/index.tsx'),
         'pages/signin': source('pages/signin/index.tsx'),
+        'pages/main': source('pages/main/index.tsx'),
         ...Object.fromEntries(families.map((name) => [`components/${name}`, source(`components/${name}.tsx`)])),
       },
       formats: ['es'],

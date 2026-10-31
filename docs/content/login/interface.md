@@ -26,3 +26,7 @@ The controller owner manages timers and ignores responses from cancelled or supe
 Storybook provides class-based demo controllers and route previews at `/signup` and `/signin`. Preview controllers never send mail, persist credentials, or call APIs. The example verification code is `123456`.
 
 Authentication policy, token lifetimes, code reuse, and organization creation are owned by the [email flow](email.md) and [login architecture](adr.md).
+
+## Request failures
+
+Portal controllers report API failures as error toasts using the response `message`, without translating HTTP status codes into UI error labels. Failed requests preserve email/code input and clear pending state. Cancelled or superseded requests produce no toast. Client email-format validation remains inline. Failed verification can be retried after editing the code or through the controller retry action.

@@ -30,3 +30,9 @@ Form controls expose values, changes, validation, pending state, and disabled st
 Shared styles and assets are packaged with the library. Import only required Phosphor SVG components; avoid a runtime registry that bundles the entire icon catalog. Decorative icons are hidden from assistive technology; icon-only actions have accessible names.
 
 See [authentication page callbacks](../login/interface.md).
+
+## Notifications
+
+`Toast` presents info, error, or warning messages and calls `onDismiss` when dismissed. Consumers own visibility, timing, queueing, deduplication, and recovery actions. Toasts do not retry requests or perform navigation. Informational and warning messages use polite status announcements; errors use an alert. Notifications do not take focus when mounted.
+
+Keep field-specific validation inline. Use toasts for operation-level feedback with safe, actionable messages; never display raw exceptions, credentials, or provider payloads. The portal uses Sonner to host the shared toast UI. Controllers report operation failures through a shared notification function. It displays the API response’s `message` unchanged, uses a safe generic message for unexpected failures, and ignores cancelled requests. API failures are not duplicated as inline status-derived messages.

@@ -1,5 +1,6 @@
 import { createSignupStore, type SignupController, type SignupState } from '@compallm/storybook/pages/signup'
 import { confirmSigninOtp, confirmSignupOtp, signinEmail, signupEmail } from '../contract/api'
+import { notify } from '../notifications/toast'
 
 type Operation = NonNullable<SignupState['pending']>
 
@@ -47,7 +48,7 @@ export class AuthController implements SignupController {
   requestCode = () => this.request('request')
   resendCode = () => this.request('resend')
   retry = async () => {
-    if (this.store.getState().error !== 'unavailable') return
+    if (!this.failedOperation) return
     if (this.failedOperation === 'verify') await this.verify(true)
     else if (this.failedOperation) await this.request(this.failedOperation)
   }
@@ -96,20 +97,9 @@ export class AuthController implements SignupController {
       success()
     } catch (error) {
       if (generation !== this.generation) return
-      const status = error && typeof error === 'object' && 'status' in error ? error.status : undefined
       this.failedOperation = operation
-      this.store.setState({
-        error:
-          status === 409 && this.mode === 'signup'
-            ? 'email-registered'
-            : status === 429
-              ? 'throttled'
-              : status === 400
-                ? 'invalid-email'
-                : status === 401 && operation === 'verify'
-                  ? 'incorrect-code'
-                  : 'unavailable',
-      })
+      this.lastCode = undefined
+      notify.error(error)
     } finally {
       if (generation === this.generation) this.store.setState({ pending: null })
     }

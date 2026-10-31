@@ -18,7 +18,7 @@ Give members and applications controlled access to models without exposing upstr
 - Issue and revoke Compallm API keys independently of provider API keys.
 - Attribute requests to an organization, member or application, model, and provider.
 - Control which models, providers, and tools a caller can use.
-- Measure input and output tokens, request counts, latency, errors, and estimated cost.
+- Measure input and output tokens, request counts, errors, and estimated cost.
 - Configure usage allowances, spending limits, and request rate limits.
 - Show usage history and remaining allowances to members and administrators.
 - Provide a documented API for external clients and automation, with a clearly stated compatibility scope.
@@ -48,5 +48,7 @@ The Gateway should authenticate Compallm API keys, enforce configured access pol
 
 ## Related pages
 
+- [API keys](api-keys.md)
 - [LLM Router](../llm-router/adr.md)
+- [Usage accounting](../usage-administration/accounting.md)
 - [Product overview](../overview.md)

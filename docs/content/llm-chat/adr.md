@@ -7,11 +7,11 @@ available: false
 
 ## Status
 
-Decision status: Proposed. Implementation status: Under development.
+Implementation: Under development.
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
+The following solution is planned; unresolved requirements are listed below.
 
-## Context and proposed scope
+## Solution
 
 Provide a familiar chat experience across multiple providers, with access to richer model capabilities.
 
@@ -39,9 +39,8 @@ The system should let members create conversations, select supported models, sen
 
 ## Open questions
 
-Which chat capabilities ship first, and how do the [privacy and sharing rules](../data-privacy/adr.md) apply to conversations?
+Which chat capabilities ship first, and what access and sharing rules apply to conversations?
 
 ## Related pages
 
-- [Data and privacy](../data-privacy/adr.md)
 - [Product overview](../overview.md)

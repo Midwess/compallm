@@ -5,9 +5,9 @@ available: false
 
 # Mailing: ADR
 
-Decision: Accepted. Implementation: Queued SMTP delivery and the Loco consumer adapter are implemented; the feature remains under development.
+Implementation: Queued SMTP delivery and the Loco consumer adapter are implemented; the feature remains under development.
 
-## Problem and decision
+## Solution
 
 Email delivery must not create an unbounded number of tasks or let repeated OTP requests flood one recipient. Implement Core's `EmailService` in `libs/mailing`, using Lettre's async SMTP client and one DI-owned Loco worker.
 

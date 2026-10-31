@@ -5,7 +5,7 @@ available: false
 
 # Login: ADR
 
-Decision: Accepted on 2026-10-26; session-only refresh identification accepted on 2026-10-31. Implementation: Partial. Core sessions, read-only renewal, organization switching, cookie/JSON delivery, and protected API middleware are implemented. Logout endpoints and OAuth remain planned.
+Implementation: Partial. Core sessions, read-only renewal, organization switching, cookie/JSON delivery, and protected API middleware are implemented. Logout endpoints and OAuth remain planned.
 
 ## Problem and requirements
 
@@ -86,9 +86,11 @@ Session creation records each successful login. Signup creates its first session
 
 Clients expecting JSON credentials must explicitly request token delivery. Existing tokens without an embedded session require signin after the session-based flow is deployed.
 
-A stolen refresh JWT remains renewable until it expires or the session is explicitly revoked or changed. This is the accepted tradeoff for read-only renewal. No automatic reuse revocation or refresh-specific transaction restriction remains.
+A stolen refresh JWT remains renewable until it expires or the session is explicitly revoked or changed. Read-only renewal does not consume credentials or automatically revoke reused tokens.
 
 ## Unresolved before implementation
+
+The [authentication pages](interface.md) expose caller-supplied request and verification callbacks. Portal/API integration remains pending.
 
 - Which operations require immediate access-token revocation; the current access lifetime is 30 minutes.
 - Cross-provider account linking and which login methods ship first.

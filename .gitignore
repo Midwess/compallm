@@ -4,11 +4,13 @@
 # JavaScript
 /node_modules
 /portal/node_modules
-/storybook/node_modules
-/storybook/.pnpm-store
-/storybook/storybook-static
-/storybook/test-results
-/storybook/playwright-report
+/libs/storybook/node_modules
+/libs/storybook/dist
+/libs/storybook/*.tgz
+/libs/storybook/.pnpm-store
+/libs/storybook/storybook-static
+/libs/storybook/test-results
+/libs/storybook/playwright-report
 /docs/web/node_modules
 /docs/web/public
 /docs/web/.quartz-cache

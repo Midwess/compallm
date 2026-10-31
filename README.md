@@ -6,11 +6,9 @@ Compallm combines access to multiple providers, governed API usage, chat, intera
 
 ## Product plan
 
-See the [product overview](docs/content/overview.md) for feature plans. Each feature's `adr.md` records its decisions and open questions.
+See the [product overview](docs/content/overview.md) for feature plans. Each feature's `adr.md` describes its architecture, solution, and unresolved requirements.
 
 ## Development
-
-Read the [development decisions](docs/content/development/adr.md) before changing the code.
 
 The frontend uses React with Vite, and the Rust server uses Loco and Axum. PostgreSQL is accessed through SeaORM; Utoipa and Orval generate the TypeScript API client.
 
@@ -28,15 +26,15 @@ Compose starts the backing services, including PostgreSQL on port `7887`. Cargo 
 
 Development email uses MailDev: SMTP on `1025`, inbox at http://127.0.0.1:1080. See [mailing](docs/content/mailing/adr.md) for queue limits and [email login](docs/content/login/email.md) for SMTP environment variables.
 
-To review base components in Storybook without starting the backend (foundation colors, spacing, and Phosphor icons are defined in Penpot):
+To run the component library previews independently of the backend:
 
 ```bash
-cd storybook
-pnpm install
-pnpm start
+cd libs/storybook
+npm ci
+npm start
 ```
 
-Open `http://localhost:6006` and use Codex CLI from the repository root to iterate. See the [design workspace guide](docs/content/development/design-workspace.md) for the local MCP connection and review workflow.
+Open `http://localhost:6006` and use Codex CLI from the repository root to iterate.
 
 ## License
 

@@ -1,30 +1,30 @@
 ---
-title: Portal base components
+title: "Component library"
 available: false
 ---
 
-# Portal base components
+# Component library
 
-Decision status: React bases and Storybook previews accepted on 2026-10-31. Implementation status: Translation from Penpot is authorized; production feature adoption remains separate.
+The npm package in `libs/storybook/` supplies reusable React components and pages to the portal. Components are defined in `src/components/`; page compositions in `src/pages/` reuse those components. Stories import the production implementations and provide sample data.
 
-`portal/src/components/ui/` owns reusable React bases corresponding to **Design foundations** in Penpot. Group source files by family and import the required components directly. Storybook imports the same code under **Components**, with one family per sidebar group. Do not recreate the removed application wireframes or add backend dependencies.
+## Package contract
 
-| Family | Bases |
-| --- | --- |
-| Text fields | Text, multiline, search, email, code digit and code entry; guidance, inline title/summary, description, document title/body editors |
-| Buttons & links | Button, content button, text link, account prompt, resend prompt |
-| Dropdowns | Select, dropdown, theme/diagram menus, diagram dropdown, menu heading, select option |
-| Selection controls | Switch, checkbox, radio, choice card, checkbox option |
-| Feedback & overlays | Helper text, inline/code/registration errors, tooltip, keyboard key, empty state, callout, popover, drop indicator |
-| Content & code | Section heading, settings row, avatar, badge, code preview, diff line, member row, timestamp, changed file, document icon |
-| Form primitives | Introduction, step marker/heading/connector, field label, labeled field |
-| Navigation controls | Breadcrumbs, back breadcrumb, view pill, agent dock, navigation tab, toolbar action, drag handle |
-| Data primitives | Project table header/row, project icon/health/progress, resource/milestone actions, activity event, property chip/row |
-| Icons | Official Phosphor SVG components imported per icon |
-| Section surfaces | Shared section background with composable children |
+Publish ESM JavaScript, TypeScript declarations, and compiled styles. React and React DOM are peer dependencies. Keep the library build separate from the static Storybook build. Consumers import supported package entry points rather than private source paths.
 
-Use the accepted [colors](colors.md), [spacing](spacing.md), and [icons](icons.md). Keep compact field heights at 32 px, email at 48 px, and code digits at 56 px. Layout gaps and padding use the half-scale spacing variables; control geometry remains independent. Font sizes follow the inspected base, including 13 px compact labels and 12 px helpers. Inter is the UI family.
+Components and pages use Tailwind utilities directly in React. Keep theme configuration and font imports in the Tailwind entry files; do not add component, page, or story stylesheets. The library compiles those utilities into its exported stylesheet so consumers do not need Tailwind to use the package.
 
-Expose ordinary HTML attributes and explicit visual variants. Prefer children for icons, actions, and nested content rather than a flag for every composition. Fields associate labels and descriptions through IDs; errors include readable text. Native inputs preserve browser keyboard and form behavior. Dropdown options support arrow navigation, Enter/Space selection, and Escape dismissal; overlays must return focus to their trigger. Native popovers and disclosures provide local presentation without introducing product state.
+`npm run build` produces minified, tree-shakeable ESM, declarations, and minified Tailwind output. Scan production components and pages for the package stylesheet; preview-only utilities and Storybook code remain outside the published library. `npm run build:storybook` separately builds preview demos and the route examples.
 
-Stories show normal, disabled, loading, error, selected, and expanded states where relevant. Sample account prompts, resend cooldowns, project rows, and provider labels illustrate the bases: callers own authentication, timers, ordering, persistence, clipboard actions, and drag-and-drop policy. A drag handle alone does not implement reordering. The code preview accepts text; syntax highlighting and full review workflows are separate requirements.
+Pages accept a single controller implementing an exported page interface. The controller exposes a stable store and explicit event/action methods. Export a factory function that initializes a fresh vanilla Zustand store from library defaults and optional caller overrides. The interface does not require inheritance; a consumer class can implement it.
+
+Pass the stable controller through scoped React Context. Context carries the instance, not a copy of its changing state. UI parts use selectors to subscribe to individual values; avoid whole-store subscriptions at page or form roots. Subscribe to primitive or stable derived values, and use shallow comparison when combining values into a new object. Changing a field or countdown must not rerender unrelated page sections. Local focus and disclosure state can remain in base components.
+
+UI events call controller methods; UI code does not mutate the store. Controller methods read the current snapshot when invoked and own asynchronous requests and state transitions. Keep API clients, authentication storage, application routing, and provider credentials outside the library. Consumer-created controllers are initialized once per page instance. Preview classes implement the same interfaces without a backend, and their owner starts and cleans up timers and pending-operation guards.
+
+## Component behavior
+
+Form controls expose values, changes, validation, pending state, and disabled state through their public APIs. Preserve native semantics and accessible names. Floating option lists support keyboard selection, dismissal, and focus restoration without changing the surrounding document flow.
+
+Shared styles and assets are packaged with the library. Import only required Phosphor SVG components; avoid a runtime registry that bundles the entire icon catalog. Decorative icons are hidden from assistive technology; icon-only actions have accessible names.
+
+See [authentication page callbacks](../login/interface.md).

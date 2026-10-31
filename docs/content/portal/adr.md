@@ -1,52 +1,22 @@
 ---
-title: "Portal: ADR"
+title: "Portal architecture"
 available: false
 ---
 
-# Portal: ADR
+# Portal architecture
 
-Decision status: Foundation-first restart accepted on 2026-10-31. The dark neutral/violet palette, shared spacing policy, and Phosphor Regular SVG library are accepted. Navigation labels, grouping, and launch availability remain proposed. Implementation status: Penpot contains foundation tokens and reusable icon masters. The shared Tailwind theme and Phosphor dependencies are configured. React base components and grouped Storybook previews are authorized. Existing Penpot feature explorations remain design references. Application routing and API integration remain separate.
+The portal is a React application built with Vite. Axum serves it and the API from one origin, proxying Vite in development and serving built assets in production. API calls use relative URLs.
 
-## Foundation-first workflow
+## UI library boundary
 
-Start with **Design foundations** in Penpot: [colors](colors.md), [spacing](spacing.md), and [icons](icons.md). The starter stories and wireframes are removed. The next accepted step is a reusable [component library](components.md) matching the base families in Design foundations, with previews under Storybook’s **Components** folder. Feature screens remain separate.
+`libs/storybook/` owns reusable React components, page compositions, fonts, and compiled styles. It publishes ESM JavaScript, TypeScript declarations, and stylesheet exports. React and React DOM are peer dependencies. The portal consumes package exports; the library does not import portal source.
 
-Use Tailwind v4 with a shared CSS theme in `portal/src/styles/theme.css`; Storybook and the portal's Vite setup compile the same theme. Color utilities use semantic roles from Penpot, and named spacing utilities preserve the half-scale policy with a 2 px nonzero minimum. Control dimensions remain independent. This replaces the earlier olive Storybook palette and Pixelarticons. Penpot-to-code updates remain explicit; no automatic synchronization is introduced.
+Storybook renders the same implementations with sample data and caller-supplied handlers. Previews run without Rust, PostgreSQL, authentication, or generated API clients. Library packaging and page previews exist; portal/API integration remains pending.
 
-## Context
+## Application integration
 
-Compallm combines conversations and notebooks with organization-scoped tools and usage. Members need a predictable way to navigate and recognize their current workspace. The Add provider flow and its shell are reviewed compositions; captured feature examples remain visual references.
+The portal owns routing, authenticated requests, and application state. Each library page accepts one stable controller implementing the library's interface. The library supplies a vanilla Zustand store factory with default state and optional initial overrides. A scoped React Context carries the controller; individual UI parts subscribe to the state values they display. UI events call controller methods, which update the store. Preview controllers do not send mail, persist credentials, or call provider APIs. Portal integration remains pending.
 
-## Direction
+Organization membership and backend authorization determine access to workspace resources. Component state and navigation do not establish permission.
 
-Retain the reviewed Compallm sidebar as a Penpot reference, using Phosphor Regular icons. Reuse shared Design foundations color, typography, geometry, and spacing tokens. Keep the complete sidebar assembly on its dedicated Sidebar page; feature screens compose instances of that assembly. A 244-pixel sidebar uses compact desktop rows and independently collapsible sections. Keep the layout base's adjacent canvas empty; feature screens compose their content inside it.
-
-Place workspace identity, search, and a small create-chat icon in a 44-pixel header. Proposed destinations are Chat, Notebooks, Plugins, API keys, and Usage. Group destinations into Workspace, Conversations, and Tools; each group has a clickable disclosure header. Recent conversation links illustrate navigation within chat. The sidebar bottom stays empty. Labels represent design intent, not completed features or authorization policy.
-
-Selected navigation uses a quiet neutral surface with white text and icons; unselected rows use secondary gray. Navigation rows are 28 pixels high with 13-pixel Inter labels, 14-pixel icons, and a 6-pixel icon-to-label gap. Keep lightly rounded surfaces. The header create control replaces the oversized primary pill. Use Phosphor Regular assets for navigation and workspace controls. Root category headings use 10-pixel text. Align first-level icons with the 12-pixel root category inset, including selected rows. Indent only children of an expanded folder. Bind Auto Layout gaps and padding to the existing spacing scale.
-
-## Consequences
-
-A stable shell gives features a shared navigation model without requiring their content screens to be designed together. The sidebar consumes horizontal space, so a compact option may be useful on smaller desktop windows. Mobile work remains deferred.
-
-Workspace switching must follow [organization membership rules](../organization/adr.md). Visibility and action permissions remain a separate product decision; a mock sidebar does not grant access or establish new roles. Search scope and conversation ordering are unresolved.
-
-## Review
-
-Review workspace recognition, label hierarchy, selected and hover states, compact navigation, and alignment. Keep only base controls on Design foundations. The complete sidebar and feature compositions belong on dedicated pages. See [Sidebar](sidebar.md) and the [icon selection library](icons.md).
-
-## Shared control exploration
-
-Decision status: The Linear control styling and GitHub form hierarchy are accepted as sources for this design review. Application adoption remains proposed. Implementation status: Shared controls are retained; page compositions and complex assemblies are organized on dedicated feature pages. Design foundations contains only base components and visual constants.
-
-Use the reviewed Compallm sidebar, not the captured Linear navigation. Keep it as one complete component family with expanded and collapsed states. Other controls derive from the reviewed Linear geometry; forms use GitHub's numbered section hierarchy. Shared fields retain Linear colors, 0.5 px borders, and 8 px corners. Dropdowns show closed triggers and expanded option lists. Login and signup use the same email-field, six-digit code-entry, button, prompt, and feedback bases. Main uses shared sidebar and provider-form components. Verify component links and master-to-instance propagation, not just matching styles.
-
-Dedicated Forms and Preferences pages hold the settings and application compositions. The Page patterns gallery is removed; full pages are compositions of bases, not foundation components. The captured diagram remains an image preview; controls and text are editable. The [control guide](controls.md) records the geometry and source boundaries. Keep original H2D files and local comparisons as evidence without recreating a second reference gallery. Application business rules, authentication interactions, mobile work, and React/API integration remain separate. The icon catalog is unchanged.
-
-The two expanded-dropdown captures establish seven theme choices with swatches and four diagram styles. The overview export supplies twelve views, including project/list states, billing, agents and connector selection, document templates, and reviews. Page examples combine these bases with our sidebar. Captured prices, features, and integration names are reference content; they do not establish Compallm product commitments. Coverage applies to the supplied views, not every unobserved Linear interaction.
-
-The [Add provider design](add-provider.md) has two pages: a minimal searchable model catalog with a transparent table, compact toolbar filters, and a secondary custom-configuration path, then editable configuration with known defaults filled in. The second page retains numbered Name, Connection details, Model, and Test connection sections. Base URL and endpoint mode occupy separate fields. Token prices use USD per million tokens; other modes retain their actual billing units. Shared foundation components and the spacing policy govern both pages. LiteLLM informs catalog metadata; catalog availability, adapter coverage, testing behavior, and runtime integration remain separate decisions.
-
-The configuration design accepts multiple models for one provider. Step 3 opens an Add model popup from a centered empty-state action and lists added model names. Model names are required; context windows are optional. The page title and phase navigation share one row. Test connection shows a shared link icon before the endpoint URL. These are accepted canvas requirements; duplicate handling and runtime persistence remain unresolved.
-
-The [Create model design](../llm-router/custom-model.md) composes foundation controls on its dedicated page. A custom model uses an ordered list of configured provider/model pairs, with small observed serving-time percentages and down/inactive states. Drag handles and insertion indicators are atomic bases; the route editor stays with the feature. Retry and failure policy remain unresolved.
+See [component architecture](components.md), [provider configuration](add-provider.md).

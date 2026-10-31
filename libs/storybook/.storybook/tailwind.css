@@ -1,0 +1,4 @@
+@import '../src/styles/tailwind.css';
+
+@source '../stories';
+@source './';

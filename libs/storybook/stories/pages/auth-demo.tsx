@@ -1,3 +1,4 @@
+import { AuthControllerContext } from '../../src/context'
 import { useEffect, useState } from 'react'
 import { SignupPage } from '../../src/pages/signup'
 import { SigninPage } from '../../src/pages/signin'
@@ -18,5 +19,9 @@ export function AuthDemo({
   const [controller] = useState(() => new DemoAuthController(mode, scenario, initialState))
   useEffect(() => controller.start(), [controller])
   const Page = mode === 'signup' ? SignupPage : SigninPage
-  return <Page controller={controller} />
+  return (
+    <AuthControllerContext value={controller}>
+      <Page />
+    </AuthControllerContext>
+  )
 }

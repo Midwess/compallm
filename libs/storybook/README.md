@@ -52,19 +52,24 @@ Preview [signup](http://localhost:6006/signup) and [signin](http://localhost:600
 **Pages/signin** in Storybook. The demo code is `123456`; `registered@example.com` demonstrates an existing signup email. Demo
 callbacks never send email or call the backend.
 
-The package exports `@compallm/storybook/pages/signup` and `@compallm/storybook/pages/signin`. Each page accepts a single
-`controller`. Implement the exported `SignupController` or `SigninController` interface in the consuming application; classes
-are supported without inheritance. Page source follows URL folders under `src/pages/`. Static previews include `/signup/` and
-`/signin/`.
+The package exports `@compallm/storybook/pages/signup` and `@compallm/storybook/pages/signin`. Consumers wrap pages in
+`AuthControllerContext` with a stable controller. Implement the exported `SignupController` or `SigninController` interface in
+the consuming application; classes are supported without inheritance. Page source follows URL folders under `src/pages/`. Static
+previews include `/signup/` and `/signin/`.
 
 ```tsx
 import { SignupPage, createSignupStore, type SignupController } from '@compallm/storybook/pages/signup'
+import { AuthControllerContext } from '@compallm/storybook/context'
 
 // In the consumer controller: one independent store, with library defaults and optional overrides.
 const store = createSignupStore({ email: 'alex@example.com' })
 
 export function SignupRoute({ controller }: { controller: SignupController }) {
-  return <SignupPage controller={controller} />
+  return (
+    <AuthControllerContext value={controller}>
+      <SignupPage />
+    </AuthControllerContext>
+  )
 }
 ```
 

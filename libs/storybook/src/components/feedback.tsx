@@ -1,6 +1,63 @@
 import { cloneElement, useId, useState, type HTMLAttributes, type ReactElement, type ReactNode } from 'react'
 import { cx } from './shared'
 import { Button } from './buttons'
+import { InfoIcon } from '@phosphor-icons/react/dist/csr/Info'
+import { WarningCircleIcon } from '@phosphor-icons/react/dist/csr/WarningCircle'
+import { WarningIcon } from '@phosphor-icons/react/dist/csr/Warning'
+import { XIcon } from '@phosphor-icons/react/dist/csr/X'
+
+export interface ToastProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
+  message: string
+  tone?: 'info' | 'error' | 'warning'
+  onDismiss: () => void
+  dismissLabel?: string
+}
+
+const toastTones = {
+  info: { Icon: InfoIcon, color: 'text-focus', label: 'Info' },
+  error: { Icon: WarningCircleIcon, color: 'text-error', label: 'Error' },
+  warning: { Icon: WarningIcon, color: 'text-warning', label: 'Warning' },
+}
+
+export function Toast({
+  message,
+  tone = 'info',
+  onDismiss,
+  dismissLabel = 'Dismiss notification',
+  className,
+  ...props
+}: ToastProps) {
+  const { Icon, color, label } = toastTones[tone]
+  return (
+    <div
+      {...props}
+      data-ui="toast"
+      data-tone={tone}
+      className={cx(
+        'flex min-h-[72px] w-[360px] max-w-full items-center gap-2 rounded-[10px]',
+        'border-[0.5px] border-border bg-elevated p-4 font-sans text-[13px] leading-5 text-text',
+        className,
+      )}
+    >
+      <Icon size={16} className={cx('shrink-0', color)} aria-hidden="true" />
+      <p className="min-w-0 flex-1 wrap-anywhere" role={tone === 'error' ? 'alert' : 'status'} aria-atomic="true">
+        <span className="sr-only">{label}: </span>
+        {message}
+      </p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label={dismissLabel}
+        className={cx(
+          'inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded text-muted',
+          'hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
+        )}
+      >
+        <XIcon size={12} aria-hidden="true" />
+      </button>
+    </div>
+  )
+}
 
 export function HelperText({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
   return <p {...props} className={cx('text-[12px] leading-[18px] text-muted', className)} />

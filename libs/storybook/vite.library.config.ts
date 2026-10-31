@@ -27,6 +27,7 @@ export default defineConfig({
     lib: {
       entry: {
         index: source('index.ts'),
+        context: source('context.ts'),
         styles: source('styles.ts'),
         'pages/signup': source('pages/signup/index.tsx'),
         'pages/signin': source('pages/signin/index.tsx'),

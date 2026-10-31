@@ -89,8 +89,6 @@ impl CoreModelRepository for ModelRepository {
             cached_price_per_million_tokens: Set(price_to_database(
                 model.cached_price_per_million_tokens,
             )?),
-            enabled: Set(model.enabled),
-            hidden: Set(model.hidden),
             settings: Set(model.settings),
             ..Default::default()
         };
@@ -117,8 +115,6 @@ impl CoreModelRepository for ModelRepository {
             Set(price_to_database(model.output_price_per_million_tokens)?);
         active_model.cached_price_per_million_tokens =
             Set(price_to_database(model.cached_price_per_million_tokens)?);
-        active_model.enabled = Set(model.enabled);
-        active_model.hidden = Set(model.hidden);
         active_model.settings = Set(model.settings);
         active_model.updated_at = Set(ChronoUtc::now().fixed_offset());
         Model::try_from(active_model.update(db).await.map_err(Self::write_error)?)

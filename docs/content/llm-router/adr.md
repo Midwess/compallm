@@ -44,9 +44,10 @@ models and bindings from crossing organization boundaries. Priority expresses
 binding order without yet deciding whether selection must always begin with the
 lowest value or when a later binding may be attempted.
 
-A binding is eligible only when the logical model, provider connection, provider
-model, and binding are all enabled. A disabled provider remains available to
-management but cannot serve requests through any associated binding.
+A binding is eligible only when the provider connection, provider model, and
+binding are all enabled. A disabled provider remains available to management
+but cannot serve requests through any associated binding. A model with no
+eligible binding cannot serve requests.
 
 Each model stores the organization-facing input, output, and cached
 token prices in USD per one million tokens. These are non-negative fixed-point

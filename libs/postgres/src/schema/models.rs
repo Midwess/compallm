@@ -25,8 +25,6 @@ pub struct Model {
     #[sea_orm(column_type = "Decimal(Some((20, 8)))")]
     pub cached_price_per_million_tokens: Decimal,
     pub updated_at: DateTimeWithTimeZone,
-    pub enabled: bool,
-    pub hidden: bool,
     #[sea_orm(column_type = "JsonBinary")]
     pub settings: Json,
 }

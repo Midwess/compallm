@@ -41,8 +41,9 @@ record does not imply that Compallm has verified the endpoint or credential.
 
 Disabling a provider preserves its configuration, credential, and model routes
 for management, but makes all of those routes unavailable. Enabling the
-provider does not override a disabled model or route; routing requires all
-three availability flags to be enabled.
+provider does not override a disabled provider model or binding; routing
+requires the provider connection, the provider model, and the binding to be
+enabled.
 
 ## Expected behavior
 

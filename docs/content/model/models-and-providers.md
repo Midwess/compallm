@@ -10,9 +10,9 @@ This page defines how an organization-facing model relates to an upstream
 provider connection. It is the intended design for future management and
 routing workflows, not a description of an available API.
 
-Decision status: The ownership boundaries, stable model identity, lifecycle
-flags, provider models, and router bindings are accepted. Route selection,
-fallback, and model-management authorization remain unresolved.
+Decision status: The ownership boundaries, stable model identity, provider
+models, and router bindings are accepted. Route selection, fallback,
+model-management authorization, and model discovery remain unresolved.
 
 Implementation status: The migration and generated PostgreSQL schema implement
 `provider_models` and `model_router`. Model and route management services,
@@ -32,14 +32,13 @@ A model owns caller-facing configuration:
 - the stable model name;
 - input, output, and cached-token prices used for organization billing and
   reporting;
-- `enabled`, which determines whether requests may be routed;
-- `hidden`, which omits the model from ordinary discovery without preventing
-  direct use of its stable name;
 - non-secret model settings whose shape is validated by the service that
   introduces each setting.
 
-Disabling a model always prevents routing. Hiding it changes discovery only.
-Model settings must not contain provider credentials.
+A model owns no availability or visibility flag. Whether Compallm serves it
+depends on its router bindings, and whether it appears in a discovery list
+depends on Gateway access rules that are still to be decided. Model settings
+must not contain provider credentials.
 
 ### Provider connection
 
@@ -102,25 +101,25 @@ configuration. Changing an upstream model name, disabling a binding, or moving
 traffic to another provider does not require clients to select a new logical
 model name.
 
-A router binding is available only when all four records are enabled:
+A router binding is available only when all three records are enabled:
 
 ```text
-model enabled AND provider enabled AND provider model enabled AND binding enabled
+provider enabled AND provider model enabled AND binding enabled
 ```
 
-Management listings retain disabled and hidden records. Discovery and routing
-workflows apply availability and visibility policy rather than relying on the
-repository to filter management data.
+Management listings retain disabled provider connections, provider models, and
+bindings. Discovery and routing workflows apply availability and visibility
+policy rather than relying on the repository to filter management data.
 
 ## Intended request flow
 
 1. The Gateway authenticates the caller, establishes its organization, and
    checks whether it may use the requested logical model.
-2. The Router rejects a disabled model. Ordinary discovery also omits a hidden
-   model, although an authorized caller can still use its stable name directly.
+2. The Gateway applies its discovery and access rules, which decide which
+   models the caller may see and use.
 3. The Router loads `model_router` bindings whose provider models and provider
-   connections are in the same organization and whose model, provider, provider
-   model, and binding are enabled.
+   connections are in the same organization and whose provider, provider model,
+   and binding are enabled.
 4. The Router selects a binding according to rules that still need a decision.
 5. A concrete provider client sends the provider model's upstream name using the
    connection's protocol, endpoint, and protected credential.
@@ -161,7 +160,7 @@ prices, provider-model configuration, or router bindings.
   cancellation, and charging interact?
 - Where is provider capability metadata maintained?
 - Which model setting keys and validation rules are introduced first?
-- What happens when no eligible route remains for an otherwise enabled model?
+- What happens when no eligible binding remains for a model?
 
 ## Related decisions
 

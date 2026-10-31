@@ -32,8 +32,6 @@ impl TryFrom<ModelSchema> for Model {
             cached_price_per_million_tokens: price_from_database(
                 model.cached_price_per_million_tokens,
             )?,
-            enabled: model.enabled,
-            hidden: model.hidden,
             settings: model.settings,
         })
     }

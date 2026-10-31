@@ -106,8 +106,6 @@ Table models {
   input_price_per_million_tokens numeric(20,8) [not null, note: 'CHECK (input_price_per_million_tokens >= 0)']
   output_price_per_million_tokens numeric(20,8) [not null, note: 'CHECK (output_price_per_million_tokens >= 0)']
   cached_price_per_million_tokens numeric(20,8) [not null, note: 'CHECK (cached_price_per_million_tokens >= 0)']
-  enabled boolean [not null, default: true]
-  hidden boolean [not null, default: false]
   settings jsonb [not null, default: '{}']
   updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
 

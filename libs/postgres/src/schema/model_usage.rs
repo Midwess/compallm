@@ -24,7 +24,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::api_keys::Entity",
         from = "(Column::OrganizationId, Column::UserId, Column::ApiKeyId)",
-        to = "(super::api_keys::Column::Id, super::api_keys::Column::OrganizationId, super::api_keys::Column::UserId, super::api_keys::Column::OrganizationId, super::api_keys::Column::Id, super::api_keys::Column::UserId, super::api_keys::Column::Id, super::api_keys::Column::OrganizationId, super::api_keys::Column::UserId)",
+        to = "(super::api_keys::Column::OrganizationId, super::api_keys::Column::UserId, super::api_keys::Column::Id, super::api_keys::Column::UserId, super::api_keys::Column::OrganizationId, super::api_keys::Column::Id, super::api_keys::Column::UserId, super::api_keys::Column::OrganizationId)",
         on_update = "NoAction",
         on_delete = "Restrict"
     )]
@@ -32,7 +32,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::api_keys::Entity",
         from = "(Column::OrganizationId, Column::ApiKeyId)",
-        to = "(super::api_keys::Column::Id, super::api_keys::Column::OrganizationId, super::api_keys::Column::Id)",
+        to = "(super::api_keys::Column::OrganizationId, super::api_keys::Column::Id, super::api_keys::Column::OrganizationId)",
         on_update = "NoAction",
         on_delete = "Restrict"
     )]
@@ -40,7 +40,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::models::Entity",
         from = "(Column::OrganizationId, Column::ModelId)",
-        to = "(super::models::Column::Id, super::models::Column::OrganizationId, super::models::Column::Id, super::models::Column::OrganizationId)",
+        to = "(super::models::Column::OrganizationId, super::models::Column::Id, super::models::Column::OrganizationId, super::models::Column::Id)",
         on_update = "NoAction",
         on_delete = "Restrict"
     )]

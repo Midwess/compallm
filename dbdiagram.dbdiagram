@@ -74,6 +74,12 @@
         "y": -1035.6750079703927
       },
       {
+        "name": "balances",
+        "schemaName": "public",
+        "x": -227.94524867796326,
+        "y": -1060.3849978853607
+      },
+      {
         "name": "model_usage_limit",
         "schemaName": "public",
         "x": -482.08677499536776,
@@ -241,6 +247,23 @@
           "user_id"
         ],
         "firstTableName": "model_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "user_id"
+        ],
+        "secondTableName": "organization_members",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "user_id"
+        ],
+        "firstTableName": "balances",
         "firstSchemaName": "public",
         "firstRelation": "*",
         "secondFieldNames": [
@@ -424,6 +447,25 @@
           "id"
         ],
         "secondTableName": "model_router",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "user_id",
+          "model_usage_id"
+        ],
+        "firstTableName": "balances",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "user_id",
+          "id"
+        ],
+        "secondTableName": "model_usage",
         "secondSchemaName": "public",
         "secondRelation": "1",
         "checkPoints": []

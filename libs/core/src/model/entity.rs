@@ -25,7 +25,5 @@ pub struct Model {
     pub input_price_per_million_tokens: Price,
     pub output_price_per_million_tokens: Price,
     pub cached_price_per_million_tokens: Price,
-    pub enabled: bool,
-    pub hidden: bool,
     pub settings: serde_json::Value,
 }

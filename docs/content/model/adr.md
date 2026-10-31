@@ -7,9 +7,9 @@ available: true
 
 ## Status
 
-Decision status: Organization ownership, pricing, lifecycle flags, provider
-models, and route configuration are accepted. Model-management authorization,
-route selection, and fallback error rules remain proposed. Implementation
+Decision status: Organization ownership, pricing, provider models, and route
+configuration are accepted. Model-management authorization, route selection,
+model availability, and fallback error rules remain proposed. Implementation
 status: The migration and generated PostgreSQL schema implement
 `provider_models` and `model_router`. Model services, route management APIs, and
 routing are not implemented.
@@ -31,11 +31,11 @@ They are stable billing and reporting rates, not necessarily the organization's
 upstream provider costs. Core represents each rate as a non-negative integer
 count of 10^-8 USD; the PostgreSQL adapter maps that value to `NUMERIC(20,8)`.
 
-Each model also has two independent lifecycle flags. `enabled` determines
-whether Compallm may route requests to the model. `hidden` removes the model
-from ordinary discovery and selection lists without disabling requests that
-identify its stable name directly. Existing and new models default to enabled
-and visible so introducing the flags does not remove current availability.
+A model owns no availability or visibility flag of its own. Whether Compallm
+serves the model depends on the router bindings that select an upstream
+provider model, and whether a model appears in a discovery list depends on
+Gateway access rules that are still to be decided. Storing those flags on the
+model would decide undecided policy in the schema.
 
 Each model has a `settings` JSON object for model-specific configuration whose
 shape may evolve independently of the common model fields. PostgreSQL stores
@@ -79,26 +79,25 @@ select the lowest value first. Selection and fallback rules remain unresolved.
 - Each provider attempt snapshots its provider-model prices. Historical upstream
   cost estimates therefore remain reproducible after provider-model prices
   change.
-- Disabling a model prevents routing regardless of its visibility. Hiding a
-  model affects discovery only and does not imply that it is disabled.
-- A route is available only when its system model, provider connection, provider
-  model, and router binding are all enabled. Disabling a provider therefore
-  makes every associated route unavailable without deleting configuration.
+- A model owns no availability or visibility flag. A model with no eligible
+  router binding cannot serve requests, and discovery rules belong to Gateway
+  access policy.
+- A route is available only when its provider connection, provider model, and
+  router binding are all enabled. Disabling a provider therefore makes every
+  associated route unavailable without deleting configuration.
 - Model persistence operations are organization-scoped. Repository listing
-  returns both visible and hidden, enabled and disabled models for management;
-  future workflows apply discovery and routing policy.
+  returns every model in the organization for management; future workflows
+  apply discovery and routing policy.
 - Model settings round-trip through persistence as JSON. The repository does
   not interpret individual keys; owning services validate settings they use.
 
 ## Behavior examples
 
-### Model lifecycle flags
+### Model availability
 
-- **WHEN** a model is disabled
-- **THEN** Compallm does not route requests to it
-- **AND WHEN** an enabled model is hidden
-- **THEN** ordinary discovery omits it while direct use by stable name remains
-  available
+- **WHEN** every router binding of a model is disabled
+- **THEN** Compallm has no eligible route for that model and does not serve
+  requests for it
 
 ### Organization isolation
 
@@ -112,6 +111,8 @@ select the lowest value first. Selection and fallback rules remain unresolved.
   operations require different permissions?
 - Must the Router always begin with the lowest-priority enabled route, and can
   policy or health change that order?
+- How does an organization withdraw a model from discovery without deleting
+  its router bindings?
 - Which provider errors permit fallback, and how are cooldowns represented?
 - Where is provider capability metadata maintained?
 

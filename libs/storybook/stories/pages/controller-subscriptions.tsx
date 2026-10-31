@@ -1,5 +1,5 @@
 import { Profiler, useRef, useState } from 'react'
-import { AuthControllerProvider } from '../../src/pages/auth/context'
+import { AuthControllerContext } from '../../src/context'
 import { EmailInput, ContinueButton, CodeInput, ResendControl } from '../../src/pages/auth/auth-page'
 import { DemoAuthController } from './demo-auth-controller'
 
@@ -16,7 +16,7 @@ export function ControllerSubscriptions() {
     if (counter) counter.textContent = String(Number(counter.textContent) + 1)
   }
   return (
-    <AuthControllerProvider controller={controller}>
+    <AuthControllerContext value={controller}>
       <main className="grid max-w-[720px] gap-4 p-4 font-sans text-text">
         <h1>Controller subscriptions</h1>
         <p>One controller, four independent UI subscriptions. Counts record React commits.</p>
@@ -50,6 +50,6 @@ export function ControllerSubscriptions() {
           Advance countdown
         </button>
       </main>
-    </AuthControllerProvider>
+    </AuthControllerContext>
   )
 }

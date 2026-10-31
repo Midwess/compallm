@@ -10,12 +10,11 @@ export * from './components/selection'
 export * from './components/surfaces'
 export { SignupPage, createSignupStore } from './pages/signup'
 export { SigninPage, createSigninStore } from './pages/signin'
-export type { SignupController, SignupState, SignupStore, SignupPageProps } from './pages/signup'
-export type { SigninController, SigninState, SigninStore, SigninPageProps } from './pages/signin'
+export type { SignupController, SignupState, SignupStore } from './pages/signup'
+export type { SigninController, SigninState, SigninStore } from './pages/signin'
 export { pagePaths } from './pages/paths'
 export type { AuthPagePath } from './pages/paths'
 export type {
-  AuthPageProps,
   AuthInitialState,
   AuthResult,
   AuthFailureReason,
@@ -25,3 +24,4 @@ export type {
   AuthError,
   AuthOperation,
 } from './pages/auth/types'
+export { AuthControllerContext } from './context'

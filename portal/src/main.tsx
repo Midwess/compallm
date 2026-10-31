@@ -1,10 +1,13 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import { RouterProvider } from 'react-router/dom'
+import { Toaster } from 'sonner'
+import { router } from './App.tsx'
+import '@compallm/storybook/styles.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <RouterProvider router={router} />
+    <Toaster position="top-right" theme="dark" />
   </StrictMode>,
 )

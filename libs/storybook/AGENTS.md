@@ -25,3 +25,10 @@ can be edited directly.
 - Run `npm run lint`, `npm run check`, `npm run build`, `npm run build:storybook`, and relevant browser checks. `npm run lint`
   applies lint fixes and formatting; keep source lines at most 128 characters. Do not run the portal's backend-backed build
   merely to verify stories.
+
+Consumers own page controller instances and wrap pages in the public context from `src/context.ts` using React’s context
+provider directly. Pages consume context; do not create providers inside pages or pass controllers as page props. The consumer
+owns lifecycle setup and cleanup.
+
+Define all public React contexts once in `src/context.ts` and export them through `@compallm/storybook/context`. Do not add
+provider wrapper components or per-page context definition files.

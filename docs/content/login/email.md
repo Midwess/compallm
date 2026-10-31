@@ -15,7 +15,7 @@ Queued SMTP delivery and signup/signin confirmation with cookie or token deliver
 4. Signup confirmation (`POST /api/auth/signup/email/confirmation/otp`) creates the user; signin confirmation (`POST /api/auth/signin/email/confirmation/otp`) requires an existing active user. Both require `RequireToken<EmailOtpAccessToken>` from middleware and accept only `code` and `delivery: "cookie" | "token"` in JSON, defaulting to cookies. Code requests use the corresponding `/signup/email` or `/signin/email` endpoint. Both steps independently choose delivery; the selection is not stored in a token. Cookie mode requires an allowed Origin at both steps.
 5. Cookie confirmation requires the browser Origin and sets both HttpOnly cookies, returning `{}`. Token mode returns both credentials in JSON without setting cookies. See [credential delivery](session.md#credential-delivery) for security settings and compatibility.
 
-The current stateless challenge allows reuse until its 10-minute expiry. The older product plan's 15-minute single-use policy remains unresolved; mailing does not change it. See the [mailing ADR](../mailing/adr.md) for queue limits. Duplicate recipients are throttled while pending and for the configured cooldown after SMTP acceptance (30 seconds by default); the API returns 429 without issuing a replacement challenge.
+The stateless challenge allows reuse until its 10-minute expiry. Single-use enforcement remains unresolved. See the [mailing ADR](../mailing/adr.md) for queue limits. Duplicate recipients are throttled while pending and for the configured cooldown after SMTP acceptance (30 seconds by default); the API returns 429 without issuing a replacement challenge.
 
 Signup confirmation repeats the uniqueness check, backed by the database constraint, so a competing registration cannot create a duplicate account. The preflight lookup finishes before mail admission; no transaction is held during email delivery.
 
@@ -56,7 +56,7 @@ SMTP credentials are optional only when the server permits unauthenticated deliv
 
 - A matching, unexpired code establishes a session only after verification succeeds.
 - An expired or incorrect code does not establish a session.
-- Under the planned single-use policy, a consumed code cannot establish another session; enforcement remains unresolved above.
+- Single-use enforcement is not implemented.
 - A valid email is eligible regardless of its domain.
 - Admission failure returns no challenge. SMTP failure after admission does not establish a session or automatically retry; the user can request another code after the pending recipient reservation clears.
 

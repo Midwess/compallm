@@ -7,11 +7,11 @@ available: false
 
 ## Status
 
-Decision status: Multiple organizations and personal-organization creation are accepted; additional membership policies remain proposed. Implementation status: Under development.
+Implementation: Under development.
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
+The following solution is planned; unresolved requirements are listed below.
 
-## Context and proposed scope
+## Solution
 
 - Provide an organization workspace for members, provider connections, plugins, notebooks, and usage settings.
 - Automatically create a personal organization owned by each user when they complete first-time onboarding.
@@ -20,18 +20,17 @@ Planned scope for discussion. The examples describe intended behavior, not compl
 - Restrict access to shared resources according to their owner and sharing settings.
 - Keep organization data and credentials separated from other organizations.
 
-## Agreed decisions
+## Organization records
 
-Accepted on 2026-10-25; implementation is tracked separately from these product decisions.
+Support multiple organizations. First-deployment bootstrap provisions an initial organization from environment configuration; the configuration fields remain unresolved. Signup creates a personal organization and owner membership atomically.
 
-- Support multiple organizations. The first deployment provisions one initial organization from environment variables; this bootstrap does not limit the platform to one organization.
-- Create a personal organization owned by each user during first-time onboarding. Users may also join other organizations under their membership policies.
+Organizations and memberships omit generic creation/update timestamps. Default membership selection uses the lowest organization ID among eligible active organizations. Signin requires owner/admin membership.
 
-Accepted on 2026-10-31: organizations and memberships omit generic creation/update timestamps. Default membership selection uses the lowest organization ID among eligible active organizations, rather than membership creation time. Signin still requires owner/admin membership. Implementation status: repository selection follows this ordering; membership policy proposals remain open.
-
-Ownership decision accepted on 2026-10-31: `organization_members` entries with role `owner` are the sole ownership record. Organizations have no `created_by` field or separate creator history. Creation saves the organization and its initial owner membership atomically. Removing the creator foreign key also removes its restriction on deleting the original user; membership foreign keys retain their existing cascade behavior. The existing migration and matching models implement this decision; already-migrated databases require separate schema reconciliation.
+`organization_members` entries with role `owner` are the sole ownership record. Organizations have no separate creator field or creator history. Membership foreign keys cascade on user or organization deletion.
 
 ## Open questions
+
+See [membership administration](members.md) for operation boundaries and unresolved policies.
 
 - Does joining another organization require an invitation, administrator approval, or another membership rule?
 - Which roles are needed, and what may each role administer, share, and access?

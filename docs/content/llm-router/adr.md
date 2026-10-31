@@ -7,11 +7,11 @@ available: false
 
 ## Status
 
-Decision status: Unified format translation and the Router/Gateway boundary are accepted directions; remaining scope is proposed. Implementation status: Under development.
+Implementation: Under development.
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
+The following solution is planned; unresolved requirements are listed below.
 
-## Context and proposed scope
+## Solution
 
 Connect multiple providers and offer a consistent way to select and call their models.
 
@@ -27,13 +27,15 @@ Connect multiple providers and offer a consistent way to select and call their m
 
 For example, a client using an OpenAI-compatible format could select an Anthropic or Gemini model. Compallm translates the request for that provider and returns the result in the same OpenAI-compatible format the client expects. The exact supported API formats and translation coverage remain to be defined; format conversion does not give a model capabilities it does not support.
 
-## Agreed direction and open questions
+## Responsibilities and unresolved requirements
 
 The client API format is independent of the provider. Translate both directions through a unified internal representation and explicitly reject unsupported capabilities. Router selects providers and translates formats; [Gateway](../llm-gateway/adr.md) enforces access, allowances, and usage attribution.
 
 Before implementation, decide which API compatibility standard, providers, and model capabilities ship first, and whether credentials are organization-owned only or members may bring personal credentials.
 
-The 9Router comparison also surfaced routing profiles, credential pools, quota awareness, OAuth refresh, self-hosted policies, compression and prompt presets, client setup helpers, and configuration sync. These remain candidates, not accepted scope.
+## Custom models
+
+Custom models define ordered provider/model routes. Down or inactive providers are excluded. Observed serving shares are telemetry and do not configure traffic weights. Optional token prices use USD per million tokens. Runtime routing, telemetry, and pricing integration remain planned; failure policy, reporting periods, price precedence, and charging rules remain unresolved. See [custom model routing](custom-model.md).
 
 ## Consequences
 

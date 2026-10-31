@@ -4,9 +4,7 @@ title: "Development: ADR"
 
 # Development: ADR
 
-Decision status: Accepted engineering direction. Implementation status: Apply to new work; individual feature ADRs distinguish plans from implemented behavior.
-
-## Context and decision
+## Architecture
 
 Use pragmatic domain-driven design: organize around business capabilities, keep rules near their types, and introduce abstractions for concrete needs. Modules and focused services come before strict Clean Architecture layers or a trait around every library.
 
@@ -22,7 +20,8 @@ The API uses Hero's listener discovery in both modes: start at the configured po
 | `libs/core/` | Domain types, business rules, services, and persistence contracts |
 | `libs/postgres/` | SeaORM connections, transactions, schemas, repositories, mappings, and migrations |
 | `libs/utils/` | Stateless, general-purpose helpers |
-| `portal/` | React and Vite frontend |
+| `libs/storybook/` | Reusable React component/page npm library and Storybook previews |
+| `portal/` | React application consuming the UI library |
 | `docs/content/<feature>/` | Feature ADR and focused flows |
 | `docs/web/` | Quartz publication |
 
@@ -44,7 +43,7 @@ Repositories must not switch connections or independently commit a larger operat
 
 Do not hold a transaction open during slow email or HTTP calls. Database transactions do not cover external delivery; consider an outbox only when durable coordination is required. Avoid an additional unit-of-work layer without a concrete need.
 
-Generic `created_at` and `updated_at` columns are omitted from every application table (accepted 2026-10-31). Keep timestamps only for explicit business events or validity, such as email verification, revocation, and token expiry. Creation/update history is unavailable. Existing migration definitions and matching models are updated directly; already-migrated databases need separate schema reconciliation before using the revised schema.
+Generic `created_at` and `updated_at` columns are omitted from every application table. Keep timestamps only for explicit business events or validity, such as email verification, revocation, and token expiry. Creation/update history is unavailable. Database schemas and matching models omit these columns.
 
 ## External integrations
 
@@ -68,9 +67,13 @@ Compilation or SQL-generation checks are appropriate when migrations must not ex
 
 Complete the relevant design before changing behavior. Every feature ADR must take **less than six minutes** to read, including diagrams and tables. Aim for 500–800 words or fewer; estimate prose at 200 words per minute plus at least 30 seconds per diagram.
 
-Keep the problem, decision, rationale, main flow, consequences, status, and important open questions. Cut repetition and put configuration, contracts, and detailed instructions in linked sub-feature pages. The limit measures reader effort; it does not justify omitting essential decisions. See [Technical writing](writing.md) for the editing standard and reference handbook.
+Describe the current architecture, direct solution, responsibilities, constraints, and unresolved requirements. Omit visual interface specifications, decision dates, superseded approaches, and historical narratives. Cut repetition and put configuration, contracts, and detailed instructions in linked sub-feature pages. The limit measures reader effort; it does not justify omitting essential decisions. See [Technical writing](writing.md) for the editing standard and reference handbook.
 
-## Related decisions
+## Frontend package boundary
+
+`libs/storybook/` publishes reusable React components, pages, type declarations, and compiled styles. React and React DOM are peer dependencies. The portal owns application routing, API calls, and authentication state. Library pages accept caller-supplied callbacks. Stories use sample data and run without backend services. See [portal architecture](../portal/adr.md) and [workspace commands](design-workspace.md).
+
+## Related architecture
 
 - [API reference](../api/index.md): Rust/OpenAPI generates TypeScript hover documentation and the public endpoint guide.
 - [Login](../login/adr.md): identity verification, organization scope, cookies, and refresh sessions.

@@ -16,7 +16,7 @@ The filter beside Compallm shows **Available** by default. Select **All** to exp
 
 ## Planning status
 
-Development features describe intended scope. Each feature's `adr.md` records its agreed decisions, open questions, and release priorities. No release commitment is implied by listing a development feature.
+Development features describe intended scope. Each feature's `adr.md` describes its current architecture, solution, and unresolved requirements. No release commitment is implied by listing a development feature.
 
 ## Feature plans
 

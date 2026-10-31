@@ -7,7 +7,8 @@ available: false
 
 ## Status
 
-Implementation: Under development.
+Implementation: Model, provider-model, and route persistence are implemented;
+runtime routing and protocol translation remain planned.
 
 The following solution is planned; unresolved requirements are listed below.
 
@@ -30,6 +31,31 @@ For example, a client using an OpenAI-compatible format could select an Anthropi
 ## Responsibilities and unresolved requirements
 
 The client API format is independent of the provider. Translate both directions through a unified internal representation and explicitly reject unsupported capabilities. Router selects providers and translates formats; [Gateway](../llm-gateway/adr.md) enforces access, allowances, and usage attribution.
+
+Each organization owns models whose names are unique within that organization.
+A model gives callers a stable name independent of an upstream provider. Each
+provider has provider models that store the upstream model name, configured
+provider token prices, and whether that provider model is enabled. A
+`model_router` binding connects a logical model to a provider model and stores a
+positive priority unique within the logical model and whether the binding is
+enabled. One provider model can serve multiple logical models, and each logical
+model can bind multiple provider models. Database constraints prevent provider
+models and bindings from crossing organization boundaries. Priority expresses
+binding order without yet deciding whether selection must always begin with the
+lowest value or when a later binding may be attempted.
+
+A binding is eligible only when the logical model, provider connection, provider
+model, and binding are all enabled. A disabled provider remains available to
+management but cannot serve requests through any associated binding.
+
+Each model stores the organization-facing input, output, and cached
+token prices in USD per one million tokens. These are non-negative fixed-point
+rates used for stable billing and reporting regardless of the selected route.
+Configured upstream provider prices can differ and therefore belong to each
+provider model rather than the logical model. Providers report token usage
+rather than USD cost; `provider_usage` snapshots those provider-model prices at
+attempt creation, so any historical upstream-cost estimate uses the rates in
+effect for that attempt.
 
 Before implementation, decide which API compatibility standard, providers, and model capabilities ship first, and whether credentials are organization-owned only or members may bring personal credentials.
 

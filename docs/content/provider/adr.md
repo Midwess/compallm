@@ -25,10 +25,10 @@ in separate integration services rather than one general provider manager. See
 boundaries.
 
 Each provider connection has an independent `enabled` flag and defaults to
-enabled. Disabling a provider makes every associated route unavailable without
-deleting the provider, its credential, or its route configuration. Management
-listings retain disabled providers; future routing and discovery workflows must
-exclude them from availability.
+enabled. Disabling a provider makes every associated provider model and router
+binding unavailable without deleting the provider, its credential, or its
+configuration. Management listings retain disabled providers; future routing
+and discovery workflows must exclude them from availability.
 
 ## Consequences
 

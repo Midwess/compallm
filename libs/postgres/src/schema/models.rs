@@ -8,10 +8,10 @@ pub struct Model {
     #[sea_orm(
         primary_key,
         auto_increment = false,
-        unique_key = "models_id_organization_id_unique"
+        unique_key = "models_organization_id_id_unique"
     )]
     pub id: i64,
-    #[sea_orm(unique_key = "models_id_organization_id_unique")]
+    #[sea_orm(unique_key = "models_organization_id_id_unique")]
     pub organization_id: i64,
     #[sea_orm(
         column_type = "Text",
@@ -24,7 +24,6 @@ pub struct Model {
     pub output_price_per_million_tokens: Decimal,
     #[sea_orm(column_type = "Decimal(Some((20, 8)))")]
     pub cached_price_per_million_tokens: Decimal,
-    pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
     pub enabled: bool,
     pub hidden: bool,
@@ -34,8 +33,10 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::model_providers::Entity")]
-    ModelProviders,
+    #[sea_orm(has_many = "super::model_router::Entity")]
+    ModelRouter,
+    #[sea_orm(has_many = "super::model_usage::Entity")]
+    ModelUsage,
     #[sea_orm(
         belongs_to = "super::organizations::Entity",
         from = "Column::OrganizationId",
@@ -46,9 +47,15 @@ pub enum Relation {
     Organizations,
 }
 
-impl Related<super::model_providers::Entity> for Entity {
+impl Related<super::model_router::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::ModelProviders.def()
+        Relation::ModelRouter.def()
+    }
+}
+
+impl Related<super::model_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ModelUsage.def()
     }
 }
 

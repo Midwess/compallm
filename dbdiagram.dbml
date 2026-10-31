@@ -40,9 +40,6 @@ Table users {
   status user_status [not null, default: 'active']
   email_verified_at timestamptz [not null]
   last_login_at timestamptz
-  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
-  updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
-
 }
 
 Table organizations {
@@ -50,9 +47,6 @@ Table organizations {
   name text [not null, note: 'CHECK (length(btrim(name)) > 0)']
 
   status organization_status [not null, default: 'active']
-  created_by bigint [not null]
-  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
-  updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
 }
 
 Table organization_members {
@@ -60,8 +54,6 @@ Table organization_members {
   user_id bigint [not null]
   role organization_role [not null]
   status user_status [not null, default: 'active']
-  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
-
   indexes {
     (organization_id, user_id) [pk, name: 'organization_members_pkey']
     user_id [name: 'organization_members_user_id_idx']
@@ -72,18 +64,16 @@ Table api_keys [note: 'An organization member can own multiple API keys. Only th
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
   organization_id bigint [not null]
   user_id bigint [not null]
-  value bytea [not null, unique, note: 'SHA-256 digest used for key lookup and constant-time authentication; never store the plaintext key']
+  value bytea [not null, note: 'SHA-256 digest used for key lookup and constant-time authentication; never store the plaintext key']
   name text [not null, note: 'CHECK (length(btrim(name)) > 0); member-defined label']
-  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
-  expires_at timestamptz [note: 'CHECK (expires_at IS NULL OR expires_at > created_at)']
-  revoked_at timestamptz [note: 'CHECK (revoked_at IS NULL OR revoked_at >= created_at)']
+  expires_at timestamptz
+  revoked_at timestamptz
   last_used_at timestamptz
 
   indexes {
     value [unique, name: 'api_keys_value_unique']
-    (id, organization_id) [unique, name: 'api_keys_id_organization_unique']
-    (id, organization_id, user_id) [unique, name: 'api_keys_id_organization_user_unique']
-    (organization_id, user_id, created_at) [name: 'api_keys_member_created_at_idx']
+    (organization_id, id) [unique, name: 'api_keys_organization_id_id_unique']
+    (organization_id, user_id, id) [unique, name: 'api_keys_organization_user_id_unique']
   }
 }
 
@@ -91,9 +81,7 @@ Table user_sessions {
   id bigint [pk, not null, note: 'CHECK (id > 0)']
   user_id bigint [not null]
   organization_id bigint [not null]
-  refresh_token_id varchar(43) [not null, note: 'CHECK (refresh_token_id ~ \'^[A-Za-z0-9_-]{43}$\')']
-  created_at timestamptz [not null]
-  revoked_at timestamptz [note: 'CHECK (revoked_at IS NULL OR revoked_at >= created_at)']
+  revoked_at timestamptz
 }
 
 Table providers {
@@ -107,7 +95,7 @@ Table providers {
   updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
 
   indexes {
-    (id, organization_id) [unique, name: 'providers_id_organization_unique']
+    (organization_id, id) [unique, name: 'providers_organization_id_id_unique']
   }
 }
 
@@ -121,78 +109,82 @@ Table models {
   enabled boolean [not null, default: true]
   hidden boolean [not null, default: false]
   settings jsonb [not null, default: '{}']
-  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
   updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
 
   indexes {
-    (id, organization_id) [unique, name: 'models_id_organization_unique']
+    (organization_id, id) [unique, name: 'models_organization_id_id_unique']
+    (organization_id, name) [unique, name: 'models_organization_id_name_unique']
   }
 }
 
-Table model_providers [note: 'Model-provider route. Composite foreign keys on (model_id, organization_id) and (provider_id, organization_id) keep the route inside one organization.'] {
+Table provider_models [note: 'An upstream model available through one provider connection. Composite foreign keys keep the provider model inside one organization.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0)']
   organization_id bigint [not null]
-  model_id bigint [not null]
   provider_id bigint [not null]
-  upstream_model_name text [not null, note: 'CHECK (length(btrim(upstream_model_name)) > 0)']
-  priority integer [not null, note: 'CHECK (priority > 0)']
+  name text [not null, note: 'CHECK (length(btrim(name)) > 0); name accepted by the upstream provider']
   enabled boolean [not null, default: true]
   input_price_per_million_tokens numeric(20,8) [not null, note: 'CHECK (input_price_per_million_tokens >= 0)']
   output_price_per_million_tokens numeric(20,8) [not null, note: 'CHECK (output_price_per_million_tokens >= 0)']
   cached_price_per_million_tokens numeric(20,8) [not null, note: 'CHECK (cached_price_per_million_tokens >= 0)']
-  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
-  updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
 
   indexes {
-    (id, organization_id) [unique, name: 'model_providers_id_organization_unique']
-    (id, provider_id, organization_id) [unique, name: 'model_providers_id_provider_organization_unique']
+    (organization_id, id) [unique, name: 'provider_models_organization_id_id_unique']
+    (organization_id, provider_id, id) [unique, name: 'provider_models_organization_provider_id_unique']
+    (organization_id, provider_id, name) [unique, name: 'provider_models_organization_provider_name_unique']
   }
 }
 
-Table usage [note: 'Authoritative logical-model token usage. Deleting a row also deletes its linked organization-member amount entry.'] {
+Table model_router [note: 'A route binding one system model to one provider model. Composite foreign keys keep the binding inside one organization.'] {
+  id bigint [pk, not null, note: 'CHECK (id > 0)']
+  organization_id bigint [not null]
+  model_id bigint [not null]
+  provider_model_id bigint [not null]
+  priority integer [not null, note: 'CHECK (priority > 0)']
+  enabled boolean [not null, default: true]
+
+  indexes {
+    (organization_id, provider_model_id, id) [unique, name: 'model_router_organization_provider_model_id_unique']
+    (model_id, provider_model_id) [unique, name: 'model_router_model_id_provider_model_id_unique']
+    (model_id, priority) [unique, name: 'model_router_model_id_priority_unique']
+    (provider_model_id, model_id) [name: 'model_router_provider_model_id_model_id_idx']
+  }
+}
+
+Table model_usage [note: 'One client request and its logical-model attribution. Provider attempts are the authoritative token-usage records. Deleting a row also deletes its linked provider attempts and balance entry.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
-  request_id bigint [not null, note: 'Client-facing request identifier. Becomes a foreign key when the request table is added']
 
   organization_id bigint [not null]
   user_id bigint
   api_key_id bigint
   model_id bigint
 
-  input_token bigint [not null, default: 0, note: 'CHECK (input_token >= 0)']
-  cached_token bigint [not null, default: 0, note: 'Cached input subset; CHECK (cached_token >= 0 AND cached_token <= input_token)']
-  output_token bigint [not null, default: 0, note: 'CHECK (output_token >= 0)']
-  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
-
   indexes {
-    request_id [unique, name: 'usage_request_unique']
-    (id, organization_id, user_id) [unique, name: 'usage_id_organization_user_unique']
-    (organization_id, created_at) [name: 'usage_organization_created_at_idx']
-    (api_key_id, created_at) [name: 'usage_api_key_created_at_idx']
-    (user_id, created_at) [name: 'usage_user_created_at_idx']
-    (model_id, created_at) [name: 'usage_model_created_at_idx']
+    (organization_id, id) [unique, name: 'model_usage_organization_id_id_unique']
+    (organization_id, user_id, id) [unique, name: 'model_usage_organization_user_id_unique']
+    (organization_id, api_key_id) [name: 'model_usage_organization_api_key_idx']
+    (organization_id, model_id) [name: 'model_usage_organization_model_idx']
   }
 }
 
-Table organization_member_amounts [note: 'Signed amount ledger for an organization member. Positive rows add funds and usage-linked negative rows subtract funds. Current member amount is SUM(amount); no separate mutable balance is stored.'] {
+Table balances [note: 'Signed balance ledger for an organization member. Positive rows add funds and model-usage-linked negative rows subtract funds. Current balance is SUM(amount); no separate mutable balance is stored.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
   organization_id bigint [not null]
   user_id bigint [not null]
-  usage_id bigint [unique, note: 'NULL for added funds; set for a logical-model usage debit']
-  amount numeric(24,12) [not null, note: 'Positive adds member amount; negative subtracts member amount; CHECK (amount <> 0)']
-  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
-
+  model_usage_id bigint [note: 'NULL for added funds; set for a logical-model usage debit']
+  amount numeric(24,12) [not null, note: 'Positive adds balance; negative subtracts balance; CHECK (amount <> 0)']
   indexes {
-    usage_id [unique, name: 'organization_member_amounts_usage_unique']
-    (organization_id, user_id, created_at) [name: 'organization_member_amounts_member_created_at_idx']
+    model_usage_id [unique, name: 'balances_model_usage_unique']
+    (organization_id, user_id) [name: 'balances_member_idx']
   }
 }
 
-Table provider_usage [note: 'One row per upstream provider attempt. Authoritative for provider token consumption, retries, fallback, and result status; it does not determine the organization-member amount.'] {
+Table provider_usage [note: 'One row per upstream provider attempt. Authoritative for provider token consumption, retries, fallback, and result status; it does not determine the member balance.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
-  request_id bigint [not null, note: 'Client-facing request identifier; becomes a foreign key when the request table is added']
 
   organization_id bigint [not null]
-  model_provider_id bigint [not null]
+  model_usage_id bigint [not null]
+  model_router_id bigint [not null]
+  provider_model_id bigint [not null]
   provider_id bigint [not null]
   provider_request_id text [note: 'Provider-issued request identifier when available; must not contain credentials']
 
@@ -200,19 +192,19 @@ Table provider_usage [note: 'One row per upstream provider attempt. Authoritativ
   input_tokens bigint [note: 'Total input tokens including cached input; NULL means unknown; CHECK (input_tokens >= 0)']
   cached_input_tokens bigint [note: 'Subset of input_tokens; NULL means unknown; CHECK (cached_input_tokens >= 0 AND cached_input_tokens <= input_tokens)']
   output_tokens bigint [note: 'NULL means unknown; CHECK (output_tokens >= 0)']
+  input_price_per_million_tokens numeric(20,8) [not null, note: 'Snapshot of the provider-model input price when this attempt is created; CHECK (input_price_per_million_tokens >= 0)']
+  output_price_per_million_tokens numeric(20,8) [not null, note: 'Snapshot of the provider-model output price when this attempt is created; CHECK (output_price_per_million_tokens >= 0)']
+  cached_price_per_million_tokens numeric(20,8) [not null, note: 'Snapshot of the provider-model cached-input price when this attempt is created; CHECK (cached_price_per_million_tokens >= 0)']
 
   indexes {
-    request_id [name: 'provider_usage_request_idx']
-    organization_id [name: 'provider_usage_organization_idx']
-    provider_id [name: 'provider_usage_provider_idx']
-    model_provider_id [name: 'provider_usage_route_idx']
-    provider_request_id [name: 'provider_usage_provider_request_id_idx']
+    (organization_id, model_usage_id) [name: 'provider_usage_organization_model_usage_idx']
+    (organization_id, provider_model_id) [name: 'provider_usage_organization_provider_model_idx']
+    (organization_id, model_router_id) [name: 'provider_usage_organization_route_idx']
+    (organization_id, provider_id, provider_request_id) [name: 'provider_usage_organization_provider_request_id_idx']
   }
 }
 
 // --- Relationships ---
-
-Ref organizations_created_by_fkey: organizations.created_by > users.id [delete: restrict, update: no action]
 
 Ref organization_members_organization_id_fkey: organization_members.organization_id > organizations.id [delete: cascade, update: no action]
 Ref organization_members_user_id_fkey: organization_members.user_id > users.id [delete: cascade, update: no action]
@@ -225,19 +217,23 @@ Ref providers_organization_id_fkey: providers.organization_id > organizations.id
 
 Ref models_organization_id_fkey: models.organization_id > organizations.id [delete: cascade, update: no action]
 
-// Composite scope foreign keys keep a route inside a single organization.
-Ref model_providers_provider_scope_fkey: model_providers.(provider_id, organization_id) > providers.(id, organization_id) [delete: cascade, update: no action]
-Ref model_providers_model_scope_fkey: model_providers.(model_id, organization_id) > models.(id, organization_id) [delete: cascade, update: no action]
+// Composite scope foreign keys keep provider models and routes inside a single organization.
+Ref provider_models_provider_scope_fkey: provider_models.(organization_id, provider_id) > providers.(organization_id, id) [delete: cascade, update: no action]
+Ref model_router_model_scope_fkey: model_router.(organization_id, model_id) > models.(organization_id, id) [delete: cascade, update: no action]
+Ref model_router_provider_model_scope_fkey: model_router.(organization_id, provider_model_id) > provider_models.(organization_id, id) [delete: cascade, update: no action]
 
-Ref usage_organization_fkey: usage.organization_id > organizations.id [delete: restrict, update: no action]
-Ref usage_membership_fkey: usage.(organization_id, user_id) > organization_members.(organization_id, user_id) [delete: restrict, update: no action]
-Ref usage_api_key_scope_fkey: usage.(api_key_id, organization_id) > api_keys.(id, organization_id) [delete: restrict, update: no action]
-Ref usage_api_key_owner_fkey: usage.(api_key_id, organization_id, user_id) > api_keys.(id, organization_id, user_id) [delete: restrict, update: no action]
-Ref usage_model_scope_fkey: usage.(model_id, organization_id) > models.(id, organization_id) [delete: restrict, update: no action]
+Ref model_usage_organization_fkey: model_usage.organization_id > organizations.id [delete: restrict, update: no action]
+Ref model_usage_user_fkey: model_usage.user_id > users.id [delete: restrict, update: no action]
+Ref model_usage_membership_fkey: model_usage.(organization_id, user_id) > organization_members.(organization_id, user_id) [delete: restrict, update: no action]
+Ref model_usage_api_key_scope_fkey: model_usage.(organization_id, api_key_id) > api_keys.(organization_id, id) [delete: restrict, update: no action]
+Ref model_usage_api_key_owner_fkey: model_usage.(organization_id, user_id, api_key_id) > api_keys.(organization_id, user_id, id) [delete: restrict, update: no action]
+Ref model_usage_model_scope_fkey: model_usage.(organization_id, model_id) > models.(organization_id, id) [delete: restrict, update: no action]
 
-Ref organization_member_amounts_membership_fkey: organization_member_amounts.(organization_id, user_id) > organization_members.(organization_id, user_id) [delete: restrict, update: no action]
-Ref organization_member_amounts_usage_fkey: organization_member_amounts.(usage_id, organization_id, user_id) > usage.(id, organization_id, user_id) [delete: cascade, update: no action]
+Ref balances_membership_fkey: balances.(organization_id, user_id) > organization_members.(organization_id, user_id) [delete: restrict, update: no action]
+Ref balances_model_usage_fkey: balances.(organization_id, user_id, model_usage_id) > model_usage.(organization_id, user_id, id) [delete: cascade, update: no action]
 
 Ref provider_usage_organization_fkey: provider_usage.organization_id > organizations.id [delete: restrict, update: no action]
-Ref provider_usage_route_provider_scope_fkey: provider_usage.(model_provider_id, provider_id, organization_id) > model_providers.(id, provider_id, organization_id) [delete: restrict, update: no action]
-Ref provider_usage_provider_scope_fkey: provider_usage.(provider_id, organization_id) > providers.(id, organization_id) [delete: restrict, update: no action]
+Ref provider_usage_model_usage_scope_fkey: provider_usage.(organization_id, model_usage_id) > model_usage.(organization_id, id) [delete: cascade, update: no action]
+Ref provider_usage_route_provider_model_scope_fkey: provider_usage.(organization_id, provider_model_id, model_router_id) > model_router.(organization_id, provider_model_id, id) [delete: restrict, update: no action]
+Ref provider_usage_provider_model_scope_fkey: provider_usage.(organization_id, provider_id, provider_model_id) > provider_models.(organization_id, provider_id, id) [delete: restrict, update: no action]
+Ref provider_usage_provider_scope_fkey: provider_usage.(organization_id, provider_id) > providers.(organization_id, id) [delete: restrict, update: no action]

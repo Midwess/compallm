@@ -9,10 +9,10 @@ pub struct Model {
     #[sea_orm(
         primary_key,
         auto_increment = false,
-        unique_key = "providers_id_organization_id_unique"
+        unique_key = "providers_organization_id_id_unique"
     )]
     pub id: i64,
-    #[sea_orm(unique_key = "providers_id_organization_id_unique")]
+    #[sea_orm(unique_key = "providers_organization_id_id_unique")]
     pub organization_id: i64,
     #[sea_orm(
         column_type = "Text",
@@ -30,8 +30,6 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::model_providers::Entity")]
-    ModelProviders,
     #[sea_orm(
         belongs_to = "super::organizations::Entity",
         from = "Column::OrganizationId",
@@ -40,17 +38,27 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Organizations,
-}
-
-impl Related<super::model_providers::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ModelProviders.def()
-    }
+    #[sea_orm(has_many = "super::provider_models::Entity")]
+    ProviderModels,
+    #[sea_orm(has_many = "super::provider_usage::Entity")]
+    ProviderUsage,
 }
 
 impl Related<super::organizations::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Organizations.def()
+    }
+}
+
+impl Related<super::provider_models::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderModels.def()
+    }
+}
+
+impl Related<super::provider_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderUsage.def()
     }
 }
 

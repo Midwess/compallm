@@ -27,7 +27,6 @@ impl Fixture {
             input_price_per_million_tokens: Decimal::new(125, 2),
             output_price_per_million_tokens: Decimal::new(25, 1),
             cached_price_per_million_tokens: Decimal::new(50, 2),
-            created_at: Self::at(),
             updated_at: Self::at(),
             enabled,
             hidden,

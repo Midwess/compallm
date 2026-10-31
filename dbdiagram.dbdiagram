@@ -40,58 +40,49 @@
       {
         "name": "providers",
         "schemaName": "public",
-        "x": 673.4670992937471,
-        "y": 103.73573743064867
+        "x": 687.5246701465046,
+        "y": 45.851622154588284
       },
       {
         "name": "models",
         "schemaName": "public",
-        "x": 649.6049539104481,
-        "y": 473.94670426299547
-      },
-      {
-        "name": "model_providers",
-        "schemaName": "public",
-        "x": 1425.1518483761386,
-        "y": 515.8742308721905
-      },
-      {
-        "name": "usage",
-        "schemaName": "public",
-        "x": 1009.457647888989,
-        "y": -796.1909974560073
+        "x": 657.2762629424975,
+        "y": 946.200268577721
       },
       {
         "name": "provider_usage",
         "schemaName": "public",
-        "x": 1462.2626114989675,
-        "y": -206.0063274883842
+        "x": 1613.6099919153712,
+        "y": -603.3323787502294
       },
       {
-        "name": "organization_member_amounts",
+        "name": "provider_models",
         "schemaName": "public",
-        "x": -243.46685692711435,
-        "y": -816.9628035542148
+        "x": 635.3417485314707,
+        "y": 425.4163734234237
+      },
+      {
+        "name": "model_router",
+        "schemaName": "public",
+        "x": 1568.655568065741,
+        "y": 865.9945350627366
+      },
+      {
+        "name": "model_usage",
+        "schemaName": "public",
+        "x": 1031.5752317590207,
+        "y": -1035.6750079703927
+      },
+      {
+        "name": "balances",
+        "schemaName": "public",
+        "x": -227.94524867796326,
+        "y": -1060.3849978853607
       }
     ],
     "tableGroupCollapseStates": [],
     "stickyNoteLayouts": [],
     "referencePaths": [
-      {
-        "firstFieldNames": [
-          "created_by"
-        ],
-        "firstTableName": "organizations",
-        "firstSchemaName": "public",
-        "firstRelation": "*",
-        "secondFieldNames": [
-          "id"
-        ],
-        "secondTableName": "users",
-        "secondSchemaName": "public",
-        "secondRelation": "1",
-        "checkPoints": []
-      },
       {
         "firstFieldNames": [
           "organization_id"
@@ -201,43 +192,9 @@
       },
       {
         "firstFieldNames": [
-          "model_id",
           "organization_id"
         ],
-        "firstTableName": "model_providers",
-        "firstSchemaName": "public",
-        "firstRelation": "*",
-        "secondFieldNames": [
-          "id",
-          "organization_id"
-        ],
-        "secondTableName": "models",
-        "secondSchemaName": "public",
-        "secondRelation": "1",
-        "checkPoints": []
-      },
-      {
-        "firstFieldNames": [
-          "provider_id",
-          "organization_id"
-        ],
-        "firstTableName": "model_providers",
-        "firstSchemaName": "public",
-        "firstRelation": "*",
-        "secondFieldNames": [
-          "id",
-          "organization_id"
-        ],
-        "secondTableName": "providers",
-        "secondSchemaName": "public",
-        "secondRelation": "1",
-        "checkPoints": []
-      },
-      {
-        "firstFieldNames": [
-          "organization_id"
-        ],
-        "firstTableName": "usage",
+        "firstTableName": "provider_usage",
         "firstSchemaName": "public",
         "firstRelation": "*",
         "secondFieldNames": [
@@ -250,94 +207,24 @@
       },
       {
         "firstFieldNames": [
-          "organization_id",
-          "user_id"
-        ],
-        "firstTableName": "usage",
-        "firstSchemaName": "public",
-        "firstRelation": "*",
-        "secondFieldNames": [
-          "organization_id",
-          "user_id"
-        ],
-        "secondTableName": "organization_members",
-        "secondSchemaName": "public",
-        "secondRelation": "1",
-        "checkPoints": []
-      },
-      {
-        "firstFieldNames": [
-          "api_key_id",
           "organization_id"
         ],
-        "firstTableName": "usage",
-        "firstSchemaName": "public",
-        "firstRelation": "*",
-        "secondFieldNames": [
-          "id",
-          "organization_id"
-        ],
-        "secondTableName": "api_keys",
-        "secondSchemaName": "public",
-        "secondRelation": "1",
-        "checkPoints": []
-      },
-      {
-        "firstFieldNames": [
-          "api_key_id",
-          "organization_id",
-          "user_id"
-        ],
-        "firstTableName": "usage",
-        "firstSchemaName": "public",
-        "firstRelation": "*",
-        "secondFieldNames": [
-          "id",
-          "organization_id",
-          "user_id"
-        ],
-        "secondTableName": "api_keys",
-        "secondSchemaName": "public",
-        "secondRelation": "1",
-        "checkPoints": []
-      },
-      {
-        "firstFieldNames": [
-          "model_id",
-          "organization_id"
-        ],
-        "firstTableName": "usage",
-        "firstSchemaName": "public",
-        "firstRelation": "*",
-        "secondFieldNames": [
-          "id",
-          "organization_id"
-        ],
-        "secondTableName": "models",
-        "secondSchemaName": "public",
-        "secondRelation": "1",
-        "checkPoints": []
-      },
-      {
-        "firstFieldNames": [
-          "reverses_usage_id"
-        ],
-        "firstTableName": "usage",
+        "firstTableName": "model_usage",
         "firstSchemaName": "public",
         "firstRelation": "*",
         "secondFieldNames": [
           "id"
         ],
-        "secondTableName": "usage",
+        "secondTableName": "organizations",
         "secondSchemaName": "public",
         "secondRelation": "1",
         "checkPoints": []
       },
       {
         "firstFieldNames": [
-          "created_by"
+          "user_id"
         ],
-        "firstTableName": "usage",
+        "firstTableName": "model_usage",
         "firstSchemaName": "public",
         "firstRelation": "*",
         "secondFieldNames": [
@@ -350,49 +237,85 @@
       },
       {
         "firstFieldNames": [
-          "organization_id"
+          "organization_id",
+          "user_id"
         ],
-        "firstTableName": "provider_usage",
+        "firstTableName": "model_usage",
         "firstSchemaName": "public",
         "firstRelation": "*",
         "secondFieldNames": [
+          "organization_id",
+          "user_id"
+        ],
+        "secondTableName": "organization_members",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "user_id"
+        ],
+        "firstTableName": "balances",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "user_id"
+        ],
+        "secondTableName": "organization_members",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "api_key_id"
+        ],
+        "firstTableName": "model_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
           "id"
         ],
-        "secondTableName": "organizations",
+        "secondTableName": "api_keys",
         "secondSchemaName": "public",
         "secondRelation": "1",
         "checkPoints": []
       },
       {
         "firstFieldNames": [
-          "model_provider_id",
-          "provider_id",
-          "organization_id"
+          "organization_id",
+          "user_id",
+          "api_key_id"
         ],
-        "firstTableName": "provider_usage",
+        "firstTableName": "model_usage",
         "firstSchemaName": "public",
         "firstRelation": "*",
         "secondFieldNames": [
-          "id",
-          "provider_id",
-          "organization_id"
+          "organization_id",
+          "user_id",
+          "id"
         ],
-        "secondTableName": "model_providers",
+        "secondTableName": "api_keys",
         "secondSchemaName": "public",
         "secondRelation": "1",
         "checkPoints": []
       },
       {
         "firstFieldNames": [
-          "provider_id",
-          "organization_id"
+          "organization_id",
+          "provider_id"
         ],
-        "firstTableName": "provider_usage",
+        "firstTableName": "provider_models",
         "firstSchemaName": "public",
         "firstRelation": "*",
         "secondFieldNames": [
-          "id",
-          "organization_id"
+          "organization_id",
+          "id"
         ],
         "secondTableName": "providers",
         "secondSchemaName": "public",
@@ -402,35 +325,16 @@
       {
         "firstFieldNames": [
           "organization_id",
-          "user_id"
+          "provider_model_id"
         ],
-        "firstTableName": "user_amounts",
+        "firstTableName": "model_router",
         "firstSchemaName": "public",
         "firstRelation": "*",
         "secondFieldNames": [
           "organization_id",
-          "user_id"
+          "id"
         ],
-        "secondTableName": "organization_members",
-        "secondSchemaName": "public",
-        "secondRelation": "1",
-        "checkPoints": []
-      },
-      {
-        "firstFieldNames": [
-          "usage_id",
-          "organization_id",
-          "user_id"
-        ],
-        "firstTableName": "user_amounts",
-        "firstSchemaName": "public",
-        "firstRelation": "*",
-        "secondFieldNames": [
-          "id",
-          "organization_id",
-          "user_id"
-        ],
-        "secondTableName": "usage",
+        "secondTableName": "provider_models",
         "secondSchemaName": "public",
         "secondRelation": "1",
         "checkPoints": []
@@ -438,35 +342,124 @@
       {
         "firstFieldNames": [
           "organization_id",
-          "user_id"
+          "provider_id",
+          "provider_model_id"
         ],
-        "firstTableName": "organization_member_amounts",
+        "firstTableName": "provider_usage",
         "firstSchemaName": "public",
         "firstRelation": "*",
         "secondFieldNames": [
           "organization_id",
-          "user_id"
+          "provider_id",
+          "id"
         ],
-        "secondTableName": "organization_members",
+        "secondTableName": "provider_models",
         "secondSchemaName": "public",
         "secondRelation": "1",
         "checkPoints": []
       },
       {
         "firstFieldNames": [
-          "usage_id",
           "organization_id",
-          "user_id"
+          "provider_id"
         ],
-        "firstTableName": "organization_member_amounts",
+        "firstTableName": "provider_usage",
         "firstSchemaName": "public",
         "firstRelation": "*",
         "secondFieldNames": [
-          "id",
           "organization_id",
-          "user_id"
+          "id"
         ],
-        "secondTableName": "usage",
+        "secondTableName": "providers",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "model_id"
+        ],
+        "firstTableName": "model_router",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "id"
+        ],
+        "secondTableName": "models",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "model_id"
+        ],
+        "firstTableName": "model_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "id"
+        ],
+        "secondTableName": "models",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "model_usage_id"
+        ],
+        "firstTableName": "provider_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "id"
+        ],
+        "secondTableName": "model_usage",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_model_id",
+          "model_router_id"
+        ],
+        "firstTableName": "provider_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "provider_model_id",
+          "id"
+        ],
+        "secondTableName": "model_router",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "user_id",
+          "model_usage_id"
+        ],
+        "firstTableName": "balances",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "user_id",
+          "id"
+        ],
+        "secondTableName": "model_usage",
         "secondSchemaName": "public",
         "secondRelation": "1",
         "checkPoints": []

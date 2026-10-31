@@ -143,6 +143,7 @@ impl CoreRepository for OrganizationRepository {
                 OrganizationRole::Admin => OrganizationRoleSchema::Admin,
                 OrganizationRole::Member => OrganizationRoleSchema::Member,
             }),
+            status: Set(crate::schema::UserStatusSchema::Active),
         };
         OrganizationMember::try_from(
             model

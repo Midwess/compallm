@@ -11,12 +11,12 @@ provider connection. It is the intended design for future management and
 routing workflows, not a description of an available API.
 
 Decision status: The ownership boundaries, stable model identity, lifecycle
-flags, and model-provider relationship are accepted. Route selection,
+flags, provider models, and router bindings are accepted. Route selection,
 fallback, and model-management authorization remain unresolved.
 
-Implementation status: The model and provider persistence foundation exists.
-Model and route management services, management APIs, route selection, and
-request forwarding are not implemented.
+Implementation status: The migration and generated PostgreSQL schema implement
+`provider_models` and `model_router`. Model and route management services,
+management APIs, route selection, and request forwarding are not implemented.
 
 ## Concepts
 
@@ -48,29 +48,39 @@ external LLM service. It owns a management name, API protocol, endpoint URL,
 protected credential, and `enabled` state. OpenAI, Anthropic, and
 OpenAI-compatible connections are planned initially.
 
-A provider connection is not a model. One connection can serve several
-upstream models, and one logical model can use connections from several
-providers. Disabling a connection preserves it for management but makes all
-of its routes unavailable.
+A provider connection is not a model. A connection can have multiple provider
+models, each representing an upstream model the connection can call. The same
+provider model can be bound to multiple logical models, and a logical model can
+use provider models from multiple connections. Disabling a connection preserves
+it for management but makes all routes through it unavailable.
 
 Credentials are write-only at the management boundary. They must not appear
 in model, route, discovery, or usage responses, logs, or client-visible errors.
 
-### Model-provider route
+### Provider model
 
-A model-provider route associates one model with one provider connection in
-the same organization. It stores:
+A provider model represents one upstream model available through one provider
+connection in the same organization. It stores:
 
 - the upstream model name accepted by that provider;
 - configured provider input, output, and cached-token prices in fixed-point USD
   per one million tokens;
-- a positive priority unique within the model;
 - an independent `enabled` state.
 
-A model can have several routes, but it can use a particular provider
-connection only once. Database constraints reject cross-organization routes.
+Provider-model names are unique per provider connection. Database constraints
+reject provider models that cross organization boundaries.
+
+### Model router binding
+
+A `model_router` binding associates one logical model with one provider model
+in the same organization. A logical model may have multiple bindings, and the
+same provider model may be bound to multiple logical models. The binding owns:
+
+- a positive priority unique within the logical model;
+- an independent `enabled` state.
+
 Priority records an explicit order, but it does not yet decide whether routing
-must always use ascending priority, when a later route may be attempted, or
+must always use ascending priority, when a later binding may be attempted, or
 whether future health and policy information may affect selection.
 
 ## Relationship and availability
@@ -78,20 +88,24 @@ whether future health and policy information may affect selection.
 ```text
 Organization
   ├─ Model: general-chat
-  │    ├─ route 1 ─> OpenAI connection ─> gpt-5-mini
-  │    └─ route 2 ─> Anthropic connection ─> claude-sonnet-4-5
-  └─ Provider connections (endpoint, protocol, protected credential)
+  │    ├─ model_router: priority 1 ─> provider_model: gpt-5-mini
+  │    │                                └─ OpenAI connection
+  │    └─ model_router: priority 2 ─> provider_model: claude-sonnet-4-5
+  │                                     └─ Anthropic connection
+  └─ Provider connections (endpoint, protocol, protected credential) own
+       provider models and can serve multiple logical models
 ```
 
-The model is the stable caller contract. A route is replaceable delivery
-configuration. Changing an upstream model name, disabling a route, or moving
+The model is the stable caller contract. A router binding is replaceable
+delivery configuration, while a provider model is reusable upstream-provider
+configuration. Changing an upstream model name, disabling a binding, or moving
 traffic to another provider does not require clients to select a new logical
 model name.
 
-A route is available only when all three records are enabled:
+A router binding is available only when all four records are enabled:
 
 ```text
-model enabled AND provider enabled AND route enabled
+model enabled AND provider enabled AND provider model enabled AND binding enabled
 ```
 
 Management listings retain disabled and hidden records. Discovery and routing
@@ -104,13 +118,14 @@ repository to filter management data.
    checks whether it may use the requested logical model.
 2. The Router rejects a disabled model. Ordinary discovery also omits a hidden
    model, although an authorized caller can still use its stable name directly.
-3. The Router loads routes whose provider connections are in the same
-   organization and whose model, provider, and route are enabled.
-4. The Router selects a route according to rules that still need a decision.
-5. A concrete provider client sends the upstream model name using the
+3. The Router loads `model_router` bindings whose provider models and provider
+   connections are in the same organization and whose model, provider, provider
+   model, and binding are enabled.
+4. The Router selects a binding according to rules that still need a decision.
+5. A concrete provider client sends the provider model's upstream name using the
    connection's protocol, endpoint, and protected credential.
-6. Usage records identify the requested model and the route that served the
-   request.
+6. Usage records identify the requested model, provider model, and binding that
+   served the request.
 
 Provider HTTP calls occur outside database transactions. A transaction can
 protect configuration changes, but it cannot make an external inference call
@@ -123,25 +138,27 @@ atomic with a database update.
 | Stable caller-facing name and published prices | Model |
 | Non-secret model behavior settings | Model |
 | Endpoint, protocol, credential, and connection availability | Provider connection |
-| Upstream model name, configured provider prices, priority, and availability | Model-provider route |
+| Upstream model name, configured provider prices, and availability | Provider model |
+| Route priority and availability | `model_router` binding |
+| Price snapshot used to estimate one provider attempt's cost | `provider_usage` |
 | Health, quota, cooldown, and observed operational data | Separate operational state |
 
-Published model prices remain stable across routes and do not necessarily
-equal configured provider prices. Providers return token usage rather than a
-USD cost, so provider cost is estimated from route prices. Operational
-observations must not overwrite model prices or route configuration. Because
-provider usage does not snapshot a route's prices, changing those prices means
-the current schema cannot later reconstruct an exact historical provider cost.
+Published model prices remain stable across router bindings and do not
+necessarily equal configured provider-model prices. Providers return token usage
+rather than a USD cost, so provider cost is estimated from provider-model
+prices. `provider_usage` snapshots the three provider-model rates when an
+attempt is created, so historical upstream cost estimates remain reproducible
+after later price changes. Operational observations must not overwrite model
+prices, provider-model configuration, or router bindings.
 
 ## Open questions
 
-- Which organization roles may create, update, and remove models and routes?
+- Which organization roles may create, update, and remove models, provider
+  models, and router bindings?
 - Must selection always begin with the lowest priority, and can policy or
   health temporarily change that order?
 - Which provider outcomes permit fallback, and how do retries, cooldowns,
   cancellation, and charging interact?
-- How are route price changes versioned or snapshotted if exact historical
-  provider cost reporting is required?
 - Where is provider capability metadata maintained?
 - Which model setting keys and validation rules are introduced first?
 - What happens when no eligible route remains for an otherwise enabled model?

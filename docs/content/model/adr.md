@@ -7,11 +7,12 @@ available: true
 
 ## Status
 
-Decision status: Organization ownership, pricing, lifecycle flags, and provider
-route configuration are accepted. Model-management authorization, route
-selection, and fallback error rules remain proposed. Implementation status:
-Persistence schema and repository implemented; model services, route
-management, APIs, and routing are not implemented.
+Decision status: Organization ownership, pricing, lifecycle flags, provider
+models, and route configuration are accepted. Model-management authorization,
+route selection, and fallback error rules remain proposed. Implementation
+status: The migration and generated PostgreSQL schema implement
+`provider_models` and `model_router`. Model services, route management APIs, and
+routing are not implemented.
 
 ## Context and decision
 
@@ -19,10 +20,10 @@ A model is an organization-owned logical name exposed to members and clients.
 It remains stable when the organization changes upstream providers. Model names
 are unique within an organization but may be reused by another organization.
 
-For example, an organization can expose `general-chat` while routing it to
-`gpt-5-mini` through one provider and `claude-sonnet-4-5` through another. The
-logical name identifies what the organization offers; the upstream model name
-identifies what a provider accepts.
+For example, an organization can expose `general-chat` while routing it to the
+provider models `gpt-5-mini` through one provider and `claude-sonnet-4-5`
+through another. The system model identifies what the organization offers; a
+provider model identifies what a provider accepts.
 
 Each model records organization-facing prices for input, output, and cached
 tokens. Prices are non-negative fixed-point USD amounts per one million tokens.
@@ -42,42 +43,46 @@ Services that introduce a setting remain responsible for validating its
 documented shape before persistence. Settings must not contain provider
 credentials or other secrets.
 
-## Provider routes
+## Provider models and routes
 
-A model can have multiple provider routes. Each route records:
+A provider can have multiple provider models. A provider model records:
 
 - one provider owned by the same organization;
-- the model name expected by that provider;
+- the upstream model name expected by that provider;
 - configured provider prices for input, output, and cached tokens in fixed-point
   USD per one million tokens;
-- a positive priority unique within the model;
-- whether the route is enabled.
+- whether the provider model is enabled.
 
-A provider may appear only once for one model. Database ownership
-constraints prevent a route from joining a model and provider from different
-organizations. Priority expresses an order without deciding whether the Router
-must always select the lowest value first. Selection and fallback rules remain
-unresolved.
+A provider model is independent of a system model and may be routed from more
+than one system model. `model_router` binds one system model to one provider
+model. A system model can bind multiple provider models, including models from
+multiple providers. Each binding has a positive priority unique within its
+system model and an independent enabled state. Database ownership constraints
+prevent a provider model or route from crossing organization boundaries.
+Priority expresses an order without deciding whether the Router must always
+select the lowest value first. Selection and fallback rules remain unresolved.
 
 ## Consequences
 
 - Clients can use one stable organization model name while routes change.
-- Usage must identify both the model and the provider route actually
-  used.
+- Usage must identify the system model, provider model, and router binding
+  actually used.
 - Provider credentials remain on provider connections and never appear in
   model or route responses.
 - Provider HTTP calls must occur outside database transactions.
-- Configured route prices support upstream cost estimates but are not
+- Configured provider-model prices support upstream cost estimates but are not
   provider-reported costs. They must not overwrite organization-facing model
   prices.
-- Health, quota, and cooldown data must not overwrite route configuration.
-- Exact historical upstream cost cannot be reconstructed after a route price
-  changes unless a future design versions or snapshots that price.
+- Health, quota, and cooldown data must not overwrite provider-model or router
+  binding configuration.
+- Each provider attempt snapshots its provider-model prices. Historical upstream
+  cost estimates therefore remain reproducible after provider-model prices
+  change.
 - Disabling a model prevents routing regardless of its visibility. Hiding a
   model affects discovery only and does not imply that it is disabled.
-- A route is available only when its model, provider connection, and route are
-  all enabled. Disabling a provider therefore makes every associated route
-  unavailable without deleting configuration.
+- A route is available only when its system model, provider connection, provider
+  model, and router binding are all enabled. Disabling a provider therefore
+  makes every associated route unavailable without deleting configuration.
 - Model persistence operations are organization-scoped. Repository listing
   returns both visible and hidden, enabled and disabled models for management;
   future workflows apply discovery and routing policy.
@@ -107,8 +112,6 @@ unresolved.
 - Must the Router always begin with the lowest-priority enabled route, and can
   policy or health change that order?
 - Which provider errors permit fallback, and how are cooldowns represented?
-- How are route price changes versioned or snapshotted if exact historical
-  upstream cost reporting is required?
 - Where is provider capability metadata maintained?
 
 ## Related pages

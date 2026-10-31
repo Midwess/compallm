@@ -7,7 +7,7 @@ use compallm_core::{
 };
 use compallm_postgres::{
     OrganizationMemberSchema, OrganizationRoleSchema, OrganizationSchema, OrganizationStatusSchema,
-    postgres_connection::PostgresConnection,
+    UserStatusSchema, postgres_connection::PostgresConnection,
 };
 use sea_orm::{DbBackend, DbErr, IntoMockRow, MockDatabase};
 use std::{collections::BTreeMap, sync::Arc};
@@ -33,10 +33,12 @@ impl Fixture {
             organization_id: 84,
             user_id: 42,
             role: OrganizationRoleSchema::Owner,
+            status: UserStatusSchema::Active,
         };
         let mut membership: BTreeMap<_, _> =
             member.into_mock_row().into_column_value_tuples().collect();
         membership.insert("role".to_string(), "owner".into());
+        membership.insert("status".to_string(), "active".into());
         let database =
             MockDatabase::new(DbBackend::Postgres).append_query_results([vec![organization]]);
         let database = if fail_owner {
@@ -129,6 +131,7 @@ fn member_mapper_preserves_roles_and_rejects_invalid_ids() {
             organization_id: 84,
             user_id: 42,
             role: schema_role,
+            status: UserStatusSchema::Active,
         };
         let member = compallm_core::organization::OrganizationMember::try_from(schema).unwrap();
         assert_eq!(member.role, expected);
@@ -137,6 +140,7 @@ fn member_mapper_preserves_roles_and_rejects_invalid_ids() {
         organization_id: 0,
         user_id: -1,
         role: OrganizationRoleSchema::Owner,
+        status: UserStatusSchema::Active,
     };
     assert!(compallm_core::organization::OrganizationMember::try_from(invalid).is_err());
 }

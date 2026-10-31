@@ -31,6 +31,24 @@ pub enum OrganizationStatus {
     Disabled,
 }
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(
+    rs_type = "Enum",
+    db_type = "Enum",
+    enum_name = "provider_usage_status"
+)]
+pub enum ProviderUsageStatus {
+    #[sea_orm(string_value = "in_progress")]
+    InProgress,
+    #[sea_orm(string_value = "succeeded")]
+    Succeeded,
+    #[sea_orm(string_value = "failed")]
+    Failed,
+    #[sea_orm(string_value = "cancelled")]
+    Cancelled,
+    #[sea_orm(string_value = "incomplete")]
+    Incomplete,
+}
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "user_status")]
 pub enum UserStatus {
     #[sea_orm(string_value = "active")]

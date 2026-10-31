@@ -15,8 +15,8 @@ Decision status: Membership ownership, multiple keys per member, digest-only
 storage, expiration, and revocation are proposed. Key format, creation and
 management authorization, and endpoint contracts remain unresolved.
 
-Implementation status: Design only. The table exists in `dbdiagram.dbml`, but
-no migration, service, or API implements it.
+Implementation status: The migration and generated PostgreSQL schema implement
+the table. Key-management and Gateway services and APIs are not implemented.
 
 ## Ownership
 
@@ -26,8 +26,8 @@ or environments do not need to share one credential. The composite foreign key
 prevents a key from naming a user who is not a member of that organization.
 
 The key identity is retained on logical-model usage when the Gateway
-authenticates through that key. Composite usage constraints ensure the key,
-member, and usage record have the same organization.
+authenticates through that key. Composite model-usage constraints ensure the
+key, member, and model-usage record have the same organization.
 
 ## Secret storage
 
@@ -42,17 +42,17 @@ Gateway key-management or usage APIs.
 
 ## Lifecycle
 
-Each key has a member-defined name and four relevant timestamps:
+Each key has a member-defined name and three relevant timestamps:
 
-- `created_at` records issuance;
 - optional `expires_at` makes the key invalid after a configured time;
 - optional `revoked_at` disables the key without deleting its identity;
 - optional `last_used_at` records the most recent accepted authentication.
 
 A revoked, expired, disabled-member, or disabled-organization key must not
 authorize a provider call. Revocation is preferable to deletion when retained
-usage still refers to the key. The current diagram restricts deletion through
-usage attribution, but the final retention behavior remains a policy decision.
+model usage still refers to the key. The current diagram restricts deletion
+through model-usage attribution, but the final retention behavior remains a
+policy decision.
 
 ## Open questions
 

@@ -15,10 +15,30 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::user_sessions::Entity")]
-    UserSessions,
+    #[sea_orm(has_many = "super::model_usage::Entity")]
+    ModelUsage,
+    #[sea_orm(has_many = "super::models::Entity")]
+    Models,
     #[sea_orm(has_many = "super::organization_members::Entity")]
     OrganizationMembers,
+    #[sea_orm(has_many = "super::provider_usage::Entity")]
+    ProviderUsage,
+    #[sea_orm(has_many = "super::providers::Entity")]
+    Providers,
+    #[sea_orm(has_many = "super::user_sessions::Entity")]
+    UserSessions,
+}
+
+impl Related<super::model_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ModelUsage.def()
+    }
+}
+
+impl Related<super::models::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Models.def()
+    }
 }
 
 impl Related<super::organization_members::Entity> for Entity {
@@ -27,23 +47,22 @@ impl Related<super::organization_members::Entity> for Entity {
     }
 }
 
-impl Related<super::users::Entity> for Entity {
+impl Related<super::provider_usage::Entity> for Entity {
     fn to() -> RelationDef {
-        super::organization_members::Relation::Users.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(
-            super::organization_members::Relation::Organizations
-                .def()
-                .rev(),
-        )
+        Relation::ProviderUsage.def()
     }
 }
 
-impl ActiveModelBehavior for ActiveModel {}
+impl Related<super::providers::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Providers.def()
+    }
+}
 
 impl Related<super::user_sessions::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::UserSessions.def()
     }
 }
+
+impl ActiveModelBehavior for ActiveModel {}

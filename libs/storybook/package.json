@@ -86,6 +86,10 @@
     "./context": {
       "types": "./dist/context.d.ts",
       "import": "./dist/context.js"
+    },
+    "./pages/main": {
+      "types": "./dist/pages/main/index.d.ts",
+      "import": "./dist/pages/main.js"
     }
   }
 }

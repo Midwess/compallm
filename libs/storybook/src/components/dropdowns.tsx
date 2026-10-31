@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
-import { cx } from './shared'
+import { cx, popupMotion } from './shared'
 
 export interface SelectItem {
   value: string
@@ -149,7 +149,7 @@ export function Dropdown({
           role="listbox"
           aria-label={label}
           tabIndex={-1}
-          className={`
+          className={`${popupMotion}
   fixed inset-auto top-[anchor(bottom)] left-[anchor(left)] z-20 my-0.75 mx-0
   max-h-[min(320px,calc(100dvh-16px))] w-[anchor-size(width)] max-w-[calc(100vw-16px)] overflow-y-auto
   rounded-[8px] border-[0.5px] border-border bg-elevated p-1 text-text shadow-menu

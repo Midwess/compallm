@@ -6,6 +6,7 @@ export * from './components/feedback'
 export * from './components/fields'
 export * from './components/forms'
 export * from './components/navigation'
+export * from './components/sidebar'
 export * from './components/selection'
 export * from './components/surfaces'
 export { SignupPage, createSignupStore } from './pages/signup'
@@ -25,3 +26,5 @@ export type {
   AuthOperation,
 } from './pages/auth/types'
 export { AuthControllerContext } from './context'
+export { MainPage } from './pages/main'
+export type { MainPageProps } from './pages/main'

@@ -29,4 +29,16 @@
   --shadow-action: 0 0.5px 1px 1px rgb(0 0 0 / 30%);
   --shadow-control: 0 0 0 0.5px rgb(255 255 255 / 14.3%), 0 0.5px 1px 1px rgb(0 0 0 / 30%);
   --shadow-menu: 0 3px 8px rgb(0 0 0 / 12.5%), 0 2px 5px rgb(0 0 0 / 12.5%), 0 1px 1px rgb(0 0 0 / 12.5%);
+  --animate-popup-in: popup-in 150ms ease-out;
+
+  @keyframes popup-in {
+    from {
+      opacity: 0;
+      scale: 0.96;
+    }
+    to {
+      opacity: 1;
+      scale: 1;
+    }
+  }
 }

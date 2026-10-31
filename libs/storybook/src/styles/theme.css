@@ -1,0 +1,32 @@
+/* Mirrors Penpot Design foundations: Compallm Colors.
+   Import after Tailwind. Changes are translated explicitly from Penpot. */
+@theme static {
+  --color-*: initial;
+  --color-background: #09090a;
+  --color-surface: #121213;
+  --color-inset: #1a1a1b;
+  --color-composer: #1d1e1f;
+  --color-elevated: #232325;
+  --color-menu: #28292b;
+  --color-divider: #212224;
+  --color-border: #303135;
+  --color-input-border: #48494d;
+  --color-text: #e4e5e7;
+  --color-muted: #98999c;
+  --color-disabled: #626365;
+  --color-primary: #5e6ad2;
+  --color-primary-hover: #6d78d5;
+  --color-focus: #8fa6ff;
+  --color-on-primary: #ffffff;
+  --color-success: #41ba56;
+  --color-warning: #f2994a;
+  --color-error: #eb5757;
+  --color-transparent: transparent;
+  --color-flow-canvas: #0d0c12;
+  --color-flow-node: #181622;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --shadow-action: 0 0.5px 1px 1px rgb(0 0 0 / 30%);
+  --shadow-control: 0 0 0 0.5px rgb(255 255 255 / 14.3%), 0 0.5px 1px 1px rgb(0 0 0 / 30%);
+  --shadow-menu: 0 3px 8px rgb(0 0 0 / 12.5%), 0 2px 5px rgb(0 0 0 / 12.5%), 0 1px 1px rgb(0 0 0 / 12.5%);
+}

@@ -44,5 +44,4 @@ The system should restrict plugin invocation according to organization configura
 
 ## Related pages
 
-- [Data and privacy](../data-privacy/adr.md)
 - [Product overview](../overview.md)

@@ -21,4 +21,4 @@ Form controls expose values, changes, validation, pending state, and disabled st
 
 Shared styles and assets are packaged with the library. Import only required Phosphor SVG components; avoid a runtime registry that bundles the entire icon catalog. Decorative icons are hidden from assistive technology; icon-only actions have accessible names.
 
-See [authentication page callbacks](../login/interface.md) and [workspace commands](../development/design-workspace.md).
+See [authentication page callbacks](../login/interface.md).

@@ -61,5 +61,4 @@ The system should enforce configured membership and sharing permissions for orga
 
 ## Related pages
 
-- [Data and privacy](../data-privacy/adr.md)
 - [Product overview](../overview.md)

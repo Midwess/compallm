@@ -39,7 +39,7 @@ The system should let authorized members organize sources into notebooks and ide
 
 ## Open questions
 
-Which source types and notebook capabilities ship first, and how do the [privacy and sharing rules](../data-privacy/adr.md) apply to notebooks?
+Which source types and notebook capabilities ship first, and what access and sharing rules apply to notebooks?
 
 ## Related pages
 

@@ -21,4 +21,4 @@ The portal owns routing, authenticated requests, and application state. Library 
 
 Organization membership and backend authorization determine access to workspace resources. Component state and navigation do not establish permission.
 
-See [component architecture](components.md), [provider configuration](add-provider.md), and [workspace commands](../development/design-workspace.md).
+See [component architecture](components.md), [provider configuration](add-provider.md).

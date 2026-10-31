@@ -10,8 +10,6 @@ See the [product overview](docs/content/overview.md) for feature plans. Each fea
 
 ## Development
 
-Read the [development decisions](docs/content/development/adr.md) before changing the code.
-
 The frontend uses React with Vite, and the Rust server uses Loco and Axum. PostgreSQL is accessed through SeaORM; Utoipa and Orval generate the TypeScript API client.
 
 Axum serves the frontend in both local development and production. In development, it proxies the Vite dev server, including hot reload. In production, it directly serves Vite's built static files. The frontend and API share the same public origin.
@@ -36,7 +34,7 @@ npm ci
 npm start
 ```
 
-Open `http://localhost:6006` and use Codex CLI from the repository root to iterate. See the [component workspace guide](docs/content/development/design-workspace.md) for commands and package boundaries.
+Open `http://localhost:6006` and use Codex CLI from the repository root to iterate.
 
 ## License
 

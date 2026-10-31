@@ -42,5 +42,4 @@ Which interactive content types ship first, and which data access and external a
 
 ## Related pages
 
-- [Data and privacy](../data-privacy/adr.md)
 - [Product overview](../overview.md)

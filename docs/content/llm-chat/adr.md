@@ -39,9 +39,8 @@ The system should let members create conversations, select supported models, sen
 
 ## Open questions
 
-Which chat capabilities ship first, and how do the [privacy and sharing rules](../data-privacy/adr.md) apply to conversations?
+Which chat capabilities ship first, and what access and sharing rules apply to conversations?
 
 ## Related pages
 
-- [Data and privacy](../data-privacy/adr.md)
 - [Product overview](../overview.md)

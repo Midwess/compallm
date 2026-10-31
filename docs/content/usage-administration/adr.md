@@ -39,5 +39,4 @@ Which reports, notifications, and audit events ship first? Access rules depend o
 
 ## Related pages
 
-- [Data and privacy](../data-privacy/adr.md)
 - [Product overview](../overview.md)

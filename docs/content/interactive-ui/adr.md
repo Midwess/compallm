@@ -7,11 +7,11 @@ available: false
 
 ## Status
 
-Decision status: Proposed. Implementation status: Under development.
+Implementation: Under development.
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
+The following solution is planned; unresolved requirements are listed below.
 
-## Context and proposed scope
+## Solution
 
 Let models explain ideas through interactive content alongside ordinary text.
 
@@ -42,5 +42,4 @@ Which interactive content types ship first, and which data access and external a
 
 ## Related pages
 
-- [Data and privacy](../data-privacy/adr.md)
 - [Product overview](../overview.md)

@@ -7,11 +7,11 @@ available: false
 
 ## Status
 
-Decision status: Proposed. Implementation status: Under development.
+Implementation: Under development.
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
+The following solution is planned; unresolved requirements are listed below.
 
-## Context and proposed scope
+## Solution
 
 - Give members a view of their own usage and administrators a view of organization usage.
 - Break down usage by member, application, model, provider, and time period.
@@ -39,5 +39,4 @@ Which reports, notifications, and audit events ship first? Access rules depend o
 
 ## Related pages
 
-- [Data and privacy](../data-privacy/adr.md)
 - [Product overview](../overview.md)

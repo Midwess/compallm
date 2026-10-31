@@ -138,4 +138,3 @@ The `postgres-data` volume contains the database. Deleting that volume permanent
 - [Email login](login/email.md)
 - [GitHub login](login/github.md)
 - [GitLab login](login/gitlab.md)
-- [Development](development/adr.md)

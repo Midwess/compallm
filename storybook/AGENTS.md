@@ -1,6 +1,6 @@
 # Portal design workspace
 
-Read the root agent instructions and `docs/content/development/design-workspace.md` before design work. Keep user prompting in Codex CLI. Use the local Storybook MCP tools to inspect available components and stories when connected; source files remain authoritative and can be edited directly.
+Read the root agent instructions and `docs/content/portal/adr.md` before component work. Keep user prompting in Codex CLI. Use the local Storybook MCP tools to inspect available components and stories when connected; source files remain authoritative and can be edited directly.
 
 - `pnpm start` launches the workbench at `http://localhost:6006`, with MCP at `/mcp`.
 - Base-component previews live under `Components`, organized by Penpot Design foundations family. Keep feature screens separate and use sample data. Do not connect prototypes to APIs, authentication, Rust, or databases unless the user authorizes that work.

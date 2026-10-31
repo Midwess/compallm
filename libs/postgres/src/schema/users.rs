@@ -15,29 +15,19 @@ pub struct Model {
     pub status: UserStatus,
     pub email_verified_at: DateTimeWithTimeZone,
     pub last_login_at: Option<DateTimeWithTimeZone>,
-    pub created_at: DateTimeWithTimeZone,
-    pub updated_at: DateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::organization_members::Entity")]
-    OrganizationMembers,
-    #[sea_orm(has_many = "super::organizations::Entity")]
-    Organizations,
     #[sea_orm(has_many = "super::user_sessions::Entity")]
     UserSessions,
+    #[sea_orm(has_many = "super::organization_members::Entity")]
+    OrganizationMembers,
 }
 
 impl Related<super::organization_members::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OrganizationMembers.def()
-    }
-}
-
-impl Related<super::user_sessions::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::UserSessions.def()
     }
 }
 
@@ -51,3 +41,9 @@ impl Related<super::organizations::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl Related<super::user_sessions::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::UserSessions.def()
+    }
+}

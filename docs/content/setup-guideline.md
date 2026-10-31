@@ -8,7 +8,7 @@ available: true
 
 ## Status
 
-This deployment guide is a draft. Authentication and initial-organization environment variables are planned and are not consumed by the application yet.
+This deployment guide is a draft. Queued SMTP configuration is supported; OAuth and initial-organization provisioning variables remain planned.
 
 ## Requirements
 
@@ -70,18 +70,19 @@ These variables are supported by the current production configuration:
 
 The password in `DATABASE_URL` must match `POSTGRES_PASSWORD`. Use only letters and numbers so it is safe in the connection URL without encoding.
 
-### Planned authentication
+### Queued SMTP
 
-The following names document planned configuration and are not implemented yet. Add only the variables required by the login methods you enable after authentication support is released.
+Production mailing is disabled by default. Set `SMTP_ENABLED=true`, the host, sender, and transport settings to enable it. SMTP admission runs through the bounded [mailing service](mailing/adr.md); accepted jobs can still fail during delivery.
 
 | Variable | Required for | Purpose |
 | --- | --- | --- |
-| `SMTP_HOST` | Email code | SMTP server hostname |
+| `SMTP_ENABLED` | Email code | Enable mailing; production default is `false` |
+| `SMTP_HOST` | Email code | SMTP server hostname; required when enabled |
 | `SMTP_PORT` | Email code | SMTP server port, commonly `587` for message submission |
-| `SMTP_USERNAME` | Email code | SMTP authentication username |
-| `SMTP_PASSWORD` | Email code | SMTP authentication password |
+| `SMTP_USERNAME` | Optional | SMTP authentication username; provide together with password |
+| `SMTP_PASSWORD` | Optional | SMTP authentication password; provide together with username |
 | `SMTP_FROM_ADDRESS` | Email code | Sender address for login-code messages |
-| `SMTP_TLS` | Email code | Whether the configured SMTP connection requires TLS |
+| `SMTP_TLS` | Email code | `none`, `starttls`, or `tls`; production defaults to `starttls` |
 
 The initial organization will also be provisioned from environment variables on the first deployment. The variable names and required fields remain to be defined.
 
@@ -137,4 +138,3 @@ The `postgres-data` volume contains the database. Deleting that volume permanent
 - [Email login](login/email.md)
 - [GitHub login](login/github.md)
 - [GitLab login](login/gitlab.md)
-- [Development](development/adr.md)

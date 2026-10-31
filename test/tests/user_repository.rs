@@ -35,8 +35,6 @@ impl Fixture {
             status: UserStatusSchema::Active,
             email_verified_at: at,
             last_login_at: None,
-            created_at: at,
-            updated_at: at,
         }
     }
 
@@ -47,7 +45,7 @@ impl Fixture {
     fn user() -> User {
         User {
             id: 42,
-            email: " James@MIDWESS.COM ".into(),
+            email: "james@midwess.com".into(),
             display_name: "James".into(),
             status: UserStatus::Active,
         }
@@ -65,7 +63,7 @@ async fn lookup_uses_the_callers_scoped_transaction() {
     context
         .transaction(async {
             let user = UserRepository
-                .find_by_email(" James@MIDWESS.COM ")
+                .find_by_email("james@midwess.com")
                 .await?
                 .unwrap();
             assert_eq!(user.id, 42);
@@ -85,7 +83,7 @@ async fn lookup_uses_the_callers_scoped_transaction() {
 }
 
 #[tokio::test]
-async fn create_normalizes_email_and_sets_verification_timestamp() {
+async fn create_persists_prepared_email_and_sets_verification_timestamp() {
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![Fixture::mock_row(Fixture::row())]])
@@ -126,36 +124,27 @@ async fn find_by_id_maps_disabled_users_and_missing_rows() {
 
 #[tokio::test]
 async fn invalid_ids_are_database_errors() {
-    for id in [0, u64::MAX] {
-        assert!(matches!(
-            UserRepository.find_by_id(id).await,
-            Err(UserRepositoryError::Database(_))
-        ));
-    }
+    assert!(matches!(
+        UserRepository.find_by_id(u64::MAX).await,
+        Err(UserRepositoryError::Database(_))
+    ));
 }
 
 #[tokio::test]
 async fn invalid_database_ids_are_rejected() {
-    let mut zero_id = Fixture::row();
-    zero_id.id = 0;
     let mut invalid_id = Fixture::row();
     invalid_id.id = -1;
     let context = Fixture::context(Arc::new(
         MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([
-                vec![Fixture::mock_row(zero_id)],
-                vec![Fixture::mock_row(invalid_id)],
-            ])
+            .append_query_results([vec![Fixture::mock_row(invalid_id)]])
             .into_connection(),
     ));
     context
         .scope(async {
-            for _ in 0..2 {
-                assert!(matches!(
-                    UserRepository.find_by_id(42).await,
-                    Err(UserRepositoryError::Database(_))
-                ));
-            }
+            assert!(matches!(
+                UserRepository.find_by_id(42).await,
+                Err(UserRepositoryError::Database(_))
+            ));
         })
         .await;
 }

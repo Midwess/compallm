@@ -16,7 +16,6 @@ A workspace for teams to use LLMs across providers, govern usage, and develop sh
 ## Work on the project
 
 - [Setup guideline](setup-guideline.md): deploy Compallm with Docker Compose.
-- [Development](development/adr.md): shared engineering decisions, domain boundaries, transactions, and testing.
 - [API reference](api/index.md): public endpoint guide with requests, responses, and examples.
 
 The page filter defaults to **Available**. Choose **All** to see work in progress. A page appears in the default view only when it sets `available: true`; an omitted flag defaults to false. The filter applies to the content tree, feature list, search, and graph.

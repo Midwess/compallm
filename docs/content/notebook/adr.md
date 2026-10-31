@@ -7,11 +7,11 @@ available: false
 
 ## Status
 
-Decision status: Proposed. Implementation status: Under development.
+Implementation: Under development.
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
+The following solution is planned; unresolved requirements are listed below.
 
-## Context and proposed scope
+## Solution
 
 Build a reusable knowledge collection for focused work, research, and study.
 
@@ -39,7 +39,7 @@ The system should let authorized members organize sources into notebooks and ide
 
 ## Open questions
 
-Which source types and notebook capabilities ship first, and how do the [privacy and sharing rules](../data-privacy/adr.md) apply to notebooks?
+Which source types and notebook capabilities ship first, and what access and sharing rules apply to notebooks?
 
 ## Related pages
 

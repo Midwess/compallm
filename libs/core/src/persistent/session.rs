@@ -1,5 +1,5 @@
 use super::ConnectionError;
-use crate::auth::{Session, SessionReference};
+use crate::auth::Session;
 
 #[derive(Debug, thiserror::Error)]
 pub enum SessionRepositoryError {
@@ -18,10 +18,7 @@ pub trait SessionRepository: Send + Sync {
     async fn create(&self, session: Session) -> Result<(), SessionRepositoryError>;
 
     /// Match the session, organization, and user together.
-    async fn find(
-        &self,
-        reference: SessionReference,
-    ) -> Result<Option<Session>, SessionRepositoryError>;
+    async fn find(&self, session: &Session) -> Result<Option<Session>, SessionRepositoryError>;
 
     /// Persist changed fields using the previous state for concurrency checks.
     /// Preserve identity and creation time; revocation is irreversible.

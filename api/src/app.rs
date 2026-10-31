@@ -86,6 +86,7 @@ impl Hooks for App {
     async fn serve(app: AxumRouter, ctx: &AppContext, serve_params: &ServeParams) -> Result<()> {
         use std::net::SocketAddr;
 
+        let listener = Self::tcp_listener(serve_params.port).await?;
         #[cfg(feature = "frontend-dev")]
         let dev_server = {
             crate::generate_contract()
@@ -96,11 +97,10 @@ impl Hooks for App {
             DevConfig::vite()
                 .command([vite])
                 .cwd(PORTAL_ROOT)
-                .port(5173)
+                .port(41868)
                 .spawn()
                 .await?
         };
-        let listener = Self::tcp_listener(serve_params.port).await?;
         #[cfg(feature = "frontend-dev")]
         let app = app.merge(dev_server.router(["/"]));
 
@@ -143,7 +143,21 @@ impl Hooks for App {
         init_id_generator(Self::app_name())
             .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
         Di::init(&ctx).await?;
+        if let Some(worker) = Di::instance().mailing_worker() {
+            use loco_rs::bgworker::BackgroundWorker;
+            tokio::spawn(async move {
+                if worker.perform(()).await.is_err() {
+                    tracing::error!("mailing worker stopped unexpectedly");
+                }
+            });
+        }
         Ok(ctx)
+    }
+
+    async fn on_shutdown(_ctx: &AppContext) {
+        if let Some(service) = Di::instance().mailing_service() {
+            service.shutdown().await;
+        }
     }
 
     async fn before_routes(_ctx: &AppContext) -> Result<AxumRouter<AppContext>> {

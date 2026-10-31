@@ -2,9 +2,8 @@ use crate::organization::CreationService;
 use crate::persistent::DbContext;
 use crate::persistent::user::{UserRepository, UserRepositoryError};
 use crate::transaction;
-use compallm_utils::email::{normalize_email, verify_email_local_part};
 
-use super::{RegistrationError, User, UserStatus};
+use super::{RegistrationError, User};
 
 pub struct RegistrationService {
     db: &'static DbContext,
@@ -29,31 +28,13 @@ impl RegistrationService {
     /// User, default organization, and owner membership succeed atomically.
     /// Joins an existing transaction when invoked by another service.
     pub async fn register(&self, email: &str) -> Result<User, RegistrationError> {
-        let email = normalize_email(email)?;
-        if email.chars().count() > 256 {
-            return Err(compallm_utils::error::EmailError::InvalidEmail.into());
-        }
-        let display_name = email
-            .rsplit_once('@')
-            .map(|(name, _)| name.to_owned())
-            .ok_or(compallm_utils::error::EmailError::InvalidEmail)?;
-        if verify_email_local_part(&display_name).is_err() {
-            return Err(RegistrationError::InvalidDisplayName);
+        let user = User::from_email(hero::distributed_id::try_gen_id().await?, email)?;
+        if self.users.find_by_email(&user.email).await?.is_some() {
+            return Err(UserRepositoryError::EmailAlreadyExists.into());
         }
 
         transaction!(self.db, {
-            if self.users.find_by_email(&email).await?.is_some() {
-                return Err(UserRepositoryError::EmailAlreadyExists.into());
-            }
-            let user = self
-                .users
-                .create(User {
-                    id: hero::distributed_id::try_gen_id().await?,
-                    email,
-                    display_name,
-                    status: UserStatus::Active,
-                })
-                .await?;
+            let user = self.users.create(user).await?;
             self.organizations.create_default(&user).await?;
             Ok(user)
         })

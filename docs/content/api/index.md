@@ -21,5 +21,8 @@ Examples contain synthetic values. Replace challenges and credentials with value
 
 ## Operations
 
+- [GET /api/auth/me](auth/me/get.md) — Read the current authenticated identity and organization scope.
+- [POST /api/auth/signin/email](auth/signin/email/post.md) — Request an email signin code.
+- [POST /api/auth/signin/email/confirmation/otp](auth/signin/email/confirmation/otp/post.md) — Confirm email signin with a verification code.
 - [POST /api/auth/signup/email](auth/signup/email/post.md) — Request an email signup code.
 - [POST /api/auth/signup/email/confirmation/otp](auth/signup/email/confirmation/otp/post.md) — Confirm email signup with a verification code.

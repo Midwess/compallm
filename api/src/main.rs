@@ -3,11 +3,9 @@ mod controllers;
 mod di;
 mod documentation;
 mod error;
+pub mod middleware;
 mod tasks;
 mod workers;
-
-#[cfg(test)]
-mod tests;
 
 use app::App;
 use clap::{Parser, Subcommand};

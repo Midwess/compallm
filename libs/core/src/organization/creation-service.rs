@@ -28,11 +28,9 @@ impl CreationService {
         name: &str,
         user: &User,
     ) -> Result<Organization, OrganizationCreationError> {
-        let name = name.trim();
-        if !Organization::is_valid_name(name) {
-            return Err(OrganizationCreationError::InvalidName);
-        }
-        self.persist(name, user).await
+        let name = Organization::normalize_name(name)
+            .map_err(|_| OrganizationCreationError::InvalidName)?;
+        self.persist(&name, user).await
     }
 
     async fn persist(
@@ -47,7 +45,6 @@ impl CreationService {
                     id: hero::distributed_id::try_gen_id().await?,
                     name: name.into(),
                     status: OrganizationStatus::Active,
-                    created_by: user.id,
                 })
                 .await?;
             self.organizations

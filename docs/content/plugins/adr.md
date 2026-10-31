@@ -7,11 +7,11 @@ available: false
 
 ## Status
 
-Decision status: Proposed. Implementation status: Under development.
+Implementation: Under development.
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
+The following solution is planned; unresolved requirements are listed below.
 
-## Context and proposed scope
+## Solution
 
 Extend what models can do through tools and integrations managed by the organization.
 
@@ -44,5 +44,4 @@ The system should restrict plugin invocation according to organization configura
 
 ## Related pages
 
-- [Data and privacy](../data-privacy/adr.md)
 - [Product overview](../overview.md)

@@ -67,7 +67,17 @@ impl AccessToken {
         if encoded.len() > 16 * 1024 {
             return Err(AuthError::InvalidToken);
         }
-        let token: Self = decode_jwt_token(encoded, secret).map_err(|_| AuthError::InvalidToken)?;
+        let token: Self = decode_jwt_token(encoded, secret).map_err(|error| match error {
+            hero::token::jwt::JwtErrors::CodingError(error)
+                if matches!(
+                    error.kind(),
+                    jsonwebtoken::errors::ErrorKind::ExpiredSignature
+                ) =>
+            {
+                AuthError::ExpiredToken
+            }
+            _ => AuthError::InvalidToken,
+        })?;
         token.validate(unix_timestamp())?;
         match token {
             Self::Encrypted(payload) => {
@@ -122,7 +132,7 @@ pub struct EmailOtpChallenge {
 
 impl EmailOtpChallenge {
     pub fn new(email: &str, secret: &str) -> Result<Self, AuthError> {
-        let email = normalize_email(email)?;
+        let email = normalize_email(email);
         let claims = EmailOtpAccessToken::new(email)?;
         let code = claims.code.clone();
         let access_token = AccessToken::EmailOtp(claims)

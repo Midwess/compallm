@@ -10,5 +10,3 @@ publish = false
 workspace = true
 
 [dependencies]
-email_address.workspace = true
-thiserror = { workspace = true, features = ["std"] }

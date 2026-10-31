@@ -1,125 +1,302 @@
 use axum::{
-    Json,
-    extract::{State, rejection::JsonRejection},
-    http::{StatusCode, header::CACHE_CONTROL},
+    Extension, Json,
+    extract::State,
+    http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
-use compallm_core::auth::AuthService;
+use axum_valid::ValidifiedByRef;
+use compallm_core::{
+    auth::{AuthService, EmailOtpAccessToken, UserAccessToken},
+    user::User,
+};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
+use validify::Validify;
 
-use crate::error::{ApiError, ErrorResponse};
+use crate::{
+    error::{ApiError, ErrorResponse},
+    middleware::authorization::RequireToken,
+};
+pub mod delivery;
+mod validation;
+use delivery::{AuthTokensResponse, TokenDelivery, TokenDeliverySettings};
+use validation::{AuthInput, ValidatedJson};
 
 pub fn router() -> OpenApiRouter<&'static AuthService> {
     OpenApiRouter::new()
         .routes(routes!(signup_email))
-        .routes(routes!(confirm_signup_otp))
+        .routes(routes!(signin_email))
 }
 
 /// Email address to receive a signup verification code.
-#[derive(Deserialize, ToSchema)]
+#[derive(Deserialize, ToSchema, Validify)]
+#[serde(deny_unknown_fields)]
 pub struct SignupEmailRequest {
-    /// Valid email address. Addresses from any domain are accepted.
+    /// Trimmed and ASCII-lowercased before email validation. Any valid domain is accepted.
     #[schema(example = "reader@example.com")]
+    #[modify(trim, custom(str::make_ascii_lowercase))]
+    #[validate(custom(function = User::validate_email))]
     pub email: String,
+    /// Cookie (default) sets the OTP access cookie and returns {}; token returns it in JSON.
+    #[serde(default)]
+    #[schema(default = "cookie")]
+    pub delivery: TokenDelivery,
 }
 
 /// Verification challenge returned after email delivery is requested.
 #[derive(Serialize, ToSchema)]
 pub struct SignupEmailResponse {
-    /// Encrypted challenge to submit with the emailed code. Expires after 10 minutes.
+    /// Encrypted OTP access token, present only in token delivery. Expires after 10 minutes.
     /// This is not a user access credential and must not be used to call protected APIs.
     #[schema(example = "example-email-challenge")]
-    pub token: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token: Option<String>,
 }
 
 /// Request an email signup code.
 ///
-/// Sends a six-digit verification code to the supplied email address and returns an encrypted
+/// Rejects an already-registered email with 409 and a signin suggestion before mailing or token
+/// delivery. For a new email, enqueues a six-digit verification code and returns an encrypted
 /// challenge for confirmation. Submit the challenge and code to
 /// `POST /api/auth/signup/email/confirmation/otp` within 10 minutes.
-/// This public endpoint does not create a user or establish a signed-in session.
-/// Email delivery must be configured; if delivery is unavailable, no challenge is returned.
+/// Delivery defaults to cookie: set a ten-minute HttpOnly OTP access cookie, clear any refresh
+/// cookie and return {}. Explicit delivery token returns the challenge in JSON and sets no cookies.
+/// Cookie delivery requires an allowed Origin. No signed-in session exists until confirmation.
+/// Queue acceptance does not guarantee SMTP or inbox delivery. Recipients already pending or sent
+/// during the configured cooldown (30 seconds by default) are throttled; keep the earlier challenge. Admission waits up to the configured timeout (30 seconds by default)
+/// when the queue is full. Admission failure returns no new challenge.
 #[utoipa::path(
     post, path = "/api/auth/signup/email", operation_id = "signupEmail", tag = "auth",
     security(),
-    request_body = SignupEmailRequest,
+    params(("Origin" = Option<String>, Header, description = "Required for cookie delivery; must match the configured browser origin")),
+    request_body(content = SignupEmailRequest, example = json!({"email":"reader@example.com","delivery":"token"})),
     responses(
         (status = 200, description = "OTP delivery requested; use this token to confirm", body = SignupEmailResponse),
-        (status = 400, description = "Invalid email or JSON request. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid email address"})),
-        (status = 503, description = "Email delivery unavailable. Retry later; no verification challenge was issued.", body = ErrorResponse, example = json!({"message": "Email delivery is unavailable"})),
+        (status = 400, description = "Malformed JSON or invalid field format. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid request fields"})),
+        (status = 403, description = "Untrusted Origin for cookie delivery", body = ErrorResponse),
+        (status = 409, description = "Email already registered; sign in instead. No email or token issued.", body = ErrorResponse, example = json!({"message":"Email is already registered. Please sign in instead."})),
+        (status = 429, description = "Recipient throttled. Keep the existing challenge and retry after the configured cooldown (30 seconds by default).", body = ErrorResponse, example = json!({"message": "Email recipient is throttled; keep the existing challenge and retry later"})),
+        (status = 503, description = "Email admission unavailable or queue remained full until the configured timeout (30 seconds by default). Retry later; no challenge was issued.", body = ErrorResponse, example = json!({"message": "Email delivery is unavailable"})),
         (status = 500, description = "Internal error. Retry later.", body = ErrorResponse, example = json!({"message": "Internal server error"}))
     )
 )]
 async fn signup_email(
     State(auth): State<&'static AuthService>,
-    input: Result<Json<SignupEmailRequest>, JsonRejection>,
+    Extension(settings): Extension<&'static TokenDeliverySettings>,
+    headers: HeaderMap,
+    input: ValidatedJson<SignupEmailRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let Json(input) = input?;
+    let ValidifiedByRef(Json(input)) = input?;
+    input.delivery.validate_origin(&headers, settings)?;
     let token = auth.signup_email(&input.email).await?;
-    Ok((
-        [(CACHE_CONTROL, "no-store")],
-        Json(SignupEmailResponse { token }),
-    ))
+    input.delivery.otp_response(token, settings)
 }
 
 /// Email challenge and code used to confirm signup.
-#[derive(Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Deserialize, ToSchema, Validify)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ConfirmSignupOtpRequest {
-    /// Encrypted challenge returned by the email signup request.
-    #[schema(example = "example-email-challenge")]
-    pub token: String,
-    /// Six-digit code received by email. Submit it before the challenge expires.
+    /// Six ASCII digits received by email; surrounding whitespace is trimmed. Submit before expiry.
     #[schema(example = "123456")]
+    #[modify(trim)]
+    #[validate(length(equal = 6), custom(function = AuthInput::otp))]
+    #[schema(min_length = 6, max_length = 6, pattern = "^[0-9]{6}$")]
     pub code: String,
-}
-
-/// User credentials returned by the current signup API.
-/// Cookie transport is planned separately and is not implemented by this response.
-#[derive(Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct AuthTokensResponse {
-    /// Signed access JWT scoped to the user's initial organization and membership role.
-    #[schema(example = "example-user-access-token")]
-    pub access_token: String,
-    /// Refresh JWT used to renew the same organization-scoped session as the access token.
-    #[schema(example = "example-refresh-token")]
-    pub refresh_token: String,
+    /// Credential delivery: cookie (default) sets HttpOnly cookies and requires Origin;
+    /// token returns both JWTs in JSON without setting cookies.
+    #[serde(default)]
+    #[schema(default = "cookie")]
+    pub delivery: TokenDelivery,
 }
 
 /// Confirm email signup with a verification code.
 ///
-/// Validates the encrypted challenge and emailed code, then creates the user and their personal
+/// Requires an email-OTP access token in the access cookie or Authorization: Bearer, verified by middleware.
+/// JSON contains only code and delivery; token fields in JSON are rejected.
+/// Validates the emailed code, then creates the user and their personal
 /// organization atomically. The display name is derived from the email address.
-/// Returns access and refresh credentials in JSON; this endpoint does not set authentication cookies.
+/// Delivery defaults to cookie: sets both HttpOnly cookies and returns an empty JSON object.
+/// Send Origin matching AUTH_PUBLIC_ORIGIN (or the local loopback Host in development).
+/// Explicit delivery token returns accessToken and refreshToken in JSON and sets no cookies.
+/// The delivery choice is controller-only and is never stored in the signed JWTs.
 /// An existing email is rejected rather than signed in. Request a new code if the challenge expired.
 #[utoipa::path(
     post, path = "/api/auth/signup/email/confirmation/otp", operation_id = "confirmSignupOtp", tag = "auth",
-    security(),
-    request_body = ConfirmSignupOtpRequest,
+    security(("emailOtp" = []), ("emailOtpCookie" = [])),
+    params(("Origin" = Option<String>, Header, description = "Required for cookie delivery; must match the configured browser origin")),
+    request_body(content = ConfirmSignupOtpRequest, example = json!({"code":"123456","delivery":"token"})),
     responses(
-        (status = 201, description = "User created", body = AuthTokensResponse),
-        (status = 400, description = "Invalid email or JSON request. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid JSON request body"})),
+        (status = 201, description = "User created; cookie mode returns {} and sets both cookies; token mode returns both credentials", body = AuthTokensResponse),
+        (status = 400, description = "Malformed JSON or invalid field format. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid JSON request body"})),
         (status = 401, description = "Invalid or expired challenge or code. Check the code or request a new challenge.", body = ErrorResponse, example = json!({"message": "Invalid or expired token or OTP code"})),
-        (status = 403, description = "User or organization access is disabled. Contact the administrator.", body = ErrorResponse, example = json!({"message": "Organization access denied"})),
-        (status = 409, description = "Email already registered. Use signin instead of signup.", body = ErrorResponse, example = json!({"message": "Email is already registered"})),
+        (status = 403, description = "Untrusted cookie Origin or user/organization access disabled.", body = ErrorResponse, example = json!({"message": "Organization access denied"})),
+        (status = 409, description = "Email already registered. Use signin instead of signup.", body = ErrorResponse, example = json!({"message": "Email is already registered. Please sign in instead."})),
         (status = 500, description = "Database or internal error. Retry later.", body = ErrorResponse, example = json!({"message": "Internal server error"}))
     )
 )]
 async fn confirm_signup_otp(
     State(auth): State<&'static AuthService>,
-    input: Result<Json<ConfirmSignupOtpRequest>, JsonRejection>,
+    Extension(settings): Extension<&'static TokenDeliverySettings>,
+    headers: HeaderMap,
+    RequireToken(challenge): RequireToken<EmailOtpAccessToken>,
+    input: ValidatedJson<ConfirmSignupOtpRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let Json(input) = input?;
-    let tokens = auth.signup(&input.token, &input.code).await?;
-    Ok((
-        StatusCode::CREATED,
-        [(CACHE_CONTROL, "no-store")],
-        Json(AuthTokensResponse {
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
-        }),
-    ))
+    let ValidifiedByRef(Json(input)) = input?;
+    input.delivery.validate_origin(&headers, settings)?;
+    let tokens = auth.signup(&challenge, &input.code).await?;
+    input
+        .delivery
+        .response(tokens, StatusCode::CREATED, settings)
+}
+
+/// Email address to receive a signin verification code.
+#[derive(Deserialize, ToSchema, Validify)]
+#[serde(deny_unknown_fields)]
+pub struct SigninEmailRequest {
+    /// Trimmed and ASCII-lowercased before email validation. Account existence is checked only at confirmation.
+    #[schema(example = "reader@example.com")]
+    #[modify(trim, custom(str::make_ascii_lowercase))]
+    #[validate(custom(function = User::validate_email))]
+    pub email: String,
+    /// Cookie (default) sets the OTP access cookie and returns {}; token returns it in JSON.
+    #[serde(default)]
+    #[schema(default = "cookie")]
+    pub delivery: TokenDelivery,
+}
+
+/// Request an email signin code.
+///
+/// Enqueues a six-digit code and returns a ten-minute encrypted challenge.
+/// Admission does not guarantee delivery. Pending recipients and the configured cooldown
+/// are shared with signup; throttling returns no replacement challenge.
+/// Cookie delivery (default) sets the ten-minute OTP access cookie, clears any refresh cookie,
+/// and returns {}; explicit token delivery returns the challenge in JSON without setting cookies.
+/// Cookie delivery requires an allowed Origin. Requesting a code does not check account existence.
+#[utoipa::path(
+    post, path = "/api/auth/signin/email", operation_id = "signinEmail", tag = "auth",
+    security(),
+    params(("Origin" = Option<String>, Header, description = "Required for cookie delivery; must match the configured browser origin")),
+    request_body(content = SigninEmailRequest, example = json!({"email":"reader@example.com","delivery":"token"})),
+    responses(
+        (status = 200, description = "Code queued; submit the challenge with the emailed code", body = SignupEmailResponse),
+        (status = 400, description = "Malformed JSON or invalid field format", body = ErrorResponse),
+        (status = 403, description = "Untrusted Origin for cookie delivery", body = ErrorResponse),
+        (status = 429, description = "Recipient throttled; keep the earlier challenge", body = ErrorResponse),
+        (status = 503, description = "Email admission unavailable or queue full", body = ErrorResponse)
+    )
+)]
+async fn signin_email(
+    State(auth): State<&'static AuthService>,
+    Extension(settings): Extension<&'static TokenDeliverySettings>,
+    headers: HeaderMap,
+    input: ValidatedJson<SigninEmailRequest>,
+) -> Result<impl IntoResponse, ApiError> {
+    let ValidifiedByRef(Json(input)) = input?;
+    input.delivery.validate_origin(&headers, settings)?;
+    let token = auth.signin_email(&input.email).await?;
+    input.delivery.otp_response(token, settings)
+}
+
+/// Email challenge, verification code, and credential delivery for an existing user.
+#[derive(Deserialize, ToSchema, Validify)]
+#[serde(deny_unknown_fields)]
+pub struct ConfirmSigninOtpRequest {
+    /// Six ASCII digits received by email; surrounding whitespace is trimmed. Valid for ten minutes.
+    #[schema(example = "123456")]
+    #[modify(trim)]
+    #[validate(length(equal = 6), custom(function = AuthInput::otp))]
+    #[schema(min_length = 6, max_length = 6, pattern = "^[0-9]{6}$")]
+    pub code: String,
+    /// Cookie (default) sets HttpOnly cookies; token returns both JWTs in JSON.
+    #[serde(default)]
+    #[schema(default = "cookie")]
+    pub delivery: TokenDelivery,
+}
+
+/// Confirm email signin with a verification code.
+///
+/// Requires an email-OTP access token in the access cookie or Authorization: Bearer, verified by middleware.
+/// JSON contains only code and delivery; token fields in JSON are rejected.
+/// Requires an existing active user and an active owner/admin organization membership.
+/// Records a new session. Cookie delivery (default) requires an allowed Origin, sets both
+/// HttpOnly cookies and returns an empty JSON object. Explicit delivery token returns
+/// accessToken and refreshToken in JSON without setting cookies. Delivery is not a JWT claim.
+#[utoipa::path(
+    post, path = "/api/auth/signin/email/confirmation/otp", operation_id = "confirmSigninOtp", tag = "auth",
+    security(("emailOtp" = []), ("emailOtpCookie" = [])),
+    params(("Origin" = Option<String>, Header, description = "Required for cookie delivery; must match the configured browser origin")),
+    request_body(content = ConfirmSigninOtpRequest, example = json!({"code":"123456","delivery":"token"})),
+    responses(
+        (status = 200, description = "Signed in; cookie mode returns {} and sets both cookies; token mode returns both credentials", body = AuthTokensResponse),
+        (status = 400, description = "Malformed JSON or invalid field format", body = ErrorResponse),
+        (status = 401, description = "Invalid or expired challenge or code", body = ErrorResponse),
+        (status = 403, description = "Untrusted cookie Origin or user/organization access disabled", body = ErrorResponse),
+        (status = 404, description = "No account for the verified email; signup first", body = ErrorResponse),
+        (status = 500, description = "Database or internal error", body = ErrorResponse)
+    )
+)]
+async fn confirm_signin_otp(
+    State(auth): State<&'static AuthService>,
+    Extension(settings): Extension<&'static TokenDeliverySettings>,
+    headers: HeaderMap,
+    RequireToken(challenge): RequireToken<EmailOtpAccessToken>,
+    input: ValidatedJson<ConfirmSigninOtpRequest>,
+) -> Result<impl IntoResponse, ApiError> {
+    let ValidifiedByRef(Json(input)) = input?;
+    input.delivery.validate_origin(&headers, settings)?;
+    let tokens = auth.signin(&challenge, &input.code).await?;
+    input.delivery.response(tokens, StatusCode::OK, settings)
+}
+
+/// Identity and organization scope from the current signed access credential.
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CurrentUserResponse {
+    /// Current login session identifier.
+    pub session_id: u64,
+    /// Authenticated user identifier.
+    pub user_id: u64,
+    /// Organization selected for this session.
+    pub organization_id: u64,
+    /// Cached membership role from the access JWT, refreshed on renewal.
+    #[schema(value_type = String, example = "owner")]
+    pub organization_role: compallm_core::organization::OrganizationRole,
+}
+
+pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
+    OpenApiRouter::new()
+        .routes(routes!(current_user))
+        .routes(routes!(confirm_signup_otp))
+        .routes(routes!(confirm_signin_otp))
+}
+
+/// Read the current authenticated identity and organization scope.
+///
+/// Accepts a user access JWT through Authorization Bearer or the configured access cookie.
+/// An explicit Authorization header takes precedence and never falls back to cookies.
+/// Cookie mode renews missing or expired access through the refresh cookie and returns
+/// replacement HttpOnly cookies when Origin is trusted, or a safe request has
+/// Sec-Fetch-Site: same-origin. No credentials are returned in JSON.
+/// Access claims contain a cached role; session revocation and membership changes are
+/// checked on renewal rather than on every access-token request.
+#[utoipa::path(
+    get, path = "/api/auth/me", operation_id = "currentUser", tag = "auth",
+    security(("bearerAuth" = []), ("accessCookie" = [])),
+    responses(
+        (status = 200, description = "Current identity; cookie renewal may set replacement cookies", body = CurrentUserResponse),
+        (status = 401, description = "Missing, invalid, expired, or wrong-variant credentials", body = ErrorResponse),
+        (status = 403, description = "Untrusted renewal Origin or disabled account/membership", body = ErrorResponse),
+        (status = 500, description = "Database or internal failure; cookie-mode authentication failures clear both cookies", body = ErrorResponse)
+    )
+)]
+async fn current_user(
+    RequireToken(claims): RequireToken<UserAccessToken>,
+) -> Json<CurrentUserResponse> {
+    Json(CurrentUserResponse {
+        session_id: claims.session.id,
+        user_id: claims.session.user_id,
+        organization_id: claims.session.organization_id,
+        organization_role: claims.organization_role,
+    })
 }

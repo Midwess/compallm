@@ -7,14 +7,11 @@ available: false
 
 ## Status
 
-Decision status: Unified format translation, the Router/Gateway boundary, and
-organization-owned model identity are accepted directions; remaining scope is
-proposed. Implementation status: The model persistence
-foundation exists; routing is not implemented.
+Implementation: Under development.
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
+The following solution is planned; unresolved requirements are listed below.
 
-## Context and proposed scope
+## Solution
 
 Connect multiple providers and offer a consistent way to select and call their models.
 
@@ -30,34 +27,15 @@ Connect multiple providers and offer a consistent way to select and call their m
 
 For example, a client using an OpenAI-compatible format could select an Anthropic or Gemini model. Compallm translates the request for that provider and returns the result in the same OpenAI-compatible format the client expects. The exact supported API formats and translation coverage remain to be defined; format conversion does not give a model capabilities it does not support.
 
-## Agreed direction and open questions
+## Responsibilities and unresolved requirements
 
 The client API format is independent of the provider. Translate both directions through a unified internal representation and explicitly reject unsupported capabilities. Router selects providers and translates formats; [Gateway](../llm-gateway/adr.md) enforces access, allowances, and usage attribution.
 
-Each organization owns models whose names are unique within that organization.
-A model gives callers a stable name independent of an
-upstream provider. Each model-provider route stores the provider's upstream
-model name, configured provider token prices, a positive priority unique within
-the model, and whether the route is enabled. A provider may appear only once for a model, and database
-constraints prevent routes from crossing organization boundaries. Priority
-expresses route order without yet deciding whether selection must always begin
-with the lowest value or when a later route may be attempted.
-
-A route is eligible only when the model, provider connection, and route are all
-enabled. A disabled provider remains available to management but cannot serve
-requests through any associated route.
-
-Each model stores the organization-facing input, output, and cached
-token prices in USD per one million tokens. These are non-negative fixed-point
-rates used for stable billing and reporting regardless of the selected route.
-Configured upstream provider prices can differ and therefore belong to each
-model-provider route rather than the logical model. Providers report token
-usage rather than USD cost; any upstream cost is an estimate calculated from
-those route prices.
-
 Before implementation, decide which API compatibility standard, providers, and model capabilities ship first, and whether credentials are organization-owned only or members may bring personal credentials.
 
-The 9Router comparison also surfaced routing profiles, credential pools, quota awareness, OAuth refresh, self-hosted policies, compression and prompt presets, client setup helpers, and configuration sync. These remain candidates, not accepted scope.
+## Custom models
+
+Custom models define ordered provider/model routes. Down or inactive providers are excluded. Observed serving shares are telemetry and do not configure traffic weights. Optional token prices use USD per million tokens. Runtime routing, telemetry, and pricing integration remain planned; failure policy, reporting periods, price precedence, and charging rules remain unresolved. See [custom model routing](custom-model.md).
 
 ## Consequences
 
@@ -81,7 +59,5 @@ The Router should explicitly report unsupported requested features or options ra
 
 ## Related pages
 
-- [Models and providers](../model/models-and-providers.md)
-- [Model management](../model/adr.md)
 - [LLM Gateway](../llm-gateway/adr.md)
 - [Product overview](../overview.md)

@@ -16,13 +16,14 @@ The filter beside Compallm shows **Available** by default. Select **All** to exp
 
 ## Planning status
 
-Development features describe intended scope. Each feature's `adr.md` records its agreed decisions, open questions, and release priorities. No release commitment is implied by listing a development feature.
+Planned features describe intended scope. Each feature's `adr.md` describes its current architecture, solution, and unresolved requirements. No release commitment is implied by listing a planned feature.
 
 ## Feature plans
 
 Each feature has its own folder directly under `docs/content/`, with shared decisions in `adr.md` and focused flows in sibling pages.
 
 - [Login](login/adr.md): [Email](login/email.md), [GitHub](login/github.md), and [GitLab](login/gitlab.md).
+- [Mailing](mailing/adr.md): bounded asynchronous SMTP delivery and recipient throttling.
 - [API reference](api/index.md): generated endpoint guide with request and response examples.
 - [Organization and membership](organization/adr.md).
 - [Model management](model/adr.md): [Models and model providers](model/models-and-providers.md).
@@ -34,4 +35,3 @@ Each feature has its own folder directly under `docs/content/`, with shared deci
 - [Organization plugins](plugins/adr.md).
 - [Notebook](notebook/adr.md).
 - [Usage and administration](usage-administration/adr.md).
-- [Data and privacy](data-privacy/adr.md).

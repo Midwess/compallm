@@ -7,11 +7,11 @@ available: false
 
 ## Status
 
-Decision status: The Router/Gateway boundary is an accepted direction; detailed controls remain proposed. Implementation status: Under development.
+Implementation: Under development.
 
-Planned scope for discussion. The examples describe intended behavior, not completed implementation. Open questions are recorded below.
+The following solution is planned; unresolved requirements are listed below.
 
-## Context and proposed scope
+## Solution
 
 Give members and applications controlled access to models without exposing upstream provider credentials.
 
@@ -23,9 +23,11 @@ Give members and applications controlled access to models without exposing upstr
 - Show usage history and remaining allowances to members and administrators.
 - Provide a documented API for external clients and automation, with a clearly stated compatibility scope.
 
-## Decisions and open questions
+## Responsibilities and unresolved requirements
 
 Gateway enforces access, allowances, and usage attribution; [Router](../llm-router/adr.md) selects providers and translates formats.
+
+[Usage and spend limits](member-limits.md) define workspace budgets, monthly USD member defaults, and individual overrides. Persistence, accounting, authorization, and enforcement remain planned.
 
 - Are allowances based on tokens, money, requests, or a combination, and what happens when a limit is reached?
 - How are simultaneous requests, fallback attempts, cancellations, and failed requests charged against limits?

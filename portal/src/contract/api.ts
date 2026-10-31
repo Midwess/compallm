@@ -6,24 +6,86 @@
  * OpenAPI spec version: 0.1.0
  */
 /**
- * User credentials returned by the current signup API.
- * Cookie transport is planned separately and is not implemented by this response.
+ * Cookie delivery returns an empty object. Token delivery returns both credentials.
  */
 export interface AuthTokensResponse {
-  /** Signed access JWT scoped to the user's initial organization and membership role. */
-  accessToken: string;
-  /** Refresh JWT used to renew the same organization-scoped session as the access token. */
-  refreshToken: string;
+  /**
+     * Access JWT, present only when delivery is token.
+     * @nullable
+     */
+  accessToken?: string | null;
+  /**
+     * Refresh JWT, present only when delivery is token.
+     * @nullable
+     */
+  refreshToken?: string | null;
+}
+
+/**
+ * How each signup/signin step delivers access credentials. Never stored in JWT claims.
+ */
+export type TokenDelivery = typeof TokenDelivery[keyof typeof TokenDelivery];
+
+
+export const TokenDelivery = {
+  cookie: 'cookie',
+  token: 'token',
+} as const;
+
+/**
+ * Email challenge, verification code, and credential delivery for an existing user.
+ */
+export interface ConfirmSigninOtpRequest {
+  /**
+     * Six ASCII digits received by email; surrounding whitespace is trimmed. Valid for ten minutes.
+     * @minLength 6
+     * @maxLength 6
+     * @pattern ^[0-9]{6}$
+     */
+  code: string;
+  /** Cookie (default) sets HttpOnly cookies; token returns both JWTs in JSON. */
+  delivery?: TokenDelivery;
 }
 
 /**
  * Email challenge and code used to confirm signup.
  */
 export interface ConfirmSignupOtpRequest {
-  /** Six-digit code received by email. Submit it before the challenge expires. */
+  /**
+     * Six ASCII digits received by email; surrounding whitespace is trimmed. Submit before expiry.
+     * @minLength 6
+     * @maxLength 6
+     * @pattern ^[0-9]{6}$
+     */
   code: string;
-  /** Encrypted challenge returned by the email signup request. */
-  token: string;
+  /**
+     * Credential delivery: cookie (default) sets HttpOnly cookies and requires Origin;
+     * token returns both JWTs in JSON without setting cookies.
+     */
+  delivery?: TokenDelivery;
+}
+
+/**
+ * Identity and organization scope from the current signed access credential.
+ */
+export interface CurrentUserResponse {
+  /**
+     * Organization selected for this session.
+     * @minimum 0
+     */
+  organizationId: number;
+  /** Cached membership role from the access JWT, refreshed on renewal. */
+  organizationRole: string;
+  /**
+     * Current login session identifier.
+     * @minimum 0
+     */
+  sessionId: number;
+  /**
+     * Authenticated user identifier.
+     * @minimum 0
+     */
+  userId: number;
 }
 
 export interface ErrorResponse {
@@ -32,10 +94,22 @@ export interface ErrorResponse {
 }
 
 /**
+ * Email address to receive a signin verification code.
+ */
+export interface SigninEmailRequest {
+  /** Cookie (default) sets the OTP access cookie and returns {}; token returns it in JSON. */
+  delivery?: TokenDelivery;
+  /** Trimmed and ASCII-lowercased before email validation. Account existence is checked only at confirmation. */
+  email: string;
+}
+
+/**
  * Email address to receive a signup verification code.
  */
 export interface SignupEmailRequest {
-  /** Valid email address. Addresses from any domain are accepted. */
+  /** Cookie (default) sets the OTP access cookie and returns {}; token returns it in JSON. */
+  delivery?: TokenDelivery;
+  /** Trimmed and ASCII-lowercased before email validation. Any valid domain is accepted. */
   email: string;
 }
 
@@ -44,11 +118,173 @@ export interface SignupEmailRequest {
  */
 export interface SignupEmailResponse {
   /**
-     * Encrypted challenge to submit with the emailed code. Expires after 10 minutes.
+     * Encrypted OTP access token, present only in token delivery. Expires after 10 minutes.
      * This is not a user access credential and must not be used to call protected APIs.
+     * @nullable
      */
-  token: string;
+  token?: string | null;
 }
+
+export const getCurrentUserUrl = () => {
+
+
+
+
+  return `/api/auth/me`
+}
+
+/**
+ * Accepts a user access JWT through Authorization Bearer or the configured access cookie.
+ * An explicit Authorization header takes precedence and never falls back to cookies.
+ * Cookie mode renews missing or expired access through the refresh cookie and returns
+ * replacement HttpOnly cookies when Origin is trusted, or a safe request has
+ * Sec-Fetch-Site: same-origin. No credentials are returned in JSON.
+ * Access claims contain a cached role; session revocation and membership changes are
+ * checked on renewal rather than on every access-token request.
+ * @summary Read the current authenticated identity and organization scope.
+ */
+export const currentUser = async ( options?: RequestInit): Promise<CurrentUserResponse> => {
+
+  const res = await fetch(getCurrentUserUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: CurrentUserResponse, status?: number} = new globalThis.Error();
+    const data : CurrentUserResponse = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: CurrentUserResponse = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+export const getSigninEmailUrl = () => {
+
+
+
+
+  return `/api/auth/signin/email`
+}
+
+/**
+ * Enqueues a six-digit code and returns a ten-minute encrypted challenge.
+ * Admission does not guarantee delivery. Pending recipients and the configured cooldown
+ * are shared with signup; throttling returns no replacement challenge.
+ * Cookie delivery (default) sets the ten-minute OTP access cookie, clears any refresh cookie,
+ * and returns {}; explicit token delivery returns the challenge in JSON without setting cookies.
+ * Cookie delivery requires an allowed Origin. Requesting a code does not check account existence.
+ * @summary Request an email signin code.
+ */
+export const signinEmail = async (signinEmailRequest: SigninEmailRequest, options?: RequestInit): Promise<SignupEmailResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getSigninEmailUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(signinEmailRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: SignupEmailResponse, status?: number} = new globalThis.Error();
+    const data : SignupEmailResponse = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: SignupEmailResponse = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+export const getConfirmSigninOtpUrl = () => {
+
+
+
+
+  return `/api/auth/signin/email/confirmation/otp`
+}
+
+/**
+ * Requires an email-OTP access token in the access cookie or Authorization: Bearer, verified by middleware.
+ * JSON contains only code and delivery; token fields in JSON are rejected.
+ * Requires an existing active user and an active owner/admin organization membership.
+ * Records a new session. Cookie delivery (default) requires an allowed Origin, sets both
+ * HttpOnly cookies and returns an empty JSON object. Explicit delivery token returns
+ * accessToken and refreshToken in JSON without setting cookies. Delivery is not a JWT claim.
+ * @summary Confirm email signin with a verification code.
+ */
+export const confirmSigninOtp = async (confirmSigninOtpRequest: ConfirmSigninOtpRequest, options?: RequestInit): Promise<AuthTokensResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getConfirmSigninOtpUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(confirmSigninOtpRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: AuthTokensResponse, status?: number} = new globalThis.Error();
+    const data : AuthTokensResponse = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: AuthTokensResponse = body ? JSON.parse(body) : {}
+  return data
+}
+
+
 
 export const getSignupEmailUrl = () => {
 
@@ -59,11 +295,16 @@ export const getSignupEmailUrl = () => {
 }
 
 /**
- * Sends a six-digit verification code to the supplied email address and returns an encrypted
+ * Rejects an already-registered email with 409 and a signin suggestion before mailing or token
+ * delivery. For a new email, enqueues a six-digit verification code and returns an encrypted
  * challenge for confirmation. Submit the challenge and code to
  * `POST /api/auth/signup/email/confirmation/otp` within 10 minutes.
- * This public endpoint does not create a user or establish a signed-in session.
- * Email delivery must be configured; if delivery is unavailable, no challenge is returned.
+ * Delivery defaults to cookie: set a ten-minute HttpOnly OTP access cookie, clear any refresh
+ * cookie and return {}. Explicit delivery token returns the challenge in JSON and sets no cookies.
+ * Cookie delivery requires an allowed Origin. No signed-in session exists until confirmation.
+ * Queue acceptance does not guarantee SMTP or inbox delivery. Recipients already pending or sent
+ * during the configured cooldown (30 seconds by default) are throttled; keep the earlier challenge. Admission waits up to the configured timeout (30 seconds by default)
+ * when the queue is full. Admission failure returns no new challenge.
  * @summary Request an email signup code.
  */
 export const signupEmail = async (signupEmailRequest: SignupEmailRequest, options?: RequestInit): Promise<SignupEmailResponse> => {
@@ -116,9 +357,14 @@ export const getConfirmSignupOtpUrl = () => {
 }
 
 /**
- * Validates the encrypted challenge and emailed code, then creates the user and their personal
+ * Requires an email-OTP access token in the access cookie or Authorization: Bearer, verified by middleware.
+ * JSON contains only code and delivery; token fields in JSON are rejected.
+ * Validates the emailed code, then creates the user and their personal
  * organization atomically. The display name is derived from the email address.
- * Returns access and refresh credentials in JSON; this endpoint does not set authentication cookies.
+ * Delivery defaults to cookie: sets both HttpOnly cookies and returns an empty JSON object.
+ * Send Origin matching AUTH_PUBLIC_ORIGIN (or the local loopback Host in development).
+ * Explicit delivery token returns accessToken and refreshToken in JSON and sets no cookies.
+ * The delivery choice is controller-only and is never stored in the signed JWTs.
  * An existing email is rejected rather than signed in. Request a new code if the challenge expired.
  * @summary Confirm email signup with a verification code.
  */

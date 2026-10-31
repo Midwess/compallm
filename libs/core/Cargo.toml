@@ -10,6 +10,9 @@ publish = false
 workspace = true
 
 [dependencies]
+jsonwebtoken.workspace = true
+validify.workspace = true
+email_address.workspace = true
 anyhow = { workspace = true, features = ["std"] }
 async-trait.workspace = true
 base64 = { workspace = true, features = ["std"] }

@@ -70,8 +70,8 @@ export function ChoiceCard({
     <label
       className={cx(
         `
-  flex min-h-[62px] w-[300px] max-w-full cursor-pointer items-center gap-space-12 rounded-[8px] border
-  border-border bg-inset px-space-12 py-space-11 has-checked:border-primary
+  flex min-h-[62px] w-[300px] max-w-full cursor-pointer items-center gap-1.5 rounded-[8px] border
+  border-border bg-inset px-1.5 py-1.375 has-checked:border-primary
   has-checked:bg-[color-mix(in_srgb,var(--color-primary)_14%,var(--color-inset))]
   has-disabled:cursor-not-allowed has-disabled:opacity-50 [&_strong]:text-[13px] [&_strong]:font-medium
   [&>span>span]:block
@@ -89,7 +89,7 @@ export function ChoiceCard({
 }
 export function CheckboxOption({ children, className, ...props }: CheckboxProps & { children: ReactNode }) {
   return (
-    <label className={cx('inline-flex min-h-[24px] cursor-pointer items-center gap-space-4 text-[13px]', className)}>
+    <label className={cx('inline-flex min-h-[24px] cursor-pointer items-center gap-0.5 text-[13px]', className)}>
       <Checkbox {...props} />
       <span>{children}</span>
     </label>

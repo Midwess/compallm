@@ -7,7 +7,7 @@ export function FormIntroduction({ title, children }: { title: ReactNode; childr
   return (
     <header
       className={`
-  [&>h1]:text-[24px] [&>h1]:leading-[32px] [&>h1]:font-medium [&>div]:mt-space-8 [&>div]:text-[13px]
+  [&>h1]:text-[24px] [&>h1]:leading-[32px] [&>h1]:font-medium [&>div]:mt-1 [&>div]:text-[13px]
 `}
     >
       <h1>{title}</h1>
@@ -29,7 +29,7 @@ export function FormStepMarker({ children }: { children: ReactNode }) {
 }
 export function FormStepHeading({ step, children }: { step: number; children: ReactNode }) {
   return (
-    <h2 className="flex items-center gap-space-12 text-[16px] leading-[24px] font-medium">
+    <h2 className="flex items-center gap-1.5 text-[16px] leading-[24px] font-medium">
       <FormStepMarker>{step}</FormStepMarker>
       {children}
     </h2>
@@ -53,7 +53,7 @@ export function LabeledField({ label, hint, error, id, className, ...props }: La
     [props['aria-describedby'], hint ? `${inputId}-hint` : '', error ? `${inputId}-error` : ''].filter(Boolean).join(' ') ||
     undefined
   return (
-    <div className={cx('grid gap-space-4', className)}>
+    <div className={cx('grid gap-0.5', className)}>
       <FormFieldLabel htmlFor={inputId}>{label}</FormFieldLabel>
       <TextField {...props} id={inputId} aria-describedby={describedBy} aria-invalid={error ? true : props['aria-invalid']} />
       {hint ? <HelperText id={`${inputId}-hint`}>{hint}</HelperText> : null}

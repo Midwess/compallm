@@ -36,13 +36,13 @@ export const Radio: Story = {
   render: () => (
     <Preview>
       <Sample label="Radio group">
-        <fieldset className="flex max-w-full flex-wrap items-center gap-space-16">
+        <fieldset className="flex max-w-full flex-wrap items-center gap-2">
           <legend className="text-[12px] leading-[18px] text-muted">Default response</legend>
-          <label className="inline-flex min-h-[24px] cursor-pointer items-center gap-space-4 text-[13px]">
+          <label className="inline-flex min-h-[24px] cursor-pointer items-center gap-0.5 text-[13px]">
             <Selection.Radio name="response" value="concise" defaultChecked />
             Concise
           </label>
-          <label className="inline-flex min-h-[24px] cursor-pointer items-center gap-space-4 text-[13px]">
+          <label className="inline-flex min-h-[24px] cursor-pointer items-center gap-0.5 text-[13px]">
             <Selection.Radio name="response" value="detailed" />
             Detailed
           </label>

@@ -14,7 +14,7 @@ export function SectionHeading({
   return (
     <div
       className={`
-  flex items-center justify-between gap-space-12 [&_h2]:text-[15px] [&_h2]:leading-[24px]
+  flex items-center justify-between gap-1.5 [&_h2]:text-[15px] [&_h2]:leading-[24px]
   [&_h2]:font-medium [&_p]:text-[13px]
 `}
     >
@@ -38,7 +38,7 @@ export function SettingsRow({
   return (
     <div
       className={`
-  flex min-h-[65px] items-center gap-space-12 bg-inset p-space-16 max-[480px]:flex-wrap
+  flex min-h-[65px] items-center gap-1.5 bg-inset p-2 max-[480px]:flex-wrap
   [&>div:first-child]:min-w-0 [&>div:first-child]:flex-1 [&_strong]:text-[13px] [&_strong]:font-medium
 `}
     >
@@ -79,7 +79,7 @@ export function Badge({ tone = 'neutral', className, ...props }: HTMLAttributes<
       {...props}
       className={cx(
         `
-  inline-flex min-h-[24px] items-center justify-center gap-space-8 rounded-[6px] bg-elevated px-space-8
+  inline-flex min-h-[24px] items-center justify-center gap-1 rounded-[6px] bg-elevated px-1
   py-0 text-[12px] font-medium data-[tone=success]:text-success data-[tone=warning]:text-warning
   data-[tone=error]:text-error
 `,
@@ -94,8 +94,8 @@ export function CodePreview({ code, language }: { code: string; language?: strin
     <figure
       className={`
   overflow-hidden rounded-[6px] bg-elevated [&>figcaption]:border-b-[0.5px] [&>figcaption]:border-divider
-  [&>figcaption]:p-space-12 [&>figcaption]:text-[12px] [&>figcaption]:text-muted [&>pre]:m-0
-  [&>pre]:overflow-x-auto [&>pre]:p-space-16 [&>pre]:text-[12px] [&>pre]:leading-[20px]
+  [&>figcaption]:p-1.5 [&>figcaption]:text-[12px] [&>figcaption]:text-muted [&>pre]:m-0
+  [&>pre]:overflow-x-auto [&>pre]:p-2 [&>pre]:text-[12px] [&>pre]:leading-[20px]
 `}
     >
       {language ? <figcaption>{language}</figcaption> : null}
@@ -117,7 +117,7 @@ export function DiffLine({
   return (
     <div
       className={`
-  flex min-h-[20px] gap-space-8 overflow-x-auto text-[12px] whitespace-pre
+  flex min-h-[20px] gap-1 overflow-x-auto text-[12px] whitespace-pre
   data-[change=added]:bg-success/12 data-[change=removed]:bg-error/12
 `}
       data-change={change}
@@ -146,7 +146,7 @@ export function MemberRow({
   return (
     <div
       className={`
-  flex min-h-[64px] flex-wrap items-center gap-space-12 bg-inset p-space-16 max-[480px]:gap-space-8
+  flex min-h-[64px] flex-wrap items-center gap-1.5 bg-inset p-2 max-[480px]:gap-1
   [&_strong]:text-[13px] [&_strong]:font-medium
 `}
     >
@@ -171,7 +171,7 @@ export function ChangedFile({ path, added = 0, removed = 0 }: { path: string; ad
   return (
     <span
       className={`
-  inline-flex items-center gap-space-8 rounded-[6px] bg-inset px-space-8 py-space-4 text-[11px]
+  inline-flex items-center gap-1 rounded-[6px] bg-inset px-1 py-0.5 text-[11px]
   [&>code]:wrap-anywhere [&>[data-tone=success]]:text-success [&>[data-tone=error]]:text-error
 `}
     >

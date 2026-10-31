@@ -3,7 +3,7 @@ import { CheckCircleIcon } from '@phosphor-icons/react/dist/csr/CheckCircle'
 import { Button, AccountPrompt, TextLink } from '../../components/buttons'
 import { EmailField, CodeEntry } from '../../components/fields'
 import { FormFieldLabel } from '../../components/forms'
-import { HelperText, InlineError } from '../../components/feedback'
+import { InlineError } from '../../components/feedback'
 import { pagePaths } from '../paths'
 import { AuthLayout } from './layout'
 import { AuthControllerProvider, useAuthController, useAuthState } from './context'
@@ -34,7 +34,7 @@ function AuthContent({ mode }: { mode: Mode }) {
   const step = useAuthState((state) => state.step)
   if (step === 'complete') return <Completion mode={mode} />
   return (
-    <div data-route={pagePaths[mode]}>
+    <div data-route={pagePaths[mode]} className="flex flex-col gap-4">
       <h1 className="m-0 text-[28px] leading-[40px] font-medium tracking-[-0.5px]">
         {step === 'email'
           ? mode === 'signup'
@@ -51,7 +51,7 @@ function AuthContent({ mode }: { mode: Mode }) {
 
 function Completion({ mode }: { mode: Mode }) {
   return (
-    <div className="grid gap-space-32" role="status">
+    <div className="grid gap-4" role="status">
       <CheckCircleIcon size={40} className="text-success" aria-hidden="true" />
       <h1 className="m-0 text-[28px] leading-[40px] font-medium tracking-[-0.5px]">
         {mode === 'signup' ? 'Your account is ready.' : 'You’re signed in.'}
@@ -76,12 +76,12 @@ function EmailForm({ mode }: { mode: Mode }) {
   }
   return (
     <form
-      className="mt-space-32 flex flex-col gap-space-16"
+      className="flex flex-col gap-4"
       onSubmit={submit}
       noValidate
       aria-label={mode === 'signup' ? 'Create account' : 'Sign in'}
     >
-      <div className="grid gap-space-8">
+      <div className="grid gap-1">
         <FormFieldLabel htmlFor={`${id}-email`}>Email address</FormFieldLabel>
         <EmailInput id={`${id}-email`} errorId={`${id}-error`} inputRef={input} />
       </div>
@@ -136,7 +136,7 @@ function AccountLink({ mode }: { mode: Mode }) {
   const target = mode === 'signup' ? 'signin' : 'signup'
   return (
     <AccountPrompt
-      className="mt-space-64 min-h-[44px]"
+      className="min-h-[44px]"
       action={
         <TextLink className="inline-flex min-h-[44px] items-center" href={controller.links?.[target] ?? pagePaths[target]}>
           {mode === 'signup' ? 'Sign in' : 'Sign up'}
@@ -156,14 +156,11 @@ function ErrorMessage({ id }: { id: string }) {
 function VerificationForm() {
   const id = useId()
   return (
-    <div className="mt-space-32">
+    <div>
       <Recipient />
-      <CodeInput errorId={`${id}-error`} expiryId={`${id}-expiry`} />
+      <CodeInput errorId={`${id}-error`} />
       <VerificationFeedback errorId={`${id}-error`} />
-      <HelperText className="mt-space-16" id={`${id}-expiry`}>
-        Codes are valid for 10 minutes.
-      </HelperText>
-      <div className="mt-space-32 flex flex-col items-start gap-space-16 [&>button]:min-h-[44px]">
+      <div className="mt-4 flex w-full flex-col items-start gap-1">
         <ResendControl />
         <BackAction />
       </div>
@@ -174,13 +171,13 @@ function VerificationForm() {
 function Recipient() {
   const email = useAuthState((state) => state.email)
   return (
-    <p className="mb-space-8 text-[15px] leading-[24px] wrap-anywhere text-muted">
-      Enter the code sent to <strong className="font-normal text-text">{email}</strong>
+    <p className="mb-2 text-sm text-muted">
+      Enter the code sent to <strong className="font-medium break-all text-text">{email}</strong>
     </p>
   )
 }
 
-export function CodeInput({ errorId, expiryId }: { errorId: string; expiryId: string }) {
+export function CodeInput({ errorId }: { errorId: string }) {
   const controller = useAuthController()
   const code = useAuthState((state) => state.code)
   const disabled = useAuthState((state) => state.pending !== null)
@@ -193,7 +190,7 @@ export function CodeInput({ errorId, expiryId }: { errorId: string; expiryId: st
       autoFocus
       disabled={disabled}
       aria-invalid={invalid || undefined}
-      aria-describedby={invalid ? errorId : expiryId}
+      aria-describedby={invalid ? errorId : undefined}
     />
   )
 }
@@ -203,7 +200,7 @@ function VerificationFeedback({ errorId }: { errorId: string }) {
   const checking = useAuthState((state) => state.pending === 'verify')
   const retryable = useAuthState((state) => state.error === 'unavailable')
   return (
-    <div className="mt-space-32 text-[13px] leading-[20px] empty:hidden" aria-live="polite">
+    <div className="mt-2 text-[13px] leading-[20px] empty:hidden" aria-live="polite">
       {checking ? <p role="status">Checking code…</p> : null}
       <ErrorMessage id={errorId} />
       {retryable ? (
@@ -218,24 +215,20 @@ function VerificationFeedback({ errorId }: { errorId: string }) {
 export function ResendControl() {
   const controller = useAuthController()
   const remaining = useAuthState((state) => state.remaining)
-  const revealed = useAuthState((state) => state.resendRevealed)
   const pending = useAuthState((state) => state.pending)
-  if (!revealed && remaining === 0)
-    return (
-      <Button variant="link" onClick={() => controller.showResend()} disabled={pending !== null}>
-        Didn’t receive a code?
-      </Button>
-    )
   return (
-    <Button
-      className="px-space-32"
-      variant="neutral"
-      onClick={() => void controller.resendCode()}
-      loading={pending === 'resend'}
-      disabled={pending !== null || remaining > 0}
-    >
-      {pending === 'resend' ? 'Requesting code…' : remaining > 0 ? `Resend in ${remaining}s` : 'Resend code'}
-    </Button>
+    <div className="flex flex-wrap items-center gap-1 text-[12px] text-muted">
+      <span>Didn’t receive a code?</span>
+      <Button
+        className="h-6"
+        variant="link"
+        onClick={() => void controller.resendCode()}
+        loading={pending === 'resend'}
+        disabled={pending !== null || remaining > 0}
+      >
+        {pending === 'resend' ? 'Requesting code…' : remaining > 0 ? `Resend in ${remaining}s` : 'Resend code'}
+      </Button>
+    </div>
   )
 }
 
@@ -243,7 +236,7 @@ function BackAction() {
   const controller = useAuthController()
   const disabled = useAuthState((state) => state.pending !== null)
   return (
-    <Button variant="link" onClick={() => controller.useDifferentEmail()} disabled={disabled}>
+    <Button className="h-6 text-muted" variant="link" onClick={() => controller.useDifferentEmail()} disabled={disabled}>
       Use a different email
     </Button>
   )

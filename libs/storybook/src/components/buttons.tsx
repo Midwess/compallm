@@ -13,7 +13,7 @@ const variants = {
   neutral: 'bg-elevated text-text shadow-control enabled:hover:brightness-110',
   ghost: 'bg-transparent text-text shadow-none enabled:hover:brightness-110',
   destructive: 'bg-elevated text-error shadow-control enabled:hover:brightness-110',
-  link: 'bg-transparent p-0 text-focus shadow-none enabled:hover:brightness-110',
+  link: 'bg-transparent p-0 text-focus shadow-none enabled:hover:brightness-110 !px-0',
 }
 const sizes = {
   compact: 'h-[32px]',
@@ -39,8 +39,8 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cx(
-        'inline-flex max-w-full shrink-0 cursor-pointer items-center justify-center gap-space-8 rounded-full',
-        'border-[0.5px] border-transparent px-space-12 py-0 text-[13px] leading-[20px] font-medium no-underline',
+        'inline-flex max-w-full shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full',
+        'border-[0.5px] border-transparent px-1.5 py-0 text-[13px] leading-[20px] font-medium no-underline',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
         'disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:shrink-0',
         sizes[size],
@@ -90,7 +90,7 @@ export function AccountPrompt({
   ...props
 }: HTMLAttributes<HTMLParagraphElement> & { action: ReactNode }) {
   return (
-    <p {...props} className={cx('flex flex-wrap items-center gap-space-8 text-[13px] text-muted', className)}>
+    <p {...props} className={cx('flex flex-wrap items-center gap-1 text-[13px] text-muted', className)}>
       <span>{children}</span>
       {action}
     </p>
@@ -98,7 +98,7 @@ export function AccountPrompt({
 }
 export function ResendPrompt({ remaining = 0, onResend }: { remaining?: number; onResend?: () => void }) {
   return (
-    <p className="flex flex-wrap items-center gap-space-8 text-[12px] text-muted">
+    <p className="flex flex-wrap items-center gap-1 text-[12px] text-muted">
       <span>Didn’t receive a code?</span>
       <Button variant="link" disabled={remaining > 0} onClick={onResend}>
         {remaining > 0 ? `Resend in ${remaining}s` : 'Resend code'}

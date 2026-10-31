@@ -35,7 +35,7 @@ export function ProjectTableRow({
   return (
     <tr>
       <td>
-        <span className="flex items-center gap-space-12 font-medium">
+        <span className="flex items-center gap-1.5 font-medium">
           <ProjectIcon />
           {name}
         </span>
@@ -58,8 +58,8 @@ export function ProjectTable({ children, label }: { children: ReactNode; label: 
         className={`
   w-full min-w-[640px] border-collapse text-left text-[13px] [&_th]:h-[32px] [&_th]:text-[12px]
   [&_th]:font-normal [&_th]:text-muted [&_td]:h-[48px] [&_th]:border-b-[0.5px] [&_th]:border-divider
-  [&_th]:px-space-12 [&_th]:py-space-8 [&_td]:border-b-[0.5px] [&_td]:border-divider [&_td]:px-space-12
-  [&_td]:py-space-8
+  [&_th]:px-1.5 [&_th]:py-1 [&_td]:border-b-[0.5px] [&_td]:border-divider [&_td]:px-1.5
+  [&_td]:py-1
 `}
       >
         {children}
@@ -91,7 +91,7 @@ export function ProjectProgress({ value }: { value: number }) {
   return (
     <span
       className={`
-  inline-flex items-center gap-space-8 text-[12px] text-muted [&>progress]:h-[4px] [&>progress]:w-[32px]
+  inline-flex items-center gap-1 text-[12px] text-muted [&>progress]:h-[4px] [&>progress]:w-[32px]
   [&>progress]:accent-primary
 `}
     >
@@ -125,7 +125,7 @@ export function ActivityEvent({
   return (
     <p
       className={`
-  flex flex-wrap items-center gap-space-4 text-[12px] text-muted [&>strong]:font-medium
+  flex flex-wrap items-center gap-0.5 text-[12px] text-muted [&>strong]:font-medium
   [&>strong]:text-text
 `}
     >
@@ -146,7 +146,7 @@ export function PropertyChip({ icon, children, className, ...props }: ButtonProp
 }
 export function PropertyRow({ label, children, className, ...props }: HTMLAttributes<HTMLDivElement> & { label: ReactNode }) {
   return (
-    <div {...props} className={cx('grid min-h-[28px] grid-cols-[minmax(80px,1fr)_2fr] items-center gap-space-12', className)}>
+    <div {...props} className={cx('grid min-h-[28px] grid-cols-[minmax(80px,1fr)_2fr] items-center gap-1.5', className)}>
       <span className="text-[12px] leading-[18px] text-muted">{label}</span>
       <div>{children}</div>
     </div>

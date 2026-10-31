@@ -54,7 +54,7 @@ test('incorrect code is retained, backspace navigates, and a corrected code veri
 
 test('resend is explicit and a temporary verification failure can be retried', async ({ page }) => {
   await page.goto('/iframe.html?id=pages-signup--verify-email&viewMode=story')
-  await page.getByRole('button', { name: 'Didn’t receive a code?' }).click()
+  await expect(page.getByText('Didn’t receive a code?', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Resend code', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Resend code', exact: true }).click()
   await expect(page.getByRole('button', { name: /Resend in/ })).toBeDisabled()

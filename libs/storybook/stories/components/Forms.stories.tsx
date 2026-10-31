@@ -48,8 +48,8 @@ export const FormFieldLabel: Story = {
         <Forms.FormFieldLabel htmlFor="label-sample">Field label</Forms.FormFieldLabel>
         <input
           className={`
-  block h-[32px] w-full min-w-0 rounded-[8px] border-[0.5px] border-input-border bg-inset px-space-12
-  py-space-6 text-[14px] leading-[20px] text-text placeholder:text-muted placeholder:opacity-100
+  block h-[32px] w-full min-w-0 rounded-[8px] border-[0.5px] border-input-border bg-inset px-1.5
+  py-0.75 text-[14px] leading-[20px] text-text placeholder:text-muted placeholder:opacity-100
   focus:outline-1 focus:outline-offset-1 focus:outline-focus aria-invalid:border-error
   disabled:cursor-not-allowed disabled:opacity-50
 `}

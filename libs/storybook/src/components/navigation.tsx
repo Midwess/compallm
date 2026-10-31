@@ -15,8 +15,8 @@ export function BreadcrumbTrail({ items, label = 'Breadcrumb' }: { items: Breadc
     <nav aria-label={label}>
       <ol
         className={`
-  flex list-none items-center gap-space-12 p-0 text-[13px] [&>li]:flex [&>li]:min-w-0 [&>li]:items-center
-  [&>li]:gap-space-12 [&_a]:text-muted [&_a]:focus-visible:outline-2 [&_a]:focus-visible:outline-offset-2
+  flex list-none items-center gap-1.5 p-0 text-[13px] [&>li]:flex [&>li]:min-w-0 [&>li]:items-center
+  [&>li]:gap-1.5 [&_a]:text-muted [&_a]:focus-visible:outline-2 [&_a]:focus-visible:outline-offset-2
   [&_a]:focus-visible:outline-focus
 `}
       >
@@ -40,7 +40,7 @@ export function BackBreadcrumb({ href, children }: { href: string; children: Rea
   return (
     <a
       className={`
-  inline-flex min-h-[28px] items-center gap-space-8 text-[13px] focus-visible:outline-2
+  inline-flex min-h-[28px] items-center gap-1 text-[13px] focus-visible:outline-2
   focus-visible:outline-offset-2 focus-visible:outline-focus
 `}
       href={href}
@@ -73,7 +73,7 @@ export function NavigationTab({
       aria-pressed={selected}
       className={cx(
         `
-  min-h-[28px] cursor-pointer rounded-full bg-transparent px-space-16 py-0 text-[12px] text-muted
+  min-h-[28px] cursor-pointer rounded-full bg-transparent px-2 py-0 text-[12px] text-muted
   aria-pressed:bg-inset aria-pressed:text-text focus-visible:outline-2 focus-visible:outline-offset-2
   focus-visible:outline-focus
 `,
@@ -123,5 +123,5 @@ export function DragHandle({
   )
 }
 export function NavigationGroup({ className, ...props }: HTMLAttributes<HTMLElement>) {
-  return <nav {...props} className={cx('flex items-center gap-space-8', className)} />
+  return <nav {...props} className={cx('flex items-center gap-1', className)} />
 }

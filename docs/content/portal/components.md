@@ -11,7 +11,9 @@ The npm package in `libs/storybook/` supplies reusable React components and page
 
 Publish ESM JavaScript, TypeScript declarations, and compiled styles. React and React DOM are peer dependencies. Keep the library build separate from the static Storybook build. Consumers import supported package entry points rather than private source paths.
 
-Components and pages use Tailwind utilities directly in React. Keep theme configuration and font imports in the Tailwind entry files; do not add component, page, or story stylesheets. The library compiles those utilities into its exported stylesheet so consumers do not need Tailwind to use the package.
+Components and pages use standard Tailwind utilities directly in React, including the default spacing scale. Do not define custom spacing tokens or override the default spacing unit. Keep theme configuration and font imports in the Tailwind entry files; do not add component, page, or story stylesheets. The library compiles those utilities into its exported stylesheet so consumers do not need Tailwind to use the package.
+
+`npm run dev` runs Storybook through Vite with Tailwind compilation and CSS hot updates. Preview scanning includes components, pages, stories, and Storybook configuration; no separate CSS build is required when editing utilities. `npm start` runs the same preview server.
 
 `npm run build` produces minified, tree-shakeable ESM, declarations, and minified Tailwind output. Scan production components and pages for the package stylesheet; preview-only utilities and Storybook code remain outside the published library. `npm run build:storybook` separately builds preview demos and the route examples.
 

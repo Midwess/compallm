@@ -18,7 +18,7 @@ export function KeyboardKey({ children }: { children: ReactNode }) {
   return (
     <kbd
       className={`
-  inline-flex h-[28px] min-w-[28px] items-center justify-center rounded-[6px] bg-elevated p-space-4
+  inline-flex h-[28px] min-w-[28px] items-center justify-center rounded-[6px] bg-elevated p-0.5
   font-sans text-[14px]
 `}
     >
@@ -50,8 +50,8 @@ export function Tooltip({
         role="tooltip"
         hidden={dismissed}
         className={`
-  invisible absolute bottom-[calc(100%+var(--spacing-space-8))] left-1/2 z-30 -translate-x-1/2
-  rounded-[6px] bg-menu p-space-8 text-[12px] whitespace-nowrap text-text group-hover/tooltip:visible
+  invisible absolute bottom-[calc(100%+--spacing(1))] left-1/2 z-30 -translate-x-1/2
+  rounded-[6px] bg-menu p-1 text-[12px] whitespace-nowrap text-text group-hover/tooltip:visible
   group-focus-within/tooltip:visible
 `}
       >
@@ -64,7 +64,7 @@ export function EmptyState({ title, children, action }: { title: ReactNode; chil
   return (
     <div
       className={`
-  flex min-h-[128px] flex-col items-center gap-space-8 bg-surface p-space-24 text-center [&>h3]:text-[16px]
+  flex min-h-[128px] flex-col items-center gap-1 bg-surface p-3 text-center [&>h3]:text-[16px]
   [&>h3]:font-medium
 `}
     >
@@ -88,7 +88,7 @@ export function Callout({
   return (
     <aside
       className={`
-  flex flex-col gap-space-8 rounded-[10px] bg-elevated p-space-16 data-[tone=success]:text-success
+  flex flex-col gap-1 rounded-[10px] bg-elevated p-2 data-[tone=success]:text-success
   data-[tone=warning]:text-warning data-[tone=error]:text-error [&>strong]:text-[15px]
   [&>strong]:font-medium
 `}
@@ -109,9 +109,9 @@ export function Popover({ label, children }: { label: string; children: ReactNod
         id={id}
         popover="auto"
         className={`
-  w-[360px] max-w-[calc(100vw-32px)] rounded-[12px] border-[0.5px] border-input-border bg-menu p-space-16
-  text-text [&:popover-open]:absolute [&:popover-open]:m-space-8 [&:popover-open]:[position-area:bottom_span-right]
-  [&:popover-open]:[position-try-fallbacks:flip-block,flip-inline] [&>*+*]:mt-space-12
+  w-[360px] max-w-[calc(100vw-32px)] rounded-[12px] border-[0.5px] border-input-border bg-menu p-2
+  text-text [&:popover-open]:absolute [&:popover-open]:m-1 [&:popover-open]:[position-area:bottom_span-right]
+  [&:popover-open]:[position-try-fallbacks:flip-block,flip-inline] [&>*+*]:mt-1.5
 `}
       >
         {children}

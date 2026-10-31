@@ -10,8 +10,8 @@ export function TextField({ className, ...props }: TextFieldProps) {
       {...props}
       className={cx(
         `
-  block h-[32px] w-full min-w-0 rounded-[8px] border-[0.5px] border-input-border bg-inset px-space-12
-  py-space-6 text-[14px] leading-[20px] text-text placeholder:text-muted placeholder:opacity-100
+  block h-[32px] w-full min-w-0 rounded-[8px] border-[0.5px] border-input-border bg-inset px-1.5
+  py-0.75 text-[14px] leading-[20px] text-text placeholder:text-muted placeholder:opacity-100
   focus:outline-1 focus:outline-offset-1 focus:outline-focus aria-invalid:border-error
   disabled:cursor-not-allowed disabled:opacity-50
 `,
@@ -27,8 +27,8 @@ export function MultilineField({ className, ...props }: TextareaHTMLAttributes<H
       {...props}
       className={cx(
         `
-  block h-[32px] w-full min-w-0 rounded-[8px] border-[0.5px] border-input-border bg-inset px-space-12
-  py-space-6 text-[14px] leading-[20px] text-text placeholder:text-muted placeholder:opacity-100
+  block h-[32px] w-full min-w-0 rounded-[8px] border-[0.5px] border-input-border bg-inset px-1.5
+  py-0.75 text-[14px] leading-[20px] text-text placeholder:text-muted placeholder:opacity-100
   focus:outline-1 focus:outline-offset-1 focus:outline-focus aria-invalid:border-error
   disabled:cursor-not-allowed disabled:opacity-50 h-auto min-h-[64px] resize-y
 `,
@@ -43,8 +43,8 @@ export function SearchField({ className, ...props }: TextFieldProps) {
     <span
       className={cx(
         `
-  relative flex w-full [&>svg]:pointer-events-none [&>svg]:absolute [&>svg]:top-[9px] [&>svg]:left-space-12
-  [&>svg]:text-muted [&>input]:pl-[calc(14px+var(--spacing-space-24))] [&>input]:text-[13px]
+  relative flex w-full [&>svg]:pointer-events-none [&>svg]:absolute [&>svg]:top-[9px] [&>svg]:left-1.5
+  [&>svg]:text-muted [&>input]:pl-[calc(14px+--spacing(3))] [&>input]:text-[13px]
 `,
         className,
       )}
@@ -56,7 +56,7 @@ export function SearchField({ className, ...props }: TextFieldProps) {
 }
 
 export function EmailField({ className, ...props }: TextFieldProps) {
-  return <TextField type="email" autoComplete="email" {...props} className={cx('h-[48px] p-space-12 text-[15px]', className)} />
+  return <TextField type="email" autoComplete="email" {...props} className={cx('h-[48px] p-1.5 text-[15px]', className)} />
 }
 
 export function CodeField({ className, ...props }: TextFieldProps) {
@@ -114,7 +114,7 @@ export function CodeEntry({
   return (
     <div
       className={`
-  flex w-[352px] max-w-full gap-space-8 [&>input]:min-w-0 [&>input]:max-w-[52px] [&>input]:flex-1
+  flex w-[352px] max-w-full gap-1 [&>input]:min-w-0 [&>input]:max-w-[52px] [&>input]:flex-1
 `}
       data-ui="code-entry"
       role="group"

@@ -16,6 +16,8 @@ can be edited directly.
   Tailwind v4 theme in `src/styles/theme.css`.
 - Add meaningful variants for loading, empty, disabled, and error states where relevant. Keep semantic HTML, keyboard focus, and
   responsive behavior.
+- Use Tailwind’s default spacing scale with standard utilities such as `p-4`, `gap-2`, and `mr-8`. Do not add custom spacing
+  tokens or override `--spacing`.
 - Use Tailwind utilities directly in components, pages, and previews. Do not add custom CSS selectors, component stylesheets, or
   `@apply` wrappers. CSS files are limited to Tailwind entry points, theme configuration, and font imports.
 - `npm run build` builds the optimized UI package. `npm run build:storybook` builds the separate preview site. Exclude stories

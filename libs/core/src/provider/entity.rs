@@ -1,5 +1,7 @@
 use rust_decimal::Decimal;
 
+use super::error::{ProviderApiKeyError, ReasoningEffortError};
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ApiProtocol {
     Anthropic,
@@ -28,6 +30,44 @@ pub struct ProviderModel {
     pub input_price_per_million_tokens: Decimal,
     pub output_price_per_million_tokens: Decimal,
     pub cached_price_per_million_tokens: Decimal,
+    pub reasoning: ReasoningCapabilities,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReasoningSupport {
+    Unknown,
+    Unsupported,
+    Supported,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ReasoningEffort(u8);
+
+impl ReasoningEffort {
+    pub const MIN: u8 = 1;
+    pub const MAX: u8 = u8::MAX;
+
+    pub const fn new(value: u8) -> Result<Self, ReasoningEffortError> {
+        if value < Self::MIN {
+            return Err(ReasoningEffortError);
+        }
+        Ok(Self(value))
+    }
+
+    pub const fn value(self) -> u8 {
+        self.0
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReasoningCapabilities {
+    pub support: ReasoningSupport,
+    pub effort_values: Vec<ReasoningEffort>,
+    pub supports_effort: bool,
+    pub supports_budget: bool,
+    pub supports_adaptive: bool,
+    pub minimum_budget_tokens: Option<u32>,
+    pub maximum_budget_tokens: Option<u32>,
 }
 
 /// Secret value persisted in the provider's `api_key` column.
@@ -50,5 +90,3 @@ impl ProviderApiKey {
         self.0
     }
 }
-
-use super::error::ProviderApiKeyError;

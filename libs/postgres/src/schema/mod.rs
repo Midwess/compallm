@@ -28,6 +28,7 @@ pub use self::sea_orm_active_enums::ApiProtocol as ApiProtocolSchema;
 pub use self::sea_orm_active_enums::OrganizationRole as OrganizationRoleSchema;
 pub use self::sea_orm_active_enums::OrganizationStatus as OrganizationStatusSchema;
 pub use self::sea_orm_active_enums::ProviderUsageStatus as ProviderUsageStatusSchema;
+pub use self::sea_orm_active_enums::ReasoningSupport as ReasoningSupportSchema;
 pub use self::sea_orm_active_enums::UserStatus as UserStatusSchema;
 pub use self::user_sessions::Model as UserSessionSchema;
 pub use self::users::Model as UserSchema;

@@ -14,9 +14,10 @@ Decision status: The ownership boundaries, stable model identity, provider
 models, and router bindings are accepted. Route selection, fallback,
 model-management authorization, and model discovery remain unresolved.
 
-Implementation status: The migration and generated PostgreSQL schema implement
-`provider_models` and `model_router`. Model and route management services,
-management APIs, route selection, and request forwarding are not implemented.
+Implementation status: The migrations and generated PostgreSQL schema implement
+`provider_models`, provider-model reasoning capabilities, and `model_router`.
+Model and route management services, management APIs, provider discovery,
+capability refresh, route selection, and request forwarding are not implemented.
 
 ## Concepts
 
@@ -64,10 +65,22 @@ connection in the same organization. It stores:
 - the upstream model name accepted by that provider;
 - configured provider input, output, and cached-token prices in fixed-point USD
   per one million tokens;
+- reasoning support as `unknown`, `unsupported`, or `supported`;
+- supported portable reasoning-effort values, exact-budget support,
+  adaptive-reasoning support, and known minimum or maximum budgets;
 - an independent `enabled` state.
 
 Provider-model names are unique per provider connection. Database constraints
 reject provider models that cross organization boundaries.
+
+Missing provider metadata leaves reasoning support `unknown`; it does not prove
+that reasoning is unsupported. Provider discovery may populate these capability
+fields after validating the upstream response. Portable effort uses every
+integer from 1 through 255 as one step, with larger values representing stronger
+reasoning. Disabled, automatic, and exact-budget requests remain separate modes
+rather than numeric sentinels. Concrete provider clients own the translation
+from a portable effort or budget to native request fields. Provider-native
+request templates are not stored as model data.
 
 ### Model router binding
 
@@ -137,7 +150,7 @@ atomic with a database update.
 | Stable caller-facing name and published prices | Model |
 | Non-secret model behavior settings | Model |
 | Endpoint, protocol, credential, and connection availability | Provider connection |
-| Upstream model name, configured provider prices, and availability | Provider model |
+| Upstream model name, configured provider prices, reasoning capabilities, and availability | Provider model |
 | Route priority and availability | `model_router` binding |
 | Price snapshot used to estimate one provider attempt's cost | `provider_usage` |
 | Health, quota, cooldown, and observed operational data | Separate operational state |
@@ -158,7 +171,8 @@ prices, provider-model configuration, or router bindings.
   health temporarily change that order?
 - Which provider outcomes permit fallback, and how do retries, cooldowns,
   cancellation, and charging interact?
-- Where is provider capability metadata maintained?
+- How are provider-reported capabilities, Compallm registry data, and
+  administrator overrides reconciled during model discovery and refresh?
 - Which model setting keys and validation rules are introduced first?
 - What happens when no eligible binding remains for a model?
 

@@ -26,6 +26,8 @@ Each feature has its own folder directly under `docs/content/`, with shared deci
 - [Mailing](mailing/adr.md): bounded asynchronous SMTP delivery and recipient throttling.
 - [API reference](api/index.md): generated endpoint guide with request and response examples.
 - [Organization and membership](organization/adr.md).
+- [Model management](model/adr.md): [Models and model providers](model/models-and-providers.md).
+- [Provider management](provider/adr.md): [Managing providers](provider/management.md).
 - [LLM Router](llm-router/adr.md).
 - [LLM Gateway](llm-gateway/adr.md).
 - [LLM Chat](llm-chat/adr.md).

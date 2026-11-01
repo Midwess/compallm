@@ -3,8 +3,8 @@ use compallm_core::{
     persistent::{DbContext, organization::OrganizationRepository as _},
 };
 use compallm_postgres::{
-    OrganizationMemberSchema, OrganizationRoleSchema, postgres_connection::PostgresConnection,
-    repository::organization::OrganizationRepository,
+    OrganizationMemberSchema, OrganizationRoleSchema, UserStatusSchema,
+    postgres_connection::PostgresConnection, repository::organization::OrganizationRepository,
 };
 use sea_orm::{DbBackend, IntoMockRow, MockDatabase};
 use std::{collections::BTreeMap, sync::Arc};
@@ -17,9 +17,11 @@ impl Fixture {
             organization_id: 84,
             user_id: 1,
             role,
+            status: UserStatusSchema::Active,
         };
         let mut row: BTreeMap<_, _> = row.into_mock_row().into_column_value_tuples().collect();
         row.insert("role".to_string(), "admin".into());
+        row.insert("status".to_string(), "active".into());
         Arc::new(
             MockDatabase::new(DbBackend::Postgres)
                 .append_query_results([vec![row]])

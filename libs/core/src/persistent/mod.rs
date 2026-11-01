@@ -2,7 +2,9 @@
 
 pub mod connection;
 pub mod db_context;
+pub mod model;
 pub mod organization;
+pub mod provider;
 pub mod session;
 pub mod user;
 

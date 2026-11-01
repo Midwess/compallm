@@ -15,6 +15,10 @@ Observed serving percentages are read-only telemetry, not traffic weights. A fir
 
 Validate model capabilities and endpoint compatibility across all routes. Protocol translation cannot supply capabilities absent from an upstream model. A model requires a name and at least one complete route; route pairs are distinct. System-prompt merging, name uniqueness, permissions, and lifecycle rules remain unresolved.
 
+## Cloning
+
+Cloning creates an independent model configuration with the source name followed by ` clone`. Copy the system prompt, ordered provider/model routes, and optional pricing; retain references to configured provider connections without copying their credentials. Observed serving history belongs to the original model and is not copied. The original configuration remains unchanged. The current Penpot prototype opens the copied configuration for editing and saving; persistence remains planned. Name-collision handling and authorization remain unresolved.
+
 ## Optional pricing
 
 Custom input, output, and cache-read token prices use USD per million tokens. Unset pricing selects automatic resolution; explicit zero is a configured rate. Price precedence, partial overrides, automatic resolution, and charging behavior remain unresolved.

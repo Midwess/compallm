@@ -13,7 +13,7 @@ Requires an email-OTP access token in the access cookie or Authorization: Bearer
 JSON contains only code and delivery; token fields in JSON are rejected.
 Validates the emailed code, then creates the user and their personal
 organization atomically. The display name is derived from the email address.
-Delivery defaults to cookie: sets both HttpOnly cookies and returns an empty JSON object.
+Delivery defaults to cookie: sets both HttpOnly cookies and returns lifetime metadata.
 Send Origin matching AUTH_PUBLIC_ORIGIN (or the local loopback Host in development).
 Explicit delivery token returns accessToken and refreshToken in JSON and sets no cookies.
 The delivery choice is controller-only and is never stored in the signed JWTs.
@@ -144,15 +144,17 @@ Replace URL parameters and supply any required query values and authentication d
 
 ### 201
 
-User created; cookie mode returns {} and sets both cookies; token mode returns both credentials
+User created; cookie mode returns lifetime metadata and sets both cookies; token mode returns both credentials
 
 Content type: `application/json`.
 
-Cookie delivery returns an empty object. Token delivery returns both credentials.
+Both delivery modes return validity metadata; only token delivery includes credentials.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| accessLifetime | object | true | Public timing metadata; contains no token claims or credentials. |
 | accessToken | ["string","null"] | false | Access JWT, present only when delivery is token. |
+| refreshLifetime | object | true | Public timing metadata; contains no token claims or credentials. |
 | refreshToken | ["string","null"] | false | Refresh JWT, present only when delivery is token. |
 
 <details>
@@ -160,14 +162,88 @@ Cookie delivery returns an empty object. Token delivery returns both credentials
 
 ```json
 {
-  "description": "Cookie delivery returns an empty object. Token delivery returns both credentials.",
+  "description": "Both delivery modes return validity metadata; only token delivery includes credentials.",
   "properties": {
+    "accessLifetime": {
+      "description": "Public timing metadata; contains no token claims or credentials.",
+      "properties": {
+        "expiresAt": {
+          "description": "Token expiry time, Unix seconds.",
+          "format": "int64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "expiresInSeconds": {
+          "description": "Remaining whole seconds when the response is prepared. Zero means expired.",
+          "format": "int64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "issuedAt": {
+          "description": "Token issuance time, Unix seconds.",
+          "format": "int64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "throttleSeconds": {
+          "default": 0,
+          "description": "Minimum client wait before requesting another token, in seconds.\nOTP responses return 30; access and refresh tokens return 0. Independent of expiry.",
+          "format": "int64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "issuedAt",
+        "expiresAt",
+        "expiresInSeconds",
+        "throttleSeconds"
+      ],
+      "type": "object"
+    },
     "accessToken": {
       "description": "Access JWT, present only when delivery is token.",
       "type": [
         "string",
         "null"
       ]
+    },
+    "refreshLifetime": {
+      "description": "Public timing metadata; contains no token claims or credentials.",
+      "properties": {
+        "expiresAt": {
+          "description": "Token expiry time, Unix seconds.",
+          "format": "int64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "expiresInSeconds": {
+          "description": "Remaining whole seconds when the response is prepared. Zero means expired.",
+          "format": "int64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "issuedAt": {
+          "description": "Token issuance time, Unix seconds.",
+          "format": "int64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "throttleSeconds": {
+          "default": 0,
+          "description": "Minimum client wait before requesting another token, in seconds.\nOTP responses return 30; access and refresh tokens return 0. Independent of expiry.",
+          "format": "int64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "issuedAt",
+        "expiresAt",
+        "expiresInSeconds",
+        "throttleSeconds"
+      ],
+      "type": "object"
     },
     "refreshToken": {
       "description": "Refresh JWT, present only when delivery is token.",
@@ -177,17 +253,15 @@ Cookie delivery returns an empty object. Token delivery returns both credentials
       ]
     }
   },
+  "required": [
+    "accessLifetime",
+    "refreshLifetime"
+  ],
   "type": "object"
 }
 ```
 
 </details>
-
-Example (synthetic values):
-
-```json
-{}
-```
 
 ### 400
 
@@ -197,7 +271,7 @@ Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -206,7 +280,7 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },
@@ -235,7 +309,7 @@ Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -244,7 +318,7 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },
@@ -273,7 +347,7 @@ Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -282,7 +356,7 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },
@@ -311,7 +385,7 @@ Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -320,7 +394,7 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },
@@ -337,7 +411,7 @@ Example (synthetic values):
 
 ```json
 {
-  "message": "Email is already registered. Please sign in instead."
+  "message": "Email is already registered. <a href=\"/login\">Sign in instead.</a>"
 }
 ```
 
@@ -349,7 +423,7 @@ Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -358,7 +432,7 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },

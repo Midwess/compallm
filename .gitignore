@@ -48,3 +48,6 @@
 !/portal/src/contract/api.ts
 artifacts
 .codex
+
+/portal/test-results
+/portal/playwright-report

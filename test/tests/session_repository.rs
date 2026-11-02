@@ -2,11 +2,12 @@ use compallm_core::{
     auth::{RefreshToken, Session},
     persistent::{DbContext, session::SessionRepository as _},
 };
+use compallm_postgres::mappers::session::MappedSession;
 use compallm_postgres::{
-    UserSessionSchema, postgres_connection::PostgresConnection,
-    repository::session::SessionRepository,
+    OrganizationSchema, OrganizationStatusSchema, UserSessionSchema,
+    postgres_connection::PostgresConnection, repository::session::SessionRepository,
 };
-use sea_orm::{DbBackend, MockDatabase, MockExecResult};
+use sea_orm::{DbBackend, IntoMockRow, MockDatabase, MockExecResult, Value};
 use std::sync::Arc;
 
 struct Fixture;
@@ -19,6 +20,21 @@ impl Fixture {
             revoked_at: None,
         }
     }
+    fn organization() -> OrganizationSchema {
+        OrganizationSchema {
+            id: 84,
+            name: "Research team".into(),
+            status: OrganizationStatusSchema::Active,
+        }
+    }
+    fn joined_row() -> std::collections::BTreeMap<String, Value> {
+        let mut row: std::collections::BTreeMap<_, _> = (Self::row(), Self::organization())
+            .into_mock_row()
+            .into_column_value_tuples()
+            .collect();
+        row.insert("B_status".into(), "active".into());
+        row
+    }
     fn context(db: Arc<sea_orm::DatabaseConnection>) -> DbContext {
         DbContext::new(Arc::new(PostgresConnection::new(db)))
     }
@@ -28,7 +44,7 @@ impl Fixture {
 async fn owned_lookup_and_conditional_update_preserve_session_guards() {
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([vec![Fixture::row()]])
+            .append_query_results([vec![Fixture::joined_row()]])
             .append_exec_results([MockExecResult {
                 last_insert_id: 0,
                 rows_affected: 1,
@@ -38,7 +54,9 @@ async fn owned_lookup_and_conditional_update_preserve_session_guards() {
     let context = Fixture::context(db.clone());
     context
         .transaction(async {
-            let token_session = Session::try_from(Fixture::row()).unwrap();
+            let token_session = MappedSession::try_from((Fixture::row(), "Research team".into()))
+                .map(Session::from)
+                .unwrap();
             let mut session = SessionRepository.find(&token_session).await?.unwrap();
             let previous = session.clone();
             let token = RefreshToken::from_session(
@@ -46,7 +64,9 @@ async fn owned_lookup_and_conditional_update_preserve_session_guards() {
                 std::time::Duration::from_secs(30 * 24 * 60 * 60),
             )
             .unwrap();
-            session.switch_organization(&token, 85).unwrap();
+            session
+                .switch_organization(&token, 85, "Target team")
+                .unwrap();
             assert!(SessionRepository.update(&session, &previous).await?);
             Ok::<_, compallm_core::persistent::session::SessionRepositoryError>(())
         })
@@ -86,7 +106,9 @@ async fn session_creation_records_login_without_updating_the_user() {
             .into_connection(),
     );
     let context = Fixture::context(db.clone());
-    let session = Session::try_from(Fixture::row()).unwrap();
+    let session = MappedSession::try_from((Fixture::row(), "Research team".into()))
+        .map(Session::from)
+        .unwrap();
     context
         .transaction(SessionRepository.create(session))
         .await
@@ -108,12 +130,16 @@ async fn stale_update_reports_conflict_without_overwriting_the_session() {
             }])
             .into_connection(),
     ));
-    let previous = Session::try_from(Fixture::row()).unwrap();
+    let previous = MappedSession::try_from((Fixture::row(), "Research team".into()))
+        .map(Session::from)
+        .unwrap();
     let mut updated = previous.clone();
     let token =
         RefreshToken::from_session(&previous, std::time::Duration::from_secs(30 * 24 * 60 * 60))
             .unwrap();
-    updated.switch_organization(&token, 85).unwrap();
+    updated
+        .switch_organization(&token, 85, "Target team")
+        .unwrap();
     assert!(
         !context
             .scope(SessionRepository.update(&updated, &previous))
@@ -133,7 +159,9 @@ async fn revocation_update_does_not_overwrite_a_concurrent_organization() {
             .into_connection(),
     );
     let context = Fixture::context(db.clone());
-    let previous = Session::try_from(Fixture::row()).unwrap();
+    let previous = MappedSession::try_from((Fixture::row(), "Research team".into()))
+        .map(Session::from)
+        .unwrap();
     let mut revoked = previous.clone();
     revoked.revoke();
     assert!(
@@ -164,7 +192,9 @@ async fn revocation_update_does_not_overwrite_a_concurrent_organization() {
 
 #[tokio::test]
 async fn existing_revocation_cannot_be_cleared_or_changed() {
-    let mut previous = Session::try_from(Fixture::row()).unwrap();
+    let mut previous = MappedSession::try_from((Fixture::row(), "Research team".into()))
+        .map(Session::from)
+        .unwrap();
     previous.revoke();
     let mut active = previous.clone();
     active.revoked_at = None;
@@ -177,12 +207,14 @@ async fn existing_revocation_cannot_be_cleared_or_changed() {
 async fn owned_session_lookup_works_with_the_application_context() {
     let context = Fixture::context(Arc::new(
         MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([vec![Fixture::row()], vec![], vec![]])
+            .append_query_results([vec![Fixture::joined_row()], vec![], vec![]])
             .into_connection(),
     ));
     context
         .scope(async {
-            let token_session = Session::try_from(Fixture::row()).unwrap();
+            let token_session = MappedSession::try_from((Fixture::row(), "Research team".into()))
+                .map(Session::from)
+                .unwrap();
             let session = SessionRepository
                 .find(&token_session)
                 .await
@@ -190,6 +222,7 @@ async fn owned_session_lookup_works_with_the_application_context() {
                 .unwrap();
             assert_eq!(session.id, 7);
             assert_eq!(session.user_id, 42);
+            assert_eq!(session.organization_name, "Research team");
             assert!(
                 SessionRepository
                     .find(&Session {
@@ -217,9 +250,15 @@ async fn owned_session_lookup_works_with_the_application_context() {
 #[test]
 fn mapper_preserves_session_fields_and_rejects_unrepresentable_ids() {
     let row = Fixture::row();
-    let session = Session::try_from(row.clone()).unwrap();
+    let session = MappedSession::try_from((row.clone(), "Research team".into()))
+        .map(Session::from)
+        .unwrap();
     assert_eq!(session.id, row.id as u64);
     let mut negative = row;
     negative.user_id = -1;
-    assert!(Session::try_from(negative).is_err());
+    assert!(
+        MappedSession::try_from((negative, "Research team".into()))
+            .map(Session::from)
+            .is_err()
+    );
 }

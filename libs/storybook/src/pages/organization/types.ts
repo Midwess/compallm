@@ -18,8 +18,10 @@ export interface OrganizationState {
 
 export interface OrganizationController {
   readonly store: Pick<StoreApi<OrganizationState>, 'getState' | 'getInitialState' | 'subscribe'>
+  getCurrentOrganization(): OrganizationState['organizations'][number] | null
   onOpenChat(conversationId?: string): void
   onSelectOrganization(id: string): void
+  onSignOut(): void
   onOpenSettings(): void
   onSearch(): void
   onOpenDestination(id: string): void

@@ -12,11 +12,22 @@ export type AuthInitialState =
 export type AuthOperation = 'request' | 'verify' | 'resend'
 export type AuthError = AuthFailureReason | 'invalid-email'
 
+export interface AuthUser {
+  userId: number
+  sessionId: number
+  organizationId: number
+  organizationName: string
+  organizationRole: string
+}
+
 export interface AuthState {
+  currentUser: AuthUser | null
+  status: 'unknown' | 'checking' | 'authenticated' | 'anonymous' | 'error'
   step: 'email' | 'code' | 'complete'
   email: string
   code: string
   error: AuthError | null
+  serverError: string | null
   pending: AuthOperation | null
   remaining: number
   resendRevealed: boolean
@@ -28,6 +39,11 @@ export interface AuthController {
   readonly store: AuthStore
   readonly links?: { signup?: string; signin?: string }
   readonly navigate?: (href: string) => void
+  start(mode: 'signup' | 'signin'): () => void
+  stop(): void
+  signOut(): Promise<void>
+  ensureCurrentUser(): Promise<AuthUser | null>
+  refreshCurrentUser(signal?: AbortSignal, redirectAnonymous?: boolean): Promise<AuthUser | null>
   onEmailChanged(email: string): void
   onCodeChanged(code: string): void
   onInvalidEmail(): void

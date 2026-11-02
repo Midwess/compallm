@@ -6,6 +6,11 @@ import { ToolbarAction } from './navigation'
 import { cx, popupMotion } from './shared'
 
 const focus = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus'
+const disclosureMotion = `
+  [interpolate-size:allow-keywords] [&::details-content]:h-0 [&::details-content]:overflow-clip
+  [&[open]::details-content]:h-auto motion-safe:[&::details-content]:transition-[height,content-visibility]
+  motion-safe:[&::details-content]:duration-150 motion-safe:[&::details-content]:transition-discrete
+`
 
 export function Sidebar({ children, className, ...props }: HTMLAttributes<HTMLElement>) {
   return (
@@ -23,6 +28,7 @@ export function SidebarHeader({
   onWorkspaceClick,
   onSearch,
   onSettings,
+  onSignOut,
   organizations = [],
   selectedOrganizationId,
   onOrganizationChange,
@@ -32,6 +38,7 @@ export function SidebarHeader({
   onWorkspaceClick: () => void
   onSearch: () => void
   onSettings: () => void
+  onSignOut?: () => void
   organizations?: { id: string; name: string }[]
   selectedOrganizationId?: string
   onOrganizationChange?: (id: string) => void
@@ -73,7 +80,7 @@ export function SidebarHeader({
   }
 
   return (
-    <div className="mt-7 flex h-[34px] w-[221px] shrink-0 items-center justify-between pl-2 pr-1">
+    <div className="mt-3 flex h-[34px] w-[221px] shrink-0 items-center justify-between pl-2 pr-1">
       <button
         ref={trigger}
         popoverTarget={id}
@@ -123,15 +130,15 @@ export function SidebarHeader({
         onKeyDown={(event) => {
           if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
             event.preventDefault()
+            const items = Array.from(menu.current?.querySelectorAll<HTMLButtonElement>(':scope > button') ?? [])
+            const index = items.indexOf(document.activeElement as HTMLButtonElement)
             const next =
               event.key === 'Home'
-                ? preference.current
+                ? 0
                 : event.key === 'End'
-                  ? switcher.current
-                  : document.activeElement === preference.current
-                    ? switcher.current
-                    : preference.current
-            next?.focus()
+                  ? items.length - 1
+                  : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
+            items[next]?.focus()
           }
           if (event.key === 'Escape') {
             event.preventDefault()
@@ -239,6 +246,19 @@ export function SidebarHeader({
             <p className="p-2 text-xs text-muted">No organizations available</p>
           )}
         </div>
+        {onSignOut ? (
+          <button
+            type="button"
+            role="menuitem"
+            className={cx('flex h-8 w-full cursor-pointer items-center rounded px-2 text-xs text-error hover:bg-border', focus)}
+            onClick={() => {
+              close()
+              onSignOut()
+            }}
+          >
+            Sign out
+          </button>
+        ) : null}
       </div>
       <ToolbarAction label="Search workspace" onClick={onSearch} className="size-3.5 rounded">
         <MagnifyingGlassIcon size={14} aria-hidden="true" />
@@ -267,7 +287,7 @@ export function SidebarSection({ label, children, defaultOpen = true, onAdd, add
   const id = useId()
   return (
     <div className="relative shrink-0">
-      <details open={defaultOpen} className="group/sidebar-section">
+      <details open={defaultOpen} className={cx('group/sidebar-section', disclosureMotion)}>
         <summary
           aria-controls={id}
           className={cx(
@@ -280,7 +300,12 @@ text-disabled marker:hidden
           )}
         >
           {label}
-          <CaretDownIcon size={8} weight="fill" aria-hidden="true" className="-rotate-90 group-open/sidebar-section:rotate-0" />
+          <CaretDownIcon
+            size={8}
+            weight="fill"
+            aria-hidden="true"
+            className="-rotate-90 group-open/sidebar-section:rotate-0 motion-safe:transition-transform motion-safe:duration-150"
+          />
         </summary>
         <div id={id} className="mt-0.5 grid gap-0.5">
           {children}
@@ -304,7 +329,7 @@ export function SidebarFolder({
   const id = useId()
   return (
     <div className="relative">
-      <details open={defaultOpen} className="group/sidebar-folder">
+      <details open={defaultOpen} className={cx('group/sidebar-folder', disclosureMotion)}>
         <summary
           aria-controls={id}
           className={cx(
@@ -319,7 +344,12 @@ leading-[17px] text-muted hover:bg-elevated marker:hidden [&::-webkit-details-ma
             {icon}
           </span>
           <span className="min-w-0 truncate">{label}</span>
-          <CaretDownIcon size={8} weight="fill" aria-hidden="true" className="-rotate-90 group-open/sidebar-folder:rotate-0" />
+          <CaretDownIcon
+            size={8}
+            weight="fill"
+            aria-hidden="true"
+            className="-rotate-90 group-open/sidebar-folder:rotate-0 motion-safe:transition-transform motion-safe:duration-150"
+          />
         </summary>
         <div id={id} className="mt-0.5 grid gap-0.5 pl-4 pr-4 [&_a]:font-normal">
           {children}

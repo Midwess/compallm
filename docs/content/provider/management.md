@@ -24,6 +24,70 @@ being an owner or administrator in another organization does not grant access.
 
 Authorization uses organization membership and role.
 
+## Creation and connection testing
+
+Creation accepts multiple providers for one organization in a single request.
+The planned `ProviderIntegrationService` validates input, checks provider-name
+conflicts within that organization and within the submitted batch, protects
+credentials, and persists the providers. PostgreSQL's organization/name unique
+constraint remains the final guard against concurrent conflicting requests.
+An application precheck cannot replace that constraint.
+
+Creation does not call upstream providers and never requires a successful
+connection test. A saved provider therefore does not imply verified credentials
+or a reachable endpoint.
+
+A separate planned connection-test API accepts full connection configuration,
+including the credential, without requiring a stored provider ID. An owner or
+administrator can test the configuration before deciding to save it. Testing
+does not insert or update providers, models, or routes, and does not reserve
+provider names. Existing names do not prevent testing. The result applies only
+to the submitted configuration at the time of the test.
+
+Connection testing uses concrete provider clients with reused HTTP pools and
+bounded timeouts. No database transaction stays open during a provider call.
+Responses expose a safe test result without credentials or raw upstream bodies.
+The exact probe, possible usage charges, and supported endpoint modes must be
+defined before implementing the test API.
+
+The [API contract](api-contract.md) proposes the batch and unsaved-test request
+schemas, responses, atomicity, name comparison, and per-item errors. Batch
+limits and the identified persistence gaps remain unresolved.
+
+Each connection contains one or more upstream models. Each model requires
+explicit input, output, and cache-read prices. Catalog presets may prefill
+editable values, but missing, null, or blank rates are invalid. An explicit
+zero is a configured free rate; it is never inferred. Changing one model's
+price does not affect other models. Submitted rates are stored per provider
+model; creation does not resolve missing prices from the catalog.
+
+Provider discovery starts with distinct provider identities, without requiring
+a model selection. Choosing a provider scopes model discovery to that
+provider's known models. Callers explicitly enable the models they want to
+configure and can add custom models to the same connection. Merely viewing
+catalog entries does not configure or enable them. Creation submits only the
+enabled model definitions; unselected catalog entries remain catalog data.
+Every submitted catalog or custom model requires all three explicit prices.
+
+## Viewing, editing, and cloning
+
+Planned provider management opens saved configuration directly for editing.
+Save changes is disabled while the values match the saved configuration and
+enabled only after an actual change. Reverting every change disables saving
+again. Reading never returns the credential; leaving its replacement empty
+preserves the stored key. Cancel discards edits rather than updating the saved
+provider.
+
+Cloning opens a new unsaved provider definition in the same organization. It
+copies non-secret connection configuration and configured models, including
+explicit prices and availability. The draft name defaults to the source name
+followed by ` clone` and remains editable. A new credential is required; cloning
+does not expose or copy the stored secret. Saving creates an independent
+provider with new identities, using normal creation validation and name-conflict
+checks. It does not copy router bindings, usage records, or connection-test
+results. Cancel leaves the source unchanged. Provider read/update/clone runtime
+integration remains unimplemented.
+
 ## Credential boundaries
 
 Provider credentials are write-only from the management interface. Responses
@@ -36,8 +100,8 @@ old value. Removing a provider also removes its model routes; it does not expose
 the removed credential.
 
 Credential encryption, key rotation, and provider-specific verification remain
-unresolved. Until those decisions are implemented, the existence of a provider
-record does not imply that Compallm has verified the endpoint or credential.
+unresolved. Neither creation nor a prior successful test guarantees that later
+provider requests will succeed.
 
 Disabling a provider preserves its configuration, credential, and model routes
 for management, but makes all of those routes unavailable. Enabling the
@@ -75,6 +139,7 @@ enabled.
 ## Related pages
 
 - [Provider management decisions](adr.md)
+- [Provider creation API contract](api-contract.md)
 - [Model management](../model/adr.md)
 - [Organization and membership](../organization/adr.md)
 - [LLM Router](../llm-router/adr.md)

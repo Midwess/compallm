@@ -4,6 +4,7 @@ import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { CircleIcon } from '@phosphor-icons/react/dist/csr/Circle'
 import { Button, type ButtonProps } from './buttons'
 import { Avatar, Badge, type BadgeTone } from './content'
+import { Table } from './table'
 import { cx } from './shared'
 
 export function ProjectTableHeader() {
@@ -53,8 +54,8 @@ export function ProjectTableRow({
 }
 export function ProjectTable({ children, label }: { children: ReactNode; label: string }) {
   return (
-    <div className="w-full overflow-x-auto" tabIndex={0} role="region" aria-label={label}>
-      <table
+    <Table tabIndex={0} role="region" aria-label={label}>
+      <Table.Content
         className={`
   w-full min-w-[640px] border-collapse text-left text-[13px] [&_th]:h-[32px] [&_th]:text-[12px]
   [&_th]:font-normal [&_th]:text-muted [&_td]:h-[48px] [&_th]:border-b-[0.5px] [&_th]:border-divider
@@ -63,8 +64,8 @@ export function ProjectTable({ children, label }: { children: ReactNode; label: 
 `}
       >
         {children}
-      </table>
-    </div>
+      </Table.Content>
+    </Table>
   )
 }
 export function ProjectIcon() {

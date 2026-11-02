@@ -6,14 +6,45 @@
  * OpenAPI spec version: 0.1.0
  */
 /**
- * Cookie delivery returns an empty object. Token delivery returns both credentials.
+ * Public timing metadata; contains no token claims or credentials.
+ */
+export interface TokenLifetime {
+  /**
+     * Token expiry time, Unix seconds.
+     * @minimum 0
+     */
+  expiresAt: number;
+  /**
+     * Remaining whole seconds when the response is prepared. Zero means expired.
+     * @minimum 0
+     */
+  expiresInSeconds: number;
+  /**
+     * Token issuance time, Unix seconds.
+     * @minimum 0
+     */
+  issuedAt: number;
+  /**
+     * Minimum client wait before requesting another token, in seconds.
+     * OTP responses return 30; access and refresh tokens return 0. Independent of expiry.
+     * @minimum 0
+     */
+  throttleSeconds: number;
+}
+
+/**
+ * Both delivery modes return validity metadata; only token delivery includes credentials.
  */
 export interface AuthTokensResponse {
+  /** Access-token validity, present for both delivery modes. */
+  accessLifetime: TokenLifetime;
   /**
      * Access JWT, present only when delivery is token.
      * @nullable
      */
   accessToken?: string | null;
+  /** Refresh-token validity, present for both delivery modes. */
+  refreshLifetime: TokenLifetime;
   /**
      * Refresh JWT, present only when delivery is token.
      * @nullable
@@ -74,6 +105,8 @@ export interface CurrentUserResponse {
      * @minimum 0
      */
   organizationId: number;
+  /** Organization name snapshot from the signed session; refreshed when tokens renew. */
+  organizationName: string;
   /** Cached membership role from the access JWT, refreshed on renewal. */
   organizationRole: string;
   /**
@@ -89,7 +122,10 @@ export interface CurrentUserResponse {
 }
 
 export interface ErrorResponse {
-  /** Human-readable explanation of the failed request. Use the HTTP status to classify the error. */
+  /**
+     * Human-readable explanation; may include safe inline HTML and links.
+     * Clients preserve message wording and sanitize markup before rendering.
+     */
   message: string;
 }
 
@@ -97,7 +133,7 @@ export interface ErrorResponse {
  * Email address to receive a signin verification code.
  */
 export interface SigninEmailRequest {
-  /** Cookie (default) sets the OTP access cookie and returns {}; token returns it in JSON. */
+  /** Cookie (default) sets the OTP access cookie and returns lifetime metadata; token additionally returns the credential. */
   delivery?: TokenDelivery;
   /** Trimmed and ASCII-lowercased before email validation. Account existence is checked only at confirmation. */
   email: string;
@@ -107,7 +143,7 @@ export interface SigninEmailRequest {
  * Email address to receive a signup verification code.
  */
 export interface SignupEmailRequest {
-  /** Cookie (default) sets the OTP access cookie and returns {}; token returns it in JSON. */
+  /** Cookie (default) sets the OTP access cookie and returns lifetime metadata; token additionally returns the credential. */
   delivery?: TokenDelivery;
   /** Trimmed and ASCII-lowercased before email validation. Any valid domain is accepted. */
   email: string;
@@ -117,6 +153,8 @@ export interface SignupEmailRequest {
  * Verification challenge returned after email delivery is requested.
  */
 export interface SignupEmailResponse {
+  /** OTP challenge validity in both cookie and token delivery. */
+  lifetime: TokenLifetime;
   /**
      * Encrypted OTP access token, present only in token delivery. Expires after 10 minutes.
      * This is not a user access credential and must not be used to call protected APIs.
@@ -141,6 +179,8 @@ export const getCurrentUserUrl = () => {
  * Sec-Fetch-Site: same-origin. No credentials are returned in JSON.
  * Access claims contain a cached role; session revocation and membership changes are
  * checked on renewal rather than on every access-token request.
+ * The organization name is a snapshot in the signed session. With valid access claims,
+ * this endpoint performs no database queries. Renames appear when tokens renew.
  * @summary Read the current authenticated identity and organization scope.
  */
 export const currentUser = async ( options?: RequestInit): Promise<CurrentUserResponse> => {
@@ -183,8 +223,8 @@ export const getSigninEmailUrl = () => {
  * Admission does not guarantee delivery. Pending recipients and the configured cooldown
  * are shared with signup; throttling returns no replacement challenge.
  * Cookie delivery (default) sets the ten-minute OTP access cookie, clears any refresh cookie,
- * and returns {}; explicit token delivery returns the challenge in JSON without setting cookies.
- * Cookie delivery requires an allowed Origin. Requesting a code does not check account existence.
+ * and returns lifetime metadata; explicit token delivery returns the challenge in JSON without setting cookies.
+ * Cookie delivery requires an allowed Origin. The normalized email must belong to an existing active user before mail admission. Unknown emails return 404 with a signup link; disabled users return 403. Rejections issue no challenge or cookies.
  * @summary Request an email signin code.
  */
 export const signinEmail = async (signinEmailRequest: SigninEmailRequest, options?: RequestInit): Promise<SignupEmailResponse> => {
@@ -241,7 +281,7 @@ export const getConfirmSigninOtpUrl = () => {
  * JSON contains only code and delivery; token fields in JSON are rejected.
  * Requires an existing active user and an active owner/admin organization membership.
  * Records a new session. Cookie delivery (default) requires an allowed Origin, sets both
- * HttpOnly cookies and returns an empty JSON object. Explicit delivery token returns
+ * HttpOnly cookies and returns lifetime metadata. Explicit delivery token returns
  * accessToken and refreshToken in JSON without setting cookies. Delivery is not a JWT claim.
  * @summary Confirm email signin with a verification code.
  */
@@ -286,6 +326,49 @@ const res = await fetch(getConfirmSigninOtpUrl(),
 
 
 
+export const getSignOutUrl = () => {
+
+
+
+
+  return `/api/auth/signout`
+}
+
+/**
+ * Revokes the organization/user-scoped session selected by a verified user access token.
+ * Cookie requests require a trusted Origin and clear both HttpOnly authentication cookies.
+ * Bearer requests revoke the selected session without changing browser cookies.
+ * Repeating signout for an already revoked session succeeds while the access token is valid.
+ * Other sessions remain active. Already-issued access JWTs remain valid until expiry.
+ * @summary Sign out of the current session.
+ */
+export const signOut = async ( options?: RequestInit): Promise<void> => {
+
+  const res = await fetch(getSignOutUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: void, status?: number} = new globalThis.Error();
+    const data : void = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: void = body ? JSON.parse(body) : undefined
+  return data
+}
+
+
+
 export const getSignupEmailUrl = () => {
 
 
@@ -300,7 +383,7 @@ export const getSignupEmailUrl = () => {
  * challenge for confirmation. Submit the challenge and code to
  * `POST /api/auth/signup/email/confirmation/otp` within 10 minutes.
  * Delivery defaults to cookie: set a ten-minute HttpOnly OTP access cookie, clear any refresh
- * cookie and return {}. Explicit delivery token returns the challenge in JSON and sets no cookies.
+ * cookie and return lifetime metadata. Explicit delivery token returns the challenge in JSON and sets no cookies.
  * Cookie delivery requires an allowed Origin. No signed-in session exists until confirmation.
  * Queue acceptance does not guarantee SMTP or inbox delivery. Recipients already pending or sent
  * during the configured cooldown (30 seconds by default) are throttled; keep the earlier challenge. Admission waits up to the configured timeout (30 seconds by default)
@@ -361,7 +444,7 @@ export const getConfirmSignupOtpUrl = () => {
  * JSON contains only code and delivery; token fields in JSON are rejected.
  * Validates the emailed code, then creates the user and their personal
  * organization atomically. The display name is derived from the email address.
- * Delivery defaults to cookie: sets both HttpOnly cookies and returns an empty JSON object.
+ * Delivery defaults to cookie: sets both HttpOnly cookies and returns lifetime metadata.
  * Send Origin matching AUTH_PUBLIC_ORIGIN (or the local loopback Host in development).
  * Explicit delivery token returns accessToken and refreshToken in JSON and sets no cookies.
  * The delivery choice is controller-only and is never stored in the signed JWTs.

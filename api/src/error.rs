@@ -8,7 +8,8 @@ use compallm_core::{auth::AuthError, mail::EmailError, persistent::user::UserRep
 
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct ErrorResponse {
-    /// Human-readable explanation of the failed request. Use the HTTP status to classify the error.
+    /// Human-readable explanation; may include safe inline HTML and links.
+    /// Clients preserve message wording and sanitize markup before rendering.
     pub message: String,
 }
 
@@ -59,13 +60,16 @@ impl IntoResponse for ApiError {
             ),
             Self::Auth(AuthError::Persistence(UserRepositoryError::EmailAlreadyExists)) => (
                 StatusCode::CONFLICT,
-                "Email is already registered. Please sign in instead.",
+                "Email is already registered. <a href=\"/login\">Sign in instead.</a>",
             ),
             Self::Auth(AuthError::UserDisabled) => (StatusCode::FORBIDDEN, "User is disabled"),
             Self::Auth(AuthError::OrganizationAccessDenied) => {
                 (StatusCode::FORBIDDEN, "Organization access denied")
             }
-            Self::Auth(AuthError::UserNotFound) => (StatusCode::NOT_FOUND, "User not found"),
+            Self::Auth(AuthError::UserNotFound) => (
+                StatusCode::NOT_FOUND,
+                "Email is not registered. <a href=\"/signup\">Sign up here.</a>",
+            ),
             Self::Auth(AuthError::Email(EmailError::Throttled)) => (
                 StatusCode::TOO_MANY_REQUESTS,
                 "Email recipient is throttled; keep the existing challenge and retry later",

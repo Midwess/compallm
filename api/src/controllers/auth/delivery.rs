@@ -8,7 +8,7 @@ use axum::{
     },
     response::{IntoResponse, Response},
 };
-use compallm_core::auth::{EmailOtpAccessToken, UserTokens};
+use compallm_core::auth::{EmailOtpAccessToken, IssuedEmailOtp, TokenValidity, UserTokens};
 use cookie::{Cookie, SameSite, time::Duration};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -28,14 +28,51 @@ pub enum TokenDelivery {
 pub struct TokenDeliverySettings {
     pub secure: bool,
     pub public_origin: String,
-    pub access_max_age_seconds: u64,
-    pub refresh_max_age_seconds: u64,
 }
 
-/// Cookie delivery returns an empty object. Token delivery returns both credentials.
+/// Public timing metadata; contains no token claims or credentials.
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct TokenLifetime {
+    /// Token issuance time, Unix seconds.
+    pub issued_at: u64,
+    /// Token expiry time, Unix seconds.
+    pub expires_at: u64,
+    /// Remaining whole seconds when the response is prepared. Zero means expired.
+    pub expires_in_seconds: u64,
+    /// Minimum client wait before requesting another token, in seconds.
+    /// OTP responses return 30; access and refresh tokens return 0. Independent of expiry.
+    #[schema(default = 0)]
+    pub throttle_seconds: u64,
+}
+
+impl From<TokenValidity> for TokenLifetime {
+    fn from(validity: TokenValidity) -> Self {
+        Self::from((validity, 0))
+    }
+}
+
+impl From<(TokenValidity, u64)> for TokenLifetime {
+    fn from((validity, throttle_seconds): (TokenValidity, u64)) -> Self {
+        Self {
+            throttle_seconds,
+            issued_at: validity.issued_at,
+            expires_at: validity.expires_at,
+            expires_in_seconds: validity
+                .expires_at
+                .saturating_sub(compallm_utils::time::unix_timestamp()),
+        }
+    }
+}
+
+/// Both delivery modes return validity metadata; only token delivery includes credentials.
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthTokensResponse {
+    /// Access-token validity, present for both delivery modes.
+    pub access_lifetime: TokenLifetime,
+    /// Refresh-token validity, present for both delivery modes.
+    pub refresh_lifetime: TokenLifetime,
     /// Access JWT, present only when delivery is token.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub access_token: Option<String>,
@@ -71,9 +108,14 @@ impl TokenDeliverySettings {
         Ok(())
     }
 
-    pub fn set_otp_cookie(&self, headers: &mut HeaderMap, token: String) -> Result<(), ApiError> {
+    pub fn set_otp_cookie(
+        &self,
+        headers: &mut HeaderMap,
+        token: String,
+        max_age: u64,
+    ) -> Result<(), ApiError> {
         let names = self.cookie_names();
-        self.append_cookie(headers, names.0, token, EmailOtpAccessToken::TTL_SECONDS)?;
+        self.append_cookie(headers, names.0, token, max_age)?;
         // An OTP access token has no session refresh credential.
         self.append_cookie(headers, names.1, String::new(), 0)
     }
@@ -84,13 +126,19 @@ impl TokenDeliverySettings {
             headers,
             names.0,
             tokens.access_token,
-            self.access_max_age_seconds,
+            tokens
+                .access_validity
+                .expires_at
+                .saturating_sub(compallm_utils::time::unix_timestamp()),
         )?;
         self.append_cookie(
             headers,
             names.1,
             tokens.refresh_token,
-            self.refresh_max_age_seconds,
+            tokens
+                .refresh_validity
+                .expires_at
+                .saturating_sub(compallm_utils::time::unix_timestamp()),
         )
     }
 
@@ -154,19 +202,22 @@ impl TokenDelivery {
 
     pub fn otp_response(
         self,
-        token: String,
+        issued: IssuedEmailOtp,
         settings: &TokenDeliverySettings,
     ) -> Result<Response, ApiError> {
+        let lifetime =
+            TokenLifetime::from((issued.validity, EmailOtpAccessToken::THROTTLE_SECONDS));
+        let token = issued.token;
         let mut headers = HeaderMap::new();
         headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
         let token = match self {
             Self::Token => Some(token),
             Self::Cookie => {
-                settings.set_otp_cookie(&mut headers, token)?;
+                settings.set_otp_cookie(&mut headers, token, lifetime.expires_in_seconds)?;
                 None
             }
         };
-        Ok((headers, Json(SignupEmailResponse { token })).into_response())
+        Ok((headers, Json(SignupEmailResponse { token, lifetime })).into_response())
     }
 
     pub fn response(
@@ -177,14 +228,20 @@ impl TokenDelivery {
     ) -> Result<Response, ApiError> {
         let mut headers = HeaderMap::new();
         headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
+        let access_lifetime = TokenLifetime::from(tokens.access_validity.clone());
+        let refresh_lifetime = TokenLifetime::from(tokens.refresh_validity.clone());
         let body = match self {
             Self::Token => AuthTokensResponse {
+                access_lifetime,
+                refresh_lifetime,
                 access_token: Some(tokens.access_token),
                 refresh_token: Some(tokens.refresh_token),
             },
             Self::Cookie => {
                 settings.set_cookies(&mut headers, tokens)?;
                 AuthTokensResponse {
+                    access_lifetime,
+                    refresh_lifetime,
                     access_token: None,
                     refresh_token: None,
                 }

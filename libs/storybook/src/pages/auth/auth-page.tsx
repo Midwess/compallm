@@ -3,7 +3,8 @@ import { CheckCircleIcon } from '@phosphor-icons/react/dist/csr/CheckCircle'
 import { Button, AccountPrompt, TextLink } from '../../components/buttons'
 import { EmailField, CodeEntry } from '../../components/fields'
 import { FormFieldLabel } from '../../components/forms'
-import { InlineError } from '../../components/feedback'
+import { RichMessage } from '../../components/rich-message'
+import { InlineError, FeedbackSlot } from '../../components/feedback'
 import { pagePaths } from '../paths'
 import { AuthLayout } from './layout'
 import { useStore } from 'zustand'
@@ -94,8 +95,10 @@ function EmailForm({ mode }: { mode: Mode }) {
         <FormFieldLabel htmlFor={`${id}-email`}>Email address</FormFieldLabel>
         <EmailInput id={`${id}-email`} errorId={`${id}-error`} inputRef={input} />
       </div>
-      <ErrorMessage id={`${id}-error`} />
       <ContinueButton />
+      <FeedbackSlot>
+        <ErrorMessage id={`${id}-error`} />
+      </FeedbackSlot>
       <AccountLink mode={mode} />
     </form>
   )
@@ -113,7 +116,7 @@ export function EmailInput({
   const controller = useAuthController()
   const email = useAuthState((state) => state.email)
   const disabled = useAuthState((state) => state.pending !== null)
-  const invalid = useAuthState((state) => state.error !== null)
+  const invalid = useAuthState((state) => state.error !== null || state.serverError !== null)
   return (
     <EmailField
       ref={inputRef}
@@ -176,8 +179,14 @@ function AccountLink({ mode }: { mode: Mode }) {
 }
 
 function ErrorMessage({ id }: { id: string }) {
+  const controller = useAuthController()
   const error = useAuthState((state) => state.error)
-  return error ? <InlineError id={id}>{errors[error]}</InlineError> : null
+  const serverError = useAuthState((state) => state.serverError)
+  return serverError || error ? (
+    <InlineError id={id}>
+      <RichMessage message={serverError ?? errors[error!]} navigate={controller.navigate} />
+    </InlineError>
+  ) : null
 }
 
 function VerificationForm() {
@@ -208,7 +217,7 @@ export function CodeInput({ errorId }: { errorId: string }) {
   const controller = useAuthController()
   const code = useAuthState((state) => state.code)
   const disabled = useAuthState((state) => state.pending !== null)
-  const invalid = useAuthState((state) => state.error !== null)
+  const invalid = useAuthState((state) => state.error !== null || state.serverError !== null)
   return (
     <CodeEntry
       aria-label="Email code"
@@ -225,9 +234,9 @@ export function CodeInput({ errorId }: { errorId: string }) {
 function VerificationFeedback({ errorId }: { errorId: string }) {
   const controller = useAuthController()
   const checking = useAuthState((state) => state.pending === 'verify')
-  const retryable = useAuthState((state) => state.error === 'unavailable')
+  const retryable = useAuthState((state) => state.error === 'unavailable' || state.serverError !== null)
   return (
-    <div className="mt-2 text-[13px] leading-[20px] empty:hidden" aria-live="polite">
+    <FeedbackSlot className="mt-2 h-20 text-sm leading-5" aria-live="polite">
       {checking ? <p role="status">Checking code…</p> : null}
       <ErrorMessage id={errorId} />
       {retryable ? (
@@ -235,7 +244,7 @@ function VerificationFeedback({ errorId }: { errorId: string }) {
           Try again
         </Button>
       ) : null}
-    </div>
+    </FeedbackSlot>
   )
 }
 

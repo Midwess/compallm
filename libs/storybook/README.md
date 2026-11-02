@@ -14,10 +14,9 @@ with demos under **Pages**.
 ```sh
 npm run lint            # Fix lint issues and format source; maximum line length 128
 npm run lint:check      # Check without editing
-npm run check          # Type-check library, stories, and tests
+npm run check          # Type-check library and stories
 npm run build          # Optimized ESM UI library, declarations, Tailwind output, and assets in dist/
 npm run build:storybook # Standalone preview site in storybook-static/
-npm test               # Component browser checks
 npm pack --dry-run     # Review npm package contents without publishing
 ```
 

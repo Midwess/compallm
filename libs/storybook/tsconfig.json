@@ -17,8 +17,6 @@
     "src/**/*.tsx",
     "stories/**/*.ts",
     "stories/**/*.tsx",
-    "tests/**/*.ts",
-    "playwright.config.ts",
     "vite.library.config.ts",
     "vite.pages.config.ts"
   ]

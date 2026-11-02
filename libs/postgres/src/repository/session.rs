@@ -55,12 +55,17 @@ impl CoreSessionRepository for SessionRepository {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
         Sessions::find_by_id(Self::id(session.id)?)
+            .find_also_related(<crate::OrganizationSchema as ModelTrait>::Entity::default())
             .filter(SessionColumn::UserId.eq(Self::id(session.user_id)?))
             .filter(SessionColumn::OrganizationId.eq(Self::id(session.organization_id)?))
             .one(db)
             .await
             .map_err(anyhow::Error::from)?
-            .map(Session::try_from)
+            .map(|(session, organization)| {
+                let organization = organization.context("session organization is missing")?;
+                crate::mappers::session::MappedSession::try_from((session, organization.name))
+                    .map(Session::from)
+            })
             .transpose()
     }
 

@@ -5,7 +5,7 @@ available: false
 
 # Browser sessions
 
-A session records one successful signup or signin. Core authentication persists sessions, renews JWTs without database writes, and changes organization through a separate operation. Signup/signin confirmation supports cookie and JSON token delivery. Protected APIs accept access cookies or Bearer access tokens, with automatic cookie renewal. Logout endpoints and OAuth remain planned. The [login ADR](adr.md) explains the decisions behind this flow.
+A session records one successful signup or signin. Core authentication persists sessions, renews JWTs without database writes, and changes organization through a separate operation. Signup/signin confirmation supports cookie and JSON token delivery. Protected APIs accept access cookies or Bearer access tokens, with automatic cookie renewal. Signout is implemented; OAuth remains planned. The [login ADR](adr.md) explains the decisions behind this flow.
 
 ## What a session represents
 
@@ -13,7 +13,9 @@ A second login creates another session; refreshing credentials keeps the same se
 
 Device information is optional. A browser description or user-provided label may eventually help recognize a session, but neither proves which physical device or person is using it. Authentication does not require device fingerprinting.
 
-Both token types embed the same Session struct. Session owns its ID, organization ID, user ID, and revocation state; these fields are not repeated at the token level. Access JWTs additionally carry the current membership role. A signed snapshot does not replace the database record: refresh and organization switching load the current session to enforce revocation and organization changes. The complete JWT is not stored. Every lookup, renewal, and revocation uses the organization and user together, supported by a compound organization/user index.
+Both token types embed the same Session struct. Session owns its ID, organization ID and name, user ID, and revocation state; these fields are not repeated at the token level. Access JWTs additionally carry the current membership role. A signed snapshot does not replace the database record: refresh and organization switching load the current session to enforce revocation and organization changes. The complete JWT is not stored. Every lookup, renewal, and revocation uses the organization and user together, supported by a compound organization/user index.
+
+The PostgreSQL session lookup joins the organization to hydrate its current name without storing a duplicate name column in `user_sessions`. Membership queries return the organization with its member record for login, renewal, and switching. Organization names are display metadata: they do not participate in session identity matching or conditional update guards. Tokens without the required name field require signin again.
 
 Repository lookups accept the token's Session instance directly and match its ID, organization, and owner. Validation compares those identity fields against the current record and rejects revoked sessions. No separate session-reference type is needed. The session schema and JWT payload omit generic creation/update timestamps and separate refresh credential identifiers.
 
@@ -27,7 +29,7 @@ Older refresh JWTs remain usable until their own expiry. Each valid renewal star
 
 ## Protected API requests
 
-Public signup/signin code-request routes require no credentials. Their confirmation routes require an email-OTP access token from cookie or Bearer. Middleware verifies the selected credential and inserts its concrete type as a request extension: `UserAccessToken`, `RefreshToken`, or decrypted `EmailOtpAccessToken`. Handlers declare `RequireToken<T>` to require exactly that type; an absent type returns 401. Raw request access uses `extensions().get::<T>()`. User-token extraction exposes organization/role guards returning 403. A route on the authenticated router must explicitly require the token type appropriate for its operation. `GET /api/auth/me` returns session ID, user ID, organization ID, and role without returning credentials.
+Public signup/signin code-request routes require no credentials. Their confirmation routes require an email-OTP access token from cookie or Bearer. Middleware verifies the selected credential and inserts its concrete type as a request extension: `UserAccessToken`, `RefreshToken`, or decrypted `EmailOtpAccessToken`. Handlers declare `RequireToken<T>` to require exactly that type; an absent type returns 401. Raw request access uses `extensions().get::<T>()`. User-token extraction exposes organization/role guards returning 403. A route on the authenticated router must explicitly require the token type appropriate for its operation. `GET /api/auth/me` returns session ID, user ID, organization ID, `organizationName`, and the cached role without returning credentials. It returns the organization name snapshot embedded in the verified access token and performs no database query when that token is valid. Organization renames and membership changes become visible on renewal or a new login; organization switching issues the target organization name.
 
 ```rust
 async fn handler(RequireToken(token): RequireToken<UserAccessToken>) {
@@ -53,7 +55,7 @@ Ordinary renewal never changes organizations. It uses the current role when issu
 
 ## Logout and revocation
 
-Logout and administrative actions explicitly revoke the session. Logout also clears its cookies when cookie transport is implemented. Other login sessions remain independent.
+POST `/api/auth/signout` requires a user access token, revokes its organization/user-scoped session, and clears both authentication cookies for cookie requests. Repeating signout with a still-valid access token for an already revoked session succeeds. Cookie requests require a trusted Origin. Bearer requests revoke only the selected session and leave browser cookies unchanged. Other login sessions remain independent. Persistence failures return an error rather than claiming success.
 
 A copied access JWT can remain usable until its short expiry, including its cached role. Immediate access-token invalidation requires an additional server-side check. Failed renewal or switching does not automatically revoke a session, and invalid signatures or expired JWTs never authorize changes.
 
@@ -61,7 +63,7 @@ A copied access JWT can remain usable until its short expiry, including its cach
 
 Signup/signin code requests and confirmation each accept optional `delivery` in JSON, defaulting to `cookie`. Confirmation requires the OTP access cookie or Bearer challenge. Code requests deliver the OTP access token only after email admission succeeds. Confirmation delivers user credentials only after Core authentication succeeds and the session commits. The mode is never stored in Session or JWT claims.
 
-- `cookie`: return `{}` with no token values. A code request sets a ten-minute OTP access cookie and clears the refresh cookie; confirmation replaces it with a user access cookie and sets the refresh cookie. Starting a new cookie login replaces any current browser credentials but does not revoke the previous database session.
+- `cookie`: return lifetime metadata with no token values. A code request sets a ten-minute OTP access cookie and clears the refresh cookie; confirmation replaces it with a user access cookie and sets the refresh cookie. Starting a new cookie login replaces any current browser credentials but does not revoke the previous database session.
 - `token`: code requests return `{ "token": "…" }`; confirmation returns `{ "accessToken": "…", "refreshToken": "…" }`. Neither sets cookies. This does not clear an existing browser session.
 
 Both require JSON input. Cookie delivery at either step requires an allowed Origin; token mode does not rely on browser cookies. Protected API middleware reads these cookies and renews them automatically when needed.
@@ -84,3 +86,28 @@ HttpOnly blocks cookie reads, but injected scripts can still make requests. Safe
 Refresh requires a signed token with an embedded session. Renewal records no activity timestamp, so cleanup requires a separate retention policy that remains unresolved.
 
 See [Email](email.md), [GitHub](github.md), and [GitLab](gitlab.md) for login-method details.
+
+
+## Token lifetime responses
+
+Every explicit token-issuing response includes timing metadata for either
+delivery mode. OTP requests return `lifetime`; confirmation returns
+`accessLifetime` and `refreshLifetime`. Each contains `issuedAt` and `expiresAt`
+(Unix seconds) and `expiresInSeconds` (remaining whole seconds when the response
+is prepared), plus `throttleSeconds` (minimum client wait before requesting
+another token). OTP responses set `throttleSeconds` to 30; access and refresh
+token metadata defaults to 0. Expiry is unchanged by this throttle. Values come from the issued token's validity, not a second client
+constant. Cookie delivery omits credentials only, retaining the metadata.
+Automatic cookie renewal on an unrelated protected endpoint preserves that
+endpoint's response contract; its browser cookies retain their expiry settings.
+
+The portal uses `lifetime.throttleSeconds` for its resend countdown, independently
+of OTP expiry.
+It computes remaining time from a deadline rather than decrementing a counter,
+so background-tab throttling does not extend the wait. Resend is disabled while
+throttle time remains; the SMTP recipient throttle is an independent server rule.
+Pending SMTP delivery or configured server cooldowns can still reject a resend;
+metadata does not guarantee admission. A new
+successful challenge replaces the deadline. Failed sends preserve it. Leaving
+authentication or completing verification disposes the timer. Credentials and
+OTP validity state remain in memory and never enter the URL.

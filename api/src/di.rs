@@ -88,8 +88,6 @@ impl Di {
         let delivery = Box::new(crate::controllers::auth::delivery::TokenDeliverySettings {
             secure: settings.cookie_secure,
             public_origin: settings.public_origin.clone(),
-            access_max_age_seconds: settings.user_token_ttl_seconds,
-            refresh_max_age_seconds: settings.refresh_token_ttl_seconds,
         });
         Self {
             delivery,

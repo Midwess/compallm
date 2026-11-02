@@ -16,6 +16,8 @@ replacement HttpOnly cookies when Origin is trusted, or a safe request has
 Sec-Fetch-Site: same-origin. No credentials are returned in JSON.
 Access claims contain a cached role; session revocation and membership changes are
 checked on renewal rather than on every access-token request.
+The organization name is a snapshot in the signed session. With valid access claims,
+this endpoint performs no database queries. Renames appear when tokens renew.
 
 ## Authentication
 
@@ -65,6 +67,7 @@ Identity and organization scope from the current signed access credential.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | organizationId | integer | true | Organization selected for this session. |
+| organizationName | string | true | Organization name snapshot from the signed session; refreshed when tokens renew. |
 | organizationRole | string | true | Cached membership role from the access JWT, refreshed on renewal. |
 | sessionId | integer | true | Current login session identifier. |
 | userId | integer | true | Authenticated user identifier. |
@@ -81,6 +84,10 @@ Identity and organization scope from the current signed access credential.
       "format": "int64",
       "minimum": 0,
       "type": "integer"
+    },
+    "organizationName": {
+      "description": "Organization name snapshot from the signed session; refreshed when tokens renew.",
+      "type": "string"
     },
     "organizationRole": {
       "description": "Cached membership role from the access JWT, refreshed on renewal.",
@@ -104,6 +111,7 @@ Identity and organization scope from the current signed access credential.
     "sessionId",
     "userId",
     "organizationId",
+    "organizationName",
     "organizationRole"
   ],
   "type": "object"
@@ -120,7 +128,7 @@ Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -129,7 +137,7 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },
@@ -150,7 +158,7 @@ Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -159,7 +167,7 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },
@@ -180,7 +188,7 @@ Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -189,7 +197,7 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },

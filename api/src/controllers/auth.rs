@@ -20,7 +20,7 @@ use crate::{
 };
 pub mod delivery;
 mod validation;
-use delivery::{AuthTokensResponse, TokenDelivery, TokenDeliverySettings};
+use delivery::{AuthTokensResponse, TokenDelivery, TokenDeliverySettings, TokenLifetime};
 use validation::{AuthInput, ValidatedJson};
 
 pub fn router() -> OpenApiRouter<&'static AuthService> {
@@ -38,7 +38,7 @@ pub struct SignupEmailRequest {
     #[modify(trim, custom(str::make_ascii_lowercase))]
     #[validate(custom(function = User::validate_email))]
     pub email: String,
-    /// Cookie (default) sets the OTP access cookie and returns {}; token returns it in JSON.
+    /// Cookie (default) sets the OTP access cookie and returns lifetime metadata; token additionally returns the credential.
     #[serde(default)]
     #[schema(default = "cookie")]
     pub delivery: TokenDelivery,
@@ -47,6 +47,8 @@ pub struct SignupEmailRequest {
 /// Verification challenge returned after email delivery is requested.
 #[derive(Serialize, ToSchema)]
 pub struct SignupEmailResponse {
+    /// OTP challenge validity in both cookie and token delivery.
+    pub lifetime: TokenLifetime,
     /// Encrypted OTP access token, present only in token delivery. Expires after 10 minutes.
     /// This is not a user access credential and must not be used to call protected APIs.
     #[schema(example = "example-email-challenge")]
@@ -61,7 +63,7 @@ pub struct SignupEmailResponse {
 /// challenge for confirmation. Submit the challenge and code to
 /// `POST /api/auth/signup/email/confirmation/otp` within 10 minutes.
 /// Delivery defaults to cookie: set a ten-minute HttpOnly OTP access cookie, clear any refresh
-/// cookie and return {}. Explicit delivery token returns the challenge in JSON and sets no cookies.
+/// cookie and return lifetime metadata. Explicit delivery token returns the challenge in JSON and sets no cookies.
 /// Cookie delivery requires an allowed Origin. No signed-in session exists until confirmation.
 /// Queue acceptance does not guarantee SMTP or inbox delivery. Recipients already pending or sent
 /// during the configured cooldown (30 seconds by default) are throttled; keep the earlier challenge. Admission waits up to the configured timeout (30 seconds by default)
@@ -75,7 +77,7 @@ pub struct SignupEmailResponse {
         (status = 200, description = "OTP delivery requested; use this token to confirm", body = SignupEmailResponse),
         (status = 400, description = "Malformed JSON or invalid field format. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid request fields"})),
         (status = 403, description = "Untrusted Origin for cookie delivery", body = ErrorResponse),
-        (status = 409, description = "Email already registered; sign in instead. No email or token issued.", body = ErrorResponse, example = json!({"message":"Email is already registered. Please sign in instead."})),
+        (status = 409, description = "Email already registered; sign in instead. No email or token issued.", body = ErrorResponse, example = json!({"message":"Email is already registered. <a href=\"/login\">Sign in instead.</a>"})),
         (status = 429, description = "Recipient throttled. Keep the existing challenge and retry after the configured cooldown (30 seconds by default).", body = ErrorResponse, example = json!({"message": "Email recipient is throttled; keep the existing challenge and retry later"})),
         (status = 503, description = "Email admission unavailable or queue remained full until the configured timeout (30 seconds by default). Retry later; no challenge was issued.", body = ErrorResponse, example = json!({"message": "Email delivery is unavailable"})),
         (status = 500, description = "Internal error. Retry later.", body = ErrorResponse, example = json!({"message": "Internal server error"}))
@@ -116,7 +118,7 @@ pub struct ConfirmSignupOtpRequest {
 /// JSON contains only code and delivery; token fields in JSON are rejected.
 /// Validates the emailed code, then creates the user and their personal
 /// organization atomically. The display name is derived from the email address.
-/// Delivery defaults to cookie: sets both HttpOnly cookies and returns an empty JSON object.
+/// Delivery defaults to cookie: sets both HttpOnly cookies and returns lifetime metadata.
 /// Send Origin matching AUTH_PUBLIC_ORIGIN (or the local loopback Host in development).
 /// Explicit delivery token returns accessToken and refreshToken in JSON and sets no cookies.
 /// The delivery choice is controller-only and is never stored in the signed JWTs.
@@ -127,11 +129,11 @@ pub struct ConfirmSignupOtpRequest {
     params(("Origin" = Option<String>, Header, description = "Required for cookie delivery; must match the configured browser origin")),
     request_body(content = ConfirmSignupOtpRequest, example = json!({"code":"123456","delivery":"token"})),
     responses(
-        (status = 201, description = "User created; cookie mode returns {} and sets both cookies; token mode returns both credentials", body = AuthTokensResponse),
+        (status = 201, description = "User created; cookie mode returns lifetime metadata and sets both cookies; token mode returns both credentials", body = AuthTokensResponse),
         (status = 400, description = "Malformed JSON or invalid field format. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid JSON request body"})),
         (status = 401, description = "Invalid or expired challenge or code. Check the code or request a new challenge.", body = ErrorResponse, example = json!({"message": "Invalid or expired token or OTP code"})),
         (status = 403, description = "Untrusted cookie Origin or user/organization access disabled.", body = ErrorResponse, example = json!({"message": "Organization access denied"})),
-        (status = 409, description = "Email already registered. Use signin instead of signup.", body = ErrorResponse, example = json!({"message": "Email is already registered. Please sign in instead."})),
+        (status = 409, description = "Email already registered. Use signin instead of signup.", body = ErrorResponse, example = json!({"message": "Email is already registered. <a href=\"/login\">Sign in instead.</a>"})),
         (status = 500, description = "Database or internal error. Retry later.", body = ErrorResponse, example = json!({"message": "Internal server error"}))
     )
 )]
@@ -159,7 +161,7 @@ pub struct SigninEmailRequest {
     #[modify(trim, custom(str::make_ascii_lowercase))]
     #[validate(custom(function = User::validate_email))]
     pub email: String,
-    /// Cookie (default) sets the OTP access cookie and returns {}; token returns it in JSON.
+    /// Cookie (default) sets the OTP access cookie and returns lifetime metadata; token additionally returns the credential.
     #[serde(default)]
     #[schema(default = "cookie")]
     pub delivery: TokenDelivery,
@@ -171,8 +173,8 @@ pub struct SigninEmailRequest {
 /// Admission does not guarantee delivery. Pending recipients and the configured cooldown
 /// are shared with signup; throttling returns no replacement challenge.
 /// Cookie delivery (default) sets the ten-minute OTP access cookie, clears any refresh cookie,
-/// and returns {}; explicit token delivery returns the challenge in JSON without setting cookies.
-/// Cookie delivery requires an allowed Origin. Requesting a code does not check account existence.
+/// and returns lifetime metadata; explicit token delivery returns the challenge in JSON without setting cookies.
+/// Cookie delivery requires an allowed Origin. The normalized email must belong to an existing active user before mail admission. Unknown emails return 404 with a signup link; disabled users return 403. Rejections issue no challenge or cookies.
 #[utoipa::path(
     post, path = "/api/auth/signin/email", operation_id = "signinEmail", tag = "auth",
     security(),
@@ -180,6 +182,7 @@ pub struct SigninEmailRequest {
     request_body(content = SigninEmailRequest, example = json!({"email":"reader@example.com","delivery":"token"})),
     responses(
         (status = 200, description = "Code queued; submit the challenge with the emailed code", body = SignupEmailResponse),
+        (status = 404, description = "Email is not registered; signup first. No email or challenge issued.", body = ErrorResponse, example = json!({"message": "Email is not registered. <a href=\"/signup\">Sign up here.</a>"})),
         (status = 400, description = "Malformed JSON or invalid field format", body = ErrorResponse),
         (status = 403, description = "Untrusted Origin for cookie delivery", body = ErrorResponse),
         (status = 429, description = "Recipient throttled; keep the earlier challenge", body = ErrorResponse),
@@ -220,7 +223,7 @@ pub struct ConfirmSigninOtpRequest {
 /// JSON contains only code and delivery; token fields in JSON are rejected.
 /// Requires an existing active user and an active owner/admin organization membership.
 /// Records a new session. Cookie delivery (default) requires an allowed Origin, sets both
-/// HttpOnly cookies and returns an empty JSON object. Explicit delivery token returns
+/// HttpOnly cookies and returns lifetime metadata. Explicit delivery token returns
 /// accessToken and refreshToken in JSON without setting cookies. Delivery is not a JWT claim.
 #[utoipa::path(
     post, path = "/api/auth/signin/email/confirmation/otp", operation_id = "confirmSigninOtp", tag = "auth",
@@ -228,7 +231,7 @@ pub struct ConfirmSigninOtpRequest {
     params(("Origin" = Option<String>, Header, description = "Required for cookie delivery; must match the configured browser origin")),
     request_body(content = ConfirmSigninOtpRequest, example = json!({"code":"123456","delivery":"token"})),
     responses(
-        (status = 200, description = "Signed in; cookie mode returns {} and sets both cookies; token mode returns both credentials", body = AuthTokensResponse),
+        (status = 200, description = "Signed in; cookie mode returns lifetime metadata and sets both cookies; token mode returns both credentials", body = AuthTokensResponse),
         (status = 400, description = "Malformed JSON or invalid field format", body = ErrorResponse),
         (status = 401, description = "Invalid or expired challenge or code", body = ErrorResponse),
         (status = 403, description = "Untrusted cookie Origin or user/organization access disabled", body = ErrorResponse),
@@ -259,6 +262,8 @@ pub struct CurrentUserResponse {
     pub user_id: u64,
     /// Organization selected for this session.
     pub organization_id: u64,
+    /// Organization name snapshot from the signed session; refreshed when tokens renew.
+    pub organization_name: String,
     /// Cached membership role from the access JWT, refreshed on renewal.
     #[schema(value_type = String, example = "owner")]
     pub organization_role: compallm_core::organization::OrganizationRole,
@@ -267,6 +272,7 @@ pub struct CurrentUserResponse {
 pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
     OpenApiRouter::new()
         .routes(routes!(current_user))
+        .routes(routes!(signout))
         .routes(routes!(confirm_signup_otp))
         .routes(routes!(confirm_signin_otp))
 }
@@ -280,6 +286,8 @@ pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
 /// Sec-Fetch-Site: same-origin. No credentials are returned in JSON.
 /// Access claims contain a cached role; session revocation and membership changes are
 /// checked on renewal rather than on every access-token request.
+/// The organization name is a snapshot in the signed session. With valid access claims,
+/// this endpoint performs no database queries. Renames appear when tokens renew.
 #[utoipa::path(
     get, path = "/api/auth/me", operation_id = "currentUser", tag = "auth",
     security(("bearerAuth" = []), ("accessCookie" = [])),
@@ -292,11 +300,43 @@ pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
 )]
 async fn current_user(
     RequireToken(claims): RequireToken<UserAccessToken>,
-) -> Json<CurrentUserResponse> {
-    Json(CurrentUserResponse {
+) -> Result<Json<CurrentUserResponse>, ApiError> {
+    Ok(Json(CurrentUserResponse {
         session_id: claims.session.id,
         user_id: claims.session.user_id,
         organization_id: claims.session.organization_id,
+        organization_name: claims.session.organization_name,
         organization_role: claims.organization_role,
-    })
+    }))
+}
+
+/// Sign out of the current session.
+///
+/// Revokes the organization/user-scoped session selected by a verified user access token.
+/// Cookie requests require a trusted Origin and clear both HttpOnly authentication cookies.
+/// Bearer requests revoke the selected session without changing browser cookies.
+/// Repeating signout for an already revoked session succeeds while the access token is valid.
+/// Other sessions remain active. Already-issued access JWTs remain valid until expiry.
+#[utoipa::path(
+    post, path = "/api/auth/signout", operation_id = "signOut", tag = "auth",
+    security(("bearerAuth" = []), ("accessCookie" = [])),
+    responses(
+        (status = 204, description = "Session revoked; cookie requests clear authentication cookies"),
+        (status = 401, description = "Missing or invalid user credential or session", body = ErrorResponse),
+        (status = 403, description = "Untrusted cookie Origin", body = ErrorResponse),
+        (status = 500, description = "Session persistence failed; retry signout", body = ErrorResponse)
+    )
+)]
+async fn signout(
+    State(auth): State<&'static AuthService>,
+    Extension(settings): Extension<&'static TokenDeliverySettings>,
+    headers: HeaderMap,
+    RequireToken(claims): RequireToken<UserAccessToken>,
+) -> Result<impl IntoResponse, ApiError> {
+    auth.signout(&claims).await?;
+    let mut response_headers = HeaderMap::new();
+    if !headers.contains_key(axum::http::header::AUTHORIZATION) {
+        settings.clear_cookies(&mut response_headers)?;
+    }
+    Ok((StatusCode::NO_CONTENT, response_headers))
 }

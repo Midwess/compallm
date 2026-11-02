@@ -14,12 +14,12 @@
     "check": "tsc --noEmit",
     "lint": "prettier . --write && eslint . --fix",
     "lint:check": "eslint . && prettier . --check",
-    "test": "playwright test",
     "prepack": "npm run build"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",
     "@phosphor-icons/react": "2.1.10",
+    "dompurify": "^3.4.17",
     "tailwind-merge": "^3.7.0",
     "zustand": "^5.0.16"
   },
@@ -98,6 +98,11 @@
     "./pages/organization/chat": {
       "types": "./dist/pages/organization/chat/index.d.ts",
       "import": "./dist/pages/organization/chat.js"
+    },
+    "./pages/organization/create-provider": {
+      "types": "./dist/pages/organization/create-provider/index.d.ts",
+      "import": "./dist/pages/organization/create-provider.js"
     }
-  }
+  },
+  "packageManager": "pnpm@11.11.0+sha512.4463f65fd80ed80d69bc1d4bf163ee94f605c7380fc318bb5b2ebe15f8cd12d49c51a4d59e951b401e764d3b6ca751cbf51bc50ed7001a6bcb4935e684c34882"
 }

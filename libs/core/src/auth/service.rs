@@ -4,12 +4,12 @@ use super::Session;
 use super::{
     AuthError,
     token::{
-        AccessToken, EmailOtpAccessToken, EmailOtpChallenge, EncryptedAccessToken, RefreshToken,
-        UserAccessToken, UserTokens,
+        AccessToken, EmailOtpAccessToken, EmailOtpChallenge, EncryptedAccessToken, IssuedEmailOtp,
+        RefreshToken, UserAccessToken, UserTokens,
     },
 };
 use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode};
-use crate::organization::OrganizationMember;
+use crate::organization::{Organization, OrganizationMember};
 use crate::persistent::session::SessionRepository;
 use crate::persistent::{DbContext, organization::OrganizationRepository, user::UserRepository};
 use crate::user::{RegistrationService, UserStatus};
@@ -33,6 +33,28 @@ pub struct AuthService {
 }
 
 impl AuthService {
+    /// Revoke only the persisted session identified by the verified access credential.
+    pub async fn signout(&self, claims: &UserAccessToken) -> Result<(), AuthError> {
+        claims.validate(unix_timestamp())?;
+        let mut session = self
+            .sessions
+            .find(&claims.session)
+            .await?
+            .ok_or(AuthError::InvalidSession)?;
+        if !session.has_same_identity(&claims.session) {
+            return Err(AuthError::InvalidSession);
+        }
+        if session.revoked_at.is_some() {
+            return Ok(());
+        }
+        let previous = session.clone();
+        session.revoke();
+        if !self.sessions.update(&session, &previous).await? {
+            return Err(AuthError::InvalidSession);
+        }
+        Ok(())
+    }
+
     pub fn new(
         db: &'static DbContext,
         users: &'static Box<dyn UserRepository>,
@@ -57,7 +79,7 @@ impl AuthService {
     }
 
     /// Reject existing accounts before requesting OTP delivery for signup.
-    pub async fn signup_email(&self, email: &str) -> Result<String, AuthError> {
+    pub async fn signup_email(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
         let email = compallm_utils::email::normalize_email(email);
         if self.users.find_by_email(&email).await?.is_some() {
             return Err(crate::persistent::user::UserRepositoryError::EmailAlreadyExists.into());
@@ -65,12 +87,22 @@ impl AuthService {
         self.send_email_otp(&email).await
     }
 
-    /// Request an encrypted OTP access token without disclosing account existence.
-    pub async fn signin_email(&self, email: &str) -> Result<String, AuthError> {
-        self.send_email_otp(email).await
+    /// Require an existing active account before admitting signin email.
+    pub async fn signin_email(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
+        let email = compallm_utils::email::normalize_email(email);
+        crate::user::User::validate_email(&email).map_err(|_| AuthError::InvalidEmail)?;
+        let user = self
+            .users
+            .find_by_email(&email)
+            .await?
+            .ok_or(AuthError::UserNotFound)?;
+        if user.status != UserStatus::Active {
+            return Err(AuthError::UserDisabled);
+        }
+        self.send_email_otp(&email).await
     }
 
-    async fn send_email_otp(&self, email: &str) -> Result<String, AuthError> {
+    async fn send_email_otp(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
         let challenge = EmailOtpChallenge::new(email, &self.jwt_secret)?;
         let sender = self.email.as_ref().ok_or(EmailError::Unavailable)?;
         sender
@@ -83,7 +115,10 @@ impl AuthService {
                 )),
             })
             .await?;
-        Ok(challenge.access_token)
+        Ok(IssuedEmailOtp {
+            token: challenge.access_token,
+            validity: challenge.validity,
+        })
     }
 
     pub async fn signin(
@@ -100,12 +135,12 @@ impl AuthService {
         if user.status != UserStatus::Active {
             return Err(AuthError::UserDisabled);
         }
-        let membership = self
+        let (membership, organization) = self
             .organizations
             .find_first_admin_membership(user.id)
             .await?
             .ok_or(AuthError::OrganizationAccessDenied)?;
-        self.start_session(user.id, membership).await
+        self.start_session(user.id, membership, organization).await
     }
 
     pub async fn signup(
@@ -118,12 +153,12 @@ impl AuthService {
         if user.status != UserStatus::Active {
             return Err(AuthError::UserDisabled);
         }
-        let membership = self
+        let (membership, organization) = self
             .organizations
             .find_first_admin_membership(user.id)
             .await?
             .ok_or(AuthError::OrganizationAccessDenied)?;
-        self.start_session(user.id, membership).await
+        self.start_session(user.id, membership, organization).await
     }
 
     /// Verify the envelope and inner claims, preserving the concrete token variant.
@@ -144,7 +179,7 @@ impl AuthService {
             .find(&claims.session)
             .await?
             .ok_or(AuthError::InvalidSession)?;
-        let renewed = session.refresh(&claims, self.lifetimes.refresh)?;
+        session.validate_credential(&claims)?;
         let user = self
             .users
             .find_by_id(claims.session.user_id)
@@ -153,11 +188,14 @@ impl AuthService {
         if user.status != UserStatus::Active {
             return Err(AuthError::UserDisabled);
         }
-        let membership = self
+        let (membership, organization) = self
             .organizations
             .find_membership(session.organization_id, user.id)
             .await?
             .ok_or(AuthError::OrganizationAccessDenied)?;
+        let mut session = session;
+        session.organization_name = organization.name;
+        let renewed = session.refresh(&claims, self.lifetimes.refresh)?;
         UserTokens::from_refresh(
             &renewed,
             membership.role,
@@ -188,14 +226,14 @@ impl AuthService {
             return Err(AuthError::UserDisabled);
         }
 
-        let membership = self
+        let (membership, organization) = self
             .organizations
             .find_membership(organization_id, user.id)
             .await?
             .ok_or(AuthError::OrganizationAccessDenied)?;
 
         let previous = session.clone();
-        session.switch_organization(&claims, organization_id)?;
+        session.switch_organization(&claims, organization_id, organization.name)?;
 
         let tokens = UserTokens::new(
             &session,
@@ -216,9 +254,10 @@ impl AuthService {
         &self,
         user_id: u64,
         membership: OrganizationMember,
+        organization: Organization,
     ) -> Result<UserTokens, AuthError> {
         let id = hero::distributed_id::try_gen_id().await?;
-        let session = Session::new(user_id, id, membership.organization_id);
+        let session = Session::new(user_id, id, membership.organization_id, organization.name);
         let tokens = UserTokens::new(
             &session,
             membership.role,

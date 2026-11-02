@@ -1,21 +1,9 @@
-import { AuthControllerContext } from '@compallm/storybook/context'
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useEffect } from 'react'
 import { SigninPage } from '@compallm/storybook/pages/signin'
-import { AuthController } from '../auth/controller'
+import { useAuthController } from '../auth/use-auth-controller'
 
 export function Component() {
-  const navigate = useNavigate()
-  const [controller] = useState(
-    () =>
-      new AuthController('signin', (href) => {
-        void navigate(href)
-      }),
-  )
-  useEffect(() => controller.start(), [controller])
-  return (
-    <AuthControllerContext value={controller}>
-      <SigninPage />
-    </AuthControllerContext>
-  )
+  const controller = useAuthController()
+  useEffect(() => controller.start('signin'), [controller])
+  return <SigninPage />
 }

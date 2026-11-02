@@ -23,6 +23,30 @@ Pass the stable controller through scoped React Context. Context carries the ins
 
 UI events call controller methods; UI code does not mutate the store. Controller methods read the current snapshot when invoked and own asynchronous requests and state transitions. Keep API clients, authentication storage, application routing, and provider credentials outside the library. Consumer-created controllers are initialized once per page instance. Preview classes implement the same interfaces without a backend, and their owner starts and cleans up timers and pending-operation guards.
 
+## Shared primitives
+
+Reusable controls and interaction surfaces live in `src/components`, with
+supported package exports and independent stories. Feature pages compose them
+rather than maintaining their own checkbox, searchbox, field, table, dialog,
+or popup implementations. Use named parts such as `Dialog.Content`,
+`Dialog.Header`, `Dialog.Title`, `Dialog.Body`, and `Dialog.Footer`; page code
+supplies children and domain callbacks. Distinct alert-dialog and menu
+components express different interaction contracts without mode flags.
+
+Dialog primitives own native modal focus containment, Escape dismissal requests,
+and focus restoration. Outside clicks do not dismiss dialogs. Including `Dialog.Discard` adds automatic
+discard confirmation to dismissal requests. Consumers include that part only
+when confirmation is required; they do not implement a separate warning dialog.
+Confirming discard invokes the root close callback; keeping changes returns
+to the original dialog. Alert dialogs
+provide explicit confirmation actions. Popup primitives own menu dismissal,
+keyboard navigation, positioning, focus restoration, and shared entrance motion.
+Fields associate labels and inputs; searchboxes include decorative SVG search
+icons. Checkboxes preserve native input semantics with SVG state indicators.
+Table parts preserve native table semantics and share overflow handling.
+Feature controllers retain request, validation, navigation, and persistence
+responsibilities; shared primitives do not import feature state.
+
 ## Component behavior
 
 Form controls expose values, changes, validation, pending state, and disabled state through their public APIs. Preserve native semantics and accessible names. Floating option lists support keyboard selection, dismissal, and focus restoration without changing the surrounding document flow.
@@ -35,11 +59,11 @@ See [authentication page callbacks](../login/interface.md).
 
 `Toast` presents info, error, or warning messages and calls `onDismiss` when dismissed. Consumers own visibility, timing, queueing, deduplication, and recovery actions. Toasts do not retry requests or perform navigation. Informational and warning messages use polite status announcements; errors use an alert. Notifications do not take focus when mounted.
 
-Keep field-specific validation inline. Use toasts for operation-level feedback with safe, actionable messages; never display raw exceptions, credentials, or provider payloads. The portal uses Sonner to host the shared toast UI. Controllers report operation failures through a shared notification function. It displays the API response’s `message` unchanged, uses a safe generic message for unexpected failures, and ignores cancelled requests. API failures are not duplicated as inline status-derived messages.
+Keep field-specific validation inline. Use toasts for operation-level feedback with safe, actionable messages; never display raw exceptions, credentials, or provider payloads. The shared `RichMessage` sanitizes API-provided inline markup and safe links using DOMPurify before rendering; it never executes message HTML. Authentication form errors and toast messages share this renderer. The portal uses Sonner to host the shared toast UI. Controllers report operation failures through a shared notification function. It displays the API response’s `message` unchanged, uses a safe generic message for unexpected failures, and ignores cancelled requests. Authentication form errors use contextual inline feedback, with the API wording preserved; failures are not duplicated as toasts or replaced by status-derived messages.
 
 ## Sidebar composition
 
-The library exports `Sidebar`, `SidebarHeader`, `SidebarSection`, `SidebarFolder`, and `SidebarItem`. Consumers compose workspace identity, grouped destinations, and nested model links from these primitives. Sections and folders use native disclosure elements, keeping their state independent. Consumers supply selected links, destination URLs, and workspace/search/create callbacks. The workspace header opens a dismissible options menu with a Settings action supplied by the consumer. Selecting Settings closes the menu and invokes its callback; the library does not choose an application route. Optional navigation callbacks integrate with client routers while modified clicks retain browser behavior.
+The library exports `Sidebar`, `SidebarHeader`, `SidebarSection`, `SidebarFolder`, and `SidebarItem`. Consumers compose workspace identity, grouped destinations, and nested model links from these primitives. Sections and folders use native disclosure elements, keeping their state independent. Expansion and collapse animate over 150ms; reduced-motion preferences disable the transition. Consumers supply selected links, destination URLs, and workspace/search/create callbacks. The workspace header opens a dismissible options menu with a Settings action supplied by the consumer. Selecting Settings closes the menu and invokes its callback; the library does not choose an application route. Optional navigation callbacks integrate with client routers while modified clicks retain browser behavior.
 
 Storybook supplies fictional providers, models, and conversations. The sidebar does not fetch data, infer permissions, or register application routes. Main-page and portal integration remain separate.
 
@@ -49,6 +73,10 @@ Storybook supplies fictional providers, models, and conversations. The sidebar d
 
 Import the shell through `@compallm/storybook/pages/main`. Storybook demonstrates the empty shell and content scrolling with local sidebar fixtures. Portal routing remains unchanged by this component.
 
-The workspace menu offers Settings and organization switching. Consumers supply organization IDs, names, the active ID, and a selection callback. The organization submenu opens on hover or keyboard activation; selecting an organization closes both menus and invokes the consumer callback. Selection does not itself change authorization or persist a session.
+The workspace menu offers Settings, organization switching, and Sign out. Sign out closes the menu and invokes the consumer callback; session termination belongs to the consumer. Consumers supply organization IDs, names, the active ID, and a selection callback. The organization submenu opens on hover or keyboard activation; selecting an organization closes both menus and invokes the consumer callback. Selection does not itself change authorization or persist a session.
 
 Shared popup surfaces use a 150ms scale entrance animation. Reduced-motion users receive no animation. The animation is a shared Tailwind theme utility for menus, popovers, and future dialog surfaces.
+
+## Page headers
+
+Compose page headers as `<PageHeader><Title>…</Title><Functions>…</Functions></PageHeader>`. The header owns title/action alignment, shared horizontal insets, and the divider. `Title` supplies the page heading; `Functions` groups caller-provided controls. Feature content uses the same standard `px-3` inset as sidebar content. No header component creates controllers or invokes navigation automatically.

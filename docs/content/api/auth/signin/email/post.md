@@ -13,8 +13,8 @@ Enqueues a six-digit code and returns a ten-minute encrypted challenge.
 Admission does not guarantee delivery. Pending recipients and the configured cooldown
 are shared with signup; throttling returns no replacement challenge.
 Cookie delivery (default) sets the ten-minute OTP access cookie, clears any refresh cookie,
-and returns {}; explicit token delivery returns the challenge in JSON without setting cookies.
-Cookie delivery requires an allowed Origin. Requesting a code does not check account existence.
+and returns lifetime metadata; explicit token delivery returns the challenge in JSON without setting cookies.
+Cookie delivery requires an allowed Origin. The normalized email must belong to an existing active user before mail admission. Unknown emails return 404 with a signup link; disabled users return 403. Rejections issue no challenge or cookies.
 
 ## Authentication
 
@@ -122,6 +122,7 @@ Verification challenge returned after email delivery is requested.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| lifetime | object | true | Public timing metadata; contains no token claims or credentials. |
 | token | ["string","null"] | false | Encrypted OTP access token, present only in token delivery. Expires after 10 minutes. This is not a user access credential and must not be used to call protected APIs. |
 
 <details>
@@ -131,6 +132,43 @@ Verification challenge returned after email delivery is requested.
 {
   "description": "Verification challenge returned after email delivery is requested.",
   "properties": {
+    "lifetime": {
+      "description": "Public timing metadata; contains no token claims or credentials.",
+      "properties": {
+        "expiresAt": {
+          "description": "Token expiry time, Unix seconds.",
+          "format": "int64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "expiresInSeconds": {
+          "description": "Remaining whole seconds when the response is prepared. Zero means expired.",
+          "format": "int64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "issuedAt": {
+          "description": "Token issuance time, Unix seconds.",
+          "format": "int64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "throttleSeconds": {
+          "default": 0,
+          "description": "Minimum client wait before requesting another token, in seconds.\nOTP responses return 30; access and refresh tokens return 0. Independent of expiry.",
+          "format": "int64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "issuedAt",
+        "expiresAt",
+        "expiresInSeconds",
+        "throttleSeconds"
+      ],
+      "type": "object"
+    },
     "token": {
       "description": "Encrypted OTP access token, present only in token delivery. Expires after 10 minutes.\nThis is not a user access credential and must not be used to call protected APIs.",
       "example": "example-email-challenge",
@@ -140,19 +178,14 @@ Verification challenge returned after email delivery is requested.
       ]
     }
   },
+  "required": [
+    "lifetime"
+  ],
   "type": "object"
 }
 ```
 
 </details>
-
-Example (synthetic values):
-
-```json
-{
-  "token": "example-email-challenge"
-}
-```
 
 ### 400
 
@@ -162,7 +195,7 @@ Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -171,7 +204,7 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },
@@ -192,7 +225,7 @@ Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -201,7 +234,7 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },
@@ -214,15 +247,15 @@ Content type: `application/json`.
 
 </details>
 
-### 429
+### 404
 
-Recipient throttled; keep the earlier challenge
+Email is not registered; signup first. No email or challenge issued.
 
 Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -231,7 +264,45 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "message"
+  ],
+  "type": "object"
+}
+```
+
+</details>
+
+Example (synthetic values):
+
+```json
+{
+  "message": "Email is not registered. <a href=\"/signup\">Sign up here.</a>"
+}
+```
+
+### 429
+
+Recipient throttled; keep the earlier challenge
+
+Content type: `application/json`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
+
+<details>
+<summary>JSON schema</summary>
+
+```json
+{
+  "properties": {
+    "message": {
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },
@@ -252,7 +323,7 @@ Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -261,7 +332,7 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },

@@ -128,6 +128,12 @@ impl TryFrom<AccessToken> for RefreshToken {
 pub struct EmailOtpChallenge {
     pub access_token: String,
     pub code: String,
+    pub validity: TokenValidity,
+}
+
+pub struct IssuedEmailOtp {
+    pub token: String,
+    pub validity: TokenValidity,
 }
 
 impl EmailOtpChallenge {
@@ -135,19 +141,26 @@ impl EmailOtpChallenge {
         let email = normalize_email(email);
         let claims = EmailOtpAccessToken::new(email)?;
         let code = claims.code.clone();
+        let validity = claims.validity.clone();
         let access_token = AccessToken::EmailOtp(claims)
             .encrypt(&EncryptedAccessToken::new(secret)?)?
             .encode(
                 secret,
                 Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),
             )?;
-        Ok(Self { access_token, code })
+        Ok(Self {
+            access_token,
+            code,
+            validity,
+        })
     }
 }
 
 pub struct UserTokens {
     pub access_token: String,
     pub refresh_token: String,
+    pub access_validity: TokenValidity,
+    pub refresh_validity: TokenValidity,
 }
 
 impl UserTokens {
@@ -172,13 +185,12 @@ impl UserTokens {
         refresh.validate(unix_timestamp())?;
         let refresh_lifetime =
             Duration::from_secs(refresh.validity.expires_at - refresh.validity.issued_at);
+        let user = UserAccessToken::new(refresh.session.clone(), organization_role, user_lifetime)?;
+        let access_validity = user.validity.clone();
         Ok(Self {
-            access_token: AccessToken::User(UserAccessToken::new(
-                refresh.session.clone(),
-                organization_role,
-                user_lifetime,
-            )?)
-            .encode(secret, user_lifetime)?,
+            access_validity,
+            refresh_validity: refresh.validity.clone(),
+            access_token: AccessToken::User(user).encode(secret, user_lifetime)?,
             refresh_token: AccessToken::Refresh(refresh.clone())
                 .encode(secret, refresh_lifetime)?,
         })

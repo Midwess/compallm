@@ -1,7 +1,7 @@
 import { createBrowserRouter, Link, Outlet, useNavigation } from 'react-router'
 import { urlController } from './url/controller'
 import { redirect } from 'react-router'
-import { guestOnly, requireCurrentUser, organizationIndex } from './auth/route-access'
+import { guestOnly, requireCurrentUser, organizationIndex, confirmationAccess } from './auth/route-access'
 
 function Layout() {
   const navigation = useNavigation()
@@ -46,6 +46,9 @@ export const router = createBrowserRouter([
     children: [
       { index: true, loader: guestOnly, lazy: () => import('./routes/signup') },
       { path: 'login', loader: guestOnly, lazy: () => import('./routes/login') },
+      { path: 'signup', loader: guestOnly, lazy: () => import('./routes/signup') },
+      { path: 'login/confirmation', loader: confirmationAccess, lazy: () => import('./routes/login') },
+      { path: 'signup/confirmation', loader: confirmationAccess, lazy: () => import('./routes/signup') },
       {
         path: ':organizationName',
         loader: requireCurrentUser,

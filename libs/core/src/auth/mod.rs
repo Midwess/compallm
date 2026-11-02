@@ -12,4 +12,4 @@ pub use token::{
     AccessToken, EmailOtpAccessToken, EncryptedAccessToken, EncryptedToken, RefreshToken,
     TokenValidity, UserAccessToken,
 };
-pub use token::{EmailOtpChallenge, UserTokens};
+pub use token::{EmailOtpChallenge, IssuedEmailOtp, UserTokens};

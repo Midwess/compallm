@@ -318,7 +318,8 @@ test('concurrent controller calls share identity checks and signout requests', a
   const initialChecks = checks
   const result = await page.evaluate(async () => {
     const { AuthController } = await import('/src/auth/controller.ts')
-    const controller = new AuthController({ navigate: () => {} })
+    const { urlController } = await import('/src/url/controller.ts')
+    const controller = new AuthController({ store: urlController.store, navigate: () => {} })
     const identities = await Promise.all([
       controller.ensureCurrentUser(),
       controller.ensureCurrentUser(),
@@ -339,7 +340,8 @@ test('superseded identity checks cannot overwrite the latest controller state', 
   await expect(page.getByRole('heading', { name: 'New chat', exact: true })).toBeVisible()
   const result = await page.evaluate(async () => {
     const { AuthController } = await import('/src/auth/controller.ts')
-    const controller = new AuthController({ navigate: () => {} })
+    const { urlController } = await import('/src/url/controller.ts')
+    const controller = new AuthController({ store: urlController.store, navigate: () => {} })
     const stale = controller.refreshCurrentUser()
     const latest = controller.refreshCurrentUser()
     const outcomes = await Promise.allSettled([stale, latest])
@@ -412,4 +414,118 @@ test('controller collection lookups select exact organization and model identifi
     invalidModel: '',
     validModel: 'known-model',
   })
+})
+
+test('OTP throttle drives resend countdown independently of expiry and a successful resend replaces the deadline', async ({
+  page,
+}) => {
+  await page.clock.install()
+  await page.route('**/api/auth/me', (route) => route.fulfill({ status: 401, json: { message: 'Authentication required' } }))
+  let requests = 0
+  await page.route('**/api/auth/signin/email', (route) => {
+    requests += 1
+    return route.fulfill({ json: { lifetime: { issuedAt: 100, expiresAt: 700, expiresInSeconds: 600, throttleSeconds: 3 } } })
+  })
+  await page.goto('/login')
+  await page.getByRole('textbox', { name: 'Email address' }).fill('alex@example.com')
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Resend in 3s', exact: true })).toBeDisabled()
+  await page.clock.runFor(1000)
+  await expect(page.getByRole('button', { name: 'Resend in 2s', exact: true })).toBeDisabled()
+  await page.clock.fastForward(10000)
+  await page.getByRole('button', { name: 'Resend code', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Resend in 3s', exact: true })).toBeDisabled()
+  expect(requests).toBe(2)
+})
+
+test('auth controller enforces the resend deadline and releases it when using another email', async ({ page }) => {
+  await page.clock.install()
+  await page.route('**/api/auth/me', (route) => route.fulfill({ status: 401, json: { message: 'Authentication required' } }))
+  let requests = 0
+  await page.route('**/api/auth/signup/email', (route) => {
+    requests += 1
+    return route.fulfill({ json: { lifetime: { issuedAt: 1, expiresAt: 601, expiresInSeconds: 600, throttleSeconds: 30 } } })
+  })
+  await page.goto('/')
+  await page.getByRole('textbox', { name: 'Email address' }).fill('new@example.com')
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Resend in 30s', exact: true })).toBeDisabled()
+  await page.evaluate(async () => {
+    const { authController } = await import('/src/auth/controller.ts')
+    await authController.resendCode()
+  })
+  expect(requests).toBe(1)
+  await page.getByRole('button', { name: 'Use a different email', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeEnabled()
+})
+
+test('zero token throttle allows immediate resend while expiry remains positive', async ({ page }) => {
+  await page.route('**/api/auth/me', (route) => route.fulfill({ status: 401, json: { message: 'Authentication required' } }))
+  let requests = 0
+  await page.route('**/api/auth/signin/email', (route) => {
+    requests += 1
+    return route.fulfill({ json: { lifetime: { issuedAt: 1, expiresAt: 601, expiresInSeconds: 600, throttleSeconds: 0 } } })
+  })
+  await page.goto('/login')
+  await page.getByRole('textbox', { name: 'Email address' }).fill('alex@example.com')
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await page.getByRole('button', { name: 'Resend code', exact: true }).click()
+  await expect.poll(() => requests).toBe(2)
+  await expect(page.getByRole('button', { name: 'Resend code', exact: true })).toBeEnabled()
+})
+
+for (const [entry, confirmation, endpoint] of [
+  ['/login', '/login/confirmation', 'signin'],
+  ['/signup', '/signup/confirmation', 'signup'],
+] as const) {
+  test(`${confirmation} restores the OTP step and countdown after reload without a current-user request`, async ({ page }) => {
+    await page.clock.install()
+    let userChecks = 0
+    await page.route('**/api/auth/me', (route) => {
+      userChecks += 1
+      return route.fulfill({ status: 401, json: { message: 'Authentication required' } })
+    })
+    await page.route(`**/api/auth/${endpoint}/email`, (route) =>
+      route.fulfill({ json: { lifetime: { issuedAt: 1, expiresAt: 601, expiresInSeconds: 600, throttleSeconds: 30 } } }),
+    )
+    await page.goto(entry)
+    await page.getByRole('textbox', { name: 'Email address' }).fill('alex@example.com')
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    await expect(page).toHaveURL(new RegExp(confirmation + '\\?'))
+    const address = new URL(page.url())
+    expect(address.searchParams.get('email')).toBe('alex@example.com')
+    expect(address.searchParams.has('code')).toBe(false)
+    expect(address.searchParams.has('token')).toBe(false)
+    await page.clock.runFor(5000)
+    await page.reload()
+    await expect(page.getByRole('group', { name: 'Email code' })).toBeVisible()
+    await expect(page.getByText('alex@example.com', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Resend in 25s', exact: true })).toBeDisabled()
+    expect(userChecks).toBe(1)
+    await page.getByRole('button', { name: 'Use a different email', exact: true }).click()
+    await expect(page).toHaveURL(entry)
+    await expect(page.getByRole('textbox', { name: 'Email address' })).toBeVisible()
+  })
+}
+
+test('confirmation URLs without a recipient return to email entry', async ({ page }) => {
+  await page.route('**/api/auth/me', (route) => route.fulfill({ status: 401, json: { message: 'Authentication required' } }))
+  await page.goto('/login/confirmation')
+  await expect(page).toHaveURL('/login')
+  await expect(page.getByRole('textbox', { name: 'Email address' })).toBeVisible()
+})
+
+test('Back and Forward restore authentication entry and confirmation from their paths', async ({ page }) => {
+  await page.route('**/api/auth/me', (route) => route.fulfill({ status: 401, json: { message: 'Authentication required' } }))
+  await page.route('**/api/auth/signin/email', (route) =>
+    route.fulfill({ json: { lifetime: { issuedAt: 1, expiresAt: 601, expiresInSeconds: 600, throttleSeconds: 30 } } }),
+  )
+  await page.goto('/login')
+  await page.getByRole('textbox', { name: 'Email address' }).fill('alex@example.com')
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await expect(page.getByRole('group', { name: 'Email code' })).toBeVisible()
+  await page.goBack()
+  await expect(page.getByRole('textbox', { name: 'Email address' })).toBeVisible()
+  await page.goForward()
+  await expect(page.getByRole('group', { name: 'Email code' })).toBeVisible()
 })

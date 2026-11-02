@@ -4,8 +4,8 @@ use super::Session;
 use super::{
     AuthError,
     token::{
-        AccessToken, EmailOtpAccessToken, EmailOtpChallenge, EncryptedAccessToken, RefreshToken,
-        UserAccessToken, UserTokens,
+        AccessToken, EmailOtpAccessToken, EmailOtpChallenge, EncryptedAccessToken, IssuedEmailOtp,
+        RefreshToken, UserAccessToken, UserTokens,
     },
 };
 use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode};
@@ -79,7 +79,7 @@ impl AuthService {
     }
 
     /// Reject existing accounts before requesting OTP delivery for signup.
-    pub async fn signup_email(&self, email: &str) -> Result<String, AuthError> {
+    pub async fn signup_email(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
         let email = compallm_utils::email::normalize_email(email);
         if self.users.find_by_email(&email).await?.is_some() {
             return Err(crate::persistent::user::UserRepositoryError::EmailAlreadyExists.into());
@@ -88,11 +88,11 @@ impl AuthService {
     }
 
     /// Request an encrypted OTP access token without disclosing account existence.
-    pub async fn signin_email(&self, email: &str) -> Result<String, AuthError> {
+    pub async fn signin_email(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
         self.send_email_otp(email).await
     }
 
-    async fn send_email_otp(&self, email: &str) -> Result<String, AuthError> {
+    async fn send_email_otp(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
         let challenge = EmailOtpChallenge::new(email, &self.jwt_secret)?;
         let sender = self.email.as_ref().ok_or(EmailError::Unavailable)?;
         sender
@@ -105,7 +105,10 @@ impl AuthService {
                 )),
             })
             .await?;
-        Ok(challenge.access_token)
+        Ok(IssuedEmailOtp {
+            token: challenge.access_token,
+            validity: challenge.validity,
+        })
     }
 
     pub async fn signin(

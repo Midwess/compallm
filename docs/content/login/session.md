@@ -63,7 +63,7 @@ A copied access JWT can remain usable until its short expiry, including its cach
 
 Signup/signin code requests and confirmation each accept optional `delivery` in JSON, defaulting to `cookie`. Confirmation requires the OTP access cookie or Bearer challenge. Code requests deliver the OTP access token only after email admission succeeds. Confirmation delivers user credentials only after Core authentication succeeds and the session commits. The mode is never stored in Session or JWT claims.
 
-- `cookie`: return `{}` with no token values. A code request sets a ten-minute OTP access cookie and clears the refresh cookie; confirmation replaces it with a user access cookie and sets the refresh cookie. Starting a new cookie login replaces any current browser credentials but does not revoke the previous database session.
+- `cookie`: return lifetime metadata with no token values. A code request sets a ten-minute OTP access cookie and clears the refresh cookie; confirmation replaces it with a user access cookie and sets the refresh cookie. Starting a new cookie login replaces any current browser credentials but does not revoke the previous database session.
 - `token`: code requests return `{ "token": "…" }`; confirmation returns `{ "accessToken": "…", "refreshToken": "…" }`. Neither sets cookies. This does not clear an existing browser session.
 
 Both require JSON input. Cookie delivery at either step requires an allowed Origin; token mode does not rely on browser cookies. Protected API middleware reads these cookies and renews them automatically when needed.
@@ -86,3 +86,28 @@ HttpOnly blocks cookie reads, but injected scripts can still make requests. Safe
 Refresh requires a signed token with an embedded session. Renewal records no activity timestamp, so cleanup requires a separate retention policy that remains unresolved.
 
 See [Email](email.md), [GitHub](github.md), and [GitLab](gitlab.md) for login-method details.
+
+
+## Token lifetime responses
+
+Every explicit token-issuing response includes timing metadata for either
+delivery mode. OTP requests return `lifetime`; confirmation returns
+`accessLifetime` and `refreshLifetime`. Each contains `issuedAt` and `expiresAt`
+(Unix seconds) and `expiresInSeconds` (remaining whole seconds when the response
+is prepared), plus `throttleSeconds` (minimum client wait before requesting
+another token). OTP responses set `throttleSeconds` to 30; access and refresh
+token metadata defaults to 0. Expiry is unchanged by this throttle. Values come from the issued token's validity, not a second client
+constant. Cookie delivery omits credentials only, retaining the metadata.
+Automatic cookie renewal on an unrelated protected endpoint preserves that
+endpoint's response contract; its browser cookies retain their expiry settings.
+
+The portal uses `lifetime.throttleSeconds` for its resend countdown, independently
+of OTP expiry.
+It computes remaining time from a deadline rather than decrementing a counter,
+so background-tab throttling does not extend the wait. Resend is disabled while
+throttle time remains; the SMTP recipient throttle is an independent server rule.
+Pending SMTP delivery or configured server cooldowns can still reject a resend;
+metadata does not guarantee admission. A new
+successful challenge replaces the deadline. Failed sends preserve it. Leaving
+authentication or completing verification disposes the timer. Credentials and
+OTP validity state remain in memory and never enter the URL.

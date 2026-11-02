@@ -563,3 +563,33 @@ fn access_tokens_reject_unknown_roles() {
         Err(AuthError::InvalidToken)
     ));
 }
+
+#[test]
+fn issued_token_metadata_matches_the_encoded_claims() {
+    let tokens = Fixture::tokens();
+    let access =
+        UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
+            .unwrap();
+    let refresh =
+        RefreshToken::try_from(AccessToken::decode(&tokens.refresh_token, SECRET).unwrap())
+            .unwrap();
+    assert_eq!(tokens.access_validity.issued_at, access.validity.issued_at);
+    assert_eq!(
+        tokens.access_validity.expires_at,
+        access.validity.expires_at
+    );
+    assert_eq!(
+        tokens.refresh_validity.issued_at,
+        refresh.validity.issued_at
+    );
+    assert_eq!(
+        tokens.refresh_validity.expires_at,
+        refresh.validity.expires_at
+    );
+    let challenge = EmailOtpChallenge::new("reader@example.com", SECRET).unwrap();
+    let claims = EmailOtpAccessToken::try_from(
+        AccessToken::decode(&challenge.access_token, SECRET).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(challenge.validity.expires_at, claims.validity.expires_at);
+}

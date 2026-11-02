@@ -19,6 +19,8 @@ Signup creates a user and personal organization atomically. Signin loads an exis
 
 Default to short-lived access JWTs and renewable refresh JWTs in secure HttpOnly cookies. Each signup/signin step accepts `delivery: "cookie" | "token"`: cookie mode omits token values from JSON; token mode returns them and sets no cookies. Delivery is an HTTP concern, never a Core property or JWT claim. Vite and Axum share one origin, so the browser sends cookies without exposing their values to frontend code.
 
+Explicit token-issuing responses return validity metadata for cookie and token delivery. Lifetimes include `throttleSeconds`: 30 for OTP and 0 for access/refresh tokens. The portal uses this throttle for its resend countdown; SMTP throttling remains independent. See [token lifetime responses](session.md#token-lifetime-responses).
+
 Each session belongs to an organization and user. Both JWT types embed Session directly: its ID, organization ID and name, user ID, and revocation state. Access JWTs also carry the membership role. Lookups and validation use Session directly. Every session operation checks organization and user together. Store the session, not the complete JWT; no separate refresh credential identifier is needed. Device information is optional.
 
 | Alternative | Why we chose this approach |
@@ -88,7 +90,7 @@ Clients expecting JSON credentials must explicitly request token delivery. Token
 
 ## Unresolved before implementation
 
-The [authentication pages](interface.md) accept consumer controllers with scoped Zustand stores and granular UI subscriptions. Store factories and controller interfaces belong to the UI library. The portal uses the generated cookie-delivery API client, rendering signup at `/` and signin at `/login`. After confirmation the portal verifies `/api/auth/me`, retains the current identity in root in-memory auth state, and navigates to `/:organizationName/chat`.
+The [authentication pages](interface.md) accept consumer controllers with scoped Zustand stores and granular UI subscriptions. Store factories and controller interfaces belong to the UI library. The portal uses the generated cookie-delivery API client, rendering signup at `/` (also `/signup`) and signin at `/login`, with reloadable `/signup/confirmation` and `/login/confirmation` steps. After confirmation the portal verifies `/api/auth/me`, retains the current identity in root in-memory auth state, and navigates to `/:organizationName/chat`.
 
 - Which operations require immediate access-token revocation; the current access lifetime is 30 minutes.
 - Cross-provider account linking and which login methods ship first.

@@ -17,7 +17,7 @@ Request-code admission must succeed before entering code verification. Failed ad
 
 Verification accepts six ASCII digits and allows only one request in flight. A complete code triggers verification. Suppress duplicate verification of an unchanged failed code; changing the code permits another attempt. Temporary failures support explicit retry without requiring code re-entry. Failed verification preserves the code and email context.
 
-Resending explicitly requests a replacement challenge. Respect server-provided retry delays; do not invent a fixed cooldown. Failed or throttled resend preserves the current challenge. Successful admission clears the entered code. Queue admission does not guarantee inbox delivery.
+Resending explicitly requests a replacement challenge. The portal uses the returned OTP `lifetime.throttleSeconds` to count down the 30-second OTP resend throttle, independently of challenge expiry; it does not invent a fixed delay. The SMTP cooldown remains independent. Failed or throttled resend preserves the current challenge. Successful admission clears the entered code. Queue admission does not guarantee inbox delivery.
 
 The controller owner manages timers and ignores responses from cancelled or superseded operations. Constructors and store factories have no request or timer side effects. Replacing or unmounting a demo controller stops its timer and invalidates pending responses. Initial factory overrides seed state once; later changes use controller methods.
 
@@ -36,3 +36,23 @@ The portal's root `AuthController` implements both `SignupController` and `Signi
 All portal pages access the root instance through `useAuthController()`. Its store holds current-user and form state, with granular subscriptions. `refreshCurrentUser()` requests fresh identity and redirects to `/login` when the API confirms an anonymous session or returns no user. Initial checks on public authentication pages allow anonymous users without redirecting. Network and server failures remain retryable errors rather than evidence of signout. If confirmation succeeds but the identity check fails temporarily, retry checks identity again without repeating confirmation. Controller cancellation suppresses stale identity updates and navigation.
 
 The shared auth contract includes `signOut()`. Organization signout delegates to the root auth controller, which calls `POST /api/auth/signout`. Success cancels pending authentication work, clears in-memory identity and form state, and soft-navigates to `/login`. Duplicate clicks share one operation. API failures show an error toast and leave state available for retry.
+
+
+## Confirmation addresses
+
+Successful code requests navigate to `/login/confirmation` or
+`/signup/confirmation`. Query parameters contain `email`, `resend_at`, and
+`expires_at`; deadlines use Unix milliseconds for the browser countdown.
+Reload restores the recipient, code-entry step, and remaining throttle from
+these values. The OTP code and credential never enter the URL or browser
+storage; the credential remains in the HttpOnly cookie. URL metadata grants
+no authentication and cannot prove a challenge is valid. Missing or malformed
+recipient metadata returns to the corresponding email-entry route.
+
+Confirmation routes and returns to email entry during an active OTP flow do not probe `/api/auth/me`: that endpoint requires a user
+access token and its authentication middleware can clear OTP cookies. An
+already-known authenticated identity may redirect to its organization without
+a request. A successful confirmation still verifies current-user identity
+before workspace navigation. An expired display deadline shows the expired-code
+message and allows resend once the throttle ends; the API enforces actual token
+validity. Using a different email returns to email entry and clears the code.

@@ -15,6 +15,8 @@ pub struct EmailOtpAccessToken {
 
 impl EmailOtpAccessToken {
     pub const TTL_SECONDS: u64 = 10 * 60;
+    /// Client resend wait, independent of credential expiry and SMTP admission.
+    pub const THROTTLE_SECONDS: u64 = 30;
 
     pub fn new(email: String) -> Result<Self, AuthError> {
         User::validate_email(&email).map_err(|_| AuthError::InvalidEmail)?;

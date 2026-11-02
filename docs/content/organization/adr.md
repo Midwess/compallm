@@ -62,3 +62,9 @@ The system should enforce configured membership and sharing permissions for orga
 ## Related pages
 
 - [Product overview](../overview.md)
+
+## Workspace page
+
+The UI library exports `OrganizationPage` as the organization workspace shell. Consumers provide `OrganizationControllerContext` from the library’s public context module. The controller owns workspace data, selected destinations, and navigation intent. The page composes `MainPage` and sidebar components; child content is supplied by the consumer.
+
+The organization shell has no default content. The portal owns the soft redirect from the organization entry to `/chat`; Storybook does not redirect. New-conversation and conversation-selection actions notify `onOpenChat(conversationId?)`. The portal owns navigation to `/chat` and any conversation identity passed through its router. Organization switching, Settings, search, and resource actions also notify the controller. Storybook previews use local controllers and no API or browser routing. Portal route integration and the full chat feature remain separate.

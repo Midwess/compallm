@@ -259,6 +259,8 @@ pub struct CurrentUserResponse {
     pub user_id: u64,
     /// Organization selected for this session.
     pub organization_id: u64,
+    /// Current stored name of the selected organization, loaded through active membership.
+    pub organization_name: String,
     /// Cached membership role from the access JWT, refreshed on renewal.
     #[schema(value_type = String, example = "owner")]
     pub organization_role: compallm_core::organization::OrganizationRole,
@@ -267,6 +269,7 @@ pub struct CurrentUserResponse {
 pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
     OpenApiRouter::new()
         .routes(routes!(current_user))
+        .routes(routes!(signout))
         .routes(routes!(confirm_signup_otp))
         .routes(routes!(confirm_signin_otp))
 }
@@ -280,6 +283,8 @@ pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
 /// Sec-Fetch-Site: same-origin. No credentials are returned in JSON.
 /// Access claims contain a cached role; session revocation and membership changes are
 /// checked on renewal rather than on every access-token request.
+/// This endpoint additionally loads the current organization name through an active
+/// membership in an active organization. The name is not stored in the JWT.
 #[utoipa::path(
     get, path = "/api/auth/me", operation_id = "currentUser", tag = "auth",
     security(("bearerAuth" = []), ("accessCookie" = [])),
@@ -291,12 +296,46 @@ pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
     )
 )]
 async fn current_user(
+    State(auth): State<&'static AuthService>,
     RequireToken(claims): RequireToken<UserAccessToken>,
-) -> Json<CurrentUserResponse> {
-    Json(CurrentUserResponse {
+) -> Result<Json<CurrentUserResponse>, ApiError> {
+    let organization = auth.current_organization(&claims).await?;
+    Ok(Json(CurrentUserResponse {
         session_id: claims.session.id,
         user_id: claims.session.user_id,
         organization_id: claims.session.organization_id,
+        organization_name: organization.name,
         organization_role: claims.organization_role,
-    })
+    }))
+}
+
+/// Sign out of the current session.
+///
+/// Revokes the organization/user-scoped session selected by a verified user access token.
+/// Cookie requests require a trusted Origin and clear both HttpOnly authentication cookies.
+/// Bearer requests revoke the selected session without changing browser cookies.
+/// Repeating signout for an already revoked session succeeds while the access token is valid.
+/// Other sessions remain active. Already-issued access JWTs remain valid until expiry.
+#[utoipa::path(
+    post, path = "/api/auth/signout", operation_id = "signOut", tag = "auth",
+    security(("bearerAuth" = []), ("accessCookie" = [])),
+    responses(
+        (status = 204, description = "Session revoked; cookie requests clear authentication cookies"),
+        (status = 401, description = "Missing or invalid user credential or session", body = ErrorResponse),
+        (status = 403, description = "Untrusted cookie Origin", body = ErrorResponse),
+        (status = 500, description = "Session persistence failed; retry signout", body = ErrorResponse)
+    )
+)]
+async fn signout(
+    State(auth): State<&'static AuthService>,
+    Extension(settings): Extension<&'static TokenDeliverySettings>,
+    headers: HeaderMap,
+    RequireToken(claims): RequireToken<UserAccessToken>,
+) -> Result<impl IntoResponse, ApiError> {
+    auth.signout(&claims).await?;
+    let mut response_headers = HeaderMap::new();
+    if !headers.contains_key(axum::http::header::AUTHORIZATION) {
+        settings.clear_cookies(&mut response_headers)?;
+    }
+    Ok((StatusCode::NO_CONTENT, response_headers))
 }

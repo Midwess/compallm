@@ -1,4 +1,6 @@
 import { useEffect, useRef, type InputHTMLAttributes, type ReactNode } from 'react'
+import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
+import { MinusIcon } from '@phosphor-icons/react/dist/csr/Minus'
 import { cx } from './shared'
 
 export function Switch({ className, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'role'>) {
@@ -29,21 +31,35 @@ export function Checkbox({ indeterminate = false, className, ...props }: Checkbo
     if (input.current) input.current.indeterminate = indeterminate
   }, [indeterminate])
   return (
-    <input
-      {...props}
-      ref={input}
-      type="checkbox"
-      className={cx(
-        `
-  size-[16px] flex-none cursor-pointer accent-primary focus-visible:outline-2
-  focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed
-  disabled:opacity-50
-`,
-        className,
+    <span
+      className={`
+relative inline-flex size-4.5 shrink-0 items-center justify-center has-disabled:cursor-not-allowed has-disabled:opacity-40
+`}
+    >
+      <input
+        {...props}
+        ref={input}
+        type="checkbox"
+        className={cx(
+          `peer absolute inset-0 size-full cursor-pointer appearance-none rounded-sm border
+    border-input-border bg-transparent checked:border-primary checked:bg-primary indeterminate:border-primary
+    indeterminate:bg-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus
+    disabled:cursor-not-allowed`,
+          className,
+        )}
+      />
+      {indeterminate ? (
+        <MinusIcon aria-hidden="true" className="pointer-events-none relative size-3.5 text-on-primary" />
+      ) : (
+        <CheckIcon
+          aria-hidden="true"
+          className="pointer-events-none relative size-3.5 text-on-primary opacity-0 peer-checked:opacity-100"
+        />
       )}
-    />
+    </span>
   )
 }
+
 export function Radio({ className, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {
   return (
     <input

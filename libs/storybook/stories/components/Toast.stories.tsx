@@ -9,7 +9,7 @@ function ToastDemo({ tone, message }: { tone: 'info' | 'error' | 'warning'; mess
   const [visible, setVisible] = useState(true)
   return (
     <Preview>
-      <section className="grid w-[360px] max-w-full gap-2">
+      <section className="grid w-90 min-w-0 max-w-full grid-cols-1 gap-2">
         <h3 className="text-[12px] text-muted">{tone}</h3>
         <Button onClick={() => setVisible(true)}>Show notification</Button>
         {visible ? <Toast tone={tone} message={message} onDismiss={() => setVisible(false)} /> : null}

@@ -112,7 +112,7 @@ export function Dropdown({
         className={`
   block h-[30px] w-full min-w-0 rounded-[8px] border-[0.5px] border-input-border bg-elevated px-1.25
   py-0 text-[13px] leading-[20px] text-text focus:outline-1 focus:outline-offset-1 focus:outline-focus
-  disabled:cursor-not-allowed disabled:opacity-50 flex cursor-pointer items-center justify-between
+  disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none flex cursor-pointer items-center justify-between
   gap-1 border-transparent shadow-control
 `}
         aria-label={label}

@@ -5,7 +5,7 @@ available: false
 
 # Login: ADR
 
-Implementation: Partial. Core sessions, read-only renewal, organization switching, cookie/JSON delivery, and protected API middleware are implemented. Logout endpoints and OAuth remain planned.
+Implementation: Partial. Core sessions, read-only renewal, organization switching, cookie/JSON delivery, and protected API middleware are implemented. Signout is implemented; OAuth remains planned.
 
 ## Problem and requirements
 
@@ -90,7 +90,7 @@ A stolen refresh JWT remains renewable until it expires or the session is explic
 
 ## Unresolved before implementation
 
-The [authentication pages](interface.md) accept consumer controllers with scoped Zustand stores and granular UI subscriptions. Store factories and controller interfaces belong to the UI library. The portal uses the generated cookie-delivery API client, rendering signup at `/` and signin at `/login`. The authenticated destination remains unresolved.
+The [authentication pages](interface.md) accept consumer controllers with scoped Zustand stores and granular UI subscriptions. Store factories and controller interfaces belong to the UI library. The portal uses the generated cookie-delivery API client, rendering signup at `/` and signin at `/login`. After confirmation the portal verifies `/api/auth/me`, retains the current identity in root in-memory auth state, and navigates to `/:organizationName/chat`.
 
 - Which operations require immediate access-token revocation; the current access lifetime is 30 minutes.
 - Cross-provider account linking and which login methods ship first.

@@ -69,6 +69,25 @@ impl OrganizationRepository {
 
 #[async_trait::async_trait]
 impl CoreRepository for OrganizationRepository {
+    async fn find_for_member(
+        &self,
+        organization_id: u64,
+        user_id: u64,
+    ) -> Result<Option<Organization>, OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        Organizations::find_by_id(Self::database_id(organization_id)?)
+            .inner_join(Members::default())
+            .filter(OrganizationColumn::Status.eq(OrganizationStatusSchema::Active))
+            .filter(MemberColumn::UserId.eq(Self::database_id(user_id)?))
+            .filter(MemberColumn::Status.eq(crate::schema::UserStatusSchema::Active))
+            .one(db)
+            .await
+            .map_err(OrganizationRepositoryError::database)?
+            .map(Organization::try_from)
+            .transpose()
+    }
+
     async fn find_membership(
         &self,
         organization_id: u64,

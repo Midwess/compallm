@@ -8,21 +8,37 @@ available: true
 ## Status
 
 Decision status: Organization ownership, management authorization, and provider
-availability are accepted; credential protection and integration behavior
-remain proposed.
+availability, batch creation, and optional connection testing are accepted;
+credential protection and provider-specific verification remain unresolved.
+Each provider model requires explicit input, output, and cache-read prices.
+Catalog presets may prefill editable prices; creation never infers missing
+rates or substitutes zero.
+Provider discovery lists provider identities independently of their models.
+After choosing a provider, callers choose enabled models from that provider's
+catalog and may add custom model definitions with explicit prices.
 Implementation status: Persistence schema and repository implemented. The Core
 provider entity represents its associated provider models, but repository
 relation loading, the Core management service, API, and provider integrations
-are not implemented.
+are not implemented. The library provides a consumer-controlled provider form
+with creation, saved-configuration, and clone previews; see [component integration](../portal/add-provider.md#component-integration).
 
 Provider connections belong to one organization. An authenticated owner or
 administrator may manage the LLM providers in that organization. Ordinary
 members cannot add, change, or remove provider connections, and a role in one
 organization grants no access to providers in another organization.
 
-Management provides explicit operations for adding OpenAI, Anthropic, and
-OpenAI-compatible APIs. Provider API calls and subscription integration belong
-in separate integration services rather than one general provider manager. See
+The planned Core `ProviderIntegrationService` in
+`provider/integration_service.rs` coordinates organization-scoped provider
+creation, input validation, name conflicts, and credential protection. Creation
+accepts multiple providers in one request and does not contact upstream
+providers or require a successful connection test.
+
+A separate planned API accepts complete unsaved connection configuration and
+tests it without inserting or updating any provider. Testing is optional and
+can happen before creation. It validates connection fields and organization
+access, but does not check provider-name uniqueness. Concrete provider clients
+perform upstream requests using reused pools and bounded timeouts, outside
+database transactions. Subscription integration remains separate. See
 [Managing providers](management.md) for the authorized behavior and credential
 boundaries.
 
@@ -31,6 +47,12 @@ enabled. Disabling a provider makes every associated provider model and router
 binding unavailable without deleting the provider, its credential, or its
 configuration. Management listings retain disabled providers; future routing
 and discovery workflows must exclude them from availability.
+
+Saved-provider viewing and editing keep credentials write-only. Cloning prepares
+an independent unsaved definition from non-secret configuration and model rates,
+requires a new key, and does not copy routes, usage, or test results. See
+[viewing, editing, and cloning](management.md#viewing-editing-and-cloning).
+These management flows remain planned for runtime integration.
 
 ## Consequences
 
@@ -47,9 +69,16 @@ Provider persistence round-trips availability without applying routing policy.
 Credential encryption, rotation, and provider-specific integration behavior
 remain unresolved.
 
+The [API contract](api-contract.md) defines proposed request/response schemas
+for `POST /api/providers` and `POST /api/providers/test-connection`. Atomicity,
+name comparison, limits, and error extensions remain proposed as specified
+there. A successful connection test is a result for the submitted configuration
+at that moment, not a requirement or guarantee for later creation or inference.
+
 ## Related pages
 
 - [Managing providers](management.md)
+- [Provider creation API contract](api-contract.md)
 - [Models and providers](../model/models-and-providers.md)
 - [Model management](../model/adr.md)
 - [Organization and membership](../organization/adr.md)

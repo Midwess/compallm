@@ -33,6 +33,40 @@ pub struct AuthService {
 }
 
 impl AuthService {
+    /// Revoke only the persisted session identified by the verified access credential.
+    pub async fn signout(&self, claims: &UserAccessToken) -> Result<(), AuthError> {
+        claims.validate(unix_timestamp())?;
+        let mut session = self
+            .sessions
+            .find(&claims.session)
+            .await?
+            .ok_or(AuthError::InvalidSession)?;
+        if !session.has_same_identity(&claims.session) {
+            return Err(AuthError::InvalidSession);
+        }
+        if session.revoked_at.is_some() {
+            return Ok(());
+        }
+        let previous = session.clone();
+        session.revoke();
+        if !self.sessions.update(&session, &previous).await? {
+            return Err(AuthError::InvalidSession);
+        }
+        Ok(())
+    }
+
+    /// Resolve the current organization name through the user's active membership.
+    pub async fn current_organization(
+        &self,
+        claims: &UserAccessToken,
+    ) -> Result<crate::organization::Organization, AuthError> {
+        claims.validate(unix_timestamp())?;
+        self.organizations
+            .find_for_member(claims.session.organization_id, claims.session.user_id)
+            .await?
+            .ok_or(AuthError::OrganizationAccessDenied)
+    }
+
     pub fn new(
         db: &'static DbContext,
         users: &'static Box<dyn UserRepository>,

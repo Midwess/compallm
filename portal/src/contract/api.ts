@@ -74,6 +74,8 @@ export interface CurrentUserResponse {
      * @minimum 0
      */
   organizationId: number;
+  /** Current stored name of the selected organization, loaded through active membership. */
+  organizationName: string;
   /** Cached membership role from the access JWT, refreshed on renewal. */
   organizationRole: string;
   /**
@@ -141,6 +143,8 @@ export const getCurrentUserUrl = () => {
  * Sec-Fetch-Site: same-origin. No credentials are returned in JSON.
  * Access claims contain a cached role; session revocation and membership changes are
  * checked on renewal rather than on every access-token request.
+ * This endpoint additionally loads the current organization name through an active
+ * membership in an active organization. The name is not stored in the JWT.
  * @summary Read the current authenticated identity and organization scope.
  */
 export const currentUser = async ( options?: RequestInit): Promise<CurrentUserResponse> => {
@@ -281,6 +285,49 @@ const res = await fetch(getConfirmSigninOtpUrl(),
     throw err;
   }
   const data: AuthTokensResponse = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+export const getSignOutUrl = () => {
+
+
+
+
+  return `/api/auth/signout`
+}
+
+/**
+ * Revokes the organization/user-scoped session selected by a verified user access token.
+ * Cookie requests require a trusted Origin and clear both HttpOnly authentication cookies.
+ * Bearer requests revoke the selected session without changing browser cookies.
+ * Repeating signout for an already revoked session succeeds while the access token is valid.
+ * Other sessions remain active. Already-issued access JWTs remain valid until expiry.
+ * @summary Sign out of the current session.
+ */
+export const signOut = async ( options?: RequestInit): Promise<void> => {
+
+  const res = await fetch(getSignOutUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: void, status?: number} = new globalThis.Error();
+    const data : void = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: void = body ? JSON.parse(body) : undefined
   return data
 }
 

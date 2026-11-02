@@ -26,6 +26,12 @@ impl From<ConnectionError> for OrganizationRepositoryError {
 /// Use the current DbContext and leave transaction ownership to the caller.
 #[async_trait]
 pub trait OrganizationRepository: Send + Sync {
+    /// Load an active organization through the user's active membership.
+    async fn find_for_member(
+        &self,
+        organization_id: u64,
+        user_id: u64,
+    ) -> Result<Option<Organization>, OrganizationRepositoryError>;
     /// Return an active organization membership, using the compound key.
     async fn find_membership(
         &self,

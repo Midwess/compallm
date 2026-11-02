@@ -25,11 +25,16 @@ class DemoOrganizationController implements OrganizationController {
     ],
   })
   constructor(private readonly report: (message: string) => void) {}
+  getCurrentOrganization = () => {
+    const state = this.store.getState()
+    return state.organizations.find((organization) => organization.id === state.organizationId) ?? null
+  }
   onOpenChat = (id?: string) => this.report(`Open chat: ${id ?? 'new'} → /chat`)
   onSelectOrganization = (id: string) => {
     this.report(`Switch organization: ${id}`)
     this.store.setState({ organizationId: id })
   }
+  onSignOut = () => this.report('Sign out')
   onOpenSettings = () => this.report('Open settings')
   onSearch = () => this.report('Search workspace')
   onOpenDestination = (id: string) => {

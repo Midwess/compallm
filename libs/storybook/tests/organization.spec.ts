@@ -28,3 +28,18 @@ test('organization selection and Settings notify the supplied controller', async
   await expect(page.getByRole('button', { name: 'Switch workspace: Research team', exact: true })).toBeVisible()
   await expect(page.getByRole('status', { name: 'Controller intent' })).toHaveText('Switch organization: research')
 })
+
+test('signout is the last organization action and notifies the controller', async ({ page }) => {
+  await page.goto(preview)
+  const trigger = page.getByRole('button', { name: 'Switch workspace: Compallm', exact: true })
+  await trigger.click()
+  const menu = page.getByRole('menu', { name: 'Workspace options', exact: true })
+  await expect(menu.getByRole('menuitem')).toHaveText(['Settings', 'Switch organization', 'Sign out'])
+  await expect(page.getByRole('menuitem', { name: 'Settings', exact: true })).toBeFocused()
+  await page.keyboard.press('End')
+  await expect(page.getByRole('menuitem', { name: 'Sign out', exact: true })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('status', { name: 'Controller intent' })).toHaveText('Sign out')
+  await expect(menu).not.toBeVisible()
+  await expect(trigger).toBeFocused()
+})

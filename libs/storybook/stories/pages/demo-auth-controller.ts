@@ -46,6 +46,13 @@ export class DemoAuthController implements SignupController, SigninController {
     this.store.setState({ pending: null })
   }
 
+  ensureCurrentUser = async () => this.store.getState().currentUser
+  signOut = async () => {
+    this.stop()
+    this.store.setState({ currentUser: null, status: 'anonymous' })
+  }
+  refreshCurrentUser = async () => this.store.getState().currentUser
+
   private scheduleCountdown() {
     if (this.timer !== undefined) clearInterval(this.timer)
     this.timer = undefined

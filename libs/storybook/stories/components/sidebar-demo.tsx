@@ -39,6 +39,7 @@ export function SidebarDemo({
           onWorkspaceClick={() => setAction('Workspace switcher')}
           onSearch={() => setAction('Workspace search')}
           onSettings={() => setAction('Settings')}
+          onSignOut={() => setAction('Sign out')}
         />
         <SidebarSection
           label="Providers"

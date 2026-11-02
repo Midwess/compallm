@@ -4,10 +4,14 @@ import { RouterProvider } from 'react-router/dom'
 import { Toaster } from 'sonner'
 import { router } from './App.tsx'
 import '@compallm/storybook/styles.css'
+import { AuthControllerContext } from '@compallm/storybook/context'
+import { authController } from './auth/controller'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
-    <Toaster position="top-right" theme="dark" />
+    <AuthControllerContext value={authController}>
+      <RouterProvider router={router} />
+      <Toaster position="top-right" theme="dark" />
+    </AuthControllerContext>
   </StrictMode>,
 )

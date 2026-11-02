@@ -3,6 +3,8 @@ import type { AuthState } from './types'
 
 export function createAuthStore(initial: Partial<AuthState> = {}) {
   return createStore<AuthState>()(() => ({
+    currentUser: null,
+    status: 'unknown',
     step: 'email',
     email: '',
     code: '',

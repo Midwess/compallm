@@ -43,11 +43,11 @@ test('expanded sidebar preserves the Penpot geometry', async ({ page }) => {
   await expect(sidebar).toHaveCSS('width', '244px')
   await expect(sidebar).toHaveCSS('padding', '4px 12px')
   for (const [name, top] of [
-    ['OpenAI', 104],
-    ['Stats', 230],
-    ['Fast Chat', 320],
-    ['Members', 416],
-    ['Exploring a new idea', 542],
+    ['OpenAI', 88],
+    ['Stats', 214],
+    ['Fast Chat', 304],
+    ['Members', 400],
+    ['Exploring a new idea', 526],
   ] as const) {
     const row = await sidebar.getByRole('link', { name, exact: true }).boundingBox()
     expect(row!.height).toBe(28)

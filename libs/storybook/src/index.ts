@@ -6,6 +6,7 @@ export * from './components/feedback'
 export * from './components/fields'
 export * from './components/forms'
 export * from './components/navigation'
+export * from './components/page-header'
 export * from './components/sidebar'
 export * from './components/selection'
 export * from './components/surfaces'
@@ -21,6 +22,7 @@ export type {
   AuthFailureReason,
   AuthController,
   AuthState,
+  AuthUser,
   AuthStore,
   AuthError,
   AuthOperation,
@@ -36,3 +38,18 @@ export { OrganizationControllerContext } from './context'
 export { ChatPage, createChatStore } from './pages/organization/chat'
 export type { ChatController, ChatState } from './pages/organization/chat'
 export { ChatControllerContext } from './context'
+export { CreateProviderPage, createCreateProviderStore } from './pages/organization/create-provider'
+export type {
+  CreateProviderController,
+  CreateProviderState,
+  ProviderPreset,
+  ProviderModel,
+  ModelDraft,
+} from './pages/organization/create-provider'
+export { CreateProviderControllerContext } from './context'
+
+export { Dialog, AlertDialog } from './components/dialog'
+export { Popup } from './components/popup'
+export { Table } from './components/table'
+export { FormField } from './components/form-field'
+export { FormSection } from './components/form-section'

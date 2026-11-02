@@ -5,7 +5,7 @@ available: false
 
 # Browser sessions
 
-A session records one successful signup or signin. Core authentication persists sessions, renews JWTs without database writes, and changes organization through a separate operation. Signup/signin confirmation supports cookie and JSON token delivery. Protected APIs accept access cookies or Bearer access tokens, with automatic cookie renewal. Logout endpoints and OAuth remain planned. The [login ADR](adr.md) explains the decisions behind this flow.
+A session records one successful signup or signin. Core authentication persists sessions, renews JWTs without database writes, and changes organization through a separate operation. Signup/signin confirmation supports cookie and JSON token delivery. Protected APIs accept access cookies or Bearer access tokens, with automatic cookie renewal. Signout is implemented; OAuth remains planned. The [login ADR](adr.md) explains the decisions behind this flow.
 
 ## What a session represents
 
@@ -27,7 +27,7 @@ Older refresh JWTs remain usable until their own expiry. Each valid renewal star
 
 ## Protected API requests
 
-Public signup/signin code-request routes require no credentials. Their confirmation routes require an email-OTP access token from cookie or Bearer. Middleware verifies the selected credential and inserts its concrete type as a request extension: `UserAccessToken`, `RefreshToken`, or decrypted `EmailOtpAccessToken`. Handlers declare `RequireToken<T>` to require exactly that type; an absent type returns 401. Raw request access uses `extensions().get::<T>()`. User-token extraction exposes organization/role guards returning 403. A route on the authenticated router must explicitly require the token type appropriate for its operation. `GET /api/auth/me` returns session ID, user ID, organization ID, and role without returning credentials.
+Public signup/signin code-request routes require no credentials. Their confirmation routes require an email-OTP access token from cookie or Bearer. Middleware verifies the selected credential and inserts its concrete type as a request extension: `UserAccessToken`, `RefreshToken`, or decrypted `EmailOtpAccessToken`. Handlers declare `RequireToken<T>` to require exactly that type; an absent type returns 401. Raw request access uses `extensions().get::<T>()`. User-token extraction exposes organization/role guards returning 403. A route on the authenticated router must explicitly require the token type appropriate for its operation. `GET /api/auth/me` returns session ID, user ID, organization ID, `organizationName`, and the cached role without returning credentials. It loads the current name from an active organization through the caller’s active membership; inaccessible organizations return 403. The name is not embedded in JWTs. Other access-cookie requests retain claim-only validation until renewal.
 
 ```rust
 async fn handler(RequireToken(token): RequireToken<UserAccessToken>) {
@@ -53,7 +53,7 @@ Ordinary renewal never changes organizations. It uses the current role when issu
 
 ## Logout and revocation
 
-Logout and administrative actions explicitly revoke the session. Logout also clears its cookies when cookie transport is implemented. Other login sessions remain independent.
+POST `/api/auth/signout` requires a user access token, revokes its organization/user-scoped session, and clears both authentication cookies for cookie requests. Repeating signout with a still-valid access token for an already revoked session succeeds. Cookie requests require a trusted Origin. Bearer requests revoke only the selected session and leave browser cookies unchanged. Other login sessions remain independent. Persistence failures return an error rather than claiming success.
 
 A copied access JWT can remain usable until its short expiry, including its cached role. Immediate access-token invalidation requires an additional server-side check. Failed renewal or switching does not automatically revoke a session, and invalid signatures or expired JWTs never authorize changes.
 

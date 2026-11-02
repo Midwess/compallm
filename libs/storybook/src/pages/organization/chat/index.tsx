@@ -6,6 +6,7 @@ import { ChatControllerContext } from '../../../context'
 import { Button } from '../../../components/buttons'
 import { ToolbarAction } from '../../../components/navigation'
 import { Select } from '../../../components/dropdowns'
+import { PageHeader, Title } from '../../../components/page-header'
 import type { ChatState } from './types'
 
 export { createChatStore } from './store'
@@ -23,10 +24,10 @@ function useChat<T>(selector: (state: ChatState) => T) {
 export function ChatPage() {
   return (
     <section aria-label="Create chat" className="relative flex h-full min-h-0 flex-col">
-      <header className="absolute inset-x-0 top-0 px-8 pt-4">
-        <h1 className="text-2xl leading-8 font-medium">New chat</h1>
-      </header>
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto px-6 py-6">
+      <PageHeader className="absolute inset-x-0 top-0">
+        <Title>New chat</Title>
+      </PageHeader>
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto px-3 py-6">
         <ChatInput />
       </div>
     </section>
@@ -57,15 +58,9 @@ function ChatInput() {
           onChange={(event) => controller.onDraftChanged(event.target.value)}
           placeholder="Start a conversation…"
           className={`
-  block h-[72px] w-full resize-none bg-transparent px-1.5 text-xs leading-6
+  block field-sizing-content min-h-18 max-h-64 w-full resize-none overflow-y-auto bg-transparent px-1.5 text-xs leading-6
   placeholder:text-muted focus:outline-none disabled:opacity-50
 `}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-              event.preventDefault()
-              if (canSend) controller.onCreateChat()
-            }
-          }}
         />
         <div className="flex items-center gap-3">
           <Select
@@ -73,7 +68,7 @@ function ChatInput() {
             options={models}
             value={modelId}
             onValueChange={controller.onModelChanged}
-            className="w-[140px]"
+            className="w-[140px] [&>button>span]:flex-1 [&>button>span]:text-center"
             disabled={creating || !models.length}
           />
           <ToolbarAction label="Attach file" onClick={controller.onAttach} disabled={creating} className="ml-auto">

@@ -58,6 +58,9 @@ test('select uses the themed floating menu without resizing its preview', async 
   expect(await menu.evaluate((element) => element.matches(':popover-open'))).toBe(true)
   expect(await page.locator('select').count()).toBe(0)
   expect(await preview.boundingBox()).toEqual(before)
+  await menu.evaluate(async (element) => {
+    await Promise.all(element.getAnimations().map((animation) => animation.finished))
+  })
   const panel = await menu.boundingBox()
   expect(panel!.y).toBeGreaterThanOrEqual(control!.y + control!.height)
   expect(panel!.x).toBeCloseTo(control!.x, 0)

@@ -4,3 +4,5 @@ package-lock.json
 pnpm-lock.yaml
 openapi.json
 src/contract/
+test-results/
+playwright-report/

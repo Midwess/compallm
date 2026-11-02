@@ -43,6 +43,7 @@ function OrganizationHeader() {
       onWorkspaceClick={() => {}}
       onSearch={controller.onSearch}
       onSettings={controller.onOpenSettings}
+      onSignOut={controller.onSignOut}
     />
   )
 }

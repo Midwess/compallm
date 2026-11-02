@@ -38,20 +38,35 @@ export function MultilineField({ className, ...props }: TextareaHTMLAttributes<H
   )
 }
 
+function SearchboxRoot({ className, children, ...props }: import('react').HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div {...props} className={cx('relative min-w-0', className)}>
+      <MagnifyingGlassIcon
+        aria-hidden="true"
+        className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted"
+      />
+      {children}
+    </div>
+  )
+}
+function SearchboxInput(props: TextFieldProps) {
+  return (
+    <TextField
+      type="search"
+      {...props}
+      className={cx(
+        'h-8 rounded-lg border-transparent bg-elevated py-1 pr-3 pl-8 text-xs leading-5 focus:outline-input-border',
+        props.className,
+      )}
+    />
+  )
+}
+export const Searchbox = Object.assign(SearchboxRoot, { Input: SearchboxInput })
 export function SearchField({ className, ...props }: TextFieldProps) {
   return (
-    <span
-      className={cx(
-        `
-  relative flex w-full [&>svg]:pointer-events-none [&>svg]:absolute [&>svg]:top-[9px] [&>svg]:left-1.5
-  [&>svg]:text-muted [&>input]:pl-[calc(14px+--spacing(3))] [&>input]:text-[13px]
-`,
-        className,
-      )}
-    >
-      <MagnifyingGlassIcon size={14} aria-hidden="true" />
-      <TextField type="search" {...props} />
-    </span>
+    <Searchbox className={className}>
+      <Searchbox.Input {...props} />
+    </Searchbox>
   )
 }
 

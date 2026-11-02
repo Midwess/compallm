@@ -49,6 +49,23 @@ struct OrganizationRepositoryStub(Arc<Mutex<State>>);
 
 #[async_trait::async_trait]
 impl OrganizationRepository for OrganizationRepositoryStub {
+    async fn find_for_member(
+        &self,
+        organization_id: u64,
+        user_id: u64,
+    ) -> Result<Option<Organization>, OrganizationRepositoryError> {
+        if self
+            .find_membership(organization_id, user_id)
+            .await?
+            .is_none()
+        {
+            return Ok(None);
+        }
+        Ok(self.0.lock().unwrap().organization.clone().filter(|item| {
+            item.id == organization_id
+                && item.status == compallm_core::organization::OrganizationStatus::Active
+        }))
+    }
     async fn find_membership(
         &self,
         organization_id: u64,
@@ -1262,4 +1279,140 @@ async fn expired_refresh_never_writes_or_revokes_a_session() {
             .into_transaction_log()
             .is_empty()
     );
+}
+
+#[tokio::test]
+async fn current_organization_returns_stored_name_only_for_the_signed_in_member() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    fixture.repo.0.lock().unwrap().organization = Some(Organization {
+        id: 84,
+        name: "Research team".into(),
+        status: compallm_core::organization::OrganizationStatus::Active,
+    });
+    let claims = UserAccessToken::new(
+        Session::new(1, 7, 84),
+        OrganizationRole::Owner,
+        Duration::from_secs(60),
+    )
+    .unwrap();
+    let service = fixture.service();
+    fixture
+        .repo
+        .1
+        .scope(async {
+            let organization = service.current_organization(&claims).await.unwrap();
+            assert_eq!(organization.name, "Research team");
+            assert_eq!(organization.id, 84);
+            fixture
+                .repo
+                .0
+                .lock()
+                .unwrap()
+                .organization
+                .as_mut()
+                .unwrap()
+                .name = "Renamed team".into();
+            assert_eq!(
+                service.current_organization(&claims).await.unwrap().name,
+                "Renamed team"
+            );
+            let mut foreign = claims.clone();
+            foreign.session.user_id = 99;
+            assert!(matches!(
+                service.current_organization(&foreign).await,
+                Err(AuthError::OrganizationAccessDenied)
+            ));
+            foreign = claims.clone();
+            foreign.session.organization_id = 85;
+            assert!(matches!(
+                service.current_organization(&foreign).await,
+                Err(AuthError::OrganizationAccessDenied)
+            ));
+            fixture
+                .repo
+                .0
+                .lock()
+                .unwrap()
+                .disabled_organizations
+                .push(84);
+            assert!(matches!(
+                service.current_organization(&claims).await,
+                Err(AuthError::OrganizationAccessDenied)
+            ));
+        })
+        .await;
+}
+
+#[tokio::test]
+async fn signout_revokes_only_the_selected_session_and_is_repeatable() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let selected = Session::new(1, 7, 84);
+    let other = Session::new(1, 8, 84);
+    {
+        let mut state = fixture.repo.0.lock().unwrap();
+        state.sessions.insert(7, selected.clone());
+        state.sessions.insert(8, other);
+    }
+    let claims = UserAccessToken::new(
+        selected.clone(),
+        OrganizationRole::Owner,
+        Duration::from_secs(60),
+    )
+    .unwrap();
+    let service = fixture.service();
+    fixture
+        .repo
+        .1
+        .scope(service.signout(&claims))
+        .await
+        .unwrap();
+    fixture
+        .repo
+        .1
+        .scope(service.signout(&claims))
+        .await
+        .unwrap();
+    {
+        let state = fixture.repo.0.lock().unwrap();
+        assert!(state.sessions[&7].revoked_at.is_some());
+        assert!(state.sessions[&8].revoked_at.is_none());
+    }
+    let refresh =
+        AccessToken::Refresh(RefreshToken::from_session(&selected, REFRESH_LIFETIME).unwrap())
+            .encode(SECRET, REFRESH_LIFETIME)
+            .unwrap();
+    assert!(matches!(
+        fixture.refresh(&refresh).await,
+        Err(AuthError::InvalidSession)
+    ));
+}
+
+#[tokio::test]
+async fn signout_cannot_revoke_a_foreign_user_or_organization_session() {
+    for presented in [Session::new(2, 7, 84), Session::new(1, 7, 85)] {
+        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+        fixture
+            .repo
+            .0
+            .lock()
+            .unwrap()
+            .sessions
+            .insert(7, Session::new(1, 7, 84));
+        let claims =
+            UserAccessToken::new(presented, OrganizationRole::Owner, Duration::from_secs(60))
+                .unwrap();
+        assert!(matches!(
+            fixture
+                .repo
+                .1
+                .scope(fixture.service().signout(&claims))
+                .await,
+            Err(AuthError::InvalidSession)
+        ));
+        assert!(
+            fixture.repo.0.lock().unwrap().sessions[&7]
+                .revoked_at
+                .is_none()
+        );
+    }
 }

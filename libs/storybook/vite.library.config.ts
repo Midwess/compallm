@@ -6,6 +6,11 @@ import { defineConfig } from 'vite'
 const source = (path: string) => fileURLToPath(new URL(`./src/${path}`, import.meta.url))
 const families = [
   'buttons',
+  'dialog',
+  'popup',
+  'table',
+  'form-field',
+  'form-section',
   'content',
   'data',
   'dropdowns',
@@ -13,6 +18,7 @@ const families = [
   'fields',
   'forms',
   'navigation',
+  'page-header',
   'sidebar',
   'selection',
   'surfaces',
@@ -35,6 +41,7 @@ export default defineConfig({
         'pages/main': source('pages/main/index.tsx'),
         'pages/organization': source('pages/organization/index.tsx'),
         'pages/organization/chat': source('pages/organization/chat/index.tsx'),
+        'pages/organization/create-provider': source('pages/organization/create-provider/index.tsx'),
         ...Object.fromEntries(families.map((name) => [`components/${name}`, source(`components/${name}.tsx`)])),
       },
       formats: ['es'],

@@ -113,6 +113,10 @@ jobs:
         run: npm exec -- tsc -b
       - name: Build the frontend
         run: npm exec -- vite build
+      - name: Install browser for portal session checks
+        run: npm exec -- playwright install --with-deps chromium
+      - name: Test portal authentication and session state
+        run: npm test
 
   docs:
     name: Documentation checks

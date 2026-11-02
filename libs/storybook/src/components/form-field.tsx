@@ -1,0 +1,37 @@
+import { createContext, useContext, useId, type ReactNode, type HTMLAttributes, type LabelHTMLAttributes } from 'react'
+import { TextField, type TextFieldProps } from './fields'
+import { cx } from './shared'
+const FieldContext = createContext<string | null>(null)
+function useFieldId() {
+  const id = useContext(FieldContext)
+  if (!id) throw new Error('FormField parts require FormField.')
+  return id
+}
+function Root({ children, className, ...props }: HTMLAttributes<HTMLDivElement> & { children: ReactNode }) {
+  const id = useId()
+  return (
+    <FieldContext value={id}>
+      <div {...props} className={cx('grid min-w-0 content-start gap-1', className)}>
+        {children}
+      </div>
+    </FieldContext>
+  )
+}
+function Label(props: LabelHTMLAttributes<HTMLLabelElement>) {
+  const id = useFieldId()
+  return <label {...props} htmlFor={id} className={cx('text-sm font-medium', props.className)} />
+}
+function Input(props: TextFieldProps) {
+  const id = useFieldId()
+  return (
+    <TextField
+      {...props}
+      id={id}
+      className={cx('h-8 rounded-lg px-1.5 py-1 text-sm leading-5 focus:outline-input-border', props.className)}
+    />
+  )
+}
+function Hint(props: HTMLAttributes<HTMLParagraphElement>) {
+  return <p {...props} className={cx('text-xs text-muted', props.className)} />
+}
+export const FormField = Object.assign(Root, { Label, Input, Hint })

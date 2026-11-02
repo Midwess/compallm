@@ -63,7 +63,8 @@ impl CoreSessionRepository for SessionRepository {
             .map_err(anyhow::Error::from)?
             .map(|(session, organization)| {
                 let organization = organization.context("session organization is missing")?;
-                crate::mappers::session::from_database(session, organization.name)
+                crate::mappers::session::MappedSession::try_from((session, organization.name))
+                    .map(Session::from)
             })
             .transpose()
     }

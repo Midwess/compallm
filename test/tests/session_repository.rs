@@ -2,6 +2,7 @@ use compallm_core::{
     auth::{RefreshToken, Session},
     persistent::{DbContext, session::SessionRepository as _},
 };
+use compallm_postgres::mappers::session::MappedSession;
 use compallm_postgres::{
     OrganizationSchema, OrganizationStatusSchema, UserSessionSchema,
     postgres_connection::PostgresConnection, repository::session::SessionRepository,
@@ -53,11 +54,9 @@ async fn owned_lookup_and_conditional_update_preserve_session_guards() {
     let context = Fixture::context(db.clone());
     context
         .transaction(async {
-            let token_session = compallm_postgres::mappers::session::from_database(
-                Fixture::row(),
-                "Research team".into(),
-            )
-            .unwrap();
+            let token_session = MappedSession::try_from((Fixture::row(), "Research team".into()))
+                .map(Session::from)
+                .unwrap();
             let mut session = SessionRepository.find(&token_session).await?.unwrap();
             let previous = session.clone();
             let token = RefreshToken::from_session(
@@ -107,9 +106,9 @@ async fn session_creation_records_login_without_updating_the_user() {
             .into_connection(),
     );
     let context = Fixture::context(db.clone());
-    let session =
-        compallm_postgres::mappers::session::from_database(Fixture::row(), "Research team".into())
-            .unwrap();
+    let session = MappedSession::try_from((Fixture::row(), "Research team".into()))
+        .map(Session::from)
+        .unwrap();
     context
         .transaction(SessionRepository.create(session))
         .await
@@ -131,9 +130,9 @@ async fn stale_update_reports_conflict_without_overwriting_the_session() {
             }])
             .into_connection(),
     ));
-    let previous =
-        compallm_postgres::mappers::session::from_database(Fixture::row(), "Research team".into())
-            .unwrap();
+    let previous = MappedSession::try_from((Fixture::row(), "Research team".into()))
+        .map(Session::from)
+        .unwrap();
     let mut updated = previous.clone();
     let token =
         RefreshToken::from_session(&previous, std::time::Duration::from_secs(30 * 24 * 60 * 60))
@@ -160,9 +159,9 @@ async fn revocation_update_does_not_overwrite_a_concurrent_organization() {
             .into_connection(),
     );
     let context = Fixture::context(db.clone());
-    let previous =
-        compallm_postgres::mappers::session::from_database(Fixture::row(), "Research team".into())
-            .unwrap();
+    let previous = MappedSession::try_from((Fixture::row(), "Research team".into()))
+        .map(Session::from)
+        .unwrap();
     let mut revoked = previous.clone();
     revoked.revoke();
     assert!(
@@ -193,9 +192,9 @@ async fn revocation_update_does_not_overwrite_a_concurrent_organization() {
 
 #[tokio::test]
 async fn existing_revocation_cannot_be_cleared_or_changed() {
-    let mut previous =
-        compallm_postgres::mappers::session::from_database(Fixture::row(), "Research team".into())
-            .unwrap();
+    let mut previous = MappedSession::try_from((Fixture::row(), "Research team".into()))
+        .map(Session::from)
+        .unwrap();
     previous.revoke();
     let mut active = previous.clone();
     active.revoked_at = None;
@@ -213,11 +212,9 @@ async fn owned_session_lookup_works_with_the_application_context() {
     ));
     context
         .scope(async {
-            let token_session = compallm_postgres::mappers::session::from_database(
-                Fixture::row(),
-                "Research team".into(),
-            )
-            .unwrap();
+            let token_session = MappedSession::try_from((Fixture::row(), "Research team".into()))
+                .map(Session::from)
+                .unwrap();
             let session = SessionRepository
                 .find(&token_session)
                 .await
@@ -253,14 +250,15 @@ async fn owned_session_lookup_works_with_the_application_context() {
 #[test]
 fn mapper_preserves_session_fields_and_rejects_unrepresentable_ids() {
     let row = Fixture::row();
-    let session =
-        compallm_postgres::mappers::session::from_database(row.clone(), "Research team".into())
-            .unwrap();
+    let session = MappedSession::try_from((row.clone(), "Research team".into()))
+        .map(Session::from)
+        .unwrap();
     assert_eq!(session.id, row.id as u64);
     let mut negative = row;
     negative.user_id = -1;
     assert!(
-        compallm_postgres::mappers::session::from_database(negative, "Research team".into())
+        MappedSession::try_from((negative, "Research team".into()))
+            .map(Session::from)
             .is_err()
     );
 }

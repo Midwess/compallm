@@ -22,6 +22,8 @@ Do not write unit tests or automated browser/interaction test suites for `libs/s
 
 Do not add generic `created_at` or `updated_at` columns to migrations or matching models. Keep timestamps only when required by a concrete business rule.
 
+Use `From`/`TryFrom` for type conversions instead of standalone mapper functions. When a conversion needs multiple inputs, use a tuple source, such as `TryFrom<(Model, String)>`, and destructure it in `try_from`. When Rust orphan rules prevent implementing a tuple conversion directly for a foreign domain type, use a small local conversion wrapper and convert it into the domain type; do not move database types into Core or introduce a custom conversion trait. Keep persistence conversions in the PostgreSQL crate.
+
 Use Validify for HTTP normalization and shared domain validation. Keep domain invariants in Core and persistence conversions and concurrency guards in PostgreSQL. External integrations use concrete clients with reused pools and bounded timeouts. Never hold database transactions open across email or HTTP calls.
 
 Only use transaction! when there are multiple update command, transaction must be ended as soon as possible while still maintaining correctness

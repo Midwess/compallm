@@ -54,18 +54,25 @@ A provider can have multiple provider models. A provider model records:
 - the upstream model name expected by that provider;
 - configured provider prices for input, output, and cached tokens in fixed-point
   USD per one million tokens;
-- configurable reasoning capabilities, including the portable effort values,
+- configurable reasoning capabilities, including provider-native effort values,
   exact-budget support, adaptive-reasoning support, and any known budget bounds;
 - whether the provider model is enabled.
 
-Reasoning support has explicit `unknown`, `unsupported`, and `supported` states.
-An empty capability set therefore does not incorrectly classify a model whose
-provider returned no metadata. Portable reasoning effort uses every integer from
-1 through 255 as one step, where larger values request stronger reasoning. Zero
-does not mean disabled because disabling, automatic selection, and exact token
-budgets are separate request modes. A provider model records the exact portable
-effort values it supports. Concrete provider clients translate those values into
-the provider's native levels or request fields.
+Core stores reasoning fields directly on `ProviderModel`, using the same field
+names as PostgreSQL. No nested capability object is required to access them.
+
+Reasoning support is derived from whether `reasoning_effort_values` is defined;
+there is no separate support field. `NULL` means unsupported or unknown. Any
+present array, including an empty array, means supported. An empty array records
+support without selectable native effort values, such as budget-only reasoning.
+Effort values are exact provider-native strings, not a numeric scale or a
+router-wide vocabulary. Each provider model records only the values accepted
+by its upstream endpoint; names and meanings can differ between providers and
+models. Provider clients own the request fields that carry those values.
+
+Effort values use nullable PostgreSQL `TEXT[]` and Core `Option<Vec<String>>`.
+A nonempty array lists selectable native values. Neither reasoning support nor
+effort support is stored as an independent flag.
 
 A provider model is independent of a system model and may be routed from more
 than one system model. `model_router` binds one system model to one provider

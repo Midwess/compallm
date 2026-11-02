@@ -49,16 +49,6 @@ pub enum ProviderUsageStatus {
     Incomplete,
 }
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "reasoning_support")]
-pub enum ReasoningSupport {
-    #[sea_orm(string_value = "unknown")]
-    Unknown,
-    #[sea_orm(string_value = "unsupported")]
-    Unsupported,
-    #[sea_orm(string_value = "supported")]
-    Supported,
-}
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "user_status")]
 pub enum UserStatus {
     #[sea_orm(string_value = "active")]

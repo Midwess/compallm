@@ -65,22 +65,46 @@ connection in the same organization. It stores:
 - the upstream model name accepted by that provider;
 - configured provider input, output, and cached-token prices in fixed-point USD
   per one million tokens;
-- reasoning support as `unknown`, `unsupported`, or `supported`;
-- supported portable reasoning-effort values, exact-budget support,
+- supported provider-native reasoning-effort values, exact-budget support,
   adaptive-reasoning support, and known minimum or maximum budgets;
 - an independent `enabled` state.
 
 Provider-model names are unique per provider connection. Database constraints
 reject provider models that cross organization boundaries.
 
-Missing provider metadata leaves reasoning support `unknown`; it does not prove
-that reasoning is unsupported. Provider discovery may populate these capability
-fields after validating the upstream response. Portable effort uses every
-integer from 1 through 255 as one step, with larger values representing stronger
-reasoning. Disabled, automatic, and exact-budget requests remain separate modes
-rather than numeric sentinels. Concrete provider clients own the translation
-from a portable effort or budget to native request fields. Provider-native
-request templates are not stored as model data.
+Core's `ProviderModel` exposes these fields directly: `reasoning_effort_values`,
+`supports_reasoning_budget`, `supports_adaptive_reasoning`,
+`minimum_reasoning_budget_tokens`, and `maximum_reasoning_budget_tokens`.
+The names match PostgreSQL columns.
+
+PostgreSQL stores effort values as nullable `TEXT[]`, defaulting to `NULL`;
+its SeaORM model and Core use `Option<Vec<String>>`.
+Reasoning support is derived from array presence: `NULL` means unsupported or
+unknown; any present array means supported. An empty array records support
+without selectable native effort levels, including budget-only or adaptive-only
+reasoning. A nonempty array lists selectable native values. Core checks support
+with `reasoning_effort_values.is_some()`. Neither reasoning support nor effort
+support is stored as a separate flag. The mapper preserves `NULL`, empty arrays,
+and native strings exactly, including their case. Database constraints reject
+null array elements. Budget bounds use checked conversion from PostgreSQL `i32`
+to Core `u32`, just as IDs use checked conversion from `i64` to `u64`.
+
+The reasoning-capabilities migration adds nullable native effort values, budget
+and adaptive support flags, and budget bounds directly. It creates no separate
+reasoning-support or effort-support column. Rolling it back removes all of
+these capability columns and their stored values.
+
+Missing provider metadata leaves effort values `NULL` by policy; it is not
+proof that reasoning is unsupported. Provider discovery may populate these
+capability fields after validating the upstream response. Effort values come
+from the provider's contract for that model and endpoint, not a shared numeric
+scale or the router's normalized choices. No global list or ordering is
+imposed: a value such as `high` need not mean the same thing across providers.
+A provider-native `none` or `auto` value is stored only when that endpoint
+accepts it. Budget and adaptive controls remain separate. Concrete provider
+clients put selected values into the correct native request fields; forwarding
+is not implemented. Provider-native request templates are not stored as model
+data.
 
 ### Model router binding
 

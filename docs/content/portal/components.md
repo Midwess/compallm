@@ -36,3 +36,19 @@ See [authentication page callbacks](../login/interface.md).
 `Toast` presents info, error, or warning messages and calls `onDismiss` when dismissed. Consumers own visibility, timing, queueing, deduplication, and recovery actions. Toasts do not retry requests or perform navigation. Informational and warning messages use polite status announcements; errors use an alert. Notifications do not take focus when mounted.
 
 Keep field-specific validation inline. Use toasts for operation-level feedback with safe, actionable messages; never display raw exceptions, credentials, or provider payloads. The portal uses Sonner to host the shared toast UI. Controllers report operation failures through a shared notification function. It displays the API response’s `message` unchanged, uses a safe generic message for unexpected failures, and ignores cancelled requests. API failures are not duplicated as inline status-derived messages.
+
+## Sidebar composition
+
+The library exports `Sidebar`, `SidebarHeader`, `SidebarSection`, `SidebarFolder`, and `SidebarItem`. Consumers compose workspace identity, grouped destinations, and nested model links from these primitives. Sections and folders use native disclosure elements, keeping their state independent. Consumers supply selected links, destination URLs, and workspace/search/create callbacks. The workspace header opens a dismissible options menu with a Settings action supplied by the consumer. Selecting Settings closes the menu and invokes its callback; the library does not choose an application route. Optional navigation callbacks integrate with client routers while modified clicks retain browser behavior.
+
+Storybook supplies fictional providers, models, and conversations. The sidebar does not fetch data, infer permissions, or register application routes. Main-page and portal integration remain separate.
+
+## Main-page composition
+
+`MainPage` provides the application shell with a caller-supplied `sidebar` slot and `children` for feature content. The shell owns viewport containment; sidebar navigation and main content scroll independently. Feature content supplies its own headings and data. The component does not instantiate controllers, register routes, or load workspace data. Consumers own any page controller and context.
+
+Import the shell through `@compallm/storybook/pages/main`. Storybook demonstrates the empty shell and content scrolling with local sidebar fixtures. Portal routing remains unchanged by this component.
+
+The workspace menu offers Settings and organization switching. Consumers supply organization IDs, names, the active ID, and a selection callback. The organization submenu opens on hover or keyboard activation; selecting an organization closes both menus and invokes the consumer callback. Selection does not itself change authorization or persist a session.
+
+Shared popup surfaces use a 150ms scale entrance animation. Reduced-motion users receive no animation. The animation is a shared Tailwind theme utility for menus, popovers, and future dialog surfaces.

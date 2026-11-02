@@ -1,5 +1,5 @@
 import { cloneElement, useId, useState, type HTMLAttributes, type ReactElement, type ReactNode } from 'react'
-import { cx } from './shared'
+import { cx, popupMotion } from './shared'
 import { Button } from './buttons'
 import { InfoIcon } from '@phosphor-icons/react/dist/csr/Info'
 import { WarningCircleIcon } from '@phosphor-icons/react/dist/csr/WarningCircle'
@@ -165,7 +165,7 @@ export function Popover({ label, children }: { label: string; children: ReactNod
       <div
         id={id}
         popover="auto"
-        className={`
+        className={`${popupMotion}
   w-[360px] max-w-[calc(100vw-32px)] rounded-[12px] border-[0.5px] border-input-border bg-menu p-2
   text-text [&:popover-open]:absolute [&:popover-open]:m-1 [&:popover-open]:[position-area:bottom_span-right]
   [&:popover-open]:[position-try-fallbacks:flip-block,flip-inline] [&>*+*]:mt-1.5

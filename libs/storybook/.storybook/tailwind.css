@@ -1,6 +1,5 @@
 @import '../src/styles/tailwind.css';
 
-@source '../src/components';
-@source '../src/pages';
-@source '../stories';
+@source '../src/**/*.{ts,tsx}';
+@source '../stories/**/*.{ts,tsx}';
 @source './';

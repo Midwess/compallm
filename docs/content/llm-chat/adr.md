@@ -44,3 +44,7 @@ Which chat capabilities ship first, and what access and sharing rules apply to c
 ## Related pages
 
 - [Product overview](../overview.md)
+
+## UI controller boundary
+
+The library exports the create-chat content from `pages/organization/chat`. Consumers wrap it in `ChatControllerContext` and compose it inside the empty `OrganizationPage` shell. The controller owns draft text, selected model, available models, and creation-pending state through a scoped store. Input, model selection, attachment, and create-chat actions notify the controller. The component does not generate responses or render a conversation transcript. The portal owns the `/chat` route, soft routing from the organization entry, and API integration. Storybook uses local demo controllers.

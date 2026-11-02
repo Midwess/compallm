@@ -10,9 +10,10 @@ available: true
 Decision status: Organization ownership, pricing, provider models, and route
 configuration are accepted. Model-management authorization, route selection,
 model availability, and fallback error rules remain proposed. Implementation
-status: The migration and generated PostgreSQL schema implement
-`provider_models` and `model_router`. Model services, route management APIs, and
-routing are not implemented.
+status: The migrations and generated PostgreSQL schema implement
+`provider_models`, provider-model reasoning capabilities, and `model_router`.
+Model services, route management APIs, provider discovery, capability refresh,
+and routing are not implemented.
 
 ## Context and decision
 
@@ -28,8 +29,9 @@ provider model identifies what a provider accepts.
 Each model records organization-facing prices for input, output, and cached
 tokens. Prices are non-negative fixed-point USD amounts per one million tokens.
 They are stable billing and reporting rates, not necessarily the organization's
-upstream provider costs. Core represents each rate as a non-negative integer
-count of 10^-8 USD; the PostgreSQL adapter maps that value to `NUMERIC(20,8)`.
+upstream provider costs. Core represents each rate with
+`rust_decimal::Decimal`; PostgreSQL stores the same exact decimal value as
+`NUMERIC(20,8)`.
 
 A model owns no availability or visibility flag of its own. Whether Compallm
 serves the model depends on the router bindings that select an upstream
@@ -52,7 +54,25 @@ A provider can have multiple provider models. A provider model records:
 - the upstream model name expected by that provider;
 - configured provider prices for input, output, and cached tokens in fixed-point
   USD per one million tokens;
+- configurable reasoning capabilities, including provider-native effort values,
+  exact-budget support, adaptive-reasoning support, and any known budget bounds;
 - whether the provider model is enabled.
+
+Core stores reasoning fields directly on `ProviderModel`, using the same field
+names as PostgreSQL. No nested capability object is required to access them.
+
+Reasoning support is derived from whether `reasoning_effort_values` is defined;
+there is no separate support field. `NULL` means unsupported or unknown. Any
+present array, including an empty array, means supported. An empty array records
+support without selectable native effort values, such as budget-only reasoning.
+Effort values are exact provider-native strings, not a numeric scale or a
+router-wide vocabulary. Each provider model records only the values accepted
+by its upstream endpoint; names and meanings can differ between providers and
+models. Provider clients own the request fields that carry those values.
+
+Effort values use nullable PostgreSQL `TEXT[]` and Core `Option<Vec<String>>`.
+A nonempty array lists selectable native values. Neither reasoning support nor
+effort support is stored as an independent flag.
 
 A provider model is independent of a system model and may be routed from more
 than one system model. `model_router` binds one system model to one provider
@@ -90,6 +110,8 @@ select the lowest value first. Selection and fallback rules remain unresolved.
   apply discovery and routing policy.
 - Model settings round-trip through persistence as JSON. The repository does
   not interpret individual keys; owning services validate settings they use.
+- Routing can use provider-model reasoning capabilities without storing
+  provider request templates or coupling logical models to one provider.
 
 ## Behavior examples
 
@@ -114,7 +136,8 @@ select the lowest value first. Selection and fallback rules remain unresolved.
 - How does an organization withdraw a model from discovery without deleting
   its router bindings?
 - Which provider errors permit fallback, and how are cooldowns represented?
-- Where is provider capability metadata maintained?
+- How are provider-reported capabilities, Compallm registry data, and
+  administrator overrides reconciled during model discovery and refresh?
 
 ## Related pages
 

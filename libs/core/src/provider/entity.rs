@@ -1,4 +1,6 @@
-use crate::model::Price;
+use rust_decimal::Decimal;
+
+use super::error::ProviderApiKeyError;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ApiProtocol {
@@ -25,9 +27,14 @@ pub struct ProviderModel {
     pub provider_id: u64,
     pub name: String,
     pub enabled: bool,
-    pub input_price_per_million_tokens: Price,
-    pub output_price_per_million_tokens: Price,
-    pub cached_price_per_million_tokens: Price,
+    pub input_price_per_million_tokens: Decimal,
+    pub output_price_per_million_tokens: Decimal,
+    pub cached_price_per_million_tokens: Decimal,
+    pub reasoning_effort_values: Option<Vec<String>>,
+    pub supports_reasoning_budget: bool,
+    pub supports_adaptive_reasoning: bool,
+    pub minimum_reasoning_budget_tokens: Option<u32>,
+    pub maximum_reasoning_budget_tokens: Option<u32>,
 }
 
 /// Secret value persisted in the provider's `api_key` column.
@@ -50,5 +57,3 @@ impl ProviderApiKey {
         self.0
     }
 }
-
-use super::error::ProviderApiKeyError;

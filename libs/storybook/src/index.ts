@@ -53,3 +53,6 @@ export { Popup } from './components/popup'
 export { Table } from './components/table'
 export { FormField } from './components/form-field'
 export { FormSection } from './components/form-section'
+
+export { UrlControllerContext } from './context'
+export type { UrlController, UrlState, NavigationRequest } from './url'

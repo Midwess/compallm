@@ -1,6 +1,5 @@
 import { Checkbox } from '../../../components/selection'
 import { FormField } from '../../../components/form-field'
-import { useState } from 'react'
 import { Button } from '../../../components/buttons'
 import { Dialog } from '../../../components/dialog'
 
@@ -20,7 +19,35 @@ export function ModelDialog() {
   const draft = useProvider((state) => state.modelDraft)
   const editing = useProvider((state) => state.editingModelId)
   const models = useProvider((state) => state.models)
-  const [originalDraft] = useState(() => (draft ? JSON.stringify(draft) : null))
+  const navigationRequest = useProvider((state) => state.navigationRequest)
+  const originalDraft = editing ? models.find((model) => model.id === editing) : null
+  const changed =
+    draft &&
+    (originalDraft
+      ? JSON.stringify([
+          draft.name,
+          draft.maxContextTokens,
+          draft.thinkingLevels,
+          draft.inputPrice,
+          draft.outputPrice,
+          draft.cachedPrice,
+        ]) !==
+        JSON.stringify([
+          originalDraft.name,
+          originalDraft.maxContextTokens,
+          originalDraft.thinkingLevels,
+          originalDraft.inputPrice,
+          originalDraft.outputPrice,
+          originalDraft.cachedPrice,
+        ])
+      : !!(
+          draft.name ||
+          draft.maxContextTokens ||
+          draft.thinkingLevels.length ||
+          draft.inputPrice ||
+          draft.outputPrice ||
+          draft.cachedPrice
+        ))
   if (!draft) return null
   const duplicate = models.some((model) => model.id !== editing && model.name.trim() === draft.name.trim())
   const valid = isValidModelDraft(draft) && !duplicate
@@ -115,8 +142,8 @@ export function ModelDialog() {
             </Dialog.Footer>
           </form>
         </Dialog.Content>
-        {JSON.stringify(draft) !== originalDraft ? (
-          <Dialog.Discard>Your unsaved model changes will be lost.</Dialog.Discard>
+        {changed ? (
+          <Dialog.Discard request={navigationRequest ?? undefined}>Your unsaved model changes will be lost.</Dialog.Discard>
         ) : null}
       </Dialog>
     </>

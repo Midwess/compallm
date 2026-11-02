@@ -1,5 +1,6 @@
 import { createBrowserRouter, Link, Outlet, useNavigation } from 'react-router'
-import { authController } from './auth/controller'
+import { urlController } from './url/controller'
+import { redirect } from 'react-router'
 import { guestOnly, requireCurrentUser, organizationIndex } from './auth/route-access'
 
 function Layout() {
@@ -48,10 +49,27 @@ export const router = createBrowserRouter([
       {
         path: ':organizationName',
         loader: requireCurrentUser,
+        shouldRevalidate: ({ currentParams, nextParams }) => currentParams.organizationName !== nextParams.organizationName,
         lazy: () => import('./routes/organization'),
         children: [
           { index: true, loader: organizationIndex, Component: () => null },
           { path: 'chat', lazy: () => import('./routes/chat') },
+          {
+            path: 'providers/new',
+            lazy: () => import('./routes/create-provider'),
+            children: [
+              {
+                index: true,
+                Component: () => null,
+                loader: ({ request }) => {
+                  const url = new URL(request.url)
+                  return redirect(url.pathname.replace(/\/$/, '') + '/choose-provider' + url.search)
+                },
+              },
+              { path: 'choose-provider', Component: () => null },
+              { path: 'configure-provider', Component: () => null },
+            ],
+          },
         ],
       },
       { path: '*', Component: NotFound },
@@ -59,6 +77,4 @@ export const router = createBrowserRouter([
   },
 ])
 
-authController.navigate = (href) => {
-  void router.navigate(href, { replace: href === '/login' })
-}
+urlController.connect(router)

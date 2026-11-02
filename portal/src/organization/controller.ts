@@ -1,5 +1,5 @@
 import { createOrganizationStore, type OrganizationController as Controller } from '@compallm/storybook/pages/organization'
-import type { AuthController } from '@compallm/storybook'
+import type { AuthController, UrlController } from '@compallm/storybook'
 import find from 'lodash-es/find'
 import type { CurrentUserResponse } from '../contract/api'
 import { notify } from '../notifications/toast'
@@ -7,12 +7,12 @@ import { organizationHome } from './paths'
 
 export class OrganizationController implements Controller {
   readonly store = createOrganizationStore()
-  private readonly navigate: (path: string) => void
+  private readonly url: Pick<UrlController, 'navigate'>
   private chatPath = ''
   private readonly auth: Pick<AuthController, 'signOut'>
 
-  constructor(user: CurrentUserResponse, navigate: (path: string) => void, auth: Pick<AuthController, 'signOut'>) {
-    this.navigate = navigate
+  constructor(user: CurrentUserResponse, url: Pick<UrlController, 'navigate'>, auth: Pick<AuthController, 'signOut'>) {
+    this.url = url
     this.auth = auth
     this.setCurrentUser(user)
   }
@@ -34,7 +34,7 @@ export class OrganizationController implements Controller {
     })
   }
 
-  onOpenChat = () => this.navigate(this.chatPath)
+  onOpenChat = () => this.url.navigate(this.chatPath)
   onSelectOrganization = (id: string) => {
     if (id !== this.store.getState().organizationId) notify.info('Organization switching is not available yet.')
   }
@@ -51,7 +51,8 @@ export class OrganizationController implements Controller {
     notify.info('This feature is not available yet.')
   }
   onCreateProvider = () => {
-    notify.info('Provider setup is not available yet.')
+    const organization = this.getCurrentOrganization()
+    if (organization) this.url.navigate(`/${encodeURIComponent(organization.name)}/providers/new/choose-provider`)
   }
   onCreateRouter = () => {
     notify.info('Router setup is not available yet.')

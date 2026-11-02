@@ -1,3 +1,4 @@
+import type { NavigationRequest } from '../../../url'
 import type { StoreApi } from 'zustand/vanilla'
 
 export type EndpointMode = 'chat_completions' | 'responses' | 'messages' | 'video' | 'realtime'
@@ -32,6 +33,7 @@ export interface ProviderSnapshot {
   models: ProviderModel[]
 }
 export interface CreateProviderState {
+  navigationRequest: NavigationRequest | null
   intent: 'create' | 'edit' | 'clone'
   savedProvider: ProviderSnapshot | null
 

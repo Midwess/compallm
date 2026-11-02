@@ -1,3 +1,4 @@
+import type { UrlController } from './url'
 import { createContext } from 'react'
 import type { AuthController } from './pages/auth/types'
 import type { OrganizationController } from './pages/organization/types'
@@ -8,3 +9,5 @@ export const AuthControllerContext = createContext<AuthController | null>(null)
 export const OrganizationControllerContext = createContext<OrganizationController | null>(null)
 export const ChatControllerContext = createContext<ChatController | null>(null)
 export const CreateProviderControllerContext = createContext<CreateProviderController | null>(null)
+
+export const UrlControllerContext = createContext<UrlController | null>(null)

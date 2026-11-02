@@ -11,6 +11,7 @@ import {
   type DialogHTMLAttributes,
   type ButtonHTMLAttributes,
 } from 'react'
+import type { NavigationRequest } from '../url'
 import { createPortal } from 'react-dom'
 import { Button, type ButtonProps } from './buttons'
 import { XIcon } from '@phosphor-icons/react/dist/csr/X'
@@ -139,13 +140,23 @@ function Cancel({ children = 'Cancel', ...props }: ButtonProps) {
     </Button>
   )
 }
-function Discard({ children = 'Your unsaved changes will be lost.' }: { children?: ReactNode }) {
+function Discard({
+  children = 'Your unsaved changes will be lost.',
+  request,
+}: {
+  children?: ReactNode
+  request?: NavigationRequest
+}) {
   const { completeClose, registerDiscard } = useDialog()
   const [open, setOpen] = useState(false)
   useEffect(() => registerDiscard(() => setOpen(true)), [registerDiscard])
-  if (!open) return null
+  if (!open && !request) return null
+  const keep = () => {
+    setOpen(false)
+    request?.keep()
+  }
   return createPortal(
-    <AlertDialog onClose={() => setOpen(false)}>
+    <AlertDialog onClose={keep}>
       <AlertDialog.Content>
         <AlertDialog.Header>
           <AlertDialog.Title>Discard changes?</AlertDialog.Title>
@@ -154,10 +165,10 @@ function Discard({ children = 'Your unsaved changes will be lost.' }: { children
           <AlertDialog.Description>{children}</AlertDialog.Description>
         </AlertDialog.Body>
         <AlertDialog.Footer>
-          <Button autoFocus className="h-8 px-3 text-xs" onClick={() => setOpen(false)}>
+          <Button autoFocus className="h-8 px-3 text-xs" onClick={keep}>
             Keep editing
           </Button>
-          <Button variant="destructive" className="h-8 px-3 text-xs" onClick={completeClose}>
+          <Button variant="destructive" className="h-8 px-3 text-xs" onClick={request ? request.discard : completeClose}>
             Discard changes
           </Button>
         </AlertDialog.Footer>

@@ -86,5 +86,16 @@ Blank replacement credentials preserve an existing key. Clone actions delegate
 to the consumer and open a separate draft with copied configuration and prices,
 a ` clone` name suffix, an empty credential, and no prior test result. Cancel
 restores the saved configuration or returns from a clone draft to its source.
-These interactions are implemented in isolated Storybook previews; API and
-portal routing integration remain planned.
+The portal lazy-loads the creation page at `/:organizationName/providers/new`
+inside the authenticated organization shell. Its controller supplies known
+provider identities and unsaved configuration/model editing. Provider model
+catalog discovery, persistence, and connection-test APIs remain unavailable;
+those actions report that limitation through notifications. The portal never
+imports preview controllers, fictional model catalogs, or simulated successes.
+The sidebar Add provider action soft-navigates to this route.
+
+Provider creation uses child routes `new/choose-provider` and
+`new/configure-provider`. The injected root URL controller owns navigation and
+query state; the provider controller projects non-secret fields and model drafts
+from it, including reload and Back/Forward. API keys stay in memory. See
+[URL state](url-state.md) for query ownership, history, and discard semantics.

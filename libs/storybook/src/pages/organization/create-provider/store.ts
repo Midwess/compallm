@@ -3,6 +3,7 @@ import type { CreateProviderState } from './types'
 
 export function createCreateProviderStore(initial: Partial<CreateProviderState> = {}) {
   return createStore<CreateProviderState>()(() => ({
+    navigationRequest: null,
     intent: 'create',
     savedProvider: null,
     step: 'choose',

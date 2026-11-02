@@ -11,6 +11,8 @@ import {
   signupEmail,
   type CurrentUserResponse,
 } from '../contract/api'
+import { urlController } from '../url/controller'
+import type { UrlController } from '@compallm/storybook'
 import { notify } from '../notifications/toast'
 import { organizationHome } from '../organization/paths'
 
@@ -34,7 +36,11 @@ export class AuthController implements SignupController, SigninController {
   private confirmed = false
   private destination: string | undefined
 
-  navigate?: (href: string) => void
+  private readonly url: Pick<UrlController, 'navigate'>
+  constructor(url: Pick<UrlController, 'navigate'>) {
+    this.url = url
+  }
+  navigate = (href: string) => this.url.navigate(href, { replace: href === '/login' })
 
   start = (mode: 'signup' | 'signin') => {
     this.stop()
@@ -220,4 +226,4 @@ export class AuthController implements SignupController, SigninController {
   }
 }
 
-export const authController = new AuthController()
+export const authController = new AuthController(urlController)

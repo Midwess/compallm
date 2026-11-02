@@ -232,7 +232,7 @@ test('organization controller derives active information and isolates workspace 
   await page.goto('/Research%20team/chat')
   const result = await page.evaluate(async (identity) => {
     const { OrganizationController } = await import('/src/organization/controller.ts')
-    const controller = new OrganizationController(identity, () => {}, { signOut: async () => {} })
+    const controller = new OrganizationController(identity, { navigate: () => {} }, { signOut: async () => {} })
     controller.store.setState({ providers: [{ id: 'provider', name: 'Provider', href: '#' }] })
     controller.setCurrentUser({ ...identity, organizationName: 'Renamed team' })
     const renamed = controller.getCurrentOrganization()
@@ -318,7 +318,7 @@ test('concurrent controller calls share identity checks and signout requests', a
   const initialChecks = checks
   const result = await page.evaluate(async () => {
     const { AuthController } = await import('/src/auth/controller.ts')
-    const controller = new AuthController()
+    const controller = new AuthController({ navigate: () => {} })
     const identities = await Promise.all([
       controller.ensureCurrentUser(),
       controller.ensureCurrentUser(),
@@ -339,7 +339,7 @@ test('superseded identity checks cannot overwrite the latest controller state', 
   await expect(page.getByRole('heading', { name: 'New chat', exact: true })).toBeVisible()
   const result = await page.evaluate(async () => {
     const { AuthController } = await import('/src/auth/controller.ts')
-    const controller = new AuthController()
+    const controller = new AuthController({ navigate: () => {} })
     const stale = controller.refreshCurrentUser()
     const latest = controller.refreshCurrentUser()
     const outcomes = await Promise.allSettled([stale, latest])
@@ -389,7 +389,7 @@ test('controller collection lookups select exact organization and model identifi
   const result = await page.evaluate(async (identity) => {
     const { OrganizationController } = await import('/src/organization/controller.ts')
     const { ChatController } = await import('/src/chat/controller.ts')
-    const workspace = new OrganizationController(identity, () => {}, { signOut: async () => {} })
+    const workspace = new OrganizationController(identity, { navigate: () => {} }, { signOut: async () => {} })
     workspace.store.setState({
       organizations: [
         { id: 'other', name: 'Other team' },

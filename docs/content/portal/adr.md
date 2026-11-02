@@ -43,3 +43,21 @@ Each entry to `/` or `/login` rechecks `/api/auth/me` instead of trusting a cach
 Workspace URLs start with the real organization name, URL-encoded as a single path segment. The portal derives the canonical path from `/api/auth/me`; a route for another name redirects to the signed-in organization instead of changing session scope.
 
 The organization route provides one shared `OrganizationController` through the library’s public `OrganizationControllerContext` around its shell and child outlet. `useOrganizationController()` consumes that context and exposes the library interface, including current-organization information and workspace actions, to all organization child pages. The portal implements the interface and owns API calls and navigation. The controller owns workspace state and derives the current organization from its store. Auth refreshes update verified organization information without clearing workspace resources; child navigation preserves the instance. Leaving the organization route or changing organization ends that scope.
+
+Provider creation is lazy-loaded at `/:organizationName/providers/new` under the
+organization shell. A portal-owned controller implements the shared library
+contract for choosing presets and editing unsaved configuration. Provider model
+catalogs, saving, and upstream testing remain pending backend integration; their
+absence is reported without simulating successful operations.
+
+
+## URL state and controller dependencies
+
+The [URL-state architecture](url-state.md) defines one root URL controller over
+React Router and explicit constructor injection. Components pass existing URL,
+auth, or organization instances only to controllers that need them; no controller
+uses a `.parent` property or ancestor lookup. The provider creation workflow uses
+explicit chooser/configuration paths and restores non-secret fields, configured
+models, searches, and model-dialog drafts from query parameters. Credentials
+remain memory-only. Saved-provider backend loading and large server-stored
+drafts remain planned.

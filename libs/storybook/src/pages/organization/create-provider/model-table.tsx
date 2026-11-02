@@ -42,7 +42,7 @@ export function ProviderModels() {
           <Table.Header className="h-8 text-muted">
             <Table.Row className="border-b border-divider">
               {['Enabled', 'Model', 'Context · tokens', '1M input', '1M output', '1M cached'].map((label) => (
-                <Table.Head key={label} className={`px-2 font-normal ${label === 'Model' ? 'text-left' : 'text-center'}`}>
+                <Table.Head key={label} className="px-2 text-left font-normal">
                   {label}
                 </Table.Head>
               ))}
@@ -56,7 +56,7 @@ export function ProviderModels() {
               const compatible = model.modes.includes(mode)
               return (
                 <Table.Row key={model.id} className="h-12 border-b border-divider last:border-b-0" data-compatible={compatible}>
-                  <Table.Cell className="px-2 text-center">
+                  <Table.Cell className="px-2 text-left">
                     <Checkbox
                       aria-label={`Enable ${model.name}`}
                       checked={model.enabled}
@@ -77,15 +77,15 @@ export function ProviderModels() {
                       </span>
                     ) : null}
                   </Table.Cell>
-                  <Table.Cell className="px-2 text-center text-muted">
+                  <Table.Cell className="px-2 text-left text-muted">
                     {model.maxContextTokens ? Number(model.maxContextTokens).toLocaleString('en-US') : 'Not set'}
                   </Table.Cell>
                   {[model.inputPrice, model.outputPrice, model.cachedPrice].map((value, index) => (
-                    <Table.Cell key={index} className="px-2 text-center text-muted">
+                    <Table.Cell key={index} className="px-2 text-left text-muted">
                       {price(value)}
                     </Table.Cell>
                   ))}
-                  <Table.Cell className="sticky right-0 bg-inset px-2 text-center">
+                  <Table.Cell className="sticky right-0 bg-inset px-2 text-left">
                     {compatible ? (
                       <button
                         type="button"

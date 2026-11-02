@@ -1458,3 +1458,45 @@ async fn signout_cannot_revoke_a_foreign_user_or_organization_session() {
         );
     }
 }
+
+#[tokio::test]
+async fn signin_email_rejects_unknown_accounts_before_mail_admission() {
+    let fixture = Fixture::new(None);
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(fixture.service().signin_email("new@example.com"))
+            .await,
+        Err(AuthError::UserNotFound)
+    ));
+}
+
+#[tokio::test]
+async fn signin_email_rejects_disabled_accounts_before_mail_admission() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Disabled)));
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(fixture.service().signin_email("james@midwess.com"))
+            .await,
+        Err(AuthError::UserDisabled)
+    ));
+}
+
+#[tokio::test]
+async fn signin_email_normalizes_existing_accounts_before_mail_admission() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    // This fixture has no mail service: only an accepted existing user reaches it.
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(fixture.service().signin_email(" James@MIDWESS.COM "))
+            .await,
+        Err(AuthError::Email(
+            compallm_core::mail::EmailError::Unavailable
+        ))
+    ));
+}

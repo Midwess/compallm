@@ -29,7 +29,9 @@ Authentication policy, token lifetimes, code reuse, and organization creation ar
 
 ## Request failures
 
-Portal controllers report API failures as error toasts using the response `message`, without translating HTTP status codes into UI error labels. Failed requests preserve email/code input and clear pending state. Cancelled or superseded requests produce no toast. Client email-format validation remains inline. Failed verification can be retried after editing the code or through the controller retry action.
+Authentication form controllers preserve the response `message` as an inline operation error, without translating HTTP status codes into UI labels. Email request errors appear after Continue; confirmation and resend errors stay with the code form. Failed requests preserve input and clear pending state. Editing input clears stale errors. Cancelled or superseded requests are silent. Failed verification supports explicit retry. Other operations, such as signout, may use toasts.
+
+API messages can contain links and basic inline formatting. The shared message renderer sanitizes an explicit markup allowlist before display, retaining the server wording and permitted links. Event handlers, scripts, images, unsafe URLs, and arbitrary styles are removed. Same-origin links use consumer navigation; external HTTP(S) links use normal anchor behavior. Sanitization never grants authentication or replaces API wording with a client status-code message.
 
 The portal's root `AuthController` implements both `SignupController` and `SigninController`. These interfaces share the same contract; the controller's mode selects the signup or signin endpoints. Entering either authentication page resets form state without replacing the root controller or current-user state.
 

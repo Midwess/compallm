@@ -14,7 +14,7 @@ Admission does not guarantee delivery. Pending recipients and the configured coo
 are shared with signup; throttling returns no replacement challenge.
 Cookie delivery (default) sets the ten-minute OTP access cookie, clears any refresh cookie,
 and returns lifetime metadata; explicit token delivery returns the challenge in JSON without setting cookies.
-Cookie delivery requires an allowed Origin. Requesting a code does not check account existence.
+Cookie delivery requires an allowed Origin. The normalized email must belong to an existing active user before mail admission. Unknown emails return 404 with a signup link; disabled users return 403. Rejections issue no challenge or cookies.
 
 ## Authentication
 
@@ -195,7 +195,7 @@ Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -204,7 +204,7 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },
@@ -225,7 +225,7 @@ Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -234,7 +234,7 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },
@@ -247,15 +247,15 @@ Content type: `application/json`.
 
 </details>
 
-### 429
+### 404
 
-Recipient throttled; keep the earlier challenge
+Email is not registered; signup first. No email or challenge issued.
 
 Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -264,7 +264,45 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "message"
+  ],
+  "type": "object"
+}
+```
+
+</details>
+
+Example (synthetic values):
+
+```json
+{
+  "message": "Email is not registered. <a href=\"/signup\">Sign up here.</a>"
+}
+```
+
+### 429
+
+Recipient throttled; keep the earlier challenge
+
+Content type: `application/json`.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
+
+<details>
+<summary>JSON schema</summary>
+
+```json
+{
+  "properties": {
+    "message": {
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },
@@ -285,7 +323,7 @@ Content type: `application/json`.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| message | string | true | Human-readable explanation of the failed request. Use the HTTP status to classify the error. |
+| message | string | true | Human-readable explanation; may include safe inline HTML and links. Clients preserve message wording and sanitize markup before rendering. |
 
 <details>
 <summary>JSON schema</summary>
@@ -294,7 +332,7 @@ Content type: `application/json`.
 {
   "properties": {
     "message": {
-      "description": "Human-readable explanation of the failed request. Use the HTTP status to classify the error.",
+      "description": "Human-readable explanation; may include safe inline HTML and links.\nClients preserve message wording and sanitize markup before rendering.",
       "type": "string"
     }
   },

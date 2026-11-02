@@ -16,7 +16,7 @@ export function apiErrorMessage(error: unknown): string {
 function show(tone: NonNullable<ToastProps['tone']>, message: string) {
   return toast.custom((id) => <Toast tone={tone} message={message} onDismiss={() => toast.dismiss(id)} />, {
     id: `${tone}:${message}`,
-    duration: tone === 'info' ? 5000 : Infinity,
+    duration: 15_000,
   })
 }
 

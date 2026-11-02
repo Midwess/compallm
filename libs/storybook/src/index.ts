@@ -56,3 +56,5 @@ export { FormSection } from './components/form-section'
 
 export { UrlControllerContext } from './context'
 export type { UrlController, UrlState, NavigationRequest } from './url'
+
+export { RichMessage } from './components/rich-message'

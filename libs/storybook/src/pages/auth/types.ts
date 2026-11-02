@@ -27,6 +27,7 @@ export interface AuthState {
   email: string
   code: string
   error: AuthError | null
+  serverError: string | null
   pending: AuthOperation | null
   remaining: number
   resendRevealed: boolean

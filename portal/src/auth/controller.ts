@@ -13,7 +13,7 @@ import {
 } from '../contract/api'
 import { urlController } from '../url/controller'
 import type { UrlController } from '@compallm/storybook'
-import { notify } from '../notifications/toast'
+import { notify, apiErrorMessage } from '../notifications/toast'
 import { organizationHome } from '../organization/paths'
 
 type Operation = NonNullable<SignupState['pending']>
@@ -99,7 +99,7 @@ export class AuthController implements SignupController, SigninController {
         this.abort?.abort()
         this.lastCode = undefined
         this.setResendDeadline(0)
-        this.store.setState({ step: 'email', code: '', pending: null, error: null })
+        this.store.setState({ step: 'email', code: '', pending: null, error: null, serverError: null })
       }
       return
     }
@@ -115,6 +115,7 @@ export class AuthController implements SignupController, SigninController {
       code: '',
       pending: null,
       error: this.otpExpiresAt > 0 && this.otpExpiresAt <= Date.now() ? 'expired-code' : null,
+      serverError: null,
     })
     this.setResendDeadline(deadline('resend_at'))
   }
@@ -129,14 +130,14 @@ export class AuthController implements SignupController, SigninController {
   }
 
   onEmailChanged = (email: string) => {
-    if (!this.store.getState().pending) this.store.setState({ email, error: null })
+    if (!this.store.getState().pending) this.store.setState({ email, error: null, serverError: null })
   }
-  onInvalidEmail = () => this.store.setState({ error: 'invalid-email' })
+  onInvalidEmail = () => this.store.setState({ error: 'invalid-email', serverError: null })
   showResend = () => this.store.setState({ resendRevealed: true })
   onCodeChanged = (code: string) => {
     const state = this.store.getState()
     if (state.pending || state.step !== 'code' || state.code === code) return
-    this.store.setState({ code, error: null })
+    this.store.setState({ code, error: null, serverError: null })
     void this.verify()
   }
   useDifferentEmail = () => {
@@ -145,7 +146,7 @@ export class AuthController implements SignupController, SigninController {
     this.confirmed = false
     this.failedOperation = null
     this.setResendDeadline(0)
-    this.store.setState({ step: 'email', code: '', error: null })
+    this.store.setState({ step: 'email', code: '', error: null, serverError: null })
     this.navigate(this.mode === 'signup' ? '/signup' : '/login')
   }
   requestCode = async () => {
@@ -256,7 +257,7 @@ export class AuthController implements SignupController, SigninController {
       () => {
         this.lastCode = undefined
         this.confirmed = false
-        this.store.setState({ step: 'code', code: '', error: null })
+        this.store.setState({ step: 'code', code: '', error: null, serverError: null })
         this.setResendDeadline(deadline)
         this.otpExpiresAt = expiresAt
         this.url.navigate(this.confirmationUrl(), { replace: operation === 'resend' })
@@ -293,7 +294,7 @@ export class AuthController implements SignupController, SigninController {
   private async perform(operation: Operation, request: (signal: AbortSignal) => Promise<void>, success: () => void) {
     const generation = ++this.generation
     this.abort = new AbortController()
-    this.store.setState({ pending: operation, error: null })
+    this.store.setState({ pending: operation, error: null, serverError: null })
     try {
       await request(this.abort.signal)
       if (generation !== this.generation) return
@@ -301,9 +302,10 @@ export class AuthController implements SignupController, SigninController {
       success()
     } catch (error) {
       if (generation !== this.generation) return
+      if (isObjectLike(error) && get(error, 'name') === 'AbortError') return
       this.failedOperation = operation
       this.lastCode = undefined
-      notify.error(error)
+      this.store.setState({ serverError: apiErrorMessage(error) })
     } finally {
       if (generation === this.generation) this.store.setState({ pending: null })
     }

@@ -32,7 +32,7 @@ See [component architecture](components.md), [provider configuration](add-provid
 
 ## Error notifications
 
-A single Sonner host is mounted outside the router, so notifications survive navigation and route errors. Custom notifications render the library `Toast`; controllers forward failures to the shared portal notification function. API JSON `message` is displayed unchanged. Missing or malformed messages use a generic fallback; aborts and stale controller responses are silent. Repeated identical messages share one notification ID. Info notifications expire after five seconds; error and warning notifications remain until dismissed. Field validation stays inline. No server error payload change is required.
+A single Sonner host is mounted outside the router, so notifications survive navigation and route errors. Custom notifications render the library `Toast`; controllers choose contextual inline feedback or the shared notification function. Login/signup form errors remain inline. API JSON `message` wording is preserved; an allowlisted, sanitized renderer supports links and basic inline formatting. Missing or malformed messages use a generic fallback; aborts and stale controller responses are silent. Repeated identical messages share one notification ID. Info, error, and warning notifications automatically close after 15 seconds and can be dismissed earlier. Field validation stays inline. No server error payload change is required.
 
 ## Root session state
 

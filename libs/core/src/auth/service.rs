@@ -87,9 +87,19 @@ impl AuthService {
         self.send_email_otp(&email).await
     }
 
-    /// Request an encrypted OTP access token without disclosing account existence.
+    /// Require an existing active account before admitting signin email.
     pub async fn signin_email(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
-        self.send_email_otp(email).await
+        let email = compallm_utils::email::normalize_email(email);
+        crate::user::User::validate_email(&email).map_err(|_| AuthError::InvalidEmail)?;
+        let user = self
+            .users
+            .find_by_email(&email)
+            .await?
+            .ok_or(AuthError::UserNotFound)?;
+        if user.status != UserStatus::Active {
+            return Err(AuthError::UserDisabled);
+        }
+        self.send_email_otp(&email).await
     }
 
     async fn send_email_otp(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {

@@ -8,6 +8,7 @@ const families = [
   'buttons',
   'dialog',
   'popup',
+  'rich-message',
   'table',
   'form-field',
   'form-section',

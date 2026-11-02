@@ -7,6 +7,7 @@ import { Popup } from '../../src/components/popup'
 import { Table } from '../../src/components/table'
 import { FormField } from '../../src/components/form-field'
 import { Searchbox } from '../../src/components/fields'
+import { RichMessage } from '../../src/components/rich-message'
 import { Checkbox } from '../../src/components/selection'
 
 const meta = {
@@ -131,4 +132,8 @@ export const ControlsComposition: Story = {
       </label>
     </div>
   ),
+}
+
+export const RichMessageContent: Story = {
+  render: () => <RichMessage message={'Email already exists, <a href="/login">login here</a>'} />,
 }

@@ -77,7 +77,7 @@ pub struct SignupEmailResponse {
         (status = 200, description = "OTP delivery requested; use this token to confirm", body = SignupEmailResponse),
         (status = 400, description = "Malformed JSON or invalid field format. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid request fields"})),
         (status = 403, description = "Untrusted Origin for cookie delivery", body = ErrorResponse),
-        (status = 409, description = "Email already registered; sign in instead. No email or token issued.", body = ErrorResponse, example = json!({"message":"Email is already registered. Please sign in instead."})),
+        (status = 409, description = "Email already registered; sign in instead. No email or token issued.", body = ErrorResponse, example = json!({"message":"Email is already registered. <a href=\"/login\">Sign in instead.</a>"})),
         (status = 429, description = "Recipient throttled. Keep the existing challenge and retry after the configured cooldown (30 seconds by default).", body = ErrorResponse, example = json!({"message": "Email recipient is throttled; keep the existing challenge and retry later"})),
         (status = 503, description = "Email admission unavailable or queue remained full until the configured timeout (30 seconds by default). Retry later; no challenge was issued.", body = ErrorResponse, example = json!({"message": "Email delivery is unavailable"})),
         (status = 500, description = "Internal error. Retry later.", body = ErrorResponse, example = json!({"message": "Internal server error"}))
@@ -133,7 +133,7 @@ pub struct ConfirmSignupOtpRequest {
         (status = 400, description = "Malformed JSON or invalid field format. Correct the input before retrying.", body = ErrorResponse, example = json!({"message": "Invalid JSON request body"})),
         (status = 401, description = "Invalid or expired challenge or code. Check the code or request a new challenge.", body = ErrorResponse, example = json!({"message": "Invalid or expired token or OTP code"})),
         (status = 403, description = "Untrusted cookie Origin or user/organization access disabled.", body = ErrorResponse, example = json!({"message": "Organization access denied"})),
-        (status = 409, description = "Email already registered. Use signin instead of signup.", body = ErrorResponse, example = json!({"message": "Email is already registered. Please sign in instead."})),
+        (status = 409, description = "Email already registered. Use signin instead of signup.", body = ErrorResponse, example = json!({"message": "Email is already registered. <a href=\"/login\">Sign in instead.</a>"})),
         (status = 500, description = "Database or internal error. Retry later.", body = ErrorResponse, example = json!({"message": "Internal server error"}))
     )
 )]
@@ -174,7 +174,7 @@ pub struct SigninEmailRequest {
 /// are shared with signup; throttling returns no replacement challenge.
 /// Cookie delivery (default) sets the ten-minute OTP access cookie, clears any refresh cookie,
 /// and returns lifetime metadata; explicit token delivery returns the challenge in JSON without setting cookies.
-/// Cookie delivery requires an allowed Origin. Requesting a code does not check account existence.
+/// Cookie delivery requires an allowed Origin. The normalized email must belong to an existing active user before mail admission. Unknown emails return 404 with a signup link; disabled users return 403. Rejections issue no challenge or cookies.
 #[utoipa::path(
     post, path = "/api/auth/signin/email", operation_id = "signinEmail", tag = "auth",
     security(),
@@ -182,6 +182,7 @@ pub struct SigninEmailRequest {
     request_body(content = SigninEmailRequest, example = json!({"email":"reader@example.com","delivery":"token"})),
     responses(
         (status = 200, description = "Code queued; submit the challenge with the emailed code", body = SignupEmailResponse),
+        (status = 404, description = "Email is not registered; signup first. No email or challenge issued.", body = ErrorResponse, example = json!({"message": "Email is not registered. <a href=\"/signup\">Sign up here.</a>"})),
         (status = 400, description = "Malformed JSON or invalid field format", body = ErrorResponse),
         (status = 403, description = "Untrusted Origin for cookie delivery", body = ErrorResponse),
         (status = 429, description = "Recipient throttled; keep the earlier challenge", body = ErrorResponse),

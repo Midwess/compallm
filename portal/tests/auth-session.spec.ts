@@ -524,8 +524,108 @@ test('Back and Forward restore authentication entry and confirmation from their 
   await page.getByRole('textbox', { name: 'Email address' }).fill('alex@example.com')
   await page.getByRole('button', { name: 'Continue', exact: true }).click()
   await expect(page.getByRole('group', { name: 'Email code' })).toBeVisible()
+  await expect(page).toHaveURL(/login\/confirmation\?/)
   await page.goBack()
   await expect(page.getByRole('textbox', { name: 'Email address' })).toBeVisible()
   await page.goForward()
   await expect(page.getByRole('group', { name: 'Email code' })).toBeVisible()
+})
+
+test('signup API errors appear below Continue with the original linked message and no toast', async ({ page }) => {
+  await page.route('**/api/auth/me', (route) => route.fulfill({ status: 401, json: { message: 'Authentication required' } }))
+  const message = 'Email already exists, <a href="/login">login here</a>'
+  await page.route('**/api/auth/signup/email', (route) => route.fulfill({ status: 409, json: { message } }))
+  let documents = 0
+  page.on('request', (request) => {
+    if (request.isNavigationRequest()) documents += 1
+  })
+  await page.goto('/signup')
+  await page.getByRole('textbox', { name: 'Email address' }).fill('alex@example.com')
+  const submit = page.getByRole('button', { name: 'Continue', exact: true })
+  await submit.click()
+  const error = page.getByRole('alert')
+  await expect(error).toHaveText('Email already exists, login here')
+  const buttonBox = await submit.boundingBox(),
+    errorBox = await error.boundingBox()
+  expect(errorBox!.y).toBeGreaterThanOrEqual(buttonBox!.y + buttonBox!.height)
+  await expect(page.locator('[data-ui="toast"]')).toHaveCount(0)
+  const link = error.getByRole('link', { name: 'login here', exact: true })
+  await expect(link).toHaveAttribute('href', '/login')
+  await link.click()
+  await expect(page).toHaveURL('/login')
+  expect(documents).toBe(1)
+})
+
+test('API rich messages preserve safe content while removing executable markup and unsafe URLs', async ({ page }) => {
+  await page.route('**/api/auth/me', (route) => route.fulfill({ status: 401, json: { message: 'Authentication required' } }))
+  const message =
+    '<strong>Try again</strong> <img src="x" onerror="window.messageExecuted=true">' +
+    '<script>window.messageExecuted=true</script><a href="javascript:window.messageExecuted=true">unsafe</a> ' +
+    '<a href="/login" onclick="window.messageExecuted=true">Sign in</a>'
+  await page.route('**/api/auth/signin/email', (route) => route.fulfill({ status: 400, json: { message } }))
+  await page.goto('/login')
+  await page.getByRole('textbox', { name: 'Email address' }).fill('alex@example.com')
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  const error = page.getByRole('alert')
+  await expect(error.locator('strong')).toHaveText('Try again')
+  await expect(error.locator('img,script,[onclick]')).toHaveCount(0)
+  await expect(error.locator('a').filter({ hasText: 'unsafe' })).not.toHaveAttribute('href')
+  await expect(error.getByRole('link', { name: 'Sign in', exact: true })).toHaveAttribute('href', '/login')
+  expect(await page.evaluate(() => 'messageExecuted' in window)).toBe(false)
+  await page.getByRole('textbox', { name: 'Email address' }).fill('other@example.com')
+  await expect(error).toHaveCount(0)
+})
+
+test('OTP API failure stays inline and retries without showing a toast', async ({ page }) => {
+  await page.route('**/api/auth/me', (route) => route.fulfill({ status: 401, json: { message: 'Authentication required' } }))
+  await page.route('**/api/auth/signin/email', (route) =>
+    route.fulfill({ json: { lifetime: { issuedAt: 1, expiresAt: 601, expiresInSeconds: 600, throttleSeconds: 0 } } }),
+  )
+  let attempts = 0
+  await page.route('**/api/auth/signin/email/confirmation/otp', (route) => {
+    attempts += 1
+    return route.fulfill({ status: 401, json: { message: 'That code could not be verified. Please retry.' } })
+  })
+  await page.goto('/login')
+  await page.getByRole('textbox', { name: 'Email address' }).fill('alex@example.com')
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await page.getByRole('group', { name: 'Email code' }).getByRole('textbox').first().fill('123456')
+  await expect(page.getByRole('alert')).toHaveText('That code could not be verified. Please retry.')
+  await expect(page.locator('[data-ui="toast"]')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Try again', exact: true }).click()
+  await expect.poll(() => attempts).toBe(2)
+})
+
+test('inline auth failures reserve space and leave title, Continue, and account links still', async ({ page }) => {
+  await page.route('**/api/auth/me', (route) => route.fulfill({ status: 401, json: { message: 'Authentication required' } }))
+  await page.route('**/api/auth/signup/email', (route) =>
+    route.fulfill({
+      status: 409,
+      json: { message: 'Email already exists. '.repeat(20) + '<a href="/login">Sign in instead.</a>' },
+    }),
+  )
+  await page.goto('/signup')
+  await page.getByRole('textbox', { name: 'Email address' }).fill('alex@example.com')
+  const title = page.getByRole('heading', { name: 'Create your account.', exact: true })
+  const button = page.getByRole('button', { name: 'Continue', exact: true })
+  const accountLink = page.getByRole('link', { name: 'Sign in', exact: true })
+  const before = await Promise.all([title.boundingBox(), button.boundingBox(), accountLink.boundingBox()])
+  await button.click()
+  await expect(page.getByRole('alert')).toContainText('Email already exists.')
+  const after = await Promise.all([title.boundingBox(), button.boundingBox(), accountLink.boundingBox()])
+  expect(after).toEqual(before)
+})
+
+test('unknown signin emails show the API signup link without entering OTP confirmation', async ({ page }) => {
+  await page.route('**/api/auth/me', (route) => route.fulfill({ status: 401, json: { message: 'Authentication required' } }))
+  await page.route('**/api/auth/signin/email', (route) =>
+    route.fulfill({ status: 404, json: { message: 'Email is not registered. <a href="/signup">Sign up here.</a>' } }),
+  )
+  await page.goto('/login')
+  await page.getByRole('textbox', { name: 'Email address' }).fill('new@example.com')
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await expect(page).toHaveURL('/login')
+  await expect(page.getByRole('group', { name: 'Email code' })).toHaveCount(0)
+  await page.getByRole('alert').getByRole('link', { name: 'Sign up here.', exact: true }).click()
+  await expect(page).toHaveURL('/signup')
 })

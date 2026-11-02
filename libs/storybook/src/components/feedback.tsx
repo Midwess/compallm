@@ -1,5 +1,6 @@
 import { cloneElement, useId, useState, type HTMLAttributes, type ReactElement, type ReactNode } from 'react'
 import { cx, popupMotion } from './shared'
+import { RichMessage } from './rich-message'
 import { Button } from './buttons'
 import { InfoIcon } from '@phosphor-icons/react/dist/csr/Info'
 import { WarningCircleIcon } from '@phosphor-icons/react/dist/csr/WarningCircle'
@@ -42,7 +43,7 @@ export function Toast({
       <Icon size={16} className={cx('shrink-0', color)} aria-hidden="true" />
       <p className="min-w-0 flex-1 wrap-anywhere" role={tone === 'error' ? 'alert' : 'status'} aria-atomic="true">
         <span className="sr-only">{label}: </span>
-        {message}
+        <RichMessage message={message} />
       </p>
       <button
         type="button"
@@ -178,4 +179,8 @@ export function Popover({ label, children }: { label: string; children: ReactNod
 }
 export function DropInsertionIndicator({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return <div aria-hidden="true" {...props} className={cx('h-[2px] w-full rounded-[1px] bg-focus', className)} />
+}
+
+export function FeedbackSlot({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div {...props} className={cx('h-16 overflow-y-auto', className)} />
 }

@@ -9,6 +9,7 @@ export function createAuthStore(initial: Partial<AuthState> = {}) {
     email: '',
     code: '',
     error: null,
+    serverError: null,
     pending: null,
     remaining: 0,
     resendRevealed: false,

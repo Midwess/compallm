@@ -122,7 +122,10 @@ export interface CurrentUserResponse {
 }
 
 export interface ErrorResponse {
-  /** Human-readable explanation of the failed request. Use the HTTP status to classify the error. */
+  /**
+     * Human-readable explanation; may include safe inline HTML and links.
+     * Clients preserve message wording and sanitize markup before rendering.
+     */
   message: string;
 }
 
@@ -221,7 +224,7 @@ export const getSigninEmailUrl = () => {
  * are shared with signup; throttling returns no replacement challenge.
  * Cookie delivery (default) sets the ten-minute OTP access cookie, clears any refresh cookie,
  * and returns lifetime metadata; explicit token delivery returns the challenge in JSON without setting cookies.
- * Cookie delivery requires an allowed Origin. Requesting a code does not check account existence.
+ * Cookie delivery requires an allowed Origin. The normalized email must belong to an existing active user before mail admission. Unknown emails return 404 with a signup link; disabled users return 403. Rejections issue no challenge or cookies.
  * @summary Request an email signin code.
  */
 export const signinEmail = async (signinEmailRequest: SigninEmailRequest, options?: RequestInit): Promise<SignupEmailResponse> => {

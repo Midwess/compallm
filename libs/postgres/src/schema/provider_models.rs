@@ -27,6 +27,11 @@ pub struct Model {
     pub output_price_per_million_tokens: Decimal,
     #[sea_orm(column_type = "Decimal(Some((20, 8)))")]
     pub cached_price_per_million_tokens: Decimal,
+    pub reasoning_effort_values: Option<Vec<String>>,
+    pub supports_reasoning_budget: bool,
+    pub supports_adaptive_reasoning: bool,
+    pub minimum_reasoning_budget_tokens: Option<i32>,
+    pub maximum_reasoning_budget_tokens: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -38,7 +43,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::providers::Entity",
         from = "(Column::OrganizationId, Column::ProviderId)",
-        to = "(super::providers::Column::Id, super::providers::Column::OrganizationId, super::providers::Column::Id, super::providers::Column::OrganizationId)",
+        to = "(super::providers::Column::OrganizationId, super::providers::Column::Id, super::providers::Column::OrganizationId, super::providers::Column::Id)",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]

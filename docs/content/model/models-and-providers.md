@@ -14,9 +14,10 @@ Decision status: The ownership boundaries, stable model identity, provider
 models, and router bindings are accepted. Route selection, fallback,
 model-management authorization, and model discovery remain unresolved.
 
-Implementation status: The migration and generated PostgreSQL schema implement
-`provider_models` and `model_router`. Model and route management services,
-management APIs, route selection, and request forwarding are not implemented.
+Implementation status: The migrations and generated PostgreSQL schema implement
+`provider_models`, provider-model reasoning capabilities, and `model_router`.
+Model and route management services, management APIs, provider discovery,
+capability refresh, route selection, and request forwarding are not implemented.
 
 ## Concepts
 
@@ -64,10 +65,46 @@ connection in the same organization. It stores:
 - the upstream model name accepted by that provider;
 - configured provider input, output, and cached-token prices in fixed-point USD
   per one million tokens;
+- supported provider-native reasoning-effort values, exact-budget support,
+  adaptive-reasoning support, and known minimum or maximum budgets;
 - an independent `enabled` state.
 
 Provider-model names are unique per provider connection. Database constraints
 reject provider models that cross organization boundaries.
+
+Core's `ProviderModel` exposes these fields directly: `reasoning_effort_values`,
+`supports_reasoning_budget`, `supports_adaptive_reasoning`,
+`minimum_reasoning_budget_tokens`, and `maximum_reasoning_budget_tokens`.
+The names match PostgreSQL columns.
+
+PostgreSQL stores effort values as nullable `TEXT[]`, defaulting to `NULL`;
+its SeaORM model and Core use `Option<Vec<String>>`.
+Reasoning support is derived from array presence: `NULL` means unsupported or
+unknown; any present array means supported. An empty array records support
+without selectable native effort levels, including budget-only or adaptive-only
+reasoning. A nonempty array lists selectable native values. Core checks support
+with `reasoning_effort_values.is_some()`. Neither reasoning support nor effort
+support is stored as a separate flag. The mapper preserves `NULL`, empty arrays,
+and native strings exactly, including their case. Database constraints reject
+null array elements. Budget bounds use checked conversion from PostgreSQL `i32`
+to Core `u32`, just as IDs use checked conversion from `i64` to `u64`.
+
+The reasoning-capabilities migration adds nullable native effort values, budget
+and adaptive support flags, and budget bounds directly. It creates no separate
+reasoning-support or effort-support column. Rolling it back removes all of
+these capability columns and their stored values.
+
+Missing provider metadata leaves effort values `NULL` by policy; it is not
+proof that reasoning is unsupported. Provider discovery may populate these
+capability fields after validating the upstream response. Effort values come
+from the provider's contract for that model and endpoint, not a shared numeric
+scale or the router's normalized choices. No global list or ordering is
+imposed: a value such as `high` need not mean the same thing across providers.
+A provider-native `none` or `auto` value is stored only when that endpoint
+accepts it. Budget and adaptive controls remain separate. Concrete provider
+clients put selected values into the correct native request fields; forwarding
+is not implemented. Provider-native request templates are not stored as model
+data.
 
 ### Model router binding
 
@@ -137,7 +174,7 @@ atomic with a database update.
 | Stable caller-facing name and published prices | Model |
 | Non-secret model behavior settings | Model |
 | Endpoint, protocol, credential, and connection availability | Provider connection |
-| Upstream model name, configured provider prices, and availability | Provider model |
+| Upstream model name, configured provider prices, reasoning capabilities, and availability | Provider model |
 | Route priority and availability | `model_router` binding |
 | Price snapshot used to estimate one provider attempt's cost | `provider_usage` |
 | Health, quota, cooldown, and observed operational data | Separate operational state |
@@ -158,7 +195,8 @@ prices, provider-model configuration, or router bindings.
   health temporarily change that order?
 - Which provider outcomes permit fallback, and how do retries, cooldowns,
   cancellation, and charging interact?
-- Where is provider capability metadata maintained?
+- How are provider-reported capabilities, Compallm registry data, and
+  administrator overrides reconciled during model discovery and refresh?
 - Which model setting keys and validation rules are introduced first?
 - What happens when no eligible binding remains for a model?
 

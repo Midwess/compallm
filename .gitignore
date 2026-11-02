@@ -33,6 +33,7 @@
 # Editors and operating systems
 /.codex/config.toml
 .idea
+.openidea
 .vscode/*
 !.vscode/extensions.json
 .DS_Store

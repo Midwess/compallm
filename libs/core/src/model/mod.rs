@@ -2,4 +2,4 @@
 
 pub mod entity;
 
-pub use entity::{Model, Price};
+pub use entity::Model;

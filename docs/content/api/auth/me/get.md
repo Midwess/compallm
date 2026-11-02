@@ -16,8 +16,8 @@ replacement HttpOnly cookies when Origin is trusted, or a safe request has
 Sec-Fetch-Site: same-origin. No credentials are returned in JSON.
 Access claims contain a cached role; session revocation and membership changes are
 checked on renewal rather than on every access-token request.
-This endpoint additionally loads the current organization name through an active
-membership in an active organization. The name is not stored in the JWT.
+The organization name is a snapshot in the signed session. With valid access claims,
+this endpoint performs no database queries. Renames appear when tokens renew.
 
 ## Authentication
 
@@ -67,7 +67,7 @@ Identity and organization scope from the current signed access credential.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | organizationId | integer | true | Organization selected for this session. |
-| organizationName | string | true | Current stored name of the selected organization, loaded through active membership. |
+| organizationName | string | true | Organization name snapshot from the signed session; refreshed when tokens renew. |
 | organizationRole | string | true | Cached membership role from the access JWT, refreshed on renewal. |
 | sessionId | integer | true | Current login session identifier. |
 | userId | integer | true | Authenticated user identifier. |
@@ -86,7 +86,7 @@ Identity and organization scope from the current signed access credential.
       "type": "integer"
     },
     "organizationName": {
-      "description": "Current stored name of the selected organization, loaded through active membership.",
+      "description": "Organization name snapshot from the signed session; refreshed when tokens renew.",
       "type": "string"
     },
     "organizationRole": {

@@ -35,13 +35,14 @@ impl OrganizationRepository {
         user_id: u64,
         organization_id: Option<u64>,
         admin_only: bool,
-    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
+    ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError> {
         let user_id = Self::database_id(user_id)?;
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
         let mut query = Members::find()
-            .inner_join(Organizations::default())
+            .find_also_related(Organizations::default())
             .filter(MemberColumn::UserId.eq(user_id))
+            .filter(MemberColumn::Status.eq(crate::schema::UserStatusSchema::Active))
             .filter(OrganizationColumn::Status.eq(OrganizationStatusSchema::Active));
         if let Some(organization_id) = organization_id {
             query =
@@ -58,7 +59,13 @@ impl OrganizationRepository {
             .one(db)
             .await
             .map_err(OrganizationRepositoryError::database)?
-            .map(OrganizationMember::try_from)
+            .map(|(member, organization)| {
+                let organization = organization.context("membership organization is missing")?;
+                Ok((
+                    OrganizationMember::try_from(member)?,
+                    Organization::try_from(organization)?,
+                ))
+            })
             .transpose()
     }
 
@@ -69,44 +76,25 @@ impl OrganizationRepository {
 
 #[async_trait::async_trait]
 impl CoreRepository for OrganizationRepository {
-    async fn find_for_member(
-        &self,
-        organization_id: u64,
-        user_id: u64,
-    ) -> Result<Option<Organization>, OrganizationRepositoryError> {
-        let context = DbContext::current()?;
-        let db = PostgresConnection::from_context(&context)?;
-        Organizations::find_by_id(Self::database_id(organization_id)?)
-            .inner_join(Members::default())
-            .filter(OrganizationColumn::Status.eq(OrganizationStatusSchema::Active))
-            .filter(MemberColumn::UserId.eq(Self::database_id(user_id)?))
-            .filter(MemberColumn::Status.eq(crate::schema::UserStatusSchema::Active))
-            .one(db)
-            .await
-            .map_err(OrganizationRepositoryError::database)?
-            .map(Organization::try_from)
-            .transpose()
-    }
-
     async fn find_membership(
         &self,
         organization_id: u64,
         user_id: u64,
-    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
+    ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError> {
         self.membership(user_id, Some(organization_id), false).await
     }
 
     async fn find_first_membership(
         &self,
         user_id: u64,
-    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
+    ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError> {
         self.membership(user_id, None, false).await
     }
 
     async fn find_first_admin_membership(
         &self,
         user_id: u64,
-    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
+    ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError> {
         self.membership(user_id, None, true).await
     }
     async fn update_name(

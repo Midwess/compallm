@@ -18,6 +18,8 @@ Preserve unrelated working-tree changes. Follow explicit instructions not to exe
 
 Write tests only in `tests/` directories, using the existing `test/tests/` suite for shared Rust tests. Do not add tests under `api/` or inline in application source. Test the application's core business logic; do not write tests that only verify dependency or framework behavior.
 
+Do not write unit tests or automated browser/interaction test suites for `libs/storybook`. Do not recreate `libs/storybook/tests` or add test runners there. Validate the library with lint, type checks, builds, and manual Storybook inspection. Keep tests for consumer application business logic in the consuming application's `tests/` directory.
+
 Do not add generic `created_at` or `updated_at` columns to migrations or matching models. Keep timestamps only when required by a concrete business rule.
 
 Use Validify for HTTP normalization and shared domain validation. Keep domain invariants in Core and persistence conversions and concurrency guards in PostgreSQL. External integrations use concrete clients with reused pools and bounded timeouts. Never hold database transactions open across email or HTTP calls.

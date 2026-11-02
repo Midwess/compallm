@@ -74,7 +74,7 @@ export interface CurrentUserResponse {
      * @minimum 0
      */
   organizationId: number;
-  /** Current stored name of the selected organization, loaded through active membership. */
+  /** Organization name snapshot from the signed session; refreshed when tokens renew. */
   organizationName: string;
   /** Cached membership role from the access JWT, refreshed on renewal. */
   organizationRole: string;
@@ -143,8 +143,8 @@ export const getCurrentUserUrl = () => {
  * Sec-Fetch-Site: same-origin. No credentials are returned in JSON.
  * Access claims contain a cached role; session revocation and membership changes are
  * checked on renewal rather than on every access-token request.
- * This endpoint additionally loads the current organization name through an active
- * membership in an active organization. The name is not stored in the JWT.
+ * The organization name is a snapshot in the signed session. With valid access claims,
+ * this endpoint performs no database queries. Renames appear when tokens renew.
  * @summary Read the current authenticated identity and organization scope.
  */
 export const currentUser = async ( options?: RequestInit): Promise<CurrentUserResponse> => {

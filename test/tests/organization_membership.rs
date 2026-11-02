@@ -3,8 +3,9 @@ use compallm_core::{
     persistent::{DbContext, organization::OrganizationRepository as _},
 };
 use compallm_postgres::{
-    OrganizationMemberSchema, OrganizationRoleSchema, UserStatusSchema,
-    postgres_connection::PostgresConnection, repository::organization::OrganizationRepository,
+    OrganizationMemberSchema, OrganizationRoleSchema, OrganizationSchema, OrganizationStatusSchema,
+    UserStatusSchema, postgres_connection::PostgresConnection,
+    repository::organization::OrganizationRepository,
 };
 use sea_orm::{DbBackend, IntoMockRow, MockDatabase};
 use std::{collections::BTreeMap, sync::Arc};
@@ -19,9 +20,18 @@ impl Fixture {
             role,
             status: UserStatusSchema::Active,
         };
-        let mut row: BTreeMap<_, _> = row.into_mock_row().into_column_value_tuples().collect();
-        row.insert("role".to_string(), "admin".into());
-        row.insert("status".to_string(), "active".into());
+        let organization = OrganizationSchema {
+            id: 84,
+            name: "Research team".into(),
+            status: OrganizationStatusSchema::Active,
+        };
+        let mut row: BTreeMap<_, _> = (row, organization)
+            .into_mock_row()
+            .into_column_value_tuples()
+            .collect();
+        row.insert("A_role".to_string(), "admin".into());
+        row.insert("A_status".to_string(), "active".into());
+        row.insert("B_status".to_string(), "active".into());
         Arc::new(
             MockDatabase::new(DbBackend::Postgres)
                 .append_query_results([vec![row]])
@@ -39,14 +49,15 @@ async fn first_admin_membership_query_filters_active_organizations_and_admin_rol
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(member.role, OrganizationRole::Admin);
-    assert_eq!(member.organization_id, 84);
+    assert_eq!(member.0.role, OrganizationRole::Admin);
+    assert_eq!(member.0.organization_id, 84);
+    assert_eq!(member.1.name, "Research team");
     drop(context);
     let log = format!(
         "{:?}",
         Arc::try_unwrap(database).unwrap().into_transaction_log()
     );
-    assert!(log.contains("INNER JOIN"));
+    assert!(log.contains("LEFT JOIN"));
     assert!(log.contains("organizations"));
     assert!(log.contains("active"));
     assert!(log.contains("owner"));
@@ -64,7 +75,7 @@ async fn selected_membership_query_checks_both_user_and_organization() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(member.user_id, 1);
+    assert_eq!(member.0.user_id, 1);
     drop(context);
     let log = format!(
         "{:?}",
@@ -72,7 +83,7 @@ async fn selected_membership_query_checks_both_user_and_organization() {
     );
     assert!(log.contains("user_id"));
     assert!(log.contains("organization_id"));
-    assert!(log.contains("INNER JOIN"));
+    assert!(log.contains("LEFT JOIN"));
     assert!(log.contains("active"));
     assert!(!log.contains(" IN "));
 }

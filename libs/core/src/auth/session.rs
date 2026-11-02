@@ -8,20 +8,28 @@ pub struct Session {
     pub id: u64,
     pub user_id: u64,
     pub organization_id: u64,
+    /// Display snapshot refreshed on token issuance; not part of session identity.
+    pub organization_name: String,
     pub revoked_at: Option<u64>,
 }
 
 impl Session {
-    pub fn new(user_id: u64, id: u64, organization_id: u64) -> Self {
+    pub fn new(
+        user_id: u64,
+        id: u64,
+        organization_id: u64,
+        organization_name: impl Into<String>,
+    ) -> Self {
         Self {
             id,
             user_id,
             organization_id,
+            organization_name: organization_name.into(),
             revoked_at: None,
         }
     }
 
-    /// Match the session within its organization and owner, ignoring revocation state.
+    /// Match IDs only; organization names and revocation state are not identity.
     pub fn has_same_identity(&self, other: &Self) -> bool {
         self.id == other.id
             && self.user_id == other.user_id
@@ -54,9 +62,11 @@ impl Session {
         &mut self,
         presented: &RefreshToken,
         organization_id: u64,
+        organization_name: impl Into<String>,
     ) -> Result<(), AuthError> {
         self.validate_credential(presented)?;
         self.organization_id = organization_id;
+        self.organization_name = organization_name.into();
         Ok(())
     }
 

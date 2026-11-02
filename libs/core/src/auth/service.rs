@@ -9,7 +9,7 @@ use super::{
     },
 };
 use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode};
-use crate::organization::OrganizationMember;
+use crate::organization::{Organization, OrganizationMember};
 use crate::persistent::session::SessionRepository;
 use crate::persistent::{DbContext, organization::OrganizationRepository, user::UserRepository};
 use crate::user::{RegistrationService, UserStatus};
@@ -53,18 +53,6 @@ impl AuthService {
             return Err(AuthError::InvalidSession);
         }
         Ok(())
-    }
-
-    /// Resolve the current organization name through the user's active membership.
-    pub async fn current_organization(
-        &self,
-        claims: &UserAccessToken,
-    ) -> Result<crate::organization::Organization, AuthError> {
-        claims.validate(unix_timestamp())?;
-        self.organizations
-            .find_for_member(claims.session.organization_id, claims.session.user_id)
-            .await?
-            .ok_or(AuthError::OrganizationAccessDenied)
     }
 
     pub fn new(
@@ -134,12 +122,12 @@ impl AuthService {
         if user.status != UserStatus::Active {
             return Err(AuthError::UserDisabled);
         }
-        let membership = self
+        let (membership, organization) = self
             .organizations
             .find_first_admin_membership(user.id)
             .await?
             .ok_or(AuthError::OrganizationAccessDenied)?;
-        self.start_session(user.id, membership).await
+        self.start_session(user.id, membership, organization).await
     }
 
     pub async fn signup(
@@ -152,12 +140,12 @@ impl AuthService {
         if user.status != UserStatus::Active {
             return Err(AuthError::UserDisabled);
         }
-        let membership = self
+        let (membership, organization) = self
             .organizations
             .find_first_admin_membership(user.id)
             .await?
             .ok_or(AuthError::OrganizationAccessDenied)?;
-        self.start_session(user.id, membership).await
+        self.start_session(user.id, membership, organization).await
     }
 
     /// Verify the envelope and inner claims, preserving the concrete token variant.
@@ -178,7 +166,7 @@ impl AuthService {
             .find(&claims.session)
             .await?
             .ok_or(AuthError::InvalidSession)?;
-        let renewed = session.refresh(&claims, self.lifetimes.refresh)?;
+        session.validate_credential(&claims)?;
         let user = self
             .users
             .find_by_id(claims.session.user_id)
@@ -187,11 +175,14 @@ impl AuthService {
         if user.status != UserStatus::Active {
             return Err(AuthError::UserDisabled);
         }
-        let membership = self
+        let (membership, organization) = self
             .organizations
             .find_membership(session.organization_id, user.id)
             .await?
             .ok_or(AuthError::OrganizationAccessDenied)?;
+        let mut session = session;
+        session.organization_name = organization.name;
+        let renewed = session.refresh(&claims, self.lifetimes.refresh)?;
         UserTokens::from_refresh(
             &renewed,
             membership.role,
@@ -222,14 +213,14 @@ impl AuthService {
             return Err(AuthError::UserDisabled);
         }
 
-        let membership = self
+        let (membership, organization) = self
             .organizations
             .find_membership(organization_id, user.id)
             .await?
             .ok_or(AuthError::OrganizationAccessDenied)?;
 
         let previous = session.clone();
-        session.switch_organization(&claims, organization_id)?;
+        session.switch_organization(&claims, organization_id, organization.name)?;
 
         let tokens = UserTokens::new(
             &session,
@@ -250,9 +241,10 @@ impl AuthService {
         &self,
         user_id: u64,
         membership: OrganizationMember,
+        organization: Organization,
     ) -> Result<UserTokens, AuthError> {
         let id = hero::distributed_id::try_gen_id().await?;
-        let session = Session::new(user_id, id, membership.organization_id);
+        let session = Session::new(user_id, id, membership.organization_id, organization.name);
         let tokens = UserTokens::new(
             &session,
             membership.role,

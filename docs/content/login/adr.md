@@ -19,7 +19,7 @@ Signup creates a user and personal organization atomically. Signin loads an exis
 
 Default to short-lived access JWTs and renewable refresh JWTs in secure HttpOnly cookies. Each signup/signin step accepts `delivery: "cookie" | "token"`: cookie mode omits token values from JSON; token mode returns them and sets no cookies. Delivery is an HTTP concern, never a Core property or JWT claim. Vite and Axum share one origin, so the browser sends cookies without exposing their values to frontend code.
 
-Each session belongs to an organization and user. Both JWT types embed Session directly: its ID, organization ID, user ID, and revocation state. Access JWTs also carry the membership role. Lookups and validation use Session directly. Every session operation checks organization and user together. Store the session, not the complete JWT; no separate refresh credential identifier is needed. Device information is optional.
+Each session belongs to an organization and user. Both JWT types embed Session directly: its ID, organization ID and name, user ID, and revocation state. Access JWTs also carry the membership role. Lookups and validation use Session directly. Every session operation checks organization and user together. Store the session, not the complete JWT; no separate refresh credential identifier is needed. Device information is optional.
 
 | Alternative | Why we chose this approach |
 | --- | --- |
@@ -70,9 +70,9 @@ flowchart TD
     Logout["Logout or administrative revocation"] --> Revoke["Revoke the session"]
 ```
 
-Normal refresh keeps the organization and performs no database write. It issues JWTs valid for another 30 days. Older refresh JWTs remain usable until their own expiry; renewal does not consume them. Expired or revoked credentials are rejected without another revocation write.
+Refresh preserves the session without database writes and issues another 30-day refresh JWT. Earlier credentials remain usable until expiry; revoked sessions cannot renew.
 
-Organization switching is a separate operation: validate the target membership, change the stored organization, and return both new tokens after commit. Tokens for another organization fail validation. Returning to an earlier organization allows its unexpired refresh tokens again; switching to the same organization does not invalidate tokens. Logout explicitly revokes the session and clears its cookies.
+Switching validates target membership, saves the organization, and issues both tokens after commit. Other-organization refresh tokens fail validation; returning to an earlier organization accepts its unexpired tokens again. Logout revokes the session and clears cookies.
 
 A copied access JWT remains usable until expiry, including its cached role. Immediate invalidation requires an additional server-side check. This is the cost of validating normal requests without consulting refresh-session state.
 
@@ -80,13 +80,11 @@ A copied access JWT remains usable until expiry, including its cached role. Imme
 
 Axum owns cookies and browser request protections; Core owns authentication and membership rules; PostgreSQL owns session persistence and conditional updates. Protected API middleware selects explicit Bearer credentials before cookies, verifies token claims, and inserts verified token structs as separate typed request extensions. Invalid Bearer credentials never fall back to cookies. Cookie renewal occurs only when access is missing or expired; handlers enforce resource scope and roles.
 
-The session owns validation, renewal, organization switching, and revocation behavior. Persistence provides create, find, and conditional update; saving stale state cannot undo revocation or overwrite a concurrent organization change.
+The session owns validation, renewal, organization switching, and revocation behavior. Its organization name is a display snapshot, excluded from identity and concurrency comparisons. Current-user responses read verified access claims without querying organizations. Login, renewal, and switching load the organization name through membership queries; renames become visible in newly issued tokens. Persistence provides create, find, and conditional update; saving stale state cannot undo revocation or overwrite a concurrent organization change.
 
-Session creation records each successful login. Signup creates its first session together with the user and personal organization; failure leaves no partial account or login record. JWT validity enforces the sliding inactivity window; the database records identity, scope, and revocation without pretending to track each renewal.
+Signup creates the user, personal organization, and first session atomically. JWT validity controls the inactivity window; the database stores identity, scope, and revocation.
 
-Clients expecting JSON credentials must explicitly request token delivery. Existing tokens without an embedded session require signin after the session-based flow is deployed.
-
-A stolen refresh JWT remains renewable until it expires or the session is explicitly revoked or changed. Read-only renewal does not consume credentials or automatically revoke reused tokens.
+Clients expecting JSON credentials must explicitly request token delivery. Tokens missing the required session organization name require signin again.
 
 ## Unresolved before implementation
 

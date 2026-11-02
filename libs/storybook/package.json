@@ -14,7 +14,6 @@
     "check": "tsc --noEmit",
     "lint": "prettier . --write && eslint . --fix",
     "lint:check": "eslint . && prettier . --check",
-    "test": "playwright test",
     "prepack": "npm run build"
   },
   "dependencies": {

@@ -259,7 +259,7 @@ pub struct CurrentUserResponse {
     pub user_id: u64,
     /// Organization selected for this session.
     pub organization_id: u64,
-    /// Current stored name of the selected organization, loaded through active membership.
+    /// Organization name snapshot from the signed session; refreshed when tokens renew.
     pub organization_name: String,
     /// Cached membership role from the access JWT, refreshed on renewal.
     #[schema(value_type = String, example = "owner")]
@@ -283,8 +283,8 @@ pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
 /// Sec-Fetch-Site: same-origin. No credentials are returned in JSON.
 /// Access claims contain a cached role; session revocation and membership changes are
 /// checked on renewal rather than on every access-token request.
-/// This endpoint additionally loads the current organization name through an active
-/// membership in an active organization. The name is not stored in the JWT.
+/// The organization name is a snapshot in the signed session. With valid access claims,
+/// this endpoint performs no database queries. Renames appear when tokens renew.
 #[utoipa::path(
     get, path = "/api/auth/me", operation_id = "currentUser", tag = "auth",
     security(("bearerAuth" = []), ("accessCookie" = [])),
@@ -296,15 +296,13 @@ pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
     )
 )]
 async fn current_user(
-    State(auth): State<&'static AuthService>,
     RequireToken(claims): RequireToken<UserAccessToken>,
 ) -> Result<Json<CurrentUserResponse>, ApiError> {
-    let organization = auth.current_organization(&claims).await?;
     Ok(Json(CurrentUserResponse {
         session_id: claims.session.id,
         user_id: claims.session.user_id,
         organization_id: claims.session.organization_id,
-        organization_name: organization.name,
+        organization_name: claims.session.organization_name,
         organization_role: claims.organization_role,
     }))
 }

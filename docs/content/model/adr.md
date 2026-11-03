@@ -7,13 +7,13 @@ available: true
 
 ## Status
 
-Decision status: Organization ownership, pricing, provider models, and route
-configuration are accepted. Model-management authorization, route selection,
-model availability, and fallback error rules remain proposed. Implementation
-status: The migrations and generated PostgreSQL schema implement
-`provider_models`, provider-model reasoning capabilities, and `model_router`.
-Model services, route management APIs, provider discovery, capability refresh,
-and routing are not implemented.
+Decision status: Organization ownership, shared logical/provider-model
+configuration, model-level enabling, pricing separation, and router bindings
+are accepted for the proposed schema. Authorization, route selection, capability
+matching, and fallback rules remain unresolved. Implementation status: The
+diagram shows the proposed typed configuration. Persistence still uses scalar
+token prices, logical-model settings, and direct provider reasoning fields.
+Management services, discovery, capability refresh, and routing are not implemented.
 
 ## Context and decision
 
@@ -26,53 +26,36 @@ provider models `gpt-5-mini` through one provider and `claude-sonnet-4-5`
 through another. The system model identifies what the organization offers; a
 provider model identifies what a provider accepts.
 
-Each model records organization-facing prices for input, output, and cached
-tokens. Prices are non-negative fixed-point USD amounts per one million tokens.
-They are stable billing and reporting rates, not necessarily the organization's
-upstream provider costs. Core represents each rate with
-`rust_decimal::Decimal`; PostgreSQL stores the same exact decimal value as
-`NUMERIC(20,8)`.
+Logical and provider models share `id`, `organization_id`, `name`,
+`service_kind`, `enabled`, `capabilities`, `limits`, `thinking`, and `pricing`.
+Logical-model configuration is the caller-facing contract; provider-model
+configuration describes an upstream endpoint. Logical models have no
+`provider_id`, `protocol`, `connection`, or `headers`. Routes select the upstream
+connection, keeping caller configuration independent of provider transport.
 
-A model owns no availability or visibility flag of its own. Whether Compallm
-serves the model depends on the router bindings that select an upstream
-provider model, and whether a model appears in a discovery list depends on
-Gateway access rules that are still to be decided. Storing those flags on the
-model would decide undecided policy in the schema.
+`capabilities` is a distinct flag array defaulting to `[]`; `limits` is an
+object defaulting to `{}`. Nullable `thinking` contains independent optional
+effort and budget controls, with at least one configured when non-null. Both
+present means both are supported. These typed fields replace logical-model
+`settings`; no generic timestamps are part of the proposed model schema.
 
-Each model has a `settings` JSON object for model-specific configuration whose
-shape may evolve independently of the common model fields. PostgreSQL stores
-it as non-null `JSONB`; existing and new models default to an empty object.
-Services that introduce a setting remain responsible for validating its
-documented shape before persistence. Settings must not contain provider
-credentials or other secrets.
+`pricing` uses the same token, audio, image, video, or request JSONB shapes for
+both records, with exact nonnegative decimal-string USD rates. Logical-model
+prices are organization-facing charges; provider-model prices estimate upstream
+costs. Sharing a shape does not share values or define media charging policy.
+
+Models default to enabled. A disabled logical model cannot serve requests even
+when its routes are enabled. Enabling it does not override disabled upstream
+models or bindings. Visibility remains a separate Gateway policy, not a stored
+model flag.
 
 ## Provider models and routes
 
-A provider can have multiple provider models. A provider model records:
-
-- one provider owned by the same organization;
-- the upstream model name expected by that provider;
-- configured provider prices for input, output, and cached tokens in fixed-point
-  USD per one million tokens;
-- configurable reasoning capabilities, including provider-native effort values,
-  exact-budget support, adaptive-reasoning support, and any known budget bounds;
-- whether the provider model is enabled.
-
-Core stores reasoning fields directly on `ProviderModel`, using the same field
-names as PostgreSQL. No nested capability object is required to access them.
-
-Reasoning support is derived from whether `reasoning_effort_values` is defined;
-there is no separate support field. `NULL` means unsupported or unknown. Any
-present array, including an empty array, means supported. An empty array records
-support without selectable native effort values, such as budget-only reasoning.
-Effort values are exact provider-native strings, not a numeric scale or a
-router-wide vocabulary. Each provider model records only the values accepted
-by its upstream endpoint; names and meanings can differ between providers and
-models. Provider clients own the request fields that carry those values.
-
-Effort values use nullable PostgreSQL `TEXT[]` and Core `Option<Vec<String>>`.
-A nonempty array lists selectable native values. Neither reasoning support nor
-effort support is stored as an independent flag.
+A provider owns multiple provider models in the same organization. In addition
+to shared configuration, each provider model owns its provider reference,
+service-specific protocol, optional replacement connection, and headers. The
+service/protocol pair selects a concrete adapter as defined in
+`suggest-schema.md`. Credentials remain on the provider connection.
 
 A provider model is independent of a system model and may be routed from more
 than one system model. `model_router` binds one system model to one provider
@@ -99,17 +82,17 @@ select the lowest value first. Selection and fallback rules remain unresolved.
 - Each provider attempt snapshots its provider-model prices. Historical upstream
   cost estimates therefore remain reproducible after provider-model prices
   change.
-- A model owns no availability or visibility flag. A model with no eligible
-  router binding cannot serve requests, and discovery rules belong to Gateway
-  access policy.
-- A route is available only when its provider connection, provider model, and
-  router binding are all enabled. Disabling a provider therefore makes every
-  associated route unavailable without deleting configuration.
+- A model must be enabled and have an eligible router binding to serve
+  requests. Discovery rules remain Gateway access policy.
+- Diagram route eligibility requires the logical model, provider model, and
+  binding to be enabled. The provider draft has no provider-level enabled flag;
+  provider-wide disabling remains an unresolved conflict with provider management.
 - Model persistence operations are organization-scoped. Repository listing
   returns every model in the organization for management; future workflows
   apply discovery and routing policy.
-- Model settings round-trip through persistence as JSON. The repository does
-  not interpret individual keys; owning services validate settings they use.
+- Shared shapes do not imply automatic inheritance or merging. Logical-model
+  capabilities, limits, and thinking are configured independently; route
+  compatibility and request validation need an explicit contract.
 - Routing can use provider-model reasoning capabilities without storing
   provider request templates or coupling logical models to one provider.
 
@@ -117,7 +100,7 @@ select the lowest value first. Selection and fallback rules remain unresolved.
 
 ### Model availability
 
-- **WHEN** every router binding of a model is disabled
+- **WHEN** a logical model is disabled or has no eligible router binding
 - **THEN** Compallm has no eligible route for that model and does not serve
   requests for it
 
@@ -138,6 +121,11 @@ select the lowest value first. Selection and fallback rules remain unresolved.
 - Which provider errors permit fallback, and how are cooldowns represented?
 - How are provider-reported capabilities, Compallm registry data, and
   administrator overrides reconciled during model discovery and refresh?
+- How must a route satisfy the logical model's service, declared capabilities,
+  limits, and thinking controls? Shared columns do not decide fallback eligibility.
+- How are existing logical-model settings migrated without losing meaningful
+  configuration? Organization-facing media prices and historical charge
+  snapshots also need a contract before accounting implementation.
 
 ## Related pages
 

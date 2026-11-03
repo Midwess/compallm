@@ -16,6 +16,9 @@ model-management authorization, and model discovery remain unresolved.
 
 Implementation status: The migrations and generated PostgreSQL schema implement
 `provider_models`, provider-model reasoning capabilities, and `model_router`.
+The diagram's shared typed model configuration and logical-model enabled flag
+are proposed, not implemented. Persistence still uses scalar token prices,
+logical-model settings, and direct provider reasoning fields.
 Model and route management services, management APIs, provider discovery,
 capability refresh, route selection, and request forwarding are not implemented.
 
@@ -31,28 +34,32 @@ provider serves each request.
 A model owns caller-facing configuration:
 
 - the stable model name;
-- input, output, and cached-token prices used for organization billing and
-  reporting;
-- non-secret model settings whose shape is validated by the service that
-  introduces each setting.
+- `service_kind` and `enabled`, defaulting to enabled;
+- declared `capabilities`, `limits`, and optional effort/budget `thinking`;
+- typed `pricing` used for organization billing and reporting.
 
-A model owns no availability or visibility flag. Whether Compallm serves it
-depends on its router bindings, and whether it appears in a discovery list
-depends on Gateway access rules that are still to be decided. Model settings
-must not contain provider credentials.
+These columns share the provider-model shapes, but represent a caller-facing
+contract, not automatically inherited upstream configuration. Logical models
+exclude `provider_id`, `protocol`, `connection`, and `headers`. The proposed
+typed columns replace generic `settings` and scalar price columns; no generic
+timestamps are retained. Names remain unique within an organization.
+
+A disabled logical model cannot serve requests. Enabling it does not override
+disabled provider models or bindings. Discovery visibility remains Gateway
+policy, with no separate stored visibility flag. Models contain no credentials.
 
 ### Provider connection
 
 A provider connection is an organization-owned configuration for reaching an
-external LLM service. It owns a management name, API protocol, endpoint URL,
-protected credential, and `enabled` state. OpenAI, Anthropic, and
-OpenAI-compatible connections are planned initially.
+external service. In the proposal it owns a management name, shared connection,
+headers, and protected credential. Service kind and protocol belong to the
+provider model. The provider draft omits provider-wide enabling; this conflicts
+with the provider-management contract and remains unresolved.
 
 A provider connection is not a model. A connection can have multiple provider
 models, each representing an upstream model the connection can call. The same
 provider model can be bound to multiple logical models, and a logical model can
-use provider models from multiple connections. Disabling a connection preserves
-it for management but makes all routes through it unavailable.
+use provider models from multiple connections.
 
 Credentials are write-only at the management boundary. They must not appear
 in model, route, discovery, or usage responses, logs, or client-visible errors.
@@ -63,48 +70,22 @@ A provider model represents one upstream model available through one provider
 connection in the same organization. It stores:
 
 - the upstream model name accepted by that provider;
-- configured provider input, output, and cached-token prices in fixed-point USD
-  per one million tokens;
-- supported provider-native reasoning-effort values, exact-budget support,
-  adaptive-reasoning support, and known minimum or maximum budgets;
+- `service_kind`, a service-specific `protocol`, an optional complete connection
+  replacement, and headers;
+- capabilities, limits, optional thinking controls, and upstream pricing using
+  the same types as logical models;
 - an independent `enabled` state.
 
-Provider-model names are unique per provider connection. Database constraints
-reject provider models that cross organization boundaries.
+Provider models are unique by organization, provider, name, service kind, and
+protocol. Database constraints reject cross-organization ownership.
 
-Core's `ProviderModel` exposes these fields directly: `reasoning_effort_values`,
-`supports_reasoning_budget`, `supports_adaptive_reasoning`,
-`minimum_reasoning_budget_tokens`, and `maximum_reasoning_budget_tokens`.
-The names match PostgreSQL columns.
-
-PostgreSQL stores effort values as nullable `TEXT[]`, defaulting to `NULL`;
-its SeaORM model and Core use `Option<Vec<String>>`.
-Reasoning support is derived from array presence: `NULL` means unsupported or
-unknown; any present array means supported. An empty array records support
-without selectable native effort levels, including budget-only or adaptive-only
-reasoning. A nonempty array lists selectable native values. Core checks support
-with `reasoning_effort_values.is_some()`. Neither reasoning support nor effort
-support is stored as a separate flag. The mapper preserves `NULL`, empty arrays,
-and native strings exactly, including their case. Database constraints reject
-null array elements. Budget bounds use checked conversion from PostgreSQL `i32`
-to Core `u32`, just as IDs use checked conversion from `i64` to `u64`.
-
-The reasoning-capabilities migration adds nullable native effort values, budget
-and adaptive support flags, and budget bounds directly. It creates no separate
-reasoning-support or effort-support column. Rolling it back removes all of
-these capability columns and their stored values.
-
-Missing provider metadata leaves effort values `NULL` by policy; it is not
-proof that reasoning is unsupported. Provider discovery may populate these
-capability fields after validating the upstream response. Effort values come
-from the provider's contract for that model and endpoint, not a shared numeric
-scale or the router's normalized choices. No global list or ordering is
-imposed: a value such as `high` need not mean the same thing across providers.
-A provider-native `none` or `auto` value is stored only when that endpoint
-accepts it. Budget and adaptive controls remain separate. Concrete provider
-clients put selected values into the correct native request fields; forwarding
-is not implemented. Provider-native request templates are not stored as model
-data.
+Capabilities are distinct flags defaulting to `[]`; limits are an object
+defaulting to `{}`. Null thinking means no configured controls. A non-null
+thinking object has optional effort and budget fields, at least one non-null;
+both present means both are supported. Concrete adapters validate request-level
+combinations. Pricing has one typed token, audio, image, video, or request
+variant, with exact decimal-string USD rates. Detailed contracts are in
+`suggest-schema.md` and the diagram.
 
 ### Model router binding
 
@@ -128,7 +109,7 @@ Organization
   │    │                                └─ OpenAI connection
   │    └─ model_router: priority 2 ─> provider_model: claude-sonnet-4-5
   │                                     └─ Anthropic connection
-  └─ Provider connections (endpoint, protocol, protected credential) own
+   └─ Provider connections (connection, headers, protected credential) own
        provider models and can serve multiple logical models
 ```
 
@@ -138,13 +119,13 @@ configuration. Changing an upstream model name, disabling a binding, or moving
 traffic to another provider does not require clients to select a new logical
 model name.
 
-A router binding is available only when all three records are enabled:
+A router binding is eligible in the diagram only when these records are enabled:
 
 ```text
-provider enabled AND provider model enabled AND binding enabled
+logical model enabled AND provider model enabled AND binding enabled
 ```
 
-Management listings retain disabled provider connections, provider models, and
+Management listings retain disabled logical models, provider models, and
 bindings. Discovery and routing workflows apply availability and visibility
 policy rather than relying on the repository to filter management data.
 
@@ -152,14 +133,14 @@ policy rather than relying on the repository to filter management data.
 
 1. The Gateway authenticates the caller, establishes its organization, and
    checks whether it may use the requested logical model.
-2. The Gateway applies its discovery and access rules, which decide which
+2. The Gateway rejects disabled models and applies discovery and access rules, which decide which
    models the caller may see and use.
 3. The Router loads `model_router` bindings whose provider models and provider
-   connections are in the same organization and whose provider, provider model,
-   and binding are enabled.
+   connections are in the same organization and whose provider model and binding
+   are enabled. Service/capability matching rules remain to be defined.
 4. The Router selects a binding according to rules that still need a decision.
 5. A concrete provider client sends the provider model's upstream name using the
-   connection's protocol, endpoint, and protected credential.
+    model's service/protocol adapter, effective connection, and protected credential.
 6. Usage records identify the requested model, provider model, and binding that
    served the request.
 
@@ -172,17 +153,17 @@ atomic with a database update.
 | Information | Owner |
 | --- | --- |
 | Stable caller-facing name and published prices | Model |
-| Non-secret model behavior settings | Model |
-| Endpoint, protocol, credential, and connection availability | Provider connection |
-| Upstream model name, configured provider prices, reasoning capabilities, and availability | Provider model |
+| Caller-facing service, enabled state, capabilities, limits, and thinking | Model |
+| Shared connection, headers, and credential | Provider connection |
+| Upstream name, service/protocol, connection override, headers, typed configuration, and upstream prices | Provider model |
 | Route priority and availability | `model_router` binding |
-| Price snapshot used to estimate one provider attempt's cost | `provider_usage` |
+| Price snapshot used to estimate one provider attempt's cost | Each typed provider-usage record |
 | Health, quota, cooldown, and observed operational data | Separate operational state |
 
 Published model prices remain stable across router bindings and do not
-necessarily equal configured provider-model prices. Providers return token usage
-rather than a USD cost, so provider cost is estimated from provider-model
-prices. `provider_usage` snapshots the three provider-model rates when an
+necessarily equal configured provider-model prices. Provider cost is estimated
+from typed measurements and provider-model prices. Each typed provider-usage
+record snapshots the complete provider-model pricing configuration when an
 attempt is created, so historical upstream cost estimates remain reproducible
 after later price changes. Operational observations must not overwrite model
 prices, provider-model configuration, or router bindings.
@@ -197,7 +178,10 @@ prices, provider-model configuration, or router bindings.
   cancellation, and charging interact?
 - How are provider-reported capabilities, Compallm registry data, and
   administrator overrides reconciled during model discovery and refresh?
-- Which model setting keys and validation rules are introduced first?
+- How do logical-model service, capabilities, limits, and thinking constrain
+  eligible provider models? No automatic merge or inheritance is defined.
+- How are meaningful existing settings preserved when replacing generic JSON
+  settings with typed columns? Media member-charging rules remain unresolved.
 - What happens when no eligible binding remains for a model?
 
 ## Related decisions

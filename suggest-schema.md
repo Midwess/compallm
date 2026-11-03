@@ -66,6 +66,7 @@ meaningful existing settings are preserved before removing them.
 | `service_kind` | `TEXT NOT NULL` | `ServiceKind` | Requested operation, such as LLM inference, image generation, or transcription. |
 | `enabled` | `BOOLEAN NOT NULL DEFAULT TRUE` | `bool` | Configured model availability. |
 | `protocol` | `TEXT NOT NULL` | `Protocol` | API-format or implementation family, interpreted within the selected service. |
+| `base_url` | `TEXT NULL` | `Option<String>` | Per-model upstream base URL; null inherits the provider connection base URL. |
 | `connection` | `JSONB NULL` | `Option<Connection>` | Optional complete replacement for the provider connection; null uses the shared provider connection. |
 | `headers` | `JSONB NOT NULL DEFAULT '{}'` | `Headers` | Non-secret model headers merged over provider headers. |
 | `capabilities` | `JSONB NOT NULL DEFAULT '[]'` | `Vec<Capability>` | Explicitly declared feature flags; an empty array declares no optional capabilities. |
@@ -152,7 +153,10 @@ request-transformation language or arbitrary provider-quirk map.
 A model with null `connection` uses the provider's complete `Connection`.
 A supplied model connection is the same complete structure and replaces the
 provider connection in full. It must include the base URL, timeout, and API-key
-placement; there is no partial merge. Model headers merge over provider
+placement; there is no partial merge. The separate `base_url` column overrides
+the base URL of the effective connection, whether inherited or supplied, so a
+model can point at its own endpoint without restating the other connection
+settings. Model headers merge over provider
 headers using case-insensitive names. Secret headers are applied separately;
 public custom headers cannot replace authentication or transport-managed
 headers. Every model uses the owning provider's API key.

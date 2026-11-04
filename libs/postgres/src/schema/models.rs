@@ -18,15 +18,17 @@ pub struct Model {
         unique_key = "models_organization_id_name_unique"
     )]
     pub name: String,
-    #[sea_orm(column_type = "Decimal(Some((20, 8)))")]
-    pub input_price_per_million_tokens: Decimal,
-    #[sea_orm(column_type = "Decimal(Some((20, 8)))")]
-    pub output_price_per_million_tokens: Decimal,
-    #[sea_orm(column_type = "Decimal(Some((20, 8)))")]
-    pub cached_price_per_million_tokens: Decimal,
-    pub updated_at: DateTimeWithTimeZone,
+    #[sea_orm(column_type = "Text")]
+    pub service_kind: String,
+    pub enabled: bool,
     #[sea_orm(column_type = "JsonBinary")]
-    pub settings: Json,
+    pub capabilities: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub limits: Json,
+    #[sea_orm(column_type = "JsonBinary", nullable)]
+    pub thinking: Option<Json>,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub pricing: Json,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

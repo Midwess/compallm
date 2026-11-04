@@ -54,9 +54,10 @@ token prices in USD per one million tokens. These are non-negative fixed-point
 rates used for stable billing and reporting regardless of the selected route.
 Configured upstream provider prices can differ and therefore belong to each
 provider model rather than the logical model. Providers report token usage
-rather than USD cost; `provider_usage` snapshots those provider-model prices at
-attempt creation, so any historical upstream-cost estimate uses the rates in
-effect for that attempt.
+rather than USD cost; each typed provider-usage row snapshots provider-model
+pricing at attempt creation, so historical upstream-cost estimates use the
+rates in effect for that attempt. The registered usage migration introduces
+independent token, image, audio, and video tables linked to `model_usage`.
 
 Before implementation, decide which API compatibility standard, providers, and model capabilities ship first, and whether credentials are organization-owned only or members may bring personal credentials.
 

@@ -1,0 +1,347 @@
+use sea_orm_migration::{
+    prelude::*,
+    sea_query::{
+        IndexCreateStatement, TableCreateStatement,
+        extension::postgres::{Type, TypeCreateStatement},
+    },
+};
+
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager.create_type(provider_usage_status_type()).await?;
+        manager.create_table(provider_token_usage_table()).await?;
+        for index in provider_token_usage_indexes() {
+            manager.create_index(index).await?;
+        }
+        Ok(())
+    }
+
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_table(Table::drop().table(ProviderTokenUsage::Table).to_owned())
+            .await?;
+        manager
+            .drop_type(Type::drop().name(ProviderUsageStatus::Enum).to_owned())
+            .await
+    }
+}
+
+fn provider_token_usage_table() -> TableCreateStatement {
+    Table::create()
+        .table(ProviderTokenUsage::Table)
+        .col(
+            ColumnDef::new(ProviderTokenUsage::Id)
+                .big_integer()
+                .not_null()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::OrganizationId)
+                .big_integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::ModelUsageId)
+                .big_integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::AttemptId)
+                .big_integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::ModelRouterId)
+                .big_integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::ProviderModelId)
+                .big_integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::ProviderId)
+                .big_integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::ProviderRequestId)
+                .text()
+                .null(),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::Status)
+                .custom(ProviderUsageStatus::Enum)
+                .not_null()
+                .default("in_progress"),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::InputUsdPerMillionTokens)
+                .decimal_len(20, 8)
+                .null()
+                .check(Expr::col(ProviderTokenUsage::InputUsdPerMillionTokens).gte(0)),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::OutputUsdPerMillionTokens)
+                .decimal_len(20, 8)
+                .null()
+                .check(Expr::col(ProviderTokenUsage::OutputUsdPerMillionTokens).gte(0)),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::CachedUsdPerMillionTokens)
+                .decimal_len(20, 8)
+                .null()
+                .check(Expr::col(ProviderTokenUsage::CachedUsdPerMillionTokens).gte(0)),
+        )
+        .check(
+            Cond::any()
+                .add(
+                    Cond::all()
+                        .add(Expr::col(ProviderTokenUsage::InputUsdPerMillionTokens).is_null())
+                        .add(Expr::col(ProviderTokenUsage::OutputUsdPerMillionTokens).is_null())
+                        .add(Expr::col(ProviderTokenUsage::CachedUsdPerMillionTokens).is_null()),
+                )
+                .add(
+                    Cond::all()
+                        .add(Expr::col(ProviderTokenUsage::InputUsdPerMillionTokens).is_not_null())
+                        .add(Expr::col(ProviderTokenUsage::OutputUsdPerMillionTokens).is_not_null())
+                        .add(
+                            Expr::col(ProviderTokenUsage::CachedUsdPerMillionTokens).is_not_null(),
+                        ),
+                ),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::InputTokens)
+                .big_integer()
+                .null(),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::CachedInputTokens)
+                .big_integer()
+                .null(),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::OutputTokens)
+                .big_integer()
+                .null(),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::ReasoningOutputTokens)
+                .big_integer()
+                .null(),
+        )
+        .check(Expr::col(ProviderTokenUsage::Id).gt(0))
+        .check(Expr::col(ProviderTokenUsage::AttemptId).gt(0))
+        .check(Expr::col(ProviderTokenUsage::InputTokens).gte(0))
+        .check(Expr::col(ProviderTokenUsage::CachedInputTokens).gte(0))
+        .check(Expr::col(ProviderTokenUsage::OutputTokens).gte(0))
+        .check(Expr::col(ProviderTokenUsage::ReasoningOutputTokens).gte(0))
+        .check(
+            Expr::col(ProviderTokenUsage::CachedInputTokens)
+                .is_null()
+                .or(Expr::col(ProviderTokenUsage::InputTokens)
+                    .is_not_null()
+                    .and(
+                        Expr::col(ProviderTokenUsage::CachedInputTokens)
+                            .lte(Expr::col(ProviderTokenUsage::InputTokens)),
+                    )),
+        )
+        .check(
+            Expr::col(ProviderTokenUsage::ReasoningOutputTokens)
+                .is_null()
+                .or(Expr::col(ProviderTokenUsage::OutputTokens)
+                    .is_not_null()
+                    .and(
+                        Expr::col(ProviderTokenUsage::ReasoningOutputTokens)
+                            .lte(Expr::col(ProviderTokenUsage::OutputTokens)),
+                    )),
+        )
+        .foreign_key(
+            ForeignKey::create()
+                .name("provider_token_usage_model_usage_scope_fkey")
+                .from(
+                    ProviderTokenUsage::Table,
+                    (
+                        ProviderTokenUsage::OrganizationId,
+                        ProviderTokenUsage::ModelUsageId,
+                    ),
+                )
+                .to(
+                    ModelUsage::Table,
+                    (ModelUsage::OrganizationId, ModelUsage::Id),
+                )
+                .on_delete(ForeignKeyAction::Cascade)
+                .on_update(ForeignKeyAction::NoAction),
+        )
+        .foreign_key(
+            ForeignKey::create()
+                .name("provider_token_usage_route_scope_fkey")
+                .from(
+                    ProviderTokenUsage::Table,
+                    (
+                        ProviderTokenUsage::OrganizationId,
+                        ProviderTokenUsage::ProviderModelId,
+                        ProviderTokenUsage::ModelRouterId,
+                    ),
+                )
+                .to(
+                    ModelRouter::Table,
+                    (
+                        ModelRouter::OrganizationId,
+                        ModelRouter::ProviderModelId,
+                        ModelRouter::Id,
+                    ),
+                )
+                .on_delete(ForeignKeyAction::Restrict)
+                .on_update(ForeignKeyAction::NoAction),
+        )
+        .foreign_key(
+            ForeignKey::create()
+                .name("provider_token_usage_provider_model_scope_fkey")
+                .from(
+                    ProviderTokenUsage::Table,
+                    (
+                        ProviderTokenUsage::OrganizationId,
+                        ProviderTokenUsage::ProviderId,
+                        ProviderTokenUsage::ProviderModelId,
+                    ),
+                )
+                .to(
+                    ProviderModels::Table,
+                    (
+                        ProviderModels::OrganizationId,
+                        ProviderModels::ProviderId,
+                        ProviderModels::Id,
+                    ),
+                )
+                .on_delete(ForeignKeyAction::Restrict)
+                .on_update(ForeignKeyAction::NoAction),
+        )
+        .foreign_key(
+            ForeignKey::create()
+                .name("provider_token_usage_provider_scope_fkey")
+                .from(
+                    ProviderTokenUsage::Table,
+                    (
+                        ProviderTokenUsage::OrganizationId,
+                        ProviderTokenUsage::ProviderId,
+                    ),
+                )
+                .to(Providers::Table, (Providers::OrganizationId, Providers::Id))
+                .on_delete(ForeignKeyAction::Restrict)
+                .on_update(ForeignKeyAction::NoAction),
+        )
+        .to_owned()
+}
+
+fn provider_token_usage_indexes() -> [IndexCreateStatement; 5] {
+    [
+        Index::create()
+            .name("provider_token_usage_attempt_unique")
+            .table(ProviderTokenUsage::Table)
+            .col(ProviderTokenUsage::OrganizationId)
+            .col(ProviderTokenUsage::AttemptId)
+            .unique()
+            .to_owned(),
+        Index::create()
+            .name("provider_token_usage_model_usage_idx")
+            .table(ProviderTokenUsage::Table)
+            .col(ProviderTokenUsage::OrganizationId)
+            .col(ProviderTokenUsage::ModelUsageId)
+            .to_owned(),
+        Index::create()
+            .name("provider_token_usage_provider_model_idx")
+            .table(ProviderTokenUsage::Table)
+            .col(ProviderTokenUsage::OrganizationId)
+            .col(ProviderTokenUsage::ProviderModelId)
+            .to_owned(),
+        Index::create()
+            .name("provider_token_usage_route_idx")
+            .table(ProviderTokenUsage::Table)
+            .col(ProviderTokenUsage::OrganizationId)
+            .col(ProviderTokenUsage::ModelRouterId)
+            .to_owned(),
+        Index::create()
+            .name("provider_token_usage_request_idx")
+            .table(ProviderTokenUsage::Table)
+            .col(ProviderTokenUsage::OrganizationId)
+            .col(ProviderTokenUsage::ProviderId)
+            .col(ProviderTokenUsage::ProviderRequestId)
+            .to_owned(),
+    ]
+}
+
+fn provider_usage_status_type() -> TypeCreateStatement {
+    Type::create()
+        .as_enum(ProviderUsageStatus::Enum)
+        .values([
+            ProviderUsageStatus::InProgress,
+            ProviderUsageStatus::Succeeded,
+            ProviderUsageStatus::Failed,
+            ProviderUsageStatus::Cancelled,
+            ProviderUsageStatus::Incomplete,
+        ])
+        .to_owned()
+}
+
+#[derive(DeriveIden)]
+enum ProviderUsageStatus {
+    #[sea_orm(iden = "provider_usage_status")]
+    Enum,
+    InProgress,
+    Succeeded,
+    Failed,
+    Cancelled,
+    Incomplete,
+}
+#[derive(DeriveIden)]
+enum ProviderTokenUsage {
+    Table,
+    Id,
+    OrganizationId,
+    ModelUsageId,
+    AttemptId,
+    ModelRouterId,
+    ProviderModelId,
+    ProviderId,
+    ProviderRequestId,
+    Status,
+    InputUsdPerMillionTokens,
+    OutputUsdPerMillionTokens,
+    CachedUsdPerMillionTokens,
+    InputTokens,
+    CachedInputTokens,
+    OutputTokens,
+    ReasoningOutputTokens,
+}
+#[derive(DeriveIden)]
+enum ModelUsage {
+    Table,
+    OrganizationId,
+    Id,
+}
+#[derive(DeriveIden)]
+enum ModelRouter {
+    Table,
+    OrganizationId,
+    ProviderModelId,
+    Id,
+}
+#[derive(DeriveIden)]
+enum ProviderModels {
+    Table,
+    OrganizationId,
+    ProviderId,
+    Id,
+}
+#[derive(DeriveIden)]
+enum Providers {
+    Table,
+    OrganizationId,
+    Id,
+}

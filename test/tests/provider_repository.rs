@@ -3,40 +3,37 @@ use compallm_core::{
         DbContext,
         provider::{ProviderRepository as _, ProviderRepositoryError},
     },
-    provider::{ApiProtocol, Provider, ProviderApiKey},
+    provider::{Provider, ProviderApiKey},
 };
 use compallm_postgres::{
-    ApiProtocolSchema, ProviderSchema, postgres_connection::PostgresConnection,
+    ProviderSchema, postgres_connection::PostgresConnection,
     repository::provider::ProviderRepository,
 };
-use sea_orm::{ActiveEnum, DbBackend, IntoMockRow, MockDatabase};
+use sea_orm::{DbBackend, IntoMockRow, MockDatabase};
+use serde_json::json;
 use std::{collections::BTreeMap, sync::Arc};
 
 struct Fixture;
 
 impl Fixture {
-    fn at() -> sea_orm::prelude::DateTimeWithTimeZone {
-        "2026-10-26T00:00:00Z".parse().unwrap()
+    fn connection() -> serde_json::Value {
+        json!({"baseUrl": "https://provider.example/v1", "timeoutMs": 30000,
+            "authentication": {"apiKeyHeader": {"name": "Authorization", "prefix": "Bearer "}}})
     }
 
-    fn provider(id: i64, name: &str, api_key: &str, enabled: bool) -> ProviderSchema {
+    fn provider(id: i64, name: &str, api_key: &str) -> ProviderSchema {
         ProviderSchema {
             id,
             organization_id: 84,
             name: name.into(),
-            url: "https://provider.example/v1".into(),
-            api_key: api_key.into(),
-            api_protocol: ApiProtocolSchema::OpenaiCompatible,
-            updated_at: Self::at(),
-            enabled,
+            connection: Self::connection(),
+            headers: json!({}),
+            credentials: api_key.into(),
         }
     }
 
     fn provider_row(model: ProviderSchema) -> BTreeMap<String, sea_orm::Value> {
-        let protocol = model.api_protocol.to_value().value.to_string();
-        let mut row: BTreeMap<_, _> = model.into_mock_row().into_column_value_tuples().collect();
-        row.insert("api_protocol".into(), protocol.into());
-        row
+        model.into_mock_row().into_column_value_tuples().collect()
     }
 
     fn context(db: Arc<sea_orm::DatabaseConnection>) -> DbContext {
@@ -48,9 +45,8 @@ impl Fixture {
             id: 100,
             organization_id: 84,
             name: "Primary".into(),
-            url: "https://provider.example/v1".into(),
-            api_protocol: ApiProtocol::OpenaiCompatible,
-            enabled: true,
+            connection: serde_json::from_value(Self::connection()).unwrap(),
+            headers: Default::default(),
             models: Vec::new(),
         }
     }
@@ -64,7 +60,6 @@ async fn find_all_applies_the_requested_limit_and_scopes_to_the_organization() {
                 100,
                 "Primary",
                 "must-not-leak",
-                false,
             ))]])
             .into_connection(),
     );
@@ -74,8 +69,10 @@ async fn find_all_applies_the_requested_limit_and_scopes_to_the_organization() {
         .unwrap();
     assert_eq!(providers.len(), 1);
     assert_eq!(providers[0].organization_id, 84);
-    assert_eq!(providers[0].api_protocol, ApiProtocol::OpenaiCompatible);
-    assert!(!providers[0].enabled);
+    assert_eq!(
+        providers[0].connection.base_url,
+        "https://provider.example/v1"
+    );
 
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
     assert!(log.contains("organization_id"));
@@ -85,14 +82,13 @@ async fn find_all_applies_the_requested_limit_and_scopes_to_the_organization() {
 }
 
 #[tokio::test]
-async fn insert_writes_availability_and_secret_without_business_validation_queries() {
+async fn insert_writes_connection_and_secret_without_business_validation_queries() {
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![Fixture::provider_row(Fixture::provider(
                 100,
                 "Primary",
                 "encrypted-key",
-                true,
             ))]])
             .into_connection(),
     );
@@ -104,12 +100,13 @@ async fn insert_writes_availability_and_secret_without_business_validation_queri
         .await
         .unwrap();
     assert_eq!(provider.id, 100);
-    assert!(provider.enabled);
+    assert_eq!(provider.connection.timeout_ms, 30000);
 
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
     assert!(log.contains("INSERT INTO"));
     assert!(log.contains("encrypted-key"));
-    assert!(log.contains("enabled"));
+    assert!(log.contains("credentials"));
+    assert!(log.contains("connection"));
     assert!(!log.contains("FOR UPDATE"));
     assert!(!log.contains("COUNT(*)"));
 }
@@ -123,13 +120,11 @@ async fn update_preserves_the_secret_when_no_replacement_is_supplied() {
                     100,
                     "Primary",
                     "existing-secret",
-                    true,
                 ))],
                 vec![Fixture::provider_row(Fixture::provider(
                     100,
                     "Renamed",
                     "existing-secret",
-                    false,
                 ))],
             ])
             .into_connection(),
@@ -140,9 +135,8 @@ async fn update_preserves_the_secret_when_no_replacement_is_supplied() {
                 id: 100,
                 organization_id: 84,
                 name: "Renamed".into(),
-                url: "https://provider.example/v1".into(),
-                api_protocol: ApiProtocol::Anthropic,
-                enabled: false,
+                connection: serde_json::from_value(Fixture::connection()).unwrap(),
+                headers: Default::default(),
                 models: Vec::new(),
             },
             None,
@@ -150,14 +144,13 @@ async fn update_preserves_the_secret_when_no_replacement_is_supplied() {
         .await
         .unwrap();
     assert_eq!(provider.name, "Renamed");
-    assert!(!provider.enabled);
 
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
     assert!(log.contains("organization_id"));
     assert!(log.contains("UPDATE"));
     assert!(!log.contains("existing-secret"));
-    assert!(log.contains("updated_at"));
-    assert!(log.contains("enabled"));
+    assert!(log.contains("connection"));
+    assert!(log.contains("headers"));
 }
 
 #[tokio::test]
@@ -169,7 +162,6 @@ async fn delete_is_organization_scoped_and_reports_missing_rows() {
                     100,
                     "Primary",
                     "existing-secret",
-                    false,
                 ))],
                 vec![],
             ])

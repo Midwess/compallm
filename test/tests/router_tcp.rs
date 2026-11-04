@@ -27,7 +27,7 @@ fn model() -> Model {
 }
 
 #[tokio::test]
-async fn header_schedule_waits_for_complete_headers_and_runs_in_order() {
+async fn header_stage_waits_for_complete_headers_and_runs_in_order() {
     timeout(Duration::from_secs(5), async {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let mut client = TcpStream::connect(listener.local_addr().unwrap())
@@ -38,10 +38,10 @@ async fn header_schedule_waits_for_complete_headers_and_runs_in_order() {
         let first = called.clone();
         let second = called.clone();
         let mut router = Router::new(model());
-        router.configure_schedule(HeaderReceived, move |schedule| {
+        router.configure_stage(HeaderReceived, move |stage| {
             let first = first.clone();
             let second = second.clone();
-            schedule.add_systems(
+            stage.add_processors(
                 (
                     move |mut header: ResMut<RequestHeader>, model: Res<RouterModel>| {
                         assert_eq!(model.0.id, 1);
@@ -71,7 +71,7 @@ async fn header_schedule_waits_for_complete_headers_and_runs_in_order() {
                 .is_err()
         );
         assert_eq!(called.load(std::sync::atomic::Ordering::SeqCst), 0);
-        // No body needs to arrive before the header schedule executes.
+        // No body needs to arrive before the header stage executes.
         client.write_all(b"\r\n").await.unwrap();
         router.join_next().await.unwrap().unwrap().unwrap();
         assert_eq!(called.load(std::sync::atomic::Ordering::SeqCst), 2);
@@ -82,7 +82,7 @@ async fn header_schedule_waits_for_complete_headers_and_runs_in_order() {
 }
 
 #[tokio::test]
-async fn invalid_or_oversized_headers_do_not_run_systems() {
+async fn invalid_or_oversized_headers_do_not_run_processors() {
     timeout(Duration::from_secs(5), async {
         let oversized = format!(
             "GET / HTTP/1.1\r\nX-Large: {}\r\n\r\n",
@@ -95,7 +95,7 @@ async fn invalid_or_oversized_headers_do_not_run_systems() {
                 .unwrap();
             let (stream, _) = listener.accept().await.unwrap();
             let mut router = Router::new(model());
-            router.add_systems(HeaderReceived, || -> () { panic!("must not execute") });
+            router.add_processors(HeaderReceived, || -> () { panic!("must not execute") });
             router.on_connection(stream).unwrap();
             let _ = client.write_all(payload).await;
             let error = router.join_next().await.unwrap().unwrap().unwrap_err();
@@ -125,13 +125,13 @@ async fn dropping_router_aborts_active_connection() {
 }
 
 #[tokio::test]
-async fn system_local_state_is_isolated_between_connections() {
+async fn processor_local_state_is_isolated_between_connections() {
     timeout(Duration::from_secs(5), async {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let called = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let observed = called.clone();
         let mut router = Router::new(model());
-        router.add_systems(HeaderReceived, move |mut runs: Local<usize>| {
+        router.add_processors(HeaderReceived, move |mut runs: Local<usize>| {
             assert_eq!(*runs, 0);
             *runs += 1;
             observed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -155,10 +155,10 @@ async fn system_local_state_is_isolated_between_connections() {
 }
 
 struct FutureMoment;
-impl ScheduleLabel for FutureMoment {}
+impl StageLabel for FutureMoment {}
 
 #[tokio::test]
-async fn custom_schedule_registration_does_not_run_at_header_received() {
+async fn custom_stage_registration_does_not_run_at_header_received() {
     timeout(Duration::from_secs(5), async {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let mut client = TcpStream::connect(listener.local_addr().unwrap())
@@ -166,12 +166,11 @@ async fn custom_schedule_registration_does_not_run_at_header_received() {
             .unwrap();
         let (stream, _) = listener.accept().await.unwrap();
         let mut router = Router::new(model());
-        router.add_systems(FutureMoment, || -> () {
-            panic!("untriggered schedule must not run")
+        router.add_processors(FutureMoment, || -> () {
+            panic!("untriggered stage must not run")
         });
-        router.configure_schedule(FutureMoment, |schedule| {
-            schedule
-                .add_systems(|| -> () { panic!("untriggered configured schedule must not run") });
+        router.configure_stage(FutureMoment, |stage| {
+            stage.add_processors(|| -> () { panic!("untriggered configured stage must not run") });
         });
         router.on_connection(stream).unwrap();
         client
@@ -185,7 +184,7 @@ async fn custom_schedule_registration_does_not_run_at_header_received() {
 }
 
 #[tokio::test]
-async fn header_system_failure_stops_the_schedule_and_returns_to_caller() {
+async fn header_processor_failure_stops_the_stage_and_returns_to_caller() {
     timeout(Duration::from_secs(5), async {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let mut client = TcpStream::connect(listener.local_addr().unwrap())
@@ -193,7 +192,7 @@ async fn header_system_failure_stops_the_schedule_and_returns_to_caller() {
             .unwrap();
         let (stream, _) = listener.accept().await.unwrap();
         let mut router = Router::new(model());
-        router.add_systems(
+        router.add_processors(
             HeaderReceived,
             |header: Res<RequestHeader>| -> std::io::Result<()> {
                 assert_eq!(header.method, "GET");
@@ -203,10 +202,10 @@ async fn header_system_failure_stops_the_schedule_and_returns_to_caller() {
                 ))
             },
         );
-        router.add_systems(HeaderReceived, || -> () {
+        router.add_processors(HeaderReceived, || -> () {
             panic!("must stop after rejection")
         });
-        router.add_systems(BodyStarted, || -> () {
+        router.add_processors(BodyStarted, || -> () {
             panic!("body stage must be skipped after header rejection")
         });
         router.on_connection(stream).unwrap();
@@ -246,12 +245,12 @@ async fn body_started_selects_provider_after_headers_without_waiting_for_payload
         let observed = Arc::new(AtomicUsize::new(0));
         let calls = observed.clone();
         let mut router = Router::new(model());
-        router.add_systems(HeaderReceived, |mut header: ResMut<RequestHeader>| {
+        router.add_processors(HeaderReceived, |mut header: ResMut<RequestHeader>| {
             header.target = "/authorized".into();
         });
-        router.add_systems(
+        router.add_processors(
             BodyStarted,
-            move |header: Res<RequestHeader>, mut commands: Commands| -> std::io::Result<()> {
+            move |header: Res<RequestHeader>, mut writer: ContextWriter| -> std::io::Result<()> {
                 assert_eq!(header.target, "/authorized");
                 let provider = [&unavailable, &available]
                     .into_iter()
@@ -259,11 +258,11 @@ async fn body_started_selects_provider_after_headers_without_waiting_for_payload
                     .ok_or_else(|| {
                         std::io::Error::new(std::io::ErrorKind::NotConnected, "unavailable")
                     })?;
-                commands.insert_resource(SelectedProvider(Arc::clone(provider)));
+                writer.insert_resource(SelectedProvider(Arc::clone(provider)));
                 Ok(())
             },
         );
-        router.add_systems(BodyStarted, move |selected: Res<SelectedProvider>| {
+        router.add_processors(BodyStarted, move |selected: Res<SelectedProvider>| {
             assert!(Arc::ptr_eq(&selected.0, &expected));
             assert_eq!(selected.0.name, "available");
             calls.fetch_add(1, Ordering::SeqCst);

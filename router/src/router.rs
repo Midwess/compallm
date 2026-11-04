@@ -1,6 +1,6 @@
 use crate::{
     connection::Connection,
-    schedule::{IntoSystems, Schedule, ScheduleDefinitions, ScheduleLabel},
+    stage::{IntoProcessors, Stage, StageDefinitions, StageLabel},
 };
 use compallm_core::model::Model;
 use std::{io, sync::Arc};
@@ -14,7 +14,7 @@ use tokio::{
 pub struct Router {
     model: Arc<Model>,
     connections: JoinSet<io::Result<()>>,
-    schedules: ScheduleDefinitions,
+    stages: StageDefinitions,
 }
 
 impl Router {
@@ -22,25 +22,25 @@ impl Router {
         Self {
             model: Arc::new(model),
             connections: JoinSet::new(),
-            schedules: ScheduleDefinitions::default(),
+            stages: StageDefinitions::default(),
         }
     }
 
-    /// Register typed systems for future connections, executed in registration order.
-    pub fn add_systems<M, C>(&mut self, label: impl ScheduleLabel, systems: C)
+    /// Register typed processors for future connections, executed in registration order.
+    pub fn add_processors<M, C>(&mut self, label: impl StageLabel, processors: C)
     where
-        C: IntoSystems<M> + Clone + Send + Sync + 'static,
+        C: IntoProcessors<M> + Clone + Send + Sync + 'static,
     {
-        self.schedules.add(label, systems);
+        self.stages.add(label, processors);
     }
 
-    /// Configure an independently initialized schedule for each connection.
-    pub fn configure_schedule(
+    /// Configure an independently initialized stage for each connection.
+    pub fn configure_stage(
         &mut self,
-        label: impl ScheduleLabel,
-        configure: impl Fn(&mut Schedule) + Send + Sync + 'static,
+        label: impl StageLabel,
+        configure: impl Fn(&mut Stage) + Send + Sync + 'static,
     ) {
-        self.schedules.configure(label, configure);
+        self.stages.configure(label, configure);
     }
 
     pub fn model(&self) -> &Model {
@@ -53,7 +53,7 @@ impl Router {
             model: Arc::clone(&self.model),
             peer_addr: stream.peer_addr()?,
             stream,
-            schedules: self.schedules.build(),
+            stages: self.stages.build(),
         };
         self.connections.spawn(connection.run());
         Ok(())

@@ -27,26 +27,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }),
     };
     let mut router = Router::new(model);
-    router.add_systems(HeaderReceived, inspect_header);
+    router.add_processors(HeaderReceived, inspect_header);
     // Synthetic instance only: the consumer supplies the real availability policy.
     let provider = Arc::new(ExampleProvider {
         name: "example-provider",
         available: true,
     });
-    router.add_systems(
+    router.add_processors(
         BodyStarted,
-        move |mut commands: Commands| -> std::io::Result<()> {
+        move |mut writer: ContextWriter| -> std::io::Result<()> {
             if !provider.available {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::NotConnected,
                     "provider unavailable",
                 ));
             }
-            commands.insert_resource(SelectedProvider(Arc::clone(&provider)));
+            writer.insert_resource(SelectedProvider(Arc::clone(&provider)));
             Ok(())
         },
     );
-    router.add_systems(BodyStarted, |provider: Res<SelectedProvider>| {
+    router.add_processors(BodyStarted, |provider: Res<SelectedProvider>| {
         println!("selected provider={}", provider.0.name);
     });
 

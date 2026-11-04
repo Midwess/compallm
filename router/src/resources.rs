@@ -87,7 +87,7 @@ impl<T> DerefMut for ResMut<'_, T> {
     }
 }
 
-/// State belonging to this system instance, separate for every connection.
+/// State belonging to this processor instance, separate for every connection.
 pub struct Local<'a, T>(pub(crate) &'a mut T);
 impl<T> Deref for Local<'_, T> {
     type Target = T;
@@ -112,8 +112,8 @@ impl<T: Send + Sync + 'static> InsertResource for Insert<T> {
 }
 
 /// Queue resource insertions without invalidating active typed parameter borrows.
-pub struct Commands<'a>(pub(crate) &'a Resources);
-impl Commands<'_> {
+pub struct ContextWriter<'a>(pub(crate) &'a Resources);
+impl ContextWriter<'_> {
     pub fn insert_resource<T: Send + Sync + 'static>(&mut self, value: T) {
         self.0.pending.borrow_mut().push(Box::new(Insert(value)));
     }
@@ -121,8 +121,8 @@ impl Commands<'_> {
 impl Resources {
     pub(crate) fn apply_pending(&mut self) {
         let pending = self.pending.get_mut().drain(..).collect::<Vec<_>>();
-        for command in pending {
-            command.apply(self);
+        for insertion in pending {
+            insertion.apply(self);
         }
     }
     pub(crate) fn discard_pending(&mut self) {

@@ -4304,6 +4304,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "router"
+version = "0.1.0"
+dependencies = [
+ "compallm-core",
+ "httparse",
+ "tokio",
+]
+
+[[package]]
 name = "rrgen"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -1,0 +1,49 @@
+use compallm_core::{
+    model::Model,
+    provider::{ModelLimits, Pricing, RequestPricing, ServiceKind},
+};
+use router::prelude::*;
+use tokio::net::TcpListener;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let address = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "127.0.0.1:7000".into());
+    let listener = TcpListener::bind(address).await?;
+    println!("general-chat listening on {}", listener.local_addr()?);
+    let model = Model {
+        id: 1,
+        organization_id: 10,
+        name: "general-chat".into(),
+        service_kind: ServiceKind::Llm,
+        enabled: true,
+        capabilities: vec![],
+        limits: ModelLimits::default(),
+        thinking: None,
+        pricing: Pricing::Request(RequestPricing {
+            usd_per_request: "0".parse().unwrap(),
+        }),
+    };
+    let mut router = Router::new(model);
+    router.add_systems(HeaderReceived, inspect_header);
+
+    // Socket acquisition stays outside Router.
+    let (stream, _) = listener.accept().await?;
+    drop(listener);
+    router.on_connection(stream)?;
+    tokio::select! {
+        result = router.join_next() => {
+            if let Some(result) = result { result??; }
+        }
+        result = tokio::signal::ctrl_c() => { result?; }
+    }
+    Ok(())
+}
+
+fn inspect_header(header: Res<RequestHeader>, model: Res<RouterModel>, peer: Res<PeerAddress>) {
+    println!(
+        "model={} peer={} method={} target={}",
+        model.0.name, peer.0, header.method, header.target
+    );
+}

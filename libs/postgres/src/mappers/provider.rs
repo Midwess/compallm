@@ -1,10 +1,11 @@
 use anyhow::Context;
 use compallm_core::{
     persistent::provider::ProviderRepositoryError,
-    provider::{ApiProtocol, Provider, ProviderModel},
+    provider::{Provider, ProviderModel},
 };
 
-use crate::schema::{ApiProtocolSchema, ProviderModelSchema, ProviderSchema};
+use crate::schema::{ProviderModelSchema, ProviderSchema};
+use validify::Validate;
 
 impl TryFrom<ProviderModelSchema> for ProviderModel {
     type Error = ProviderRepositoryError;
@@ -15,16 +16,11 @@ impl TryFrom<ProviderModelSchema> for ProviderModel {
             .context("invalid provider model organization ID in database")?;
         let provider_id = crate::from_bigint(model.provider_id)
             .context("invalid provider model provider ID in database")?;
-        let minimum_reasoning_budget_tokens = model
-            .minimum_reasoning_budget_tokens
-            .map(u32::try_from)
-            .transpose()
-            .context("invalid minimum reasoning budget in database")?;
-        let maximum_reasoning_budget_tokens = model
-            .maximum_reasoning_budget_tokens
-            .map(u32::try_from)
-            .transpose()
-            .context("invalid maximum reasoning budget in database")?;
+        let pricing: compallm_core::provider::Pricing = serde_json::from_value(model.pricing)
+            .context("invalid provider model pricing in database")?;
+        pricing
+            .validate()
+            .context("invalid provider model prices in database")?;
 
         Ok(Self {
             id,
@@ -32,14 +28,24 @@ impl TryFrom<ProviderModelSchema> for ProviderModel {
             provider_id,
             name: model.name,
             enabled: model.enabled,
-            input_price_per_million_tokens: model.input_price_per_million_tokens,
-            output_price_per_million_tokens: model.output_price_per_million_tokens,
-            cached_price_per_million_tokens: model.cached_price_per_million_tokens,
-            reasoning_effort_values: model.reasoning_effort_values,
-            supports_reasoning_budget: model.supports_reasoning_budget,
-            supports_adaptive_reasoning: model.supports_adaptive_reasoning,
-            minimum_reasoning_budget_tokens,
-            maximum_reasoning_budget_tokens,
+            service_kind: serde_json::from_value(model.service_kind.into())
+                .context("invalid provider model service kind in database")?,
+            protocol: serde_json::from_value(model.protocol.into())
+                .context("invalid provider model protocol in database")?,
+            connection: serde_json::from_value(model.connection)
+                .context("invalid provider model connection in database")?,
+            headers: serde_json::from_value(model.headers)
+                .context("invalid provider model headers in database")?,
+            capabilities: serde_json::from_value(model.capabilities)
+                .context("invalid provider model capabilities in database")?,
+            limits: serde_json::from_value(model.limits)
+                .context("invalid provider model limits in database")?,
+            thinking: model
+                .thinking
+                .map(serde_json::from_value)
+                .transpose()
+                .context("invalid provider model thinking in database")?,
+            pricing,
         })
     }
 }
@@ -61,13 +67,10 @@ impl TryFrom<ProviderSchema> for Provider {
             id,
             organization_id,
             name: model.name,
-            url: model.url,
-            api_protocol: match model.api_protocol {
-                ApiProtocolSchema::Anthropic => ApiProtocol::Anthropic,
-                ApiProtocolSchema::Openai => ApiProtocol::Openai,
-                ApiProtocolSchema::OpenaiCompatible => ApiProtocol::OpenaiCompatible,
-            },
-            enabled: model.enabled,
+            connection: serde_json::from_value(model.connection)
+                .context("invalid provider connection in database")?,
+            headers: serde_json::from_value(model.headers)
+                .context("invalid provider headers in database")?,
             models: Vec::new(),
         })
     }

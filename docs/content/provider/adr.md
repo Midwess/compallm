@@ -10,6 +10,10 @@ available: true
 Decision status: Organization ownership, management authorization, and provider
 availability, batch creation, and optional connection testing are accepted;
 credential protection and provider-specific verification remain unresolved.
+Provider credentials use PostgreSQL `TEXT` named `credentials`.
+It stores an opaque encrypted string because upstream calls require recovery of
+the API key. The provider table migration creates this column directly; the encryption
+format and rotation contract remain unresolved.
 Each provider model requires explicit input, output, and cache-read prices.
 Catalog presets may prefill editable prices; creation never infers missing
 rates or substitutes zero.
@@ -20,7 +24,10 @@ Implementation status: Persistence schema and repository implemented. The Core
 provider entity represents its associated provider models, but repository
 relation loading, the Core management service, API, and provider integrations
 are not implemented. The library provides a consumer-controlled provider form
-with creation, saved-configuration, and clone previews; see [component integration](../portal/add-provider.md#component-integration).
+with creation, saved-configuration, and clone previews; see [component integration](../portal/add-provider.md#controller-integration).
+Provider models use their table migration's diagram-aligned service/protocol
+and typed JSONB configuration. Its schema-only transition is defined in
+[provider-model storage](../model/models-and-providers.md#provider-model-storage).
 
 Provider connections belong to one organization. An authenticated owner or
 administrator may manage the LLM providers in that organization. Ordinary
@@ -42,11 +49,9 @@ database transactions. Subscription integration remains separate. See
 [Managing providers](management.md) for the authorized behavior and credential
 boundaries.
 
-Each provider connection has an independent `enabled` flag and defaults to
-enabled. Disabling a provider makes every associated provider model and router
-binding unavailable without deleting the provider, its credential, or its
-configuration. Management listings retain disabled providers; future routing
-and discovery workflows must exclude them from availability.
+The provider connection schema stores connection settings, headers, and
+credentials. Availability belongs to logical models, provider models, and router
+bindings; it has no provider-wide enabled flag.
 
 Saved-provider viewing and editing keep credentials write-only. Cloning prepares
 an independent unsaved definition from non-secret configuration and model rates,
@@ -61,10 +66,13 @@ only executes requested data operations and maps database outcomes; provider
 counts, query limits, and other business validation belong to the future
 workflow that invokes it. The library assigns each text model its selected operation and editable endpoint
 path; provider identity supplies connection defaults. Server integration must
-validate the operation/path combination. Per-model operation, path, headers,
-and effort-map persistence remain planned. Credentials stay outside
+validate the operation/path combination. Typed service/protocol, connection, headers, limits, thinking, and pricing
+persistence is implemented. Translating the frontend operation/path and
+effort-name mappings into that configuration remains planned. Credentials stay outside
 ordinary provider read models and must not appear in API responses or logs.
-Provider persistence round-trips availability without applying routing policy.
+Provider persistence retains connection configuration without applying routing policy.
+Credential persistence maps the existing `ProviderApiKey` storage value to
+`credentials`. Migration execution requires a separate explicit instruction.
 
 ## Open questions
 

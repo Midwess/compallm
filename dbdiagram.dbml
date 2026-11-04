@@ -1,6 +1,6 @@
 Project compallm {
   database_type: 'PostgreSQL'
-  Note: 'Compallm application schema (PostgreSQL 18). Primary keys are application-generated Hero snowflake IDs (bigint); the database defines no sequences, views, or triggers.'
+  Note: 'Compallm schema (PostgreSQL 18). Models, providers, and provider_models show the proposed design in suggest-schema.md. Usage has five request/usage tables: model_usage plus independent token, image, audio, and video provider usage; model_usage_limit is separate. No shared provider_usage parent exists. Proposed persistence contracts are in docs/content/usage-administration/accounting.md. Primary keys and attempt IDs are application-generated Hero snowflake IDs (bigint); the database defines no sequences, views, or triggers.'
 }
 
 Enum user_status {
@@ -19,18 +19,17 @@ Enum organization_role {
   member
 }
 
-Enum api_protocol {
-  anthropic
-  openai
-  openai_compatible
-}
-
 Enum provider_usage_status {
   in_progress
   succeeded
   failed
   cancelled
   incomplete
+}
+
+Enum usage_direction {
+  input
+  output
 }
 
 Table users {
@@ -40,6 +39,10 @@ Table users {
   status user_status [not null, default: 'active']
   email_verified_at timestamptz [not null]
   last_login_at timestamptz
+
+  indexes {
+    `lower(email)` [unique, name: 'users_email_unique']
+  }
 }
 
 Table organizations {
@@ -57,6 +60,7 @@ Table organization_members {
   indexes {
     (organization_id, user_id) [pk, name: 'organization_members_pkey']
     user_id [name: 'organization_members_user_id_idx']
+    organization_id [name: 'organization_members_organization_id_idx']
   }
 }
 
@@ -82,32 +86,37 @@ Table user_sessions {
   user_id bigint [not null]
   organization_id bigint [not null]
   revoked_at timestamptz
-}
-
-Table providers {
-  id bigint [pk, not null, note: 'CHECK (id > 0)']
-  organization_id bigint [not null]
-  name text [not null, note: 'CHECK (length(btrim(name)) > 0)']
-  url text [not null, note: 'CHECK (length(btrim(url)) > 0)']
-  api_key text [not null, note: 'CHECK (length(api_key) > 0); write-only secret']
-  api_protocol api_protocol [not null]
-  enabled boolean [not null, default: true]
-  updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
 
   indexes {
-    (organization_id, id) [unique, name: 'providers_organization_id_id_unique']
+    (organization_id, user_id) [name: 'user_sessions_organization_user_idx']
   }
 }
 
-Table models {
+Table providers [note: 'Proposed API-key connection shared by provider models. Owns one protected API key, shared connection settings, and headers. Service kind and protocol belong to each provider model.'] {
+  id bigint [pk, not null, note: 'CHECK (id > 0)']
+  organization_id bigint [not null]
+  name text [not null, note: 'Nonblank connection name, normalized by trimming; unique within the organization']
+  connection jsonb [not null, note: 'JSON object: baseUrl, timeoutMs, query, authentication. Bounded positive timeout; non-secret query parameters; authentication declares exactly one apiKeyHeader {name, prefix} or apiKeyQuery placement, never the key value']
+  headers jsonb [not null, default: '{}', note: 'JSON object of non-secret custom headers; case-insensitive header names; cannot replace authentication or transport-managed headers']
+  credentials text [not null, note: 'Private encrypted credential string; no length limit. Contains the API key and secret custom headers; excluded from ordinary reads and logs. Encryption format and key rotation remain unresolved']
+
+  indexes {
+    (organization_id, id) [unique, name: 'providers_organization_id_id_unique']
+    (organization_id, name) [unique, name: 'providers_organization_id_name_unique']
+    organization_id [name: 'providers_organization_id_index']
+  }
+}
+
+Table models [note: 'Proposed organization-facing model sharing service_kind, enabled, capabilities, limits, thinking, and pricing shapes with provider_models. No provider_id, protocol, connection, or headers; model_router selects upstream transport. Values are independently configured, not inherited or merged. Typed fields replace generic settings and scalar prices. Disabled models cannot serve any route. Service/capability/limit compatibility and media member-charging rules remain unresolved.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0)']
   organization_id bigint [not null]
   name text [not null, note: 'CHECK (length(btrim(name)) > 0)']
-  input_price_per_million_tokens numeric(20,8) [not null, note: 'CHECK (input_price_per_million_tokens >= 0)']
-  output_price_per_million_tokens numeric(20,8) [not null, note: 'CHECK (output_price_per_million_tokens >= 0)']
-  cached_price_per_million_tokens numeric(20,8) [not null, note: 'CHECK (cached_price_per_million_tokens >= 0)']
-  settings jsonb [not null, default: '{}']
-  updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  service_kind text [not null, note: 'ServiceKind: llm, image, video, embedding, tts, stt. Caller-facing operation, independent of upstream protocol']
+  enabled boolean [not null, default: true, note: 'Model-level availability; enabling does not override a disabled provider model or router binding']
+  capabilities jsonb [not null, default: '[]', note: 'JSON array of distinct Capability flags: text, vision, pdf, audio, video, image_generation, audio_generation, search, reasoning, tool_call, forced_tool_choice, structured_output. Only declared capabilities are available; forced_tool_choice requires tool_call. Caller-facing contract, not an automatic copy of upstream flags']
+  limits jsonb [not null, default: '{}', note: 'JSON object: optional positive contextTokens, maxOutputTokens, maxImagesPerRequest, maxDurationMs, maxAudioBytes. Caller-facing limits; route matching remains to be defined']
+  thinking jsonb [note: 'NULL means no configured controls. Same Thinking shape as provider_models: optional effort array and budget object, at least one non-null; both present means both supported. Effort is nonempty and distinct; budget has positive minTokens/maxTokens and optional defaultTokens within bounds. Non-null thinking requires reasoning capability']
+  pricing jsonb [not null, note: 'Organization-facing prices, not upstream costs. Same Pricing shape as provider_models: exactly one token, audio, image, video, or request variant; exact nonnegative decimal-string USD rates within NUMERIC(20,8). Token requires inputUsdPerMillionTokens, outputUsdPerMillionTokens, cachedUsdPerMillionTokens. Sharing the shape does not define member-charging policy for media']
 
   indexes {
     (organization_id, id) [unique, name: 'models_organization_id_id_unique']
@@ -115,20 +124,25 @@ Table models {
   }
 }
 
-Table provider_models [note: 'An upstream model available through one provider connection. Composite foreign keys keep the provider model inside one organization.'] {
+Table provider_models [note: 'Proposed upstream model configuration using one explicit service_kind/protocol pair to select a concrete adapter. Supported pairs: llm with openai, openai_responses, anthropic, or gemini; image with openai or gemini; embedding with openai; tts with openai, minimax, or openrouter; stt with openai; video with xai. Unsupported pairs fail before dispatch. Suboperations come from the request and adapter contract, not a stored endpoint mode. Capability flags do not enable another service route. Availability requires an enabled logical model, provider model, and router binding. Composite foreign keys preserve organization scope.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0)']
   organization_id bigint [not null]
   provider_id bigint [not null]
   name text [not null, note: 'CHECK (length(btrim(name)) > 0); name accepted by the upstream provider']
+  service_kind text [not null, note: 'ServiceKind: llm, image, video, embedding, tts, stt. Requested operation; llm with vision supports image understanding without selecting image generation. Stored as TEXT, validated as a Rust enum and supported service/protocol pair']
   enabled boolean [not null, default: true]
-  input_price_per_million_tokens numeric(20,8) [not null, note: 'CHECK (input_price_per_million_tokens >= 0)']
-  output_price_per_million_tokens numeric(20,8) [not null, note: 'CHECK (output_price_per_million_tokens >= 0)']
-  cached_price_per_million_tokens numeric(20,8) [not null, note: 'CHECK (cached_price_per_million_tokens >= 0)']
+  protocol text [not null, note: 'Protocol: openai, openai_responses, anthropic, gemini, minimax, openrouter, xai. API-format or implementation family interpreted within service_kind, not an operation on its own. llm/openai uses Chat Completions; tts/openai uses speech; stt/openai uses transcription; tts/openrouter uses Chat Completions and SSE audio extraction. Planned adapter contracts, not implemented support; shared labels do not promise compatibility with every vendor']
+  connection jsonb [not null, note: 'Required complete model connection: baseUrl, timeoutMs, query, and authentication. No null-based inheritance or partial merge. Uses the owning provider API key']
+  headers jsonb [not null, default: '{}', note: 'Non-secret JSON header object merged over provider headers by case-insensitive name; secret headers applied separately; authentication and transport headers cannot be overridden']
+  capabilities jsonb [not null, default: '[]', note: 'JSON array of distinct Capability flags: text, vision, pdf, audio, video, image_generation, audio_generation, search, reasoning, tool_call, forced_tool_choice, structured_output. Only declared capabilities are available; empty array declares none. forced_tool_choice requires tool_call. Flags do not authorize arbitrary parameters or implement adapters; numeric limits and reasoning controls remain separate']
+  limits jsonb [not null, default: '{}', note: 'JSON object: optional positive contextTokens, maxOutputTokens, maxImagesPerRequest, maxDurationMs, maxAudioBytes']
+  thinking jsonb [note: 'NULL means no reasoning controls configured, not a classification of support. Strict JSON object with independent optional effort and budget fields; at least one must be non-null. Both present means both controls are supported, with no separate combined variant; adapters validate request-level combinations. Effort is a nonempty array of distinct supported EffortLevel values with no configured default; budget declares minTokens, maxTokens, optional defaultTokens']
+  pricing jsonb [not null, note: 'JSON object with exactly one typed variant: token, audio, image, video, request. Decimal USD amounts are strings, nonnegative, within NUMERIC(20,8) range and scale. Token requires inputUsdPerMillionTokens, outputUsdPerMillionTokens, cachedUsdPerMillionTokens. Audio uses usdPerSecond or usdPerMillionCharacters; image/video use nonempty conditional rates; request uses usdPerRequest. Core validates service compatibility, adapter billing measurements, and rate conditions']
 
   indexes {
     (organization_id, id) [unique, name: 'provider_models_organization_id_id_unique']
     (organization_id, provider_id, id) [unique, name: 'provider_models_organization_provider_id_unique']
-    (organization_id, provider_id, name) [unique, name: 'provider_models_organization_provider_name_unique']
+    (organization_id, provider_id, name, service_kind, protocol) [unique, name: 'provider_models_org_provider_name_service_protocol_unique']
   }
 }
 
@@ -148,7 +162,7 @@ Table model_router [note: 'A route binding one system model to one provider mode
   }
 }
 
-Table model_usage [note: 'One client request and its logical-model attribution. Provider attempts are the authoritative token-usage records. Deleting a row also deletes its linked provider attempts.'] {
+Table model_usage [note: 'One client request and its logical-model attribution. Four independent provider usage tables reference this record directly and own attempt metadata, pricing snapshots, and measurements. Deleting this row cascades directly to their rows; there is no shared provider-attempt table.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
 
   organization_id bigint [not null]
@@ -164,7 +178,7 @@ Table model_usage [note: 'One client request and its logical-model attribution. 
   }
 }
 
-Table model_usage_limit [note: 'One mutable USD usage-limit record per organization member. Request-level attribution remains in model_usage and provider_usage.'] {
+Table model_usage_limit [note: 'One mutable USD usage-limit record per organization member, separate from the five request/usage tables. Request attribution remains in model_usage and the four independent provider usage tables.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
   organization_id bigint [not null]
   user_id bigint [not null]
@@ -175,29 +189,101 @@ Table model_usage_limit [note: 'One mutable USD usage-limit record per organizat
   }
 }
 
-Table provider_usage [note: 'One row per upstream provider attempt. Authoritative for provider token consumption, retries, fallback, and result status; it does not directly update the member usage limit.'] {
+Table provider_token_usage [note: 'Independent token usage: one row per upstream attempt, linked directly to model_usage. Also usable by multimodal endpoints reporting tokens. attempt_id correlates typed rows; attribution, status, and request ID must agree. Dedicated decimal columns snapshot applicable rates; all three rates are present or all null. Null rates do not imply free usage. All-null quantities preserve unknown usage. Cached input and reasoning output are subsets requiring known parent totals.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
-
   organization_id bigint [not null]
   model_usage_id bigint [not null]
+  attempt_id bigint [not null, note: 'CHECK (attempt_id > 0); application-generated upstream-call correlation ID, not a foreign key. Retries and fallback allocate fresh IDs']
   model_router_id bigint [not null]
   provider_model_id bigint [not null]
   provider_id bigint [not null]
   provider_request_id text [note: 'Provider-issued request identifier when available; must not contain credentials']
-
   status provider_usage_status [not null, default: 'in_progress']
-  input_tokens bigint [note: 'Total input tokens including cached input; NULL means unknown; CHECK (input_tokens >= 0)']
-  cached_input_tokens bigint [note: 'Subset of input_tokens; NULL means unknown; CHECK (cached_input_tokens >= 0 AND cached_input_tokens <= input_tokens)']
-  output_tokens bigint [note: 'NULL means unknown; CHECK (output_tokens >= 0)']
-  input_price_per_million_tokens numeric(20,8) [not null, note: 'Snapshot of the provider-model input price when this attempt is created; CHECK (input_price_per_million_tokens >= 0)']
-  output_price_per_million_tokens numeric(20,8) [not null, note: 'Snapshot of the provider-model output price when this attempt is created; CHECK (output_price_per_million_tokens >= 0)']
-  cached_price_per_million_tokens numeric(20,8) [not null, note: 'Snapshot of the provider-model cached-input price when this attempt is created; CHECK (cached_price_per_million_tokens >= 0)']
+  input_usd_per_million_tokens numeric(20,8) [note: 'Immutable configured input rate; nonnegative; all three token rates present or all null']
+  output_usd_per_million_tokens numeric(20,8) [note: 'Immutable configured output rate; nonnegative; NULL does not imply free usage']
+  cached_usd_per_million_tokens numeric(20,8) [note: 'Immutable configured cache-read rate; nonnegative; explicit zero is free']
+  input_tokens bigint [note: 'Total input including cached input; CHECK (input_tokens >= 0)']
+  cached_input_tokens bigint [note: 'Subset of input_tokens; CHECK (cached_input_tokens >= 0 AND input_tokens IS NOT NULL AND cached_input_tokens <= input_tokens) when present']
+  output_tokens bigint [note: 'Total output including reasoning output; CHECK (output_tokens >= 0)']
+  reasoning_output_tokens bigint [note: 'Subset of output_tokens; CHECK (reasoning_output_tokens >= 0 AND output_tokens IS NOT NULL AND reasoning_output_tokens <= output_tokens) when present']
 
   indexes {
-    (organization_id, model_usage_id) [name: 'provider_usage_organization_model_usage_idx']
-    (organization_id, provider_model_id) [name: 'provider_usage_organization_provider_model_idx']
-    (organization_id, model_router_id) [name: 'provider_usage_organization_route_idx']
-    (organization_id, provider_id, provider_request_id) [name: 'provider_usage_organization_provider_request_id_idx']
+    (organization_id, attempt_id) [unique, name: 'provider_token_usage_attempt_unique']
+    (organization_id, model_usage_id) [name: 'provider_token_usage_model_usage_idx']
+    (organization_id, provider_model_id) [name: 'provider_token_usage_provider_model_idx']
+    (organization_id, model_router_id) [name: 'provider_token_usage_route_idx']
+    (organization_id, provider_id, provider_request_id) [name: 'provider_token_usage_request_idx']
+  }
+}
+
+Table provider_image_usage [note: 'Independent provider-reported image usage linked directly to model_usage. Multiple rows may reference one attempt, identified by their own row IDs. Repeated attribution, status, and request ID must agree. usd_per_image snapshots the applicable rate for conditions. NULL quantity preserves unknown usage; NULL rate does not imply free usage. No image content or URLs. Deduplication of repeated provider updates remains unresolved.'] {
+  id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
+  organization_id bigint [not null]
+  model_usage_id bigint [not null]
+  attempt_id bigint [not null, note: 'CHECK (attempt_id > 0); upstream-call correlation ID, not a foreign key; fresh ID for every retry/fallback']
+  model_router_id bigint [not null]
+  provider_model_id bigint [not null]
+  provider_id bigint [not null]
+  provider_request_id text [note: 'Optional provider-issued identifier; no credentials']
+  status provider_usage_status [not null, default: 'in_progress']
+  usd_per_image numeric(20,8) [note: 'Immutable configured rate selected for conditions; nonnegative; NULL means no applicable image rate, not free usage']
+  image_count bigint [note: 'Generated images in this group; NULL means unknown; CHECK (image_count >= 0)']
+  conditions jsonb [not null, default: '{}', note: 'Strict RateConditions object: optional resolution, quality, audio, serviceTier. Actual billing conditions, not arbitrary provider metadata; missing fields do not act as rate-selection wildcards']
+
+  indexes {
+    (organization_id, attempt_id) [name: 'provider_image_usage_attempt_idx']
+    (organization_id, model_usage_id) [name: 'provider_image_usage_model_usage_idx']
+    (organization_id, provider_model_id) [name: 'provider_image_usage_provider_model_idx']
+    (organization_id, model_router_id) [name: 'provider_image_usage_route_idx']
+    (organization_id, provider_id, provider_request_id) [name: 'provider_image_usage_request_idx']
+  }
+}
+
+Table provider_audio_usage [note: 'Independent audio usage linked directly to model_usage: at most one row per input/output direction per attempt. Repeated attribution, status, and request ID must agree. Dedicated decimal columns snapshot duration or character rates; at most one is non-null. All-null rates do not imply free usage. Reporting seconds and characters does not bill both. STT commonly measures input duration; TTS output duration or input characters. Duplex pricing requires an explicit contract.'] {
+  id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
+  organization_id bigint [not null]
+  model_usage_id bigint [not null]
+  attempt_id bigint [not null, note: 'CHECK (attempt_id > 0); upstream-call correlation ID, not a foreign key; fresh ID for every retry/fallback']
+  model_router_id bigint [not null]
+  provider_model_id bigint [not null]
+  provider_id bigint [not null]
+  provider_request_id text [note: 'Optional provider-issued identifier; no credentials']
+  status provider_usage_status [not null, default: 'in_progress']
+  usd_per_second numeric(20,8) [note: 'Immutable configured duration rate; nonnegative; at most one audio rate is non-null']
+  usd_per_million_characters numeric(20,8) [note: 'Immutable configured character rate; nonnegative; NULL does not imply free usage']
+  direction usage_direction [not null, note: 'Direction of measured audio or text relative to the upstream request']
+  duration_seconds numeric(24,9) [note: 'Exact measured seconds, not binary float; NULL means unknown; CHECK (duration_seconds >= 0)']
+  character_count bigint [note: 'Measured characters; NULL means unknown; CHECK (character_count >= 0)']
+
+  indexes {
+    (organization_id, attempt_id, direction) [unique, name: 'provider_audio_usage_attempt_direction_unique']
+    (organization_id, model_usage_id) [name: 'provider_audio_usage_model_usage_idx']
+    (organization_id, provider_model_id) [name: 'provider_audio_usage_provider_model_idx']
+    (organization_id, model_router_id) [name: 'provider_audio_usage_route_idx']
+    (organization_id, provider_id, provider_request_id) [name: 'provider_audio_usage_request_idx']
+  }
+}
+
+Table provider_video_usage [note: 'Independent provider-reported video usage linked directly to model_usage. Multiple rows may reference one attempt, identified by their own row IDs. Repeated attribution, status, and request ID must agree. usd_per_second snapshots the applicable rate for conditions. NULL duration preserves unknown usage; NULL rate does not imply free usage. No video content or URLs. Deduplication of repeated provider updates remains unresolved.'] {
+  id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
+  organization_id bigint [not null]
+  model_usage_id bigint [not null]
+  attempt_id bigint [not null, note: 'CHECK (attempt_id > 0); upstream-call correlation ID, not a foreign key; fresh ID for every retry/fallback']
+  model_router_id bigint [not null]
+  provider_model_id bigint [not null]
+  provider_id bigint [not null]
+  provider_request_id text [note: 'Optional provider-issued identifier; no credentials']
+  status provider_usage_status [not null, default: 'in_progress']
+  usd_per_second numeric(20,8) [note: 'Immutable configured rate selected for conditions; nonnegative; NULL means no applicable video rate, not free usage']
+  duration_seconds numeric(24,9) [note: 'Total measured generated duration in this group; NULL means unknown; CHECK (duration_seconds >= 0)']
+  conditions jsonb [not null, default: '{}', note: 'Strict RateConditions object: optional resolution, quality, audio, serviceTier. Actual billing conditions, not arbitrary provider metadata; missing fields do not act as rate-selection wildcards']
+
+  indexes {
+    (organization_id, attempt_id) [name: 'provider_video_usage_attempt_idx']
+    (organization_id, model_usage_id) [name: 'provider_video_usage_model_usage_idx']
+    (organization_id, provider_model_id) [name: 'provider_video_usage_provider_model_idx']
+    (organization_id, model_router_id) [name: 'provider_video_usage_route_idx']
+    (organization_id, provider_id, provider_request_id) [name: 'provider_video_usage_request_idx']
   }
 }
 
@@ -228,8 +314,23 @@ Ref model_usage_model_scope_fkey: model_usage.(organization_id, model_id) > mode
 
 Ref model_usage_limit_membership_fkey: model_usage_limit.(organization_id, user_id) > organization_members.(organization_id, user_id) [delete: restrict, update: no action]
 
-Ref provider_usage_organization_fkey: provider_usage.organization_id > organizations.id [delete: restrict, update: no action]
-Ref provider_usage_model_usage_scope_fkey: provider_usage.(organization_id, model_usage_id) > model_usage.(organization_id, id) [delete: cascade, update: no action]
-Ref provider_usage_route_provider_model_scope_fkey: provider_usage.(organization_id, provider_model_id, model_router_id) > model_router.(organization_id, provider_model_id, id) [delete: restrict, update: no action]
-Ref provider_usage_provider_model_scope_fkey: provider_usage.(organization_id, provider_id, provider_model_id) > provider_models.(organization_id, provider_id, id) [delete: restrict, update: no action]
-Ref provider_usage_provider_scope_fkey: provider_usage.(organization_id, provider_id) > providers.(organization_id, id) [delete: restrict, update: no action]
+// Independent provider usage tables reference client attribution and upstream scope directly.
+Ref provider_token_usage_model_usage_scope_fkey: provider_token_usage.(organization_id, model_usage_id) > model_usage.(organization_id, id) [delete: cascade, update: no action]
+Ref provider_token_usage_route_scope_fkey: provider_token_usage.(organization_id, provider_model_id, model_router_id) > model_router.(organization_id, provider_model_id, id) [delete: restrict, update: no action]
+Ref provider_token_usage_provider_model_scope_fkey: provider_token_usage.(organization_id, provider_id, provider_model_id) > provider_models.(organization_id, provider_id, id) [delete: restrict, update: no action]
+Ref provider_token_usage_provider_scope_fkey: provider_token_usage.(organization_id, provider_id) > providers.(organization_id, id) [delete: restrict, update: no action]
+
+Ref provider_image_usage_model_usage_scope_fkey: provider_image_usage.(organization_id, model_usage_id) > model_usage.(organization_id, id) [delete: cascade, update: no action]
+Ref provider_image_usage_route_scope_fkey: provider_image_usage.(organization_id, provider_model_id, model_router_id) > model_router.(organization_id, provider_model_id, id) [delete: restrict, update: no action]
+Ref provider_image_usage_provider_model_scope_fkey: provider_image_usage.(organization_id, provider_id, provider_model_id) > provider_models.(organization_id, provider_id, id) [delete: restrict, update: no action]
+Ref provider_image_usage_provider_scope_fkey: provider_image_usage.(organization_id, provider_id) > providers.(organization_id, id) [delete: restrict, update: no action]
+
+Ref provider_audio_usage_model_usage_scope_fkey: provider_audio_usage.(organization_id, model_usage_id) > model_usage.(organization_id, id) [delete: cascade, update: no action]
+Ref provider_audio_usage_route_scope_fkey: provider_audio_usage.(organization_id, provider_model_id, model_router_id) > model_router.(organization_id, provider_model_id, id) [delete: restrict, update: no action]
+Ref provider_audio_usage_provider_model_scope_fkey: provider_audio_usage.(organization_id, provider_id, provider_model_id) > provider_models.(organization_id, provider_id, id) [delete: restrict, update: no action]
+Ref provider_audio_usage_provider_scope_fkey: provider_audio_usage.(organization_id, provider_id) > providers.(organization_id, id) [delete: restrict, update: no action]
+
+Ref provider_video_usage_model_usage_scope_fkey: provider_video_usage.(organization_id, model_usage_id) > model_usage.(organization_id, id) [delete: cascade, update: no action]
+Ref provider_video_usage_route_scope_fkey: provider_video_usage.(organization_id, provider_model_id, model_router_id) > model_router.(organization_id, provider_model_id, id) [delete: restrict, update: no action]
+Ref provider_video_usage_provider_model_scope_fkey: provider_video_usage.(organization_id, provider_id, provider_model_id) > provider_models.(organization_id, provider_id, id) [delete: restrict, update: no action]
+Ref provider_video_usage_provider_scope_fkey: provider_video_usage.(organization_id, provider_id) > providers.(organization_id, id) [delete: restrict, update: no action]

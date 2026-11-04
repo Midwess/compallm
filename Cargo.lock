@@ -1099,8 +1099,10 @@ dependencies = [
  "sea-orm",
  "sea-orm-cli",
  "sea-orm-migration",
+ "serde_json",
  "syn 2.0.119",
  "tokio",
+ "validify",
 ]
 
 [[package]]
@@ -1116,6 +1118,7 @@ dependencies = [
  "compallm-utils",
  "midwess-hero",
  "sea-orm",
+ "sea-orm-migration",
  "serde_json",
  "tempfile",
  "tokio",

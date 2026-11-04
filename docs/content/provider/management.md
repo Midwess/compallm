@@ -15,7 +15,6 @@ An authenticated organization **owner** or **administrator** can:
 - list the organization's provider connections;
 - add an OpenAI, Anthropic, or OpenAI-compatible connection;
 - change a connection's non-secret configuration or replace its credential;
-- enable or disable a connection;
 - remove a connection from the organization.
 
 An ordinary **member** cannot add, change, or remove provider connections. A
@@ -97,6 +96,10 @@ may identify a connection and show its safe configuration, but must not return
 the API key or another reusable secret. Logs and client-visible errors must not
 contain credentials.
 
+Persistence stores the protected value in `providers.credentials`, an unbounded
+`TEXT`. The provider table migration creates it directly and has no credential
+backfill. Callers remain responsible for protecting keys before storage.
+
 Replacing a credential accepts a new protected value without revealing the
 old value. Removing a provider also removes its model routes; it does not expose
 the removed credential.
@@ -105,11 +108,8 @@ Credential encryption, key rotation, and provider-specific verification remain
 unresolved. Neither creation nor a prior successful test guarantees that later
 provider requests will succeed.
 
-Disabling a provider preserves its configuration, credential, and model routes
-for management, but makes all of those routes unavailable. Enabling the
-provider does not override a disabled provider model or binding; routing
-requires the provider connection, the provider model, and the binding to be
-enabled.
+Availability is controlled by logical models, provider models, and router
+bindings. Provider connections have no separate enabled flag.
 
 ## Expected behavior
 
@@ -130,13 +130,6 @@ enabled.
 - **WHEN** a caller attempts to manage a provider owned by another organization
 - **THEN** Compallm denies the operation even if the caller is an owner or
   administrator elsewhere
-
-### Disabled provider retained for management
-
-- **WHEN** an owner or administrator disables a provider connection
-- **THEN** Compallm retains it in management listings without returning its
-  credential
-- **AND THEN** routing does not use any route associated with that provider
 
 ## Related pages
 

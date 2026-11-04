@@ -1,22 +1,15 @@
-use rust_decimal::Decimal;
-
+use super::configuration::{
+    Capability, Connection, Headers, ModelLimits, Pricing, Protocol, ServiceKind, Thinking,
+};
 use super::error::ProviderApiKeyError;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ApiProtocol {
-    Anthropic,
-    Openai,
-    OpenaiCompatible,
-}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Provider {
     pub id: u64,
     pub organization_id: u64,
     pub name: String,
-    pub url: String,
-    pub api_protocol: ApiProtocol,
-    pub enabled: bool,
+    pub connection: Connection,
+    pub headers: Headers,
     pub models: Vec<ProviderModel>,
 }
 
@@ -27,17 +20,17 @@ pub struct ProviderModel {
     pub provider_id: u64,
     pub name: String,
     pub enabled: bool,
-    pub input_price_per_million_tokens: Decimal,
-    pub output_price_per_million_tokens: Decimal,
-    pub cached_price_per_million_tokens: Decimal,
-    pub reasoning_effort_values: Option<Vec<String>>,
-    pub supports_reasoning_budget: bool,
-    pub supports_adaptive_reasoning: bool,
-    pub minimum_reasoning_budget_tokens: Option<u32>,
-    pub maximum_reasoning_budget_tokens: Option<u32>,
+    pub service_kind: ServiceKind,
+    pub protocol: Protocol,
+    pub connection: Connection,
+    pub headers: Headers,
+    pub capabilities: Vec<Capability>,
+    pub limits: ModelLimits,
+    pub thinking: Option<Thinking>,
+    pub pricing: Pricing,
 }
 
-/// Secret value persisted in the provider's `api_key` column.
+/// Secret value persisted in the provider's `credentials` column.
 ///
 /// This type deliberately does not implement `Debug`, `Display`, `Clone`, or
 /// serialization. Callers must protect the value before it crosses a trust

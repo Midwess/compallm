@@ -4,17 +4,14 @@ use compallm_core::{
         DbContext,
         provider::{ProviderRepository as CoreProviderRepository, ProviderRepositoryError},
     },
-    provider::{ApiProtocol, Provider, ProviderApiKey},
+    provider::{Provider, ProviderApiKey},
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, DbErr, EntityTrait, ModelTrait, QueryFilter,
-    QueryOrder, QuerySelect, RuntimeErr, prelude::ChronoUtc,
+    QueryOrder, QuerySelect, RuntimeErr,
 };
 
-use crate::{
-    postgres_connection::PostgresConnection,
-    schema::{ApiProtocolSchema, ProviderSchema},
-};
+use crate::{postgres_connection::PostgresConnection, schema::ProviderSchema};
 
 type Providers = <ProviderSchema as ModelTrait>::Entity;
 type ProviderColumn = <Providers as EntityTrait>::Column;
@@ -33,14 +30,6 @@ impl ProviderRepository {
         crate::to_bigint(id)
             .with_context(|| format!("{field} exceeds PostgreSQL BIGINT"))
             .map_err(Into::into)
-    }
-
-    fn api_protocol(protocol: ApiProtocol) -> ApiProtocolSchema {
-        match protocol {
-            ApiProtocol::Anthropic => ApiProtocolSchema::Anthropic,
-            ApiProtocol::Openai => ApiProtocolSchema::Openai,
-            ApiProtocol::OpenaiCompatible => ApiProtocolSchema::OpenaiCompatible,
-        }
     }
 
     fn write_error(error: DbErr) -> ProviderRepositoryError {
@@ -93,11 +82,13 @@ impl CoreProviderRepository for ProviderRepository {
             id: Set(id),
             organization_id: Set(organization_id),
             name: Set(provider.name),
-            url: Set(provider.url),
-            api_key: Set(api_key.into_storage_value()),
-            api_protocol: Set(Self::api_protocol(provider.api_protocol)),
-            enabled: Set(provider.enabled),
-            ..Default::default()
+            connection: Set(
+                serde_json::to_value(provider.connection).context("invalid provider connection")?
+            ),
+            headers: Set(
+                serde_json::to_value(provider.headers).context("invalid provider headers")?
+            ),
+            credentials: Set(api_key.into_storage_value()),
         };
         Provider::try_from(model.insert(db).await.map_err(Self::write_error)?)
     }
@@ -120,13 +111,13 @@ impl CoreProviderRepository for ProviderRepository {
             .ok_or(ProviderRepositoryError::NotFound)?;
         let mut model: ProviderActiveModel = model.into();
         model.name = Set(provider.name);
-        model.url = Set(provider.url);
+        model.connection =
+            Set(serde_json::to_value(provider.connection).context("invalid provider connection")?);
+        model.headers =
+            Set(serde_json::to_value(provider.headers).context("invalid provider headers")?);
         if let Some(api_key) = api_key {
-            model.api_key = Set(api_key.into_storage_value());
+            model.credentials = Set(api_key.into_storage_value());
         }
-        model.api_protocol = Set(Self::api_protocol(provider.api_protocol));
-        model.enabled = Set(provider.enabled);
-        model.updated_at = Set(ChronoUtc::now().fixed_offset());
         Provider::try_from(model.update(db).await.map_err(Self::write_error)?)
     }
 

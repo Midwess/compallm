@@ -40,8 +40,14 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     ProviderModels,
-    #[sea_orm(has_many = "super::provider_usage::Entity")]
-    ProviderUsage,
+    #[sea_orm(has_many = "super::provider_token_usage::Entity")]
+    ProviderTokenUsage,
+    #[sea_orm(has_many = "super::provider_image_usage::Entity")]
+    ProviderImageUsage,
+    #[sea_orm(has_many = "super::provider_audio_usage::Entity")]
+    ProviderAudioUsage,
+    #[sea_orm(has_many = "super::provider_video_usage::Entity")]
+    ProviderVideoUsage,
 }
 
 impl Related<super::models::Entity> for Entity {
@@ -56,9 +62,24 @@ impl Related<super::provider_models::Entity> for Entity {
     }
 }
 
-impl Related<super::provider_usage::Entity> for Entity {
+impl Related<super::provider_token_usage::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::ProviderUsage.def()
+        Relation::ProviderTokenUsage.def()
+    }
+}
+impl Related<super::provider_image_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderImageUsage.def()
+    }
+}
+impl Related<super::provider_audio_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderAudioUsage.def()
+    }
+}
+impl Related<super::provider_video_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderVideoUsage.def()
     }
 }
 

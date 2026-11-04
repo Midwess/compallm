@@ -10,80 +10,92 @@
       {
         "name": "users",
         "schemaName": "public",
-        "x": -482.08677499536776,
-        "y": 493.4538744983268
+        "x": -450.4642987565899,
+        "y": -473.72623529388454
       },
       {
         "name": "organizations",
         "schemaName": "public",
-        "x": 17.00890511851867,
-        "y": 138.62299225771994
+        "x": 153.07606885354414,
+        "y": -552.2615248863121
       },
       {
         "name": "organization_members",
         "schemaName": "public",
-        "x": -418.1915870646385,
-        "y": -148.64656327676238
+        "x": -450.4642987565899,
+        "y": -121.06538143858148
       },
       {
         "name": "api_keys",
         "schemaName": "public",
-        "x": 160.09764366910224,
-        "y": -456.8198761099413
+        "x": -428.30090221209167,
+        "y": 137.094906138888
       },
       {
         "name": "user_sessions",
         "schemaName": "public",
-        "x": 13.74896222606867,
-        "y": 593.4547352321156
+        "x": -425.5624432878399,
+        "y": -745.151956647599
       },
       {
         "name": "providers",
         "schemaName": "public",
-        "x": 687.5246701465046,
-        "y": 45.851622154588284
+        "x": 814.0736323303169,
+        "y": -582.9012231949503
       },
       {
         "name": "models",
         "schemaName": "public",
-        "x": 657.2762629424975,
-        "y": 946.200268577721
-      },
-      {
-        "name": "provider_usage",
-        "schemaName": "public",
-        "x": 1613.6099919153712,
-        "y": -603.3323787502294
+        "x": 806.718650506802,
+        "y": -239.83941064266668
       },
       {
         "name": "provider_models",
         "schemaName": "public",
-        "x": 934.7164274349832,
-        "y": 437.34797294494047
+        "x": 817.1289185093736,
+        "y": -1239.9832835917084
       },
       {
         "name": "model_router",
         "schemaName": "public",
-        "x": 1568.655568065741,
-        "y": 865.9945350627366
+        "x": 1526.36442258053,
+        "y": -570.0656659785507
       },
       {
         "name": "model_usage",
         "schemaName": "public",
-        "x": 1031.5752317590207,
-        "y": -1035.6750079703927
-      },
-      {
-        "name": "balances",
-        "schemaName": "public",
-        "x": -227.94524867796326,
-        "y": -1060.3849978853607
+        "x": 153.07606885354414,
+        "y": -235.83383366656864
       },
       {
         "name": "model_usage_limit",
         "schemaName": "public",
-        "x": -482.08677499536776,
-        "y": 1380.200268577721
+        "x": -950.9103093291812,
+        "y": -149.93659962973248
+      },
+      {
+        "name": "provider_token_usage",
+        "schemaName": "public",
+        "x": 2326.5149274531336,
+        "y": -1236.6365064087736
+      },
+      {
+        "name": "provider_image_usage",
+        "schemaName": "public",
+        "x": 2340.1670700905333,
+        "y": -522.1392023808526
+      },
+      {
+        "name": "provider_audio_usage",
+        "schemaName": "public",
+        "x": 2366.8190487760126,
+        "y": 178.0684034213384
+      },
+      {
+        "name": "provider_video_usage",
+        "schemaName": "public",
+        "x": 2345.6202938661236,
+        "y": 938.6183367225549
       }
     ],
     "tableGroupCollapseStates": [],
@@ -483,6 +495,362 @@
           "user_id"
         ],
         "secondTableName": "organization_members",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_usage_id"
+        ],
+        "firstTableName": "provider_token_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "id"
+        ],
+        "secondTableName": "provider_usage",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_usage_id"
+        ],
+        "firstTableName": "provider_image_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "id"
+        ],
+        "secondTableName": "provider_usage",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_usage_id"
+        ],
+        "firstTableName": "provider_audio_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "id"
+        ],
+        "secondTableName": "provider_usage",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_usage_id"
+        ],
+        "firstTableName": "provider_video_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "id"
+        ],
+        "secondTableName": "provider_usage",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "model_usage_id"
+        ],
+        "firstTableName": "provider_token_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "id"
+        ],
+        "secondTableName": "model_usage",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_model_id",
+          "model_router_id"
+        ],
+        "firstTableName": "provider_token_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "provider_model_id",
+          "id"
+        ],
+        "secondTableName": "model_router",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_id",
+          "provider_model_id"
+        ],
+        "firstTableName": "provider_token_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "provider_id",
+          "id"
+        ],
+        "secondTableName": "provider_models",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_id"
+        ],
+        "firstTableName": "provider_token_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "id"
+        ],
+        "secondTableName": "providers",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "model_usage_id"
+        ],
+        "firstTableName": "provider_image_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "id"
+        ],
+        "secondTableName": "model_usage",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_model_id",
+          "model_router_id"
+        ],
+        "firstTableName": "provider_image_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "provider_model_id",
+          "id"
+        ],
+        "secondTableName": "model_router",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_id",
+          "provider_model_id"
+        ],
+        "firstTableName": "provider_image_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "provider_id",
+          "id"
+        ],
+        "secondTableName": "provider_models",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_id"
+        ],
+        "firstTableName": "provider_image_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "id"
+        ],
+        "secondTableName": "providers",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "model_usage_id"
+        ],
+        "firstTableName": "provider_audio_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "id"
+        ],
+        "secondTableName": "model_usage",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_model_id",
+          "model_router_id"
+        ],
+        "firstTableName": "provider_audio_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "provider_model_id",
+          "id"
+        ],
+        "secondTableName": "model_router",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_id",
+          "provider_model_id"
+        ],
+        "firstTableName": "provider_audio_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "provider_id",
+          "id"
+        ],
+        "secondTableName": "provider_models",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_id"
+        ],
+        "firstTableName": "provider_audio_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "id"
+        ],
+        "secondTableName": "providers",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "model_usage_id"
+        ],
+        "firstTableName": "provider_video_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "id"
+        ],
+        "secondTableName": "model_usage",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_model_id",
+          "model_router_id"
+        ],
+        "firstTableName": "provider_video_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "provider_model_id",
+          "id"
+        ],
+        "secondTableName": "model_router",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_id",
+          "provider_model_id"
+        ],
+        "firstTableName": "provider_video_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "provider_id",
+          "id"
+        ],
+        "secondTableName": "provider_models",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "organization_id",
+          "provider_id"
+        ],
+        "firstTableName": "provider_video_usage",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "organization_id",
+          "id"
+        ],
+        "secondTableName": "providers",
         "secondSchemaName": "public",
         "secondRelation": "1",
         "checkPoints": []

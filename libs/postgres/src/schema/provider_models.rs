@@ -11,39 +11,56 @@ pub struct Model {
         unique_key = "provider_models_organization_provider_id_unique"
     )]
     pub id: i64,
-    #[sea_orm(unique_key = "provider_models_organization_provider_name_unique")]
+    #[sea_orm(unique_key = "provider_models_org_provider_name_service_protocol_unique")]
     pub organization_id: i64,
-    #[sea_orm(unique_key = "provider_models_organization_provider_name_unique")]
+    #[sea_orm(unique_key = "provider_models_org_provider_name_service_protocol_unique")]
     pub provider_id: i64,
     #[sea_orm(
         column_type = "Text",
-        unique_key = "provider_models_organization_provider_name_unique"
+        unique_key = "provider_models_org_provider_name_service_protocol_unique"
     )]
     pub name: String,
     pub enabled: bool,
-    #[sea_orm(column_type = "Decimal(Some((20, 8)))")]
-    pub input_price_per_million_tokens: Decimal,
-    #[sea_orm(column_type = "Decimal(Some((20, 8)))")]
-    pub output_price_per_million_tokens: Decimal,
-    #[sea_orm(column_type = "Decimal(Some((20, 8)))")]
-    pub cached_price_per_million_tokens: Decimal,
-    pub reasoning_effort_values: Option<Vec<String>>,
-    pub supports_reasoning_budget: bool,
-    pub supports_adaptive_reasoning: bool,
-    pub minimum_reasoning_budget_tokens: Option<i32>,
-    pub maximum_reasoning_budget_tokens: Option<i32>,
+    #[sea_orm(
+        column_type = "Text",
+        unique_key = "provider_models_org_provider_name_service_protocol_unique"
+    )]
+    pub service_kind: String,
+    #[sea_orm(
+        column_type = "Text",
+        unique_key = "provider_models_org_provider_name_service_protocol_unique"
+    )]
+    pub protocol: String,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub connection: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub headers: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub capabilities: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub limits: Json,
+    #[sea_orm(column_type = "JsonBinary", nullable)]
+    pub thinking: Option<Json>,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub pricing: Json,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(has_many = "super::model_router::Entity")]
     ModelRouter,
-    #[sea_orm(has_many = "super::provider_usage::Entity")]
-    ProviderUsage,
+    #[sea_orm(has_many = "super::provider_token_usage::Entity")]
+    ProviderTokenUsage,
+    #[sea_orm(has_many = "super::provider_image_usage::Entity")]
+    ProviderImageUsage,
+    #[sea_orm(has_many = "super::provider_audio_usage::Entity")]
+    ProviderAudioUsage,
+    #[sea_orm(has_many = "super::provider_video_usage::Entity")]
+    ProviderVideoUsage,
     #[sea_orm(
         belongs_to = "super::providers::Entity",
         from = "(Column::OrganizationId, Column::ProviderId)",
-        to = "(super::providers::Column::OrganizationId, super::providers::Column::Id, super::providers::Column::OrganizationId, super::providers::Column::Id)",
+        to = "(super::providers::Column::OrganizationId, super::providers::Column::Id)",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
@@ -56,9 +73,24 @@ impl Related<super::model_router::Entity> for Entity {
     }
 }
 
-impl Related<super::provider_usage::Entity> for Entity {
+impl Related<super::provider_token_usage::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::ProviderUsage.def()
+        Relation::ProviderTokenUsage.def()
+    }
+}
+impl Related<super::provider_image_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderImageUsage.def()
+    }
+}
+impl Related<super::provider_audio_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderAudioUsage.def()
+    }
+}
+impl Related<super::provider_video_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderVideoUsage.def()
     }
 }
 

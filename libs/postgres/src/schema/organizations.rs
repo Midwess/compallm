@@ -21,8 +21,6 @@ pub enum Relation {
     Models,
     #[sea_orm(has_many = "super::organization_members::Entity")]
     OrganizationMembers,
-    #[sea_orm(has_many = "super::provider_usage::Entity")]
-    ProviderUsage,
     #[sea_orm(has_many = "super::providers::Entity")]
     Providers,
     #[sea_orm(has_many = "super::user_sessions::Entity")]
@@ -44,12 +42,6 @@ impl Related<super::models::Entity> for Entity {
 impl Related<super::organization_members::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OrganizationMembers.def()
-    }
-}
-
-impl Related<super::provider_usage::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ProviderUsage.def()
     }
 }
 

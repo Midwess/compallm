@@ -12,10 +12,19 @@ unsaved configuration. Neither endpoint nor `ProviderIntegrationService` is
 implemented. Storybook previews use consumer controllers without these APIs.
 Rust/OpenAPI must generate the consumer API guide and client when implemented.
 
-Provider identity supplies connection defaults. Each configured text model owns
-its operation, endpoint path, limits, effort mappings, and explicit prices.
-A connection supplies its base URL and protected credential. Creating provider
-models does not create organization-facing logical models or router bindings.
+Provider identity supplies editable connection defaults in the frontend. Each
+configured text-model draft owns its operation, endpoint path, limits, effort
+mappings, and explicit prices. Creating provider models does not create
+organization-facing logical models or router bindings.
+
+Provider-model persistence already uses direct service/protocol fields and
+typed JSONB configuration. Each provider model requires a complete connection,
+with its upstream base URL only in `connection.baseUrl`; provider connections
+have no enabled flag. The request fields below describe the planned frontend
+submission contract, not the persistence representation. Server integration
+must define their translation to Core service/protocol, connection, limits,
+thinking, and pricing types before implementing these endpoints. See
+[provider-model storage](../model/models-and-providers.md#provider-model-storage).
 
 Both operations require authentication and owner/admin membership in the
 current organization. Organization scope comes from the verified session,
@@ -112,9 +121,9 @@ after the writes. Creation makes no upstream calls and never requires a
 successful connection test. No database transaction spans email or HTTP calls.
 
 `201 Created` returns providers in request order with decimal-string IDs, safe
-connection configuration, enabled state, and model configuration/prices. Never
-return credentials or credential-derived values. New connections and submitted
-models default to enabled. Reads, updates, and cloning retain the write-only
+connection configuration and model configuration/prices, including model enabled
+states. Never return credentials or credential-derived values. Submitted models
+default to enabled; connections have no enabled flag. Reads, updates, and cloning retain the write-only
 credential boundary described in [management](management.md).
 
 | Status | Meaning |
@@ -148,7 +157,9 @@ that moment and does not guarantee later availability.
 
 ## Unresolved server requirements
 
-- Persisting model-specific operation/path, limits, mappings, and catalog identity.
+- Translating frontend operation/path, limits, effort-name mappings, and prices
+  into the existing typed model configuration, including complete connections.
+  Catalog identity storage and effort-name mapping persistence remain unresolved.
 - Header representation, secret storage, and avatar upload policy.
 - Credential encryption, rotation, and provider adapter coverage.
 - Batch/model limits, request sizes, exact probes, concurrency budgets,

@@ -1,7 +1,7 @@
 use crate::{
     header,
     resources::{PeerAddress, Resources, RouterModel},
-    schedule::{HeaderReceived, Schedules},
+    schedule::{BodyStarted, HeaderReceived, Schedules},
 };
 use compallm_core::model::Model;
 use std::{io, net::SocketAddr, sync::Arc};
@@ -15,7 +15,7 @@ pub struct Connection {
     pub(crate) schedules: Schedules,
 }
 impl Connection {
-    /// Read one header and execute HeaderReceived. Later stages are future work.
+    /// Read one header, execute HeaderReceived, then enter BodyStarted. Later stages are future work.
     pub async fn run(mut self) -> io::Result<()> {
         let mut resources = Resources::default();
         resources.insert(RouterModel(self.model));
@@ -23,6 +23,7 @@ impl Connection {
         let mut reader = BufReader::with_capacity(4096, self.stream);
         let header = header::read_header(&mut reader).await?;
         resources.insert(header);
-        self.schedules.run(HeaderReceived, &resources)
+        self.schedules.run(HeaderReceived, &mut resources)?;
+        self.schedules.run(BodyStarted, &mut resources)
     }
 }

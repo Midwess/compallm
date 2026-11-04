@@ -1,4 +1,4 @@
-use crate::resources::{Local, Res, ResMut, Resources};
+use crate::resources::{Commands, Local, Res, ResMut, Resources};
 use std::{io, marker::PhantomData};
 
 /// Fetch a typed argument and keep any per-system state between runs.
@@ -9,6 +9,14 @@ pub trait SystemParam: 'static {
         resources: &'a Resources,
         state: &'a mut Self::State,
     ) -> io::Result<Self::Item<'a>>;
+}
+
+impl SystemParam for Commands<'static> {
+    type State = ();
+    type Item<'a> = Commands<'a>;
+    fn fetch<'a>(resources: &'a Resources, _: &'a mut ()) -> io::Result<Self::Item<'a>> {
+        Ok(Commands(resources))
+    }
 }
 
 impl<T: Send + Sync + 'static> SystemParam for Res<'static, T> {

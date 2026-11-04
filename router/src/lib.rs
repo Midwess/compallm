@@ -8,13 +8,13 @@ pub mod system;
 
 pub use connection::Connection;
 pub use router::Router;
-pub use schedule::HeaderReceived;
+pub use schedule::{BodyStarted, HeaderReceived};
 
 pub mod prelude {
     pub use crate::{
         Router,
         header::RequestHeader,
-        resources::{Local, PeerAddress, Res, ResMut, Resources, RouterModel},
-        schedule::{HeaderReceived, IntoSystems, Schedule, ScheduleLabel},
+        resources::{Commands, Local, PeerAddress, Res, ResMut, Resources, RouterModel},
+        schedule::{BodyStarted, HeaderReceived, IntoSystems, Schedule, ScheduleLabel},
     };
 }

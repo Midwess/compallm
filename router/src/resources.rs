@@ -16,6 +16,7 @@ pub struct PeerAddress(pub SocketAddr);
 #[derive(Default)]
 pub struct Resources {
     values: HashMap<TypeId, RefCell<Box<dyn Any + Send + Sync>>>,
+    pending: RefCell<Vec<Box<dyn InsertResource>>>,
 }
 
 impl Resources {
@@ -97,5 +98,34 @@ impl<T> Deref for Local<'_, T> {
 impl<T> DerefMut for Local<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
         self.0
+    }
+}
+
+trait InsertResource: Send {
+    fn apply(self: Box<Self>, resources: &mut Resources);
+}
+struct Insert<T>(T);
+impl<T: Send + Sync + 'static> InsertResource for Insert<T> {
+    fn apply(self: Box<Self>, resources: &mut Resources) {
+        resources.insert(self.0);
+    }
+}
+
+/// Queue resource insertions without invalidating active typed parameter borrows.
+pub struct Commands<'a>(pub(crate) &'a Resources);
+impl Commands<'_> {
+    pub fn insert_resource<T: Send + Sync + 'static>(&mut self, value: T) {
+        self.0.pending.borrow_mut().push(Box::new(Insert(value)));
+    }
+}
+impl Resources {
+    pub(crate) fn apply_pending(&mut self) {
+        let pending = self.pending.get_mut().drain(..).collect::<Vec<_>>();
+        for command in pending {
+            command.apply(self);
+        }
+    }
+    pub(crate) fn discard_pending(&mut self) {
+        self.pending.get_mut().clear();
     }
 }

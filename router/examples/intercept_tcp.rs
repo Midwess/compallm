@@ -3,6 +3,7 @@ use compallm_core::{
     provider::{ModelLimits, Pricing, RequestPricing, ServiceKind},
 };
 use router::prelude::*;
+use std::sync::Arc;
 use tokio::net::TcpListener;
 
 #[tokio::main]
@@ -27,6 +28,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let mut router = Router::new(model);
     router.add_systems(HeaderReceived, inspect_header);
+    // Synthetic instance only: the consumer supplies the real availability policy.
+    let provider = Arc::new(ExampleProvider {
+        name: "example-provider",
+        available: true,
+    });
+    router.add_systems(
+        BodyStarted,
+        move |mut commands: Commands| -> std::io::Result<()> {
+            if !provider.available {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::NotConnected,
+                    "provider unavailable",
+                ));
+            }
+            commands.insert_resource(SelectedProvider(Arc::clone(&provider)));
+            Ok(())
+        },
+    );
+    router.add_systems(BodyStarted, |provider: Res<SelectedProvider>| {
+        println!("selected provider={}", provider.0.name);
+    });
 
     // Socket acquisition stays outside Router.
     let (stream, _) = listener.accept().await?;
@@ -47,3 +69,9 @@ fn inspect_header(header: Res<RequestHeader>, model: Res<RouterModel>, peer: Res
         model.0.name, peer.0, header.method, header.target
     );
 }
+
+struct ExampleProvider {
+    name: &'static str,
+    available: bool,
+}
+struct SelectedProvider(Arc<ExampleProvider>);

@@ -9,6 +9,11 @@ pub trait ScheduleLabel: Send + Sync + 'static {}
 pub struct HeaderReceived;
 impl ScheduleLabel for HeaderReceived {}
 
+/// Runs after HeaderReceived succeeds, before consuming any body bytes.
+/// This transition also occurs for requests with an empty body.
+pub struct BodyStarted;
+impl ScheduleLabel for BodyStarted {}
+
 /// Ordered systems with independent parameter and local state.
 #[derive(Default)]
 pub struct Schedule {
@@ -18,9 +23,13 @@ impl Schedule {
     pub fn add_systems<M>(&mut self, systems: impl IntoSystems<M>) {
         self.systems.extend(systems.into_systems());
     }
-    pub fn run(&mut self, resources: &Resources) -> io::Result<()> {
+    pub fn run(&mut self, resources: &mut Resources) -> io::Result<()> {
         for system in &mut self.systems {
-            system.run(resources)?;
+            if let Err(error) = system.run(resources) {
+                resources.discard_pending();
+                return Err(error);
+            }
+            resources.apply_pending();
         }
         Ok(())
     }
@@ -111,7 +120,11 @@ pub(crate) struct Schedules {
     schedules: HashMap<TypeId, Schedule>,
 }
 impl Schedules {
-    pub(crate) fn run<L: ScheduleLabel>(&mut self, _: L, resources: &Resources) -> io::Result<()> {
+    pub(crate) fn run<L: ScheduleLabel>(
+        &mut self,
+        _: L,
+        resources: &mut Resources,
+    ) -> io::Result<()> {
         if let Some(schedule) = self.schedules.get_mut(&TypeId::of::<L>()) {
             schedule.run(resources)?;
         }

@@ -206,6 +206,9 @@ async fn header_system_failure_stops_the_schedule_and_returns_to_caller() {
         router.add_systems(HeaderReceived, || -> () {
             panic!("must stop after rejection")
         });
+        router.add_systems(BodyStarted, || -> () {
+            panic!("body stage must be skipped after header rejection")
+        });
         router.on_connection(stream).unwrap();
         client
             .write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
@@ -213,6 +216,71 @@ async fn header_system_failure_stops_the_schedule_and_returns_to_caller() {
             .unwrap();
         let error = router.join_next().await.unwrap().unwrap().unwrap_err();
         assert_eq!(error.kind(), std::io::ErrorKind::PermissionDenied);
+    })
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn body_started_selects_provider_after_headers_without_waiting_for_payload() {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+    struct Provider {
+        name: &'static str,
+        available: bool,
+    }
+    struct SelectedProvider(Arc<Provider>);
+    timeout(Duration::from_secs(5), async {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let available = Arc::new(Provider {
+            name: "available",
+            available: true,
+        });
+        let unavailable = Arc::new(Provider {
+            name: "unavailable",
+            available: false,
+        });
+        let expected = available.clone();
+        let observed = Arc::new(AtomicUsize::new(0));
+        let calls = observed.clone();
+        let mut router = Router::new(model());
+        router.add_systems(HeaderReceived, |mut header: ResMut<RequestHeader>| {
+            header.target = "/authorized".into();
+        });
+        router.add_systems(
+            BodyStarted,
+            move |header: Res<RequestHeader>, mut commands: Commands| -> std::io::Result<()> {
+                assert_eq!(header.target, "/authorized");
+                let provider = [&unavailable, &available]
+                    .into_iter()
+                    .find(|p| p.available)
+                    .ok_or_else(|| {
+                        std::io::Error::new(std::io::ErrorKind::NotConnected, "unavailable")
+                    })?;
+                commands.insert_resource(SelectedProvider(Arc::clone(provider)));
+                Ok(())
+            },
+        );
+        router.add_systems(BodyStarted, move |selected: Res<SelectedProvider>| {
+            assert!(Arc::ptr_eq(&selected.0, &expected));
+            assert_eq!(selected.0.name, "available");
+            calls.fetch_add(1, Ordering::SeqCst);
+        });
+        // Neither Content-Length: 0 nor a body whose bytes have not arrived blocks this moment.
+        for length in [0, 100] {
+            let mut client = TcpStream::connect(listener.local_addr().unwrap())
+                .await
+                .unwrap();
+            let (stream, _) = listener.accept().await.unwrap();
+            router.on_connection(stream).unwrap();
+            let header =
+                format!("POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: {length}\r\n\r\n");
+            client.write_all(header.as_bytes()).await.unwrap();
+            router.join_next().await.unwrap().unwrap().unwrap();
+        }
+        assert_eq!(observed.load(Ordering::SeqCst), 2);
     })
     .await
     .unwrap();

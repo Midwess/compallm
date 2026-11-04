@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Compallm Issue"
+  short_description: "Create an issue and add it to the Compallm board"
+  default_prompt: "Use $create-issue to resolve open decisions with me, write the agreed issue using the Technical Writing skill, and add it to the Compallm Project."

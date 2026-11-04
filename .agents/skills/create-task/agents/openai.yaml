@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Compallm Task"
+  short_description: "Create a task issue on the Compallm board"
+  default_prompt: "Use $create-task to create a Compallm task issue from this description and add it to the Project board."

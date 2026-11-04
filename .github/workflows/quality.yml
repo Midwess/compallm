@@ -79,12 +79,12 @@ jobs:
           cache-dependency-path: portal/package-lock.json
       - name: Install API client generator
         run: npm ci --prefix portal
-      - name: Check generated client and public API guide
+      - name: Check generated client
         run: |
           cargo run --locked -p compallm-api -- generate
-          git diff --exit-code -- portal/src/contract/api.ts docs/content/api
-          git status --short -- portal/src/contract docs/content/api
-          test -z "$(git ls-files --others --exclude-standard -- portal/src/contract docs/content/api)"
+          git diff --exit-code -- portal/src/contract/api.ts
+          git status --short -- portal/src/contract
+          test -z "$(git ls-files --others --exclude-standard -- portal/src/contract)"
 
   portal:
     name: Frontend checks
@@ -118,39 +118,19 @@ jobs:
       - name: Test portal authentication and session state
         run: npm test
 
-  docs:
-    name: Documentation checks
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: docs/web
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: docs/web/package-lock.json
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
-
   quality:
     name: Quality gate
     if: ${{ always() }}
-    needs: [format, rust, portal, docs]
+    needs: [format, rust, portal]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
       FORMAT_RESULT: ${{ needs.format.result }}
       RUST_RESULT: ${{ needs.rust.result }}
       PORTAL_RESULT: ${{ needs.portal.result }}
-      DOCS_RESULT: ${{ needs.docs.result }}
     steps:
       - name: Require every quality check to pass
         run: |
           test "$FORMAT_RESULT" = success
           test "$RUST_RESULT" = success
           test "$PORTAL_RESULT" = success
-          test "$DOCS_RESULT" = success

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Compallm Bug"
+  short_description: "Create a bug issue on the Compallm board"
+  default_prompt: "Use $create-bug to create a Compallm bug issue from this report and add it to the Project board."

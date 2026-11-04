@@ -1,6 +1,6 @@
 Project compallm {
   database_type: 'PostgreSQL'
-  Note: 'Compallm schema (PostgreSQL 18). Models, providers, and provider_models show the proposed design in suggest-schema.md. Usage has five request/usage tables: model_usage plus independent token, image, audio, and video provider usage; model_usage_limit is separate. No shared provider_usage parent exists. Proposed persistence contracts are in docs/content/usage-administration/accounting.md. Primary keys and attempt IDs are application-generated Hero snowflake IDs (bigint); the database defines no sequences, views, or triggers.'
+  Note: 'Compallm schema (PostgreSQL 18). Models, providers, and provider_models show the proposed design in suggest-schema.md. Usage has five request/usage tables: model_usage plus independent token, image, audio, and video provider usage; model_usage_limit is separate. No shared provider_usage parent exists. Proposed persistence contracts are at https://github.com/Midwess/compallm/wiki/Usage-administration-accounting. Primary keys and attempt IDs are application-generated Hero snowflake IDs (bigint); the database defines no sequences, views, or triggers.'
 }
 
 Enum user_status {

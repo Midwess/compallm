@@ -16,7 +16,8 @@ export function gh(args, { body, raw = false } = {}) {
         PATH: process.env.PATH, HOME: process.env.HOME, GH_TOKEN: process.env.GH_TOKEN,
         GH_HOST: 'github.com', GH_PROMPT_DISABLED: '1', GH_PAGER: 'cat',
       },
-      timeout: 45000, maxBuffer: 8 * 1024 * 1024,
+      // Large removals can exceed 8 MB before the diff is clipped for the model.
+      timeout: 45000, maxBuffer: 32 * 1024 * 1024,
     }, (error, stdout) => {
       if (error) return reject(new Error('GitHub request failed or exceeded its output/time limit.'));
       try { resolve(raw ? stdout : JSON.parse(stdout)); }

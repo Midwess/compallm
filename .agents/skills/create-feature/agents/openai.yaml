@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Compallm Feature"
+  short_description: "Create a feature issue on the Compallm board"
+  default_prompt: "Use $create-feature to create a Compallm feature issue from this description and add it to the Project board."

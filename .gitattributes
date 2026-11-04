@@ -11,8 +11,7 @@ test_*.rs linguist-generated=true
 test.rs linguist-generated=true
 tests.rs linguist-generated=true
 
-# Collapse documentation and its content assets, while keeping website code visible.
-docs/content/** linguist-generated=true
+# Collapse Markdown and text documentation in GitHub PRs.
 *.md linguist-generated=true
 *.mdx linguist-generated=true
 *.rst linguist-generated=true

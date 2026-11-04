@@ -1,0 +1,4 @@
+interface:
+  display_name: "Link Compallm Issue"
+  short_description: "Link an issue name, number, or URL to the current PR"
+  default_prompt: "Use $link-issue to resolve the supplied issue name, number, or URL and link it to the current Compallm PR, preserving existing links and content."

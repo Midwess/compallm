@@ -5,10 +5,11 @@ available: false
 
 # Usage and administration
 
-The independent typed-usage design below is proposed in
-`dbdiagram.dbml`. Implemented persistence still stores token counts and three
-price snapshots directly on `provider_usage`. Reporting, charging, retention,
-administrative workflows, and public APIs remain planned.
+The independent typed-usage schema below follows `dbdiagram.dbml`. One migration
+per table creates the typed provider tables directly. They target a fresh
+database, without historical data conversion. Migration execution is separate;
+reporting, charging, retention, administrative workflows, and public APIs remain
+planned.
 
 ## Solution
 
@@ -50,7 +51,9 @@ Each client request creates one `model_usage` row. Each upstream call gets an
 application-generated `attempt_id`; retries and fallback get fresh IDs. The ID
 correlates typed records without referencing a parent table. Token totals have
 at most one row per attempt; audio has at most one per direction. Image/video
-rows have stable group indexes for non-overlapping billing conditions.
+rows store provider-reported measurements and conditions, identified by their
+own row IDs. Multiple rows may reference one attempt; media-update deduplication
+still needs a provider-specific contract.
 
 Before dispatch, record an attempt in the table for its billing measurement,
 even if quantities are unknown. All quantity columns permit null, preserving
@@ -79,6 +82,9 @@ are implemented.
 
 Hard deletion removes accounting evidence. Do not expose unrestricted deletion
 until authorization, retention, and audit requirements are decided.
+
+Schema constraints reject invalid cached-token subsets rather than inventing
+missing totals. Down migrations drop tables in reverse dependency order.
 
 ## Open questions
 

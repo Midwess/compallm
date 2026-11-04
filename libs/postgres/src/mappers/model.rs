@@ -2,6 +2,7 @@ use anyhow::Context;
 use compallm_core::{model::Model, persistent::model::ModelRepositoryError};
 
 use crate::schema::ModelSchema;
+use validify::Validate;
 
 impl TryFrom<ModelSchema> for Model {
     type Error = ModelRepositoryError;
@@ -15,23 +16,28 @@ impl TryFrom<ModelSchema> for Model {
                 "model and organization IDs in database must be positive"
             )));
         }
-        if model.input_price_per_million_tokens.is_sign_negative()
-            || model.output_price_per_million_tokens.is_sign_negative()
-            || model.cached_price_per_million_tokens.is_sign_negative()
-        {
-            return Err(ModelRepositoryError::database(anyhow::anyhow!(
-                "model prices in database must be non-negative"
-            )));
-        }
-
+        let pricing: compallm_core::provider::Pricing =
+            serde_json::from_value(model.pricing).context("invalid model pricing in database")?;
+        pricing
+            .validate()
+            .context("invalid model prices in database")?;
         Ok(Self {
             id,
             organization_id,
             name: model.name,
-            input_price_per_million_tokens: model.input_price_per_million_tokens,
-            output_price_per_million_tokens: model.output_price_per_million_tokens,
-            cached_price_per_million_tokens: model.cached_price_per_million_tokens,
-            settings: model.settings,
+            service_kind: serde_json::from_value(model.service_kind.into())
+                .context("invalid model service kind in database")?,
+            enabled: model.enabled,
+            capabilities: serde_json::from_value(model.capabilities)
+                .context("invalid model capabilities in database")?,
+            limits: serde_json::from_value(model.limits)
+                .context("invalid model limits in database")?,
+            thinking: model
+                .thinking
+                .map(serde_json::from_value)
+                .transpose()
+                .context("invalid model thinking in database")?,
+            pricing,
         })
     }
 }

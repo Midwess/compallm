@@ -8,7 +8,7 @@ use compallm_core::{
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, DbErr, EntityTrait, ModelTrait, QueryFilter,
-    QueryOrder, QuerySelect, RuntimeErr, prelude::ChronoUtc,
+    QueryOrder, QuerySelect, RuntimeErr,
 };
 
 use crate::{postgres_connection::PostgresConnection, schema::ModelSchema};
@@ -78,11 +78,18 @@ impl CoreModelRepository for ModelRepository {
             id: Set(id),
             organization_id: Set(organization_id),
             name: Set(model.name),
-            input_price_per_million_tokens: Set(model.input_price_per_million_tokens),
-            output_price_per_million_tokens: Set(model.output_price_per_million_tokens),
-            cached_price_per_million_tokens: Set(model.cached_price_per_million_tokens),
-            settings: Set(model.settings),
-            ..Default::default()
+            service_kind: Set(model.service_kind.into()),
+            enabled: Set(model.enabled),
+            capabilities: Set(
+                serde_json::to_value(model.capabilities).context("invalid model capabilities")?
+            ),
+            limits: Set(serde_json::to_value(model.limits).context("invalid model limits")?),
+            thinking: Set(model
+                .thinking
+                .map(serde_json::to_value)
+                .transpose()
+                .context("invalid model thinking")?),
+            pricing: Set(serde_json::to_value(model.pricing).context("invalid model pricing")?),
         };
         Model::try_from(active_model.insert(db).await.map_err(Self::write_error)?)
     }
@@ -101,11 +108,19 @@ impl CoreModelRepository for ModelRepository {
             .ok_or(ModelRepositoryError::NotFound)?;
         let mut active_model: ModelActiveModel = stored.into();
         active_model.name = Set(model.name);
-        active_model.input_price_per_million_tokens = Set(model.input_price_per_million_tokens);
-        active_model.output_price_per_million_tokens = Set(model.output_price_per_million_tokens);
-        active_model.cached_price_per_million_tokens = Set(model.cached_price_per_million_tokens);
-        active_model.settings = Set(model.settings);
-        active_model.updated_at = Set(ChronoUtc::now().fixed_offset());
+        active_model.service_kind = Set(model.service_kind.into());
+        active_model.enabled = Set(model.enabled);
+        active_model.capabilities =
+            Set(serde_json::to_value(model.capabilities).context("invalid model capabilities")?);
+        active_model.limits =
+            Set(serde_json::to_value(model.limits).context("invalid model limits")?);
+        active_model.thinking = Set(model
+            .thinking
+            .map(serde_json::to_value)
+            .transpose()
+            .context("invalid model thinking")?);
+        active_model.pricing =
+            Set(serde_json::to_value(model.pricing).context("invalid model pricing")?);
         Model::try_from(active_model.update(db).await.map_err(Self::write_error)?)
     }
 

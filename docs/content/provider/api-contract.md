@@ -13,6 +13,11 @@ implemented. The schema below defines application behavior; it is not a
 generated public API reference. Once implemented, Rust/OpenAPI descriptions
 must generate the public guide and TypeScript client.
 
+This request contract remains planned. Provider-model persistence uses the
+diagram's direct service/protocol fields and typed JSONB configuration; the
+provider-level protocol/mode request below still needs alignment before API
+implementation. See [provider-model storage](../model/models-and-providers.md#provider-model-storage).
+
 One provider represents one connection and contains one or more upstream
 models. One creation request can contain multiple independent connections.
 Creating provider models does not create organization-facing logical models

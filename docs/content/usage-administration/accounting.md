@@ -7,11 +7,11 @@ available: false
 
 ## Purpose and status
 
-This page defines the proposed records and calculations for logical-model
-usage, provider attempts, typed measurements, and usage limits. Implemented
-persistence still stores token counts and three price snapshots directly on
-`provider_usage`; its replacement by independent typed usage tables with JSONB
-pricing snapshots is diagram-only. Services and public APIs remain unimplemented.
+This page defines records and planned calculations for logical-model usage,
+provider attempts, typed measurements, and usage limits. One migration per table
+creates the current schema directly, including the four typed provider tables.
+Migration execution requires a separate explicit instruction.
+Services and public APIs remain unimplemented.
 
 The source diagram is `dbdiagram.dbml`. The diagram and this page must change
 together when the design changes.
@@ -44,7 +44,8 @@ tables. There is no shared provider-attempt parent. Each provider-specific row o
 - an optional request ID returned by the provider;
 - the attempt result status;
 - an immutable `pricing_snapshot` copied from the provider model when the
-  attempt begins, using the typed `Pricing` shape in `suggest-schema.md`.
+  attempt begins, using the typed `Pricing` shape in the Core
+  `provider::configuration` module.
 
 Retries and fallback use fresh attempt IDs even for the same route. The optional
 provider-issued request ID is for correlation, not identity or deduplication.
@@ -69,17 +70,19 @@ provider. There are no foreign keys between typed usage tables:
 | Table | Cardinality per attempt | Measurements |
 | --- | --- | --- |
 | `provider_token_usage` | Zero or one | Input tokens including cached input, cached-input tokens, output tokens, and optional reasoning-output subset |
-| `provider_image_usage` | Zero or more | Nullable generated-image count grouped by billing conditions |
+| `provider_image_usage` | Zero or more | Nullable provider-reported generated-image count and billing conditions |
 | `provider_audio_usage` | Zero or one per input/output direction | Duration in seconds and/or character count |
-| `provider_video_usage` | Zero or more | Nullable generated-video duration in seconds grouped by billing conditions |
+| `provider_video_usage` | Zero or more | Nullable provider-reported generated-video duration in seconds and billing conditions |
 
 Each row repeats route/provider attribution, status, request ID, and snapshot.
 Within an organization, `attempt_id` must identify one client request and one
 upstream call, with consistent metadata and immutable pricing across tables.
 The application owns this invariant; separate foreign keys cannot enforce it.
-Group indexes identify image/video quantity groups within the attempt and
-support idempotent updates; they do not identify generated assets. Audio is
-unique per attempt and direction; tokens are unique per attempt.
+Image/video rows use their own primary keys and record provider-reported
+measurements and conditions without an application-assigned group number.
+There is no uniqueness constraint per media attempt. Deduplication of repeated
+provider updates remains unresolved. Audio is unique per attempt and direction;
+tokens are unique per attempt.
 
 The tables describe measurements, not mutually exclusive services. A single
 image-generation attempt may have token and image rows. Only the applicable
@@ -96,9 +99,10 @@ not binary floats. All measured
 quantities are nonnegative. Missing rows or null quantities mean unknown;
 explicit zero means a known zero.
 
-Image/video `conditions` use the non-secret `RateConditions` shape from
-`suggest-schema.md`: optional resolution, quality, audio, and service tier.
-Quantities must be partitioned into non-overlapping groups. A missing condition
+Image/video `conditions` use the non-secret `RateConditions` shape from the Core
+`provider::configuration` module: optional resolution, quality, audio, and
+service tier. Measurements must not double-count the same provider-reported
+usage. A missing condition
 is not a wildcard for selecting a priced rate. Ambiguous or unmatched rates
 are errors, and required unknown measurements cannot produce a zero estimate.
 
@@ -120,7 +124,8 @@ limit record does not reference an individual request.
 Create `model_usage`, allocate an `attempt_id`, and snapshot pricing before
 dispatch. Insert a row in the table corresponding to the selected billing
 measurement, leaving quantities null until reported. Audio records use the
-known input/output direction; image/video start with group index zero. Add
+known input/output direction. Image/video rows retain provider-reported
+measurements and conditions. Add
 other measurement types only when applicable, reusing the attempt ID and snapshot.
 Update statuses consistently across the attempt's records, grouping dependent
 updates in a short transaction. Provider calls occur outside all transactions.
@@ -166,15 +171,13 @@ units. Reproducible upstream-cost estimates use each attempt's own snapshot.
 Daily summaries may be introduced later as rebuildable query accelerators.
 They must not become a second authoritative usage source.
 
-## Persistence transition
+## Schema setup
 
-Before implementing the diagram, copy every existing `provider_usage` row into
-`provider_token_usage`, including attempts with no known token counts. Preserve
-its ID as both the typed row ID and attempt ID, and copy attribution, status,
-request ID, and its own three prices into `pricing_snapshot.token` without
-rounding. Never use current provider-model prices for historical rows. Validate
-subset relationships and preserve unknown values before removing the old table.
-No migration execution is authorized by this design.
+The table migrations target a fresh database. They do not upgrade a previous
+migration history, copy old usage, or provide compatibility tables. The four
+typed provider tables reference `model_usage` directly from creation. Down
+migrations drop tables in reverse dependency order. Migration execution
+requires a separate explicit instruction.
 
 ## Unresolved rules
 

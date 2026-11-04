@@ -11,8 +11,8 @@ Decision status: Organization ownership, shared logical/provider-model
 configuration, model-level enabling, pricing separation, and router bindings
 are accepted for the proposed schema. Authorization, route selection, capability
 matching, and fallback rules remain unresolved. Implementation status: The
-diagram shows the proposed typed configuration. Persistence still uses scalar
-token prices, logical-model settings, and direct provider reasoning fields.
+diagram defines typed configuration. Separate table migrations create logical
+and provider models with direct service fields and JSONB configuration.
 Management services, discovery, capability refresh, and routing are not implemented.
 
 ## Context and decision
@@ -54,8 +54,14 @@ model flag.
 A provider owns multiple provider models in the same organization. In addition
 to shared configuration, each provider model owns its provider reference,
 service-specific protocol, optional replacement connection, and headers. The
-service/protocol pair selects a concrete adapter as defined in
-`suggest-schema.md`. Credentials remain on the provider connection.
+service/protocol pair selects a concrete adapter as defined in the Core
+`provider::configuration` module. Credentials remain on the provider
+connection.
+
+Table migrations create the current schema directly, without backfills or
+compatibility types. They target a fresh database, not an upgrade from a previous
+migration history. `thinking` is nullable JSONB decoded into Rust structures.
+See [provider-model storage](models-and-providers.md#provider-model-storage).
 
 A provider model is independent of a system model and may be routed from more
 than one system model. `model_router` binds one system model to one provider
@@ -84,9 +90,8 @@ select the lowest value first. Selection and fallback rules remain unresolved.
   change.
 - A model must be enabled and have an eligible router binding to serve
   requests. Discovery rules remain Gateway access policy.
-- Diagram route eligibility requires the logical model, provider model, and
-  binding to be enabled. The provider draft has no provider-level enabled flag;
-  provider-wide disabling remains an unresolved conflict with provider management.
+- Route eligibility requires the logical model, provider model, and binding
+  to be enabled. Provider connections have no provider-level enabled flag.
 - Model persistence operations are organization-scoped. Repository listing
   returns every model in the organization for management; future workflows
   apply discovery and routing policy.

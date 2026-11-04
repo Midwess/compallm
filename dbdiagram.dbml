@@ -39,6 +39,10 @@ Table users {
   status user_status [not null, default: 'active']
   email_verified_at timestamptz [not null]
   last_login_at timestamptz
+
+  indexes {
+    `lower(email)` [unique, name: 'users_email_unique']
+  }
 }
 
 Table organizations {
@@ -56,6 +60,7 @@ Table organization_members {
   indexes {
     (organization_id, user_id) [pk, name: 'organization_members_pkey']
     user_id [name: 'organization_members_user_id_idx']
+    organization_id [name: 'organization_members_organization_id_idx']
   }
 }
 
@@ -81,6 +86,10 @@ Table user_sessions {
   user_id bigint [not null]
   organization_id bigint [not null]
   revoked_at timestamptz
+
+  indexes {
+    (organization_id, user_id) [name: 'user_sessions_organization_user_idx']
+  }
 }
 
 Table providers [note: 'Proposed API-key connection shared by provider models. Owns one protected API key, shared connection settings, and headers. Service kind and protocol belong to each provider model.'] {
@@ -89,11 +98,12 @@ Table providers [note: 'Proposed API-key connection shared by provider models. O
   name text [not null, note: 'Nonblank connection name, normalized by trimming; unique within the organization']
   connection jsonb [not null, note: 'JSON object: baseUrl, timeoutMs, query, authentication. Bounded positive timeout; non-secret query parameters; authentication declares exactly one apiKeyHeader {name, prefix} or apiKeyQuery placement, never the key value']
   headers jsonb [not null, default: '{}', note: 'JSON object of non-secret custom headers; case-insensitive header names; cannot replace authentication or transport-managed headers']
-  credentials text [not null, note: 'Private hashed credential for provider. Contains the API key and secret custom headers; excluded from ordinary reads and logs']
+  credentials text [not null, note: 'Private encrypted credential string; no length limit. Contains the API key and secret custom headers; excluded from ordinary reads and logs. Encryption format and key rotation remain unresolved']
 
   indexes {
     (organization_id, id) [unique, name: 'providers_organization_id_id_unique']
     (organization_id, name) [unique, name: 'providers_organization_id_name_unique']
+    organization_id [name: 'providers_organization_id_index']
   }
 }
 
@@ -205,7 +215,7 @@ Table provider_token_usage [note: 'Proposed independent token usage: one row per
   }
 }
 
-Table provider_image_usage [note: 'Proposed independent image usage linked directly to model_usage. Multiple non-overlapping billing groups per attempt; group_index is stable for idempotent updates, not an asset ID. attempt_id correlates other typed records without a shared parent; repeated attribution, status, request ID, and snapshot must agree. NULL quantity preserves unknown or failed usage. No image content or URLs. Domain validation rejects overlapping groups and ambiguous rates.'] {
+Table provider_image_usage [note: 'Independent provider-reported image usage linked directly to model_usage. Multiple rows may reference one attempt, identified by their own row IDs. attempt_id correlates other typed records without a shared parent; repeated attribution, status, request ID, and snapshot must agree. NULL quantity preserves unknown or failed usage. No image content or URLs. Deduplication of repeated provider updates remains unresolved.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
   organization_id bigint [not null]
   model_usage_id bigint [not null]
@@ -216,12 +226,11 @@ Table provider_image_usage [note: 'Proposed independent image usage linked direc
   provider_request_id text [note: 'Optional provider-issued identifier; no credentials']
   status provider_usage_status [not null, default: 'in_progress']
   pricing_snapshot jsonb [not null, note: 'Immutable complete provider-model Pricing at attempt creation; identical across correlated rows. Variant selects billable measurements; multiple types do not automatically mean multiple charges']
-  group_index integer [not null, default: 0, note: 'CHECK (group_index >= 0); identifies a non-overlapping quantity group within the attempt']
   image_count bigint [note: 'Generated images in this group; NULL means unknown; CHECK (image_count >= 0)']
   conditions jsonb [not null, default: '{}', note: 'Strict RateConditions object: optional resolution, quality, audio, serviceTier. Actual billing conditions, not arbitrary provider metadata; missing fields do not act as rate-selection wildcards']
 
   indexes {
-    (organization_id, attempt_id, group_index) [unique, name: 'provider_image_usage_attempt_group_unique']
+    (organization_id, attempt_id) [name: 'provider_image_usage_attempt_idx']
     (organization_id, model_usage_id) [name: 'provider_image_usage_model_usage_idx']
     (organization_id, provider_model_id) [name: 'provider_image_usage_provider_model_idx']
     (organization_id, model_router_id) [name: 'provider_image_usage_route_idx']
@@ -253,7 +262,7 @@ Table provider_audio_usage [note: 'Proposed independent audio usage linked direc
   }
 }
 
-Table provider_video_usage [note: 'Proposed independent video usage linked directly to model_usage. Multiple non-overlapping billing groups per attempt; group_index is stable for idempotent updates, not an asset ID. attempt_id correlates typed records without a shared parent; repeated metadata and snapshots must agree. NULL duration preserves unknown or failed usage. No video content or URLs. Domain validation rejects overlapping groups and ambiguous rates.'] {
+Table provider_video_usage [note: 'Independent provider-reported video usage linked directly to model_usage. Multiple rows may reference one attempt, identified by their own row IDs. attempt_id correlates typed records without a shared parent; repeated metadata and snapshots must agree. NULL duration preserves unknown or failed usage. No video content or URLs. Deduplication of repeated provider updates remains unresolved.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
   organization_id bigint [not null]
   model_usage_id bigint [not null]
@@ -264,12 +273,11 @@ Table provider_video_usage [note: 'Proposed independent video usage linked direc
   provider_request_id text [note: 'Optional provider-issued identifier; no credentials']
   status provider_usage_status [not null, default: 'in_progress']
   pricing_snapshot jsonb [not null, note: 'Immutable complete provider-model Pricing at attempt creation; identical across correlated rows. Snapshot selects billable measurements; reporting multiple types does not automatically charge all of them']
-  group_index integer [not null, default: 0, note: 'CHECK (group_index >= 0); identifies a non-overlapping quantity group within the attempt']
   duration_seconds numeric(24,9) [note: 'Total measured generated duration in this group; NULL means unknown; CHECK (duration_seconds >= 0)']
   conditions jsonb [not null, default: '{}', note: 'Strict RateConditions object: optional resolution, quality, audio, serviceTier. Actual billing conditions, not arbitrary provider metadata; missing fields do not act as rate-selection wildcards']
 
   indexes {
-    (organization_id, attempt_id, group_index) [unique, name: 'provider_video_usage_attempt_group_unique']
+    (organization_id, attempt_id) [name: 'provider_video_usage_attempt_idx']
     (organization_id, model_usage_id) [name: 'provider_video_usage_model_usage_idx']
     (organization_id, provider_model_id) [name: 'provider_video_usage_provider_model_idx']
     (organization_id, model_router_id) [name: 'provider_video_usage_route_idx']

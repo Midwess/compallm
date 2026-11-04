@@ -1,23 +1,22 @@
 #![allow(elided_lifetimes_in_paths)]
-#![allow(clippy::wildcard_imports)]
 
 use sea_orm_migration::prelude::*;
 
-mod m20261024_000001_create_users;
-mod m20261025_000001_create_organizations;
-mod m20261025_000002_create_providers;
-mod m20261026_000001_create_user_sessions;
-mod m20261026_000002_create_models;
-mod m20261026_000003_create_model_providers;
-mod m20261031_000001_align_shared_schema;
-mod m20261031_000002_create_api_keys;
-mod m20261031_000003_create_provider_model_routing;
-mod m20261031_000004_create_model_usage;
-mod m20261031_000005_create_balances;
-mod m20261031_000006_create_provider_usage;
-mod m20261101_000001_replace_balances_with_model_usage_limit;
-mod m20261101_000002_remove_model_availability_flags;
-mod m20261102_000001_add_provider_model_reasoning_capabilities;
+mod m20261104_000001_create_users;
+mod m20261104_000002_create_organizations;
+mod m20261104_000003_create_organization_members;
+mod m20261104_000004_create_api_keys;
+mod m20261104_000005_create_user_sessions;
+mod m20261104_000006_create_providers;
+mod m20261104_000007_create_models;
+mod m20261104_000008_create_provider_models;
+mod m20261104_000009_create_model_router;
+mod m20261104_000010_create_model_usage;
+mod m20261104_000011_create_model_usage_limit;
+mod m20261104_000012_create_provider_token_usage;
+mod m20261104_000013_create_provider_image_usage;
+mod m20261104_000014_create_provider_audio_usage;
+mod m20261104_000015_create_provider_video_usage;
 
 pub struct Migrator;
 
@@ -25,21 +24,21 @@ pub struct Migrator;
 impl MigratorTrait for Migrator {
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
         vec![
-            Box::new(m20261024_000001_create_users::Migration),
-            Box::new(m20261025_000001_create_organizations::Migration),
-            Box::new(m20261025_000002_create_providers::Migration),
-            Box::new(m20261026_000001_create_user_sessions::Migration),
-            Box::new(m20261026_000002_create_models::Migration),
-            Box::new(m20261026_000003_create_model_providers::Migration),
-            Box::new(m20261031_000001_align_shared_schema::Migration),
-            Box::new(m20261031_000002_create_api_keys::Migration),
-            Box::new(m20261031_000003_create_provider_model_routing::Migration),
-            Box::new(m20261031_000004_create_model_usage::Migration),
-            Box::new(m20261031_000005_create_balances::Migration),
-            Box::new(m20261031_000006_create_provider_usage::Migration),
-            Box::new(m20261101_000001_replace_balances_with_model_usage_limit::Migration),
-            Box::new(m20261101_000002_remove_model_availability_flags::Migration),
-            Box::new(m20261102_000001_add_provider_model_reasoning_capabilities::Migration),
+            Box::new(m20261104_000001_create_users::Migration),
+            Box::new(m20261104_000002_create_organizations::Migration),
+            Box::new(m20261104_000003_create_organization_members::Migration),
+            Box::new(m20261104_000004_create_api_keys::Migration),
+            Box::new(m20261104_000005_create_user_sessions::Migration),
+            Box::new(m20261104_000006_create_providers::Migration),
+            Box::new(m20261104_000007_create_models::Migration),
+            Box::new(m20261104_000008_create_provider_models::Migration),
+            Box::new(m20261104_000009_create_model_router::Migration),
+            Box::new(m20261104_000010_create_model_usage::Migration),
+            Box::new(m20261104_000011_create_model_usage_limit::Migration),
+            Box::new(m20261104_000012_create_provider_token_usage::Migration),
+            Box::new(m20261104_000013_create_provider_image_usage::Migration),
+            Box::new(m20261104_000014_create_provider_audio_usage::Migration),
+            Box::new(m20261104_000015_create_provider_video_usage::Migration),
             // inject-above (do not remove this comment)
         ]
     }

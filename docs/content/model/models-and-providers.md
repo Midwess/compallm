@@ -15,10 +15,8 @@ models, and router bindings are accepted. Route selection, fallback,
 model-management authorization, and model discovery remain unresolved.
 
 Implementation status: The migrations and generated PostgreSQL schema implement
-`provider_models`, provider-model reasoning capabilities, and `model_router`.
-The diagram's shared typed model configuration and logical-model enabled flag
-are proposed, not implemented. Persistence still uses scalar token prices,
-logical-model settings, and direct provider reasoning fields.
+typed logical models, `provider_models`, and `model_router` through one migration
+per table. Migration execution is separate and requires a fresh database.
 Model and route management services, management APIs, provider discovery,
 capability refresh, route selection, and request forwarding are not implemented.
 
@@ -53,8 +51,7 @@ policy, with no separate stored visibility flag. Models contain no credentials.
 A provider connection is an organization-owned configuration for reaching an
 external service. In the proposal it owns a management name, shared connection,
 headers, and protected credential. Service kind and protocol belong to the
-provider model. The provider draft omits provider-wide enabling; this conflicts
-with the provider-management contract and remains unresolved.
+provider model. Provider connections have no provider-wide enabled flag.
 
 A provider connection is not a model. A connection can have multiple provider
 models, each representing an upstream model the connection can call. The same
@@ -84,8 +81,27 @@ defaulting to `{}`. Null thinking means no configured controls. A non-null
 thinking object has optional effort and budget fields, at least one non-null;
 both present means both are supported. Concrete adapters validate request-level
 combinations. Pricing has one typed token, audio, image, video, or request
-variant, with exact decimal-string USD rates. Detailed contracts are in
-`suggest-schema.md` and the diagram.
+variant, with exact decimal-string USD rates. Detailed contracts are in the
+Core `provider::configuration` module and the diagram.
+
+The database stores `thinking` as nullable JSONB. Its concrete Rust structure and
+validation do not require a PostgreSQL composite type or reasoning-level enum.
+
+### Provider-model storage
+
+The provider-model migration creates the diagram's `service_kind`, `protocol`,
+nullable `base_url` and `connection`, public `headers`, declared `capabilities`,
+`limits`, nullable `thinking`, and required `pricing`. JSONB object/array checks
+guard column shapes; Rust deserialization owns typed fields. Adapters and full
+management validation remain planned.
+
+The migration targets a fresh database; it has no data backfill, compatibility
+structures, or inferred configuration. Required `service_kind`, `protocol`, and
+`pricing` columns have no defaults. Provider models are unique across
+organization, provider, name, service kind, and protocol. Nullable transport
+overrides inherit provider settings. Prices use explicit decimal strings in
+typed `pricing`; reasoning controls use `thinking`. Down migrations drop tables
+in reverse dependency order. No migration execution is authorized here.
 
 ### Model router binding
 

@@ -4,6 +4,7 @@ use compallm_core::{
         DbContext,
         model::{ModelRepository as _, ModelRepositoryError},
     },
+    provider::Pricing,
 };
 use compallm_postgres::{
     ModelSchema, postgres_connection::PostgresConnection, repository::model::ModelRepository,
@@ -15,8 +16,8 @@ use std::sync::Arc;
 struct Fixture;
 
 impl Fixture {
-    fn at() -> sea_orm::prelude::DateTimeWithTimeZone {
-        "2026-10-27T00:00:00Z".parse().unwrap()
+    fn pricing() -> serde_json::Value {
+        json!({"token": {"inputUsdPerMillionTokens": "1.25", "outputUsdPerMillionTokens": "2.5", "cachedUsdPerMillionTokens": "0.50"}})
     }
 
     fn schema(id: i64, name: &str) -> ModelSchema {
@@ -24,11 +25,12 @@ impl Fixture {
             id,
             organization_id: 84,
             name: name.into(),
-            input_price_per_million_tokens: Decimal::new(125, 2),
-            output_price_per_million_tokens: Decimal::new(25, 1),
-            cached_price_per_million_tokens: Decimal::new(50, 2),
-            updated_at: Self::at(),
-            settings: json!({ "contextWindow": 128_000 }),
+            service_kind: "llm".into(),
+            enabled: true,
+            capabilities: json!(["text"]),
+            limits: json!({"contextTokens": 128_000}),
+            thinking: None,
+            pricing: Self::pricing(),
         }
     }
 
@@ -37,15 +39,7 @@ impl Fixture {
     }
 
     fn model() -> Model {
-        Model {
-            id: 100,
-            organization_id: 84,
-            name: "general-chat".into(),
-            input_price_per_million_tokens: Decimal::new(125, 2),
-            output_price_per_million_tokens: Decimal::new(25, 1),
-            cached_price_per_million_tokens: Decimal::new(50, 2),
-            settings: json!({ "contextWindow": 128_000 }),
-        }
+        Model::try_from(Self::schema(100, "general-chat")).unwrap()
     }
 }
 
@@ -73,7 +67,7 @@ async fn find_all_returns_management_records_and_scopes_to_the_organization() {
 }
 
 #[tokio::test]
-async fn insert_writes_prices_and_settings() {
+async fn insert_writes_typed_prices_and_configuration() {
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![Fixture::schema(100, "general-chat")]])
@@ -85,21 +79,24 @@ async fn insert_writes_prices_and_settings() {
         .unwrap();
 
     assert_eq!(model.id, 100);
-    assert_eq!(model.input_price_per_million_tokens, Decimal::new(125, 2));
-    assert_eq!(model.settings, json!({ "contextWindow": 128_000 }));
+    let Pricing::Token(pricing) = model.pricing else {
+        panic!("expected token prices")
+    };
+    assert_eq!(pricing.input_usd_per_million_tokens, Decimal::new(125, 2));
+    assert_eq!(model.limits.context_tokens, Some(128_000));
 
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
     assert!(log.contains("INSERT INTO"));
-    assert!(log.contains("input_price_per_million_tokens"));
-    assert!(log.contains("settings"));
-    assert!(!log.contains("enabled"));
+    assert!(log.contains("pricing"));
+    assert!(log.contains("limits"));
+    assert!(log.contains("enabled"));
     assert!(!log.contains("hidden"));
 }
 
 #[tokio::test]
 async fn update_is_organization_scoped_and_updates_every_mutable_field() {
     let mut updated = Fixture::schema(100, "internal-chat");
-    updated.settings = json!({ "contextWindow": 200_000, "reasoning": true });
+    updated.limits = json!({ "contextTokens": 200_000 });
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![Fixture::schema(100, "general-chat")], vec![updated]])
@@ -107,24 +104,22 @@ async fn update_is_organization_scoped_and_updates_every_mutable_field() {
     );
     let mut update = Fixture::model();
     update.name = "internal-chat".into();
-    update.input_price_per_million_tokens = Decimal::new(2, 0);
-    update.output_price_per_million_tokens = Decimal::new(3, 0);
-    update.cached_price_per_million_tokens = Decimal::new(1, 0);
-    update.settings = json!({ "contextWindow": 200_000, "reasoning": true });
+    update.limits.context_tokens = Some(200_000);
+    update.enabled = false;
 
     let model = Fixture::context(db.clone())
         .scope(ModelRepository.update(update))
         .await
         .unwrap();
     assert_eq!(model.name, "internal-chat");
-    assert_eq!(model.settings["contextWindow"], 200_000);
+    assert_eq!(model.limits.context_tokens, Some(200_000));
 
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
     assert!(log.contains("organization_id"));
     assert!(log.contains("UPDATE"));
-    assert!(log.contains("updated_at"));
-    assert!(log.contains("settings"));
-    assert!(!log.contains("enabled"));
+    assert!(log.contains("limits"));
+    assert!(log.contains("enabled"));
+    assert!(!log.contains("updated_at"));
     assert!(!log.contains("hidden"));
 }
 
@@ -185,7 +180,7 @@ async fn invalid_persisted_ids_are_rejected_during_mapping() {
 #[tokio::test]
 async fn negative_persisted_prices_are_rejected_during_mapping() {
     let mut corrupt = Fixture::schema(100, "corrupt-model");
-    corrupt.input_price_per_million_tokens = Decimal::NEGATIVE_ONE;
+    corrupt.pricing["token"]["inputUsdPerMillionTokens"] = json!("-1");
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![corrupt]])

@@ -81,8 +81,26 @@ async fn creates_diagram_schema_directly_with_scoped_usage_and_no_legacy_tables(
         "api_protocol",
         "group_index",
         "attempt_group_unique",
+        "pricing_snapshot",
     ] {
         assert!(!log.contains(removed), "unexpected {removed}");
+    }
+    for column in [
+        "input_usd_per_million_tokens",
+        "output_usd_per_million_tokens",
+        "cached_usd_per_million_tokens",
+        "usd_per_image",
+        "usd_per_second",
+        "usd_per_million_characters",
+    ] {
+        assert!(
+            log.contains(&format!(r#"\"{column}\" decimal(20, 8) NULL"#)),
+            "missing exact nullable rate {column}"
+        );
+        assert!(
+            log.contains(&format!(r#"\"{column}\" >= 0"#)),
+            "missing nonnegative rate check {column}"
+        );
     }
 }
 

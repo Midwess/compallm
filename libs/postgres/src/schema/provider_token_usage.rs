@@ -15,8 +15,12 @@ pub struct Model {
     #[sea_orm(column_type = "Text", nullable)]
     pub provider_request_id: Option<String>,
     pub status: ProviderUsageStatus,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub pricing_snapshot: Json,
+    #[sea_orm(column_type = "Decimal(Some((20, 8)))", nullable)]
+    pub input_usd_per_million_tokens: Option<Decimal>,
+    #[sea_orm(column_type = "Decimal(Some((20, 8)))", nullable)]
+    pub output_usd_per_million_tokens: Option<Decimal>,
+    #[sea_orm(column_type = "Decimal(Some((20, 8)))", nullable)]
+    pub cached_usd_per_million_tokens: Option<Decimal>,
     pub input_tokens: Option<i64>,
     pub cached_input_tokens: Option<i64>,
     pub output_tokens: Option<i64>,

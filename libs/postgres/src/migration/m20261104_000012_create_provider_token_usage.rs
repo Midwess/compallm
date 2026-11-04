@@ -81,13 +81,38 @@ fn provider_token_usage_table() -> TableCreateStatement {
                 .default("in_progress"),
         )
         .col(
-            ColumnDef::new(ProviderTokenUsage::PricingSnapshot)
-                .json_binary()
-                .not_null()
-                .check(
-                    Func::cust(Alias::new("jsonb_typeof"))
-                        .arg(Expr::col(ProviderTokenUsage::PricingSnapshot))
-                        .eq("object"),
+            ColumnDef::new(ProviderTokenUsage::InputUsdPerMillionTokens)
+                .decimal_len(20, 8)
+                .null()
+                .check(Expr::col(ProviderTokenUsage::InputUsdPerMillionTokens).gte(0)),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::OutputUsdPerMillionTokens)
+                .decimal_len(20, 8)
+                .null()
+                .check(Expr::col(ProviderTokenUsage::OutputUsdPerMillionTokens).gte(0)),
+        )
+        .col(
+            ColumnDef::new(ProviderTokenUsage::CachedUsdPerMillionTokens)
+                .decimal_len(20, 8)
+                .null()
+                .check(Expr::col(ProviderTokenUsage::CachedUsdPerMillionTokens).gte(0)),
+        )
+        .check(
+            Cond::any()
+                .add(
+                    Cond::all()
+                        .add(Expr::col(ProviderTokenUsage::InputUsdPerMillionTokens).is_null())
+                        .add(Expr::col(ProviderTokenUsage::OutputUsdPerMillionTokens).is_null())
+                        .add(Expr::col(ProviderTokenUsage::CachedUsdPerMillionTokens).is_null()),
+                )
+                .add(
+                    Cond::all()
+                        .add(Expr::col(ProviderTokenUsage::InputUsdPerMillionTokens).is_not_null())
+                        .add(Expr::col(ProviderTokenUsage::OutputUsdPerMillionTokens).is_not_null())
+                        .add(
+                            Expr::col(ProviderTokenUsage::CachedUsdPerMillionTokens).is_not_null(),
+                        ),
                 ),
         )
         .col(
@@ -286,7 +311,9 @@ enum ProviderTokenUsage {
     ProviderId,
     ProviderRequestId,
     Status,
-    PricingSnapshot,
+    InputUsdPerMillionTokens,
+    OutputUsdPerMillionTokens,
+    CachedUsdPerMillionTokens,
     InputTokens,
     CachedInputTokens,
     OutputTokens,

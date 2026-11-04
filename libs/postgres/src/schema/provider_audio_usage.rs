@@ -15,8 +15,10 @@ pub struct Model {
     #[sea_orm(column_type = "Text", nullable)]
     pub provider_request_id: Option<String>,
     pub status: ProviderUsageStatus,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub pricing_snapshot: Json,
+    #[sea_orm(column_type = "Decimal(Some((20, 8)))", nullable)]
+    pub usd_per_second: Option<Decimal>,
+    #[sea_orm(column_type = "Decimal(Some((20, 8)))", nullable)]
+    pub usd_per_million_characters: Option<Decimal>,
     pub direction: UsageDirection,
     #[sea_orm(column_type = "Decimal(Some((24, 9)))", nullable)]
     pub duration_seconds: Option<Decimal>,

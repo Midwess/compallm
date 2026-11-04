@@ -173,16 +173,16 @@ atomic with a database update.
 | Shared connection, headers, and credential | Provider connection |
 | Upstream name, service/protocol, connection override, headers, typed configuration, and upstream prices | Provider model |
 | Route priority and availability | `model_router` binding |
-| Price snapshot used to estimate one provider attempt's cost | Each typed provider-usage record |
+| Applicable rates used to estimate one provider attempt's cost | Each typed provider-usage record |
 | Health, quota, cooldown, and observed operational data | Separate operational state |
 
 Published model prices remain stable across router bindings and do not
 necessarily equal configured provider-model prices. Provider cost is estimated
 from typed measurements and provider-model prices. Each typed provider-usage
-record snapshots the complete provider-model pricing configuration when an
-attempt is created, so historical upstream cost estimates remain reproducible
-after later price changes. Operational observations must not overwrite model
-prices, provider-model configuration, or router bindings.
+record snapshots applicable provider-model rates in dedicated decimal columns,
+so historical upstream cost estimates remain reproducible after later price
+changes. Operational observations must not overwrite model prices,
+provider-model configuration, or router bindings.
 
 ## Open questions
 

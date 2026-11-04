@@ -15,8 +15,8 @@ pub struct Model {
     #[sea_orm(column_type = "Text", nullable)]
     pub provider_request_id: Option<String>,
     pub status: ProviderUsageStatus,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub pricing_snapshot: Json,
+    #[sea_orm(column_type = "Decimal(Some((20, 8)))", nullable)]
+    pub usd_per_image: Option<Decimal>,
     pub image_count: Option<i64>,
     #[sea_orm(column_type = "JsonBinary")]
     pub conditions: Json,

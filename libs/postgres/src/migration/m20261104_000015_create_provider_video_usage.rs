@@ -75,14 +75,10 @@ fn provider_video_usage_table() -> TableCreateStatement {
                 .default("in_progress"),
         )
         .col(
-            ColumnDef::new(ProviderVideoUsage::PricingSnapshot)
-                .json_binary()
-                .not_null()
-                .check(
-                    Func::cust(Alias::new("jsonb_typeof"))
-                        .arg(Expr::col(ProviderVideoUsage::PricingSnapshot))
-                        .eq("object"),
-                ),
+            ColumnDef::new(ProviderVideoUsage::UsdPerSecond)
+                .decimal_len(20, 8)
+                .null()
+                .check(Expr::col(ProviderVideoUsage::UsdPerSecond).gte(0)),
         )
         .col(
             ColumnDef::new(ProviderVideoUsage::DurationSeconds)
@@ -234,7 +230,7 @@ enum ProviderVideoUsage {
     ProviderId,
     ProviderRequestId,
     Status,
-    PricingSnapshot,
+    UsdPerSecond,
     DurationSeconds,
     Conditions,
 }

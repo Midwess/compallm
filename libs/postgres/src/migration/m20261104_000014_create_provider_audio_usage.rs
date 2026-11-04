@@ -81,14 +81,21 @@ fn provider_audio_usage_table() -> TableCreateStatement {
                 .default("in_progress"),
         )
         .col(
-            ColumnDef::new(ProviderAudioUsage::PricingSnapshot)
-                .json_binary()
-                .not_null()
-                .check(
-                    Func::cust(Alias::new("jsonb_typeof"))
-                        .arg(Expr::col(ProviderAudioUsage::PricingSnapshot))
-                        .eq("object"),
-                ),
+            ColumnDef::new(ProviderAudioUsage::UsdPerSecond)
+                .decimal_len(20, 8)
+                .null()
+                .check(Expr::col(ProviderAudioUsage::UsdPerSecond).gte(0)),
+        )
+        .col(
+            ColumnDef::new(ProviderAudioUsage::UsdPerMillionCharacters)
+                .decimal_len(20, 8)
+                .null()
+                .check(Expr::col(ProviderAudioUsage::UsdPerMillionCharacters).gte(0)),
+        )
+        .check(
+            Expr::col(ProviderAudioUsage::UsdPerSecond)
+                .is_null()
+                .or(Expr::col(ProviderAudioUsage::UsdPerMillionCharacters).is_null()),
         )
         .col(
             ColumnDef::new(ProviderAudioUsage::Direction)
@@ -256,7 +263,8 @@ enum ProviderAudioUsage {
     ProviderId,
     ProviderRequestId,
     Status,
-    PricingSnapshot,
+    UsdPerSecond,
+    UsdPerMillionCharacters,
     Direction,
     DurationSeconds,
     CharacterCount,

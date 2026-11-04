@@ -19,7 +19,7 @@ Separate logical-model attribution, provider attempts, and member usage limits:
   key, and logical-model attribution;
 - `provider_token_usage`, `provider_image_usage`, `provider_audio_usage`, and
   `provider_video_usage` reference `model_usage` directly and each own attempt
-  metadata, an immutable pricing snapshot, and authoritative measured quantities;
+  metadata, immutable applicable rates, and authoritative measured quantities;
 - `model_usage_limit` stores the member's USD limit and current USD usage in an
   organization.
 
@@ -33,11 +33,14 @@ Logical-model prices belong to `models`. Provider-model prices belong to
 `provider_models`; `model_router` identifies the binding used for an attempt.
 There is no shared provider-attempt table. These five request/usage tables are
 separate from the member's `model_usage_limit` record.
-Each provider attempt snapshots its provider model's complete typed pricing
-configuration so historical upstream-cost estimates remain reproducible after
-current prices change. Its typed records may coexist: an image-generation
-attempt can report both tokens and generated-image quantities. The snapshot
-selects billable measurements; table presence alone never causes an extra charge.
+Each typed usage row snapshots applicable provider-model rates in dedicated
+nullable NUMERIC(20,8) columns, so historical upstream-cost estimates remain
+reproducible after current prices change. Token rows store three token rates;
+image rows store USD per image; audio rows store USD per second or per million
+characters; video rows store USD per second. These are configured rates, not
+provider-returned charges. Coexisting measurement rows do not automatically add
+charges: null rates mean the measurement is not priced by that billing plan,
+while explicit zero means a configured free rate.
 `model_usage` does not duplicate measurements, provider prices, or money, and
 `model_usage_limit` does not duplicate request-level token facts.
 
@@ -58,8 +61,10 @@ still needs a provider-specific contract.
 Before dispatch, record an attempt in the table for its billing measurement,
 even if quantities are unknown. All quantity columns permit null, preserving
 failed attempts with no provider usage. Unknown is not zero. Coexisting typed
-rows repeat metadata and snapshots; the application must keep those values
-consistent. Cross-table consistency is not enforced by a parent foreign key.
+rows repeat metadata; the application must keep attribution consistent and
+populate rates only for the selected billing unit. Token rates are all present
+or all null; audio permits at most one rate. Cross-table consistency is not
+enforced by a parent foreign key.
 
 At most one usage-limit row exists for an organization member. Both monetary
 values are non-negative fixed-point USD. Usage records do not own or delete the
@@ -95,8 +100,8 @@ missing totals. Down migrations drop tables in reverse dependency order.
 - How are compound fees, modality-specific token rates, request-billed
   measurements, rounding, and minimum charges represented? Unsupported billing
   contracts must not be served or inferred free.
-- What is the organization-facing media pricing contract? Upstream snapshots
-  do not define member charges.
+- What is the organization-facing media pricing contract? Upstream provider
+  rates do not define member charges.
 
 ## Related pages
 

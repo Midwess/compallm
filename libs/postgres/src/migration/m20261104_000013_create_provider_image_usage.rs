@@ -75,14 +75,10 @@ fn provider_image_usage_table() -> TableCreateStatement {
                 .default("in_progress"),
         )
         .col(
-            ColumnDef::new(ProviderImageUsage::PricingSnapshot)
-                .json_binary()
-                .not_null()
-                .check(
-                    Func::cust(Alias::new("jsonb_typeof"))
-                        .arg(Expr::col(ProviderImageUsage::PricingSnapshot))
-                        .eq("object"),
-                ),
+            ColumnDef::new(ProviderImageUsage::UsdPerImage)
+                .decimal_len(20, 8)
+                .null()
+                .check(Expr::col(ProviderImageUsage::UsdPerImage).gte(0)),
         )
         .col(
             ColumnDef::new(ProviderImageUsage::ImageCount)
@@ -234,7 +230,7 @@ enum ProviderImageUsage {
     ProviderId,
     ProviderRequestId,
     Status,
-    PricingSnapshot,
+    UsdPerImage,
     ImageCount,
     Conditions,
 }

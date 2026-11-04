@@ -43,19 +43,20 @@ tables. There is no shared provider-attempt parent. Each provider-specific row o
 - the organization-scoped `model_router` binding, provider model, and provider;
 - an optional request ID returned by the provider;
 - the attempt result status;
-- an immutable `pricing_snapshot` copied from the provider model when the
-  attempt begins, using the typed `Pricing` shape in the Core
-  `provider::configuration` module.
+- immutable applicable provider-model rates in dedicated NUMERIC(20,8) columns,
+  with no `pricing_snapshot` JSONB column.
 
 Retries and fallback use fresh attempt IDs even for the same route. The optional
 provider-issued request ID is for correlation, not identity or deduplication.
 The provider model identifies the upstream model and current provider prices,
-while the binding records how the system model selected it. The snapshot
-preserves exact decimal-string rates, units, and rate conditions.
+while the binding records how the system model selected it. The stored rates
+preserve exact decimals and explicit units. Image/video rows retain the
+selected rate alongside their billing conditions, not the entire rate catalog.
 The row does not duplicate the upstream model name or provider-reported USD
 cost. An attempt can end without usable measurements.
-When measurements are present, the snapshot supports a reproducible historical
-upstream-cost estimate even after the provider model's current prices change.
+When measurements are present, the stored rates support a reproducible
+historical upstream-cost estimate even after the provider model's current
+prices change.
 Reports aggregate the selected attempts' measurements and join through
 `model_usage` for member, API-key, and logical-model attribution. Which attempt outcomes
 contribute to a report or member charge remains a Gateway policy decision.
@@ -74,9 +75,9 @@ provider. There are no foreign keys between typed usage tables:
 | `provider_audio_usage` | Zero or one per input/output direction | Duration in seconds and/or character count |
 | `provider_video_usage` | Zero or more | Nullable provider-reported generated-video duration in seconds and billing conditions |
 
-Each row repeats route/provider attribution, status, request ID, and snapshot.
+Each row repeats route/provider attribution, status, and request ID.
 Within an organization, `attempt_id` must identify one client request and one
-upstream call, with consistent metadata and immutable pricing across tables.
+upstream call, with consistent metadata and immutable applicable rates.
 The application owns this invariant; separate foreign keys cannot enforce it.
 Image/video rows use their own primary keys and record provider-reported
 measurements and conditions without an application-assigned group number.
@@ -86,9 +87,29 @@ tokens are unique per attempt.
 
 The tables describe measurements, not mutually exclusive services. A single
 image-generation attempt may have token and image rows. Only the applicable
-pricing-snapshot variant contributes to upstream cost; do not bill every
+configured billing unit contributes to upstream cost; do not bill every
 reported quantity automatically. Combined fees need an explicit pricing
 contract before use.
+
+### Rate columns
+
+All rates are nullable, nonnegative NUMERIC(20,8), without defaults:
+
+| Table | Columns |
+| --- | --- |
+| `provider_token_usage` | `input_usd_per_million_tokens`, `output_usd_per_million_tokens`, `cached_usd_per_million_tokens` |
+| `provider_image_usage` | `usd_per_image` |
+| `provider_audio_usage` | `usd_per_second`, `usd_per_million_characters` |
+| `provider_video_usage` | `usd_per_second` |
+
+Token rates must be all present or all null. Audio accepts at most one rate,
+matching duration or character billing. All-null rates preserve measurements
+that are not billable under the selected plan; they never imply free usage.
+Explicit zero is a configured free rate. The application requires applicable
+rates before calculating cost. Conditional image/video rates are selected from
+the saved provider-model configuration for the reported conditions; unmatched or
+ambiguous conditions are errors. Rate assignment is immutable once selected.
+Request pricing and compound fees still require a separate measurement contract.
 
 All measured quantities are nullable, including image count and video duration,
 so typed rows can preserve in-progress or failed attempts without usage reports.
@@ -121,12 +142,15 @@ limit record does not reference an individual request.
 
 ## Intended write flow
 
-Create `model_usage`, allocate an `attempt_id`, and snapshot pricing before
-dispatch. Insert a row in the table corresponding to the selected billing
-measurement, leaving quantities null until reported. Audio records use the
-known input/output direction. Image/video rows retain provider-reported
-measurements and conditions. Add
-other measurement types only when applicable, reusing the attempt ID and snapshot.
+Create `model_usage`, allocate an `attempt_id`, and select the applicable
+provider-model rates before dispatch. Insert a row in the table corresponding
+to the selected billing measurement, leaving quantities null until reported.
+Audio records use the known input/output direction. Image/video rows retain
+provider-reported measurements and conditions. Add other measurement types
+only when applicable, reusing the attempt ID. Populate only the rate columns
+applicable to the selected billing unit. Keep the attempt's provider-model
+configuration available until conditional media rates are selected; do not
+resolve them from subsequently edited model configuration.
 Update statuses consistently across the attempt's records, grouping dependent
 updates in a short transaction. Provider calls occur outside all transactions.
 Request-billed plans need a measurement contract before dispatch; no fifth
@@ -139,7 +163,7 @@ in the shortest transaction that preserves correctness. Measurement writes do
 not independently debit the member's current usage. Atomic charging,
 idempotency, concurrent admission, and which outcomes are charged remain
 unresolved; the diagram does not implement them. Member charges use the
-organization-facing contract, not upstream pricing snapshots.
+organization-facing contract, not upstream provider-model rates.
 
 ## Deletion behavior
 
@@ -166,7 +190,8 @@ should not offer unrestricted usage deletion.
 
 Aggregate each measurement table per attempt before joining different types;
 joining raw image and video rows can multiply quantities. Never sum unlike
-units. Reproducible upstream-cost estimates use each attempt's own snapshot.
+units. Reproducible upstream-cost estimates use each attempt's own stored
+rates.
 
 Daily summaries may be introduced later as rebuildable query accelerators.
 They must not become a second authoritative usage source.
@@ -188,6 +213,8 @@ remain undecided. These rules must be accepted before implementing accounting
 services. Request-billed measurements, compound pricing, detailed modality
 token breakdowns, and organization-facing media prices also need explicit
 contracts before serving those billing plans.
+For delayed media jobs, durable retention of the attempt's conditional pricing
+configuration until its applicable rate is known remains unresolved.
 
 ## Related decisions
 

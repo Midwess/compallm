@@ -190,7 +190,7 @@ Table model_usage_limit [note: 'One mutable USD usage-limit record per organizat
   }
 }
 
-Table provider_token_usage [note: 'Proposed independent token usage: one row per upstream attempt, linked directly to model_usage. Also usable by multimodal endpoints reporting tokens. attempt_id correlates other typed rows without a parent table; attribution, status, request ID, and snapshot must be consistent across those rows. All-null quantities preserve attempts with unknown usage; zero is explicit. Cached input and reasoning output are subsets requiring known parent totals, never additional tokens.'] {
+Table provider_token_usage [note: 'Independent token usage: one row per upstream attempt, linked directly to model_usage. Also usable by multimodal endpoints reporting tokens. attempt_id correlates typed rows; attribution, status, and request ID must agree. Dedicated decimal columns snapshot applicable rates; all three rates are present or all null. Null rates do not imply free usage. All-null quantities preserve unknown usage. Cached input and reasoning output are subsets requiring known parent totals.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
   organization_id bigint [not null]
   model_usage_id bigint [not null]
@@ -200,7 +200,9 @@ Table provider_token_usage [note: 'Proposed independent token usage: one row per
   provider_id bigint [not null]
   provider_request_id text [note: 'Provider-issued request identifier when available; must not contain credentials']
   status provider_usage_status [not null, default: 'in_progress']
-  pricing_snapshot jsonb [not null, note: 'Immutable complete provider-model Pricing copied at attempt creation; exactly one typed variant with exact decimal-string rates and conditions. Identical across correlated rows. The pricing variant selects billable quantities; token measurements alone do not authorize token charges']
+  input_usd_per_million_tokens numeric(20,8) [note: 'Immutable configured input rate; nonnegative; all three token rates present or all null']
+  output_usd_per_million_tokens numeric(20,8) [note: 'Immutable configured output rate; nonnegative; NULL does not imply free usage']
+  cached_usd_per_million_tokens numeric(20,8) [note: 'Immutable configured cache-read rate; nonnegative; explicit zero is free']
   input_tokens bigint [note: 'Total input including cached input; CHECK (input_tokens >= 0)']
   cached_input_tokens bigint [note: 'Subset of input_tokens; CHECK (cached_input_tokens >= 0 AND input_tokens IS NOT NULL AND cached_input_tokens <= input_tokens) when present']
   output_tokens bigint [note: 'Total output including reasoning output; CHECK (output_tokens >= 0)']
@@ -215,7 +217,7 @@ Table provider_token_usage [note: 'Proposed independent token usage: one row per
   }
 }
 
-Table provider_image_usage [note: 'Independent provider-reported image usage linked directly to model_usage. Multiple rows may reference one attempt, identified by their own row IDs. attempt_id correlates other typed records without a shared parent; repeated attribution, status, request ID, and snapshot must agree. NULL quantity preserves unknown or failed usage. No image content or URLs. Deduplication of repeated provider updates remains unresolved.'] {
+Table provider_image_usage [note: 'Independent provider-reported image usage linked directly to model_usage. Multiple rows may reference one attempt, identified by their own row IDs. Repeated attribution, status, and request ID must agree. usd_per_image snapshots the applicable rate for conditions. NULL quantity preserves unknown usage; NULL rate does not imply free usage. No image content or URLs. Deduplication of repeated provider updates remains unresolved.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
   organization_id bigint [not null]
   model_usage_id bigint [not null]
@@ -225,7 +227,7 @@ Table provider_image_usage [note: 'Independent provider-reported image usage lin
   provider_id bigint [not null]
   provider_request_id text [note: 'Optional provider-issued identifier; no credentials']
   status provider_usage_status [not null, default: 'in_progress']
-  pricing_snapshot jsonb [not null, note: 'Immutable complete provider-model Pricing at attempt creation; identical across correlated rows. Variant selects billable measurements; multiple types do not automatically mean multiple charges']
+  usd_per_image numeric(20,8) [note: 'Immutable configured rate selected for conditions; nonnegative; NULL means no applicable image rate, not free usage']
   image_count bigint [note: 'Generated images in this group; NULL means unknown; CHECK (image_count >= 0)']
   conditions jsonb [not null, default: '{}', note: 'Strict RateConditions object: optional resolution, quality, audio, serviceTier. Actual billing conditions, not arbitrary provider metadata; missing fields do not act as rate-selection wildcards']
 
@@ -238,7 +240,7 @@ Table provider_image_usage [note: 'Independent provider-reported image usage lin
   }
 }
 
-Table provider_audio_usage [note: 'Proposed independent audio usage linked directly to model_usage: at most one row per input/output direction per attempt. attempt_id correlates typed records without a shared parent; repeated metadata and snapshots must agree. All-null quantities preserve attempts without reported usage. Pricing selects the unit; reporting seconds and characters does not bill both. STT commonly measures input duration; TTS output duration or input characters. Duplex pricing requires an explicit contract.'] {
+Table provider_audio_usage [note: 'Independent audio usage linked directly to model_usage: at most one row per input/output direction per attempt. Repeated attribution, status, and request ID must agree. Dedicated decimal columns snapshot duration or character rates; at most one is non-null. All-null rates do not imply free usage. Reporting seconds and characters does not bill both. STT commonly measures input duration; TTS output duration or input characters. Duplex pricing requires an explicit contract.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
   organization_id bigint [not null]
   model_usage_id bigint [not null]
@@ -248,7 +250,8 @@ Table provider_audio_usage [note: 'Proposed independent audio usage linked direc
   provider_id bigint [not null]
   provider_request_id text [note: 'Optional provider-issued identifier; no credentials']
   status provider_usage_status [not null, default: 'in_progress']
-  pricing_snapshot jsonb [not null, note: 'Immutable complete provider-model Pricing at attempt creation; identical across correlated rows. Snapshot selects duration or character billing, not both implicitly']
+  usd_per_second numeric(20,8) [note: 'Immutable configured duration rate; nonnegative; at most one audio rate is non-null']
+  usd_per_million_characters numeric(20,8) [note: 'Immutable configured character rate; nonnegative; NULL does not imply free usage']
   direction usage_direction [not null, note: 'Direction of measured audio or text relative to the upstream request']
   duration_seconds numeric(24,9) [note: 'Exact measured seconds, not binary float; NULL means unknown; CHECK (duration_seconds >= 0)']
   character_count bigint [note: 'Measured characters; NULL means unknown; CHECK (character_count >= 0)']
@@ -262,7 +265,7 @@ Table provider_audio_usage [note: 'Proposed independent audio usage linked direc
   }
 }
 
-Table provider_video_usage [note: 'Independent provider-reported video usage linked directly to model_usage. Multiple rows may reference one attempt, identified by their own row IDs. attempt_id correlates typed records without a shared parent; repeated metadata and snapshots must agree. NULL duration preserves unknown or failed usage. No video content or URLs. Deduplication of repeated provider updates remains unresolved.'] {
+Table provider_video_usage [note: 'Independent provider-reported video usage linked directly to model_usage. Multiple rows may reference one attempt, identified by their own row IDs. Repeated attribution, status, and request ID must agree. usd_per_second snapshots the applicable rate for conditions. NULL duration preserves unknown usage; NULL rate does not imply free usage. No video content or URLs. Deduplication of repeated provider updates remains unresolved.'] {
   id bigint [pk, not null, note: 'CHECK (id > 0); application-generated Hero snowflake ID']
   organization_id bigint [not null]
   model_usage_id bigint [not null]
@@ -272,7 +275,7 @@ Table provider_video_usage [note: 'Independent provider-reported video usage lin
   provider_id bigint [not null]
   provider_request_id text [note: 'Optional provider-issued identifier; no credentials']
   status provider_usage_status [not null, default: 'in_progress']
-  pricing_snapshot jsonb [not null, note: 'Immutable complete provider-model Pricing at attempt creation; identical across correlated rows. Snapshot selects billable measurements; reporting multiple types does not automatically charge all of them']
+  usd_per_second numeric(20,8) [note: 'Immutable configured rate selected for conditions; nonnegative; NULL means no applicable video rate, not free usage']
   duration_seconds numeric(24,9) [note: 'Total measured generated duration in this group; NULL means unknown; CHECK (duration_seconds >= 0)']
   conditions jsonb [not null, default: '{}', note: 'Strict RateConditions object: optional resolution, quality, audio, serviceTier. Actual billing conditions, not arbitrary provider metadata; missing fields do not act as rate-selection wildcards']
 

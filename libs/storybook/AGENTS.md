@@ -1,8 +1,9 @@
 # Portal design workspace
 
-Read the root agent instructions and the [Portal architecture](https://github.com/Midwess/compallm/wiki/Portal) and relevant focused Wiki pages in full before component work. Follow the root Wiki workflow for documentation updates. Keep user prompting in Codex CLI. Use
-the local Storybook MCP tools to inspect available components and stories when connected; source files remain authoritative and
-can be edited directly.
+Read the root agent instructions and the [Portal architecture](https://github.com/Midwess/compallm/wiki/Portal) and relevant
+focused Wiki pages in full before component work. Follow the root Wiki workflow for documentation updates. Keep user prompting
+in Codex CLI. Use the local Storybook MCP tools to inspect available components and stories when connected; source files remain
+authoritative and can be edited directly.
 
 - `npm start` launches the workbench at `http://localhost:6006`, with MCP at `/mcp`.
 - Base-component previews live under `Components`, organized by Penpot Design foundations family. Keep feature screens separate

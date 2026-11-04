@@ -28,6 +28,8 @@ Apply Technical Writing's reader-first and editing checks. Include only the cont
 
 State the latest decision directly. Omit abandoned options, conversational history, invented evidence, and repeated requirements. Read the draft without relying on the conversation: can another member understand the work and determine when it is complete? Resolve remaining requirement gaps with the user before publishing.
 
+If docs-first work has already produced a final decision, include its summary and published Wiki links in the initial issue description. This is the issue's decision record; do not add a second comment with the same content. If reusing an existing issue, follow Technical Writing's decision-recording workflow to add any missing agreed decision without overwriting others' content. Do not require implementation documentation merely to capture a new issue whose specification work has not started.
+
 ## Create and verify
 
 Use existing repository types or labels when available; otherwise retain the category in the description. Do not change repository classification settings. Assign owners, priority, dates, or status only when established by the user or context. Do not infer ownership from the CLI account or create unrequested sub-issues.

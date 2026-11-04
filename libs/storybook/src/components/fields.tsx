@@ -10,9 +10,9 @@ export function TextField({ className, ...props }: TextFieldProps) {
       {...props}
       className={cx(
         `
-  block h-[32px] w-full min-w-0 rounded-[8px] border-[0.5px] border-input-border bg-inset px-1.5
-  py-0.75 text-[14px] leading-[20px] text-text placeholder:text-muted placeholder:opacity-100
-  focus:outline-1 focus:outline-offset-1 focus:outline-focus aria-invalid:border-error
+  block h-8 w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
+  py-0.5 text-sm leading-5 text-text placeholder:text-muted placeholder:opacity-100
+  focus:border-muted/60 focus:outline-none aria-invalid:border-error
   disabled:cursor-not-allowed disabled:opacity-50
 `,
         className,
@@ -27,10 +27,10 @@ export function MultilineField({ className, ...props }: TextareaHTMLAttributes<H
       {...props}
       className={cx(
         `
-  block h-[32px] w-full min-w-0 rounded-[8px] border-[0.5px] border-input-border bg-inset px-1.5
-  py-0.75 text-[14px] leading-[20px] text-text placeholder:text-muted placeholder:opacity-100
-  focus:outline-1 focus:outline-offset-1 focus:outline-focus aria-invalid:border-error
-  disabled:cursor-not-allowed disabled:opacity-50 h-auto min-h-[64px] resize-y
+  block h-8 w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
+  py-0.5 text-sm leading-5 text-text placeholder:text-muted placeholder:opacity-100
+  focus:border-muted/60 focus:outline-none aria-invalid:border-error
+  disabled:cursor-not-allowed disabled:opacity-50 h-auto min-h-16 resize-y
 `,
         className,
       )}

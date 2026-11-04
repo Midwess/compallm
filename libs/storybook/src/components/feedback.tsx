@@ -1,7 +1,8 @@
-import { cloneElement, useId, useState, type HTMLAttributes, type ReactElement, type ReactNode } from 'react'
+import { cloneElement, useEffect, useId, useRef, useState, type HTMLAttributes, type ReactElement, type ReactNode } from 'react'
 import { cx, popupMotion } from './shared'
 import { RichMessage } from './rich-message'
 import { Button } from './buttons'
+import { QuestionIcon } from '@phosphor-icons/react/dist/csr/Question'
 import { InfoIcon } from '@phosphor-icons/react/dist/csr/Info'
 import { WarningCircleIcon } from '@phosphor-icons/react/dist/csr/WarningCircle'
 import { WarningIcon } from '@phosphor-icons/react/dist/csr/Warning'
@@ -114,6 +115,73 @@ export function Tooltip({
 `}
       >
         {content}
+      </span>
+    </span>
+  )
+}
+export function FieldHelp({ label, children }: { label: string; children: ReactNode }) {
+  const id = useId()
+  const trigger = useRef<HTMLButtonElement>(null)
+  const tooltip = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !tooltip.current?.matches(':popover-open')) return
+      event.preventDefault()
+      event.stopPropagation()
+      tooltip.current.hidePopover()
+    }
+    document.addEventListener('keydown', dismiss, true)
+    return () => document.removeEventListener('keydown', dismiss, true)
+  }, [])
+  function show() {
+    const element = tooltip.current
+    const button = trigger.current
+    if (!element || !button || element.matches(':popover-open')) return
+    element.showPopover()
+    const bounds = button.getBoundingClientRect()
+    const width = element.offsetWidth
+    const height = element.offsetHeight
+    element.style.left = `${Math.max(8, Math.min(bounds.left, window.innerWidth - width - 8))}px`
+    const top = bounds.bottom + height <= window.innerHeight - 8 ? bounds.bottom : Math.max(8, bounds.top - height)
+    element.style.top = `${top}px`
+  }
+  function hide() {
+    tooltip.current?.hidePopover()
+  }
+  return (
+    <span
+      className="inline-flex align-middle"
+      onPointerEnter={show}
+      onPointerLeave={() => {
+        if (document.activeElement !== trigger.current) hide()
+      }}
+      onBlur={hide}
+    >
+      <button
+        ref={trigger}
+        type="button"
+        aria-label={label}
+        aria-describedby={id}
+        className={`
+inline-flex size-5 shrink-0 cursor-help items-center justify-center rounded text-muted hover:text-text
+focus-visible:text-text focus-visible:outline-1 focus-visible:outline-muted
+`}
+        onFocus={show}
+        onClick={show}
+      >
+        <QuestionIcon className="size-4" aria-hidden="true" />
+      </button>
+      <span
+        ref={tooltip}
+        id={id}
+        role="tooltip"
+        popover="manual"
+        className={`${popupMotion}
+fixed m-0 w-72 max-w-[calc(100vw-1rem)] overflow-visible border-0 bg-transparent pt-1 text-left
+text-xs leading-4 font-normal text-text
+`}
+      >
+        <span className="block rounded-lg border border-border bg-elevated p-3">{children}</span>
       </span>
     </span>
   )

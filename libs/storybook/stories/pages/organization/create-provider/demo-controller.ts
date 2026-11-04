@@ -5,6 +5,9 @@ import {
   type EndpointMode,
   type ModelDraft,
   type ProviderModel,
+  type TextModelProtocol,
+  type HeaderEntry,
+  type ModelCapability,
 } from '../../../../src/pages/organization/create-provider'
 import {
   canCreateProvider,
@@ -13,6 +16,12 @@ import {
   hasValidModelPrices,
   isValidModelDraft,
 } from '../../../../src/pages/organization/create-provider/validation'
+import {
+  joinModelEndpoint,
+  modelPath,
+  modelProtocol,
+  textModelOptions,
+} from '../../../../src/pages/organization/create-provider/model-options'
 import { providers, openaiModels } from './fixtures'
 
 type Scenario =
@@ -29,6 +38,12 @@ type Scenario =
   | 'saved-custom'
   | 'changed'
   | 'clone'
+  | 'headers'
+  | 'response-dialog'
+  | 'anthropic-dialog'
+  | 'filtered'
+  | 'capabilities'
+  | 'long-model-name'
 export type { Scenario }
 const paths: Record<EndpointMode, string> = {
   chat_completions: '/chat/completions',
@@ -42,6 +57,7 @@ export class DemoCreateProviderController implements CreateProviderController {
   private generation = 0
   private nextModelId = 0
   private configuredProviderId: string | null | undefined
+  private avatarObjectUrl: string | undefined
   private timer: ReturnType<typeof setTimeout> | undefined
   constructor(
     scenario: Scenario,
@@ -68,6 +84,29 @@ export class DemoCreateProviderController implements CreateProviderController {
       if (scenario === 'clone') this.onCloneProvider()
     }
     if (scenario === 'dialog') this.onAddModel()
+    if (scenario === 'response-dialog') this.onAddModel('openai_responses')
+    if (scenario === 'anthropic-dialog') this.onAddModel('anthropic_messages')
+    if (scenario === 'headers')
+      this.onHeadersChanged([
+        { id: 'client', key: 'X-Client', value: 'Compallm' },
+        { id: 'version', key: 'X-Version', value: '1' },
+      ])
+    if (scenario === 'capabilities') this.onModelFiltersChanged({ capabilities: ['vision', 'reasoning'] })
+    if (scenario === 'long-model-name')
+      this.store.setState((state) => ({
+        models: [
+          ...state.models,
+          {
+            ...openaiModels[0],
+            id: 'long-name',
+            name: 'organization-specialized-reasoning-model-with-an-extremely-long-upstream-name-version-2026',
+            protocol: 'openai_responses',
+            capabilities: ['text', 'vision', 'reasoning', 'tool_call'],
+            enabled: false,
+          },
+        ],
+      }))
+    if (scenario === 'filtered') this.onModelFiltersChanged({ status: 'enabled' })
     if (scenario === 'passed') this.store.setState({ test: { status: 'passed' } })
     if (scenario === 'failed')
       this.store.setState({
@@ -79,6 +118,7 @@ export class DemoCreateProviderController implements CreateProviderController {
   stop = () => {
     this.generation += 1
     if (this.timer) clearTimeout(this.timer)
+    if (this.avatarObjectUrl) URL.revokeObjectURL(this.avatarObjectUrl)
   }
   private invalidateTest() {
     this.generation += 1
@@ -87,7 +127,16 @@ export class DemoCreateProviderController implements CreateProviderController {
   }
   private endpoint() {
     const state = this.store.getState()
-    this.store.setState({ endpointUrl: state.baseUrl ? state.baseUrl.replace(/\/+$/, '') + paths[state.mode] : '' })
+    this.store.setState({
+      endpointUrl: state.baseUrl
+        ? joinModelEndpoint(
+            state.baseUrl,
+            modelPath(
+              state.models.find((model) => model.enabled) ?? { ...this.emptyModel('endpoint'), path: paths[state.mode] },
+            ),
+          )
+        : '',
+    })
   }
   onProviderQueryChanged = (providerQuery: string) => this.store.setState({ providerQuery })
   onSelectProvider = (selectedProviderId: string) => {
@@ -110,6 +159,8 @@ export class DemoCreateProviderController implements CreateProviderController {
       baseUrl: preset.baseUrl,
       protocol: preset.protocol,
       apiKey: '',
+      headers: [],
+      avatarUrl: null,
       mode: preset.protocol === 'anthropic' ? 'messages' : 'chat_completions',
       models: preset.id === 'openai' ? openaiModels.map((model) => ({ ...model })) : [],
       modelQuery: '',
@@ -126,6 +177,8 @@ export class DemoCreateProviderController implements CreateProviderController {
       name: '',
       baseUrl: '',
       apiKey: '',
+      headers: [],
+      avatarUrl: null,
       protocol: 'openai_compatible',
       mode: 'chat_completions',
       models: [],
@@ -159,23 +212,62 @@ export class DemoCreateProviderController implements CreateProviderController {
     this.invalidateTest()
     this.store.setState((state) => ({
       models: state.models.map((model) =>
-        model.id === id && model.modes.includes(state.mode) && hasValidModelPrices(model) ? { ...model, enabled } : model,
+        model.id === id &&
+        (model.protocol || model.modes.some((mode) => ['chat_completions', 'responses', 'messages'].includes(mode))) &&
+        hasValidModelPrices(model)
+          ? { ...model, enabled }
+          : model,
       ),
     }))
   }
-  onAddModel = () =>
+  private emptyModel(id: string, protocol: TextModelProtocol = 'openai_chat_completions'): ModelDraft {
+    return {
+      id,
+      name: '',
+      maxContextTokens: '',
+      maxOutputTokens: '',
+      thinkingLevels: [],
+      effortMapping: {},
+      protocol,
+      path: textModelOptions.find((option) => option.value === protocol)!.path,
+      inputPrice: '',
+      outputPrice: '',
+      cachedPrice: '',
+    }
+  }
+  onAddModel = (protocol: TextModelProtocol = 'openai_chat_completions') =>
+    this.store.setState({ editingModelId: null, modelDraft: this.emptyModel(`custom-${++this.nextModelId}`, protocol) })
+  onHeadersChanged = (headers: HeaderEntry[]) => {
+    this.invalidateTest()
+    this.store.setState({ headers })
+  }
+  onAvatarChanged = (file: File | null) => {
+    if (this.avatarObjectUrl) URL.revokeObjectURL(this.avatarObjectUrl)
+    this.avatarObjectUrl = file ? URL.createObjectURL(file) : undefined
+    this.store.setState({ avatarUrl: this.avatarObjectUrl ?? null })
+  }
+  onModelFiltersChanged = (filters: {
+    status?: import('../../../../src/pages/organization/create-provider').ModelStatusFilter
+    protocol?: TextModelProtocol | 'all'
+    capabilities?: ModelCapability[]
+  }) =>
     this.store.setState({
-      editingModelId: null,
-      modelDraft: {
-        id: `custom-${++this.nextModelId}`,
-        name: '',
-        maxContextTokens: '',
-        thinkingLevels: [],
-        inputPrice: '',
-        outputPrice: '',
-        cachedPrice: '',
-      },
+      ...(filters.status ? { modelStatusFilter: filters.status } : {}),
+      ...(filters.protocol ? { modelProtocolFilter: filters.protocol } : {}),
+      ...(filters.capabilities ? { modelCapabilityFilter: filters.capabilities } : {}),
     })
+  onProviderFilterChanged = (providerProtocolFilter: TextModelProtocol | 'all') =>
+    this.store.setState({ providerProtocolFilter })
+  onClearModelFilters = () =>
+    this.store.setState({ modelStatusFilter: 'all', modelProtocolFilter: 'all', modelCapabilityFilter: [] })
+  onModelsEnabledChanged = (ids: string[], enabled: boolean) => {
+    this.invalidateTest()
+    this.store.setState((state) => ({
+      models: state.models.map((model) =>
+        ids.includes(model.id) && hasValidModelPrices(model) ? { ...model, enabled } : model,
+      ),
+    }))
+  }
   onEditModel = (id: string) => {
     const model = this.store.getState().models.find((model) => model.id === id)
     if (model) this.store.setState({ editingModelId: id, modelDraft: { ...model, thinkingLevels: [...model.thinkingLevels] } })
@@ -184,7 +276,7 @@ export class DemoCreateProviderController implements CreateProviderController {
     this.store.setState((state) => ({ modelDraft: state.modelDraft ? { ...state.modelDraft, ...patch } : null }))
   onCancelModel = () => this.store.setState({ modelDraft: null, editingModelId: null })
   onSaveModel = () => {
-    const { modelDraft: draft, models, editingModelId, mode } = this.store.getState()
+    const { modelDraft: draft, models, editingModelId } = this.store.getState()
     if (
       !draft ||
       !isValidModelDraft(draft) ||
@@ -196,7 +288,13 @@ export class DemoCreateProviderController implements CreateProviderController {
     const model: ProviderModel = {
       ...draft,
       name: draft.name.trim(),
-      modes: previous?.modes ?? [mode],
+      modes: previous?.modes ?? [
+        modelProtocol(draft) === 'anthropic_messages'
+          ? 'messages'
+          : modelProtocol(draft) === 'openai_responses'
+            ? 'responses'
+            : 'chat_completions',
+      ],
       enabled: previous?.enabled ?? true,
       description: previous?.description,
     }
@@ -205,6 +303,7 @@ export class DemoCreateProviderController implements CreateProviderController {
       modelDraft: null,
       editingModelId: null,
     })
+    this.endpoint()
     this.report('Model saved in preview')
   }
   onTestConnection = () => {

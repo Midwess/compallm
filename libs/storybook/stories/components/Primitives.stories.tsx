@@ -1,3 +1,4 @@
+import { FunnelIcon } from '@phosphor-icons/react/dist/csr/Funnel'
 import { useState } from 'react'
 import { Preview } from './Preview'
 import type { Meta, StoryObj } from '@storybook/react-vite'
@@ -136,4 +137,28 @@ export const ControlsComposition: Story = {
 
 export const RichMessageContent: Story = {
   render: () => <RichMessage message={'Email already exists, <a href="/login">login here</a>'} />,
+}
+
+export const FilterSubmenus: Story = {
+  render: () => (
+    <Popup>
+      <Popup.IconTrigger aria-label="Filter example">
+        <FunnelIcon aria-hidden="true" className="size-3.5" />
+      </Popup.IconTrigger>
+      <Popup.Content aria-label="Filter example">
+        <Popup.Submenu label="Enabled">
+          <Popup.Item>All</Popup.Item>
+          <Popup.Item>Enabled</Popup.Item>
+          <Popup.Item>Disabled</Popup.Item>
+        </Popup.Submenu>
+        <Popup.Submenu label="Model type">
+          <Popup.Item>OpenAI Completion</Popup.Item>
+          <Popup.Item>OpenAI Response</Popup.Item>
+          <Popup.Item>Anthropic</Popup.Item>
+        </Popup.Submenu>
+        <Popup.Separator />
+        <Popup.Item>Clear all filters</Popup.Item>
+      </Popup.Content>
+    </Popup>
+  ),
 }

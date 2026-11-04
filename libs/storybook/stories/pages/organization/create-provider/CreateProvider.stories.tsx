@@ -37,3 +37,11 @@ export const SavedProvider: Story = { render: () => <Demo scenario="saved" /> }
 export const SavedCustomProvider: Story = { render: () => <Demo scenario="saved-custom" /> }
 export const UnsavedChanges: Story = { render: () => <Demo scenario="changed" /> }
 export const CloneProvider: Story = { render: () => <Demo scenario="clone" /> }
+
+export const ConfigureHeaders: Story = { render: () => <Demo scenario="headers" /> }
+export const OpenAIResponse: Story = { render: () => <Demo scenario="response-dialog" /> }
+export const Anthropic: Story = { render: () => <Demo scenario="anthropic-dialog" /> }
+export const EnabledFilter: Story = { render: () => <Demo scenario="filtered" /> }
+
+export const CapabilityFilter: Story = { render: () => <Demo scenario="capabilities" /> }
+export const LongModelName: Story = { render: () => <Demo scenario="long-model-name" /> }

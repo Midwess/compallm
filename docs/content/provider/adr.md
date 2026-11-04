@@ -59,8 +59,10 @@ These management flows remain planned for runtime integration.
 Provider persistence and services require organization scope. The repository
 only executes requested data operations and maps database outcomes; provider
 counts, query limits, and other business validation belong to the future
-workflow that invokes it. Each add operation selects its protocol internally,
-so callers cannot persist a mismatched protocol. Credentials stay outside
+workflow that invokes it. The library assigns each text model its selected operation and editable endpoint
+path; provider identity supplies connection defaults. Server integration must
+validate the operation/path combination. Per-model operation, path, headers,
+and effort-map persistence remain planned. Credentials stay outside
 ordinary provider read models and must not appear in API responses or logs.
 Provider persistence round-trips availability without applying routing policy.
 

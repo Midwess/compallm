@@ -2,13 +2,16 @@ import {
   createContext,
   useContext,
   useId,
+  useLayoutEffect,
   useRef,
+  useState,
   type RefObject,
   type ReactNode,
   type ButtonHTMLAttributes,
   type HTMLAttributes,
   type CSSProperties,
 } from 'react'
+import { CaretRightIcon } from '@phosphor-icons/react/dist/csr/CaretRight'
 import { cx, popupMotion } from './shared'
 interface Scope {
   id: string
@@ -68,12 +71,12 @@ function Content({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
       onToggle={(event) => {
         props.onToggle?.(event)
         if (event.newState === 'open')
-          content.current?.querySelector<HTMLButtonElement>('[role=menuitem]:not(:disabled)')?.focus()
+          content.current?.querySelector<HTMLButtonElement>('[role^=menuitem]:not(:disabled)')?.focus()
       }}
       onKeyDown={(event) => {
         props.onKeyDown?.(event)
         if (event.defaultPrevented) return
-        const items = Array.from(content.current?.querySelectorAll<HTMLButtonElement>('[role=menuitem]:not(:disabled)') ?? [])
+        const items = Array.from(content.current?.querySelectorAll<HTMLButtonElement>('[role^=menuitem]:not(:disabled)') ?? [])
         if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
           event.preventDefault()
           const current = items.indexOf(document.activeElement as HTMLButtonElement)
@@ -91,20 +94,20 @@ function Content({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
         }
       }}
       className={cx(
-        `${popupMotion} fixed inset-auto top-[anchor(bottom)] right-[anchor(right)] z-30 mt-1 w-48
+        `${popupMotion} fixed inset-auto top-[anchor(bottom)] right-[anchor(right)] z-30 mt-1 w-48 overflow-visible
     rounded-lg border border-border bg-menu p-1 text-text shadow-menu`,
         className,
       )}
     />
   )
 }
-function Item({ className, onClick, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+function Item({ className, onClick, role = 'menuitem', ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
   const { trigger, content } = usePopup()
   return (
     <button
       type="button"
       {...props}
-      role="menuitem"
+      role={role}
       className={cx(
         `flex h-8 w-full cursor-pointer items-center rounded px-2 text-xs hover:bg-border
 focus-visible:outline-focus disabled:opacity-50`,
@@ -120,4 +123,109 @@ focus-visible:outline-focus disabled:opacity-50`,
     />
   )
 }
-export const Popup = Object.assign(Root, { Trigger, Content, Item })
+function IconTrigger(props: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <Trigger
+      {...props}
+      className={cx(
+        'size-7 rounded-full border border-border/60 bg-inset text-muted hover:border-input-border hover:text-text',
+        props.className,
+      )}
+    />
+  )
+}
+function Separator() {
+  return <div role="separator" className="my-1 h-px bg-border/60" />
+}
+function Submenu({ label, children }: { label: ReactNode; children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const [left, setLeft] = useState(false)
+  const [top, setTop] = useState(-4)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const content = useRef<HTMLDivElement>(null)
+  const id = useId()
+  useLayoutEffect(() => {
+    if (!open || !content.current || !trigger.current) return
+    const bounds = trigger.current.getBoundingClientRect()
+    const height = content.current.offsetHeight
+    setTop(Math.max(8 - bounds.top, Math.min(-4, window.innerHeight - 24 - bounds.top - height)))
+  }, [open])
+  function show() {
+    const rect = trigger.current?.getBoundingClientRect()
+    setLeft(!!rect && rect.right + 200 > window.innerWidth)
+    setOpen(true)
+  }
+  return (
+    <div className="relative" onPointerEnter={show} onPointerLeave={() => setOpen(false)}>
+      <button
+        ref={trigger}
+        type="button"
+        role="menuitem"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? id : undefined}
+        className={`
+flex h-8 w-full cursor-pointer items-center justify-between rounded px-2 text-xs hover:bg-border
+focus-visible:outline-muted
+`}
+        onClick={() => {
+          if (open) setOpen(false)
+          else show()
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowRight') {
+            event.preventDefault()
+            event.stopPropagation()
+            show()
+            requestAnimationFrame(() => content.current?.querySelector<HTMLButtonElement>('button')?.focus())
+          }
+        }}
+      >
+        {label}
+        <CaretRightIcon className="size-3" aria-hidden="true" />
+      </button>
+      {open ? (
+        <div
+          id={id}
+          ref={content}
+          role="menu"
+          aria-label={typeof label === 'string' ? label : undefined}
+          style={{ top }}
+          className={cx(
+            `
+motion-safe:animate-popup-in absolute z-40 max-h-[calc(100dvh-1rem)] w-48 overflow-y-auto
+rounded-lg border border-border bg-menu p-1 text-text
+shadow-menu
+`,
+            left ? 'right-full' : 'left-full',
+          )}
+          onKeyDown={(event) => {
+            const items = Array.from(
+              content.current?.querySelectorAll<HTMLButtonElement>('[role^=menuitem]:not(:disabled)') ?? [],
+            )
+            if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+              event.preventDefault()
+              event.stopPropagation()
+              const current = items.indexOf(document.activeElement as HTMLButtonElement)
+              const next =
+                event.key === 'Home'
+                  ? 0
+                  : event.key === 'End'
+                    ? items.length - 1
+                    : (current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
+              items[next]?.focus()
+            } else if (['ArrowLeft', 'Escape'].includes(event.key)) {
+              event.preventDefault()
+              event.stopPropagation()
+              setOpen(false)
+              trigger.current?.focus()
+            }
+          }}
+        >
+          {children}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+export const Popup = Object.assign(Root, { Trigger, IconTrigger, Content, Item, Separator, Submenu })

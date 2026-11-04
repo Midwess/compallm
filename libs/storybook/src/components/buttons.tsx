@@ -106,3 +106,21 @@ export function ResendPrompt({ remaining = 0, onResend }: { remaining?: number; 
     </p>
   )
 }
+
+export function IconButton({ className, type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      {...props}
+      type={type}
+      className={cx(
+        'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border/60',
+        'bg-inset text-muted transition-colors hover:border-input-border hover:text-text focus-visible:outline-1',
+        `
+focus-visible:outline-offset-2 focus-visible:outline-muted disabled:cursor-not-allowed disabled:opacity-40
+[&_svg]:size-3.5
+`,
+        className,
+      )}
+    />
+  )
+}

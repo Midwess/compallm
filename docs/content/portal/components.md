@@ -51,6 +51,15 @@ responsibilities; shared primitives do not import feature state.
 
 Form controls expose values, changes, validation, pending state, and disabled state through their public APIs. Preserve native semantics and accessible names. Floating option lists support keyboard selection, dismissal, and focus restoration without changing the surrounding document flow.
 
+Provider SVG assets are packaged locally with source attribution. Brand components
+preserve artwork proportions and do not fetch logos at runtime. Avatar controls
+report file selections to their consumer, which owns upload and persistence.
+Ordered key/value editors preserve row identities while reordering and report
+only completed entries. Effort mapping controls report named level values and
+keep selection and editing focus local. Field help is supplied through a reusable
+`FieldHelp` control that exposes an accessible name and contextual explanation
+on hover or keyboard focus; Escape dismisses it without changing form values.
+
 Shared styles and assets are packaged with the library. Import only required Phosphor SVG components; avoid a runtime registry that bundles the entire icon catalog. Decorative icons are hidden from assistive technology; icon-only actions have accessible names.
 
 See [authentication page callbacks](../login/interface.md).
@@ -63,7 +72,7 @@ Keep field-specific validation inline. Use toasts for operation-level feedback w
 
 ## Sidebar composition
 
-The library exports `Sidebar`, `SidebarHeader`, `SidebarSection`, `SidebarFolder`, and `SidebarItem`. Consumers compose workspace identity, grouped destinations, and nested model links from these primitives. Sections and folders use native disclosure elements, keeping their state independent. Expansion and collapse animate over 150ms; reduced-motion preferences disable the transition. Consumers supply selected links, destination URLs, and workspace/search/create callbacks. The workspace header opens a dismissible options menu with a Settings action supplied by the consumer. Selecting Settings closes the menu and invokes its callback; the library does not choose an application route. Optional navigation callbacks integrate with client routers while modified clicks retain browser behavior.
+The library exports `Sidebar`, `SidebarHeader`, `SidebarSection`, `SidebarFolder`, and `SidebarItem`. Consumers compose workspace identity, grouped destinations, and nested model links from these primitives. Sections and folders use native disclosure elements, keeping their state independent. Disclosure behavior respects reduced-motion preferences. Consumers supply selected links, destination URLs, and workspace/search/create callbacks. The workspace header opens a dismissible options menu with a Settings action supplied by the consumer. Selecting Settings closes the menu and invokes its callback; the library does not choose an application route. Optional navigation callbacks integrate with client routers while modified clicks retain browser behavior.
 
 Storybook supplies fictional providers, models, and conversations. The sidebar does not fetch data, infer permissions, or register application routes. Main-page and portal integration remain separate.
 
@@ -75,8 +84,8 @@ Import the shell through `@compallm/storybook/pages/main`. Storybook demonstrate
 
 The workspace menu offers Settings, organization switching, and Sign out. Sign out closes the menu and invokes the consumer callback; session termination belongs to the consumer. Consumers supply organization IDs, names, the active ID, and a selection callback. The organization submenu opens on hover or keyboard activation; selecting an organization closes both menus and invokes the consumer callback. Selection does not itself change authorization or persist a session.
 
-Shared popup surfaces use a 150ms scale entrance animation. Reduced-motion users receive no animation. The animation is a shared Tailwind theme utility for menus, popovers, and future dialog surfaces.
+Popup, popover, and dialog motion comes from the shared theme and respects reduced-motion preferences.
 
 ## Page headers
 
-Compose page headers as `<PageHeader><Title>…</Title><Functions>…</Functions></PageHeader>`. The header owns title/action alignment, shared horizontal insets, and the divider. `Title` supplies the page heading; `Functions` groups caller-provided controls. Feature content uses the same standard `px-3` inset as sidebar content. No header component creates controllers or invokes navigation automatically.
+Compose page headers as `<PageHeader><Title>…</Title><Functions>…</Functions></PageHeader>`. The header owns the page heading and caller-provided actions. `Title` supplies heading semantics; `Functions` groups the actions. No header component creates controllers or invokes navigation automatically.

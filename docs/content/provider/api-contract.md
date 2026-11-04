@@ -5,281 +5,153 @@ available: false
 
 # Provider creation API contract
 
-## Status and scope
+## Scope and implementation
 
-This is the planned contract for batch provider creation and optional testing
-of unsaved connections. Neither endpoint nor `ProviderIntegrationService` is
-implemented. The schema below defines application behavior; it is not a
-generated public API reference. Once implemented, Rust/OpenAPI descriptions
-must generate the public guide and TypeScript client.
+The planned endpoints create organization-owned connections and optionally test
+unsaved configuration. Neither endpoint nor `ProviderIntegrationService` is
+implemented. Storybook previews use consumer controllers without these APIs.
+Rust/OpenAPI must generate the consumer API guide and client when implemented.
 
-One provider represents one connection and contains one or more upstream
-models. One creation request can contain multiple independent connections.
-Creating provider models does not create organization-facing logical models
-or router bindings.
+Provider identity supplies connection defaults. Each configured text model owns
+its operation, endpoint path, limits, effort mappings, and explicit prices.
+A connection supplies its base URL and protected credential. Creating provider
+models does not create organization-facing logical models or router bindings.
 
-Discovery selects a provider identity first, then loads that provider's known
-model definitions. Callers explicitly enable catalog models or add custom
-models. The creation `models` array contains only those enabled definitions;
-unselected catalog entries are not submitted or persisted. Catalog discovery
-does not imply that an upstream account can access every listed model.
-
-Both operations require user authentication and owner/admin access to the
-current organization. Organization scope comes from the authenticated session,
-not a request-body organization ID. Cookie requests follow the existing
-same-origin policy; Bearer requests use the existing authentication middleware.
-JSON property names use camelCase, and unknown fields are rejected.
+Both operations require authentication and owner/admin membership in the
+current organization. Organization scope comes from the verified session,
+never a request-body organization ID. Cookie requests use the existing
+same-origin policy. JSON uses camelCase; reject unknown fields.
 
 ## Batch creation
 
-`POST /api/providers`, operation ID `createProviders`.
+`POST /api/providers`, operation ID `createProviders`:
 
 ```json
 {
-  "providers": [
-    {
-      "name": "OpenAI production",
-      "baseUrl": "https://api.openai.com/v1",
-      "apiProtocol": "openai_compatible",
-      "endpointMode": "chat_completions",
-      "apiKey": "synthetic-openai-key",
-      "models": [
-        {
-          "name": "gpt-4.1",
-          "maxContextTokens": 1047576,
-          "supportedThinkingLevels": null,
-          "catalogRef": {
-            "provider": "openai",
-            "model": "gpt-4.1"
-          },
-          "pricing": {
-            "inputUsdPerMillionTokens": "2.00",
-            "outputUsdPerMillionTokens": "8.00",
-            "cachedUsdPerMillionTokens": "0.50"
-          }
-        },
-        {
-          "name": "gpt-4.1-mini",
-          "catalogRef": {
-            "provider": "openai",
-            "model": "gpt-4.1-mini"
-          },
-          "pricing": {
-            "inputUsdPerMillionTokens": "0.40",
-            "outputUsdPerMillionTokens": "1.60",
-            "cachedUsdPerMillionTokens": "0.10"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Internal inference",
-      "baseUrl": "https://inference.example.com/v1",
-      "apiProtocol": "openai_compatible",
-      "endpointMode": "chat_completions",
-      "apiKey": "synthetic-internal-key",
-      "models": [
-        {
-          "name": "support-model",
-          "maxContextTokens": 128000,
-          "supportedThinkingLevels": [
-            "low",
-            "medium",
-            "high"
-          ],
-          "pricing": {
-            "inputUsdPerMillionTokens": "0",
-            "outputUsdPerMillionTokens": "0",
-            "cachedUsdPerMillionTokens": "0"
-          }
-        }
-      ]
-    }
-  ]
+  "providers": [{
+    "name": "OpenAI production",
+    "baseUrl": "https://api.openai.com/v1",
+    "apiKey": "synthetic-write-only-key",
+    "models": [{
+      "name": "gpt-4.1",
+      "protocol": "openai_chat_completions",
+      "path": "/chat/completions",
+      "maxContextTokens": 1048576,
+      "effortMapping": { "low": "low", "medium": "medium" },
+      "catalogRef": { "provider": "openai", "model": "gpt-4.1" },
+      "pricing": {
+        "inputUsdPerMillionTokens": "2.00",
+        "outputUsdPerMillionTokens": "8.00",
+        "cachedUsdPerMillionTokens": "0.50"
+      }
+    }]
+  }]
 }
 ```
 
-### Provider definition
+A provider requires a trimmed nonblank name, HTTP(S) base URL, write-only
+credential, and at least one enabled model. Reject credentials, query strings,
+and fragments in base URLs. Provider names are organization-scoped; proposed
+comparison preserves case after trimming. PostgreSQL uniqueness remains the
+concurrency guard when simultaneous requests pass preliminary name checks.
 
-| Field | Type | Required | Meaning |
-| --- | --- | --- | --- |
-| `name` | string | Yes | Organization-scoped connection name; trim surrounding whitespace and reject blank values. |
-| `baseUrl` | string | Yes | Absolute HTTP(S) base URL containing host and optional API version; no credential, query, or fragment. |
-| `apiProtocol` | enum | Yes | `openai_compatible` or `anthropic`; describes the wire format independently of provider identity. |
-| `endpointMode` | enum | Yes | `chat_completions`, `responses`, `messages`, `video`, or `realtime`; only supported protocol/mode combinations may be accepted. |
-| `apiKey` | string | Yes | Nonempty write-only credential. Preserve its value; never return it or log the request body. |
-| `models` | model array | Yes | Enabled catalog/custom model definitions only; at least one, with distinct names within this connection. Unselected catalog models are omitted. |
+Discovery lists provider identities before model selection. Models are scoped
+to the selected provider catalog. Submit only explicitly enabled definitions;
+merely viewing a catalog entry does not configure it. A preset and a custom
+connection use the same creation contract. Explicit edits take precedence over
+later catalog changes, including edits to model identifiers and prices.
 
-Provider identity, protocol, and endpoint mode are separate. A catalog provider
-slug is not a protocol. Presets and custom connections submit the same final
-configuration; no separate preset-creation operation is needed. The existing
-database `openai` protocol variant is not a second public spelling for
-`openai_compatible`; any distinction required for it remains to be specified.
+## Model configuration
 
-Endpoint routes are derived from the selected mode, not supplied as arbitrary
-URLs. For example, the base URL `https://api.openai.com/v1` and
-`chat_completions` produce `https://api.openai.com/v1/chat/completions`.
-Do not duplicate the API-version segment. Realtime and model-specific
-protocols need their own endpoint construction; they cannot be handled by
-blindly appending an HTTP suffix.
+| Field | Contract |
+| --- | --- |
+| `name` | Required nonblank upstream identifier; trim whitespace, preserve case, unique within the connection. |
+| `protocol` | Required `openai_chat_completions`, `openai_responses`, or `anthropic_messages`. |
+| `path` | Required editable endpoint path with no host, scheme, query, fragment, or traversal segments. |
+| `maxContextTokens`, `maxOutputTokens` | Optional positive integer limits; null/missing means unspecified. |
+| `effortMapping` | Optional object mapping `low`, `medium`, `high`, `xhigh`, and `max` to nonblank model-specific strings. Missing keys are unmapped; `None` is an editing hint, never a submitted mapping. |
+| `catalogRef` | Optional exact catalog provider/model identity, independent of an edited upstream name. |
+| `pricing` | Three required nonnegative decimal-string token prices. |
 
-### Model definition
+The model-creation operation supplies a protocol-specific default path:
+`/chat/completions`, `/responses`, or `/messages`. Append the submitted path to
+the connection base URL, normalizing the joining slash while preserving the
+base path prefix. `https://api.openai.com/v1` plus `/responses` becomes
+`https://api.openai.com/v1/responses`. A model cannot replace the connection's
+host by submitting an absolute or protocol-relative URL. The selected operation
+still determines the request/response adapter; editing its route does not
+change its wire format. Media and arbitrary protocols are outside this flow.
 
-| Field | Type | Required | Meaning |
-| --- | --- | --- | --- |
-| `name` | string | Yes | Upstream model identifier sent to this connection; trim whitespace and reject blank values. Preserve case. |
-| `maxContextTokens` | positive integer or null | No | Configured input-context token limit; missing/null means unspecified. |
-| `supportedThinkingLevels` | enum array or null | No | Distinct values from `low`, `medium`, `high`, `xhigh`, `max`. Missing/null means unspecified; an empty array explicitly declares none. |
-| `catalogRef` | object or null | No | Exact catalog identity: required string fields `provider` and `model`. Missing/null means custom configuration with no catalog source. |
-| `pricing` | pricing object | Yes | All three explicit model rates are required; neither the object nor any rate may be null. |
+Prices are USD per million input, output, and cache-read tokens. All three
+values must be present, nonblank, nonnegative decimal strings with at most
+eight decimal places. Explicit `"0"` is free; missing values never imply zero
+or trigger catalog lookup. Do not accept currency symbols, separators, `Auto`,
+or binary floating-point JSON amounts. Cache writes and non-token billing are
+separate contracts. Each submitted model stores its own prices; changing one
+model must not modify another model or historical usage snapshots.
 
-Catalog selection supplies defaults; explicit model fields are the submitted
-configuration and are not overwritten during creation. Unknown metadata must
-stay unspecified. A model's general reasoning capability does not imply
-support for particular thinking levels. Catalog identity remains independent
-of the upstream name so explicitly edited identifiers are not silently used
-to infer another catalog entry.
+Custom header values may contain secrets. The library keeps them in memory and
+preserves entry order while editing; they must not be copied into URL state or
+logs. Header names are case-insensitive and unique and values cannot contain
+line breaks. The API representation, secret-header protection, and persisted
+ordering must be settled before server integration. Avatar upload and storage
+also require an explicit server contract; selecting an image in the library
+only provides a local preview and consumer callback.
 
-### Pricing rules
+## Validation and persistence
 
-Each model's required `pricing` object contains three required decimal-string
-fields: `inputUsdPerMillionTokens`, `outputUsdPerMillionTokens`, and
-`cachedUsdPerMillionTokens`. Values are non-negative USD per million tokens;
-cached means cache-read tokens. Decimal strings preserve exact monetary input
-across JSON clients without specifying a new Rust price representation.
-The current storage precision is eight decimal places. Missing, null, blank,
-negative, or over-precision prices are invalid. Do not accept `Auto`, currency
-symbols, or formatted separators as monetary values. `"0"` is a valid explicit
-free rate and must never be inferred from an empty value.
+Core owns shared invariants through Validify. HTTP normalization reuses those
+rules. The planned service coordinates authorization, name checks, credential
+protection, ID generation, and persistence. PostgreSQL owns database models,
+queries, checked conversions, and concurrency guards.
 
-Catalog presets may prefill known rates as editable decimal values. Every
-submitted model must still contain all three explicit prices; the server does
-not fill missing prices from the catalog. Custom models follow the same rule.
-For example, `gpt-4.1` can have rates `"2.00"`, `"8.00"`, and `"0.50"`, while
-`gpt-4.1-mini` has `"0.40"`, `"1.60"`, and `"0.10"`. Changing one model's rate
-does not affect other models. Provider-level pricing is not accepted. Store
-the submitted prices on each provider model so later catalog changes do not
-silently change configured rates.
+The proposed batch is atomic: reject every item if any connection or model
+fails. Reads and credential protection precede the write transaction. Use one
+short transaction to group provider and model inserts, ending it immediately
+after the writes. Creation makes no upstream calls and never requires a
+successful connection test. No database transaction spans email or HTTP calls.
 
-Non-token billing rates cannot be represented as token prices. Video and
-realtime configuration must not reinterpret audio, image, or video units as
-USD per million tokens; supported billing coverage remains an open question.
-
-### Validation, conflicts, and persistence
-
-`providers` must be nonempty. The proposed batch semantics are atomic: reject
-the whole request if any connection or model fails validation
-or persistence. No partial-success response is returned.
-
-Check provider names against both the request and existing records in the
-current organization. Proposed comparison preserves case after trimming,
-matching the existing database text uniqueness: `Production` and `production`
-are distinct. Duplicate model names within one provider are invalid; the same
-upstream model name on another provider is allowed.
-
-Core owns shared domain validation using Validify. HTTP normalization reuses
-those rules. `ProviderIntegrationService` coordinates validation, name checks,
-credential protection and ID generation. PostgreSQL owns
-queries, models, conversions, and uniqueness guards. The current repository
-requires additional scoped lookup and provider-model write operations.
-
-Perform reads before the write transaction. Protect
-credentials before persistence. Use a short transaction only to group the
-provider and provider-model inserts; roll it back on any error and end it as
-soon as those writes complete. Database unique constraints remain authoritative
-when concurrent requests pass the preliminary name checks. Creation never
-calls upstream provider APIs, and never requires a test result or test token.
-
-### Responses
-
-`201 Created` returns `{ "providers": [...] }` in request order. Each result
-contains `id`, `name`, `baseUrl`, `apiProtocol`, `endpointMode`, `enabled`, and
-`models`. Each model contains its `id`, `name`, optional context/thinking
-metadata, and submitted `pricing` with three non-null decimal strings using
-the same rate property names. New connections and models default to enabled.
-IDs in this planned contract are decimal strings to preserve full database
-ID precision in JavaScript. No credential or credential-derived value is
-included. The ordering makes a separate client correlation ID unnecessary.
+`201 Created` returns providers in request order with decimal-string IDs, safe
+connection configuration, enabled state, and model configuration/prices. Never
+return credentials or credential-derived values. New connections and submitted
+models default to enabled. Reads, updates, and cloning retain the write-only
+credential boundary described in [management](management.md).
 
 | Status | Meaning |
 | --- | --- |
-| `400` | Malformed JSON, invalid fields, duplicate model names, unsupported combinations, or missing/invalid prices; nothing saved. |
-| `401` | Missing or invalid user authentication. |
-| `403` | Caller cannot manage the current organization, or cookie-origin checks fail. |
-| `409` | Provider-name conflict, including duplicates in the batch or a concurrent unique-constraint violation; nothing saved. |
-| `500` | Internal failure; no partial batch commit. |
+| `400` | Malformed or unsupported configuration, duplicate model names, or invalid prices; nothing saved. |
+| `401` | Missing/invalid Compallm authentication. |
+| `403` | Organization role or cookie-origin checks deny access. |
+| `409` | Provider-name conflict within the batch, stored data, or concurrent insert; nothing saved. |
+| `500` | Internal failure with no partial batch commit. |
 
-Errors retain the existing `{ "message": "..." }` shape, with a proposed
-optional `issues` array for this API. Each issue has `path`, `code`, and
-`message`; paths use JSON Pointer notation such as `/providers/1/name` or
-`/providers/0/models/1/catalogRef`. A code such as `name_conflict` or
-`price_required` supports client handling. Issues never echo credentials or
-raw upstream content. If a concurrent conflict cannot be attributed safely to
-a specific item, return the operation-level message without fabricated issues.
-Numeric batch/model limits, field lengths, and request-body limits still need
-to be selected before implementation.
+Errors retain `{ "message": "..." }`; an optional proposed `issues` array has
+JSON Pointer `path`, `code`, and safe `message`. Never echo credentials or raw
+upstream responses. If a conflict cannot be safely assigned to one item, use an
+operation-level message instead of inventing a field issue.
 
-## Test unsaved connection
+## Test unsaved configuration
 
-`POST /api/providers/test-connection`, operation ID `testProviderConnection`.
+`POST /api/providers/test-connection`, operation ID `testProviderConnection`,
+accepts one complete provider definition without the batch wrapper. It does not
+save providers, reserve names, create model routes, or require a stored ID.
+Provider-name uniqueness is not checked. Authorization and configuration/price
+validation precede the bounded upstream probe.
 
-The body is one provider definition from the `providers` array above, without
-the batch wrapper. It accepts the full unsaved configuration and credential;
-no saved ID or earlier create request is needed. Unknown fields remain invalid.
-This endpoint is planned only and must not be implemented as part of creation.
+A completed test returns `200` with `success` and per-model results in submitted
+order. Success requires every submitted model to pass. Failure codes include
+`invalid_credentials`, `connection_failed`, `timeout`, `model_unavailable`, and
+`rate_limited`. Upstream authentication failure is a test outcome rather than
+Compallm HTTP `401`. Malformed requests and Compallm authorization failures use
+the normal error envelope. A test result applies only to that configuration at
+that moment and does not guarantee later availability.
 
-Authorize the caller and validate connection/protocol/model fields before
-making a bounded upstream request. The connection name has no uniqueness
-check. The submitted model prices follow the same required-field validation
-as creation; testing never resolves catalog prices. The operation does not save provider configuration, reserve names,
-create router bindings, or update existing records. Provider calls occur
-outside database transactions.
+## Unresolved server requirements
 
-For a completed test, `200 OK` returns a top-level `success` boolean and model
-results in submitted order:
-
-```json
-{
-  "success": false,
-  "models": [
-    { "index": 0, "name": "gpt-4.1", "success": true },
-    {
-      "index": 1,
-      "name": "gpt-4.1-mini",
-      "success": false,
-      "code": "model_unavailable",
-      "message": "The model is unavailable with this connection."
-    }
-  ]
-}
-```
-
-Top-level success requires every submitted model to pass. Planned failure
-codes are `invalid_credentials`, `connection_failed`, `timeout`,
-`model_unavailable`, and `rate_limited`. Upstream authentication failure is a
-test outcome, not an API `401`: that status is reserved for Compallm caller
-authentication. Malformed/unsupported requests use `400`, caller authentication
-and access use `401`/`403`, and internal failures use `500`, with the shared
-error envelope. Never return raw upstream response bodies.
-
-## Requirements still to settle
-
-- Exact supported protocol/mode combinations and whether unsupported media
-  modes should be excluded from the initial API enum.
-- Catalog refresh/version policy and storage for catalog source metadata.
-  Preset rates are submitted explicitly; creation does not resolve them.
-- Persistence for endpoint mode, context limits, thinking levels, and catalog
-  references; the current schema does not store all these fields.
-- Whether to accept the proposed atomic batch, case-sensitive name comparison,
-  decimal-string IDs, and optional structured error issues as shared API policy.
-- Credential encryption and rotation configuration.
-- Test probes per protocol/mode, concurrency/time budgets, admission limits,
-  cancellation behavior, and any usage charges. A successful test only confirms
-  the submitted configuration at that moment.
-
-## Related pages
-
-- [Provider decisions](adr.md)
-- [Managing providers](management.md)
-- [Provider configuration](../portal/add-provider.md)
-- [Models and providers](../model/models-and-providers.md)
+- Persisting model-specific operation/path, limits, mappings, and catalog identity.
+- Header representation, secret storage, and avatar upload policy.
+- Credential encryption, rotation, and provider adapter coverage.
+- Batch/model limits, request sizes, exact probes, concurrency budgets,
+  cancellation, admission policy, and probe usage charges.
+- Acceptance of proposed atomic batching, case-sensitive name comparison,
+  decimal-string IDs, and structured error issues.

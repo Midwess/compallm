@@ -58,3 +58,8 @@ export { UrlControllerContext } from './context'
 export type { UrlController, UrlState, NavigationRequest } from './url'
 
 export { RichMessage } from './components/rich-message'
+
+export * from './components/provider-icons'
+export * from './components/key-value-editor'
+export * from './components/effort-mapping'
+export * from './components/provider-avatar'

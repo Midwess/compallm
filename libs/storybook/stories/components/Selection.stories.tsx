@@ -77,3 +77,18 @@ export const CheckboxOption: Story = {
     </Preview>
   ),
 }
+
+export const CompactCheckbox: Story = {
+  render: () => (
+    <Preview>
+      <Sample label="Compact · unchecked, checked, mixed, disabled">
+        <Row>
+          <Selection.Checkbox size="compact" aria-label="Unchecked compact" />
+          <Selection.Checkbox size="compact" aria-label="Checked compact" defaultChecked />
+          <Selection.Checkbox size="compact" aria-label="Mixed compact" indeterminate />
+          <Selection.Checkbox size="compact" aria-label="Disabled compact" disabled />
+        </Row>
+      </Sample>
+    </Preview>
+  ),
+}

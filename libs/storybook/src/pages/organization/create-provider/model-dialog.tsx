@@ -1,19 +1,12 @@
-import { Checkbox } from '../../../components/selection'
+import { EffortMapping } from '../../../components/effort-mapping'
+import { modelPath, modelProtocol, isEndpointPath, textModelOptions, modelDraftFingerprint } from './model-options'
 import { FormField } from '../../../components/form-field'
 import { Button } from '../../../components/buttons'
 import { Dialog } from '../../../components/dialog'
 
 import { useController, useProvider } from './controller'
 import { isValidModelDraft } from './validation'
-import type { ThinkingLevel } from './types'
 
-const levels: { value: ThinkingLevel; label: string }[] = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'xhigh', label: 'Xhigh' },
-  { value: 'max', label: 'Max' },
-]
 export function ModelDialog() {
   const controller = useController()
   const draft = useProvider((state) => state.modelDraft)
@@ -24,24 +17,13 @@ export function ModelDialog() {
   const changed =
     draft &&
     (originalDraft
-      ? JSON.stringify([
-          draft.name,
-          draft.maxContextTokens,
-          draft.thinkingLevels,
-          draft.inputPrice,
-          draft.outputPrice,
-          draft.cachedPrice,
-        ]) !==
-        JSON.stringify([
-          originalDraft.name,
-          originalDraft.maxContextTokens,
-          originalDraft.thinkingLevels,
-          originalDraft.inputPrice,
-          originalDraft.outputPrice,
-          originalDraft.cachedPrice,
-        ])
+      ? modelDraftFingerprint(draft) !== modelDraftFingerprint(originalDraft)
       : !!(
           draft.name ||
+          (draft.path !== undefined &&
+            draft.path !== textModelOptions.find((option) => option.value === modelProtocol(draft))!.path) ||
+          draft.maxOutputTokens ||
+          Object.values(draft.effortMapping ?? {}).some(Boolean) ||
           draft.maxContextTokens ||
           draft.thinkingLevels.length ||
           draft.inputPrice ||
@@ -62,50 +44,67 @@ export function ModelDialog() {
             }}
           >
             <Dialog.Header>
-              <Dialog.Title>{editing ? 'Edit model' : 'Add model'}</Dialog.Title>
-              <Dialog.Close aria-label="Close model popup" />
+              <Dialog.Title>
+                {editing
+                  ? 'Edit model'
+                  : `Add ${textModelOptions.find((option) => option.value === modelProtocol(draft))!.label}`}
+              </Dialog.Title>
+              <Dialog.Close aria-label="Close model popup" className="focus-visible:outline-muted" />
             </Dialog.Header>
-            <Dialog.Body>
+            <Dialog.Body className="py-4">
+              <FormField>
+                <FormField.Label>Path</FormField.Label>
+                <FormField.Input
+                  value={modelPath(draft)}
+                  required
+                  autoFocus
+                  aria-invalid={!isEndpointPath(modelPath(draft)) || undefined}
+                  onChange={(event) => controller.onModelDraftChanged({ path: event.target.value })}
+                />
+                {!isEndpointPath(modelPath(draft)) ? (
+                  <FormField.Hint>Enter a path beginning with /, without a host, query, or fragment.</FormField.Hint>
+                ) : null}
+              </FormField>
               <FormField>
                 <FormField.Label>Model name</FormField.Label>
                 <FormField.Input
                   value={draft.name}
                   required
-                  autoFocus
                   placeholder="Enter model name"
                   onChange={(event) => controller.onModelDraftChanged({ name: event.target.value })}
                 />
               </FormField>
-              <FormField>
-                <FormField.Label>Max content window</FormField.Label>
-                <FormField.Input
-                  inputMode="numeric"
-                  placeholder="Not set"
-                  value={draft.maxContextTokens}
-                  onChange={(event) => controller.onModelDraftChanged({ maxContextTokens: event.target.value })}
-                />
-              </FormField>
-              <fieldset className="min-w-0">
-                <legend className="mb-2 text-sm font-medium">Supported thinking levels</legend>
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  {levels.map(({ value, label }) => (
-                    <label key={value} className="flex items-center gap-1.5 text-sm">
-                      <Checkbox
-                        aria-label={label}
-                        checked={draft.thinkingLevels.includes(value)}
-                        onChange={(event) =>
-                          controller.onModelDraftChanged({
-                            thinkingLevels: event.target.checked
-                              ? [...draft.thinkingLevels, value]
-                              : draft.thinkingLevels.filter((item) => item !== value),
-                          })
-                        }
-                      />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
+              <div className="grid grid-cols-2 gap-2">
+                <FormField>
+                  <FormField.Label>Max content window</FormField.Label>
+                  <FormField.Input
+                    inputMode="numeric"
+                    placeholder="Not set"
+                    value={draft.maxContextTokens}
+                    onChange={(event) => controller.onModelDraftChanged({ maxContextTokens: event.target.value })}
+                  />
+                </FormField>
+                <FormField>
+                  <FormField.Label>Max output tokens</FormField.Label>
+                  <FormField.Input
+                    inputMode="numeric"
+                    placeholder="Not set"
+                    value={draft.maxOutputTokens ?? ''}
+                    onChange={(event) => controller.onModelDraftChanged({ maxOutputTokens: event.target.value })}
+                  />
+                </FormField>
+              </div>
+              <EffortMapping
+                value={draft.effortMapping ?? Object.fromEntries(draft.thinkingLevels.map((level) => [level, level]))}
+                onValueChange={(effortMapping) =>
+                  controller.onModelDraftChanged({
+                    effortMapping,
+                    thinkingLevels: (Object.keys(effortMapping) as import('./types').ThinkingLevel[]).filter(
+                      (level) => !!effortMapping[level],
+                    ),
+                  })
+                }
+              />
               <h3 className="text-sm font-medium">Pricing</h3>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {(
@@ -127,7 +126,6 @@ export function ModelDialog() {
                   </FormField>
                 ))}
               </div>
-              <p className="text-xs text-muted">All three prices are required. Enter 0 for a free rate.</p>
               {duplicate ? (
                 <p role="alert" className="text-xs text-error">
                   A model with this name already exists.

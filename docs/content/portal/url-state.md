@@ -68,10 +68,13 @@ Provider query parameters are owned by a feature codec:
 | --- | --- |
 | `provider` | Selected catalog identity or `custom`. |
 | `q`, `model_q` | Provider and model searches. |
-| `name`, `base_url`, `protocol`, `mode` | Non-secret connection draft fields. |
-| `models` | Versioned JSON array of model draft IDs, identifiers, context limits, thinking levels, enabled states, and three explicit decimal-string prices. |
+| `name`, `base_url` | Non-secret connection draft fields. |
+| `protocol`, `mode` | Legacy compatibility fields for existing drafts. |
+| `model_status`, `model_protocol`, `provider_protocol` | Model enabled-status and operation filters. |
+| `model_capabilities` | Comma-separated declared capability flags required by the model filter. Unknown flags are ignored. |
+| `models` | Versioned JSON array of model draft IDs, names, operation/path, limits, effort mappings, declared capabilities, enabled states, and three explicit decimal-string prices. |
 | `dialog`, `model` | Open model action (`add-model` or `edit-model`) and edited model draft ID. |
-| `model_name`, `context_tokens`, `thinking`, `input_price`, `output_price`, `cached_price` | Unsaved fields in the open model dialog. |
+| `model_name`, `model_path`, `draft_protocol`, `context_tokens`, `output_tokens`, `effort_mapping`, `thinking`, `input_price`, `output_price`, `cached_price` | Unsaved fields in the open model dialog. |
 | `clone_from` | Source saved-provider ID; never permission to read it. |
 | `v` | Query-schema version when serialized model data is present. |
 
@@ -120,6 +123,10 @@ the authorized server baseline before comparing edits. Editing a URL does not
 change the saved baseline. Changes to tested configuration invalidate the test
 result. Pending operations, notifications, hover/focus, discard confirmations,
 and connection-test outcomes are transient and are not restored as facts.
+
+Custom header values and avatar files are memory-only; changing URL-owned fields
+does not overwrite them. Leaving the provider scope clears those values and
+revokes temporary avatar object URLs.
 
 API keys, passwords, OTP codes, tokens, and current-user data never enter URL
 parameters or fragments. An unsaved API key is memory-only and must be entered

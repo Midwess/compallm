@@ -22,19 +22,21 @@ export function Switch({ className, ...props }: Omit<InputHTMLAttributes<HTMLInp
     />
   )
 }
-export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
+export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size'> {
   indeterminate?: boolean
+  size?: 'standard' | 'compact'
 }
-export function Checkbox({ indeterminate = false, className, ...props }: CheckboxProps) {
+export function Checkbox({ indeterminate = false, size = 'standard', className, ...props }: CheckboxProps) {
   const input = useRef<HTMLInputElement>(null)
   useEffect(() => {
     if (input.current) input.current.indeterminate = indeterminate
   }, [indeterminate])
   return (
     <span
-      className={`
-relative inline-flex size-4.5 shrink-0 items-center justify-center has-disabled:cursor-not-allowed has-disabled:opacity-40
-`}
+      className={cx(
+        'relative inline-flex shrink-0 items-center justify-center has-disabled:cursor-not-allowed has-disabled:opacity-40',
+        size === 'compact' ? 'size-3' : 'size-4.5',
+      )}
     >
       <input
         {...props}
@@ -49,11 +51,17 @@ relative inline-flex size-4.5 shrink-0 items-center justify-center has-disabled:
         )}
       />
       {indeterminate ? (
-        <MinusIcon aria-hidden="true" className="pointer-events-none relative size-3.5 text-on-primary" />
+        <MinusIcon
+          aria-hidden="true"
+          className={cx('pointer-events-none relative text-on-primary', size === 'compact' ? 'size-2.5' : 'size-3.5')}
+        />
       ) : (
         <CheckIcon
           aria-hidden="true"
-          className="pointer-events-none relative size-3.5 text-on-primary opacity-0 peer-checked:opacity-100"
+          className={cx(
+            'pointer-events-none relative text-on-primary opacity-0 peer-checked:opacity-100',
+            size === 'compact' ? 'size-2.5' : 'size-3.5',
+          )}
         />
       )}
     </span>

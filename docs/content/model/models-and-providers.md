@@ -44,8 +44,9 @@ must not contain provider credentials.
 ### Provider connection
 
 A provider connection is an organization-owned configuration for reaching an
-external LLM service. It owns a management name, API protocol, endpoint URL,
-protected credential, and `enabled` state. OpenAI, Anthropic, and
+external LLM service. It owns a management name, base URL, protected credential, and `enabled` state.
+The planned text-model contract assigns operation and endpoint path to each
+provider model; persistence for these fields remains unimplemented. OpenAI, Anthropic, and
 OpenAI-compatible connections are planned initially.
 
 A provider connection is not a model. A connection can have multiple provider
@@ -159,7 +160,7 @@ policy rather than relying on the repository to filter management data.
    and binding are enabled.
 4. The Router selects a binding according to rules that still need a decision.
 5. A concrete provider client sends the provider model's upstream name using the
-   connection's protocol, endpoint, and protected credential.
+   provider model's operation and path with the connection's base URL and protected credential.
 6. Usage records identify the requested model, provider model, and binding that
    served the request.
 

@@ -5,7 +5,7 @@ title: Managing LLM providers
 # Managing LLM providers
 
 LLM provider connections are organization-owned resources. They hold the
-endpoint, protocol, and protected credentials Compallm needs to call an
+base URL and protected credentials Compallm needs to call an
 upstream provider without exposing those credentials to organization members.
 
 ## Who can manage providers
@@ -63,7 +63,9 @@ model; creation does not resolve missing prices from the catalog.
 Provider discovery starts with distinct provider identities, without requiring
 a model selection. Choosing a provider scopes model discovery to that
 provider's known models. Callers explicitly enable the models they want to
-configure and can add custom models to the same connection. Merely viewing
+configure and can add text models using OpenAI Completion, OpenAI Response, or
+Anthropic operation defaults. Each model owns its editable endpoint path;
+server persistence for this model-specific configuration remains planned. Merely viewing
 catalog entries does not configure or enable them. Creation submits only the
 enabled model definitions; unselected catalog entries remain catalog data.
 Every submitted catalog or custom model requires all three explicit prices.

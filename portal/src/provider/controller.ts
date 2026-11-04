@@ -8,6 +8,10 @@ import {
   type EndpointMode,
   type ModelDraft,
   type ProviderModel,
+  type TextModelProtocol,
+  type HeaderEntry,
+  type ModelCapability,
+  type ModelStatusFilter,
 } from '@compallm/storybook/pages/organization/create-provider'
 import { notify } from '../notifications/toast'
 import type { OrganizationController } from '@compallm/storybook/pages/organization'
@@ -28,6 +32,7 @@ export class CreateProviderController implements Controller {
   private readonly organization: OrganizationController
   private unsubscribe: (() => void) | undefined
   private unblock: (() => void) | undefined
+  private avatarObjectUrl: string | undefined
   private applying = false
   private permitNavigation = false
   constructor(url: UrlController, organization: OrganizationController) {
@@ -59,7 +64,7 @@ export class CreateProviderController implements Controller {
         const state = this.store.getState(),
           draft = state.modelDraft
         if (!draft) return false
-        const original = state.models.find((model) => model.id === state.editingModelId) ?? emptyModel(draft.id)
+        const original = state.models.find((model) => model.id === state.editingModelId) ?? emptyModel(draft.id, draft.protocol)
         if (modelFingerprint(draft) === modelFingerprint(original)) return false
         const current = new URLSearchParams(this.url.store.getState().search)
         return (
@@ -89,15 +94,20 @@ export class CreateProviderController implements Controller {
     this.unsubscribe?.()
     this.unblock?.()
     window.removeEventListener('beforeunload', this.beforeUnload)
-    this.store.setState({ apiKey: '' })
+    this.store.setState({ apiKey: '', headers: [], avatarUrl: null })
+    if (this.avatarObjectUrl) URL.revokeObjectURL(this.avatarObjectUrl)
   }
   private beforeUnload = (event: BeforeUnloadEvent) => {
     const state = this.store.getState()
     if (
       state.apiKey ||
+      state.headers.some((header) => header.key || header.value) ||
       (state.modelDraft &&
         modelFingerprint(state.modelDraft) !==
-          modelFingerprint(state.models.find((m) => m.id === state.editingModelId) ?? emptyModel(state.modelDraft.id)))
+          modelFingerprint(
+            state.models.find((m) => m.id === state.editingModelId) ??
+              emptyModel(state.modelDraft.id, state.modelDraft.protocol),
+          ))
     ) {
       event.preventDefault()
       event.returnValue = ''
@@ -124,7 +134,11 @@ export class CreateProviderController implements Controller {
   }
   private endpoint() {
     const state = this.store.getState()
-    this.store.setState({ endpointUrl: state.baseUrl ? state.baseUrl.replace(/\/+$/, '') + paths[state.mode] : '' })
+    const model = state.models.find((item) => item.enabled)
+    const path = model?.path ?? paths[state.mode]
+    this.store.setState({
+      endpointUrl: state.baseUrl ? `${state.baseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}` : '',
+    })
   }
   onProviderQueryChanged = (providerQuery: string) => {
     this.store.setState({ providerQuery })
@@ -151,6 +165,8 @@ export class CreateProviderController implements Controller {
       baseUrl: preset.baseUrl,
       protocol: preset.protocol,
       apiKey: '',
+      headers: [],
+      avatarUrl: null,
       mode: preset.protocol === 'anthropic' ? 'messages' : 'chat_completions',
       models: [],
       modelQuery: '',
@@ -167,6 +183,8 @@ export class CreateProviderController implements Controller {
       name: '',
       baseUrl: '',
       apiKey: '',
+      headers: [],
+      avatarUrl: null,
       protocol: 'openai_compatible',
       mode: 'chat_completions',
       models: [],
@@ -209,14 +227,12 @@ export class CreateProviderController implements Controller {
   onModelEnabledChanged = (id: string, enabled: boolean) => {
     this.invalidateTest()
     this.store.setState((state) => ({
-      models: state.models.map((model) =>
-        model.id === id && model.modes.includes(state.mode) && hasValidModelPrices(model) ? { ...model, enabled } : model,
-      ),
+      models: state.models.map((model) => (model.id === id && hasValidModelPrices(model) ? { ...model, enabled } : model)),
     }))
     this.persist()
   }
-  onAddModel = () => {
-    this.store.setState({ editingModelId: null, modelDraft: emptyModel(crypto.randomUUID()) })
+  onAddModel = (protocol: TextModelProtocol = 'openai_chat_completions') => {
+    this.store.setState({ editingModelId: null, modelDraft: emptyModel(crypto.randomUUID(), protocol) })
     this.persist(false)
   }
   onEditModel = (id: string) => {
@@ -234,7 +250,7 @@ export class CreateProviderController implements Controller {
     this.persist(true, true)
   }
   onSaveModel = () => {
-    const { modelDraft: draft, models, editingModelId, mode } = this.store.getState()
+    const { modelDraft: draft, models, editingModelId } = this.store.getState()
     if (
       !draft ||
       !isValidModelDraft(draft) ||
@@ -246,7 +262,13 @@ export class CreateProviderController implements Controller {
     const model: ProviderModel = {
       ...draft,
       name: draft.name.trim(),
-      modes: previous?.modes ?? [mode],
+      modes: previous?.modes ?? [
+        draft.protocol === 'anthropic_messages'
+          ? 'messages'
+          : draft.protocol === 'openai_responses'
+            ? 'responses'
+            : 'chat_completions',
+      ],
       enabled: previous?.enabled ?? true,
       description: previous?.description,
     }
@@ -255,7 +277,47 @@ export class CreateProviderController implements Controller {
       modelDraft: null,
       editingModelId: null,
     })
+    this.endpoint()
     this.persist(true, true)
+  }
+  onHeadersChanged = (headers: HeaderEntry[]) => {
+    this.invalidateTest()
+    this.store.setState({ headers })
+  }
+  onAvatarChanged = (file: File | null) => {
+    if (this.avatarObjectUrl) URL.revokeObjectURL(this.avatarObjectUrl)
+    this.avatarObjectUrl = file ? URL.createObjectURL(file) : undefined
+    this.store.setState({ avatarUrl: this.avatarObjectUrl ?? null })
+  }
+  onModelFiltersChanged = (filters: {
+    status?: ModelStatusFilter
+    protocol?: TextModelProtocol | 'all'
+    capabilities?: ModelCapability[]
+  }) => {
+    this.store.setState({
+      ...(filters.status ? { modelStatusFilter: filters.status } : {}),
+      ...(filters.protocol ? { modelProtocolFilter: filters.protocol } : {}),
+      ...(filters.capabilities ? { modelCapabilityFilter: filters.capabilities } : {}),
+    })
+    this.persist()
+  }
+  onProviderFilterChanged = (providerProtocolFilter: TextModelProtocol | 'all') => {
+    this.store.setState({ providerProtocolFilter })
+    this.persist()
+  }
+  onClearModelFilters = () => {
+    this.store.setState({ modelStatusFilter: 'all', modelProtocolFilter: 'all', modelCapabilityFilter: [] })
+    this.persist()
+  }
+  onModelsEnabledChanged = (ids: string[], enabled: boolean) => {
+    this.invalidateTest()
+    this.store.setState((state) => ({
+      models: state.models.map((model) =>
+        ids.includes(model.id) && hasValidModelPrices(model) ? { ...model, enabled } : model,
+      ),
+    }))
+    this.endpoint()
+    this.persist()
   }
   onTestConnection = () => {
     notify.info('Connection testing is not available yet.')

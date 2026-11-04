@@ -93,3 +93,20 @@ export const ResendPrompt: Story = {
     </Preview>
   ),
 }
+
+export const CircularIconButton: Story = {
+  render: () => (
+    <Preview>
+      <Sample label="Circular icon actions">
+        <Row>
+          <Buttons.IconButton aria-label="Add">
+            <PlusIcon aria-hidden="true" />
+          </Buttons.IconButton>
+          <Buttons.IconButton aria-label="Unavailable add" disabled>
+            <PlusIcon aria-hidden="true" />
+          </Buttons.IconButton>
+        </Row>
+      </Sample>
+    </Preview>
+  ),
+}

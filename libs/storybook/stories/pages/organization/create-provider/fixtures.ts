@@ -15,8 +15,9 @@ export const providers: ProviderPreset[] = [
 export const openaiModels: ProviderModel[] = [
   {
     id: 'gpt-4.1',
+    capabilities: ['text', 'vision', 'tool_call', 'structured_output'],
     name: 'gpt-4.1',
-    maxContextTokens: '1047576',
+    maxContextTokens: '1048576',
     thinkingLevels: [],
     inputPrice: '2.00',
     outputPrice: '8.00',
@@ -26,8 +27,9 @@ export const openaiModels: ProviderModel[] = [
   },
   {
     id: 'gpt-4.1-mini',
+    capabilities: ['text', 'vision', 'tool_call', 'structured_output'],
     name: 'gpt-4.1-mini',
-    maxContextTokens: '1047576',
+    maxContextTokens: '1048576',
     thinkingLevels: [],
     inputPrice: '0.40',
     outputPrice: '1.60',
@@ -37,6 +39,7 @@ export const openaiModels: ProviderModel[] = [
   },
   {
     id: 'gpt-4o',
+    capabilities: ['text', 'vision', 'audio', 'tool_call'],
     name: 'gpt-4o',
     maxContextTokens: '128000',
     thinkingLevels: [],
@@ -48,6 +51,7 @@ export const openaiModels: ProviderModel[] = [
   },
   {
     id: 'o3',
+    capabilities: ['text', 'vision', 'reasoning', 'tool_call'],
     name: 'o3',
     maxContextTokens: '200000',
     thinkingLevels: [],
@@ -59,6 +63,7 @@ export const openaiModels: ProviderModel[] = [
   },
   {
     id: 'embedding',
+    capabilities: ['text'],
     name: 'text-embedding-3-small',
     maxContextTokens: '8191',
     thinkingLevels: [],
@@ -67,10 +72,11 @@ export const openaiModels: ProviderModel[] = [
     cachedPrice: '',
     modes: [],
     enabled: false,
-    description: 'Embedding · different mode',
+    description: 'Embedding',
   },
   {
     id: 'realtime',
+    capabilities: ['text', 'audio', 'audio_generation'],
     name: 'gpt-realtime-1.5',
     maxContextTokens: '32000',
     thinkingLevels: [],
@@ -79,6 +85,6 @@ export const openaiModels: ProviderModel[] = [
     cachedPrice: '',
     modes: ['realtime'],
     enabled: false,
-    description: 'Realtime · different mode',
+    description: 'Realtime',
   },
 ]

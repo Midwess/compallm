@@ -13,6 +13,11 @@ export type {
   ProviderPreset,
   ProviderModel,
   ModelDraft,
+  TextModelProtocol,
+  ModelStatusFilter,
+  ModelCapability,
+  HeaderEntry,
+  EffortMapping,
   ThinkingLevel,
   EndpointMode,
   ApiProtocol,
@@ -84,3 +89,5 @@ export function CreateProviderPage() {
 }
 
 export { canCreateProvider, canSaveProvider, hasValidModelPrices, isValidModelDraft, providerSnapshot } from './validation'
+
+export { capabilityOptions } from './model-options'

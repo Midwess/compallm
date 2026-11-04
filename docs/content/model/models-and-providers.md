@@ -158,7 +158,7 @@ policy rather than relying on the repository to filter management data.
    are enabled. Service/capability matching rules remain to be defined.
 4. The Router selects a binding according to rules that still need a decision.
 5. A concrete provider client sends the provider model's upstream name using the
-    model's service/protocol adapter, effective connection, and protected credential.
+   model's service/protocol adapter, required connection, and protected credential.
 6. Usage records identify the requested model, provider model, and binding that
    served the request.
 

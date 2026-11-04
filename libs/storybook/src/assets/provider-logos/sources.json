@@ -1,0 +1,33 @@
+[
+  {
+    "name": "OpenAI",
+    "source": "https://unpkg.com/@lobehub/icons-static-svg@1.102.0/icons/openai.svg",
+    "reference": "https://openai.com/brand/"
+  },
+  {
+    "name": "Anthropic",
+    "source": "https://www.anthropic.com",
+    "reference": "https://www.anthropic.com"
+  },
+  {
+    "name": "Google AI Studio",
+    "source": "https://www.gstatic.com/images/branding/productlogos/ai_studio/v1/192px.svg",
+    "reference": "https://aistudio.google.com/welcome",
+    "note": "Official SVG with embedded gradient textures downsampled for 24px icon rendering."
+  },
+  {
+    "name": "DeepSeek",
+    "source": "https://unpkg.com/@lobehub/icons-static-svg@1.102.0/icons/deepseek.svg",
+    "reference": "https://www.deepseek.com"
+  },
+  {
+    "name": "Groq",
+    "source": "https://groq.com/favicon.svg",
+    "reference": "https://groq.com"
+  },
+  {
+    "name": "Mistral AI",
+    "source": "https://mistral.ai",
+    "reference": "https://mistral.ai"
+  }
+]

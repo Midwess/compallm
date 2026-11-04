@@ -22,3 +22,12 @@ await copyFile(
   new URL('../node_modules/@fontsource/inter/LICENSE', import.meta.url),
   new URL('../dist/licenses/Inter-OFL.txt', import.meta.url),
 )
+
+await copyFile(
+  new URL('../src/assets/provider-logos/LICENSE', import.meta.url),
+  new URL('../dist/licenses/Provider-icons-MIT.txt', import.meta.url),
+)
+await copyFile(
+  new URL('../src/assets/provider-logos/sources.json', import.meta.url),
+  new URL('../dist/licenses/provider-icon-sources.json', import.meta.url),
+)

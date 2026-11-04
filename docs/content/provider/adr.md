@@ -24,7 +24,7 @@ Implementation status: Persistence schema and repository implemented. The Core
 provider entity represents its associated provider models, but repository
 relation loading, the Core management service, API, and provider integrations
 are not implemented. The library provides a consumer-controlled provider form
-with creation, saved-configuration, and clone previews; see [component integration](../portal/add-provider.md#component-integration).
+with creation, saved-configuration, and clone previews; see [component integration](../portal/add-provider.md#controller-integration).
 Provider models use their table migration's diagram-aligned service/protocol
 and typed JSONB configuration. Its schema-only transition is defined in
 [provider-model storage](../model/models-and-providers.md#provider-model-storage).
@@ -64,8 +64,11 @@ These management flows remain planned for runtime integration.
 Provider persistence and services require organization scope. The repository
 only executes requested data operations and maps database outcomes; provider
 counts, query limits, and other business validation belong to the future
-workflow that invokes it. Each add operation selects its protocol internally,
-so callers cannot persist a mismatched protocol. Credentials stay outside
+workflow that invokes it. The library assigns each text model its selected operation and editable endpoint
+path; provider identity supplies connection defaults. Server integration must
+validate the operation/path combination. Typed service/protocol, connection, headers, limits, thinking, and pricing
+persistence is implemented. Translating the frontend operation/path and
+effort-name mappings into that configuration remains planned. Credentials stay outside
 ordinary provider read models and must not appear in API responses or logs.
 Provider persistence retains connection configuration without applying routing policy.
 Credential persistence maps the existing `ProviderApiKey` storage value to

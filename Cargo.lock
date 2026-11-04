@@ -1117,6 +1117,7 @@ dependencies = [
  "compallm-postgres",
  "compallm-utils",
  "midwess-hero",
+ "router",
  "sea-orm",
  "sea-orm-migration",
  "serde_json",

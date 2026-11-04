@@ -89,7 +89,7 @@ impl Hooks for App {
         let listener = Self::tcp_listener(serve_params.port).await?;
         #[cfg(feature = "frontend-dev")]
         let dev_server = {
-            crate::generate_contract()
+            crate::generate_contract(None)
                 .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
             let vite = crate::node_binary(Path::new(PORTAL_ROOT), "vite")
                 .to_string_lossy()

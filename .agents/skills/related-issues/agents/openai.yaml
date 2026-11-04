@@ -1,0 +1,4 @@
+interface:
+  display_name: "Compallm Related Issues"
+  short_description: "Find issue context from the current PR and branch"
+  default_prompt: "Use $related-issues to inspect the current Compallm PR and find its established issue links before asking for missing issue context."

@@ -5,6 +5,4 @@ This product includes software developed by the Compallm Contributors.
 
 Compallm is licensed under the Elastic License 2.0 (ELv2). See LICENSE.
 
-Third-party components retain their respective licenses and notices. The
-vendored Quartz documentation website source is licensed under the MIT License;
-see docs/web/LICENSE.txt.
+Third-party components retain their respective licenses and notices.

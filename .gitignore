@@ -13,11 +13,6 @@
 /libs/storybook/storybook-static
 /libs/storybook/test-results
 /libs/storybook/playwright-report
-/docs/web/node_modules
-/docs/web/public
-/docs/web/.quartz-cache
-/docs/web/quartz/.quartz-cache
-/docs/web/tsconfig.tsbuildinfo
 /.pnpm-store
 /portal/.pnpm-store
 /portal/dist

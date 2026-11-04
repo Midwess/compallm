@@ -32,11 +32,7 @@ impl TryFrom<ProviderModelSchema> for ProviderModel {
                 .context("invalid provider model service kind in database")?,
             protocol: serde_json::from_value(model.protocol.into())
                 .context("invalid provider model protocol in database")?,
-            base_url: model.base_url,
-            connection: model
-                .connection
-                .map(serde_json::from_value)
-                .transpose()
+            connection: serde_json::from_value(model.connection)
                 .context("invalid provider model connection in database")?,
             headers: serde_json::from_value(model.headers)
                 .context("invalid provider model headers in database")?,

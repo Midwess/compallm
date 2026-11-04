@@ -31,10 +31,8 @@ pub struct Model {
         unique_key = "provider_models_org_provider_name_service_protocol_unique"
     )]
     pub protocol: String,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub base_url: Option<String>,
-    #[sea_orm(column_type = "JsonBinary", nullable)]
-    pub connection: Option<Json>,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub connection: Json,
     #[sea_orm(column_type = "JsonBinary")]
     pub headers: Json,
     #[sea_orm(column_type = "JsonBinary")]

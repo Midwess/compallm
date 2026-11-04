@@ -53,10 +53,14 @@ model flag.
 
 A provider owns multiple provider models in the same organization. In addition
 to shared configuration, each provider model owns its provider reference,
-service-specific protocol, optional replacement connection, and headers. The
+service-specific protocol, required complete connection, and headers. The
 service/protocol pair selects a concrete adapter as defined in the Core
 `provider::configuration` module. Credentials remain on the provider
 connection.
+
+Provider-model `connection` is NOT NULL JSONB and Rust `Connection`. It does not
+inherit provider connection settings when absent; callers must supply the full
+configuration. The upstream base URL lives only in `connection.baseUrl`.
 
 Table migrations create the current schema directly, without backfills or
 compatibility types. They target a fresh database, not an upgrade from a previous

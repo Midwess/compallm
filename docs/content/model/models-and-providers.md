@@ -67,8 +67,8 @@ A provider model represents one upstream model available through one provider
 connection in the same organization. It stores:
 
 - the upstream model name accepted by that provider;
-- `service_kind`, a service-specific `protocol`, an optional complete connection
-  replacement, and headers;
+- `service_kind`, a service-specific `protocol`, a required complete connection,
+  and headers;
 - capabilities, limits, optional thinking controls, and upstream pricing using
   the same types as logical models;
 - an independent `enabled` state.
@@ -90,18 +90,20 @@ validation do not require a PostgreSQL composite type or reasoning-level enum.
 ### Provider-model storage
 
 The provider-model migration creates the diagram's `service_kind`, `protocol`,
-nullable `base_url` and `connection`, public `headers`, declared `capabilities`,
-`limits`, nullable `thinking`, and required `pricing`. JSONB object/array checks
-guard column shapes; Rust deserialization owns typed fields. Adapters and full
+required `connection`, public `headers`, declared `capabilities`, `limits`,
+nullable `thinking`, and required `pricing`. JSONB object/array checks guard
+column shapes; Rust deserialization owns typed fields. Adapters and full
 management validation remain planned.
 
 The migration targets a fresh database; it has no data backfill, compatibility
 structures, or inferred configuration. Required `service_kind`, `protocol`, and
 `pricing` columns have no defaults. Provider models are unique across
-organization, provider, name, service kind, and protocol. Nullable transport
-overrides inherit provider settings. Prices use explicit decimal strings in
-typed `pricing`; reasoning controls use `thinking`. Down migrations drop tables
-in reverse dependency order. No migration execution is authorized here.
+organization, provider, name, service kind, and protocol. Each provider model
+requires its own complete connection; no null-based inheritance applies.
+The upstream base URL lives only in `connection.baseUrl`. Prices use explicit
+decimal strings in typed `pricing`; reasoning controls use `thinking`. Down
+migrations drop tables in reverse dependency order. No migration execution is
+authorized here.
 
 ### Model router binding
 

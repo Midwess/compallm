@@ -57,17 +57,9 @@ fn provider_models_table() -> TableCreateStatement {
                 .default(true),
         )
         .col(
-            ColumnDef::new(ProviderModels::BaseUrl).text().null().check(
-                Func::char_length(
-                    Func::cust(Alias::new("btrim")).arg(Expr::col(ProviderModels::BaseUrl)),
-                )
-                .gt(0),
-            ),
-        )
-        .col(
             ColumnDef::new(ProviderModels::Connection)
                 .json_binary()
-                .null()
+                .not_null()
                 .check(
                     Func::cust(Alias::new("jsonb_typeof"))
                         .arg(Expr::col(ProviderModels::Connection))
@@ -186,7 +178,6 @@ enum ProviderModels {
     ServiceKind,
     Protocol,
     Enabled,
-    BaseUrl,
     Connection,
     Headers,
     Capabilities,

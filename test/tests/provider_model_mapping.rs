@@ -13,8 +13,10 @@ fn provider_model() -> ProviderModelSchema {
         enabled: true,
         service_kind: "llm".into(),
         protocol: "openai".into(),
-        base_url: Some("https://model.example/v1".into()),
-        connection: None,
+        connection: json!({
+            "baseUrl": "https://model.example/v1", "timeoutMs": 30000,
+            "authentication": {"apiKeyQuery": "key"}
+        }),
         headers: json!({"x-project": "test"}),
         capabilities: json!(["text", "reasoning"]),
         limits: json!({"contextTokens": 32768}),
@@ -34,7 +36,7 @@ fn maps_typed_configuration_and_exact_decimal_prices() {
     let model = ProviderModel::try_from(provider_model()).unwrap();
     assert_eq!(model.service_kind, ServiceKind::Llm);
     assert_eq!(model.protocol, Protocol::Openai);
-    assert_eq!(model.base_url.as_deref(), Some("https://model.example/v1"));
+    assert_eq!(model.connection.base_url, "https://model.example/v1");
     assert_eq!(model.headers["x-project"], "test");
     assert_eq!(
         model.capabilities,
@@ -61,16 +63,28 @@ fn maps_typed_configuration_and_exact_decimal_prices() {
 }
 
 #[test]
-fn preserves_null_thinking_and_complete_connection_override() {
+fn preserves_null_thinking_and_required_complete_connection() {
     let mut stored = provider_model();
     stored.thinking = None;
-    stored.connection = Some(json!({
+    stored.connection = json!({
         "baseUrl": "https://override.example", "timeoutMs": 10000,
         "authentication": {"apiKeyQuery": "key"}
-    }));
+    });
     let model = ProviderModel::try_from(stored).unwrap();
     assert!(model.thinking.is_none());
-    assert_eq!(model.connection.unwrap().timeout_ms, 10000);
+    assert_eq!(model.connection.timeout_ms, 10000);
+}
+
+#[test]
+fn rejects_null_or_incomplete_connection() {
+    for connection in [
+        serde_json::Value::Null,
+        json!({"baseUrl": "https://model.example"}),
+    ] {
+        let mut stored = provider_model();
+        stored.connection = connection;
+        assert!(ProviderModel::try_from(stored).is_err());
+    }
 }
 
 #[test]

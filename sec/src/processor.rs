@@ -1,5 +1,5 @@
 use crate::{
-    access::Access,
+    access::{Access, validate_parameters},
     resources::{ContextWriter, Local, Res, ResMut, Resources, Shared},
 };
 use std::{any::TypeId, future::Future, io, marker::PhantomData, pin::Pin};
@@ -25,6 +25,7 @@ impl<T: Send + Sync + 'static> ProcessorParam for Shared<T> {
     }
     type State = ();
     type Item<'a> = Shared<T>;
+    #[inline]
     fn fetch<'a>(resources: &'a Resources, _: &'a mut ()) -> io::Result<Self::Item<'a>> {
         resources.get_shared()
     }
@@ -33,6 +34,7 @@ impl<T: Send + Sync + 'static> ProcessorParam for Shared<T> {
 impl ProcessorParam for ContextWriter {
     type State = ();
     type Item<'a> = ContextWriter;
+    #[inline]
     fn fetch<'a>(resources: &'a Resources, _: &'a mut ()) -> io::Result<Self::Item<'a>> {
         Ok(resources.writer())
     }
@@ -44,6 +46,7 @@ impl<T: Send + Sync + 'static> ProcessorParam for Res<'static, T> {
     }
     type State = ();
     type Item<'a> = Res<'a, T>;
+    #[inline]
     fn fetch<'a>(resources: &'a Resources, _: &'a mut ()) -> io::Result<Self::Item<'a>> {
         resources.get()
     }
@@ -54,6 +57,7 @@ impl<T: Send + Sync + 'static> ProcessorParam for ResMut<'static, T> {
     }
     type State = ();
     type Item<'a> = ResMut<'a, T>;
+    #[inline]
     fn fetch<'a>(resources: &'a Resources, _: &'a mut ()) -> io::Result<Self::Item<'a>> {
         resources.get_mut()
     }
@@ -70,6 +74,9 @@ impl<T: Default + Send + 'static> ProcessorParam for Local<'static, T> {
 }
 
 pub trait Processor: Send + 'static {
+    fn validate(&self) -> io::Result<()> {
+        Ok(())
+    }
     fn access(&self) -> Access {
         Access::exclusive()
     }
@@ -103,11 +110,13 @@ pub trait ProcessorOutput {
     fn into_result(self) -> io::Result<()>;
 }
 impl ProcessorOutput for () {
+    #[inline]
     fn into_result(self) -> io::Result<()> {
         Ok(())
     }
 }
 impl ProcessorOutput for io::Result<()> {
+    #[inline]
     fn into_result(self) -> io::Result<()> {
         self
     }
@@ -145,6 +154,7 @@ where
     fn access(&self) -> Access {
         Access::default()
     }
+    #[inline]
     fn run(&mut self, _: &Resources) -> io::Result<()> {
         (self.function)().into_result()
     }
@@ -170,10 +180,12 @@ macro_rules! function_processor {
             F: for<'a> FnMut($($param::Item<'a>),+) -> O,
             O: ProcessorOutput + 'static,
         {
+            fn validate(&self) -> io::Result<()> { validate_parameters(&[$($param::access()),+]) }
             fn access(&self) -> Access {
                 let mut access = Access::default(); $(access.merge($param::access());)+ access
             }
             fn processor_type(&self) -> TypeId { TypeId::of::<F>() }
+            #[inline]
             fn run(&mut self, resources: &Resources) -> io::Result<()> {
                 (self.function)($($param::fetch(resources, &mut self.state.$index)?),+).into_result()
             }
@@ -186,6 +198,9 @@ function_processor!(P0: 0, P1: 1, P2: 2);
 function_processor!(P0: 0, P1: 1, P2: 2, P3: 3);
 
 pub trait Condition: Send {
+    fn validate(&self) -> io::Result<()> {
+        Ok(())
+    }
     fn access(&self) -> Access {
         Access::exclusive()
     }
@@ -249,7 +264,9 @@ macro_rules! function_condition {
         where F: FnMut($($param),+) -> O + Send + 'static,
               F: for<'a> FnMut($($param::Item<'a>),+) -> O, O: ConditionOutput,
         {
+            fn validate(&self) -> io::Result<()> { validate_parameters(&[$($param::access()),+]) }
             fn access(&self) -> Access { let mut access = Access::default(); $(access.merge($param::access());)+ access }
+            #[inline]
             fn evaluate(&mut self, resources: &Resources) -> io::Result<bool> {
                 (self.function)($($param::fetch(resources, &mut self.state.$index)?),+).into_result()
             }

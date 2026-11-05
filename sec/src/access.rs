@@ -38,3 +38,24 @@ impl Access {
             })
     }
 }
+
+/// Validate separate typed parameters before running user code. Exclusive/deferred
+/// parameters are permitted together; only incompatible resource aliases are rejected.
+pub(crate) fn validate_parameters(parameters: &[Access]) -> std::io::Result<()> {
+    for (index, access) in parameters.iter().enumerate() {
+        for other in &parameters[..index] {
+            if access.resources.iter().any(|(id, write)| {
+                other
+                    .resources
+                    .get(id)
+                    .is_some_and(|other_write| *write || *other_write)
+            }) {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "conflicting processor parameters",
+                ));
+            }
+        }
+    }
+    Ok(())
+}

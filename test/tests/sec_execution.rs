@@ -283,3 +283,43 @@ fn skipped_condition_discards_queued_insertions() {
     execution.run_stage(Received).unwrap();
     assert!(execution.resources().get::<u32>().is_err());
 }
+
+#[test]
+fn conflicting_condition_parameters_fail_before_processor_effects() {
+    let mut app = App::new();
+    app.add_processors(
+        Received,
+        (|| -> () {
+            panic!("invalid parameters");
+        })
+        .run_if(|_: Res<u32>, _: ResMut<u32>| true),
+    );
+    let mut execution = app.execution();
+    execution.resources_mut().insert(1_u32);
+    assert_eq!(
+        execution.run_stage(Received).unwrap_err().kind(),
+        io::ErrorKind::InvalidInput
+    );
+    assert_eq!(*execution.resources().get::<u32>().unwrap(), 1);
+}
+
+#[test]
+fn adding_processors_rebuilds_the_plan_without_resetting_existing_local_state() {
+    let mut stage = Stage::default();
+    let mut resources = Resources::default();
+    resources.insert(0_u32);
+    fn count(mut local: Local<u32>, mut value: ResMut<u32>) {
+        *local += 1;
+        *value += *local;
+    }
+    stage.add_processors(count);
+    stage.run(&mut resources).unwrap();
+    stage.add_processors(
+        (|mut value: ResMut<u32>| {
+            *value *= 10;
+        })
+        .after(count),
+    );
+    stage.run(&mut resources).unwrap();
+    assert_eq!(*resources.get::<u32>().unwrap(), 30);
+}

@@ -51,11 +51,13 @@ impl Resources {
             .insert_one(self.entity, value)
             .expect("private resource entity");
     }
+    #[inline]
     pub fn get<T: Send + Sync + 'static>(&self) -> io::Result<Res<'_, T>> {
         self.world
             .get::<&T>(self.entity)
             .map_err(|_| missing::<T>())
     }
+    #[inline]
     pub fn get_mut<T: Send + Sync + 'static>(&self) -> io::Result<ResMut<'_, T>> {
         self.world
             .get::<&mut T>(self.entity)

@@ -378,3 +378,168 @@ async fn hecs_borrow_conflict_fails_worker_for_bad_custom_access_declarations() 
     );
     assert_eq!(*execution.resources().get::<u32>().unwrap(), 2);
 }
+
+#[tokio::test]
+async fn dependent_starts_on_completion_without_waiting_for_unrelated_work() {
+    struct Gate {
+        dependent_finished: tokio::sync::Notify,
+        calls: AtomicUsize,
+    }
+    async fn first() {}
+    async fn unrelated(gate: Shared<Gate>) {
+        gate.dependent_finished.notified().await;
+    }
+    async fn dependent(gate: Shared<Gate>) {
+        gate.calls.fetch_add(1, Ordering::SeqCst);
+        gate.dependent_finished.notify_one();
+    }
+    let mut app = App::new();
+    app.set_max_parallelism(NonZeroUsize::new(2).unwrap());
+    app.insert_shared_resource(Arc::new(Gate {
+        dependent_finished: tokio::sync::Notify::new(),
+        calls: AtomicUsize::new(0),
+    }));
+    app.add_processors(
+        Received,
+        (
+            async_processor(first),
+            async_processor(unrelated),
+            async_processor(dependent).after(first),
+        ),
+    );
+    let mut execution = app.execution();
+    for _ in 0..2 {
+        timeout(Duration::from_secs(3), execution.run_stage_async(Received))
+            .await
+            .unwrap()
+            .unwrap();
+    }
+    assert_eq!(
+        execution
+            .resources()
+            .get_shared::<Gate>()
+            .unwrap()
+            .calls
+            .load(Ordering::SeqCst),
+        2
+    );
+}
+
+#[tokio::test]
+async fn access_metadata_is_cached_and_executor_sets_cover_more_than_one_word() {
+    struct Counts {
+        access: AtomicUsize,
+        runs: AtomicUsize,
+    }
+    #[derive(Clone)]
+    struct Cached {
+        counts: Arc<Counts>,
+    }
+    impl Processor for Cached {
+        fn access(&self) -> Access {
+            self.counts.access.fetch_add(1, Ordering::SeqCst);
+            Access::default()
+        }
+        fn run(&mut self, _: &Resources) -> io::Result<()> {
+            self.counts.runs.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        }
+    }
+    let counts = Arc::new(Counts {
+        access: AtomicUsize::new(0),
+        runs: AtomicUsize::new(0),
+    });
+    let mut app = App::new();
+    app.set_max_parallelism(NonZeroUsize::new(4).unwrap());
+    for _ in 0..70 {
+        app.add_processors(
+            Received,
+            Cached {
+                counts: counts.clone(),
+            },
+        );
+    }
+    let mut execution = app.execution();
+    assert_eq!(counts.access.load(Ordering::SeqCst), 0);
+    execution.run_stage_async(Received).await.unwrap();
+    assert_eq!(counts.access.load(Ordering::SeqCst), 70);
+    execution.run_stage_async(Received).await.unwrap();
+    assert_eq!(counts.access.load(Ordering::SeqCst), 70);
+    assert_eq!(counts.runs.load(Ordering::SeqCst), 140);
+}
+
+#[tokio::test]
+async fn deferred_barrier_waits_for_readers_then_releases_dependent_work() {
+    struct Gate {
+        reader_started: AtomicUsize,
+        reader_finished: AtomicUsize,
+    }
+    struct Output(u32);
+    async fn produce(gate: Shared<Gate>, mut writer: ContextWriter) {
+        while gate.reader_started.load(Ordering::SeqCst) == 0 {
+            tokio::task::yield_now().await;
+        }
+        writer.insert_resource(Output(42));
+    }
+    fn read(value: Res<u32>, gate: Shared<Gate>) {
+        gate.reader_started.store(1, Ordering::SeqCst);
+        std::thread::sleep(Duration::from_millis(20));
+        assert_eq!(*value, 1);
+        gate.reader_finished.store(1, Ordering::SeqCst);
+    }
+    fn consume(output: Res<Output>, gate: Shared<Gate>) {
+        assert_eq!(output.0, 42);
+        assert_eq!(gate.reader_finished.load(Ordering::SeqCst), 1);
+    }
+    let mut app = App::new();
+    app.set_max_parallelism(NonZeroUsize::new(2).unwrap());
+    app.insert_shared_resource(Arc::new(Gate {
+        reader_started: AtomicUsize::new(0),
+        reader_finished: AtomicUsize::new(0),
+    }));
+    app.add_processors(
+        Received,
+        (
+            async_processor(produce).with_access(Access::default()),
+            read,
+            consume.after(produce),
+        ),
+    );
+    let mut execution = app.execution();
+    execution.resources_mut().insert(1_u32);
+    timeout(Duration::from_secs(3), execution.run_stage_async(Received))
+        .await
+        .unwrap()
+        .unwrap();
+}
+
+#[tokio::test]
+async fn cached_condition_access_waits_for_conflicting_writer() {
+    struct Observed(AtomicUsize);
+    fn update(mut value: ResMut<u32>) {
+        std::thread::sleep(Duration::from_millis(10));
+        *value = 2;
+    }
+    fn observe(observed: Shared<Observed>) {
+        observed.0.fetch_add(1, Ordering::SeqCst);
+    }
+    let mut app = App::new();
+    app.set_max_parallelism(NonZeroUsize::new(2).unwrap());
+    app.insert_shared_resource(Arc::new(Observed(AtomicUsize::new(0))));
+    app.add_processors(
+        Received,
+        (update, observe.run_if(|value: Res<u32>| *value == 2)),
+    );
+    let mut execution = app.execution();
+    execution.resources_mut().insert(1_u32);
+    execution.run_stage_async(Received).await.unwrap();
+    assert_eq!(
+        execution
+            .resources()
+            .get_shared::<Observed>()
+            .unwrap()
+            .0
+            .load(Ordering::SeqCst),
+        1
+    );
+}

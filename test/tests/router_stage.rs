@@ -9,7 +9,7 @@ fn stage_with<M>(processor: impl IntoProcessors<M>) -> Stage {
 }
 
 #[test]
-fn conflicting_parameters_panic_without_running_the_function() {
+fn conflicting_parameters_fail_initialization_before_processor_execution() {
     let mut resources = Resources::default();
     resources.insert(5_u32);
     let called = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -17,11 +17,11 @@ fn conflicting_parameters_panic_without_running_the_function() {
     let mut stage = stage_with(move |_: Res<u32>, _: ResMut<u32>| {
         observed.store(true, std::sync::atomic::Ordering::SeqCst);
     });
-    let panic =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| stage.run(&mut resources)));
-    assert!(panic.is_err());
+    assert_eq!(
+        stage.run(&mut resources).unwrap_err().kind(),
+        io::ErrorKind::InvalidInput
+    );
     assert!(!called.load(std::sync::atomic::Ordering::SeqCst));
-    // Failed parameter fetching must release any earlier borrow.
     assert_eq!(*resources.get_mut::<u32>().unwrap(), 5);
 }
 

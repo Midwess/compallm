@@ -6,3 +6,6 @@ This product includes software developed by the Compallm Contributors.
 Compallm is licensed under the Elastic License 2.0 (ELv2). See LICENSE.
 
 Third-party components retain their respective licenses and notices.
+
+SEC stage scheduling adapts Bevy ECS scheduling algorithms and structure.
+See sec/NOTICE and sec/licenses/bevy for upstream attribution and licenses.

@@ -1,5 +1,5 @@
 use crate::{
-    access::Access,
+    access::{Access, validate_parameters},
     processor::{IntoProcessor, Processor, ProcessorFuture, ProcessorOutput},
     resources::{ContextWriter, Owned, Resources, Shared},
 };
@@ -98,6 +98,7 @@ macro_rules! async_function {
         impl<F, Fut, O, $($param: AsyncParam),+> Processor for AsyncFunction<F, fn($($param),+) -> Fut>
         where F: FnMut($($param),+) -> Fut + Send + 'static, Fut: Future<Output = O> + Send + 'static, O: ProcessorOutput + 'static,
         {
+            fn validate(&self) -> io::Result<()> { validate_parameters(&[$($param::access()),+]) }
             fn processor_type(&self) -> TypeId { TypeId::of::<F>() }
             fn access(&self) -> Access { let mut access = Access::default(); $(access.merge($param::access());)+ access }
             fn is_async(&self) -> bool { true }

@@ -125,30 +125,44 @@ async fn dropping_router_aborts_active_connection() {
 }
 
 #[tokio::test]
-async fn processor_local_state_is_isolated_between_connections() {
+async fn processor_state_persists_without_reconfiguring_per_connection() {
     timeout(Duration::from_secs(5), async {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let called = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let observed = called.clone();
         let mut router = Router::new(model());
-        router.add_processors(HeaderReceived, move |mut runs: Local<usize>| {
-            assert_eq!(*runs, 0);
-            *runs += 1;
-            observed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let configured = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let configured_count = configured.clone();
+        // A non-Clone captured value verifies that processors are never cloned.
+        struct Counter(usize);
+        let mut captured = Counter(0);
+        router.configure_stage(HeaderReceived, move |stage| {
+            configured_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            stage.add_processors(move |mut runs: Local<usize>, header: Res<RequestHeader>| {
+                let previous = observed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                assert_eq!(*runs, previous);
+                assert_eq!(captured.0, previous);
+                // Per-connection header data must remain independent of persistent processor state.
+                assert_eq!(header.target, format!("/{previous}"));
+                *runs += 1;
+                captured.0 += 1;
+            });
         });
-        for _ in 0..2 {
+        assert_eq!(configured.load(std::sync::atomic::Ordering::SeqCst), 1);
+        for index in 0..2 {
             let mut client = TcpStream::connect(listener.local_addr().unwrap())
                 .await
                 .unwrap();
             let (stream, _) = listener.accept().await.unwrap();
             router.on_connection(stream).unwrap();
             client
-                .write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                .write_all(format!("GET /{index} HTTP/1.1\r\nHost: localhost\r\n\r\n").as_bytes())
                 .await
                 .unwrap();
             router.join_next().await.unwrap().unwrap().unwrap();
         }
         assert_eq!(called.load(std::sync::atomic::Ordering::SeqCst), 2);
+        assert_eq!(configured.load(std::sync::atomic::Ordering::SeqCst), 1);
     })
     .await
     .unwrap();
@@ -280,6 +294,46 @@ async fn body_started_selects_provider_after_headers_without_waiting_for_payload
             router.join_next().await.unwrap().unwrap().unwrap();
         }
         assert_eq!(observed.load(Ordering::SeqCst), 2);
+    })
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn waiting_for_one_header_does_not_lock_shared_stages() {
+    timeout(Duration::from_secs(5), async {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let mut first = TcpStream::connect(listener.local_addr().unwrap())
+            .await
+            .unwrap();
+        let (first_stream, _) = listener.accept().await.unwrap();
+        let mut second = TcpStream::connect(listener.local_addr().unwrap())
+            .await
+            .unwrap();
+        let (second_stream, _) = listener.accept().await.unwrap();
+        let mut router = Router::new(model());
+        router.add_processors(
+            HeaderReceived,
+            |header: Res<RequestHeader>, mut runs: Local<usize>| {
+                // The second admitted connection finishes its header first.
+                assert_eq!(header.target, if *runs == 0 { "/second" } else { "/first" });
+                *runs += 1;
+            },
+        );
+        router.on_connection(first_stream).unwrap();
+        router.on_connection(second_stream).unwrap();
+        first
+            .write_all(b"GET /first HTTP/1.1\r\nHost: localhost\r\n")
+            .await
+            .unwrap();
+        second
+            .write_all(b"GET /second HTTP/1.1\r\nHost: localhost\r\n\r\n")
+            .await
+            .unwrap();
+        router.join_next().await.unwrap().unwrap().unwrap();
+        assert_eq!(router.pending_connections(), 1);
+        first.write_all(b"\r\n").await.unwrap();
+        router.join_next().await.unwrap().unwrap().unwrap();
     })
     .await
     .unwrap();

@@ -4,10 +4,13 @@ pub mod stage;
 
 use crate::{
     connection::Connection,
-    stage::{IntoProcessors, Stage, StageDefinitions, StageLabel},
+    stage::{IntoProcessors, Stage, StageLabel, Stages},
 };
 use compallm_core::model::Model;
-use std::{io, sync::Arc};
+use std::{
+    io,
+    sync::{Arc, Mutex},
+};
 use tokio::{
     net::TcpStream,
     task::{JoinError, JoinSet},
@@ -18,7 +21,7 @@ use tokio::{
 pub struct Router {
     model: Arc<Model>,
     connections: JoinSet<io::Result<()>>,
-    stages: StageDefinitions,
+    stages: Arc<Mutex<Stages>>,
 }
 
 impl Router {
@@ -26,25 +29,30 @@ impl Router {
         Self {
             model: Arc::new(model),
             connections: JoinSet::new(),
-            stages: StageDefinitions::default(),
+            stages: Arc::new(Mutex::new(Stages::default())),
         }
     }
 
-    /// Register typed processors for future connections, executed in registration order.
+    /// Convert and retain processors once, executed in registration order.
     pub fn add_processors<M, C>(&mut self, label: impl StageLabel, processors: C)
     where
-        C: IntoProcessors<M> + Clone + Send + Sync + 'static,
+        C: IntoProcessors<M>,
     {
-        self.stages.add(label, processors);
+        self.stages
+            .lock()
+            .expect("Router stages poisoned")
+            .get_or_insert(label)
+            .add_processors(processors);
     }
 
-    /// Configure an independently initialized stage for each connection.
-    pub fn configure_stage(
-        &mut self,
-        label: impl StageLabel,
-        configure: impl Fn(&mut Stage) + Send + Sync + 'static,
-    ) {
-        self.stages.configure(label, configure);
+    /// Configure the live stage once; captured processor state need not be Clone.
+    pub fn configure_stage(&mut self, label: impl StageLabel, configure: impl FnOnce(&mut Stage)) {
+        configure(
+            self.stages
+                .lock()
+                .expect("Router stages poisoned")
+                .get_or_insert(label),
+        );
     }
 
     pub fn model(&self) -> &Model {
@@ -57,7 +65,7 @@ impl Router {
             model: Arc::clone(&self.model),
             peer_addr: stream.peer_addr()?,
             stream,
-            stages: self.stages.build(),
+            stages: Arc::clone(&self.stages),
         };
         self.connections.spawn(connection.run());
         Ok(())

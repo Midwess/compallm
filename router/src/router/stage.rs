@@ -14,7 +14,7 @@ impl StageLabel for HeaderReceived {}
 pub struct BodyStarted;
 impl StageLabel for BodyStarted {}
 
-/// Ordered processors with independent parameter and local state.
+/// Ordered processor instances whose parameter and local state persist between runs.
 #[derive(Default)]
 pub struct Stage {
     processors: Vec<Box<dyn Processor>>,
@@ -81,45 +81,16 @@ processor_tuple!(A: MA: 0, B: MB: 1);
 processor_tuple!(A: MA: 0, B: MB: 1, C: MC: 2);
 processor_tuple!(A: MA: 0, B: MB: 1, C: MC: 2, D: MD: 3);
 
-type Configure = dyn Fn(&mut Stage) + Send + Sync;
+/// Router-owned executable stages, retained for the Router's lifetime.
 #[derive(Default)]
-pub(crate) struct StageDefinitions {
-    definitions: HashMap<TypeId, Vec<Box<Configure>>>,
-}
-impl StageDefinitions {
-    pub(crate) fn add<L: StageLabel, M, S>(&mut self, label: L, processors: S)
-    where
-        S: IntoProcessors<M> + Clone + Send + Sync + 'static,
-    {
-        self.configure(label, move |stage| stage.add_processors(processors.clone()));
-    }
-    pub(crate) fn configure<L: StageLabel>(
-        &mut self,
-        _: L,
-        configure: impl Fn(&mut Stage) + Send + Sync + 'static,
-    ) {
-        self.definitions
-            .entry(TypeId::of::<L>())
-            .or_default()
-            .push(Box::new(configure));
-    }
-    pub(crate) fn build(&self) -> Stages {
-        let mut stages = HashMap::new();
-        for (&label, configurations) in &self.definitions {
-            let mut stage = Stage::default();
-            for configure in configurations {
-                configure(&mut stage);
-            }
-            stages.insert(label, stage);
-        }
-        Stages { stages }
-    }
-}
-
 pub(crate) struct Stages {
     stages: HashMap<TypeId, Stage>,
 }
 impl Stages {
+    pub(crate) fn get_or_insert<L: StageLabel>(&mut self, _: L) -> &mut Stage {
+        self.stages.entry(TypeId::of::<L>()).or_default()
+    }
+
     pub(crate) fn run<L: StageLabel>(&mut self, _: L, resources: &mut Resources) -> io::Result<()> {
         if let Some(stage) = self.stages.get_mut(&TypeId::of::<L>()) {
             stage.run(resources)?;

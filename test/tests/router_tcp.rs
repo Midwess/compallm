@@ -220,19 +220,18 @@ async fn header_processor_failure_stops_the_stage_and_returns_to_caller() {
             .unwrap();
         let (stream, _) = listener.accept().await.unwrap();
         let mut router = Router::new(model());
+        fn authorize_header(header: Res<RequestHeader>) -> std::io::Result<()> {
+            assert_eq!(header.method, "GET");
+            Err(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "rejected",
+            ))
+        }
+        router.add_processors(HeaderReceived, authorize_header);
         router.add_processors(
             HeaderReceived,
-            |header: Res<RequestHeader>| -> std::io::Result<()> {
-                assert_eq!(header.method, "GET");
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::PermissionDenied,
-                    "rejected",
-                ))
-            },
+            (|| -> () { panic!("must stop after rejection") }).after(authorize_header),
         );
-        router.add_processors(HeaderReceived, || -> () {
-            panic!("must stop after rejection")
-        });
         router.configure_stage(BodyStarted, |_| {
             panic!("body stage must not build after header rejection")
         });

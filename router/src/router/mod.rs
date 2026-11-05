@@ -55,6 +55,10 @@ impl Router {
         self.app.insert_shared_resource(resource);
     }
 
+    pub fn set_max_parallelism(&mut self, limit: std::num::NonZeroUsize) {
+        self.app.set_max_parallelism(limit);
+    }
+
     pub fn model(&self) -> &Model {
         &self.model
     }

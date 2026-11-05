@@ -27,7 +27,7 @@ impl Connection {
         let mut reader = BufReader::with_capacity(4096, self.stream);
         let header = header::read_header(&mut reader).await?;
         self.execution.resources_mut().insert(header);
-        self.execution.run_stage(HeaderReceived)?;
-        self.execution.run_stage(BodyStarted)
+        self.execution.run_stage_async(HeaderReceived).await?;
+        self.execution.run_stage_async(BodyStarted).await
     }
 }

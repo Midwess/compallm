@@ -4,13 +4,23 @@ use crate::{
     resources::{Resources, SharedResources},
     stage::{IntoProcessors, Stage, StageDefinitions, StageLabel, Stages},
 };
-use std::sync::Arc;
+use std::{num::NonZeroUsize, sync::Arc};
 
 /// Registration container. It does not own a loop, listener, or protocol lifecycle.
-#[derive(Default)]
 pub struct App {
     definitions: Arc<StageDefinitions>,
     shared: Arc<SharedResources>,
+    max_parallelism: NonZeroUsize,
+}
+impl Default for App {
+    fn default() -> Self {
+        Self {
+            definitions: Arc::default(),
+            shared: Arc::default(),
+            max_parallelism: std::thread::available_parallelism()
+                .unwrap_or(NonZeroUsize::new(1).unwrap()),
+        }
+    }
 }
 impl App {
     pub fn new() -> Self {
@@ -35,8 +45,12 @@ impl App {
     pub fn add_plugins<M>(&mut self, plugins: impl Plugins<M>) {
         plugins.build(self);
     }
+    pub fn set_max_parallelism(&mut self, limit: NonZeroUsize) {
+        self.max_parallelism = limit;
+    }
     pub fn execution(&self) -> Execution {
         Execution {
+            max_parallelism: self.max_parallelism,
             resources: Resources::with_shared(Arc::clone(&self.shared)),
             stages: Stages::new(Arc::clone(&self.definitions)),
         }

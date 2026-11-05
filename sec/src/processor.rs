@@ -1,8 +1,16 @@
-use crate::resources::{ContextWriter, Local, Res, ResMut, Resources, Shared};
-use std::{any::TypeId, io, marker::PhantomData};
+use crate::{
+    access::Access,
+    resources::{ContextWriter, Local, Res, ResMut, Resources, Shared},
+};
+use std::{any::TypeId, future::Future, io, marker::PhantomData, pin::Pin};
+
+pub type ProcessorFuture<'a> = Pin<Box<dyn Future<Output = io::Result<()>> + Send + 'a>>;
 
 /// Fetch a typed argument and keep any per-processor state between runs.
 pub trait ProcessorParam: 'static {
+    fn access() -> Access {
+        Access::exclusive()
+    }
     type State: Default + Send + 'static;
     type Item<'a>;
     fn fetch<'a>(
@@ -12,6 +20,9 @@ pub trait ProcessorParam: 'static {
 }
 
 impl<T: Send + Sync + 'static> ProcessorParam for Shared<T> {
+    fn access() -> Access {
+        Access::default()
+    }
     type State = ();
     type Item<'a> = Shared<T>;
     fn fetch<'a>(resources: &'a Resources, _: &'a mut ()) -> io::Result<Self::Item<'a>> {
@@ -19,15 +30,18 @@ impl<T: Send + Sync + 'static> ProcessorParam for Shared<T> {
     }
 }
 
-impl ProcessorParam for ContextWriter<'static> {
+impl ProcessorParam for ContextWriter {
     type State = ();
-    type Item<'a> = ContextWriter<'a>;
+    type Item<'a> = ContextWriter;
     fn fetch<'a>(resources: &'a Resources, _: &'a mut ()) -> io::Result<Self::Item<'a>> {
-        Ok(ContextWriter(resources))
+        Ok(resources.writer())
     }
 }
 
 impl<T: Send + Sync + 'static> ProcessorParam for Res<'static, T> {
+    fn access() -> Access {
+        Access::default().read::<T>()
+    }
     type State = ();
     type Item<'a> = Res<'a, T>;
     fn fetch<'a>(resources: &'a Resources, _: &'a mut ()) -> io::Result<Self::Item<'a>> {
@@ -35,6 +49,9 @@ impl<T: Send + Sync + 'static> ProcessorParam for Res<'static, T> {
     }
 }
 impl<T: Send + Sync + 'static> ProcessorParam for ResMut<'static, T> {
+    fn access() -> Access {
+        Access::default().write::<T>()
+    }
     type State = ();
     type Item<'a> = ResMut<'a, T>;
     fn fetch<'a>(resources: &'a Resources, _: &'a mut ()) -> io::Result<Self::Item<'a>> {
@@ -42,6 +59,9 @@ impl<T: Send + Sync + 'static> ProcessorParam for ResMut<'static, T> {
     }
 }
 impl<T: Default + Send + 'static> ProcessorParam for Local<'static, T> {
+    fn access() -> Access {
+        Access::default()
+    }
     type State = T;
     type Item<'a> = Local<'a, T>;
     fn fetch<'a>(_: &'a Resources, state: &'a mut T) -> io::Result<Self::Item<'a>> {
@@ -50,6 +70,15 @@ impl<T: Default + Send + 'static> ProcessorParam for Local<'static, T> {
 }
 
 pub trait Processor: Send + 'static {
+    fn access(&self) -> Access {
+        Access::exclusive()
+    }
+    fn is_async(&self) -> bool {
+        false
+    }
+    fn run_async<'a>(&'a mut self, resources: &'a Resources) -> ProcessorFuture<'a> {
+        Box::pin(async move { self.run(resources) })
+    }
     fn processor_type(&self) -> TypeId {
         TypeId::of::<Self>()
     }
@@ -113,6 +142,9 @@ where
     fn processor_type(&self) -> TypeId {
         TypeId::of::<F>()
     }
+    fn access(&self) -> Access {
+        Access::default()
+    }
     fn run(&mut self, _: &Resources) -> io::Result<()> {
         (self.function)().into_result()
     }
@@ -138,6 +170,9 @@ macro_rules! function_processor {
             F: for<'a> FnMut($($param::Item<'a>),+) -> O,
             O: ProcessorOutput + 'static,
         {
+            fn access(&self) -> Access {
+                let mut access = Access::default(); $(access.merge($param::access());)+ access
+            }
             fn processor_type(&self) -> TypeId { TypeId::of::<F>() }
             fn run(&mut self, resources: &Resources) -> io::Result<()> {
                 (self.function)($($param::fetch(resources, &mut self.state.$index)?),+).into_result()
@@ -151,6 +186,9 @@ function_processor!(P0: 0, P1: 1, P2: 2);
 function_processor!(P0: 0, P1: 1, P2: 2, P3: 3);
 
 pub trait Condition: Send {
+    fn access(&self) -> Access {
+        Access::exclusive()
+    }
     fn evaluate(&mut self, resources: &Resources) -> io::Result<bool>;
 }
 pub trait IntoCondition<Marker> {
@@ -189,6 +227,9 @@ where
     F: FnMut() -> O + Send + 'static,
     O: ConditionOutput,
 {
+    fn access(&self) -> Access {
+        Access::default()
+    }
     fn evaluate(&mut self, _: &Resources) -> io::Result<bool> {
         (self.function)().into_result()
     }
@@ -208,6 +249,7 @@ macro_rules! function_condition {
         where F: FnMut($($param),+) -> O + Send + 'static,
               F: for<'a> FnMut($($param::Item<'a>),+) -> O, O: ConditionOutput,
         {
+            fn access(&self) -> Access { let mut access = Access::default(); $(access.merge($param::access());)+ access }
             fn evaluate(&mut self, resources: &Resources) -> io::Result<bool> {
                 (self.function)($($param::fetch(resources, &mut self.state.$index)?),+).into_result()
             }

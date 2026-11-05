@@ -1,4 +1,7 @@
+mod executor;
+
 use crate::{
+    access::Access,
     processor::{Condition, IntoCondition, IntoProcessor, Processor},
     resources::Resources,
 };
@@ -7,6 +10,7 @@ use std::{
     collections::{HashMap, HashSet},
     io,
     marker::PhantomData,
+    num::NonZeroUsize,
     sync::Arc,
 };
 
@@ -15,35 +19,86 @@ pub trait StageLabel: Send + Sync + 'static {}
 
 pub struct ProcessorConfig {
     processor: Box<dyn Processor>,
+    access_override: Option<Access>,
     before: Vec<TypeId>,
     after: Vec<TypeId>,
     predecessors: Vec<usize>,
     conditions: Vec<Box<dyn Condition>>,
 }
 
-/// A lazily prepared dependency plan and its execution-local processor instances.
+/// A cached dependency plan with per-execution state. Async cancellation invalidates it.
 #[derive(Default)]
 pub struct Stage {
-    processors: Vec<ProcessorConfig>,
-    order: Option<Vec<usize>>,
+    processors: Vec<Option<ProcessorConfig>>,
+    plan: Option<Plan>,
+    interrupted: bool,
+}
+struct Plan {
+    order: Vec<usize>,
+    predecessors: Vec<Vec<usize>>,
+}
+impl ProcessorConfig {
+    fn access(&self) -> Access {
+        let mut access = self
+            .access_override
+            .clone()
+            .unwrap_or_else(|| self.processor.access());
+        for condition in &self.conditions {
+            access.merge(condition.access());
+        }
+        access
+    }
+    fn allowed(&mut self, resources: &Resources) -> io::Result<bool> {
+        for condition in &mut self.conditions {
+            if !condition.evaluate(resources)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
 }
 impl Stage {
     pub fn add_processors<M>(&mut self, processors: impl IntoProcessors<M>) {
-        append(&mut self.processors, processors.into_processors());
-        self.order = None;
-    }
-
-    pub fn run(&mut self, resources: &mut Resources) -> io::Result<()> {
-        if self.order.is_none() {
-            self.order = Some(self.prepare()?);
+        let mut configs = processors.into_processors();
+        for config in &mut configs {
+            for predecessor in &mut config.predecessors {
+                *predecessor += self.processors.len();
+            }
         }
-        for &index in self.order.as_ref().expect("prepared stage") {
-            let config = &mut self.processors[index];
+        self.processors.extend(configs.into_iter().map(Some));
+        self.plan = None;
+    }
+    fn initialize(&mut self) -> io::Result<()> {
+        if self.interrupted {
+            return Err(io::Error::other(
+                "stage was cancelled or panicked; drop its execution",
+            ));
+        }
+        if self.plan.is_none() {
+            self.plan = Some(self.prepare()?);
+        }
+        Ok(())
+    }
+    pub fn run(&mut self, resources: &mut Resources) -> io::Result<()> {
+        self.initialize()?;
+        if self
+            .processors
+            .iter()
+            .flatten()
+            .any(|c| c.processor.is_async())
+        {
+            return Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "async stage requires run_stage_async",
+            ));
+        }
+        for &index in &self.plan.as_ref().expect("prepared stage").order {
+            let config = self.processors[index]
+                .as_mut()
+                .expect("available processor");
             let result = (|| {
-                for condition in &mut config.conditions {
-                    if !condition.evaluate(resources)? {
-                        return Ok(false);
-                    }
+                if !config.allowed(resources)? {
+                    return Ok(false);
                 }
                 config.processor.run(resources)?;
                 Ok(true)
@@ -60,10 +115,11 @@ impl Stage {
         Ok(())
     }
 
-    fn prepare(&self) -> io::Result<Vec<usize>> {
+    fn prepare(&self) -> io::Result<Plan> {
         let count = self.processors.len();
         let mut edges = HashSet::new();
         for (index, config) in self.processors.iter().enumerate() {
+            let config = config.as_ref().expect("available processor");
             for &predecessor in &config.predecessors {
                 edges.insert((predecessor, index));
             }
@@ -71,7 +127,13 @@ impl Stage {
                 for target in targets {
                     let mut found = false;
                     for (other, candidate) in self.processors.iter().enumerate() {
-                        if candidate.processor.processor_type() == *target {
+                        if candidate
+                            .as_ref()
+                            .expect("available processor")
+                            .processor
+                            .processor_type()
+                            == *target
+                        {
                             edges.insert(if before {
                                 (index, other)
                             } else {
@@ -91,26 +153,31 @@ impl Stage {
         }
         let mut remaining = vec![0; count];
         let mut dependents = vec![Vec::new(); count];
+        let mut predecessors = vec![Vec::new(); count];
         for (from, to) in edges {
             remaining[to] += 1;
             dependents[from].push(to);
+            predecessors[to].push(from);
         }
         let mut order = Vec::with_capacity(count);
-        let mut completed = vec![false; count];
+        let mut done = vec![false; count];
         while order.len() < count {
-            let Some(next) = (0..count).find(|&i| !completed[i] && remaining[i] == 0) else {
+            let Some(next) = (0..count).find(|&i| !done[i] && remaining[i] == 0) else {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
                     "cycle in stage dependencies",
                 ));
             };
-            completed[next] = true;
+            done[next] = true;
             order.push(next);
             for &dependent in &dependents[next] {
                 remaining[dependent] -= 1;
             }
         }
-        Ok(order)
+        Ok(Plan {
+            order,
+            predecessors,
+        })
     }
 }
 
@@ -143,6 +210,12 @@ pub trait IntoProcessors<Marker>: Sized {
             after: vec![TypeId::of::<T>()],
         }
     }
+    fn with_access(self, access: Access) -> AccessConfigured<Self> {
+        AccessConfigured {
+            processors: self,
+            access,
+        }
+    }
     fn run_if<M, C: IntoCondition<M>>(self, condition: C) -> Conditional<Self, C, M> {
         Conditional {
             processors: self,
@@ -156,6 +229,12 @@ pub struct Single<M>(PhantomData<M>);
 pub struct Tuple<M>(PhantomData<M>);
 pub struct Chained<M>(PhantomData<M>);
 pub struct WithOrder<M>(PhantomData<M>);
+pub struct WithAccess<M>(PhantomData<M>);
+#[derive(Clone)]
+pub struct AccessConfigured<T> {
+    processors: T,
+    access: Access,
+}
 pub struct WithCondition<P, C>(PhantomData<(P, C)>);
 #[derive(Clone)]
 pub struct Chain<T>(T);
@@ -187,11 +266,24 @@ where
     fn into_processors(self) -> Vec<ProcessorConfig> {
         vec![ProcessorConfig {
             processor: Box::new(self.into_processor()),
+            access_override: None,
             before: Vec::new(),
             after: Vec::new(),
             predecessors: Vec::new(),
             conditions: Vec::new(),
         }]
+    }
+}
+impl<T, M> IntoProcessors<WithAccess<M>> for AccessConfigured<T>
+where
+    T: IntoProcessors<M>,
+{
+    fn into_processors(self) -> Vec<ProcessorConfig> {
+        let mut configs = self.processors.into_processors();
+        for config in &mut configs {
+            config.access_override = Some(self.access.clone());
+        }
+        configs
     }
 }
 impl<T, M> IntoProcessors<Chained<M>> for Chain<T>
@@ -294,17 +386,35 @@ impl Stages {
             stages: HashMap::new(),
         }
     }
-    pub(crate) fn run<L: StageLabel>(&mut self, _: L, resources: &mut Resources) -> io::Result<()> {
+    fn get_or_build<L: StageLabel>(&mut self, _: L) -> Option<&mut Stage> {
         use std::collections::hash_map::Entry;
-        let stage = match self.stages.entry(TypeId::of::<L>()) {
+        Some(match self.stages.entry(TypeId::of::<L>()) {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => {
-                let Some(stage) = self.definitions.build(*entry.key()) else {
-                    return Ok(());
-                };
+                let stage = self.definitions.build(*entry.key())?;
                 entry.insert(stage)
             }
-        };
-        stage.run(resources)
+        })
+    }
+    pub(crate) fn run<L: StageLabel>(
+        &mut self,
+        label: L,
+        resources: &mut Resources,
+    ) -> io::Result<()> {
+        if let Some(stage) = self.get_or_build(label) {
+            stage.run(resources)?;
+        }
+        Ok(())
+    }
+    pub(crate) async fn run_async<L: StageLabel>(
+        &mut self,
+        label: L,
+        resources: &mut Resources,
+        limit: NonZeroUsize,
+    ) -> io::Result<()> {
+        if let Some(stage) = self.get_or_build(label) {
+            stage.run_async(resources, limit).await?;
+        }
+        Ok(())
     }
 }

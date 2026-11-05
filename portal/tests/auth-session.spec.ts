@@ -23,6 +23,9 @@ for (const mode of ['signup', 'signin'] as const) {
     await page.getByRole('button', { name: 'Continue', exact: true }).click()
     await expect(page.getByRole('group', { name: 'Email code' })).toBeVisible()
     expect(requests).toEqual([{ email: 'alice@localhost', delivery: 'cookie' }])
+    // The controller enters the code step before React Router commits the URL.
+    // Reload only after the confirmation address can restore that step.
+    await expect(page).toHaveURL(new RegExp(`/${mode === 'signup' ? 'signup' : 'login'}/confirmation\\?`))
     await page.reload()
     const code = page.getByRole('group', { name: 'Email code' }).getByRole('textbox')
     await expect(code).toHaveCount(6)

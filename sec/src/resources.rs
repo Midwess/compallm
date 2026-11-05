@@ -10,18 +10,24 @@ use std::{
     sync::Arc,
 };
 
-#[derive(Default)]
-struct ResourceStore {
-    world: World,
-    entities: HashMap<TypeId, Entity>,
-}
-
-/// Isolated hecs resource storage. Workers share storage only while a stage wave runs.
-#[derive(Default)]
+/// One hecs World and resource entity per execution. Worker handles live only during a wave.
 pub struct Resources {
-    store: Arc<ResourceStore>,
+    world: Arc<World>,
+    entity: Entity,
     pending: PendingInsertions,
     shared: Arc<SharedResources>,
+}
+impl Default for Resources {
+    fn default() -> Self {
+        let mut world = World::new();
+        let entity = world.spawn(());
+        Self {
+            world: Arc::new(world),
+            entity,
+            pending: PendingInsertions::default(),
+            shared: Arc::default(),
+        }
+    }
 }
 impl Resources {
     pub(crate) fn with_shared(shared: Arc<SharedResources>) -> Self {
@@ -32,50 +38,30 @@ impl Resources {
     }
     pub(crate) fn invocation(&self) -> Self {
         Self {
-            store: Arc::clone(&self.store),
+            world: Arc::clone(&self.world),
+            entity: self.entity,
             pending: PendingInsertions::default(),
             shared: Arc::clone(&self.shared),
         }
     }
     pub fn insert<T: Send + Sync + 'static>(&mut self, value: T) {
-        let store = Arc::get_mut(&mut self.store)
+        let world = Arc::get_mut(&mut self.world)
             .expect("cannot insert while resource workers are active; drop a cancelled execution");
-        if let Some(&entity) = store.entities.get(&TypeId::of::<T>()) {
-            store
-                .world
-                .insert_one(entity, value)
-                .expect("private resource entity");
-        } else {
-            let entity = store.world.spawn((value,));
-            store.entities.insert(TypeId::of::<T>(), entity);
-        }
+        world
+            .insert_one(self.entity, value)
+            .expect("private resource entity");
     }
     pub fn get<T: Send + Sync + 'static>(&self) -> io::Result<Res<'_, T>> {
-        let entity = *self
-            .store
-            .entities
-            .get(&TypeId::of::<T>())
-            .ok_or_else(missing::<T>)?;
-        let value = self
-            .store
-            .world
-            .get::<&T>(entity)
-            .map_err(|_| missing::<T>())?;
-        Ok(value)
+        self.world
+            .get::<&T>(self.entity)
+            .map_err(|_| missing::<T>())
     }
     pub fn get_mut<T: Send + Sync + 'static>(&self) -> io::Result<ResMut<'_, T>> {
-        let entity = *self
-            .store
-            .entities
-            .get(&TypeId::of::<T>())
-            .ok_or_else(missing::<T>)?;
-        let value = self
-            .store
-            .world
-            .get::<&mut T>(entity)
-            .map_err(|_| missing::<T>())?;
-        Ok(value)
+        self.world
+            .get::<&mut T>(self.entity)
+            .map_err(|_| missing::<T>())
     }
+
     pub fn get_shared<T: Send + Sync + 'static>(&self) -> io::Result<Shared<T>> {
         let value = self
             .shared

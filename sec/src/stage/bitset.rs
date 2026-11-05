@@ -1,4 +1,3 @@
-/// Compact sets for executable node IDs. Algorithms follow Bevy's fixed-bitset use.
 #[derive(Clone, Default)]
 pub(super) struct BitSet {
     words: Vec<u64>,

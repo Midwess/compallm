@@ -1,5 +1,6 @@
+pub mod header;
+
 use crate::{
-    header,
     resources::{PeerAddress, Resources, RouterModel},
     stage::{BodyStarted, HeaderReceived, Stages},
 };

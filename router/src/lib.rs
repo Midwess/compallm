@@ -1,10 +1,10 @@
 //! A model-scoped TCP Router with local typed stages.
 pub mod connection;
-pub mod header;
-pub mod processor;
-pub mod resources;
+pub mod processing;
 pub mod router;
-pub mod stage;
+
+pub use connection::header;
+pub use processing::{processor, resources, stage};
 
 pub use connection::Connection;
 pub use router::Router;

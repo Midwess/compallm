@@ -50,6 +50,15 @@ pub trait IntoProcessor<Marker> {
     fn into_processor(self) -> Self::Processor;
 }
 
+/// Struct processors are already executable; registration retains the instance.
+impl<P: Processor + 'static> IntoProcessor<()> for P {
+    type Processor = P;
+
+    fn into_processor(self) -> Self::Processor {
+        self
+    }
+}
+
 pub trait ProcessorOutput {
     fn into_result(self) -> io::Result<()>;
 }

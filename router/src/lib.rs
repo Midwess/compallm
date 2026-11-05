@@ -13,6 +13,7 @@ pub mod prelude {
     pub use crate::{
         Router,
         header::RequestHeader,
+        processor::Processor,
         resources::{ContextWriter, Local, PeerAddress, Res, ResMut, Resources, RouterModel},
         stage::{BodyStarted, HeaderReceived, IntoProcessors, Stage, StageLabel},
     };

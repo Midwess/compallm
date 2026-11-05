@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }),
     };
     let mut router = Router::new(model);
-    router.add_processors(HeaderReceived, inspect_header);
+    router.add_processors(HeaderReceived, InspectHeader { runs: 0 });
     // Synthetic instance only: the consumer supplies the real availability policy.
     let provider = Arc::new(ExampleProvider {
         name: "example-provider",
@@ -63,11 +63,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn inspect_header(header: Res<RequestHeader>, model: Res<RouterModel>, peer: Res<PeerAddress>) {
-    println!(
-        "model={} peer={} method={} target={}",
-        model.0.name, peer.0, header.method, header.target
-    );
+// Router retains this instance, so its state survives between connections.
+struct InspectHeader {
+    runs: usize,
+}
+
+impl Processor for InspectHeader {
+    fn run(&mut self, resources: &Resources) -> std::io::Result<()> {
+        let header = resources.get::<RequestHeader>()?;
+        let model = resources.get::<RouterModel>()?;
+        let peer = resources.get::<PeerAddress>()?;
+        self.runs += 1;
+        println!(
+            "run={} model={} peer={} method={} target={}",
+            self.runs, model.0.name, peer.0, header.method, header.target
+        );
+        Ok(())
+    }
 }
 
 struct ExampleProvider {

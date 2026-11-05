@@ -95,3 +95,30 @@ fn writer_from_failed_processor_are_discarded() {
     Stage::default().run(&mut resources).unwrap();
     assert!(resources.get::<u32>().is_err());
 }
+
+#[test]
+fn struct_processor_and_function_share_resources_and_preserve_instance_state() {
+    struct Counter {
+        runs: u32,
+    }
+    impl Processor for Counter {
+        fn run(&mut self, resources: &Resources) -> io::Result<()> {
+            self.runs += 1;
+            *resources.get_mut::<u32>()? = self.runs;
+            Ok(())
+        }
+    }
+    let mut stage = Stage::default();
+    stage.add_processors(
+        (Counter { runs: 0 }, |mut value: ResMut<u32>| {
+            *value *= 10;
+        })
+            .chain(),
+    );
+    for expected in [10, 20] {
+        let mut resources = Resources::default();
+        resources.insert(0_u32);
+        stage.run(&mut resources).unwrap();
+        assert_eq!(*resources.get::<u32>().unwrap(), expected);
+    }
+}

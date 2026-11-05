@@ -23,7 +23,7 @@ function visit(name) {
 Object.entries(document.components.schemas)
   .filter(([, schema]) => schema['x-compallm-input'])
   .forEach(([name]) => visit(name))
-const formats = new Set(['baseUrl', 'nonblank', 'authorization'])
+const formats = new Set(['baseUrl', 'nonblank', 'authorization', 'emailAddress'])
 const lines = [
   '// Generated from Rust/OpenAPI. Do not edit; run cargo run -p compallm-api -- generate.',
   "import * as raw from './schemas.ts'",
@@ -55,13 +55,24 @@ for (const name of names) {
     const constraints = {}
     for (const key of ['minLength', 'maxLength', 'pattern']) if (schema[key] !== undefined) constraints[key] = schema[key]
     if (schema['x-compallm-trim']) constraints.trim = true
+    if (schema['x-compallm-ascii-lowercase']) constraints.asciiLowercase = true
+    if (schema['x-compallm-email-policy']) constraints.emailPolicy = schema['x-compallm-email-policy']
     if (schema['x-compallm-input-pattern']) constraints.inputPattern = schema['x-compallm-input-pattern']
     if (schema['x-compallm-format']) {
       if (!formats.has(schema['x-compallm-format'])) throw new Error(`Unsupported custom rule: ${schema['x-compallm-format']}`)
       constraints.format = schema['x-compallm-format']
     }
     for (const key of Object.keys(schema)) {
-      if (key.startsWith('x-compallm-') && !['x-compallm-trim', 'x-compallm-format', 'x-compallm-input-pattern'].includes(key))
+      if (
+        key.startsWith('x-compallm-') &&
+        ![
+          'x-compallm-trim',
+          'x-compallm-format',
+          'x-compallm-input-pattern',
+          'x-compallm-ascii-lowercase',
+          'x-compallm-email-policy',
+        ].includes(key)
+      )
         throw new Error(`Unsupported contract extension: ${key}`)
     }
     if (!Object.keys(constraints).length) continue
@@ -80,13 +91,15 @@ for (const name of names) {
       'x-compallm-trim',
       'x-compallm-format',
       'x-compallm-input-pattern',
+      'x-compallm-ascii-lowercase',
+      'x-compallm-email-policy',
     ])
     for (const key of Object.keys(schema)) {
       if (!supported.has(key)) throw new Error(`String keyword needs explicit contract support: ${name}.${field}.${key}`)
     }
     metadata[field] = constraints
-    inputs.push(`${JSON.stringify(field)}: stringInput(${JSON.stringify(constraints)})`)
-    overrides.push(`${JSON.stringify(field)}: inputString(${JSON.stringify(constraints)})`)
+    inputs.push(`${JSON.stringify(field)}: stringInput(${name}Constraints[${JSON.stringify(field)}])`)
+    overrides.push(`${JSON.stringify(field)}: inputString(${name}Constraints[${JSON.stringify(field)}])`)
   }
   lines.push(`export const ${name}Constraints = ${JSON.stringify(metadata)} as const`)
   lines.push(`export const ${name}Input = {${inputs.join(',')}}`)

@@ -1,6 +1,7 @@
 import { createSignupStore, type SignupController } from '../../src/pages/signup'
 import { createSigninStore, type SigninController } from '../../src/pages/signin'
 import type { AuthInitialState, AuthOperation, AuthResult, AuthState } from '../../src/pages/auth/types'
+import { emailRequestSchema, otpRequestSchema } from '@compallm/contract/auth'
 
 export type AuthDemoScenario = 'default' | 'network-error' | 'throttled' | 'expired' | 'pending'
 
@@ -112,8 +113,13 @@ export class DemoAuthController implements SignupController, SigninController {
     const state = this.store.getState()
     if (state.pending || state.remaining > 0 || state.step === 'complete') return
     if ((operation === 'request' && state.step !== 'email') || (operation === 'resend' && state.step !== 'code')) return
+    const input = emailRequestSchema(this.mode).safeParse({ email: state.email, delivery: 'cookie' })
+    if (!input.success) {
+      this.onInvalidEmail()
+      return
+    }
     const generation = ++this.generation
-    const email = state.email.trim().replace(/[A-Z]/g, (character) => character.toLowerCase())
+    const email = input.data.email
     this.store.setState({ email, error: null, pending: operation })
     try {
       if (this.scenario === 'pending') await new Promise<never>(() => {})
@@ -141,7 +147,7 @@ export class DemoAuthController implements SignupController, SigninController {
 
   private async verifyCode(retry = false) {
     const state = this.store.getState()
-    if (state.pending || state.step !== 'code' || !/^[0-9]{6}$/.test(state.code)) return
+    if (state.pending || state.step !== 'code' || !otpRequestSchema(this.mode).safeParse({ code: state.code }).success) return
     if (!retry && this.lastAttempt === state.code) return
     this.lastAttempt = state.code
     const generation = ++this.generation

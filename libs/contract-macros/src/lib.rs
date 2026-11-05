@@ -105,6 +105,16 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                 })?;
             } else if attr.path().is_ident("modify") {
                 attr.parse_nested_meta(|modifier| {
+                    if modifier.path.is_ident("custom") {
+                        let content;
+                        syn::parenthesized!(content in modifier.input);
+                        let function: syn::Path = content.parse()?;
+                        if quote!(#function).to_string() != "str :: make_ascii_lowercase" {
+                            return Err(modifier.error("unsupported custom contract modifier"));
+                        }
+                        updates_for_field.push(quote! { property["x-compallm-ascii-lowercase"] = ::serde_json::json!(true); });
+                        return Ok(());
+                    }
                     if !modifier.path.is_ident("trim") {
                         return Err(modifier.error("unsupported contract modifier"));
                     }

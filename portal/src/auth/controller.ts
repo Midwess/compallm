@@ -1,4 +1,4 @@
-import { ConfirmSignupOtpRequest, ConfirmSigninOtpRequest } from '@compallm/contract/validation'
+import { emailRequestSchema, otpRequestSchema } from '@compallm/contract/auth'
 import { createSignupStore, type SignupController, type SignupState } from '@compallm/storybook/pages/signup'
 import type { SigninController } from '@compallm/storybook/pages/signin'
 import get from 'lodash-es/get'
@@ -240,7 +240,12 @@ export class AuthController implements SignupController, SigninController {
     this.updateResendCountdown()
     if (state.pending || this.store.getState().remaining > 0 || state.step !== (operation === 'request' ? 'email' : 'code'))
       return
-    const email = state.email.trim().replace(/[A-Z]/g, (letter) => letter.toLowerCase())
+    const input = emailRequestSchema(this.mode).safeParse({ email: state.email, delivery: 'cookie' })
+    if (!input.success) {
+      this.onInvalidEmail()
+      return
+    }
+    const email = input.data.email
     this.store.setState({ email })
     let deadline = 0
     let expiresAt = 0
@@ -248,7 +253,7 @@ export class AuthController implements SignupController, SigninController {
       operation,
       async (signal) => {
         const request = this.mode === 'signup' ? signupEmail : signinEmail
-        const response = await request({ email, delivery: 'cookie' }, { signal, credentials: 'same-origin' })
+        const response = await request(input.data, { signal, credentials: 'same-origin' })
         const seconds = response.lifetime?.throttleSeconds
         deadline = typeof seconds === 'number' && Number.isFinite(seconds) && seconds >= 0 ? Date.now() + seconds * 1000 : 0
         const remaining = response.lifetime?.expiresInSeconds
@@ -268,7 +273,7 @@ export class AuthController implements SignupController, SigninController {
 
   private async verify(retry = false) {
     const state = this.store.getState()
-    const schema = this.mode === 'signup' ? ConfirmSignupOtpRequest : ConfirmSigninOtpRequest
+    const schema = otpRequestSchema(this.mode)
     const input = schema.safeParse({ code: state.code, delivery: 'cookie' })
     if (state.pending || state.step !== 'code' || !input.success) return
     if (!retry && this.lastCode === state.code) return

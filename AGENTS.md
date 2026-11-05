@@ -30,6 +30,8 @@ Use `From`/`TryFrom` for type conversions instead of standalone mapper functions
 
 Use Validify for HTTP normalization and shared domain validation. Keep domain invariants in Core and persistence conversions and concurrency guards in PostgreSQL. External integrations use concrete clients with reused pools and bounded timeouts. Never hold database transactions open across email or HTTP calls.
 
+Validation is Rust-first: define input rules in Rust and export them to the shared contract for Portal and Storybook. Field-error codes, parameters, and messages should follow the same path when implemented; detailed error-message generation is deferred, so do not add independent UI validation messages or error tooltips as part of rule integration.
+
 Only use transaction! when there are multiple update command, transaction must be ended as soon as possible while still maintaining correctness
 If there are multiple query before updating data, then the query should performed outside of transaction
 Transaction only for grouping multiple update command

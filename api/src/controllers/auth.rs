@@ -31,7 +31,7 @@ pub fn router() -> OpenApiRouter<&'static AuthService> {
 }
 
 /// Email address to receive a signup verification code.
-#[derive(Deserialize, ToSchema, Validify)]
+#[derive(Deserialize, ContractSchema, Validify)]
 #[serde(deny_unknown_fields)]
 pub struct SignupEmailRequest {
     /// Trimmed and ASCII-lowercased before email validation. Any valid domain is accepted.
@@ -153,7 +153,7 @@ async fn confirm_signup_otp(
 }
 
 /// Email address to receive a signin verification code.
-#[derive(Deserialize, ToSchema, Validify)]
+#[derive(Deserialize, ContractSchema, Validify)]
 #[serde(deny_unknown_fields)]
 pub struct SigninEmailRequest {
     /// Trimmed and ASCII-lowercased before email validation. Account existence is checked only at confirmation.

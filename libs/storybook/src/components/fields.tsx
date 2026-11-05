@@ -1,3 +1,4 @@
+import { otpLength, otpPattern, otpCharacters } from '@compallm/contract/auth'
 import { useEffect, useRef, useState, type ComponentPropsWithRef, type TextareaHTMLAttributes } from 'react'
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGlass'
 import { cx } from './shared'
@@ -78,7 +79,7 @@ export function CodeField({ className, ...props }: TextFieldProps) {
   return (
     <TextField
       inputMode="numeric"
-      pattern="[0-9]*"
+      pattern={otpPattern}
       maxLength={1}
       {...props}
       className={cx('h-[56px] w-[52px] p-0 text-center text-[20px]', className)}
@@ -108,7 +109,7 @@ export function CodeEntry({
 }: CodeEntryProps) {
   const [local, setLocal] = useState(defaultValue)
   const inputs = useRef<Array<HTMLInputElement | null>>([])
-  const current = (value ?? local).padEnd(6, ' ').slice(0, 6)
+  const current = (value ?? local).padEnd(otpLength, ' ').slice(0, otpLength)
   useEffect(() => {
     if (autoFocus && !disabled) (inputs.current.find((input) => input?.value === '') ?? inputs.current[0])?.focus()
   }, [autoFocus, disabled])
@@ -116,14 +117,14 @@ export function CodeEntry({
     const nextCode = next.join('').trimEnd()
     setLocal(nextCode)
     onValueChange?.(nextCode)
-    inputs.current[Math.max(0, Math.min(5, focus))]?.focus()
+    inputs.current[Math.max(0, Math.min(otpLength - 1, focus))]?.focus()
   }
   function insert(text: string, index: number) {
-    const digits = text.replace(/[^0-9]/g, '').slice(0, 6)
+    const digits = otpCharacters(text)
     if (!digits) return
-    const start = digits.length === 6 ? 0 : index
+    const start = digits.length === otpLength ? 0 : index
     const next = current.split('')
-    for (let offset = 0; offset < digits.length && start + offset < 6; offset++) next[start + offset] = digits[offset]
+    for (let offset = 0; offset < digits.length && start + offset < otpLength; offset++) next[start + offset] = digits[offset]
     update(next, start + digits.length)
   }
   return (
@@ -135,16 +136,16 @@ export function CodeEntry({
       role="group"
       aria-label={label}
     >
-      {Array.from({ length: 6 }, (_, index) => (
+      {Array.from({ length: otpLength }, (_, index) => (
         <CodeField
           key={index}
           {...a11y}
           ref={(element) => {
             inputs.current[index] = element
           }}
-          aria-label={`Digit ${index + 1} of 6`}
+          aria-label={`Digit ${index + 1} of ${otpLength}`}
           value={current[index].trim()}
-          maxLength={6}
+          maxLength={otpLength}
           disabled={disabled}
           autoFocus={autoFocus && index === 0}
           autoComplete={index === 0 ? 'one-time-code' : 'off'}

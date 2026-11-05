@@ -1,5 +1,42 @@
 import { expect, test } from '@playwright/test'
 
+for (const mode of ['signup', 'signin'] as const) {
+  test(`${mode} uses shared email normalization and OTP entry rules`, async ({ page }) => {
+    await page.route('**/api/auth/me', (route) => route.fulfill({ status: 401, json: { message: 'Authentication required' } }))
+    const requests: unknown[] = []
+    const confirmations: unknown[] = []
+    await page.route(`**/api/auth/${mode}/email`, (route) => {
+      requests.push(route.request().postDataJSON())
+      return route.fulfill({ json: { lifetime: { throttleSeconds: 0, expiresInSeconds: 600 } } })
+    })
+    await page.route(`**/api/auth/${mode}/email/confirmation/otp`, (route) => {
+      confirmations.push(route.request().postDataJSON())
+      return route.fulfill({ status: 401, json: { message: 'Incorrect code' } })
+    })
+    await page.goto(mode === 'signup' ? '/' : '/login')
+    const email = page.getByLabel('Email address', { exact: true })
+    await email.fill('not-an-email')
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    await expect(page.getByRole('alert')).toHaveText('Enter a valid email address.')
+    expect(requests).toEqual([])
+    await email.fill('  ALICE@LOCALHOST  ')
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    await expect(page.getByRole('group', { name: 'Email code' })).toBeVisible()
+    expect(requests).toEqual([{ email: 'alice@localhost', delivery: 'cookie' }])
+    await page.reload()
+    const code = page.getByRole('group', { name: 'Email code' }).getByRole('textbox')
+    await expect(code).toHaveCount(6)
+    await code.first().fill('12345')
+    expect(confirmations).toEqual([])
+    await code.first().evaluate((element) => {
+      const clipboard = new DataTransfer()
+      clipboard.setData('text', '12x3456')
+      element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: clipboard, bubbles: true, cancelable: true }))
+    })
+    await expect.poll(() => confirmations).toEqual([{ code: '123456', delivery: 'cookie' }])
+  })
+}
+
 const user = { userId: 42, organizationId: 84, organizationName: 'Research team', sessionId: 7, organizationRole: 'owner' }
 
 test('root checks the API and automatically redirects an existing session to its organization', async ({ page }) => {

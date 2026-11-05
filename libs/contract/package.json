@@ -8,6 +8,10 @@
     "build": "tsc -p tsconfig.json"
   },
   "exports": {
+    "./auth": {
+      "types": "./dist/auth.d.ts",
+      "import": "./dist/auth.js"
+    },
     "./api": {
       "types": "./dist/api.d.ts",
       "import": "./dist/api.js"

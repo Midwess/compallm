@@ -11,7 +11,10 @@ import {
   ProviderInputRules,
   ProviderInputRulesInput,
   ConfirmSignupOtpRequest,
+  SigninEmailRequest,
+  SignupEmailRequest,
 } from '../../libs/contract/dist/validation.js'
+import { otpCharacters, otpLength, otpRequestSchema } from '../../libs/contract/dist/auth.js'
 import { headersAreValid, acceptsHeaderInput } from '../../libs/contract/dist/provider.js'
 
 const schemas = {
@@ -103,4 +106,26 @@ test('header entry guards permit incomplete credentials and reject invalid paste
   assert.equal(acceptsHeaderInput({ key: '', value: '' }), true)
   assert.equal(acceptsHeaderInput({ key: 'Bad header', value: '' }), false)
   assert.equal(headersAreValid([{ key: 'Authorization', value: 'Bearer ' }]), false)
+})
+
+const emailCases = JSON.parse(await readFile(new URL('./auth-input-fixtures.json', import.meta.url), 'utf8'))
+for (const [index, fixture] of emailCases.entries()) {
+  test(`Rust email policy fixture ${index}: signup and signin`, () => {
+    for (const schema of [SignupEmailRequest, SigninEmailRequest]) {
+      assert.equal(schema.safeParse({ email: fixture.value }).success, fixture.valid)
+    }
+  })
+}
+test('authentication contracts normalize email and supply OTP entry constraints', () => {
+  for (const schema of [SignupEmailRequest, SigninEmailRequest]) {
+    assert.equal(schema.parse({ email: '\u0085DÖRTE@EXAMPLE.COM\u0085' }).email, 'dÖrte@example.com')
+    assert.equal(schema.safeParse({ email: 'reader@example.com', unknown: true }).success, false)
+  }
+  assert.equal(otpLength, 6)
+  assert.equal(otpCharacters('12x３4!56'), '12456')
+  assert.equal(otpCharacters('1234567'), '123456')
+  for (const mode of ['signup', 'signin']) {
+    assert.equal(otpRequestSchema(mode).safeParse({ code: '12345' }).success, false)
+    assert.equal(otpRequestSchema(mode).parse({ code: '\u0085123456\u0085' }).code, '123456')
+  }
 })

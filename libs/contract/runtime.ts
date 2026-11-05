@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { emailAddress, type EmailPolicy } from './email.ts'
 
 // Rust str::trim and char::is_whitespace use Unicode White_Space. JS trim/\s
 // additionally include FEFF and omit NEL; keep the Rust set explicit.
@@ -47,10 +48,14 @@ export function modelsObject(value: { entries: Array<{ name: string }> }): boole
   return value.entries.length > 0 && new Set(value.entries.map((model) => model.name)).size === value.entries.length
 }
 
-const formats: Record<string, (value: string) => boolean> = {
+const formats: Record<string, (value: string, constraints: StringConstraints) => boolean> = {
   baseUrl,
   nonblank: (value) => trimInput(value) !== '',
   authorization,
+  emailAddress: (value, constraints) => {
+    if (!constraints.emailPolicy) throw new Error('Email policy must be exported from Rust')
+    return emailAddress(value, constraints.emailPolicy)
+  },
 }
 
 export interface StringConstraints {
@@ -60,6 +65,8 @@ export interface StringConstraints {
   inputPattern?: string
   format?: string
   trim?: boolean
+  asciiLowercase?: boolean
+  emailPolicy?: EmailPolicy
 }
 
 function contractPattern(pattern: string | undefined) {
@@ -81,6 +88,7 @@ const inputFormats: Record<string, (value: string) => boolean> = {
   nonblank: () => true,
   baseUrl: (value) => !hasWhitespace.test(value) && !/[?#\\]/.test(value),
   authorization: authorizationInput,
+  emailAddress: () => true,
 }
 
 // Entry guards use exported limits and character rules, allowing deletion and
@@ -121,7 +129,10 @@ export function inputString(constraints: StringConstraints) {
   const pattern = contractPattern(constraints.pattern)
   return z
     .string()
-    .transform((value) => (constraints.trim ? trimInput(value) : value))
+    .transform((value) => {
+      const trimmed = constraints.trim ? trimInput(value) : value
+      return constraints.asciiLowercase ? trimmed.replace(/[A-Z]/g, (letter) => letter.toLowerCase()) : trimmed
+    })
     .superRefine((value, context) => {
       const length = [...value].length
       if (
@@ -129,7 +140,7 @@ export function inputString(constraints: StringConstraints) {
         (constraints.minLength !== undefined && length < constraints.minLength) ||
         (constraints.maxLength !== undefined && length > constraints.maxLength) ||
         (pattern && !pattern.test(value)) ||
-        (format && !format(value))
+        (format && !format(value, constraints))
       )
         context.addIssue({ code: 'custom', message: 'Invalid input' })
     })

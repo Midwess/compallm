@@ -95,7 +95,9 @@ async fn invalid_or_oversized_headers_do_not_run_processors() {
                 .unwrap();
             let (stream, _) = listener.accept().await.unwrap();
             let mut router = Router::new(model());
-            router.add_processors(HeaderReceived, || -> () { panic!("must not execute") });
+            router.configure_stage(HeaderReceived, |_| {
+                panic!("invalid headers must not build a stage")
+            });
             router.on_connection(stream).unwrap();
             let _ = client.write_all(payload).await;
             let error = router.join_next().await.unwrap().unwrap().unwrap_err();
@@ -195,8 +197,8 @@ async fn custom_stage_registration_does_not_run_at_header_received() {
         router.add_processors(FutureMoment, || -> () {
             panic!("untriggered stage must not run")
         });
-        router.configure_stage(FutureMoment, |stage| {
-            stage.add_processors(|| -> () { panic!("untriggered configured stage must not run") });
+        router.configure_stage(FutureMoment, |_| {
+            panic!("unreached stage must not be constructed")
         });
         router.on_connection(stream).unwrap();
         client
@@ -231,8 +233,8 @@ async fn header_processor_failure_stops_the_stage_and_returns_to_caller() {
         router.add_processors(HeaderReceived, || -> () {
             panic!("must stop after rejection")
         });
-        router.add_processors(BodyStarted, || -> () {
-            panic!("body stage must be skipped after header rejection")
+        router.configure_stage(BodyStarted, |_| {
+            panic!("body stage must not build after header rejection")
         });
         router.on_connection(stream).unwrap();
         client
@@ -387,6 +389,44 @@ async fn connection_keeps_registration_snapshot_when_router_is_updated() {
             .unwrap();
         router.join_next().await.unwrap().unwrap().unwrap();
         assert_eq!(called.load(Ordering::SeqCst), 1);
+    })
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn stages_build_only_after_their_moment_is_reached() {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+    timeout(Duration::from_secs(5), async {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let mut client = TcpStream::connect(listener.local_addr().unwrap())
+            .await
+            .unwrap();
+        let (stream, _) = listener.accept().await.unwrap();
+        let built = Arc::new(AtomicUsize::new(0));
+        let observed = built.clone();
+        let mut router = Router::new(model());
+        router.configure_stage(HeaderReceived, move |stage| {
+            observed.fetch_add(1, Ordering::SeqCst);
+            stage.add_processors(|| {});
+        });
+        router.on_connection(stream).unwrap();
+        client
+            .write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n")
+            .await
+            .unwrap();
+        assert!(
+            timeout(Duration::from_millis(50), router.join_next())
+                .await
+                .is_err()
+        );
+        assert_eq!(built.load(Ordering::SeqCst), 0);
+        client.write_all(b"\r\n").await.unwrap();
+        router.join_next().await.unwrap().unwrap().unwrap();
+        assert_eq!(built.load(Ordering::SeqCst), 1);
     })
     .await
     .unwrap();

@@ -107,28 +107,40 @@ impl StageDefinitions {
             .push(Arc::new(configure));
     }
 
-    pub(crate) fn build(&self) -> Stages {
-        let mut stages = HashMap::new();
-        for (&label, configurations) in &self.definitions {
-            let mut stage = Stage::default();
-            for configure in configurations {
-                configure(&mut stage);
-            }
-            stages.insert(label, stage);
+    fn build(&self, label: TypeId) -> Option<Stage> {
+        let configurations = self.definitions.get(&label)?;
+        let mut stage = Stage::default();
+        for configure in configurations {
+            configure(&mut stage);
         }
-        Stages { stages }
+        Some(stage)
     }
 }
 
-/// Executable stages owned exclusively by a single connection.
+/// Connection-local stage cache, initialized only for moments that are reached.
 pub(crate) struct Stages {
+    definitions: Arc<StageDefinitions>,
     stages: HashMap<TypeId, Stage>,
 }
 impl Stages {
-    pub(crate) fn run<L: StageLabel>(&mut self, _: L, resources: &mut Resources) -> io::Result<()> {
-        if let Some(stage) = self.stages.get_mut(&TypeId::of::<L>()) {
-            stage.run(resources)?;
+    pub(crate) fn new(definitions: Arc<StageDefinitions>) -> Self {
+        Self {
+            definitions,
+            stages: HashMap::new(),
         }
-        Ok(())
+    }
+
+    pub(crate) fn run<L: StageLabel>(&mut self, _: L, resources: &mut Resources) -> io::Result<()> {
+        use std::collections::hash_map::Entry;
+        let stage = match self.stages.entry(TypeId::of::<L>()) {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => {
+                let Some(stage) = self.definitions.build(*entry.key()) else {
+                    return Ok(());
+                };
+                entry.insert(stage)
+            }
+        };
+        stage.run(resources)
     }
 }

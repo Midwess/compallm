@@ -2,7 +2,7 @@ pub mod header;
 
 use crate::{
     resources::{PeerAddress, Resources, RouterModel},
-    stage::{BodyStarted, HeaderReceived, StageDefinitions},
+    stage::{BodyStarted, HeaderReceived, StageDefinitions, Stages},
 };
 use compallm_core::model::Model;
 use std::{io, net::SocketAddr, sync::Arc};
@@ -18,7 +18,7 @@ pub struct Connection {
 impl Connection {
     /// Read one header, execute HeaderReceived, then enter BodyStarted. Later stages are future work.
     pub async fn run(self) -> io::Result<()> {
-        let mut stages = self.stages.build();
+        let mut stages = Stages::new(self.stages);
         let mut resources = Resources::default();
         resources.insert(RouterModel(self.model));
         resources.insert(PeerAddress(self.peer_addr));

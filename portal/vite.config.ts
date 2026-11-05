@@ -10,7 +10,10 @@ export default defineConfig(({ command }) => ({
     dedupe: ['react', 'react-dom'],
     conditions: command === 'serve' ? ['compallm-source', ...defaultClientConditions] : [...defaultClientConditions],
   },
-  optimizeDeps: { exclude: ['@compallm/contract'] },
+  optimizeDeps: {
+    exclude: ['@compallm/contract'],
+    include: ['@compallm/contract > zod'],
+  },
   server: {
     fs: {
       allow: [

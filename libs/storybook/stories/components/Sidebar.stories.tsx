@@ -26,11 +26,3 @@ export const Selected: Story = {
     </div>
   ),
 }
-
-export const LongWorkspaceName: Story = {
-  render: () => (
-    <div data-ui="component-preview" className="h-80 bg-background font-sans text-text">
-      <SidebarDemo workspaceName="Research and development organization with a long workspace name" />
-    </div>
-  ),
-}

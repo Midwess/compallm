@@ -14,16 +14,14 @@ import { Sidebar, SidebarHeader, SidebarSection, SidebarFolder, SidebarItem } fr
 export function SidebarDemo({
   defaultOpen = true,
   initialSelection = '',
-  workspaceName = 'Compallm',
 }: {
   defaultOpen?: boolean
   initialSelection?: string
-  workspaceName?: string
 }) {
   const [selected, setSelected] = useState(initialSelection)
   const [organization, setOrganization] = useState('compallm')
   const organizations = [
-    { id: 'compallm', name: workspaceName },
+    { id: 'compallm', name: 'Compallm' },
     { id: 'research', name: 'Research team' },
   ]
   const [action, setAction] = useState('')

@@ -14,14 +14,8 @@ const disclosureMotion = `
 
 export function Sidebar({ children, className, ...props }: HTMLAttributes<HTMLElement>) {
   return (
-    <aside
-      {...props}
-      className={cx('flex h-full min-h-0 w-[244px] shrink-0 flex-col overflow-x-hidden bg-background px-3 py-1', className)}
-    >
-      <nav
-        aria-label="Workspace navigation"
-        className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto"
-      >
+    <aside {...props} className={cx('flex h-full min-h-0 w-[244px] shrink-0 flex-col bg-background px-3 py-1', className)}>
+      <nav aria-label="Workspace navigation" className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
         {children}
       </nav>
     </aside>
@@ -86,7 +80,7 @@ export function SidebarHeader({
   }
 
   return (
-    <div className="mt-3 flex h-[34px] w-full min-w-0 shrink-0 items-center justify-between gap-2 pl-2 pr-1">
+    <div className="mt-3 flex h-[34px] w-[221px] shrink-0 items-center justify-between pl-2 pr-1">
       <button
         ref={trigger}
         popoverTarget={id}
@@ -104,10 +98,7 @@ export function SidebarHeader({
             preference.current?.focus()
           }
         }}
-        className={cx(
-          'flex min-w-0 flex-1 cursor-pointer items-center gap-0.5 rounded text-xs leading-[15px] text-text',
-          focus,
-        )}
+        className={cx('flex min-w-0 cursor-pointer items-center gap-0.5 rounded text-xs leading-[15px] text-text', focus)}
       >
         {mark ?? (
           <span
@@ -269,7 +260,7 @@ export function SidebarHeader({
           </button>
         ) : null}
       </div>
-      <ToolbarAction label="Search workspace" onClick={onSearch} className="size-3.5 shrink-0 rounded">
+      <ToolbarAction label="Search workspace" onClick={onSearch} className="size-3.5 rounded">
         <MagnifyingGlassIcon size={14} aria-hidden="true" />
       </ToolbarAction>
     </div>

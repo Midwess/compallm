@@ -4,13 +4,10 @@ pub mod stage;
 
 use crate::{
     connection::Connection,
-    stage::{IntoProcessors, Stage, StageLabel, Stages},
+    stage::{IntoProcessors, Stage, StageDefinitions, StageLabel},
 };
 use compallm_core::model::Model;
-use std::{
-    io,
-    sync::{Arc, Mutex},
-};
+use std::{io, sync::Arc};
 use tokio::{
     net::TcpStream,
     task::{JoinError, JoinSet},
@@ -21,7 +18,7 @@ use tokio::{
 pub struct Router {
     model: Arc<Model>,
     connections: JoinSet<io::Result<()>>,
-    stages: Arc<Mutex<Stages>>,
+    stages: Arc<StageDefinitions>,
 }
 
 impl Router {
@@ -29,30 +26,25 @@ impl Router {
         Self {
             model: Arc::new(model),
             connections: JoinSet::new(),
-            stages: Arc::new(Mutex::new(Stages::default())),
+            stages: Arc::new(StageDefinitions::default()),
         }
     }
 
-    /// Convert and retain processors once, executed in registration order.
+    /// Register prototypes instantiated independently for every new connection.
     pub fn add_processors<M, C>(&mut self, label: impl StageLabel, processors: C)
     where
-        C: IntoProcessors<M>,
+        C: IntoProcessors<M> + Clone + Send + Sync + 'static,
     {
-        self.stages
-            .lock()
-            .expect("Router stages poisoned")
-            .get_or_insert(label)
-            .add_processors(processors);
+        Arc::make_mut(&mut self.stages).add(label, processors);
     }
 
-    /// Configure the live stage once; captured processor state need not be Clone.
-    pub fn configure_stage(&mut self, label: impl StageLabel, configure: impl FnOnce(&mut Stage)) {
-        configure(
-            self.stages
-                .lock()
-                .expect("Router stages poisoned")
-                .get_or_insert(label),
-        );
+    /// Build connection-local processors, including non-Clone structs, through a factory.
+    pub fn configure_stage(
+        &mut self,
+        label: impl StageLabel,
+        configure: impl Fn(&mut Stage) + Send + Sync + 'static,
+    ) {
+        Arc::make_mut(&mut self.stages).configure(label, configure);
     }
 
     pub fn model(&self) -> &Model {

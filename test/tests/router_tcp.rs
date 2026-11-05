@@ -125,7 +125,7 @@ async fn dropping_router_aborts_active_connection() {
 }
 
 #[tokio::test]
-async fn processor_state_persists_without_reconfiguring_per_connection() {
+async fn connection_stages_isolate_processor_state_and_share_only_the_model() {
     timeout(Duration::from_secs(5), async {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let called = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
@@ -135,20 +135,32 @@ async fn processor_state_persists_without_reconfiguring_per_connection() {
         let configured_count = configured.clone();
         // A non-Clone captured value verifies that processors are never cloned.
         struct Counter(usize);
-        let mut captured = Counter(0);
+        let model_pointer = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let shared_pointer = model_pointer.clone();
         router.configure_stage(HeaderReceived, move |stage| {
             configured_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            stage.add_processors(move |mut runs: Local<usize>, header: Res<RequestHeader>| {
-                let previous = observed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                assert_eq!(*runs, previous);
-                assert_eq!(captured.0, previous);
-                // Per-connection header data must remain independent of persistent processor state.
-                assert_eq!(header.target, format!("/{previous}"));
-                *runs += 1;
-                captured.0 += 1;
-            });
+            let mut captured = Counter(0);
+            let shared_pointer = shared_pointer.clone();
+            let observed = observed.clone();
+            stage.add_processors(
+                move |mut runs: Local<usize>,
+                      header: Res<RequestHeader>,
+                      model: Res<RouterModel>| {
+                    let index = observed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    assert_eq!(*runs, 0);
+                    assert_eq!(captured.0, 0);
+                    assert_eq!(header.target, format!("/{index}"));
+                    let pointer = std::sync::Arc::as_ptr(&model.0) as usize;
+                    let previous =
+                        shared_pointer.swap(pointer, std::sync::atomic::Ordering::SeqCst);
+                    assert!(previous == 0 || previous == pointer);
+                    *runs += 1;
+                    captured.0 += 1;
+                },
+            );
         });
-        assert_eq!(configured.load(std::sync::atomic::Ordering::SeqCst), 1);
+        // Processor construction is deferred to the connection task.
+        assert_eq!(configured.load(std::sync::atomic::Ordering::SeqCst), 0);
         for index in 0..2 {
             let mut client = TcpStream::connect(listener.local_addr().unwrap())
                 .await
@@ -162,7 +174,7 @@ async fn processor_state_persists_without_reconfiguring_per_connection() {
             router.join_next().await.unwrap().unwrap().unwrap();
         }
         assert_eq!(called.load(std::sync::atomic::Ordering::SeqCst), 2);
-        assert_eq!(configured.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(configured.load(std::sync::atomic::Ordering::SeqCst), 2);
     })
     .await
     .unwrap();
@@ -300,7 +312,7 @@ async fn body_started_selects_provider_after_headers_without_waiting_for_payload
 }
 
 #[tokio::test]
-async fn waiting_for_one_header_does_not_lock_shared_stages() {
+async fn incomplete_connection_does_not_block_another_connection_stage() {
     timeout(Duration::from_secs(5), async {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let mut first = TcpStream::connect(listener.local_addr().unwrap())
@@ -315,8 +327,8 @@ async fn waiting_for_one_header_does_not_lock_shared_stages() {
         router.add_processors(
             HeaderReceived,
             |header: Res<RequestHeader>, mut runs: Local<usize>| {
-                // The second admitted connection finishes its header first.
-                assert_eq!(header.target, if *runs == 0 { "/second" } else { "/first" });
+                assert_eq!(*runs, 0);
+                assert!(header.target == "/second" || header.target == "/first");
                 *runs += 1;
             },
         );
@@ -334,6 +346,47 @@ async fn waiting_for_one_header_does_not_lock_shared_stages() {
         assert_eq!(router.pending_connections(), 1);
         first.write_all(b"\r\n").await.unwrap();
         router.join_next().await.unwrap().unwrap().unwrap();
+    })
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn connection_keeps_registration_snapshot_when_router_is_updated() {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+    timeout(Duration::from_secs(5), async {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let mut first = TcpStream::connect(listener.local_addr().unwrap())
+            .await
+            .unwrap();
+        let (first_stream, _) = listener.accept().await.unwrap();
+        let mut router = Router::new(model());
+        router.on_connection(first_stream).unwrap();
+        let called = Arc::new(AtomicUsize::new(0));
+        let observed = called.clone();
+        router.add_processors(HeaderReceived, move || {
+            observed.fetch_add(1, Ordering::SeqCst);
+        });
+        first
+            .write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+            .await
+            .unwrap();
+        router.join_next().await.unwrap().unwrap().unwrap();
+        assert_eq!(called.load(Ordering::SeqCst), 0);
+        let mut second = TcpStream::connect(listener.local_addr().unwrap())
+            .await
+            .unwrap();
+        let (stream, _) = listener.accept().await.unwrap();
+        router.on_connection(stream).unwrap();
+        second
+            .write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+            .await
+            .unwrap();
+        router.join_next().await.unwrap().unwrap().unwrap();
+        assert_eq!(called.load(Ordering::SeqCst), 1);
     })
     .await
     .unwrap();

@@ -2,7 +2,7 @@ use crate::{
     processor::{IntoProcessor, Processor},
     resources::Resources,
 };
-use std::{any::TypeId, collections::HashMap, io};
+use std::{any::TypeId, collections::HashMap, io, sync::Arc};
 
 /// Stage identity is its Rust type. Registration does not execute it.
 pub trait StageLabel: Send + Sync + 'static {}
@@ -81,16 +81,50 @@ processor_tuple!(A: MA: 0, B: MB: 1);
 processor_tuple!(A: MA: 0, B: MB: 1, C: MC: 2);
 processor_tuple!(A: MA: 0, B: MB: 1, C: MC: 2, D: MD: 3);
 
-/// Router-owned executable stages, retained for the Router's lifetime.
-#[derive(Default)]
+type Configure = dyn Fn(&mut Stage) + Send + Sync;
+
+/// Shared, immutable definitions; executable processor state is connection-local.
+#[derive(Clone, Default)]
+pub(crate) struct StageDefinitions {
+    definitions: HashMap<TypeId, Vec<Arc<Configure>>>,
+}
+impl StageDefinitions {
+    pub(crate) fn add<M, C>(&mut self, label: impl StageLabel, processors: C)
+    where
+        C: IntoProcessors<M> + Clone + Send + Sync + 'static,
+    {
+        self.configure(label, move |stage| stage.add_processors(processors.clone()));
+    }
+
+    pub(crate) fn configure<L: StageLabel>(
+        &mut self,
+        _: L,
+        configure: impl Fn(&mut Stage) + Send + Sync + 'static,
+    ) {
+        self.definitions
+            .entry(TypeId::of::<L>())
+            .or_default()
+            .push(Arc::new(configure));
+    }
+
+    pub(crate) fn build(&self) -> Stages {
+        let mut stages = HashMap::new();
+        for (&label, configurations) in &self.definitions {
+            let mut stage = Stage::default();
+            for configure in configurations {
+                configure(&mut stage);
+            }
+            stages.insert(label, stage);
+        }
+        Stages { stages }
+    }
+}
+
+/// Executable stages owned exclusively by a single connection.
 pub(crate) struct Stages {
     stages: HashMap<TypeId, Stage>,
 }
 impl Stages {
-    pub(crate) fn get_or_insert<L: StageLabel>(&mut self, _: L) -> &mut Stage {
-        self.stages.entry(TypeId::of::<L>()).or_default()
-    }
-
     pub(crate) fn run<L: StageLabel>(&mut self, _: L, resources: &mut Resources) -> io::Result<()> {
         if let Some(stage) = self.stages.get_mut(&TypeId::of::<L>()) {
             stage.run(resources)?;

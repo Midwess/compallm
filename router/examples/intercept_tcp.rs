@@ -63,7 +63,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// Router retains this instance, so its state survives between connections.
+// Router clones this prototype; each connection owns its own counter.
+#[derive(Clone)]
 struct InspectHeader {
     runs: usize,
 }

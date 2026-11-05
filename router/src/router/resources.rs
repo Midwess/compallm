@@ -87,7 +87,7 @@ impl<T> DerefMut for ResMut<'_, T> {
     }
 }
 
-/// State belonging to this processor instance, retained across connection runs.
+/// State belonging to this processor instance, retained for repeated runs within its owning connection.
 pub struct Local<'a, T>(pub(crate) &'a mut T);
 impl<T> Deref for Local<'_, T> {
     type Target = T;

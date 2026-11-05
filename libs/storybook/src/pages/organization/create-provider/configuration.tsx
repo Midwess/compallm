@@ -1,3 +1,12 @@
+import {
+  ProviderFields,
+  ProviderFieldsInput,
+  ProviderFieldsConstraints,
+  ProviderHeaderConstraints,
+} from '@compallm/contract/validation'
+import { useState } from 'react'
+import { EyeIcon } from '@phosphor-icons/react/dist/csr/Eye'
+import { EyeSlashIcon } from '@phosphor-icons/react/dist/csr/EyeSlash'
 import { FormSection } from '../../../components/form-section'
 import { SectionSurface } from '../../../components/surfaces'
 import { FormField } from '../../../components/form-field'
@@ -7,13 +16,14 @@ import { LinkSimpleIcon } from '@phosphor-icons/react/dist/csr/LinkSimple'
 import { Button } from '../../../components/buttons'
 import { KeyValueEditor } from '../../../components/key-value-editor'
 import { ProviderAvatar } from '../../../components/provider-avatar'
-import { Tooltip } from '../../../components/feedback'
+import { FieldHelp, Tooltip } from '../../../components/feedback'
 
 import { useController, useProvider } from './controller'
 import { ProviderModels } from './model-table'
 import { canCreateProvider, canSaveProvider } from './validation'
-import { headersAreValid } from './validation'
+import { acceptsHeaderInput, headersAreValid, isValidBaseUrl } from './validation'
 function ConnectionFields() {
+  const [keyVisible, setKeyVisible] = useState(false)
   const controller = useController()
   const name = useProvider((state) => state.name)
   const baseUrl = useProvider((state) => state.baseUrl)
@@ -23,17 +33,20 @@ function ConnectionFields() {
   const selected = useProvider((state) => state.selectedProviderId)
   const avatarUrl = useProvider((state) => state.avatarUrl)
   const headers = useProvider((state) => state.headers)
-  const validHeaders = headersAreValid(headers)
   return (
-    <SectionSurface className="grid gap-4">
+    <SectionSurface className="grid min-w-0 gap-4">
       <fieldset disabled={busy} className="grid min-w-0 gap-4">
         <div className="flex min-w-0 items-end gap-3">
           <FormField className="flex-1">
             <FormField.Label>Connection name</FormField.Label>
             <FormField.Input
               value={name}
+              required
+              aria-invalid={(name !== '' && !ProviderFields.shape.name.safeParse(name).success) || undefined}
               placeholder="Enter connection name"
-              onChange={(event) => controller.onConnectionChanged('name', event.target.value)}
+              onChange={(event) => {
+                if (ProviderFieldsInput.name(event.target.value)) controller.onConnectionChanged('name', event.target.value)
+              }}
             />
           </FormField>
           <ProviderAvatar provider={selected} src={avatarUrl} disabled={busy} onFileChange={controller.onAvatarChanged} />
@@ -42,31 +55,79 @@ function ConnectionFields() {
           <FormField.Label>Base URL</FormField.Label>
           <FormField.Input
             value={baseUrl}
+            type="url"
+            required
+            autoCapitalize="none"
+            spellCheck={false}
+            aria-invalid={(baseUrl !== '' && !isValidBaseUrl(baseUrl)) || undefined}
             placeholder="https://api.example.com/v1"
-            onChange={(event) => controller.onConnectionChanged('baseUrl', event.target.value)}
+            onChange={(event) => {
+              if (ProviderFieldsInput.baseUrl(event.target.value)) controller.onConnectionChanged('baseUrl', event.target.value)
+            }}
           />
+          {baseUrl !== '' && !isValidBaseUrl(baseUrl) ? (
+            <FormField.Hint>
+              Enter an HTTP or HTTPS URL up to {ProviderFieldsConstraints.baseUrl.maxLength} characters, without spaces,
+              credentials, a query, or a fragment.
+            </FormField.Hint>
+          ) : null}
         </FormField>
         <FormField>
-          <FormField.Label>API key</FormField.Label>
-          <FormField.Input
-            type="password"
-            autoComplete="off"
-            value={apiKey}
-            placeholder={editing ? 'Leave empty to keep current key' : 'Enter your API key'}
-            onChange={(event) => controller.onConnectionChanged('apiKey', event.target.value)}
-          />
+          <div className="flex items-center gap-1">
+            <FormField.Label>API key</FormField.Label>
+            <FieldHelp label="About API keys">
+              An API key is a secret credential from your provider that lets Compallm send requests to its models on your
+              behalf. Create one in your provider’s dashboard and keep it private. Up to{' '}
+              {ProviderFieldsConstraints.apiKey.maxLength} characters, without whitespace. When editing, leave this field empty
+              to keep the current key.
+            </FieldHelp>
+          </div>
+          <div className="relative min-w-0">
+            <FormField.Input
+              type={keyVisible ? 'text' : 'password'}
+              className="pr-9"
+              autoComplete="off"
+              required={!editing}
+              autoCapitalize="none"
+              spellCheck={false}
+              aria-invalid={(apiKey !== '' && !ProviderFields.shape.apiKey.safeParse(apiKey).success) || undefined}
+              value={apiKey}
+              placeholder={editing ? 'Leave empty to keep current key' : 'Enter your API key'}
+              onChange={(event) => {
+                if (ProviderFieldsInput.apiKey(event.target.value)) controller.onConnectionChanged('apiKey', event.target.value)
+              }}
+            />
+            <button
+              type="button"
+              aria-label={keyVisible ? 'Hide API key' : 'Show API key'}
+              aria-pressed={keyVisible}
+              className={`
+absolute inset-y-0 right-0 flex w-8 items-center justify-center rounded-lg text-muted
+hover:text-text focus-visible:outline-muted
+`}
+              onClick={() => setKeyVisible((visible) => !visible)}
+            >
+              {keyVisible ? (
+                <EyeSlashIcon aria-hidden="true" className="size-4" />
+              ) : (
+                <EyeIcon aria-hidden="true" className="size-4" />
+              )}
+            </button>
+          </div>
         </FormField>
       </fieldset>
       <KeyValueEditor
         value={headers}
+        acceptEntry={acceptsHeaderInput}
+        keyMaxLength={ProviderHeaderConstraints.key.maxLength}
         disabled={busy || !controller.onHeadersChanged}
         onValueChange={(value) => controller.onHeadersChanged?.(value)}
       >
         <KeyValueEditor.Disclosure>Headers</KeyValueEditor.Disclosure>
       </KeyValueEditor>
-      {!validHeaders ? (
+      {!headersAreValid(headers) ? (
         <p role="alert" className="text-xs text-error">
-          Use unique valid header names and values without line breaks.
+          Use unique HTTP header names and valid values. Authorization requires a valid scheme and credentials.
         </p>
       ) : null}
     </SectionSurface>
@@ -123,7 +184,7 @@ export function ProviderConfiguration() {
   const error = useProvider((state) => state.error)
   return (
     <form
-      className="mx-auto grid w-full max-w-4xl gap-6 px-4 py-8"
+      className="mx-auto grid min-w-0 w-full max-w-4xl gap-6 px-4 py-8"
       onSubmit={(event) => {
         event.preventDefault()
         if (ready && !busy) {

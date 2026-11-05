@@ -1,8 +1,15 @@
+import {
+  ProviderModelFields,
+  ProviderModelFieldsInput,
+  ProviderModelFieldsConstraints,
+  ProviderInputRules,
+} from '@compallm/contract/validation'
 import { EffortMapping } from '../../../components/effort-mapping'
 import { modelPath, modelProtocol, isEndpointPath, textModelOptions, modelDraftFingerprint } from './model-options'
 import { FormField } from '../../../components/form-field'
 import { Button } from '../../../components/buttons'
 import { Dialog } from '../../../components/dialog'
+import { FieldHelp } from '../../../components/feedback'
 
 import { useController, useProvider } from './controller'
 import { isValidModelDraft } from './validation'
@@ -22,9 +29,8 @@ export function ModelDialog() {
           draft.name ||
           (draft.path !== undefined &&
             draft.path !== textModelOptions.find((option) => option.value === modelProtocol(draft))!.path) ||
-          draft.maxOutputTokens ||
           Object.values(draft.effortMapping ?? {}).some(Boolean) ||
-          draft.maxContextTokens ||
+          draft.maxContextTokens !== '250000' ||
           draft.thinkingLevels.length ||
           draft.inputPrice ||
           draft.outputPrice ||
@@ -58,40 +64,59 @@ export function ModelDialog() {
                   value={modelPath(draft)}
                   required
                   autoFocus
+                  maxLength={ProviderModelFieldsConstraints.path.maxLength}
                   aria-invalid={!isEndpointPath(modelPath(draft)) || undefined}
-                  onChange={(event) => controller.onModelDraftChanged({ path: event.target.value })}
+                  onChange={(event) => {
+                    const path = `/${event.target.value.replace(/^\/+/, '')}`
+                    if (ProviderModelFieldsInput.path(path)) controller.onModelDraftChanged({ path })
+                  }}
                 />
                 {!isEndpointPath(modelPath(draft)) ? (
-                  <FormField.Hint>Enter a path beginning with /, without a host, query, or fragment.</FormField.Hint>
+                  <FormField.Hint>
+                    Use up to {ProviderModelFieldsConstraints.path.maxLength} letters, digits, dashes, underscores, and slashes;
+                    start with /.
+                  </FormField.Hint>
                 ) : null}
               </FormField>
               <FormField>
-                <FormField.Label>Model name</FormField.Label>
+                <div className="flex items-center gap-1">
+                  <FormField.Label>Model name</FormField.Label>
+                  <FieldHelp label="About model names">
+                    1–{ProviderModelFieldsConstraints.name.maxLength} letters, digits, dashes, or underscores. No spaces.
+                  </FieldHelp>
+                </div>
                 <FormField.Input
                   value={draft.name}
                   required
                   placeholder="Enter model name"
-                  onChange={(event) => controller.onModelDraftChanged({ name: event.target.value })}
+                  maxLength={ProviderModelFieldsConstraints.name.maxLength}
+                  aria-invalid={(!!draft.name && !ProviderModelFields.shape.name.safeParse(draft.name).success) || undefined}
+                  onChange={(event) => {
+                    if (ProviderModelFieldsInput.name(event.target.value))
+                      controller.onModelDraftChanged({ name: event.target.value })
+                  }}
                 />
               </FormField>
-              <div className="grid grid-cols-2 gap-2">
+              <div>
                 <FormField>
-                  <FormField.Label>Max content window</FormField.Label>
+                  <FormField.Label>Max context window</FormField.Label>
                   <FormField.Input
                     inputMode="numeric"
-                    placeholder="Not set"
+                    required
+                    placeholder="250000"
                     value={draft.maxContextTokens}
-                    onChange={(event) => controller.onModelDraftChanged({ maxContextTokens: event.target.value })}
+                    aria-invalid={
+                      (draft.maxContextTokens !== '' &&
+                        (!ProviderInputRules.shape.positiveInteger.safeParse(draft.maxContextTokens).success ||
+                          !ProviderModelFields.shape.maxContextTokens.safeParse(Number(draft.maxContextTokens)).success)) ||
+                      undefined
+                    }
+                    onChange={(event) => {
+                      if (ProviderModelFieldsInput.maxContextTokens(event.target.value))
+                        controller.onModelDraftChanged({ maxContextTokens: event.target.value })
+                    }}
                   />
-                </FormField>
-                <FormField>
-                  <FormField.Label>Max output tokens</FormField.Label>
-                  <FormField.Input
-                    inputMode="numeric"
-                    placeholder="Not set"
-                    value={draft.maxOutputTokens ?? ''}
-                    onChange={(event) => controller.onModelDraftChanged({ maxOutputTokens: event.target.value })}
-                  />
+                  <FormField.Hint>Tokens</FormField.Hint>
                 </FormField>
               </div>
               <EffortMapping
@@ -105,13 +130,18 @@ export function ModelDialog() {
                   })
                 }
               />
-              <h3 className="text-sm font-medium">Pricing</h3>
+              <div className="flex items-center gap-1">
+                <h3 className="text-sm font-medium">Pricing · USD per 1M tokens</h3>
+                <FieldHelp label="About model pricing">
+                  Enter a non-negative price with up to 8 decimal places. Use 0 for free.
+                </FieldHelp>
+              </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {(
                   [
-                    { key: 'inputPrice', label: '1M Input' },
-                    { key: 'outputPrice', label: '1M Output' },
-                    { key: 'cachedPrice', label: '1M Cached' },
+                    { key: 'inputPrice', label: 'Input' },
+                    { key: 'outputPrice', label: 'Output' },
+                    { key: 'cachedPrice', label: 'Cache read' },
                   ] as const
                 ).map(({ key, label }) => (
                   <FormField key={key}>
@@ -119,9 +149,15 @@ export function ModelDialog() {
                     <FormField.Input
                       required
                       inputMode="decimal"
-                      placeholder="Enter price USD"
+                      placeholder="0.00"
+                      aria-invalid={
+                        (!!draft[key] && !ProviderModelFields.shape.inputPrice.safeParse(draft[key]).success) || undefined
+                      }
                       value={draft[key]}
-                      onChange={(event) => controller.onModelDraftChanged({ [key]: event.target.value })}
+                      onChange={(event) => {
+                        if (ProviderModelFieldsInput.inputPrice(event.target.value))
+                          controller.onModelDraftChanged({ [key]: event.target.value })
+                      }}
                     />
                   </FormField>
                 ))}

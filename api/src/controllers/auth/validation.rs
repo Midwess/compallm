@@ -9,6 +9,10 @@ pub type ValidatedJson<T> = Result<ValidifiedByRef<Json<T>>, ValidifyRejection<J
 pub struct AuthInput;
 
 impl AuthInput {
+    pub fn otp_contract() -> serde_json::Value {
+        serde_json::json!({"pattern": "^[0-9]*$"})
+    }
+
     pub fn otp(value: &str) -> Result<(), ValidationError> {
         if value.bytes().all(|byte| byte.is_ascii_digit()) {
             Ok(())

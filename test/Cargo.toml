@@ -16,6 +16,9 @@ validify.workspace = true
 anyhow = { workspace = true, features = ["std"] }
 async-trait.workspace = true
 compallm-core.workspace = true
+compallm-contract.workspace = true
+utoipa = { workspace = true, features = ["macros"] }
+serde = { workspace = true, features = ["derive"] }
 compallm-postgres = { workspace = true, features = ["cli"] }
 compallm-utils.workspace = true
 compallm-mailing.workspace = true

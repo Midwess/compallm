@@ -1,5 +1,5 @@
 [workspace]
-members = ["api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "test", "router", "sec"]
+members = ["api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "libs/contract", "libs/contract-macros", "test", "router", "sec"]
 resolver = "3"
 
 [workspace.package]
@@ -18,6 +18,7 @@ axum-valid = { version = "0.25", default-features = false }
 cookie = { version = "0.18", default-features = false }
 futures-util = { version = "0.3", default-features = false }
 compallm-core = { path = "libs/core", default-features = false }
+compallm-contract = { path = "libs/contract" }
 compallm-postgres = { path = "libs/postgres", default-features = false }
 compallm-utils = { path = "libs/utils", default-features = false }
 compallm-mailing = { path = "libs/mailing", default-features = false }

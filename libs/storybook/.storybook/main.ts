@@ -39,7 +39,8 @@ const config: StorybookConfig = {
       resolve: {
         dedupe: ['react', 'react-dom'],
       },
-      server: { fs: { allow: [workspace] } },
+      optimizeDeps: { exclude: ['@compallm/contract'] },
+      server: { fs: { allow: [workspace, fileURLToPath(new URL('../../contract', import.meta.url))] } },
     })
   },
 }

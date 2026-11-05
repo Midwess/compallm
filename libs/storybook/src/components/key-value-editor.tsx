@@ -14,6 +14,8 @@ interface Scope {
   entries: KeyValueEntry[]
   change(entries: KeyValueEntry[]): void
   disabled: boolean
+  keyMaxLength?: number
+  acceptEntry?(entry: KeyValueEntry): boolean
 }
 const EditorContext = createContext<Scope | null>(null)
 function useEditor() {
@@ -27,22 +29,26 @@ function Root({
   disabled = false,
   children,
   className,
+  acceptEntry,
+  keyMaxLength,
 }: {
   value: KeyValueEntry[]
   onValueChange(entries: KeyValueEntry[]): void
   disabled?: boolean
   children: ReactNode
   className?: string
+  keyMaxLength?: number
+  acceptEntry?(entry: KeyValueEntry): boolean
 }) {
   return (
-    <EditorContext value={{ entries: value, change: onValueChange, disabled }}>
-      <div className={cx('min-w-0', className)}>{children}</div>
+    <EditorContext value={{ entries: value, change: onValueChange, disabled, acceptEntry, keyMaxLength }}>
+      <div className={cx('w-full min-w-0 max-w-full', className)}>{children}</div>
     </EditorContext>
   )
 }
 function Disclosure({ children = 'Headers', defaultOpen = false }: { children?: ReactNode; defaultOpen?: boolean }) {
   return (
-    <details className="group/headers min-w-0" open={defaultOpen || undefined}>
+    <details className="group/headers w-full min-w-0 max-w-full" open={defaultOpen || undefined}>
       <summary className="flex h-7 w-fit cursor-pointer list-none items-center gap-1 text-sm font-medium">
         {children}
         <CaretDownIcon
@@ -51,7 +57,7 @@ function Disclosure({ children = 'Headers', defaultOpen = false }: { children?: 
           className="size-2 -rotate-90 transition-transform group-open/headers:rotate-0"
         />
       </summary>
-      <div className="pt-3">
+      <div className="min-w-0 pt-3">
         <Content />
       </div>
     </details>
@@ -70,7 +76,7 @@ interface DragState {
   slots: Array<{ key: string; top: number; height: number; offset: number }>
 }
 function Content() {
-  const { entries, change, disabled } = useEditor()
+  const { entries, change, disabled, acceptEntry, keyMaxLength } = useEditor()
   const pendingFocus = useRef<string | null>(null)
   const rowNodes = useRef(new Map<string, HTMLDivElement>())
   const beforeMove = useRef(new Map<string, number>())
@@ -108,7 +114,9 @@ function Content() {
     announce(`Header moved to position ${to + 1} of ${next.length}`)
   }
   function update(index: number, patch: Partial<KeyValueEntry>) {
-    change(entries.map((entry, position) => (position === index ? { ...entry, ...patch } : entry)))
+    const next = { ...entries[index], ...patch }
+    if (acceptEntry && !acceptEntry(next)) return
+    change(entries.map((entry, position) => (position === index ? next : entry)))
   }
   function endDrag(commit: boolean) {
     const current = drag.current
@@ -190,7 +198,7 @@ function Content() {
     setPreview({ key: current.key, offsets })
   }
   return (
-    <div role="table" aria-label="Custom headers" className="grid min-w-0 gap-2">
+    <div role="table" aria-label="Custom headers" className="grid w-full min-w-0 max-w-full grid-cols-[minmax(0,1fr)] gap-2">
       <div
         role="row"
         className="grid grid-cols-[2rem_minmax(0,1fr)_minmax(0,1fr)_1.5rem] items-center gap-1 text-xs text-muted"
@@ -217,7 +225,8 @@ function Content() {
           }}
           style={preview ? { transform: `translateY(${preview.offsets[entry.id] ?? 0}px)` } : undefined}
           className={cx(
-            'relative flex min-w-0 items-center gap-2 motion-safe:transition-transform motion-safe:duration-150',
+            'relative flex min-w-0 items-center gap-2',
+            !!preview && 'motion-safe:transition-transform motion-safe:duration-150',
             preview?.key === entry.id && 'opacity-0',
           )}
         >
@@ -262,6 +271,7 @@ p-1
             <span role="cell" className="min-w-0">
               <TextField
                 aria-label={`Header ${index + 1} key`}
+                maxLength={keyMaxLength}
                 value={entry.key}
                 placeholder="Enter key"
                 disabled={disabled}
@@ -308,6 +318,7 @@ disabled:opacity-40
         <div role="cell" className="min-w-0 flex-1 rounded-lg bg-elevated p-1">
           <TextField
             aria-label="New header key"
+            maxLength={keyMaxLength}
             placeholder="Enter key"
             value=""
             disabled={disabled}
@@ -316,7 +327,9 @@ disabled:opacity-40
               if (!event.target.value) return
               const key = crypto.randomUUID()
               pendingFocus.current = key
-              change([...entries, { id: key, key: event.target.value, value: '' }])
+              const entry = { id: key, key: event.target.value, value: '' }
+              if (acceptEntry && !acceptEntry(entry)) return
+              change([...entries, entry])
             }}
           />
         </div>

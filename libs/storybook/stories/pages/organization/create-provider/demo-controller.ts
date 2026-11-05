@@ -224,7 +224,7 @@ export class DemoCreateProviderController implements CreateProviderController {
     return {
       id,
       name: '',
-      maxContextTokens: '',
+      maxContextTokens: '250000',
       maxOutputTokens: '',
       thinkingLevels: [],
       effortMapping: {},

@@ -55,7 +55,7 @@ export default defineConfig({
     },
     rolldownOptions: {
       treeshake: true,
-      external: (id) => /^(react|react-dom|@phosphor-icons\/react|tailwind-merge|zustand)(\/|$)/.test(id),
+      external: (id) => /^(@compallm\/contract|react|react-dom|@phosphor-icons\/react|tailwind-merge|zustand)(\/|$)/.test(id),
       output: { minify: true },
     },
   },

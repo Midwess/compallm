@@ -7,6 +7,9 @@
 /node_modules
 /portal/node_modules
 /libs/storybook/node_modules
+/libs/contract/node_modules
+/libs/contract/dist
+/libs/contract/.pnpm-store
 /libs/storybook/dist
 /libs/storybook/*.tgz
 /libs/storybook/.pnpm-store

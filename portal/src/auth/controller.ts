@@ -1,3 +1,4 @@
+import { ConfirmSignupOtpRequest, ConfirmSigninOtpRequest } from '@compallm/contract/validation'
 import { createSignupStore, type SignupController, type SignupState } from '@compallm/storybook/pages/signup'
 import type { SigninController } from '@compallm/storybook/pages/signin'
 import get from 'lodash-es/get'
@@ -267,7 +268,9 @@ export class AuthController implements SignupController, SigninController {
 
   private async verify(retry = false) {
     const state = this.store.getState()
-    if (state.pending || state.step !== 'code' || !/^[0-9]{6}$/.test(state.code)) return
+    const schema = this.mode === 'signup' ? ConfirmSignupOtpRequest : ConfirmSigninOtpRequest
+    const input = schema.safeParse({ code: state.code, delivery: 'cookie' })
+    if (state.pending || state.step !== 'code' || !input.success) return
     if (!retry && this.lastCode === state.code) return
     this.lastCode = state.code
     await this.perform(
@@ -275,7 +278,7 @@ export class AuthController implements SignupController, SigninController {
       async (signal) => {
         if (!this.confirmed) {
           const confirm = this.mode === 'signup' ? confirmSignupOtp : confirmSigninOtp
-          await confirm({ code: state.code, delivery: 'cookie' }, { signal, credentials: 'same-origin' })
+          await confirm(input.data, { signal, credentials: 'same-origin' })
           if (signal.aborted) throw new DOMException('Cancelled', 'AbortError')
           this.confirmed = true
         }

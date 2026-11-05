@@ -15,6 +15,7 @@ frontend-dev = ["axum-frontend/dev"]
 
 [dependencies]
 validify.workspace = true
+compallm-contract.workspace = true
 axum-valid = { workspace = true, features = ["validify", "json"] }
 compallm-utils.workspace = true
 cookie.workspace = true

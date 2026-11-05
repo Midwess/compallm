@@ -1,35 +1,43 @@
-import { isEndpointPath, modelPath, modelDraftFingerprint } from './model-options'
-import type { HeaderEntry, CreateProviderState, ModelDraft, ProviderSnapshot } from './types'
+import { ProviderFields, ProviderModelFields, ProviderModels, ProviderInputRules } from '@compallm/contract/validation'
+import { headersAreValid, acceptsHeaderInput } from '@compallm/contract/provider'
+import { modelPath, modelDraftFingerprint } from './model-options'
+import type { CreateProviderState, ModelDraft, ProviderSnapshot } from './types'
 
+export { headersAreValid, acceptsHeaderInput }
+export const isValidBaseUrl = (value: string) => ProviderFields.shape.baseUrl.safeParse(value).success
 export function hasValidModelPrices(model: ModelDraft): boolean {
-  return [model.inputPrice, model.outputPrice, model.cachedPrice].every((price) => /^\d+(?:\.\d{1,8})?$/.test(price))
+  return [model.inputPrice, model.outputPrice, model.cachedPrice].every(
+    (price) => ProviderModelFields.shape.inputPrice.safeParse(price).success,
+  )
+}
+function modelInput(model: ModelDraft) {
+  return {
+    name: model.name,
+    path: modelPath(model),
+    maxContextTokens: Number(model.maxContextTokens),
+    inputPrice: model.inputPrice,
+    outputPrice: model.outputPrice,
+    cachedPrice: model.cachedPrice,
+  }
 }
 export function isValidModelDraft(model: ModelDraft): boolean {
-  const context = model.maxContextTokens
-  const output = model.maxOutputTokens ?? ''
   return (
-    model.name.trim().length > 0 &&
-    hasValidModelPrices(model) &&
-    isEndpointPath(modelPath(model)) &&
-    (output === '' || (/^[1-9]\d*$/.test(output) && Number.isSafeInteger(Number(output)))) &&
-    (context === '' || (/^[1-9]\d*$/.test(context) && Number.isSafeInteger(Number(context))))
+    ProviderInputRules.shape.positiveInteger.safeParse(model.maxContextTokens).success &&
+    ProviderModelFields.safeParse(modelInput(model)).success &&
+    Object.values(model.effortMapping ?? {}).every(
+      (value) => !value || ProviderInputRules.shape.effortValue.safeParse(value).success,
+    )
   )
 }
 export function canCreateProvider(state: CreateProviderState): boolean {
   if (!headersAreValid(state.headers)) return false
-  if (!state.name.trim() || (!state.apiKey.trim() && !(state.intent === 'edit' && state.savedProvider))) return false
-  try {
-    const url = new URL(state.baseUrl)
-    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) return false
-  } catch {
-    return false
+  if (!ProviderFields.shape.name.safeParse(state.name).success) return false
+  if (!ProviderFields.shape.baseUrl.safeParse(state.baseUrl).success) return false
+  if (state.apiKey !== '' || !(state.intent === 'edit' && state.savedProvider)) {
+    if (!ProviderFields.shape.apiKey.safeParse(state.apiKey).success) return false
   }
   const enabled = state.models.filter((model) => model.enabled)
-  return (
-    enabled.length > 0 &&
-    enabled.every((model) => isValidModelDraft(model)) &&
-    new Set(enabled.map((model) => model.name.trim())).size === enabled.length
-  )
+  return enabled.every(isValidModelDraft) && ProviderModels.safeParse({ entries: enabled.map(modelInput) }).success
 }
 
 export function providerSnapshot(state: CreateProviderState) {
@@ -59,12 +67,4 @@ export function hasProviderChanges(state: CreateProviderState): boolean {
 }
 export function canSaveProvider(state: CreateProviderState): boolean {
   return state.intent === 'edit' && hasProviderChanges(state) && canCreateProvider(state)
-}
-
-export function headersAreValid(headers: HeaderEntry[]): boolean {
-  const keys = headers.map((entry) => entry.key.trim().toLowerCase())
-  return (
-    new Set(keys).size === keys.length &&
-    headers.every((entry) => /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(entry.key.trim()) && !/[\r\n]/.test(entry.value))
-  )
 }

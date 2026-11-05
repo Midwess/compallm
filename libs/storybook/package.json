@@ -14,14 +14,16 @@
     "check": "tsc --noEmit",
     "lint": "prettier . --write && eslint . --fix",
     "lint:check": "eslint . && prettier . --check",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "postinstall": "npm --prefix ../contract ci --ignore-scripts && npm --prefix ../contract run build"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",
     "@phosphor-icons/react": "2.1.10",
     "dompurify": "^3.4.17",
     "tailwind-merge": "^3.7.0",
-    "zustand": "^5.0.16"
+    "zustand": "^5.0.16",
+    "@compallm/contract": "file:../contract"
   },
   "devDependencies": {
     "@eslint/js": "^9",

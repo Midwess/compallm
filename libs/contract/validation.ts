@@ -1,0 +1,28 @@
+// Generated from Rust/OpenAPI. Do not edit; run cargo run -p compallm-api -- generate.
+import * as raw from './schemas.ts'
+import { z } from 'zod'
+import { inputString, stringInput, integerInput, headerObject, headersObject, modelsObject } from './runtime.ts'
+export const ConfirmSigninOtpRequestConstraints = {"code":{"minLength":6,"maxLength":6,"pattern":"^[0-9]*$","trim":true}} as const
+export const ConfirmSigninOtpRequestInput = {"code": stringInput({"minLength":6,"maxLength":6,"pattern":"^[0-9]*$","trim":true})}
+export const ConfirmSigninOtpRequest = raw.ConfirmSigninOtpRequest.extend({"code": inputString({"minLength":6,"maxLength":6,"pattern":"^[0-9]*$","trim":true})}).strict()
+export const ConfirmSignupOtpRequestConstraints = {"code":{"minLength":6,"maxLength":6,"pattern":"^[0-9]*$","trim":true}} as const
+export const ConfirmSignupOtpRequestInput = {"code": stringInput({"minLength":6,"maxLength":6,"pattern":"^[0-9]*$","trim":true})}
+export const ConfirmSignupOtpRequest = raw.ConfirmSignupOtpRequest.extend({"code": inputString({"minLength":6,"maxLength":6,"pattern":"^[0-9]*$","trim":true})}).strict()
+export const ProviderFieldsConstraints = {"apiKey":{"minLength":1,"maxLength":512,"pattern":"^[^\\s]+$"},"baseUrl":{"maxLength":512,"format":"baseUrl"},"name":{"minLength":1,"maxLength":120,"format":"nonblank"}} as const
+export const ProviderFieldsInput = {"apiKey": stringInput({"minLength":1,"maxLength":512,"pattern":"^[^\\s]+$"}),"baseUrl": stringInput({"maxLength":512,"format":"baseUrl"}),"name": stringInput({"minLength":1,"maxLength":120,"format":"nonblank"})}
+export const ProviderFields = raw.ProviderFields.extend({"apiKey": inputString({"minLength":1,"maxLength":512,"pattern":"^[^\\s]+$"}),"baseUrl": inputString({"maxLength":512,"format":"baseUrl"}),"name": inputString({"minLength":1,"maxLength":120,"format":"nonblank"})}).strict()
+export const ProviderHeaderConstraints = {"key":{"maxLength":128,"pattern":"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"},"value":{"pattern":"^[\\t\\x20-\\x7e\\x80-\\xff]*$"}} as const
+export const ProviderHeaderInput = {"key": stringInput({"maxLength":128,"pattern":"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"}),"value": stringInput({"pattern":"^[\\t\\x20-\\x7e\\x80-\\xff]*$"})}
+export const ProviderHeader = raw.ProviderHeader.extend({"key": inputString({"maxLength":128,"pattern":"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"}),"value": inputString({"pattern":"^[\\t\\x20-\\x7e\\x80-\\xff]*$"})}).strict().refine(headerObject, { message: "Invalid Authorization header", path: ["value"] })
+export const ProviderHeadersConstraints = {} as const
+export const ProviderHeadersInput = {}
+export const ProviderHeaders = raw.ProviderHeaders.extend({"entries": z.array(ProviderHeader)}).strict().refine(headersObject, { message: "Duplicate header names", path: ["entries"] })
+export const ProviderInputRulesConstraints = {"authorization":{"format":"authorization"},"effortValue":{"minLength":1,"maxLength":25,"pattern":"^[A-Za-z0-9_-]+$"},"positiveInteger":{"pattern":"^[1-9][0-9]*$"}} as const
+export const ProviderInputRulesInput = {"authorization": stringInput({"format":"authorization"}),"effortValue": stringInput({"minLength":1,"maxLength":25,"pattern":"^[A-Za-z0-9_-]+$"}),"positiveInteger": stringInput({"pattern":"^[1-9][0-9]*$"})}
+export const ProviderInputRules = raw.ProviderInputRules.extend({"authorization": inputString({"format":"authorization"}),"effortValue": inputString({"minLength":1,"maxLength":25,"pattern":"^[A-Za-z0-9_-]+$"}),"positiveInteger": inputString({"pattern":"^[1-9][0-9]*$"})}).strict()
+export const ProviderModelFieldsConstraints = {"cachedPrice":{"pattern":"^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$","inputPattern":"^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$"},"inputPrice":{"pattern":"^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$","inputPattern":"^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$"},"name":{"minLength":1,"maxLength":40,"pattern":"^[A-Za-z0-9_-]+$"},"outputPrice":{"pattern":"^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$","inputPattern":"^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$"},"path":{"maxLength":40,"pattern":"^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$"}} as const
+export const ProviderModelFieldsInput = {"cachedPrice": stringInput({"pattern":"^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$","inputPattern":"^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$"}),"inputPrice": stringInput({"pattern":"^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$","inputPattern":"^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$"}),"maxContextTokens": integerInput({"minimum":1,"maximum":4294967295}),"name": stringInput({"minLength":1,"maxLength":40,"pattern":"^[A-Za-z0-9_-]+$"}),"outputPrice": stringInput({"pattern":"^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$","inputPattern":"^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$"}),"path": stringInput({"maxLength":40,"pattern":"^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$"})}
+export const ProviderModelFields = raw.ProviderModelFields.extend({"cachedPrice": inputString({"pattern":"^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$","inputPattern":"^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$"}),"inputPrice": inputString({"pattern":"^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$","inputPattern":"^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$"}),"name": inputString({"minLength":1,"maxLength":40,"pattern":"^[A-Za-z0-9_-]+$"}),"outputPrice": inputString({"pattern":"^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$","inputPattern":"^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$"}),"path": inputString({"maxLength":40,"pattern":"^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$"})}).strict()
+export const ProviderModelsConstraints = {} as const
+export const ProviderModelsInput = {}
+export const ProviderModels = raw.ProviderModels.extend({"entries": z.array(ProviderModelFields)}).strict().refine(modelsObject, { message: "At least one model with unique names is required", path: ["entries"] })

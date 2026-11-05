@@ -1120,6 +1120,7 @@ dependencies = [
  "router",
  "sea-orm",
  "sea-orm-migration",
+ "sec",
  "serde_json",
  "tempfile",
  "tokio",
@@ -4310,6 +4311,7 @@ version = "0.1.0"
 dependencies = [
  "compallm-core",
  "httparse",
+ "sec",
  "tokio",
 ]
 
@@ -4699,6 +4701,10 @@ dependencies = [
  "quote",
  "syn 2.0.119",
 ]
+
+[[package]]
+name = "sec"
+version = "0.1.0"
 
 [[package]]
 name = "sec1"

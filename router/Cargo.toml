@@ -6,6 +6,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
+sec.workspace = true
 httparse = "1"
 compallm-core.workspace = true
 tokio = { workspace = true, features = ["net", "rt", "io-util", "macros"] }

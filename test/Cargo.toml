@@ -10,6 +10,7 @@ publish = false
 workspace = true
 
 [dev-dependencies]
+sec.workspace = true
 router = { path = "../router" }
 validify.workspace = true
 anyhow = { workspace = true, features = ["std"] }

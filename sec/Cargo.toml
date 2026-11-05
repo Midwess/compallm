@@ -1,0 +1,10 @@
+[package]
+name = "sec"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Typed resources, processors, plugins, and manually triggered execution stages"
+publish = false
+
+[lints]
+workspace = true

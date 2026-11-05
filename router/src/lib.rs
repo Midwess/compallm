@@ -14,7 +14,10 @@ pub mod prelude {
         Router,
         header::RequestHeader,
         processor::Processor,
-        resources::{ContextWriter, Local, PeerAddress, Res, ResMut, Resources, RouterModel},
+        resources::{
+            ContextWriter, Local, PeerAddress, Res, ResMut, Resources, RouterModel, Shared,
+        },
         stage::{BodyStarted, HeaderReceived, IntoProcessors, Stage, StageLabel},
     };
+    pub use sec::{App, Execution, Plugin};
 }

@@ -1,5 +1,5 @@
 [workspace]
-members = ["api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "test", "router"]
+members = ["api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "test", "router", "sec"]
 resolver = "3"
 
 [workspace.package]
@@ -11,6 +11,7 @@ license = "Elastic-2.0"
 borrowed_box = "allow"
 
 [workspace.dependencies]
+sec = { path = "sec" }
 jsonwebtoken = { version = "10", default-features = false }
 validify = { version = "2", default-features = false }
 axum-valid = { version = "0.25", default-features = false }

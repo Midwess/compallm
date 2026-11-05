@@ -27,28 +27,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }),
     };
     let mut router = Router::new(model);
-    router.add_processors(HeaderReceived, InspectHeader { runs: 0 });
-    // Synthetic instance only: the consumer supplies the real availability policy.
-    let provider = Arc::new(ExampleProvider {
-        name: "example-provider",
-        available: true,
-    });
-    router.add_processors(
-        BodyStarted,
-        move |mut writer: ContextWriter| -> std::io::Result<()> {
-            if !provider.available {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::NotConnected,
-                    "provider unavailable",
-                ));
-            }
-            writer.insert_resource(SelectedProvider(Arc::clone(&provider)));
-            Ok(())
+    router.add_plugins((
+        HeaderPlugin,
+        ProviderSelectionPlugin {
+            provider: Arc::new(ExampleProvider {
+                name: "example-provider",
+                available: true,
+            }),
         },
-    );
-    router.add_processors(BodyStarted, |provider: Res<SelectedProvider>| {
-        println!("selected provider={}", provider.0.name);
-    });
+    ));
 
     // Socket acquisition stays outside Router.
     let (stream, _) = listener.accept().await?;
@@ -88,3 +75,42 @@ struct ExampleProvider {
     available: bool,
 }
 struct SelectedProvider(Arc<ExampleProvider>);
+
+struct HeaderPlugin;
+impl Plugin for HeaderPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_processors(HeaderReceived, InspectHeader { runs: 0 });
+    }
+}
+
+struct ProviderSelectionPlugin {
+    provider: Arc<ExampleProvider>,
+}
+impl Plugin for ProviderSelectionPlugin {
+    fn build(&self, app: &mut App) {
+        // A shared instance; readiness policy is still supplied by the consumer.
+        app.insert_shared_resource(Arc::clone(&self.provider));
+        app.add_processors(
+            BodyStarted,
+            (select_provider, |provider: Res<SelectedProvider>| {
+                println!("selected provider={}", provider.0.name);
+            })
+                .chain(),
+        );
+    }
+}
+
+fn select_provider(
+    provider: Shared<ExampleProvider>,
+    mut writer: ContextWriter,
+) -> std::io::Result<()> {
+    if !provider.available {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotConnected,
+            "provider unavailable",
+        ));
+    }
+    // Clone the underlying instance handle; SEC owns only the shared-resource view.
+    writer.insert_resource(SelectedProvider(provider.into_arc()));
+    Ok(())
+}

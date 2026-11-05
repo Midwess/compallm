@@ -4,7 +4,7 @@ pub mod stage;
 
 use crate::{
     connection::Connection,
-    stage::{IntoProcessors, Stage, StageDefinitions, StageLabel},
+    stage::{IntoProcessors, Stage, StageLabel},
 };
 use compallm_core::model::Model;
 use std::{io, sync::Arc};
@@ -18,7 +18,7 @@ use tokio::{
 pub struct Router {
     model: Arc<Model>,
     connections: JoinSet<io::Result<()>>,
-    stages: Arc<StageDefinitions>,
+    app: sec::App,
 }
 
 impl Router {
@@ -26,7 +26,7 @@ impl Router {
         Self {
             model: Arc::new(model),
             connections: JoinSet::new(),
-            stages: Arc::new(StageDefinitions::default()),
+            app: sec::App::new(),
         }
     }
 
@@ -35,7 +35,7 @@ impl Router {
     where
         C: IntoProcessors<M> + Clone + Send + Sync + 'static,
     {
-        Arc::make_mut(&mut self.stages).add(label, processors);
+        self.app.add_processors(label, processors);
     }
 
     /// Build connection-local processors, including non-Clone structs, through a factory.
@@ -44,7 +44,15 @@ impl Router {
         label: impl StageLabel,
         configure: impl Fn(&mut Stage) + Send + Sync + 'static,
     ) {
-        Arc::make_mut(&mut self.stages).configure(label, configure);
+        self.app.configure_stage(label, configure);
+    }
+
+    pub fn add_plugins<M>(&mut self, plugins: impl sec::plugin::Plugins<M>) {
+        self.app.add_plugins(plugins);
+    }
+
+    pub fn insert_shared_resource<T: Send + Sync + 'static>(&mut self, resource: Arc<T>) {
+        self.app.insert_shared_resource(resource);
     }
 
     pub fn model(&self) -> &Model {
@@ -57,7 +65,7 @@ impl Router {
             model: Arc::clone(&self.model),
             peer_addr: stream.peer_addr()?,
             stream,
-            stages: Arc::clone(&self.stages),
+            execution: self.app.execution(),
         };
         self.connections.spawn(connection.run());
         Ok(())

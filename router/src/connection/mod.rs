@@ -1,8 +1,8 @@
 pub mod header;
 
 use crate::{
-    resources::{PeerAddress, Resources, RouterModel},
-    stage::{BodyStarted, HeaderReceived, StageDefinitions, Stages},
+    resources::{PeerAddress, RouterModel},
+    stage::{BodyStarted, HeaderReceived},
 };
 use compallm_core::model::Model;
 use std::{io, net::SocketAddr, sync::Arc};
@@ -13,19 +13,21 @@ pub struct Connection {
     pub model: Arc<Model>,
     pub peer_addr: SocketAddr,
     pub(crate) stream: TcpStream,
-    pub(crate) stages: Arc<StageDefinitions>,
+    pub(crate) execution: sec::Execution,
 }
 impl Connection {
     /// Read one header, execute HeaderReceived, then enter BodyStarted. Later stages are future work.
-    pub async fn run(self) -> io::Result<()> {
-        let mut stages = Stages::new(self.stages);
-        let mut resources = Resources::default();
-        resources.insert(RouterModel(self.model));
-        resources.insert(PeerAddress(self.peer_addr));
+    pub async fn run(mut self) -> io::Result<()> {
+        self.execution
+            .resources_mut()
+            .insert(RouterModel(self.model));
+        self.execution
+            .resources_mut()
+            .insert(PeerAddress(self.peer_addr));
         let mut reader = BufReader::with_capacity(4096, self.stream);
         let header = header::read_header(&mut reader).await?;
-        resources.insert(header);
-        stages.run(HeaderReceived, &mut resources)?;
-        stages.run(BodyStarted, &mut resources)
+        self.execution.resources_mut().insert(header);
+        self.execution.run_stage(HeaderReceived)?;
+        self.execution.run_stage(BodyStarted)
     }
 }

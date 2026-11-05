@@ -156,7 +156,27 @@ fn conditions_skip_or_error_without_committing_deferred_writes() {
 }
 
 #[test]
-fn missing_targets_and_cycles_fail_before_any_processor_executes() {
+fn ordering_does_not_install_or_require_missing_optional_processors() {
+    fn optional() {
+        panic!("must not be installed by an ordering reference");
+    }
+    let mut app = App::new();
+    app.add_processors(
+        Received,
+        (|mut visits: ResMut<Visits>| {
+            visits.0 += 1;
+        })
+        .after(optional)
+        .before(optional),
+    );
+    let mut execution = app.execution();
+    execution.resources_mut().insert(Visits(0));
+    execution.run_stage(Received).unwrap();
+    assert_eq!(execution.resources().get::<Visits>().unwrap().0, 1);
+}
+
+#[test]
+fn cycles_fail_before_any_processor_executes() {
     fn a() {}
     fn b() {}
     let called = Arc::new(AtomicUsize::new(0));
@@ -169,6 +189,7 @@ fn missing_targets_and_cycles_fail_before_any_processor_executes() {
                 observed.fetch_add(1, Ordering::SeqCst);
             },
             a.after(b),
+            b.after(a),
         ),
     );
     assert_eq!(
@@ -176,12 +197,6 @@ fn missing_targets_and_cycles_fail_before_any_processor_executes() {
         io::ErrorKind::InvalidInput
     );
     assert_eq!(called.load(Ordering::SeqCst), 0);
-    let mut cyclic = App::new();
-    cyclic.add_processors(Received, (a.after(b), b.after(a)));
-    assert_eq!(
-        cyclic.execution().run_stage(Received).unwrap_err().kind(),
-        io::ErrorKind::InvalidInput
-    );
 }
 
 #[test]

@@ -30,10 +30,7 @@ impl StageGraph {
         for (index, node) in self.nodes.iter().enumerate() {
             let node = node.as_ref().expect("available processor");
             node.processor.validate()?;
-            let processor = node
-                .access_override
-                .clone()
-                .unwrap_or_else(|| node.processor.access());
+            let processor = node.processor.access();
             let mut conditions = Access::default();
             for condition in &node.conditions {
                 condition.validate()?;
@@ -53,12 +50,9 @@ impl StageGraph {
             }
             for (targets, before) in [(&node.before, true), (&node.after, false)] {
                 for target in targets {
-                    let matches = lookup.get(target).ok_or_else(|| {
-                        io::Error::new(
-                            io::ErrorKind::InvalidInput,
-                            "stage dependency target is not registered",
-                        )
-                    })?;
+                    let Some(matches) = lookup.get(target) else {
+                        continue;
+                    };
                     for &other in matches {
                         edges.insert(if before {
                             (index, other)

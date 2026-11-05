@@ -11,7 +11,6 @@ pub use config::*;
 pub(crate) use registry::{StageDefinitions, Stages};
 
 use crate::{
-    access::Access,
     processor::{Condition, Processor},
     resources::Resources,
 };
@@ -24,7 +23,6 @@ pub trait StageLabel: Send + Sync + 'static {}
 
 pub struct ProcessorConfig {
     processor: Box<dyn Processor>,
-    access_override: Option<Access>,
     before: Vec<TypeId>,
     after: Vec<TypeId>,
     predecessors: Vec<usize>,

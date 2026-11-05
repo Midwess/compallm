@@ -277,23 +277,28 @@ async fn body_started_selects_provider_after_headers_without_waiting_for_payload
         });
         router.add_processors(
             BodyStarted,
-            move |header: Res<RequestHeader>, mut writer: ContextWriter| -> std::io::Result<()> {
-                assert_eq!(header.target, "/authorized");
-                let provider = [&unavailable, &available]
-                    .into_iter()
-                    .find(|p| p.available)
-                    .ok_or_else(|| {
-                        std::io::Error::new(std::io::ErrorKind::NotConnected, "unavailable")
-                    })?;
-                writer.insert_resource(SelectedProvider(Arc::clone(provider)));
-                Ok(())
-            },
+            (
+                move |header: Res<RequestHeader>,
+                      mut writer: ContextWriter|
+                      -> std::io::Result<()> {
+                    assert_eq!(header.target, "/authorized");
+                    let provider = [&unavailable, &available]
+                        .into_iter()
+                        .find(|p| p.available)
+                        .ok_or_else(|| {
+                            std::io::Error::new(std::io::ErrorKind::NotConnected, "unavailable")
+                        })?;
+                    writer.insert_resource(SelectedProvider(Arc::clone(provider)));
+                    Ok(())
+                },
+                move |selected: Res<SelectedProvider>| {
+                    assert!(Arc::ptr_eq(&selected.0, &expected));
+                    assert_eq!(selected.0.name, "available");
+                    calls.fetch_add(1, Ordering::SeqCst);
+                },
+            )
+                .chain(),
         );
-        router.add_processors(BodyStarted, move |selected: Res<SelectedProvider>| {
-            assert!(Arc::ptr_eq(&selected.0, &expected));
-            assert_eq!(selected.0.name, "available");
-            calls.fetch_add(1, Ordering::SeqCst);
-        });
         // Neither Content-Length: 0 nor a body whose bytes have not arrived blocks this moment.
         for length in [0, 100] {
             let mut client = TcpStream::connect(listener.local_addr().unwrap())

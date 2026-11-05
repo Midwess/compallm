@@ -153,7 +153,7 @@ async fn conflicting_writes_are_serialized_and_state_is_reused() {
 }
 
 #[tokio::test]
-async fn failed_wave_stops_dependents_and_keeps_successful_sibling_writes() {
+async fn failure_stops_dependents_and_keeps_successful_sibling_writes() {
     async fn fail(mut writer: ContextWriter) -> io::Result<()> {
         writer.insert_resource(10_u32);
         Err(io::Error::new(io::ErrorKind::PermissionDenied, "denied"))
@@ -163,14 +163,8 @@ async fn failed_wave_stops_dependents_and_keeps_successful_sibling_writes() {
     }
     let mut app = App::new();
     app.set_max_parallelism(NonZeroUsize::new(2).unwrap());
-    app.add_processors(
-        Received,
-        async_processor(fail).with_access(Access::default()),
-    );
-    app.add_processors(
-        Received,
-        async_processor(succeed).with_access(Access::default()),
-    );
+    app.add_processors(Received, async_processor(fail));
+    app.add_processors(Received, async_processor(succeed));
     app.add_processors(
         Received,
         (|| -> () { panic!("dependent must not start") }).after(fail),
@@ -293,13 +287,9 @@ async fn deferred_insertion_cannot_replace_a_resource_while_another_task_reads_i
         assert_eq!(*value, 1);
         observed.store(2, Ordering::SeqCst);
     });
-    app.add_processors(
-        Received,
-        (|mut writer: ContextWriter| {
-            writer.insert_resource(2_u32);
-        })
-        .with_access(Access::default()),
-    );
+    app.add_processors(Received, |mut writer: ContextWriter| {
+        writer.insert_resource(2_u32);
+    });
     let mut execution = app.execution();
     execution.resources_mut().insert(1_u32);
     execution.run_stage_async(Received).await.unwrap();
@@ -499,11 +489,7 @@ async fn deferred_barrier_waits_for_readers_then_releases_dependent_work() {
     }));
     app.add_processors(
         Received,
-        (
-            async_processor(produce).with_access(Access::default()),
-            read,
-            consume.after(produce),
-        ),
+        (async_processor(produce), read, consume.after(produce)),
     );
     let mut execution = app.execution();
     execution.resources_mut().insert(1_u32);

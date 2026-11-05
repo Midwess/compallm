@@ -29,7 +29,7 @@ impl<T: Send + Sync + 'static> AsyncParam for Shared<T> {
 }
 impl AsyncParam for ContextWriter {
     fn access() -> Access {
-        Access::exclusive()
+        Access::default()
     }
     fn fetch(resources: &Resources) -> io::Result<Self> {
         Ok(resources.writer())

@@ -32,6 +32,9 @@ impl<T: Send + Sync + 'static> ProcessorParam for Shared<T> {
 }
 
 impl ProcessorParam for ContextWriter {
+    fn access() -> Access {
+        Access::default()
+    }
     type State = ();
     type Item<'a> = ContextWriter;
     #[inline]

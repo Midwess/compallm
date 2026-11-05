@@ -1,8 +1,5 @@
 use super::ProcessorConfig;
-use crate::{
-    access::Access,
-    processor::{IntoCondition, IntoProcessor},
-};
+use crate::processor::{IntoCondition, IntoProcessor};
 use std::{any::TypeId, marker::PhantomData};
 
 fn append(target: &mut Vec<ProcessorConfig>, mut configs: Vec<ProcessorConfig>) {
@@ -34,12 +31,6 @@ pub trait IntoProcessors<Marker>: Sized {
             after: vec![TypeId::of::<T>()],
         }
     }
-    fn with_access(self, access: Access) -> AccessConfigured<Self> {
-        AccessConfigured {
-            processors: self,
-            access,
-        }
-    }
     fn run_if<M, C: IntoCondition<M>>(self, condition: C) -> Conditional<Self, C, M> {
         Conditional {
             processors: self,
@@ -53,12 +44,6 @@ pub struct Single<M>(PhantomData<M>);
 pub struct Tuple<M>(PhantomData<M>);
 pub struct Chained<M>(PhantomData<M>);
 pub struct WithOrder<M>(PhantomData<M>);
-pub struct WithAccess<M>(PhantomData<M>);
-#[derive(Clone)]
-pub struct AccessConfigured<T> {
-    processors: T,
-    access: Access,
-}
 pub struct WithCondition<P, C>(PhantomData<(P, C)>);
 #[derive(Clone)]
 pub struct Chain<T>(T);
@@ -90,24 +75,11 @@ where
     fn into_processors(self) -> Vec<ProcessorConfig> {
         vec![ProcessorConfig {
             processor: Box::new(self.into_processor()),
-            access_override: None,
             before: Vec::new(),
             after: Vec::new(),
             predecessors: Vec::new(),
             conditions: Vec::new(),
         }]
-    }
-}
-impl<T, M> IntoProcessors<WithAccess<M>> for AccessConfigured<T>
-where
-    T: IntoProcessors<M>,
-{
-    fn into_processors(self) -> Vec<ProcessorConfig> {
-        let mut configs = self.processors.into_processors();
-        for config in &mut configs {
-            config.access_override = Some(self.access.clone());
-        }
-        configs
     }
 }
 impl<T, M> IntoProcessors<Chained<M>> for Chain<T>

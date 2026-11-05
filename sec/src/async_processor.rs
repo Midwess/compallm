@@ -16,7 +16,7 @@ impl<T: Clone + Send + Sync + 'static> AsyncParam for Owned<T> {
         Access::default().read::<T>()
     }
     fn fetch(resources: &Resources) -> io::Result<Self> {
-        Ok(Self(resources.get::<T>()?.clone()))
+        Ok(Self(T::clone(&*resources.get::<T>()?)))
     }
 }
 impl<T: Send + Sync + 'static> AsyncParam for Shared<T> {

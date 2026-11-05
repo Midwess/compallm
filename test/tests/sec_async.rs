@@ -308,7 +308,7 @@ async fn deferred_insertion_cannot_replace_a_resource_while_another_task_reads_i
 }
 
 #[tokio::test]
-async fn checked_borrows_reject_bad_custom_parallel_access_declarations() {
+async fn hecs_borrow_conflict_fails_worker_for_bad_custom_access_declarations() {
     struct Writer {
         phase: Arc<AtomicUsize>,
     }
@@ -341,9 +341,14 @@ async fn checked_borrows_reject_bad_custom_parallel_access_declarations() {
             while self.phase.load(Ordering::SeqCst) != 1 && std::time::Instant::now() < deadline {
                 std::thread::yield_now();
             }
-            let result = resources.get::<u32>().map(|_| ());
+            let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                resources.get::<u32>().map(|_| ())
+            }));
             self.phase.store(2, Ordering::SeqCst);
-            result
+            match panic {
+                Ok(result) => result,
+                Err(payload) => std::panic::resume_unwind(payload),
+            }
         }
     }
     let phase = Arc::new(AtomicUsize::new(0));
@@ -361,13 +366,15 @@ async fn checked_borrows_reject_bad_custom_parallel_access_declarations() {
     });
     let mut execution = app.execution();
     execution.resources_mut().insert(1_u32);
-    assert_eq!(
+    let error = execution.run_stage_async(Received).await.unwrap_err();
+    assert!(error.to_string().contains("processor task failed"));
+    assert!(
         execution
             .run_stage_async(Received)
             .await
             .unwrap_err()
-            .kind(),
-        io::ErrorKind::InvalidInput
+            .to_string()
+            .contains("cancelled")
     );
     assert_eq!(*execution.resources().get::<u32>().unwrap(), 2);
 }

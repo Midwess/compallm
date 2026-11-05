@@ -3,6 +3,7 @@
 pub mod access;
 pub mod app;
 pub mod async_processor;
+pub mod context_writer;
 pub mod execution;
 pub mod plugin;
 pub mod processor;

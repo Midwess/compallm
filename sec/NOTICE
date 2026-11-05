@@ -1,8 +1,0 @@
-SEC stage scheduling is adapted from the architecture and scheduling algorithms
-of bevy_ecs v0.20.1 (Bevy Contributors), https://github.com/bevyengine/bevy.
-In particular, compiled schedules, cached conflict masks, dependency counters,
-ready/running/completed sets, and deferred-work synchronization follow that design.
-The implementation is adapted for safe hecs storage and Tokio task ownership;
-Bevy's unsafe World access and entity/query implementation are not included.
-Bevy is dual-licensed under MIT or Apache-2.0. Its notices and licenses are
-preserved in licenses/bevy/LICENSE-MIT and licenses/bevy/LICENSE-APACHE.

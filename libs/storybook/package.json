@@ -65,41 +65,56 @@
   },
   "exports": {
     ".": {
+      "compallm-source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
     "./components/*": {
+      "compallm-source": "./src/components/*.tsx",
       "types": "./dist/components/*.d.ts",
       "import": "./dist/components/*.js"
     },
-    "./styles.css": "./dist/styles.css",
-    "./theme.css": "./dist/theme.css",
+    "./styles.css": {
+      "compallm-source": "./src/styles/tailwind.css",
+      "default": "./dist/styles.css"
+    },
+    "./theme.css": {
+      "compallm-source": "./src/styles/theme.css",
+      "default": "./dist/theme.css"
+    },
     "./package.json": "./package.json",
     "./pages/signup": {
+      "compallm-source": "./src/pages/signup/index.tsx",
       "types": "./dist/pages/signup/index.d.ts",
       "import": "./dist/pages/signup.js"
     },
     "./pages/signin": {
+      "compallm-source": "./src/pages/signin/index.tsx",
       "types": "./dist/pages/signin/index.d.ts",
       "import": "./dist/pages/signin.js"
     },
     "./context": {
+      "compallm-source": "./src/context.ts",
       "types": "./dist/context.d.ts",
       "import": "./dist/context.js"
     },
     "./pages/main": {
+      "compallm-source": "./src/pages/main/index.tsx",
       "types": "./dist/pages/main/index.d.ts",
       "import": "./dist/pages/main.js"
     },
     "./pages/organization": {
+      "compallm-source": "./src/pages/organization/index.tsx",
       "types": "./dist/pages/organization/index.d.ts",
       "import": "./dist/pages/organization.js"
     },
     "./pages/organization/chat": {
+      "compallm-source": "./src/pages/organization/chat/index.tsx",
       "types": "./dist/pages/organization/chat/index.d.ts",
       "import": "./dist/pages/organization/chat.js"
     },
     "./pages/organization/create-provider": {
+      "compallm-source": "./src/pages/organization/create-provider/index.tsx",
       "types": "./dist/pages/organization/create-provider/index.d.ts",
       "import": "./dist/pages/organization/create-provider.js"
     }

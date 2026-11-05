@@ -113,7 +113,7 @@ export function emptyModel(id: string, protocol: TextModelProtocol = 'openai_cha
     maxOutputTokens: '',
     effortMapping: {},
     name: '',
-    maxContextTokens: '',
+    maxContextTokens: '250000',
     thinkingLevels: [],
     inputPrice: '',
     outputPrice: '',

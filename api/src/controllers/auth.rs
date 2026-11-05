@@ -5,6 +5,7 @@ use axum::{
     response::IntoResponse,
 };
 use axum_valid::ValidifiedByRef;
+use compallm_contract::ContractSchema;
 use compallm_core::{
     auth::{AuthService, EmailOtpAccessToken, UserAccessToken},
     user::User,
@@ -30,7 +31,7 @@ pub fn router() -> OpenApiRouter<&'static AuthService> {
 }
 
 /// Email address to receive a signup verification code.
-#[derive(Deserialize, ToSchema, Validify)]
+#[derive(Deserialize, ContractSchema, Validify)]
 #[serde(deny_unknown_fields)]
 pub struct SignupEmailRequest {
     /// Trimmed and ASCII-lowercased before email validation. Any valid domain is accepted.
@@ -96,14 +97,13 @@ async fn signup_email(
 }
 
 /// Email challenge and code used to confirm signup.
-#[derive(Deserialize, ToSchema, Validify)]
+#[derive(Deserialize, ContractSchema, Validify)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ConfirmSignupOtpRequest {
     /// Six ASCII digits received by email; surrounding whitespace is trimmed. Submit before expiry.
     #[schema(example = "123456")]
     #[modify(trim)]
     #[validate(length(equal = 6), custom(function = AuthInput::otp))]
-    #[schema(min_length = 6, max_length = 6, pattern = "^[0-9]{6}$")]
     pub code: String,
     /// Credential delivery: cookie (default) sets HttpOnly cookies and requires Origin;
     /// token returns both JWTs in JSON without setting cookies.
@@ -153,7 +153,7 @@ async fn confirm_signup_otp(
 }
 
 /// Email address to receive a signin verification code.
-#[derive(Deserialize, ToSchema, Validify)]
+#[derive(Deserialize, ContractSchema, Validify)]
 #[serde(deny_unknown_fields)]
 pub struct SigninEmailRequest {
     /// Trimmed and ASCII-lowercased before email validation. Account existence is checked only at confirmation.
@@ -202,14 +202,13 @@ async fn signin_email(
 }
 
 /// Email challenge, verification code, and credential delivery for an existing user.
-#[derive(Deserialize, ToSchema, Validify)]
+#[derive(Deserialize, ContractSchema, Validify)]
 #[serde(deny_unknown_fields)]
 pub struct ConfirmSigninOtpRequest {
     /// Six ASCII digits received by email; surrounding whitespace is trimmed. Valid for ten minutes.
     #[schema(example = "123456")]
     #[modify(trim)]
     #[validate(length(equal = 6), custom(function = AuthInput::otp))]
-    #[schema(min_length = 6, max_length = 6, pattern = "^[0-9]{6}$")]
     pub code: String,
     /// Cookie (default) sets HttpOnly cookies; token returns both JWTs in JSON.
     #[serde(default)]

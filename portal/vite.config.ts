@@ -10,9 +10,17 @@ export default defineConfig(({ command }) => ({
     dedupe: ['react', 'react-dom'],
     conditions: command === 'serve' ? ['compallm-source', ...defaultClientConditions] : [...defaultClientConditions],
   },
+  optimizeDeps: {
+    exclude: ['@compallm/contract'],
+    include: ['@compallm/contract > zod'],
+  },
   server: {
     fs: {
-      allow: [searchForWorkspaceRoot(process.cwd()), fileURLToPath(new URL('../libs/storybook', import.meta.url))],
+      allow: [
+        searchForWorkspaceRoot(process.cwd()),
+        fileURLToPath(new URL('../libs/storybook', import.meta.url)),
+        fileURLToPath(new URL('../libs/contract', import.meta.url)),
+      ],
     },
     port: 41868,
     strictPort: true,

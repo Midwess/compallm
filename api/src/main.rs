@@ -75,7 +75,20 @@ pub(crate) fn generate_contract(docs_output: Option<&Path>) -> Result<(), Box<dy
         return Err(io::Error::other(format!("Orval exited with status {status}")).into());
     }
 
-    println!("generated {}", portal.join("src/contract/api.ts").display());
+    let status = Command::new("node")
+        .arg(project_root().join("libs/contract/generate.mjs"))
+        .status()?;
+    if !status.success() {
+        return Err(io::Error::other("Shared validation generation failed").into());
+    }
+    let status = Command::new(node_binary(&portal, "tsc"))
+        .args(["-p"])
+        .arg(project_root().join("libs/contract/tsconfig.json"))
+        .status()?;
+    if !status.success() {
+        return Err(io::Error::other("Shared contract compilation failed").into());
+    }
+    println!("generated shared API and validation contracts in libs/contract");
     if let Some(output) = docs_output {
         let document = serde_json::from_str(&fs::read_to_string(portal.join("openapi.json"))?)?;
         let count = documentation::ApiDocumentation::new(&document).generate(output)?;

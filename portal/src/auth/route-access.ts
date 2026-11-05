@@ -1,4 +1,5 @@
 import { redirect, type LoaderFunctionArgs } from 'react-router'
+import { emailRequestSchema } from '@compallm/contract/auth'
 import { authController } from './controller'
 import { notify } from '../notifications/toast'
 import { organizationHome } from '../organization/paths'
@@ -37,7 +38,8 @@ export function confirmationAccess({ request }: LoaderFunctionArgs) {
   const user = authController.store.getState().currentUser
   if (user) return redirect(organizationHome(user))
   const email = url.searchParams.get('email')
-  if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const mode = url.pathname.startsWith('/signup') ? 'signup' : 'signin'
+  if (!emailRequestSchema(mode).safeParse({ email, delivery: 'cookie' }).success) {
     return redirect(url.pathname.startsWith('/signup') ? '/signup' : '/login')
   }
   return null

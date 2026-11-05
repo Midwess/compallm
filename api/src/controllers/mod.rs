@@ -38,5 +38,7 @@ pub fn api_router() -> OpenApiRouter<&'static AuthService> {
 }
 
 pub fn openapi() -> OpenApi {
-    api_router().into_openapi()
+    let mut api = api_router().into_openapi();
+    api.merge(<compallm_contract::provider::InputContracts as utoipa::OpenApi>::openapi());
+    api
 }

@@ -1,0 +1,416 @@
+[
+  {
+    "kind": "name",
+    "value": "My provider",
+    "valid": true
+  },
+  {
+    "kind": "name",
+    "value": "",
+    "valid": false
+  },
+  {
+    "kind": "name",
+    "value": " ",
+    "valid": false
+  },
+  {
+    "kind": "name",
+    "value": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "valid": true
+  },
+  {
+    "kind": "name",
+    "value": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "valid": false
+  },
+  {
+    "kind": "name",
+    "value": "",
+    "valid": false
+  },
+  {
+    "kind": "name",
+    "value": "﻿",
+    "valid": true
+  },
+  {
+    "kind": "baseUrl",
+    "value": "https://example.com/v1",
+    "valid": true
+  },
+  {
+    "kind": "baseUrl",
+    "value": "HTTP://localhost:8080/v1",
+    "valid": true
+  },
+  {
+    "kind": "baseUrl",
+    "value": "ftp://example.com",
+    "valid": false
+  },
+  {
+    "kind": "baseUrl",
+    "value": "https://example.com?",
+    "valid": false
+  },
+  {
+    "kind": "baseUrl",
+    "value": "https://example.com#",
+    "valid": false
+  },
+  {
+    "kind": "baseUrl",
+    "value": "https://user:pass@example.com",
+    "valid": false
+  },
+  {
+    "kind": "baseUrl",
+    "value": "https://example.com/a b",
+    "valid": false
+  },
+  {
+    "kind": "baseUrl",
+    "value": "https://example.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "valid": false
+  },
+  {
+    "kind": "apiKey",
+    "value": "secret",
+    "valid": true
+  },
+  {
+    "kind": "apiKey",
+    "value": "",
+    "valid": false
+  },
+  {
+    "kind": "apiKey",
+    "value": "a b",
+    "valid": false
+  },
+  {
+    "kind": "apiKey",
+    "value": "a\n",
+    "valid": false
+  },
+  {
+    "kind": "apiKey",
+    "value": "ab",
+    "valid": false
+  },
+  {
+    "kind": "apiKey",
+    "value": "a﻿b",
+    "valid": true
+  },
+  {
+    "kind": "apiKey",
+    "value": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "valid": true
+  },
+  {
+    "kind": "apiKey",
+    "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "valid": false
+  },
+  {
+    "kind": "modelName",
+    "value": "model_1-x",
+    "valid": true
+  },
+  {
+    "kind": "modelName",
+    "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "valid": true
+  },
+  {
+    "kind": "modelName",
+    "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "valid": false
+  },
+  {
+    "kind": "modelName",
+    "value": "model.1",
+    "valid": false
+  },
+  {
+    "kind": "modelName",
+    "value": "a\n",
+    "valid": false
+  },
+  {
+    "kind": "modelName",
+    "value": "",
+    "valid": false
+  },
+  {
+    "kind": "path",
+    "value": "/",
+    "valid": true
+  },
+  {
+    "kind": "path",
+    "value": "/responses",
+    "valid": true
+  },
+  {
+    "kind": "path",
+    "value": "/custom/messages",
+    "valid": true
+  },
+  {
+    "kind": "path",
+    "value": "//host",
+    "valid": false
+  },
+  {
+    "kind": "path",
+    "value": "/../other",
+    "valid": false
+  },
+  {
+    "kind": "path",
+    "value": "/a?x",
+    "valid": false
+  },
+  {
+    "kind": "path",
+    "value": "/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "valid": false
+  },
+  {
+    "kind": "path",
+    "value": "/a\n",
+    "valid": false
+  },
+  {
+    "kind": "price",
+    "value": "0",
+    "valid": true
+  },
+  {
+    "kind": "price",
+    "value": "0.00000001",
+    "valid": true
+  },
+  {
+    "kind": "price",
+    "value": "999999999999.99999999",
+    "valid": true
+  },
+  {
+    "kind": "price",
+    "value": "1000000000000",
+    "valid": false
+  },
+  {
+    "kind": "price",
+    "value": "00000000000000001",
+    "valid": true
+  },
+  {
+    "kind": "price",
+    "value": "0.000000001",
+    "valid": false
+  },
+  {
+    "kind": "price",
+    "value": "0.",
+    "valid": false
+  },
+  {
+    "kind": "price",
+    "value": "-1",
+    "valid": false
+  },
+  {
+    "kind": "price",
+    "value": "1e3",
+    "valid": false
+  },
+  {
+    "kind": "price",
+    "value": "1\n",
+    "valid": false
+  },
+  {
+    "kind": "price",
+    "value": "",
+    "valid": false
+  },
+  {
+    "kind": "context",
+    "value": 1,
+    "valid": true
+  },
+  {
+    "kind": "context",
+    "value": 4294967295,
+    "valid": true
+  },
+  {
+    "kind": "context",
+    "value": 4294967296,
+    "valid": false
+  },
+  {
+    "kind": "context",
+    "value": 0,
+    "valid": false
+  },
+  {
+    "kind": "context",
+    "value": -1,
+    "valid": false
+  },
+  {
+    "kind": "context",
+    "value": 1.5,
+    "valid": false
+  },
+  {
+    "kind": "effort",
+    "value": "low",
+    "valid": true
+  },
+  {
+    "kind": "effort",
+    "value": "xxxxxxxxxxxxxxxxxxxxxxxxx",
+    "valid": true
+  },
+  {
+    "kind": "effort",
+    "value": "xxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "valid": false
+  },
+  {
+    "kind": "effort",
+    "value": "",
+    "valid": false
+  },
+  {
+    "kind": "effort",
+    "value": "with space",
+    "valid": false
+  },
+  {
+    "kind": "authorization",
+    "value": "Bearer abc",
+    "valid": true
+  },
+  {
+    "kind": "authorization",
+    "value": "Bearer ",
+    "valid": false
+  },
+  {
+    "kind": "authorization",
+    "value": "Bearer abc def",
+    "valid": false
+  },
+  {
+    "kind": "authorization",
+    "value": "Basic YTo=",
+    "valid": true
+  },
+  {
+    "kind": "authorization",
+    "value": "Digest realm=\"a\",nonce=\"b\"",
+    "valid": true
+  },
+  {
+    "kind": "authorization",
+    "value": "Custom",
+    "valid": true
+  },
+  {
+    "kind": "authorization",
+    "value": "Invalid@ token",
+    "valid": false
+  },
+  {
+    "kind": "headerKey",
+    "value": "X-Key",
+    "valid": true
+  },
+  {
+    "kind": "headerKey",
+    "value": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    "valid": true
+  },
+  {
+    "kind": "headerKey",
+    "value": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    "valid": false
+  },
+  {
+    "kind": "headerKey",
+    "value": " bad",
+    "valid": false
+  },
+  {
+    "kind": "headerKey",
+    "value": "",
+    "valid": false
+  },
+  {
+    "kind": "headerValue",
+    "value": "",
+    "valid": true
+  },
+  {
+    "kind": "headerValue",
+    "value": "a\tb",
+    "valid": true
+  },
+  {
+    "kind": "headerValue",
+    "value": "a\rb",
+    "valid": false
+  },
+  {
+    "kind": "headerValue",
+    "value": "a\nb",
+    "valid": false
+  },
+  {
+    "kind": "headerValue",
+    "value": "é",
+    "valid": true
+  },
+  {
+    "kind": "headerValue",
+    "value": "Ā",
+    "valid": false
+  },
+  {
+    "kind": "headerValue",
+    "value": "",
+    "valid": false
+  },
+  {
+    "kind": "header",
+    "value": {
+      "key": "Authorization",
+      "value": "Bearer abc"
+    },
+    "valid": true
+  },
+  {
+    "kind": "header",
+    "value": {
+      "key": "Authorization",
+      "value": "Bearer "
+    },
+    "valid": false
+  },
+  {
+    "kind": "header",
+    "value": {
+      "key": "X-Key",
+      "value": ""
+    },
+    "valid": true
+  }
+]

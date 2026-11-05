@@ -1,0 +1,170 @@
+[
+  {
+    "value": "reader@example.com",
+    "valid": true
+  },
+  {
+    "value": "  READER@EXAMPLE.COM  ",
+    "valid": true
+  },
+  {
+    "value": "READER@EXAMPLE.COM",
+    "valid": true
+  },
+  {
+    "value": "reader@localhost",
+    "valid": true
+  },
+  {
+    "value": "Name <Reader@example.com>",
+    "valid": true
+  },
+  {
+    "value": "\"a b\"@example.com",
+    "valid": true
+  },
+  {
+    "value": "\"Abc@def\"@example.com",
+    "valid": true
+  },
+  {
+    "value": "\"john..doe\"@example.com",
+    "valid": true
+  },
+  {
+    "value": "\"a\tb\"@example.com",
+    "valid": true
+  },
+  {
+    "value": "reader@[127.0.0.1]",
+    "valid": true
+  },
+  {
+    "value": "reader@[IPv6:2001:db8::1]",
+    "valid": true
+  },
+  {
+    "value": "reader@[]",
+    "valid": true
+  },
+  {
+    "value": "user+mailbox/department=shipping@example.com",
+    "valid": true
+  },
+  {
+    "value": "用户@例子.广告",
+    "valid": true
+  },
+  {
+    "value": "Dörte@Sörensen.example.com",
+    "valid": true
+  },
+  {
+    "value": "reader@a_b",
+    "valid": true
+  },
+  {
+    "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com",
+    "valid": true
+  },
+  {
+    "value": "éééééééééééééééééééééééééééééééé@example.com",
+    "valid": true
+  },
+  {
+    "value": "reader@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com",
+    "valid": true
+  },
+  {
+    "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "valid": true
+  },
+  {
+    "value": "",
+    "valid": false
+  },
+  {
+    "value": "not-an-email",
+    "valid": false
+  },
+  {
+    "value": "@example.com",
+    "valid": false
+  },
+  {
+    "value": "reader@",
+    "valid": false
+  },
+  {
+    "value": "reader..name@example.com",
+    "valid": false
+  },
+  {
+    "value": ".reader@example.com",
+    "valid": false
+  },
+  {
+    "value": "reader.@example.com",
+    "valid": false
+  },
+  {
+    "value": "reader name@example.com",
+    "valid": false
+  },
+  {
+    "value": "reader@-example.com",
+    "valid": false
+  },
+  {
+    "value": "reader@example-.com",
+    "valid": false
+  },
+  {
+    "value": "reader@.example.com",
+    "valid": false
+  },
+  {
+    "value": "reader@example..com",
+    "valid": false
+  },
+  {
+    "value": "reader@example.com.",
+    "valid": false
+  },
+  {
+    "value": "reader@_example.com",
+    "valid": false
+  },
+  {
+    "value": "Name <reader@example.com",
+    "valid": false
+  },
+  {
+    "value": "\"\"@example.com",
+    "valid": false
+  },
+  {
+    "value": "\"reader@example.com",
+    "valid": false
+  },
+  {
+    "value": "﻿reader@example.com",
+    "valid": false
+  },
+  {
+    "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com",
+    "valid": false
+  },
+  {
+    "value": "ééééééééééééééééééééééééééééééééé@example.com",
+    "valid": false
+  },
+  {
+    "value": "reader@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com",
+    "valid": false
+  },
+  {
+    "value": "a@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "valid": false
+  }
+]

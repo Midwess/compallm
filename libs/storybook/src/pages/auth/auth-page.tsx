@@ -10,6 +10,7 @@ import { AuthLayout } from './layout'
 import { useStore } from 'zustand'
 import { AuthControllerContext } from '../../context'
 import type { AuthState } from './types'
+import { emailRequestSchema } from '@compallm/contract/auth'
 
 type Mode = 'signup' | 'signin'
 
@@ -77,7 +78,7 @@ function EmailForm({ mode }: { mode: Mode }) {
   const id = useId()
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!input.current?.checkValidity()) {
+    if (!emailRequestSchema(mode).safeParse({ email: controller.store.getState().email, delivery: 'cookie' }).success) {
       controller.onInvalidEmail()
       input.current?.focus()
       return
@@ -119,6 +120,8 @@ export function EmailInput({
   const invalid = useAuthState((state) => state.error !== null || state.serverError !== null)
   return (
     <EmailField
+      type="text"
+      inputMode="email"
       ref={inputRef}
       id={id}
       name="email"

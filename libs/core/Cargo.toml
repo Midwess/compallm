@@ -12,6 +12,8 @@ workspace = true
 [dependencies]
 jsonwebtoken.workspace = true
 validify.workspace = true
+regex = "1"
+url = "2"
 email_address.workspace = true
 anyhow = { workspace = true, features = ["std"] }
 async-trait.workspace = true

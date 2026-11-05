@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@compallm/contract':
+        specifier: file:../libs/contract
+        version: file:../libs/contract
       '@compallm/storybook':
         specifier: file:../libs/storybook
         version: file:../libs/storybook(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -152,6 +155,9 @@ packages:
     resolution: {integrity: sha512-yeJlba62xqmkgELUsn7356MEnzLLu/fw2x4lofFqGnXh6YysRdEs2BaLeLtg1+KU0AXvMeqQvTTp+3hBEBK+EA==}
     peerDependencies:
       commander: ~15.0.0
+
+  '@compallm/contract@file:../libs/contract':
+    resolution: {directory: ../libs/contract, type: directory}
 
   '@compallm/storybook@file:../libs/storybook':
     resolution: {directory: ../libs/storybook, type: directory}
@@ -1803,8 +1809,13 @@ snapshots:
     dependencies:
       commander: 15.0.0
 
+  '@compallm/contract@file:../libs/contract':
+    dependencies:
+      zod: 4.6.7
+
   '@compallm/storybook@file:../libs/storybook(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
+      '@compallm/contract': file:../libs/contract
       '@fontsource/inter': 5.3.0
       '@phosphor-icons/react': 2.1.10(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       dompurify: 3.4.17

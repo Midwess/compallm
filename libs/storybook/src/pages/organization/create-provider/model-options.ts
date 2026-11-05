@@ -1,3 +1,4 @@
+import { ProviderModelFields } from '@compallm/contract/validation'
 import { effortLevels } from '../../../components/effort-mapping'
 import type { ModelCapability, ModelDraft, ProviderModel, TextModelProtocol } from './types'
 
@@ -46,14 +47,7 @@ export function joinModelEndpoint(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`
 }
 export function isEndpointPath(path: string): boolean {
-  if (!path.startsWith('/') || path.startsWith('//') || /[?#\\\s]/.test(path)) return false
-  try {
-    return !decodeURIComponent(path)
-      .split('/')
-      .some((part) => part === '.' || part === '..' || /[?#\\\s]/.test(part))
-  } catch {
-    return false
-  }
+  return ProviderModelFields.shape.path.safeParse(path).success
 }
 
 export function modelDraftFingerprint(model: ModelDraft): string {

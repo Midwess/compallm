@@ -1,3 +1,4 @@
+import { ProviderInputRules, ProviderInputRulesInput, ProviderInputRulesConstraints } from '@compallm/contract/validation'
 import { useId, useRef, useState } from 'react'
 import { CaretLeftIcon } from '@phosphor-icons/react/dist/csr/CaretLeft'
 import { CaretRightIcon } from '@phosphor-icons/react/dist/csr/CaretRight'
@@ -53,7 +54,8 @@ export function EffortMapping({
           Thinking efforts
           <FieldHelp label="About thinking efforts">
             Map Low → Max to the thinking-effort values your model accepts (for example, low, medium, high). Higher effort can
-            use more time and tokens. Fill levels in order; leave unused levels empty.
+            use more time and tokens. Use up to {ProviderInputRulesConstraints.effortValue.maxLength} letters, digits, dashes,
+            or underscores, without spaces. Fill levels in order; leave unused levels empty.
           </FieldHelp>
         </span>
       </legend>
@@ -79,6 +81,8 @@ export function EffortMapping({
                   value={mapped}
                   disabled={disabled || position > lastAvailable}
                   placeholder="None"
+                  maxLength={ProviderInputRulesConstraints.effortValue.maxLength}
+                  aria-invalid={(mapped !== '' && !ProviderInputRules.shape.effortValue.safeParse(mapped).success) || undefined}
                   autoFocus={defaultFocused === level}
                   size={Math.max(4, mapped.length || 4)}
                   className={cx(
@@ -92,6 +96,7 @@ export function EffortMapping({
                   }}
                   onBlur={() => focus(null)}
                   onChange={(event) => {
+                    if (!ProviderInputRulesInput.effortValue(event.target.value)) return
                     const next = { ...value }
                     if (event.target.value) next[level] = event.target.value
                     else delete next[level]

@@ -1,0 +1,18 @@
+[package]
+name = "router"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+sec.workspace = true
+httparse = "1"
+compallm-core.workspace = true
+tokio = { workspace = true, features = ["net", "rt", "io-util", "macros"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
+
+[lints]
+workspace = true

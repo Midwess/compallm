@@ -11,10 +11,12 @@ export function Switch({ className, ...props }: Omit<InputHTMLAttributes<HTMLInp
       role="switch"
       className={cx(
         `
-  relative h-[20px] w-[30px] flex-none cursor-pointer appearance-none rounded-full border-[0.5px]
-  border-input-border bg-elevated after:absolute after:top-[2px] after:left-[2px] after:size-[14px]
-  after:rounded-full after:bg-on-primary after:content-[''] checked:border-primary checked:bg-primary
-  checked:after:left-[12px] focus-visible:outline-2 focus-visible:outline-offset-2
+  relative h-8 w-10.5 flex-none cursor-pointer appearance-none rounded-lg
+  before:absolute before:top-1.5 before:left-1.5 before:h-5 before:w-7.5 before:rounded-full
+  before:border-[0.5px] before:border-input-border before:bg-disabled before:content-['']
+  after:absolute after:top-2.25 after:left-2.25 after:size-3.5
+  after:rounded-full after:bg-on-primary after:content-[''] checked:before:border-primary checked:before:bg-primary
+  checked:after:left-4.75 focus-visible:outline-2 focus-visible:outline-offset-2
   focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50
 `,
         className,
@@ -35,7 +37,7 @@ export function Checkbox({ indeterminate = false, size = 'standard', className, 
     <span
       className={cx(
         'relative inline-flex shrink-0 items-center justify-center has-disabled:cursor-not-allowed has-disabled:opacity-40',
-        size === 'compact' ? 'size-3' : 'size-4.5',
+        size === 'compact' ? 'size-5' : 'size-6',
       )}
     >
       <input
@@ -43,10 +45,12 @@ export function Checkbox({ indeterminate = false, size = 'standard', className, 
         ref={input}
         type="checkbox"
         className={cx(
-          `peer absolute inset-0 size-full cursor-pointer appearance-none rounded-sm border
-    border-input-border bg-transparent checked:border-primary checked:bg-primary indeterminate:border-primary
-    indeterminate:bg-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus
+          `peer absolute inset-0 size-full cursor-pointer appearance-none rounded bg-transparent
+    before:absolute before:rounded-sm before:border before:border-input-border before:bg-transparent before:content-['']
+    checked:before:border-primary checked:before:bg-primary indeterminate:before:border-primary
+    indeterminate:before:bg-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus
     disabled:cursor-not-allowed`,
+          size === 'compact' ? 'before:inset-1' : 'before:inset-0.75',
           className,
         )}
       />

@@ -1,25 +1,66 @@
-import type { HTMLAttributes, TableHTMLAttributes, ThHTMLAttributes, TdHTMLAttributes } from 'react'
+import {
+  useState,
+  useEffect,
+  useRef,
+  type ReactNode,
+  type HTMLAttributes,
+  type TableHTMLAttributes,
+  type ThHTMLAttributes,
+  type TdHTMLAttributes,
+} from 'react'
+import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { cx } from './shared'
 function Root({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div {...props} className={cx('w-full overflow-x-auto', className)} />
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const root = ref.current
+    if (!root) return
+    let scroll: HTMLElement | null = root
+    while (scroll && !/(auto|scroll)/.test(getComputedStyle(scroll).overflowY)) scroll = scroll.parentElement
+    if (!scroll) return
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const top = scroll.getBoundingClientRect().top + 32
+      const categories = [...root.querySelectorAll<HTMLElement>('[data-slot="table-category"]')]
+      const offsets = categories.map((body) => {
+        const header = body.querySelector<HTMLElement>('[data-slot="table-category-header"]')
+        return { header, offset: Math.min(0, body.getBoundingClientRect().bottom - top - (header?.offsetHeight ?? 0)) }
+      })
+      for (const { header, offset } of offsets) header?.style.setProperty('--category-offset', `${offset}px`)
+    }
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update)
+    }
+    scroll.addEventListener('scroll', schedule, { passive: true })
+    const observer = new ResizeObserver(schedule)
+    observer.observe(root)
+    update()
+    return () => {
+      scroll.removeEventListener('scroll', schedule)
+      observer.disconnect()
+      cancelAnimationFrame(frame)
+    }
+  }, [])
+  return <div ref={ref} data-slot="table-container" {...props} className={cx('w-full overflow-x-auto', className)} />
 }
 function Content({ className, ...props }: TableHTMLAttributes<HTMLTableElement>) {
-  return <table {...props} className={cx('w-full table-fixed text-left text-xs', className)} />
+  return <table data-slot="table" {...props} className={cx('w-full table-fixed text-left text-xs', className)} />
 }
 function Header({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <thead {...props} className={cx('h-8 text-muted [&>tr]:h-8', className)} />
+  return <thead data-slot="table-header" {...props} className={cx('h-8 text-muted [&>tr]:h-8', className)} />
 }
 function Body(props: HTMLAttributes<HTMLTableSectionElement>) {
-  return <tbody {...props} />
+  return <tbody data-slot="table-body" {...props} />
 }
 function Row({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) {
-  return <tr {...props} className={cx('h-12 border-b border-divider last:border-b-0', className)} />
+  return <tr data-slot="table-row" {...props} className={cx('h-12 border-b border-divider last:border-b-0', className)} />
 }
 function Head({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
-  return <th scope="col" {...props} className={cx('px-2 font-normal', className)} />
+  return <th data-slot="table-head" scope="col" {...props} className={cx('px-2 font-normal', className)} />
 }
 function Cell({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td {...props} className={cx('px-2', className)} />
+  return <td data-slot="table-cell" {...props} className={cx('px-2', className)} />
 }
 function Empty({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
@@ -29,4 +70,63 @@ function Empty({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
     />
   )
 }
-export const Table = Object.assign(Root, { Content, Header, Body, Row, Head, Cell, Empty })
+export interface TableCategoryProps {
+  label: string
+  count?: ReactNode
+  action?: ReactNode
+  columns?: number
+  open?: boolean
+  defaultOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  children: ReactNode
+}
+
+function Category({ label, count, action, columns = 3, open, defaultOpen = true, onOpenChange, children }: TableCategoryProps) {
+  const [localOpen, setLocalOpen] = useState(defaultOpen)
+  const expanded = open ?? localOpen
+  return (
+    <tbody data-slot="table-category" className="[&:not(:first-of-type)>tr:first-child]:table-row">
+      <tr aria-hidden="true" className="hidden h-2">
+        <td colSpan={columns} className="h-2 p-0" />
+      </tr>
+      <tr data-slot="table-category-header" className="h-10 border-0">
+        <td
+          colSpan={action ? columns - 1 : columns}
+          className={cx(
+            `sticky top-8 z-10 rounded-l-md bg-composer p-0
+translate-y-[var(--category-offset,0px)]`,
+            !action && 'rounded-r-md',
+          )}
+        >
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label}`}
+            className="flex min-h-10 w-full cursor-pointer items-center gap-2 px-2 text-left
+focus-visible:outline-2 focus-visible:outline-focus"
+            onClick={() => {
+              const next = !expanded
+              if (open === undefined) setLocalOpen(next)
+              onOpenChange?.(next)
+            }}
+          >
+            <CaretDownIcon weight="fill" aria-hidden="true" className={cx('size-2 shrink-0', !expanded && '-rotate-90')} />
+            <span className="min-w-0 text-[13px] font-medium">{label}</span>
+            {count !== undefined ? <span className="text-xs font-normal text-muted">{count}</span> : null}
+          </button>
+        </td>
+        {action ? (
+          <td
+            className="sticky top-8 z-10 rounded-r-md bg-composer px-2 py-0
+translate-y-[var(--category-offset,0px)]"
+          >
+            {action}
+          </td>
+        ) : null}
+      </tr>
+      {expanded ? children : null}
+    </tbody>
+  )
+}
+
+export const Table = Object.assign(Root, { Content, Header, Body, Row, Head, Cell, Empty, Category })

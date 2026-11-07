@@ -9,7 +9,7 @@ type Story = StoryObj<typeof meta>
 export const Button: Story = {
   render: () => (
     <Preview>
-      <Sample label="Compact · 32 px">
+      <Sample label="Compact · 32 px · neutral 26 px">
         <Row>
           {(['primary', 'neutral', 'ghost', 'destructive', 'link'] as const).map((variant) => (
             <Buttons.Button key={variant} variant={variant}>

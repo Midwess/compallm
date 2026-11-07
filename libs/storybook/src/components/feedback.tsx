@@ -195,7 +195,7 @@ export function EmptyState({ title, children, action }: { title: ReactNode; chil
 `}
     >
       <h3>{title}</h3>
-      <div className="text-[12px] leading-[18px] text-muted">{children}</div>
+      <div className="text-[13px] leading-5 text-muted">{children}</div>
       {action}
     </div>
   )

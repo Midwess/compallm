@@ -31,3 +31,19 @@ await copyFile(
   new URL('../src/assets/provider-logos/sources.json', import.meta.url),
   new URL('../dist/licenses/provider-icon-sources.json', import.meta.url),
 )
+await copyFile(
+  new URL('../src/assets/cedar/LICENSE', import.meta.url),
+  new URL('../dist/licenses/Cedar-grammar-Apache-2.0.txt', import.meta.url),
+)
+await copyFile(
+  new URL('../src/assets/cedar/NOTICE', import.meta.url),
+  new URL('../dist/licenses/Cedar-grammar-NOTICE.txt', import.meta.url),
+)
+await copyFile(
+  new URL('../src/assets/cedar/source.json', import.meta.url),
+  new URL('../dist/licenses/cedar-grammar-source.json', import.meta.url),
+)
+await copyFile(
+  new URL('../node_modules/@fontsource/jetbrains-mono/LICENSE', import.meta.url),
+  new URL('../dist/licenses/JetBrains-Mono-OFL.txt', import.meta.url),
+)

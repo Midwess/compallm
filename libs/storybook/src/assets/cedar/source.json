@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/cedar-policy/vscode-cedar",
+  "revision": "eb63daec70f2ee8b14b049707cc787678918901b",
+  "license": "Apache-2.0",
+  "path": "syntaxes/cedar.tmLanguage.json"
+}

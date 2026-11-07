@@ -17,6 +17,7 @@ const families = [
   'form-field',
   'form-section',
   'content',
+  'code-block',
   'data',
   'dropdowns',
   'feedback',
@@ -27,6 +28,7 @@ const families = [
   'sidebar',
   'selection',
   'surfaces',
+  'settings',
 ]
 
 export default defineConfig({
@@ -44,6 +46,7 @@ export default defineConfig({
         'pages/signup': source('pages/signup/index.tsx'),
         'pages/signin': source('pages/signin/index.tsx'),
         'pages/main': source('pages/main/index.tsx'),
+        'pages/settings': source('pages/settings/index.tsx'),
         'pages/organization': source('pages/organization/index.tsx'),
         'pages/organization/chat': source('pages/organization/chat/index.tsx'),
         'pages/organization/create-provider': source('pages/organization/create-provider/index.tsx'),

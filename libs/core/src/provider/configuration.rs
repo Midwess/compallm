@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use compallm_utils::input;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
@@ -163,8 +164,8 @@ impl validify::Validate for Pricing {
         if amounts.is_empty()
             || amounts.iter().any(|amount| {
                 amount.is_sign_negative()
-                    || amount.scale() > super::input::PRICE_SCALE
-                    || *amount >= Decimal::from(10_u64.pow(super::input::PRICE_INTEGER_DIGITS))
+                    || amount.scale() > input::PRICE_SCALE
+                    || *amount >= Decimal::from(10_u64.pow(input::PRICE_INTEGER_DIGITS))
             })
         {
             let mut errors = validify::ValidationErrors::new();

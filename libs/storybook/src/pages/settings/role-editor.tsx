@@ -79,7 +79,7 @@ export function RoleEditorSettings() {
     invalid = draft.parsing || draft.diagnostics.length > 0,
     advanced = draft.projection.some((p) => p.advanced || !p.editable || !p.action)
   return (
-    <SettingsContent className="flex min-h-[min(48rem,90vh)] max-h-[90vh] max-w-208 flex-col pt-14 pb-6">
+    <SettingsContent className="flex max-w-208 flex-col pt-14 pb-6">
       <Heading className="mb-8 shrink-0">{draft.id ? draft.name : 'New role'}</Heading>
       <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto">
         <Section title="Role details" className="shrink-0">

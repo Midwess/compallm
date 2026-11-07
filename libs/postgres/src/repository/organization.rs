@@ -1,21 +1,21 @@
 use anyhow::Context;
 use compallm_core::{
-    organization::{Organization, OrganizationMember, OrganizationRole, OrganizationStatus},
+    organization::{Group, Organization, OrganizationMember, OrganizationStatus, Role},
     persistent::{
         DbContext,
         organization::{OrganizationRepository as CoreRepository, OrganizationRepositoryError},
     },
 };
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, ModelTrait, QueryFilter, QueryOrder, Set,
-    sea_query::Expr,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult,
+    ModelTrait, QueryFilter, QueryOrder, Set, Statement, sea_query::Expr,
 };
 
 use crate::{
     postgres_connection::PostgresConnection,
     schema::{
-        OrganizationMemberSchema, OrganizationRoleSchema, OrganizationSchema,
-        OrganizationStatusSchema,
+        OrganizationGroupSchema, OrganizationMemberSchema, OrganizationRoleSchema,
+        OrganizationSchema, OrganizationStatusSchema,
     },
 };
 
@@ -23,7 +23,6 @@ type Organizations = <OrganizationSchema as ModelTrait>::Entity;
 type OrganizationActiveModel = <Organizations as EntityTrait>::ActiveModel;
 type OrganizationColumn = <Organizations as EntityTrait>::Column;
 type Members = <OrganizationMemberSchema as ModelTrait>::Entity;
-type MemberActiveModel = <Members as EntityTrait>::ActiveModel;
 type MemberColumn = <Members as EntityTrait>::Column;
 
 #[derive(Default)]
@@ -49,24 +48,75 @@ impl OrganizationRepository {
                 query.filter(MemberColumn::OrganizationId.eq(Self::database_id(organization_id)?));
         }
         if admin_only {
-            query = query.filter(
-                MemberColumn::Role
-                    .is_in([OrganizationRoleSchema::Owner, OrganizationRoleSchema::Admin]),
-            );
+            query = query.filter(Expr::cust(r#"EXISTS (
+                SELECT 1 FROM organization_roles r WHERE r.organization_id = organization_members.organization_id
+                AND r.id IN (1,2) AND (
+                    EXISTS (SELECT 1 FROM organization_member_roles mr WHERE mr.organization_id=r.organization_id AND mr.user_id=organization_members.user_id AND mr.role_id=r.id)
+                    OR EXISTS (SELECT 1 FROM organization_group_roles gr JOIN organization_group_members gm ON gm.organization_id=gr.organization_id AND gm.group_id=gr.group_id WHERE gr.organization_id=r.organization_id AND gr.role_id=r.id AND gm.user_id=organization_members.user_id)
+                ))"#));
         }
-        query
+        let found = query
             .order_by_asc(MemberColumn::OrganizationId)
             .one(db)
             .await
-            .map_err(OrganizationRepositoryError::database)?
-            .map(|(member, organization)| {
-                let organization = organization.context("membership organization is missing")?;
-                Ok((
-                    OrganizationMember::try_from(member)?,
-                    Organization::try_from(organization)?,
-                ))
+            .map_err(OrganizationRepositoryError::database)?;
+        let Some((member, organization)) = found else {
+            return Ok(None);
+        };
+        let organization =
+            Organization::try_from(organization.context("membership organization is missing")?)?;
+        let mut member = OrganizationMember::try_from(member)?;
+        let organization_id = Self::database_id(member.organization_id)?;
+        let direct=db.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT r.* FROM organization_roles r JOIN organization_member_roles mr ON mr.organization_id=r.organization_id AND mr.role_id=r.id WHERE r.organization_id=$1 AND mr.user_id=$2 ORDER BY r.id",[organization_id.into(),user_id.into()])).await.map_err(OrganizationRepositoryError::database)?;
+        member.roles = direct
+            .iter()
+            .map(|row| {
+                Role::try_from(
+                    OrganizationRoleSchema::from_query_result(row, "")
+                        .map_err(OrganizationRepositoryError::database)?,
+                )
+                .map_err(OrganizationRepositoryError::database)
             })
-            .transpose()
+            .collect::<Result<_, _>>()?;
+        let groups=db.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT g.* FROM organization_groups g JOIN organization_group_members gm ON gm.organization_id=g.organization_id AND gm.group_id=g.id WHERE g.organization_id=$1 AND gm.user_id=$2 ORDER BY g.id",[organization_id.into(),user_id.into()])).await.map_err(OrganizationRepositoryError::database)?;
+        let mut groups = groups
+            .iter()
+            .map(|row| OrganizationGroupSchema::from_query_result(row, ""))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(OrganizationRepositoryError::database)?;
+        let mut grouped = std::collections::BTreeMap::<i64, Vec<Role>>::new();
+        if !groups.is_empty() {
+            let ids = serde_json::json!(groups.iter().map(|g| g.id).collect::<Vec<_>>());
+            let rows=db.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+                "SELECT gr.group_id,r.* FROM organization_group_roles gr JOIN organization_roles r ON r.organization_id=gr.organization_id AND r.id=gr.role_id WHERE gr.organization_id=$1 AND gr.group_id IN (SELECT value::bigint FROM jsonb_array_elements_text($2::jsonb)) ORDER BY gr.group_id,r.id",[organization_id.into(),ids.into()])).await.map_err(OrganizationRepositoryError::database)?;
+            for row in rows {
+                grouped
+                    .entry(
+                        row.try_get("", "group_id")
+                            .map_err(OrganizationRepositoryError::database)?,
+                    )
+                    .or_default()
+                    .push(
+                        Role::try_from(
+                            OrganizationRoleSchema::from_query_result(&row, "")
+                                .map_err(OrganizationRepositoryError::database)?,
+                        )
+                        .map_err(OrganizationRepositoryError::database)?,
+                    );
+            }
+        }
+        member.groups = groups
+            .drain(..)
+            .map(|g| {
+                let roles = grouped.remove(&g.id).unwrap_or_default();
+                crate::mappers::role::MappedGroup::try_from((g, roles))
+                    .map(Group::from)
+                    .map_err(OrganizationRepositoryError::database)
+            })
+            .collect::<Result<_, _>>()?;
+        Ok(Some((member, organization)))
     }
 
     fn database_id(id: u64) -> Result<i64, OrganizationRepositoryError> {
@@ -136,27 +186,48 @@ impl CoreRepository for OrganizationRepository {
         )
     }
 
+    async fn create_roles(&self, roles: Vec<Role>) -> Result<(), OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let mut rows = Vec::new();
+        for role in roles {
+            rows.push(serde_json::json!({"organization_id":role.organization_id,"id":role.id,"name":role.name,"description":role.description,"cedar_source":role.cedar_source}));
+        }
+        db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "INSERT INTO organization_roles SELECT * FROM jsonb_populate_recordset(NULL::organization_roles,$1::jsonb)",[serde_json::json!(rows).into()])).await.map_err(OrganizationRepositoryError::database)?;
+        Ok(())
+    }
+
     async fn add_member(
         &self,
         member: OrganizationMember,
     ) -> Result<OrganizationMember, OrganizationRepositoryError> {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
-        let model = MemberActiveModel {
-            organization_id: Set(Self::database_id(member.organization_id)?),
-            user_id: Set(Self::database_id(member.user_id)?),
-            role: Set(match member.role {
-                OrganizationRole::Owner => OrganizationRoleSchema::Owner,
-                OrganizationRole::Admin => OrganizationRoleSchema::Admin,
-                OrganizationRole::Member => OrganizationRoleSchema::Member,
-            }),
-            status: Set(crate::schema::UserStatusSchema::Active),
-        };
-        OrganizationMember::try_from(
-            model
-                .insert(db)
-                .await
-                .map_err(OrganizationRepositoryError::database)?,
-        )
+        let org = Self::database_id(member.organization_id)?;
+        let user = Self::database_id(member.user_id)?;
+        cedar_policy::Entities::try_from(&member).map_err(OrganizationRepositoryError::database)?;
+        let roles = serde_json::json!(member.roles.iter().map(|r| r.id).collect::<Vec<_>>());
+        let groups = serde_json::json!(member.groups.iter().map(|g| g.id).collect::<Vec<_>>());
+        let statement = Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            r#"
+WITH member AS (
+ INSERT INTO organization_members(organization_id,user_id,status) VALUES($1,$2,'active') RETURNING *
+), assigned AS (
+ INSERT INTO organization_member_roles(organization_id,user_id,role_id)
+ SELECT m.organization_id,m.user_id,value::bigint FROM member m,jsonb_array_elements_text($3::jsonb) RETURNING role_id
+), grouped AS (
+ INSERT INTO organization_group_members(organization_id,group_id,user_id)
+ SELECT m.organization_id,value::bigint,m.user_id FROM member m,jsonb_array_elements_text($4::jsonb) RETURNING group_id
+) SELECT * FROM member
+"#,
+            [org.into(), user.into(), roles.into(), groups.into()],
+        );
+        db.query_one_raw(statement)
+            .await
+            .map_err(OrganizationRepositoryError::database)?
+            .ok_or(OrganizationRepositoryError::NotFound)?;
+        Ok(member)
     }
 }

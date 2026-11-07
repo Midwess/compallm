@@ -5,7 +5,7 @@ use compallm_core::auth::{
     AccessToken, AuthError, EmailOtpAccessToken, EmailOtpChallenge, EncryptedAccessToken,
     EncryptedToken, RefreshToken, Session, UserAccessToken, UserTokens,
 };
-use compallm_core::organization::OrganizationRole;
+use compallm_core::organization::Role;
 use compallm_utils::time::unix_timestamp;
 use hero::token::jwt::create_jwt_token;
 
@@ -21,7 +21,7 @@ impl Fixture {
     fn tokens() -> UserTokens {
         UserTokens::new(
             &Session::new(1, 7, 84, "Research team"),
-            OrganizationRole::Owner,
+            Role::OWNER,
             SECRET,
             Duration::from_secs(60),
             Duration::from_secs(600),
@@ -148,7 +148,7 @@ fn ciphertext_requires_its_configured_secret_and_integrity_tag() {
 fn valid_jwt_cannot_extend_expired_inner_claims() {
     let mut claims = UserAccessToken::new(
         Session::new(1, 7, 84, "Research team"),
-        OrganizationRole::Owner,
+        Role::OWNER,
         Duration::from_secs(60),
     )
     .unwrap();
@@ -233,7 +233,7 @@ fn email_otp_accepts_valid_addresses_from_any_domain() {
 fn ids_round_trip_as_u64_in_access_and_refresh_sessions() {
     let one = UserTokens::new(
         &Session::new(9_007_199_254_740_993, 7, 84, "Research team"),
-        OrganizationRole::Owner,
+        Role::OWNER,
         SECRET,
         Duration::from_secs(60),
         Duration::from_secs(600),
@@ -315,7 +315,7 @@ fn malformed_tokens_and_invalid_lifetimes_are_rejected() {
     assert!(matches!(
         UserTokens::new(
             &Session::new(1, 7, 84, "Research team"),
-            OrganizationRole::Owner,
+            Role::OWNER,
             SECRET,
             Duration::ZERO,
             Duration::from_secs(600)
@@ -329,7 +329,7 @@ fn encryption_preserves_the_variant_for_typed_conversion() {
     let cipher = EncryptedAccessToken::new(SECRET).unwrap();
     let user = UserAccessToken::new(
         Session::new(1, 7, 84, "Research team"),
-        OrganizationRole::Owner,
+        Role::OWNER,
         Duration::from_secs(60),
     )
     .unwrap();
@@ -431,7 +431,7 @@ fn enum_checks_common_timestamps_then_inner_invariants() {
     ));
     let mut future = UserAccessToken::new(
         Session::new(1, 7, 84, "Research team"),
-        OrganizationRole::Owner,
+        Role::OWNER,
         Duration::from_secs(60),
     )
     .unwrap();
@@ -484,7 +484,7 @@ fn token_validity_owns_expiration_and_timestamp_validation() {
 fn both_tokens_link_to_the_same_organization_scoped_session() {
     let one = UserTokens::new(
         &Session::new(1, 7, 84, "Research team"),
-        OrganizationRole::Owner,
+        Role::OWNER,
         SECRET,
         Duration::from_secs(60),
         Duration::from_secs(600),
@@ -492,7 +492,7 @@ fn both_tokens_link_to_the_same_organization_scoped_session() {
     .unwrap();
     let two = UserTokens::new(
         &Session::new(1, 7, 85, "Research team"),
-        OrganizationRole::Member,
+        Role::MEMBER,
         SECRET,
         Duration::from_secs(60),
         Duration::from_secs(600),
@@ -517,9 +517,9 @@ fn both_tokens_link_to_the_same_organization_scoped_session() {
     let second =
         UserAccessToken::try_from(AccessToken::decode(&two.access_token, SECRET).unwrap()).unwrap();
     assert_eq!(first.session.organization_id, 84);
-    assert_eq!(first.organization_role, OrganizationRole::Owner);
+    assert_eq!(first.organization_role, Role::OWNER);
     assert_eq!(second.session.organization_id, 85);
-    assert_eq!(second.organization_role, OrganizationRole::Member);
+    assert_eq!(second.organization_role, Role::MEMBER);
     let payload = URL_SAFE_NO_PAD
         .decode(one.refresh_token.split('.').nth(1).unwrap())
         .unwrap();
@@ -545,7 +545,7 @@ fn access_tokens_reject_unknown_roles() {
     let mut claims = serde_json::to_value(
         UserAccessToken::new(
             Session::new(1, 7, 84, "Research team"),
-            OrganizationRole::Owner,
+            Role::OWNER,
             Duration::from_secs(60),
         )
         .unwrap(),

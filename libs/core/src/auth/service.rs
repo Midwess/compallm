@@ -90,7 +90,7 @@ impl AuthService {
     /// Require an existing active account before admitting signin email.
     pub async fn signin_email(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
         let email = compallm_utils::email::normalize_email(email);
-        crate::user::User::validate_email(&email).map_err(|_| AuthError::InvalidEmail)?;
+        compallm_utils::email::validate_email(&email).map_err(|_| AuthError::InvalidEmail)?;
         let user = self
             .users
             .find_by_email(&email)
@@ -198,7 +198,7 @@ impl AuthService {
         let renewed = session.refresh(&claims, self.lifetimes.refresh)?;
         UserTokens::from_refresh(
             &renewed,
-            membership.role,
+            membership.compatibility_role(),
             &self.jwt_secret,
             self.lifetimes.user,
         )
@@ -237,7 +237,7 @@ impl AuthService {
 
         let tokens = UserTokens::new(
             &session,
-            membership.role,
+            membership.compatibility_role(),
             &self.jwt_secret,
             self.lifetimes.user,
             self.lifetimes.refresh,
@@ -260,7 +260,7 @@ impl AuthService {
         let session = Session::new(user_id, id, membership.organization_id, organization.name);
         let tokens = UserTokens::new(
             &session,
-            membership.role,
+            membership.compatibility_role(),
             &self.jwt_secret,
             self.lifetimes.user,
             self.lifetimes.refresh,

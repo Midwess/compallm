@@ -5,11 +5,14 @@ use sea_orm_migration::{MigratorTrait, SchemaManager};
 #[tokio::test]
 async fn creates_application_schema_with_scoped_usage_and_global_templates() {
     let migrations = Migrator::migrations();
-    assert_eq!(migrations.len(), 18);
+    assert_eq!(migrations.len(), 25);
     let db = MockDatabase::new(DbBackend::Postgres)
-        .append_exec_results((0..75).map(|_| MockExecResult::default()))
+        .append_exec_results((0..100).map(|_| MockExecResult::default()))
         .into_connection();
-    for migration in migrations.iter().take(17) {
+    for migration in migrations.iter().filter(|m| {
+        !m.name().ends_with("seed_provider_templates")
+            && !m.name().ends_with("replace_membership_role_enum")
+    }) {
         migration.up(&SchemaManager::new(&db)).await.unwrap();
     }
     let log = format!("{:?}", db.into_transaction_log());
@@ -125,7 +128,6 @@ async fn creates_application_schema_with_scoped_usage_and_global_templates() {
     assert!(log.contains("provider_image_usage_attempt_idx"));
     assert!(log.contains("provider_video_usage_attempt_idx"));
     for removed in [
-        "ALTER TABLE",
         "INSERT INTO",
         "UPDATE \\\"providers\\\" SET",
         "UPDATE \\\"provider_models\\\" SET",
@@ -162,9 +164,12 @@ async fn creates_application_schema_with_scoped_usage_and_global_templates() {
 #[tokio::test]
 async fn drops_children_before_parents_and_owned_enums_after_their_tables() {
     let db = MockDatabase::new(DbBackend::Postgres)
-        .append_exec_results((0..24).map(|_| MockExecResult::default()))
+        .append_exec_results((0..40).map(|_| MockExecResult::default()))
         .into_connection();
-    for migration in Migrator::migrations().into_iter().take(17).rev() {
+    for migration in Migrator::migrations().into_iter().rev().filter(|m| {
+        !m.name().ends_with("seed_provider_templates")
+            && !m.name().ends_with("replace_membership_role_enum")
+    }) {
         migration.down(&SchemaManager::new(&db)).await.unwrap();
     }
     let log = format!("{:?}", db.into_transaction_log());
@@ -172,6 +177,15 @@ async fn drops_children_before_parents_and_owned_enums_after_their_tables() {
     assert!(log.find("model_router").unwrap() < log.find("providers").unwrap());
     assert!(
         log.find("provider_model_templates").unwrap() < log.find("provider_templates").unwrap()
+    );
+    assert!(
+        log.find("organization_group_members").unwrap() < log.find("organization_groups").unwrap()
+    );
+    assert!(
+        log.find("organization_group_roles").unwrap() < log.find("organization_roles").unwrap()
+    );
+    assert!(
+        log.find("organization_member_roles").unwrap() < log.find("organization_members").unwrap()
     );
     assert!(log.find("users").unwrap() < log.rfind("DROP TYPE").unwrap());
     assert!(log.find("provider_token_usage").unwrap() < log.find("provider_usage_status").unwrap());

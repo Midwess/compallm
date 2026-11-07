@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use super::ConnectionError;
-use crate::organization::{Organization, OrganizationMember};
+use crate::organization::{Organization, OrganizationMember, Role};
 
 #[derive(Debug, thiserror::Error)]
 pub enum OrganizationRepositoryError {
@@ -51,6 +51,8 @@ pub trait OrganizationRepository: Send + Sync {
         &self,
         organization: Organization,
     ) -> Result<Organization, OrganizationRepositoryError>;
+    /// Insert trusted protected defaults within organization creation.
+    async fn create_roles(&self, roles: Vec<Role>) -> Result<(), OrganizationRepositoryError>;
     async fn add_member(
         &self,
         member: OrganizationMember,

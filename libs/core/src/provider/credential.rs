@@ -5,11 +5,12 @@ use chacha20poly1305::{
     ChaCha20Poly1305, KeyInit, Nonce,
     aead::{Aead, Payload},
 };
+use compallm_utils::input;
 use hkdf::Hkdf;
 use rand::RngCore;
 use sha2::Sha256;
 
-use super::{ProviderApiKeyError, input};
+use super::ProviderApiKeyError;
 
 const CONTEXT: &[u8] = b"compallm:provider:credentials:v1";
 const NONCE_LENGTH: usize = 12;

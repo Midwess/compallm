@@ -1,6 +1,6 @@
 use compallm_core::{
     auth::{AccessToken, AuthError, RefreshToken, Session, UserAccessToken, UserTokens},
-    organization::OrganizationRole,
+    organization::Role,
 };
 use std::time::Duration;
 const LIFETIME: Duration = Duration::from_secs(30 * 24 * 60 * 60);
@@ -19,7 +19,7 @@ fn switching_changes_scope_and_both_tokens_reference_the_new_session() {
     assert_eq!(session.organization_name, "Target team");
     let tokens = UserTokens::new(
         &session,
-        OrganizationRole::Member,
+        Role::MEMBER,
         SECRET,
         Duration::from_secs(60),
         LIFETIME,

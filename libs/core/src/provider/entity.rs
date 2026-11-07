@@ -37,6 +37,30 @@ pub struct ProviderModel {
     pub pricing: Pricing,
 }
 
+impl Provider {
+    /// Initialize a new aggregate identity and derive configured-model ownership.
+    pub async fn initialize_ids(
+        &mut self,
+    ) -> Result<(), hero::distributed_id::generator::DistributedIdError> {
+        self.id = hero::distributed_id::try_gen_id().await?;
+        for model in &mut self.models {
+            model.initialize_id().await?;
+            model.organization_id = self.organization_id;
+            model.provider_id = self.id;
+        }
+        Ok(())
+    }
+}
+
+impl ProviderModel {
+    pub async fn initialize_id(
+        &mut self,
+    ) -> Result<(), hero::distributed_id::generator::DistributedIdError> {
+        self.id = hero::distributed_id::try_gen_id().await?;
+        Ok(())
+    }
+}
+
 impl SystemPolicy for Provider {
     /// Declares connection management without exposing provider secrets.
     ///

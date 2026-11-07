@@ -283,8 +283,7 @@ impl AuthService {
         membership: OrganizationMember,
         organization: Organization,
     ) -> Result<UserTokens, AuthError> {
-        let id = hero::distributed_id::try_gen_id().await?;
-        let session = Session::new(user_id, id, membership.organization_id, organization.name);
+        let session = Session::new(user_id, membership.organization_id, organization.name).await?;
         let tokens = UserTokens::new(
             &session,
             self.create_policy_snapshot(&membership)?,

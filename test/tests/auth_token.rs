@@ -1,11 +1,18 @@
+#[path = "support/roles.rs"]
+mod role_fixture;
+use role_fixture::default_roles;
+
+#[path = "support/session.rs"]
+mod session_fixture;
+use session_fixture::stored_session;
+
 use std::time::Duration;
 
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use compallm_core::auth::{
     AccessToken, AuthError, EmailOtpAccessToken, EmailOtpChallenge, EncryptedAccessToken,
-    EncryptedToken, RefreshToken, Session, UserAccessToken, UserTokens,
+    EncryptedToken, RefreshToken, UserAccessToken, UserTokens,
 };
-use compallm_core::organization::Role;
 use compallm_utils::time::unix_timestamp;
 use hero::token::jwt::create_jwt_token;
 
@@ -20,7 +27,7 @@ impl Fixture {
 
     fn tokens() -> UserTokens {
         UserTokens::new(
-            &Session::new(1, 7, 84, "Research team"),
+            &stored_session(1, 7, 84, "Research team"),
             empty_snapshot(),
             SECRET,
             Duration::from_secs(60),
@@ -147,7 +154,7 @@ fn ciphertext_requires_its_configured_secret_and_integrity_tag() {
 #[test]
 fn valid_jwt_cannot_extend_expired_inner_claims() {
     let mut claims = UserAccessToken::new(
-        Session::new(1, 7, 84, "Research team"),
+        stored_session(1, 7, 84, "Research team"),
         empty_snapshot(),
         Duration::from_secs(60),
     )
@@ -232,7 +239,7 @@ fn email_otp_accepts_valid_addresses_from_any_domain() {
 #[test]
 fn ids_round_trip_as_u64_in_access_and_refresh_sessions() {
     let one = UserTokens::new(
-        &Session::new(9_007_199_254_740_993, 7, 84, "Research team"),
+        &stored_session(9_007_199_254_740_993, 7, 84, "Research team"),
         empty_snapshot(),
         SECRET,
         Duration::from_secs(60),
@@ -268,7 +275,7 @@ fn ids_round_trip_as_u64_in_access_and_refresh_sessions() {
 #[test]
 fn refresh_requires_an_embedded_session_and_rejects_legacy_claims() {
     let claims = RefreshToken::from_session(
-        &Session::new(1, 7, 84, "Research team"),
+        &stored_session(1, 7, 84, "Research team"),
         Duration::from_secs(60),
     )
     .unwrap();
@@ -314,7 +321,7 @@ fn malformed_tokens_and_invalid_lifetimes_are_rejected() {
     }
     assert!(matches!(
         UserTokens::new(
-            &Session::new(1, 7, 84, "Research team"),
+            &stored_session(1, 7, 84, "Research team"),
             empty_snapshot(),
             SECRET,
             Duration::ZERO,
@@ -328,7 +335,7 @@ fn malformed_tokens_and_invalid_lifetimes_are_rejected() {
 fn encryption_preserves_the_variant_for_typed_conversion() {
     let cipher = EncryptedAccessToken::new(SECRET).unwrap();
     let user = UserAccessToken::new(
-        Session::new(1, 7, 84, "Research team"),
+        stored_session(1, 7, 84, "Research team"),
         empty_snapshot(),
         Duration::from_secs(60),
     )
@@ -346,7 +353,7 @@ fn encryption_preserves_the_variant_for_typed_conversion() {
         1
     );
     let refresh = RefreshToken::from_session(
-        &Session::new(1, 7, 84, "Research team"),
+        &stored_session(1, 7, 84, "Research team"),
         Duration::from_secs(600),
     )
     .unwrap();
@@ -430,7 +437,7 @@ fn enum_checks_common_timestamps_then_inner_invariants() {
         Err(AuthError::InvalidToken)
     ));
     let mut future = UserAccessToken::new(
-        Session::new(1, 7, 84, "Research team"),
+        stored_session(1, 7, 84, "Research team"),
         empty_snapshot(),
         Duration::from_secs(60),
     )
@@ -483,7 +490,7 @@ fn token_validity_owns_expiration_and_timestamp_validation() {
 #[test]
 fn both_tokens_link_to_the_same_organization_scoped_session() {
     let one = UserTokens::new(
-        &Session::new(1, 7, 84, "Research team"),
+        &stored_session(1, 7, 84, "Research team"),
         empty_snapshot(),
         SECRET,
         Duration::from_secs(60),
@@ -491,7 +498,7 @@ fn both_tokens_link_to_the_same_organization_scoped_session() {
     )
     .unwrap();
     let two = UserTokens::new(
-        &Session::new(1, 7, 85, "Research team"),
+        &stored_session(1, 7, 85, "Research team"),
         empty_snapshot(),
         SECRET,
         Duration::from_secs(60),
@@ -579,7 +586,7 @@ fn wire_budget_checks_actual_encoded_bytes_on_issuance_and_input() {
     let lifetime = Duration::from_secs(60);
     let claims = |name_len| {
         UserAccessToken::new(
-            Session::new(1, 7, 84, "a".repeat(name_len)),
+            stored_session(1, 7, 84, "a".repeat(name_len)),
             empty_snapshot(),
             lifetime,
         )
@@ -614,10 +621,13 @@ fn wire_budget_checks_actual_encoded_bytes_on_issuance_and_input() {
     ));
 }
 
-#[test]
-fn plain_snapshot_budget_measures_real_jwt_including_unicode_and_escaping() -> anyhow::Result<()> {
+#[tokio::test]
+async fn plain_snapshot_budget_measures_real_jwt_including_unicode_and_escaping()
+-> anyhow::Result<()> {
+    let fixture_roles_0 = default_roles(84, [1, 2, 3]).await;
+
     use compallm_core::{authorization::PolicySnapshot, organization::OrganizationMember};
-    for role in Role::defaults(84, [1, 2, 3]) {
+    for role in fixture_roles_0.clone() {
         let snapshot = PolicySnapshot::new(&OrganizationMember {
             organization_id: 84,
             user_id: 1,
@@ -625,7 +635,7 @@ fn plain_snapshot_budget_measures_real_jwt_including_unicode_and_escaping() -> a
             groups: vec![],
         })?;
         let access = UserAccessToken::new(
-            Session::new(1, 7, 84, "Nghiên cứu \"Team\""),
+            stored_session(1, 7, 84, "Nghiên cứu \"Team\""),
             snapshot.clone(),
             Duration::from_secs(60),
         )?;

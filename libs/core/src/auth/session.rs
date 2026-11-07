@@ -22,20 +22,19 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn new(
+    pub async fn new(
         user_id: u64,
-        id: u64,
         organization_id: u64,
         organization_name: impl Into<String>,
-    ) -> Self {
-        Self {
-            id,
+    ) -> Result<Self, hero::distributed_id::generator::DistributedIdError> {
+        Ok(Self {
+            id: hero::distributed_id::try_gen_id().await?,
             user_id,
             organization_id,
             organization_name: organization_name.into(),
             authorization_version: 1,
             revoked_at: None,
-        }
+        })
     }
 
     /// Match IDs only; organization names and revocation state are not identity.

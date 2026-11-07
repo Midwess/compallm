@@ -18,6 +18,15 @@ pub struct Organization {
 }
 
 impl Organization {
+    /// Create a new identity; persistence restoration uses existing record fields instead.
+    pub async fn new(name: impl Into<String>) -> Result<Self, super::OrganizationCreationError> {
+        Ok(Self {
+            id: hero::distributed_id::try_gen_id().await?,
+            name: name.into(),
+            status: OrganizationStatus::Active,
+        })
+    }
+
     pub const MAX_NAME_LENGTH: usize = 63;
 
     pub fn normalize_name(name: &str) -> Result<String, validify::ValidationErrors> {

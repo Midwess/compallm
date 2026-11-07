@@ -1,3 +1,11 @@
+#[path = "support/roles.rs"]
+mod role_fixture;
+use role_fixture::default_roles;
+
+#[path = "support/session.rs"]
+mod session_fixture;
+use session_fixture::stored_session;
+
 use compallm_core::{
     auth::{RefreshToken, Session},
     persistent::{DbContext, session::SessionRepository as _},
@@ -326,13 +334,15 @@ async fn invalidation_is_one_atomic_scoped_update_and_empty_input_does_no_io() {
 
 #[tokio::test]
 async fn policy_membership_loads_version_and_relationships_in_one_scoped_statement() {
+    let fixture_roles_0 = default_roles(84, [1, 2, 3]).await;
+
     let mut base: std::collections::BTreeMap<String, Value> = Fixture::row()
         .into_mock_row()
         .into_column_value_tuples()
         .collect();
     base.insert("authorization_version".into(), 9_i64.into());
     base.insert("organization_name".into(), "Current team".into());
-    let role = compallm_core::organization::Role::defaults(84, [1, 2, 3]).remove(2);
+    let role = fixture_roles_0.clone().remove(2);
     let mut rows = Vec::new();
     for (group, assigned_role) in [
         (None, Some(&role)),
@@ -371,7 +381,7 @@ async fn policy_membership_loads_version_and_relationships_in_one_scoped_stateme
     );
     let context = Fixture::context(db.clone());
     let (session, member) = context
-        .scope(SessionRepository.find_policy_membership(&Session::new(42, 7, 84, "Old name")))
+        .scope(SessionRepository.find_policy_membership(&stored_session(42, 7, 84, "Old name")))
         .await
         .unwrap()
         .unwrap();
@@ -415,7 +425,7 @@ async fn unavailable_policy_membership_has_no_authority() {
     let context = Fixture::context(db);
     assert!(
         context
-            .scope(SessionRepository.find_policy_membership(&Session::new(42, 7, 84, "Team")))
+            .scope(SessionRepository.find_policy_membership(&stored_session(42, 7, 84, "Team")))
             .await
             .unwrap()
             .is_none()
@@ -434,7 +444,7 @@ async fn freshness_lookup_projects_only_scoped_non_revoked_version() {
             .into_connection(),
     );
     let context = Fixture::context(db.clone());
-    let session = Session::new(42, 7, 84, "Not loaded");
+    let session = stored_session(42, 7, 84, "Not loaded");
     assert_eq!(
         context
             .scope(SessionRepository.authorization_version(&session))

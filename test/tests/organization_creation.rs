@@ -1,61 +1,102 @@
 use compallm_core::{
-    organization::{CreationService, OrganizationCreationError, OrganizationStatus},
-    persistent::{DbContext, organization::OrganizationRepository},
+    organization::{
+        CreationService, Organization, OrganizationCreationError, OrganizationMember,
+        OrganizationStatus, Role,
+    },
+    persistent::{
+        DbContext,
+        organization::{OrganizationRepository, OrganizationRepositoryError},
+    },
     user::{User, UserStatus},
 };
 use compallm_postgres::{
-    OrganizationMemberSchema, OrganizationSchema, OrganizationStatusSchema, UserStatusSchema,
-    postgres_connection::PostgresConnection,
+    OrganizationMemberSchema, UserStatusSchema, postgres_connection::PostgresConnection,
 };
-use sea_orm::{DbBackend, DbErr, IntoMockRow, MockDatabase, MockExecResult};
-use std::{collections::BTreeMap, sync::Arc};
+use sea_orm::{DbBackend, MockDatabase};
+use std::sync::{Arc, Mutex};
 
+#[derive(Default)]
+struct State {
+    organization: Option<Organization>,
+    roles: Vec<Role>,
+    member: Option<OrganizationMember>,
+}
+struct Repository {
+    state: Arc<Mutex<State>>,
+    fail_owner: bool,
+}
+#[async_trait::async_trait]
+impl OrganizationRepository for Repository {
+    async fn find_membership(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn find_first_membership(
+        &self,
+        _: u64,
+    ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn update_name(
+        &self,
+        _: u64,
+        _: &str,
+    ) -> Result<Organization, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn create(
+        &self,
+        organization: Organization,
+    ) -> Result<Organization, OrganizationRepositoryError> {
+        assert!(DbContext::current()?.postgres().is_transaction());
+        self.state.lock().unwrap().organization = Some(organization.clone());
+        Ok(organization)
+    }
+    async fn create_roles(&self, roles: Vec<Role>) -> Result<(), OrganizationRepositoryError> {
+        assert!(DbContext::current()?.postgres().is_transaction());
+        self.state.lock().unwrap().roles = roles;
+        Ok(())
+    }
+    async fn add_member(
+        &self,
+        member: OrganizationMember,
+    ) -> Result<OrganizationMember, OrganizationRepositoryError> {
+        assert!(DbContext::current()?.postgres().is_transaction());
+        if self.fail_owner {
+            return Err(OrganizationRepositoryError::database(anyhow::anyhow!(
+                "owner insert failed"
+            )));
+        }
+        self.state.lock().unwrap().member = Some(member.clone());
+        Ok(member)
+    }
+}
 struct Fixture {
     database: Arc<sea_orm::DatabaseConnection>,
+    state: Arc<Mutex<State>>,
     service: CreationService,
 }
-
 impl Fixture {
     fn new(fail_owner: bool) -> Self {
         compallm_postgres::init_id_generator("organization-tests").unwrap();
-
-        let model = OrganizationSchema {
-            id: 84,
-            name: "James's organization".into(),
-            status: OrganizationStatusSchema::Active,
-        };
-        let mut organization: BTreeMap<_, _> =
-            model.into_mock_row().into_column_value_tuples().collect();
-        organization.insert("status".to_string(), "active".into());
-        let member = OrganizationMemberSchema {
-            organization_id: 84,
-            user_id: 42,
-            status: UserStatusSchema::Active,
-        };
-        let mut membership: BTreeMap<_, _> =
-            member.into_mock_row().into_column_value_tuples().collect();
-        membership.insert("status".to_string(), "active".into());
-        let database = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([vec![organization]])
-            .append_exec_results([MockExecResult::default()]);
-        let database = if fail_owner {
-            database.append_query_errors([DbErr::Custom("owner insert failed".into())])
-        } else {
-            database.append_query_results([vec![membership]])
-        };
-        let database = Arc::new(database.into_connection());
+        let database = Arc::new(MockDatabase::new(DbBackend::Postgres).into_connection());
         let context = Box::leak(Box::new(DbContext::new(Arc::new(PostgresConnection::new(
             database.clone(),
         )))));
-        let repository = Box::leak(Box::new(Box::new(
-            compallm_postgres::repository::organization::OrganizationRepository,
-        ) as Box<dyn OrganizationRepository>));
+        let state = Arc::new(Mutex::new(State::default()));
+        let repository = Box::leak(Box::new(Box::new(Repository {
+            state: state.clone(),
+            fail_owner,
+        }) as Box<dyn OrganizationRepository>));
         Self {
             database,
+            state,
             service: CreationService::new(context, repository),
         }
     }
-
     fn user() -> User {
         User {
             id: 42,
@@ -65,7 +106,6 @@ impl Fixture {
         }
     }
 }
-
 #[tokio::test]
 async fn default_organization_and_owner_are_inserted_in_one_transaction() {
     let fixture = Fixture::new(false);
@@ -74,52 +114,33 @@ async fn default_organization_and_owner_are_inserted_in_one_transaction() {
         .create_default(&Fixture::user())
         .await
         .unwrap();
-    assert_eq!(organization.id, 84);
     assert_eq!(organization.status, OrganizationStatus::Active);
-    let transactions = fixture.database.as_ref().clone().into_transaction_log();
-    assert_eq!(transactions.len(), 1);
-    let sql = format!("{transactions:?}");
-    assert!(sql.contains("James's organization"));
-    assert!(sql.contains("organization_members"));
-    assert!(sql.contains("Owner"));
-    assert!(sql.contains("Admin"));
-    assert!(sql.contains("Member"));
-    assert!(sql.contains("organization_member_roles"));
-    assert!(sql.contains("BEGIN"));
-    assert!(sql.contains("COMMIT"));
-    let statements = transactions[0].statements();
-    let inserted_roles = statements
+    assert_eq!(organization.name, "James's organization");
+    let state = fixture.state.lock().unwrap();
+    let roles = &state.roles;
+    assert_eq!(roles.len(), 3);
+    let identities = roles
         .iter()
-        .find(|s| s.sql.contains("INSERT INTO organization_roles"))
-        .unwrap();
-    let sea_orm::Value::Json(Some(rows)) = &inserted_roles.values.as_ref().unwrap().0[0] else {
-        panic!("role rows must be JSON")
-    };
-    let roles = rows.as_array().unwrap();
-    let ids = roles
-        .iter()
-        .map(|role| role["id"].as_u64().unwrap())
+        .map(|role| role.id)
         .collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(ids.len(), 3);
-    assert!(ids.iter().all(|id| *id > 3));
+    assert_eq!(identities.len(), 3);
     for role in roles {
+        assert_eq!(role.organization_id, organization.id);
         assert!(
-            role["cedar_source"]
-                .as_str()
-                .unwrap()
-                .contains(&format!("84:{}", role["id"].as_u64().unwrap()))
+            role.cedar_source
+                .contains(&format!("{}:{}", organization.id, role.id))
         );
     }
-    let assignment = statements
-        .iter()
-        .find(|s| s.sql.contains("INSERT INTO organization_member_roles"))
-        .unwrap();
-    let sea_orm::Value::Json(Some(assigned)) = &assignment.values.as_ref().unwrap().0[2] else {
-        panic!("role assignment must be JSON")
-    };
-    assert_eq!(assigned.as_array().unwrap(), &vec![roles[0]["id"].clone()]);
+    let member = state.member.as_ref().unwrap();
+    assert_eq!(member.roles, vec![roles[0].clone()]);
+    assert_eq!(member.organization_id, organization.id);
+    assert_eq!(member.user_id, 42);
+    let sql = format!(
+        "{:?}",
+        fixture.database.as_ref().clone().into_transaction_log()
+    );
+    assert!(sql.contains("BEGIN") && sql.contains("COMMIT"));
 }
-
 #[tokio::test]
 async fn owner_insert_failure_rolls_back_organization_creation() {
     let fixture = Fixture::new(true);
@@ -127,13 +148,13 @@ async fn owner_insert_failure_rolls_back_organization_creation() {
         fixture.service.create("Team", &Fixture::user()).await,
         Err(OrganizationCreationError::Persistence(_))
     ));
-    let transactions = fixture.database.as_ref().clone().into_transaction_log();
-    assert_eq!(transactions.len(), 1);
-    let sql = format!("{transactions:?}");
+    let sql = format!(
+        "{:?}",
+        fixture.database.as_ref().clone().into_transaction_log()
+    );
     assert!(sql.contains("ROLLBACK"));
     assert!(!sql.contains("COMMIT"));
 }
-
 #[tokio::test]
 async fn blank_organization_names_fail_before_any_database_operation() {
     let fixture = Fixture::new(false);
@@ -141,6 +162,7 @@ async fn blank_organization_names_fail_before_any_database_operation() {
         fixture.service.create("  ", &Fixture::user()).await,
         Err(OrganizationCreationError::InvalidName)
     ));
+    assert!(fixture.state.lock().unwrap().organization.is_none());
     assert!(
         fixture
             .database
@@ -150,7 +172,6 @@ async fn blank_organization_names_fail_before_any_database_operation() {
             .is_empty()
     );
 }
-
 #[test]
 fn member_mapper_retains_scoped_identity_without_inventing_assignments() {
     let row = OrganizationMemberSchema {

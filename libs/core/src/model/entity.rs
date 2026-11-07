@@ -20,6 +20,15 @@ pub struct Model {
     pub pricing: Pricing,
 }
 
+impl Model {
+    pub async fn initialize_id(
+        &mut self,
+    ) -> Result<(), hero::distributed_id::generator::DistributedIdError> {
+        self.id = hero::distributed_id::try_gen_id().await?;
+        Ok(())
+    }
+}
+
 impl SystemPolicy for Model {
     /// Declares logical-model discovery, invocation, and administration separately.
     ///

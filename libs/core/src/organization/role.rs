@@ -89,26 +89,43 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
 "###;
 
     /// Initial role records rendered with application-generated IDs, never reserved identities.
-    /// Labels do not establish authority; each stored Cedar source references the supplied IDs.
-    pub fn defaults(organization_id: u64, [owner_id, admin_id, member_id]: [u64; 3]) -> Vec<Self> {
-        [
-            (owner_id, "Owner", Self::OWNER_POLICY),
-            (admin_id, "Admin", Self::ADMIN_POLICY),
-            (member_id, "Member", Self::MEMBER_POLICY),
-        ]
-        .into_iter()
-        .map(|(id, name, source)| Self {
-            id,
-            organization_id,
-            name: name.into(),
-            description: String::new(),
-            cedar_source: source
+    /// Labels do not establish authority; each stored Cedar source references the generated IDs.
+    pub async fn defaults(
+        organization_id: u64,
+    ) -> Result<Vec<Self>, hero::distributed_id::generator::DistributedIdError> {
+        let mut roles = vec![
+            Self::new(organization_id, "Owner", "", "").await?,
+            Self::new(organization_id, "Admin", "", "").await?,
+            Self::new(organization_id, "Member", "", "").await?,
+        ];
+        let [owner_id, admin_id, member_id] = [roles[0].id, roles[1].id, roles[2].id];
+        for (role, source) in
+            roles
+                .iter_mut()
+                .zip([Self::OWNER_POLICY, Self::ADMIN_POLICY, Self::MEMBER_POLICY])
+        {
+            role.cedar_source = source
                 .replace("__ORG__", &organization_id.to_string())
                 .replace("__OWNER__", &owner_id.to_string())
                 .replace("__ADMIN__", &admin_id.to_string())
-                .replace("__MEMBER__", &member_id.to_string()),
+                .replace("__MEMBER__", &member_id.to_string());
+        }
+        Ok(roles)
+    }
+
+    pub async fn new(
+        organization_id: u64,
+        name: impl Into<String>,
+        description: impl Into<String>,
+        cedar_source: impl Into<String>,
+    ) -> Result<Self, hero::distributed_id::generator::DistributedIdError> {
+        Ok(Self {
+            id: hero::distributed_id::try_gen_id().await?,
+            organization_id,
+            name: name.into(),
+            description: description.into(),
+            cedar_source: cedar_source.into(),
         })
-        .collect()
     }
 }
 

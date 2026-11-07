@@ -16,6 +16,23 @@ pub struct Group {
     pub roles: Vec<Role>,
 }
 
+impl Group {
+    pub async fn new(
+        organization_id: u64,
+        name: impl Into<String>,
+        description: impl Into<String>,
+        roles: Vec<Role>,
+    ) -> Result<Self, hero::distributed_id::generator::DistributedIdError> {
+        Ok(Self {
+            id: hero::distributed_id::try_gen_id().await?,
+            organization_id,
+            name: name.into(),
+            description: description.into(),
+            roles,
+        })
+    }
+}
+
 impl TryFrom<&Group> for Entity {
     type Error = anyhow::Error;
     fn try_from(group: &Group) -> Result<Self, Self::Error> {

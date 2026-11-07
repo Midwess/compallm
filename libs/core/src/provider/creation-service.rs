@@ -54,12 +54,7 @@ impl<'a> CreationService<'a> {
         }
 
         for provider in &mut providers {
-            provider.id = hero::distributed_id::try_gen_id().await?;
-            for model in &mut provider.models {
-                model.id = hero::distributed_id::try_gen_id().await?;
-                model.organization_id = organization_id;
-                model.provider_id = provider.id;
-            }
+            provider.initialize_ids().await?;
         }
 
         if providers.len() == 1 {

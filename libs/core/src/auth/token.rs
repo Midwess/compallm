@@ -69,34 +69,8 @@ impl AccessToken {
             return Err(AuthError::WrongTokenVariant);
         }
         self.validate(unix_timestamp())?;
-        let encoded = if let Self::User(user) = self {
-            // Preserve Hero's envelope while capping its expiry at the access authority deadline.
-            #[derive(Serialize)]
-            struct Claims<'a> {
-                exp: u64,
-                iat: u64,
-                data: &'a AccessToken,
-            }
-            let iat = unix_timestamp();
-            let exp = iat
-                .saturating_add(lifetime.as_secs())
-                .min(user.validity.expires_at);
-            if exp <= iat {
-                return Err(AuthError::ExpiredToken);
-            }
-            jsonwebtoken::encode(
-                &jsonwebtoken::Header::new(jsonwebtoken::Algorithm::HS256),
-                &Claims {
-                    exp,
-                    iat,
-                    data: self,
-                },
-                &jsonwebtoken::EncodingKey::from_secret(secret.as_bytes()),
-            )
-            .map_err(|_| AuthError::InvalidToken)?
-        } else {
-            create_jwt_token(self, secret, lifetime).map_err(|_| AuthError::InvalidToken)?
-        };
+        let encoded =
+            create_jwt_token(self, secret, lifetime).map_err(|_| AuthError::InvalidToken)?;
         Self::check_size(encoded.len())?;
         Ok(encoded)
     }

@@ -34,10 +34,10 @@ pub struct User {
 
 impl User {
     /// Prepare a canonical user after the caller verifies ownership of the email.
-    pub fn from_email(id: u64, email: &str) -> Result<Self, RegistrationError> {
+    pub async fn from_email(email: &str) -> Result<Self, RegistrationError> {
         use validify::{Modify, Validate};
         let mut user = Self {
-            id,
+            id: 0,
             email: email.into(),
             display_name: String::new(),
             status: UserStatus::Active,
@@ -59,6 +59,7 @@ impl User {
                 RegistrationError::InvalidDisplayName
             }
         })?;
+        user.id = hero::distributed_id::try_gen_id().await?;
         Ok(user)
     }
 

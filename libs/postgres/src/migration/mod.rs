@@ -36,6 +36,8 @@ mod m20261107_000024_add_session_authorization_version;
 
 mod m20261107_000025_replace_membership_role_enum;
 
+mod m20261108_000026_remove_reserved_role_ids;
+
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -67,6 +69,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261107_000023_create_organization_group_roles::Migration),
             Box::new(m20261107_000024_add_session_authorization_version::Migration),
             Box::new(m20261107_000025_replace_membership_role_enum::Migration),
+            Box::new(m20261108_000026_remove_reserved_role_ids::Migration),
             // inject-above (do not remove this comment)
         ]
     }

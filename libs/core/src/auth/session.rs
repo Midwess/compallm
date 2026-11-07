@@ -1,3 +1,4 @@
+use hero::distributed_id::{generator::DistributedIdError, try_gen_id};
 use std::sync::LazyLock;
 
 use cedar_policy::SchemaFragment;
@@ -16,23 +17,25 @@ pub struct Session {
     pub organization_id: u64,
     /// Display snapshot refreshed on token issuance; not part of session identity.
     pub organization_name: String,
+    /// Current permission generation, copied from storage when renewing credentials.
+    pub authorization_version: u32,
     pub revoked_at: Option<u64>,
 }
 
 impl Session {
-    pub fn new(
+    pub async fn new(
         user_id: u64,
-        id: u64,
         organization_id: u64,
         organization_name: impl Into<String>,
-    ) -> Self {
-        Self {
-            id,
+    ) -> Result<Self, DistributedIdError> {
+        Ok(Self {
+            id: try_gen_id().await?,
             user_id,
             organization_id,
             organization_name: organization_name.into(),
+            authorization_version: 1,
             revoked_at: None,
-        }
+        })
     }
 
     /// Match IDs only; organization names and revocation state are not identity.

@@ -4,11 +4,13 @@ pub mod config_service;
 pub mod creation_service;
 pub mod entity;
 pub mod error;
+pub mod member;
 
 pub use config_service::ConfigService;
 pub use creation_service::CreationService;
-pub use entity::{Organization, OrganizationMember, OrganizationStatus};
+pub use entity::{Organization, OrganizationStatus};
 pub use error::{OrganizationConfigError, OrganizationCreationError};
+pub use member::OrganizationMember;
 
 pub mod group;
 pub mod role;

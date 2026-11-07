@@ -1,3 +1,4 @@
+use hero::distributed_id::{generator::DistributedIdError, try_gen_id};
 use std::sync::LazyLock;
 
 use cedar_policy::SchemaFragment;
@@ -18,6 +19,13 @@ pub struct Model {
     pub limits: ModelLimits,
     pub thinking: Option<Thinking>,
     pub pricing: Pricing,
+}
+
+impl Model {
+    pub async fn initialize_id(&mut self) -> Result<(), DistributedIdError> {
+        self.id = try_gen_id().await?;
+        Ok(())
+    }
 }
 
 impl SystemPolicy for Model {

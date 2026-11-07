@@ -8,6 +8,7 @@ use super::{
         RefreshToken, UserAccessToken, UserTokens,
     },
 };
+use crate::authorization::PolicySnapshot;
 use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode};
 use crate::organization::{Organization, OrganizationMember};
 use crate::persistent::session::SessionRepository;
@@ -22,7 +23,7 @@ pub struct TokenLifetimes {
 }
 
 pub struct AuthService {
-    _db: &'static DbContext,
+    db: &'static DbContext,
     users: &'static Box<dyn UserRepository>,
     organizations: &'static Box<dyn OrganizationRepository>,
     sessions: &'static Box<dyn SessionRepository>,
@@ -33,6 +34,43 @@ pub struct AuthService {
 }
 
 impl AuthService {
+    /// Return true for current access, false for stale access; reject missing/revoked/ahead state.
+    pub async fn validate_access(&self, claims: &UserAccessToken) -> Result<bool, AuthError> {
+        claims.validate(unix_timestamp())?;
+        let version = self
+            .sessions
+            .authorization_version(&claims.session)
+            .await?
+            .ok_or(AuthError::InvalidSession)?;
+        if claims.session.authorization_version > version {
+            return Err(AuthError::InvalidSession);
+        }
+        Ok(claims.session.authorization_version == version)
+    }
+
+    /// Invalidate selected members' session snapshots in one organization.
+    /// The caller determines affected users and owns the transaction containing
+    /// authority changes. This increments versions without revoking or renewing.
+    pub async fn invalidate_permissions(
+        &self,
+        organization_id: u64,
+        user_ids: &[u64],
+    ) -> Result<u64, AuthError> {
+        Ok(self
+            .sessions
+            .invalidate_permissions(organization_id, user_ids)
+            .await?)
+    }
+
+    /// Build compact authority from a trusted, already-loaded membership.
+    /// Session revalidation belongs to the caller; JWT size checks belong to issuance.
+    pub fn create_policy_snapshot(
+        &self,
+        membership: &OrganizationMember,
+    ) -> Result<PolicySnapshot, AuthError> {
+        Ok(PolicySnapshot::new(membership)?)
+    }
+
     /// Revoke only the persisted session identified by the verified access credential.
     pub async fn signout(&self, claims: &UserAccessToken) -> Result<(), AuthError> {
         claims.validate(unix_timestamp())?;
@@ -67,7 +105,7 @@ impl AuthService {
     ) -> Result<Self, AuthError> {
         EncryptedAccessToken::new(&jwt_secret)?;
         Ok(Self {
-            _db: db,
+            db,
             users,
             organizations,
             sessions,
@@ -137,7 +175,7 @@ impl AuthService {
         }
         let (membership, organization) = self
             .organizations
-            .find_first_admin_membership(user.id)
+            .find_first_membership(user.id)
             .await?
             .ok_or(AuthError::OrganizationAccessDenied)?;
         self.start_session(user.id, membership, organization).await
@@ -149,16 +187,18 @@ impl AuthService {
         code: &str,
     ) -> Result<UserTokens, AuthError> {
         claims.verify_code(code, unix_timestamp())?;
-        let user = self.registration.register(&claims.email).await?;
-        if user.status != UserStatus::Active {
-            return Err(AuthError::UserDisabled);
-        }
-        let (membership, organization) = self
-            .organizations
-            .find_first_admin_membership(user.id)
-            .await?
-            .ok_or(AuthError::OrganizationAccessDenied)?;
-        self.start_session(user.id, membership, organization).await
+        crate::transaction!(self.db, {
+            let user = self.registration.register(&claims.email).await?;
+            if user.status != UserStatus::Active {
+                return Err(AuthError::UserDisabled);
+            }
+            let (membership, organization) = self
+                .organizations
+                .find_first_membership(user.id)
+                .await?
+                .ok_or(AuthError::OrganizationAccessDenied)?;
+            self.start_session(user.id, membership, organization).await
+        })
     }
 
     /// Verify the envelope and inner claims, preserving the concrete token variant.
@@ -174,34 +214,21 @@ impl AuthService {
     /// Read-only renewal: validates JWT/session state and never consumes the credential.
     pub async fn refresh(&self, refresh_token: &str) -> Result<UserTokens, AuthError> {
         let claims = RefreshToken::try_from(AccessToken::decode(refresh_token, &self.jwt_secret)?)?;
-        let session = self
+        let (session, membership) = self
             .sessions
-            .find(&claims.session)
+            .find_policy_membership(&claims.session)
             .await?
             .ok_or(AuthError::InvalidSession)?;
         session.validate_credential(&claims)?;
-        let user = self
-            .users
-            .find_by_id(claims.session.user_id)
-            .await?
-            .ok_or(AuthError::UserNotFound)?;
-        if user.status != UserStatus::Active {
-            return Err(AuthError::UserDisabled);
+        if claims.session.authorization_version > session.authorization_version
+            || membership.user_id != session.user_id
+            || membership.organization_id != session.organization_id
+        {
+            return Err(AuthError::InvalidSession);
         }
-        let (membership, organization) = self
-            .organizations
-            .find_membership(session.organization_id, user.id)
-            .await?
-            .ok_or(AuthError::OrganizationAccessDenied)?;
-        let mut session = session;
-        session.organization_name = organization.name;
+        let snapshot = self.create_policy_snapshot(&membership)?;
         let renewed = session.refresh(&claims, self.lifetimes.refresh)?;
-        UserTokens::from_refresh(
-            &renewed,
-            membership.compatibility_role(),
-            &self.jwt_secret,
-            self.lifetimes.user,
-        )
+        UserTokens::from_refresh(&renewed, snapshot, &self.jwt_secret, self.lifetimes.user)
     }
 
     pub async fn switch_organization(
@@ -237,7 +264,7 @@ impl AuthService {
 
         let tokens = UserTokens::new(
             &session,
-            membership.compatibility_role(),
+            self.create_policy_snapshot(&membership)?,
             &self.jwt_secret,
             self.lifetimes.user,
             self.lifetimes.refresh,
@@ -256,11 +283,10 @@ impl AuthService {
         membership: OrganizationMember,
         organization: Organization,
     ) -> Result<UserTokens, AuthError> {
-        let id = hero::distributed_id::try_gen_id().await?;
-        let session = Session::new(user_id, id, membership.organization_id, organization.name);
+        let session = Session::new(user_id, membership.organization_id, organization.name).await?;
         let tokens = UserTokens::new(
             &session,
-            membership.compatibility_role(),
+            self.create_policy_snapshot(&membership)?,
             &self.jwt_secret,
             self.lifetimes.user,
             self.lifetimes.refresh,

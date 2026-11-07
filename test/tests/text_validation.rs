@@ -81,13 +81,16 @@ fn user_names_follow_unquoted_email_local_part_character_rules() {
     }
 }
 
-#[test]
-fn user_preparation_owns_normalization_and_registration_rules() {
-    let user = User::from_email(42, "  James.Dang+dev@MIDWESS.COM  ").unwrap();
+#[tokio::test]
+async fn user_preparation_owns_normalization_and_registration_rules() {
+    compallm_postgres::init_id_generator("user-validation-tests").unwrap();
+    let user = User::from_email("  James.Dang+dev@MIDWESS.COM  ")
+        .await
+        .unwrap();
     assert_eq!(user.email, "james.dang+dev@midwess.com");
     assert_eq!(user.display_name, "james.dang+dev");
     for email in ["not-an-email", "@example.com", "james dang@example.com"] {
-        assert!(User::from_email(42, email).is_err());
+        assert!(User::from_email(email).await.is_err());
     }
     let too_long = User {
         id: 42,

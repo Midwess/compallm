@@ -42,7 +42,8 @@ export class OrganizationController implements Controller {
     await this.auth.signOut()
   }
   onOpenSettings = () => {
-    notify.info('Settings are not available yet.')
+    const organization = this.getCurrentOrganization()
+    if (organization) this.url.navigate(`/${encodeURIComponent(organization.name)}/settings/general`)
   }
   onSearch = () => {
     notify.info('Workspace search is not available yet.')

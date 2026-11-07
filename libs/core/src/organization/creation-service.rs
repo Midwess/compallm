@@ -4,9 +4,7 @@ use crate::{
     user::User,
 };
 
-use super::{
-    Organization, OrganizationCreationError, OrganizationMember, OrganizationStatus, Role,
-};
+use super::{Organization, OrganizationCreationError, OrganizationMember, Role};
 
 pub struct CreationService {
     db: &'static DbContext,
@@ -37,16 +35,10 @@ impl CreationService {
         name: &str,
         user: &User,
     ) -> Result<Organization, OrganizationCreationError> {
+        let organization = Organization::new(name).await?;
+        let roles = Role::defaults(organization.id).await?;
         transaction!(self.db, {
-            let organization = self
-                .organizations
-                .create(Organization {
-                    id: hero::distributed_id::try_gen_id().await?,
-                    name: name.into(),
-                    status: OrganizationStatus::Active,
-                })
-                .await?;
-            let roles = Role::defaults(organization.id);
+            let organization = self.organizations.create(organization).await?;
             self.organizations.create_roles(roles.clone()).await?;
             self.organizations
                 .add_member(OrganizationMember {

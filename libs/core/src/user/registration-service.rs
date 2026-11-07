@@ -28,7 +28,7 @@ impl RegistrationService {
     /// User, default organization, and owner membership succeed atomically.
     /// Joins an existing transaction when invoked by another service.
     pub async fn register(&self, email: &str) -> Result<User, RegistrationError> {
-        let user = User::from_email(hero::distributed_id::try_gen_id().await?, email)?;
+        let user = User::from_email(email).await?;
         if self.users.find_by_email(&user.email).await?.is_some() {
             return Err(UserRepositoryError::EmailAlreadyExists.into());
         }

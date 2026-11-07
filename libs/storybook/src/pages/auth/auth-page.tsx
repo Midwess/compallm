@@ -97,7 +97,7 @@ function EmailForm({ mode }: { mode: Mode }) {
         <EmailInput id={`${id}-email`} errorId={`${id}-error`} inputRef={input} />
       </div>
       <ContinueButton />
-      <FeedbackSlot>
+      <FeedbackSlot className="h-12 shrink-0">
         <ErrorMessage id={`${id}-error`} />
       </FeedbackSlot>
       <AccountLink mode={mode} />

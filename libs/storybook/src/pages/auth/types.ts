@@ -17,7 +17,6 @@ export interface AuthUser {
   sessionId: number
   organizationId: number
   organizationName: string
-  organizationRole: string
 }
 
 export interface AuthState {

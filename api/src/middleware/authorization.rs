@@ -28,14 +28,6 @@ impl RequireToken<UserAccessToken> {
             Err(ApiError::Forbidden)
         }
     }
-
-    pub fn require_roles(&self, roles: &[&str]) -> Result<(), ApiError> {
-        if roles.contains(&self.0.organization_role.as_str()) {
-            Ok(())
-        } else {
-            Err(ApiError::Forbidden)
-        }
-    }
 }
 
 impl<S, T> FromRequestParts<S> for RequireToken<T>
@@ -57,7 +49,7 @@ where
 pub struct Authorization;
 
 impl Authorization {
-    fn bearer(headers: &HeaderMap) -> Result<Option<&str>, ApiError> {
+    pub(crate) fn bearer(headers: &HeaderMap) -> Result<Option<&str>, ApiError> {
         let mut values = headers.get_all(AUTHORIZATION).iter();
         let Some(value) = values.next() else {
             return Ok(None);
@@ -96,7 +88,13 @@ impl Authorization {
         method: &Method,
     ) -> Result<(AccessToken, Option<UserTokens>), ApiError> {
         if let Some(token) = Self::bearer(headers)? {
-            return Ok((auth.authenticate_token(token)?, None));
+            let token = auth.authenticate_token(token)?;
+            if let AccessToken::User(user) = &token
+                && !auth.validate_access(user).await?
+            {
+                return Err(AuthError::ExpiredToken.into());
+            }
+            return Ok((token, None));
         }
         let safe = matches!(*method, Method::GET | Method::HEAD | Method::OPTIONS);
         let names = settings.cookie_names();
@@ -105,9 +103,26 @@ impl Authorization {
                 settings.validate_cookie_request(headers, false)?;
             }
             match auth.authenticate_token(&token) {
-                Ok(token @ (AccessToken::User(_) | AccessToken::EmailOtp(_))) => {
-                    return Ok((token, None));
+                Ok(AccessToken::User(user)) => {
+                    if auth.validate_access(&user).await? {
+                        return Ok((AccessToken::User(user), None));
+                    }
+                    let refresh =
+                        Self::cookie(headers, names.1)?.ok_or(ApiError::Unauthenticated)?;
+                    let refresh_claims =
+                        RefreshToken::try_from(auth.authenticate_token(&refresh)?)?;
+                    if !refresh_claims.session.has_same_identity(&user.session) {
+                        return Err(AuthError::InvalidSession.into());
+                    }
+                    settings.validate_cookie_request(
+                        headers,
+                        matches!(*method, Method::GET | Method::HEAD),
+                    )?;
+                    let tokens = auth.refresh(&refresh).await?;
+                    let rebuilt = auth.authenticate_access(&tokens.access_token)?;
+                    return Ok((AccessToken::User(rebuilt), Some(tokens)));
                 }
+                Ok(token @ AccessToken::EmailOtp(_)) => return Ok((token, None)),
                 Ok(_) => return Err(AuthError::WrongTokenVariant.into()),
                 Err(AuthError::ExpiredToken) => {}
                 Err(error) => return Err(error.into()),
@@ -211,8 +226,18 @@ impl Authorization {
         let mut response = Self::run(auth, settings, request, next, cookie_mode)
             .await
             .unwrap_or_else(|error| {
+                let expired = matches!(&error, ApiError::Auth(AuthError::ExpiredToken));
                 let mut response = error.into_authentication_response();
-                if cookie_mode && let Err(error) = settings.clear_cookies(response.headers_mut()) {
+                if expired {
+                    response.headers_mut().insert(WWW_AUTHENTICATE, HeaderValue::from_static("Bearer error=\"invalid_token\", error_description=\"Access token expired; refresh explicitly\""));
+                }
+                if cookie_mode
+                    && matches!(
+                        response.status(),
+                        StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
+                    )
+                    && let Err(error) = settings.clear_cookies(response.headers_mut())
+                {
                     return error.into_response();
                 }
                 response
@@ -220,7 +245,9 @@ impl Authorization {
         response
             .headers_mut()
             .insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
-        if response.status() == StatusCode::UNAUTHORIZED {
+        if response.status() == StatusCode::UNAUTHORIZED
+            && !response.headers().contains_key(WWW_AUTHENTICATE)
+        {
             response
                 .headers_mut()
                 .insert(WWW_AUTHENTICATE, HeaderValue::from_static("Bearer"));

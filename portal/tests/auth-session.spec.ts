@@ -40,7 +40,7 @@ for (const mode of ['signup', 'signin'] as const) {
   })
 }
 
-const user = { userId: 42, organizationId: 84, organizationName: 'Research team', sessionId: 7, organizationRole: 'owner' }
+const user = { userId: 42, organizationId: 84, organizationName: 'Research team', sessionId: 7 }
 
 test('root checks the API and automatically redirects an existing session to its organization', async ({ page }) => {
   let checks = 0

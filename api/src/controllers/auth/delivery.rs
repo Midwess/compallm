@@ -104,7 +104,15 @@ impl TokenDeliverySettings {
             .path("/")
             .max_age(Duration::seconds(max_age as i64))
             .build();
-        headers.append(SET_COOKIE, HeaderValue::from_str(&cookie.to_string())?);
+        let serialized = cookie.to_string();
+        if serialized.len() > 4_096 {
+            return Err(compallm_core::auth::AuthError::TokenTooLarge {
+                size: serialized.len(),
+                limit: 4_096,
+            }
+            .into());
+        }
+        headers.append(SET_COOKIE, HeaderValue::from_str(&serialized)?);
         Ok(())
     }
 

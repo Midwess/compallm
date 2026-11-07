@@ -31,6 +31,19 @@ pub enum AccessToken {
 }
 
 impl AccessToken {
+    /// Wire budget for both bearer and cookie credentials; allow cookie attributes.
+    pub const MAX_ENCODED_BYTES: usize = 3_800;
+
+    pub fn check_size(size: usize) -> Result<(), AuthError> {
+        if size > Self::MAX_ENCODED_BYTES {
+            return Err(AuthError::TokenTooLarge {
+                size,
+                limit: Self::MAX_ENCODED_BYTES,
+            });
+        }
+        Ok(())
+    }
+
     pub fn validate(&self, now: u64) -> Result<(), AuthError> {
         match self {
             Self::EmailOtp(token) => token.validate(now),
@@ -56,7 +69,10 @@ impl AccessToken {
             return Err(AuthError::WrongTokenVariant);
         }
         self.validate(unix_timestamp())?;
-        create_jwt_token(self, secret, lifetime).map_err(|_| AuthError::InvalidToken)
+        let encoded =
+            create_jwt_token(self, secret, lifetime).map_err(|_| AuthError::InvalidToken)?;
+        Self::check_size(encoded.len())?;
+        Ok(encoded)
     }
 
     /// Verify the signed envelope before decrypting or validating inner claims.
@@ -64,9 +80,7 @@ impl AccessToken {
         if secret.len() < 32 {
             return Err(AuthError::InvalidConfiguration);
         }
-        if encoded.len() > 16 * 1024 {
-            return Err(AuthError::InvalidToken);
-        }
+        Self::check_size(encoded.len())?;
         let token: Self = decode_jwt_token(encoded, secret).map_err(|error| match error {
             hero::token::jwt::JwtErrors::CodingError(error)
                 if matches!(
@@ -167,25 +181,25 @@ impl UserTokens {
     /// Call after the workflow authorizes the user.
     pub fn new(
         session: &super::Session,
-        organization_role: impl Into<String>,
+        policy_snapshot: crate::authorization::PolicySnapshot,
         secret: &str,
         user_lifetime: Duration,
         refresh_lifetime: Duration,
     ) -> Result<Self, AuthError> {
         let refresh = RefreshToken::from_session(session, refresh_lifetime)?;
-        Self::from_refresh(&refresh, organization_role, secret, user_lifetime)
+        Self::from_refresh(&refresh, policy_snapshot, secret, user_lifetime)
     }
 
     pub fn from_refresh(
         refresh: &RefreshToken,
-        organization_role: impl Into<String>,
+        policy_snapshot: crate::authorization::PolicySnapshot,
         secret: &str,
         user_lifetime: Duration,
     ) -> Result<Self, AuthError> {
         refresh.validate(unix_timestamp())?;
         let refresh_lifetime =
             Duration::from_secs(refresh.validity.expires_at - refresh.validity.issued_at);
-        let user = UserAccessToken::new(refresh.session.clone(), organization_role, user_lifetime)?;
+        let user = UserAccessToken::new(refresh.session.clone(), policy_snapshot, user_lifetime)?;
         let access_validity = user.validity.clone();
         Ok(Self {
             access_validity,

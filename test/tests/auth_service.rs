@@ -1,3 +1,25 @@
+#[path = "support/roles.rs"]
+mod role_fixture;
+use role_fixture::default_roles;
+
+#[path = "support/session.rs"]
+mod session_fixture;
+use session_fixture::stored_session;
+
+// Exercise actual API middleware with mock persistence, without application startup.
+#[path = "../../api/src/controllers/auth.rs"]
+pub mod auth_controller;
+#[path = "../../api/src/middleware/authorization.rs"]
+pub mod authorization;
+#[path = "../../api/src/error.rs"]
+mod error;
+mod controllers {
+    pub use crate::auth_controller as auth;
+}
+mod middleware {
+    pub use crate::authorization;
+}
+
 use compallm_postgres::postgres_connection::PostgresConnection;
 use std::{
     sync::{Arc, Mutex},
@@ -30,6 +52,12 @@ struct State {
     created: Option<(String, String)>,
     fail_create: bool,
     fail_session: bool,
+    change_after_authority_read: bool,
+    full_default_policies: bool,
+    fail_authority_read: bool,
+    freshness_reads: usize,
+    authority_reads: usize,
+    handled_requests: usize,
     fail_rotation: bool,
     competing_rotation: bool,
     logins: Vec<u64>,
@@ -67,7 +95,13 @@ impl OrganizationRepository for OrganizationRepositoryStub {
                         .contains(&member.organization_id)
             })
             .cloned()
-            .map(|member| {
+            .map(|mut member| {
+                if !state.full_default_policies {
+                    // Synthetic bounded policies for transport/lifecycle tests; full defaults have dedicated rejection tests.
+                    for role in &mut member.roles {
+                        role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.list", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
+                    }
+                }
                 let organization = state
                     .organization
                     .clone()
@@ -101,7 +135,13 @@ impl OrganizationRepository for OrganizationRepositoryStub {
                         .contains(&member.organization_id)
             })
             .cloned()
-            .map(|member| {
+            .map(|mut member| {
+                if !state.full_default_policies {
+                    // Synthetic bounded policies for transport/lifecycle tests; full defaults have dedicated rejection tests.
+                    for role in &mut member.roles {
+                        role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.list", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
+                    }
+                }
                 let organization = state
                     .organization
                     .clone()
@@ -119,43 +159,6 @@ impl OrganizationRepository for OrganizationRepositoryStub {
             }))
     }
 
-    async fn find_first_admin_membership(
-        &self,
-        user_id: u64,
-    ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError> {
-        DbContext::current()?;
-        let state = self.0.lock().unwrap();
-        Ok(state
-            .memberships
-            .iter()
-            .find(|member| {
-                member.user_id == user_id
-                    && matches!(
-                        member.compatibility_role().as_str(),
-                        Role::OWNER | Role::ADMIN
-                    )
-                    && !state
-                        .disabled_organizations
-                        .contains(&member.organization_id)
-            })
-            .cloned()
-            .map(|member| {
-                let organization = state
-                    .organization
-                    .clone()
-                    .filter(|o| o.id == member.organization_id)
-                    .unwrap_or(Organization {
-                        id: member.organization_id,
-                        name: if member.organization_id == 84 {
-                            "Research team".into()
-                        } else {
-                            format!("Organization {}", member.organization_id)
-                        },
-                        status: compallm_core::organization::OrganizationStatus::Active,
-                    });
-                (member, organization)
-            }))
-    }
     async fn update_name(
         &self,
         organization_id: u64,
@@ -240,6 +243,101 @@ impl UserRepository for Repository {
 
 #[async_trait::async_trait]
 impl SessionRepository for Repository {
+    async fn authorization_version(
+        &self,
+        presented: &Session,
+    ) -> Result<Option<u32>, SessionRepositoryError> {
+        DbContext::current()?;
+        let mut state = self.0.lock().unwrap();
+        state.freshness_reads += 1;
+        if state.fail_authority_read {
+            return Err(anyhow::anyhow!("freshness query failed").into());
+        }
+        Ok(state
+            .sessions
+            .get(&presented.id)
+            .filter(|s| s.is_active(presented))
+            .map(|s| s.authorization_version))
+    }
+
+    async fn find_policy_membership(
+        &self,
+        presented: &Session,
+    ) -> Result<Option<(Session, OrganizationMember)>, SessionRepositoryError> {
+        DbContext::current()?;
+        let mut state = self.0.lock().unwrap();
+        state.authority_reads += 1;
+        if state.fail_authority_read {
+            return Err(anyhow::anyhow!("authority query failed").into());
+        }
+        let Some(mut session) = state
+            .sessions
+            .get(&presented.id)
+            .filter(|s| s.is_active(presented))
+            .cloned()
+        else {
+            return Ok(None);
+        };
+        if state
+            .user
+            .as_ref()
+            .is_none_or(|u| u.id != session.user_id || u.status != UserStatus::Active)
+            || state
+                .disabled_organizations
+                .contains(&session.organization_id)
+        {
+            return Ok(None);
+        }
+        let Some(member) = state
+            .memberships
+            .iter()
+            .find(|m| m.organization_id == session.organization_id && m.user_id == session.user_id)
+            .cloned()
+        else {
+            return Ok(None);
+        };
+        if let Some(organization) = state
+            .organization
+            .as_ref()
+            .filter(|o| o.id == session.organization_id)
+        {
+            session.organization_name = organization.name.clone();
+        }
+        if state.change_after_authority_read {
+            state
+                .sessions
+                .get_mut(&presented.id)
+                .unwrap()
+                .authorization_version += 1;
+            state.memberships.clear();
+            state.change_after_authority_read = false;
+        }
+        Ok(Some((session, member)))
+    }
+
+    async fn invalidate_permissions(
+        &self,
+        organization_id: u64,
+        user_ids: &[u64],
+    ) -> Result<u64, SessionRepositoryError> {
+        DbContext::current()?;
+        let mut state = self.0.lock().unwrap();
+        if state.fail_rotation {
+            return Err(anyhow::anyhow!("invalidation failed").into());
+        }
+        let mut count = 0;
+        for session in state.sessions.values_mut() {
+            if session.organization_id == organization_id
+                && user_ids.contains(&session.user_id)
+                && session.revoked_at.is_none()
+            {
+                session.authorization_version += 1;
+                count += 1;
+            }
+        }
+        Ok(count)
+    }
+
     async fn create(&self, session: Session) -> Result<(), SessionRepositoryError> {
         let mut state = self.0.lock().unwrap();
         state
@@ -320,7 +418,7 @@ impl Fixture {
                 vec![OrganizationMember {
                     organization_id: 84,
                     user_id: user.id,
-                    roles: vec![Role::defaults(84).remove(0)],
+                    roles: vec![Fixture::role(84, 0)],
                     groups: Vec::new(),
                 }]
             })
@@ -427,6 +525,21 @@ impl Fixture {
         RegistrationService::new(db, users, creation)
     }
 
+    fn role(organization_id: u64, index: usize) -> Role {
+        let mut role = Role {
+            id: (index + 1) as u64,
+            organization_id,
+            name: ["Owner", "Admin", "Member"][index].into(),
+            description: String::new(),
+            cedar_source: String::new(),
+        };
+        role.cedar_source = format!(
+            r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.list", resource == Compallm::Organization::"{}");"#,
+            organization_id, role.id, organization_id
+        );
+        role
+    }
+
     fn user(status: UserStatus) -> User {
         User {
             id: 1,
@@ -462,7 +575,6 @@ async fn direct_registration_commits_user_organization_and_owner_together() {
         let owner = state.owner.as_ref().unwrap();
         assert_eq!(owner.user_id, user.id);
         assert_eq!(owner.organization_id, organization.id);
-        assert_eq!(owner.compatibility_role(), Role::OWNER);
     }
     fixture.assert_transaction("COMMIT");
 }
@@ -507,7 +619,6 @@ async fn signin_checks_user_and_records_session_without_starting_a_transaction()
         UserAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
             .unwrap();
     assert_eq!(access.session.organization_id, 84);
-    assert_eq!(access.organization_role, Role::OWNER);
     assert_eq!(contexts.len(), 2);
     assert_eq!(fixture.repo.0.lock().unwrap().logins, [1]);
     assert!(contexts.iter().all(|context| *context == contexts[0]));
@@ -543,12 +654,10 @@ async fn signup_requires_verified_email_and_uses_one_caller_transaction() {
         assert_eq!(organization.name, "james's organization");
         assert!(organization.id > 0);
         assert_eq!(organization.id, owner.organization_id);
-        assert_eq!(owner.compatibility_role(), Role::OWNER);
         let access =
             UserAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
                 .unwrap();
         assert_eq!(access.session.organization_id, organization.id);
-        assert_eq!(access.organization_role, Role::OWNER);
         assert!(
             state
                 .contexts
@@ -717,8 +826,8 @@ async fn refresh_requires_a_context_from_the_application_entry_point() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let service = fixture.service();
     let tokens = UserTokens::new(
-        &Session::new(1, 7, 84, "Research team"),
-        Role::OWNER,
+        &stored_session(1, 7, 84, "Research team"),
+        empty_snapshot(),
         SECRET,
         Duration::from_secs(60),
         REFRESH_LIFETIME,
@@ -738,7 +847,7 @@ async fn refresh_requires_a_context_from_the_application_entry_point() {
         .scope(service.refresh(&tokens.refresh_token))
         .await
         .unwrap();
-    assert_eq!(fixture.repo.0.lock().unwrap().contexts.len(), 1);
+    assert_eq!(fixture.repo.0.lock().unwrap().contexts.len(), 0);
     assert!(DbContext::current().is_err());
     assert!(
         fixture
@@ -754,8 +863,8 @@ async fn refresh_requires_a_context_from_the_application_entry_point() {
 async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let original = UserTokens::new(
-        &Session::new(1, 7, 84, "Research team"),
-        Role::OWNER,
+        &stored_session(1, 7, 84, "Research team"),
+        empty_snapshot(),
         SECRET,
         Duration::from_secs(60),
         REFRESH_LIFETIME,
@@ -809,7 +918,7 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
     fixture.repo.0.lock().unwrap().user.as_mut().unwrap().status = UserStatus::Disabled;
     assert!(matches!(
         fixture.refresh(&issued.refresh_token).await,
-        Err(AuthError::UserDisabled)
+        Err(AuthError::InvalidSession)
     ));
     assert!(matches!(
         fixture.refresh(&original.access_token).await,
@@ -875,7 +984,7 @@ async fn renewal_refreshes_organization_name_in_both_tokens_without_a_session_wr
 async fn expired_refresh_requires_signin_before_reading_the_user() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let mut expired =
-        RefreshToken::from_session(&Session::new(1, 7, 84, "Research team"), REFRESH_LIFETIME)
+        RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap();
     let elapsed = REFRESH_LIFETIME.as_secs() + 1;
     expired.validity.issued_at -= elapsed;
@@ -892,19 +1001,21 @@ async fn expired_refresh_requires_signin_before_reading_the_user() {
 }
 
 #[tokio::test]
-async fn signin_selects_an_admin_organization_instead_of_a_member_organization() {
+async fn signin_selects_first_active_membership_independent_of_roles() {
+    let fixture_roles_0 = default_roles(80, [1, 2, 3]).await;
+
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     fixture.repo.0.lock().unwrap().memberships = vec![
         OrganizationMember {
             organization_id: 80,
             user_id: 1,
-            roles: vec![Role::defaults(80).remove(2)],
+            roles: vec![fixture_roles_0.clone().remove(2)],
             groups: Vec::new(),
         },
         OrganizationMember {
             organization_id: 85,
             user_id: 1,
-            roles: vec![Role::defaults(85).remove(1)],
+            roles: vec![Fixture::role(85, 1)],
             groups: Vec::new(),
         },
     ];
@@ -916,13 +1027,15 @@ async fn signin_selects_an_admin_organization_instead_of_a_member_organization()
     let claims =
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
-    assert_eq!(claims.session.organization_id, 85);
-    assert_eq!(claims.organization_role, Role::ADMIN);
+    assert_eq!(claims.session.organization_id, 80);
+    assert_eq!(claims.policy_snapshot.role_ids, vec![3]);
     fixture.assert_no_transaction();
 }
 
 #[tokio::test]
 async fn organization_switch_is_separate_and_uses_current_membership_roles() {
+    let fixture_roles_0 = default_roles(85, [1, 2, 3]).await;
+
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     fixture
         .repo
@@ -933,11 +1046,11 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
         .push(OrganizationMember {
             organization_id: 85,
             user_id: 1,
-            roles: vec![Role::defaults(85).remove(2)],
+            roles: vec![fixture_roles_0.clone().remove(2)],
             groups: Vec::new(),
         });
     let refresh = AccessToken::Refresh(
-        RefreshToken::from_session(&Session::new(1, 7, 84, "Research team"), REFRESH_LIFETIME)
+        RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
     .encode(SECRET, REFRESH_LIFETIME)
@@ -948,7 +1061,6 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
     assert_eq!(claims.session.organization_id, 85);
-    assert_eq!(claims.organization_role, Role::MEMBER);
     let refreshed =
         RefreshToken::try_from(AccessToken::decode(&tokens.refresh_token, SECRET).unwrap())
             .unwrap();
@@ -967,7 +1079,7 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
             .is_none()
     );
     // Membership changes are checked again instead of copying role from an old JWT.
-    fixture.repo.0.lock().unwrap().memberships[1].roles = vec![Role::defaults(85).remove(1)];
+    fixture.repo.0.lock().unwrap().memberships[1].roles = vec![Fixture::role(85, 1)];
     let tokens = fixture
         .switch_organization(&tokens.refresh_token, 85)
         .await
@@ -975,7 +1087,7 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
     let claims =
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
-    assert_eq!(claims.organization_role, Role::ADMIN);
+    assert_eq!(claims.policy_snapshot.role_ids, vec![2]);
     assert!(matches!(
         fixture
             .switch_organization(&tokens.refresh_token, 999)
@@ -996,7 +1108,7 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
 }
 
 #[tokio::test]
-async fn signin_rejects_missing_or_disabled_administrator_memberships() {
+async fn signin_rejects_missing_or_disabled_memberships() {
     for disabled in [false, true] {
         let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
         {
@@ -1004,7 +1116,7 @@ async fn signin_rejects_missing_or_disabled_administrator_memberships() {
             if disabled {
                 state.disabled_organizations.push(84);
             } else {
-                state.memberships[0].roles = vec![Role::defaults(84).remove(2)];
+                state.memberships.clear();
             }
         }
         let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
@@ -1021,18 +1133,20 @@ async fn signin_rejects_missing_or_disabled_administrator_memberships() {
 
 #[tokio::test]
 async fn refresh_without_selection_keeps_the_session_organization() {
+    let fixture_roles_0 = default_roles(80, [1, 2, 3]).await;
+
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     fixture.repo.0.lock().unwrap().memberships.insert(
         0,
         OrganizationMember {
             organization_id: 80,
             user_id: 1,
-            roles: vec![Role::defaults(80).remove(2)],
+            roles: vec![fixture_roles_0.clone().remove(2)],
             groups: Vec::new(),
         },
     );
     let refresh = AccessToken::Refresh(
-        RefreshToken::from_session(&Session::new(1, 7, 84, "Research team"), REFRESH_LIFETIME)
+        RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
     .encode(SECRET, REFRESH_LIFETIME)
@@ -1043,14 +1157,13 @@ async fn refresh_without_selection_keeps_the_session_organization() {
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
     assert_eq!(claims.session.organization_id, 84);
-    assert_eq!(claims.organization_role, Role::OWNER);
 }
 
 #[tokio::test]
 async fn original_and_renewed_refresh_tokens_remain_usable_without_database_writes() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let original = AccessToken::Refresh(
-        RefreshToken::from_session(&Session::new(1, 7, 84, "Research team"), REFRESH_LIFETIME)
+        RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
     .encode(SECRET, REFRESH_LIFETIME)
@@ -1141,8 +1254,11 @@ async fn missing_revoked_or_foreign_sessions_cannot_refresh() {
     for state in ["missing", "revoked", "foreign"] {
         let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
         let refresh = AccessToken::Refresh(
-            RefreshToken::from_session(&Session::new(1, 7, 84, "Research team"), REFRESH_LIFETIME)
-                .unwrap(),
+            RefreshToken::from_session(
+                &stored_session(1, 7, 84, "Research team"),
+                REFRESH_LIFETIME,
+            )
+            .unwrap(),
         )
         .encode(SECRET, REFRESH_LIFETIME)
         .unwrap();
@@ -1189,7 +1305,7 @@ async fn missing_revoked_or_foreign_sessions_cannot_refresh() {
 async fn invalid_signature_cannot_revoke_a_valid_session() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let claims =
-        RefreshToken::from_session(&Session::new(1, 7, 84, "Research team"), REFRESH_LIFETIME)
+        RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap();
     let valid = AccessToken::Refresh(claims.clone())
         .encode(SECRET, REFRESH_LIFETIME)
@@ -1221,7 +1337,7 @@ async fn invalid_signature_cannot_revoke_a_valid_session() {
 async fn read_only_refresh_runs_inside_an_enclosing_transaction() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let token = AccessToken::Refresh(
-        RefreshToken::from_session(&Session::new(1, 7, 84, "Research team"), REFRESH_LIFETIME)
+        RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
     .encode(SECRET, REFRESH_LIFETIME)
@@ -1243,7 +1359,7 @@ async fn read_only_refresh_runs_inside_an_enclosing_transaction() {
 async fn failed_organization_switch_returns_no_credentials_and_preserves_the_session() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let claims =
-        RefreshToken::from_session(&Session::new(1, 7, 84, "Research team"), REFRESH_LIFETIME)
+        RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap();
     let token = AccessToken::Refresh(claims.clone())
         .encode(SECRET, REFRESH_LIFETIME)
@@ -1262,7 +1378,7 @@ async fn failed_organization_switch_returns_no_credentials_and_preserves_the_ses
 async fn competing_organization_switch_rejects_the_loser_without_revoking_the_winner() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let token = AccessToken::Refresh(
-        RefreshToken::from_session(&Session::new(1, 7, 84, "Research team"), REFRESH_LIFETIME)
+        RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
     .encode(SECRET, REFRESH_LIFETIME)
@@ -1283,14 +1399,14 @@ async fn competing_organization_switch_rejects_the_loser_without_revoking_the_wi
 async fn token_for_another_organization_cannot_read_or_revoke_an_owned_session() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let valid = AccessToken::Refresh(
-        RefreshToken::from_session(&Session::new(1, 7, 84, "Research team"), REFRESH_LIFETIME)
+        RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
     .encode(SECRET, REFRESH_LIFETIME)
     .unwrap();
     fixture.remember(&valid);
     let foreign = AccessToken::Refresh(
-        RefreshToken::from_session(&Session::new(1, 7, 85, "Research team"), REFRESH_LIFETIME)
+        RefreshToken::from_session(&stored_session(1, 7, 85, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
     .encode(SECRET, REFRESH_LIFETIME)
@@ -1309,9 +1425,11 @@ async fn token_for_another_organization_cannot_read_or_revoke_an_owned_session()
 
 #[tokio::test]
 async fn organization_switch_joins_an_enclosing_transaction() {
+    let fixture_roles_0 = default_roles(85, [1, 2, 3]).await;
+
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let original = AccessToken::Refresh(
-        RefreshToken::from_session(&Session::new(1, 7, 84, "Research team"), REFRESH_LIFETIME)
+        RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
     .encode(SECRET, REFRESH_LIFETIME)
@@ -1326,7 +1444,7 @@ async fn organization_switch_joins_an_enclosing_transaction() {
         .push(OrganizationMember {
             organization_id: 85,
             user_id: 1,
-            roles: vec![Role::defaults(85).remove(2)],
+            roles: vec![fixture_roles_0.clone().remove(2)],
             groups: Vec::new(),
         });
     let service = fixture.service();
@@ -1356,7 +1474,7 @@ async fn organization_switch_joins_an_enclosing_transaction() {
 async fn expired_refresh_never_writes_or_revokes_a_session() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let mut token =
-        RefreshToken::from_session(&Session::new(1, 7, 84, "Research team"), REFRESH_LIFETIME)
+        RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap();
     let at = token.validity.issued_at;
     let stored = token.session.clone();
@@ -1394,15 +1512,15 @@ async fn expired_refresh_never_writes_or_revokes_a_session() {
 #[tokio::test]
 async fn signout_revokes_only_the_selected_session_and_is_repeatable() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let selected = Session::new(1, 7, 84, "Research team");
-    let other = Session::new(1, 8, 84, "Research team");
+    let selected = stored_session(1, 7, 84, "Research team");
+    let other = stored_session(1, 8, 84, "Research team");
     {
         let mut state = fixture.repo.0.lock().unwrap();
         state.sessions.insert(7, selected.clone());
         state.sessions.insert(8, other);
     }
     let claims =
-        UserAccessToken::new(selected.clone(), Role::OWNER, Duration::from_secs(60)).unwrap();
+        UserAccessToken::new(selected.clone(), empty_snapshot(), Duration::from_secs(60)).unwrap();
     let service = fixture.service();
     fixture
         .repo
@@ -1434,8 +1552,8 @@ async fn signout_revokes_only_the_selected_session_and_is_repeatable() {
 #[tokio::test]
 async fn signout_cannot_revoke_a_foreign_user_or_organization_session() {
     for presented in [
-        Session::new(2, 7, 84, "Research team"),
-        Session::new(1, 7, 85, "Research team"),
+        stored_session(2, 7, 84, "Research team"),
+        stored_session(1, 7, 85, "Research team"),
     ] {
         let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
         fixture
@@ -1444,8 +1562,9 @@ async fn signout_cannot_revoke_a_foreign_user_or_organization_session() {
             .lock()
             .unwrap()
             .sessions
-            .insert(7, Session::new(1, 7, 84, "Research team"));
-        let claims = UserAccessToken::new(presented, Role::OWNER, Duration::from_secs(60)).unwrap();
+            .insert(7, stored_session(1, 7, 84, "Research team"));
+        let claims =
+            UserAccessToken::new(presented, empty_snapshot(), Duration::from_secs(60)).unwrap();
         assert!(matches!(
             fixture
                 .repo
@@ -1502,4 +1621,864 @@ async fn signin_email_normalizes_existing_accounts_before_mail_admission() {
             compallm_core::mail::EmailError::Unavailable
         ))
     ));
+}
+
+#[tokio::test]
+async fn refresh_preserves_coherent_session_and_authority_without_restamping() {
+    let fixture_roles_0 = default_roles(84, [1, 2, 3]).await;
+
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let presented = stored_session(1, 7, 84, "Research team");
+    {
+        let mut state = fixture.repo.0.lock().unwrap();
+        let mut stored = presented.clone();
+        stored.authorization_version = 4;
+        state.sessions.insert(7, stored);
+        state.memberships[0].roles.clear();
+        state.memberships[0]
+            .groups
+            .push(compallm_core::organization::Group {
+                id: 9,
+                organization_id: 84,
+                name: "Team".into(),
+                description: String::new(),
+                roles: vec![fixture_roles_0.clone().remove(2)],
+            });
+        state.change_after_authority_read = true;
+    }
+    let service = fixture.service();
+    let refresh =
+        AccessToken::Refresh(RefreshToken::from_session(&presented, REFRESH_LIFETIME).unwrap())
+            .encode(SECRET, REFRESH_LIFETIME)
+            .unwrap();
+    let issued = fixture
+        .repo
+        .1
+        .scope(service.refresh(&refresh))
+        .await
+        .unwrap();
+    let claims =
+        UserAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
+            .unwrap();
+    let session = claims.session;
+    let snapshot = claims.policy_snapshot;
+    assert_eq!(session.authorization_version, 4);
+    assert!(snapshot.role_ids.is_empty());
+    assert_eq!(snapshot.group_roles[&9], vec![3]);
+    assert!(!snapshot.cedar_source.is_empty());
+    assert_eq!(
+        fixture.repo.0.lock().unwrap().sessions[&7].authorization_version,
+        5
+    );
+    assert!(fixture.repo.0.lock().unwrap().memberships.is_empty());
+    assert!(matches!(
+        fixture.repo.1.scope(service.refresh(&refresh)).await,
+        Err(AuthError::InvalidSession)
+    ));
+    fixture.assert_no_transaction();
+}
+
+#[tokio::test]
+async fn refresh_rejects_unavailable_invalid_or_oversized_authority() {
+    let fixture_roles_0 = default_roles(84, [1, 2, 3]).await;
+
+    for case in [
+        "missing user",
+        "disabled user",
+        "missing member",
+        "disabled organization",
+        "foreign role",
+        "invalid source",
+        "missing session",
+        "revoked session",
+        "foreign organization",
+        "foreign user",
+        "future version",
+        "oversized",
+        "database failure",
+    ] {
+        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+        let mut presented = stored_session(1, 7, 84, "Research team");
+        {
+            let mut state = fixture.repo.0.lock().unwrap();
+            state.sessions.insert(7, presented.clone());
+            match case {
+                "missing user" => state.user = None,
+                "disabled user" => state.user.as_mut().unwrap().status = UserStatus::Disabled,
+                "missing member" => state.memberships.clear(),
+                "disabled organization" => state.disabled_organizations.push(84),
+                "foreign role" => state.memberships[0].roles[0].organization_id = 99,
+                "invalid source" => state.memberships[0].roles[0].cedar_source = "invalid".into(),
+                "missing session" => state.sessions.clear(),
+                "revoked session" => state.sessions.get_mut(&7).unwrap().revoke(),
+                "foreign organization" => presented.organization_id = 99,
+                "foreign user" => presented.user_id = 99,
+                "future version" => presented.authorization_version = 2,
+                "oversized" => {
+                    state.memberships[0].roles = vec![fixture_roles_0.clone().remove(0)];
+                    state.full_default_policies = true;
+                }
+                "database failure" => state.fail_authority_read = true,
+                _ => unreachable!(),
+            }
+        }
+        let refresh =
+            AccessToken::Refresh(RefreshToken::from_session(&presented, REFRESH_LIFETIME).unwrap())
+                .encode(SECRET, REFRESH_LIFETIME)
+                .unwrap();
+        let result = fixture.refresh(&refresh).await;
+        match case {
+            "foreign role" | "invalid source" => {
+                assert!(matches!(result, Err(AuthError::Unexpected(_))))
+            }
+            "oversized" => assert!(matches!(result, Err(AuthError::TokenTooLarge { .. }))),
+            "database failure" => assert!(matches!(result, Err(AuthError::SessionPersistence(_)))),
+            _ => assert!(matches!(result, Err(AuthError::InvalidSession)), "{case}"),
+        }
+        fixture.assert_no_transaction();
+    }
+}
+
+#[tokio::test]
+async fn snapshot_creation_uses_only_loaded_membership_without_session_or_context() {
+    let fixture_roles_0 = default_roles(84, [1, 2, 3]).await;
+
+    let fixture = Fixture::new(None);
+    let service = fixture.service();
+    let membership = OrganizationMember {
+        organization_id: 84,
+        user_id: 1,
+        roles: fixture_roles_0.clone(),
+        groups: vec![],
+    };
+    // The pure snapshot fits its own bounds even when final token issuance may not.
+    let snapshot = service.create_policy_snapshot(&membership).unwrap();
+    assert_eq!(snapshot.role_ids, vec![1, 2, 3]);
+    assert!(!snapshot.cedar_source.is_empty());
+    assert!(DbContext::current().is_err());
+    assert!(fixture.repo.0.lock().unwrap().sessions.is_empty());
+    let mut invalid = membership.clone();
+    invalid.roles[0].organization_id = 99;
+    assert!(matches!(
+        service.create_policy_snapshot(&invalid),
+        Err(AuthError::Unexpected(_))
+    ));
+    fixture.assert_no_transaction();
+}
+
+#[tokio::test]
+async fn renewal_copies_current_session_version_and_keeps_stale_refresh_usable() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let session = stored_session(1, 7, 84, "Research team");
+    assert_eq!(session.authorization_version, 1);
+    let token =
+        AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
+            .encode(SECRET, REFRESH_LIFETIME)
+            .unwrap();
+    fixture.remember(&token);
+    fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .get_mut(&7)
+        .unwrap()
+        .authorization_version = 42;
+    let renewed = fixture.refresh(&token).await.unwrap();
+    let access =
+        UserAccessToken::try_from(AccessToken::decode(&renewed.access_token, SECRET).unwrap())
+            .unwrap();
+    let refresh =
+        RefreshToken::try_from(AccessToken::decode(&renewed.refresh_token, SECRET).unwrap())
+            .unwrap();
+    assert_eq!(access.session.authorization_version, 42);
+    assert_eq!(refresh.session.authorization_version, 42);
+    assert_eq!(
+        fixture.repo.0.lock().unwrap().sessions[&7].authorization_version,
+        42
+    );
+    assert!(fixture.refresh(&token).await.is_ok());
+    fixture.assert_no_transaction();
+}
+
+#[tokio::test]
+async fn explicit_permission_invalidation_scopes_users_and_sessions() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    {
+        let mut state = fixture.repo.0.lock().unwrap();
+        for session in [
+            stored_session(1, 7, 84, "Team"),
+            stored_session(1, 8, 84, "Team"),
+            stored_session(2, 9, 84, "Team"),
+            stored_session(1, 10, 85, "Other"),
+        ] {
+            state.sessions.insert(session.id, session);
+        }
+        let mut revoked = stored_session(1, 11, 84, "Team");
+        revoked.revoke();
+        state.sessions.insert(11, revoked);
+    }
+    let service = fixture.service();
+    for expected in [2, 3] {
+        assert_eq!(
+            fixture
+                .repo
+                .1
+                .scope(service.invalidate_permissions(84, &[1, 1]))
+                .await
+                .unwrap(),
+            2
+        );
+        let state = fixture.repo.0.lock().unwrap();
+        for id in [7, 8] {
+            assert_eq!(state.sessions[&id].authorization_version, expected);
+        }
+        for id in [9, 10, 11] {
+            assert_eq!(state.sessions[&id].authorization_version, 1);
+        }
+        assert!(state.sessions[&7].revoked_at.is_none());
+    }
+    assert_eq!(
+        fixture
+            .repo
+            .1
+            .scope(service.invalidate_permissions(84, &[]))
+            .await
+            .unwrap(),
+        0
+    );
+    fixture.repo.0.lock().unwrap().fail_rotation = true;
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(service.invalidate_permissions(84, &[1]))
+            .await,
+        Err(AuthError::SessionPersistence(_))
+    ));
+    fixture.assert_no_transaction();
+}
+
+fn empty_snapshot() -> compallm_core::authorization::PolicySnapshot {
+    compallm_core::authorization::PolicySnapshot {
+        cedar_source: String::new(),
+        role_ids: vec![],
+        group_roles: std::collections::BTreeMap::new(),
+    }
+}
+
+#[tokio::test]
+async fn access_issuance_includes_direct_and_group_authority_and_refresh_rebuilds_it() {
+    let fixture_roles_0 = default_roles(84, [1, 2, 3]).await;
+
+    use compallm_core::{authorization::PolicySnapshot, organization::Group};
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    {
+        let mut state = fixture.repo.0.lock().unwrap();
+        state.memberships[0].groups.push(Group {
+            id: 9,
+            organization_id: 84,
+            name: "Team".into(),
+            description: String::new(),
+            roles: vec![fixture_roles_0.clone().remove(2)],
+        });
+    }
+    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    let issued = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let access =
+        UserAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
+            .unwrap();
+    let expected = PolicySnapshot::new(&fixture.repo.0.lock().unwrap().memberships[0]).unwrap();
+    assert_eq!(access.policy_snapshot, expected);
+    assert_eq!(access.policy_snapshot.role_ids, vec![1]);
+    assert_eq!(access.policy_snapshot.group_roles[&9], vec![3]);
+    {
+        let mut state = fixture.repo.0.lock().unwrap();
+        state.memberships[0].roles.clear();
+        state.memberships[0].groups.clear();
+        state
+            .sessions
+            .get_mut(&access.session.id)
+            .unwrap()
+            .authorization_version = 2;
+    }
+
+    let renewed = fixture.refresh(&issued.refresh_token).await.unwrap();
+    let new_access =
+        UserAccessToken::try_from(AccessToken::decode(&renewed.access_token, SECRET).unwrap())
+            .unwrap();
+    assert_eq!(new_access.session.authorization_version, 2);
+    assert!(new_access.policy_snapshot.cedar_source.is_empty());
+    assert!(new_access.policy_snapshot.role_ids.is_empty());
+    assert!(new_access.policy_snapshot.group_roles.is_empty());
+    let refresh = AccessToken::decode(&renewed.refresh_token, SECRET).unwrap();
+    assert!(
+        serde_json::to_value(refresh).unwrap()["refresh"]
+            .get("policy_snapshot")
+            .is_none()
+    );
+    fixture.assert_no_transaction();
+}
+
+#[tokio::test]
+async fn actual_default_policy_oversize_returns_no_login_or_switched_session() {
+    let fixture_roles_0 = default_roles(84, [1, 2, 3]).await;
+    let fixture_roles_1 = default_roles(85, [1, 2, 3]).await;
+
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    {
+        let mut state = fixture.repo.0.lock().unwrap();
+        state.full_default_policies = true;
+        state.memberships[0].roles = vec![fixture_roles_0.clone().remove(0)];
+    }
+    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    assert!(matches!(
+        fixture
+            .signin(&Fixture::otp(&challenge), &challenge.code)
+            .await,
+        Err(AuthError::TokenTooLarge { .. })
+    ));
+    assert!(fixture.repo.0.lock().unwrap().sessions.is_empty());
+    let session = stored_session(1, 7, 84, "Team");
+    let refresh =
+        AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
+            .encode(SECRET, REFRESH_LIFETIME)
+            .unwrap();
+    fixture.remember(&refresh);
+    assert!(matches!(
+        fixture.refresh(&refresh).await,
+        Err(AuthError::TokenTooLarge { .. })
+    ));
+    {
+        let mut state = fixture.repo.0.lock().unwrap();
+        state.memberships.push(OrganizationMember {
+            organization_id: 85,
+            user_id: 1,
+            roles: vec![fixture_roles_1.clone().remove(1)],
+            groups: vec![],
+        });
+    }
+    assert!(matches!(
+        fixture.switch_organization(&refresh, 85).await,
+        Err(AuthError::TokenTooLarge { .. })
+    ));
+    assert_eq!(fixture.repo.0.lock().unwrap().sessions[&7], session);
+    fixture.assert_no_transaction();
+
+    let signup = Fixture::new(None);
+    signup.repo.0.lock().unwrap().full_default_policies = true;
+    assert!(matches!(
+        signup
+            .repo
+            .1
+            .scope(
+                signup
+                    .service()
+                    .signup(&Fixture::otp(&challenge), &challenge.code)
+            )
+            .await,
+        Err(AuthError::TokenTooLarge { .. })
+    ));
+    assert!(signup.repo.0.lock().unwrap().sessions.is_empty());
+    signup.assert_transaction("ROLLBACK");
+}
+
+impl Fixture {
+    fn access_for_session(&self, session: Session) -> UserAccessToken {
+        UserAccessToken::new(session, empty_snapshot(), Duration::from_secs(60)).unwrap()
+    }
+
+    async fn request(
+        &self,
+        claims: &UserAccessToken,
+        cookie: bool,
+        refresh: Option<&str>,
+        origin: bool,
+    ) -> axum::response::Response {
+        use axum::{body::Body, http::Request};
+        let token = AccessToken::User(claims.clone())
+            .encode(SECRET, Duration::from_secs(60))
+            .unwrap();
+        let mut request = Request::builder().uri("/check");
+        if cookie {
+            let value = if let Some(refresh) = refresh {
+                format!("compallm-access={token}; compallm-refresh={refresh}")
+            } else {
+                format!("compallm-access={token}")
+            };
+            request = request.header("cookie", value);
+        } else {
+            request = request.header("authorization", format!("Bearer {token}"));
+            if let Some(refresh) = refresh {
+                request = request.header("cookie", format!("compallm-refresh={refresh}"));
+            }
+        }
+        if origin {
+            request = request.header("origin", "http://localhost");
+        }
+        self.execute(request.body(Body::empty()).unwrap()).await
+    }
+
+    async fn execute(&self, request: axum::extract::Request) -> axum::response::Response {
+        use axum::{Router, middleware::from_fn, routing::get};
+        use tower::ServiceExt;
+        let service = Arc::new(self.service());
+        let settings = Arc::new(auth_controller::delivery::TokenDeliverySettings {
+            secure: false,
+            public_origin: "http://localhost".into(),
+        });
+        let state = self.repo.0.clone();
+        let router=Router::new().route("/check",get(move |authorization::RequireToken(user):authorization::RequireToken<UserAccessToken>| {
+            let state=state.clone();
+            async move {
+                state.lock().unwrap().handled_requests+=1;
+                axum::Json(serde_json::json!({"version":user.session.authorization_version,"roles":user.policy_snapshot.role_ids}))
+            }
+        })).layer(from_fn(move |request,next| {
+            let service=service.clone();let settings=settings.clone();
+            async move {authorization::Authorization::authenticate(&service,&settings,request,next).await}
+        }));
+        self.repo.1.scope(router.oneshot(request)).await.unwrap()
+    }
+}
+
+#[tokio::test]
+async fn middleware_matching_version_uses_one_lookup_and_keeps_snapshot() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let session = stored_session(1, 7, 84, "Team");
+    fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .insert(7, session.clone());
+    let claims = fixture.access_for_session(session);
+    for cookie in [false, true] {
+        let response = fixture.request(&claims, cookie, None, false).await;
+        assert_eq!(response.status(), 200);
+        assert!(!response.headers().contains_key("set-cookie"));
+        assert!(!response.headers().contains_key("x-compallm-access-token"));
+    }
+    let state = fixture.repo.0.lock().unwrap();
+    assert_eq!(state.freshness_reads, 2);
+    assert_eq!(state.authority_reads, 0);
+    assert_eq!(state.handled_requests, 2);
+}
+
+#[tokio::test]
+async fn middleware_stale_bearer_requires_explicit_refresh_before_retry() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let session = stored_session(1, 7, 84, "Team");
+    let claims = fixture.access_for_session(session.clone());
+    let refresh =
+        AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
+            .encode(SECRET, REFRESH_LIFETIME)
+            .unwrap();
+    let mut current = session;
+    current.authorization_version = 2;
+    fixture.repo.0.lock().unwrap().sessions.insert(7, current);
+    let response = fixture.request(&claims, false, Some(&refresh), false).await;
+    assert_eq!(response.status(), 401);
+    assert!(
+        response.headers()["www-authenticate"]
+            .to_str()
+            .unwrap()
+            .contains("invalid_token")
+    );
+    assert!(!response.headers().contains_key("set-cookie"));
+    assert!(!response.headers().contains_key("x-compallm-access-token"));
+    {
+        let state = fixture.repo.0.lock().unwrap();
+        assert_eq!(state.freshness_reads, 1);
+        assert_eq!(state.authority_reads, 0);
+        assert_eq!(state.handled_requests, 0);
+    }
+    let response = fixture.explicit_refresh(Some(&refresh), None).await;
+    assert_eq!(response.status(), 200);
+    assert!(!response.headers().contains_key("set-cookie"));
+    let body = axum::body::to_bytes(response.into_body(), 16384)
+        .await
+        .unwrap();
+    let tokens: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let access = UserAccessToken::try_from(
+        AccessToken::decode(tokens["accessToken"].as_str().unwrap(), SECRET).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(access.session.authorization_version, 2);
+    assert_eq!(access.policy_snapshot.role_ids, vec![1]);
+    assert!(tokens["refreshToken"].is_string());
+    assert!(tokens["accessLifetime"]["expiresAt"].is_number());
+    assert_eq!(
+        fixture.request(&access, false, None, false).await.status(),
+        200
+    );
+    assert_eq!(fixture.repo.0.lock().unwrap().handled_requests, 1);
+}
+
+#[tokio::test]
+async fn middleware_stale_cookie_requires_matching_refresh_and_origin() {
+    for case in ["valid", "missing", "foreign", "origin"] {
+        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+        let session = stored_session(1, 7, 84, "Team");
+        let claims = fixture.access_for_session(session.clone());
+        let mut current = session.clone();
+        current.authorization_version = 2;
+        fixture.repo.0.lock().unwrap().sessions.insert(7, current);
+        let mut refresh_session = session;
+        if case == "foreign" {
+            refresh_session.user_id = 2;
+        }
+        let token = AccessToken::Refresh(
+            RefreshToken::from_session(&refresh_session, REFRESH_LIFETIME).unwrap(),
+        )
+        .encode(SECRET, REFRESH_LIFETIME)
+        .unwrap();
+        let response = fixture
+            .request(
+                &claims,
+                true,
+                if case == "missing" {
+                    None
+                } else {
+                    Some(&token)
+                },
+                case != "origin",
+            )
+            .await;
+        assert_eq!(
+            response.status().as_u16(),
+            match case {
+                "valid" => 200,
+                "origin" => 403,
+                _ => 401,
+            },
+            "{case}"
+        );
+        if case == "valid" {
+            assert_eq!(response.headers().get_all("set-cookie").iter().count(), 2);
+            let body = axum::body::to_bytes(response.into_body(), 8192)
+                .await
+                .unwrap();
+            assert_eq!(
+                serde_json::from_slice::<serde_json::Value>(&body).unwrap()["version"],
+                2
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn middleware_rejects_invalid_session_state_and_preserves_cookies_on_db_failure() {
+    for case in ["missing", "revoked", "foreign", "ahead", "database"] {
+        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+        let session = stored_session(1, 7, 84, "Team");
+        let mut claims = fixture.access_for_session(session.clone());
+        {
+            let mut state = fixture.repo.0.lock().unwrap();
+            state.sessions.insert(7, session);
+            match case {
+                "missing" => {
+                    state.sessions.clear();
+                }
+                "revoked" => state.sessions.get_mut(&7).unwrap().revoke(),
+                "foreign" => state.sessions.get_mut(&7).unwrap().organization_id = 99,
+                "ahead" => claims.session.authorization_version = 2,
+                "database" => state.fail_authority_read = true,
+                _ => unreachable!(),
+            }
+        }
+        let response = fixture.request(&claims, true, None, false).await;
+        assert_eq!(
+            response.status().as_u16(),
+            if case == "database" { 503 } else { 401 }
+        );
+        if case == "database" {
+            assert!(!response.headers().contains_key("set-cookie"));
+        }
+    }
+}
+
+#[tokio::test]
+async fn middleware_invalid_or_wrong_variant_bearer_never_renews_from_cookies() {
+    use axum::{body::Body, http::Request};
+    for case in ["forged", "expired", "refresh", "otp", "duplicate"] {
+        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+        let session = stored_session(1, 7, 84, "Team");
+        fixture
+            .repo
+            .0
+            .lock()
+            .unwrap()
+            .sessions
+            .insert(7, session.clone());
+        let refresh =
+            AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
+                .encode(SECRET, REFRESH_LIFETIME)
+                .unwrap();
+        let token = match case {
+            "forged" => AccessToken::User(fixture.access_for_session(session.clone()))
+                .encode(
+                    "another-secret-at-least-32-bytes-long",
+                    Duration::from_secs(60),
+                )
+                .unwrap(),
+            "refresh" => refresh.clone(),
+            "otp" => {
+                EmailOtpChallenge::new("james@midwess.com", SECRET)
+                    .unwrap()
+                    .access_token
+            }
+            "expired" => {
+                let mut claims = fixture.access_for_session(session.clone());
+                claims.validity.issued_at -= 120;
+                claims.validity.expires_at -= 120;
+                hero::token::jwt::create_jwt_token(
+                    AccessToken::User(claims),
+                    SECRET,
+                    Duration::from_secs(60),
+                )
+                .unwrap()
+            }
+            _ => AccessToken::User(fixture.access_for_session(session.clone()))
+                .encode(SECRET, Duration::from_secs(60))
+                .unwrap(),
+        };
+        let mut request = Request::builder()
+            .uri("/check")
+            .header("authorization", format!("Bearer {token}"))
+            .header("cookie", format!("compallm-refresh={refresh}"));
+        if case == "duplicate" {
+            request = request.header("authorization", format!("Bearer {token}"));
+        }
+        let response = fixture.execute(request.body(Body::empty()).unwrap()).await;
+        assert_eq!(response.status(), 401, "{case}");
+        assert!(!response.headers().contains_key("x-compallm-access-token"));
+        assert!(!response.headers().contains_key("set-cookie"));
+        let state = fixture.repo.0.lock().unwrap();
+        assert_eq!(state.freshness_reads, 0);
+        assert_eq!(state.authority_reads, 0);
+        assert_eq!(state.handled_requests, 0);
+    }
+}
+
+#[tokio::test]
+async fn middleware_expired_cookie_renews_once() {
+    use axum::{body::Body, http::Request};
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let session = stored_session(1, 7, 84, "Team");
+    fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .insert(7, session.clone());
+    let mut expired = fixture.access_for_session(session.clone());
+    expired.validity.issued_at -= 120;
+    expired.validity.expires_at -= 120;
+    let expired = hero::token::jwt::create_jwt_token(
+        AccessToken::User(expired),
+        SECRET,
+        Duration::from_secs(60),
+    )
+    .unwrap();
+    let refresh =
+        AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
+            .encode(SECRET, REFRESH_LIFETIME)
+            .unwrap();
+    let response = fixture
+        .execute(
+            Request::builder()
+                .uri("/check")
+                .header("sec-fetch-site", "same-origin")
+                .header(
+                    "cookie",
+                    format!("compallm-access={expired}; compallm-refresh={refresh}"),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await;
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.headers().get_all("set-cookie").iter().count(), 2);
+    assert_eq!(fixture.repo.0.lock().unwrap().handled_requests, 1);
+}
+
+#[tokio::test]
+async fn middleware_oversized_rebuild_fails_before_handler_without_new_credentials() {
+    let fixture_roles_0 = default_roles(84, [1, 2, 3]).await;
+
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let session = stored_session(1, 7, 84, "Team");
+    let claims = fixture.access_for_session(session.clone());
+    {
+        let mut state = fixture.repo.0.lock().unwrap();
+        let mut current = session;
+        current.authorization_version = 2;
+        state.sessions.insert(7, current);
+        state.memberships[0].roles = vec![fixture_roles_0.clone().remove(0)];
+    }
+    let refresh = AccessToken::Refresh(
+        RefreshToken::from_session(&claims.session, REFRESH_LIFETIME).unwrap(),
+    )
+    .encode(SECRET, REFRESH_LIFETIME)
+    .unwrap();
+    let response = fixture.request(&claims, true, Some(&refresh), true).await;
+    assert_eq!(response.status(), 422);
+    assert!(!response.headers().contains_key("x-compallm-access-token"));
+    assert!(!response.headers().contains_key("set-cookie"));
+    assert_eq!(fixture.repo.0.lock().unwrap().handled_requests, 0);
+}
+
+impl Fixture {
+    async fn explicit_refresh(
+        &self,
+        bearer: Option<&str>,
+        cookie: Option<&str>,
+    ) -> axum::response::Response {
+        use axum::{Extension, body::Body, http::Request};
+        use tower::ServiceExt;
+        let service: &'static AuthService = Box::leak(Box::new(self.service()));
+        let settings: &'static auth_controller::delivery::TokenDeliverySettings =
+            Box::leak(Box::new(auth_controller::delivery::TokenDeliverySettings {
+                secure: false,
+                public_origin: "http://localhost".into(),
+            }));
+        let (router, _) = auth_controller::router().split_for_parts();
+        let router = router.with_state(service).layer(Extension(settings));
+        let mut request = Request::builder().method("POST").uri("/api/auth/refresh");
+        if let Some(bearer) = bearer {
+            request = request.header("authorization", format!("Bearer {bearer}"));
+        }
+        if let Some(cookie) = cookie {
+            request = request.header("cookie", format!("compallm-refresh={cookie}"));
+        }
+        self.repo
+            .1
+            .scope(router.oneshot(request.body(Body::empty()).unwrap()))
+            .await
+            .unwrap()
+    }
+}
+
+#[tokio::test]
+async fn explicit_refresh_requires_valid_refresh_bearer_and_ignores_cookies() {
+    for case in [
+        "cookie-only",
+        "access",
+        "otp",
+        "forged",
+        "expired",
+        "revoked",
+        "missing-member",
+    ] {
+        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+        let session = stored_session(1, 7, 84, "Team");
+        fixture
+            .repo
+            .0
+            .lock()
+            .unwrap()
+            .sessions
+            .insert(7, session.clone());
+        let valid =
+            AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
+                .encode(SECRET, REFRESH_LIFETIME)
+                .unwrap();
+        let token = match case {
+            "access" => AccessToken::User(fixture.access_for_session(session.clone()))
+                .encode(SECRET, Duration::from_secs(60))
+                .unwrap(),
+            "otp" => {
+                EmailOtpChallenge::new("james@midwess.com", SECRET)
+                    .unwrap()
+                    .access_token
+            }
+            "forged" => AccessToken::Refresh(
+                RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap(),
+            )
+            .encode("a-different-secret-at-least-32-bytes", REFRESH_LIFETIME)
+            .unwrap(),
+            "expired" => {
+                let mut token = RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap();
+                token.validity.issued_at -= REFRESH_LIFETIME.as_secs() + 1;
+                token.validity.expires_at -= REFRESH_LIFETIME.as_secs() + 1;
+                hero::token::jwt::create_jwt_token(
+                    AccessToken::Refresh(token),
+                    SECRET,
+                    REFRESH_LIFETIME,
+                )
+                .unwrap()
+            }
+            _ => valid.clone(),
+        };
+        if case == "revoked" {
+            fixture
+                .repo
+                .0
+                .lock()
+                .unwrap()
+                .sessions
+                .get_mut(&7)
+                .unwrap()
+                .revoke();
+        }
+        if case == "missing-member" {
+            fixture.repo.0.lock().unwrap().memberships.clear();
+        }
+        let response = fixture
+            .explicit_refresh(
+                if case == "cookie-only" {
+                    None
+                } else {
+                    Some(&token)
+                },
+                Some(&valid),
+            )
+            .await;
+        assert_eq!(response.status(), 401, "{case}");
+        assert!(!response.headers().contains_key("set-cookie"), "{case}");
+        assert_eq!(fixture.repo.0.lock().unwrap().handled_requests, 0);
+    }
+}
+
+#[tokio::test]
+async fn signin_accepts_active_memberships_with_custom_or_no_roles() {
+    for custom in [false, true] {
+        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+        {
+            let mut state = fixture.repo.0.lock().unwrap();
+            state.memberships[0].roles = if custom {
+                vec![Role {
+                    id: 77,
+                    ..Fixture::role(84, 0)
+                }]
+            } else {
+                vec![]
+            };
+        }
+        let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+        let tokens = fixture
+            .signin(&Fixture::otp(&challenge), &challenge.code)
+            .await
+            .unwrap();
+        let access =
+            UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
+                .unwrap();
+        assert_eq!(
+            access.policy_snapshot.role_ids,
+            if custom { vec![77] } else { vec![] }
+        );
+        assert!(
+            serde_json::to_value(access)
+                .unwrap()
+                .get("organization_role")
+                .is_none()
+        );
+    }
 }

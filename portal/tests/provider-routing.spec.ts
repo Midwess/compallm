@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-const user = { userId: 42, organizationId: 84, organizationName: 'Research team', sessionId: 7, organizationRole: 'owner' }
+const user = { userId: 42, organizationId: 84, organizationName: 'Research team', sessionId: 7 }
 
 test('sidebar Add provider soft-navigates into the organization-scoped provider page', async ({ page }) => {
   await page.route('**/api/auth/me', (route) => route.fulfill({ json: user }))

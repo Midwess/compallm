@@ -17,7 +17,9 @@ use crate::{
     error::{ApiError, ErrorResponse},
     middleware::authorization::RequireToken,
 };
+#[path = "auth/delivery.rs"]
 pub mod delivery;
+#[path = "auth/validation.rs"]
 mod validation;
 use delivery::{AuthTokensResponse, TokenDelivery, TokenDeliverySettings, TokenLifetime};
 use validation::{AuthInput, ValidatedJson};
@@ -26,6 +28,7 @@ pub fn router() -> OpenApiRouter<&'static AuthService> {
     OpenApiRouter::new()
         .routes(routes!(signup_email))
         .routes(routes!(signin_email))
+        .routes(routes!(refresh_tokens))
 }
 
 /// Email address to receive a signup verification code.
@@ -57,6 +60,8 @@ pub struct SignupEmailResponse {
 
 /// Request an email signup code.
 ///
+/// Encoded credentials are limited to 3,800 bytes; serialized cookies to 4,096 bytes.
+///
 /// Rejects an already-registered email with 409 and a signin suggestion before mailing or token
 /// delivery. For a new email, enqueues a six-digit verification code and returns an encrypted
 /// challenge for confirmation. Submit the challenge and code to
@@ -79,6 +84,7 @@ pub struct SignupEmailResponse {
         (status = 409, description = "Email already registered; sign in instead. No email or token issued.", body = ErrorResponse, example = json!({"message":"Email is already registered. <a href=\"/login\">Sign in instead.</a>"})),
         (status = 429, description = "Recipient throttled. Keep the existing challenge and retry after the configured cooldown (30 seconds by default).", body = ErrorResponse, example = json!({"message": "Email recipient is throttled; keep the existing challenge and retry later"})),
         (status = 503, description = "Email admission unavailable or queue remained full until the configured timeout (30 seconds by default). Retry later; no challenge was issued.", body = ErrorResponse, example = json!({"message": "Email delivery is unavailable"})),
+        (status = 422, description = "Encoded authentication credential exceeds the supported size limit", body = ErrorResponse),
         (status = 500, description = "Internal error. Retry later.", body = ErrorResponse, example = json!({"message": "Internal server error"}))
     )
 )]
@@ -120,6 +126,8 @@ pub struct ConfirmSignupOtpRequest {
 /// Send Origin matching AUTH_PUBLIC_ORIGIN (or the local loopback Host in development).
 /// Explicit delivery token returns accessToken and refreshToken in JSON and sets no cookies.
 /// The delivery choice is controller-only and is never stored in the signed JWTs.
+/// User access JWTs include the current compact Cedar policy snapshot; refresh JWTs do not.
+/// Issuance exceeding 3,800 encoded bytes is rejected without returning credentials.
 /// An existing email is rejected rather than signed in. Request a new code if the challenge expired.
 #[utoipa::path(
     post, path = "/api/auth/signup/email/confirmation/otp", operation_id = "confirmSignupOtp", tag = "auth",
@@ -132,6 +140,7 @@ pub struct ConfirmSignupOtpRequest {
         (status = 401, description = "Invalid or expired challenge or code. Check the code or request a new challenge.", body = ErrorResponse, example = json!({"message": "Invalid or expired token or OTP code"})),
         (status = 403, description = "Untrusted cookie Origin or user/organization access disabled.", body = ErrorResponse, example = json!({"message": "Organization access denied"})),
         (status = 409, description = "Email already registered. Use signin instead of signup.", body = ErrorResponse, example = json!({"message": "Email is already registered. <a href=\"/login\">Sign in instead.</a>"})),
+        (status = 422, description = "Encoded authentication credential exceeds the supported size limit", body = ErrorResponse),
         (status = 500, description = "Database or internal error. Retry later.", body = ErrorResponse, example = json!({"message": "Internal server error"}))
     )
 )]
@@ -167,6 +176,8 @@ pub struct SigninEmailRequest {
 
 /// Request an email signin code.
 ///
+/// Encoded credentials are limited to 3,800 bytes; serialized cookies to 4,096 bytes.
+///
 /// Enqueues a six-digit code and returns a ten-minute encrypted challenge.
 /// Admission does not guarantee delivery. Pending recipients and the configured cooldown
 /// are shared with signup; throttling returns no replacement challenge.
@@ -184,6 +195,7 @@ pub struct SigninEmailRequest {
         (status = 400, description = "Malformed JSON or invalid field format", body = ErrorResponse),
         (status = 403, description = "Untrusted Origin for cookie delivery", body = ErrorResponse),
         (status = 429, description = "Recipient throttled; keep the earlier challenge", body = ErrorResponse),
+        (status = 422, description = "Encoded authentication credential exceeds the supported size limit", body = ErrorResponse),
         (status = 503, description = "Email admission unavailable or queue full", body = ErrorResponse)
     )
 )]
@@ -218,10 +230,12 @@ pub struct ConfirmSigninOtpRequest {
 ///
 /// Requires an email-OTP access token in the access cookie or Authorization: Bearer, verified by middleware.
 /// JSON contains only code and delivery; token fields in JSON are rejected.
-/// Requires an existing active user and an active owner/admin organization membership.
+/// Requires an existing active user and an active organization membership.
 /// Records a new session. Cookie delivery (default) requires an allowed Origin, sets both
 /// HttpOnly cookies and returns lifetime metadata. Explicit delivery token returns
 /// accessToken and refreshToken in JSON without setting cookies. Delivery is not a JWT claim.
+/// User access JWTs require a current compact Cedar policy snapshot; refresh JWTs do not.
+/// Oversized authority returns 422 without recording a login session.
 #[utoipa::path(
     post, path = "/api/auth/signin/email/confirmation/otp", operation_id = "confirmSigninOtp", tag = "auth",
     security(("emailOtp" = []), ("emailOtpCookie" = [])),
@@ -233,6 +247,7 @@ pub struct ConfirmSigninOtpRequest {
         (status = 401, description = "Invalid or expired challenge or code", body = ErrorResponse),
         (status = 403, description = "Untrusted cookie Origin or user/organization access disabled", body = ErrorResponse),
         (status = 404, description = "No account for the verified email; signup first", body = ErrorResponse),
+        (status = 422, description = "Encoded authentication credential exceeds the supported size limit", body = ErrorResponse),
         (status = 500, description = "Database or internal error", body = ErrorResponse)
     )
 )]
@@ -261,9 +276,6 @@ pub struct CurrentUserResponse {
     pub organization_id: u64,
     /// Organization name snapshot from the signed session; refreshed when tokens renew.
     pub organization_name: String,
-    /// Cached membership role from the access JWT, refreshed on renewal.
-    #[schema(value_type = String, example = "owner")]
-    pub organization_role: String,
 }
 
 pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
@@ -281,18 +293,22 @@ pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
 /// Cookie mode renews missing or expired access through the refresh cookie and returns
 /// replacement HttpOnly cookies when Origin is trusted, or a safe request has
 /// Sec-Fetch-Site: same-origin. No credentials are returned in JSON.
-/// Access claims contain a cached role; session revocation and membership changes are
-/// checked on renewal rather than on every access-token request.
-/// The organization name is a snapshot in the signed session. With valid access claims,
-/// this endpoint performs no database queries. Renames appear when tokens renew.
+/// Middleware performs one scoped session-version lookup for valid user access.
+/// Matching versions reuse signed claims; stale claims rebuild before this handler runs.
+/// Cookie renewal requires a matching valid refresh cookie and trusted Origin.
+/// Stale bearer access returns 401 as expired. Present a valid refresh JWT to
+/// POST /api/auth/refresh, update both credentials, then retry the original request.
+/// Temporary session-storage errors return 503 and preserve browser credentials.
 #[utoipa::path(
     get, path = "/api/auth/me", operation_id = "currentUser", tag = "auth",
     security(("bearerAuth" = []), ("accessCookie" = [])),
     responses(
-        (status = 200, description = "Current identity; cookie renewal may set replacement cookies", body = CurrentUserResponse),
+        (status = 200, description = "Current identity; stale cookie authority renews automatically, stale bearer access returns 401", body = CurrentUserResponse),
         (status = 401, description = "Missing, invalid, expired, or wrong-variant credentials", body = ErrorResponse),
         (status = 403, description = "Untrusted renewal Origin or disabled account/membership", body = ErrorResponse),
-        (status = 500, description = "Database or internal failure; cookie-mode authentication failures clear both cookies", body = ErrorResponse)
+        (status = 422, description = "Encoded authentication credential exceeds the supported size limit", body = ErrorResponse),
+        (status = 503, description = "Session validation temporarily unavailable; cookies are preserved for retry", body = ErrorResponse),
+        (status = 500, description = "Internal validation or policy construction failure", body = ErrorResponse)
     )
 )]
 async fn current_user(
@@ -303,7 +319,6 @@ async fn current_user(
         user_id: claims.session.user_id,
         organization_id: claims.session.organization_id,
         organization_name: claims.session.organization_name,
-        organization_role: claims.organization_role,
     }))
 }
 
@@ -312,8 +327,8 @@ async fn current_user(
 /// Revokes the organization/user-scoped session selected by a verified user access token.
 /// Cookie requests require a trusted Origin and clear both HttpOnly authentication cookies.
 /// Bearer requests revoke the selected session without changing browser cookies.
-/// Repeating signout for an already revoked session succeeds while the access token is valid.
-/// Other sessions remain active. Already-issued access JWTs remain valid until expiry.
+/// Core revocation is idempotent; repeated HTTP signout is rejected by revoked-session middleware validation.
+/// Other sessions remain active. The next access freshness lookup rejects this revoked session.
 #[utoipa::path(
     post, path = "/api/auth/signout", operation_id = "signOut", tag = "auth",
     security(("bearerAuth" = []), ("accessCookie" = [])),
@@ -321,7 +336,8 @@ async fn current_user(
         (status = 204, description = "Session revoked; cookie requests clear authentication cookies"),
         (status = 401, description = "Missing or invalid user credential or session", body = ErrorResponse),
         (status = 403, description = "Untrusted cookie Origin", body = ErrorResponse),
-        (status = 500, description = "Session persistence failed; retry signout", body = ErrorResponse)
+        (status = 422, description = "Encoded authentication credential exceeds the supported size limit", body = ErrorResponse),
+        (status = 503, description = "Session persistence unavailable; credentials are preserved for retry", body = ErrorResponse)
     )
 )]
 async fn signout(
@@ -336,4 +352,35 @@ async fn signout(
         settings.clear_cookies(&mut response_headers)?;
     }
     Ok((StatusCode::NO_CONTENT, response_headers))
+}
+
+/// Explicitly refresh bearer credentials.
+///
+/// Send the unexpired refresh JWT as Authorization: Bearer. No request body is
+/// required. Access/OTP credentials and cookie-only requests are rejected.
+/// Revalidates current session/user/membership and rebuilds the permission snapshot.
+/// Returns both JWTs and lifetime metadata in JSON; no cookies are set or cleared.
+/// A stale authorization version on the refresh JWT is allowed; revoked, expired,
+/// foreign or removed credentials cannot renew. Save both credentials and retry
+/// the original request after stale/expired access returns 401.
+#[utoipa::path(
+    post, path = "/api/auth/refresh", operation_id = "refreshTokens", tag = "auth",
+    security(("refreshToken" = [])),
+    responses(
+        (status = 200, description = "Current access and refresh JWTs with lifetime metadata; no Set-Cookie", body = AuthTokensResponse),
+        (status = 401, description = "Missing explicit refresh bearer, wrong token type, expired/revoked/foreign credential, or unavailable membership", body = ErrorResponse),
+        (status = 422, description = "Encoded credential exceeds the supported size limit", body = ErrorResponse),
+        (status = 503, description = "Session storage unavailable; retry with the existing refresh credential", body = ErrorResponse),
+        (status = 500, description = "Invalid stored policy or internal failure", body = ErrorResponse)
+    )
+)]
+async fn refresh_tokens(
+    State(auth): State<&'static AuthService>,
+    Extension(settings): Extension<&'static TokenDeliverySettings>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, ApiError> {
+    let encoded = crate::middleware::authorization::Authorization::bearer(&headers)?
+        .ok_or(ApiError::Unauthenticated)?;
+    let tokens = auth.refresh(encoded).await?;
+    TokenDelivery::Token.response(tokens, StatusCode::OK, settings)
 }

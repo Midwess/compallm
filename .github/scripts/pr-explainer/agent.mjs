@@ -71,13 +71,16 @@ export async function runAgent({ client, model, messages, handlers, maxRounds = 
   maxCharacters = 240000, onProgress = () => {} }) {
   let calls = 0;
   let published = false;
+  let completionRound;
   for (let round = 0; round < maxRounds; round++) {
     onProgress(`LLM round ${round + 1}/${maxRounds}`);
     // Reserve rounds for current checks, publication, and one validation repair.
-    const finalizing = maxRounds >= 4 && round >= maxRounds - 3;
+    if (completionRound === undefined && maxRounds >= 4
+      && (round >= maxRounds - 3 || JSON.stringify(messages).length > maxCharacters * 0.55)) completionRound = round;
+    const finalizing = completionRound !== undefined;
     const allowed = finalizing ? tools.filter(tool => tool.function.name ===
-      (round === maxRounds - 3 ? 'get_pr_checks' : 'publish_explanation')) : tools;
-    if (finalizing) messages.push({ role: 'user', content: round === maxRounds - 3
+      (round === completionRound ? 'get_pr_checks' : 'publish_explanation')) : tools;
+    if (finalizing) messages.push({ role: 'user', content: round === completionRound
       ? 'Code inspection is complete. Read current checks now, then publish a concise explanation from the evidence gathered. Disclose any uninspected areas.'
       : 'Publish now using publish_explanation. Keep all prose under 350 words, aiming for 250; put code types in backticks and include no GitHub mentions. Use short bullets and one sentence for coverage. Correct ALL previous validation errors. Do not inspect more code.' });
     if (JSON.stringify(messages).length > maxCharacters) throw new Error('LLM context budget exceeded; no further request sent.');
@@ -120,7 +123,15 @@ export async function runAgent({ client, model, messages, handlers, maxRounds = 
     for (let i = 0; i < requested.length; i++) {
       const call = requested[i];
       if (call.function?.name === 'publish_explanation') results[i] = await invoke(call);
-      messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(results[i]) });
+      const serialized = JSON.stringify(results[i]);
+      // Bound each batch while preserving the complete tool-call/response protocol.
+      // Keep space for current checks, the final explanation, and validation repair.
+      const remaining = maxCharacters - JSON.stringify(messages).length - 20000;
+      const allowance = Math.max(0, Math.floor(remaining / (requested.length - i)) - 256);
+      const content = serialized.length <= allowance ? serialized
+        : JSON.stringify({ ...clip(serialized, Math.max(0, allowance - 128)),
+          note: 'Inspection truncated to reserve context for checks and publication. Disclose this limitation.' });
+      messages.push({ role: 'tool', tool_call_id: call.id, content });
     }
     if (published) return;
   }

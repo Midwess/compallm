@@ -1,6 +1,7 @@
 use super::Role;
 use crate::authorization::SystemPolicy;
 use cedar_policy::{Entity, EntityUid, RestrictedExpression, SchemaFragment};
+use hero::distributed_id::{generator::DistributedIdError, try_gen_id};
 use std::{
     collections::{HashMap, HashSet},
     sync::LazyLock,
@@ -22,9 +23,9 @@ impl Group {
         name: impl Into<String>,
         description: impl Into<String>,
         roles: Vec<Role>,
-    ) -> Result<Self, hero::distributed_id::generator::DistributedIdError> {
+    ) -> Result<Self, DistributedIdError> {
         Ok(Self {
-            id: hero::distributed_id::try_gen_id().await?,
+            id: try_gen_id().await?,
             organization_id,
             name: name.into(),
             description: description.into(),

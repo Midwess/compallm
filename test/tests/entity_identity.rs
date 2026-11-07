@@ -51,4 +51,21 @@ async fn entity_creation_owns_ids_and_default_policy_relationships() {
             .cedar_source
             .contains(&format!("{}:{}", organization.id, roles[0].id))
     );
+    let mut model = compallm_core::model::Model {
+        id: 999,
+        organization_id: organization.id,
+        name: "Logical model".into(),
+        service_kind: compallm_core::provider::ServiceKind::Llm,
+        enabled: false,
+        capabilities: vec![compallm_core::provider::Capability::Text],
+        limits: Default::default(),
+        thinking: None,
+        pricing: serde_json::from_value(serde_json::json!({"request":{"usdPerRequest":"1"}}))
+            .unwrap(),
+    };
+    let mut expected = model.clone();
+    model.initialize_id().await.unwrap();
+    assert_ne!(model.id, expected.id);
+    expected.id = model.id;
+    assert_eq!(model, expected);
 }

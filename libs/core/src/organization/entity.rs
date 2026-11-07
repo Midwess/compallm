@@ -1,3 +1,4 @@
+use hero::distributed_id::{generator::DistributedIdError, try_gen_id};
 use std::sync::LazyLock;
 
 use cedar_policy::SchemaFragment;
@@ -19,9 +20,9 @@ pub struct Organization {
 
 impl Organization {
     /// Create a new identity; persistence restoration uses existing record fields instead.
-    pub async fn new(name: impl Into<String>) -> Result<Self, super::OrganizationCreationError> {
+    pub async fn new(name: impl Into<String>) -> Result<Self, DistributedIdError> {
         Ok(Self {
-            id: hero::distributed_id::try_gen_id().await?,
+            id: try_gen_id().await?,
             name: name.into(),
             status: OrganizationStatus::Active,
         })

@@ -1,5 +1,6 @@
 use crate::authorization::SystemPolicy;
 use cedar_policy::{Entity, EntityUid, PolicySet, RestrictedExpression, SchemaFragment};
+use hero::distributed_id::{generator::DistributedIdError, try_gen_id};
 use std::{
     collections::{HashMap, HashSet},
     sync::LazyLock,
@@ -90,9 +91,7 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
 
     /// Initial role records rendered with application-generated IDs, never reserved identities.
     /// Labels do not establish authority; each stored Cedar source references the generated IDs.
-    pub async fn defaults(
-        organization_id: u64,
-    ) -> Result<Vec<Self>, hero::distributed_id::generator::DistributedIdError> {
+    pub async fn defaults(organization_id: u64) -> Result<Vec<Self>, DistributedIdError> {
         let mut roles = vec![
             Self::new(organization_id, "Owner", "", "").await?,
             Self::new(organization_id, "Admin", "", "").await?,
@@ -118,9 +117,9 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
         name: impl Into<String>,
         description: impl Into<String>,
         cedar_source: impl Into<String>,
-    ) -> Result<Self, hero::distributed_id::generator::DistributedIdError> {
+    ) -> Result<Self, DistributedIdError> {
         Ok(Self {
-            id: hero::distributed_id::try_gen_id().await?,
+            id: try_gen_id().await?,
             organization_id,
             name: name.into(),
             description: description.into(),

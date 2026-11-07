@@ -1,3 +1,4 @@
+use hero::distributed_id::{generator::DistributedIdError, try_gen_id};
 use std::sync::LazyLock;
 
 use cedar_policy::SchemaFragment;
@@ -26,9 +27,9 @@ impl Session {
         user_id: u64,
         organization_id: u64,
         organization_name: impl Into<String>,
-    ) -> Result<Self, hero::distributed_id::generator::DistributedIdError> {
+    ) -> Result<Self, DistributedIdError> {
         Ok(Self {
-            id: hero::distributed_id::try_gen_id().await?,
+            id: try_gen_id().await?,
             user_id,
             organization_id,
             organization_name: organization_name.into(),

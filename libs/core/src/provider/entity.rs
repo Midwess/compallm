@@ -1,3 +1,4 @@
+use hero::distributed_id::{generator::DistributedIdError, try_gen_id};
 use std::sync::LazyLock;
 
 use cedar_policy::SchemaFragment;
@@ -39,10 +40,8 @@ pub struct ProviderModel {
 
 impl Provider {
     /// Initialize a new aggregate identity and derive configured-model ownership.
-    pub async fn initialize_ids(
-        &mut self,
-    ) -> Result<(), hero::distributed_id::generator::DistributedIdError> {
-        self.id = hero::distributed_id::try_gen_id().await?;
+    pub async fn initialize_ids(&mut self) -> Result<(), DistributedIdError> {
+        self.id = try_gen_id().await?;
         for model in &mut self.models {
             model.initialize_id().await?;
             model.organization_id = self.organization_id;
@@ -53,10 +52,8 @@ impl Provider {
 }
 
 impl ProviderModel {
-    pub async fn initialize_id(
-        &mut self,
-    ) -> Result<(), hero::distributed_id::generator::DistributedIdError> {
-        self.id = hero::distributed_id::try_gen_id().await?;
+    pub async fn initialize_id(&mut self) -> Result<(), DistributedIdError> {
+        self.id = try_gen_id().await?;
         Ok(())
     }
 }

@@ -3,7 +3,7 @@ use compallm_core::{
         DbContext,
         provider::{ProviderRepository as _, ProviderRepositoryError},
     },
-    provider::{Provider, ProviderApiKey},
+    provider::{Provider, ProviderApiKey, ProviderCredentialCipher},
 };
 use compallm_postgres::{
     ProviderSchema, postgres_connection::PostgresConnection,
@@ -16,6 +16,14 @@ use std::{collections::BTreeMap, sync::Arc};
 struct Fixture;
 
 impl Fixture {
+    fn cipher() -> ProviderCredentialCipher {
+        ProviderCredentialCipher::new("test-provider-credential-secret-at-least-32-bytes").unwrap()
+    }
+
+    fn key(value: &str) -> ProviderApiKey {
+        ProviderApiKey::new(value, &Self::cipher()).unwrap()
+    }
+
     fn connection() -> serde_json::Value {
         json!({"baseUrl": "https://provider.example/v1", "timeoutMs": 30000,
             "authentication": {"apiKeyHeader": {"name": "Authorization", "prefix": "Bearer "}}})
@@ -28,7 +36,7 @@ impl Fixture {
             name: name.into(),
             connection: Self::connection(),
             headers: json!({}),
-            credentials: api_key.into(),
+            credentials: String::from(Self::key(api_key)),
         }
     }
 
@@ -47,6 +55,7 @@ impl Fixture {
             name: "Primary".into(),
             connection: serde_json::from_value(Self::connection()).unwrap(),
             headers: Default::default(),
+            api_key: Self::key("upstream-api-key"),
             models: Vec::new(),
         }
     }
@@ -68,6 +77,11 @@ async fn find_all_applies_the_requested_limit_and_scopes_to_the_organization() {
         .await
         .unwrap();
     assert_eq!(providers.len(), 1);
+    assert_eq!(
+        providers[0].api_key.read(&Fixture::cipher()).unwrap(),
+        "must-not-leak"
+    );
+    let encrypted = String::from(providers[0].api_key.clone());
     assert_eq!(providers[0].organization_id, 84);
     assert_eq!(
         providers[0].connection.base_url,
@@ -79,32 +93,36 @@ async fn find_all_applies_the_requested_limit_and_scopes_to_the_organization() {
     assert!(log.contains("LIMIT"));
     assert!(log.contains("12"));
     assert!(!format!("{providers:?}").contains("must-not-leak"));
+    assert!(!format!("{providers:?}").contains(&encrypted));
 }
 
 #[tokio::test]
 async fn insert_writes_connection_and_secret_without_business_validation_queries() {
+    let input = Fixture::new_provider();
+    let encrypted = String::from(input.api_key.clone());
+    let mut stored = Fixture::provider(100, "Primary", "upstream-api-key");
+    stored.credentials = encrypted.clone();
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([vec![Fixture::provider_row(Fixture::provider(
-                100,
-                "Primary",
-                "encrypted-key",
-            ))]])
+            .append_query_results([vec![Fixture::provider_row(stored)]])
             .into_connection(),
     );
     let provider = Fixture::context(db.clone())
-        .scope(ProviderRepository.insert(
-            Fixture::new_provider(),
-            ProviderApiKey::new("encrypted-key").unwrap(),
-        ))
+        .scope(ProviderRepository.insert(input))
         .await
         .unwrap();
     assert_eq!(provider.id, 100);
     assert_eq!(provider.connection.timeout_ms, 30000);
+    assert_eq!(
+        provider.api_key.read(&Fixture::cipher()).unwrap(),
+        "upstream-api-key"
+    );
+    assert_eq!(String::from(provider.api_key), encrypted);
 
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
     assert!(log.contains("INSERT INTO"));
-    assert!(log.contains("encrypted-key"));
+    assert!(log.contains(&encrypted));
+    assert!(!log.contains("upstream-api-key"));
     assert!(log.contains("credentials"));
     assert!(log.contains("connection"));
     assert!(!log.contains("FOR UPDATE"));
@@ -112,45 +130,77 @@ async fn insert_writes_connection_and_secret_without_business_validation_queries
 }
 
 #[tokio::test]
-async fn update_preserves_the_secret_when_no_replacement_is_supplied() {
+async fn update_preserves_the_entity_ciphertext_without_decrypting() {
+    let stored = Fixture::provider(100, "Primary", "existing-secret");
+    let encrypted = stored.credentials.clone();
+    let mut changed = stored.clone();
+    changed.name = "Renamed".into();
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
-                vec![Fixture::provider_row(Fixture::provider(
-                    100,
-                    "Primary",
-                    "existing-secret",
-                ))],
-                vec![Fixture::provider_row(Fixture::provider(
-                    100,
-                    "Renamed",
-                    "existing-secret",
-                ))],
+                vec![Fixture::provider_row(stored.clone())],
+                vec![Fixture::provider_row(changed)],
             ])
             .into_connection(),
     );
+    let mut input = Provider::try_from(stored).unwrap();
+    input.name = "Renamed".into();
     let provider = Fixture::context(db.clone())
-        .scope(ProviderRepository.update(
-            Provider {
-                id: 100,
-                organization_id: 84,
-                name: "Renamed".into(),
-                connection: serde_json::from_value(Fixture::connection()).unwrap(),
-                headers: Default::default(),
-                models: Vec::new(),
-            },
-            None,
-        ))
+        .scope(ProviderRepository.update(input))
         .await
         .unwrap();
     assert_eq!(provider.name, "Renamed");
+    assert_eq!(String::from(provider.api_key.clone()), encrypted);
+    assert_eq!(
+        provider.api_key.read(&Fixture::cipher()).unwrap(),
+        "existing-secret"
+    );
 
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
     assert!(log.contains("organization_id"));
     assert!(log.contains("UPDATE"));
+    assert!(log.contains(&encrypted));
     assert!(!log.contains("existing-secret"));
     assert!(log.contains("connection"));
     assert!(log.contains("headers"));
+}
+
+#[tokio::test]
+async fn update_persists_a_replacement_key_from_the_entity() {
+    let stored = Fixture::provider(100, "Primary", "existing-secret");
+    let replacement = Fixture::key("replacement-secret");
+    let encrypted = String::from(replacement.clone());
+    let mut changed = stored.clone();
+    changed.credentials = encrypted.clone();
+    let db = Arc::new(
+        MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([
+                vec![Fixture::provider_row(stored.clone())],
+                vec![Fixture::provider_row(changed)],
+            ])
+            .into_connection(),
+    );
+    let mut input = Provider::try_from(stored).unwrap();
+    input.api_key = replacement;
+    let updated = Fixture::context(db.clone())
+        .scope(ProviderRepository.update(input))
+        .await
+        .unwrap();
+    assert_eq!(
+        updated.api_key.read(&Fixture::cipher()).unwrap(),
+        "replacement-secret"
+    );
+    let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
+    assert!(log.contains(&encrypted));
+    assert!(!log.contains("replacement-secret"));
+}
+
+#[test]
+fn mapper_rejects_plaintext_credentials_in_storage() {
+    let mut stored = Fixture::provider(100, "Primary", "test-secret");
+    stored.credentials = "unprotected-secret".into();
+    let error = Provider::try_from(stored).unwrap_err();
+    assert!(!format!("{error:?}").contains("unprotected-secret"));
 }
 
 #[tokio::test]

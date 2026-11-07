@@ -45,3 +45,5 @@ export const EnabledFilter: Story = { render: () => <Demo scenario="filtered" />
 
 export const CapabilityFilter: Story = { render: () => <Demo scenario="capabilities" /> }
 export const LongModelName: Story = { render: () => <Demo scenario="long-model-name" /> }
+
+export const MissingEndpoint: Story = { render: () => <Demo scenario="missing-endpoint" /> }

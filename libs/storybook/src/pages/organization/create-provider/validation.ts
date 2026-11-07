@@ -1,7 +1,8 @@
-import { ProviderFields, ProviderModelFields, ProviderModels, ProviderInputRules } from '@compallm/contract/validation'
+import { ProviderFields, ProviderModelFields, ProviderInputRules } from '@compallm/contract/validation'
 import { headersAreValid, acceptsHeaderInput } from '@compallm/contract/provider'
 import { modelPath, modelDraftFingerprint } from './model-options'
 import type { CreateProviderState, ModelDraft, ProviderSnapshot } from './types'
+import { providerCreateRequest, providerReplaceRequest } from './contract'
 
 export { headersAreValid, acceptsHeaderInput }
 export const isValidBaseUrl = (value: string) => ProviderFields.shape.baseUrl.safeParse(value).success
@@ -30,14 +31,11 @@ export function isValidModelDraft(model: ModelDraft): boolean {
   )
 }
 export function canCreateProvider(state: CreateProviderState): boolean {
-  if (!headersAreValid(state.headers)) return false
-  if (!ProviderFields.shape.name.safeParse(state.name).success) return false
-  if (!ProviderFields.shape.baseUrl.safeParse(state.baseUrl).success) return false
-  if (state.apiKey !== '' || !(state.intent === 'edit' && state.savedProvider)) {
-    if (!ProviderFields.shape.apiKey.safeParse(state.apiKey).success) return false
-  }
-  const enabled = state.models.filter((model) => model.enabled)
-  return enabled.every(isValidModelDraft) && ProviderModels.safeParse({ entries: enabled.map(modelInput) }).success
+  const models = state.models.filter((model) => model.enabled)
+  if (!models.every(isValidModelDraft)) return false
+  return state.intent === 'edit' && state.savedProvider
+    ? providerReplaceRequest(state).success
+    : providerCreateRequest(state).success
 }
 
 export function providerSnapshot(state: CreateProviderState) {

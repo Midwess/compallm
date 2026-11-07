@@ -1,4 +1,5 @@
 pub mod auth;
+mod provider;
 
 use compallm_core::auth::AuthService;
 use utoipa::openapi::OpenApi;
@@ -40,5 +41,7 @@ pub fn api_router() -> OpenApiRouter<&'static AuthService> {
 pub fn openapi() -> OpenApi {
     let mut api = api_router().into_openapi();
     api.merge(<compallm_contract::provider::InputContracts as utoipa::OpenApi>::openapi());
+    api.merge(<compallm_contract::provider::api::ApiContracts as utoipa::OpenApi>::openapi());
+    api.merge(<provider::ProviderApi as utoipa::OpenApi>::openapi());
     api
 }

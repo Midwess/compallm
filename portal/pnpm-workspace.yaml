@@ -1,2 +1,3 @@
 allowBuilds:
+  '@compallm/storybook@file:../libs/storybook': false
   esbuild: false

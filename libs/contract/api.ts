@@ -96,6 +96,205 @@ export interface ConfirmSignupOtpRequest {
   delivery?: TokenDelivery;
 }
 
+export interface ProviderHeader {
+  /**
+     * @maxLength 128
+     * @pattern ^[!#$%&'*+.^_`|~0-9A-Za-z-]+$
+     */
+  key: string;
+  /**
+     * Write-only header content; never returned by management reads.
+     * @pattern ^[\t\x20-\x7e\x80-\xff]*$
+     */
+  value: string;
+}
+
+/**
+ * Capabilities declared by a catalog or configured model; not an authorization grant.
+ */
+export type ProviderModelCapability = typeof ProviderModelCapability[keyof typeof ProviderModelCapability];
+
+
+export const ProviderModelCapability = {
+  text: 'text',
+  vision: 'vision',
+  pdf: 'pdf',
+  audio: 'audio',
+  video: 'video',
+  image_generation: 'image_generation',
+  audio_generation: 'audio_generation',
+  search: 'search',
+  reasoning: 'reasoning',
+  tool_call: 'tool_call',
+  forced_tool_choice: 'forced_tool_choice',
+  structured_output: 'structured_output',
+} as const;
+
+/**
+ * Opaque registry identity, independent of an edited upstream model name.
+ */
+export interface ProviderCatalogRef {
+  model: string;
+  provider: string;
+}
+
+/**
+ * Empty object means no configured effort levels. Configured values cannot be empty.
+ */
+export interface ProviderEffortMapping {
+  /**
+     * @minLength 1
+     * @maxLength 25
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  high?: string;
+  /**
+     * @minLength 1
+     * @maxLength 25
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  low?: string;
+  /**
+     * @minLength 1
+     * @maxLength 25
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  max?: string;
+  /**
+     * @minLength 1
+     * @maxLength 25
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  medium?: string;
+  /**
+     * @minLength 1
+     * @maxLength 25
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  xhigh?: string;
+}
+
+/**
+ * Text operation determining the upstream request and response format.
+ */
+export type TextModelProtocol = typeof TextModelProtocol[keyof typeof TextModelProtocol];
+
+
+export const TextModelProtocol = {
+  openai_chat_completions: 'openai_chat_completions',
+  openai_responses: 'openai_responses',
+  anthropic_messages: 'anthropic_messages',
+} as const;
+
+/**
+ * Complete configured text-model values. Decimal prices are USD per million tokens.
+ */
+export interface ProviderModelConfiguration {
+  /** @pattern ^0*[0-9]{1,12}(?:\.[0-9]{1,8})?$ */
+  cachedPrice: string;
+  capabilities?: ProviderModelCapability[];
+  catalogRef?: ProviderCatalogRef;
+  effortMapping?: ProviderEffortMapping;
+  enabled?: boolean;
+  /** @pattern ^0*[0-9]{1,12}(?:\.[0-9]{1,8})?$ */
+  inputPrice: string;
+  /**
+     * @minimum 1
+     * @maximum 4294967295
+     */
+  maxContextTokens: number;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  name: string;
+  /** @pattern ^0*[0-9]{1,12}(?:\.[0-9]{1,8})?$ */
+  outputPrice: string;
+  /**
+     * @maxLength 40
+     * @pattern ^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$
+     */
+  path: string;
+  protocol: TextModelProtocol;
+}
+
+/**
+ * Persisted identity is omitted for new models and forbidden during provider creation.
+ */
+export interface ProviderModelWrite {
+  /** Complete text-model configuration, including explicit token prices. */
+  configuration: ProviderModelConfiguration;
+  /**
+     * Omit for a new model; supplied IDs must belong to this connection.
+     * @pattern ^[1-9][0-9]*$
+     */
+  id?: string;
+}
+
+/**
+ * New connection definition; credentials and header values are write-only.
+ */
+export interface ProviderCreateInput {
+  /**
+     * @minLength 1
+     * @maxLength 512
+     * @pattern ^[^\s]+$
+     */
+  apiKey: string;
+  /** @maxLength 512 */
+  baseUrl: string;
+  headers: ProviderHeader[];
+  /** @minItems 1 */
+  models: ProviderModelWrite[];
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+}
+
+/**
+ * Atomic batch creation. A single form submits one provider in this array.
+ */
+export interface CreateProvidersRequest {
+  providers: ProviderCreateInput[];
+}
+
+/**
+ * Header metadata only. A response never includes a header value.
+ */
+export interface ProviderHeaderMetadata {
+  key: string;
+}
+
+/**
+ * Positive u64 as a decimal string.
+ * @pattern ^[1-9][0-9]*$
+ */
+export type ProviderResourceId = string;
+
+export interface ProviderModelDetail {
+  /** Complete text-model configuration, including explicit token prices. */
+  configuration: ProviderModelConfiguration;
+  id: ProviderResourceId;
+}
+
+/**
+ * Safe management detail. API keys and header values are absent by construction.
+ */
+export interface ProviderDetailResponse {
+  baseUrl: string;
+  headers: ProviderHeaderMetadata[];
+  id: ProviderResourceId;
+  models: ProviderModelDetail[];
+  name: string;
+}
+
+export interface CreateProvidersResponse {
+  providers: ProviderDetailResponse[];
+}
+
 /**
  * Identity and organization scope from the current signed access credential.
  */
@@ -129,6 +328,57 @@ export interface ErrorResponse {
   message: string;
 }
 
+/**
+ * Omit value to retain an existing header secret; new names require a value.
+ */
+export interface ProviderHeaderUpdate {
+  /**
+     * @maxLength 128
+     * @pattern ^[!#$%&'*+.^_`|~0-9A-Za-z-]+$
+     */
+  key: string;
+  /**
+     * Omit to preserve the saved value for this header name. New names require a value.
+     * @pattern ^[\t\x20-\x7e\x80-\xff]*$
+     */
+  value?: string;
+}
+
+/**
+ * Partial update. Omitted fields are unchanged; explicit null is rejected.
+ */
+export interface PatchProviderRequest {
+  /**
+     * Omit to preserve the current credential. Empty strings and null are invalid.
+     * @minLength 1
+     * @maxLength 512
+     * @pattern ^[^\s]+$
+     */
+  apiKey?: string;
+  /** @maxLength 512 */
+  baseUrl?: string;
+  headers?: ProviderHeaderUpdate[];
+  /** @minItems 1 */
+  models?: ProviderModelWrite[];
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name?: string;
+}
+
+/**
+ * Catalog connection family hint; each configured model selects its own operation.
+ */
+export type ProviderApiProtocol = typeof ProviderApiProtocol[keyof typeof ProviderApiProtocol];
+
+
+export const ProviderApiProtocol = {
+  openai_compatible: 'openai_compatible',
+  anthropic: 'anthropic',
+  provider_specific: 'provider_specific',
+} as const;
+
 export interface ProviderFields {
   /**
      * @minLength 1
@@ -143,16 +393,6 @@ export interface ProviderFields {
      * @maxLength 120
      */
   name: string;
-}
-
-export interface ProviderHeader {
-  /**
-     * @maxLength 128
-     * @pattern ^[!#$%&'*+.^_`|~0-9A-Za-z-]+$
-     */
-  key: string;
-  /** @pattern ^[\t\x20-\x7e\x80-\xff]*$ */
-  value: string;
 }
 
 export interface ProviderHeaders {
@@ -172,6 +412,19 @@ export interface ProviderInputRules {
   effortValue: string;
   /** @pattern ^[1-9][0-9]*$ */
   positiveInteger: string;
+}
+
+/**
+ * Safe connection summary. IDs are positive decimal strings, not JSON numbers.
+ */
+export interface ProviderSummary {
+  baseUrl: string;
+  id: ProviderResourceId;
+  name: string;
+}
+
+export interface ProviderListResponse {
+  providers: ProviderSummary[];
 }
 
 export interface ProviderModelFields {
@@ -201,6 +454,77 @@ export interface ProviderModelFields {
 
 export interface ProviderModels {
   entries: ProviderModelFields[];
+}
+
+/**
+ * Prices may be unknown in registry data; missing rates never imply zero.
+ */
+export interface ProviderRegistryModel {
+  /** @nullable */
+  cachedPrice?: string | null;
+  capabilities: ProviderModelCapability[];
+  /** @nullable */
+  description?: string | null;
+  effortMapping?: ProviderEffortMapping | null;
+  id: string;
+  /** @nullable */
+  inputPrice?: string | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  maxContextTokens?: number | null;
+  name: string;
+  /** @nullable */
+  outputPrice?: string | null;
+  /** Text operations supported by this catalog model; an empty list is not selectable in this flow. */
+  protocols: TextModelProtocol[];
+}
+
+/**
+ * Provider identity and editable connection defaults from the registry.
+ */
+export interface ProviderRegistryEntry {
+  /**
+     * Null when an account-specific endpoint must be supplied during configuration.
+     * @nullable
+     */
+  baseUrl?: string | null;
+  id: string;
+  name: string;
+  protocol: ProviderApiProtocol;
+}
+
+export interface ProviderRegistryDetailResponse {
+  models: ProviderRegistryModel[];
+  provider: ProviderRegistryEntry;
+}
+
+export interface ProviderRegistryListResponse {
+  providers: ProviderRegistryEntry[];
+}
+
+/**
+ * Full non-secret replacement. Omitting apiKey preserves the saved credential.
+ */
+export interface ReplaceProviderRequest {
+  /**
+     * Omit to preserve the current credential. Empty strings and null are invalid.
+     * @minLength 1
+     * @maxLength 512
+     * @pattern ^[^\s]+$
+     */
+  apiKey?: string;
+  /** @maxLength 512 */
+  baseUrl: string;
+  headers: ProviderHeaderUpdate[];
+  /** @minItems 1 */
+  models: ProviderModelWrite[];
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
 }
 
 /**
@@ -561,5 +885,381 @@ const res = await fetch(getConfirmSignupOtpUrl(),
     throw err;
   }
   const data: AuthTokensResponse = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+export const getListProviderRegistryUrl = () => {
+
+
+
+
+  return `/api/provider-registry`
+}
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * @summary List provider registry.
+ */
+export const listProviderRegistry = async ( options?: RequestInit): Promise<ProviderRegistryListResponse> => {
+
+  const res = await fetch(getListProviderRegistryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: ProviderRegistryListResponse, status?: number} = new globalThis.Error();
+    const data : ProviderRegistryListResponse = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: ProviderRegistryListResponse = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+export const getGetProviderRegistryUrl = (registryId: string,) => {
+
+
+
+
+  return `/api/provider-registry/${registryId}`
+}
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * @summary Get provider registry detail.
+ */
+export const getProviderRegistry = async (registryId: string, options?: RequestInit): Promise<ProviderRegistryDetailResponse> => {
+
+  const res = await fetch(getGetProviderRegistryUrl(registryId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: ProviderRegistryDetailResponse, status?: number} = new globalThis.Error();
+    const data : ProviderRegistryDetailResponse = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: ProviderRegistryDetailResponse = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+export const getListProvidersUrl = () => {
+
+
+
+
+  return `/api/providers`
+}
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * @summary List saved providers.
+ */
+export const listProviders = async ( options?: RequestInit): Promise<ProviderListResponse> => {
+
+  const res = await fetch(getListProvidersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: ProviderListResponse, status?: number} = new globalThis.Error();
+    const data : ProviderListResponse = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: ProviderListResponse = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+export const getCreateProvidersUrl = () => {
+
+
+
+
+  return `/api/providers`
+}
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * Requires a nonempty providers array. The entire batch succeeds or fails; no upstream calls are made.
+ * @summary Create providers atomically.
+ */
+export const createProviders = async (createProvidersRequest: CreateProvidersRequest, options?: RequestInit): Promise<CreateProvidersResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getCreateProvidersUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createProvidersRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: CreateProvidersResponse, status?: number} = new globalThis.Error();
+    const data : CreateProvidersResponse = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: CreateProvidersResponse = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+export const getGetProviderUrl = (providerId: ProviderResourceId,) => {
+
+
+
+
+  return `/api/providers/${providerId}`
+}
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * @summary Get saved provider detail.
+ */
+export const getProvider = async (providerId: ProviderResourceId, options?: RequestInit): Promise<ProviderDetailResponse> => {
+
+  const res = await fetch(getGetProviderUrl(providerId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: ProviderDetailResponse, status?: number} = new globalThis.Error();
+    const data : ProviderDetailResponse = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: ProviderDetailResponse = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+export const getReplaceProviderUrl = (providerId: ProviderResourceId,) => {
+
+
+
+
+  return `/api/providers/${providerId}`
+}
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * Replaces name, base URL, headers, and models. Omitted apiKey preserves the stored credential.
+ * @summary Replace provider configuration.
+ */
+export const replaceProvider = async (providerId: ProviderResourceId,
+    replaceProviderRequest: ReplaceProviderRequest, options?: RequestInit): Promise<ProviderDetailResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getReplaceProviderUrl(providerId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(replaceProviderRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: ProviderDetailResponse, status?: number} = new globalThis.Error();
+    const data : ProviderDetailResponse = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: ProviderDetailResponse = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+export const getDeleteProviderUrl = (providerId: ProviderResourceId,) => {
+
+
+
+
+  return `/api/providers/${providerId}`
+}
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * Removes the connection, provider models, and their bindings; logical models and usage history remain.
+ * @summary Delete provider.
+ */
+export const deleteProvider = async (providerId: ProviderResourceId, options?: RequestInit): Promise<void> => {
+
+  const res = await fetch(getDeleteProviderUrl(providerId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: void, status?: number} = new globalThis.Error();
+    const data : void = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: void = body ? JSON.parse(body) : undefined
+  return data
+}
+
+
+
+export const getPatchProviderUrl = (providerId: ProviderResourceId,) => {
+
+
+
+
+  return `/api/providers/${providerId}`
+}
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * Omitted fields preserve existing values. Supplied collections replace the collection. Null is invalid.
+ * @summary Partially update provider configuration.
+ */
+export const patchProvider = async (providerId: ProviderResourceId,
+    patchProviderRequest: PatchProviderRequest, options?: RequestInit): Promise<ProviderDetailResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+const res = await fetch(getPatchProviderUrl(providerId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(patchProviderRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: ProviderDetailResponse, status?: number} = new globalThis.Error();
+    const data : ProviderDetailResponse = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: ProviderDetailResponse = body ? JSON.parse(body) : {}
   return data
 }

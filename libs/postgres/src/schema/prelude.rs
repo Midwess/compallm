@@ -8,6 +8,8 @@ pub use super::models::Entity as Models;
 pub use super::organization_members::Entity as OrganizationMembers;
 pub use super::organizations::Entity as Organizations;
 pub use super::provider_models::Entity as ProviderModels;
+pub use super::provider_templates::Entity as ProviderTemplates;
+pub use super::provider_model_templates::Entity as ProviderModelTemplates;
 pub use super::provider_token_usage::Entity as ProviderTokenUsage;
 pub use super::provider_image_usage::Entity as ProviderImageUsage;
 pub use super::provider_audio_usage::Entity as ProviderAudioUsage;

@@ -91,3 +91,15 @@ export function CreateProviderPage() {
 export { canCreateProvider, canSaveProvider, hasValidModelPrices, isValidModelDraft, providerSnapshot } from './validation'
 
 export { capabilityOptions } from './model-options'
+
+export { providerCreateRequest, providerReplaceRequest } from './contract'
+export type {
+  ProviderRegistryListResponse,
+  ProviderRegistryDetailResponse,
+  ProviderDetailResponse,
+  ProviderListResponse,
+  CreateProvidersRequest,
+  CreateProvidersResponse,
+  PatchProviderRequest,
+  ReplaceProviderRequest,
+} from './contract'

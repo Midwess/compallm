@@ -65,6 +65,157 @@ export const ConfirmSignupOtpRequest = zod.object({
 export type ConfirmSignupOtpRequest = zod.input<typeof ConfirmSignupOtpRequest>;
 export type ConfirmSignupOtpRequestOutput = zod.output<typeof ConfirmSignupOtpRequest>;
 
+export const providerHeaderKeyRegExp = new RegExp('^[!#$%&\'*+.^_`|~0-9A-Za-z-]+$');
+export const providerHeaderValueRegExp = new RegExp('^[\\t\\x20-\\x7e\\x80-\\xff]*$');
+
+
+export const ProviderHeader = zod.object({
+  "key": zod.string().regex(providerHeaderKeyRegExp),
+  "value": zod.string().regex(providerHeaderValueRegExp).describe('Write-only header content; never returned by management reads.')
+});
+
+export type ProviderHeader = zod.input<typeof ProviderHeader>;
+export type ProviderHeaderOutput = zod.output<typeof ProviderHeader>;
+
+export const ProviderModelCapability = zod.enum(['text', 'vision', 'pdf', 'audio', 'video', 'image_generation', 'audio_generation', 'search', 'reasoning', 'tool_call', 'forced_tool_choice', 'structured_output']).describe('Capabilities declared by a catalog or configured model; not an authorization grant.');
+
+export type ProviderModelCapability = zod.input<typeof ProviderModelCapability>;
+export type ProviderModelCapabilityOutput = zod.output<typeof ProviderModelCapability>;
+
+export const ProviderCatalogRef = zod.object({
+  "model": zod.string(),
+  "provider": zod.string()
+}).describe('Opaque registry identity, independent of an edited upstream model name.');
+
+export type ProviderCatalogRef = zod.input<typeof ProviderCatalogRef>;
+export type ProviderCatalogRefOutput = zod.output<typeof ProviderCatalogRef>;
+
+export const providerEffortMappingHighRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+export const providerEffortMappingLowRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+export const providerEffortMappingMaxRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+export const providerEffortMappingMediumRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+export const providerEffortMappingXhighRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
+
+export const ProviderEffortMapping = zod.object({
+  "high": zod.string().regex(providerEffortMappingHighRegExp).optional(),
+  "low": zod.string().regex(providerEffortMappingLowRegExp).optional(),
+  "max": zod.string().regex(providerEffortMappingMaxRegExp).optional(),
+  "medium": zod.string().regex(providerEffortMappingMediumRegExp).optional(),
+  "xhigh": zod.string().regex(providerEffortMappingXhighRegExp).optional()
+}).describe('Empty object means no configured effort levels. Configured values cannot be empty.');
+
+export type ProviderEffortMapping = zod.input<typeof ProviderEffortMapping>;
+export type ProviderEffortMappingOutput = zod.output<typeof ProviderEffortMapping>;
+
+export const TextModelProtocol = zod.enum(['openai_chat_completions', 'openai_responses', 'anthropic_messages']).describe('Text operation determining the upstream request and response format.');
+
+export type TextModelProtocol = zod.input<typeof TextModelProtocol>;
+export type TextModelProtocolOutput = zod.output<typeof TextModelProtocol>;
+
+export const providerModelConfigurationCachedPriceRegExp = new RegExp('^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$');
+export const providerModelConfigurationCapabilitiesDefault = [];
+export const providerModelConfigurationEffortMappingDefault = {};
+export const providerModelConfigurationEnabledDefault = true;
+export const providerModelConfigurationInputPriceRegExp = new RegExp('^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$');
+export const providerModelConfigurationMaxContextTokensMax = 4294967295;
+
+export const providerModelConfigurationNameRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+export const providerModelConfigurationOutputPriceRegExp = new RegExp('^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$');
+export const providerModelConfigurationPathRegExp = new RegExp('^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$');
+
+
+export const ProviderModelConfiguration = zod.object({
+  "cachedPrice": zod.string().regex(providerModelConfigurationCachedPriceRegExp),
+  "capabilities": zod.array(ProviderModelCapability).default(providerModelConfigurationCapabilitiesDefault),
+  "catalogRef": ProviderCatalogRef.optional(),
+  "effortMapping": ProviderEffortMapping.default(providerModelConfigurationEffortMappingDefault),
+  "enabled": zod.boolean().default(providerModelConfigurationEnabledDefault),
+  "inputPrice": zod.string().regex(providerModelConfigurationInputPriceRegExp),
+  "maxContextTokens": zod.int().min(1).max(providerModelConfigurationMaxContextTokensMax),
+  "name": zod.string().regex(providerModelConfigurationNameRegExp),
+  "outputPrice": zod.string().regex(providerModelConfigurationOutputPriceRegExp),
+  "path": zod.string().regex(providerModelConfigurationPathRegExp),
+  "protocol": TextModelProtocol
+}).describe('Complete configured text-model values. Decimal prices are USD per million tokens.');
+
+export type ProviderModelConfiguration = zod.input<typeof ProviderModelConfiguration>;
+export type ProviderModelConfigurationOutput = zod.output<typeof ProviderModelConfiguration>;
+
+export const providerModelWriteIdRegExp = new RegExp('^[1-9][0-9]*$');
+
+
+export const ProviderModelWrite = zod.object({
+  "configuration": ProviderModelConfiguration.describe('Complete text-model configuration, including explicit token prices.'),
+  "id": zod.string().regex(providerModelWriteIdRegExp).optional().describe('Omit for a new model; supplied IDs must belong to this connection.')
+}).describe('Persisted identity is omitted for new models and forbidden during provider creation.');
+
+export type ProviderModelWrite = zod.input<typeof ProviderModelWrite>;
+export type ProviderModelWriteOutput = zod.output<typeof ProviderModelWrite>;
+
+export const providerCreateInputApiKeyRegExp = new RegExp('^[^\\s]+$');
+
+
+
+export const ProviderCreateInput = zod.object({
+  "apiKey": zod.string().regex(providerCreateInputApiKeyRegExp),
+  "baseUrl": zod.string(),
+  "headers": zod.array(ProviderHeader),
+  "models": zod.array(ProviderModelWrite).min(1),
+  "name": zod.string()
+}).describe('New connection definition; credentials and header values are write-only.');
+
+export type ProviderCreateInput = zod.input<typeof ProviderCreateInput>;
+export type ProviderCreateInputOutput = zod.output<typeof ProviderCreateInput>;
+
+export const CreateProvidersRequest = zod.object({
+  "providers": zod.array(ProviderCreateInput)
+}).describe('Atomic batch creation. A single form submits one provider in this array.');
+
+export type CreateProvidersRequest = zod.input<typeof CreateProvidersRequest>;
+export type CreateProvidersRequestOutput = zod.output<typeof CreateProvidersRequest>;
+
+export const ProviderHeaderMetadata = zod.object({
+  "key": zod.string()
+}).describe('Header metadata only. A response never includes a header value.');
+
+export type ProviderHeaderMetadata = zod.input<typeof ProviderHeaderMetadata>;
+export type ProviderHeaderMetadataOutput = zod.output<typeof ProviderHeaderMetadata>;
+
+export const ProviderResourceIdRegExp = new RegExp('^[1-9][0-9]*$');
+
+
+export const ProviderResourceId = zod.string().regex(ProviderResourceIdRegExp).describe('Positive u64 as a decimal string.');
+
+export type ProviderResourceId = zod.input<typeof ProviderResourceId>;
+export type ProviderResourceIdOutput = zod.output<typeof ProviderResourceId>;
+
+export const ProviderModelDetail = zod.object({
+  "configuration": ProviderModelConfiguration.describe('Complete text-model configuration, including explicit token prices.'),
+  "id": ProviderResourceId
+});
+
+export type ProviderModelDetail = zod.input<typeof ProviderModelDetail>;
+export type ProviderModelDetailOutput = zod.output<typeof ProviderModelDetail>;
+
+export const ProviderDetailResponse = zod.object({
+  "baseUrl": zod.string(),
+  "headers": zod.array(ProviderHeaderMetadata),
+  "id": ProviderResourceId,
+  "models": zod.array(ProviderModelDetail),
+  "name": zod.string()
+}).describe('Safe management detail. API keys and header values are absent by construction.');
+
+export type ProviderDetailResponse = zod.input<typeof ProviderDetailResponse>;
+export type ProviderDetailResponseOutput = zod.output<typeof ProviderDetailResponse>;
+
+export const CreateProvidersResponse = zod.object({
+  "providers": zod.array(ProviderDetailResponse)
+});
+
+export type CreateProvidersResponse = zod.input<typeof CreateProvidersResponse>;
+export type CreateProvidersResponseOutput = zod.output<typeof CreateProvidersResponse>;
+
 export const currentUserResponseOrganizationIdMin = 0;
 
 export const currentUserResponseSessionIdMin = 0;
@@ -91,6 +242,38 @@ export const ErrorResponse = zod.object({
 export type ErrorResponse = zod.input<typeof ErrorResponse>;
 export type ErrorResponseOutput = zod.output<typeof ErrorResponse>;
 
+export const providerHeaderUpdateKeyRegExp = new RegExp('^[!#$%&\'*+.^_`|~0-9A-Za-z-]+$');
+export const providerHeaderUpdateValueRegExp = new RegExp('^[\\t\\x20-\\x7e\\x80-\\xff]*$');
+
+
+export const ProviderHeaderUpdate = zod.object({
+  "key": zod.string().regex(providerHeaderUpdateKeyRegExp),
+  "value": zod.string().regex(providerHeaderUpdateValueRegExp).optional().describe('Omit to preserve the saved value for this header name. New names require a value.')
+}).describe('Omit value to retain an existing header secret; new names require a value.');
+
+export type ProviderHeaderUpdate = zod.input<typeof ProviderHeaderUpdate>;
+export type ProviderHeaderUpdateOutput = zod.output<typeof ProviderHeaderUpdate>;
+
+export const patchProviderRequestApiKeyRegExp = new RegExp('^[^\\s]+$');
+
+
+
+export const PatchProviderRequest = zod.object({
+  "apiKey": zod.string().regex(patchProviderRequestApiKeyRegExp).optional().describe('Omit to preserve the current credential. Empty strings and null are invalid.'),
+  "baseUrl": zod.string().optional(),
+  "headers": zod.array(ProviderHeaderUpdate).optional(),
+  "models": zod.array(ProviderModelWrite).min(1).optional(),
+  "name": zod.string().optional()
+}).describe('Partial update. Omitted fields are unchanged; explicit null is rejected.');
+
+export type PatchProviderRequest = zod.input<typeof PatchProviderRequest>;
+export type PatchProviderRequestOutput = zod.output<typeof PatchProviderRequest>;
+
+export const ProviderApiProtocol = zod.enum(['openai_compatible', 'anthropic', 'provider_specific']).describe('Catalog connection family hint; each configured model selects its own operation.');
+
+export type ProviderApiProtocol = zod.input<typeof ProviderApiProtocol>;
+export type ProviderApiProtocolOutput = zod.output<typeof ProviderApiProtocol>;
+
 export const providerFieldsApiKeyRegExp = new RegExp('^[^\\s]+$');
 
 
@@ -102,18 +285,6 @@ export const ProviderFields = zod.object({
 
 export type ProviderFields = zod.input<typeof ProviderFields>;
 export type ProviderFieldsOutput = zod.output<typeof ProviderFields>;
-
-export const providerHeaderKeyRegExp = new RegExp('^[!#$%&\'*+.^_`|~0-9A-Za-z-]+$');
-export const providerHeaderValueRegExp = new RegExp('^[\\t\\x20-\\x7e\\x80-\\xff]*$');
-
-
-export const ProviderHeader = zod.object({
-  "key": zod.string().regex(providerHeaderKeyRegExp),
-  "value": zod.string().regex(providerHeaderValueRegExp)
-});
-
-export type ProviderHeader = zod.input<typeof ProviderHeader>;
-export type ProviderHeaderOutput = zod.output<typeof ProviderHeader>;
 
 export const ProviderHeaders = zod.object({
   "entries": zod.array(ProviderHeader)
@@ -134,6 +305,22 @@ export const ProviderInputRules = zod.object({
 
 export type ProviderInputRules = zod.input<typeof ProviderInputRules>;
 export type ProviderInputRulesOutput = zod.output<typeof ProviderInputRules>;
+
+export const ProviderSummary = zod.object({
+  "baseUrl": zod.string(),
+  "id": ProviderResourceId,
+  "name": zod.string()
+}).describe('Safe connection summary. IDs are positive decimal strings, not JSON numbers.');
+
+export type ProviderSummary = zod.input<typeof ProviderSummary>;
+export type ProviderSummaryOutput = zod.output<typeof ProviderSummary>;
+
+export const ProviderListResponse = zod.object({
+  "providers": zod.array(ProviderSummary)
+});
+
+export type ProviderListResponse = zod.input<typeof ProviderListResponse>;
+export type ProviderListResponseOutput = zod.output<typeof ProviderListResponse>;
 
 export const providerModelFieldsCachedPriceRegExp = new RegExp('^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$');
 export const providerModelFieldsInputPriceRegExp = new RegExp('^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$');
@@ -162,6 +349,66 @@ export const ProviderModels = zod.object({
 
 export type ProviderModels = zod.input<typeof ProviderModels>;
 export type ProviderModelsOutput = zod.output<typeof ProviderModels>;
+
+export const providerRegistryModelMaxContextTokensMin = 0;
+
+
+
+export const ProviderRegistryModel = zod.object({
+  "cachedPrice": zod.string().nullish(),
+  "capabilities": zod.array(ProviderModelCapability),
+  "description": zod.string().nullish(),
+  "effortMapping": zod.union([ProviderEffortMapping,zod.null()]).optional(),
+  "id": zod.string(),
+  "inputPrice": zod.string().nullish(),
+  "maxContextTokens": zod.int().min(providerRegistryModelMaxContextTokensMin).nullish(),
+  "name": zod.string(),
+  "outputPrice": zod.string().nullish(),
+  "protocols": zod.array(TextModelProtocol).describe('Text operations supported by this catalog model; an empty list is not selectable in this flow.')
+}).describe('Prices may be unknown in registry data; missing rates never imply zero.');
+
+export type ProviderRegistryModel = zod.input<typeof ProviderRegistryModel>;
+export type ProviderRegistryModelOutput = zod.output<typeof ProviderRegistryModel>;
+
+export const ProviderRegistryEntry = zod.object({
+  "baseUrl": zod.string().nullish().describe('Null when an account-specific endpoint must be supplied during configuration.'),
+  "id": zod.string(),
+  "name": zod.string(),
+  "protocol": ProviderApiProtocol
+}).describe('Provider identity and editable connection defaults from the registry.');
+
+export type ProviderRegistryEntry = zod.input<typeof ProviderRegistryEntry>;
+export type ProviderRegistryEntryOutput = zod.output<typeof ProviderRegistryEntry>;
+
+export const ProviderRegistryDetailResponse = zod.object({
+  "models": zod.array(ProviderRegistryModel),
+  "provider": ProviderRegistryEntry
+});
+
+export type ProviderRegistryDetailResponse = zod.input<typeof ProviderRegistryDetailResponse>;
+export type ProviderRegistryDetailResponseOutput = zod.output<typeof ProviderRegistryDetailResponse>;
+
+export const ProviderRegistryListResponse = zod.object({
+  "providers": zod.array(ProviderRegistryEntry)
+});
+
+export type ProviderRegistryListResponse = zod.input<typeof ProviderRegistryListResponse>;
+export type ProviderRegistryListResponseOutput = zod.output<typeof ProviderRegistryListResponse>;
+
+export const replaceProviderRequestApiKeyRegExp = new RegExp('^[^\\s]+$');
+
+
+
+export const ReplaceProviderRequest = zod.object({
+  "apiKey": zod.string().regex(replaceProviderRequestApiKeyRegExp).optional().describe('Omit to preserve the current credential. Empty strings and null are invalid.'),
+  "baseUrl": zod.string(),
+  "headers": zod.array(ProviderHeaderUpdate),
+  "models": zod.array(ProviderModelWrite).min(1),
+  "name": zod.string()
+}).describe('Full non-secret replacement. Omitting apiKey preserves the saved credential.');
+
+export type ReplaceProviderRequest = zod.input<typeof ReplaceProviderRequest>;
+export type ReplaceProviderRequestOutput = zod.output<typeof ReplaceProviderRequest>;
 
 export const signinEmailRequestDeliveryDefault = 'cookie';
 

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use super::ConnectionError;
-use crate::provider::{Provider, ProviderApiKey};
+use crate::provider::Provider;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderRepositoryError {
@@ -34,17 +34,11 @@ pub trait ProviderRepository: Send + Sync {
         limit: u64,
     ) -> Result<Vec<Provider>, ProviderRepositoryError>;
 
-    async fn insert(
-        &self,
-        provider: Provider,
-        api_key: ProviderApiKey,
-    ) -> Result<Provider, ProviderRepositoryError>;
+    /// Inserts the connection and its models atomically in one statement.
+    /// All model ownership must match the parent entity.
+    async fn insert(&self, provider: Provider) -> Result<Provider, ProviderRepositoryError>;
 
-    async fn update(
-        &self,
-        provider: Provider,
-        api_key: Option<ProviderApiKey>,
-    ) -> Result<Provider, ProviderRepositoryError>;
+    async fn update(&self, provider: Provider) -> Result<Provider, ProviderRepositoryError>;
 
     async fn delete(
         &self,

@@ -11,7 +11,15 @@ import {
   AuthTokensResponse,
   ConfirmSigninOtpRequest,
   ConfirmSignupOtpRequest,
+  CreateProvidersRequest,
+  CreateProvidersResponse,
   CurrentUserResponse,
+  PatchProviderRequest,
+  ProviderDetailResponse,
+  ProviderListResponse,
+  ProviderRegistryDetailResponse,
+  ProviderRegistryListResponse,
+  ReplaceProviderRequest,
   SigninEmailRequest,
   SignupEmailRequest,
   SignupEmailResponse
@@ -120,3 +128,117 @@ export const ConfirmSignupOtpHeader = zod.object({
 export const ConfirmSignupOtpBody = ConfirmSignupOtpRequest
 
 export const ConfirmSignupOtpResponse = AuthTokensResponse
+
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * @summary List provider registry.
+ */
+export const ListProviderRegistryResponse = ProviderRegistryListResponse
+
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * @summary Get provider registry detail.
+ */
+export const GetProviderRegistryParams = zod.object({
+  "registryId": zod.string().describe('Opaque registry provider ID')
+})
+
+export const GetProviderRegistryResponse = ProviderRegistryDetailResponse
+
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * @summary List saved providers.
+ */
+export const ListProvidersResponse = ProviderListResponse
+
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * Requires a nonempty providers array. The entire batch succeeds or fails; no upstream calls are made.
+ * @summary Create providers atomically.
+ */
+export const CreateProvidersBody = CreateProvidersRequest
+
+export const CreateProvidersResponseSchema = CreateProvidersResponse
+
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * @summary Get saved provider detail.
+ */
+export const getProviderPathProviderIdRegExp = new RegExp('^[1-9][0-9]*$');
+
+
+export const GetProviderParams = zod.object({
+  "providerId": zod.string().regex(getProviderPathProviderIdRegExp).describe('Positive decimal-string provider ID in the current organization')
+})
+
+export const GetProviderResponse = ProviderDetailResponse
+
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * Replaces name, base URL, headers, and models. Omitted apiKey preserves the stored credential.
+ * @summary Replace provider configuration.
+ */
+export const replaceProviderPathProviderIdRegExp = new RegExp('^[1-9][0-9]*$');
+
+
+export const ReplaceProviderParams = zod.object({
+  "providerId": zod.string().regex(replaceProviderPathProviderIdRegExp).describe('Positive decimal-string provider ID in the current organization')
+})
+
+export const ReplaceProviderBody = ReplaceProviderRequest
+
+export const ReplaceProviderResponse = ProviderDetailResponse
+
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * Removes the connection, provider models, and their bindings; logical models and usage history remain.
+ * @summary Delete provider.
+ */
+export const deleteProviderPathProviderIdRegExp = new RegExp('^[1-9][0-9]*$');
+
+
+export const DeleteProviderParams = zod.object({
+  "providerId": zod.string().regex(deleteProviderPathProviderIdRegExp).describe('Positive decimal-string provider ID in the current organization')
+})
+
+export const DeleteProviderResponse = zod.void()
+
+
+/**
+ * Schema only; this operation has no runtime handler. Requires an owner or
+ * administrator in the verified session's organization. Never returns API keys
+ * or custom header values. Cookie writes require the trusted same-origin policy.
+ * Omitted fields preserve existing values. Supplied collections replace the collection. Null is invalid.
+ * @summary Partially update provider configuration.
+ */
+export const patchProviderPathProviderIdRegExp = new RegExp('^[1-9][0-9]*$');
+
+
+export const PatchProviderParams = zod.object({
+  "providerId": zod.string().regex(patchProviderPathProviderIdRegExp).describe('Positive decimal-string provider ID in the current organization')
+})
+
+export const PatchProviderBody = PatchProviderRequest
+
+export const PatchProviderResponse = ProviderDetailResponse

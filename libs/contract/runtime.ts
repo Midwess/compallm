@@ -50,6 +50,7 @@ export function modelsObject(value: { entries: Array<{ name: string }> }): boole
 
 const formats: Record<string, (value: string, constraints: StringConstraints) => boolean> = {
   baseUrl,
+  resourceId: (value) => /^[1-9][0-9]*$/.test(value) && BigInt(value) <= 18446744073709551615n,
   nonblank: (value) => trimInput(value) !== '',
   authorization,
   emailAddress: (value, constraints) => {
@@ -85,6 +86,7 @@ function authorizationInput(value: string): boolean {
 }
 
 const inputFormats: Record<string, (value: string) => boolean> = {
+  resourceId: (value) => /^[1-9][0-9]*$/.test(value) && BigInt(value) <= 18446744073709551615n,
   nonblank: () => true,
   baseUrl: (value) => !hasWhitespace.test(value) && !/[?#\\]/.test(value),
   authorization: authorizationInput,
@@ -144,4 +146,35 @@ export function inputString(constraints: StringConstraints) {
       )
         context.addIssue({ code: 'custom', message: 'Invalid input' })
     })
+}
+
+// Explicit counterparts of Rust collection rules. References use generated field
+// validators; these checks only cover relationships between submitted values.
+export function headerUpdateObject(value: { key: string; value?: string }): boolean {
+  return value.value === undefined || headerObject({ key: value.key, value: value.value })
+}
+export function modelWritesArray(
+  entries: Array<{
+    id?: string
+    configuration: { name: string; enabled?: boolean }
+  }>,
+): boolean {
+  const ids = entries.flatMap((entry) => (entry.id === undefined ? [] : [entry.id]))
+  return (
+    entries.some((entry) => entry.configuration.enabled !== false) &&
+    new Set(entries.map((entry) => entry.configuration.name)).size === entries.length &&
+    new Set(ids).size === ids.length
+  )
+}
+export function createProviderObject(value: { models: Array<{ id?: string }> }): boolean {
+  return value.models.every((model) => model.id === undefined)
+}
+export function createProvidersObject(value: { providers: Array<{ name: string }> }): boolean {
+  return (
+    value.providers.length > 0 &&
+    new Set(value.providers.map((provider) => trimInput(provider.name))).size === value.providers.length
+  )
+}
+export function providerPatchObject(value: Record<string, unknown>): boolean {
+  return Object.values(value).some((field) => field !== undefined)
 }

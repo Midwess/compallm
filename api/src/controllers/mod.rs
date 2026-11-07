@@ -22,7 +22,11 @@ pub fn api_router() -> OpenApiRouter<&'static AuthService> {
     let components = openapi.components.get_or_insert_with(Default::default);
     components.add_security_scheme(
         "bearerAuth",
-        SecurityScheme::Http(Http::new(HttpAuthScheme::Bearer)),
+        SecurityScheme::Http({
+            let mut bearer = Http::new(HttpAuthScheme::Bearer);
+            bearer.description = Some("User access JWT. Each request checks the scoped session version. Stale bearer authority is rebuilt without extending expiry; read replacement X-Compallm-Access-Token and X-Compallm-Access-Token-Expires-At response headers. No cookie fallback or refresh credential is issued.".into());
+            bearer
+        }),
     );
     let mut otp = Http::new(HttpAuthScheme::Bearer);
     otp.description = Some("Encrypted email OTP challenge returned by the code request. Requires the email-OTP token variant; user access and refresh tokens are rejected. Supply it as Authorization: Bearer <challenge>.".into());

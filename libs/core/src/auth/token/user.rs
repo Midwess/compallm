@@ -8,6 +8,8 @@ use std::time::Duration;
 pub struct UserAccessToken {
     pub session: Session,
     pub organization_role: String,
+    /// Required effective authority; refresh credentials never contain this field.
+    pub policy_snapshot: crate::authorization::PolicySnapshot,
     pub validity: TokenValidity,
 }
 
@@ -15,11 +17,13 @@ impl UserAccessToken {
     pub fn new(
         session: Session,
         organization_role: impl Into<String>,
+        policy_snapshot: crate::authorization::PolicySnapshot,
         lifetime: Duration,
     ) -> Result<Self, AuthError> {
         Ok(Self {
             session,
             organization_role: organization_role.into(),
+            policy_snapshot,
             validity: TokenValidity::new(lifetime)?,
         })
     }

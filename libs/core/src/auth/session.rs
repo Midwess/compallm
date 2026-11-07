@@ -16,6 +16,8 @@ pub struct Session {
     pub organization_id: u64,
     /// Display snapshot refreshed on token issuance; not part of session identity.
     pub organization_name: String,
+    /// Current permission generation, copied from storage when renewing credentials.
+    pub authorization_version: u32,
     pub revoked_at: Option<u64>,
 }
 
@@ -31,6 +33,7 @@ impl Session {
             user_id,
             organization_id,
             organization_name: organization_name.into(),
+            authorization_version: 1,
             revoked_at: None,
         }
     }

@@ -62,10 +62,18 @@ impl IntoResponse for ApiError {
                 StatusCode::CONFLICT,
                 "Email is already registered. <a href=\"/login\">Sign in instead.</a>",
             ),
+            Self::Auth(AuthError::SessionPersistence(_)) => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Session validation is temporarily unavailable; retry later",
+            ),
             Self::Auth(AuthError::UserDisabled) => (StatusCode::FORBIDDEN, "User is disabled"),
             Self::Auth(AuthError::OrganizationAccessDenied) => {
                 (StatusCode::FORBIDDEN, "Organization access denied")
             }
+            Self::Auth(AuthError::TokenTooLarge { .. }) => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "Authentication credential exceeds the supported size limit",
+            ),
             Self::Auth(AuthError::UserNotFound) => (
                 StatusCode::NOT_FOUND,
                 "Email is not registered. <a href=\"/signup\">Sign up here.</a>",

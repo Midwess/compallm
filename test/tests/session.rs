@@ -20,6 +20,7 @@ fn switching_changes_scope_and_both_tokens_reference_the_new_session() {
     let tokens = UserTokens::new(
         &session,
         Role::MEMBER,
+        empty_snapshot(),
         SECRET,
         Duration::from_secs(60),
         LIFETIME,
@@ -158,4 +159,27 @@ fn organization_rename_does_not_change_session_identity_or_reject_renewal() {
     let renewed = current.refresh(&token, LIFETIME).unwrap();
     assert_eq!(renewed.session.organization_name, "Renamed team");
     assert_eq!(token.session.organization_name, "Original team");
+}
+
+#[test]
+fn serialized_session_requires_its_version_and_version_is_not_identity() {
+    let session = compallm_core::auth::Session::new(1, 2, 3, "Team");
+    let mut newer = session.clone();
+    newer.authorization_version = 42;
+    assert!(session.has_same_identity(&newer));
+    let mut value = serde_json::to_value(&newer).unwrap();
+    assert_eq!(value["authorization_version"], 42);
+    value
+        .as_object_mut()
+        .unwrap()
+        .remove("authorization_version");
+    assert!(serde_json::from_value::<compallm_core::auth::Session>(value).is_err());
+}
+
+fn empty_snapshot() -> compallm_core::authorization::PolicySnapshot {
+    compallm_core::authorization::PolicySnapshot {
+        cedar_source: String::new(),
+        role_ids: vec![],
+        group_roles: std::collections::BTreeMap::new(),
+    }
 }

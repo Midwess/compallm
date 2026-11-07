@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useStore } from 'zustand'
-import { Outlet } from 'react-router'
+import { Outlet, useMatch } from 'react-router'
 import { OrganizationControllerContext } from '@compallm/storybook/context'
 import { OrganizationPage } from '@compallm/storybook/pages/organization'
 import { useUrlController } from '../url/use-url-controller'
@@ -16,15 +16,20 @@ export function Component() {
 }
 
 function Workspace({ user }: { user: CurrentUserResponse }) {
+  const settings = useMatch('/:organizationName/settings/*')
   const auth = useAuthController()
   const url = useUrlController()
   const [controller] = useState(() => new OrganizationController(user, url, auth))
   useEffect(() => controller.setCurrentUser(user), [controller, user])
   return (
     <OrganizationControllerContext value={controller}>
-      <OrganizationPage>
+      {settings ? (
         <Outlet />
-      </OrganizationPage>
+      ) : (
+        <OrganizationPage>
+          <Outlet />
+        </OrganizationPage>
+      )}
     </OrganizationControllerContext>
   )
 }

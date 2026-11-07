@@ -56,6 +56,11 @@ where
 
 pub struct Authorization;
 
+enum Replacement {
+    Cookies(UserTokens),
+    Bearer { token: String, expires_at: u64 },
+}
+
 impl Authorization {
     fn bearer(headers: &HeaderMap) -> Result<Option<&str>, ApiError> {
         let mut values = headers.get_all(AUTHORIZATION).iter();
@@ -94,9 +99,24 @@ impl Authorization {
         settings: &TokenDeliverySettings,
         headers: &HeaderMap,
         method: &Method,
-    ) -> Result<(AccessToken, Option<UserTokens>), ApiError> {
+    ) -> Result<(AccessToken, Option<Replacement>), ApiError> {
         if let Some(token) = Self::bearer(headers)? {
-            return Ok((auth.authenticate_token(token)?, None));
+            let token = auth.authenticate_token(token)?;
+            if let AccessToken::User(user) = &token
+                && !auth.validate_access(user).await?
+            {
+                let encoded = auth.refresh_access(user).await?;
+                let rebuilt = auth.authenticate_access(&encoded)?;
+                let expires_at = rebuilt.validity.expires_at;
+                return Ok((
+                    AccessToken::User(rebuilt),
+                    Some(Replacement::Bearer {
+                        token: encoded,
+                        expires_at,
+                    }),
+                ));
+            }
+            return Ok((token, None));
         }
         let safe = matches!(*method, Method::GET | Method::HEAD | Method::OPTIONS);
         let names = settings.cookie_names();
@@ -105,9 +125,29 @@ impl Authorization {
                 settings.validate_cookie_request(headers, false)?;
             }
             match auth.authenticate_token(&token) {
-                Ok(token @ (AccessToken::User(_) | AccessToken::EmailOtp(_))) => {
-                    return Ok((token, None));
+                Ok(AccessToken::User(user)) => {
+                    if auth.validate_access(&user).await? {
+                        return Ok((AccessToken::User(user), None));
+                    }
+                    let refresh =
+                        Self::cookie(headers, names.1)?.ok_or(ApiError::Unauthenticated)?;
+                    let refresh_claims =
+                        RefreshToken::try_from(auth.authenticate_token(&refresh)?)?;
+                    if !refresh_claims.session.has_same_identity(&user.session) {
+                        return Err(AuthError::InvalidSession.into());
+                    }
+                    settings.validate_cookie_request(
+                        headers,
+                        matches!(*method, Method::GET | Method::HEAD),
+                    )?;
+                    let tokens = auth.refresh(&refresh).await?;
+                    let rebuilt = auth.authenticate_access(&tokens.access_token)?;
+                    return Ok((
+                        AccessToken::User(rebuilt),
+                        Some(Replacement::Cookies(tokens)),
+                    ));
                 }
+                Ok(token @ AccessToken::EmailOtp(_)) => return Ok((token, None)),
                 Ok(_) => return Err(AuthError::WrongTokenVariant.into()),
                 Err(AuthError::ExpiredToken) => {}
                 Err(error) => return Err(error.into()),
@@ -117,7 +157,7 @@ impl Authorization {
         settings.validate_cookie_request(headers, matches!(*method, Method::GET | Method::HEAD))?;
         let tokens = auth.refresh(&refresh).await?;
         let user = auth.authenticate_access(&tokens.access_token)?;
-        Ok((AccessToken::User(user), Some(tokens)))
+        Ok((AccessToken::User(user), Some(Replacement::Cookies(tokens))))
     }
 
     fn insert_token(extensions: &mut Extensions, token: AccessToken) -> Result<(), ApiError> {
@@ -170,7 +210,10 @@ impl Authorization {
         if cookie_mode && let AccessToken::User(user) = &token {
             let refresh = renewed
                 .as_ref()
-                .map(|tokens| tokens.refresh_token.clone())
+                .and_then(|replacement| match replacement {
+                    Replacement::Cookies(tokens) => Some(tokens.refresh_token.clone()),
+                    Replacement::Bearer { .. } => None,
+                })
                 .or_else(|| {
                     Self::cookie(request.headers(), settings.cookie_names().1)
                         .ok()
@@ -180,8 +223,21 @@ impl Authorization {
         }
         Self::insert_token(request.extensions_mut(), token)?;
         let mut response = next.run(request).await;
-        let Some(tokens) = renewed else {
-            return Ok(response);
+        let tokens = match renewed {
+            None => return Ok(response),
+            Some(Replacement::Bearer { token, expires_at }) => {
+                let mut credential = HeaderValue::from_str(&token)?;
+                credential.set_sensitive(true);
+                response
+                    .headers_mut()
+                    .insert("x-compallm-access-token", credential);
+                response.headers_mut().insert(
+                    "x-compallm-access-token-expires-at",
+                    HeaderValue::from_str(&expires_at.to_string())?,
+                );
+                return Ok(response);
+            }
+            Some(Replacement::Cookies(tokens)) => tokens,
         };
         // Preserve credentials explicitly set by the handler (for example organization switching).
         let names = settings.cookie_names();
@@ -212,7 +268,13 @@ impl Authorization {
             .await
             .unwrap_or_else(|error| {
                 let mut response = error.into_authentication_response();
-                if cookie_mode && let Err(error) = settings.clear_cookies(response.headers_mut()) {
+                if cookie_mode
+                    && matches!(
+                        response.status(),
+                        StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
+                    )
+                    && let Err(error) = settings.clear_cookies(response.headers_mut())
+                {
                     return error.into_response();
                 }
                 response

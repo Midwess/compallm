@@ -22,6 +22,7 @@ impl Fixture {
         UserTokens::new(
             &Session::new(1, 7, 84, "Research team"),
             Role::OWNER,
+            empty_snapshot(),
             SECRET,
             Duration::from_secs(60),
             Duration::from_secs(600),
@@ -149,6 +150,7 @@ fn valid_jwt_cannot_extend_expired_inner_claims() {
     let mut claims = UserAccessToken::new(
         Session::new(1, 7, 84, "Research team"),
         Role::OWNER,
+        empty_snapshot(),
         Duration::from_secs(60),
     )
     .unwrap();
@@ -234,6 +236,7 @@ fn ids_round_trip_as_u64_in_access_and_refresh_sessions() {
     let one = UserTokens::new(
         &Session::new(9_007_199_254_740_993, 7, 84, "Research team"),
         Role::OWNER,
+        empty_snapshot(),
         SECRET,
         Duration::from_secs(60),
         Duration::from_secs(600),
@@ -261,7 +264,7 @@ fn ids_round_trip_as_u64_in_access_and_refresh_sessions() {
     assert_eq!(first.session.organization_id, 84);
     assert_eq!(
         json["data"]["user"]["session"].as_object().unwrap().len(),
-        5
+        6
     );
 }
 
@@ -316,6 +319,7 @@ fn malformed_tokens_and_invalid_lifetimes_are_rejected() {
         UserTokens::new(
             &Session::new(1, 7, 84, "Research team"),
             Role::OWNER,
+            empty_snapshot(),
             SECRET,
             Duration::ZERO,
             Duration::from_secs(600)
@@ -330,6 +334,7 @@ fn encryption_preserves_the_variant_for_typed_conversion() {
     let user = UserAccessToken::new(
         Session::new(1, 7, 84, "Research team"),
         Role::OWNER,
+        empty_snapshot(),
         Duration::from_secs(60),
     )
     .unwrap();
@@ -432,6 +437,7 @@ fn enum_checks_common_timestamps_then_inner_invariants() {
     let mut future = UserAccessToken::new(
         Session::new(1, 7, 84, "Research team"),
         Role::OWNER,
+        empty_snapshot(),
         Duration::from_secs(60),
     )
     .unwrap();
@@ -485,6 +491,7 @@ fn both_tokens_link_to_the_same_organization_scoped_session() {
     let one = UserTokens::new(
         &Session::new(1, 7, 84, "Research team"),
         Role::OWNER,
+        empty_snapshot(),
         SECRET,
         Duration::from_secs(60),
         Duration::from_secs(600),
@@ -493,6 +500,7 @@ fn both_tokens_link_to_the_same_organization_scoped_session() {
     let two = UserTokens::new(
         &Session::new(1, 7, 85, "Research team"),
         Role::MEMBER,
+        empty_snapshot(),
         SECRET,
         Duration::from_secs(60),
         Duration::from_secs(600),
@@ -546,6 +554,7 @@ fn access_tokens_reject_unknown_roles() {
         UserAccessToken::new(
             Session::new(1, 7, 84, "Research team"),
             Role::OWNER,
+            empty_snapshot(),
             Duration::from_secs(60),
         )
         .unwrap(),
@@ -592,4 +601,131 @@ fn issued_token_metadata_matches_the_encoded_claims() {
     )
     .unwrap();
     assert_eq!(challenge.validity.expires_at, claims.validity.expires_at);
+}
+
+#[test]
+fn wire_budget_checks_actual_encoded_bytes_on_issuance_and_input() {
+    let lifetime = Duration::from_secs(60);
+    let claims = |name_len| {
+        UserAccessToken::new(
+            Session::new(1, 7, 84, "a".repeat(name_len)),
+            Role::MEMBER,
+            empty_snapshot(),
+            lifetime,
+        )
+        .unwrap()
+    };
+    // Find the largest name whose actual signed credential fits; base64 has steps.
+    let mut low: usize = 0;
+    let mut high: usize = 4_000;
+    while low < high {
+        let middle = (low + high).div_ceil(2);
+        let encoded =
+            create_jwt_token(AccessToken::User(claims(middle)), SECRET, lifetime).unwrap();
+        if encoded.len() <= AccessToken::MAX_ENCODED_BYTES {
+            low = middle;
+        } else {
+            high = middle - 1;
+        }
+    }
+    let accepted = AccessToken::User(claims(low))
+        .encode(SECRET, lifetime)
+        .unwrap();
+    assert!(accepted.len() <= AccessToken::MAX_ENCODED_BYTES);
+    assert!(AccessToken::decode(&accepted, SECRET).is_ok());
+    assert!(matches!(
+        AccessToken::User(claims(low + 1)).encode(SECRET, lifetime),
+        Err(AuthError::TokenTooLarge { .. })
+    ));
+    let oversized = create_jwt_token(AccessToken::User(claims(low + 1)), SECRET, lifetime).unwrap();
+    assert!(matches!(
+        AccessToken::decode(&oversized, SECRET),
+        Err(AuthError::TokenTooLarge { .. })
+    ));
+}
+
+#[test]
+fn plain_snapshot_budget_measures_real_jwt_including_unicode_and_escaping() -> anyhow::Result<()> {
+    use compallm_core::{authorization::PolicySnapshot, organization::OrganizationMember};
+    for role in Role::defaults(84) {
+        let snapshot = PolicySnapshot::new(&OrganizationMember {
+            organization_id: 84,
+            user_id: 1,
+            roles: vec![role.clone()],
+            groups: vec![],
+        })?;
+        let access = UserAccessToken::new(
+            Session::new(1, 7, 84, "Nghiên cứu \"Team\""),
+            role.name.to_lowercase(),
+            snapshot.clone(),
+            Duration::from_secs(60),
+        )?;
+        let mut proposed = serde_json::to_value(&access)?;
+        proposed["policy_snapshot"] = serde_json::to_value(&snapshot)?;
+        let candidate = create_jwt_token(
+            serde_json::json!({"user": proposed}),
+            SECRET,
+            Duration::from_secs(60),
+        )?;
+        let measured = AccessToken::User(access)
+            .encode(SECRET, Duration::from_secs(60))
+            .map(|encoded| encoded.len());
+        println!(
+            "{}: plain Cedar {} bytes; snapshot JSON {} bytes; proposed JWT {} / {} bytes",
+            role.name,
+            snapshot.cedar_source.len(),
+            serde_json::to_vec(&snapshot)?.len(),
+            candidate.len(),
+            AccessToken::MAX_ENCODED_BYTES
+        );
+        if candidate.len() > AccessToken::MAX_ENCODED_BYTES {
+            assert!(
+                matches!(measured, Err(AuthError::TokenTooLarge {size, limit}) if size == candidate.len() && limit == AccessToken::MAX_ENCODED_BYTES)
+            );
+        } else {
+            assert_eq!(measured?, candidate.len());
+        }
+        assert_eq!(
+            snapshot
+                .cedar_source
+                .parse::<cedar_policy::PolicySet>()?
+                .policies()
+                .count(),
+            cedar_policy::PolicySet::try_from(&role)?.policies().count()
+        );
+    }
+    Ok(())
+}
+
+fn empty_snapshot() -> compallm_core::authorization::PolicySnapshot {
+    compallm_core::authorization::PolicySnapshot {
+        cedar_source: String::new(),
+        role_ids: vec![],
+        group_roles: std::collections::BTreeMap::new(),
+    }
+}
+
+#[test]
+fn access_requires_the_signed_snapshot_and_refresh_omits_it() {
+    let tokens = Fixture::tokens();
+    let access =
+        UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
+            .unwrap();
+    let mut payload = serde_json::to_value(AccessToken::User(access)).unwrap();
+    assert!(payload["user"]["policy_snapshot"].is_object());
+    payload["user"]
+        .as_object_mut()
+        .unwrap()
+        .remove("policy_snapshot");
+    let legacy = create_jwt_token(payload, SECRET, Duration::from_secs(60)).unwrap();
+    assert!(matches!(
+        AccessToken::decode(&legacy, SECRET),
+        Err(AuthError::InvalidToken)
+    ));
+    let refresh = AccessToken::decode(&tokens.refresh_token, SECRET).unwrap();
+    assert!(
+        serde_json::to_value(refresh).unwrap()["refresh"]
+            .get("policy_snapshot")
+            .is_none()
+    );
 }

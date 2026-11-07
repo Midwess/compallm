@@ -10,6 +10,14 @@ publish = false
 workspace = true
 
 [dev-dependencies]
+axum = { workspace = true, features = ["http1", "json", "tokio"] }
+axum-valid = { workspace = true, features = ["validify", "json"] }
+cookie.workspace = true
+thiserror = { workspace = true, features = ["std"] }
+tracing = { workspace = true, features = ["std"] }
+utoipa-axum.workspace = true
+tower = { workspace = true, features = ["util"] }
+rayon.workspace = true
 sec.workspace = true
 router = { path = "../router" }
 validify.workspace = true

@@ -31,16 +31,20 @@ import {
  * Cookie mode renews missing or expired access through the refresh cookie and returns
  * replacement HttpOnly cookies when Origin is trusted, or a safe request has
  * Sec-Fetch-Site: same-origin. No credentials are returned in JSON.
- * Access claims contain a cached role; session revocation and membership changes are
- * checked on renewal rather than on every access-token request.
- * The organization name is a snapshot in the signed session. With valid access claims,
- * this endpoint performs no database queries. Renames appear when tokens renew.
+ * Middleware performs one scoped session-version lookup for valid user access.
+ * Matching versions reuse signed claims; stale claims rebuild before this handler runs.
+ * Cookie renewal requires a matching valid refresh cookie and trusted Origin.
+ * Bearer rebuilding preserves expiry and returns X-Compallm-Access-Token and
+ * X-Compallm-Access-Token-Expires-At headers; no refresh token or cookies are issued.
+ * Temporary session-storage errors return 503 and preserve browser credentials.
  * @summary Read the current authenticated identity and organization scope.
  */
 export const CurrentUserResponseSchema = CurrentUserResponse
 
 
 /**
+ * Encoded credentials are limited to 3,800 bytes; serialized cookies to 4,096 bytes.
+ *
  * Enqueues a six-digit code and returns a ten-minute encrypted challenge.
  * Admission does not guarantee delivery. Pending recipients and the configured cooldown
  * are shared with signup; throttling returns no replacement challenge.
@@ -65,6 +69,8 @@ export const SigninEmailResponse = SignupEmailResponse
  * Records a new session. Cookie delivery (default) requires an allowed Origin, sets both
  * HttpOnly cookies and returns lifetime metadata. Explicit delivery token returns
  * accessToken and refreshToken in JSON without setting cookies. Delivery is not a JWT claim.
+ * User access JWTs require a current compact Cedar policy snapshot; refresh JWTs do not.
+ * Oversized authority returns 422 without recording a login session.
  * @summary Confirm email signin with a verification code.
  */
 export const ConfirmSigninOtpHeader = zod.object({
@@ -80,14 +86,16 @@ export const ConfirmSigninOtpResponse = AuthTokensResponse
  * Revokes the organization/user-scoped session selected by a verified user access token.
  * Cookie requests require a trusted Origin and clear both HttpOnly authentication cookies.
  * Bearer requests revoke the selected session without changing browser cookies.
- * Repeating signout for an already revoked session succeeds while the access token is valid.
- * Other sessions remain active. Already-issued access JWTs remain valid until expiry.
+ * Core revocation is idempotent; repeated HTTP signout is rejected by revoked-session middleware validation.
+ * Other sessions remain active. The next access freshness lookup rejects this revoked session.
  * @summary Sign out of the current session.
  */
 export const SignOutResponse = zod.void()
 
 
 /**
+ * Encoded credentials are limited to 3,800 bytes; serialized cookies to 4,096 bytes.
+ *
  * Rejects an already-registered email with 409 and a signin suggestion before mailing or token
  * delivery. For a new email, enqueues a six-digit verification code and returns an encrypted
  * challenge for confirmation. Submit the challenge and code to
@@ -118,6 +126,8 @@ export const SignupEmailResponseSchema = SignupEmailResponse
  * Send Origin matching AUTH_PUBLIC_ORIGIN (or the local loopback Host in development).
  * Explicit delivery token returns accessToken and refreshToken in JSON and sets no cookies.
  * The delivery choice is controller-only and is never stored in the signed JWTs.
+ * User access JWTs include the current compact Cedar policy snapshot; refresh JWTs do not.
+ * Issuance exceeding 3,800 encoded bytes is rejected without returning credentials.
  * An existing email is rejected rather than signed in. Request a new code if the challenge expired.
  * @summary Confirm email signup with a verification code.
  */

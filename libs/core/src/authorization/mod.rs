@@ -1,5 +1,8 @@
 //! Application-owned Cedar vocabulary. Schema definitions do not grant access.
 
+mod policy_snapshot;
+pub use policy_snapshot::PolicySnapshot;
+
 use std::sync::LazyLock;
 
 use cedar_policy::{Schema, SchemaFragment};

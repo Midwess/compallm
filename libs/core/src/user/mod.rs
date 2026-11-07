@@ -97,8 +97,6 @@ impl SystemPolicy for User {
                 r#"
 namespace Compallm {
     entity User in [Role, Group, Organization];
-    entity Role { organization: Organization };
-    entity Group in [Role] { organization: Organization };
     action "user.profile.update" appliesTo { principal: User, resource: User };
     action "user.account.delete" appliesTo { principal: User, resource: User };
 }

@@ -34,10 +34,24 @@ pub use self::provider_templates::Model as ProviderTemplateSchema;
 pub use self::provider_token_usage::Model as ProviderTokenUsageSchema;
 pub use self::provider_video_usage::Model as ProviderVideoUsageSchema;
 pub use self::providers::Model as ProviderSchema;
-pub use self::sea_orm_active_enums::OrganizationRole as OrganizationRoleSchema;
 pub use self::sea_orm_active_enums::OrganizationStatus as OrganizationStatusSchema;
 pub use self::sea_orm_active_enums::ProviderUsageStatus as ProviderUsageStatusSchema;
 pub use self::sea_orm_active_enums::UsageDirection as UsageDirectionSchema;
 pub use self::sea_orm_active_enums::UserStatus as UserStatusSchema;
 pub use self::user_sessions::Model as UserSessionSchema;
 pub use self::users::Model as UserSchema;
+
+mod organization_roles;
+pub use self::organization_roles::Model as OrganizationRoleSchema;
+
+mod organization_groups;
+pub use self::organization_groups::Model as OrganizationGroupSchema;
+
+mod organization_member_roles;
+pub use self::organization_member_roles::Model as OrganizationMemberRoleSchema;
+
+mod organization_group_members;
+pub use self::organization_group_members::Model as OrganizationGroupMemberSchema;
+
+mod organization_group_roles;
+pub use self::organization_group_roles::Model as OrganizationGroupRoleSchema;

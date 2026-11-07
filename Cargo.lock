@@ -1215,6 +1215,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum",
+ "cedar-policy",
  "clap",
  "compallm-core",
  "compallm-utils",

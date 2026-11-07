@@ -1,5 +1,5 @@
 use compallm_core::{
-    organization::OrganizationRole,
+    organization::Role,
     persistent::{DbContext, organization::OrganizationRepository as _},
 };
 use compallm_postgres::{
@@ -13,11 +13,10 @@ use std::{collections::BTreeMap, sync::Arc};
 struct Fixture;
 
 impl Fixture {
-    fn database(role: OrganizationRoleSchema) -> Arc<sea_orm::DatabaseConnection> {
+    fn database() -> Arc<sea_orm::DatabaseConnection> {
         let row = OrganizationMemberSchema {
             organization_id: 84,
             user_id: 1,
-            role,
             status: UserStatusSchema::Active,
         };
         let organization = OrganizationSchema {
@@ -29,12 +28,24 @@ impl Fixture {
             .into_mock_row()
             .into_column_value_tuples()
             .collect();
-        row.insert("A_role".to_string(), "admin".into());
         row.insert("A_status".to_string(), "active".into());
         row.insert("B_status".to_string(), "active".into());
+        let role = Role::defaults(84).remove(1);
+        let role = OrganizationRoleSchema {
+            organization_id: 84,
+            id: role.id as i64,
+            name: role.name,
+            description: role.description,
+            cedar_source: role.cedar_source,
+            revision: 1,
+        };
+        let role_row = role
+            .into_mock_row()
+            .into_column_value_tuples()
+            .collect::<BTreeMap<_, _>>();
         Arc::new(
             MockDatabase::new(DbBackend::Postgres)
-                .append_query_results([vec![row]])
+                .append_query_results([vec![row], vec![role_row], vec![]])
                 .into_connection(),
         )
     }
@@ -42,14 +53,14 @@ impl Fixture {
 
 #[tokio::test]
 async fn first_admin_membership_query_filters_active_organizations_and_admin_roles() {
-    let database = Fixture::database(OrganizationRoleSchema::Admin);
+    let database = Fixture::database();
     let context = DbContext::new(Arc::new(PostgresConnection::new(database.clone())));
     let member = context
         .scope(OrganizationRepository.find_first_admin_membership(1))
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(member.0.role, OrganizationRole::Admin);
+    assert_eq!(member.0.roles[0].id, Role::ADMIN_ID);
     assert_eq!(member.0.organization_id, 84);
     assert_eq!(member.1.name, "Research team");
     drop(context);
@@ -60,15 +71,14 @@ async fn first_admin_membership_query_filters_active_organizations_and_admin_rol
     assert!(log.contains("LEFT JOIN"));
     assert!(log.contains("organizations"));
     assert!(log.contains("active"));
-    assert!(log.contains("owner"));
-    assert!(log.contains("admin"));
+    assert!(log.contains("r.id IN (1,2)"));
     assert!(log.contains("ORDER BY"));
     assert!(log.contains("organization_id"));
 }
 
 #[tokio::test]
 async fn selected_membership_query_checks_both_user_and_organization() {
-    let database = Fixture::database(OrganizationRoleSchema::Admin);
+    let database = Fixture::database();
     let context = DbContext::new(Arc::new(PostgresConnection::new(database.clone())));
     let member = context
         .scope(OrganizationRepository.find_membership(84, 1))
@@ -85,5 +95,100 @@ async fn selected_membership_query_checks_both_user_and_organization() {
     assert!(log.contains("organization_id"));
     assert!(log.contains("LEFT JOIN"));
     assert!(log.contains("active"));
-    assert!(!log.contains(" IN "));
+    assert!(log.contains("organization_member_roles"));
+}
+
+#[tokio::test]
+async fn membership_hydrates_direct_and_inherited_roles_with_four_scoped_queries() {
+    use compallm_postgres::{OrganizationGroupSchema, OrganizationRoleSchema};
+    let member = OrganizationMemberSchema {
+        organization_id: 84,
+        user_id: 1,
+        status: UserStatusSchema::Active,
+    };
+    let org = OrganizationSchema {
+        id: 84,
+        name: "Research".into(),
+        status: OrganizationStatusSchema::Active,
+    };
+    let mut membership = (member, org)
+        .into_mock_row()
+        .into_column_value_tuples()
+        .collect::<BTreeMap<_, _>>();
+    membership.insert("A_status".into(), "active".into());
+    membership.insert("B_status".into(), "active".into());
+    let direct = OrganizationRoleSchema {
+        organization_id: 84,
+        id: 9,
+        name: "Reports".into(),
+        description: String::new(),
+        cedar_source: String::new(),
+        revision: 1,
+    }
+    .into_mock_row()
+    .into_column_value_tuples()
+    .collect::<BTreeMap<_, _>>();
+    let groups = [20, 21]
+        .into_iter()
+        .map(|id| {
+            OrganizationGroupSchema {
+                organization_id: 84,
+                id,
+                name: format!("Team {id}"),
+                description: String::new(),
+                revision: 1,
+            }
+            .into_mock_row()
+            .into_column_value_tuples()
+            .collect::<BTreeMap<_, _>>()
+        })
+        .collect::<Vec<_>>();
+    let inherited = [20, 21]
+        .into_iter()
+        .map(|group_id| {
+            let role = Role::defaults(84).remove(1);
+            let mut row = OrganizationRoleSchema {
+                organization_id: 84,
+                id: 2,
+                name: role.name,
+                description: role.description,
+                cedar_source: role.cedar_source,
+                revision: 1,
+            }
+            .into_mock_row()
+            .into_column_value_tuples()
+            .collect::<BTreeMap<_, _>>();
+            row.insert("group_id".into(), sea_orm::Value::BigInt(Some(group_id)));
+            row
+        })
+        .collect::<Vec<_>>();
+    let db = Arc::new(
+        MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([vec![membership], vec![direct], groups, inherited])
+            .into_connection(),
+    );
+    let ctx = DbContext::new(Arc::new(PostgresConnection::new(db.clone())));
+    let (member, _) = ctx
+        .scope(OrganizationRepository.find_membership(84, 1))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        member.roles.iter().map(|r| r.id).collect::<Vec<_>>(),
+        vec![9]
+    );
+    assert_eq!(member.groups.len(), 2);
+    assert!(
+        member
+            .groups
+            .iter()
+            .all(|g| g.roles.len() == 1 && g.roles[0].id == 2)
+    );
+    assert_eq!(member.compatibility_role(), Role::ADMIN);
+    drop(ctx);
+    let log = Arc::try_unwrap(db).unwrap().into_transaction_log();
+    assert_eq!(log.iter().map(|t| t.statements().len()).sum::<usize>(), 4);
+    for statement in log.iter().flat_map(|t| t.statements()) {
+        assert!(statement.sql.contains("organization_id"));
+    }
 }

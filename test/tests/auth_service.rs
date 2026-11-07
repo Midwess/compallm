@@ -9,7 +9,7 @@ use compallm_core::{
         AccessToken, AuthError, AuthService, EmailOtpAccessToken, EmailOtpChallenge, RefreshToken,
         Session, TokenLifetimes, UserAccessToken, UserTokens,
     },
-    organization::{CreationService, Organization, OrganizationMember, OrganizationRole},
+    organization::{CreationService, Organization, OrganizationMember, Role},
     persistent::{
         DbContext,
         organization::{OrganizationRepository, OrganizationRepositoryError},
@@ -131,8 +131,8 @@ impl OrganizationRepository for OrganizationRepositoryStub {
             .find(|member| {
                 member.user_id == user_id
                     && matches!(
-                        member.role,
-                        OrganizationRole::Owner | OrganizationRole::Admin
+                        member.compatibility_role().as_str(),
+                        Role::OWNER | Role::ADMIN
                     )
                     && !state
                         .disabled_organizations
@@ -185,6 +185,9 @@ impl OrganizationRepository for OrganizationRepositoryStub {
         Ok(organization)
     }
 
+    async fn create_roles(&self, _roles: Vec<Role>) -> Result<(), OrganizationRepositoryError> {
+        Ok(())
+    }
     async fn add_member(
         &self,
         member: OrganizationMember,
@@ -317,7 +320,8 @@ impl Fixture {
                 vec![OrganizationMember {
                     organization_id: 84,
                     user_id: user.id,
-                    role: OrganizationRole::Owner,
+                    roles: vec![Role::defaults(84).remove(0)],
+                    groups: Vec::new(),
                 }]
             })
             .unwrap_or_default();
@@ -458,7 +462,7 @@ async fn direct_registration_commits_user_organization_and_owner_together() {
         let owner = state.owner.as_ref().unwrap();
         assert_eq!(owner.user_id, user.id);
         assert_eq!(owner.organization_id, organization.id);
-        assert_eq!(owner.role, OrganizationRole::Owner);
+        assert_eq!(owner.compatibility_role(), Role::OWNER);
     }
     fixture.assert_transaction("COMMIT");
 }
@@ -503,7 +507,7 @@ async fn signin_checks_user_and_records_session_without_starting_a_transaction()
         UserAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
             .unwrap();
     assert_eq!(access.session.organization_id, 84);
-    assert_eq!(access.organization_role, OrganizationRole::Owner);
+    assert_eq!(access.organization_role, Role::OWNER);
     assert_eq!(contexts.len(), 2);
     assert_eq!(fixture.repo.0.lock().unwrap().logins, [1]);
     assert!(contexts.iter().all(|context| *context == contexts[0]));
@@ -539,12 +543,12 @@ async fn signup_requires_verified_email_and_uses_one_caller_transaction() {
         assert_eq!(organization.name, "james's organization");
         assert!(organization.id > 0);
         assert_eq!(organization.id, owner.organization_id);
-        assert_eq!(owner.role, OrganizationRole::Owner);
+        assert_eq!(owner.compatibility_role(), Role::OWNER);
         let access =
             UserAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
                 .unwrap();
         assert_eq!(access.session.organization_id, organization.id);
-        assert_eq!(access.organization_role, OrganizationRole::Owner);
+        assert_eq!(access.organization_role, Role::OWNER);
         assert!(
             state
                 .contexts
@@ -714,7 +718,7 @@ async fn refresh_requires_a_context_from_the_application_entry_point() {
     let service = fixture.service();
     let tokens = UserTokens::new(
         &Session::new(1, 7, 84, "Research team"),
-        OrganizationRole::Owner,
+        Role::OWNER,
         SECRET,
         Duration::from_secs(60),
         REFRESH_LIFETIME,
@@ -751,7 +755,7 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let original = UserTokens::new(
         &Session::new(1, 7, 84, "Research team"),
-        OrganizationRole::Owner,
+        Role::OWNER,
         SECRET,
         Duration::from_secs(60),
         REFRESH_LIFETIME,
@@ -894,12 +898,14 @@ async fn signin_selects_an_admin_organization_instead_of_a_member_organization()
         OrganizationMember {
             organization_id: 80,
             user_id: 1,
-            role: OrganizationRole::Member,
+            roles: vec![Role::defaults(80).remove(2)],
+            groups: Vec::new(),
         },
         OrganizationMember {
             organization_id: 85,
             user_id: 1,
-            role: OrganizationRole::Admin,
+            roles: vec![Role::defaults(85).remove(1)],
+            groups: Vec::new(),
         },
     ];
     let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
@@ -911,7 +917,7 @@ async fn signin_selects_an_admin_organization_instead_of_a_member_organization()
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
     assert_eq!(claims.session.organization_id, 85);
-    assert_eq!(claims.organization_role, OrganizationRole::Admin);
+    assert_eq!(claims.organization_role, Role::ADMIN);
     fixture.assert_no_transaction();
 }
 
@@ -927,7 +933,8 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
         .push(OrganizationMember {
             organization_id: 85,
             user_id: 1,
-            role: OrganizationRole::Member,
+            roles: vec![Role::defaults(85).remove(2)],
+            groups: Vec::new(),
         });
     let refresh = AccessToken::Refresh(
         RefreshToken::from_session(&Session::new(1, 7, 84, "Research team"), REFRESH_LIFETIME)
@@ -941,7 +948,7 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
     assert_eq!(claims.session.organization_id, 85);
-    assert_eq!(claims.organization_role, OrganizationRole::Member);
+    assert_eq!(claims.organization_role, Role::MEMBER);
     let refreshed =
         RefreshToken::try_from(AccessToken::decode(&tokens.refresh_token, SECRET).unwrap())
             .unwrap();
@@ -960,7 +967,7 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
             .is_none()
     );
     // Membership changes are checked again instead of copying role from an old JWT.
-    fixture.repo.0.lock().unwrap().memberships[1].role = OrganizationRole::Admin;
+    fixture.repo.0.lock().unwrap().memberships[1].roles = vec![Role::defaults(85).remove(1)];
     let tokens = fixture
         .switch_organization(&tokens.refresh_token, 85)
         .await
@@ -968,7 +975,7 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
     let claims =
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
-    assert_eq!(claims.organization_role, OrganizationRole::Admin);
+    assert_eq!(claims.organization_role, Role::ADMIN);
     assert!(matches!(
         fixture
             .switch_organization(&tokens.refresh_token, 999)
@@ -997,7 +1004,7 @@ async fn signin_rejects_missing_or_disabled_administrator_memberships() {
             if disabled {
                 state.disabled_organizations.push(84);
             } else {
-                state.memberships[0].role = OrganizationRole::Member;
+                state.memberships[0].roles = vec![Role::defaults(84).remove(2)];
             }
         }
         let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
@@ -1020,7 +1027,8 @@ async fn refresh_without_selection_keeps_the_session_organization() {
         OrganizationMember {
             organization_id: 80,
             user_id: 1,
-            role: OrganizationRole::Member,
+            roles: vec![Role::defaults(80).remove(2)],
+            groups: Vec::new(),
         },
     );
     let refresh = AccessToken::Refresh(
@@ -1035,7 +1043,7 @@ async fn refresh_without_selection_keeps_the_session_organization() {
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
     assert_eq!(claims.session.organization_id, 84);
-    assert_eq!(claims.organization_role, OrganizationRole::Owner);
+    assert_eq!(claims.organization_role, Role::OWNER);
 }
 
 #[tokio::test]
@@ -1318,7 +1326,8 @@ async fn organization_switch_joins_an_enclosing_transaction() {
         .push(OrganizationMember {
             organization_id: 85,
             user_id: 1,
-            role: OrganizationRole::Member,
+            roles: vec![Role::defaults(85).remove(2)],
+            groups: Vec::new(),
         });
     let service = fixture.service();
     let tokens = fixture
@@ -1392,12 +1401,8 @@ async fn signout_revokes_only_the_selected_session_and_is_repeatable() {
         state.sessions.insert(7, selected.clone());
         state.sessions.insert(8, other);
     }
-    let claims = UserAccessToken::new(
-        selected.clone(),
-        OrganizationRole::Owner,
-        Duration::from_secs(60),
-    )
-    .unwrap();
+    let claims =
+        UserAccessToken::new(selected.clone(), Role::OWNER, Duration::from_secs(60)).unwrap();
     let service = fixture.service();
     fixture
         .repo
@@ -1440,9 +1445,7 @@ async fn signout_cannot_revoke_a_foreign_user_or_organization_session() {
             .unwrap()
             .sessions
             .insert(7, Session::new(1, 7, 84, "Research team"));
-        let claims =
-            UserAccessToken::new(presented, OrganizationRole::Owner, Duration::from_secs(60))
-                .unwrap();
+        let claims = UserAccessToken::new(presented, Role::OWNER, Duration::from_secs(60)).unwrap();
         assert!(matches!(
             fixture
                 .repo
@@ -1498,5 +1501,196 @@ async fn signin_email_normalizes_existing_accounts_before_mail_admission() {
         Err(AuthError::Email(
             compallm_core::mail::EmailError::Unavailable
         ))
+    ));
+}
+
+#[derive(Default)]
+struct RoleStore(Mutex<std::collections::BTreeMap<u64, Role>>);
+#[async_trait::async_trait]
+impl compallm_core::persistent::role::RoleRepository for RoleStore {
+    async fn list(
+        &self,
+        org: u64,
+    ) -> Result<Vec<Role>, compallm_core::persistent::role::RoleRepositoryError> {
+        Ok(self
+            .0
+            .lock()
+            .unwrap()
+            .values()
+            .filter(|r| r.organization_id == org)
+            .cloned()
+            .collect())
+    }
+    async fn find(
+        &self,
+        org: u64,
+        id: u64,
+    ) -> Result<Option<Role>, compallm_core::persistent::role::RoleRepositoryError> {
+        Ok(self
+            .0
+            .lock()
+            .unwrap()
+            .get(&id)
+            .filter(|r| r.organization_id == org)
+            .cloned())
+    }
+    async fn create(
+        &self,
+        role: Role,
+    ) -> Result<Role, compallm_core::persistent::role::RoleRepositoryError> {
+        let mut rows = self.0.lock().unwrap();
+        if rows.contains_key(&role.id)
+            || rows
+                .values()
+                .any(|r| r.organization_id == role.organization_id && r.name == role.name)
+        {
+            return Err(compallm_core::persistent::role::RoleRepositoryError::Conflict);
+        }
+        rows.insert(role.id, role.clone());
+        Ok(role)
+    }
+    async fn update(
+        &self,
+        mut role: Role,
+    ) -> Result<Role, compallm_core::persistent::role::RoleRepositoryError> {
+        let mut rows = self.0.lock().unwrap();
+        if rows
+            .get(&role.id)
+            .is_none_or(|r| r.revision != role.revision)
+        {
+            return Err(compallm_core::persistent::role::RoleRepositoryError::Conflict);
+        }
+        role.revision += 1;
+        rows.insert(role.id, role.clone());
+        Ok(role)
+    }
+}
+
+fn custom_role(id: u64, action: &str) -> Role {
+    Role {
+        id,
+        organization_id: 84,
+        name: format!("Custom {id}"),
+        description: String::new(),
+        revision: 1,
+        cedar_source: format!(
+            "permit(principal in Compallm::Role::\"84:{id}\",action == Compallm::Action::\"{action}\",resource in Compallm::Organization::\"84\");"
+        ),
+    }
+}
+
+#[tokio::test]
+async fn role_operations_authenticate_reload_membership_and_enforce_cedar_before_writing() {
+    use compallm_core::organization::{RoleError, RoleService};
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let auth = fixture.service();
+    let claims = Fixture::otp(&EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap());
+    let tokens = fixture
+        .repo
+        .1
+        .scope(auth.signin(&claims, &claims.code))
+        .await
+        .unwrap();
+    let store = RoleStore::default();
+    let service = RoleService::new(&fixture.repo.1, &auth, &store);
+    assert!(matches!(
+        service
+            .create("forged", custom_role(9, "model.metadata.read"))
+            .await,
+        Err(RoleError::Forbidden)
+    ));
+    let created = service
+        .create(&tokens.access_token, custom_role(9, "model.metadata.read"))
+        .await
+        .unwrap();
+    assert_eq!(
+        service.read(84, &tokens.access_token, 9).await.unwrap(),
+        created
+    );
+    assert_eq!(
+        service.list(84, &tokens.access_token).await.unwrap().len(),
+        1
+    );
+    let mut edited = created.clone();
+    edited.description = "Reviewed".into();
+    let saved = service.update(&tokens.access_token, edited).await.unwrap();
+    assert_eq!(saved.revision, 2);
+    assert!(service.update(&tokens.access_token, created).await.is_err());
+    assert!(matches!(
+        service.list(85, &tokens.access_token).await,
+        Err(RoleError::Forbidden)
+    ));
+    for source in [
+        "permit(principal,action == Compallm::Action::\"model.use\",resource);",
+        "permit(principal in Compallm::Role::\"84:10\",action == Compallm::Action::\"model.use\",resource in Compallm::Organization::\"85\");",
+        "permit(principal in Compallm::Role::\"84:10\",action == Compallm::Action::\"user.authentication.read\",resource);",
+    ] {
+        let mut role = custom_role(10, "model.metadata.read");
+        role.cedar_source = source.into();
+        assert!(service.create(&tokens.access_token, role).await.is_err());
+    }
+    assert_eq!(store.0.lock().unwrap().len(), 1);
+    fixture.repo.0.lock().unwrap().memberships[0].roles = vec![Role::defaults(84).remove(2)];
+    // The cached JWT still says owner, but the service reloads current Member source.
+    assert!(matches!(
+        service.list(84, &tokens.access_token).await,
+        Err(RoleError::Forbidden)
+    ));
+    assert!(matches!(
+        service
+            .create(&tokens.access_token, custom_role(10, "model.use"))
+            .await,
+        Err(RoleError::Forbidden)
+    ));
+}
+
+#[tokio::test]
+async fn admin_can_create_limited_custom_roles_but_not_escalate_or_change_defaults() {
+    use compallm_core::organization::{RoleError, RoleService};
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    fixture.repo.0.lock().unwrap().memberships[0].roles = vec![Role::defaults(84).remove(1)];
+    let auth = fixture.service();
+    let claims = Fixture::otp(&EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap());
+    let tokens = fixture
+        .repo
+        .1
+        .scope(auth.signin(&claims, &claims.code))
+        .await
+        .unwrap();
+    let store = RoleStore::default();
+    let service = RoleService::new(&fixture.repo.1, &auth, &store);
+    let role = service
+        .create(&tokens.access_token, custom_role(9, "model.metadata.read"))
+        .await
+        .unwrap();
+    assert_eq!(
+        service.read(84, &tokens.access_token, 9).await.unwrap(),
+        role
+    );
+    for action in ["organization.delete", "role.assign", "group.member.add"] {
+        assert!(matches!(
+            service
+                .create(&tokens.access_token, custom_role(10, action))
+                .await,
+            Err(RoleError::Forbidden)
+        ));
+    }
+    let default = Role::defaults(84).remove(0);
+    store.0.lock().unwrap().insert(default.id, default.clone());
+    assert!(matches!(
+        service.update(&tokens.access_token, default).await,
+        Err(RoleError::Forbidden)
+    ));
+    fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .values_mut()
+        .for_each(Session::revoke);
+    assert!(matches!(
+        service.read(84, &tokens.access_token, 9).await,
+        Err(RoleError::Forbidden)
     ));
 }

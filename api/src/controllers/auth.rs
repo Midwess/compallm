@@ -263,7 +263,7 @@ pub struct CurrentUserResponse {
     pub organization_name: String,
     /// Cached membership role from the access JWT, refreshed on renewal.
     #[schema(value_type = String, example = "owner")]
-    pub organization_role: compallm_core::organization::OrganizationRole,
+    pub organization_role: String,
 }
 
 pub fn protected_router() -> OpenApiRouter<&'static AuthService> {

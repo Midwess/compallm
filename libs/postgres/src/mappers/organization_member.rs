@@ -1,10 +1,9 @@
 use anyhow::Context;
 use compallm_core::{
-    organization::{OrganizationMember, OrganizationRole},
-    persistent::organization::OrganizationRepositoryError,
+    organization::OrganizationMember, persistent::organization::OrganizationRepositoryError,
 };
 
-use crate::schema::{OrganizationMemberSchema, OrganizationRoleSchema};
+use crate::schema::OrganizationMemberSchema;
 
 impl TryFrom<OrganizationMemberSchema> for OrganizationMember {
     type Error = OrganizationRepositoryError;
@@ -16,11 +15,8 @@ impl TryFrom<OrganizationMemberSchema> for OrganizationMember {
         Ok(Self {
             organization_id,
             user_id,
-            role: match model.role {
-                OrganizationRoleSchema::Owner => OrganizationRole::Owner,
-                OrganizationRoleSchema::Admin => OrganizationRole::Admin,
-                OrganizationRoleSchema::Member => OrganizationRole::Member,
-            },
+            roles: Vec::new(),
+            groups: Vec::new(),
         })
     }
 }

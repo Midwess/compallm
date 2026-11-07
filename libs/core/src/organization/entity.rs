@@ -10,14 +10,6 @@ pub enum OrganizationStatus {
     Disabled,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum OrganizationRole {
-    Owner,
-    Admin,
-    Member,
-}
-
 #[derive(Clone, Debug)]
 pub struct Organization {
     pub id: u64,
@@ -48,7 +40,8 @@ impl Organization {
 pub struct OrganizationMember {
     pub organization_id: u64,
     pub user_id: u64,
-    pub role: OrganizationRole,
+    pub roles: Vec<super::Role>,
+    pub groups: Vec<super::Group>,
 }
 
 #[derive(validify::Validify)]
@@ -134,5 +127,35 @@ namespace Compallm {
             fragment
         });
         DEFINITION.clone()
+    }
+}
+
+impl OrganizationMember {
+    pub fn effective_roles(&self) -> impl Iterator<Item = &super::Role> {
+        self.roles
+            .iter()
+            .chain(self.groups.iter().flat_map(|g| g.roles.iter()))
+    }
+    /// Compatibility label only; never infer privilege from a role display name.
+    pub fn compatibility_role(&self) -> String {
+        for (id, label) in [
+            (super::Role::OWNER_ID, super::Role::OWNER),
+            (super::Role::ADMIN_ID, super::Role::ADMIN),
+            (super::Role::MEMBER_ID, super::Role::MEMBER),
+        ] {
+            if self
+                .effective_roles()
+                .any(|r| r.organization_id == self.organization_id && r.id == id)
+            {
+                return label.into();
+            }
+        }
+        super::Role::CUSTOM.into()
+    }
+    pub fn is_owner_or_admin(&self) -> bool {
+        self.effective_roles().any(|r| {
+            r.organization_id == self.organization_id
+                && matches!(r.id, super::Role::OWNER_ID | super::Role::ADMIN_ID)
+        })
     }
 }

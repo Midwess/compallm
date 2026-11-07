@@ -8,7 +8,7 @@ use compallm_core::{
     auth::{Session, UserAuth},
     authorization::{SystemPolicy, all_policies},
     model::Model,
-    organization::{Organization, OrganizationMember},
+    organization::{Group, Organization, OrganizationMember, Role},
     provider::{Provider, ProviderModel},
     user::User,
 };
@@ -33,6 +33,8 @@ fn request(action: &str, kind: &str, context: Context) -> anyhow::Result<Request
 fn all_entity_policies_assemble_into_one_cached_schema() {
     let assembled = Schema::from_schema_fragments([
         User::policy(),
+        Role::policy(),
+        Group::policy(),
         UserAuth::policy(),
         Organization::policy(),
         OrganizationMember::policy(),
@@ -42,7 +44,7 @@ fn all_entity_policies_assemble_into_one_cached_schema() {
         Session::policy(),
     ])
     .unwrap();
-    assert_eq!(assembled.action_entities().unwrap().iter().count(), 39);
+    assert_eq!(assembled.action_entities().unwrap().iter().count(), 57);
     assert!(std::ptr::eq(all_policies(), all_policies()));
     let names = all_policies()
         .action_entities()

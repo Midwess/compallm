@@ -7,7 +7,7 @@ use cedar_policy::{Schema, SchemaFragment};
 use crate::{
     auth::{Session, UserAuth},
     model::Model,
-    organization::{Organization, OrganizationMember},
+    organization::{Group, Organization, OrganizationMember, Role},
     provider::{Provider, ProviderModel},
     user::User,
 };
@@ -35,6 +35,8 @@ pub fn all_policies() -> &'static Schema {
     static SCHEMA: LazyLock<Schema> = LazyLock::new(|| {
         Schema::from_schema_fragments([
             User::policy(),
+            Role::policy(),
+            Group::policy(),
             UserAuth::policy(),
             Organization::policy(),
             OrganizationMember::policy(),

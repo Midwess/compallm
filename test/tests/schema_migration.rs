@@ -5,14 +5,14 @@ use sea_orm_migration::{MigratorTrait, SchemaManager};
 #[tokio::test]
 async fn creates_application_schema_with_scoped_usage_and_global_templates() {
     let migrations = Migrator::migrations();
-    assert_eq!(migrations.len(), 24);
+    assert_eq!(migrations.len(), 25);
     let db = MockDatabase::new(DbBackend::Postgres)
         .append_exec_results((0..100).map(|_| MockExecResult::default()))
         .into_connection();
-    for migration in migrations
-        .iter()
-        .filter(|m| !m.name().ends_with("seed_provider_templates"))
-    {
+    for migration in migrations.iter().filter(|m| {
+        !m.name().ends_with("seed_provider_templates")
+            && !m.name().ends_with("replace_membership_role_enum")
+    }) {
         migration.up(&SchemaManager::new(&db)).await.unwrap();
     }
     let log = format!("{:?}", db.into_transaction_log());
@@ -166,11 +166,10 @@ async fn drops_children_before_parents_and_owned_enums_after_their_tables() {
     let db = MockDatabase::new(DbBackend::Postgres)
         .append_exec_results((0..40).map(|_| MockExecResult::default()))
         .into_connection();
-    for migration in Migrator::migrations()
-        .into_iter()
-        .rev()
-        .filter(|m| !m.name().ends_with("seed_provider_templates"))
-    {
+    for migration in Migrator::migrations().into_iter().rev().filter(|m| {
+        !m.name().ends_with("seed_provider_templates")
+            && !m.name().ends_with("replace_membership_role_enum")
+    }) {
         migration.down(&SchemaManager::new(&db)).await.unwrap();
     }
     let log = format!("{:?}", db.into_transaction_log());

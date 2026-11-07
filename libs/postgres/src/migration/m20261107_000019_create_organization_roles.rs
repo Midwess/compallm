@@ -32,12 +32,6 @@ impl MigrationTrait for Migration {
                             .text()
                             .not_null(),
                     )
-                    .col(
-                        ColumnDef::new(OrganizationRoles::Revision)
-                            .big_integer()
-                            .not_null()
-                            .default(1_i64),
-                    )
                     .primary_key(
                         Index::create()
                             .col(OrganizationRoles::OrganizationId)
@@ -52,7 +46,6 @@ impl MigrationTrait for Migration {
                     )
                     .check(Expr::col(OrganizationRoles::OrganizationId).gt(0))
                     .check(Expr::col(OrganizationRoles::Id).gt(0))
-                    .check(Expr::col(OrganizationRoles::Revision).gt(0))
                     .check(
                         Func::char_length(
                             Func::cust(Alias::new("btrim")).arg(Expr::col(OrganizationRoles::Name)),
@@ -87,7 +80,6 @@ enum OrganizationRoles {
     Name,
     Description,
     CedarSource,
-    Revision,
 }
 
 #[derive(DeriveIden)]

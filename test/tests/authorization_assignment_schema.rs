@@ -89,7 +89,7 @@ async fn groups_have_scoped_identity_and_sessions_cover_the_full_positive_u32_ra
     assert!(groups[0].contains("PRIMARY KEY (\"organization_id\", \"id\")"));
     assert!(groups[0].contains("UNIQUE (\"organization_id\", \"name\")"));
     assert!(groups[0].contains("REFERENCES \"organizations\" (\"id\") ON DELETE CASCADE"));
-    assert!(groups[0].contains("\"revision\" bigint NOT NULL DEFAULT 1"));
+    assert!(!groups[0].contains("revision"));
     let sessions = sql("add_session_authorization_version", false).await;
     assert!(sessions[0].contains("\"authorization_version\" bigint NOT NULL DEFAULT 1"));
     assert!(sessions[0].contains("\"authorization_version\" BETWEEN 1 AND 4294967295"));

@@ -13,7 +13,6 @@ pub struct Group {
     pub organization_id: u64,
     pub name: String,
     pub description: String,
-    pub revision: u64,
     pub roles: Vec<Role>,
 }
 

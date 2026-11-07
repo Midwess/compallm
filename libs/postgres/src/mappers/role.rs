@@ -12,7 +12,6 @@ impl TryFrom<OrganizationRoleSchema> for Role {
             name: row.name,
             description: row.description,
             cedar_source: row.cedar_source,
-            revision: from_bigint(row.revision).context("invalid role revision")?,
         };
         Ok(role)
     }
@@ -34,7 +33,6 @@ impl TryFrom<(OrganizationGroupSchema, Vec<Role>)> for MappedGroup {
             organization_id: from_bigint(row.organization_id)?,
             name: row.name,
             description: row.description,
-            revision: from_bigint(row.revision)?,
             roles,
         };
         cedar_policy::Entity::try_from(&group)?;

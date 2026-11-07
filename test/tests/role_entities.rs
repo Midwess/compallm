@@ -135,7 +135,6 @@ fn group_roles_keep_provenance_and_inherit_without_copying_to_direct_roles() {
         organization_id: 42,
         name: "Operations".into(),
         description: String::new(),
-        revision: 1,
         roles: vec![Role::defaults(42).remove(1)],
     });
     assert_eq!(member.compatibility_role(), Role::ADMIN);
@@ -165,14 +164,13 @@ fn custom_role_names_never_establish_default_authority_and_invalid_source_is_fal
 }
 
 #[test]
-fn statement_identity_survives_formatting_reordering_and_revision_changes() {
+fn statement_identity_survives_formatting_and_reordering() {
     let mut role = Role::defaults(42).remove(0);
     let original = PolicySet::try_from(&role).unwrap();
     let ids = original
         .policies()
         .map(|p| p.id().to_string())
         .collect::<std::collections::BTreeSet<_>>();
-    role.revision += 1;
     role.cedar_source = original
         .policies()
         .collect::<Vec<_>>()
@@ -199,7 +197,6 @@ fn empty_groups_remain_inside_the_organization_resource_scope() {
         organization_id: 42,
         name: "Empty team".into(),
         description: String::new(),
-        revision: 1,
         roles: vec![],
     };
     let entity = Entity::try_from(&group).unwrap();

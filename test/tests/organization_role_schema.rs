@@ -21,8 +21,8 @@ async fn role_storage_keeps_canonical_source_and_enforces_organization_identity(
     assert!(up.contains("\"cedar_source\" text NOT NULL"));
     assert!(!up.contains("\"cedar_source\" text NOT NULL DEFAULT"));
     assert!(up.contains("\"description\" text NOT NULL DEFAULT ''"));
-    assert!(up.contains("\"revision\" bigint NOT NULL DEFAULT 1"));
-    for column in ["organization_id", "id", "revision"] {
+    assert!(!up.contains("revision"));
+    for column in ["organization_id", "id"] {
         assert!(up.contains(&format!("\"{column}\" > 0")));
     }
     assert!(

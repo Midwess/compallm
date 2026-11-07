@@ -37,7 +37,6 @@ impl Fixture {
             name: role.name,
             description: role.description,
             cedar_source: role.cedar_source,
-            revision: 1,
         };
         let role_row = role
             .into_mock_row()
@@ -123,7 +122,6 @@ async fn membership_hydrates_direct_and_inherited_roles_with_four_scoped_queries
         name: "Reports".into(),
         description: String::new(),
         cedar_source: String::new(),
-        revision: 1,
     }
     .into_mock_row()
     .into_column_value_tuples()
@@ -136,7 +134,6 @@ async fn membership_hydrates_direct_and_inherited_roles_with_four_scoped_queries
                 id,
                 name: format!("Team {id}"),
                 description: String::new(),
-                revision: 1,
             }
             .into_mock_row()
             .into_column_value_tuples()
@@ -153,7 +150,6 @@ async fn membership_hydrates_direct_and_inherited_roles_with_four_scoped_queries
                 name: role.name,
                 description: role.description,
                 cedar_source: role.cedar_source,
-                revision: 1,
             }
             .into_mock_row()
             .into_column_value_tuples()

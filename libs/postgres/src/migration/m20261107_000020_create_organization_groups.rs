@@ -27,12 +27,6 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(""),
                     )
-                    .col(
-                        ColumnDef::new(OrganizationGroups::Revision)
-                            .big_integer()
-                            .not_null()
-                            .default(1_i64),
-                    )
                     .primary_key(
                         Index::create()
                             .col(OrganizationGroups::OrganizationId)
@@ -47,7 +41,6 @@ impl MigrationTrait for Migration {
                     )
                     .check(Expr::col(OrganizationGroups::OrganizationId).gt(0))
                     .check(Expr::col(OrganizationGroups::Id).gt(0))
-                    .check(Expr::col(OrganizationGroups::Revision).gt(0))
                     .check(
                         Func::char_length(
                             Func::cust(Alias::new("btrim"))
@@ -85,7 +78,6 @@ enum OrganizationGroups {
     Id,
     Name,
     Description,
-    Revision,
 }
 
 #[derive(DeriveIden)]

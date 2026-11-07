@@ -75,8 +75,8 @@ permit(principal in Compallm::Role::"__ORG__:3", action == Compallm::Action::"mo
  resource is Compallm::Model in Compallm::Organization::"__ORG__") when { resource.enabled };
 "###;
 const UP: &str = r#"
-INSERT INTO organization_roles(organization_id,id,name,description,cedar_source,revision)
- SELECT o.id,seed.id,seed.name,'',replace(seed.source,'__ORG__',o.id::text),1
+INSERT INTO organization_roles(organization_id,id,name,description,cedar_source)
+ SELECT o.id,seed.id,seed.name,'',replace(seed.source,'__ORG__',o.id::text)
  FROM organizations o CROSS JOIN (VALUES (1::bigint,'Owner',$1),(2::bigint,'Admin',$2),(3::bigint,'Member',$3)) seed(id,name,source);
 INSERT INTO organization_member_roles(organization_id,user_id,role_id)
  SELECT m.organization_id,m.user_id,CASE m.role::text WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 WHEN 'member' THEN 3 END

@@ -11,7 +11,6 @@ pub struct Model {
     pub name: String,
     pub description: String,
     pub cedar_source: String,
-    pub revision: i64,
 }
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}

@@ -10,7 +10,6 @@ pub struct Model {
     pub id: i64,
     pub name: String,
     pub description: String,
-    pub revision: i64,
 }
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}

@@ -212,7 +212,7 @@ impl TryFrom<&OrganizationMember> for Entities {
                 "foreign membership role"
             );
             if let Some(previous) = role_records.insert((role.organization_id, role.id), role) {
-                anyhow::ensure!(previous == role, "conflicting role source/revision");
+                anyhow::ensure!(previous == role, "conflicting role definition");
             }
             insert(Entity::try_from(role)?)?;
         }

@@ -31,6 +31,7 @@ async fn enum_transition_backfills_records_and_refuses_lossy_rollback() {
         assert!(up.contains(expected), "missing {expected}");
     }
     assert!(!up.contains("builtin_key"));
+    assert!(!up.contains("revision"));
     assert!(down.contains("cannot downgrade multi-role/custom/group memberships"));
     assert!(down.contains("count(mr.role_id)<>1"));
 }

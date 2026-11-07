@@ -191,7 +191,7 @@ impl CoreRepository for OrganizationRepository {
         let db = PostgresConnection::from_context(&context)?;
         let mut rows = Vec::new();
         for role in roles {
-            rows.push(serde_json::json!({"organization_id":role.organization_id,"id":role.id,"name":role.name,"description":role.description,"cedar_source":role.cedar_source,"revision":role.revision}));
+            rows.push(serde_json::json!({"organization_id":role.organization_id,"id":role.id,"name":role.name,"description":role.description,"cedar_source":role.cedar_source}));
         }
         db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
             "INSERT INTO organization_roles SELECT * FROM jsonb_populate_recordset(NULL::organization_roles,$1::jsonb)",[serde_json::json!(rows).into()])).await.map_err(OrganizationRepositoryError::database)?;

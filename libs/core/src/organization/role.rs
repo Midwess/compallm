@@ -13,7 +13,6 @@ pub struct Role {
     pub name: String,
     pub description: String,
     pub cedar_source: String,
-    pub revision: u64,
 }
 
 impl Role {
@@ -112,7 +111,6 @@ permit(principal in Compallm::Role::"__ORG__:3", action == Compallm::Action::"mo
             name: name.into(),
             description: String::new(),
             cedar_source: source.replace("__ORG__", &organization_id.to_string()),
-            revision: 1,
         })
         .collect()
     }
@@ -169,7 +167,7 @@ impl SystemPolicy for Role {
     /// `role.policy.read/update` inspect/publish canonical Cedar separately.
     /// `role.delete` removes a custom role; protected built-ins cannot be edited.
     /// `role.assign/unassign` authorize delegating this Role, in addition to checks
-    /// on the target membership/group. All changes require organization/revision
+    /// on the target membership/group. All changes require organization-scope
     /// guards. These declarations do not implement publication or delegation checks;
     /// role management and its authorization flow remain separate work.
     fn policy() -> SchemaFragment {

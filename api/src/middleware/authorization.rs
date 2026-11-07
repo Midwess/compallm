@@ -28,14 +28,6 @@ impl RequireToken<UserAccessToken> {
             Err(ApiError::Forbidden)
         }
     }
-
-    pub fn require_roles(&self, roles: &[&str]) -> Result<(), ApiError> {
-        if roles.contains(&self.0.organization_role.as_str()) {
-            Ok(())
-        } else {
-            Err(ApiError::Forbidden)
-        }
-    }
 }
 
 impl<S, T> FromRequestParts<S> for RequireToken<T>

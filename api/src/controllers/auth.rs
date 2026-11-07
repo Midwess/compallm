@@ -230,7 +230,7 @@ pub struct ConfirmSigninOtpRequest {
 ///
 /// Requires an email-OTP access token in the access cookie or Authorization: Bearer, verified by middleware.
 /// JSON contains only code and delivery; token fields in JSON are rejected.
-/// Requires an existing active user and an active owner/admin organization membership.
+/// Requires an existing active user and an active organization membership.
 /// Records a new session. Cookie delivery (default) requires an allowed Origin, sets both
 /// HttpOnly cookies and returns lifetime metadata. Explicit delivery token returns
 /// accessToken and refreshToken in JSON without setting cookies. Delivery is not a JWT claim.
@@ -276,9 +276,6 @@ pub struct CurrentUserResponse {
     pub organization_id: u64,
     /// Organization name snapshot from the signed session; refreshed when tokens renew.
     pub organization_name: String,
-    /// Cached membership role from the access JWT, refreshed on renewal.
-    #[schema(value_type = String, example = "owner")]
-    pub organization_role: String,
 }
 
 pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
@@ -322,7 +319,6 @@ async fn current_user(
         user_id: claims.session.user_id,
         organization_id: claims.session.organization_id,
         organization_name: claims.session.organization_name,
-        organization_role: claims.organization_role,
     }))
 }
 

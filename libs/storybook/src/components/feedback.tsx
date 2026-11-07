@@ -190,7 +190,7 @@ export function EmptyState({ title, children, action }: { title: ReactNode; chil
   return (
     <div
       className={`
-  flex min-h-[128px] flex-col items-center gap-1 bg-surface p-3 text-center [&>h3]:text-[16px]
+  flex min-h-32 flex-col items-center gap-1 bg-surface p-3 text-center [&>h3]:text-[16px]
   [&>h3]:font-medium
 `}
     >
@@ -221,7 +221,7 @@ export function Callout({
       data-tone={tone}
     >
       <strong>{title}</strong>
-      <div className="text-[12px] leading-[18px] text-muted">{children}</div>
+      <div className="text-[12px] leading-4.5 text-muted">{children}</div>
       {action}
     </aside>
   )
@@ -235,7 +235,7 @@ export function Popover({ label, children }: { label: string; children: ReactNod
         id={id}
         popover="auto"
         className={`${popupMotion}
-  w-[360px] max-w-[calc(100vw-32px)] rounded-[12px] border-[0.5px] border-input-border bg-menu p-2
+  w-12 max-w-[calc(100vw-32px)] rounded-xl border-[0.5px] border-input-border bg-menu p-2
   text-text [&:popover-open]:absolute [&:popover-open]:m-1 [&:popover-open]:[position-area:bottom_span-right]
   [&:popover-open]:[position-try-fallbacks:flip-block,flip-inline] [&>*+*]:mt-1.5
 `}
@@ -246,9 +246,9 @@ export function Popover({ label, children }: { label: string; children: ReactNod
   )
 }
 export function DropInsertionIndicator({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div aria-hidden="true" {...props} className={cx('h-[2px] w-full rounded-[1px] bg-focus', className)} />
+  return <div aria-hidden="true" {...props} className={cx('h-0.5 w-full rounded-[1px] bg-focus', className)} />
 }
 
 export function FeedbackSlot({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div {...props} className={cx('h-16 overflow-y-auto', className)} />
+  return <div {...props} className={cx('h-fit py-1 overflow-y-auto', className)} />
 }

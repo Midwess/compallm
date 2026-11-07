@@ -7,5 +7,10 @@ pub mod error;
 
 pub use config_service::ConfigService;
 pub use creation_service::CreationService;
-pub use entity::{Organization, OrganizationMember, OrganizationRole, OrganizationStatus};
+pub use entity::{Organization, OrganizationMember, OrganizationStatus};
 pub use error::{OrganizationConfigError, OrganizationCreationError};
+
+pub mod group;
+pub mod role;
+pub use group::Group;
+pub use role::Role;

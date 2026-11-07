@@ -1,15 +1,13 @@
 use compallm_core::{
-    organization::{
-        CreationService, OrganizationCreationError, OrganizationRole, OrganizationStatus,
-    },
+    organization::{CreationService, OrganizationCreationError, OrganizationStatus},
     persistent::{DbContext, organization::OrganizationRepository},
     user::{User, UserStatus},
 };
 use compallm_postgres::{
-    OrganizationMemberSchema, OrganizationRoleSchema, OrganizationSchema, OrganizationStatusSchema,
-    UserStatusSchema, postgres_connection::PostgresConnection,
+    OrganizationMemberSchema, OrganizationSchema, OrganizationStatusSchema, UserStatusSchema,
+    postgres_connection::PostgresConnection,
 };
-use sea_orm::{DbBackend, DbErr, IntoMockRow, MockDatabase};
+use sea_orm::{DbBackend, DbErr, IntoMockRow, MockDatabase, MockExecResult};
 use std::{collections::BTreeMap, sync::Arc};
 
 struct Fixture {
@@ -32,15 +30,14 @@ impl Fixture {
         let member = OrganizationMemberSchema {
             organization_id: 84,
             user_id: 42,
-            role: OrganizationRoleSchema::Owner,
             status: UserStatusSchema::Active,
         };
         let mut membership: BTreeMap<_, _> =
             member.into_mock_row().into_column_value_tuples().collect();
-        membership.insert("role".to_string(), "owner".into());
         membership.insert("status".to_string(), "active".into());
-        let database =
-            MockDatabase::new(DbBackend::Postgres).append_query_results([vec![organization]]);
+        let database = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([vec![organization]])
+            .append_exec_results([MockExecResult::default()]);
         let database = if fail_owner {
             database.append_query_errors([DbErr::Custom("owner insert failed".into())])
         } else {
@@ -84,7 +81,10 @@ async fn default_organization_and_owner_are_inserted_in_one_transaction() {
     let sql = format!("{transactions:?}");
     assert!(sql.contains("James's organization"));
     assert!(sql.contains("organization_members"));
-    assert!(sql.contains("owner"));
+    assert!(sql.contains("Owner"));
+    assert!(sql.contains("Admin"));
+    assert!(sql.contains("Member"));
+    assert!(sql.contains("organization_member_roles"));
     assert!(sql.contains("BEGIN"));
     assert!(sql.contains("COMMIT"));
 }
@@ -121,25 +121,18 @@ async fn blank_organization_names_fail_before_any_database_operation() {
 }
 
 #[test]
-fn member_mapper_preserves_roles_and_rejects_invalid_ids() {
-    for (schema_role, expected) in [
-        (OrganizationRoleSchema::Owner, OrganizationRole::Owner),
-        (OrganizationRoleSchema::Admin, OrganizationRole::Admin),
-        (OrganizationRoleSchema::Member, OrganizationRole::Member),
-    ] {
-        let schema = OrganizationMemberSchema {
-            organization_id: 84,
-            user_id: 42,
-            role: schema_role,
-            status: UserStatusSchema::Active,
-        };
-        let member = compallm_core::organization::OrganizationMember::try_from(schema).unwrap();
-        assert_eq!(member.role, expected);
-    }
+fn member_mapper_retains_scoped_identity_without_inventing_assignments() {
+    let row = OrganizationMemberSchema {
+        organization_id: 84,
+        user_id: 42,
+        status: UserStatusSchema::Active,
+    };
+    let member = compallm_core::organization::OrganizationMember::try_from(row).unwrap();
+    assert_eq!(member.organization_id, 84);
+    assert!(member.roles.is_empty() && member.groups.is_empty());
     let invalid = OrganizationMemberSchema {
         organization_id: 0,
         user_id: -1,
-        role: OrganizationRoleSchema::Owner,
         status: UserStatusSchema::Active,
     };
     assert!(compallm_core::organization::OrganizationMember::try_from(invalid).is_err());

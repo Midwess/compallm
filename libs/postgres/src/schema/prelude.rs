@@ -17,3 +17,13 @@ pub use super::provider_video_usage::Entity as ProviderVideoUsage;
 pub use super::providers::Entity as Providers;
 pub use super::user_sessions::Entity as UserSessions;
 pub use super::users::Entity as Users;
+
+pub use super::organization_roles::Entity as OrganizationRoles;
+
+pub use super::organization_groups::Entity as OrganizationGroups;
+
+pub use super::organization_member_roles::Entity as OrganizationMemberRoles;
+
+pub use super::organization_group_members::Entity as OrganizationGroupMembers;
+
+pub use super::organization_group_roles::Entity as OrganizationGroupRoles;

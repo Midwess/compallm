@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
-#[cfg(feature = "frontend-dev")]
+#[cfg(debug_assertions)]
 use axum_frontend::{DevConfig, shutdown_requested};
 use compallm_postgres::{Migrator, init_id_generator};
 use loco_rs::boot::ServeParams;
@@ -18,7 +18,7 @@ use std::path::Path;
 
 use crate::di::Di;
 
-#[cfg(feature = "frontend-dev")]
+#[cfg(debug_assertions)]
 const PORTAL_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../portal");
 
 pub struct App;
@@ -89,7 +89,7 @@ impl Hooks for App {
         use std::net::SocketAddr;
 
         let listener = Self::tcp_listener(serve_params.port).await?;
-        #[cfg(feature = "frontend-dev")]
+        #[cfg(debug_assertions)]
         let dev_server = {
             crate::generate_contract(None)
                 .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
@@ -103,10 +103,10 @@ impl Hooks for App {
                 .spawn()
                 .await?
         };
-        #[cfg(feature = "frontend-dev")]
+        #[cfg(debug_assertions)]
         let app = app.merge(dev_server.router(["/"]));
 
-        #[cfg(feature = "frontend-dev")]
+        #[cfg(debug_assertions)]
         {
             tokio::select! {
                 result = axum::serve(
@@ -120,7 +120,7 @@ impl Hooks for App {
             Self::on_shutdown(ctx).await;
         }
 
-        #[cfg(not(feature = "frontend-dev"))]
+        #[cfg(not(debug_assertions))]
         {
             let shutdown_context = ctx.clone();
             axum::serve(
@@ -170,7 +170,7 @@ impl Hooks for App {
 
     async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
         let router = Self::with_api_fallback(router);
-        #[cfg(not(feature = "frontend-dev"))]
+        #[cfg(not(debug_assertions))]
         {
             use axum_frontend::static_router;
 
@@ -180,7 +180,7 @@ impl Hooks for App {
             ))));
         }
 
-        #[cfg(feature = "frontend-dev")]
+        #[cfg(debug_assertions)]
         Ok(router)
     }
 

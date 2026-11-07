@@ -4,3 +4,5 @@ pub mod organization_member;
 pub mod provider;
 pub mod session;
 pub mod user;
+
+pub mod role;

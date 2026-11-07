@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 
+use compallm_utils::input;
 use validify::{Validate, ValidationError, ValidationErrors};
 
-use super::{ApiKeyAuthentication, Connection, Headers, Provider, ProviderModel, input};
+use super::{ApiKeyAuthentication, Connection, Headers, Provider, ProviderModel};
 
 // Schema errors deliberately contain no submitted values, including header values.
 pub(super) fn invalid(code: &'static str) -> ValidationErrors {

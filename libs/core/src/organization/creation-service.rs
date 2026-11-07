@@ -5,8 +5,7 @@ use crate::{
 };
 
 use super::{
-    Organization, OrganizationCreationError, OrganizationMember, OrganizationRole,
-    OrganizationStatus,
+    Organization, OrganizationCreationError, OrganizationMember, OrganizationStatus, Role,
 };
 
 pub struct CreationService {
@@ -47,11 +46,14 @@ impl CreationService {
                     status: OrganizationStatus::Active,
                 })
                 .await?;
+            let roles = Role::defaults(organization.id);
+            self.organizations.create_roles(roles.clone()).await?;
             self.organizations
                 .add_member(OrganizationMember {
                     organization_id: organization.id,
                     user_id: user.id,
-                    role: OrganizationRole::Owner,
+                    roles: vec![roles[0].clone()],
+                    groups: Vec::new(),
                 })
                 .await?;
             Ok(organization)

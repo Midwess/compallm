@@ -9,10 +9,6 @@ publish = false
 [lints]
 workspace = true
 
-[features]
-default = []
-frontend-dev = ["axum-frontend/dev"]
-
 [dependencies]
 validify.workspace = true
 compallm-contract.workspace = true
@@ -21,7 +17,7 @@ compallm-utils.workspace = true
 cookie.workspace = true
 async-trait.workspace = true
 axum = { workspace = true, features = ["http1", "json", "tokio"] }
-axum-frontend.workspace = true
+axum-frontend = { workspace = true, features = ["dev"] }
 clap = { workspace = true, features = ["std", "derive", "color", "help", "usage", "error-context", "suggestions"] }
 compallm-postgres.workspace = true
 compallm-core.workspace = true

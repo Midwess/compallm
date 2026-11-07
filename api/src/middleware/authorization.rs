@@ -9,12 +9,9 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Response},
 };
-use compallm_core::{
-    auth::{
-        AccessToken, AuthError, AuthService, EmailOtpAccessToken, RefreshToken, UserAccessToken,
-        UserTokens,
-    },
-    organization::OrganizationRole,
+use compallm_core::auth::{
+    AccessToken, AuthError, AuthService, EmailOtpAccessToken, RefreshToken, UserAccessToken,
+    UserTokens,
 };
 use cookie::Cookie;
 
@@ -32,8 +29,8 @@ impl RequireToken<UserAccessToken> {
         }
     }
 
-    pub fn require_roles(&self, roles: &[OrganizationRole]) -> Result<(), ApiError> {
-        if roles.contains(&self.0.organization_role) {
+    pub fn require_roles(&self, roles: &[&str]) -> Result<(), ApiError> {
+        if roles.contains(&self.0.organization_role.as_str()) {
             Ok(())
         } else {
             Err(ApiError::Forbidden)

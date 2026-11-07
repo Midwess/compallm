@@ -25,14 +25,14 @@ function GroupSelection({ kind }: { kind: 'members' | 'roles' }) {
   const visible = entries.filter((e) => `${e.name} ${e.detail}`.toLocaleLowerCase().includes(normalized))
   const title = kind === 'members' ? 'Members' : 'Assigned roles'
   return (
-    <section className="flex min-h-62 min-w-0 flex-1 flex-col gap-4" aria-label={title}>
+    <section className="flex min-w-0 flex-1 flex-col gap-4" aria-label={title}>
       <div className="flex shrink-0 items-center gap-2 px-4">
         <SettingsSectionTitle>{title}</SettingsSectionTitle>
         <span className="text-xs text-muted">
           {selected.length} / {entries.length}
         </span>
       </div>
-      <SectionSurface className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-4">
+      <SectionSurface className="flex flex-1 flex-col">
         <div className="shrink-0 p-4">
           <SearchField
             aria-label={`Search group ${kind}`}
@@ -49,7 +49,7 @@ function GroupSelection({ kind }: { kind: 'members' | 'roles' }) {
           className="mx-4 min-h-32 max-h-[90vh] flex-1 overflow-auto overscroll-contain outline-offset-2
 [scrollbar-gutter:stable] focus-visible:outline-2 focus-visible:outline-focus"
         >
-          <Table className="overflow-visible">
+          <Table className="overflow-visible min-h-80">
             <Table.Content aria-label={`Select group ${kind}`} className="min-w-112">
               <colgroup>
                 <col className="w-[42%]" />
@@ -113,7 +113,7 @@ export function GroupEditorSettings() {
       </SettingsContent>
     )
   return (
-    <SettingsContent className="flex min-h-[min(48rem,90vh)] max-h-[90vh] max-w-208 flex-col pt-14 pb-6">
+    <SettingsContent className="flex min-h-[min(48rem,90vh)] max-w-208 flex-col pt-14 pb-6">
       <Heading className="mb-8 shrink-0">{draft.id ? draft.name : 'New group'}</Heading>
       <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto">
         <Section title="Group details" className="shrink-0">

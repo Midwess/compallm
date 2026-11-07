@@ -167,7 +167,7 @@ impl UserTokens {
     /// Call after the workflow authorizes the user.
     pub fn new(
         session: &super::Session,
-        organization_role: crate::organization::OrganizationRole,
+        organization_role: impl Into<String>,
         secret: &str,
         user_lifetime: Duration,
         refresh_lifetime: Duration,
@@ -178,7 +178,7 @@ impl UserTokens {
 
     pub fn from_refresh(
         refresh: &RefreshToken,
-        organization_role: crate::organization::OrganizationRole,
+        organization_role: impl Into<String>,
         secret: &str,
         user_lifetime: Duration,
     ) -> Result<Self, AuthError> {

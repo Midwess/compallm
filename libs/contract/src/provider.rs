@@ -1,7 +1,7 @@
 //! Shared provider contracts. Exporting types does not register API endpoints.
 pub mod api;
 use crate::ContractSchema;
-use compallm_core::provider::input;
+use compallm_utils::input;
 use serde::{Deserialize, Serialize};
 use validify::Validify;
 

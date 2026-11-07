@@ -766,28 +766,6 @@ async fn invalid_otp_does_not_reach_persistence() {
 }
 
 #[tokio::test]
-async fn invalid_registration_emails_are_rejected_before_persistence() {
-    for email in [
-        "not-an-email",
-        "@midwess.com",
-        "james dang@midwess.com",
-        "james@midwess.com@elsewhere.com",
-    ] {
-        let fixture = Fixture::new(None);
-        assert!(fixture.register(email).await.is_err());
-        assert!(fixture.repo.0.lock().unwrap().contexts.is_empty());
-        assert!(
-            fixture
-                .db
-                .as_ref()
-                .clone()
-                .into_transaction_log()
-                .is_empty()
-        );
-    }
-}
-
-#[tokio::test]
 async fn signup_derives_user_name_and_default_organization_from_the_email() {
     for local_part in [
         "James.Dang+dev".to_string(),

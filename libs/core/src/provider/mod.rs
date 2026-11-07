@@ -6,7 +6,6 @@ mod creation_service;
 mod credential;
 pub mod entity;
 pub mod error;
-pub mod input;
 mod validation;
 
 pub use configuration::*;

@@ -90,7 +90,7 @@ impl AuthService {
     /// Require an existing active account before admitting signin email.
     pub async fn signin_email(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
         let email = compallm_utils::email::normalize_email(email);
-        crate::user::User::validate_email(&email).map_err(|_| AuthError::InvalidEmail)?;
+        compallm_utils::email::validate_email(&email).map_err(|_| AuthError::InvalidEmail)?;
         let user = self
             .users
             .find_by_email(&email)

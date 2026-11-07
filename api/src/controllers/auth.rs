@@ -6,10 +6,8 @@ use axum::{
 };
 use axum_valid::ValidifiedByRef;
 use compallm_contract::ContractSchema;
-use compallm_core::{
-    auth::{AuthService, EmailOtpAccessToken, UserAccessToken},
-    user::User,
-};
+use compallm_core::auth::{AuthService, EmailOtpAccessToken, UserAccessToken};
+use compallm_utils::email;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -37,7 +35,7 @@ pub struct SignupEmailRequest {
     /// Trimmed and ASCII-lowercased before email validation. Any valid domain is accepted.
     #[schema(example = "reader@example.com")]
     #[modify(trim, custom(str::make_ascii_lowercase))]
-    #[validate(custom(function = User::validate_email))]
+    #[validate(custom(function = email::validate_email))]
     pub email: String,
     /// Cookie (default) sets the OTP access cookie and returns lifetime metadata; token additionally returns the credential.
     #[serde(default)]
@@ -159,7 +157,7 @@ pub struct SigninEmailRequest {
     /// Trimmed and ASCII-lowercased before email validation. Account existence is checked only at confirmation.
     #[schema(example = "reader@example.com")]
     #[modify(trim, custom(str::make_ascii_lowercase))]
-    #[validate(custom(function = User::validate_email))]
+    #[validate(custom(function = email::validate_email))]
     pub email: String,
     /// Cookie (default) sets the OTP access cookie and returns lifetime metadata; token additionally returns the credential.
     #[serde(default)]

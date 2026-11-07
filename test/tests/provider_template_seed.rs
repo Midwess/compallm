@@ -1,12 +1,15 @@
-use compallm_core::provider::input;
 use compallm_postgres::Migrator;
+use compallm_utils::input;
 use sea_orm::{DbBackend, MockDatabase, MockExecResult};
 use sea_orm_migration::{MigratorTrait, SchemaManager};
 use std::collections::HashSet;
 
 #[tokio::test]
 async fn migration_rows_cover_the_catalog_without_credentials_or_invented_defaults() {
-    let migration = Migrator::migrations().pop().unwrap();
+    let migration = Migrator::migrations()
+        .into_iter()
+        .find(|migration| migration.name() == "m20261106_000018_seed_provider_templates")
+        .unwrap();
     let db = MockDatabase::new(DbBackend::Postgres)
         .append_exec_results((0..2).map(|_| MockExecResult::default()))
         .into_connection();
@@ -147,7 +150,10 @@ async fn migration_rows_cover_the_catalog_without_credentials_or_invented_defaul
 
 #[tokio::test]
 async fn migration_seeds_parent_and_child_rows_atomically_and_only_removes_unchanged_data() {
-    let migration = Migrator::migrations().pop().unwrap();
+    let migration = Migrator::migrations()
+        .into_iter()
+        .find(|migration| migration.name() == "m20261106_000018_seed_provider_templates")
+        .unwrap();
     assert_eq!(migration.name(), "m20261106_000018_seed_provider_templates");
     let db = MockDatabase::new(DbBackend::Postgres)
         .append_exec_results((0..4).map(|_| MockExecResult::default()))

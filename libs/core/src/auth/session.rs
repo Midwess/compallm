@@ -1,3 +1,9 @@
+use std::sync::LazyLock;
+
+use cedar_policy::SchemaFragment;
+
+use crate::authorization::SystemPolicy;
+
 use super::{AuthError, RefreshToken};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -73,5 +79,44 @@ impl Session {
     pub fn revoke(&mut self) {
         self.revoked_at
             .get_or_insert_with(compallm_utils::time::unix_timestamp);
+    }
+}
+
+impl SystemPolicy for Session {
+    /// Declares ownership-scoped account session management, not token access.
+    ///
+    /// - `session.list`: list safe summaries of the authenticated User's own sessions;
+    ///   the container is User, so viewing personal security does not require an
+    ///   organization-administrator grant. Queries retain organization scoping as needed.
+    /// - `session.metadata.read`: inspect safe metadata for an owned Session; require its `user`
+    ///   reference to equal the authenticated principal. Never expose bearer/refresh tokens.
+    /// - `session.revoke`: invalidate an owned Session, including current-session signout;
+    ///   revocation is irreversible and must not issue replacement authority.
+    ///
+    /// These are baseline account operations independent of custom roles. Knowing a
+    /// session ID or being an organization administrator is not permission to read
+    /// another user's sessions. Privileged cross-user revocation is not defined here.
+    /// Existing authentication and token checks remain required; the schema itself
+    /// neither proves ownership nor isolates baseline decisions from custom forbids.
+    fn policy() -> SchemaFragment {
+        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
+            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(
+                r#"
+namespace Compallm {
+    entity Session in [Organization] { organization: Organization, user: User };
+    action "session.list" appliesTo { principal: User, resource: User };
+    action "session.metadata.read" appliesTo { principal: User, resource: Session };
+    action "session.revoke" appliesTo { principal: User, resource: Session };
+}
+"#,
+            )
+            .expect("Session SystemPolicy must be a valid static Cedar schema fragment");
+            assert!(
+                warnings.count() == 0,
+                "Session SystemPolicy must not contain schema warnings"
+            );
+            fragment
+        });
+        DEFINITION.clone()
     }
 }

@@ -22,6 +22,18 @@ mod m20261106_000016_create_provider_templates;
 mod m20261106_000017_create_provider_model_templates;
 mod m20261106_000018_seed_provider_templates;
 
+mod m20261107_000019_create_organization_roles;
+
+mod m20261107_000020_create_organization_groups;
+
+mod m20261107_000021_create_organization_member_roles;
+
+mod m20261107_000022_create_organization_group_members;
+
+mod m20261107_000023_create_organization_group_roles;
+
+mod m20261107_000024_add_session_authorization_version;
+
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -46,6 +58,12 @@ impl MigratorTrait for Migrator {
             Box::new(m20261106_000016_create_provider_templates::Migration),
             Box::new(m20261106_000017_create_provider_model_templates::Migration),
             Box::new(m20261106_000018_seed_provider_templates::Migration),
+            Box::new(m20261107_000019_create_organization_roles::Migration),
+            Box::new(m20261107_000020_create_organization_groups::Migration),
+            Box::new(m20261107_000021_create_organization_member_roles::Migration),
+            Box::new(m20261107_000022_create_organization_group_members::Migration),
+            Box::new(m20261107_000023_create_organization_group_roles::Migration),
+            Box::new(m20261107_000024_add_session_authorization_version::Migration),
             // inject-above (do not remove this comment)
         ]
     }

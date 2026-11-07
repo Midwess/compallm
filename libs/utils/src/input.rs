@@ -1,4 +1,4 @@
-//! Shared provider input policies. Contract descriptions contain only safe rules,
+//! Shared stateless input validators and their contract exporters. Contract descriptions contain only safe rules,
 //! never submitted values. Custom formats have explicit browser implementations.
 use regex::Regex;
 use serde_json::{Value, json};

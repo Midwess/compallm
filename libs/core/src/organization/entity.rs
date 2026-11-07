@@ -1,3 +1,9 @@
+use std::sync::LazyLock;
+
+use cedar_policy::SchemaFragment;
+
+use crate::authorization::SystemPolicy;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OrganizationStatus {
     Active,
@@ -50,4 +56,83 @@ struct OrganizationName {
     #[modify(trim)]
     #[validate(length(min = 1, max = 63), custom(function = Organization::validate_name_characters))]
     value: String,
+}
+
+impl SystemPolicy for Organization {
+    /// Declares private organization settings and destructive administration.
+    ///
+    /// - `organization.settings.read`: inspect non-public organization configuration.
+    ///   Public profile/name visibility does not grant access to these settings.
+    /// - `organization.settings.update`: change permitted organization configuration;
+    ///   public profile reading and settings reading grant no mutation authority.
+    /// - `organization.delete`: delete the entire organization through its protected
+    ///   ownership, confirmation, retention, and concurrent last-owner safeguards.
+    ///
+    /// Organization profiles are readable by everyone without RBAC; no profile-read
+    /// action exists. Public projections omit settings and membership administration.
+    /// Protected targets remain in the verified active organization; an ID or a
+    /// role held elsewhere is insufficient. Schema declarations do not grant access.
+    fn policy() -> SchemaFragment {
+        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
+            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(
+                r#"
+namespace Compallm {
+    entity Organization;
+    action "organization.settings.read" appliesTo { principal: User, resource: Organization };
+    action "organization.settings.update" appliesTo { principal: User, resource: Organization };
+    action "organization.delete" appliesTo { principal: User, resource: Organization };
+}
+"#,
+            )
+            .expect("Organization SystemPolicy must be a valid static Cedar schema fragment");
+            assert!(
+                warnings.count() == 0,
+                "Organization SystemPolicy must not contain schema warnings"
+            );
+            fragment
+        });
+        DEFINITION.clone()
+    }
+}
+
+impl SystemPolicy for OrganizationMember {
+    /// Declares membership enumeration, metadata, and administration use cases.
+    ///
+    /// - `member.list`: enumerate permitted membership summaries in an Organization;
+    ///   this requires a membership-listing grant, not merely knowledge of its ID.
+    /// - `member.metadata.read`: inspect protected membership state and role assignments, not a
+    ///   public user profile. It exposes no authentication or private account data;
+    ///   the membership response contract must define its exact projection.
+    /// - `member.invite`: invite someone into the destination Organization; invitation
+    ///   verification and any initial role assignment require their own checks.
+    /// - `member.remove`: remove the targeted membership, never the global user.
+    ///   Self-leave and last-owner safeguards belong to the membership workflow.
+    /// - `member.role.assign` / `member.role.unassign`: change a specific Member/Role
+    ///   relationship using `context.role`. Both must belong to the active organization.
+    ///   Delegation ceilings, built-in-role protection, and concurrent removal guards
+    ///   are additional checks; permission to edit a member is not permission to escalate.
+    ///
+    /// Membership administration is separate from unrestricted public profile reading. Role
+    /// context is a typed reference, not evidence that the role exists or is assignable.
+    fn policy() -> SchemaFragment {
+        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
+            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(r#"
+namespace Compallm {
+    entity Member in [Organization] { organization: Organization, user: User };
+    action "member.list" appliesTo { principal: User, resource: Organization };
+    action "member.invite" appliesTo { principal: User, resource: Organization };
+    action "member.metadata.read" appliesTo { principal: User, resource: Member };
+    action "member.remove" appliesTo { principal: User, resource: Member };
+    action "member.role.assign" appliesTo { principal: User, resource: Member, context: { role: Role } };
+    action "member.role.unassign" appliesTo { principal: User, resource: Member, context: { role: Role } };
+}
+"#).expect("OrganizationMember SystemPolicy must be a valid static Cedar schema fragment");
+            assert!(
+                warnings.count() == 0,
+                "OrganizationMember SystemPolicy must not contain schema warnings"
+            );
+            fragment
+        });
+        DEFINITION.clone()
+    }
 }

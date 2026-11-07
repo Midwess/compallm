@@ -1,7 +1,7 @@
 //! Schema-only provider API. No routes, repositories, or network calls live here.
 use super::ProviderHeader;
 use crate::ContractSchema;
-use compallm_core::provider::input;
+use compallm_utils::input;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Value, json};
 use utoipa::ToSchema;

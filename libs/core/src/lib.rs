@@ -4,6 +4,7 @@
 //! HTTP cookie transport and concrete email delivery remain separate work.
 
 pub mod auth;
+pub mod authorization;
 pub mod mail;
 pub mod model;
 pub mod organization;

@@ -12,14 +12,19 @@ const disclosureMotion = `
   motion-safe:[&::details-content]:duration-150 motion-safe:[&::details-content]:transition-discrete
 `
 
-export function Sidebar({ children, className, ...props }: HTMLAttributes<HTMLElement>) {
+export function Sidebar({
+  children,
+  className,
+  navigationLabel = 'Workspace navigation',
+  ...props
+}: HTMLAttributes<HTMLElement> & { navigationLabel?: string }) {
   return (
     <aside
       {...props}
       className={cx('flex h-full min-h-0 w-[244px] shrink-0 flex-col overflow-x-hidden bg-background px-3 py-1', className)}
     >
       <nav
-        aria-label="Workspace navigation"
+        aria-label={navigationLabel}
         className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto"
       >
         {children}
@@ -282,6 +287,7 @@ interface DisclosureProps {
   defaultOpen?: boolean
   onAdd?: () => void
   addLabel?: string
+  className?: string
 }
 
 function AddAction({ onAdd, label }: { onAdd?: () => void; label: string }) {
@@ -292,10 +298,10 @@ function AddAction({ onAdd, label }: { onAdd?: () => void; label: string }) {
   ) : null
 }
 
-export function SidebarSection({ label, children, defaultOpen = true, onAdd, addLabel }: DisclosureProps) {
+export function SidebarSection({ label, children, defaultOpen = true, onAdd, addLabel, className }: DisclosureProps) {
   const id = useId()
   return (
-    <div className="relative shrink-0">
+    <div className={cx('relative shrink-0', className)}>
       <details open={defaultOpen} className={cx('group/sidebar-section', disclosureMotion)}>
         <summary
           aria-controls={id}
@@ -332,13 +338,15 @@ export function SidebarFolder({
   defaultOpen = true,
   onAdd,
   addLabel,
+  className,
 }: DisclosureProps & {
   icon: ReactNode
 }) {
   const id = useId()
+  const disclosure = useRef<HTMLDetailsElement>(null)
   return (
-    <div className="relative">
-      <details open={defaultOpen} className={cx('group/sidebar-folder', disclosureMotion)}>
+    <div className={cx('relative', className)}>
+      <details ref={disclosure} open={defaultOpen} className={cx('group/sidebar-folder', disclosureMotion)}>
         <summary
           aria-controls={id}
           className={cx(
@@ -364,7 +372,17 @@ leading-[17px] text-muted hover:bg-elevated marker:hidden [&::-webkit-details-ma
           {children}
         </div>
       </details>
-      <AddAction onAdd={onAdd} label={addLabel ?? `Add ${label.toLowerCase()}`} />
+      <AddAction
+        onAdd={
+          onAdd
+            ? () => {
+                if (disclosure.current) disclosure.current.open = true
+                onAdd()
+              }
+            : undefined
+        }
+        label={addLabel ?? `Add ${label.toLowerCase()}`}
+      />
     </div>
   )
 }
@@ -375,12 +393,14 @@ export function SidebarItem({
   icon,
   selected = false,
   onNavigate,
+  className,
 }: {
   label: string
   href: string
   icon: ReactNode
   selected?: boolean
   onNavigate?: (href: string) => void
+  className?: string
 }) {
   return (
     <a
@@ -393,6 +413,7 @@ flex h-7 min-w-0 items-center gap-1.5 rounded-[6px] px-2 text-xs font-medium lea
 hover:bg-elevated hover:text-text aria-[current=page]:bg-elevated aria-[current=page]:text-text
 `,
         focus,
+        className,
       )}
       onClick={(event) => {
         if (

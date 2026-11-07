@@ -18,14 +18,17 @@
     "postinstall": "npm --prefix ../contract ci --ignore-scripts && npm --prefix ../contract run build"
   },
   "dependencies": {
+    "@compallm/contract": "file:../contract",
     "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
     "@phosphor-icons/react": "2.1.10",
     "dompurify": "^3.4.17",
+    "shiki": "^4.6.0",
     "tailwind-merge": "^3.7.0",
-    "zustand": "^5.0.16",
-    "@compallm/contract": "file:../contract"
+    "zustand": "^5.0.16"
   },
   "devDependencies": {
+    "@cedar-policy/cedar-wasm": "4.14.0",
     "@eslint/js": "^9",
     "@playwright/test": "^1.64.1",
     "@storybook/addon-a11y": "10.6.4",
@@ -104,6 +107,11 @@
       "compallm-source": "./src/pages/main/index.tsx",
       "types": "./dist/pages/main/index.d.ts",
       "import": "./dist/pages/main.js"
+    },
+    "./pages/settings": {
+      "compallm-source": "./src/pages/settings/index.tsx",
+      "types": "./dist/pages/settings/index.d.ts",
+      "import": "./dist/pages/settings.js"
     },
     "./pages/organization": {
       "compallm-source": "./src/pages/organization/index.tsx",

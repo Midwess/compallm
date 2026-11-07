@@ -13,6 +13,7 @@ import {
 } from 'react'
 import { CaretRightIcon } from '@phosphor-icons/react/dist/csr/CaretRight'
 import { cx, popupMotion } from './shared'
+import { Checkbox, type CheckboxProps } from './selection'
 interface Scope {
   id: string
   anchor: string
@@ -137,6 +138,14 @@ function IconTrigger(props: ButtonHTMLAttributes<HTMLButtonElement>) {
 function Separator() {
   return <div role="separator" className="my-1 h-px bg-border/60" />
 }
+function CheckboxItem({ children, className, ...props }: CheckboxProps & { children: ReactNode }) {
+  return (
+    <label className={cx('flex min-h-9 cursor-pointer items-center gap-3 rounded px-2 text-[13px] hover:bg-border', className)}>
+      <Checkbox {...props} role="menuitemcheckbox" />
+      {children}
+    </label>
+  )
+}
 function Submenu({ label, children }: { label: ReactNode; children: ReactNode }) {
   const [open, setOpen] = useState(false)
   const [left, setLeft] = useState(false)
@@ -228,4 +237,4 @@ shadow-menu
     </div>
   )
 }
-export const Popup = Object.assign(Root, { Trigger, IconTrigger, Content, Item, Separator, Submenu })
+export const Popup = Object.assign(Root, { Trigger, IconTrigger, Content, Item, CheckboxItem, Separator, Submenu })

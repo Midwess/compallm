@@ -12,7 +12,7 @@ export function TextField({ className, ...props }: TextFieldProps) {
       className={cx(
         `
   block h-8 w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
-  py-0.5 text-sm leading-5 text-text placeholder:text-muted placeholder:opacity-100
+  py-0.75 text-left text-sm leading-[22px] text-text placeholder:text-muted placeholder:opacity-100
   focus:border-muted/60 focus:outline-none aria-invalid:border-error
   disabled:cursor-not-allowed disabled:opacity-50
 `,
@@ -29,7 +29,7 @@ export function MultilineField({ className, ...props }: TextareaHTMLAttributes<H
       className={cx(
         `
   block h-8 w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
-  py-0.5 text-sm leading-5 text-text placeholder:text-muted placeholder:opacity-100
+  py-0.75 text-left text-sm leading-[22px] text-text placeholder:text-muted placeholder:opacity-100
   focus:border-muted/60 focus:outline-none aria-invalid:border-error
   disabled:cursor-not-allowed disabled:opacity-50 h-auto min-h-16 resize-y
 `,
@@ -44,23 +44,14 @@ function SearchboxRoot({ className, children, ...props }: import('react').HTMLAt
     <div {...props} className={cx('relative min-w-0', className)}>
       <MagnifyingGlassIcon
         aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted"
+        className="pointer-events-none absolute top-1/2 left-1.5 size-3.5 -translate-y-1/2 text-muted"
       />
       {children}
     </div>
   )
 }
 function SearchboxInput(props: TextFieldProps) {
-  return (
-    <TextField
-      type="search"
-      {...props}
-      className={cx(
-        'h-8 rounded-lg border-transparent bg-elevated py-1 pr-3 pl-8 text-xs leading-5 focus:outline-input-border',
-        props.className,
-      )}
-    />
-  )
+  return <TextField type="search" {...props} className={cx('h-8 py-0.75 pr-1.5 pl-6 text-[13px] leading-5', props.className)} />
 }
 export const Searchbox = Object.assign(SearchboxRoot, { Input: SearchboxInput })
 export function SearchField({ className, ...props }: TextFieldProps) {

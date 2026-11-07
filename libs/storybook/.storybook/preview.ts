@@ -6,7 +6,8 @@ import './tailwind.css'
 
 const preview: Preview = {
   decorators: [
-    (Story) => createElement('div', { className: 'bg-background font-sans text-text scheme-dark' }, createElement(Story)),
+    (Story) =>
+      createElement('div', { className: 'min-h-dvh bg-background font-sans text-text scheme-dark' }, createElement(Story)),
   ],
   parameters: {
     layout: 'padded',

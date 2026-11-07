@@ -9,7 +9,7 @@ import { Table } from '../../src/components/table'
 import { FormField } from '../../src/components/form-field'
 import { Searchbox } from '../../src/components/fields'
 import { RichMessage } from '../../src/components/rich-message'
-import { Checkbox } from '../../src/components/selection'
+import { Checkbox, Switch } from '../../src/components/selection'
 
 const meta = {
   title: 'Components/Composition primitives',
@@ -114,6 +114,38 @@ export const TableComposition: Story = {
         </Table.Body>
       </Table.Content>
     </Table>
+  ),
+}
+export const CategorizedTable: Story = {
+  render: () => (
+    <div className="max-h-64 max-w-160 overflow-auto rounded-lg bg-inset p-4">
+      <Table className="overflow-visible">
+        <Table.Content className="border-separate border-spacing-0" aria-label="Categorized table example">
+          <Table.Header className="sticky top-0 z-20 bg-inset">
+            <Table.Row>
+              <Table.Head>Name</Table.Head>
+              <Table.Head>Scope</Table.Head>
+              <Table.Head>Allow</Table.Head>
+            </Table.Row>
+          </Table.Header>
+          {['Models', 'Providers', 'Groups'].map((category) => (
+            <Table.Category key={category} label={category} count="0 / 5" action={<Switch aria-label={'Allow ' + category} />}>
+              {Array.from({ length: 5 }, (_, i) => (
+                <Table.Row key={i}>
+                  <Table.Cell>
+                    {category} action {i + 1}
+                  </Table.Cell>
+                  <Table.Cell>Sample scope</Table.Cell>
+                  <Table.Cell>
+                    <Switch aria-label={category + ' action ' + (i + 1)} />
+                  </Table.Cell>
+                </Table.Row>
+              ))}
+            </Table.Category>
+          ))}
+        </Table.Content>
+      </Table>
+    </div>
   ),
 }
 export const ControlsComposition: Story = {

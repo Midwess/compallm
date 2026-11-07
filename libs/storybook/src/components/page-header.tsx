@@ -7,8 +7,8 @@ export function PageHeader({ className, ...props }: HTMLAttributes<HTMLElement>)
       {...props}
       data-ui="page-header"
       className={cx(
-        'sticky top-0 z-10 flex h-9 min-w-0 shrink-0 items-center gap-4',
-        'border-b-[0.5px] border-divider bg-surface px-3',
+        'sticky top-0 z-10 flex h-10 min-w-0 shrink-0 items-center gap-4',
+        'border-b-[0.5px] border-divider bg-surface px-4',
         className,
       )}
     />

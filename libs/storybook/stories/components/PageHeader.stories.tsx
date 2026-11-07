@@ -16,7 +16,7 @@ function Demo({ long = false }: { long?: boolean }) {
           </Button>
         </Functions>
       </PageHeader>
-      <div className="grid gap-6 px-3 py-6">
+      <div className="grid gap-6 px-4 py-6">
         <SearchField aria-label="Search members" placeholder="Search members…" className="max-w-[280px]" />
         <p data-ui="content-start" className="text-xs text-muted">
           Content shares the header title’s left edge.

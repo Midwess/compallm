@@ -6,21 +6,17 @@ export function SectionHeading({
   children,
   description,
   action,
+  className,
+  ...props
 }: {
-  children: ReactNode
   description?: ReactNode
   action?: ReactNode
-}) {
+} & HTMLAttributes<HTMLDivElement>) {
   return (
-    <div
-      className={`
-  flex items-center justify-between gap-1.5 [&_h2]:text-[15px] [&_h2]:leading-[24px]
-  [&_h2]:font-medium [&_p]:text-[13px]
-`}
-    >
-      <div>
-        <h2>{children}</h2>
-        {description ? <p className="text-muted">{description}</p> : null}
+    <div {...props} className={cx('flex min-w-0 items-center justify-between gap-1.5', className)}>
+      <div className="min-w-0">
+        <h2 className="text-[15px] leading-[23px] font-medium">{children}</h2>
+        {description ? <p className="mt-0.5 text-[13px] leading-5 text-muted">{description}</p> : null}
       </div>
       {action}
     </div>
@@ -30,21 +26,27 @@ export function SettingsRow({
   label,
   description,
   children,
+  className,
+  ...props
 }: {
   label: ReactNode
   description?: ReactNode
   children: ReactNode
-}) {
+} & HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={`
+      {...props}
+      className={cx(
+        `
   flex min-h-[65px] items-center gap-1.5 bg-inset p-2 max-[480px]:flex-wrap
   [&>div:first-child]:min-w-0 [&>div:first-child]:flex-1 [&_strong]:text-[13px] [&_strong]:font-medium
-`}
+`,
+        className,
+      )}
     >
       <div>
-        <strong>{label}</strong>
-        {description ? <p className="text-[12px] leading-[18px] text-muted">{description}</p> : null}
+        <strong className="block leading-4">{label}</strong>
+        {description ? <p className="mt-0.5 text-[12px] leading-[15px] text-muted">{description}</p> : null}
       </div>
       {children}
     </div>
@@ -89,22 +91,7 @@ export function Badge({ tone = 'neutral', className, ...props }: HTMLAttributes<
     />
   )
 }
-export function CodePreview({ code, language }: { code: string; language?: string }) {
-  return (
-    <figure
-      className={`
-  overflow-hidden rounded-[6px] bg-elevated [&>figcaption]:border-b-[0.5px] [&>figcaption]:border-divider
-  [&>figcaption]:p-1.5 [&>figcaption]:text-[12px] [&>figcaption]:text-muted [&>pre]:m-0
-  [&>pre]:overflow-x-auto [&>pre]:p-2 [&>pre]:text-[12px] [&>pre]:leading-[20px]
-`}
-    >
-      {language ? <figcaption>{language}</figcaption> : null}
-      <pre>
-        <code>{code}</code>
-      </pre>
-    </figure>
-  )
-}
+export { CodePreview } from './code-block'
 export function DiffLine({
   change = 'context',
   lineNumber,

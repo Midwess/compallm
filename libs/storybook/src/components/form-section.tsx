@@ -9,7 +9,7 @@ function Root({ children, className, ...props }: HTMLAttributes<HTMLElement>) {
       <section {...props} aria-labelledby={id} className={cx('group/section relative grid min-w-0 gap-4 pl-4', className)}>
         <div
           aria-hidden="true"
-          className="absolute top-5 -bottom-5 -left-0.5 w-px -translate-x-1/2 bg-border group-last-of-type/section:hidden"
+          className="absolute top-3 -bottom-9 -left-0.5 w-px -translate-x-1/2 bg-border group-last-of-type/section:hidden"
         />
         {children}
       </section>

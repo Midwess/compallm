@@ -1,5 +1,5 @@
 [workspace]
-members = ["api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "libs/contract", "libs/contract-macros", "test", "router", "sec"]
+members = ["api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "libs/contract", "libs/contract-macros", "libs/adapter", "test", "router", "sec"]
 resolver = "3"
 
 [workspace.package]
@@ -11,6 +11,11 @@ license = "Elastic-2.0"
 borrowed_box = "allow"
 
 [workspace.dependencies]
+bytes = { version = "1", default-features = false }
+futures-core = { version = "0.3", default-features = false }
+pin-project-lite = { version = "0.2", default-features = false }
+reqwest = { version = "0.12", default-features = false }
+tokio-util = { version = "0.7", default-features = false }
 sec = { path = "sec" }
 jsonwebtoken = { version = "10", default-features = false }
 validify = { version = "2", default-features = false }

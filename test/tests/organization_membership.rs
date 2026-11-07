@@ -30,7 +30,7 @@ impl Fixture {
             .collect();
         row.insert("A_status".to_string(), "active".into());
         row.insert("B_status".to_string(), "active".into());
-        let role = Role::defaults(84).remove(1);
+        let role = Role::defaults(84, [1, 2, 3]).remove(1);
         let role = OrganizationRoleSchema {
             organization_id: 84,
             id: role.id as i64,
@@ -51,15 +51,15 @@ impl Fixture {
 }
 
 #[tokio::test]
-async fn first_admin_membership_query_filters_active_organizations_and_admin_roles() {
+async fn first_membership_query_filters_active_organizations_without_role_identity_checks() {
     let database = Fixture::database();
     let context = DbContext::new(Arc::new(PostgresConnection::new(database.clone())));
     let member = context
-        .scope(OrganizationRepository.find_first_admin_membership(1))
+        .scope(OrganizationRepository.find_first_membership(1))
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(member.0.roles[0].id, Role::ADMIN_ID);
+    assert_eq!(member.0.roles[0].id, 2);
     assert_eq!(member.0.organization_id, 84);
     assert_eq!(member.1.name, "Research team");
     drop(context);
@@ -70,7 +70,7 @@ async fn first_admin_membership_query_filters_active_organizations_and_admin_rol
     assert!(log.contains("LEFT JOIN"));
     assert!(log.contains("organizations"));
     assert!(log.contains("active"));
-    assert!(log.contains("r.id IN (1,2)"));
+    assert!(!log.contains("r.id IN (1,2)"));
     assert!(log.contains("ORDER BY"));
     assert!(log.contains("organization_id"));
 }
@@ -143,7 +143,7 @@ async fn membership_hydrates_direct_and_inherited_roles_with_four_scoped_queries
     let inherited = [20, 21]
         .into_iter()
         .map(|group_id| {
-            let role = Role::defaults(84).remove(1);
+            let role = Role::defaults(84, [1, 2, 3]).remove(1);
             let mut row = OrganizationRoleSchema {
                 organization_id: 84,
                 id: 2,
@@ -180,7 +180,6 @@ async fn membership_hydrates_direct_and_inherited_roles_with_four_scoped_queries
             .iter()
             .all(|g| g.roles.len() == 1 && g.roles[0].id == 2)
     );
-    assert_eq!(member.compatibility_role(), Role::ADMIN);
     drop(ctx);
     let log = Arc::try_unwrap(db).unwrap().into_transaction_log();
     assert_eq!(log.iter().map(|t| t.statements().len()).sum::<usize>(), 4);

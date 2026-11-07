@@ -78,7 +78,7 @@ export const SigninEmailResponse = SignupEmailResponse
 /**
  * Requires an email-OTP access token in the access cookie or Authorization: Bearer, verified by middleware.
  * JSON contains only code and delivery; token fields in JSON are rejected.
- * Requires an existing active user and an active owner/admin organization membership.
+ * Requires an existing active user and an active organization membership.
  * Records a new session. Cookie delivery (default) requires an allowed Origin, sets both
  * HttpOnly cookies and returns lifetime metadata. Explicit delivery token returns
  * accessToken and refreshToken in JSON without setting cookies. Delivery is not a JWT claim.

@@ -30,7 +30,7 @@ impl SystemPolicy for OrganizationMember {
     ///   Self-leave and last-owner safeguards belong to the membership workflow.
     /// - `member.role.assign` / `member.role.unassign`: change a specific Member/Role
     ///   relationship using `context.role`. Both must belong to the active organization.
-    ///   Delegation ceilings, built-in-role protection, and concurrent removal guards
+    ///   Delegation ceilings and concurrent removal guards
     ///   are additional checks; permission to edit a member is not permission to escalate.
     ///
     /// Membership administration is separate from unrestricted public profile reading. Role
@@ -63,28 +63,6 @@ impl OrganizationMember {
         self.roles
             .iter()
             .chain(self.groups.iter().flat_map(|g| g.roles.iter()))
-    }
-    /// Compatibility label only; never infer privilege from a role display name.
-    pub fn compatibility_role(&self) -> String {
-        for (id, label) in [
-            (Role::OWNER_ID, Role::OWNER),
-            (Role::ADMIN_ID, Role::ADMIN),
-            (Role::MEMBER_ID, Role::MEMBER),
-        ] {
-            if self
-                .effective_roles()
-                .any(|r| r.organization_id == self.organization_id && r.id == id)
-            {
-                return label.into();
-            }
-        }
-        Role::CUSTOM.into()
-    }
-    pub fn is_owner_or_admin(&self) -> bool {
-        self.effective_roles().any(|r| {
-            r.organization_id == self.organization_id
-                && matches!(r.id, Role::OWNER_ID | Role::ADMIN_ID)
-        })
     }
 }
 

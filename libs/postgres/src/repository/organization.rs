@@ -33,7 +33,6 @@ impl OrganizationRepository {
         &self,
         user_id: u64,
         organization_id: Option<u64>,
-        admin_only: bool,
     ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError> {
         let user_id = Self::database_id(user_id)?;
         let context = DbContext::current()?;
@@ -46,14 +45,6 @@ impl OrganizationRepository {
         if let Some(organization_id) = organization_id {
             query =
                 query.filter(MemberColumn::OrganizationId.eq(Self::database_id(organization_id)?));
-        }
-        if admin_only {
-            query = query.filter(Expr::cust(r#"EXISTS (
-                SELECT 1 FROM organization_roles r WHERE r.organization_id = organization_members.organization_id
-                AND r.id IN (1,2) AND (
-                    EXISTS (SELECT 1 FROM organization_member_roles mr WHERE mr.organization_id=r.organization_id AND mr.user_id=organization_members.user_id AND mr.role_id=r.id)
-                    OR EXISTS (SELECT 1 FROM organization_group_roles gr JOIN organization_group_members gm ON gm.organization_id=gr.organization_id AND gm.group_id=gr.group_id WHERE gr.organization_id=r.organization_id AND gr.role_id=r.id AND gm.user_id=organization_members.user_id)
-                ))"#));
         }
         let found = query
             .order_by_asc(MemberColumn::OrganizationId)
@@ -131,22 +122,16 @@ impl CoreRepository for OrganizationRepository {
         organization_id: u64,
         user_id: u64,
     ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError> {
-        self.membership(user_id, Some(organization_id), false).await
+        self.membership(user_id, Some(organization_id)).await
     }
 
     async fn find_first_membership(
         &self,
         user_id: u64,
     ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError> {
-        self.membership(user_id, None, false).await
+        self.membership(user_id, None).await
     }
 
-    async fn find_first_admin_membership(
-        &self,
-        user_id: u64,
-    ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError> {
-        self.membership(user_id, None, true).await
-    }
     async fn update_name(
         &self,
         organization_id: u64,

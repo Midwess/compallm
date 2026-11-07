@@ -332,7 +332,7 @@ async fn policy_membership_loads_version_and_relationships_in_one_scoped_stateme
         .collect();
     base.insert("authorization_version".into(), 9_i64.into());
     base.insert("organization_name".into(), "Current team".into());
-    let role = compallm_core::organization::Role::defaults(84).remove(2);
+    let role = compallm_core::organization::Role::defaults(84, [1, 2, 3]).remove(2);
     let mut rows = Vec::new();
     for (group, assigned_role) in [
         (None, Some(&role)),

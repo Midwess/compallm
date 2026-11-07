@@ -15,7 +15,7 @@ fn member(roles: Vec<Role>) -> OrganizationMember {
 
 #[test]
 fn default_sources_are_compact_and_preserve_authorization() -> anyhow::Result<()> {
-    for role in Role::defaults(7) {
+    for role in Role::defaults(7, [1, 2, 3]) {
         let original = role.cedar_source.clone();
         let member = member(vec![role.clone()]);
         let snapshot = PolicySnapshot::try_from(&member)?;
@@ -67,7 +67,7 @@ fn default_sources_are_compact_and_preserve_authorization() -> anyhow::Result<()
 
 #[test]
 fn assignments_are_deterministic_and_sources_are_not_duplicated() -> anyhow::Result<()> {
-    let roles = Role::defaults(7);
+    let roles = Role::defaults(7, [1, 2, 3]);
     let mut member = member(vec![roles[2].clone(), roles[0].clone(), roles[2].clone()]);
     member.groups = vec![Group {
         id: 8,
@@ -94,7 +94,7 @@ fn assignments_are_deterministic_and_sources_are_not_duplicated() -> anyhow::Res
 
 #[test]
 fn invalid_or_foreign_authority_is_rejected() -> anyhow::Result<()> {
-    let mut role = Role::defaults(8).remove(0);
+    let mut role = Role::defaults(8, [1, 2, 3]).remove(0);
     assert!(PolicySnapshot::try_from(&member(vec![role.clone()])).is_err());
     role.organization_id = 7;
     for source in [
@@ -112,7 +112,7 @@ fn invalid_or_foreign_authority_is_rejected() -> anyhow::Result<()> {
 
 #[test]
 fn quoted_content_annotations_and_forbids_survive() -> anyhow::Result<()> {
-    let mut role = Role::defaults(7).remove(0);
+    let mut role = Role::defaults(7, [1, 2, 3]).remove(0);
     role.cedar_source = r#"// remove this comment
 @note("tiếng Việt // keep  two spaces")
 permit(principal in Compallm::Role::"7:1", action == Compallm::Action::"model.list", resource == Compallm::Organization::"7");
@@ -146,7 +146,7 @@ forbid(principal in Compallm::Role::"7:1", action == Compallm::Action::"model.li
 
 #[test]
 fn parallel_constructor_preserves_deterministic_authority() -> anyhow::Result<()> {
-    let member = member(Role::defaults(7));
+    let member = member(Role::defaults(7, [1, 2, 3]));
     let expected = PolicySnapshot::try_from(&member)?;
     for workers in [1, 2, 4] {
         let pool = rayon::ThreadPoolBuilder::new()
@@ -218,7 +218,7 @@ fn merged_roles_deduplicate_and_inherited_forbid_overrides_direct_permit() -> an
 
 #[test]
 fn snapshot_work_and_output_limits_reject_without_truncation() {
-    let mut role = Role::defaults(7).remove(2);
+    let mut role = Role::defaults(7, [1, 2, 3]).remove(2);
     role.cedar_source = "invalid".repeat(PolicySnapshot::MAX_SOURCE_BYTES / 7 + 1);
     assert!(
         PolicySnapshot::new(&member(vec![role]))
@@ -226,7 +226,7 @@ fn snapshot_work_and_output_limits_reject_without_truncation() {
             .to_string()
             .contains("source limit")
     );
-    let role = Role::defaults(7).remove(2);
+    let role = Role::defaults(7, [1, 2, 3]).remove(2);
     assert!(
         PolicySnapshot::new(&member(vec![
             role.clone();

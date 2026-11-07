@@ -87,6 +87,37 @@ async fn default_organization_and_owner_are_inserted_in_one_transaction() {
     assert!(sql.contains("organization_member_roles"));
     assert!(sql.contains("BEGIN"));
     assert!(sql.contains("COMMIT"));
+    let statements = transactions[0].statements();
+    let inserted_roles = statements
+        .iter()
+        .find(|s| s.sql.contains("INSERT INTO organization_roles"))
+        .unwrap();
+    let sea_orm::Value::Json(Some(rows)) = &inserted_roles.values.as_ref().unwrap().0[0] else {
+        panic!("role rows must be JSON")
+    };
+    let roles = rows.as_array().unwrap();
+    let ids = roles
+        .iter()
+        .map(|role| role["id"].as_u64().unwrap())
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(ids.len(), 3);
+    assert!(ids.iter().all(|id| *id > 3));
+    for role in roles {
+        assert!(
+            role["cedar_source"]
+                .as_str()
+                .unwrap()
+                .contains(&format!("84:{}", role["id"].as_u64().unwrap()))
+        );
+    }
+    let assignment = statements
+        .iter()
+        .find(|s| s.sql.contains("INSERT INTO organization_member_roles"))
+        .unwrap();
+    let sea_orm::Value::Json(Some(assigned)) = &assignment.values.as_ref().unwrap().0[2] else {
+        panic!("role assignment must be JSON")
+    };
+    assert_eq!(assigned.as_array().unwrap(), &vec![roles[0]["id"].clone()]);
 }
 
 #[tokio::test]

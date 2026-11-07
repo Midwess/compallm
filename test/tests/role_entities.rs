@@ -11,7 +11,7 @@ fn member(index: usize) -> OrganizationMember {
     OrganizationMember {
         organization_id: 42,
         user_id: 100,
-        roles: vec![Role::defaults(42).remove(index)],
+        roles: vec![Role::defaults(42, [901, 502, 73]).remove(index)],
         groups: vec![],
     }
 }
@@ -80,7 +80,7 @@ fn decision(
 #[test]
 fn all_defaults_have_explicit_valid_cedar_source() {
     let validator = Validator::new(all_policies().clone());
-    for role in Role::defaults(42) {
+    for role in Role::defaults(42, [901, 502, 73]) {
         assert!(!role.cedar_source.is_empty());
         let set = PolicySet::try_from(&role).unwrap();
         let result = validator.validate(&set, ValidationMode::Strict);
@@ -135,9 +135,8 @@ fn group_roles_keep_provenance_and_inherit_without_copying_to_direct_roles() {
         organization_id: 42,
         name: "Operations".into(),
         description: String::new(),
-        roles: vec![Role::defaults(42).remove(1)],
+        roles: vec![Role::defaults(42, [901, 502, 73]).remove(1)],
     });
-    assert_eq!(member.compatibility_role(), Role::ADMIN);
     assert!(member.roles.is_empty());
     assert_eq!(
         decision(&member, "role.list", "Organization", 42, 0, true),
@@ -147,25 +146,10 @@ fn group_roles_keep_provenance_and_inherit_without_copying_to_direct_roles() {
     foreign.groups[0].roles[0].organization_id = 43;
     assert!(Entities::try_from(&foreign).is_err());
 }
-#[test]
-fn custom_role_names_never_establish_default_authority_and_invalid_source_is_fallible() {
-    let mut member = member(2);
-    member.roles[0].id = 99;
-    member.roles[0].name = "Owner".into();
-    member.roles[0].cedar_source = String::new();
-    assert_eq!(member.compatibility_role(), Role::CUSTOM);
-    assert!(!member.is_owner_or_admin());
-    assert_eq!(
-        decision(&member, "role.create", "Organization", 42, 0, true),
-        Decision::Deny
-    );
-    member.roles[0].cedar_source = "permit (".into();
-    assert!(PolicySet::try_from(&member.roles[0]).is_err());
-}
 
 #[test]
 fn statement_identity_survives_formatting_and_reordering() {
-    let mut role = Role::defaults(42).remove(0);
+    let mut role = Role::defaults(42, [901, 502, 73]).remove(0);
     let original = PolicySet::try_from(&role).unwrap();
     let ids = original
         .policies()
@@ -220,4 +204,37 @@ fn empty_groups_remain_inside_the_organization_resource_scope() {
             .decision(),
         Decision::Allow
     );
+}
+
+#[test]
+fn default_permissions_and_owner_restrictions_use_supplied_record_ids() {
+    let roles = Role::defaults(42, [901, 502, 73]);
+    let admin = OrganizationMember {
+        organization_id: 42,
+        user_id: 100,
+        roles: vec![roles[1].clone()],
+        groups: vec![],
+    };
+    assert_eq!(
+        decision(&admin, "role.assign", "Role", 42, 901, true),
+        Decision::Deny
+    );
+    assert_eq!(
+        decision(&admin, "role.assign", "Role", 42, 700, true),
+        Decision::Allow
+    );
+    let owner = OrganizationMember {
+        organization_id: 42,
+        user_id: 100,
+        roles: vec![roles[0].clone()],
+        groups: vec![],
+    };
+    assert_eq!(
+        decision(&owner, "organization.delete", "Organization", 42, 0, true),
+        Decision::Allow
+    );
+    for role in roles {
+        assert!(!role.cedar_source.contains("__"));
+        assert!(role.cedar_source.contains(&format!("42:{}", role.id)));
+    }
 }

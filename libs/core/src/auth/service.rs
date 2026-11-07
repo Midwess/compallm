@@ -175,7 +175,7 @@ impl AuthService {
         }
         let (membership, organization) = self
             .organizations
-            .find_first_admin_membership(user.id)
+            .find_first_membership(user.id)
             .await?
             .ok_or(AuthError::OrganizationAccessDenied)?;
         self.start_session(user.id, membership, organization).await
@@ -194,7 +194,7 @@ impl AuthService {
             }
             let (membership, organization) = self
                 .organizations
-                .find_first_admin_membership(user.id)
+                .find_first_membership(user.id)
                 .await?
                 .ok_or(AuthError::OrganizationAccessDenied)?;
             self.start_session(user.id, membership, organization).await
@@ -228,13 +228,7 @@ impl AuthService {
         }
         let snapshot = self.create_policy_snapshot(&membership)?;
         let renewed = session.refresh(&claims, self.lifetimes.refresh)?;
-        UserTokens::from_refresh(
-            &renewed,
-            membership.compatibility_role(),
-            snapshot,
-            &self.jwt_secret,
-            self.lifetimes.user,
-        )
+        UserTokens::from_refresh(&renewed, snapshot, &self.jwt_secret, self.lifetimes.user)
     }
 
     pub async fn switch_organization(
@@ -270,7 +264,6 @@ impl AuthService {
 
         let tokens = UserTokens::new(
             &session,
-            membership.compatibility_role(),
             self.create_policy_snapshot(&membership)?,
             &self.jwt_secret,
             self.lifetimes.user,
@@ -294,7 +287,6 @@ impl AuthService {
         let session = Session::new(user_id, id, membership.organization_id, organization.name);
         let tokens = UserTokens::new(
             &session,
-            membership.compatibility_role(),
             self.create_policy_snapshot(&membership)?,
             &self.jwt_secret,
             self.lifetimes.user,

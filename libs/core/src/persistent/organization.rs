@@ -37,11 +37,6 @@ pub trait OrganizationRepository: Send + Sync {
         &self,
         user_id: u64,
     ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError>;
-    /// Oldest owner/admin membership in an active organization.
-    async fn find_first_admin_membership(
-        &self,
-        user_id: u64,
-    ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError>;
     async fn update_name(
         &self,
         organization_id: u64,
@@ -51,7 +46,7 @@ pub trait OrganizationRepository: Send + Sync {
         &self,
         organization: Organization,
     ) -> Result<Organization, OrganizationRepositoryError>;
-    /// Insert trusted protected defaults within organization creation.
+    /// Insert initial default-role records within organization creation.
     async fn create_roles(&self, roles: Vec<Role>) -> Result<(), OrganizationRepositoryError>;
     async fn add_member(
         &self,

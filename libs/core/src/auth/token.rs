@@ -181,25 +181,17 @@ impl UserTokens {
     /// Call after the workflow authorizes the user.
     pub fn new(
         session: &super::Session,
-        organization_role: impl Into<String>,
         policy_snapshot: crate::authorization::PolicySnapshot,
         secret: &str,
         user_lifetime: Duration,
         refresh_lifetime: Duration,
     ) -> Result<Self, AuthError> {
         let refresh = RefreshToken::from_session(session, refresh_lifetime)?;
-        Self::from_refresh(
-            &refresh,
-            organization_role,
-            policy_snapshot,
-            secret,
-            user_lifetime,
-        )
+        Self::from_refresh(&refresh, policy_snapshot, secret, user_lifetime)
     }
 
     pub fn from_refresh(
         refresh: &RefreshToken,
-        organization_role: impl Into<String>,
         policy_snapshot: crate::authorization::PolicySnapshot,
         secret: &str,
         user_lifetime: Duration,
@@ -207,12 +199,7 @@ impl UserTokens {
         refresh.validate(unix_timestamp())?;
         let refresh_lifetime =
             Duration::from_secs(refresh.validity.expires_at - refresh.validity.issued_at);
-        let user = UserAccessToken::new(
-            refresh.session.clone(),
-            organization_role,
-            policy_snapshot,
-            user_lifetime,
-        )?;
+        let user = UserAccessToken::new(refresh.session.clone(), policy_snapshot, user_lifetime)?;
         let access_validity = user.validity.clone();
         Ok(Self {
             access_validity,

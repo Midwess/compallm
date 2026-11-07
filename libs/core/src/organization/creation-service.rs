@@ -37,6 +37,11 @@ impl CreationService {
         name: &str,
         user: &User,
     ) -> Result<Organization, OrganizationCreationError> {
+        let role_ids = [
+            hero::distributed_id::try_gen_id().await?,
+            hero::distributed_id::try_gen_id().await?,
+            hero::distributed_id::try_gen_id().await?,
+        ];
         transaction!(self.db, {
             let organization = self
                 .organizations
@@ -46,7 +51,7 @@ impl CreationService {
                     status: OrganizationStatus::Active,
                 })
                 .await?;
-            let roles = Role::defaults(organization.id);
+            let roles = Role::defaults(organization.id, role_ids);
             self.organizations.create_roles(roles.clone()).await?;
             self.organizations
                 .add_member(OrganizationMember {

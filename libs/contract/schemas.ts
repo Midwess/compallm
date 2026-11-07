@@ -227,7 +227,6 @@ export const currentUserResponseUserIdMin = 0;
 export const CurrentUserResponse = zod.object({
   "organizationId": zod.int().min(currentUserResponseOrganizationIdMin).describe('Organization selected for this session.'),
   "organizationName": zod.string().describe('Organization name snapshot from the signed session; refreshed when tokens renew.'),
-  "organizationRole": zod.string().describe('Cached membership role from the access JWT, refreshed on renewal.'),
   "sessionId": zod.int().min(currentUserResponseSessionIdMin).describe('Current login session identifier.'),
   "userId": zod.int().min(currentUserResponseUserIdMin).describe('Authenticated user identifier.')
 }).describe('Identity and organization scope from the current signed access credential.');

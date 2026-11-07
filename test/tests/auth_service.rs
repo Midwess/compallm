@@ -91,11 +91,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
                 if !state.full_default_policies {
                     // Synthetic bounded policies for transport/lifecycle tests; full defaults have dedicated rejection tests.
                     for role in &mut member.roles {
-                        if role.id == Role::OWNER_ID || role.id == Role::ADMIN_ID {
-                            role.cedar_source =
-                                Fixture::role(role.organization_id, (role.id - 1) as usize)
-                                    .cedar_source;
-                        }
+                        role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.list", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
                     }
                 }
                 let organization = state
@@ -135,11 +131,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
                 if !state.full_default_policies {
                     // Synthetic bounded policies for transport/lifecycle tests; full defaults have dedicated rejection tests.
                     for role in &mut member.roles {
-                        if role.id == Role::OWNER_ID || role.id == Role::ADMIN_ID {
-                            role.cedar_source =
-                                Fixture::role(role.organization_id, (role.id - 1) as usize)
-                                    .cedar_source;
-                        }
+                        role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.list", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
                     }
                 }
                 let organization = state
@@ -159,53 +151,6 @@ impl OrganizationRepository for OrganizationRepositoryStub {
             }))
     }
 
-    async fn find_first_admin_membership(
-        &self,
-        user_id: u64,
-    ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError> {
-        DbContext::current()?;
-        let state = self.0.lock().unwrap();
-        Ok(state
-            .memberships
-            .iter()
-            .find(|member| {
-                member.user_id == user_id
-                    && matches!(
-                        member.compatibility_role().as_str(),
-                        Role::OWNER | Role::ADMIN
-                    )
-                    && !state
-                        .disabled_organizations
-                        .contains(&member.organization_id)
-            })
-            .cloned()
-            .map(|mut member| {
-                if !state.full_default_policies {
-                    // Synthetic bounded policies for transport/lifecycle tests; full defaults have dedicated rejection tests.
-                    for role in &mut member.roles {
-                        if role.id == Role::OWNER_ID || role.id == Role::ADMIN_ID {
-                            role.cedar_source =
-                                Fixture::role(role.organization_id, (role.id - 1) as usize)
-                                    .cedar_source;
-                        }
-                    }
-                }
-                let organization = state
-                    .organization
-                    .clone()
-                    .filter(|o| o.id == member.organization_id)
-                    .unwrap_or(Organization {
-                        id: member.organization_id,
-                        name: if member.organization_id == 84 {
-                            "Research team".into()
-                        } else {
-                            format!("Organization {}", member.organization_id)
-                        },
-                        status: compallm_core::organization::OrganizationStatus::Active,
-                    });
-                (member, organization)
-            }))
-    }
     async fn update_name(
         &self,
         organization_id: u64,
@@ -573,7 +518,7 @@ impl Fixture {
     }
 
     fn role(organization_id: u64, index: usize) -> Role {
-        let mut role = Role::defaults(organization_id).remove(index);
+        let mut role = Role::defaults(organization_id, [1, 2, 3]).remove(index);
         role.cedar_source = format!(
             r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.list", resource == Compallm::Organization::"{}");"#,
             organization_id, role.id, organization_id
@@ -616,7 +561,6 @@ async fn direct_registration_commits_user_organization_and_owner_together() {
         let owner = state.owner.as_ref().unwrap();
         assert_eq!(owner.user_id, user.id);
         assert_eq!(owner.organization_id, organization.id);
-        assert_eq!(owner.compatibility_role(), Role::OWNER);
     }
     fixture.assert_transaction("COMMIT");
 }
@@ -661,7 +605,6 @@ async fn signin_checks_user_and_records_session_without_starting_a_transaction()
         UserAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
             .unwrap();
     assert_eq!(access.session.organization_id, 84);
-    assert_eq!(access.organization_role, Role::OWNER);
     assert_eq!(contexts.len(), 2);
     assert_eq!(fixture.repo.0.lock().unwrap().logins, [1]);
     assert!(contexts.iter().all(|context| *context == contexts[0]));
@@ -697,12 +640,10 @@ async fn signup_requires_verified_email_and_uses_one_caller_transaction() {
         assert_eq!(organization.name, "james's organization");
         assert!(organization.id > 0);
         assert_eq!(organization.id, owner.organization_id);
-        assert_eq!(owner.compatibility_role(), Role::OWNER);
         let access =
             UserAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
                 .unwrap();
         assert_eq!(access.session.organization_id, organization.id);
-        assert_eq!(access.organization_role, Role::OWNER);
         assert!(
             state
                 .contexts
@@ -872,7 +813,6 @@ async fn refresh_requires_a_context_from_the_application_entry_point() {
     let service = fixture.service();
     let tokens = UserTokens::new(
         &Session::new(1, 7, 84, "Research team"),
-        Role::OWNER,
         empty_snapshot(),
         SECRET,
         Duration::from_secs(60),
@@ -910,7 +850,6 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let original = UserTokens::new(
         &Session::new(1, 7, 84, "Research team"),
-        Role::OWNER,
         empty_snapshot(),
         SECRET,
         Duration::from_secs(60),
@@ -1048,13 +987,13 @@ async fn expired_refresh_requires_signin_before_reading_the_user() {
 }
 
 #[tokio::test]
-async fn signin_selects_an_admin_organization_instead_of_a_member_organization() {
+async fn signin_selects_first_active_membership_independent_of_roles() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     fixture.repo.0.lock().unwrap().memberships = vec![
         OrganizationMember {
             organization_id: 80,
             user_id: 1,
-            roles: vec![Role::defaults(80).remove(2)],
+            roles: vec![Role::defaults(80, [1, 2, 3]).remove(2)],
             groups: Vec::new(),
         },
         OrganizationMember {
@@ -1072,8 +1011,8 @@ async fn signin_selects_an_admin_organization_instead_of_a_member_organization()
     let claims =
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
-    assert_eq!(claims.session.organization_id, 85);
-    assert_eq!(claims.organization_role, Role::ADMIN);
+    assert_eq!(claims.session.organization_id, 80);
+    assert_eq!(claims.policy_snapshot.role_ids, vec![3]);
     fixture.assert_no_transaction();
 }
 
@@ -1089,7 +1028,7 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
         .push(OrganizationMember {
             organization_id: 85,
             user_id: 1,
-            roles: vec![Role::defaults(85).remove(2)],
+            roles: vec![Role::defaults(85, [1, 2, 3]).remove(2)],
             groups: Vec::new(),
         });
     let refresh = AccessToken::Refresh(
@@ -1104,7 +1043,6 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
     assert_eq!(claims.session.organization_id, 85);
-    assert_eq!(claims.organization_role, Role::MEMBER);
     let refreshed =
         RefreshToken::try_from(AccessToken::decode(&tokens.refresh_token, SECRET).unwrap())
             .unwrap();
@@ -1131,7 +1069,7 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
     let claims =
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
-    assert_eq!(claims.organization_role, Role::ADMIN);
+    assert_eq!(claims.policy_snapshot.role_ids, vec![2]);
     assert!(matches!(
         fixture
             .switch_organization(&tokens.refresh_token, 999)
@@ -1152,7 +1090,7 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
 }
 
 #[tokio::test]
-async fn signin_rejects_missing_or_disabled_administrator_memberships() {
+async fn signin_rejects_missing_or_disabled_memberships() {
     for disabled in [false, true] {
         let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
         {
@@ -1160,7 +1098,7 @@ async fn signin_rejects_missing_or_disabled_administrator_memberships() {
             if disabled {
                 state.disabled_organizations.push(84);
             } else {
-                state.memberships[0].roles = vec![Role::defaults(84).remove(2)];
+                state.memberships.clear();
             }
         }
         let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
@@ -1183,7 +1121,7 @@ async fn refresh_without_selection_keeps_the_session_organization() {
         OrganizationMember {
             organization_id: 80,
             user_id: 1,
-            roles: vec![Role::defaults(80).remove(2)],
+            roles: vec![Role::defaults(80, [1, 2, 3]).remove(2)],
             groups: Vec::new(),
         },
     );
@@ -1199,7 +1137,6 @@ async fn refresh_without_selection_keeps_the_session_organization() {
         UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
     assert_eq!(claims.session.organization_id, 84);
-    assert_eq!(claims.organization_role, Role::OWNER);
 }
 
 #[tokio::test]
@@ -1482,7 +1419,7 @@ async fn organization_switch_joins_an_enclosing_transaction() {
         .push(OrganizationMember {
             organization_id: 85,
             user_id: 1,
-            roles: vec![Role::defaults(85).remove(2)],
+            roles: vec![Role::defaults(85, [1, 2, 3]).remove(2)],
             groups: Vec::new(),
         });
     let service = fixture.service();
@@ -1557,13 +1494,8 @@ async fn signout_revokes_only_the_selected_session_and_is_repeatable() {
         state.sessions.insert(7, selected.clone());
         state.sessions.insert(8, other);
     }
-    let claims = UserAccessToken::new(
-        selected.clone(),
-        Role::OWNER,
-        empty_snapshot(),
-        Duration::from_secs(60),
-    )
-    .unwrap();
+    let claims =
+        UserAccessToken::new(selected.clone(), empty_snapshot(), Duration::from_secs(60)).unwrap();
     let service = fixture.service();
     fixture
         .repo
@@ -1606,13 +1538,8 @@ async fn signout_cannot_revoke_a_foreign_user_or_organization_session() {
             .unwrap()
             .sessions
             .insert(7, Session::new(1, 7, 84, "Research team"));
-        let claims = UserAccessToken::new(
-            presented,
-            Role::OWNER,
-            empty_snapshot(),
-            Duration::from_secs(60),
-        )
-        .unwrap();
+        let claims =
+            UserAccessToken::new(presented, empty_snapshot(), Duration::from_secs(60)).unwrap();
         assert!(matches!(
             fixture
                 .repo
@@ -1688,7 +1615,7 @@ async fn refresh_preserves_coherent_session_and_authority_without_restamping() {
                 organization_id: 84,
                 name: "Team".into(),
                 description: String::new(),
-                roles: vec![Role::defaults(84).remove(2)],
+                roles: vec![Role::defaults(84, [1, 2, 3]).remove(2)],
             });
         state.change_after_authority_read = true;
     }
@@ -1759,7 +1686,7 @@ async fn refresh_rejects_unavailable_invalid_or_oversized_authority() {
                 "foreign user" => presented.user_id = 99,
                 "future version" => presented.authorization_version = 2,
                 "oversized" => {
-                    state.memberships[0].roles = vec![Role::defaults(84).remove(0)];
+                    state.memberships[0].roles = vec![Role::defaults(84, [1, 2, 3]).remove(0)];
                     state.full_default_policies = true;
                 }
                 "database failure" => state.fail_authority_read = true,
@@ -1790,7 +1717,7 @@ fn snapshot_creation_uses_only_loaded_membership_without_session_or_context() {
     let membership = OrganizationMember {
         organization_id: 84,
         user_id: 1,
-        roles: Role::defaults(84),
+        roles: Role::defaults(84, [1, 2, 3]),
         groups: vec![],
     };
     // The pure snapshot fits its own bounds even when final token issuance may not.
@@ -1921,7 +1848,7 @@ async fn access_issuance_includes_direct_and_group_authority_and_refresh_rebuild
             organization_id: 84,
             name: "Team".into(),
             description: String::new(),
-            roles: vec![Role::defaults(84).remove(2)],
+            roles: vec![Role::defaults(84, [1, 2, 3]).remove(2)],
         });
     }
     let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
@@ -1970,7 +1897,7 @@ async fn actual_default_policy_oversize_returns_no_login_or_switched_session() {
     {
         let mut state = fixture.repo.0.lock().unwrap();
         state.full_default_policies = true;
-        state.memberships[0].roles = vec![Role::defaults(84).remove(0)];
+        state.memberships[0].roles = vec![Role::defaults(84, [1, 2, 3]).remove(0)];
     }
     let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
     assert!(matches!(
@@ -1995,7 +1922,7 @@ async fn actual_default_policy_oversize_returns_no_login_or_switched_session() {
         state.memberships.push(OrganizationMember {
             organization_id: 85,
             user_id: 1,
-            roles: vec![Role::defaults(85).remove(1)],
+            roles: vec![Role::defaults(85, [1, 2, 3]).remove(1)],
             groups: vec![],
         });
     }
@@ -2026,13 +1953,7 @@ async fn actual_default_policy_oversize_returns_no_login_or_switched_session() {
 
 impl Fixture {
     fn access_for_session(&self, session: Session) -> UserAccessToken {
-        UserAccessToken::new(
-            session,
-            Role::OWNER,
-            empty_snapshot(),
-            Duration::from_secs(60),
-        )
-        .unwrap()
+        UserAccessToken::new(session, empty_snapshot(), Duration::from_secs(60)).unwrap()
     }
 
     async fn request(
@@ -2362,7 +2283,7 @@ async fn middleware_oversized_rebuild_fails_before_handler_without_new_credentia
         let mut current = session;
         current.authorization_version = 2;
         state.sessions.insert(7, current);
-        state.memberships[0].roles = vec![Role::defaults(84).remove(0)];
+        state.memberships[0].roles = vec![Role::defaults(84, [1, 2, 3]).remove(0)];
     }
     let refresh = AccessToken::Refresh(
         RefreshToken::from_session(&claims.session, REFRESH_LIFETIME).unwrap(),
@@ -2485,5 +2406,41 @@ async fn explicit_refresh_requires_valid_refresh_bearer_and_ignores_cookies() {
         assert_eq!(response.status(), 401, "{case}");
         assert!(!response.headers().contains_key("set-cookie"), "{case}");
         assert_eq!(fixture.repo.0.lock().unwrap().handled_requests, 0);
+    }
+}
+
+#[tokio::test]
+async fn signin_accepts_active_memberships_with_custom_or_no_roles() {
+    for custom in [false, true] {
+        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+        {
+            let mut state = fixture.repo.0.lock().unwrap();
+            state.memberships[0].roles = if custom {
+                vec![Role {
+                    id: 77,
+                    ..Fixture::role(84, 0)
+                }]
+            } else {
+                vec![]
+            };
+        }
+        let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+        let tokens = fixture
+            .signin(&Fixture::otp(&challenge), &challenge.code)
+            .await
+            .unwrap();
+        let access =
+            UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
+                .unwrap();
+        assert_eq!(
+            access.policy_snapshot.role_ids,
+            if custom { vec![77] } else { vec![] }
+        );
+        assert!(
+            serde_json::to_value(access)
+                .unwrap()
+                .get("organization_role")
+                .is_none()
+        );
     }
 }

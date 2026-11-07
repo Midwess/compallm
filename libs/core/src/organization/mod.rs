@@ -14,5 +14,3 @@ pub mod group;
 pub mod role;
 pub use group::Group;
 pub use role::Role;
-
-mod cedar;

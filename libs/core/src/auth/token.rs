@@ -4,7 +4,7 @@
 use super::AuthError;
 use compallm_utils::email::normalize_email;
 use compallm_utils::time::unix_timestamp;
-use hero::token::jwt::create_jwt_token;
+use hero::token::jwt::{create_jwt_token, decode_jwt_token};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -81,36 +81,17 @@ impl AccessToken {
             return Err(AuthError::InvalidConfiguration);
         }
         Self::check_size(encoded.len())?;
-        #[derive(Deserialize)]
-        struct Claims {
-            exp: u64,
-            #[serde(rename = "iat")]
-            _issued_at: u64,
-            data: AccessToken,
-        }
-        let verified = jsonwebtoken::decode::<Claims>(
-            encoded,
-            &jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()),
-            &jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256),
-        )
-        .map_err(|error| {
-            if matches!(
-                error.kind(),
-                jsonwebtoken::errors::ErrorKind::ExpiredSignature
-            ) {
+        let token: Self = decode_jwt_token(encoded, secret).map_err(|error| match error {
+            hero::token::jwt::JwtErrors::CodingError(error)
+                if matches!(
+                    error.kind(),
+                    jsonwebtoken::errors::ErrorKind::ExpiredSignature
+                ) =>
+            {
                 AuthError::ExpiredToken
-            } else {
-                AuthError::InvalidToken
             }
+            _ => AuthError::InvalidToken,
         })?;
-        let expires_at = verified.claims.exp;
-        let cap_expiry = |mut token: Self| {
-            if let Self::User(user) = &mut token {
-                user.validity.expires_at = user.validity.expires_at.min(expires_at);
-            }
-            token
-        };
-        let token = cap_expiry(verified.claims.data);
         token.validate(unix_timestamp())?;
         match token {
             Self::Encrypted(payload) => {
@@ -118,7 +99,6 @@ impl AccessToken {
                 if matches!(token, Self::Encrypted(_)) {
                     return Err(AuthError::InvalidToken);
                 }
-                let token = cap_expiry(token);
                 token.validate(unix_timestamp())?;
                 Ok(token)
             }

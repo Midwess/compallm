@@ -116,8 +116,11 @@ impl<'a> RoleService<'a> {
         if member.effective_roles().any(|r| r.id == Role::OWNER_ID) {
             return Ok(());
         }
-        let admin = Role::defaults(role.organization_id).remove(1);
-        let allowed = PolicySet::try_from(&admin).map_err(|_| RoleError::Invalid)?;
+        let admin = member
+            .effective_roles()
+            .find(|r| r.id == Role::ADMIN_ID && r.organization_id == role.organization_id)
+            .ok_or(RoleError::Forbidden)?;
+        let allowed = PolicySet::try_from(admin).map_err(|_| RoleError::Invalid)?;
         let mut actions = std::collections::BTreeSet::new();
         for p in allowed.policies() {
             match p.action_constraint() {

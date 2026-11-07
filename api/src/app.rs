@@ -38,6 +38,8 @@ impl App {
             .route("/api/{*unmatched}", axum::routing::any(not_found))
     }
 
+    // Loco owns this framework error type; keep its required API at this boundary.
+    #[allow(clippy::result_large_err)]
     pub(crate) async fn tcp_listener(port: i32) -> Result<tokio::net::TcpListener> {
         let start = u16::try_from(port)
             .ok()

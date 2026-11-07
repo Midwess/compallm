@@ -23,17 +23,16 @@ function visit(name) {
 Object.entries(document.components.schemas)
   .filter(([, schema]) => schema['x-compallm-input'])
   .forEach(([name]) => visit(name))
-const formats = new Set(['baseUrl', 'nonblank', 'authorization', 'emailAddress'])
+const formats = new Set(['baseUrl', 'nonblank', 'authorization', 'emailAddress', 'resourceId'])
 const lines = [
   '// Generated from Rust/OpenAPI. Do not edit; run cargo run -p compallm-api -- generate.',
   "import * as raw from './schemas.ts'",
   "import { z } from 'zod'",
-  "import { inputString, stringInput, integerInput, headerObject, headersObject, modelsObject } from './runtime.ts'",
+  "import { inputString, stringInput, integerInput, headerObject, headersObject, modelsObject, headerUpdateObject, modelWritesArray, createProviderObject, createProvidersObject, providerPatchObject } from './runtime.ts'",
 ]
 for (const name of names) {
   const component = document.components.schemas[name]
   if (!component) throw new Error(`Missing contract component: ${name}`)
-  const overrides = []
   const inputs = []
   const metadata = {}
   for (const [field, schema] of Object.entries(component.properties)) {
@@ -41,15 +40,6 @@ for (const name of names) {
       const bounds = {}
       for (const key of ['minimum', 'maximum']) if (schema[key] !== undefined) bounds[key] = schema[key]
       inputs.push(`${JSON.stringify(field)}: integerInput(${JSON.stringify(bounds)})`)
-    }
-    if (schema.type === 'array' && schema.items?.$ref) {
-      const reference = schema.items.$ref.split('/').at(-1)
-      if (names.includes(reference)) {
-        if (schema.minItems !== undefined || schema.maxItems !== undefined || schema.uniqueItems) {
-          throw new Error(`Array bounds need explicit contract support: ${name}.${field}`)
-        }
-        overrides.push(`${JSON.stringify(field)}: z.array(${reference})`)
-      }
     }
     if (schema.type !== 'string') continue
     const constraints = {}
@@ -99,26 +89,60 @@ for (const name of names) {
     }
     metadata[field] = constraints
     inputs.push(`${JSON.stringify(field)}: stringInput(${name}Constraints[${JSON.stringify(field)}])`)
-    overrides.push(`${JSON.stringify(field)}: inputString(${name}Constraints[${JSON.stringify(field)}])`)
   }
   lines.push(`export const ${name}Constraints = ${JSON.stringify(metadata)} as const`)
   lines.push(`export const ${name}Input = {${inputs.join(',')}}`)
   const rule = component['x-compallm-object-rule']
-  if (rule && !['header', 'headers', 'models'].includes(rule)) throw new Error(`Unsupported object rule: ${rule}`)
+  if (
+    rule &&
+    !['header', 'headers', 'models', 'headerUpdate', 'createProvider', 'createProviders', 'providerPatch'].includes(rule)
+  )
+    throw new Error(`Unsupported object rule: ${rule}`)
   for (const key of Object.keys(component)) {
     if (key.startsWith('x-compallm-') && !['x-compallm-input', 'x-compallm-object-rule'].includes(key))
       throw new Error(`Unsupported input extension: ${key}`)
   }
-  const refinement =
-    rule === 'header'
-      ? '.refine(headerObject, { message: "Invalid Authorization header", path: ["value"] })'
-      : rule === 'headers'
-        ? '.refine(headersObject, { message: "Duplicate header names", path: ["entries"] })'
-        : rule === 'models'
-          ? '.refine(modelsObject, { message: "At least one model with unique names is required", path: ["entries"] })'
-          : ''
+  function expression(schema) {
+    if (schema.$ref) {
+      const reference = schema.$ref.split('/').at(-1)
+      return names.includes(reference) ? reference : `raw.${reference}`
+    }
+    if (schema.allOf?.length === 1) return expression(schema.allOf[0])
+    if (schema.type === 'array') {
+      let item = `z.array(${expression(schema.items)})`
+      if (schema.minItems !== undefined) item += `.min(${schema.minItems})`
+      if (schema.maxItems !== undefined) item += `.max(${schema.maxItems})`
+      if (schema.uniqueItems) throw new Error('uniqueItems requires an explicit array rule')
+      const rule = schema['x-compallm-array-rule']
+      if (rule === 'headers') item += '.refine((entries) => headersObject({entries}), {message: "Invalid input"})'
+      else if (rule === 'modelWrites') item += '.refine(modelWritesArray, {message: "Invalid input"})'
+      else if (rule) throw new Error(`Unsupported array rule: ${rule}`)
+      return item
+    }
+    if (schema.type === 'object' && schema.properties) throw new Error('Inline input objects require named schemas')
+    throw new Error(`Unsupported nested input schema: ${JSON.stringify(schema)}`)
+  }
+  const fields = Object.entries(component.properties).map(([field, schema]) => {
+    let value
+    if (metadata[field]) value = `inputString(${name}Constraints[${JSON.stringify(field)}])`
+    else if (schema.$ref || schema.allOf || schema.type === 'array') value = expression(schema)
+    else value = `raw.${name}.shape[${JSON.stringify(field)}]`
+    if (!component.required?.includes(field)) value += '.optional()'
+    if (schema.default !== undefined) value += `.default(${JSON.stringify(schema.default)})`
+    return `${JSON.stringify(field)}: ${value}`
+  })
+  const refinements = {
+    header: 'headerObject',
+    headers: 'headersObject',
+    models: 'modelsObject',
+    headerUpdate: 'headerUpdateObject',
+    createProvider: 'createProviderObject',
+    createProviders: 'createProvidersObject',
+    providerPatch: 'providerPatchObject',
+  }
+  const refinement = rule ? `.refine(${refinements[rule]}, {message: "Invalid input"})` : ''
   lines.push(
-    `export const ${name} = raw.${name}.extend({${overrides.join(',')}})${component.additionalProperties === false ? '.strict()' : ''}${refinement}`,
+    `export const ${name} = raw.${name}.extend({${fields.join(',')}})${component.additionalProperties === false ? '.strict()' : ''}${refinement}`,
   )
 }
 await writeFile(new URL('./validation.ts', import.meta.url), lines.join('\n') + '\n')

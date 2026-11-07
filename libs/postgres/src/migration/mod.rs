@@ -18,6 +18,10 @@ mod m20261104_000013_create_provider_image_usage;
 mod m20261104_000014_create_provider_audio_usage;
 mod m20261104_000015_create_provider_video_usage;
 
+mod m20261106_000016_create_provider_templates;
+mod m20261106_000017_create_provider_model_templates;
+mod m20261106_000018_seed_provider_templates;
+
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -39,6 +43,9 @@ impl MigratorTrait for Migrator {
             Box::new(m20261104_000013_create_provider_image_usage::Migration),
             Box::new(m20261104_000014_create_provider_audio_usage::Migration),
             Box::new(m20261104_000015_create_provider_video_usage::Migration),
+            Box::new(m20261106_000016_create_provider_templates::Migration),
+            Box::new(m20261106_000017_create_provider_model_templates::Migration),
+            Box::new(m20261106_000018_seed_provider_templates::Migration),
             // inject-above (do not remove this comment)
         ]
     }

@@ -34,6 +34,7 @@ type Scenario =
   | 'testing'
   | 'submitting'
   | 'no-results'
+  | 'missing-endpoint'
   | 'saved'
   | 'saved-custom'
   | 'changed'
@@ -63,7 +64,11 @@ export class DemoCreateProviderController implements CreateProviderController {
     scenario: Scenario,
     private readonly report: (intent: string) => void,
   ) {
-    if (scenario === 'choose' || scenario === 'no-results') {
+    if (scenario === 'choose' || scenario === 'no-results' || scenario === 'missing-endpoint') {
+      if (scenario === 'missing-endpoint')
+        this.store.setState({
+          providers: [...providers, { id: 'azure', name: 'Azure OpenAI', protocol: 'provider_specific', baseUrl: null }],
+        })
       if (scenario === 'no-results') this.store.setState({ providerQuery: 'No matching provider' })
       return
     }
@@ -156,7 +161,7 @@ export class DemoCreateProviderController implements CreateProviderController {
     this.store.setState({
       step: 'configure',
       name: `${preset.name} production`,
-      baseUrl: preset.baseUrl,
+      baseUrl: preset.baseUrl ?? '',
       protocol: preset.protocol,
       apiKey: '',
       headers: [],

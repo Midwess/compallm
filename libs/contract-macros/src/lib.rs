@@ -71,7 +71,16 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                 attr.parse_nested_meta(|rule| {
                     if rule.path.is_ident("length") || rule.path.is_ident("range") {
                         let length = rule.path.is_ident("length");
-                        if length && !matches!(&field.ty, syn::Type::Path(p) if p.path.is_ident("String")) {
+                        let mut field_type = &field.ty;
+                        if let syn::Type::Path(path) = field_type
+                            && let Some(segment) = path.path.segments.last()
+                            && segment.ident == "Option"
+                            && let syn::PathArguments::AngleBracketed(args) = &segment.arguments
+                            && let Some(syn::GenericArgument::Type(inner)) = args.args.first()
+                        {
+                            field_type = inner;
+                        }
+                        if length && !matches!(field_type, syn::Type::Path(p) if p.path.is_ident("String")) {
                             return Err(rule.error("length export currently supports String fields only"));
                         }
                         rule.parse_nested_meta(|bound| {

@@ -29,3 +29,4 @@ sea-orm-migration.workspace = true
 serde_json = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util", "sync", "time", "test-util"] }
 tempfile = { workspace = true, features = ["getrandom"] }
+cedar-policy.workspace = true

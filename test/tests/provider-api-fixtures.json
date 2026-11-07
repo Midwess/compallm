@@ -1,0 +1,900 @@
+[
+  {
+    "name": "create valid",
+    "kind": "create",
+    "value": {
+      "providers": [
+        {
+          "name": "Provider",
+          "baseUrl": "https://example.com/v1",
+          "apiKey": "secret",
+          "headers": [],
+          "models": [
+            {
+              "configuration": {
+                "name": "model_1",
+                "protocol": "openai_responses",
+                "path": "/responses",
+                "maxContextTokens": 250000,
+                "inputPrice": "0.10",
+                "outputPrice": "0",
+                "cachedPrice": "0",
+                "effortMapping": {
+                  "low": "low_1"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "valid": true
+  },
+  {
+    "name": "create empty",
+    "kind": "create",
+    "value": {
+      "providers": []
+    },
+    "valid": false
+  },
+  {
+    "name": "duplicate normalized connection names",
+    "kind": "create",
+    "value": {
+      "providers": [
+        {
+          "name": "Provider",
+          "baseUrl": "https://example.com/v1",
+          "apiKey": "secret",
+          "headers": [],
+          "models": [
+            {
+              "configuration": {
+                "name": "model_1",
+                "protocol": "openai_responses",
+                "path": "/responses",
+                "maxContextTokens": 250000,
+                "inputPrice": "0.10",
+                "outputPrice": "0",
+                "cachedPrice": "0",
+                "effortMapping": {
+                  "low": "low_1"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": " Provider ",
+          "baseUrl": "https://example.com/v1",
+          "apiKey": "secret",
+          "headers": [],
+          "models": [
+            {
+              "configuration": {
+                "name": "model_1",
+                "protocol": "openai_responses",
+                "path": "/responses",
+                "maxContextTokens": 250000,
+                "inputPrice": "0.10",
+                "outputPrice": "0",
+                "cachedPrice": "0",
+                "effortMapping": {
+                  "low": "low_1"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "invalid create apiKey",
+    "kind": "create",
+    "value": {
+      "providers": [
+        {
+          "name": "Provider",
+          "baseUrl": "https://example.com/v1",
+          "apiKey": "a b",
+          "headers": [],
+          "models": [
+            {
+              "configuration": {
+                "name": "model_1",
+                "protocol": "openai_responses",
+                "path": "/responses",
+                "maxContextTokens": 250000,
+                "inputPrice": "0.10",
+                "outputPrice": "0",
+                "cachedPrice": "0",
+                "effortMapping": {
+                  "low": "low_1"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "invalid create apiKey",
+    "kind": "create",
+    "value": {
+      "providers": [
+        {
+          "name": "Provider",
+          "baseUrl": "https://example.com/v1",
+          "apiKey": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "headers": [],
+          "models": [
+            {
+              "configuration": {
+                "name": "model_1",
+                "protocol": "openai_responses",
+                "path": "/responses",
+                "maxContextTokens": 250000,
+                "inputPrice": "0.10",
+                "outputPrice": "0",
+                "cachedPrice": "0",
+                "effortMapping": {
+                  "low": "low_1"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "invalid create name",
+    "kind": "create",
+    "value": {
+      "providers": [
+        {
+          "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "baseUrl": "https://example.com/v1",
+          "apiKey": "secret",
+          "headers": [],
+          "models": [
+            {
+              "configuration": {
+                "name": "model_1",
+                "protocol": "openai_responses",
+                "path": "/responses",
+                "maxContextTokens": 250000,
+                "inputPrice": "0.10",
+                "outputPrice": "0",
+                "cachedPrice": "0",
+                "effortMapping": {
+                  "low": "low_1"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "invalid create baseUrl",
+    "kind": "create",
+    "value": {
+      "providers": [
+        {
+          "name": "Provider",
+          "baseUrl": "https://example.com?x=1",
+          "apiKey": "secret",
+          "headers": [],
+          "models": [
+            {
+              "configuration": {
+                "name": "model_1",
+                "protocol": "openai_responses",
+                "path": "/responses",
+                "maxContextTokens": 250000,
+                "inputPrice": "0.10",
+                "outputPrice": "0",
+                "cachedPrice": "0",
+                "effortMapping": {
+                  "low": "low_1"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "invalid create organizationId",
+    "kind": "create",
+    "value": {
+      "providers": [
+        {
+          "name": "Provider",
+          "baseUrl": "https://example.com/v1",
+          "apiKey": "secret",
+          "headers": [],
+          "models": [
+            {
+              "configuration": {
+                "name": "model_1",
+                "protocol": "openai_responses",
+                "path": "/responses",
+                "maxContextTokens": 250000,
+                "inputPrice": "0.10",
+                "outputPrice": "0",
+                "cachedPrice": "0",
+                "effortMapping": {
+                  "low": "low_1"
+                }
+              }
+            }
+          ],
+          "organizationId": "1"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "creation forbids persisted ID",
+    "kind": "create",
+    "value": {
+      "providers": [
+        {
+          "name": "Provider",
+          "baseUrl": "https://example.com/v1",
+          "apiKey": "secret",
+          "headers": [],
+          "models": [
+            {
+              "configuration": {
+                "name": "model_1",
+                "protocol": "openai_responses",
+                "path": "/responses",
+                "maxContextTokens": 250000,
+                "inputPrice": "0.10",
+                "outputPrice": "0",
+                "cachedPrice": "0",
+                "effortMapping": {
+                  "low": "low_1"
+                }
+              },
+              "id": "1"
+            }
+          ]
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "nested efforts checked",
+    "kind": "create",
+    "value": {
+      "providers": [
+        {
+          "name": "Provider",
+          "baseUrl": "https://example.com/v1",
+          "apiKey": "secret",
+          "headers": [],
+          "models": [
+            {
+              "configuration": {
+                "name": "model_1",
+                "protocol": "openai_responses",
+                "path": "/responses",
+                "maxContextTokens": 250000,
+                "inputPrice": "0.10",
+                "outputPrice": "0",
+                "cachedPrice": "0",
+                "effortMapping": {
+                  "low": "bad space"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "nested prices checked",
+    "kind": "create",
+    "value": {
+      "providers": [
+        {
+          "name": "Provider",
+          "baseUrl": "https://example.com/v1",
+          "apiKey": "secret",
+          "headers": [],
+          "models": [
+            {
+              "configuration": {
+                "name": "model_1",
+                "protocol": "openai_responses",
+                "path": "/responses",
+                "maxContextTokens": 250000,
+                "inputPrice": "0.123456789",
+                "outputPrice": "0",
+                "cachedPrice": "0",
+                "effortMapping": {
+                  "low": "low_1"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "context bound",
+    "kind": "create",
+    "value": {
+      "providers": [
+        {
+          "name": "Provider",
+          "baseUrl": "https://example.com/v1",
+          "apiKey": "secret",
+          "headers": [],
+          "models": [
+            {
+              "configuration": {
+                "name": "model_1",
+                "protocol": "openai_responses",
+                "path": "/responses",
+                "maxContextTokens": 4294967296,
+                "inputPrice": "0.10",
+                "outputPrice": "0",
+                "cachedPrice": "0",
+                "effortMapping": {
+                  "low": "low_1"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "unknown capability",
+    "kind": "create",
+    "value": {
+      "providers": [
+        {
+          "name": "Provider",
+          "baseUrl": "https://example.com/v1",
+          "apiKey": "secret",
+          "headers": [],
+          "models": [
+            {
+              "configuration": {
+                "name": "model_1",
+                "protocol": "openai_responses",
+                "path": "/responses",
+                "maxContextTokens": 250000,
+                "inputPrice": "0.10",
+                "outputPrice": "0",
+                "cachedPrice": "0",
+                "effortMapping": {
+                  "low": "low_1"
+                },
+                "capabilities": ["unknown"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "nested authorization checked",
+    "kind": "create",
+    "value": {
+      "providers": [
+        {
+          "name": "Provider",
+          "baseUrl": "https://example.com/v1",
+          "apiKey": "secret",
+          "headers": [
+            {
+              "key": "Authorization",
+              "value": "Bearer abc def"
+            }
+          ],
+          "models": [
+            {
+              "configuration": {
+                "name": "model_1",
+                "protocol": "openai_responses",
+                "path": "/responses",
+                "maxContextTokens": 250000,
+                "inputPrice": "0.10",
+                "outputPrice": "0",
+                "cachedPrice": "0",
+                "effortMapping": {
+                  "low": "low_1"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "replacement without credential",
+    "kind": "replace",
+    "value": {
+      "name": "Provider",
+      "baseUrl": "https://example.com/v1",
+      "headers": [],
+      "models": [
+        {
+          "configuration": {
+            "name": "model_1",
+            "protocol": "openai_responses",
+            "path": "/responses",
+            "maxContextTokens": 250000,
+            "inputPrice": "0.10",
+            "outputPrice": "0",
+            "cachedPrice": "0",
+            "effortMapping": {
+              "low": "low_1"
+            }
+          }
+        }
+      ]
+    },
+    "valid": true
+  },
+  {
+    "name": "replacement incomplete",
+    "kind": "replace",
+    "value": {
+      "name": "Renamed"
+    },
+    "valid": false
+  },
+  {
+    "name": "patch name",
+    "kind": "patch",
+    "value": {
+      "name": "Renamed"
+    },
+    "valid": true
+  },
+  {
+    "name": "patch retains header secret",
+    "kind": "patch",
+    "value": {
+      "headers": [
+        {
+          "key": "Authorization"
+        }
+      ]
+    },
+    "valid": true
+  },
+  {
+    "name": "patch clears headers",
+    "kind": "patch",
+    "value": {
+      "headers": []
+    },
+    "valid": true
+  },
+  {
+    "name": "empty patch",
+    "kind": "patch",
+    "value": {},
+    "valid": false
+  },
+  {
+    "name": "null name",
+    "kind": "patch",
+    "value": {
+      "name": null
+    },
+    "valid": false
+  },
+  {
+    "name": "null baseUrl",
+    "kind": "patch",
+    "value": {
+      "baseUrl": null
+    },
+    "valid": false
+  },
+  {
+    "name": "null apiKey",
+    "kind": "patch",
+    "value": {
+      "apiKey": null
+    },
+    "valid": false
+  },
+  {
+    "name": "null headers",
+    "kind": "patch",
+    "value": {
+      "headers": null
+    },
+    "valid": false
+  },
+  {
+    "name": "null models",
+    "kind": "patch",
+    "value": {
+      "models": null
+    },
+    "valid": false
+  },
+  {
+    "name": "blank replacement credential",
+    "kind": "patch",
+    "value": {
+      "apiKey": ""
+    },
+    "valid": false
+  },
+  {
+    "name": "invalid provided authorization",
+    "kind": "patch",
+    "value": {
+      "headers": [
+        {
+          "key": "Authorization",
+          "value": "Bearer "
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "duplicate headers ignoring case",
+    "kind": "patch",
+    "value": {
+      "headers": [
+        {
+          "key": "X-Key"
+        },
+        {
+          "key": "x-key"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "model list empty",
+    "kind": "patch",
+    "value": {
+      "models": []
+    },
+    "valid": false
+  },
+  {
+    "name": "all models disabled",
+    "kind": "patch",
+    "value": {
+      "models": [
+        {
+          "configuration": {
+            "name": "model_1",
+            "protocol": "openai_responses",
+            "path": "/responses",
+            "maxContextTokens": 250000,
+            "inputPrice": "0.10",
+            "outputPrice": "0",
+            "cachedPrice": "0",
+            "effortMapping": {
+              "low": "low_1"
+            },
+            "enabled": false
+          }
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "model IDs exact u64 strings",
+    "kind": "patch",
+    "value": {
+      "models": [
+        {
+          "configuration": {
+            "name": "model_1",
+            "protocol": "openai_responses",
+            "path": "/responses",
+            "maxContextTokens": 250000,
+            "inputPrice": "0.10",
+            "outputPrice": "0",
+            "cachedPrice": "0",
+            "effortMapping": {
+              "low": "low_1"
+            }
+          },
+          "id": "18446744073709551615"
+        }
+      ]
+    },
+    "valid": true
+  },
+  {
+    "name": "invalid ID '0'",
+    "kind": "patch",
+    "value": {
+      "models": [
+        {
+          "configuration": {
+            "name": "model_1",
+            "protocol": "openai_responses",
+            "path": "/responses",
+            "maxContextTokens": 250000,
+            "inputPrice": "0.10",
+            "outputPrice": "0",
+            "cachedPrice": "0",
+            "effortMapping": {
+              "low": "low_1"
+            }
+          },
+          "id": "0"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "invalid ID '01'",
+    "kind": "patch",
+    "value": {
+      "models": [
+        {
+          "configuration": {
+            "name": "model_1",
+            "protocol": "openai_responses",
+            "path": "/responses",
+            "maxContextTokens": 250000,
+            "inputPrice": "0.10",
+            "outputPrice": "0",
+            "cachedPrice": "0",
+            "effortMapping": {
+              "low": "low_1"
+            }
+          },
+          "id": "01"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "invalid ID '18446744073709551616'",
+    "kind": "patch",
+    "value": {
+      "models": [
+        {
+          "configuration": {
+            "name": "model_1",
+            "protocol": "openai_responses",
+            "path": "/responses",
+            "maxContextTokens": 250000,
+            "inputPrice": "0.10",
+            "outputPrice": "0",
+            "cachedPrice": "0",
+            "effortMapping": {
+              "low": "low_1"
+            }
+          },
+          "id": "18446744073709551616"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "invalid ID '+1'",
+    "kind": "patch",
+    "value": {
+      "models": [
+        {
+          "configuration": {
+            "name": "model_1",
+            "protocol": "openai_responses",
+            "path": "/responses",
+            "maxContextTokens": 250000,
+            "inputPrice": "0.10",
+            "outputPrice": "0",
+            "cachedPrice": "0",
+            "effortMapping": {
+              "low": "low_1"
+            }
+          },
+          "id": "+1"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "invalid ID '1\\n'",
+    "kind": "patch",
+    "value": {
+      "models": [
+        {
+          "configuration": {
+            "name": "model_1",
+            "protocol": "openai_responses",
+            "path": "/responses",
+            "maxContextTokens": 250000,
+            "inputPrice": "0.10",
+            "outputPrice": "0",
+            "cachedPrice": "0",
+            "effortMapping": {
+              "low": "low_1"
+            }
+          },
+          "id": "1\n"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "duplicate persisted ID",
+    "kind": "patch",
+    "value": {
+      "models": [
+        {
+          "configuration": {
+            "name": "model_1",
+            "protocol": "openai_responses",
+            "path": "/responses",
+            "maxContextTokens": 250000,
+            "inputPrice": "0.10",
+            "outputPrice": "0",
+            "cachedPrice": "0",
+            "effortMapping": {
+              "low": "low_1"
+            }
+          },
+          "id": "1"
+        },
+        {
+          "configuration": {
+            "name": "other",
+            "protocol": "openai_responses",
+            "path": "/responses",
+            "maxContextTokens": 250000,
+            "inputPrice": "0.10",
+            "outputPrice": "0",
+            "cachedPrice": "0",
+            "effortMapping": {
+              "low": "low_1"
+            }
+          },
+          "id": "1"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "duplicate model names",
+    "kind": "patch",
+    "value": {
+      "models": [
+        {
+          "configuration": {
+            "name": "model_1",
+            "protocol": "openai_responses",
+            "path": "/responses",
+            "maxContextTokens": 250000,
+            "inputPrice": "0.10",
+            "outputPrice": "0",
+            "cachedPrice": "0",
+            "effortMapping": {
+              "low": "low_1"
+            }
+          }
+        },
+        {
+          "configuration": {
+            "name": "model_1",
+            "protocol": "openai_responses",
+            "path": "/responses",
+            "maxContextTokens": 250000,
+            "inputPrice": "0.10",
+            "outputPrice": "0",
+            "cachedPrice": "0",
+            "effortMapping": {
+              "low": "low_1"
+            }
+          }
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "unknown top level",
+    "kind": "patch",
+    "value": {
+      "name": "new",
+      "unknown": true
+    },
+    "valid": false
+  },
+  {
+    "name": "unknown model property",
+    "kind": "patch",
+    "value": {
+      "models": [
+        {
+          "configuration": {
+            "name": "model_1",
+            "protocol": "openai_responses",
+            "path": "/responses",
+            "maxContextTokens": 250000,
+            "inputPrice": "0.10",
+            "outputPrice": "0",
+            "cachedPrice": "0",
+            "effortMapping": {
+              "low": "low_1"
+            }
+          },
+          "unknown": true
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "unknown catalog property",
+    "kind": "patch",
+    "value": {
+      "models": [
+        {
+          "configuration": {
+            "name": "model_1",
+            "protocol": "openai_responses",
+            "path": "/responses",
+            "maxContextTokens": 250000,
+            "inputPrice": "0.10",
+            "outputPrice": "0",
+            "cachedPrice": "0",
+            "effortMapping": {
+              "low": "low_1"
+            },
+            "catalogRef": {
+              "provider": "openai",
+              "model": "model",
+              "unknown": true
+            }
+          }
+        }
+      ]
+    },
+    "valid": false
+  }
+]

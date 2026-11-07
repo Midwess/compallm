@@ -1,10 +1,11 @@
-//! Input components only. Exporting these types does not register API endpoints.
+//! Shared provider contracts. Exporting types does not register API endpoints.
+pub mod api;
 use crate::ContractSchema;
 use compallm_core::provider::input;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use validify::Validify;
 
-#[derive(Deserialize, Validify, ContractSchema)]
+#[derive(Serialize, Deserialize, Validify, ContractSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProviderFields {
     #[validate(length(min = 1, max = 120), custom(function = input::nonblank))]
@@ -15,7 +16,7 @@ pub struct ProviderFields {
     pub api_key: String,
 }
 
-#[derive(Deserialize, Validify, ContractSchema)]
+#[derive(Serialize, Deserialize, Validify, ContractSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProviderModelFields {
     #[validate(length(min = 1, max = 40), custom(function = input::model_name))]
@@ -32,12 +33,14 @@ pub struct ProviderModelFields {
     pub cached_price: String,
 }
 
-#[derive(Deserialize, Validify, ContractSchema)]
+#[derive(Serialize, Deserialize, Validify, ContractSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[validate(validate_header)]
 pub struct ProviderHeader {
     #[validate(custom(function = input::header_name), length(max = 128))]
     pub key: String,
+    /// Write-only header content; never returned by management reads.
+    #[schema(write_only)]
     #[validate(custom(function = input::header_value))]
     pub value: String,
 }
@@ -56,7 +59,7 @@ fn validate_header_contract() -> serde_json::Value {
     serde_json::json!({"x-compallm-object-rule": "header"})
 }
 
-#[derive(Deserialize, Validify, ContractSchema)]
+#[derive(Serialize, Deserialize, Validify, ContractSchema)]
 #[serde(deny_unknown_fields)]
 #[validate(validate_headers)]
 pub struct ProviderHeaders {
@@ -80,7 +83,7 @@ fn validate_headers_contract() -> serde_json::Value {
     serde_json::json!({"x-compallm-object-rule": "headers"})
 }
 
-#[derive(Deserialize, Validify, ContractSchema)]
+#[derive(Serialize, Deserialize, Validify, ContractSchema)]
 #[serde(deny_unknown_fields)]
 #[validate(validate_models)]
 pub struct ProviderModels {
@@ -110,7 +113,7 @@ fn validate_models_contract() -> serde_json::Value {
 }
 
 /// Independently exported rules for optional/draft values and collection adapters.
-#[derive(Deserialize, Validify, ContractSchema)]
+#[derive(Serialize, Deserialize, Validify, ContractSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProviderInputRules {
     #[validate(length(min = 1, max = 25), custom(function = input::effort_value))]

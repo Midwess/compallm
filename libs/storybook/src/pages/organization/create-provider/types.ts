@@ -1,37 +1,30 @@
+import type {
+  ProviderRegistryEntry,
+  TextModelProtocol as ContractTextModelProtocol,
+  ProviderModelCapability,
+  ProviderEffortMapping,
+  ProviderCatalogRef,
+} from '@compallm/contract/api'
 import type { NavigationRequest } from '../../../url'
 import type { StoreApi } from 'zustand/vanilla'
 
 export type EndpointMode = 'chat_completions' | 'responses' | 'messages' | 'video' | 'realtime'
-export type ApiProtocol = 'openai_compatible' | 'anthropic' | 'provider_specific'
-export type TextModelProtocol = 'openai_chat_completions' | 'openai_responses' | 'anthropic_messages'
-export type ModelCapability =
-  | 'text'
-  | 'vision'
-  | 'pdf'
-  | 'audio'
-  | 'video'
-  | 'image_generation'
-  | 'audio_generation'
-  | 'search'
-  | 'reasoning'
-  | 'tool_call'
-  | 'forced_tool_choice'
-  | 'structured_output'
+export type ApiProtocol = ProviderRegistryEntry['protocol']
+export type TextModelProtocol = ContractTextModelProtocol
+export type ModelCapability = ProviderModelCapability
 export type ModelStatusFilter = 'all' | 'enabled' | 'disabled'
 export interface HeaderEntry {
   id: string
   key: string
   value: string
 }
-export type EffortMapping = Partial<Record<ThinkingLevel, string>>
-export type ThinkingLevel = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
-export interface ProviderPreset {
-  id: string
-  name: string
-  protocol: ApiProtocol
-  baseUrl: string
-}
+export type EffortMapping = ProviderEffortMapping
+export type ThinkingLevel = keyof EffortMapping
+export type ProviderPreset = ProviderRegistryEntry
 export interface ModelDraft {
+  /** Persisted API identity; UI draft IDs and catalog IDs never substitute for it. */
+  persistedId?: string
+  catalogRef?: ProviderCatalogRef
   id: string
   name: string
   maxContextTokens: string

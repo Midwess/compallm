@@ -162,7 +162,7 @@ export class CreateProviderController implements Controller {
     this.store.setState({
       step: 'configure',
       name: `${preset.name} production`,
-      baseUrl: preset.baseUrl,
+      baseUrl: preset.baseUrl ?? '',
       protocol: preset.protocol,
       apiKey: '',
       headers: [],

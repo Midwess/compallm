@@ -22,7 +22,7 @@ export function ProviderChooser() {
     (item) =>
       (protocolFilter === 'all' ||
         (protocolFilter === 'anthropic_messages' ? item.protocol === 'anthropic' : item.protocol === 'openai_compatible')) &&
-      `${item.name} ${item.id} ${item.protocol} ${item.baseUrl}`.toLowerCase().includes(query.toLowerCase()),
+      `${item.name} ${item.id} ${item.protocol} ${item.baseUrl ?? ''}`.toLowerCase().includes(query.toLowerCase()),
   )
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-4 px-4 py-6">
@@ -76,7 +76,7 @@ export function ProviderChooser() {
                     </span>
                   </button>
                 </Table.Cell>
-                <Table.Cell className="truncate px-4 text-muted">{provider.baseUrl}</Table.Cell>
+                <Table.Cell className="truncate px-4 text-muted">{provider.baseUrl ?? 'Configure endpoint'}</Table.Cell>
                 <Table.Cell className="text-center">
                   <button
                     type="button"

@@ -84,7 +84,7 @@ jobs:
           cargo run --locked -p compallm-api -- generate
           git diff --exit-code -- libs/contract/api.ts libs/contract/operations.ts libs/contract/schemas.ts libs/contract/validation.ts
           test -z "$(git ls-files --others --exclude-standard -- libs/contract/*.ts)"
-          node --test test/tests/input_contract.mjs
+          node --test test/tests/input_contract.mjs test/tests/provider_api_contract.mjs
 
   portal:
     name: Frontend checks

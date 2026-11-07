@@ -57,3 +57,4 @@ pluralizer = { version = "0.5", default-features = false }
 syn = { version = "2", default-features = false }
 tempfile = { version = "3", default-features = false }
 maud = { version = "0.27", default-features = false }
+cedar-policy = { version = "4" }

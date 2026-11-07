@@ -115,3 +115,15 @@ pub fn authorization(value: &str) -> Result<(), ValidationError> {
 pub fn authorization_contract() -> Value {
     json!({"x-compallm-format": "authorization"})
 }
+
+/// Positive decimal-string IDs preserve u64 precision in JavaScript.
+pub fn resource_id(value: &str) -> Result<(), ValidationError> {
+    (value.parse::<u64>().is_ok_and(|id| id > 0)
+        && !value.starts_with('0')
+        && value.bytes().all(|c| c.is_ascii_digit()))
+    .then_some(())
+    .ok_or_else(|| ValidationError::new_field("resource_id"))
+}
+pub fn resource_id_contract() -> Value {
+    json!({"pattern": "^[1-9][0-9]*$", "x-compallm-format": "resourceId"})
+}

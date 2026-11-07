@@ -4,14 +4,17 @@ use compallm_core::{
         DbContext,
         provider::{ProviderRepository as CoreProviderRepository, ProviderRepositoryError},
     },
-    provider::{Provider, ProviderApiKey},
+    provider::Provider,
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, DbErr, EntityTrait, ModelTrait, QueryFilter,
     QueryOrder, QuerySelect, RuntimeErr,
 };
 
-use crate::{postgres_connection::PostgresConnection, schema::ProviderSchema};
+use crate::{
+    mappers::provider::ProviderInsert, postgres_connection::PostgresConnection,
+    schema::ProviderSchema,
+};
 
 type Providers = <ProviderSchema as ModelTrait>::Entity;
 type ProviderColumn = <Providers as EntityTrait>::Column;
@@ -68,36 +71,27 @@ impl CoreProviderRepository for ProviderRepository {
             .collect()
     }
 
-    async fn insert(
-        &self,
-        provider: Provider,
-        api_key: ProviderApiKey,
-    ) -> Result<Provider, ProviderRepositoryError> {
-        let id = Self::database_id(provider.id, "provider ID")?;
-        let organization_id = Self::database_id(provider.organization_id, "organization ID")?;
+    async fn insert(&self, provider: Provider) -> Result<Provider, ProviderRepositoryError> {
+        let input = ProviderInsert::try_from(provider)?;
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
 
-        let model = ProviderActiveModel {
-            id: Set(id),
-            organization_id: Set(organization_id),
-            name: Set(provider.name),
-            connection: Set(
-                serde_json::to_value(provider.connection).context("invalid provider connection")?
-            ),
-            headers: Set(
-                serde_json::to_value(provider.headers).context("invalid provider headers")?
-            ),
-            credentials: Set(api_key.into_storage_value()),
-        };
-        Provider::try_from(model.insert(db).await.map_err(Self::write_error)?)
+        let stored = Providers::find()
+            .from_raw_sql(input.statement)
+            .one(db)
+            .await
+            .map_err(Self::write_error)?
+            .ok_or_else(|| {
+                ProviderRepositoryError::database(anyhow::anyhow!(
+                    "provider insert returned no row"
+                ))
+            })?;
+        let mut provider = Provider::try_from(stored)?;
+        provider.models = input.models;
+        Ok(provider)
     }
 
-    async fn update(
-        &self,
-        provider: Provider,
-        api_key: Option<ProviderApiKey>,
-    ) -> Result<Provider, ProviderRepositoryError> {
+    async fn update(&self, provider: Provider) -> Result<Provider, ProviderRepositoryError> {
         let organization_id = Self::database_id(provider.organization_id, "organization ID")?;
         let provider_id = Self::database_id(provider.id, "provider ID")?;
         let context = DbContext::current()?;
@@ -115,9 +109,7 @@ impl CoreProviderRepository for ProviderRepository {
             Set(serde_json::to_value(provider.connection).context("invalid provider connection")?);
         model.headers =
             Set(serde_json::to_value(provider.headers).context("invalid provider headers")?);
-        if let Some(api_key) = api_key {
-            model.credentials = Set(api_key.into_storage_value());
-        }
+        model.credentials = Set(provider.api_key.into());
         Provider::try_from(model.update(db).await.map_err(Self::write_error)?)
     }
 

@@ -1,7 +1,7 @@
+use super::ProviderApiKey;
 use super::configuration::{
     Capability, Connection, Headers, ModelLimits, Pricing, Protocol, ServiceKind, Thinking,
 };
-use super::error::ProviderApiKeyError;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Provider {
@@ -10,6 +10,7 @@ pub struct Provider {
     pub name: String,
     pub connection: Connection,
     pub headers: Headers,
+    pub api_key: ProviderApiKey,
     pub models: Vec<ProviderModel>,
 }
 
@@ -28,25 +29,4 @@ pub struct ProviderModel {
     pub limits: ModelLimits,
     pub thinking: Option<Thinking>,
     pub pricing: Pricing,
-}
-
-/// Secret value persisted in the provider's `credentials` column.
-///
-/// This type deliberately does not implement `Debug`, `Display`, `Clone`, or
-/// serialization. Callers must protect the value before it crosses a trust
-/// boundary; repositories never return it from ordinary reads.
-pub struct ProviderApiKey(String);
-
-impl ProviderApiKey {
-    pub fn new(value: impl Into<String>) -> Result<Self, ProviderApiKeyError> {
-        let value = value.into();
-        if value.is_empty() {
-            return Err(ProviderApiKeyError);
-        }
-        Ok(Self(value))
-    }
-
-    pub fn into_storage_value(self) -> String {
-        self.0
-    }
 }

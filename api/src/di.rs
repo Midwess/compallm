@@ -56,6 +56,8 @@ impl Di {
             .expect("Di::init must finish before using dependencies")
     }
 
+    // Loco owns this framework error type; keep its required API at this boundary.
+    #[allow(clippy::result_large_err)]
     pub async fn init(ctx: &AppContext) -> loco_rs::Result<&'static Self> {
         let di = DI
             .get_or_try_init(|| async {

@@ -34,12 +34,25 @@ import {
  * Middleware performs one scoped session-version lookup for valid user access.
  * Matching versions reuse signed claims; stale claims rebuild before this handler runs.
  * Cookie renewal requires a matching valid refresh cookie and trusted Origin.
- * Bearer rebuilding preserves expiry and returns X-Compallm-Access-Token and
- * X-Compallm-Access-Token-Expires-At headers; no refresh token or cookies are issued.
+ * Stale bearer access returns 401 as expired. Present a valid refresh JWT to
+ * POST /api/auth/refresh, update both credentials, then retry the original request.
  * Temporary session-storage errors return 503 and preserve browser credentials.
  * @summary Read the current authenticated identity and organization scope.
  */
 export const CurrentUserResponseSchema = CurrentUserResponse
+
+
+/**
+ * Send the unexpired refresh JWT as Authorization: Bearer. No request body is
+ * required. Access/OTP credentials and cookie-only requests are rejected.
+ * Revalidates current session/user/membership and rebuilds the permission snapshot.
+ * Returns both JWTs and lifetime metadata in JSON; no cookies are set or cleared.
+ * A stale authorization version on the refresh JWT is allowed; revoked, expired,
+ * foreign or removed credentials cannot renew. Save both credentials and retry
+ * the original request after stale/expired access returns 401.
+ * @summary Explicitly refresh bearer credentials.
+ */
+export const RefreshTokensResponse = AuthTokensResponse
 
 
 /**

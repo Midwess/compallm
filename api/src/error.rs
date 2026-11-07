@@ -90,10 +90,13 @@ impl IntoResponse for ApiError {
                 StatusCode::SERVICE_UNAVAILABLE,
                 "Email delivery is unavailable",
             ),
+            Self::Auth(AuthError::ExpiredToken) => (
+                StatusCode::UNAUTHORIZED,
+                "Access token expired; refresh your credentials",
+            ),
             Self::Auth(
                 AuthError::InvalidSession
                 | AuthError::InvalidToken
-                | AuthError::ExpiredToken
                 | AuthError::WrongTokenVariant
                 | AuthError::IncorrectCode
                 | AuthError::TokenEncoding(_)
@@ -108,13 +111,20 @@ impl IntoResponse for ApiError {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
             }
         };
-        (
+        let mut response = (
             status,
             [(axum::http::header::CACHE_CONTROL, "no-store")],
             Json(ErrorResponse {
                 message: message.into(),
             }),
         )
-            .into_response()
+            .into_response();
+        if status == StatusCode::UNAUTHORIZED {
+            response.headers_mut().insert(
+                axum::http::header::WWW_AUTHENTICATE,
+                axum::http::HeaderValue::from_static("Bearer"),
+            );
+        }
+        response
     }
 }

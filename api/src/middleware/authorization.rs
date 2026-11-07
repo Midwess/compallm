@@ -56,13 +56,8 @@ where
 
 pub struct Authorization;
 
-enum Replacement {
-    Cookies(UserTokens),
-    Bearer { token: String, expires_at: u64 },
-}
-
 impl Authorization {
-    fn bearer(headers: &HeaderMap) -> Result<Option<&str>, ApiError> {
+    pub(crate) fn bearer(headers: &HeaderMap) -> Result<Option<&str>, ApiError> {
         let mut values = headers.get_all(AUTHORIZATION).iter();
         let Some(value) = values.next() else {
             return Ok(None);
@@ -99,22 +94,13 @@ impl Authorization {
         settings: &TokenDeliverySettings,
         headers: &HeaderMap,
         method: &Method,
-    ) -> Result<(AccessToken, Option<Replacement>), ApiError> {
+    ) -> Result<(AccessToken, Option<UserTokens>), ApiError> {
         if let Some(token) = Self::bearer(headers)? {
             let token = auth.authenticate_token(token)?;
             if let AccessToken::User(user) = &token
                 && !auth.validate_access(user).await?
             {
-                let encoded = auth.refresh_access(user).await?;
-                let rebuilt = auth.authenticate_access(&encoded)?;
-                let expires_at = rebuilt.validity.expires_at;
-                return Ok((
-                    AccessToken::User(rebuilt),
-                    Some(Replacement::Bearer {
-                        token: encoded,
-                        expires_at,
-                    }),
-                ));
+                return Err(AuthError::ExpiredToken.into());
             }
             return Ok((token, None));
         }
@@ -142,10 +128,7 @@ impl Authorization {
                     )?;
                     let tokens = auth.refresh(&refresh).await?;
                     let rebuilt = auth.authenticate_access(&tokens.access_token)?;
-                    return Ok((
-                        AccessToken::User(rebuilt),
-                        Some(Replacement::Cookies(tokens)),
-                    ));
+                    return Ok((AccessToken::User(rebuilt), Some(tokens)));
                 }
                 Ok(token @ AccessToken::EmailOtp(_)) => return Ok((token, None)),
                 Ok(_) => return Err(AuthError::WrongTokenVariant.into()),
@@ -157,7 +140,7 @@ impl Authorization {
         settings.validate_cookie_request(headers, matches!(*method, Method::GET | Method::HEAD))?;
         let tokens = auth.refresh(&refresh).await?;
         let user = auth.authenticate_access(&tokens.access_token)?;
-        Ok((AccessToken::User(user), Some(Replacement::Cookies(tokens))))
+        Ok((AccessToken::User(user), Some(tokens)))
     }
 
     fn insert_token(extensions: &mut Extensions, token: AccessToken) -> Result<(), ApiError> {
@@ -210,10 +193,7 @@ impl Authorization {
         if cookie_mode && let AccessToken::User(user) = &token {
             let refresh = renewed
                 .as_ref()
-                .and_then(|replacement| match replacement {
-                    Replacement::Cookies(tokens) => Some(tokens.refresh_token.clone()),
-                    Replacement::Bearer { .. } => None,
-                })
+                .map(|tokens| tokens.refresh_token.clone())
                 .or_else(|| {
                     Self::cookie(request.headers(), settings.cookie_names().1)
                         .ok()
@@ -223,21 +203,8 @@ impl Authorization {
         }
         Self::insert_token(request.extensions_mut(), token)?;
         let mut response = next.run(request).await;
-        let tokens = match renewed {
-            None => return Ok(response),
-            Some(Replacement::Bearer { token, expires_at }) => {
-                let mut credential = HeaderValue::from_str(&token)?;
-                credential.set_sensitive(true);
-                response
-                    .headers_mut()
-                    .insert("x-compallm-access-token", credential);
-                response.headers_mut().insert(
-                    "x-compallm-access-token-expires-at",
-                    HeaderValue::from_str(&expires_at.to_string())?,
-                );
-                return Ok(response);
-            }
-            Some(Replacement::Cookies(tokens)) => tokens,
+        let Some(tokens) = renewed else {
+            return Ok(response);
         };
         // Preserve credentials explicitly set by the handler (for example organization switching).
         let names = settings.cookie_names();
@@ -267,7 +234,11 @@ impl Authorization {
         let mut response = Self::run(auth, settings, request, next, cookie_mode)
             .await
             .unwrap_or_else(|error| {
+                let expired = matches!(&error, ApiError::Auth(AuthError::ExpiredToken));
                 let mut response = error.into_authentication_response();
+                if expired {
+                    response.headers_mut().insert(WWW_AUTHENTICATE, HeaderValue::from_static("Bearer error=\"invalid_token\", error_description=\"Access token expired; refresh explicitly\""));
+                }
                 if cookie_mode
                     && matches!(
                         response.status(),
@@ -282,7 +253,9 @@ impl Authorization {
         response
             .headers_mut()
             .insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
-        if response.status() == StatusCode::UNAUTHORIZED {
+        if response.status() == StatusCode::UNAUTHORIZED
+            && !response.headers().contains_key(WWW_AUTHENTICATE)
+        {
             response
                 .headers_mut()
                 .insert(WWW_AUTHENTICATE, HeaderValue::from_static("Bearer"));

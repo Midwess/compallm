@@ -48,38 +48,6 @@ impl AuthService {
         Ok(claims.session.authorization_version == version)
     }
 
-    /// Rebuild access authority without extending its expiry or minting refresh credentials.
-    /// The caller supplies signature-verified claims and delivers the replacement as bearer access.
-    pub async fn refresh_access(&self, claims: &UserAccessToken) -> Result<String, AuthError> {
-        claims.validate(unix_timestamp())?;
-        let (session, membership) = self
-            .sessions
-            .find_policy_membership(&claims.session)
-            .await?
-            .ok_or(AuthError::InvalidSession)?;
-        if !session.is_active(&claims.session)
-            || session.authorization_version < claims.session.authorization_version
-            || membership.organization_id != session.organization_id
-            || membership.user_id != session.user_id
-        {
-            return Err(AuthError::InvalidSession);
-        }
-        let rebuilt = UserAccessToken {
-            session,
-            organization_role: membership.compatibility_role(),
-            policy_snapshot: self.create_policy_snapshot(&membership)?,
-            validity: claims.validity.clone(),
-        };
-        rebuilt.validate(unix_timestamp())?;
-        let remaining = claims
-            .validity
-            .expires_at
-            .checked_sub(unix_timestamp())
-            .filter(|remaining| *remaining > 0)
-            .ok_or(AuthError::ExpiredToken)?;
-        AccessToken::User(rebuilt).encode(&self.jwt_secret, Duration::from_secs(remaining))
-    }
-
     /// Invalidate selected members' session snapshots in one organization.
     /// The caller determines affected users and owns the transaction containing
     /// authority changes. This increments versions without revoking or renewing.

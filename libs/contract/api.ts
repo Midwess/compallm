@@ -578,8 +578,8 @@ export const getCurrentUserUrl = () => {
  * Middleware performs one scoped session-version lookup for valid user access.
  * Matching versions reuse signed claims; stale claims rebuild before this handler runs.
  * Cookie renewal requires a matching valid refresh cookie and trusted Origin.
- * Bearer rebuilding preserves expiry and returns X-Compallm-Access-Token and
- * X-Compallm-Access-Token-Expires-At headers; no refresh token or cookies are issued.
+ * Stale bearer access returns 401 as expired. Present a valid refresh JWT to
+ * POST /api/auth/refresh, update both credentials, then retry the original request.
  * Temporary session-storage errors return 503 and preserve browser credentials.
  * @summary Read the current authenticated identity and organization scope.
  */
@@ -605,6 +605,51 @@ export const currentUser = async ( options?: RequestInit): Promise<CurrentUserRe
     throw err;
   }
   const data: CurrentUserResponse = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+export const getRefreshTokensUrl = () => {
+
+
+
+
+  return `/api/auth/refresh`
+}
+
+/**
+ * Send the unexpired refresh JWT as Authorization: Bearer. No request body is
+ * required. Access/OTP credentials and cookie-only requests are rejected.
+ * Revalidates current session/user/membership and rebuilds the permission snapshot.
+ * Returns both JWTs and lifetime metadata in JSON; no cookies are set or cleared.
+ * A stale authorization version on the refresh JWT is allowed; revoked, expired,
+ * foreign or removed credentials cannot renew. Save both credentials and retry
+ * the original request after stale/expired access returns 401.
+ * @summary Explicitly refresh bearer credentials.
+ */
+export const refreshTokens = async ( options?: RequestInit): Promise<AuthTokensResponse> => {
+
+  const res = await fetch(getRefreshTokensUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  if (!res.ok) {
+
+    const err: globalThis.Error & {info?: AuthTokensResponse, status?: number} = new globalThis.Error();
+    const data : AuthTokensResponse = body ? JSON.parse(body) : {}
+    err.info = data;
+    err.status = res.status;
+    throw err;
+  }
+  const data: AuthTokensResponse = body ? JSON.parse(body) : {}
   return data
 }
 

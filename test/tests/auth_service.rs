@@ -2114,28 +2114,53 @@ async fn middleware_matching_version_uses_one_lookup_and_keeps_snapshot() {
 }
 
 #[tokio::test]
-async fn middleware_bearer_rebuilds_without_refresh_or_expiry_extension() {
+async fn middleware_stale_bearer_requires_explicit_refresh_before_retry() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let session = Session::new(1, 7, 84, "Team");
     let claims = fixture.access_for_session(session.clone());
+    let refresh =
+        AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
+            .encode(SECRET, REFRESH_LIFETIME)
+            .unwrap();
     let mut current = session;
     current.authorization_version = 2;
     fixture.repo.0.lock().unwrap().sessions.insert(7, current);
-    let response = fixture.request(&claims, false, None, false).await;
+    let response = fixture.request(&claims, false, Some(&refresh), false).await;
+    assert_eq!(response.status(), 401);
+    assert!(
+        response.headers()["www-authenticate"]
+            .to_str()
+            .unwrap()
+            .contains("invalid_token")
+    );
+    assert!(!response.headers().contains_key("set-cookie"));
+    assert!(!response.headers().contains_key("x-compallm-access-token"));
+    {
+        let state = fixture.repo.0.lock().unwrap();
+        assert_eq!(state.freshness_reads, 1);
+        assert_eq!(state.authority_reads, 0);
+        assert_eq!(state.handled_requests, 0);
+    }
+    let response = fixture.explicit_refresh(Some(&refresh), None).await;
     assert_eq!(response.status(), 200);
     assert!(!response.headers().contains_key("set-cookie"));
-    let replacement = response.headers()["x-compallm-access-token"]
-        .to_str()
+    let body = axum::body::to_bytes(response.into_body(), 16384)
+        .await
         .unwrap();
-    let decoded =
-        UserAccessToken::try_from(AccessToken::decode(replacement, SECRET).unwrap()).unwrap();
-    assert_eq!(decoded.session.authorization_version, 2);
-    assert_eq!(decoded.validity.expires_at, claims.validity.expires_at);
-    assert_eq!(decoded.policy_snapshot.role_ids, vec![1]);
-    let state = fixture.repo.0.lock().unwrap();
-    assert_eq!(state.freshness_reads, 1);
-    assert_eq!(state.authority_reads, 1);
-    assert_eq!(state.handled_requests, 1);
+    let tokens: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let access = UserAccessToken::try_from(
+        AccessToken::decode(tokens["accessToken"].as_str().unwrap(), SECRET).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(access.session.authorization_version, 2);
+    assert_eq!(access.policy_snapshot.role_ids, vec![1]);
+    assert!(tokens["refreshToken"].is_string());
+    assert!(tokens["accessLifetime"]["expiresAt"].is_number());
+    assert_eq!(
+        fixture.request(&access, false, None, false).await.status(),
+        200
+    );
+    assert_eq!(fixture.repo.0.lock().unwrap().handled_requests, 1);
 }
 
 #[tokio::test]
@@ -2285,9 +2310,8 @@ async fn middleware_invalid_or_wrong_variant_bearer_never_renews_from_cookies() 
 }
 
 #[tokio::test]
-async fn middleware_expired_cookie_renews_once_and_bearer_outer_expiry_cannot_extend() {
+async fn middleware_expired_cookie_renews_once() {
     use axum::{body::Body, http::Request};
-    use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let session = Session::new(1, 7, 84, "Team");
     fixture
@@ -2326,52 +2350,6 @@ async fn middleware_expired_cookie_renews_once_and_bearer_outer_expiry_cannot_ex
     assert_eq!(response.status(), 200);
     assert_eq!(response.headers().get_all("set-cookie").iter().count(), 2);
     assert_eq!(fixture.repo.0.lock().unwrap().handled_requests, 1);
-    fixture
-        .repo
-        .0
-        .lock()
-        .unwrap()
-        .sessions
-        .get_mut(&7)
-        .unwrap()
-        .authorization_version = 2;
-    let input = hero::token::jwt::create_jwt_token(
-        AccessToken::User(fixture.access_for_session(session)),
-        SECRET,
-        Duration::from_secs(10),
-    )
-    .unwrap();
-    let envelope = |token: &str| -> serde_json::Value {
-        serde_json::from_slice(
-            &URL_SAFE_NO_PAD
-                .decode(token.split('.').nth(1).unwrap())
-                .unwrap(),
-        )
-        .unwrap()
-    };
-    let original_expiry = envelope(&input)["exp"].as_u64().unwrap();
-    let response = fixture
-        .execute(
-            Request::builder()
-                .uri("/check")
-                .header("authorization", format!("Bearer {input}"))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await;
-    assert_eq!(response.status(), 200);
-    let replacement = response.headers()["x-compallm-access-token"]
-        .to_str()
-        .unwrap();
-    assert!(envelope(replacement)["exp"].as_u64().unwrap() <= original_expiry);
-    assert_eq!(
-        UserAccessToken::try_from(AccessToken::decode(replacement, SECRET).unwrap())
-            .unwrap()
-            .validity
-            .expires_at,
-        original_expiry
-    );
-    assert_eq!(fixture.repo.0.lock().unwrap().handled_requests, 2);
 }
 
 #[tokio::test]
@@ -2386,9 +2364,126 @@ async fn middleware_oversized_rebuild_fails_before_handler_without_new_credentia
         state.sessions.insert(7, current);
         state.memberships[0].roles = vec![Role::defaults(84).remove(0)];
     }
-    let response = fixture.request(&claims, false, None, false).await;
+    let refresh = AccessToken::Refresh(
+        RefreshToken::from_session(&claims.session, REFRESH_LIFETIME).unwrap(),
+    )
+    .encode(SECRET, REFRESH_LIFETIME)
+    .unwrap();
+    let response = fixture.request(&claims, true, Some(&refresh), true).await;
     assert_eq!(response.status(), 422);
     assert!(!response.headers().contains_key("x-compallm-access-token"));
     assert!(!response.headers().contains_key("set-cookie"));
     assert_eq!(fixture.repo.0.lock().unwrap().handled_requests, 0);
+}
+
+impl Fixture {
+    async fn explicit_refresh(
+        &self,
+        bearer: Option<&str>,
+        cookie: Option<&str>,
+    ) -> axum::response::Response {
+        use axum::{Extension, body::Body, http::Request};
+        use tower::ServiceExt;
+        let service: &'static AuthService = Box::leak(Box::new(self.service()));
+        let settings: &'static auth_controller::delivery::TokenDeliverySettings =
+            Box::leak(Box::new(auth_controller::delivery::TokenDeliverySettings {
+                secure: false,
+                public_origin: "http://localhost".into(),
+            }));
+        let (router, _) = auth_controller::router().split_for_parts();
+        let router = router.with_state(service).layer(Extension(settings));
+        let mut request = Request::builder().method("POST").uri("/api/auth/refresh");
+        if let Some(bearer) = bearer {
+            request = request.header("authorization", format!("Bearer {bearer}"));
+        }
+        if let Some(cookie) = cookie {
+            request = request.header("cookie", format!("compallm-refresh={cookie}"));
+        }
+        self.repo
+            .1
+            .scope(router.oneshot(request.body(Body::empty()).unwrap()))
+            .await
+            .unwrap()
+    }
+}
+
+#[tokio::test]
+async fn explicit_refresh_requires_valid_refresh_bearer_and_ignores_cookies() {
+    for case in [
+        "cookie-only",
+        "access",
+        "otp",
+        "forged",
+        "expired",
+        "revoked",
+        "missing-member",
+    ] {
+        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+        let session = Session::new(1, 7, 84, "Team");
+        fixture
+            .repo
+            .0
+            .lock()
+            .unwrap()
+            .sessions
+            .insert(7, session.clone());
+        let valid =
+            AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
+                .encode(SECRET, REFRESH_LIFETIME)
+                .unwrap();
+        let token = match case {
+            "access" => AccessToken::User(fixture.access_for_session(session.clone()))
+                .encode(SECRET, Duration::from_secs(60))
+                .unwrap(),
+            "otp" => {
+                EmailOtpChallenge::new("james@midwess.com", SECRET)
+                    .unwrap()
+                    .access_token
+            }
+            "forged" => AccessToken::Refresh(
+                RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap(),
+            )
+            .encode("a-different-secret-at-least-32-bytes", REFRESH_LIFETIME)
+            .unwrap(),
+            "expired" => {
+                let mut token = RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap();
+                token.validity.issued_at -= REFRESH_LIFETIME.as_secs() + 1;
+                token.validity.expires_at -= REFRESH_LIFETIME.as_secs() + 1;
+                hero::token::jwt::create_jwt_token(
+                    AccessToken::Refresh(token),
+                    SECRET,
+                    REFRESH_LIFETIME,
+                )
+                .unwrap()
+            }
+            _ => valid.clone(),
+        };
+        if case == "revoked" {
+            fixture
+                .repo
+                .0
+                .lock()
+                .unwrap()
+                .sessions
+                .get_mut(&7)
+                .unwrap()
+                .revoke();
+        }
+        if case == "missing-member" {
+            fixture.repo.0.lock().unwrap().memberships.clear();
+        }
+        let response = fixture
+            .explicit_refresh(
+                if case == "cookie-only" {
+                    None
+                } else {
+                    Some(&token)
+                },
+                Some(&valid),
+            )
+            .await;
+        assert_eq!(response.status(), 401, "{case}");
+        assert!(!response.headers().contains_key("set-cookie"), "{case}");
+        assert_eq!(fixture.repo.0.lock().unwrap().handled_requests, 0);
+    }
 }

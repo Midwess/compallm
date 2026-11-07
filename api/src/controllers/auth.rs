@@ -28,6 +28,7 @@ pub fn router() -> OpenApiRouter<&'static AuthService> {
     OpenApiRouter::new()
         .routes(routes!(signup_email))
         .routes(routes!(signin_email))
+        .routes(routes!(refresh_tokens))
 }
 
 /// Email address to receive a signup verification code.
@@ -298,18 +299,14 @@ pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
 /// Middleware performs one scoped session-version lookup for valid user access.
 /// Matching versions reuse signed claims; stale claims rebuild before this handler runs.
 /// Cookie renewal requires a matching valid refresh cookie and trusted Origin.
-/// Bearer rebuilding preserves expiry and returns X-Compallm-Access-Token and
-/// X-Compallm-Access-Token-Expires-At headers; no refresh token or cookies are issued.
+/// Stale bearer access returns 401 as expired. Present a valid refresh JWT to
+/// POST /api/auth/refresh, update both credentials, then retry the original request.
 /// Temporary session-storage errors return 503 and preserve browser credentials.
 #[utoipa::path(
     get, path = "/api/auth/me", operation_id = "currentUser", tag = "auth",
     security(("bearerAuth" = []), ("accessCookie" = [])),
     responses(
-        (status = 200, description = "Current identity; stale authority is rebuilt before handling", body = CurrentUserResponse,
-            headers(
-                ("X-Compallm-Access-Token" = String, description = "Replacement bearer access JWT, only when stale bearer authority was rebuilt; expiry is not extended"),
-                ("X-Compallm-Access-Token-Expires-At" = u64, description = "Original access expiry as Unix seconds, when a replacement bearer is returned")
-            )),
+        (status = 200, description = "Current identity; stale cookie authority renews automatically, stale bearer access returns 401", body = CurrentUserResponse),
         (status = 401, description = "Missing, invalid, expired, or wrong-variant credentials", body = ErrorResponse),
         (status = 403, description = "Untrusted renewal Origin or disabled account/membership", body = ErrorResponse),
         (status = 422, description = "Encoded authentication credential exceeds the supported size limit", body = ErrorResponse),
@@ -359,4 +356,35 @@ async fn signout(
         settings.clear_cookies(&mut response_headers)?;
     }
     Ok((StatusCode::NO_CONTENT, response_headers))
+}
+
+/// Explicitly refresh bearer credentials.
+///
+/// Send the unexpired refresh JWT as Authorization: Bearer. No request body is
+/// required. Access/OTP credentials and cookie-only requests are rejected.
+/// Revalidates current session/user/membership and rebuilds the permission snapshot.
+/// Returns both JWTs and lifetime metadata in JSON; no cookies are set or cleared.
+/// A stale authorization version on the refresh JWT is allowed; revoked, expired,
+/// foreign or removed credentials cannot renew. Save both credentials and retry
+/// the original request after stale/expired access returns 401.
+#[utoipa::path(
+    post, path = "/api/auth/refresh", operation_id = "refreshTokens", tag = "auth",
+    security(("refreshToken" = [])),
+    responses(
+        (status = 200, description = "Current access and refresh JWTs with lifetime metadata; no Set-Cookie", body = AuthTokensResponse),
+        (status = 401, description = "Missing explicit refresh bearer, wrong token type, expired/revoked/foreign credential, or unavailable membership", body = ErrorResponse),
+        (status = 422, description = "Encoded credential exceeds the supported size limit", body = ErrorResponse),
+        (status = 503, description = "Session storage unavailable; retry with the existing refresh credential", body = ErrorResponse),
+        (status = 500, description = "Invalid stored policy or internal failure", body = ErrorResponse)
+    )
+)]
+async fn refresh_tokens(
+    State(auth): State<&'static AuthService>,
+    Extension(settings): Extension<&'static TokenDeliverySettings>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, ApiError> {
+    let encoded = crate::middleware::authorization::Authorization::bearer(&headers)?
+        .ok_or(ApiError::Unauthenticated)?;
+    let tokens = auth.refresh(encoded).await?;
+    TokenDelivery::Token.response(tokens, StatusCode::OK, settings)
 }

@@ -10,5 +10,3 @@ pub mod user;
 
 pub use connection::{Connection, ConnectionError};
 pub use db_context::DbContext;
-
-pub mod role;

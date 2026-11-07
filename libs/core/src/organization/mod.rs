@@ -16,7 +16,3 @@ pub use group::Group;
 pub use role::Role;
 
 mod cedar;
-
-#[path = "role-service.rs"]
-pub mod role_service;
-pub use role_service::{RoleError, RoleService};

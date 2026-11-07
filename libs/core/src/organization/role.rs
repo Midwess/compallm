@@ -98,7 +98,8 @@ impl SystemPolicy for Role {
     /// `role.delete` removes a custom role; protected built-ins cannot be edited.
     /// `role.assign/unassign` authorize delegating this Role, in addition to checks
     /// on the target membership/group. All changes require organization/revision
-    /// guards; source publication is bounded by the default Owner/Admin action ceilings.
+    /// guards. These declarations do not implement publication or delegation checks;
+    /// role management and its authorization flow remain separate work.
     fn policy() -> SchemaFragment {
         static VALUE: LazyLock<SchemaFragment> = LazyLock::new(|| {
             SchemaFragment::from_cedarschema_str(

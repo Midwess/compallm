@@ -269,36 +269,3 @@ impl AuthService {
         Ok(tokens)
     }
 }
-
-impl AuthService {
-    /// Verify the signed access credential and reload its active session, user, and
-    /// membership before a privileged role operation. Never accept caller role lists.
-    pub(crate) async fn current_membership(
-        &self,
-        encoded: &str,
-    ) -> Result<OrganizationMember, AuthError> {
-        let claims = self.authenticate_access(encoded)?;
-        let session = self
-            .sessions
-            .find(&claims.session)
-            .await?
-            .ok_or(AuthError::InvalidSession)?;
-        if !session.is_active(&claims.session) {
-            return Err(AuthError::InvalidSession);
-        }
-        let user = self
-            .users
-            .find_by_id(session.user_id)
-            .await?
-            .ok_or(AuthError::UserNotFound)?;
-        if user.status != UserStatus::Active {
-            return Err(AuthError::UserDisabled);
-        }
-        let (member, _) = self
-            .organizations
-            .find_membership(session.organization_id, session.user_id)
-            .await?
-            .ok_or(AuthError::OrganizationAccessDenied)?;
-        Ok(member)
-    }
-}

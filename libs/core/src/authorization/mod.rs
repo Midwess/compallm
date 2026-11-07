@@ -24,11 +24,14 @@ pub trait SystemPolicy {
     fn policy() -> SchemaFragment;
 }
 
-/// Assemble the complete schema once. Initialize before accepting policy writes.
+/// Combine all SystemPolicy definitions into one cached Cedar schema.
+///
+/// Returns type/action declarations, not permit/forbid rules. Initialize before
+/// accepting policy writes.
 ///
 /// Duplicate definitions and unresolved references are programmer errors. This
 /// function performs no authorization, database access, or token processing.
-pub fn schema() -> &'static Schema {
+pub fn all_policies() -> &'static Schema {
     static SCHEMA: LazyLock<Schema> = LazyLock::new(|| {
         Schema::from_schema_fragments([
             User::policy(),

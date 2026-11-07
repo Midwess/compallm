@@ -6,7 +6,7 @@ use cedar_policy::{
 };
 use compallm_core::{
     auth::{Session, UserAuth},
-    authorization::{SystemPolicy, schema},
+    authorization::{SystemPolicy, all_policies},
     model::Model,
     organization::{Organization, OrganizationMember},
     provider::{Provider, ProviderModel},
@@ -24,13 +24,13 @@ fn request(action: &str, kind: &str, context: Context) -> anyhow::Result<Request
         uid("Action", action),
         uid(kind, "42:200"),
         context,
-        Some(schema()),
+        Some(all_policies()),
     )
     .map_err(Into::into)
 }
 
 #[test]
-fn existing_resource_entities_form_one_complete_cached_schema() {
+fn all_entity_policies_assemble_into_one_cached_schema() {
     let assembled = Schema::from_schema_fragments([
         User::policy(),
         UserAuth::policy(),
@@ -43,8 +43,8 @@ fn existing_resource_entities_form_one_complete_cached_schema() {
     ])
     .unwrap();
     assert_eq!(assembled.action_entities().unwrap().iter().count(), 39);
-    assert!(std::ptr::eq(schema(), schema()));
-    let names = schema()
+    assert!(std::ptr::eq(all_policies(), all_policies()));
+    let names = all_policies()
         .action_entities()
         .unwrap()
         .iter()
@@ -134,7 +134,7 @@ fn role_assignment_requires_typed_role_context() {
 
 #[test]
 fn schema_rejects_unknown_actions_and_credential_exposure() {
-    let validator = Validator::new(schema().clone());
+    let validator = Validator::new(all_policies().clone());
     for action in [
         "user.update",
         "user.delete",
@@ -181,7 +181,7 @@ fn entities() -> Entities {
         {"uid":{"type":"Compallm::Organization","id":"43"},"attrs":{},"parents":[]},
         {"uid":{"type":"Compallm::Provider","id":"42:200"},"attrs":{"organization":{"__entity":{"type":"Compallm::Organization","id":"42"}}},"parents":[{"type":"Compallm::Organization","id":"42"}]},
         {"uid":{"type":"Compallm::Provider","id":"43:200"},"attrs":{"organization":{"__entity":{"type":"Compallm::Organization","id":"43"}}},"parents":[{"type":"Compallm::Organization","id":"43"}]}
-    ]), Some(schema())).unwrap()
+    ]), Some(all_policies())).unwrap()
 }
 
 #[test]
@@ -192,7 +192,7 @@ fn role_inheritance_preserves_organization_scope_and_forbid_precedence() {
         resource is Compallm::Provider in Compallm::Organization::"42"
     );"#;
     let mut policies = PolicySet::from_str(permit).unwrap();
-    let validator = Validator::new(schema().clone());
+    let validator = Validator::new(all_policies().clone());
     assert!(
         validator
             .validate(&policies, ValidationMode::Strict)
@@ -211,7 +211,7 @@ fn role_inheritance_preserves_organization_scope_and_forbid_precedence() {
         uid("Action", "provider.configuration.read"),
         uid("Provider", "43:200"),
         Context::empty(),
-        Some(schema()),
+        Some(all_policies()),
     )
     .unwrap();
     assert_eq!(
@@ -242,13 +242,13 @@ fn resource_relationships_exclude_nested_groups_and_untyped_ownership() {
     ] {
         let set = PolicySet::from_str(policies).unwrap();
         assert!(
-            Validator::new(schema().clone())
+            Validator::new(all_policies().clone())
                 .validate(&set, ValidationMode::Strict)
                 .validation_passed()
         );
     }
     let nested = json!([{"uid":{"type":"Compallm::Group","id":"42:9"},"attrs":{"organization":{"__entity":{"type":"Compallm::Organization","id":"42"}}},"parents":[{"type":"Compallm::Group","id":"42:10"}]}]);
-    assert!(Entities::from_json_value(nested, Some(schema())).is_err());
+    assert!(Entities::from_json_value(nested, Some(all_policies())).is_err());
 }
 
 #[test]
@@ -289,14 +289,14 @@ fn baseline_entities() -> Entities {
         {"uid":{"type":"Compallm::Session","id":"42:200"},"attrs":{"organization":{"__entity":{"type":"Compallm::Organization","id":"42"}},"user":{"__entity":{"type":"Compallm::User","id":"100"}}},"parents":[{"type":"Compallm::Organization","id":"42"}]},
         {"uid":{"type":"Compallm::Session","id":"42:201"},"attrs":{"organization":{"__entity":{"type":"Compallm::Organization","id":"42"}},"user":{"__entity":{"type":"Compallm::User","id":"101"}}},"parents":[{"type":"Compallm::Organization","id":"42"}]},
         {"uid":{"type":"Compallm::Member","id":"42:101"},"attrs":{"organization":{"__entity":{"type":"Compallm::Organization","id":"42"}},"user":{"__entity":{"type":"Compallm::User","id":"101"}}},"parents":[{"type":"Compallm::Organization","id":"42"}]}
-    ]),Some(schema())).unwrap()
+    ]),Some(all_policies())).unwrap()
 }
 
 #[test]
 fn baseline_self_account_and_session_access_do_not_require_a_custom_role() {
     let policies = PolicySet::from_str(include_str!("fixtures/account_baseline.cedar")).unwrap();
     assert!(
-        Validator::new(schema().clone())
+        Validator::new(all_policies().clone())
             .validate(&policies, ValidationMode::Strict)
             .validation_passed()
     );
@@ -362,7 +362,7 @@ fn baseline_self_account_and_session_access_do_not_require_a_custom_role() {
             uid("Action", action),
             uid(kind, id),
             Context::empty(),
-            Some(schema()),
+            Some(all_policies()),
         )
         .unwrap();
         let response = authorizer.is_authorized(&req, &policies, &entities);
@@ -373,7 +373,7 @@ fn baseline_self_account_and_session_access_do_not_require_a_custom_role() {
 
 #[test]
 fn public_profiles_have_no_rbac_action_or_broad_read_permit() {
-    let validator = Validator::new(schema().clone());
+    let validator = Validator::new(all_policies().clone());
     for action in [
         "user.read",
         "user.profile.read",
@@ -413,16 +413,17 @@ fn viewing_a_disabled_model_does_not_authorize_invocation() {
     )
     .unwrap();
     assert!(
-        Validator::new(schema().clone())
+        Validator::new(all_policies().clone())
             .validate(&policies, ValidationMode::Strict)
             .validation_passed()
     );
     for enabled in [false, true] {
         // Existing role membership fixtures are extended with an actual Model.
         let model = json!({"uid":{"type":"Compallm::Model","id":"42:200"},"attrs":{"organization":{"__entity":{"type":"Compallm::Organization","id":"42"}},"enabled":enabled},"parents":[{"type":"Compallm::Organization","id":"42"}]});
-        let model_entities = Entities::from_json_value(json!([model]), Some(schema())).unwrap();
+        let model_entities =
+            Entities::from_json_value(json!([model]), Some(all_policies())).unwrap();
         let combined = entities()
-            .add_entities(model_entities.iter().cloned(), Some(schema()))
+            .add_entities(model_entities.iter().cloned(), Some(all_policies()))
             .unwrap();
         for action in ["model.metadata.read", "model.use"] {
             let req = request(action, "Model", Context::empty()).unwrap();
@@ -451,7 +452,7 @@ fn configuration_update_does_not_imply_secret_replacement_or_read_access() {
     )
     .unwrap();
     assert!(
-        Validator::new(schema().clone())
+        Validator::new(all_policies().clone())
             .validate(&policies, ValidationMode::Strict)
             .validation_passed()
     );

@@ -24,11 +24,13 @@ Write tests only in `tests/` directories, using the existing `test/tests/` suite
 
 Do not write unit tests or automated browser/interaction test suites for `libs/storybook`. Do not recreate `libs/storybook/tests` or add test runners there. Validate the library with lint, type checks, builds, and manual Storybook inspection. Keep tests for consumer application business logic in the consuming application's `tests/` directory.
 
-Only write important, main flow tests or critical edge case tests.
+Unit test will take a lot of effort to maintains. Only write important, main flow tests or critical edge case tests.
 
-Each function only need 0 - 3 unit tests is enough
+Each function only need 0 - 3 unit tests is enough.
 
-Focus on efficient unit test.
+Focus on qualified each unit test function not test non-sense cases focus on main use case of function.
+
+Never test string, logs, print content, or error message, never test input validations too
 
 Do not add generic `created_at` or `updated_at` columns to migrations or matching models. Keep timestamps only when required by a concrete business rule.
 

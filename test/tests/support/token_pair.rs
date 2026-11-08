@@ -1,6 +1,5 @@
 #![allow(dead_code)]
-#[path = "token_codec.rs"]
-mod test_codec;
+use crate::test_codec;
 
 use compallm_core::auth::{
     AccessToken, AuthError, RefreshToken, Session, UserAccessToken, UserTokens,

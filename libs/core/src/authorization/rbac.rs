@@ -6,12 +6,20 @@ use crate::{
 
 use crate::organization::Role;
 
+#[expect(
+    dead_code,
+    reason = "RBAC service is not wired until authorization is enforced"
+)]
 pub struct RbacService {
     db: DbContext,
     auth_service: AuthService,
     organizations: Box<dyn OrganizationRepository>,
 }
 
+#[expect(
+    dead_code,
+    reason = "RBAC operations remain private until authorization is enforced"
+)]
 impl RbacService {
     async fn new_role(
         &self,

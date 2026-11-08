@@ -65,12 +65,12 @@ impl AccessToken {
         }
     }
 
-    pub fn encrypt(self, cipher: &EncryptedAccessToken) -> Result<Self, AuthError> {
+    pub async fn encrypt(self, cipher: &EncryptedAccessToken) -> Result<Self, AuthError> {
         if matches!(self, Self::Encrypted(_) | Self::Compressed(_)) {
             return Err(AuthError::InvalidToken);
         }
         self.validate(unix_timestamp())?;
-        Ok(Self::Encrypted(cipher.encrypt(&self)?))
+        Ok(Self::Encrypted(cipher.encrypt(&self).await?))
     }
 
     pub async fn compress(self, dictionary: &DCompression) -> Result<Self, AuthError> {
@@ -214,7 +214,8 @@ impl EmailOtpChallenge {
         let code = claims.code.clone();
         let validity = claims.validity.clone();
         let access_token = AccessToken::EmailOtp(claims)
-            .encrypt(&EncryptedAccessToken::new(secret)?)?
+            .encrypt(&EncryptedAccessToken::new(secret)?)
+            .await?
             .compress(dictionary)
             .await?
             .encode(

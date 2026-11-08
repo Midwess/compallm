@@ -1021,6 +1021,7 @@ async fn invalid_signature_is_rejected_before_dictionary_lookup() {
     let otp = EmailOtpAccessToken::new("james@midwess.com".into()).unwrap();
     let encrypted = AccessToken::EmailOtp(otp)
         .encrypt(&compallm_core::auth::EncryptedAccessToken::new(SECRET).unwrap())
+        .await
         .unwrap();
     let raw =
         hero::token::jwt::create_jwt_token(encrypted, SECRET, Duration::from_secs(60)).unwrap();

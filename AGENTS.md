@@ -26,7 +26,7 @@ Do not write unit tests or automated browser/interaction test suites for `libs/s
 
 Unit test will take a lot of effort to maintains. Only write important, main flow tests or critical edge case tests.
 
-Important rule is every function is limit 0-1 unit tests.
+Important rule is every function is limit 0-2 unit tests.
 
 Focus on qualified each unit test function not test non-sense cases focus on main use case of function.
 

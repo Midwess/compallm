@@ -140,7 +140,8 @@ impl AuthService {
         let claims = EmailOtpAccessToken::new(compallm_utils::email::normalize_email(email))?;
         let dictionary = self.latest_dictionary().await?;
         let encrypted = AccessToken::EmailOtp(claims.clone())
-            .encrypt(&EncryptedAccessToken::new(&self.jwt_secret)?)?;
+            .encrypt(&EncryptedAccessToken::new(&self.jwt_secret)?)
+            .await?;
         let token = encrypted.compress(dictionary).await?.encode(
             &self.jwt_secret,
             Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),

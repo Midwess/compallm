@@ -133,12 +133,12 @@ fn jwt_signature_and_payload_tampering_are_rejected() {
     ));
 }
 
-#[test]
-fn ciphertext_requires_its_configured_secret_and_integrity_tag() {
+#[tokio::test]
+async fn ciphertext_requires_its_configured_secret_and_integrity_tag() {
     let claims = EmailOtpAccessToken::new("james@midwess.com".into()).unwrap();
     let cipher = EncryptedAccessToken::new(SECRET).unwrap();
     // The cipher can work directly with an inner struct; it knows no enum.
-    let payload = cipher.encrypt(&claims).unwrap();
+    let payload = cipher.encrypt(&claims).await.unwrap();
     let decrypted: EmailOtpAccessToken = cipher.decrypt(&payload).unwrap();
     assert_eq!(decrypted.code, claims.code);
     assert!(matches!(
@@ -332,8 +332,8 @@ fn malformed_tokens_and_invalid_lifetimes_are_rejected() {
     ));
 }
 
-#[test]
-fn encrypted_non_otp_variants_are_rejected() {
+#[tokio::test]
+async fn encrypted_non_otp_variants_are_rejected() {
     let cipher = EncryptedAccessToken::new(SECRET).unwrap();
     let user = UserAccessToken::new(
         stored_session(1, 7, 84, "Research team"),
@@ -343,6 +343,7 @@ fn encrypted_non_otp_variants_are_rejected() {
     .unwrap();
     let jwt = AccessToken::User(user)
         .encrypt(&cipher)
+        .await
         .unwrap()
         .encode_test(SECRET, Duration::from_secs(60))
         .unwrap();
@@ -357,6 +358,7 @@ fn encrypted_non_otp_variants_are_rejected() {
     .unwrap();
     let jwt = AccessToken::Refresh(refresh)
         .encrypt(&cipher)
+        .await
         .unwrap()
         .encode_test(SECRET, Duration::from_secs(600))
         .unwrap();
@@ -366,8 +368,8 @@ fn encrypted_non_otp_variants_are_rejected() {
     ));
 }
 
-#[test]
-fn plaintext_otp_and_nested_encryption_are_rejected() {
+#[tokio::test]
+async fn plaintext_otp_and_nested_encryption_are_rejected() {
     let claims = EmailOtpAccessToken::new("james@midwess.com".into()).unwrap();
     let plaintext = AccessToken::EmailOtp(claims.clone());
     assert!(matches!(
@@ -380,13 +382,16 @@ fn plaintext_otp_and_nested_encryption_are_rejected() {
         Err(AuthError::WrongTokenVariant)
     ));
     let cipher = EncryptedAccessToken::new(SECRET).unwrap();
-    let encrypted = AccessToken::EmailOtp(claims).encrypt(&cipher).unwrap();
+    let encrypted = AccessToken::EmailOtp(claims)
+        .encrypt(&cipher)
+        .await
+        .unwrap();
     assert!(matches!(
-        encrypted.clone().encrypt(&cipher),
+        encrypted.clone().encrypt(&cipher).await,
         Err(AuthError::InvalidToken)
     ));
     // Even valid authenticated nested ciphertext cannot bypass enum validation.
-    let nested = AccessToken::Encrypted(cipher.encrypt(&encrypted).unwrap());
+    let nested = AccessToken::Encrypted(cipher.encrypt(&encrypted).await.unwrap());
     let jwt = nested
         .encode_test(SECRET, Duration::from_secs(600))
         .unwrap();

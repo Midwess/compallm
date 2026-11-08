@@ -33,27 +33,32 @@ impl EncryptedAccessToken {
         })
     }
 
-    pub fn encrypt<T: Serialize>(&self, token: &T) -> Result<EncryptedToken, AuthError> {
+    pub async fn encrypt<T: Serialize>(&self, token: &T) -> Result<EncryptedToken, AuthError> {
         let plaintext = serde_json::to_vec(&token)
             .context("failed to serialize access-token claims for encryption")?;
         if plaintext.len() > 4096 {
             return Err(AuthError::InvalidToken);
         }
-        let mut nonce = [0u8; 12];
-        rand::rng().fill_bytes(&mut nonce);
-        let ciphertext = self.cipher.encrypt(
-            Nonce::from_slice(&nonce),
-            Payload {
-                msg: &plaintext,
-                aad: AAD,
-            },
-        )?;
-        let mut bytes = nonce.to_vec();
-        bytes.extend(ciphertext);
-        Ok(EncryptedToken(format!(
-            "v1.{}",
-            URL_SAFE_NO_PAD.encode(bytes)
-        )))
+        let cipher = self.cipher.clone();
+        tokio::task::spawn_blocking(move || {
+            let mut nonce = [0u8; 12];
+            rand::rng().fill_bytes(&mut nonce);
+            let ciphertext = cipher.encrypt(
+                Nonce::from_slice(&nonce),
+                Payload {
+                    msg: &plaintext,
+                    aad: AAD,
+                },
+            )?;
+            let mut bytes = nonce.to_vec();
+            bytes.extend(ciphertext);
+            Ok(EncryptedToken(format!(
+                "v1.{}",
+                URL_SAFE_NO_PAD.encode(bytes)
+            )))
+        })
+        .await
+        .context("token encryption task failed")?
     }
 
     pub fn decrypt<T: DeserializeOwned>(&self, token: &EncryptedToken) -> Result<T, AuthError> {

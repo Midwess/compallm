@@ -28,10 +28,22 @@ struct PreparedDictionary {
 
 impl DCompression {
     pub const MAX_BYTES: usize = 256 * 1024;
+    const TRAINED_DICTIONARY_BYTES: usize = 8192;
 
     /// Prepare exactly the ordered, concatenated UTF-8 dictionary content.
     pub fn new(kind: DictionaryType, version: u32, content: &str) -> anyhow::Result<Self> {
-        let bytes = content.as_bytes();
+        Self::from_bytes(kind, version, content.as_bytes())
+    }
+
+    /// Train from ordered, separate samples without blocking the async runtime.
+    pub async fn train(kind: DictionaryType, version: u32, samples: Vec<String>) -> anyhow::Result<Self> {
+        tokio::task::spawn_blocking(move || {
+            let bytes = zstd::dict::from_samples(&samples, Self::TRAINED_DICTIONARY_BYTES)?;
+            Self::from_bytes(kind, version, &bytes)
+        }).await?
+    }
+
+    fn from_bytes(kind: DictionaryType, version: u32, bytes: &[u8]) -> anyhow::Result<Self> {
         Ok(Self {
             kind,
             version,

@@ -29,13 +29,16 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .auto_increment(),
                     )
+                    .col(ColumnDef::new(ZstdDictionary::SampleIndex).integer().not_null())
                     .col(ColumnDef::new(ZstdDictionary::Content).text().not_null())
                     .primary_key(
                         Index::create()
                             .col(ZstdDictionary::Type)
-                            .col(ZstdDictionary::Version),
+                            .col(ZstdDictionary::Version)
+                            .col(ZstdDictionary::SampleIndex),
                     )
                     .check(Expr::col(ZstdDictionary::Version).gt(0))
+                    .check(Expr::col(ZstdDictionary::SampleIndex).gte(0))
                     .to_owned(),
             )
             .await
@@ -56,6 +59,7 @@ enum ZstdDictionary {
     Table,
     Type,
     Version,
+    SampleIndex,
     Content,
 }
 

@@ -5,9 +5,12 @@ use std::time::Duration;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct UserAccessToken {
+    #[serde(rename = "s")]
     pub session: Session,
     /// Required effective authority; refresh credentials never contain this field.
+    #[serde(rename = "p")]
     pub policy_snapshot: crate::authorization::PolicySnapshot,
+    #[serde(rename = "v")]
     pub validity: TokenValidity,
 }
 

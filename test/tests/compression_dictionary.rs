@@ -6,6 +6,17 @@ use compallm_postgres::{
 use sea_orm::{DbBackend, MockDatabase, Value};
 use std::{collections::BTreeMap, sync::Arc};
 
+fn sample_rows(version: i32) -> Vec<BTreeMap<String, Value>> {
+    (0..100)
+        .map(|index| BTreeMap::from([
+            ("type".to_owned(), Value::from("access_token")),
+            ("version".to_owned(), Value::from(version)),
+            ("sample_index".to_owned(), Value::from(index)),
+            ("content".to_owned(), Value::from(format!("{{\"u\":{{\"s\":{{\"i\":{},\"u\":{},\"o\":{version}}},\"p\":{{\"c\":\"permit(principal, action == Compallm::Action::model.list, resource);\",\"r\":[{}]}}}}}}", index * 17 + 1, index * 31 + 2, index))),
+        ]))
+        .collect()
+}
+
 #[tokio::test]
 async fn dictionary_roundtrip_preserves_cedar_and_rejects_different_versions() -> anyhow::Result<()>
 {
@@ -36,19 +47,15 @@ async fn dictionary_roundtrip_preserves_cedar_and_rejects_different_versions() -
 #[tokio::test]
 async fn repository_loads_ordered_version_once_and_preserves_old_dictionary() -> anyhow::Result<()>
 {
-    let row = |version: i32, content: &str| {
-        BTreeMap::from([
-            ("type".to_owned(), Value::from("access_token")),
-            ("version".to_owned(), Value::from(version)),
-            ("content".to_owned(), Value::from(content.to_owned())),
-        ])
-    };
+    let first = sample_rows(1);
+    let mut second = first.clone();
+    second.extend(sample_rows(2));
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
-                vec![row(1, "Compallm::"), row(2, "Action::")],
-                vec![row(1, "Compallm::")],
-                vec![row(1, "Compallm::"), row(2, "Action::")],
+                second.clone(),
+                first,
+                second,
             ])
             .into_connection(),
     );
@@ -100,14 +107,10 @@ async fn repository_loads_ordered_version_once_and_preserves_old_dictionary() ->
 #[tokio::test]
 async fn repository_rejects_transactional_reads_without_poisoning_the_cache() -> anyhow::Result<()>
 {
-    let row = BTreeMap::from([
-        ("type".to_owned(), Value::from("access_token")),
-        ("version".to_owned(), Value::from(1_i32)),
-        ("content".to_owned(), Value::from("Compallm::")),
-    ]);
+    let rows = sample_rows(1);
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([vec![row]])
+            .append_query_results([rows])
             .into_connection(),
     );
     let context = DbContext::new(Arc::new(PostgresConnection::new(db)));
@@ -136,14 +139,10 @@ async fn repository_rejects_transactional_reads_without_poisoning_the_cache() ->
 #[tokio::test]
 async fn configured_repository_reads_committed_dictionary_during_transaction() -> anyhow::Result<()>
 {
-    let row = BTreeMap::from([
-        ("type".to_owned(), Value::from("access_token")),
-        ("version".to_owned(), Value::from(1_i32)),
-        ("content".to_owned(), Value::from("Compallm::")),
-    ]);
+    let rows = sample_rows(1);
     let committed = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([vec![row.clone()], vec![row]])
+            .append_query_results([vec![rows[0].clone()], rows])
             .into_connection(),
     );
     let writer = Arc::new(MockDatabase::new(DbBackend::Postgres).into_connection());
@@ -182,22 +181,18 @@ async fn configured_repository_reads_committed_dictionary_during_transaction() -
 
 #[tokio::test]
 async fn repository_latest_tracks_new_versions_and_reuses_cached_prefixes() -> anyhow::Result<()> {
-    let row = |version: i32, content: &str| {
-        BTreeMap::from([
-            ("type".to_owned(), Value::from("access_token")),
-            ("version".to_owned(), Value::from(version)),
-            ("content".to_owned(), Value::from(content.to_owned())),
-        ])
-    };
+    let first = sample_rows(1);
+    let mut third = first.clone();
+    third.extend(sample_rows(3));
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
-                vec![row(1, "a")],
-                vec![row(1, "a")],
-                vec![row(1, "a")],
-                vec![row(3, "b")],
-                vec![row(1, "a"), row(3, "b")],
-                vec![row(1, "a")],
+                vec![first[0].clone()],
+                first.clone(),
+                vec![first[0].clone()],
+                vec![third.last().unwrap().clone()],
+                third,
+                first,
                 vec![],
             ])
             .into_connection(),
@@ -266,10 +261,11 @@ async fn initial_seed_compresses_complete_default_access_claims() -> anyhow::Res
     migration.up(&SchemaManager::new(&db)).await?;
     let log = db.into_transaction_log();
     let statement = &log[0].statements()[0];
-    let Value::String(Some(content)) = &statement.values.as_ref().unwrap().0[0] else {
-        panic!("expected dictionary seed text")
-    };
-    let dictionary = DCompression::new(DictionaryType::AccessToken, 1, content)?;
+    let samples = statement.values.as_ref().unwrap().0.iter().map(|value| match value {
+        Value::String(Some(content)) => Ok(content.to_string()),
+        _ => Err(anyhow::anyhow!("expected dictionary sample")),
+    }).collect::<anyhow::Result<Vec<_>>>()?;
+    let dictionary = DCompression::train(DictionaryType::AccessToken, 1, samples).await?;
     compallm_postgres::init_id_generator("dictionary-seed-test")?;
     let roles = Role::defaults(84).await?;
     for role in roles {

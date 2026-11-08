@@ -57,7 +57,7 @@ fn email_jwt_exposes_ciphertext_not_email_or_code() {
         .decode(challenge.access_token.split('.').nth(1).unwrap())
         .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&decoded).unwrap();
-    assert!(json["data"]["compressed"]["data"].is_string());
+    assert!(json["data"]["c"]["d"].is_string());
     let body = String::from_utf8(decoded).unwrap();
     assert!(!body.contains("james@midwess.com"));
     assert!(!body.contains("\"code\""));
@@ -254,10 +254,7 @@ fn ids_round_trip_as_u64_in_access_and_refresh_sessions() {
     )
     .unwrap();
     let json = test_codec::unpack(&one.access_token);
-    assert_eq!(
-        json["user"]["session"]["user_id"].as_u64(),
-        Some(9_007_199_254_740_993)
-    );
+    assert_eq!(json["u"]["s"]["u"].as_u64(), Some(9_007_199_254_740_993));
     assert_eq!(
         UserAccessToken::try_from(test_codec::decode(&one.access_token, SECRET).unwrap())
             .unwrap()
@@ -270,7 +267,7 @@ fn ids_round_trip_as_u64_in_access_and_refresh_sessions() {
     assert_eq!(first.session.id, 7);
     assert_eq!(first.session.user_id, 9_007_199_254_740_993);
     assert_eq!(first.session.organization_id, 84);
-    assert_eq!(json["user"]["session"].as_object().unwrap().len(), 6);
+    assert_eq!(json["u"]["s"].as_object().unwrap().len(), 6);
 }
 
 #[test]
@@ -281,7 +278,7 @@ fn refresh_requires_an_embedded_session_and_rejects_legacy_claims() {
     )
     .unwrap();
     let mut serialized = serde_json::to_value(&claims).unwrap();
-    serialized.as_object_mut().unwrap().remove("session");
+    serialized.as_object_mut().unwrap().remove("s");
     let jwt = create_jwt_token(
         serde_json::json!({"refresh":serialized}),
         SECRET,
@@ -289,7 +286,7 @@ fn refresh_requires_an_embedded_session_and_rejects_legacy_claims() {
     )
     .unwrap();
     assert!(test_codec::decode(&jwt, SECRET).is_err());
-    assert_eq!(serde_json::to_value(claims).unwrap()["session"]["id"], 7);
+    assert_eq!(serde_json::to_value(claims).unwrap()["s"]["i"], 7);
 }
 
 #[test]
@@ -298,15 +295,11 @@ fn access_and_refresh_tokens_include_the_organization_name_and_require_it() {
     for encoded in [&tokens.access_token, &tokens.refresh_token] {
         let claims = test_codec::decode(encoded, SECRET).unwrap();
         let mut payload = serde_json::to_value(&claims).unwrap();
-        let variant = if payload.get("user").is_some() {
-            "user"
-        } else {
-            "refresh"
-        };
-        let session = &mut payload[variant]["session"];
-        assert_eq!(session["organization_id"], 84);
-        assert_eq!(session["organization_name"], "Research team");
-        session.as_object_mut().unwrap().remove("organization_name");
+        let variant = if payload.get("u").is_some() { "u" } else { "r" };
+        let session = &mut payload[variant]["s"];
+        assert_eq!(session["o"], 84);
+        assert_eq!(session["n"], "Research team");
+        session.as_object_mut().unwrap().remove("n");
         let legacy = create_jwt_token(payload, SECRET, Duration::from_secs(60)).unwrap();
         assert!(test_codec::decode(&legacy, SECRET).is_err());
     }
@@ -505,12 +498,12 @@ fn both_tokens_link_to_the_same_organization_scoped_session() {
         Duration::from_secs(600),
     )
     .unwrap();
-    for (jwt, variant) in [(&one.access_token, "user"), (&one.refresh_token, "refresh")] {
+    for (jwt, variant) in [(&one.access_token, "u"), (&one.refresh_token, "r")] {
         let json = test_codec::unpack(jwt);
         let claims = &json[variant];
-        assert_eq!(claims["session"]["id"], 7);
-        assert_eq!(claims["session"]["user_id"], 1);
-        assert_eq!(claims["session"]["organization_id"], 84);
+        assert_eq!(claims["s"]["i"], 7);
+        assert_eq!(claims["s"]["u"], 1);
+        assert_eq!(claims["s"]["o"], 84);
         for field in [
             "session_id",
             "user_id",
@@ -529,13 +522,13 @@ fn both_tokens_link_to_the_same_organization_scoped_session() {
     assert_eq!(first.session.organization_id, 84);
     assert_eq!(second.session.organization_id, 85);
     let refresh = test_codec::unpack(&one.refresh_token);
-    assert_eq!(refresh["refresh"]["session"]["user_id"], 1);
-    assert_eq!(refresh["refresh"]["session"]["organization_id"], 84);
-    assert_eq!(refresh["refresh"]["session"]["id"], first.session.id);
+    assert_eq!(refresh["r"]["s"]["u"], 1);
+    assert_eq!(refresh["r"]["s"]["o"], 84);
+    assert_eq!(refresh["r"]["s"]["i"], first.session.id);
     let refresh_claims =
         RefreshToken::try_from(test_codec::decode(&one.refresh_token, SECRET).unwrap()).unwrap();
     assert_eq!(first.session, refresh_claims.session);
-    assert!(refresh["refresh"].get("organization_role").is_none());
+    assert!(refresh["r"].get("organization_role").is_none());
 }
 
 #[test]
@@ -662,11 +655,8 @@ fn access_requires_the_signed_snapshot_and_refresh_omits_it() {
         UserAccessToken::try_from(test_codec::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
     let mut payload = serde_json::to_value(AccessToken::User(access)).unwrap();
-    assert!(payload["user"]["policy_snapshot"].is_object());
-    payload["user"]
-        .as_object_mut()
-        .unwrap()
-        .remove("policy_snapshot");
+    assert!(payload["u"]["p"].is_object());
+    payload["u"].as_object_mut().unwrap().remove("p");
     let legacy = create_jwt_token(payload, SECRET, Duration::from_secs(60)).unwrap();
     assert!(matches!(
         test_codec::decode(&legacy, SECRET),
@@ -674,7 +664,7 @@ fn access_requires_the_signed_snapshot_and_refresh_omits_it() {
     ));
     let refresh = test_codec::decode(&tokens.refresh_token, SECRET).unwrap();
     assert!(
-        serde_json::to_value(refresh).unwrap()["refresh"]
+        serde_json::to_value(refresh).unwrap()["r"]
             .get("policy_snapshot")
             .is_none()
     );

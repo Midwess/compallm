@@ -40,6 +40,8 @@ Use Validify for HTTP normalization and shared domain validation. Keep domain in
 
 Validation is Rust-first: define input rules in Rust and export them to the shared contract for Portal and Storybook. Field-error codes, parameters, and messages should follow the same path when implemented; detailed error-message generation is deferred, so do not add independent UI validation messages or error tooltips as part of rule integration.
 
+When writing repository implementation, always use sea-orm syntax, never write raw sql
+
 Only use transaction! when there are multiple update command, transaction must be ended as soon as possible while still maintaining correctness
 If there are multiple query before updating data, then the query should performed outside of transaction
 Transaction only for grouping multiple update command

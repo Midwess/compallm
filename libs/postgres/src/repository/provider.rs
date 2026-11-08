@@ -76,16 +76,20 @@ impl CoreProviderRepository for ProviderRepository {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
 
-        let stored = Providers::find()
-            .from_raw_sql(input.statement)
-            .one(db)
-            .await
-            .map_err(Self::write_error)?
-            .ok_or_else(|| {
-                ProviderRepositoryError::database(anyhow::anyhow!(
-                    "provider insert returned no row"
-                ))
-            })?;
+        let stored = if input.model_writes.is_empty() {
+            input.provider.insert(db).await.map_err(Self::write_error)?
+        } else {
+            compallm_core::transaction!(context, {
+                let current = DbContext::current()?;
+                let db = PostgresConnection::from_context(&current)?;
+                let stored = input.provider.insert(db).await.map_err(Self::write_error)?;
+                <crate::ProviderModelSchema as ModelTrait>::Entity::insert_many(input.model_writes)
+                    .exec_without_returning(db)
+                    .await
+                    .map_err(Self::write_error)?;
+                Ok::<_, ProviderRepositoryError>(stored)
+            })?
+        };
         let mut provider = Provider::try_from(stored)?;
         provider.models = input.models;
         Ok(provider)

@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 cedar-policy.workspace = true
+cedar-policy-formatter.workspace = true
 zstd.workspace = true
 jsonwebtoken.workspace = true
 validify.workspace = true

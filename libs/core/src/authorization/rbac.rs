@@ -113,9 +113,7 @@ impl RbacService {
         let previous = member.clone();
         member.assign_role(role)?;
         crate::transaction!(self.db, {
-            self.organizations
-                .lock_role(organization_id, role_id)
-                .await?;
+            // Assignment foreign keys coordinate with the role-deletion lock.
             self.organizations.save_member(&member, &previous).await?;
             self.auth_service
                 .invalidate_permissions(organization_id, &[user_id])

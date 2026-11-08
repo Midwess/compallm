@@ -171,11 +171,8 @@ fn serialized_session_requires_its_version_and_version_is_not_identity() {
     newer.authorization_version = 42;
     assert!(session.has_same_identity(&newer));
     let mut value = serde_json::to_value(&newer).unwrap();
-    assert_eq!(value["authorization_version"], 42);
-    value
-        .as_object_mut()
-        .unwrap()
-        .remove("authorization_version");
+    assert_eq!(value["v"], 42);
+    value.as_object_mut().unwrap().remove("v");
     assert!(serde_json::from_value::<compallm_core::auth::Session>(value).is_err());
 }
 

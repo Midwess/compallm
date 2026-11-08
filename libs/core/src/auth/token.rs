@@ -27,11 +27,16 @@ pub use validity::TokenValidity;
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AccessToken {
+    #[serde(rename = "c")]
     Compressed(CompressedToken),
+    #[serde(rename = "e")]
     Encrypted(EncryptedToken),
     /// Internal payload: must be encrypted before signing a browser credential.
+    #[serde(rename = "o")]
     EmailOtp(EmailOtpAccessToken),
+    #[serde(rename = "u")]
     User(UserAccessToken),
+    #[serde(rename = "r")]
     Refresh(RefreshToken),
 }
 

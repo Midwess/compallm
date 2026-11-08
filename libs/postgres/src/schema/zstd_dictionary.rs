@@ -10,6 +10,8 @@ pub struct Model {
     pub r#type: ZstdDictionaryType,
     #[sea_orm(primary_key)]
     pub version: i32,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub sample_index: i32,
     #[sea_orm(column_type = "Text")]
     pub content: String,
 }

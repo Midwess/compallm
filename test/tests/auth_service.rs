@@ -837,7 +837,7 @@ async fn issued_tokens_use_signed_versioned_compression() {
                 .is_err()
         );
     }
-    let missing = serde_json::json!({"compressed": {"dictionary_version": 999, "data": "abc"}});
+    let missing = serde_json::json!({"c": {"v": 999, "d": "abc"}});
     let encoded =
         hero::token::jwt::create_jwt_token(&missing, SECRET, Duration::from_secs(60)).unwrap();
     assert!(matches!(
@@ -871,7 +871,7 @@ async fn issued_tokens_use_signed_versioned_compression() {
         "a different dictionary",
     )
     .unwrap();
-    let payload = serde_json::json!({"compressed": {"dictionary_version": 1, "data": wrong.compress("{}").await.unwrap()}});
+    let payload = serde_json::json!({"c": {"v": 1, "d": wrong.compress("{}").await.unwrap()}});
     let encoded =
         hero::token::jwt::create_jwt_token(&payload, SECRET, Duration::from_secs(60)).unwrap();
     assert!(matches!(
@@ -2279,7 +2279,7 @@ async fn access_issuance_includes_direct_and_group_authority_and_refresh_rebuild
     assert!(new_access.policy_snapshot.group_roles.is_empty());
     let refresh = decode_token(&renewed.refresh_token, SECRET).unwrap();
     assert!(
-        serde_json::to_value(refresh).unwrap()["refresh"]
+        serde_json::to_value(refresh).unwrap()["r"]
             .get("policy_snapshot")
             .is_none()
     );

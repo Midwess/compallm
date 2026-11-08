@@ -84,7 +84,7 @@ pub fn challenge(email: &str, secret: &str) -> Result<EmailOtpChallenge, AuthErr
 }
 
 pub fn sign_unchecked(token: &AccessToken, secret: &str, lifetime: Duration) -> String {
-    let payload = serde_json::json!({"compressed": {"dictionary_version": 1, "data": compression::compress(&dictionary(), &serde_json::to_string(token).unwrap()).unwrap()}});
+    let payload = serde_json::json!({"c": {"v": 1, "d": compression::compress(&dictionary(), &serde_json::to_string(token).unwrap()).unwrap()}});
     hero::token::jwt::create_jwt_token(&payload, secret, lifetime).unwrap()
 }
 

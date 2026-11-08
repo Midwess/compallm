@@ -93,15 +93,16 @@ impl DictionaryRepository {
             .filter(Column::Type.eq(ZstdDictionaryTypeSchema::from(kind)))
             .filter(Column::Version.lte(version_db))
             .order_by_asc(Column::Version)
+            .order_by_asc(Column::SampleIndex)
             .all(db)
             .await?;
         if rows.last().is_none_or(|row| row.version != version_db) {
             return Ok(None);
         }
-        let content: String = rows.into_iter().map(|row| row.content).collect();
+        let samples = rows.into_iter().map(|row| row.content).collect();
         Ok(Some(self.cache.insert(
             key,
-            Box::new(DCompression::new(kind, version, &content)?),
+            Box::new(DCompression::train(kind, version, samples).await?),
         )))
     }
 }

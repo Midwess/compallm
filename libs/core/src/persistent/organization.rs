@@ -39,7 +39,8 @@ pub trait OrganizationRepository: Send + Sync {
         organization_id: u64,
         role_ids: &[u64],
     ) -> Result<Vec<Role>, OrganizationRepositoryError>;
-    /// Lock the scoped role inside an active transaction and return its current record.
+    /// Exclusively lock the scoped role for deletion, blocking new assignment links
+    /// until the active transaction ends, and return its current record.
     async fn lock_role(
         &self,
         organization_id: u64,

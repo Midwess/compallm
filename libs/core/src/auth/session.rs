@@ -12,13 +12,19 @@ use std::time::Duration;
 /// A persisted login. JWTs own expiry; ordinary renewal does not change this record.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Session {
+    #[serde(rename = "i")]
     pub id: u64,
+    #[serde(rename = "u")]
     pub user_id: u64,
+    #[serde(rename = "o")]
     pub organization_id: u64,
     /// Display snapshot refreshed on token issuance; not part of session identity.
+    #[serde(rename = "n")]
     pub organization_name: String,
     /// Current permission generation, copied from storage when renewing credentials.
+    #[serde(rename = "v")]
     pub authorization_version: u32,
+    #[serde(rename = "r")]
     pub revoked_at: Option<u64>,
 }
 

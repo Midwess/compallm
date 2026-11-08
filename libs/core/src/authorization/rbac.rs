@@ -13,15 +13,49 @@ pub struct RbacService {
 }
 
 impl RbacService {
-    async fn new_role(&self, name: &str, cedar_script: String) -> Result<Role, AuthorizationError> {
-        todo!()
+    async fn new_role(
+        &self,
+        organization_id: u64,
+        name: &str,
+        cedar_script: String,
+    ) -> Result<Role, AuthorizationError> {
+        let role = Role::new(organization_id, name, "", cedar_script).await?;
+        self.organizations.create_roles(vec![role.clone()]).await?;
+        Ok(role)
     }
 
-    async fn delete_Role(&self, id: &str) -> Result<Role, AuthorizationError> {
-        // Check if is there any user currently using this role and un-assign them first
-        // Delete the role
-        // Inside Role entities, define the role length rules follow the aws iam system length
-        todo!()
+    async fn delete_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<Role, AuthorizationError> {
+        let role = self
+            .organizations
+            .find_role(organization_id, role_id)
+            .await?
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        role.ensure_deletable()?;
+        crate::transaction!(self.db, {
+            let role = self
+                .organizations
+                .lock_role(organization_id, role_id)
+                .await?;
+            role.ensure_deletable()?;
+            self.organizations
+                .lock_role_groups(organization_id, role_id)
+                .await?;
+            let users = self
+                .organizations
+                .role_assignees(organization_id, role_id)
+                .await?;
+            self.organizations
+                .delete_role(organization_id, role_id)
+                .await?;
+            self.auth_service
+                .invalidate_permissions(organization_id, &users)
+                .await?;
+            Ok(role)
+        })
     }
 
     async fn create_group(
@@ -71,6 +105,9 @@ impl RbacService {
         let previous = member.clone();
         member.assign_role(role)?;
         crate::transaction!(self.db, {
+            self.organizations
+                .lock_role(organization_id, role_id)
+                .await?;
             self.organizations.save_member(&member, &previous).await?;
             self.auth_service
                 .invalidate_permissions(organization_id, &[user_id])
@@ -126,6 +163,9 @@ impl RbacService {
         let previous = member.clone();
         member.assign_group(group)?;
         crate::transaction!(self.db, {
+            self.organizations
+                .lock_group(organization_id, group_id)
+                .await?;
             self.organizations.save_member(&member, &previous).await?;
             self.auth_service
                 .invalidate_permissions(organization_id, &[user_id])

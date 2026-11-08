@@ -14,4 +14,6 @@ pub enum AuthorizationError {
     Group(#[from] crate::organization::group::GroupCreationError),
     #[error(transparent)]
     Role(#[from] crate::organization::role::RoleCreationError),
+    #[error(transparent)]
+    RoleDeletion(#[from] crate::organization::role::RoleDeletionError),
 }

@@ -39,6 +39,35 @@ pub trait OrganizationRepository: Send + Sync {
         organization_id: u64,
         role_ids: &[u64],
     ) -> Result<Vec<Role>, OrganizationRepositoryError>;
+    /// Lock the scoped role inside an active transaction and return its current record.
+    async fn lock_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<Role, OrganizationRepositoryError>;
+    /// Lock groups linked to the role inside the same transaction.
+    async fn lock_role_groups(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<(), OrganizationRepositoryError>;
+    async fn lock_group(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+    ) -> Result<(), OrganizationRepositoryError>;
+    /// Find direct and group-inherited role assignees, deduplicated.
+    async fn role_assignees(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError>;
+    /// Delete the scoped role and its cascading relationships.
+    async fn delete_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<(), OrganizationRepositoryError>;
     /// Find a group and its assigned roles using its organization-scoped identity.
     async fn find_group(
         &self,

@@ -138,3 +138,27 @@ async fn group_constructor_checks_name_and_role_scope() {
     let group = Group::new(1, "  Research  ", "", vec![]).await.unwrap();
     assert_eq!(group.name, "Research");
 }
+
+#[tokio::test]
+async fn role_constructor_checks_cedar_and_preserves_source() {
+    use compallm_core::organization::role::RoleCreationError;
+    compallm_postgres::init_id_generator("role-policy-validation-test").unwrap();
+    for source in [
+        "invalid policy",
+        "permit(principal, action == Compallm::Action::\"unknown\", resource);",
+        "permit(principal == ?principal, action, resource);",
+    ] {
+        assert!(matches!(
+            Role::new(1, "Role", "", source).await,
+            Err(RoleCreationError::InvalidPolicy(_))
+        ));
+    }
+    let source = "// kept\npermit(principal, action == Compallm::Action::\"model.list\", resource is Compallm::Organization);\n";
+    let role = Role::new(1, "Role", "", source).await.unwrap();
+    assert_eq!(role.cedar_source, source);
+    assert!(role.ensure_deletable().is_ok());
+    let mut owner = role;
+    owner.org_owner = true;
+    owner.name = "Renamed".into();
+    assert!(owner.ensure_deletable().is_err());
+}

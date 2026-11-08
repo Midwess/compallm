@@ -117,6 +117,118 @@ impl OrganizationRepository {
 
 #[async_trait::async_trait]
 impl CoreRepository for OrganizationRepository {
+    async fn lock_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<Role, OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        if !context.postgres().is_transaction() {
+            return Err(OrganizationRepositoryError::database(anyhow::anyhow!(
+                "role lock requires a transaction"
+            )));
+        }
+        let db = PostgresConnection::from_context(&context)?;
+        let row = db.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "UPDATE organization_roles SET id=id WHERE organization_id=$1 AND id=$2 RETURNING *",
+            [Self::database_id(organization_id)?.into(),Self::database_id(role_id)?.into()])).await.map_err(OrganizationRepositoryError::database)?.ok_or(OrganizationRepositoryError::NotFound)?;
+        Role::try_from(
+            OrganizationRoleSchema::from_query_result(&row, "")
+                .map_err(OrganizationRepositoryError::database)?,
+        )
+        .map_err(OrganizationRepositoryError::database)
+    }
+
+    async fn lock_role_groups(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<(), OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        if !context.postgres().is_transaction() {
+            return Err(OrganizationRepositoryError::database(anyhow::anyhow!(
+                "group lock requires a transaction"
+            )));
+        }
+        let db = PostgresConnection::from_context(&context)?;
+        db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "UPDATE organization_groups g SET id=g.id WHERE g.organization_id=$1 AND EXISTS (SELECT 1 FROM organization_group_roles gr WHERE gr.organization_id=g.organization_id AND gr.group_id=g.id AND gr.role_id=$2)",
+            [Self::database_id(organization_id)?.into(),Self::database_id(role_id)?.into()])).await.map_err(OrganizationRepositoryError::database)?;
+        Ok(())
+    }
+
+    async fn lock_group(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+    ) -> Result<(), OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        if !context.postgres().is_transaction() {
+            return Err(OrganizationRepositoryError::database(anyhow::anyhow!(
+                "group lock requires a transaction"
+            )));
+        }
+        let db = PostgresConnection::from_context(&context)?;
+        let result = db
+            .execute_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "UPDATE organization_groups SET id=id WHERE organization_id=$1 AND id=$2",
+                [
+                    Self::database_id(organization_id)?.into(),
+                    Self::database_id(group_id)?.into(),
+                ],
+            ))
+            .await
+            .map_err(OrganizationRepositoryError::database)?;
+        if result.rows_affected() == 0 {
+            return Err(OrganizationRepositoryError::NotFound);
+        }
+        Ok(())
+    }
+
+    async fn role_assignees(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let rows = db.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT user_id FROM organization_member_roles WHERE organization_id=$1 AND role_id=$2 UNION SELECT gm.user_id FROM organization_group_roles gr JOIN organization_group_members gm ON gm.organization_id=gr.organization_id AND gm.group_id=gr.group_id WHERE gr.organization_id=$1 AND gr.role_id=$2 ORDER BY user_id",
+            [Self::database_id(organization_id)?.into(),Self::database_id(role_id)?.into()])).await.map_err(OrganizationRepositoryError::database)?;
+        rows.into_iter()
+            .map(|row| {
+                let id: i64 = row
+                    .try_get("", "user_id")
+                    .map_err(OrganizationRepositoryError::database)?;
+                u64::try_from(id).map_err(OrganizationRepositoryError::database)
+            })
+            .collect()
+    }
+
+    async fn delete_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<(), OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let result = db
+            .execute_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "DELETE FROM organization_roles WHERE organization_id=$1 AND id=$2",
+                [
+                    Self::database_id(organization_id)?.into(),
+                    Self::database_id(role_id)?.into(),
+                ],
+            ))
+            .await
+            .map_err(OrganizationRepositoryError::database)?;
+        if result.rows_affected() == 0 {
+            return Err(OrganizationRepositoryError::NotFound);
+        }
+        Ok(())
+    }
     async fn find_roles(
         &self,
         organization_id: u64,

@@ -77,6 +77,25 @@ struct OrganizationRepositoryStub(Arc<Mutex<State>>);
 
 #[async_trait::async_trait]
 impl OrganizationRepository for OrganizationRepositoryStub {
+    async fn lock_role(&self, _: u64, _: u64) -> Result<Role, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn lock_role_groups(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn lock_group(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn role_assignees(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn delete_role(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
     async fn find_roles(
         &self,
         _: u64,

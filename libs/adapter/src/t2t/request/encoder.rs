@@ -14,3 +14,15 @@ pub trait RequestEncoder {
     /// Subsequent advance calls must drain final output and then return Finished.
     fn finish(&mut self) -> Result<(), CodecError>;
 }
+
+impl<E: RequestEncoder + ?Sized> RequestEncoder for Box<E> {
+    fn accept(&mut self, event: RequestEvent) -> Result<(), CodecError> {
+        (**self).accept(event)
+    }
+    fn advance(&mut self, output: &mut [u8]) -> Result<EncodeStep, CodecError> {
+        (**self).advance(output)
+    }
+    fn finish(&mut self) -> Result<(), CodecError> {
+        (**self).finish()
+    }
+}

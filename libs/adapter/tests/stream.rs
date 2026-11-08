@@ -1,48 +1,216 @@
+//! Explicit translator state-machine tests, shared by request and response APIs.
 use std::{
-    cell::Cell,
-    convert::Infallible,
+    cell::RefCell,
+    future::Future,
+    io,
     marker::PhantomPinned,
     pin::Pin,
     rc::Rc,
-    sync::Arc,
-    task::{Context, Poll, Wake, Waker},
+    task::{Context, Poll, Waker},
 };
 
 use adapter::{
-    codec::{DecodeStep, EncodeStep},
-    error::{CodecError, StreamError},
+    codec::{DecodeStep, EncodeStep, TranslateStep},
+    error::{CodecError, StreamError, TranslationError},
     t2t::{
         Text2TextRequestTranslator, Text2TextResponseTranslator,
-        request::{
-            RequestForwardError, decoder::RequestDecoder, encoder::RequestEncoder,
-            event::RequestEvent,
-        },
-        response::{
-            ResponseForwardError, decoder::ResponseDecoder, encoder::ResponseEncoder,
-            event::ResponseEvent,
-        },
+        request::{decoder::RequestDecoder, encoder::RequestEncoder, event::RequestEvent},
+        response::{decoder::ResponseDecoder, encoder::ResponseEncoder, event::ResponseEvent},
     },
 };
 use bytes::{Buf, Bytes};
-use futures_core::Stream;
-use futures_sink::Sink;
+use futures_io::{AsyncRead, AsyncWrite};
+use futures_util::io::Cursor;
 
 #[derive(Default)]
-struct TextDecoder;
+struct ReadState {
+    data: Vec<u8>,
+    offset: usize,
+    polls: usize,
+    drops: usize,
+    pending: bool,
+    fail: bool,
+    invalid_length: bool,
+    buffers: Vec<(usize, usize)>,
+}
+struct Reader {
+    state: Rc<RefCell<ReadState>>,
+    _pinned: PhantomPinned,
+}
+impl Reader {
+    fn new(data: &[u8]) -> Self {
+        Self {
+            state: Rc::new(RefCell::new(ReadState {
+                data: data.to_vec(),
+                ..ReadState::default()
+            })),
+            _pinned: PhantomPinned,
+        }
+    }
+}
+impl Drop for Reader {
+    fn drop(&mut self) {
+        self.state.borrow_mut().drops += 1;
+    }
+}
+impl AsyncRead for Reader {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        _: &mut Context<'_>,
+        output: &mut [u8],
+    ) -> Poll<io::Result<usize>> {
+        let mut state = self.state.borrow_mut();
+        state.polls += 1;
+        state.buffers.push((output.as_ptr() as usize, output.len()));
+        if state.pending {
+            return Poll::Pending;
+        }
+        if state.fail {
+            return Poll::Ready(Err(io::Error::other("read failed")));
+        }
+        if state.invalid_length {
+            return Poll::Ready(Ok(output.len() + 1));
+        }
+        let len = output.len().min(state.data.len() - state.offset);
+        output[..len].copy_from_slice(&state.data[state.offset..state.offset + len]);
+        state.offset += len;
+        Poll::Ready(Ok(len))
+    }
+}
 
-macro_rules! text_decoder {
+#[derive(Default)]
+struct WriteState {
+    bytes: Vec<u8>,
+    writes: usize,
+    flushes: usize,
+    closes: usize,
+    max_write: Option<usize>,
+    block_after: Option<usize>,
+    block_flush: bool,
+    fail_write: bool,
+    fail_flush: bool,
+    zero: bool,
+    invalid_length: bool,
+    buffers: Vec<(usize, usize)>,
+}
+#[derive(Clone)]
+struct Writer {
+    state: Rc<RefCell<WriteState>>,
+    _pinned: PhantomPinned,
+}
+impl Default for Writer {
+    fn default() -> Self {
+        Self {
+            state: Rc::default(),
+            _pinned: PhantomPinned,
+        }
+    }
+}
+impl Writer {
+    fn bytes(&self) -> Vec<u8> {
+        self.state.borrow().bytes.clone()
+    }
+}
+impl AsyncWrite for Writer {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        _: &mut Context<'_>,
+        bytes: &[u8],
+    ) -> Poll<io::Result<usize>> {
+        let mut state = self.state.borrow_mut();
+        if state.block_after.is_some_and(|count| state.writes >= count) {
+            return Poll::Pending;
+        }
+        if state.fail_write {
+            return Poll::Ready(Err(io::Error::other("write failed")));
+        }
+        if state.zero {
+            return Poll::Ready(Ok(0));
+        }
+        if state.invalid_length {
+            return Poll::Ready(Ok(bytes.len() + 1));
+        }
+        let len = state.max_write.unwrap_or(bytes.len()).min(bytes.len());
+        state.buffers.push((bytes.as_ptr() as usize, bytes.len()));
+        state.bytes.extend_from_slice(&bytes[..len]);
+        state.writes += 1;
+        Poll::Ready(Ok(len))
+    }
+    fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<io::Result<()>> {
+        let mut state = self.state.borrow_mut();
+        state.flushes += 1;
+        if state.block_flush {
+            return Poll::Pending;
+        }
+        if state.fail_flush {
+            return Poll::Ready(Err(io::Error::other("flush failed")));
+        }
+        Poll::Ready(Ok(()))
+    }
+    fn poll_close(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<io::Result<()>> {
+        self.state.borrow_mut().closes += 1;
+        Poll::Ready(Ok(()))
+    }
+}
+
+#[derive(Clone, Copy, Default)]
+enum BadDecoder {
+    #[default]
+    None,
+    EarlyFinish,
+    NoProgress,
+    NeedWithData,
+    WrongSuffix,
+    GrowingSlice,
+    NeedAtEof,
+    LateEof,
+}
+#[derive(Default)]
+struct Decoder {
+    bad: BadDecoder,
+    buffers: Rc<RefCell<Vec<(usize, usize)>>>,
+}
+macro_rules! decoder {
     ($contract:ident, $event:ident) => {
-        impl $contract for TextDecoder {
+        impl $contract for Decoder {
             fn advance(
                 &mut self,
-                input: &mut Bytes,
+                input: &mut &[u8],
                 eof: bool,
             ) -> Result<DecodeStep<$event>, CodecError> {
+                if matches!(self.bad, BadDecoder::EarlyFinish) {
+                    return Ok(DecodeStep::Finished);
+                }
+                if matches!(self.bad, BadDecoder::NoProgress) {
+                    return Ok(DecodeStep::Progress);
+                }
                 if !input.is_empty() {
-                    Ok(DecodeStep::Event($event::TextFragment(
-                        input.split_to(input.len().min(4)),
-                    )))
-                } else if eof {
+                    self.buffers
+                        .borrow_mut()
+                        .push((input.as_ptr() as usize, input.len()));
+                    if matches!(self.bad, BadDecoder::NeedWithData) {
+                        return Ok(DecodeStep::NeedInput);
+                    }
+                    if matches!(self.bad, BadDecoder::WrongSuffix) {
+                        *input = b"x";
+                        return Ok(DecodeStep::Progress);
+                    }
+                    if matches!(self.bad, BadDecoder::GrowingSlice) {
+                        *input = b"larger than the input";
+                        return Ok(DecodeStep::Progress);
+                    }
+                    let len = input.len().min(2);
+                    let event = $event::TextFragment(Bytes::copy_from_slice(&input[..len]));
+                    input.advance(len);
+                    return Ok(DecodeStep::Event(event));
+                }
+                if eof {
+                    if matches!(self.bad, BadDecoder::NeedAtEof) {
+                        return Ok(DecodeStep::NeedInput);
+                    }
+                    if matches!(self.bad, BadDecoder::LateEof) {
+                        return Err(CodecError::InvalidInput("incomplete document"));
+                    }
                     Ok(DecodeStep::Finished)
                 } else {
                     Ok(DecodeStep::NeedInput)
@@ -51,31 +219,56 @@ macro_rules! text_decoder {
         }
     };
 }
+decoder!(RequestDecoder, RequestEvent);
+decoder!(ResponseDecoder, ResponseEvent);
 
-text_decoder!(RequestDecoder, RequestEvent);
-text_decoder!(ResponseDecoder, ResponseEvent);
-
+#[derive(Clone, Copy, Default)]
+enum BadEncoder {
+    #[default]
+    None,
+    Zero,
+    Oversized,
+    EarlyFinish,
+    NeedAfterFinish,
+    Accept,
+    Finish,
+}
 #[derive(Default)]
-struct TextEncoder {
+struct Encoder {
     pending: Bytes,
     finished: bool,
+    bad: BadEncoder,
+    buffers: Rc<RefCell<Vec<(usize, usize)>>>,
 }
-
-macro_rules! text_encoder {
+macro_rules! encoder {
     ($contract:ident, $event:ident) => {
-        impl $contract for TextEncoder {
+        impl $contract for Encoder {
             fn accept(&mut self, event: $event) -> Result<(), CodecError> {
-                let $event::TextFragment(bytes) = event else {
-                    return Err(CodecError::Unsupported("text fragments only"));
-                };
+                if matches!(self.bad, BadEncoder::Accept) {
+                    return Err(CodecError::Unsupported("event"));
+                }
                 assert!(self.pending.is_empty());
+                let $event::TextFragment(bytes) = event else {
+                    return Err(CodecError::Unsupported("text only"));
+                };
                 self.pending = bytes;
                 Ok(())
             }
-
             fn advance(&mut self, output: &mut [u8]) -> Result<EncodeStep, CodecError> {
+                self.buffers
+                    .borrow_mut()
+                    .push((output.as_ptr() as usize, output.len()));
+                match self.bad {
+                    BadEncoder::Zero => return Ok(EncodeStep::Wrote(0)),
+                    BadEncoder::Oversized => return Ok(EncodeStep::Wrote(output.len() + 1)),
+                    BadEncoder::EarlyFinish => return Ok(EncodeStep::Finished),
+                    BadEncoder::NeedAfterFinish if self.finished => {
+                        return Ok(EncodeStep::NeedEvent);
+                    }
+                    _ => {}
+                }
                 if !self.pending.is_empty() {
-                    let len = output.len().min(self.pending.len());
+                    let len = self.pending.len().min(output.len());
                     output[..len].copy_from_slice(&self.pending[..len]);
                     self.pending.advance(len);
                     Ok(EncodeStep::Wrote(len))
@@ -85,8 +278,10 @@ macro_rules! text_encoder {
                     Ok(EncodeStep::NeedEvent)
                 }
             }
-
             fn finish(&mut self) -> Result<(), CodecError> {
+                if matches!(self.bad, BadEncoder::Finish) {
+                    return Err(CodecError::Unsupported("finalization"));
+                }
                 assert!(!self.finished);
                 self.finished = true;
                 self.pending = Bytes::from_static(b"!");
@@ -95,1354 +290,463 @@ macro_rules! text_encoder {
         }
     };
 }
+encoder!(RequestEncoder, RequestEvent);
+encoder!(ResponseEncoder, ResponseEvent);
 
-text_encoder!(RequestEncoder, RequestEvent);
-text_encoder!(ResponseEncoder, ResponseEvent);
-
-/// Non-Send, non-Unpin input with state outside the pinned value.
-struct LocalInput<'a> {
-    polls: &'a Cell<usize>,
-    next: Rc<Cell<usize>>,
-    _pinned: PhantomPinned,
-}
-
-impl Stream for LocalInput<'_> {
-    type Item = Result<Bytes, Infallible>;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.polls.set(self.polls.get() + 1);
-        let index = self.next.get();
-        self.next.set(index + 1);
-        match index {
-            0 => Poll::Ready(Some(Ok(Bytes::from_static(b"hello")))),
-            1 => {
-                cx.waker().wake_by_ref();
-                Poll::Pending
-            }
-            2 => Poll::Ready(Some(Ok(Bytes::from_static(b" world")))),
-            _ => Poll::Ready(None),
-        }
-    }
-}
-
-#[test]
-fn request_scratch_is_reused_after_success_target_failure_and_cancellation() {
-    struct ObserveOutput {
-        encoder: TextEncoder,
-        buffers: Rc<std::cell::RefCell<Vec<(usize, usize)>>>,
-    }
-    impl RequestEncoder for ObserveOutput {
-        fn accept(&mut self, event: RequestEvent) -> Result<(), CodecError> {
-            RequestEncoder::accept(&mut self.encoder, event)
-        }
-
-        fn advance(&mut self, output: &mut [u8]) -> Result<EncodeStep, CodecError> {
-            self.buffers
-                .borrow_mut()
-                .push((output.as_ptr() as usize, output.len()));
-            RequestEncoder::advance(&mut self.encoder, output)
-        }
-
-        fn finish(&mut self) -> Result<(), CodecError> {
-            RequestEncoder::finish(&mut self.encoder)
-        }
-    }
-    let buffers = Rc::new(std::cell::RefCell::new(Vec::new()));
-    let mut translator = Text2TextRequestTranslator::new(2, 3);
-    for outcome in 0..4 {
-        let target = TestSink::default();
-        target.state.borrow_mut().fail_ready = outcome == 1;
-        let forward = translator.forward(
-            OneChunk(Some(Ok(Bytes::from_static(b"original")))),
-            || TextDecoder,
-            target.pinned(),
-            ObserveOutput {
-                encoder: TextEncoder::default(),
-                buffers: buffers.clone(),
-            },
-        );
-        if outcome == 2 {
-            let mut forward = std::pin::pin!(forward);
-            assert!(
-                forward
-                    .as_mut()
-                    .poll(&mut Context::from_waker(Waker::noop()))
-                    .is_pending()
-            );
-        } else if outcome == 1 {
-            assert!(matches!(
-                run(forward),
-                Err(RequestForwardError::Target("ready failed"))
-            ));
-        } else {
-            run(forward).unwrap();
-            assert_eq!(target.bytes(), b"original!");
-        }
-    }
-    let buffers = buffers.borrow();
-    assert!(!buffers.is_empty());
-    assert!(buffers.iter().all(|buffer| *buffer == buffers[0]));
-    assert_eq!(buffers[0].1, 2);
-}
-
-#[test]
-fn retained_output_is_independent_of_scratch_reuse() {
-    let mut translator = Text2TextRequestTranslator::new(2, 3);
-    let mut retained = Vec::new();
-    for body in [b"first".as_slice(), b"second", b"third"] {
-        let mut chunks = Vec::new();
-        let target = futures_util::sink::unfold(&mut chunks, |chunks, chunk: Bytes| async move {
-            chunks.push(chunk);
-            Ok::<_, Infallible>(chunks)
-        });
-        run(translator.forward(
-            OneChunk(Some(Ok(Bytes::copy_from_slice(body)))),
-            || TextDecoder,
-            target,
-            TextEncoder::default(),
-        ))
-        .unwrap();
-        assert!(chunks.iter().all(|chunk| chunk.len() <= 2));
-        retained.push(chunks);
-    }
-    for (chunks, expected) in retained
-        .iter()
-        .zip([b"first!".as_slice(), b"second!", b"third!"])
-    {
-        let output: Vec<u8> = chunks
-            .iter()
-            .flat_map(|chunk| chunk.iter().copied())
-            .collect();
-        assert_eq!(output, expected);
-    }
-}
-
-#[test]
-fn forwarding_is_lazy_until_first_poll() {
-    let polls = Cell::new(0);
-    let decoders = Cell::new(0);
-    let mut translator = Text2TextRequestTranslator::new(2, 3);
-    let target = TestSink::default();
-    let input = LocalInput {
-        polls: &polls,
-        next: Rc::new(Cell::new(0)),
-        _pinned: PhantomPinned,
-    };
-    let forward = translator.forward(
-        input,
-        || {
-            decoders.set(decoders.get() + 1);
-            TextDecoder
-        },
-        target.pinned(),
-        TextEncoder::default(),
-    );
-    assert_eq!(polls.get(), 0);
-    assert_eq!(decoders.get(), 0);
-    assert!(target.bytes().is_empty());
-    assert!(!target.state.borrow().closed);
-    run(forward).unwrap();
-    assert_eq!(target.bytes(), b"hello world!");
-    assert_eq!(decoders.get(), 1);
-}
-
-#[test]
-fn zero_constructor_bounds_use_defaults_in_both_directions() {
-    for (output_chunk_bytes, steps_before_yield, expected_chunks) in
-        [(0, 3, 3), (2, 0, 4), (0, 0, 3)]
-    {
-        let mut translator =
-            Text2TextRequestTranslator::new(output_chunk_bytes, steps_before_yield);
-        let target = TestSink::default();
-        run(translator.forward(
-            OneChunk(Some(Ok(Bytes::from_static(b"source")))),
-            || TextDecoder,
-            target.pinned(),
-            TextEncoder::default(),
-        ))
-        .unwrap();
-        assert_eq!(target.bytes(), b"source!");
-        assert_eq!(target.state.borrow().chunks, expected_chunks);
-        let mut translator =
-            Text2TextResponseTranslator::new(output_chunk_bytes, steps_before_yield);
-        let target = TestSink::default();
-        run(translator.forward(
-            OneChunk(Some(Ok(Bytes::from_static(b"source")))),
-            || TextDecoder,
-            target.pinned(),
-            TextEncoder::default(),
-        ))
-        .unwrap();
-        assert_eq!(target.bytes(), b"source!");
-        assert_eq!(target.state.borrow().chunks, expected_chunks);
-    }
-}
-
-#[test]
-fn constructor_configures_limits() {
-    let mut translator = Text2TextRequestTranslator::new(2, 3);
-    let target = TestSink::default();
-    run(translator.forward(
-        OneChunk(Some(Ok(Bytes::from_static(b"source")))),
-        || TextDecoder,
-        target.pinned(),
-        TextEncoder::default(),
-    ))
-    .unwrap();
-    assert_eq!(target.bytes(), b"source!");
-    assert_eq!(target.state.borrow().chunks, 4);
-}
-
-#[test]
-fn constructor_output_bound_controls_chunk_size() {
-    let mut translator = Text2TextRequestTranslator::new(1, 3);
-    let first = TestSink::default();
-    run(translator.forward(
-        OneChunk(Some(Ok(Bytes::from_static(b"first")))),
-        || TextDecoder,
-        first.pinned(),
-        TextEncoder::default(),
-    ))
-    .unwrap();
-    assert_eq!(first.bytes(), b"first!");
-    assert_eq!(first.state.borrow().chunks, 6);
-    let mut translator = Text2TextRequestTranslator::new(2, 3);
-    let next = TestSink::default();
-    run(translator.forward(
-        OneChunk(Some(Ok(Bytes::from_static(b"next")))),
-        || TextDecoder,
-        next.pinned(),
-        TextEncoder::default(),
-    ))
-    .unwrap();
-    assert_eq!(next.bytes(), b"next!");
-    assert_eq!(next.state.borrow().chunks, 3);
-}
-
-#[test]
-fn request_drains_partial_events_and_finishes_without_restricting_input() {
-    let polls = Cell::new(0);
-    let input = LocalInput {
-        polls: &polls,
-        next: Rc::new(Cell::new(0)),
-        _pinned: PhantomPinned,
-    };
-    let mut translator = Text2TextRequestTranslator::new(2, 3);
-    assert_eq!(polls.get(), 0, "construction must not consume input");
-    let target = TestSink::default();
-    run(translator.forward(
-        input,
-        || TextDecoder,
-        target.pinned(),
-        TextEncoder::default(),
-    ))
-    .unwrap();
-    assert_eq!(target.bytes(), b"hello world!");
-    assert!(target.state.borrow().closed);
-    assert_eq!(polls.get(), 4);
-}
-
-#[test]
-fn response_uses_its_own_contracts_and_drains_final_output() {
-    let mut translator = Text2TextResponseTranslator::new(2, 3);
-    let target = TestSink::default();
-    run(translator.forward(
-        OneChunk(Some(Ok(Bytes::from_static(b"response")))),
-        || TextDecoder,
-        target.pinned(),
-        TextEncoder::default(),
-    ))
-    .unwrap();
-    assert_eq!(target.bytes(), b"response!");
-    assert!(target.state.borrow().closed);
-}
-
-struct OneChunk(Option<Result<Bytes, &'static str>>);
-impl Stream for OneChunk {
-    type Item = Result<Bytes, &'static str>;
-
-    fn poll_next(mut self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Poll::Ready(self.0.take())
-    }
-}
-
-#[test]
-fn response_transport_failure_does_not_close_target_and_allows_reuse() {
-    let mut translator = Text2TextResponseTranslator::new(16 * 1024, 64);
-    let target = TestSink::default();
-    assert!(matches!(
-        run(translator.forward(
-            OneChunk(Some(Err("disconnected"))),
-            || TextDecoder,
-            target.pinned(),
-            TextEncoder::default(),
-        )),
-        Err(ResponseForwardError::Stream(StreamError::Input(
-            "disconnected"
-        )))
-    ));
-    assert!(!target.state.borrow().closed);
-    assert!(target.bytes().is_empty());
-    run(translator.forward(
-        OneChunk(Some(Ok(Bytes::from_static(b"fresh")))),
-        || TextDecoder,
-        target.pinned(),
-        TextEncoder::default(),
-    ))
-    .unwrap();
-    assert_eq!(target.bytes(), b"fresh!");
-}
-
-struct BadEof;
-impl RequestDecoder for BadEof {
-    fn advance(&mut self, _: &mut Bytes, _: bool) -> Result<DecodeStep<RequestEvent>, CodecError> {
-        Ok(DecodeStep::Finished)
-    }
-}
-
-#[test]
-fn premature_decoder_completion_is_rejected() {
-    let (result, target) = request_attempt(
-        OneChunk(None),
-        BadEof,
-        TextEncoder::default(),
-        16 * 1024,
-        64,
-    );
-    assert!(matches!(
-        result,
-        Err(RequestForwardError::Stream(StreamError::Codec(
-            CodecError::Contract(_)
-        )))
-    ));
-    assert!(!target.state.borrow().closed);
-}
-
-struct EmptyForever(Rc<Cell<usize>>);
-impl Stream for EmptyForever {
-    type Item = Result<Bytes, Infallible>;
-
-    fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.0.set(self.0.get() + 1);
-        Poll::Ready(Some(Ok(Bytes::new())))
-    }
-}
-
-struct WakeCount(std::sync::atomic::AtomicUsize);
-impl Wake for WakeCount {
-    fn wake(self: Arc<Self>) {
-        self.0.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    }
-}
-
-#[test]
-fn empty_chunks_cannot_monopolize_a_poll_and_exhaustion_self_wakes() {
-    let polls = Rc::new(Cell::new(0));
-    let mut translator = Text2TextResponseTranslator::new(2, 3);
-    let mut forward = std::pin::pin!(translator.forward(
-        EmptyForever(polls.clone()),
-        || TextDecoder,
-        TestSink::default().pinned(),
-        TextEncoder::default(),
-    ));
-    let wakes = Arc::new(WakeCount(std::sync::atomic::AtomicUsize::new(0)));
-    let waker = Waker::from(wakes.clone());
-    let mut cx = Context::from_waker(&waker);
-    assert!(forward.as_mut().poll(&mut cx).is_pending());
-    assert_eq!(polls.get(), 3);
-    assert_eq!(wakes.0.load(std::sync::atomic::Ordering::Relaxed), 1);
-}
-
-#[test]
-fn pending_encoder_output_is_drained_before_polling_more_input() {
-    let polls = Cell::new(0);
-    let mut translator = Text2TextResponseTranslator::new(2, 64);
-    let mut chunks = Vec::new();
-    let target = futures_util::sink::unfold(&mut chunks, |chunks, chunk: Bytes| {
-        if chunks.len() < 3 {
-            assert_eq!(polls.get(), 1);
-        }
-        chunks.push(chunk);
-        std::future::ready(Ok::<_, Infallible>(chunks))
-    });
-    run(translator.forward(
-        LocalInput {
-            polls: &polls,
-            next: Rc::new(Cell::new(0)),
-            _pinned: PhantomPinned,
-        },
-        || TextDecoder,
-        target,
-        TextEncoder::default(),
-    ))
-    .unwrap();
-    for (chunk, expected) in chunks.iter().zip([b"he".as_slice(), b"ll", b"o"]) {
-        assert_eq!(chunk.as_ref(), expected);
-    }
-}
-
-struct Incomplete;
-impl RequestDecoder for Incomplete {
-    fn advance(
-        &mut self,
-        input: &mut Bytes,
-        eof: bool,
-    ) -> Result<DecodeStep<RequestEvent>, CodecError> {
-        if !input.is_empty() {
-            Ok(DecodeStep::Event(RequestEvent::TextFragment(
-                input.split_to(input.len()),
-            )))
-        } else if eof {
-            Err(CodecError::InvalidInput("incomplete document"))
-        } else {
-            Ok(DecodeStep::NeedInput)
-        }
-    }
-}
-
-#[test]
-fn late_eof_failure_does_not_emit_successful_encoder_finalization() {
-    let (result, target) = request_attempt(
-        OneChunk(Some(Ok(Bytes::from_static(b"partial")))),
-        Incomplete,
-        TextEncoder::default(),
-        16 * 1024,
-        64,
-    );
-    assert_eq!(target.bytes(), b"partial");
-    assert!(matches!(
-        result,
-        Err(RequestForwardError::Stream(StreamError::Codec(
-            CodecError::InvalidInput(_)
-        )))
-    ));
-    assert!(!target.state.borrow().closed);
-}
-
-struct ZeroOutput;
-impl RequestEncoder for ZeroOutput {
-    fn accept(&mut self, _: RequestEvent) -> Result<(), CodecError> {
-        unreachable!()
-    }
-
-    fn advance(&mut self, _: &mut [u8]) -> Result<EncodeStep, CodecError> {
-        Ok(EncodeStep::Wrote(0))
-    }
-
-    fn finish(&mut self) -> Result<(), CodecError> {
-        unreachable!()
-    }
-}
-
-#[test]
-fn invalid_encoder_output_length_terminates_the_stream() {
-    let (result, target) = request_attempt(OneChunk(None), TextDecoder, ZeroOutput, 16 * 1024, 64);
-    assert!(matches!(
-        result,
-        Err(RequestForwardError::Stream(StreamError::Codec(
-            CodecError::Contract(_)
-        )))
-    ));
-    assert!(target.bytes().is_empty());
-}
-
-struct ConsumeOnly;
-impl RequestDecoder for ConsumeOnly {
-    fn advance(
-        &mut self,
-        input: &mut Bytes,
-        eof: bool,
-    ) -> Result<DecodeStep<RequestEvent>, CodecError> {
-        if !input.is_empty() {
-            input.advance(1);
-            Ok(DecodeStep::Progress)
-        } else if eof {
-            Ok(DecodeStep::Finished)
-        } else {
-            Ok(DecodeStep::NeedInput)
-        }
-    }
-}
-
-#[test]
-fn decoder_can_consume_input_in_bounded_steps_without_emitting_events() {
-    let (result, target) = request_attempt(
-        OneChunk(Some(Ok(Bytes::from_static(b"ignored")))),
-        ConsumeOnly,
-        TextEncoder::default(),
-        2,
-        3,
-    );
-    result.unwrap();
-    assert_eq!(target.bytes(), b"!");
-}
-
-fn run<F: std::future::Future>(future: F) -> F::Output {
+fn run<F: Future>(future: F) -> F::Output {
     let mut future = std::pin::pin!(future);
     let mut cx = Context::from_waker(Waker::noop());
-    for _ in 0..100 {
-        if let Poll::Ready(value) = future.as_mut().poll(&mut cx) {
-            return value;
+    for _ in 0..1000 {
+        if let Poll::Ready(output) = future.as_mut().poll(&mut cx) {
+            return output;
         }
     }
-    panic!("future did not finish");
+    panic!("operation did not finish");
 }
 
-fn request_attempt<S, D, E, I>(
-    input: S,
-    decoder: D,
-    encoder: E,
-    output_chunk_bytes: usize,
-    steps_before_yield: usize,
-) -> (Result<(), RequestForwardError<I, &'static str>>, TestSink)
-where
-    S: Stream<Item = Result<Bytes, I>>,
-    I: std::fmt::Debug,
-    D: RequestDecoder,
-    E: RequestEncoder,
-{
-    let mut translator = Text2TextRequestTranslator::new(output_chunk_bytes, steps_before_yield);
-    let target = TestSink::default();
-    let result = run(translator.forward(input, || decoder, target.pinned(), encoder));
-    (result, target)
-}
-
-#[derive(Default)]
-struct SinkState {
-    bytes: Vec<u8>,
-    chunks: usize,
-    closed: bool,
-    blocked: bool,
-    waker: Option<Waker>,
-    fail_ready: bool,
-    fail_send: bool,
-    fail_close: bool,
-}
-
-#[derive(Clone, Default)]
-struct TestSink {
-    state: Rc<std::cell::RefCell<SinkState>>,
-    _pinned: PhantomPinned,
-}
-
-impl TestSink {
-    fn pinned(&self) -> Pin<Box<Self>> {
-        Box::pin(self.clone())
-    }
-    fn bytes(&self) -> Vec<u8> {
-        self.state.borrow().bytes.clone()
-    }
-
-    fn unblock(&self) {
-        let mut state = self.state.borrow_mut();
-        state.blocked = false;
-        if let Some(waker) = state.waker.take() {
-            waker.wake();
-        }
-    }
-}
-
-impl Sink<Bytes> for TestSink {
-    type Error = &'static str;
-
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let mut state = self.state.borrow_mut();
-        if state.fail_ready {
-            Poll::Ready(Err("ready failed"))
-        } else if state.blocked {
-            state.waker = Some(cx.waker().clone());
-            Poll::Pending
-        } else {
-            Poll::Ready(Ok(()))
-        }
-    }
-
-    fn start_send(self: Pin<&mut Self>, bytes: Bytes) -> Result<(), Self::Error> {
-        let mut state = self.state.borrow_mut();
-        if state.fail_send {
-            return Err("send failed");
-        }
-        assert!(!state.closed);
-        state.bytes.extend_from_slice(&bytes);
-        state.chunks += 1;
-        Ok(())
-    }
-
-    fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn poll_close(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let mut state = self.state.borrow_mut();
-        if state.fail_close {
-            return Poll::Ready(Err("close failed"));
-        }
-        state.closed = true;
-        Poll::Ready(Ok(()))
-    }
-}
-
-#[test]
-fn blocked_target_holds_only_one_output_chunk_and_resumes() {
-    let decoded = Rc::new(Cell::new(0));
-    struct CountDecoder(Rc<Cell<usize>>);
-    impl RequestDecoder for CountDecoder {
-        fn advance(
-            &mut self,
-            input: &mut Bytes,
-            eof: bool,
-        ) -> Result<DecodeStep<RequestEvent>, CodecError> {
-            let result = RequestDecoder::advance(&mut TextDecoder, input, eof)?;
-            if matches!(result, DecodeStep::Event(_)) {
-                self.0.set(self.0.get() + 1);
+macro_rules! translator_tests {
+    ($module:ident, $translator:ident) => {
+        mod $module {
+            use super::*;
+            type Subject = $translator<Reader, Writer, Decoder, Encoder>;
+            fn configure(subject: &mut Subject, reader: Reader, writer: Writer, decoder: Decoder, encoder: Encoder) {
+                subject.set_source_stream(reader).unwrap().set_target_stream(writer).unwrap().set_decoder(decoder).unwrap().set_encoder(encoder).unwrap();
             }
-            Ok(result)
-        }
-    }
-    let mut translator = Text2TextRequestTranslator::new(2, 64);
-    let target = TestSink::default();
-    target.state.borrow_mut().blocked = true;
-    {
-        let mut forward = std::pin::pin!(translator.forward(
-            OneChunk(Some(Ok(Bytes::from_static(b"original")))),
-            || CountDecoder(decoded.clone()),
-            target.pinned(),
-            TextEncoder::default()
-        ));
-        let mut cx = Context::from_waker(Waker::noop());
-        for _ in 0..3 {
-            assert!(forward.as_mut().poll(&mut cx).is_pending());
-        }
-        assert_eq!(decoded.get(), 1);
-        assert!(target.bytes().is_empty());
-        target.unblock();
-        run(forward).unwrap();
-    }
-    assert_eq!(target.bytes(), b"original!");
-    assert!(target.state.borrow().closed);
-}
+            fn drive(subject: &mut Subject) -> Result<(), TranslationError> {
+                for _ in 0..1000 {
+                    match subject.translate()? {
+                        TranslateStep::NeedInput => { run(subject.next())?; }
+                        TranslateStep::OutputReady(_) => run(subject.flush())?,
+                        TranslateStep::Progress => {}
+                        TranslateStep::Finished => { run(subject.flush())?; return Ok(()); }
+                    }
+                }
+                panic!("translation did not finish");
+            }
+            fn output_ready(subject: &mut Subject) -> usize {
+                for _ in 0..1000 {
+                    match subject.translate().unwrap() {
+                        TranslateStep::OutputReady(len) => return len,
+                        TranslateStep::NeedInput => { run(subject.next()).unwrap(); }
+                        TranslateStep::Progress => {}
+                        TranslateStep::Finished => panic!("expected output"),
+                    }
+                }
+                panic!("no output");
+            }
 
-#[test]
-fn target_failures_are_reported_and_fresh_input_can_be_forwarded() {
-    for (field, expected) in [(0, "ready failed"), (1, "send failed"), (2, "close failed")] {
-        let mut translator = Text2TextRequestTranslator::new(2, 3);
-        let target = TestSink::default();
-        {
-            let mut state = target.state.borrow_mut();
-            match field {
-                0 => state.fail_ready = true,
-                1 => state.fail_send = true,
-                _ => state.fail_close = true,
+            #[test]
+            fn setters_are_lazy_and_all_components_are_required() {
+                let mut subject = Subject::new(2, 3);
+                assert!(matches!(subject.translate(), Err(TranslationError::MissingComponent("source_stream"))));
+                assert!(matches!(run(subject.next()), Err(TranslationError::MissingComponent("source_stream"))));
+                let reader = Reader::new(b"hello"); let state = reader.state.clone();
+                subject.set_source_stream(reader).unwrap();
+                assert!(matches!(run(subject.flush()), Err(TranslationError::MissingComponent("target_stream"))));
+                subject.set_target_stream(Writer::default()).unwrap();
+                assert!(matches!(subject.translate(), Err(TranslationError::MissingComponent("decoder"))));
+                subject.set_decoder(Decoder::default()).unwrap();
+                assert!(matches!(subject.translate(), Err(TranslationError::MissingComponent("encoder"))));
+                subject.set_encoder(Encoder::default()).unwrap();
+                assert_eq!(state.borrow().polls, 0);
+                assert_eq!(run(subject.next()).unwrap(), 2);
+            }
+
+            #[test]
+            fn caller_drives_many_chunks_and_flush_never_closes() {
+                let mut subject = Subject::new(2, 1); let reader = Reader::new(b"hello world"); let state = reader.state.clone(); let writer = Writer::default();
+                configure(&mut subject, reader, writer.clone(), Decoder::default(), Encoder::default());
+                drive(&mut subject).unwrap();
+                assert_eq!(writer.bytes(), b"hello world!");
+                assert!(writer.state.borrow().flushes > 1); assert_eq!(writer.state.borrow().closes, 0);
+                let reads = state.borrow().polls;
+                assert_eq!(run(subject.next()).unwrap(), 0);
+                assert_eq!(subject.translate().unwrap(), TranslateStep::Finished);
+                run(subject.flush()).unwrap(); assert_eq!(state.borrow().polls, reads);
+            }
+
+            #[test]
+            fn next_translate_and_flush_have_separate_responsibilities() {
+                let mut subject = Subject::new(2, 64); let reader = Reader::new(b"hello"); let state = reader.state.clone(); let writer = Writer::default();
+                configure(&mut subject, reader, writer.clone(), Decoder::default(), Encoder::default());
+                assert_eq!(run(subject.next()).unwrap(), 2);
+                assert!(writer.bytes().is_empty());
+                assert_eq!(subject.translate().unwrap(), TranslateStep::OutputReady(2));
+                assert_eq!(state.borrow().polls, 1); assert!(writer.bytes().is_empty());
+                run(subject.flush()).unwrap(); assert_eq!(writer.bytes(), b"he"); assert_eq!(state.borrow().polls, 1);
+                drive(&mut subject).unwrap(); assert_eq!(writer.bytes(), b"hello!");
+            }
+
+            #[test]
+            fn pending_input_and_output_cannot_be_overwritten() {
+                let mut subject = Subject::new(2, 64); let reader = Reader::new(b"hello"); let state = reader.state.clone(); let writer = Writer::default();
+                configure(&mut subject, reader, writer.clone(), Decoder::default(), Encoder::default());
+                run(subject.next()).unwrap();
+                assert!(matches!(run(subject.next()), Err(TranslationError::InvalidState(_))));
+                assert_eq!(subject.translate().unwrap(), TranslateStep::OutputReady(2));
+                assert!(matches!(run(subject.next()), Err(TranslationError::InvalidState(_))));
+                assert!(matches!(subject.translate(), Err(TranslationError::InvalidState(_))));
+                assert_eq!(state.borrow().polls, 1);
+                run(subject.flush()).unwrap(); drive(&mut subject).unwrap(); assert_eq!(writer.bytes(), b"hello!");
+            }
+
+            #[test]
+            fn active_setters_reject_replacement_without_corrupting_progress() {
+                let mut subject = Subject::new(2, 64); let writer = Writer::default();
+                configure(&mut subject, Reader::new(b"original"), writer.clone(), Decoder::default(), Encoder::default());
+                run(subject.next()).unwrap();
+                assert!(subject.set_source_stream(Reader::new(b"wrong")).is_err());
+                assert!(subject.set_target_stream(Writer::default()).is_err());
+                assert!(subject.set_decoder(Decoder::default()).is_err());
+                assert!(subject.set_encoder(Encoder::default()).is_err());
+                drive(&mut subject).unwrap(); assert_eq!(writer.bytes(), b"original!");
+            }
+
+            #[test]
+            fn canceled_next_resumes_with_the_same_stored_reader() {
+                let mut subject = Subject::new(2, 64); let reader = Reader::new(b"hello"); let state = reader.state.clone(); state.borrow_mut().pending = true; let writer = Writer::default();
+                configure(&mut subject, reader, writer.clone(), Decoder::default(), Encoder::default());
+                { let mut next = std::pin::pin!(subject.next()); assert!(next.as_mut().poll(&mut Context::from_waker(Waker::noop())).is_pending()); }
+                assert_eq!(state.borrow().drops, 0); assert_eq!(state.borrow().offset, 0);
+                state.borrow_mut().pending = false; run(subject.next()).unwrap(); drive(&mut subject).unwrap(); assert_eq!(writer.bytes(), b"hello!");
+                assert!(state.borrow().buffers.iter().all(|buffer| *buffer == state.borrow().buffers[0]));
+                drop(subject); assert_eq!(state.borrow().drops, 1);
+            }
+
+            #[test]
+            fn canceled_partial_flush_resumes_without_duplicate_bytes() {
+                let mut subject = Subject::new(2, 64); let writer = Writer::default();
+                writer.state.borrow_mut().max_write = Some(1); writer.state.borrow_mut().block_after = Some(1);
+                configure(&mut subject, Reader::new(b"hello"), writer.clone(), Decoder::default(), Encoder::default());
+                assert_eq!(output_ready(&mut subject), 2);
+                { let mut flush = std::pin::pin!(subject.flush()); assert!(flush.as_mut().poll(&mut Context::from_waker(Waker::noop())).is_pending()); }
+                assert_eq!(writer.bytes(), b"h");
+                assert!(subject.translate().is_err()); assert!(run(subject.next()).is_err()); assert!(subject.set_encoder(Encoder::default()).is_err());
+                writer.state.borrow_mut().block_after = None; run(subject.flush()).unwrap(); assert_eq!(writer.bytes(), b"he");
+                drive(&mut subject).unwrap(); assert_eq!(writer.bytes(), b"hello!");
+                let buffers = &writer.state.borrow().buffers;
+                assert_eq!(buffers[1], (buffers[0].0 + 1, 1));
+            }
+
+            #[test]
+            fn canceled_target_flush_retries_flush_but_not_writes() {
+                let mut subject = Subject::new(2, 64); let writer = Writer::default(); writer.state.borrow_mut().block_flush = true;
+                configure(&mut subject, Reader::new(b"hello"), writer.clone(), Decoder::default(), Encoder::default()); output_ready(&mut subject);
+                { let mut flush = std::pin::pin!(subject.flush()); assert!(flush.as_mut().poll(&mut Context::from_waker(Waker::noop())).is_pending()); }
+                let writes = writer.state.borrow().writes; assert_eq!(writer.bytes(), b"he"); assert!(subject.translate().is_err());
+                writer.state.borrow_mut().block_flush = false; run(subject.flush()).unwrap(); assert_eq!(writer.state.borrow().writes, writes);
+                drive(&mut subject).unwrap(); assert_eq!(writer.bytes(), b"hello!");
+            }
+
+            #[test]
+            fn finished_pending_flush_blocks_reconfiguration_until_resumed() {
+                let mut subject = Subject::new(2, 64); let writer = Writer::default();
+                configure(&mut subject, Reader::new(b"hello"), writer.clone(), Decoder::default(), Encoder::default()); drive(&mut subject).unwrap();
+                writer.state.borrow_mut().block_flush = true;
+                { let mut flush = std::pin::pin!(subject.flush()); assert!(flush.as_mut().poll(&mut Context::from_waker(Waker::noop())).is_pending()); }
+                assert!(subject.set_decoder(Decoder::default()).is_err()); assert!(subject.translate().is_err());
+                writer.state.borrow_mut().block_flush = false; run(subject.flush()).unwrap();
+                subject.set_decoder(Decoder::default()).unwrap();
+                assert!(matches!(subject.translate(), Err(TranslationError::MissingComponent("source_stream"))));
+            }
+
+            #[test]
+            fn explicit_progress_bounds_translation_without_hidden_io() {
+                let mut subject = Subject::new(2, 1); let reader = Reader::new(b"hello"); let state = reader.state.clone(); let writer = Writer::default();
+                configure(&mut subject, reader, writer.clone(), Decoder::default(), Encoder::default()); run(subject.next()).unwrap();
+                assert_eq!(subject.translate().unwrap(), TranslateStep::Progress);
+                assert!(matches!(run(subject.next()), Err(TranslationError::InvalidState(_))));
+                assert_eq!(state.borrow().polls, 1); assert!(writer.bytes().is_empty());
+                assert_eq!(subject.translate().unwrap(), TranslateStep::OutputReady(2));
+                run(subject.flush()).unwrap(); drive(&mut subject).unwrap();
+            }
+
+            #[test]
+            fn encoder_header_can_require_multiple_outputs_before_input() {
+                let mut subject = Subject::new(2, 64); let reader = Reader::new(b"hello"); let state = reader.state.clone(); let writer = Writer::default();
+                configure(&mut subject, reader, writer.clone(), Decoder::default(), Encoder { pending: Bytes::from_static(b"HEAD"), ..Encoder::default() });
+                assert_eq!(subject.translate().unwrap(), TranslateStep::OutputReady(2)); run(subject.flush()).unwrap();
+                assert_eq!(subject.translate().unwrap(), TranslateStep::OutputReady(2)); run(subject.flush()).unwrap();
+                assert_eq!(state.borrow().polls, 0); assert_eq!(subject.translate().unwrap(), TranslateStep::NeedInput);
+                drive(&mut subject).unwrap(); assert_eq!(writer.bytes(), b"HEADhello!");
+            }
+
+            #[test]
+            fn buffer_addresses_survive_completion_errors_and_reconfiguration() {
+                let mut subject = Subject::new(8, 64);
+                let mut original_input = None; let mut original_output = None;
+                for outcome in 0..5 {
+                    let data = if outcome == 3 { b"".as_slice() } else { b"fresh".as_slice() };
+                    let reader = Reader::new(data); let reads = reader.state.clone(); reads.borrow_mut().fail = outcome == 1;
+                    let writer = Writer::default(); writer.state.borrow_mut().fail_write = outcome == 2;
+                    let decoder = Decoder::default(); let decoder_buffers = decoder.buffers.clone();
+                    let encoder = Encoder::default(); let encoder_buffers = encoder.buffers.clone();
+                    configure(&mut subject, reader, writer.clone(), decoder, encoder);
+                    let result = drive(&mut subject);
+                    if outcome == 1 || outcome == 2 { assert!(result.is_err()); } else { result.unwrap(); let mut expected = data.to_vec(); expected.push(b'!'); assert_eq!(writer.bytes(), expected); }
+                    let input = reads.borrow().buffers[0]; let output = encoder_buffers.borrow()[0];
+                    assert_eq!(input.1, 8); assert_eq!(output.1, 8); assert_ne!(input.0, output.0);
+                    if let Some(previous) = original_input { assert_eq!(previous, input); }
+                    if let Some(previous) = original_output { assert_eq!(previous, output); }
+                    original_input = Some(input); original_output = Some(output);
+                    assert!(decoder_buffers.borrow().iter().all(|(pointer, len)| *pointer >= input.0 && pointer + len <= input.0 + input.1));
+                    assert!(writer.state.borrow().buffers.iter().all(|(pointer, _)| *pointer == output.0));
+                }
+            }
+
+            #[test]
+            fn first_setter_after_error_clears_every_old_component() {
+                let mut subject = Subject::new(2, 64); let reader = Reader::new(b"old"); let old = reader.state.clone(); old.borrow_mut().fail = true;
+                configure(&mut subject, reader, Writer::default(), Decoder::default(), Encoder::default());
+                assert!(drive(&mut subject).is_err()); assert!(subject.translate().is_err()); assert!(run(subject.flush()).is_err()); assert!(run(subject.next()).is_err());
+                subject.set_encoder(Encoder::default()).unwrap(); assert_eq!(old.borrow().drops, 1);
+                assert!(matches!(subject.translate(), Err(TranslationError::MissingComponent("source_stream"))));
+                subject.set_source_stream(Reader::new(b"fresh")).unwrap();
+                assert!(matches!(subject.translate(), Err(TranslationError::MissingComponent("target_stream"))));
+                let writer = Writer::default(); subject.set_target_stream(writer.clone()).unwrap();
+                assert!(matches!(subject.translate(), Err(TranslationError::MissingComponent("decoder"))));
+                subject.set_decoder(Decoder::default()).unwrap(); drive(&mut subject).unwrap(); assert_eq!(writer.bytes(), b"fresh!");
+            }
+
+            #[test]
+            fn eof_validation_failure_does_not_emit_finalization() {
+                let mut subject = Subject::new(2, 64); let writer = Writer::default();
+                configure(&mut subject, Reader::new(b"partial"), writer.clone(), Decoder { bad: BadDecoder::LateEof, ..Decoder::default() }, Encoder::default());
+                assert!(matches!(drive(&mut subject), Err(TranslationError::Stream(StreamError::Codec(CodecError::InvalidInput(_))))));
+                assert_eq!(writer.bytes(), b"partial"); assert_eq!(writer.state.borrow().closes, 0);
+            }
+
+            #[test]
+            fn invalid_decoder_steps_fail_without_successful_completion() {
+                for bad in [BadDecoder::EarlyFinish, BadDecoder::NoProgress, BadDecoder::NeedWithData, BadDecoder::WrongSuffix, BadDecoder::GrowingSlice, BadDecoder::NeedAtEof] {
+                    let mut subject = Subject::new(2, 64); let writer = Writer::default();
+                    let data = if matches!(bad, BadDecoder::NeedAtEof) { b"".as_slice() } else { b"original".as_slice() };
+                    configure(&mut subject, Reader::new(data), writer.clone(), Decoder { bad, ..Decoder::default() }, Encoder::default());
+                    assert!(matches!(drive(&mut subject), Err(TranslationError::Stream(StreamError::Codec(CodecError::Contract(_))))));
+                    assert!(writer.bytes().is_empty()); assert_eq!(writer.state.borrow().closes, 0);
+                }
+            }
+
+            #[test]
+            fn invalid_encoder_steps_and_codec_errors_fail_explicitly() {
+                for bad in [BadEncoder::Zero, BadEncoder::Oversized, BadEncoder::EarlyFinish, BadEncoder::NeedAfterFinish, BadEncoder::Accept, BadEncoder::Finish] {
+                    let mut subject = Subject::new(2, 64); let writer = Writer::default();
+                    configure(&mut subject, Reader::new(b"original"), writer.clone(), Decoder::default(), Encoder { bad, ..Encoder::default() });
+                    assert!(matches!(drive(&mut subject), Err(TranslationError::Stream(StreamError::Codec(_)))));
+                    assert_eq!(writer.state.borrow().closes, 0);
+                }
+            }
+
+            #[test]
+            fn invalid_read_lengths_and_writer_lengths_are_terminal() {
+                let mut subject = Subject::new(2, 64); let reader = Reader::new(b"hello"); reader.state.borrow_mut().invalid_length = true;
+                configure(&mut subject, reader, Writer::default(), Decoder::default(), Encoder::default());
+                assert!(matches!(drive(&mut subject), Err(TranslationError::Stream(StreamError::Input(error))) if error.kind() == io::ErrorKind::InvalidData));
+                for zero in [false, true] {
+                    let writer = Writer::default(); writer.state.borrow_mut().zero = zero; writer.state.borrow_mut().invalid_length = !zero;
+                    configure(&mut subject, Reader::new(b"hello"), writer.clone(), Decoder::default(), Encoder::default());
+                    let expected = if zero { io::ErrorKind::WriteZero } else { io::ErrorKind::InvalidData };
+                    assert!(matches!(drive(&mut subject), Err(TranslationError::Target(error)) if error.kind() == expected));
+                    assert_eq!(writer.state.borrow().flushes, 0); assert_eq!(writer.state.borrow().closes, 0);
+                }
+            }
+
+            #[test]
+            fn flush_failure_does_not_close_and_can_start_a_fresh_attempt() {
+                let mut subject = Subject::new(2, 64); let writer = Writer::default(); writer.state.borrow_mut().fail_flush = true;
+                configure(&mut subject, Reader::new(b"hello"), writer.clone(), Decoder::default(), Encoder::default());
+                assert!(matches!(drive(&mut subject), Err(TranslationError::Target(error)) if error.to_string() == "flush failed"));
+                assert_eq!(writer.state.borrow().closes, 0);
+                let fresh = Writer::default(); configure(&mut subject, Reader::new(b"fresh"), fresh.clone(), Decoder::default(), Encoder::default());
+                drive(&mut subject).unwrap(); assert_eq!(fresh.bytes(), b"fresh!");
+            }
+
+            #[test]
+            fn zero_configuration_uses_default_sizes_and_empty_input_finalizes() {
+                let mut subject = Subject::new(0, 0); let reader = Reader::new(b""); let state = reader.state.clone();
+                let encoder = Encoder::default(); let output = encoder.buffers.clone(); let writer = Writer::default();
+                configure(&mut subject, reader, writer.clone(), Decoder::default(), encoder); drive(&mut subject).unwrap();
+                assert_eq!(state.borrow().buffers[0].1, 16 * 1024); assert_eq!(output.borrow()[0].1, 16 * 1024); assert_eq!(writer.bytes(), b"!");
+            }
+
+            #[test]
+            fn dropping_an_unpolled_step_keeps_components_until_translator_drop() {
+                let mut subject = Subject::new(2, 64); let reader = Reader::new(b"hello"); let state = reader.state.clone();
+                configure(&mut subject, reader, Writer::default(), Decoder::default(), Encoder::default());
+                drop(subject.next()); assert_eq!(state.borrow().polls, 0); assert_eq!(state.borrow().drops, 0);
+                drop(subject); assert_eq!(state.borrow().drops, 1);
+            }
+
+            #[test]
+            fn ready_partial_writes_yield_and_resume_the_saved_offset() {
+                let mut subject = Subject::new(16, 1); let writer = Writer::default(); writer.state.borrow_mut().max_write = Some(1);
+                configure(&mut subject, Reader::new(b"hello"), writer.clone(), Decoder::default(), Encoder::default()); output_ready(&mut subject);
+                { let mut flush = std::pin::pin!(subject.flush()); assert!(flush.as_mut().poll(&mut Context::from_waker(Waker::noop())).is_pending()); }
+                assert_eq!(writer.bytes(), b"h"); run(subject.flush()).unwrap(); assert_eq!(writer.bytes(), b"he"); drive(&mut subject).unwrap(); assert_eq!(writer.bytes(), b"hello!");
             }
         }
-        assert!(
-            matches!(run(translator.forward(OneChunk(Some(Ok(Bytes::from_static(b"original")))), || TextDecoder, target.pinned(), TextEncoder::default())),
-            Err(RequestForwardError::Target(error)) if error == expected)
-        );
-        assert!(!target.state.borrow().closed);
-        let retry = TestSink::default();
-        run(translator.forward(
-            OneChunk(Some(Ok(Bytes::from_static(b"retry")))),
-            || TextDecoder,
-            retry.pinned(),
-            TextEncoder::default(),
-        ))
-        .unwrap();
-        assert_eq!(retry.bytes(), b"retry!");
-        assert!(retry.state.borrow().closed);
-    }
-}
-
-#[tokio::test]
-async fn bounded_channel_target_drains_concurrently_and_ends_on_success() {
-    use futures_util::StreamExt;
-
-    let mut translator = Text2TextRequestTranslator::new(2, 3);
-    let (target, mut receiver) = futures_channel::mpsc::channel::<Bytes>(1);
-    let forward = translator.forward(
-        OneChunk(Some(Ok(Bytes::from_static(b"original")))),
-        || TextDecoder,
-        target,
-        TextEncoder::default(),
-    );
-    let consume = async {
-        let mut bytes = Vec::new();
-        while let Some(chunk) = receiver.next().await {
-            assert!(chunk.len() <= 2);
-            bytes.extend_from_slice(&chunk);
-        }
-        bytes
     };
-    let (result, bytes) = tokio::time::timeout(
-        std::time::Duration::from_secs(2),
-        futures_util::future::join(forward, consume),
-    )
-    .await
-    .expect("forwarding must not deadlock a bounded target");
-    result.unwrap();
-    assert_eq!(bytes, b"original!");
+}
+translator_tests!(request, Text2TextRequestTranslator);
+translator_tests!(response, Text2TextResponseTranslator);
+
+#[test]
+fn generic_translators_remain_send_when_explicit_component_types_are_send() {
+    fn assert_send<T: Send>() {}
+    type SendRequest = Text2TextRequestTranslator<
+        Cursor<Vec<u8>>,
+        Cursor<Vec<u8>>,
+        Box<dyn RequestDecoder + Send>,
+        Box<dyn RequestEncoder + Send>,
+    >;
+    type SendResponse = Text2TextResponseTranslator<
+        Cursor<Vec<u8>>,
+        Cursor<Vec<u8>>,
+        Box<dyn ResponseDecoder + Send>,
+        Box<dyn ResponseEncoder + Send>,
+    >;
+    assert_send::<SendRequest>();
+    assert_send::<SendResponse>();
+    fn future_is_send<F: Send>(_: F) {}
+    let mut request = SendRequest::new(2, 64);
+    future_is_send(request.next());
+    future_is_send(request.flush());
+    let mut response = SendResponse::new(2, 64);
+    future_is_send(response.next());
+    future_is_send(response.flush());
 }
 
 #[test]
-fn source_failure_is_reported_without_successful_close() {
-    let mut translator = Text2TextRequestTranslator::new(2, 3);
-    let target = TestSink::default();
-    assert!(matches!(
-        run(translator.forward(
-            OneChunk(Some(Err("reader failed"))),
-            || TextDecoder,
-            target.pinned(),
-            TextEncoder::default()
-        )),
-        Err(RequestForwardError::Stream(StreamError::Input(
-            "reader failed"
-        )))
-    ));
-    assert!(!target.state.borrow().closed);
-}
-
-#[test]
-fn ready_source_and_target_still_yield_between_output_batches() {
-    let mut translator = Text2TextRequestTranslator::new(1, 4);
-    let target = TestSink::default();
-    let wakes = Arc::new(WakeCount(std::sync::atomic::AtomicUsize::new(0)));
-    let waker = Waker::from(wakes.clone());
-    {
-        let mut forward = std::pin::pin!(translator.forward(
-            OneChunk(Some(Ok(Bytes::from_static(b"original")))),
-            || TextDecoder,
-            target.pinned(),
-            TextEncoder::default()
-        ));
-        let mut cx = Context::from_waker(&waker);
-        assert!(forward.as_mut().poll(&mut cx).is_pending());
-        assert_eq!(target.state.borrow().chunks, 4);
-        assert_eq!(wakes.0.load(std::sync::atomic::Ordering::Relaxed), 1);
-        run(forward).unwrap();
-    }
-    assert!(target.state.borrow().closed);
-}
-
-#[test]
-fn late_source_failure_preserves_partial_output_without_finalization() {
-    let mut translator = Text2TextRequestTranslator::new(16 * 1024, 64);
-    let input =
-        futures_util::stream::iter([Ok(Bytes::from_static(b"partial")), Err("disconnected")]);
-    let target = TestSink::default();
-    assert!(matches!(
-        run(translator.forward(
-            input,
-            || TextDecoder,
-            target.pinned(),
-            TextEncoder::default()
-        )),
-        Err(RequestForwardError::Stream(StreamError::Input(
-            "disconnected"
-        )))
-    ));
-    assert_eq!(target.bytes(), b"partial");
-    assert!(!target.state.borrow().closed);
-}
-
-// A second concrete target type, representing a provider protocol switch.
-struct OtherEncoder(TextEncoder);
-impl RequestEncoder for OtherEncoder {
-    fn accept(&mut self, event: RequestEvent) -> Result<(), CodecError> {
-        RequestEncoder::accept(&mut self.0, event)
-    }
-
-    fn advance(&mut self, output: &mut [u8]) -> Result<EncodeStep, CodecError> {
-        RequestEncoder::advance(&mut self.0, output)
-    }
-
-    fn finish(&mut self) -> Result<(), CodecError> {
-        RequestEncoder::finish(&mut self.0)
-    }
-}
-
-impl ResponseEncoder for OtherEncoder {
-    fn accept(&mut self, event: ResponseEvent) -> Result<(), CodecError> {
-        ResponseEncoder::accept(&mut self.0, event)
-    }
-
-    fn advance(&mut self, output: &mut [u8]) -> Result<EncodeStep, CodecError> {
-        ResponseEncoder::advance(&mut self.0, output)
-    }
-
-    fn finish(&mut self) -> Result<(), CodecError> {
-        ResponseEncoder::finish(&mut self.0)
-    }
-}
-
-#[test]
-fn canceled_partial_forward_allows_a_fresh_attempt() {
-    let decoder_count = Cell::new(0);
-    let mut translator = Text2TextRequestTranslator::new(2, 3);
-    let decoder_factory = || {
-        decoder_count.set(decoder_count.get() + 1);
-        TextDecoder
-    };
-    assert_eq!(decoder_count.get(), 0);
-
-    let first = TestSink::default();
-    {
-        let mut forward = std::pin::pin!(translator.forward(
-            OneChunk(Some(Ok(Bytes::from_static(b"original")))),
-            decoder_factory,
-            first.pinned(),
-            TextEncoder::default()
-        ));
-        let mut cx = Context::from_waker(Waker::noop());
-        assert!(forward.as_mut().poll(&mut cx).is_pending());
-    }
-    assert!(!first.bytes().is_empty());
-    assert!(!first.state.borrow().closed);
-    let second = TestSink::default();
-    run(translator.forward(
-        OneChunk(Some(Ok(Bytes::from_static(b"retry")))),
-        decoder_factory,
-        second.pinned(),
-        OtherEncoder(TextEncoder::default()),
-    ))
-    .unwrap();
-    assert_eq!(second.bytes(), b"retry!");
-    assert!(second.state.borrow().closed);
-    assert_eq!(decoder_count.get(), 2);
-}
-
-#[test]
-fn completed_forward_accepts_different_source_factory_decoder_and_sink_types() {
-    let mut translator = Text2TextRequestTranslator::new(16 * 1024, 64);
-    let target = TestSink::default();
-    run(translator.forward(
-        OneChunk(Some(Ok(Bytes::from_static(b"original")))),
-        TextDecoder::default,
-        target.pinned(),
-        TextEncoder::default(),
-    ))
-    .unwrap();
-    assert!(target.state.borrow().closed);
-    assert_eq!(target.bytes(), b"original!");
-    struct OtherDecoder(TextDecoder);
+fn explicit_boxed_codec_types_allow_heterogeneous_setter_values() {
+    type Subject = Text2TextRequestTranslator<
+        Cursor<Vec<u8>>,
+        Writer,
+        Box<dyn RequestDecoder>,
+        Box<dyn RequestEncoder>,
+    >;
+    struct OtherDecoder(Decoder);
     impl RequestDecoder for OtherDecoder {
         fn advance(
             &mut self,
-            input: &mut Bytes,
+            input: &mut &[u8],
             eof: bool,
         ) -> Result<DecodeStep<RequestEvent>, CodecError> {
             RequestDecoder::advance(&mut self.0, input, eof)
         }
     }
-    let mut second = Vec::new();
-    let sink = futures_util::sink::unfold(&mut second, |bytes, chunk: Bytes| async move {
-        bytes.extend_from_slice(&chunk);
-        Ok::<_, Infallible>(bytes)
-    });
-    let decoder = OtherDecoder(TextDecoder);
-    run(translator.forward(
-        futures_util::stream::iter([Ok::<_, Infallible>(Bytes::from_static(b"second"))]),
-        move || decoder,
-        sink,
-        OtherEncoder(TextEncoder::default()),
-    ))
-    .unwrap();
-    assert_eq!(second, b"second!");
-}
-
-#[test]
-fn unpolled_forward_drops_owned_source_without_polling_or_creating_decoder() {
-    struct TrackedInput<'a> {
-        polls: &'a Cell<usize>,
-        drops: &'a Cell<usize>,
-    }
-    impl Stream for TrackedInput<'_> {
-        type Item = Result<Bytes, Infallible>;
-        fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-            self.polls.set(self.polls.get() + 1);
-            Poll::Pending
+    struct OtherEncoder(Encoder);
+    impl RequestEncoder for OtherEncoder {
+        fn accept(&mut self, event: RequestEvent) -> Result<(), CodecError> {
+            RequestEncoder::accept(&mut self.0, event)
         }
-    }
-    impl Drop for TrackedInput<'_> {
-        fn drop(&mut self) {
-            self.drops.set(self.drops.get() + 1);
-        }
-    }
-    let polls = Cell::new(0);
-    let drops = Cell::new(0);
-    let decoder_count = Cell::new(0);
-    let mut translator = Text2TextRequestTranslator::new(16 * 1024, 64);
-    let decoder_factory = || {
-        decoder_count.set(decoder_count.get() + 1);
-        TextDecoder
-    };
-    let unused = TestSink::default();
-    let forward = translator.forward(
-        TrackedInput {
-            polls: &polls,
-            drops: &drops,
-        },
-        decoder_factory,
-        unused.pinned(),
-        TextEncoder::default(),
-    );
-    assert_eq!(drops.get(), 0);
-    drop(forward);
-    assert_eq!(drops.get(), 1);
-    assert_eq!(polls.get(), 0);
-    assert_eq!(decoder_count.get(), 0);
-    assert!(unused.bytes().is_empty());
-    assert!(!unused.state.borrow().closed);
-    let target = TestSink::default();
-    run(translator.forward(
-        OneChunk(Some(Ok(Bytes::from_static(b"original")))),
-        decoder_factory,
-        target.pinned(),
-        TextEncoder::default(),
-    ))
-    .unwrap();
-    assert_eq!(decoder_count.get(), 1);
-    assert_eq!(target.bytes(), b"original!");
-}
-
-#[test]
-fn forwarding_outputs_before_upload_completes_and_cancellation_consumes_source() {
-    let polls = Cell::new(0);
-    let mut translator = Text2TextRequestTranslator::new(16 * 1024, 64);
-    let input = LocalInput {
-        polls: &polls,
-        next: Rc::new(Cell::new(0)),
-        _pinned: PhantomPinned,
-    };
-    let target = TestSink::default();
-    {
-        let mut attempt = std::pin::pin!(translator.forward(
-            input,
-            || TextDecoder,
-            target.pinned(),
-            TextEncoder::default()
-        ));
-        let mut cx = Context::from_waker(Waker::noop());
-        assert!(attempt.as_mut().poll(&mut cx).is_pending());
-    }
-    assert_eq!(polls.get(), 2);
-    assert_eq!(target.bytes(), b"hello");
-    assert!(!target.state.borrow().closed);
-}
-
-#[test]
-fn cancellation_while_waiting_for_first_input_drops_source() {
-    struct PendingInput(Rc<Cell<usize>>);
-    impl Stream for PendingInput {
-        type Item = Result<Bytes, Infallible>;
-
-        fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-            Poll::Pending
-        }
-    }
-    impl Drop for PendingInput {
-        fn drop(&mut self) {
-            self.0.set(self.0.get() + 1);
-        }
-    }
-    let drops = Rc::new(Cell::new(0));
-    let mut translator = Text2TextRequestTranslator::new(2, 3);
-    let target = TestSink::default();
-    {
-        let mut forward = std::pin::pin!(translator.forward(
-            PendingInput(drops.clone()),
-            || TextDecoder,
-            target.pinned(),
-            TextEncoder::default()
-        ));
-        assert!(
-            forward
-                .as_mut()
-                .poll(&mut Context::from_waker(Waker::noop()))
-                .is_pending()
-        );
-    }
-    assert_eq!(drops.get(), 1);
-    assert!(target.bytes().is_empty());
-    assert!(!target.state.borrow().closed);
-    run(translator.forward(
-        OneChunk(Some(Ok(Bytes::from_static(b"fresh")))),
-        || TextDecoder,
-        target.pinned(),
-        TextEncoder::default(),
-    ))
-    .unwrap();
-    assert_eq!(target.bytes(), b"fresh!");
-    assert_eq!(drops.get(), 1);
-}
-
-#[test]
-fn codec_failure_does_not_prevent_a_fresh_attempt() {
-    let mut translator = Text2TextRequestTranslator::new(2, 3);
-    let failed = TestSink::default();
-    assert!(matches!(
-        run(translator.forward(
-            OneChunk(Some(Ok(Bytes::from_static(b"original")))),
-            || BadEof,
-            failed.pinned(),
-            TextEncoder::default()
-        )),
-        Err(RequestForwardError::Stream(StreamError::Codec(
-            CodecError::Contract(_)
-        )))
-    ));
-    assert!(!failed.state.borrow().closed);
-    let target = TestSink::default();
-    run(translator.forward(
-        OneChunk(Some(Ok(Bytes::from_static(b"fresh")))),
-        || TextDecoder,
-        target.pinned(),
-        TextEncoder::default(),
-    ))
-    .unwrap();
-    assert_eq!(target.bytes(), b"fresh!");
-    assert!(target.state.borrow().closed);
-}
-
-#[test]
-fn response_forward_is_lazy_and_accepts_fresh_per_call_types() {
-    let count = Cell::new(0);
-    let polls = Cell::new(0);
-    let mut translator = Text2TextResponseTranslator::new(2, 3);
-    let target = TestSink::default();
-    let forward = translator.forward(
-        LocalInput {
-            polls: &polls,
-            next: Rc::new(Cell::new(0)),
-            _pinned: PhantomPinned,
-        },
-        || {
-            count.set(count.get() + 1);
-            TextDecoder
-        },
-        target.pinned(),
-        TextEncoder::default(),
-    );
-    assert_eq!(count.get(), 0);
-    assert_eq!(polls.get(), 0);
-    run(forward).unwrap();
-    assert_eq!(target.bytes(), b"hello world!");
-    assert_eq!(count.get(), 1);
-    assert_eq!(polls.get(), 4);
-
-    struct OtherDecoder(TextDecoder);
-    impl ResponseDecoder for OtherDecoder {
-        fn advance(
-            &mut self,
-            input: &mut Bytes,
-            eof: bool,
-        ) -> Result<DecodeStep<ResponseEvent>, CodecError> {
-            ResponseDecoder::advance(&mut self.0, input, eof)
-        }
-    }
-    let mut output = Vec::new();
-    let sink = futures_util::sink::unfold(&mut output, |output, chunk: Bytes| async move {
-        output.extend_from_slice(&chunk);
-        Ok::<_, Infallible>(output)
-    });
-    let decoder = OtherDecoder(TextDecoder);
-    run(translator.forward(
-        futures_util::stream::iter([Ok::<_, Infallible>(Bytes::from_static(b"second"))]),
-        move || decoder,
-        sink,
-        OtherEncoder(TextEncoder::default()),
-    ))
-    .unwrap();
-    assert_eq!(output, b"second!");
-}
-
-#[test]
-fn response_output_can_be_retained_across_scratch_reuse() {
-    let mut translator = Text2TextResponseTranslator::new(2, 3);
-    let mut retained = Vec::new();
-    for body in [b"first".as_slice(), b"second"] {
-        let mut chunks = Vec::new();
-        let target = futures_util::sink::unfold(&mut chunks, |chunks, chunk: Bytes| async move {
-            chunks.push(chunk);
-            Ok::<_, Infallible>(chunks)
-        });
-        run(translator.forward(
-            OneChunk(Some(Ok(Bytes::copy_from_slice(body)))),
-            || TextDecoder,
-            target,
-            TextEncoder::default(),
-        ))
-        .unwrap();
-        assert!(chunks.iter().all(|chunk| chunk.len() <= 2));
-        retained.push(chunks);
-    }
-    for (chunks, expected) in retained.iter().zip([b"first!".as_slice(), b"second!"]) {
-        let output: Vec<_> = chunks
-            .iter()
-            .flat_map(|chunk| chunk.iter().copied())
-            .collect();
-        assert_eq!(output, expected);
-    }
-}
-
-#[test]
-fn response_scratch_survives_success_target_failures_and_cancellation() {
-    struct ObserveOutput {
-        encoder: TextEncoder,
-        buffers: Rc<std::cell::RefCell<Vec<(usize, usize)>>>,
-    }
-    impl ResponseEncoder for ObserveOutput {
-        fn accept(&mut self, event: ResponseEvent) -> Result<(), CodecError> {
-            ResponseEncoder::accept(&mut self.encoder, event)
-        }
-
         fn advance(&mut self, output: &mut [u8]) -> Result<EncodeStep, CodecError> {
-            self.buffers
-                .borrow_mut()
-                .push((output.as_ptr() as usize, output.len()));
-            ResponseEncoder::advance(&mut self.encoder, output)
+            RequestEncoder::advance(&mut self.0, output)
         }
-
         fn finish(&mut self) -> Result<(), CodecError> {
-            ResponseEncoder::finish(&mut self.encoder)
+            RequestEncoder::finish(&mut self.0)
         }
     }
-    let buffers = Rc::new(std::cell::RefCell::new(Vec::new()));
-    let mut translator = Text2TextResponseTranslator::new(2, 3);
-    for outcome in 0..6 {
-        let target = TestSink::default();
-        {
-            let mut state = target.state.borrow_mut();
-            state.fail_ready = outcome == 1;
-            state.fail_send = outcome == 2;
-            state.fail_close = outcome == 3;
-        }
-        let forward = translator.forward(
-            OneChunk(Some(Ok(Bytes::from_static(b"original")))),
-            || TextDecoder,
-            target.pinned(),
-            ObserveOutput {
-                encoder: TextEncoder::default(),
-                buffers: buffers.clone(),
-            },
-        );
-        if outcome == 4 {
-            let mut forward = std::pin::pin!(forward);
-            assert!(
-                forward
-                    .as_mut()
-                    .poll(&mut Context::from_waker(Waker::noop()))
-                    .is_pending()
-            );
-            assert_eq!(target.state.borrow().chunks, 3);
-            assert!(!target.state.borrow().closed);
-        } else if (1..=3).contains(&outcome) {
-            let expected = ["ready failed", "send failed", "close failed"][outcome - 1];
-            assert!(
-                matches!(run(forward), Err(ResponseForwardError::Target(error)) if error == expected)
-            );
-            assert!(!target.state.borrow().closed);
-        } else {
-            run(forward).unwrap();
-            assert_eq!(target.bytes(), b"original!");
-            assert!(target.state.borrow().closed);
-        }
-    }
-    let buffers = buffers.borrow();
-    assert!(!buffers.is_empty());
-    assert!(buffers.iter().all(|buffer| *buffer == buffers[0]));
-    assert_eq!(buffers[0].1, 2);
-}
-
-#[test]
-fn response_backpressure_stops_decoding_until_target_is_ready() {
-    struct CountDecoder(Rc<Cell<usize>>);
-    impl ResponseDecoder for CountDecoder {
-        fn advance(
-            &mut self,
-            input: &mut Bytes,
-            eof: bool,
-        ) -> Result<DecodeStep<ResponseEvent>, CodecError> {
-            let result = ResponseDecoder::advance(&mut TextDecoder, input, eof)?;
-            if matches!(result, DecodeStep::Event(_)) {
-                self.0.set(self.0.get() + 1);
+    let mut subject = Subject::new(2, 64);
+    let first = Writer::default();
+    subject
+        .set_source_stream(Cursor::new(b"hello".to_vec()))
+        .unwrap()
+        .set_target_stream(first.clone())
+        .unwrap()
+        .set_decoder(Box::new(Decoder::default()))
+        .unwrap()
+        .set_encoder(Box::new(Encoder::default()))
+        .unwrap();
+    for _ in 0..1000 {
+        match subject.translate().unwrap() {
+            TranslateStep::NeedInput => {
+                run(subject.next()).unwrap();
             }
-            Ok(result)
+            TranslateStep::OutputReady(_) => {
+                run(subject.flush()).unwrap();
+            }
+            TranslateStep::Progress => {}
+            TranslateStep::Finished => break,
         }
     }
-    let decoded = Rc::new(Cell::new(0));
-    let mut translator = Text2TextResponseTranslator::new(2, 64);
-    let target = TestSink::default();
-    target.state.borrow_mut().blocked = true;
-    let mut forward = std::pin::pin!(translator.forward(
-        OneChunk(Some(Ok(Bytes::from_static(b"original")))),
-        || CountDecoder(decoded.clone()),
-        target.pinned(),
-        TextEncoder::default(),
-    ));
-    for _ in 0..3 {
-        assert!(
-            forward
-                .as_mut()
-                .poll(&mut Context::from_waker(Waker::noop()))
-                .is_pending()
-        );
-    }
-    assert_eq!(decoded.get(), 1);
-    assert!(target.bytes().is_empty());
-    target.unblock();
-    run(forward).unwrap();
-    assert_eq!(target.bytes(), b"original!");
-    assert!(target.state.borrow().closed);
-}
-
-#[test]
-fn response_unpolled_and_pending_forward_drop_owned_input() {
-    struct TrackedInput<'a> {
-        polls: &'a Cell<usize>,
-        drops: &'a Cell<usize>,
-    }
-    impl Stream for TrackedInput<'_> {
-        type Item = Result<Bytes, Infallible>;
-
-        fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-            self.polls.set(self.polls.get() + 1);
-            Poll::Pending
-        }
-    }
-    impl Drop for TrackedInput<'_> {
-        fn drop(&mut self) {
-            self.drops.set(self.drops.get() + 1);
-        }
-    }
-    let polls = Cell::new(0);
-    let drops = Cell::new(0);
-    let decoders = Cell::new(0);
-    let mut translator = Text2TextResponseTranslator::new(2, 3);
-    for polled in [false, true] {
-        let target = TestSink::default();
-        let forward = translator.forward(
-            TrackedInput {
-                polls: &polls,
-                drops: &drops,
-            },
-            || {
-                decoders.set(decoders.get() + 1);
-                TextDecoder
-            },
-            target.pinned(),
-            TextEncoder::default(),
-        );
-        if polled {
-            let mut forward = std::pin::pin!(forward);
-            assert!(
-                forward
-                    .as_mut()
-                    .poll(&mut Context::from_waker(Waker::noop()))
-                    .is_pending()
-            );
-        } else {
-            drop(forward);
-        }
-        assert!(target.bytes().is_empty());
-        assert!(!target.state.borrow().closed);
-    }
-    assert_eq!(drops.get(), 2);
-    assert_eq!(polls.get(), 1);
-    assert_eq!(decoders.get(), 1);
-}
-
-#[test]
-fn response_late_codec_failure_preserves_partial_output_without_finalization() {
-    struct IncompleteResponse;
-    impl ResponseDecoder for IncompleteResponse {
-        fn advance(
-            &mut self,
-            input: &mut Bytes,
-            eof: bool,
-        ) -> Result<DecodeStep<ResponseEvent>, CodecError> {
-            if eof {
-                Err(CodecError::InvalidInput("incomplete response"))
-            } else {
-                ResponseDecoder::advance(&mut TextDecoder, input, eof)
+    subject
+        .set_decoder(Box::new(OtherDecoder(Decoder::default())))
+        .unwrap();
+    assert_eq!(first.bytes(), b"hello!");
+    let second = Writer::default();
+    subject
+        .set_source_stream(Cursor::new(b"again".to_vec()))
+        .unwrap()
+        .set_target_stream(second.clone())
+        .unwrap()
+        .set_encoder(Box::new(OtherEncoder(Encoder {
+            pending: Bytes::from_static(b"B:"),
+            ..Encoder::default()
+        })))
+        .unwrap();
+    let mut finished = false;
+    for _ in 0..1000 {
+        match subject.translate().unwrap() {
+            TranslateStep::NeedInput => {
+                run(subject.next()).unwrap();
+            }
+            TranslateStep::OutputReady(_) => {
+                run(subject.flush()).unwrap();
+            }
+            TranslateStep::Progress => {}
+            TranslateStep::Finished => {
+                finished = true;
+                break;
             }
         }
     }
-    let mut translator = Text2TextResponseTranslator::new(2, 3);
-    let target = TestSink::default();
-    assert!(matches!(
-        run(translator.forward(
-            OneChunk(Some(Ok(Bytes::from_static(b"partial")))),
-            || IncompleteResponse,
-            target.pinned(),
-            TextEncoder::default(),
-        )),
-        Err(ResponseForwardError::Stream(StreamError::Codec(
-            CodecError::InvalidInput(_)
-        )))
-    ));
-    assert_eq!(target.bytes(), b"partial");
-    assert!(!target.state.borrow().closed);
-    let retry = TestSink::default();
-    run(translator.forward(
-        OneChunk(Some(Ok(Bytes::from_static(b"fresh")))),
-        || TextDecoder,
-        retry.pinned(),
-        TextEncoder::default(),
-    ))
-    .unwrap();
-    assert_eq!(retry.bytes(), b"fresh!");
+    assert!(finished);
+    assert_eq!(second.bytes(), b"B:again!");
 }
 
 #[test]
-fn response_ready_output_batches_yield_and_self_wake() {
-    let mut translator = Text2TextResponseTranslator::new(1, 4);
-    let target = TestSink::default();
-    let wakes = Arc::new(WakeCount(std::sync::atomic::AtomicUsize::new(0)));
-    let waker = Waker::from(wakes.clone());
-    let mut forward = std::pin::pin!(translator.forward(
-        OneChunk(Some(Ok(Bytes::from_static(b"original")))),
-        || TextDecoder,
-        target.pinned(),
-        TextEncoder::default(),
-    ));
-    assert!(
-        forward
-            .as_mut()
-            .poll(&mut Context::from_waker(&waker))
-            .is_pending()
-    );
-    assert_eq!(target.state.borrow().chunks, 4);
-    assert_eq!(wakes.0.load(std::sync::atomic::Ordering::Relaxed), 1);
-    run(forward).unwrap();
-    assert!(target.state.borrow().closed);
-}
-
-#[tokio::test]
-async fn response_bounded_channel_drains_concurrently_and_closes_on_success() {
-    use futures_util::StreamExt;
-
-    let mut translator = Text2TextResponseTranslator::new(2, 3);
-    let (target, mut receiver) = futures_channel::mpsc::channel::<Bytes>(1);
-    let forward = translator.forward(
-        OneChunk(Some(Ok(Bytes::from_static(b"response")))),
-        || TextDecoder,
-        target,
-        TextEncoder::default(),
-    );
-    let consume = async {
-        let mut bytes = Vec::new();
-        while let Some(chunk) = receiver.next().await {
-            assert!(chunk.len() <= 2);
-            bytes.extend_from_slice(&chunk);
-        }
-        bytes
-    };
-    let (result, bytes) = tokio::time::timeout(
-        std::time::Duration::from_secs(2),
-        futures_util::future::join(forward, consume),
-    )
-    .await
-    .expect("response forwarding must not deadlock a bounded target");
-    result.unwrap();
-    assert_eq!(bytes, b"response!");
+fn borrowed_components_work_without_static_bounds_and_only_the_caller_closes() {
+    macro_rules! check {
+        ($translator:ident) => {{
+            let body = b"borrowed".to_vec();
+            let mut target = Box::pin(Writer::default());
+            let observed = target.as_ref().get_ref().clone();
+            {
+                let mut subject = $translator::new(2, 64);
+                subject
+                    .set_source_stream(Cursor::new(body.as_slice()))
+                    .unwrap()
+                    .set_target_stream(target.as_mut())
+                    .unwrap()
+                    .set_decoder(Decoder::default())
+                    .unwrap()
+                    .set_encoder(Encoder::default())
+                    .unwrap();
+                let mut finished = false;
+                for _ in 0..1000 {
+                    match subject.translate().unwrap() {
+                        TranslateStep::NeedInput => {
+                            run(subject.next()).unwrap();
+                        }
+                        TranslateStep::OutputReady(_) => {
+                            run(subject.flush()).unwrap();
+                        }
+                        TranslateStep::Progress => {}
+                        TranslateStep::Finished => {
+                            run(subject.flush()).unwrap();
+                            finished = true;
+                            break;
+                        }
+                    }
+                }
+                assert!(finished);
+                assert_eq!(observed.bytes(), b"borrowed!");
+                assert_eq!(observed.state.borrow().closes, 0);
+            }
+            run(std::future::poll_fn(|cx| target.as_mut().poll_close(cx))).unwrap();
+            assert_eq!(observed.state.borrow().closes, 1);
+        }};
+    }
+    check!(Text2TextRequestTranslator);
+    check!(Text2TextResponseTranslator);
 }

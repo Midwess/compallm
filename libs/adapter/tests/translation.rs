@@ -2,18 +2,17 @@
 
 #[path = "support/codecs.rs"]
 mod codecs;
+#[path = "support/drive.rs"]
+mod drive;
 #[path = "support/store.rs"]
 mod store;
 
 use std::{convert::Infallible, num::NonZeroU32};
 
-use adapter::{
-    replay::{Replay, ReplayStore},
-    t2t::Text2TextRequestTranslator,
-};
+use adapter::replay::{Replay, ReplayStore};
 use bytes::Bytes;
 use codecs::{AnthropicTextEncoder, OpenAiTextDecoder, TargetProperties};
-use futures_util::{StreamExt, sink, stream};
+use futures_util::{StreamExt, TryStreamExt, io::Cursor, stream};
 use serde_json::json;
 use store::DiskReplayStore;
 
@@ -57,23 +56,24 @@ impl ReplayStore for ChunkReplayStore {
 async fn translate(chunks: Vec<Bytes>) -> Result<serde_json::Value, ()> {
     let input = stream::iter(chunks.into_iter().map(Ok::<_, Infallible>));
     let mut replay = Replay::new(input, ChunkReplayStore::default());
-    let reader = replay.open_reader().await.map_err(|_| ())?;
-    let mut translator = Text2TextRequestTranslator::new(16 * 1024, 64);
-    let mut bytes = Vec::new(); // Small test fixture only, never a handler body.
-    let target = sink::unfold(&mut bytes, |bytes, chunk: Bytes| async move {
-        bytes.extend_from_slice(&chunk);
-        Ok::<_, Infallible>(bytes)
-    });
-    let result = translator
-        .forward(
-            reader,
-            OpenAiTextDecoder::default,
-            target,
-            AnthropicTextEncoder::new(&properties()),
-        )
+    let reader = replay
+        .open_reader()
         .await
-        .map_err(|_| ())
-        .and_then(|()| serde_json::from_slice(&bytes).map_err(|_| ()));
+        .map_err(|_| ())?
+        .map_err(std::io::Error::other)
+        .into_async_read();
+    let mut bytes = Cursor::new(Vec::new()); // Small test fixture only.
+    let result = drive::translate_request(
+        reader,
+        OpenAiTextDecoder::default(),
+        &mut bytes,
+        AnthropicTextEncoder::new(&properties()),
+        16 * 1024,
+        64,
+    )
+    .await
+    .map_err(|_| ())
+    .and_then(|()| serde_json::from_slice(bytes.get_ref()).map_err(|_| ()));
     replay.close().await.map_err(|_| ())?;
     result
 }
@@ -153,24 +153,20 @@ async fn disk_replay_supports_fresh_attempts_and_reader_lifetime_after_cleanup()
         Bytes::from_static(br#"{"model":"source","messages":[{"role":"user","content":"hello"}]}"#);
     let input = stream::iter([Ok::<_, Infallible>(body)]);
     let mut replay = Replay::new(input, DiskReplayStore::new().await.unwrap());
-    let mut translator = Text2TextRequestTranslator::new(16 * 1024, 64);
     for _ in 0..2 {
-        let reader = replay.open_reader().await.unwrap();
-        let mut output = Vec::new();
-        let target = sink::unfold(&mut output, |bytes, chunk: Bytes| async move {
-            bytes.extend_from_slice(&chunk);
-            Ok::<_, Infallible>(bytes)
-        });
-        translator
-            .forward(
-                reader,
-                OpenAiTextDecoder::default,
-                target,
-                AnthropicTextEncoder::new(&properties()),
-            )
-            .await
-            .unwrap();
-        let output: serde_json::Value = serde_json::from_slice(&output).unwrap();
+        let reader = replay.open_reader().await.unwrap().into_async_read();
+        let mut output = Cursor::new(Vec::new());
+        drive::translate_request(
+            reader,
+            OpenAiTextDecoder::default(),
+            &mut output,
+            AnthropicTextEncoder::new(&properties()),
+            16 * 1024,
+            64,
+        )
+        .await
+        .unwrap();
+        let output: serde_json::Value = serde_json::from_slice(output.get_ref()).unwrap();
         assert_eq!(output["model"], "target-model");
     }
     replay.close().await.unwrap();

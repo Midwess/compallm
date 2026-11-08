@@ -13,32 +13,57 @@ use std::{
 };
 
 use adapter::replay::{Replay, ReplayError, ReplayStore};
+#[path = "support/drive.rs"]
+mod drive;
 use adapter::{
     codec::{DecodeStep, EncodeStep},
-    error::CodecError,
-    t2t::{
-        Text2TextRequestTranslator,
-        request::{
-            RequestForwardError, decoder::RequestDecoder, encoder::RequestEncoder,
-            event::RequestEvent,
-        },
-    },
+    error::{CodecError, TranslationError},
+    t2t::request::{decoder::RequestDecoder, encoder::RequestEncoder, event::RequestEvent},
 };
-use bytes::Bytes;
+use bytes::{Buf, Bytes};
 use futures_core::Stream;
-use futures_util::{StreamExt, sink, stream};
+use futures_util::{StreamExt, TryStreamExt, io::Cursor, stream};
+
+struct PartialWriter<'a> {
+    bytes: &'a mut Vec<u8>,
+    cancel: bool,
+}
+impl futures_io::AsyncWrite for PartialWriter<'_> {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        _: &mut Context<'_>,
+        bytes: &[u8],
+    ) -> Poll<std::io::Result<usize>> {
+        if !self.bytes.is_empty() {
+            return if self.cancel {
+                Poll::Pending
+            } else {
+                Poll::Ready(Err(std::io::Error::other("target failed")))
+            };
+        }
+        self.bytes.extend_from_slice(bytes);
+        Poll::Ready(Ok(bytes.len()))
+    }
+    fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<std::io::Result<()>> {
+        Poll::Ready(Ok(()))
+    }
+    fn poll_close(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<std::io::Result<()>> {
+        panic!("failed attempt must not close")
+    }
+}
 
 struct TextDecoder;
 impl RequestDecoder for TextDecoder {
     fn advance(
         &mut self,
-        input: &mut Bytes,
+        input: &mut &[u8],
         eof: bool,
     ) -> Result<DecodeStep<RequestEvent>, CodecError> {
         if !input.is_empty() {
-            Ok(DecodeStep::Event(RequestEvent::TextFragment(
-                input.split_to(input.len().min(4)),
-            )))
+            let len = input.len().min(4);
+            let bytes = Bytes::copy_from_slice(&input[..len]);
+            input.advance(len);
+            Ok(DecodeStep::Event(RequestEvent::TextFragment(bytes)))
         } else if eof {
             Ok(DecodeStep::Finished)
         } else {
@@ -119,36 +144,46 @@ fn replay_readers_forward_after_target_failure_or_cancellation() {
             decoder_count.set(decoder_count.get() + 1);
             TextDecoder
         };
-        let mut first = Text2TextRequestTranslator::new(16 * 1024, 64);
-        let reader = run(replay.open_reader()).unwrap();
+        let reader = run(replay.open_reader())
+            .unwrap()
+            .map_err(std::io::Error::other)
+            .into_async_read();
         let mut partial = Vec::new();
-        let target = sink::unfold(&mut partial, |partial, chunk: Bytes| async move {
-            if !partial.is_empty() {
-                if canceled {
-                    std::future::pending::<()>().await;
-                }
-                return Err("target failed");
-            }
-            partial.extend_from_slice(&chunk);
-            Ok(partial)
-        });
+        let target = PartialWriter {
+            bytes: &mut partial,
+            cancel: canceled,
+        };
         if canceled {
-            cancel_pending(first.forward(reader, decoder_factory, target, TextEncoder::default()));
+            cancel_pending(drive::translate_request(
+                reader,
+                decoder_factory(),
+                target,
+                TextEncoder::default(),
+                16 * 1024,
+                64,
+            ));
         } else {
             assert!(matches!(
-                run(first.forward(reader, decoder_factory, target, TextEncoder::default())),
-                Err(RequestForwardError::Target("target failed"))
+                run(drive::translate_request(reader, decoder_factory(), target, TextEncoder::default(), 16 * 1024, 64)),
+                Err(TranslationError::Target(error)) if error.to_string() == "target failed"
             ));
         }
         assert_eq!(partial, b"orig");
-        let reader = run(replay.open_reader()).unwrap();
-        let mut output = Vec::new();
-        let target = sink::unfold(&mut output, |output, chunk: Bytes| async move {
-            output.extend_from_slice(&chunk);
-            Ok::<_, Infallible>(output)
-        });
-        run(first.forward(reader, decoder_factory, target, TextEncoder::default())).unwrap();
-        assert_eq!(output, b"original");
+        let reader = run(replay.open_reader())
+            .unwrap()
+            .map_err(std::io::Error::other)
+            .into_async_read();
+        let mut output = Cursor::new(Vec::new());
+        run(drive::translate_request(
+            reader,
+            decoder_factory(),
+            &mut output,
+            TextEncoder::default(),
+            16 * 1024,
+            64,
+        ))
+        .unwrap();
+        assert_eq!(output.into_inner(), b"original");
         assert_eq!(decoder_count.get(), 2);
         assert_eq!(state.borrow().appends, 1);
         assert_eq!(state.borrow().seals, 1);

@@ -14,3 +14,15 @@ pub trait ResponseEncoder {
     /// then return Finished; returning NeedEvent after finish is a contract error.
     fn finish(&mut self) -> Result<(), CodecError>;
 }
+
+impl<E: ResponseEncoder + ?Sized> ResponseEncoder for Box<E> {
+    fn accept(&mut self, event: ResponseEvent) -> Result<(), CodecError> {
+        (**self).accept(event)
+    }
+    fn advance(&mut self, output: &mut [u8]) -> Result<EncodeStep, CodecError> {
+        (**self).advance(output)
+    }
+    fn finish(&mut self) -> Result<(), CodecError> {
+        (**self).finish()
+    }
+}

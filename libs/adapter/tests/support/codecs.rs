@@ -226,7 +226,7 @@ impl OpenAiTextDecoder {
 impl RequestDecoder for OpenAiTextDecoder {
     fn advance(
         &mut self,
-        input: &mut Bytes,
+        input: &mut &[u8],
         eof: bool,
     ) -> Result<DecodeStep<RequestEvent>, CodecError> {
         if let Some(event) = self.events.pop_front() {

@@ -3,4 +3,4 @@ pub mod encoder;
 pub mod event;
 pub mod translator;
 
-pub use translator::{RequestForwardError, Text2TextRequestTranslator};
+pub use translator::Text2TextRequestTranslator;

@@ -17,7 +17,7 @@ pub struct MessageDecoder {
 impl RequestDecoder for MessageDecoder {
     fn advance(
         &mut self,
-        input: &mut Bytes,
+        input: &mut &[u8],
         eof: bool,
     ) -> Result<DecodeStep<RequestEvent>, CodecError> {
         let event = match self.state {
@@ -30,7 +30,10 @@ impl RequestDecoder for MessageDecoder {
                 RequestEvent::TextStarted
             }
             2 if !input.is_empty() => {
-                RequestEvent::TextFragment(input.split_to(input.len().min(2)))
+                let len = input.len().min(2);
+                let bytes = Bytes::copy_from_slice(&input[..len]);
+                input.advance(len);
+                RequestEvent::TextFragment(bytes)
             }
             2 if eof => {
                 self.state = 3;

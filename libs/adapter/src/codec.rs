@@ -21,3 +21,17 @@ pub enum EncodeStep {
     /// Final output has been drained after `finish` was called.
     Finished,
 }
+
+/// Result of one bounded, synchronous translator step.
+#[must_use = "handle output, input, progress, or completion before the next step"]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TranslateStep {
+    /// Flush this output before reading or translating again.
+    OutputReady(usize),
+    /// Call next to read more input or record source EOF.
+    NeedInput,
+    /// More codec work is possible. Async callers should yield before retrying.
+    Progress,
+    /// Codec finalization is complete; the caller still owns writer closure.
+    Finished,
+}

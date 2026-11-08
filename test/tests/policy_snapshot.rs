@@ -18,22 +18,13 @@ fn member(roles: Vec<Role>) -> OrganizationMember {
 }
 
 #[tokio::test]
-async fn default_sources_are_compact_and_preserve_authorization() -> anyhow::Result<()> {
+async fn default_sources_preserve_authorization() -> anyhow::Result<()> {
     let fixture_roles_0 = default_roles(7, [1, 2, 3]).await;
 
     for role in fixture_roles_0.clone() {
         let original = role.cedar_source.clone();
         let member = member(vec![role.clone()]);
         let snapshot = PolicySnapshot::try_from(&member)?;
-        let compact = &snapshot.cedar_source;
-        println!(
-            "{}: {} -> {} source bytes; {} snapshot JSON bytes",
-            role.name,
-            original.len(),
-            compact.len(),
-            serde_json::to_vec(&snapshot)?.len()
-        );
-        assert!(compact.len() < original.len());
         assert_eq!(member.roles[0].cedar_source, original);
         let before = PolicySet::try_from(&role)?;
         let after = PolicySet::try_from(&snapshot)?;

@@ -69,3 +69,48 @@ async fn entity_creation_owns_ids_and_default_policy_relationships() {
     expected.id = model.id;
     assert_eq!(model, expected);
 }
+
+#[tokio::test]
+async fn role_constructor_validates_and_normalizes_iam_length() {
+    use compallm_core::organization::role::RoleCreationError;
+
+    compallm_postgres::init_id_generator("role-name-test").unwrap();
+    for invalid in ["  ".to_string(), "界".repeat(65)] {
+        assert!(matches!(
+            Role::new(1, invalid, "", "").await,
+            Err(RoleCreationError::InvalidName(_))
+        ));
+    }
+    let name = "界".repeat(64);
+    let role = Role::new(1, format!("  {name}  "), "", "").await.unwrap();
+    assert_eq!(role.name, name);
+    assert_ne!(role.id, 0);
+}
+
+#[tokio::test]
+async fn group_constructor_limits_assigned_roles() {
+    use compallm_core::organization::group::GroupCreationError;
+
+    compallm_postgres::init_id_generator("group-role-limit-test").unwrap();
+    let role = Role::new(1, "Role", "", "").await.unwrap();
+    let roles: Vec<_> = (0..Group::MAX_ROLES)
+        .map(|index| Role {
+            id: index as u64 + 1,
+            ..role.clone()
+        })
+        .collect();
+    assert_eq!(
+        Group::new(1, "Group", "", roles.clone())
+            .await
+            .unwrap()
+            .roles
+            .len(),
+        32
+    );
+    let mut too_many = roles;
+    too_many.push(too_many[0].clone());
+    assert!(matches!(
+        Group::new(1, "Group", "", too_many).await,
+        Err(GroupCreationError::TooManyRoles)
+    ));
+}

@@ -8,6 +8,8 @@ pub enum OrganizationCreationError {
     Connection(#[from] crate::persistent::ConnectionError),
     #[error("ID generation failed")]
     IdGeneration(#[from] hero::distributed_id::generator::DistributedIdError),
+    #[error(transparent)]
+    RoleCreation(#[from] super::role::RoleCreationError),
 }
 
 #[derive(Debug, thiserror::Error)]

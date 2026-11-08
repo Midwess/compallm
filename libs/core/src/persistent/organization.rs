@@ -7,6 +7,8 @@ use crate::organization::{Organization, OrganizationMember, Role};
 pub enum OrganizationRepositoryError {
     #[error("organization not found")]
     NotFound,
+    #[error("membership assignments changed concurrently")]
+    Conflict,
     #[error("database operation failed")]
     Database(#[from] anyhow::Error),
 }
@@ -52,4 +54,10 @@ pub trait OrganizationRepository: Send + Sync {
         &self,
         member: OrganizationMember,
     ) -> Result<OrganizationMember, OrganizationRepositoryError>;
+    /// Save assignment changes only if the previous membership is still current.
+    async fn save_member(
+        &self,
+        member: &OrganizationMember,
+        previous: &OrganizationMember,
+    ) -> Result<(), OrganizationRepositoryError>;
 }

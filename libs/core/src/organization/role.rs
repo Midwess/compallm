@@ -16,7 +16,26 @@ pub struct Role {
     pub cedar_source: String,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum RoleCreationError {
+    #[error("role name must contain 1 to 64 characters")]
+    InvalidName(#[source] validify::ValidationErrors),
+    #[error("ID generation failed")]
+    IdGeneration(#[from] DistributedIdError),
+}
+
 impl Role {
+    /// Maximum role name length, in Unicode characters, after trimming.
+    pub const MAX_NAME_LENGTH: usize = 64;
+
+    /// Normalize and validate a role name before a management write.
+    pub fn normalize_name(name: &str) -> Result<String, validify::ValidationErrors> {
+        use validify::Validify;
+        let mut name = RoleName { value: name.into() };
+        name.validify()?;
+        Ok(name.value)
+    }
+
     const OWNER_POLICY: &str = r###"// Application-owned initial Owner policy; organization/role IDs are trusted numeric values.
 permit (
     principal in Compallm::Role::"__ORG__:__OWNER__",
@@ -91,7 +110,7 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
 
     /// Initial role records rendered with application-generated IDs, never reserved identities.
     /// Labels do not establish authority; each stored Cedar source references the generated IDs.
-    pub async fn defaults(organization_id: u64) -> Result<Vec<Self>, DistributedIdError> {
+    pub async fn defaults(organization_id: u64) -> Result<Vec<Self>, RoleCreationError> {
         let mut roles = vec![
             Self::new(organization_id, "Owner", "", "").await?,
             Self::new(organization_id, "Admin", "", "").await?,
@@ -117,15 +136,23 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
         name: impl Into<String>,
         description: impl Into<String>,
         cedar_source: impl Into<String>,
-    ) -> Result<Self, DistributedIdError> {
+    ) -> Result<Self, RoleCreationError> {
+        let name = Self::normalize_name(&name.into()).map_err(RoleCreationError::InvalidName)?;
         Ok(Self {
             id: try_gen_id().await?,
             organization_id,
-            name: name.into(),
+            name,
             description: description.into(),
             cedar_source: cedar_source.into(),
         })
     }
+}
+
+#[derive(validify::Validify)]
+struct RoleName {
+    #[modify(trim)]
+    #[validate(length(min = 1, max = 64))]
+    value: String,
 }
 
 impl TryFrom<&Role> for Entity {

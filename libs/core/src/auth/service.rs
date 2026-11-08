@@ -62,15 +62,6 @@ impl AuthService {
             .await?)
     }
 
-    /// Build compact authority from a trusted, already-loaded membership.
-    /// Session revalidation belongs to the caller; JWT size checks belong to issuance.
-    pub fn create_policy_snapshot(
-        &self,
-        membership: &OrganizationMember,
-    ) -> Result<PolicySnapshot, AuthError> {
-        Ok(PolicySnapshot::new(membership)?)
-    }
-
     /// Revoke only the persisted session identified by the verified access credential.
     pub async fn signout(&self, claims: &UserAccessToken) -> Result<(), AuthError> {
         claims.validate(unix_timestamp())?;
@@ -226,7 +217,7 @@ impl AuthService {
         {
             return Err(AuthError::InvalidSession);
         }
-        let snapshot = self.create_policy_snapshot(&membership)?;
+        let snapshot = PolicySnapshot::new(&membership)?;
         let renewed = session.refresh(&claims, self.lifetimes.refresh)?;
         UserTokens::from_refresh(&renewed, snapshot, &self.jwt_secret, self.lifetimes.user)
     }
@@ -264,7 +255,7 @@ impl AuthService {
 
         let tokens = UserTokens::new(
             &session,
-            self.create_policy_snapshot(&membership)?,
+            PolicySnapshot::new(&membership)?,
             &self.jwt_secret,
             self.lifetimes.user,
             self.lifetimes.refresh,
@@ -286,7 +277,7 @@ impl AuthService {
         let session = Session::new(user_id, membership.organization_id, organization.name).await?;
         let tokens = UserTokens::new(
             &session,
-            self.create_policy_snapshot(&membership)?,
+            PolicySnapshot::new(&membership)?,
             &self.jwt_secret,
             self.lifetimes.user,
             self.lifetimes.refresh,

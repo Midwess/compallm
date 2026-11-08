@@ -1174,7 +1174,6 @@ dependencies = [
  "async-trait",
  "base64 0.22.1",
  "cedar-policy",
- "cedar-policy-formatter",
  "chacha20poly1305",
  "compallm-utils",
  "hkdf 0.12.4",
@@ -1191,6 +1190,7 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "validify",
+ "zstd",
 ]
 
 [[package]]
@@ -1221,6 +1221,7 @@ dependencies = [
  "clap",
  "compallm-core",
  "compallm-utils",
+ "elsa",
  "heck 0.5.0",
  "loco-rs",
  "midwess-hero",
@@ -1975,6 +1976,15 @@ dependencies = [
  "sec1",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "elsa"
+version = "1.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9abf33c656a7256451ebb7d0082c5a471820c31269e49d807c538c252352186e"
+dependencies = [
+ "stable_deref_trait",
 ]
 
 [[package]]

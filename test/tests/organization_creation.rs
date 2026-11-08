@@ -27,6 +27,13 @@ struct Repository {
 }
 #[async_trait::async_trait]
 impl OrganizationRepository for Repository {
+    async fn save_member(
+        &self,
+        _member: &OrganizationMember,
+        _previous: &OrganizationMember,
+    ) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
     async fn find_membership(
         &self,
         _: u64,

@@ -5,7 +5,12 @@ mod model_router;
 mod model_usage;
 mod model_usage_limit;
 mod models;
+mod organization_group_members;
+mod organization_group_roles;
+mod organization_groups;
+mod organization_member_roles;
 mod organization_members;
+mod organization_roles;
 mod organizations;
 mod provider_audio_usage;
 mod provider_image_usage;
@@ -18,13 +23,19 @@ mod providers;
 mod sea_orm_active_enums;
 mod user_sessions;
 mod users;
+mod zstd_dictionary;
 
 pub use self::api_keys::Model as ApiKeySchema;
 pub use self::model_router::Model as ModelRouterSchema;
 pub use self::model_usage::Model as ModelUsageSchema;
 pub use self::model_usage_limit::Model as ModelUsageLimitSchema;
 pub use self::models::Model as ModelSchema;
+pub use self::organization_group_members::Model as OrganizationGroupMemberSchema;
+pub use self::organization_group_roles::Model as OrganizationGroupRoleSchema;
+pub use self::organization_groups::Model as OrganizationGroupSchema;
+pub use self::organization_member_roles::Model as OrganizationMemberRoleSchema;
 pub use self::organization_members::Model as OrganizationMemberSchema;
+pub use self::organization_roles::Model as OrganizationRoleSchema;
 pub use self::organizations::Model as OrganizationSchema;
 pub use self::provider_audio_usage::Model as ProviderAudioUsageSchema;
 pub use self::provider_image_usage::Model as ProviderImageUsageSchema;
@@ -38,20 +49,7 @@ pub use self::sea_orm_active_enums::OrganizationStatus as OrganizationStatusSche
 pub use self::sea_orm_active_enums::ProviderUsageStatus as ProviderUsageStatusSchema;
 pub use self::sea_orm_active_enums::UsageDirection as UsageDirectionSchema;
 pub use self::sea_orm_active_enums::UserStatus as UserStatusSchema;
+pub use self::sea_orm_active_enums::ZstdDictionaryType as ZstdDictionaryTypeSchema;
 pub use self::user_sessions::Model as UserSessionSchema;
 pub use self::users::Model as UserSchema;
-
-mod organization_roles;
-pub use self::organization_roles::Model as OrganizationRoleSchema;
-
-mod organization_groups;
-pub use self::organization_groups::Model as OrganizationGroupSchema;
-
-mod organization_member_roles;
-pub use self::organization_member_roles::Model as OrganizationMemberRoleSchema;
-
-mod organization_group_members;
-pub use self::organization_group_members::Model as OrganizationGroupMemberSchema;
-
-mod organization_group_roles;
-pub use self::organization_group_roles::Model as OrganizationGroupRoleSchema;
+pub use self::zstd_dictionary::Model as ZstdDictionarySchema;

@@ -16,6 +16,12 @@ pub struct OrganizationMember {
     pub groups: Vec<Group>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum MembershipAssignmentError {
+    #[error("assignment belongs to another organization")]
+    ForeignOrganization,
+}
+
 impl SystemPolicy for OrganizationMember {
     /// Declares membership enumeration, metadata, and administration use cases.
     ///
@@ -59,6 +65,31 @@ namespace Compallm {
 }
 
 impl OrganizationMember {
+    pub fn assign_role(&mut self, role: Role) -> Result<(), MembershipAssignmentError> {
+        if role.organization_id != self.organization_id {
+            return Err(MembershipAssignmentError::ForeignOrganization);
+        }
+        if !self.roles.iter().any(|existing| existing.id == role.id) {
+            self.roles.push(role);
+        }
+        Ok(())
+    }
+
+    pub fn assign_group(&mut self, group: Group) -> Result<(), MembershipAssignmentError> {
+        if group.organization_id != self.organization_id
+            || group
+                .roles
+                .iter()
+                .any(|role| role.organization_id != self.organization_id)
+        {
+            return Err(MembershipAssignmentError::ForeignOrganization);
+        }
+        if !self.groups.iter().any(|existing| existing.id == group.id) {
+            self.groups.push(group);
+        }
+        Ok(())
+    }
+
     pub fn effective_roles(&self) -> impl Iterator<Item = &Role> {
         self.roles
             .iter()

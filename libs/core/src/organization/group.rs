@@ -17,13 +17,37 @@ pub struct Group {
     pub roles: Vec<Role>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum GroupCreationError {
+    #[error("a group can have at most 32 roles")]
+    TooManyRoles,
+    #[error("ID generation failed")]
+    IdGeneration(#[from] DistributedIdError),
+}
+
 impl Group {
+    /// Maximum number of roles assigned to a group.
+    pub const MAX_ROLES: usize = 32;
+    /// Maximum group name length, in Unicode characters, after trimming.
+    pub const MAX_NAME_LENGTH: usize = 128;
+
+    /// Normalize and validate a group name before a management write.
+    pub fn normalize_name(name: &str) -> Result<String, validify::ValidationErrors> {
+        use validify::Validify;
+        let mut name = GroupName { value: name.into() };
+        name.validify()?;
+        Ok(name.value)
+    }
+
     pub async fn new(
         organization_id: u64,
         name: impl Into<String>,
         description: impl Into<String>,
         roles: Vec<Role>,
-    ) -> Result<Self, DistributedIdError> {
+    ) -> Result<Self, GroupCreationError> {
+        if roles.len() > Self::MAX_ROLES {
+            return Err(GroupCreationError::TooManyRoles);
+        }
         Ok(Self {
             id: try_gen_id().await?,
             organization_id,
@@ -32,6 +56,13 @@ impl Group {
             roles,
         })
     }
+}
+
+#[derive(validify::Validify)]
+struct GroupName {
+    #[modify(trim)]
+    #[validate(length(min = 1, max = 128))]
+    value: String,
 }
 
 impl TryFrom<&Group> for Entity {

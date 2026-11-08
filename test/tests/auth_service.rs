@@ -77,6 +77,13 @@ struct OrganizationRepositoryStub(Arc<Mutex<State>>);
 
 #[async_trait::async_trait]
 impl OrganizationRepository for OrganizationRepositoryStub {
+    async fn save_member(
+        &self,
+        _member: &OrganizationMember,
+        _previous: &OrganizationMember,
+    ) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
     async fn find_membership(
         &self,
         organization_id: u64,

@@ -11,8 +11,8 @@ workspace = true
 
 [dependencies]
 cedar-policy.workspace = true
-cedar-policy-formatter.workspace = true
 rayon.workspace = true
+zstd.workspace = true
 jsonwebtoken.workspace = true
 validify.workspace = true
 anyhow = { workspace = true, features = ["std"] }

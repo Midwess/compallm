@@ -117,6 +117,96 @@ impl OrganizationRepository {
 
 #[async_trait::async_trait]
 impl CoreRepository for OrganizationRepository {
+    async fn save_member(
+        &self,
+        member: &OrganizationMember,
+        previous: &OrganizationMember,
+    ) -> Result<(), OrganizationRepositoryError> {
+        use std::collections::BTreeSet;
+        if (member.organization_id, member.user_id) != (previous.organization_id, previous.user_id)
+        {
+            return Err(OrganizationRepositoryError::Conflict);
+        }
+        cedar_policy::Entities::try_from(member).map_err(OrganizationRepositoryError::database)?;
+        let org = Self::database_id(member.organization_id)?;
+        let user = Self::database_id(member.user_id)?;
+        let role_ids = |member: &OrganizationMember| {
+            member
+                .roles
+                .iter()
+                .map(|role| role.id)
+                .collect::<BTreeSet<_>>()
+        };
+        let group_ids = |member: &OrganizationMember| {
+            member
+                .groups
+                .iter()
+                .map(|group| group.id)
+                .collect::<BTreeSet<_>>()
+        };
+        let roles = role_ids(member);
+        let groups = group_ids(member);
+        let previous_roles = role_ids(previous);
+        let previous_groups = group_ids(previous);
+        let context = DbContext::current()?;
+        compallm_core::transaction!(context, {
+            let current = DbContext::current()?;
+            let db = PostgresConnection::from_context(&current)?;
+            db.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+                "SELECT user_id FROM organization_members WHERE organization_id=$1 AND user_id=$2 FOR UPDATE", [org.into(), user.into()]))
+                .await.map_err(OrganizationRepositoryError::database)?.ok_or(OrganizationRepositoryError::NotFound)?;
+            let rows = db.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+                "SELECT role_id AS id, 'role' AS kind FROM organization_member_roles WHERE organization_id=$1 AND user_id=$2 UNION ALL SELECT group_id AS id, 'group' AS kind FROM organization_group_members WHERE organization_id=$1 AND user_id=$2", [org.into(), user.into()]))
+                .await.map_err(OrganizationRepositoryError::database)?;
+            let mut stored_roles = BTreeSet::new();
+            let mut stored_groups = BTreeSet::new();
+            for row in rows {
+                let id: i64 = row
+                    .try_get("", "id")
+                    .map_err(OrganizationRepositoryError::database)?;
+                let id = u64::try_from(id).map_err(OrganizationRepositoryError::database)?;
+                let kind: String = row
+                    .try_get("", "kind")
+                    .map_err(OrganizationRepositoryError::database)?;
+                if kind == "role" {
+                    stored_roles.insert(id);
+                } else {
+                    stored_groups.insert(id);
+                }
+            }
+            if stored_roles != previous_roles || stored_groups != previous_groups {
+                return Err(OrganizationRepositoryError::Conflict);
+            }
+            if roles == previous_roles && groups == previous_groups {
+                return Ok(());
+            }
+            db.execute_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "DELETE FROM organization_member_roles WHERE organization_id=$1 AND user_id=$2",
+                [org.into(), user.into()],
+            ))
+            .await
+            .map_err(OrganizationRepositoryError::database)?;
+            db.execute_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "DELETE FROM organization_group_members WHERE organization_id=$1 AND user_id=$2",
+                [org.into(), user.into()],
+            ))
+            .await
+            .map_err(OrganizationRepositoryError::database)?;
+            db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+                "INSERT INTO organization_member_roles (organization_id,user_id,role_id) SELECT $1,$2,value::bigint FROM jsonb_array_elements_text($3::jsonb)", [org.into(),user.into(),serde_json::json!(roles).into()])).await.map_err(OrganizationRepositoryError::database)?;
+            db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+                "INSERT INTO organization_group_members (organization_id,group_id,user_id) SELECT $1,value::bigint,$2 FROM jsonb_array_elements_text($3::jsonb)", [org.into(),user.into(),serde_json::json!(groups).into()])).await.map_err(OrganizationRepositoryError::database)?;
+            use compallm_core::persistent::session::SessionRepository as _;
+            super::session::SessionRepository
+                .invalidate_permissions(member.organization_id, &[member.user_id])
+                .await
+                .map_err(OrganizationRepositoryError::database)?;
+            Ok(())
+        })
+    }
+
     async fn find_membership(
         &self,
         organization_id: u64,

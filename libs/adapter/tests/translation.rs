@@ -1,19 +1,19 @@
-//! Tests for the example's deliberately limited translation and replay logic.
+//! Tests for the deliberately limited translation and replay logic.
 
-#[path = "../examples/axum_forward_support/codecs.rs"]
+#[path = "support/codecs.rs"]
 mod codecs;
-#[path = "../examples/axum_forward_support/store.rs"]
+#[path = "support/store.rs"]
 mod store;
 
 use std::{convert::Infallible, num::NonZeroU32};
 
 use adapter::{
-    replay::ReplayStore,
-    t2t::{Text2TextRequestStream, Text2TextRequestTranslator},
+    replay::{Replay, ReplayStore},
+    t2t::Text2TextRequestTranslator,
 };
 use bytes::Bytes;
 use codecs::{AnthropicTextEncoder, OpenAiTextDecoder, TargetProperties};
-use futures_util::{StreamExt, stream};
+use futures_util::{StreamExt, sink, stream};
 use serde_json::json;
 use store::DiskReplayStore;
 
@@ -24,18 +24,58 @@ fn properties() -> TargetProperties {
     }
 }
 
+// Small fixtures only: preserve upload chunk boundaries in the replay reader so
+// the decoder is still exercised at every split, rather than disk read sizes.
+#[derive(Default)]
+struct ChunkReplayStore(Vec<Bytes>);
+
+impl ReplayStore for ChunkReplayStore {
+    type Error = Infallible;
+    type Reader = stream::Iter<std::vec::IntoIter<Result<Bytes, Infallible>>>;
+
+    async fn append(&mut self, chunk: Bytes) -> Result<(), Self::Error> {
+        self.0.push(chunk);
+        Ok(())
+    }
+
+    async fn seal(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    async fn open_reader(&mut self) -> Result<Self::Reader, Self::Error> {
+        Ok(stream::iter(
+            self.0.iter().cloned().map(Ok).collect::<Vec<_>>(),
+        ))
+    }
+
+    async fn abort(&mut self) -> Result<(), Self::Error> {
+        self.0.clear();
+        Ok(())
+    }
+}
+
 async fn translate(chunks: Vec<Bytes>) -> Result<serde_json::Value, ()> {
     let input = stream::iter(chunks.into_iter().map(Ok::<_, Infallible>));
-    let mut output = Text2TextRequestStream::new(
-        input,
-        OpenAiTextDecoder::default(),
-        AnthropicTextEncoder::new(&properties()),
-    );
-    let mut bytes = Vec::new(); // Small test fixture only, never the example handler.
-    while let Some(chunk) = output.next().await {
-        bytes.extend_from_slice(&chunk.map_err(|_| ())?);
-    }
-    serde_json::from_slice(&bytes).map_err(|_| ())
+    let mut replay = Replay::new(input, ChunkReplayStore::default());
+    let reader = replay.open_reader().await.map_err(|_| ())?;
+    let mut translator = Text2TextRequestTranslator::new(16 * 1024, 64);
+    let mut bytes = Vec::new(); // Small test fixture only, never a handler body.
+    let target = sink::unfold(&mut bytes, |bytes, chunk: Bytes| async move {
+        bytes.extend_from_slice(&chunk);
+        Ok::<_, Infallible>(bytes)
+    });
+    let result = translator
+        .forward(
+            reader,
+            OpenAiTextDecoder::default,
+            target,
+            AnthropicTextEncoder::new(&properties()),
+        )
+        .await
+        .map_err(|_| ())
+        .and_then(|()| serde_json::from_slice(&bytes).map_err(|_| ()));
+    replay.close().await.map_err(|_| ())?;
+    result
 }
 
 #[tokio::test]
@@ -112,24 +152,28 @@ async fn disk_replay_supports_fresh_attempts_and_reader_lifetime_after_cleanup()
     let body =
         Bytes::from_static(br#"{"model":"source","messages":[{"role":"user","content":"hello"}]}"#);
     let input = stream::iter([Ok::<_, Infallible>(body)]);
-    let mut translator = Text2TextRequestTranslator::new(
-        input,
-        OpenAiTextDecoder::default,
-        DiskReplayStore::new().await.unwrap(),
-    );
+    let mut replay = Replay::new(input, DiskReplayStore::new().await.unwrap());
+    let mut translator = Text2TextRequestTranslator::new(16 * 1024, 64);
     for _ in 0..2 {
-        let mut attempt = translator
-            .forward(AnthropicTextEncoder::new(&properties()))
+        let reader = replay.open_reader().await.unwrap();
+        let mut output = Vec::new();
+        let target = sink::unfold(&mut output, |bytes, chunk: Bytes| async move {
+            bytes.extend_from_slice(&chunk);
+            Ok::<_, Infallible>(bytes)
+        });
+        translator
+            .forward(
+                reader,
+                OpenAiTextDecoder::default,
+                target,
+                AnthropicTextEncoder::new(&properties()),
+            )
             .await
             .unwrap();
-        let mut output = Vec::new();
-        while let Some(chunk) = attempt.next().await {
-            output.extend_from_slice(&chunk.unwrap());
-        }
         let output: serde_json::Value = serde_json::from_slice(&output).unwrap();
         assert_eq!(output["model"], "target-model");
     }
-    translator.close().await.unwrap();
+    replay.close().await.unwrap();
 
     let mut store = DiskReplayStore::new().await.unwrap();
     store.append(Bytes::from_static(b"original")).await.unwrap();

@@ -11,13 +11,13 @@ workspace = true
 [dependencies]
 bytes.workspace = true
 futures-core.workspace = true
+futures-sink.workspace = true
 pin-project-lite.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-axum = { workspace = true, features = ["http1", "tokio"] }
-futures-util = { workspace = true, features = ["std"] }
-reqwest = { workspace = true, features = ["rustls-tls", "stream"] }
+futures-util = { workspace = true, features = ["std", "sink"] }
+futures-channel = { workspace = true, features = ["std", "sink"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["std"] }
 tempfile.workspace = true

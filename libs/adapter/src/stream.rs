@@ -3,14 +3,13 @@ use std::{
     task::{Context, Poll},
 };
 
-use bytes::{Bytes, BytesMut};
+use bytes::Bytes;
 use futures_core::Stream;
 use pin_project_lite::pin_project;
 
 use crate::{
     codec::{DecodeStep, EncodeStep},
     error::{CodecError, StreamError},
-    limits::TranslationLimits,
 };
 
 /// Private bridge sharing the driver without unifying request/response contracts.
@@ -28,35 +27,43 @@ pub(crate) trait Codecs {
 }
 
 pin_project! {
-    pub(crate) struct Driver<S, C> {
+    pub(crate) struct Driver<'a, S, C> {
         #[pin]
         input: S,
         codecs: C,
         current: Bytes,
-        output: BytesMut,
+        output: &'a mut [u8],
         eof: bool,
         finishing: bool,
         done: bool,
-        limits: TranslationLimits,
+        output_chunk_bytes: usize,
+        steps_before_yield: usize,
     }
 }
 
-impl<S, C> Driver<S, C> {
-    pub(crate) fn new(input: S, codecs: C, limits: TranslationLimits) -> Self {
+impl<'a, S, C> Driver<'a, S, C> {
+    pub(crate) fn with_output(
+        input: S,
+        codecs: C,
+        output_chunk_bytes: usize,
+        steps_before_yield: usize,
+        output: &'a mut [u8],
+    ) -> Self {
         Self {
             input,
             codecs,
             current: Bytes::new(),
-            output: BytesMut::new(),
+            output,
             eof: false,
             finishing: false,
             done: false,
-            limits,
+            output_chunk_bytes,
+            steps_before_yield,
         }
     }
 }
 
-impl<S, C, E> Stream for Driver<S, C>
+impl<S, C, E> Stream for Driver<'_, S, C>
 where
     S: Stream<Item = Result<Bytes, E>>,
     C: Codecs,
@@ -74,7 +81,6 @@ where
             ($error:expr) => {{
                 *this.done = true;
                 *this.current = Bytes::new();
-                this.output.clear();
                 return Poll::Ready(Some(Err($error)));
             }};
         }
@@ -87,17 +93,17 @@ where
             };
         }
 
-        for _ in 0..this.limits.steps_per_poll.get() {
-            this.output.resize(this.limits.output_chunk_bytes.get(), 0);
-            match codec!(this.codecs.encode(this.output.as_mut())) {
+        for _ in 0..*this.steps_before_yield {
+            debug_assert_eq!(this.output.len(), *this.output_chunk_bytes);
+            this.output.fill(0);
+            match codec!(this.codecs.encode(this.output)) {
                 EncodeStep::Wrote(len) => {
-                    if len == 0 || len > this.output.len() {
+                    if len == 0 || len > *this.output_chunk_bytes {
                         fail!(StreamError::Codec(CodecError::Contract(
                             "encoder reported invalid output length"
                         )));
                     }
-                    this.output.truncate(len);
-                    return Poll::Ready(Some(Ok(this.output.split().freeze())));
+                    return Poll::Ready(Some(Ok(Bytes::copy_from_slice(&this.output[..len]))));
                 }
                 EncodeStep::Finished => {
                     if !*this.finishing {
@@ -106,7 +112,6 @@ where
                         )));
                     }
                     *this.done = true;
-                    this.output.clear();
                     return Poll::Ready(None);
                 }
                 EncodeStep::NeedEvent => {
@@ -117,7 +122,6 @@ where
                     }
                 }
             }
-            this.output.clear();
 
             let input_len = this.current.len();
             match codec!(this.codecs.decode(this.current, *this.eof)) {

@@ -2,7 +2,6 @@ use std::{
     cell::Cell,
     convert::Infallible,
     marker::PhantomPinned,
-    num::NonZeroUsize,
     pin::Pin,
     rc::Rc,
     sync::Arc,
@@ -12,15 +11,21 @@ use std::{
 use adapter::{
     codec::{DecodeStep, EncodeStep},
     error::{CodecError, StreamError},
-    limits::TranslationLimits,
     t2t::{
-        Text2TextRequestStream, Text2TextResponseStream,
-        request::{decoder::RequestDecoder, encoder::RequestEncoder, event::RequestEvent},
-        response::{decoder::ResponseDecoder, encoder::ResponseEncoder, event::ResponseEvent},
+        Text2TextRequestTranslator, Text2TextResponseTranslator,
+        request::{
+            RequestForwardError, decoder::RequestDecoder, encoder::RequestEncoder,
+            event::RequestEvent,
+        },
+        response::{
+            ResponseForwardError, decoder::ResponseDecoder, encoder::ResponseEncoder,
+            event::ResponseEvent,
+        },
     },
 };
 use bytes::{Buf, Bytes};
 use futures_core::Stream;
+use futures_sink::Sink;
 
 #[derive(Default)]
 struct TextDecoder;
@@ -94,35 +99,6 @@ macro_rules! text_encoder {
 text_encoder!(RequestEncoder, RequestEvent);
 text_encoder!(ResponseEncoder, ResponseEvent);
 
-fn limits() -> TranslationLimits {
-    TranslationLimits {
-        output_chunk_bytes: NonZeroUsize::new(2).unwrap(),
-        steps_per_poll: NonZeroUsize::new(3).unwrap(),
-    }
-}
-
-fn collect<S, E>(stream: S) -> Vec<u8>
-where
-    S: Stream<Item = Result<Bytes, E>>,
-    E: std::fmt::Debug,
-{
-    let mut stream = std::pin::pin!(stream);
-    let mut cx = Context::from_waker(Waker::noop());
-    let mut result = Vec::new();
-    for _ in 0..100 {
-        match stream.as_mut().poll_next(&mut cx) {
-            Poll::Ready(Some(Ok(bytes))) => {
-                assert!(bytes.len() <= 2);
-                result.extend_from_slice(&bytes);
-            }
-            Poll::Ready(Some(Err(error))) => panic!("unexpected error: {error:?}"),
-            Poll::Ready(None) => return result,
-            Poll::Pending => {}
-        }
-    }
-    panic!("stream did not terminate");
-}
-
 /// Non-Send, non-Unpin input with state outside the pinned value.
 struct LocalInput<'a> {
     polls: &'a Cell<usize>,
@@ -150,6 +126,200 @@ impl Stream for LocalInput<'_> {
 }
 
 #[test]
+fn request_scratch_is_reused_after_success_target_failure_and_cancellation() {
+    struct ObserveOutput {
+        encoder: TextEncoder,
+        buffers: Rc<std::cell::RefCell<Vec<(usize, usize)>>>,
+    }
+    impl RequestEncoder for ObserveOutput {
+        fn accept(&mut self, event: RequestEvent) -> Result<(), CodecError> {
+            RequestEncoder::accept(&mut self.encoder, event)
+        }
+
+        fn advance(&mut self, output: &mut [u8]) -> Result<EncodeStep, CodecError> {
+            self.buffers
+                .borrow_mut()
+                .push((output.as_ptr() as usize, output.len()));
+            RequestEncoder::advance(&mut self.encoder, output)
+        }
+
+        fn finish(&mut self) -> Result<(), CodecError> {
+            RequestEncoder::finish(&mut self.encoder)
+        }
+    }
+    let buffers = Rc::new(std::cell::RefCell::new(Vec::new()));
+    let mut translator = Text2TextRequestTranslator::new(2, 3);
+    for outcome in 0..4 {
+        let target = TestSink::default();
+        target.state.borrow_mut().fail_ready = outcome == 1;
+        let forward = translator.forward(
+            OneChunk(Some(Ok(Bytes::from_static(b"original")))),
+            || TextDecoder,
+            target.pinned(),
+            ObserveOutput {
+                encoder: TextEncoder::default(),
+                buffers: buffers.clone(),
+            },
+        );
+        if outcome == 2 {
+            let mut forward = std::pin::pin!(forward);
+            assert!(
+                forward
+                    .as_mut()
+                    .poll(&mut Context::from_waker(Waker::noop()))
+                    .is_pending()
+            );
+        } else if outcome == 1 {
+            assert!(matches!(
+                run(forward),
+                Err(RequestForwardError::Target("ready failed"))
+            ));
+        } else {
+            run(forward).unwrap();
+            assert_eq!(target.bytes(), b"original!");
+        }
+    }
+    let buffers = buffers.borrow();
+    assert!(!buffers.is_empty());
+    assert!(buffers.iter().all(|buffer| *buffer == buffers[0]));
+    assert_eq!(buffers[0].1, 2);
+}
+
+#[test]
+fn retained_output_is_independent_of_scratch_reuse() {
+    let mut translator = Text2TextRequestTranslator::new(2, 3);
+    let mut retained = Vec::new();
+    for body in [b"first".as_slice(), b"second", b"third"] {
+        let mut chunks = Vec::new();
+        let target = futures_util::sink::unfold(&mut chunks, |chunks, chunk: Bytes| async move {
+            chunks.push(chunk);
+            Ok::<_, Infallible>(chunks)
+        });
+        run(translator.forward(
+            OneChunk(Some(Ok(Bytes::copy_from_slice(body)))),
+            || TextDecoder,
+            target,
+            TextEncoder::default(),
+        ))
+        .unwrap();
+        assert!(chunks.iter().all(|chunk| chunk.len() <= 2));
+        retained.push(chunks);
+    }
+    for (chunks, expected) in retained
+        .iter()
+        .zip([b"first!".as_slice(), b"second!", b"third!"])
+    {
+        let output: Vec<u8> = chunks
+            .iter()
+            .flat_map(|chunk| chunk.iter().copied())
+            .collect();
+        assert_eq!(output, expected);
+    }
+}
+
+#[test]
+fn forwarding_is_lazy_until_first_poll() {
+    let polls = Cell::new(0);
+    let decoders = Cell::new(0);
+    let mut translator = Text2TextRequestTranslator::new(2, 3);
+    let target = TestSink::default();
+    let input = LocalInput {
+        polls: &polls,
+        next: Rc::new(Cell::new(0)),
+        _pinned: PhantomPinned,
+    };
+    let forward = translator.forward(
+        input,
+        || {
+            decoders.set(decoders.get() + 1);
+            TextDecoder
+        },
+        target.pinned(),
+        TextEncoder::default(),
+    );
+    assert_eq!(polls.get(), 0);
+    assert_eq!(decoders.get(), 0);
+    assert!(target.bytes().is_empty());
+    assert!(!target.state.borrow().closed);
+    run(forward).unwrap();
+    assert_eq!(target.bytes(), b"hello world!");
+    assert_eq!(decoders.get(), 1);
+}
+
+#[test]
+fn zero_constructor_bounds_use_defaults_in_both_directions() {
+    for (output_chunk_bytes, steps_before_yield, expected_chunks) in
+        [(0, 3, 3), (2, 0, 4), (0, 0, 3)]
+    {
+        let mut translator =
+            Text2TextRequestTranslator::new(output_chunk_bytes, steps_before_yield);
+        let target = TestSink::default();
+        run(translator.forward(
+            OneChunk(Some(Ok(Bytes::from_static(b"source")))),
+            || TextDecoder,
+            target.pinned(),
+            TextEncoder::default(),
+        ))
+        .unwrap();
+        assert_eq!(target.bytes(), b"source!");
+        assert_eq!(target.state.borrow().chunks, expected_chunks);
+        let mut translator =
+            Text2TextResponseTranslator::new(output_chunk_bytes, steps_before_yield);
+        let target = TestSink::default();
+        run(translator.forward(
+            OneChunk(Some(Ok(Bytes::from_static(b"source")))),
+            || TextDecoder,
+            target.pinned(),
+            TextEncoder::default(),
+        ))
+        .unwrap();
+        assert_eq!(target.bytes(), b"source!");
+        assert_eq!(target.state.borrow().chunks, expected_chunks);
+    }
+}
+
+#[test]
+fn constructor_configures_limits() {
+    let mut translator = Text2TextRequestTranslator::new(2, 3);
+    let target = TestSink::default();
+    run(translator.forward(
+        OneChunk(Some(Ok(Bytes::from_static(b"source")))),
+        || TextDecoder,
+        target.pinned(),
+        TextEncoder::default(),
+    ))
+    .unwrap();
+    assert_eq!(target.bytes(), b"source!");
+    assert_eq!(target.state.borrow().chunks, 4);
+}
+
+#[test]
+fn constructor_output_bound_controls_chunk_size() {
+    let mut translator = Text2TextRequestTranslator::new(1, 3);
+    let first = TestSink::default();
+    run(translator.forward(
+        OneChunk(Some(Ok(Bytes::from_static(b"first")))),
+        || TextDecoder,
+        first.pinned(),
+        TextEncoder::default(),
+    ))
+    .unwrap();
+    assert_eq!(first.bytes(), b"first!");
+    assert_eq!(first.state.borrow().chunks, 6);
+    let mut translator = Text2TextRequestTranslator::new(2, 3);
+    let next = TestSink::default();
+    run(translator.forward(
+        OneChunk(Some(Ok(Bytes::from_static(b"next")))),
+        || TextDecoder,
+        next.pinned(),
+        TextEncoder::default(),
+    ))
+    .unwrap();
+    assert_eq!(next.bytes(), b"next!");
+    assert_eq!(next.state.borrow().chunks, 3);
+}
+
+#[test]
 fn request_drains_partial_events_and_finishes_without_restricting_input() {
     let polls = Cell::new(0);
     let input = LocalInput {
@@ -157,22 +327,34 @@ fn request_drains_partial_events_and_finishes_without_restricting_input() {
         next: Rc::new(Cell::new(0)),
         _pinned: PhantomPinned,
     };
-    let stream =
-        Text2TextRequestStream::with_limits(input, TextDecoder, TextEncoder::default(), limits());
+    let mut translator = Text2TextRequestTranslator::new(2, 3);
     assert_eq!(polls.get(), 0, "construction must not consume input");
-    assert_eq!(collect(stream), b"hello world!");
+    let target = TestSink::default();
+    run(translator.forward(
+        input,
+        || TextDecoder,
+        target.pinned(),
+        TextEncoder::default(),
+    ))
+    .unwrap();
+    assert_eq!(target.bytes(), b"hello world!");
+    assert!(target.state.borrow().closed);
     assert_eq!(polls.get(), 4);
 }
 
 #[test]
 fn response_uses_its_own_contracts_and_drains_final_output() {
-    let stream = Text2TextResponseStream::with_limits(
+    let mut translator = Text2TextResponseTranslator::new(2, 3);
+    let target = TestSink::default();
+    run(translator.forward(
         OneChunk(Some(Ok(Bytes::from_static(b"response")))),
-        TextDecoder,
+        || TextDecoder,
+        target.pinned(),
         TextEncoder::default(),
-        limits(),
-    );
-    assert_eq!(collect(stream), b"response!");
+    ))
+    .unwrap();
+    assert_eq!(target.bytes(), b"response!");
+    assert!(target.state.borrow().closed);
 }
 
 struct OneChunk(Option<Result<Bytes, &'static str>>);
@@ -185,21 +367,30 @@ impl Stream for OneChunk {
 }
 
 #[test]
-fn transport_error_is_emitted_once_then_the_stream_is_terminal() {
-    let mut stream = std::pin::pin!(Text2TextRequestStream::new(
-        OneChunk(Some(Err("disconnected"))),
-        TextDecoder,
+fn response_transport_failure_does_not_close_target_and_allows_reuse() {
+    let mut translator = Text2TextResponseTranslator::new(16 * 1024, 64);
+    let target = TestSink::default();
+    assert!(matches!(
+        run(translator.forward(
+            OneChunk(Some(Err("disconnected"))),
+            || TextDecoder,
+            target.pinned(),
+            TextEncoder::default(),
+        )),
+        Err(ResponseForwardError::Stream(StreamError::Input(
+            "disconnected"
+        )))
+    ));
+    assert!(!target.state.borrow().closed);
+    assert!(target.bytes().is_empty());
+    run(translator.forward(
+        OneChunk(Some(Ok(Bytes::from_static(b"fresh")))),
+        || TextDecoder,
+        target.pinned(),
         TextEncoder::default(),
-    ));
-    let mut cx = Context::from_waker(Waker::noop());
-    assert!(matches!(
-        stream.as_mut().poll_next(&mut cx),
-        Poll::Ready(Some(Err(StreamError::Input("disconnected"))))
-    ));
-    assert!(matches!(
-        stream.as_mut().poll_next(&mut cx),
-        Poll::Ready(None)
-    ));
+    ))
+    .unwrap();
+    assert_eq!(target.bytes(), b"fresh!");
 }
 
 struct BadEof;
@@ -211,20 +402,20 @@ impl RequestDecoder for BadEof {
 
 #[test]
 fn premature_decoder_completion_is_rejected() {
-    let mut stream = std::pin::pin!(Text2TextRequestStream::new(
+    let (result, target) = request_attempt(
         OneChunk(None),
         BadEof,
         TextEncoder::default(),
-    ));
-    let mut cx = Context::from_waker(Waker::noop());
+        16 * 1024,
+        64,
+    );
     assert!(matches!(
-        stream.as_mut().poll_next(&mut cx),
-        Poll::Ready(Some(Err(StreamError::Codec(CodecError::Contract(_)))))
+        result,
+        Err(RequestForwardError::Stream(StreamError::Codec(
+            CodecError::Contract(_)
+        )))
     ));
-    assert!(matches!(
-        stream.as_mut().poll_next(&mut cx),
-        Poll::Ready(None)
-    ));
+    assert!(!target.state.borrow().closed);
 }
 
 struct EmptyForever(Rc<Cell<usize>>);
@@ -247,16 +438,17 @@ impl Wake for WakeCount {
 #[test]
 fn empty_chunks_cannot_monopolize_a_poll_and_exhaustion_self_wakes() {
     let polls = Rc::new(Cell::new(0));
-    let mut stream = std::pin::pin!(Text2TextRequestStream::with_limits(
+    let mut translator = Text2TextResponseTranslator::new(2, 3);
+    let mut forward = std::pin::pin!(translator.forward(
         EmptyForever(polls.clone()),
-        TextDecoder,
+        || TextDecoder,
+        TestSink::default().pinned(),
         TextEncoder::default(),
-        limits(),
     ));
     let wakes = Arc::new(WakeCount(std::sync::atomic::AtomicUsize::new(0)));
     let waker = Waker::from(wakes.clone());
     let mut cx = Context::from_waker(&waker);
-    assert!(stream.as_mut().poll_next(&mut cx).is_pending());
+    assert!(forward.as_mut().poll(&mut cx).is_pending());
     assert_eq!(polls.get(), 3);
     assert_eq!(wakes.0.load(std::sync::atomic::Ordering::Relaxed), 1);
 }
@@ -264,26 +456,28 @@ fn empty_chunks_cannot_monopolize_a_poll_and_exhaustion_self_wakes() {
 #[test]
 fn pending_encoder_output_is_drained_before_polling_more_input() {
     let polls = Cell::new(0);
-    let mut stream = std::pin::pin!(Text2TextRequestStream::with_limits(
+    let mut translator = Text2TextResponseTranslator::new(2, 64);
+    let mut chunks = Vec::new();
+    let target = futures_util::sink::unfold(&mut chunks, |chunks, chunk: Bytes| {
+        if chunks.len() < 3 {
+            assert_eq!(polls.get(), 1);
+        }
+        chunks.push(chunk);
+        std::future::ready(Ok::<_, Infallible>(chunks))
+    });
+    run(translator.forward(
         LocalInput {
             polls: &polls,
             next: Rc::new(Cell::new(0)),
             _pinned: PhantomPinned,
         },
-        TextDecoder,
+        || TextDecoder,
+        target,
         TextEncoder::default(),
-        TranslationLimits {
-            steps_per_poll: NonZeroUsize::new(64).unwrap(),
-            ..limits()
-        },
-    ));
-    let mut cx = Context::from_waker(Waker::noop());
-    for expected in [b"he".as_slice(), b"ll", b"o"] {
-        let Poll::Ready(Some(Ok(bytes))) = stream.as_mut().poll_next(&mut cx) else {
-            panic!("expected pending output");
-        };
-        assert_eq!(bytes.as_ref(), expected);
-        assert_eq!(polls.get(), 1);
+    ))
+    .unwrap();
+    for (chunk, expected) in chunks.iter().zip([b"he".as_slice(), b"ll", b"o"]) {
+        assert_eq!(chunk.as_ref(), expected);
     }
 }
 
@@ -308,24 +502,21 @@ impl RequestDecoder for Incomplete {
 
 #[test]
 fn late_eof_failure_does_not_emit_successful_encoder_finalization() {
-    let mut stream = std::pin::pin!(Text2TextRequestStream::new(
+    let (result, target) = request_attempt(
         OneChunk(Some(Ok(Bytes::from_static(b"partial")))),
         Incomplete,
         TextEncoder::default(),
-    ));
-    let mut cx = Context::from_waker(Waker::noop());
-    let Poll::Ready(Some(Ok(bytes))) = stream.as_mut().poll_next(&mut cx) else {
-        panic!("expected partial output");
-    };
-    assert_eq!(bytes.as_ref(), b"partial");
+        16 * 1024,
+        64,
+    );
+    assert_eq!(target.bytes(), b"partial");
     assert!(matches!(
-        stream.as_mut().poll_next(&mut cx),
-        Poll::Ready(Some(Err(StreamError::Codec(CodecError::InvalidInput(_)))))
+        result,
+        Err(RequestForwardError::Stream(StreamError::Codec(
+            CodecError::InvalidInput(_)
+        )))
     ));
-    assert!(matches!(
-        stream.as_mut().poll_next(&mut cx),
-        Poll::Ready(None)
-    ));
+    assert!(!target.state.borrow().closed);
 }
 
 struct ZeroOutput;
@@ -345,20 +536,14 @@ impl RequestEncoder for ZeroOutput {
 
 #[test]
 fn invalid_encoder_output_length_terminates_the_stream() {
-    let mut stream = std::pin::pin!(Text2TextRequestStream::new(
-        OneChunk(None),
-        TextDecoder,
-        ZeroOutput,
-    ));
-    let mut cx = Context::from_waker(Waker::noop());
+    let (result, target) = request_attempt(OneChunk(None), TextDecoder, ZeroOutput, 16 * 1024, 64);
     assert!(matches!(
-        stream.as_mut().poll_next(&mut cx),
-        Poll::Ready(Some(Err(StreamError::Codec(CodecError::Contract(_)))))
+        result,
+        Err(RequestForwardError::Stream(StreamError::Codec(
+            CodecError::Contract(_)
+        )))
     ));
-    assert!(matches!(
-        stream.as_mut().poll_next(&mut cx),
-        Poll::Ready(None)
-    ));
+    assert!(target.bytes().is_empty());
 }
 
 struct ConsumeOnly;
@@ -381,69 +566,15 @@ impl RequestDecoder for ConsumeOnly {
 
 #[test]
 fn decoder_can_consume_input_in_bounded_steps_without_emitting_events() {
-    assert_eq!(
-        collect(Text2TextRequestStream::with_limits(
-            OneChunk(Some(Ok(Bytes::from_static(b"ignored")))),
-            ConsumeOnly,
-            TextEncoder::default(),
-            limits(),
-        )),
-        b"!"
+    let (result, target) = request_attempt(
+        OneChunk(Some(Ok(Bytes::from_static(b"ignored")))),
+        ConsumeOnly,
+        TextEncoder::default(),
+        2,
+        3,
     );
-}
-
-// Test-only replay backend. Production backends must impose capacity limits.
-#[derive(Default)]
-struct StoreState {
-    bytes: Vec<u8>,
-    sealed: bool,
-    opens: usize,
-    aborts: usize,
-    fail_append: bool,
-    fail_open: bool,
-    fail_abort: bool,
-}
-
-struct TestStore(Rc<std::cell::RefCell<StoreState>>);
-
-impl adapter::replay::ReplayStore for TestStore {
-    type Error = &'static str;
-    type Reader = OneChunk;
-
-    async fn append(&mut self, chunk: Bytes) -> Result<(), Self::Error> {
-        let mut state = self.0.borrow_mut();
-        if state.fail_append {
-            return Err("write failed");
-        }
-        assert!(!state.sealed);
-        state.bytes.extend_from_slice(&chunk);
-        Ok(())
-    }
-
-    async fn seal(&mut self) -> Result<(), Self::Error> {
-        self.0.borrow_mut().sealed = true;
-        Ok(())
-    }
-
-    async fn open_reader(&mut self) -> Result<Self::Reader, Self::Error> {
-        let mut state = self.0.borrow_mut();
-        assert!(state.sealed);
-        if state.fail_open {
-            return Err("read failed");
-        }
-        state.opens += 1;
-        Ok(OneChunk(Some(Ok(Bytes::copy_from_slice(&state.bytes)))))
-    }
-
-    async fn abort(&mut self) -> Result<(), Self::Error> {
-        let mut state = self.0.borrow_mut();
-        state.aborts += 1;
-        if state.fail_abort {
-            return Err("cleanup failed");
-        }
-        state.bytes.clear();
-        Ok(())
-    }
+    result.unwrap();
+    assert_eq!(target.bytes(), b"!");
 }
 
 fn run<F: std::future::Future>(future: F) -> F::Output {
@@ -455,6 +586,262 @@ fn run<F: std::future::Future>(future: F) -> F::Output {
         }
     }
     panic!("future did not finish");
+}
+
+fn request_attempt<S, D, E, I>(
+    input: S,
+    decoder: D,
+    encoder: E,
+    output_chunk_bytes: usize,
+    steps_before_yield: usize,
+) -> (Result<(), RequestForwardError<I, &'static str>>, TestSink)
+where
+    S: Stream<Item = Result<Bytes, I>>,
+    I: std::fmt::Debug,
+    D: RequestDecoder,
+    E: RequestEncoder,
+{
+    let mut translator = Text2TextRequestTranslator::new(output_chunk_bytes, steps_before_yield);
+    let target = TestSink::default();
+    let result = run(translator.forward(input, || decoder, target.pinned(), encoder));
+    (result, target)
+}
+
+#[derive(Default)]
+struct SinkState {
+    bytes: Vec<u8>,
+    chunks: usize,
+    closed: bool,
+    blocked: bool,
+    waker: Option<Waker>,
+    fail_ready: bool,
+    fail_send: bool,
+    fail_close: bool,
+}
+
+#[derive(Clone, Default)]
+struct TestSink {
+    state: Rc<std::cell::RefCell<SinkState>>,
+    _pinned: PhantomPinned,
+}
+
+impl TestSink {
+    fn pinned(&self) -> Pin<Box<Self>> {
+        Box::pin(self.clone())
+    }
+    fn bytes(&self) -> Vec<u8> {
+        self.state.borrow().bytes.clone()
+    }
+
+    fn unblock(&self) {
+        let mut state = self.state.borrow_mut();
+        state.blocked = false;
+        if let Some(waker) = state.waker.take() {
+            waker.wake();
+        }
+    }
+}
+
+impl Sink<Bytes> for TestSink {
+    type Error = &'static str;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let mut state = self.state.borrow_mut();
+        if state.fail_ready {
+            Poll::Ready(Err("ready failed"))
+        } else if state.blocked {
+            state.waker = Some(cx.waker().clone());
+            Poll::Pending
+        } else {
+            Poll::Ready(Ok(()))
+        }
+    }
+
+    fn start_send(self: Pin<&mut Self>, bytes: Bytes) -> Result<(), Self::Error> {
+        let mut state = self.state.borrow_mut();
+        if state.fail_send {
+            return Err("send failed");
+        }
+        assert!(!state.closed);
+        state.bytes.extend_from_slice(&bytes);
+        state.chunks += 1;
+        Ok(())
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn poll_close(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let mut state = self.state.borrow_mut();
+        if state.fail_close {
+            return Poll::Ready(Err("close failed"));
+        }
+        state.closed = true;
+        Poll::Ready(Ok(()))
+    }
+}
+
+#[test]
+fn blocked_target_holds_only_one_output_chunk_and_resumes() {
+    let decoded = Rc::new(Cell::new(0));
+    struct CountDecoder(Rc<Cell<usize>>);
+    impl RequestDecoder for CountDecoder {
+        fn advance(
+            &mut self,
+            input: &mut Bytes,
+            eof: bool,
+        ) -> Result<DecodeStep<RequestEvent>, CodecError> {
+            let result = RequestDecoder::advance(&mut TextDecoder, input, eof)?;
+            if matches!(result, DecodeStep::Event(_)) {
+                self.0.set(self.0.get() + 1);
+            }
+            Ok(result)
+        }
+    }
+    let mut translator = Text2TextRequestTranslator::new(2, 64);
+    let target = TestSink::default();
+    target.state.borrow_mut().blocked = true;
+    {
+        let mut forward = std::pin::pin!(translator.forward(
+            OneChunk(Some(Ok(Bytes::from_static(b"original")))),
+            || CountDecoder(decoded.clone()),
+            target.pinned(),
+            TextEncoder::default()
+        ));
+        let mut cx = Context::from_waker(Waker::noop());
+        for _ in 0..3 {
+            assert!(forward.as_mut().poll(&mut cx).is_pending());
+        }
+        assert_eq!(decoded.get(), 1);
+        assert!(target.bytes().is_empty());
+        target.unblock();
+        run(forward).unwrap();
+    }
+    assert_eq!(target.bytes(), b"original!");
+    assert!(target.state.borrow().closed);
+}
+
+#[test]
+fn target_failures_are_reported_and_fresh_input_can_be_forwarded() {
+    for (field, expected) in [(0, "ready failed"), (1, "send failed"), (2, "close failed")] {
+        let mut translator = Text2TextRequestTranslator::new(2, 3);
+        let target = TestSink::default();
+        {
+            let mut state = target.state.borrow_mut();
+            match field {
+                0 => state.fail_ready = true,
+                1 => state.fail_send = true,
+                _ => state.fail_close = true,
+            }
+        }
+        assert!(
+            matches!(run(translator.forward(OneChunk(Some(Ok(Bytes::from_static(b"original")))), || TextDecoder, target.pinned(), TextEncoder::default())),
+            Err(RequestForwardError::Target(error)) if error == expected)
+        );
+        assert!(!target.state.borrow().closed);
+        let retry = TestSink::default();
+        run(translator.forward(
+            OneChunk(Some(Ok(Bytes::from_static(b"retry")))),
+            || TextDecoder,
+            retry.pinned(),
+            TextEncoder::default(),
+        ))
+        .unwrap();
+        assert_eq!(retry.bytes(), b"retry!");
+        assert!(retry.state.borrow().closed);
+    }
+}
+
+#[tokio::test]
+async fn bounded_channel_target_drains_concurrently_and_ends_on_success() {
+    use futures_util::StreamExt;
+
+    let mut translator = Text2TextRequestTranslator::new(2, 3);
+    let (target, mut receiver) = futures_channel::mpsc::channel::<Bytes>(1);
+    let forward = translator.forward(
+        OneChunk(Some(Ok(Bytes::from_static(b"original")))),
+        || TextDecoder,
+        target,
+        TextEncoder::default(),
+    );
+    let consume = async {
+        let mut bytes = Vec::new();
+        while let Some(chunk) = receiver.next().await {
+            assert!(chunk.len() <= 2);
+            bytes.extend_from_slice(&chunk);
+        }
+        bytes
+    };
+    let (result, bytes) = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        futures_util::future::join(forward, consume),
+    )
+    .await
+    .expect("forwarding must not deadlock a bounded target");
+    result.unwrap();
+    assert_eq!(bytes, b"original!");
+}
+
+#[test]
+fn source_failure_is_reported_without_successful_close() {
+    let mut translator = Text2TextRequestTranslator::new(2, 3);
+    let target = TestSink::default();
+    assert!(matches!(
+        run(translator.forward(
+            OneChunk(Some(Err("reader failed"))),
+            || TextDecoder,
+            target.pinned(),
+            TextEncoder::default()
+        )),
+        Err(RequestForwardError::Stream(StreamError::Input(
+            "reader failed"
+        )))
+    ));
+    assert!(!target.state.borrow().closed);
+}
+
+#[test]
+fn ready_source_and_target_still_yield_between_output_batches() {
+    let mut translator = Text2TextRequestTranslator::new(1, 4);
+    let target = TestSink::default();
+    let wakes = Arc::new(WakeCount(std::sync::atomic::AtomicUsize::new(0)));
+    let waker = Waker::from(wakes.clone());
+    {
+        let mut forward = std::pin::pin!(translator.forward(
+            OneChunk(Some(Ok(Bytes::from_static(b"original")))),
+            || TextDecoder,
+            target.pinned(),
+            TextEncoder::default()
+        ));
+        let mut cx = Context::from_waker(&waker);
+        assert!(forward.as_mut().poll(&mut cx).is_pending());
+        assert_eq!(target.state.borrow().chunks, 4);
+        assert_eq!(wakes.0.load(std::sync::atomic::Ordering::Relaxed), 1);
+        run(forward).unwrap();
+    }
+    assert!(target.state.borrow().closed);
+}
+
+#[test]
+fn late_source_failure_preserves_partial_output_without_finalization() {
+    let mut translator = Text2TextRequestTranslator::new(16 * 1024, 64);
+    let input =
+        futures_util::stream::iter([Ok(Bytes::from_static(b"partial")), Err("disconnected")]);
+    let target = TestSink::default();
+    assert!(matches!(
+        run(translator.forward(
+            input,
+            || TextDecoder,
+            target.pinned(),
+            TextEncoder::default()
+        )),
+        Err(RequestForwardError::Stream(StreamError::Input(
+            "disconnected"
+        )))
+    ));
+    assert_eq!(target.bytes(), b"partial");
+    assert!(!target.state.borrow().closed);
 }
 
 // A second concrete target type, representing a provider protocol switch.
@@ -473,162 +860,589 @@ impl RequestEncoder for OtherEncoder {
     }
 }
 
-#[test]
-fn translator_replays_original_bytes_with_fresh_codecs_after_partial_attempt() {
-    use adapter::t2t::{Text2TextRequestTranslator, request::RequestTranslatorError};
+impl ResponseEncoder for OtherEncoder {
+    fn accept(&mut self, event: ResponseEvent) -> Result<(), CodecError> {
+        ResponseEncoder::accept(&mut self.0, event)
+    }
 
-    let state = Rc::new(std::cell::RefCell::new(StoreState::default()));
+    fn advance(&mut self, output: &mut [u8]) -> Result<EncodeStep, CodecError> {
+        ResponseEncoder::advance(&mut self.0, output)
+    }
+
+    fn finish(&mut self) -> Result<(), CodecError> {
+        ResponseEncoder::finish(&mut self.0)
+    }
+}
+
+#[test]
+fn canceled_partial_forward_allows_a_fresh_attempt() {
     let decoder_count = Cell::new(0);
-    let mut translator = Text2TextRequestTranslator::with_limits(
-        OneChunk(Some(Ok(Bytes::from_static(b"original")))),
-        || {
-            decoder_count.set(decoder_count.get() + 1);
-            TextDecoder
-        },
-        TestStore(state.clone()),
-        limits(),
-    );
-    assert!(state.borrow().bytes.is_empty());
+    let mut translator = Text2TextRequestTranslator::new(2, 3);
+    let decoder_factory = || {
+        decoder_count.set(decoder_count.get() + 1);
+        TextDecoder
+    };
+    assert_eq!(decoder_count.get(), 0);
 
-    let mut first = Box::pin(run(translator.forward(TextEncoder::default())).unwrap());
-    assert!(state.borrow().sealed);
-    let mut cx = Context::from_waker(Waker::noop());
-    while first.as_mut().poll_next(&mut cx).is_pending() {}
-    assert!(matches!(
-        run(translator.forward(OtherEncoder(TextEncoder::default()))),
-        Err(RequestTranslatorError::AttemptActive)
-    ));
-    assert!(matches!(
-        run(translator.close()),
-        Err(RequestTranslatorError::AttemptActive)
-    ));
-    drop(first);
-
-    let second = run(translator.forward(OtherEncoder(TextEncoder::default()))).unwrap();
-    assert_eq!(collect(second), b"original!");
+    let first = TestSink::default();
+    {
+        let mut forward = std::pin::pin!(translator.forward(
+            OneChunk(Some(Ok(Bytes::from_static(b"original")))),
+            decoder_factory,
+            first.pinned(),
+            TextEncoder::default()
+        ));
+        let mut cx = Context::from_waker(Waker::noop());
+        assert!(forward.as_mut().poll(&mut cx).is_pending());
+    }
+    assert!(!first.bytes().is_empty());
+    assert!(!first.state.borrow().closed);
+    let second = TestSink::default();
+    run(translator.forward(
+        OneChunk(Some(Ok(Bytes::from_static(b"retry")))),
+        decoder_factory,
+        second.pinned(),
+        OtherEncoder(TextEncoder::default()),
+    ))
+    .unwrap();
+    assert_eq!(second.bytes(), b"retry!");
+    assert!(second.state.borrow().closed);
     assert_eq!(decoder_count.get(), 2);
-    assert_eq!(state.borrow().opens, 2);
-    run(translator.close()).unwrap();
-    run(translator.close()).unwrap();
-    assert_eq!(state.borrow().aborts, 1);
-    assert!(state.borrow().bytes.is_empty());
-    assert!(matches!(
-        run(translator.forward(TextEncoder::default())),
-        Err(RequestTranslatorError::Closed)
-    ));
 }
 
 #[test]
-fn failed_retention_cannot_be_reused_and_cleanup_failure_can_be_retried() {
-    use adapter::t2t::{Text2TextRequestTranslator, request::RequestTranslatorError};
-
-    let state = Rc::new(std::cell::RefCell::new(StoreState {
-        fail_append: true,
-        fail_abort: true,
-        ..StoreState::default()
-    }));
-    let mut translator = Text2TextRequestTranslator::new(
+fn completed_forward_accepts_different_source_factory_decoder_and_sink_types() {
+    let mut translator = Text2TextRequestTranslator::new(16 * 1024, 64);
+    let target = TestSink::default();
+    run(translator.forward(
         OneChunk(Some(Ok(Bytes::from_static(b"original")))),
-        || TextDecoder,
-        TestStore(state.clone()),
-    );
-    assert!(matches!(
-        run(translator.forward(TextEncoder::default())),
-        Err(RequestTranslatorError::Store("write failed"))
-    ));
-    assert!(!state.borrow().sealed);
-    assert!(matches!(
-        run(translator.forward(TextEncoder::default())),
-        Err(RequestTranslatorError::RetentionUnavailable)
-    ));
-    assert!(matches!(
-        run(translator.close()),
-        Err(RequestTranslatorError::Store("cleanup failed"))
-    ));
-    assert!(matches!(
-        run(translator.forward(TextEncoder::default())),
-        Err(RequestTranslatorError::Closed)
-    ));
-    state.borrow_mut().fail_abort = false;
-    run(translator.close()).unwrap();
-    assert_eq!(state.borrow().aborts, 2);
+        TextDecoder::default,
+        target.pinned(),
+        TextEncoder::default(),
+    ))
+    .unwrap();
+    assert!(target.state.borrow().closed);
+    assert_eq!(target.bytes(), b"original!");
+    struct OtherDecoder(TextDecoder);
+    impl RequestDecoder for OtherDecoder {
+        fn advance(
+            &mut self,
+            input: &mut Bytes,
+            eof: bool,
+        ) -> Result<DecodeStep<RequestEvent>, CodecError> {
+            RequestDecoder::advance(&mut self.0, input, eof)
+        }
+    }
+    let mut second = Vec::new();
+    let sink = futures_util::sink::unfold(&mut second, |bytes, chunk: Bytes| async move {
+        bytes.extend_from_slice(&chunk);
+        Ok::<_, Infallible>(bytes)
+    });
+    let decoder = OtherDecoder(TextDecoder);
+    run(translator.forward(
+        futures_util::stream::iter([Ok::<_, Infallible>(Bytes::from_static(b"second"))]),
+        move || decoder,
+        sink,
+        OtherEncoder(TextEncoder::default()),
+    ))
+    .unwrap();
+    assert_eq!(second, b"second!");
 }
 
 #[test]
-fn canceled_retention_is_not_mistaken_for_a_complete_request() {
-    use adapter::t2t::{Text2TextRequestTranslator, request::RequestTranslatorError};
-
+fn unpolled_forward_drops_owned_source_without_polling_or_creating_decoder() {
+    struct TrackedInput<'a> {
+        polls: &'a Cell<usize>,
+        drops: &'a Cell<usize>,
+    }
+    impl Stream for TrackedInput<'_> {
+        type Item = Result<Bytes, Infallible>;
+        fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            self.polls.set(self.polls.get() + 1);
+            Poll::Pending
+        }
+    }
+    impl Drop for TrackedInput<'_> {
+        fn drop(&mut self) {
+            self.drops.set(self.drops.get() + 1);
+        }
+    }
     let polls = Cell::new(0);
-    let state = Rc::new(std::cell::RefCell::new(StoreState::default()));
-    let mut translator = Text2TextRequestTranslator::new(
+    let drops = Cell::new(0);
+    let decoder_count = Cell::new(0);
+    let mut translator = Text2TextRequestTranslator::new(16 * 1024, 64);
+    let decoder_factory = || {
+        decoder_count.set(decoder_count.get() + 1);
+        TextDecoder
+    };
+    let unused = TestSink::default();
+    let forward = translator.forward(
+        TrackedInput {
+            polls: &polls,
+            drops: &drops,
+        },
+        decoder_factory,
+        unused.pinned(),
+        TextEncoder::default(),
+    );
+    assert_eq!(drops.get(), 0);
+    drop(forward);
+    assert_eq!(drops.get(), 1);
+    assert_eq!(polls.get(), 0);
+    assert_eq!(decoder_count.get(), 0);
+    assert!(unused.bytes().is_empty());
+    assert!(!unused.state.borrow().closed);
+    let target = TestSink::default();
+    run(translator.forward(
+        OneChunk(Some(Ok(Bytes::from_static(b"original")))),
+        decoder_factory,
+        target.pinned(),
+        TextEncoder::default(),
+    ))
+    .unwrap();
+    assert_eq!(decoder_count.get(), 1);
+    assert_eq!(target.bytes(), b"original!");
+}
+
+#[test]
+fn forwarding_outputs_before_upload_completes_and_cancellation_consumes_source() {
+    let polls = Cell::new(0);
+    let mut translator = Text2TextRequestTranslator::new(16 * 1024, 64);
+    let input = LocalInput {
+        polls: &polls,
+        next: Rc::new(Cell::new(0)),
+        _pinned: PhantomPinned,
+    };
+    let target = TestSink::default();
+    {
+        let mut attempt = std::pin::pin!(translator.forward(
+            input,
+            || TextDecoder,
+            target.pinned(),
+            TextEncoder::default()
+        ));
+        let mut cx = Context::from_waker(Waker::noop());
+        assert!(attempt.as_mut().poll(&mut cx).is_pending());
+    }
+    assert_eq!(polls.get(), 2);
+    assert_eq!(target.bytes(), b"hello");
+    assert!(!target.state.borrow().closed);
+}
+
+#[test]
+fn cancellation_while_waiting_for_first_input_drops_source() {
+    struct PendingInput(Rc<Cell<usize>>);
+    impl Stream for PendingInput {
+        type Item = Result<Bytes, Infallible>;
+
+        fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            Poll::Pending
+        }
+    }
+    impl Drop for PendingInput {
+        fn drop(&mut self) {
+            self.0.set(self.0.get() + 1);
+        }
+    }
+    let drops = Rc::new(Cell::new(0));
+    let mut translator = Text2TextRequestTranslator::new(2, 3);
+    let target = TestSink::default();
+    {
+        let mut forward = std::pin::pin!(translator.forward(
+            PendingInput(drops.clone()),
+            || TextDecoder,
+            target.pinned(),
+            TextEncoder::default()
+        ));
+        assert!(
+            forward
+                .as_mut()
+                .poll(&mut Context::from_waker(Waker::noop()))
+                .is_pending()
+        );
+    }
+    assert_eq!(drops.get(), 1);
+    assert!(target.bytes().is_empty());
+    assert!(!target.state.borrow().closed);
+    run(translator.forward(
+        OneChunk(Some(Ok(Bytes::from_static(b"fresh")))),
+        || TextDecoder,
+        target.pinned(),
+        TextEncoder::default(),
+    ))
+    .unwrap();
+    assert_eq!(target.bytes(), b"fresh!");
+    assert_eq!(drops.get(), 1);
+}
+
+#[test]
+fn codec_failure_does_not_prevent_a_fresh_attempt() {
+    let mut translator = Text2TextRequestTranslator::new(2, 3);
+    let failed = TestSink::default();
+    assert!(matches!(
+        run(translator.forward(
+            OneChunk(Some(Ok(Bytes::from_static(b"original")))),
+            || BadEof,
+            failed.pinned(),
+            TextEncoder::default()
+        )),
+        Err(RequestForwardError::Stream(StreamError::Codec(
+            CodecError::Contract(_)
+        )))
+    ));
+    assert!(!failed.state.borrow().closed);
+    let target = TestSink::default();
+    run(translator.forward(
+        OneChunk(Some(Ok(Bytes::from_static(b"fresh")))),
+        || TextDecoder,
+        target.pinned(),
+        TextEncoder::default(),
+    ))
+    .unwrap();
+    assert_eq!(target.bytes(), b"fresh!");
+    assert!(target.state.borrow().closed);
+}
+
+#[test]
+fn response_forward_is_lazy_and_accepts_fresh_per_call_types() {
+    let count = Cell::new(0);
+    let polls = Cell::new(0);
+    let mut translator = Text2TextResponseTranslator::new(2, 3);
+    let target = TestSink::default();
+    let forward = translator.forward(
         LocalInput {
             polls: &polls,
             next: Rc::new(Cell::new(0)),
             _pinned: PhantomPinned,
         },
-        || TextDecoder,
-        TestStore(state.clone()),
-    );
-    {
-        let mut attempt = std::pin::pin!(translator.forward(TextEncoder::default()));
-        let mut cx = Context::from_waker(Waker::noop());
-        assert!(attempt.as_mut().poll(&mut cx).is_pending());
-    }
-    assert_eq!(state.borrow().bytes, b"hello");
-    assert!(!state.borrow().sealed);
-    assert!(matches!(
-        run(translator.forward(TextEncoder::default())),
-        Err(RequestTranslatorError::RetentionUnavailable)
-    ));
-    run(translator.close()).unwrap();
-}
-
-#[test]
-fn reader_open_failure_does_not_poison_successfully_sealed_retention() {
-    use adapter::t2t::{Text2TextRequestTranslator, request::RequestTranslatorError};
-
-    let state = Rc::new(std::cell::RefCell::new(StoreState {
-        fail_open: true,
-        ..StoreState::default()
-    }));
-    let mut translator = Text2TextRequestTranslator::with_limits(
-        OneChunk(Some(Ok(Bytes::from_static(b"original")))),
-        || TextDecoder,
-        TestStore(state.clone()),
-        limits(),
-    );
-    assert!(matches!(
-        run(translator.forward(TextEncoder::default())),
-        Err(RequestTranslatorError::Store("read failed"))
-    ));
-    state.borrow_mut().fail_open = false;
-    assert_eq!(
-        collect(run(translator.forward(TextEncoder::default())).unwrap()),
-        b"original!"
-    );
-    run(translator.close()).unwrap();
-}
-
-#[test]
-fn response_translator_creates_a_fresh_client_encoder_for_each_provider_body() {
-    use adapter::t2t::Text2TextResponseTranslator;
-
-    let count = Cell::new(0);
-    let mut translator = Text2TextResponseTranslator::with_limits(
         || {
             count.set(count.get() + 1);
-            TextEncoder::default()
+            TextDecoder
         },
-        limits(),
+        target.pinned(),
+        TextEncoder::default(),
     );
-    for body in [b"first".as_slice(), b"second"] {
-        let stream = translator.start_attempt(
-            OneChunk(Some(Ok(Bytes::copy_from_slice(body)))),
-            TextDecoder,
-        );
-        let mut expected = body.to_vec();
-        expected.push(b'!');
-        assert_eq!(collect(stream), expected);
+    assert_eq!(count.get(), 0);
+    assert_eq!(polls.get(), 0);
+    run(forward).unwrap();
+    assert_eq!(target.bytes(), b"hello world!");
+    assert_eq!(count.get(), 1);
+    assert_eq!(polls.get(), 4);
+
+    struct OtherDecoder(TextDecoder);
+    impl ResponseDecoder for OtherDecoder {
+        fn advance(
+            &mut self,
+            input: &mut Bytes,
+            eof: bool,
+        ) -> Result<DecodeStep<ResponseEvent>, CodecError> {
+            ResponseDecoder::advance(&mut self.0, input, eof)
+        }
     }
-    assert_eq!(count.get(), 2);
+    let mut output = Vec::new();
+    let sink = futures_util::sink::unfold(&mut output, |output, chunk: Bytes| async move {
+        output.extend_from_slice(&chunk);
+        Ok::<_, Infallible>(output)
+    });
+    let decoder = OtherDecoder(TextDecoder);
+    run(translator.forward(
+        futures_util::stream::iter([Ok::<_, Infallible>(Bytes::from_static(b"second"))]),
+        move || decoder,
+        sink,
+        OtherEncoder(TextEncoder::default()),
+    ))
+    .unwrap();
+    assert_eq!(output, b"second!");
+}
+
+#[test]
+fn response_output_can_be_retained_across_scratch_reuse() {
+    let mut translator = Text2TextResponseTranslator::new(2, 3);
+    let mut retained = Vec::new();
+    for body in [b"first".as_slice(), b"second"] {
+        let mut chunks = Vec::new();
+        let target = futures_util::sink::unfold(&mut chunks, |chunks, chunk: Bytes| async move {
+            chunks.push(chunk);
+            Ok::<_, Infallible>(chunks)
+        });
+        run(translator.forward(
+            OneChunk(Some(Ok(Bytes::copy_from_slice(body)))),
+            || TextDecoder,
+            target,
+            TextEncoder::default(),
+        ))
+        .unwrap();
+        assert!(chunks.iter().all(|chunk| chunk.len() <= 2));
+        retained.push(chunks);
+    }
+    for (chunks, expected) in retained.iter().zip([b"first!".as_slice(), b"second!"]) {
+        let output: Vec<_> = chunks
+            .iter()
+            .flat_map(|chunk| chunk.iter().copied())
+            .collect();
+        assert_eq!(output, expected);
+    }
+}
+
+#[test]
+fn response_scratch_survives_success_target_failures_and_cancellation() {
+    struct ObserveOutput {
+        encoder: TextEncoder,
+        buffers: Rc<std::cell::RefCell<Vec<(usize, usize)>>>,
+    }
+    impl ResponseEncoder for ObserveOutput {
+        fn accept(&mut self, event: ResponseEvent) -> Result<(), CodecError> {
+            ResponseEncoder::accept(&mut self.encoder, event)
+        }
+
+        fn advance(&mut self, output: &mut [u8]) -> Result<EncodeStep, CodecError> {
+            self.buffers
+                .borrow_mut()
+                .push((output.as_ptr() as usize, output.len()));
+            ResponseEncoder::advance(&mut self.encoder, output)
+        }
+
+        fn finish(&mut self) -> Result<(), CodecError> {
+            ResponseEncoder::finish(&mut self.encoder)
+        }
+    }
+    let buffers = Rc::new(std::cell::RefCell::new(Vec::new()));
+    let mut translator = Text2TextResponseTranslator::new(2, 3);
+    for outcome in 0..6 {
+        let target = TestSink::default();
+        {
+            let mut state = target.state.borrow_mut();
+            state.fail_ready = outcome == 1;
+            state.fail_send = outcome == 2;
+            state.fail_close = outcome == 3;
+        }
+        let forward = translator.forward(
+            OneChunk(Some(Ok(Bytes::from_static(b"original")))),
+            || TextDecoder,
+            target.pinned(),
+            ObserveOutput {
+                encoder: TextEncoder::default(),
+                buffers: buffers.clone(),
+            },
+        );
+        if outcome == 4 {
+            let mut forward = std::pin::pin!(forward);
+            assert!(
+                forward
+                    .as_mut()
+                    .poll(&mut Context::from_waker(Waker::noop()))
+                    .is_pending()
+            );
+            assert_eq!(target.state.borrow().chunks, 3);
+            assert!(!target.state.borrow().closed);
+        } else if (1..=3).contains(&outcome) {
+            let expected = ["ready failed", "send failed", "close failed"][outcome - 1];
+            assert!(
+                matches!(run(forward), Err(ResponseForwardError::Target(error)) if error == expected)
+            );
+            assert!(!target.state.borrow().closed);
+        } else {
+            run(forward).unwrap();
+            assert_eq!(target.bytes(), b"original!");
+            assert!(target.state.borrow().closed);
+        }
+    }
+    let buffers = buffers.borrow();
+    assert!(!buffers.is_empty());
+    assert!(buffers.iter().all(|buffer| *buffer == buffers[0]));
+    assert_eq!(buffers[0].1, 2);
+}
+
+#[test]
+fn response_backpressure_stops_decoding_until_target_is_ready() {
+    struct CountDecoder(Rc<Cell<usize>>);
+    impl ResponseDecoder for CountDecoder {
+        fn advance(
+            &mut self,
+            input: &mut Bytes,
+            eof: bool,
+        ) -> Result<DecodeStep<ResponseEvent>, CodecError> {
+            let result = ResponseDecoder::advance(&mut TextDecoder, input, eof)?;
+            if matches!(result, DecodeStep::Event(_)) {
+                self.0.set(self.0.get() + 1);
+            }
+            Ok(result)
+        }
+    }
+    let decoded = Rc::new(Cell::new(0));
+    let mut translator = Text2TextResponseTranslator::new(2, 64);
+    let target = TestSink::default();
+    target.state.borrow_mut().blocked = true;
+    let mut forward = std::pin::pin!(translator.forward(
+        OneChunk(Some(Ok(Bytes::from_static(b"original")))),
+        || CountDecoder(decoded.clone()),
+        target.pinned(),
+        TextEncoder::default(),
+    ));
+    for _ in 0..3 {
+        assert!(
+            forward
+                .as_mut()
+                .poll(&mut Context::from_waker(Waker::noop()))
+                .is_pending()
+        );
+    }
+    assert_eq!(decoded.get(), 1);
+    assert!(target.bytes().is_empty());
+    target.unblock();
+    run(forward).unwrap();
+    assert_eq!(target.bytes(), b"original!");
+    assert!(target.state.borrow().closed);
+}
+
+#[test]
+fn response_unpolled_and_pending_forward_drop_owned_input() {
+    struct TrackedInput<'a> {
+        polls: &'a Cell<usize>,
+        drops: &'a Cell<usize>,
+    }
+    impl Stream for TrackedInput<'_> {
+        type Item = Result<Bytes, Infallible>;
+
+        fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            self.polls.set(self.polls.get() + 1);
+            Poll::Pending
+        }
+    }
+    impl Drop for TrackedInput<'_> {
+        fn drop(&mut self) {
+            self.drops.set(self.drops.get() + 1);
+        }
+    }
+    let polls = Cell::new(0);
+    let drops = Cell::new(0);
+    let decoders = Cell::new(0);
+    let mut translator = Text2TextResponseTranslator::new(2, 3);
+    for polled in [false, true] {
+        let target = TestSink::default();
+        let forward = translator.forward(
+            TrackedInput {
+                polls: &polls,
+                drops: &drops,
+            },
+            || {
+                decoders.set(decoders.get() + 1);
+                TextDecoder
+            },
+            target.pinned(),
+            TextEncoder::default(),
+        );
+        if polled {
+            let mut forward = std::pin::pin!(forward);
+            assert!(
+                forward
+                    .as_mut()
+                    .poll(&mut Context::from_waker(Waker::noop()))
+                    .is_pending()
+            );
+        } else {
+            drop(forward);
+        }
+        assert!(target.bytes().is_empty());
+        assert!(!target.state.borrow().closed);
+    }
+    assert_eq!(drops.get(), 2);
+    assert_eq!(polls.get(), 1);
+    assert_eq!(decoders.get(), 1);
+}
+
+#[test]
+fn response_late_codec_failure_preserves_partial_output_without_finalization() {
+    struct IncompleteResponse;
+    impl ResponseDecoder for IncompleteResponse {
+        fn advance(
+            &mut self,
+            input: &mut Bytes,
+            eof: bool,
+        ) -> Result<DecodeStep<ResponseEvent>, CodecError> {
+            if eof {
+                Err(CodecError::InvalidInput("incomplete response"))
+            } else {
+                ResponseDecoder::advance(&mut TextDecoder, input, eof)
+            }
+        }
+    }
+    let mut translator = Text2TextResponseTranslator::new(2, 3);
+    let target = TestSink::default();
+    assert!(matches!(
+        run(translator.forward(
+            OneChunk(Some(Ok(Bytes::from_static(b"partial")))),
+            || IncompleteResponse,
+            target.pinned(),
+            TextEncoder::default(),
+        )),
+        Err(ResponseForwardError::Stream(StreamError::Codec(
+            CodecError::InvalidInput(_)
+        )))
+    ));
+    assert_eq!(target.bytes(), b"partial");
+    assert!(!target.state.borrow().closed);
+    let retry = TestSink::default();
+    run(translator.forward(
+        OneChunk(Some(Ok(Bytes::from_static(b"fresh")))),
+        || TextDecoder,
+        retry.pinned(),
+        TextEncoder::default(),
+    ))
+    .unwrap();
+    assert_eq!(retry.bytes(), b"fresh!");
+}
+
+#[test]
+fn response_ready_output_batches_yield_and_self_wake() {
+    let mut translator = Text2TextResponseTranslator::new(1, 4);
+    let target = TestSink::default();
+    let wakes = Arc::new(WakeCount(std::sync::atomic::AtomicUsize::new(0)));
+    let waker = Waker::from(wakes.clone());
+    let mut forward = std::pin::pin!(translator.forward(
+        OneChunk(Some(Ok(Bytes::from_static(b"original")))),
+        || TextDecoder,
+        target.pinned(),
+        TextEncoder::default(),
+    ));
+    assert!(
+        forward
+            .as_mut()
+            .poll(&mut Context::from_waker(&waker))
+            .is_pending()
+    );
+    assert_eq!(target.state.borrow().chunks, 4);
+    assert_eq!(wakes.0.load(std::sync::atomic::Ordering::Relaxed), 1);
+    run(forward).unwrap();
+    assert!(target.state.borrow().closed);
+}
+
+#[tokio::test]
+async fn response_bounded_channel_drains_concurrently_and_closes_on_success() {
+    use futures_util::StreamExt;
+
+    let mut translator = Text2TextResponseTranslator::new(2, 3);
+    let (target, mut receiver) = futures_channel::mpsc::channel::<Bytes>(1);
+    let forward = translator.forward(
+        OneChunk(Some(Ok(Bytes::from_static(b"response")))),
+        || TextDecoder,
+        target,
+        TextEncoder::default(),
+    );
+    let consume = async {
+        let mut bytes = Vec::new();
+        while let Some(chunk) = receiver.next().await {
+            assert!(chunk.len() <= 2);
+            bytes.extend_from_slice(&chunk);
+        }
+        bytes
+    };
+    let (result, bytes) = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        futures_util::future::join(forward, consume),
+    )
+    .await
+    .expect("response forwarding must not deadlock a bounded target");
+    result.unwrap();
+    assert_eq!(bytes, b"response!");
 }

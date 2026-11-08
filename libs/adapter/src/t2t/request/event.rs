@@ -11,7 +11,7 @@ pub enum Role {
 
 /// Fragments are decoded text bytes, not JSON-escaped text or entire messages.
 /// Codecs must bound fragment sizes and handle UTF-8 split across fragments.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RequestEvent {
     MessageStarted { role: Role },
     TextStarted,

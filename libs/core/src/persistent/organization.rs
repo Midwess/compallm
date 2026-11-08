@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use super::ConnectionError;
-use crate::organization::{Organization, OrganizationMember, Role};
+use crate::organization::{Group, Organization, OrganizationMember, Role};
 
 #[derive(Debug, thiserror::Error)]
 pub enum OrganizationRepositoryError {
@@ -28,6 +28,25 @@ impl From<ConnectionError> for OrganizationRepositoryError {
 /// Use the current DbContext and leave transaction ownership to the caller.
 #[async_trait]
 pub trait OrganizationRepository: Send + Sync {
+    /// Find a role using its organization-scoped identity.
+    async fn find_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<Option<Role>, OrganizationRepositoryError>;
+    async fn find_roles(
+        &self,
+        organization_id: u64,
+        role_ids: &[u64],
+    ) -> Result<Vec<Role>, OrganizationRepositoryError>;
+    /// Find a group and its assigned roles using its organization-scoped identity.
+    async fn find_group(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+    ) -> Result<Option<Group>, OrganizationRepositoryError>;
+    /// Insert a group and its role links as one operation.
+    async fn create_group(&self, group: Group) -> Result<Group, OrganizationRepositoryError>;
     /// Return the member and active organization, using the compound key.
     async fn find_membership(
         &self,

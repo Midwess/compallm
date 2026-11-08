@@ -12,6 +12,7 @@ impl TryFrom<OrganizationRoleSchema> for Role {
             name: row.name,
             description: row.description,
             cedar_source: row.cedar_source,
+            org_owner: row.org_owner,
         };
         Ok(role)
     }

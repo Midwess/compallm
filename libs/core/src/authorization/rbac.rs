@@ -1,14 +1,15 @@
+use crate::persistent::organization::OrganizationRepository;
 use crate::{
     auth::AuthService, authorization::error::AuthorizationError, organization::Group,
     persistent::DbContext,
 };
-use rust_decimal::Error;
 
 use crate::organization::Role;
 
 pub struct RbacService {
     db: DbContext,
     auth_service: AuthService,
+    organizations: Box<dyn OrganizationRepository>,
 }
 
 impl RbacService {
@@ -23,23 +24,138 @@ impl RbacService {
         todo!()
     }
 
-    async fn create_group(&self, name: &str, roles: Vec<u64>) -> Result<Group, AuthorizationError> {
-        // Call the group create entities, applied some validation to entities group
-        // Insert group to database
-        todo!()
+    async fn create_group(
+        &self,
+        organization_id: u64,
+        name: &str,
+        roles: Vec<u64>,
+    ) -> Result<Group, AuthorizationError> {
+        if roles.len() > Group::MAX_ROLES {
+            return Err(crate::organization::group::GroupCreationError::TooManyRoles.into());
+        }
+        if roles.iter().collect::<std::collections::HashSet<_>>().len() != roles.len() {
+            return Err(crate::organization::group::GroupCreationError::DuplicateRole.into());
+        }
+        let assigned = self
+            .organizations
+            .find_roles(organization_id, &roles)
+            .await?;
+        if assigned.len() != roles.len() {
+            return Err(
+                crate::persistent::organization::OrganizationRepositoryError::NotFound.into(),
+            );
+        }
+        let group = Group::new(organization_id, name, "", assigned).await?;
+        Ok(self.organizations.create_group(group).await?)
     }
 
-    async fn assign_role(&self, role_id: u64, user_id: u64) -> Result<(), AuthorizationError> {
-        // Check if role already assigned
-        // Invalidate the user session so they will append a new role
-        todo!()
+    async fn assign_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+        user_id: u64,
+    ) -> Result<(), AuthorizationError> {
+        let (mut member, _) = self
+            .organizations
+            .find_membership(organization_id, user_id)
+            .await?
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        if member.roles.iter().any(|role| role.id == role_id) {
+            return Ok(());
+        }
+        let role = self
+            .organizations
+            .find_role(organization_id, role_id)
+            .await?
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        let previous = member.clone();
+        member.assign_role(role)?;
+        crate::transaction!(self.db, {
+            self.organizations.save_member(&member, &previous).await?;
+            self.auth_service
+                .invalidate_permissions(organization_id, &[user_id])
+                .await?;
+            Ok(())
+        })
     }
 
-    async fn unassign_role(&self, role_id: u64, user_id: u64) -> Result<(), AuthorizationError> {
-        todo!()
+    async fn unassign_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+        user_id: u64,
+    ) -> Result<(), AuthorizationError> {
+        let (mut member, _) = self
+            .organizations
+            .find_membership(organization_id, user_id)
+            .await?
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        if !member.roles.iter().any(|role| role.id == role_id) {
+            return Ok(());
+        }
+        let previous = member.clone();
+        member.unassign_role(role_id)?;
+        crate::transaction!(self.db, {
+            self.organizations.save_member(&member, &previous).await?;
+            self.auth_service
+                .invalidate_permissions(organization_id, &[user_id])
+                .await?;
+            Ok(())
+        })
     }
 
-    async fn assign_group(&self, group_id: u64, user_id: u64) -> Result<(), AuthorizationError> {
-        todo!()
+    async fn assign_group(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+        user_id: u64,
+    ) -> Result<(), AuthorizationError> {
+        let (mut member, _) = self
+            .organizations
+            .find_membership(organization_id, user_id)
+            .await?
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        if member.groups.iter().any(|group| group.id == group_id) {
+            return Ok(());
+        }
+        let group = self
+            .organizations
+            .find_group(organization_id, group_id)
+            .await?
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        let previous = member.clone();
+        member.assign_group(group)?;
+        crate::transaction!(self.db, {
+            self.organizations.save_member(&member, &previous).await?;
+            self.auth_service
+                .invalidate_permissions(organization_id, &[user_id])
+                .await?;
+            Ok(())
+        })
+    }
+
+    async fn unassign_group(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+        user_id: u64,
+    ) -> Result<(), AuthorizationError> {
+        let (mut member, _) = self
+            .organizations
+            .find_membership(organization_id, user_id)
+            .await?
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        if !member.groups.iter().any(|group| group.id == group_id) {
+            return Ok(());
+        }
+        let previous = member.clone();
+        member.unassign_group(group_id)?;
+        crate::transaction!(self.db, {
+            self.organizations.save_member(&member, &previous).await?;
+            self.auth_service
+                .invalidate_permissions(organization_id, &[user_id])
+                .await?;
+            Ok(())
+        })
     }
 }

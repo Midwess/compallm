@@ -83,12 +83,12 @@ JOIN organizations o ON o.id=s.organization_id AND o.status='active'
 JOIN organization_members m ON m.organization_id=s.organization_id AND m.user_id=s.user_id AND m.status='active'
 LEFT JOIN LATERAL (
  SELECT NULL::bigint AS group_id, NULL::text AS group_name, NULL::text AS group_description,
-        r.id AS role_id, r.name AS role_name, r.description AS role_description, r.cedar_source
+        r.id AS role_id, r.name AS role_name, r.description AS role_description, r.cedar_source, r.org_owner
  FROM organization_member_roles mr
  JOIN organization_roles r ON r.organization_id=mr.organization_id AND r.id=mr.role_id
  WHERE mr.organization_id=s.organization_id AND mr.user_id=s.user_id
  UNION ALL
- SELECT g.id, g.name, g.description, r.id, r.name, r.description, r.cedar_source
+ SELECT g.id, g.name, g.description, r.id, r.name, r.description, r.cedar_source, r.org_owner
  FROM organization_group_members gm
  JOIN organization_groups g ON g.organization_id=gm.organization_id AND g.id=gm.group_id
  LEFT JOIN organization_group_roles gr ON gr.organization_id=g.organization_id AND gr.group_id=g.id

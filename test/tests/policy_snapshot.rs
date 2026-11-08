@@ -177,6 +177,7 @@ fn merged_roles_deduplicate_and_inherited_forbid_overrides_direct_permit() -> an
         name: format!("Role {id}"),
         description: String::new(),
         cedar_source: source,
+        org_owner: false,
     };
     let direct = role(10, permit.into());
     let inherited = role(

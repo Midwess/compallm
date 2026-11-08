@@ -14,6 +14,7 @@ pub struct Role {
     pub name: String,
     pub description: String,
     pub cedar_source: String,
+    pub org_owner: bool,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -25,6 +26,10 @@ pub enum RoleCreationError {
 }
 
 impl Role {
+    /// Whether this is the organization's designated Owner role.
+    pub fn org_owner(&self) -> bool {
+        self.org_owner
+    }
     /// Maximum role name length, in Unicode characters, after trimming.
     pub const MAX_NAME_LENGTH: usize = 64;
 
@@ -116,6 +121,7 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
             Self::new(organization_id, "Admin", "", "").await?,
             Self::new(organization_id, "Member", "", "").await?,
         ];
+        roles[0].org_owner = true;
         let [owner_id, admin_id, member_id] = [roles[0].id, roles[1].id, roles[2].id];
         for (role, source) in
             roles
@@ -144,6 +150,7 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
             name,
             description: description.into(),
             cedar_source: cedar_source.into(),
+            org_owner: false,
         })
     }
 }

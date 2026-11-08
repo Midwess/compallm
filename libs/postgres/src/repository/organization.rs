@@ -117,6 +117,113 @@ impl OrganizationRepository {
 
 #[async_trait::async_trait]
 impl CoreRepository for OrganizationRepository {
+    async fn find_roles(
+        &self,
+        organization_id: u64,
+        role_ids: &[u64],
+    ) -> Result<Vec<Role>, OrganizationRepositoryError> {
+        let ids = role_ids
+            .iter()
+            .map(|id| Self::database_id(*id))
+            .collect::<Result<Vec<_>, _>>()?;
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let rows = db.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT * FROM organization_roles WHERE organization_id=$1 AND id IN (SELECT value::bigint FROM jsonb_array_elements_text($2::jsonb)) ORDER BY id",
+            [Self::database_id(organization_id)?.into(),serde_json::json!(ids).into()])).await.map_err(OrganizationRepositoryError::database)?;
+        rows.into_iter()
+            .map(|row| {
+                Role::try_from(
+                    OrganizationRoleSchema::from_query_result(&row, "")
+                        .map_err(OrganizationRepositoryError::database)?,
+                )
+                .map_err(OrganizationRepositoryError::database)
+            })
+            .collect()
+    }
+    async fn create_group(&self, group: Group) -> Result<Group, OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let roles = serde_json::json!(group.roles.iter().map(|role| role.id).collect::<Vec<_>>());
+        db.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "WITH inserted AS (INSERT INTO organization_groups (organization_id,id,name,description) VALUES ($1,$2,$3,$4) RETURNING organization_id,id), links AS (INSERT INTO organization_group_roles (organization_id,group_id,role_id) SELECT inserted.organization_id,inserted.id,value::bigint FROM inserted,jsonb_array_elements_text($5::jsonb) RETURNING role_id) SELECT id FROM inserted",
+            [Self::database_id(group.organization_id)?.into(),Self::database_id(group.id)?.into(),group.name.clone().into(),group.description.clone().into(),roles.into()]))
+            .await.map_err(OrganizationRepositoryError::database)?.ok_or(OrganizationRepositoryError::NotFound)?;
+        Ok(group)
+    }
+    async fn find_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<Option<Role>, OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let row = db
+            .query_one_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "SELECT * FROM organization_roles WHERE organization_id=$1 AND id=$2",
+                [
+                    Self::database_id(organization_id)?.into(),
+                    Self::database_id(role_id)?.into(),
+                ],
+            ))
+            .await
+            .map_err(OrganizationRepositoryError::database)?;
+        row.map(|row| {
+            Role::try_from(
+                OrganizationRoleSchema::from_query_result(&row, "")
+                    .map_err(OrganizationRepositoryError::database)?,
+            )
+            .map_err(OrganizationRepositoryError::database)
+        })
+        .transpose()
+    }
+
+    async fn find_group(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+    ) -> Result<Option<Group>, OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let organization_id = Self::database_id(organization_id)?;
+        let group_id = Self::database_id(group_id)?;
+        let row = db
+            .query_one_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "SELECT * FROM organization_groups WHERE organization_id=$1 AND id=$2",
+                [organization_id.into(), group_id.into()],
+            ))
+            .await
+            .map_err(OrganizationRepositoryError::database)?;
+        let Some(row) = row else {
+            return Ok(None);
+        };
+        let group = OrganizationGroupSchema::from_query_result(&row, "")
+            .map_err(OrganizationRepositoryError::database)?;
+        let rows = db.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT r.* FROM organization_group_roles gr JOIN organization_roles r ON r.organization_id=gr.organization_id AND r.id=gr.role_id WHERE gr.organization_id=$1 AND gr.group_id=$2 ORDER BY r.id", [organization_id.into(), group_id.into()]))
+            .await.map_err(OrganizationRepositoryError::database)?;
+        let roles = rows
+            .into_iter()
+            .map(|row| {
+                Role::try_from(
+                    OrganizationRoleSchema::from_query_result(&row, "")
+                        .map_err(OrganizationRepositoryError::database)?,
+                )
+                .map_err(OrganizationRepositoryError::database)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Some(
+            crate::mappers::role::MappedGroup::try_from((group, roles))
+                .map(Group::from)
+                .map_err(OrganizationRepositoryError::database)?,
+        ))
+    }
+
     async fn save_member(
         &self,
         member: &OrganizationMember,
@@ -198,11 +305,6 @@ impl CoreRepository for OrganizationRepository {
                 "INSERT INTO organization_member_roles (organization_id,user_id,role_id) SELECT $1,$2,value::bigint FROM jsonb_array_elements_text($3::jsonb)", [org.into(),user.into(),serde_json::json!(roles).into()])).await.map_err(OrganizationRepositoryError::database)?;
             db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
                 "INSERT INTO organization_group_members (organization_id,group_id,user_id) SELECT $1,value::bigint,$2 FROM jsonb_array_elements_text($3::jsonb)", [org.into(),user.into(),serde_json::json!(groups).into()])).await.map_err(OrganizationRepositoryError::database)?;
-            use compallm_core::persistent::session::SessionRepository as _;
-            super::session::SessionRepository
-                .invalidate_permissions(member.organization_id, &[member.user_id])
-                .await
-                .map_err(OrganizationRepositoryError::database)?;
             Ok(())
         })
     }
@@ -266,7 +368,7 @@ impl CoreRepository for OrganizationRepository {
         let db = PostgresConnection::from_context(&context)?;
         let mut rows = Vec::new();
         for role in roles {
-            rows.push(serde_json::json!({"organization_id":role.organization_id,"id":role.id,"name":role.name,"description":role.description,"cedar_source":role.cedar_source}));
+            rows.push(serde_json::json!({"organization_id":role.organization_id,"id":role.id,"name":role.name,"description":role.description,"cedar_source":role.cedar_source,"org_owner":role.org_owner()}));
         }
         db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
             "INSERT INTO organization_roles SELECT * FROM jsonb_populate_recordset(NULL::organization_roles,$1::jsonb)",[serde_json::json!(rows).into()])).await.map_err(OrganizationRepositoryError::database)?;

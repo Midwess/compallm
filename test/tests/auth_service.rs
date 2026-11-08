@@ -77,6 +77,29 @@ struct OrganizationRepositoryStub(Arc<Mutex<State>>);
 
 #[async_trait::async_trait]
 impl OrganizationRepository for OrganizationRepositoryStub {
+    async fn find_roles(
+        &self,
+        _: u64,
+        _: &[u64],
+    ) -> Result<Vec<Role>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn create_group(
+        &self,
+        _: compallm_core::organization::Group,
+    ) -> Result<compallm_core::organization::Group, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn find_role(&self, _: u64, _: u64) -> Result<Option<Role>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn find_group(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Option<compallm_core::organization::Group>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
     async fn save_member(
         &self,
         _member: &OrganizationMember,
@@ -539,6 +562,7 @@ impl Fixture {
             name: ["Owner", "Admin", "Member"][index].into(),
             description: String::new(),
             cedar_source: String::new(),
+            org_owner: index == 0,
         };
         role.cedar_source = format!(
             r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.list", resource == Compallm::Organization::"{}");"#,

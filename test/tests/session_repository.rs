@@ -372,6 +372,10 @@ async fn policy_membership_loads_version_and_relationships_in_one_scoped_stateme
             "cedar_source".into(),
             assigned_role.map(|r| r.cedar_source.clone()).into(),
         );
+        row.insert(
+            "org_owner".into(),
+            assigned_role.map(|r| r.org_owner).into(),
+        );
         rows.push(row);
     }
     let db = Arc::new(

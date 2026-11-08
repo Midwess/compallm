@@ -27,6 +27,29 @@ struct Repository {
 }
 #[async_trait::async_trait]
 impl OrganizationRepository for Repository {
+    async fn find_roles(
+        &self,
+        _: u64,
+        _: &[u64],
+    ) -> Result<Vec<Role>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn create_group(
+        &self,
+        _: compallm_core::organization::Group,
+    ) -> Result<compallm_core::organization::Group, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn find_role(&self, _: u64, _: u64) -> Result<Option<Role>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn find_group(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Option<compallm_core::organization::Group>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
     async fn save_member(
         &self,
         _member: &OrganizationMember,

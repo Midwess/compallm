@@ -20,6 +20,8 @@ pub struct OrganizationMember {
 pub enum MembershipAssignmentError {
     #[error("assignment belongs to another organization")]
     ForeignOrganization,
+    #[error("the organization owner role cannot be unassigned")]
+    OwnerRole,
 }
 
 impl SystemPolicy for OrganizationMember {
@@ -87,6 +89,32 @@ impl OrganizationMember {
         if !self.groups.iter().any(|existing| existing.id == group.id) {
             self.groups.push(group);
         }
+        Ok(())
+    }
+
+    /// Remove a direct role assignment. Group-inherited roles are unaffected.
+    pub fn unassign_role(&mut self, role_id: u64) -> Result<(), MembershipAssignmentError> {
+        if self
+            .roles
+            .iter()
+            .any(|role| role.id == role_id && role.org_owner())
+        {
+            return Err(MembershipAssignmentError::OwnerRole);
+        }
+        self.roles.retain(|role| role.id != role_id);
+        Ok(())
+    }
+
+    /// Remove a group membership, without changing the group's roles.
+    pub fn unassign_group(&mut self, group_id: u64) -> Result<(), MembershipAssignmentError> {
+        if self
+            .groups
+            .iter()
+            .any(|group| group.id == group_id && group.roles.iter().any(Role::org_owner))
+        {
+            return Err(MembershipAssignmentError::OwnerRole);
+        }
+        self.groups.retain(|group| group.id != group_id);
         Ok(())
     }
 

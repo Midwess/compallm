@@ -10,6 +10,9 @@ async fn entity_creation_owns_ids_and_default_policy_relationships() {
     let user = User::from_email("james@example.com").await.unwrap();
     let organization = Organization::new("Research").await.unwrap();
     let roles = Role::defaults(organization.id).await.unwrap();
+    assert!(roles[0].org_owner());
+    assert!(!roles[1].org_owner());
+    assert!(!roles[2].org_owner());
     let owner = roles[0].clone();
     let custom = Role::new(organization.id, "Reviewer", "", " ")
         .await
@@ -113,4 +116,25 @@ async fn group_constructor_limits_assigned_roles() {
         Group::new(1, "Group", "", too_many).await,
         Err(GroupCreationError::TooManyRoles)
     ));
+}
+
+#[tokio::test]
+async fn group_constructor_checks_name_and_role_scope() {
+    use compallm_core::organization::group::GroupCreationError;
+    compallm_postgres::init_id_generator("group-validation-test").unwrap();
+    let role = Role::new(1, "Role", "", "").await.unwrap();
+    assert!(matches!(
+        Group::new(1, "  ", "", vec![]).await,
+        Err(GroupCreationError::InvalidName(_))
+    ));
+    assert!(matches!(
+        Group::new(2, "Group", "", vec![role.clone()]).await,
+        Err(GroupCreationError::ForeignRole)
+    ));
+    assert!(matches!(
+        Group::new(1, "Group", "", vec![role.clone(), role]).await,
+        Err(GroupCreationError::DuplicateRole)
+    ));
+    let group = Group::new(1, "  Research  ", "", vec![]).await.unwrap();
+    assert_eq!(group.name, "Research");
 }

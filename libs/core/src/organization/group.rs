@@ -19,8 +19,14 @@ pub struct Group {
 
 #[derive(Debug, thiserror::Error)]
 pub enum GroupCreationError {
+    #[error("group name must contain 1 to 128 characters")]
+    InvalidName(#[source] validify::ValidationErrors),
     #[error("a group can have at most 32 roles")]
     TooManyRoles,
+    #[error("group roles must belong to the same organization")]
+    ForeignRole,
+    #[error("group roles must be distinct")]
+    DuplicateRole,
     #[error("ID generation failed")]
     IdGeneration(#[from] DistributedIdError),
 }
@@ -48,10 +54,20 @@ impl Group {
         if roles.len() > Self::MAX_ROLES {
             return Err(GroupCreationError::TooManyRoles);
         }
+        let name = Self::normalize_name(&name.into()).map_err(GroupCreationError::InvalidName)?;
+        let mut role_ids = HashSet::new();
+        for role in &roles {
+            if role.organization_id != organization_id {
+                return Err(GroupCreationError::ForeignRole);
+            }
+            if !role_ids.insert(role.id) {
+                return Err(GroupCreationError::DuplicateRole);
+            }
+        }
         Ok(Self {
             id: try_gen_id().await?,
             organization_id,
-            name: name.into(),
+            name,
             description: description.into(),
             roles,
         })

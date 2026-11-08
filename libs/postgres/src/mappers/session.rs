@@ -83,6 +83,7 @@ impl TryFrom<Vec<sea_orm::QueryResult>> for MappedPolicyMembership {
                         name: row.try_get("", "role_name")?,
                         description: row.try_get("", "role_description")?,
                         cedar_source: row.try_get("", "cedar_source")?,
+                        org_owner: row.try_get("", "org_owner")?,
                     })
                 })
                 .transpose()?;

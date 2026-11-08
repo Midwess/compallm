@@ -1,7 +1,7 @@
 #[path = "support/roles.rs"]
 mod role_fixture;
-#[path = "support/compression.rs"]
-mod test_compression;
+#[path = "support/token_codec.rs"]
+mod test_codec;
 #[path = "support/token_pair.rs"]
 mod token_pair;
 use role_fixture::default_roles;
@@ -96,14 +96,7 @@ trait TestTokenEncoding {
 }
 
 fn sign_unchecked(token: &AccessToken, lifetime: Duration) -> String {
-    let dictionary = compallm_core::compression::DCompression::new(
-        compallm_core::compression::DictionaryType::AccessToken,
-        1,
-        "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source",
-    )
-    .unwrap();
-    let payload = serde_json::json!({"dictionary_version": 1, "data": test_compression::compress(&dictionary, &serde_json::to_string(token).unwrap()).unwrap()});
-    hero::token::jwt::create_jwt_token(&payload, SECRET, lifetime).unwrap()
+    test_codec::sign_unchecked(token, SECRET, lifetime)
 }
 
 fn make_oversized(role: &mut Role) {
@@ -120,17 +113,7 @@ fn make_oversized(role: &mut Role) {
 
 impl TestTokenEncoding for AccessToken {
     fn encode_compressed(&self, secret: &str, lifetime: Duration) -> Result<String, AuthError> {
-        self.validate(compallm_utils::time::unix_timestamp())?;
-        let dictionary = compallm_core::compression::DCompression::new(
-            compallm_core::compression::DictionaryType::AccessToken,
-            1,
-            "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source",
-        )?;
-        let payload = serde_json::json!({"dictionary_version": 1, "data": test_compression::compress(&dictionary, &serde_json::to_string(self)?)?});
-        let encoded = hero::token::jwt::create_jwt_token(&payload, secret, lifetime)
-            .map_err(|_| AuthError::InvalidToken)?;
-        AccessToken::check_size(encoded.len())?;
-        Ok(encoded)
+        test_codec::encode(self, secret, lifetime)
     }
 }
 
@@ -156,46 +139,11 @@ impl compallm_core::persistent::dictionary::DictionaryRepository for TestDiction
 }
 
 fn decode_token(encoded: &str, secret: &str) -> Result<AccessToken, AuthError> {
-    #[derive(Clone, serde::Deserialize)]
-    struct Compressed {
-        dictionary_version: u32,
-        data: String,
-    }
-    if let Ok(payload) = hero::token::jwt::decode_jwt_token::<Compressed>(encoded, secret) {
-        let dictionary = compallm_core::compression::DCompression::new(
-            compallm_core::compression::DictionaryType::AccessToken,
-            1,
-            "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source",
-        )?;
-        if payload.dictionary_version != dictionary.version {
-            return Err(AuthError::InvalidToken);
-        }
-        let token: AccessToken =
-            serde_json::from_str(&test_compression::decompress(&dictionary, &payload.data)?)?;
-        return match token {
-            AccessToken::Encrypted(value) => {
-                compallm_core::auth::EncryptedAccessToken::new(secret)?.decrypt(&value)
-            }
-            token => Ok(token),
-        };
-    }
-    AccessToken::decode(encoded, secret)
+    test_codec::decode(encoded, secret)
 }
 
 fn test_challenge(email: &str, secret: &str) -> Result<EmailOtpChallenge, AuthError> {
-    let mut challenge = EmailOtpChallenge::new(email, secret)?;
-    let plaintext = AccessToken::decode(&challenge.access_token, secret)?;
-    let encrypted = plaintext.encrypt(&compallm_core::auth::EncryptedAccessToken::new(secret)?)?;
-    let dictionary = compallm_core::compression::DCompression::new(
-        compallm_core::compression::DictionaryType::AccessToken,
-        1,
-        "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source",
-    )?;
-    let payload = serde_json::json!({"dictionary_version": 1, "data": test_compression::compress(&dictionary, &serde_json::to_string(&encrypted)?)?});
-    challenge.access_token =
-        hero::token::jwt::create_jwt_token(&payload, secret, Duration::from_secs(600))
-            .map_err(|_| AuthError::InvalidToken)?;
-    Ok(challenge)
+    test_codec::challenge(email, secret)
 }
 
 #[derive(Default)]
@@ -889,7 +837,7 @@ async fn issued_tokens_use_signed_versioned_compression() {
                 .is_err()
         );
     }
-    let missing = serde_json::json!({"dictionary_version": 999, "data": "abc"});
+    let missing = serde_json::json!({"compressed": {"dictionary_version": 999, "data": "abc"}});
     let encoded =
         hero::token::jwt::create_jwt_token(&missing, SECRET, Duration::from_secs(60)).unwrap();
     assert!(matches!(
@@ -900,10 +848,14 @@ async fn issued_tokens_use_signed_versioned_compression() {
             .await,
         Err(AuthError::DictionaryUnavailable)
     ));
-    let legacy = AccessToken::Refresh(
-        RefreshToken::from_session(&stored_session(1, 7, 84, "Team"), REFRESH_LIFETIME).unwrap(),
+    let legacy = hero::token::jwt::create_jwt_token(
+        AccessToken::Refresh(
+            RefreshToken::from_session(&stored_session(1, 7, 84, "Team"), REFRESH_LIFETIME)
+                .unwrap(),
+        ),
+        SECRET,
+        REFRESH_LIFETIME,
     )
-    .encode(SECRET, REFRESH_LIFETIME)
     .unwrap();
     assert!(matches!(
         fixture
@@ -911,7 +863,7 @@ async fn issued_tokens_use_signed_versioned_compression() {
             .1
             .scope(service.authenticate_token(&legacy))
             .await,
-        Err(AuthError::InvalidToken)
+        Ok(AccessToken::Refresh(_))
     ));
     let wrong = compallm_core::compression::DCompression::new(
         compallm_core::compression::DictionaryType::AccessToken,
@@ -919,8 +871,7 @@ async fn issued_tokens_use_signed_versioned_compression() {
         "a different dictionary",
     )
     .unwrap();
-    let payload =
-        serde_json::json!({"dictionary_version": 1, "data": wrong.compress("{}").await.unwrap()});
+    let payload = serde_json::json!({"compressed": {"dictionary_version": 1, "data": wrong.compress("{}").await.unwrap()}});
     let encoded =
         hero::token::jwt::create_jwt_token(&payload, SECRET, Duration::from_secs(60)).unwrap();
     assert!(matches!(
@@ -960,11 +911,10 @@ async fn email_challenge_uses_compressed_wrapper_and_keeps_otp_encrypted() {
         .await
         .unwrap();
     assert!(matches!(token, AccessToken::EmailOtp(_)));
-    #[derive(Clone, serde::Deserialize)]
-    struct Payload {
-        data: String,
-    }
-    let envelope: Payload = hero::token::jwt::decode_jwt_token(&issued.token, SECRET).unwrap();
+    let envelope: AccessToken = hero::token::jwt::decode_jwt_token(&issued.token, SECRET).unwrap();
+    let AccessToken::Compressed(envelope) = envelope else {
+        panic!("expected compressed token")
+    };
     let dictionary = compallm_core::compression::DCompression::new(
         compallm_core::compression::DictionaryType::AccessToken,
         1,
@@ -982,10 +932,6 @@ async fn email_challenge_uses_compressed_wrapper_and_keeps_otp_encrypted() {
 #[tokio::test]
 async fn refresh_reads_old_dictionary_and_issues_with_latest() {
     use compallm_core::compression::{DCompression, DictionaryType};
-    #[derive(Clone, serde::Deserialize)]
-    struct Compressed {
-        dictionary_version: u32,
-    }
     let original =
         "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source";
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
@@ -1012,7 +958,10 @@ async fn refresh_reads_old_dictionary_and_issues_with_latest() {
         .await
         .unwrap();
     for token in [&renewed.access_token, &renewed.refresh_token] {
-        let payload: Compressed = hero::token::jwt::decode_jwt_token(token, SECRET).unwrap();
+        let payload: AccessToken = hero::token::jwt::decode_jwt_token(token, SECRET).unwrap();
+        let AccessToken::Compressed(payload) = payload else {
+            panic!("expected compressed token")
+        };
         assert_eq!(payload.dictionary_version, 2);
         assert!(
             fixture
@@ -1057,6 +1006,28 @@ async fn invalid_signature_is_rejected_before_dictionary_lookup() {
             .await
             .is_err()
     );
+    assert_eq!(reads.load(Ordering::SeqCst), 0);
+    let user = fixture.access_for_session(stored_session(1, 7, 84, "Team"));
+    let raw = hero::token::jwt::create_jwt_token(
+        AccessToken::User(user),
+        SECRET,
+        Duration::from_secs(60),
+    )
+    .unwrap();
+    assert!(matches!(
+        fixture.repo.1.scope(service.authenticate_token(&raw)).await,
+        Ok(AccessToken::User(_))
+    ));
+    let otp = EmailOtpAccessToken::new("james@midwess.com".into()).unwrap();
+    let encrypted = AccessToken::EmailOtp(otp)
+        .encrypt(&compallm_core::auth::EncryptedAccessToken::new(SECRET).unwrap())
+        .unwrap();
+    let raw =
+        hero::token::jwt::create_jwt_token(encrypted, SECRET, Duration::from_secs(60)).unwrap();
+    assert!(matches!(
+        fixture.repo.1.scope(service.authenticate_token(&raw)).await,
+        Ok(AccessToken::EmailOtp(_))
+    ));
     assert_eq!(reads.load(Ordering::SeqCst), 0);
     assert!(
         fixture
@@ -2567,7 +2538,7 @@ async fn middleware_invalid_or_wrong_variant_bearer_never_renews_from_cookies() 
                 .unwrap();
         let token = match case {
             "forged" => AccessToken::User(fixture.access_for_session(session.clone()))
-                .encode(
+                .encode_compressed(
                     "another-secret-at-least-32-bytes-long",
                     Duration::from_secs(60),
                 )

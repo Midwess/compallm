@@ -1,10 +1,12 @@
 #[path = "support/session.rs"]
 mod session_fixture;
+#[path = "support/token_codec.rs"]
+mod test_codec;
 #[path = "support/token_pair.rs"]
 mod token_pair;
 use session_fixture::stored_session;
 
-use compallm_core::auth::{AccessToken, AuthError, RefreshToken, Session, UserAccessToken};
+use compallm_core::auth::{AuthError, RefreshToken, Session, UserAccessToken};
 use std::time::Duration;
 const LIFETIME: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 const SECRET: &str = "test-signing-secret-at-least-32-bytes";
@@ -29,11 +31,10 @@ fn switching_changes_scope_and_both_tokens_reference_the_new_session() {
     )
     .unwrap();
     let access =
-        UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
+        UserAccessToken::try_from(test_codec::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
     let refresh =
-        RefreshToken::try_from(AccessToken::decode(&tokens.refresh_token, SECRET).unwrap())
-            .unwrap();
+        RefreshToken::try_from(test_codec::decode(&tokens.refresh_token, SECRET).unwrap()).unwrap();
     assert_eq!(access.session, session);
     assert_eq!(refresh.session, session);
     assert!(matches!(

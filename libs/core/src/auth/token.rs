@@ -2,18 +2,22 @@
 //! The enum validates shared rules and delegates to the independent token types.
 
 use super::AuthError;
+use crate::compression::{DCompression, DictionaryType};
+use crate::persistent::dictionary::DictionaryRepository;
 use compallm_utils::email::normalize_email;
 use compallm_utils::time::unix_timestamp;
 use hero::token::jwt::{create_jwt_token, decode_jwt_token};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+mod compress_token;
 mod email_otp;
 mod encrypted;
 mod refresh;
 mod user;
 pub mod validity;
 
+pub use compress_token::CompressedToken;
 pub use email_otp::EmailOtpAccessToken;
 pub use encrypted::{EncryptedAccessToken, EncryptedToken};
 pub use refresh::RefreshToken;
@@ -23,6 +27,7 @@ pub use validity::TokenValidity;
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AccessToken {
+    Compressed(CompressedToken),
     Encrypted(EncryptedToken),
     /// Internal payload: must be encrypted before signing a browser credential.
     EmailOtp(EmailOtpAccessToken),
@@ -46,6 +51,13 @@ impl AccessToken {
 
     pub fn validate(&self, now: u64) -> Result<(), AuthError> {
         match self {
+            Self::Compressed(token) => {
+                if token.dictionary_version == 0 || token.data.is_empty() {
+                    Err(AuthError::InvalidToken)
+                } else {
+                    Ok(())
+                }
+            }
             Self::EmailOtp(token) => token.validate(now),
             Self::User(token) => token.validate(now),
             Self::Refresh(token) => token.validate(now),
@@ -54,18 +66,35 @@ impl AccessToken {
     }
 
     pub fn encrypt(self, cipher: &EncryptedAccessToken) -> Result<Self, AuthError> {
-        if matches!(self, Self::Encrypted(_)) {
+        if matches!(self, Self::Encrypted(_) | Self::Compressed(_)) {
             return Err(AuthError::InvalidToken);
         }
         self.validate(unix_timestamp())?;
         Ok(Self::Encrypted(cipher.encrypt(&self)?))
     }
 
+    pub async fn compress(self, dictionary: &DCompression) -> Result<Self, AuthError> {
+        if dictionary.kind != DictionaryType::AccessToken || dictionary.version == 0 {
+            return Err(AuthError::InvalidConfiguration);
+        }
+        if matches!(self, Self::Compressed(_)) {
+            return Err(AuthError::InvalidToken);
+        }
+        if matches!(self, Self::EmailOtp(_)) {
+            return Err(AuthError::WrongTokenVariant);
+        }
+        self.validate(unix_timestamp())?;
+        Ok(Self::Compressed(CompressedToken {
+            dictionary_version: dictionary.version,
+            data: dictionary.compress(&serde_json::to_string(&self)?).await?,
+        }))
+    }
+
     pub fn encode(&self, secret: &str, lifetime: Duration) -> Result<String, AuthError> {
         if secret.len() < 32 || lifetime.as_secs() == 0 {
             return Err(AuthError::InvalidConfiguration);
         }
-        if matches!(self, Self::EmailOtp(_)) {
+        if !matches!(self, Self::Compressed(_)) {
             return Err(AuthError::WrongTokenVariant);
         }
         self.validate(unix_timestamp())?;
@@ -76,7 +105,11 @@ impl AccessToken {
     }
 
     /// Verify the signed envelope before decrypting or validating inner claims.
-    pub fn decode(encoded: &str, secret: &str) -> Result<Self, AuthError> {
+    pub async fn decode(
+        encoded: &str,
+        secret: &str,
+        dictionaries: &dyn DictionaryRepository,
+    ) -> Result<Self, AuthError> {
         if secret.len() < 32 {
             return Err(AuthError::InvalidConfiguration);
         }
@@ -93,16 +126,36 @@ impl AccessToken {
             _ => AuthError::InvalidToken,
         })?;
         token.validate(unix_timestamp())?;
+        let token = match token {
+            Self::Compressed(payload) => {
+                let version = payload.dictionary_version;
+                let dictionary = dictionaries
+                    .get(DictionaryType::AccessToken, version)
+                    .await
+                    .map_err(|_| AuthError::DictionaryUnavailable)?
+                    .ok_or(AuthError::DictionaryUnavailable)?;
+                if dictionary.kind != DictionaryType::AccessToken || dictionary.version != version {
+                    return Err(AuthError::DictionaryUnavailable);
+                }
+                let source = dictionary
+                    .decompress(&payload.data)
+                    .await
+                    .map_err(|_| AuthError::InvalidToken)?;
+                serde_json::from_str(&source).map_err(|_| AuthError::InvalidToken)?
+            }
+            token => token,
+        };
+        token.validate(unix_timestamp())?;
         match token {
             Self::Encrypted(payload) => {
                 let token: Self = EncryptedAccessToken::new(secret)?.decrypt(&payload)?;
-                if matches!(token, Self::Encrypted(_)) {
-                    return Err(AuthError::InvalidToken);
+                if !matches!(token, Self::EmailOtp(_)) {
+                    return Err(AuthError::WrongTokenVariant);
                 }
                 token.validate(unix_timestamp())?;
                 Ok(token)
             }
-            Self::EmailOtp(_) => Err(AuthError::WrongTokenVariant),
+            Self::EmailOtp(_) | Self::Compressed(_) => Err(AuthError::WrongTokenVariant),
             token => Ok(token),
         }
     }
@@ -151,13 +204,19 @@ pub struct IssuedEmailOtp {
 }
 
 impl EmailOtpChallenge {
-    pub fn new(email: &str, secret: &str) -> Result<Self, AuthError> {
+    pub async fn new(
+        email: &str,
+        secret: &str,
+        dictionary: &DCompression,
+    ) -> Result<Self, AuthError> {
         let email = normalize_email(email);
         let claims = EmailOtpAccessToken::new(email)?;
         let code = claims.code.clone();
         let validity = claims.validity.clone();
         let access_token = AccessToken::EmailOtp(claims)
             .encrypt(&EncryptedAccessToken::new(secret)?)?
+            .compress(dictionary)
+            .await?
             .encode(
                 secret,
                 Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),

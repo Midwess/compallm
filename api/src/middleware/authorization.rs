@@ -146,7 +146,7 @@ impl Authorization {
             AccessToken::EmailOtp(token) => {
                 extensions.insert(token);
             }
-            AccessToken::Encrypted(_) => {
+            AccessToken::Encrypted(_) | AccessToken::Compressed(_) => {
                 return Err(ApiError::Unauthenticated);
             }
         }

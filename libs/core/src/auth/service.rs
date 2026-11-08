@@ -17,14 +17,6 @@ use crate::persistent::session::SessionRepository;
 use crate::persistent::{DbContext, organization::OrganizationRepository, user::UserRepository};
 use crate::user::{RegistrationService, UserStatus};
 use compallm_utils::time::unix_timestamp;
-use serde::{Deserialize, Serialize};
-
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct CompressedToken {
-    dictionary_version: u32,
-    data: String,
-}
 
 /// Explicit policy supplied by application configuration.
 pub struct TokenLifetimes {
@@ -149,13 +141,10 @@ impl AuthService {
         let dictionary = self.latest_dictionary().await?;
         let encrypted = AccessToken::EmailOtp(claims.clone())
             .encrypt(&EncryptedAccessToken::new(&self.jwt_secret)?)?;
-        let token = self
-            .encode_token(
-                &encrypted,
-                Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),
-                dictionary,
-            )
-            .await?;
+        let token = encrypted.compress(dictionary).await?.encode(
+            &self.jwt_secret,
+            Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),
+        )?;
         let sender = self.email.as_ref().ok_or(EmailError::Unavailable)?;
         sender
             .send(EmailRequest {
@@ -221,53 +210,7 @@ impl AuthService {
 
     /// Verify the envelope and inner claims, preserving the concrete token variant.
     pub async fn authenticate_token(&self, token: &str) -> Result<AccessToken, AuthError> {
-        AccessToken::check_size(token.len())?;
-        let payload: CompressedToken = hero::token::jwt::decode_jwt_token(token, &self.jwt_secret)
-            .map_err(|error| match error {
-                hero::token::jwt::JwtErrors::CodingError(error)
-                    if matches!(
-                        error.kind(),
-                        jsonwebtoken::errors::ErrorKind::ExpiredSignature
-                    ) =>
-                {
-                    AuthError::ExpiredToken
-                }
-                _ => AuthError::InvalidToken,
-            })?;
-        if payload.dictionary_version == 0 {
-            return Err(AuthError::InvalidToken);
-        }
-        let dictionary = self
-            .dictionaries
-            .get(DictionaryType::AccessToken, payload.dictionary_version)
-            .await
-            .map_err(|_| AuthError::DictionaryUnavailable)?
-            .ok_or(AuthError::DictionaryUnavailable)?;
-        if dictionary.kind != DictionaryType::AccessToken
-            || dictionary.version != payload.dictionary_version
-        {
-            return Err(AuthError::DictionaryUnavailable);
-        }
-        let source = dictionary
-            .decompress(&payload.data)
-            .await
-            .map_err(|_| AuthError::InvalidToken)?;
-        let token: AccessToken =
-            serde_json::from_str(&source).map_err(|_| AuthError::InvalidToken)?;
-        token.validate(unix_timestamp())?;
-        match token {
-            AccessToken::Encrypted(payload) => {
-                let token: AccessToken =
-                    EncryptedAccessToken::new(&self.jwt_secret)?.decrypt(&payload)?;
-                if !matches!(token, AccessToken::EmailOtp(_)) {
-                    return Err(AuthError::WrongTokenVariant);
-                }
-                token.validate(unix_timestamp())?;
-                Ok(token)
-            }
-            AccessToken::EmailOtp(_) => Err(AuthError::WrongTokenVariant),
-            token => Ok(token),
-        }
+        AccessToken::decode(token, &self.jwt_secret, self.dictionaries.as_ref()).await
     }
 
     /// Verify and decompress access claims; dictionary versions are cached after loading.
@@ -364,27 +307,6 @@ impl AuthService {
             .ok_or(AuthError::DictionaryUnavailable)
     }
 
-    async fn encode_token(
-        &self,
-        token: &AccessToken,
-        lifetime: Duration,
-        dictionary: &DCompression,
-    ) -> Result<String, AuthError> {
-        if dictionary.kind != DictionaryType::AccessToken || dictionary.version == 0 {
-            return Err(AuthError::InvalidConfiguration);
-        }
-        token.validate(unix_timestamp())?;
-        let data = dictionary.compress(&serde_json::to_string(token)?).await?;
-        let payload = CompressedToken {
-            dictionary_version: dictionary.version,
-            data,
-        };
-        let encoded = hero::token::jwt::create_jwt_token(&payload, &self.jwt_secret, lifetime)
-            .map_err(|_| AuthError::InvalidToken)?;
-        AccessToken::check_size(encoded.len())?;
-        Ok(encoded)
-    }
-
     async fn issue_tokens(
         &self,
         refresh: &RefreshToken,
@@ -399,16 +321,14 @@ impl AuthService {
         Ok(UserTokens {
             access_validity,
             refresh_validity: refresh.validity.clone(),
-            access_token: self
-                .encode_token(&AccessToken::User(user), self.lifetimes.user, dictionary)
-                .await?,
-            refresh_token: self
-                .encode_token(
-                    &AccessToken::Refresh(refresh.clone()),
-                    refresh_lifetime,
-                    dictionary,
-                )
-                .await?,
+            access_token: AccessToken::User(user)
+                .compress(dictionary)
+                .await?
+                .encode(&self.jwt_secret, self.lifetimes.user)?,
+            refresh_token: AccessToken::Refresh(refresh.clone())
+                .compress(dictionary)
+                .await?
+                .encode(&self.jwt_secret, refresh_lifetime)?,
         })
     }
 }

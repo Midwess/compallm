@@ -635,7 +635,7 @@ async fn plain_snapshot_budget_measures_real_jwt_including_unicode_and_escaping(
             user_id: 1,
             roles: vec![role.clone()],
             groups: vec![],
-        })?;
+        });
         let access = UserAccessToken::new(
             stored_session(1, 7, 84, "Nghiên cứu \"Team\""),
             snapshot.clone(),

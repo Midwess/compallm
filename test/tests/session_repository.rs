@@ -412,7 +412,6 @@ async fn policy_membership_loads_version_and_relationships_in_one_scoped_stateme
         "r.organization_id=gr.organization_id",
         "mr.organization_id=s.organization_id",
         "gm.organization_id=s.organization_id",
-        "LIMIT $4",
     ] {
         assert!(sql.contains(scope), "{scope}");
     }

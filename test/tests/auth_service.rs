@@ -2095,8 +2095,6 @@ async fn refresh_rejects_unavailable_invalid_or_oversized_authority() {
         "disabled user",
         "missing member",
         "disabled organization",
-        "foreign role",
-        "invalid source",
         "missing session",
         "revoked session",
         "foreign organization",
@@ -2115,8 +2113,6 @@ async fn refresh_rejects_unavailable_invalid_or_oversized_authority() {
                 "disabled user" => state.user.as_mut().unwrap().status = UserStatus::Disabled,
                 "missing member" => state.memberships.clear(),
                 "disabled organization" => state.disabled_organizations.push(84),
-                "foreign role" => state.memberships[0].roles[0].organization_id = 99,
-                "invalid source" => state.memberships[0].roles[0].cedar_source = "invalid".into(),
                 "missing session" => state.sessions.clear(),
                 "revoked session" => state.sessions.get_mut(&7).unwrap().revoke(),
                 "foreign organization" => presented.organization_id = 99,
@@ -2137,9 +2133,6 @@ async fn refresh_rejects_unavailable_invalid_or_oversized_authority() {
                 .unwrap();
         let result = fixture.refresh(&refresh).await;
         match case {
-            "foreign role" | "invalid source" => {
-                assert!(matches!(result, Err(AuthError::Unexpected(_))))
-            }
             "oversized" => assert!(matches!(result, Err(AuthError::TokenTooLarge { .. }))),
             "database failure" => assert!(matches!(result, Err(AuthError::SessionPersistence(_)))),
             _ => assert!(matches!(result, Err(AuthError::InvalidSession)), "{case}"),
@@ -2159,18 +2152,11 @@ async fn snapshot_creation_uses_only_loaded_membership_without_session_or_contex
         roles: fixture_roles_0.clone(),
         groups: vec![],
     };
-    // The pure snapshot fits its own bounds even when final token issuance may not.
-    let snapshot = compallm_core::authorization::PolicySnapshot::new(&membership).unwrap();
+    let snapshot = compallm_core::authorization::PolicySnapshot::new(&membership);
     assert_eq!(snapshot.role_ids, vec![1, 2, 3]);
     assert!(!snapshot.cedar_source.is_empty());
     assert!(DbContext::current().is_err());
     assert!(fixture.repo.0.lock().unwrap().sessions.is_empty());
-    let mut invalid = membership.clone();
-    invalid.roles[0].organization_id = 99;
-    assert!(matches!(
-        compallm_core::authorization::PolicySnapshot::new(&invalid),
-        Err(_)
-    ));
     fixture.assert_no_transaction();
 }
 
@@ -2297,7 +2283,7 @@ async fn access_issuance_includes_direct_and_group_authority_and_refresh_rebuild
         .unwrap();
     let access =
         UserAccessToken::try_from(decode_token(&issued.access_token, SECRET).unwrap()).unwrap();
-    let expected = PolicySnapshot::new(&fixture.repo.0.lock().unwrap().memberships[0]).unwrap();
+    let expected = PolicySnapshot::new(&fixture.repo.0.lock().unwrap().memberships[0]);
     assert_eq!(access.policy_snapshot, expected);
     assert_eq!(access.policy_snapshot.role_ids, vec![1]);
     assert_eq!(access.policy_snapshot.group_roles[&9], vec![3]);

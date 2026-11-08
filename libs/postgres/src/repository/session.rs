@@ -96,9 +96,7 @@ LEFT JOIN LATERAL (
  WHERE gm.organization_id=s.organization_id AND gm.user_id=s.user_id
 ) a ON TRUE
 WHERE s.organization_id=$1 AND s.user_id=$2 AND s.id=$3 AND s.revoked_at IS NULL
-LIMIT $4
-"#, [Self::id(session.organization_id)?.into(), Self::id(session.user_id)?.into(), Self::id(session.id)?.into(),
-        ((compallm_core::authorization::PolicySnapshot::MAX_ASSIGNMENTS + compallm_core::authorization::PolicySnapshot::MAX_GROUPS + 1) as i64).into()]))
+"#, [Self::id(session.organization_id)?.into(), Self::id(session.user_id)?.into(), Self::id(session.id)?.into()]))
             .await.map_err(anyhow::Error::from)?;
         if rows.is_empty() {
             return Ok(None);

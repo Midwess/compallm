@@ -3,6 +3,7 @@ use compallm_core::{
     auth::{AuthError, AuthService, TokenLifetimes},
     mail::EmailService,
     organization::{ConfigService, CreationService},
+    persistent::dictionary::DictionaryRepository,
     persistent::session::SessionRepository,
     persistent::{DbContext, organization::OrganizationRepository, user::UserRepository},
     user::RegistrationService,
@@ -37,6 +38,7 @@ pub struct Di {
     users: Box<dyn UserRepository>,
     organizations: Box<dyn OrganizationRepository>,
     sessions: Box<dyn SessionRepository>,
+    dictionaries: Box<dyn DictionaryRepository>,
     email: Option<Box<dyn EmailService>>,
     mailing: Option<Box<compallm_mailing::MailingService>>,
     mailing_email: OnceLock<Box<dyn EmailService>>,
@@ -91,6 +93,9 @@ impl Di {
             secure: settings.cookie_secure,
             public_origin: settings.public_origin.clone(),
         });
+        let dictionaries =
+            compallm_postgres::repository::dictionary::DictionaryRepository::new(db.clone())
+                .expect("application dictionary connection must be committed");
         Self {
             delivery,
             db: Box::new(db),
@@ -99,6 +104,7 @@ impl Di {
                 compallm_postgres::repository::organization::OrganizationRepository,
             ),
             sessions: Box::new(compallm_postgres::repository::session::SessionRepository),
+            dictionaries: Box::new(dictionaries),
             email,
             mailing: None,
             mailing_email: OnceLock::new(),
@@ -122,6 +128,7 @@ impl Di {
             self.user_repository(),
             self.organization_repository(),
             self.session_repository(),
+            &self.dictionaries,
             self.registration_service(),
             self.settings.jwt_secret.clone(),
             TokenLifetimes {

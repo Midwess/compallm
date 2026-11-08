@@ -1,4 +1,4 @@
-use compallm_core::compression::{Dictionary, DictionaryType};
+use compallm_core::compression::{DCompression, DictionaryType};
 use compallm_core::persistent::DbContext;
 use compallm_postgres::{
     postgres_connection::PostgresConnection, repository::dictionary::DictionaryRepository,
@@ -6,24 +6,30 @@ use compallm_postgres::{
 use sea_orm::{DbBackend, MockDatabase, Value};
 use std::{collections::BTreeMap, sync::Arc};
 
-#[test]
-fn dictionary_roundtrip_preserves_cedar_and_rejects_different_versions() -> anyhow::Result<()> {
-    let original = Dictionary::new(
+#[tokio::test]
+async fn dictionary_roundtrip_preserves_cedar_and_rejects_different_versions() -> anyhow::Result<()>
+{
+    let original = DCompression::new(
         DictionaryType::AccessToken,
         1,
         "Compallm::Action::provider.read",
     )?;
-    let extended = Dictionary::new(
+    let extended = DCompression::new(
         DictionaryType::AccessToken,
         2,
         "Compallm::Action::provider.read Compallm::Role::",
     )?;
     let cedar =
         "permit(principal, action == Compallm::Action::provider.read, resource); // tiếng Việt";
-    let encoded = original.compress(cedar)?;
-    assert_eq!(original.decompress(&encoded)?, cedar);
-    assert!(extended.decompress(&encoded).is_err());
-    assert_eq!(extended.decompress(&extended.compress(cedar)?)?, cedar);
+    let encoded = original.compress(cedar).await?;
+    assert_eq!(original.decompress(&encoded).await?, cedar);
+    assert!(extended.decompress(&encoded).await.is_err());
+    assert_eq!(
+        extended
+            .decompress(&extended.compress(cedar).await?)
+            .await?,
+        cedar
+    );
     Ok(())
 }
 
@@ -58,12 +64,12 @@ async fn repository_loads_ordered_version_once_and_preserves_old_dictionary() ->
             let b = b?.unwrap();
             assert!(std::ptr::eq(a, b));
             let value = "Compallm::Action::provider.read";
-            assert_eq!(a.decompress(&a.compress(value)?)?, value);
+            assert_eq!(a.decompress(&a.compress(value).await?).await?, value);
             let old = repository
                 .get(DictionaryType::AccessToken, 1)
                 .await?
                 .unwrap();
-            assert!(old.decompress(&a.compress(value)?).is_err());
+            assert!(old.decompress(&a.compress(value).await?).await.is_err());
             assert!(
                 repository
                     .get(DictionaryType::AccessToken, 3)
@@ -119,9 +125,58 @@ async fn repository_rejects_transactional_reads_without_poisoning_the_cache() ->
         .unwrap();
     let source = "permit(principal, action, resource);";
     assert_eq!(
-        dictionary.decompress(&dictionary.compress(source)?)?,
+        dictionary
+            .decompress(&dictionary.compress(source).await?)
+            .await?,
         source
     );
+    Ok(())
+}
+
+#[tokio::test]
+async fn configured_repository_reads_committed_dictionary_during_transaction() -> anyhow::Result<()>
+{
+    let row = BTreeMap::from([
+        ("type".to_owned(), Value::from("access_token")),
+        ("version".to_owned(), Value::from(1_i32)),
+        ("content".to_owned(), Value::from("Compallm::")),
+    ]);
+    let committed = Arc::new(
+        MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([vec![row.clone()], vec![row]])
+            .into_connection(),
+    );
+    let writer = Arc::new(MockDatabase::new(DbBackend::Postgres).into_connection());
+    let committed_context = DbContext::new(Arc::new(PostgresConnection::new(committed.clone())));
+    let writer_context = DbContext::new(Arc::new(PostgresConnection::new(writer.clone())));
+    let repository = DictionaryRepository::new(committed_context)?;
+    writer_context
+        .transaction(async {
+            let dictionary = repository
+                .latest(DictionaryType::AccessToken)
+                .await?
+                .unwrap();
+            assert_eq!(dictionary.version, 1);
+            assert_eq!(
+                dictionary
+                    .decompress(&dictionary.compress("hello").await?)
+                    .await?,
+                "hello"
+            );
+            Ok::<_, anyhow::Error>(())
+        })
+        .await?;
+    drop(repository);
+    drop(writer_context);
+    let writer_log = Arc::try_unwrap(writer).unwrap().into_transaction_log();
+    let committed_log = Arc::try_unwrap(committed).unwrap().into_transaction_log();
+    assert!(
+        writer_log
+            .iter()
+            .flat_map(|tx| tx.statements())
+            .all(|statement| !statement.sql.contains("zstd_dictionary"))
+    );
+    assert_eq!(committed_log.len(), 2);
     Ok(())
 }
 
@@ -214,7 +269,7 @@ async fn initial_seed_compresses_complete_default_access_claims() -> anyhow::Res
     let Value::String(Some(content)) = &statement.values.as_ref().unwrap().0[0] else {
         panic!("expected dictionary seed text")
     };
-    let dictionary = Dictionary::new(DictionaryType::AccessToken, 1, content)?;
+    let dictionary = DCompression::new(DictionaryType::AccessToken, 1, content)?;
     compallm_postgres::init_id_generator("dictionary-seed-test")?;
     let roles = Role::defaults(84).await?;
     for role in roles {
@@ -231,8 +286,8 @@ async fn initial_seed_compresses_complete_default_access_claims() -> anyhow::Res
             std::time::Duration::from_secs(60),
         )?);
         let source = serde_json::to_string(&token)?;
-        let compressed = dictionary.compress(&source)?;
-        assert_eq!(dictionary.decompress(&compressed)?, source);
+        let compressed = dictionary.compress(&source).await?;
+        assert_eq!(dictionary.decompress(&compressed).await?, source);
         assert!(compressed.len() < source.len());
     }
     Ok(())

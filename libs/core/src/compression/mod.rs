@@ -1,3 +1,3 @@
-pub mod dictionary;
+pub mod d_compression;
 
-pub use dictionary::{Dictionary, DictionaryType};
+pub use d_compression::{DCompression, DictionaryType};

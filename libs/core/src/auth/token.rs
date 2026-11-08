@@ -176,37 +176,3 @@ pub struct UserTokens {
     pub access_validity: TokenValidity,
     pub refresh_validity: TokenValidity,
 }
-
-impl UserTokens {
-    /// Call after the workflow authorizes the user.
-    pub fn new(
-        session: &super::Session,
-        policy_snapshot: crate::authorization::PolicySnapshot,
-        secret: &str,
-        user_lifetime: Duration,
-        refresh_lifetime: Duration,
-    ) -> Result<Self, AuthError> {
-        let refresh = RefreshToken::from_session(session, refresh_lifetime)?;
-        Self::from_refresh(&refresh, policy_snapshot, secret, user_lifetime)
-    }
-
-    pub fn from_refresh(
-        refresh: &RefreshToken,
-        policy_snapshot: crate::authorization::PolicySnapshot,
-        secret: &str,
-        user_lifetime: Duration,
-    ) -> Result<Self, AuthError> {
-        refresh.validate(unix_timestamp())?;
-        let refresh_lifetime =
-            Duration::from_secs(refresh.validity.expires_at - refresh.validity.issued_at);
-        let user = UserAccessToken::new(refresh.session.clone(), policy_snapshot, user_lifetime)?;
-        let access_validity = user.validity.clone();
-        Ok(Self {
-            access_validity,
-            refresh_validity: refresh.validity.clone(),
-            access_token: AccessToken::User(user).encode(secret, user_lifetime)?,
-            refresh_token: AccessToken::Refresh(refresh.clone())
-                .encode(secret, refresh_lifetime)?,
-        })
-    }
-}

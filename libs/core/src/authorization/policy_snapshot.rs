@@ -22,13 +22,53 @@ pub struct PolicySnapshot {
 }
 
 impl PolicySnapshot {
+    pub const MAX_ROLES: usize = 256;
+    pub const MAX_GROUPS: usize = 256;
+    pub const MAX_ASSIGNMENTS: usize = 1024;
+    pub const MAX_SOURCE_BYTES: usize = 256 * 1024;
+    pub const MAX_STATEMENTS: usize = 1024;
+    pub const MAX_JSON_BYTES: usize = 16 * 1024;
+
     /// Validate membership relationships and merge effective Cedar sources.
     /// Independent roles use Rayon's shared pool; serialized output stays deterministic.
     pub fn new(member: &OrganizationMember) -> anyhow::Result<Self> {
+        anyhow::ensure!(
+            member.groups.len() <= Self::MAX_GROUPS,
+            "snapshot group limit exceeded"
+        );
+        let assignments = member
+            .roles
+            .len()
+            .saturating_add(member.groups.len())
+            .saturating_add(
+                member
+                    .groups
+                    .iter()
+                    .map(|group| group.roles.len())
+                    .sum::<usize>(),
+            );
+        anyhow::ensure!(
+            assignments <= Self::MAX_ASSIGNMENTS,
+            "snapshot assignment limit exceeded"
+        );
         let roles = member
             .effective_roles()
             .map(|role| (role.id, role))
             .collect::<BTreeMap<_, _>>();
+        anyhow::ensure!(
+            roles.len() <= Self::MAX_ROLES,
+            "snapshot role limit exceeded"
+        );
+        let source_bytes = roles
+            .values()
+            .try_fold(0usize, |total, role| {
+                total.checked_add(role.cedar_source.len())
+            })
+            .ok_or_else(|| anyhow::anyhow!("snapshot source limit exceeded"))?;
+        anyhow::ensure!(
+            source_bytes <= Self::MAX_SOURCE_BYTES,
+            "snapshot source limit exceeded"
+        );
 
         // Reuse entity construction's organization and conflicting-record guards.
         Entities::try_from(member)?;
@@ -56,6 +96,10 @@ impl PolicySnapshot {
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
         let statements = statements.into_iter().flatten().collect::<BTreeMap<_, _>>();
+        anyhow::ensure!(
+            statements.len() <= Self::MAX_STATEMENTS,
+            "snapshot statement limit exceeded"
+        );
 
         let cedar_source = statements.into_values().collect::<Vec<_>>().join("\n");
         let role_ids = member
@@ -86,6 +130,10 @@ impl PolicySnapshot {
             role_ids,
             group_roles,
         };
+        anyhow::ensure!(
+            serde_json::to_vec(&snapshot)?.len() <= Self::MAX_JSON_BYTES,
+            "snapshot JSON limit exceeded"
+        );
 
         // Validate the complete script as the same policy set consumers will load.
         PolicySet::try_from(&snapshot)?;

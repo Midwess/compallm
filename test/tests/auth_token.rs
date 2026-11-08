@@ -1,5 +1,7 @@
 #[path = "support/roles.rs"]
 mod role_fixture;
+#[path = "support/token_pair.rs"]
+mod token_pair;
 use role_fixture::default_roles;
 
 #[path = "support/session.rs"]
@@ -26,7 +28,7 @@ impl Fixture {
     }
 
     fn tokens() -> UserTokens {
-        UserTokens::new(
+        token_pair::new(
             &stored_session(1, 7, 84, "Research team"),
             empty_snapshot(),
             SECRET,
@@ -238,7 +240,7 @@ fn email_otp_accepts_valid_addresses_from_any_domain() {
 
 #[test]
 fn ids_round_trip_as_u64_in_access_and_refresh_sessions() {
-    let one = UserTokens::new(
+    let one = token_pair::new(
         &stored_session(9_007_199_254_740_993, 7, 84, "Research team"),
         empty_snapshot(),
         SECRET,
@@ -320,7 +322,7 @@ fn malformed_tokens_and_invalid_lifetimes_are_rejected() {
         ));
     }
     assert!(matches!(
-        UserTokens::new(
+        token_pair::new(
             &stored_session(1, 7, 84, "Research team"),
             empty_snapshot(),
             SECRET,
@@ -489,7 +491,7 @@ fn token_validity_owns_expiration_and_timestamp_validation() {
 
 #[test]
 fn both_tokens_link_to_the_same_organization_scoped_session() {
-    let one = UserTokens::new(
+    let one = token_pair::new(
         &stored_session(1, 7, 84, "Research team"),
         empty_snapshot(),
         SECRET,
@@ -497,7 +499,7 @@ fn both_tokens_link_to_the_same_organization_scoped_session() {
         Duration::from_secs(600),
     )
     .unwrap();
-    let two = UserTokens::new(
+    let two = token_pair::new(
         &stored_session(1, 7, 85, "Research team"),
         empty_snapshot(),
         SECRET,

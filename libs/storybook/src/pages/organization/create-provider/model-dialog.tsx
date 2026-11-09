@@ -3,7 +3,7 @@ import {
   ProviderModelFieldsInput,
   ProviderModelFieldsConstraints,
   ProviderInputRules,
-} from '@compallm/contract/validation'
+} from '@compallm/contract/provider'
 import { EffortMapping } from '../../../components/effort-mapping'
 import { modelPath, modelProtocol, isEndpointPath, textModelOptions, modelDraftFingerprint } from './model-options'
 import { FormField } from '../../../components/form-field'

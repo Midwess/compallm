@@ -9,6 +9,7 @@ use compallm_utils::email;
 use crate::authorization::SystemPolicy;
 
 pub mod error;
+pub mod preferences;
 #[path = "registration-service.rs"]
 pub mod registration_service;
 

@@ -3,15 +3,9 @@ import { createSignupStore, type SignupController, type SignupState } from '@com
 import type { SigninController } from '@compallm/storybook/pages/signin'
 import get from 'lodash-es/get'
 import isObjectLike from 'lodash-es/isObjectLike'
-import {
-  confirmSigninOtp,
-  confirmSignupOtp,
-  currentUser,
-  signinEmail,
-  signOut,
-  signupEmail,
-  type CurrentUserResponse,
-} from '../contract/api'
+import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
+import type { AuthUser } from '@compallm/storybook'
+import { graphql, ApiError } from '../graphql-client'
 import { urlController } from '../url/controller'
 import type { UrlController } from '@compallm/storybook'
 import { notify, apiErrorMessage } from '../notifications/toast'
@@ -19,11 +13,17 @@ import { organizationHome } from '../organization/paths'
 
 type Operation = NonNullable<SignupState['pending']>
 
+const authFailureReasons: Partial<Record<string, NonNullable<SignupState['error']>>> = {
+  INCORRECT_CODE: 'incorrect-code',
+  EXPIRED_TOKEN: 'expired-code',
+  THROTTLED: 'throttled',
+}
+
 const initialFormState = createSignupStore().getInitialState()
 
 export class AuthController implements SignupController, SigninController {
   readonly store = createSignupStore()
-  private sessionPending: Promise<CurrentUserResponse | null> | undefined
+  private sessionPending: Promise<AuthUser | null> | undefined
   private sessionRequest: AbortController | undefined
   private sessionGeneration = 0
   private signingOut: Promise<void> | undefined
@@ -178,7 +178,9 @@ export class AuthController implements SignupController, SigninController {
 
   private async performSignOut() {
     try {
-      await signOut({ credentials: 'same-origin' })
+      const selection = { sessionRevoke: true } satisfies MutationGenqlSelection
+      const result = await graphql().mutation(selection)
+      if (!result.sessionRevoke) throw new Error('Session could not be revoked')
       this.sessionGeneration += 1
       this.sessionRequest?.abort()
       this.sessionPending = undefined
@@ -213,7 +215,10 @@ export class AuthController implements SignupController, SigninController {
 
   private async fetchCurrentUser(requestSignal: AbortSignal, generation: number, redirectAnonymous: boolean) {
     try {
-      const user = await currentUser({ credentials: 'same-origin', signal: requestSignal })
+      const selection = {
+        session: { id: true, userId: true, organizationId: true, organizationName: true },
+      } satisfies QueryGenqlSelection
+      const { session: user } = await graphql(requestSignal).query(selection)
       if (requestSignal.aborted || generation !== this.sessionGeneration) throw new DOMException('Cancelled', 'AbortError')
       this.store.setState({ currentUser: user ?? null, status: user ? 'authenticated' : 'anonymous' })
       if (!user && redirectAnonymous) this.navigate?.('/login')
@@ -240,7 +245,7 @@ export class AuthController implements SignupController, SigninController {
     this.updateResendCountdown()
     if (state.pending || this.store.getState().remaining > 0 || state.step !== (operation === 'request' ? 'email' : 'code'))
       return
-    const input = emailRequestSchema(this.mode).safeParse({ email: state.email, delivery: 'cookie' })
+    const input = emailRequestSchema(this.mode).safeParse({ email: state.email, delivery: 'COOKIE' })
     if (!input.success) {
       this.onInvalidEmail()
       return
@@ -252,11 +257,18 @@ export class AuthController implements SignupController, SigninController {
     await this.perform(
       operation,
       async (signal) => {
-        const request = this.mode === 'signup' ? signupEmail : signinEmail
-        const response = await request(input.data, { signal, credentials: 'same-origin' })
-        const seconds = response.lifetime?.throttleSeconds
+        const lifetime = { expiresInSeconds: true, throttleSeconds: true } as const
+        const signup = { signupEmailRequest: { __args: { input: input.data }, lifetime } } satisfies MutationGenqlSelection
+        const signin = { signinEmailRequest: { __args: { input: input.data }, lifetime } } satisfies MutationGenqlSelection
+        const client = graphql(signal)
+        const response =
+          this.mode === 'signup'
+            ? (await client.mutation(signup)).signupEmailRequest
+            : (await client.mutation(signin)).signinEmailRequest
+        if (!response) throw new Error('Email challenge was not issued')
+        const seconds = Number(response.lifetime.throttleSeconds)
         deadline = typeof seconds === 'number' && Number.isFinite(seconds) && seconds >= 0 ? Date.now() + seconds * 1000 : 0
-        const remaining = response.lifetime?.expiresInSeconds
+        const remaining = Number(response.lifetime.expiresInSeconds)
         expiresAt =
           typeof remaining === 'number' && Number.isFinite(remaining) && remaining >= 0 ? Date.now() + remaining * 1000 : 0
       },
@@ -274,7 +286,7 @@ export class AuthController implements SignupController, SigninController {
   private async verify(retry = false) {
     const state = this.store.getState()
     const schema = otpRequestSchema(this.mode)
-    const input = schema.safeParse({ code: state.code, delivery: 'cookie' })
+    const input = schema.safeParse({ code: state.code, delivery: 'COOKIE' })
     if (state.pending || state.step !== 'code' || !input.success) return
     if (!retry && this.lastCode === state.code) return
     this.lastCode = state.code
@@ -282,8 +294,19 @@ export class AuthController implements SignupController, SigninController {
       'verify',
       async (signal) => {
         if (!this.confirmed) {
-          const confirm = this.mode === 'signup' ? confirmSignupOtp : confirmSigninOtp
-          await confirm(input.data, { signal, credentials: 'same-origin' })
+          const lifetime = { expiresInSeconds: true } as const
+          const signup = {
+            signupEmailConfirm: { __args: { input: input.data }, accessLifetime: lifetime },
+          } satisfies MutationGenqlSelection
+          const signin = {
+            signinEmailConfirm: { __args: { input: input.data }, accessLifetime: lifetime },
+          } satisfies MutationGenqlSelection
+          const client = graphql(signal)
+          const result =
+            this.mode === 'signup'
+              ? (await client.mutation(signup)).signupEmailConfirm
+              : (await client.mutation(signin)).signinEmailConfirm
+          if (!result) throw new Error('Session could not be confirmed')
           if (signal.aborted) throw new DOMException('Cancelled', 'AbortError')
           this.confirmed = true
         }
@@ -313,7 +336,8 @@ export class AuthController implements SignupController, SigninController {
       if (isObjectLike(error) && get(error, 'name') === 'AbortError') return
       this.failedOperation = operation
       this.lastCode = undefined
-      this.store.setState({ serverError: apiErrorMessage(error) })
+      const reason = error instanceof ApiError ? authFailureReasons[error.code] : undefined
+      this.store.setState(reason ? { error: reason } : { serverError: apiErrorMessage(error) })
     } finally {
       if (generation === this.generation) this.store.setState({ pending: null })
     }

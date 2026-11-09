@@ -1,5 +1,5 @@
-import type { CurrentUserResponse } from '../contract/api'
+import type { AuthUser } from '@compallm/storybook'
 
-export function organizationHome(user: Pick<CurrentUserResponse, 'organizationName'>) {
+export function organizationHome(user: Pick<AuthUser, 'organizationName'>) {
   return `/${encodeURIComponent(user.organizationName)}/chat`
 }

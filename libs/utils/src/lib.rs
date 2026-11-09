@@ -4,3 +4,5 @@ pub mod email;
 pub mod input;
 pub mod text;
 pub mod time;
+
+pub mod contract;

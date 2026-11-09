@@ -75,7 +75,7 @@ function contractPattern(pattern: string | undefined) {
   return source ? new RegExp(source.replace(/\$$/, '$(?![\\s\\S])'), 'u') : undefined
 }
 
-function authorizationInput(value: string): boolean {
+export function authorizationInput(value: string): boolean {
   if (value === '') return true
   const separator = value.indexOf(' ')
   const scheme = separator < 0 ? value : value.slice(0, separator)

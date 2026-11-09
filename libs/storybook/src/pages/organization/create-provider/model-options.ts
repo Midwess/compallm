@@ -1,4 +1,4 @@
-import { ProviderModelFields } from '@compallm/contract/validation'
+import { ProviderModelFields } from '@compallm/contract/provider'
 import { effortLevels } from '../../../components/effort-mapping'
 import type { ModelCapability, ModelDraft, ProviderModel, TextModelProtocol } from './types'
 

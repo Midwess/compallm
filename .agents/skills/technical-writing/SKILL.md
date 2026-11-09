@@ -77,9 +77,11 @@ Apply chapter 3 (printed pages 12–16):
 
 Apply the same reader-first principles to consumers rather than internal reviewers. Explain prerequisites, inputs, outputs, failure recovery, and a realistic example. Keep internal architecture discussions out of the caller's task.
 
-For generated API pages and TypeScript hover documentation, edit Rust comments and Utoipa/OpenAPI metadata. Run `rtk cargo run -p compallm-api -- generate --docs-output /private/tmp/compallm-api-guide` with an appropriate external staging directory. This generates the TypeScript client and guide pages without starting the application or executing migrations. Ordinary `generate` omits guide output. Preserve generated contracts and JSDoc; do not hand-edit them.
+Rust owns the GraphQL schema and validation rules. Follow the [application API](https://github.com/Midwess/compallm/wiki/API-reference) and [GraphQL guidelines](https://github.com/Midwess/compallm/wiki/GraphQL-guidelines). Keep operation descriptions sourced from Rust and preserve them in generated TypeScript JSDoc. Frontend controllers author typed Genql selection objects checked with the generated selection type; the Rust-exported SDL remains the schema source.
 
-Publish generated guide content as `API-reference.md` and `API-<METHOD>-api-<path-segments>.md`; for example, `auth/me/get.md` becomes `API-GET-api-auth-me.md`. Check existing names before introducing a new operation and preserve the generator's parameter names. Strip site-only frontmatter and translate generated navigation links to Wiki page URLs without changing request/response descriptions, schemas, or examples. Keep the generated-file marker. Update the API index and Wiki navigation together. Validate references and inspect the generated diff before committing and pushing. Do not configure automatic Wiki writes from startup, builds, or ordinary generation. Document actual behavior separately from planned ADR behavior.
+The single `cargo run -p compallm-api -- generate` command exports Juniper SDL and Validify metadata, invokes the local Genql CLI against the exported SDL, emits shared Zod/form contracts, and builds the package without backend startup or migrations. ExportValidation uses Schemars and explicit custom-rule metadata. Auth/provider inputs and catalog objects are registered as Rust GraphQL types without placeholder operations. Genql owns all API types; browser helpers compose generated validators/constraints. Do not retain TypeScript API snapshots or a contract/preview export. Public guides describe actually exposed operations, and examples for future operations remain illustrative.
+
+Publish API documentation in the separate Wiki and maintain page/navigation links together. Preserve generated-file ownership when a replacement generator exists. Neither startup, builds, nor ordinary generation may publish the Wiki automatically. Documentation generation and verification must not start the application or execute migrations.
 
 ## Edit for understanding
 
@@ -91,7 +93,7 @@ Read the result without relying on the conversation: can the intended reader exp
 
 These are project rules, not claims from the handbook:
 
-- Put feature decisions in the feature's Wiki architecture page and focused details in named sub-feature pages. Public generated references use endpoint/method Wiki pages and `API-reference.md`; keep internal generation instructions out of consumer API pages.
+- Put feature decisions in the feature's Wiki architecture page and focused details in named sub-feature pages. Public operation references belong in the Wiki under the application API; keep internal generation instructions separate from consumer operation guides.
 - Keep every feature ADR below six minutes, including tables and diagrams. Aim for 500–800 words or fewer; estimate prose at 200 words per minute plus at least 30 seconds per diagram, and allow more for dense material. The estimate is an editing check, not proof of comprehension.
 - Keep the requirement, decision, rationale, main flow, consequences, status, and important open questions in the ADR. Cut repetition or link secondary detail; do not hide essential reasoning or append a second long design to pass the limit.
 - Scale detail to the change. Do not force every document into every section above or require an approval ceremony for routine edits.

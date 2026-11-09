@@ -1,4 +1,7 @@
-use axum::Router;
+use crate::{
+    graphql::{ApplicationSchema, build_schema},
+    middleware::authentication::{Authentication, AuthenticationSettings},
+};
 use compallm_core::{
     auth::{AuthError, AuthService, TokenLifetimes},
     mail::EmailService,
@@ -16,18 +19,43 @@ use tokio::sync::OnceCell;
 
 static DI: OnceCell<Di> = OnceCell::const_new();
 
+/// HTTP cookie policy and GraphQL request bounds from application configuration.
+#[derive(Clone, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct GraphqlSettings {
+    pub cookie_secure: bool,
+    pub public_origin: String,
+    pub max_body_bytes: usize,
+    pub max_depth: usize,
+    pub max_fields: usize,
+    pub max_tokens: usize,
+}
+
+impl Default for GraphqlSettings {
+    fn default() -> Self {
+        Self {
+            cookie_secure: true,
+            public_origin: String::new(),
+            max_body_bytes: 65_536,
+            max_depth: 16,
+            max_fields: 256,
+            max_tokens: 15_000,
+        }
+    }
+}
+
 #[derive(Deserialize)]
 pub struct AuthSettings {
     pub jwt_secret: String,
     pub user_token_ttl_seconds: u64,
     pub refresh_token_ttl_seconds: u64,
-    pub cookie_secure: bool,
-    pub public_origin: String,
 }
 
 #[derive(Deserialize)]
 struct Settings {
     auth: AuthSettings,
+    #[serde(default)]
+    graphql: GraphqlSettings,
     #[serde(default)]
     smtp: Option<compallm_mailing::SmtpSettings>,
 }
@@ -44,7 +72,9 @@ pub struct Di {
     mailing_email: OnceLock<Box<dyn EmailService>>,
     mailing_worker: OnceLock<Box<crate::workers::mailing::MailingWorker>>,
     settings: AuthSettings,
-    delivery: Box<crate::controllers::auth::delivery::TokenDeliverySettings>,
+    graphql_settings: GraphqlSettings,
+    graphql: OnceLock<ApplicationSchema>,
+    authentication: OnceLock<Authentication>,
     // Filled after Di reaches its permanent address so services can borrow it.
     auth: OnceLock<Box<AuthService>>,
     registration: OnceLock<Box<RegistrationService>>,
@@ -74,7 +104,7 @@ impl Di {
                     .map(compallm_mailing::MailingService::new)
                     .transpose()
                     .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
-                let mut di = Self::new(db, settings.auth, None);
+                let mut di = Self::new(db, settings.auth, settings.graphql, None);
                 di.mailing = mailing.map(Box::new);
                 Ok::<_, loco_rs::Error>(di)
             })
@@ -87,17 +117,13 @@ impl Di {
     pub fn new(
         db: DbContext,
         settings: AuthSettings,
+        graphql_settings: GraphqlSettings,
         email: Option<Box<dyn EmailService>>,
     ) -> Self {
-        let delivery = Box::new(crate::controllers::auth::delivery::TokenDeliverySettings {
-            secure: settings.cookie_secure,
-            public_origin: settings.public_origin.clone(),
-        });
         let dictionaries =
             compallm_postgres::repository::dictionary::DictionaryRepository::new(db.clone())
                 .expect("application dictionary connection must be committed");
         Self {
-            delivery,
             db: Box::new(db),
             users: Box::new(compallm_postgres::repository::user::UserRepository),
             organizations: Box::new(
@@ -110,6 +136,9 @@ impl Di {
             mailing_email: OnceLock::new(),
             mailing_worker: OnceLock::new(),
             settings,
+            graphql_settings,
+            graphql: OnceLock::new(),
+            authentication: OnceLock::new(),
             auth: OnceLock::new(),
             registration: OnceLock::new(),
             organization_creation: OnceLock::new(),
@@ -117,10 +146,18 @@ impl Di {
         }
     }
 
+    /// Supply an existing service before the container reaches its permanent address.
+    /// All request projections then borrow this same instance.
+    pub fn with_auth_service(mut self, auth: AuthService) -> Self {
+        self.auth = OnceLock::from(Box::new(auth));
+        self
+    }
+
     pub fn initialize_services(&'static self) -> Result<(), AuthError> {
         self.mailing_worker();
         self.organization_config_service();
         if self.auth.get().is_some() {
+            self.initialize_http()?;
             return Ok(());
         }
         let service = Box::new(AuthService::new(
@@ -140,7 +177,50 @@ impl Di {
         // Concurrent initialization may build a second candidate, but only one
         // box is retained; all callers subsequently borrow that same service.
         let _ = self.auth.set(service);
+        self.initialize_http()?;
         Ok(())
+    }
+
+    fn initialize_http(&'static self) -> Result<(), AuthError> {
+        let settings = &self.graphql_settings;
+        if settings.max_body_bytes == 0
+            || settings.max_depth == 0
+            || settings.max_fields == 0
+            || settings.max_tokens == 0
+        {
+            return Err(AuthError::InvalidConfiguration);
+        }
+        if self.authentication.get().is_none() {
+            let authentication = Authentication::new(
+                self.db_context(),
+                self.auth_service(),
+                AuthenticationSettings {
+                    cookie_secure: settings.cookie_secure,
+                    public_origin: settings.public_origin.clone(),
+                },
+            )?;
+            let _ = self.authentication.set(authentication);
+        }
+        self.graphql.get_or_init(|| {
+            build_schema(settings.max_depth, settings.max_fields, settings.max_tokens)
+        });
+        Ok(())
+    }
+
+    pub fn graphql_schema(&self) -> &ApplicationSchema {
+        self.graphql
+            .get()
+            .expect("GraphQL schema must be initialized")
+    }
+
+    pub fn authentication(&self) -> &Authentication {
+        self.authentication
+            .get()
+            .expect("HTTP authentication must be initialized")
+    }
+
+    pub fn max_request_body_bytes(&self) -> usize {
+        self.graphql_settings.max_body_bytes
     }
 
     pub fn db_context(&'static self) -> &'static DbContext {
@@ -176,7 +256,7 @@ impl Di {
         })
     }
 
-    pub fn auth_service(&'static self) -> &'static AuthService {
+    pub fn auth_service(&self) -> &AuthService {
         self.auth.get().expect("Di services must be initialized")
     }
 
@@ -211,34 +291,11 @@ impl Di {
             ))
         })
     }
+}
 
-    /// Attach typed service state and the scoped database context to API routes.
-    pub fn inject<S>(&'static self, router: &mut Router<S>)
-    where
-        S: Clone + Send + Sync + 'static,
-    {
-        let (public, _) = crate::controllers::public_router().split_for_parts();
-        let (protected, _) = crate::controllers::protected_router().split_for_parts();
-        let auth = self.auth_service();
-        let delivery = self.delivery.as_ref();
-        let protected = protected.route_layer(axum::middleware::from_fn(
-            move |request: axum::extract::Request, next: axum::middleware::Next| async move {
-                crate::middleware::authorization::Authorization::authenticate(
-                    auth, delivery, request, next,
-                )
-                .await
-            },
-        ));
-        let routes = public.merge(protected);
-        let db = self.db_context();
-        let routes = routes
-            .with_state(self.auth_service())
-            .layer(axum::Extension(self.delivery.as_ref()))
-            .layer(axum::middleware::from_fn(
-                move |request: axum::extract::Request, next: axum::middleware::Next| async move {
-                    db.scope(next.run(request)).await
-                },
-            ));
-        *router = std::mem::take(router).merge(routes);
+/// Juniper borrows the initialized service from the application's sole DI container.
+impl juniper::FromContext<Di> for AuthService {
+    fn from(di: &Di) -> &Self {
+        di.auth_service()
     }
 }

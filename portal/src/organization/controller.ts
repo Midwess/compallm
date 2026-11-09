@@ -1,7 +1,7 @@
 import { createOrganizationStore, type OrganizationController as Controller } from '@compallm/storybook/pages/organization'
 import type { AuthController, UrlController } from '@compallm/storybook'
 import find from 'lodash-es/find'
-import type { CurrentUserResponse } from '../contract/api'
+import type { AuthUser } from '@compallm/storybook'
 import { notify } from '../notifications/toast'
 import { organizationHome } from './paths'
 
@@ -11,7 +11,7 @@ export class OrganizationController implements Controller {
   private chatPath = ''
   private readonly auth: Pick<AuthController, 'signOut'>
 
-  constructor(user: CurrentUserResponse, url: Pick<UrlController, 'navigate'>, auth: Pick<AuthController, 'signOut'>) {
+  constructor(user: AuthUser, url: Pick<UrlController, 'navigate'>, auth: Pick<AuthController, 'signOut'>) {
     this.url = url
     this.auth = auth
     this.setCurrentUser(user)
@@ -22,8 +22,8 @@ export class OrganizationController implements Controller {
     return find(state.organizations, { id: state.organizationId }) ?? null
   }
 
-  setCurrentUser = (user: CurrentUserResponse) => {
-    const id = String(user.organizationId)
+  setCurrentUser = (user: AuthUser) => {
+    const id = user.organizationId
     this.chatPath = organizationHome(user)
     const state = this.store.getState()
     if (state.organizationId === id && state.organizations[0]?.name === user.organizationName) return

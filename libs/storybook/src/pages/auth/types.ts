@@ -1,3 +1,4 @@
+import type { Session } from '@compallm/contract/graphql'
 import type { StoreApi } from 'zustand/vanilla'
 
 export type AuthFailureReason = 'email-registered' | 'incorrect-code' | 'expired-code' | 'throttled' | 'unavailable'
@@ -12,12 +13,7 @@ export type AuthInitialState =
 export type AuthOperation = 'request' | 'verify' | 'resend'
 export type AuthError = AuthFailureReason | 'invalid-email'
 
-export interface AuthUser {
-  userId: number
-  sessionId: number
-  organizationId: number
-  organizationName: string
-}
+export type AuthUser = Pick<Session, 'id' | 'userId' | 'organizationId' | 'organizationName'>
 
 export interface AuthState {
   currentUser: AuthUser | null

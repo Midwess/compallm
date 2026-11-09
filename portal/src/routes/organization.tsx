@@ -6,7 +6,7 @@ import { OrganizationPage } from '@compallm/storybook/pages/organization'
 import { useUrlController } from '../url/use-url-controller'
 import { useAuthController } from '../auth/use-auth-controller'
 import { OrganizationController } from '../organization/controller'
-import type { CurrentUserResponse } from '../contract/api'
+import type { AuthUser } from '@compallm/storybook'
 
 export function Component() {
   const auth = useAuthController()
@@ -15,7 +15,7 @@ export function Component() {
   return <Workspace key={user.organizationId} user={user} />
 }
 
-function Workspace({ user }: { user: CurrentUserResponse }) {
+function Workspace({ user }: { user: AuthUser }) {
   const settings = useMatch('/:organizationName/settings/*')
   const auth = useAuthController()
   const url = useUrlController()

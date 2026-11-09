@@ -27,6 +27,23 @@ export const Select: Story = {
       <Sample label="Custom select">
         <Menus.Select aria-label="Language" options={options} />
       </Sample>
+      <Sample label="Options with icons">
+        <Menus.Select
+          aria-label="Badge style"
+          options={[
+            { value: 'dot', label: 'Dot', icon: <span aria-hidden="true" className="size-1.5 rounded-full bg-muted" /> },
+            {
+              value: 'count',
+              label: 'Count',
+              icon: (
+                <span aria-hidden="true" className="text-muted">
+                  1
+                </span>
+              ),
+            },
+          ]}
+        />
+      </Sample>
       <Sample label="Disabled">
         <Menus.Select aria-label="Disabled language" options={options} disabled />
       </Sample>

@@ -4,3 +4,4 @@ allowBuilds:
 
 overrides:
   '@compallm/storybook': link:../libs/storybook
+  '@compallm/contract': link:../libs/contract

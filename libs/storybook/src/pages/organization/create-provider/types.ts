@@ -1,26 +1,29 @@
 import type {
-  ProviderRegistryEntry,
+  ProviderTemplate,
   TextModelProtocol as ContractTextModelProtocol,
   ProviderModelCapability,
   ProviderEffortMapping,
   ProviderCatalogRef,
-} from '@compallm/contract/api'
+} from '@compallm/contract/graphql'
 import type { NavigationRequest } from '../../../url'
 import type { StoreApi } from 'zustand/vanilla'
 
 export type EndpointMode = 'chat_completions' | 'responses' | 'messages' | 'video' | 'realtime'
-export type ApiProtocol = ProviderRegistryEntry['protocol']
-export type TextModelProtocol = ContractTextModelProtocol
-export type ModelCapability = ProviderModelCapability
+export type ApiProtocol = Lowercase<ProviderTemplate['protocol']>
+export type TextModelProtocol = Lowercase<ContractTextModelProtocol>
+export type ModelCapability = Lowercase<ProviderModelCapability>
 export type ModelStatusFilter = 'all' | 'enabled' | 'disabled'
 export interface HeaderEntry {
   id: string
   key: string
   value: string
 }
-export type EffortMapping = ProviderEffortMapping
+export type EffortMapping = Partial<Record<keyof ProviderEffortMapping, string>>
 export type ThinkingLevel = keyof EffortMapping
-export type ProviderPreset = ProviderRegistryEntry
+export type ProviderPreset = Pick<ProviderTemplate, 'id' | 'name'> & {
+  protocol: ApiProtocol
+  baseUrl?: ProviderTemplate['baseUrl']
+}
 export interface ModelDraft {
   /** Persisted API identity; UI draft IDs and catalog IDs never substitute for it. */
   persistedId?: string

@@ -93,13 +93,3 @@ export { canCreateProvider, canSaveProvider, hasValidModelPrices, isValidModelDr
 export { capabilityOptions } from './model-options'
 
 export { providerCreateRequest, providerReplaceRequest } from './contract'
-export type {
-  ProviderRegistryListResponse,
-  ProviderRegistryDetailResponse,
-  ProviderDetailResponse,
-  ProviderListResponse,
-  CreateProvidersRequest,
-  CreateProvidersResponse,
-  PatchProviderRequest,
-  ReplaceProviderRequest,
-} from './contract'

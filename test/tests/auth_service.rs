@@ -813,6 +813,45 @@ async fn issued_tokens_use_signed_versioned_compression() {
         (&tokens.access_token, "user"),
         (&tokens.refresh_token, "refresh"),
     ] {
+        use base64::Engine;
+        use coset::{
+            CborSerializable, CoseMac0,
+            cwt::{ClaimName, ClaimsSet, Timestamp},
+            iana,
+        };
+        use hmac::Mac;
+        let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .decode(encoded)
+            .unwrap();
+        let cose = CoseMac0::from_slice(&bytes).unwrap();
+        assert_eq!(
+            cose.protected.header.alg,
+            Some(iana::Algorithm::HMAC_256_256.into())
+        );
+        cose.verify_payload_tag(
+            b"",
+            || (),
+            |tag, message| {
+                let mut mac =
+                    <hmac::Hmac<sha2::Sha256> as Mac>::new_from_slice(SECRET.as_bytes()).unwrap();
+                mac.update(message);
+                mac.verify_slice(tag).map_err(|_| ())
+            },
+        )
+        .unwrap();
+        let claims = ClaimsSet::from_slice(cose.payload.as_deref().unwrap()).unwrap();
+        assert!(matches!(
+            claims.expiration_time,
+            Some(Timestamp::WholeSeconds(_))
+        ));
+        assert!(matches!(claims.issued_at, Some(Timestamp::WholeSeconds(_))));
+        assert!(matches!(
+            &claims.rest[..],
+            [(
+                ClaimName::PrivateUse(-65537),
+                ciborium::value::Value::Bytes(_)
+            )]
+        ));
         let token = fixture
             .repo
             .1
@@ -837,9 +876,11 @@ async fn issued_tokens_use_signed_versioned_compression() {
                 .is_err()
         );
     }
-    let missing = serde_json::json!({"c": {"v": 999, "d": "abc"}});
-    let encoded =
-        hero::token::jwt::create_jwt_token(&missing, SECRET, Duration::from_secs(60)).unwrap();
+    let missing = AccessToken::Compressed(compallm_core::auth::token::CompressedToken {
+        dictionary_version: 999,
+        data: vec![1],
+    });
+    let encoded = test_codec::sign_raw(&missing, SECRET, Duration::from_secs(60));
     assert!(matches!(
         fixture
             .repo
@@ -848,15 +889,14 @@ async fn issued_tokens_use_signed_versioned_compression() {
             .await,
         Err(AuthError::DictionaryUnavailable)
     ));
-    let legacy = hero::token::jwt::create_jwt_token(
-        AccessToken::Refresh(
+    let legacy = test_codec::sign_raw(
+        &AccessToken::Refresh(
             RefreshToken::from_session(&stored_session(1, 7, 84, "Team"), REFRESH_LIFETIME)
                 .unwrap(),
         ),
         SECRET,
         REFRESH_LIFETIME,
-    )
-    .unwrap();
+    );
     assert!(matches!(
         fixture
             .repo
@@ -871,9 +911,11 @@ async fn issued_tokens_use_signed_versioned_compression() {
         "a different dictionary",
     )
     .unwrap();
-    let payload = serde_json::json!({"c": {"v": 1, "d": wrong.compress("{}").await.unwrap()}});
-    let encoded =
-        hero::token::jwt::create_jwt_token(&payload, SECRET, Duration::from_secs(60)).unwrap();
+    let payload = AccessToken::Compressed(compallm_core::auth::token::CompressedToken {
+        dictionary_version: 1,
+        data: wrong.compress_bytes(b"{}").await.unwrap(),
+    });
+    let encoded = test_codec::sign_raw(&payload, SECRET, Duration::from_secs(60));
     assert!(matches!(
         fixture
             .repo
@@ -911,7 +953,7 @@ async fn email_challenge_uses_compressed_wrapper_and_keeps_otp_encrypted() {
         .await
         .unwrap();
     assert!(matches!(token, AccessToken::EmailOtp(_)));
-    let envelope: AccessToken = hero::token::jwt::decode_jwt_token(&issued.token, SECRET).unwrap();
+    let envelope = test_codec::envelope(&issued.token);
     let AccessToken::Compressed(envelope) = envelope else {
         panic!("expected compressed token")
     };
@@ -921,10 +963,14 @@ async fn email_challenge_uses_compressed_wrapper_and_keeps_otp_encrypted() {
         "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source",
     )
     .unwrap();
-    let source = dictionary.decompress(&envelope.data).await.unwrap();
-    assert!(!source.contains("james@midwess.com"));
+    let source = dictionary.decompress_bytes(&envelope.data).await.unwrap();
+    assert!(
+        !source
+            .windows("james@midwess.com".len())
+            .any(|part| part == b"james@midwess.com")
+    );
     assert!(matches!(
-        serde_json::from_str::<AccessToken>(&source).unwrap(),
+        ciborium::de::from_reader::<AccessToken, _>(source.as_slice()).unwrap(),
         AccessToken::Encrypted(_)
     ));
 }
@@ -958,7 +1004,7 @@ async fn refresh_reads_old_dictionary_and_issues_with_latest() {
         .await
         .unwrap();
     for token in [&renewed.access_token, &renewed.refresh_token] {
-        let payload: AccessToken = hero::token::jwt::decode_jwt_token(token, SECRET).unwrap();
+        let payload = test_codec::envelope(token);
         let AccessToken::Compressed(payload) = payload else {
             panic!("expected compressed token")
         };
@@ -984,6 +1030,13 @@ async fn refresh_reads_old_dictionary_and_issues_with_latest() {
 
 #[tokio::test]
 async fn invalid_signature_is_rejected_before_dictionary_lookup() {
+    use base64::Engine;
+    use coset::{
+        CborSerializable, CoseMac0Builder, HeaderBuilder,
+        cwt::{ClaimsSetBuilder, Timestamp},
+        iana,
+    };
+    use hmac::Mac;
     use std::sync::atomic::{AtomicUsize, Ordering};
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
@@ -1007,13 +1060,42 @@ async fn invalid_signature_is_rejected_before_dictionary_lookup() {
             .is_err()
     );
     assert_eq!(reads.load(Ordering::SeqCst), 0);
+    let now = compallm_utils::time::unix_timestamp() as i64;
+    let claims = ClaimsSetBuilder::new()
+        .issued_at(Timestamp::WholeSeconds(now - 2))
+        .expiration_time(Timestamp::WholeSeconds(now - 1))
+        .private_claim(-65537, ciborium::value::Value::Bytes(vec![0]))
+        .build()
+        .to_vec()
+        .unwrap();
+    let expired = CoseMac0Builder::new()
+        .protected(
+            HeaderBuilder::new()
+                .algorithm(iana::Algorithm::HMAC_256_256)
+                .build(),
+        )
+        .payload(claims)
+        .create_tag(b"", |message| {
+            let mut mac =
+                <hmac::Hmac<sha2::Sha256> as Mac>::new_from_slice(SECRET.as_bytes()).unwrap();
+            mac.update(message);
+            mac.finalize().into_bytes().to_vec()
+        })
+        .build()
+        .to_vec()
+        .unwrap();
+    let expired = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(expired);
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(service.authenticate_token(&expired))
+            .await,
+        Err(AuthError::ExpiredToken)
+    ));
+    assert_eq!(reads.load(Ordering::SeqCst), 0);
     let user = fixture.access_for_session(stored_session(1, 7, 84, "Team"));
-    let raw = hero::token::jwt::create_jwt_token(
-        AccessToken::User(user),
-        SECRET,
-        Duration::from_secs(60),
-    )
-    .unwrap();
+    let raw = test_codec::sign_raw(&AccessToken::User(user), SECRET, Duration::from_secs(60));
     assert!(matches!(
         fixture.repo.1.scope(service.authenticate_token(&raw)).await,
         Ok(AccessToken::User(_))
@@ -1023,8 +1105,7 @@ async fn invalid_signature_is_rejected_before_dictionary_lookup() {
         .encrypt(&compallm_core::auth::EncryptedAccessToken::new(SECRET).unwrap())
         .await
         .unwrap();
-    let raw =
-        hero::token::jwt::create_jwt_token(encrypted, SECRET, Duration::from_secs(60)).unwrap();
+    let raw = test_codec::sign_raw(&encrypted, SECRET, Duration::from_secs(60));
     assert!(matches!(
         fixture.repo.1.scope(service.authenticate_token(&raw)).await,
         Ok(AccessToken::EmailOtp(_))
@@ -2554,12 +2635,7 @@ async fn middleware_invalid_or_wrong_variant_bearer_never_renews_from_cookies() 
                 let mut claims = fixture.access_for_session(session.clone());
                 claims.validity.issued_at -= 120;
                 claims.validity.expires_at -= 120;
-                hero::token::jwt::create_jwt_token(
-                    AccessToken::User(claims),
-                    SECRET,
-                    Duration::from_secs(60),
-                )
-                .unwrap()
+                sign_unchecked(&AccessToken::User(claims), Duration::from_secs(60))
             }
             _ => AccessToken::User(fixture.access_for_session(session.clone()))
                 .encode_compressed(SECRET, Duration::from_secs(60))
@@ -2722,12 +2798,7 @@ async fn explicit_refresh_requires_valid_refresh_bearer_and_ignores_cookies() {
                 let mut token = RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap();
                 token.validity.issued_at -= REFRESH_LIFETIME.as_secs() + 1;
                 token.validity.expires_at -= REFRESH_LIFETIME.as_secs() + 1;
-                hero::token::jwt::create_jwt_token(
-                    AccessToken::Refresh(token),
-                    SECRET,
-                    REFRESH_LIFETIME,
-                )
-                .unwrap()
+                sign_unchecked(&AccessToken::Refresh(token), REFRESH_LIFETIME)
             }
             _ => valid.clone(),
         };

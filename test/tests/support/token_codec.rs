@@ -1,6 +1,4 @@
 #![allow(dead_code)]
-#[path = "compression.rs"]
-mod compression;
 
 use compallm_core::{
     auth::{AccessToken, AuthError, EmailOtpChallenge},
@@ -83,16 +81,100 @@ pub fn challenge(email: &str, secret: &str) -> Result<EmailOtpChallenge, AuthErr
     })
 }
 
-pub fn sign_unchecked(token: &AccessToken, secret: &str, lifetime: Duration) -> String {
-    let payload = serde_json::json!({"c": {"v": 1, "d": compression::compress(&dictionary(), &serde_json::to_string(token).unwrap()).unwrap()}});
-    hero::token::jwt::create_jwt_token(&payload, secret, lifetime).unwrap()
+pub fn sign_raw(token: &AccessToken, secret: &str, lifetime: Duration) -> String {
+    use base64::Engine;
+    use coset::{
+        CborSerializable, CoseMac0Builder, HeaderBuilder,
+        cwt::{ClaimsSetBuilder, Timestamp},
+        iana,
+    };
+    use hmac::{Hmac, Mac};
+    let now = compallm_utils::time::unix_timestamp() as i64;
+    let mut payload = Vec::new();
+    ciborium::ser::into_writer(token, &mut payload).unwrap();
+    let claims = ClaimsSetBuilder::new()
+        .issued_at(Timestamp::WholeSeconds(now))
+        .expiration_time(Timestamp::WholeSeconds(now + lifetime.as_secs() as i64))
+        .private_claim(-65537, ciborium::value::Value::Bytes(payload))
+        .build()
+        .to_vec()
+        .unwrap();
+    let mac = CoseMac0Builder::new()
+        .protected(
+            HeaderBuilder::new()
+                .algorithm(iana::Algorithm::HMAC_256_256)
+                .build(),
+        )
+        .payload(claims)
+        .create_tag(b"", |bytes| {
+            let mut mac = <Hmac<sha2::Sha256> as Mac>::new_from_slice(secret.as_bytes()).unwrap();
+            mac.update(bytes);
+            mac.finalize().into_bytes().to_vec()
+        })
+        .build()
+        .to_vec()
+        .unwrap();
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(mac)
 }
 
-pub fn unpack(jwt: &str) -> serde_json::Value {
-    let payload: AccessToken =
-        hero::token::jwt::decode_jwt_token(jwt, "test-signing-secret-at-least-32-bytes").unwrap();
-    let AccessToken::Compressed(payload) = payload else {
+pub fn sign_unchecked(token: &AccessToken, secret: &str, lifetime: Duration) -> String {
+    let mut bytes = Vec::new();
+    ciborium::ser::into_writer(token, &mut bytes).unwrap();
+    let data = std::thread::scope(|scope| {
+        scope
+            .spawn(|| {
+                tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap()
+                    .block_on(dictionary().compress_bytes(&bytes))
+            })
+            .join()
+            .unwrap()
+            .unwrap()
+    });
+    sign_raw(
+        &AccessToken::Compressed(compallm_core::auth::token::CompressedToken {
+            dictionary_version: 1,
+            data,
+        }),
+        secret,
+        lifetime,
+    )
+}
+
+pub fn envelope(encoded: &str) -> AccessToken {
+    use base64::Engine;
+    use coset::{CborSerializable, CoseMac0, cwt::ClaimsSet};
+    let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(encoded)
+        .unwrap();
+    let cose = CoseMac0::from_slice(&bytes).unwrap();
+    let claims = ClaimsSet::from_slice(cose.payload.as_deref().unwrap()).unwrap();
+    let ciborium::value::Value::Bytes(token) = &claims.rest[0].1 else {
+        panic!("missing token")
+    };
+    ciborium::de::from_reader(token.as_slice()).unwrap()
+}
+
+pub fn unpack(encoded: &str) -> serde_json::Value {
+    let token = envelope(encoded);
+    let AccessToken::Compressed(payload) = token else {
         panic!("expected compressed token")
     };
-    serde_json::from_str(&compression::decompress(&dictionary(), &payload.data).unwrap()).unwrap()
+    let source = std::thread::scope(|scope| {
+        scope
+            .spawn(|| {
+                tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap()
+                    .block_on(dictionary().decompress_bytes(&payload.data))
+            })
+            .join()
+            .unwrap()
+            .unwrap()
+    });
+    let token: AccessToken = ciborium::de::from_reader(source.as_slice()).unwrap();
+    serde_json::to_value(token).unwrap()
 }

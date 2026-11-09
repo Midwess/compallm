@@ -1,19 +1,15 @@
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
-use zstd::{
-    bulk::{Compressor, Decompressor},
-    dict::{DecoderDictionary, EncoderDictionary},
-};
 
 /// A shared dictionary category; its contents are not cryptographic secrets.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DictionaryType {
-    /// Shared Zstd vocabulary for serialized authentication tokens, including Cedar policy.
+    /// Shared LZ4 vocabulary for serialized authentication tokens, including Cedar policy.
     AccessToken,
 }
 
-/// One immutable version, prepared once for reuse by concurrent operations.
+/// One immutable version, shared by concurrent operations.
 pub struct DCompression {
     pub kind: DictionaryType,
     pub version: u32,
@@ -22,75 +18,109 @@ pub struct DCompression {
 
 struct PreparedDictionary {
     fingerprint: [u8; 32],
-    encoder: EncoderDictionary<'static>,
-    decoder: DecoderDictionary<'static>,
+    bytes: Vec<u8>,
 }
 
 impl DCompression {
     pub const MAX_BYTES: usize = 256 * 1024;
-    const TRAINED_DICTIONARY_BYTES: usize = 8192;
+    const DICTIONARY_WINDOW_BYTES: usize = 64 * 1024;
 
-    /// Prepare exactly the ordered, concatenated UTF-8 dictionary content.
     pub fn new(kind: DictionaryType, version: u32, content: &str) -> anyhow::Result<Self> {
-        Self::from_bytes(kind, version, content.as_bytes())
+        Self::from_items(kind, version, vec![content.to_owned()])
     }
 
-    /// Train from ordered, separate samples without blocking the async runtime.
-    pub async fn train(kind: DictionaryType, version: u32, samples: Vec<String>) -> anyhow::Result<Self> {
-        tokio::task::spawn_blocking(move || {
-            let bytes = zstd::dict::from_samples(&samples, Self::TRAINED_DICTIONARY_BYTES)?;
-            Self::from_bytes(kind, version, &bytes)
-        }).await?
-    }
-
-    fn from_bytes(kind: DictionaryType, version: u32, bytes: &[u8]) -> anyhow::Result<Self> {
+    /// Assemble ordered, human-readable items into LZ4's external dictionary window.
+    pub fn from_items(
+        kind: DictionaryType,
+        version: u32,
+        items: Vec<String>,
+    ) -> anyhow::Result<Self> {
+        let mut bytes = Vec::new();
+        for item in items {
+            let item = item.as_bytes();
+            if item.len() >= Self::DICTIONARY_WINDOW_BYTES {
+                bytes.clear();
+                bytes.extend_from_slice(&item[item.len() - Self::DICTIONARY_WINDOW_BYTES..]);
+            } else {
+                let excess = bytes
+                    .len()
+                    .saturating_add(item.len())
+                    .saturating_sub(Self::DICTIONARY_WINDOW_BYTES);
+                bytes.drain(..excess);
+                bytes.extend_from_slice(item);
+            }
+        }
         Ok(Self {
             kind,
             version,
             prepared: Arc::new(PreparedDictionary {
-                fingerprint: Sha256::digest(bytes).into(),
-                encoder: EncoderDictionary::try_copy(bytes, 3)?,
-                decoder: DecoderDictionary::try_copy(bytes)?,
+                fingerprint: Sha256::digest(&bytes).into(),
+                bytes,
             }),
         })
     }
 
-    /// Compress UTF-8 and encode the fingerprint and frame as a URL-safe string.
+    /// Compress UTF-8 and encode the dictionary fingerprint and LZ4 block.
     pub async fn compress(&self, value: &str) -> anyhow::Result<String> {
+        let bytes = self.compress_bytes(value.as_bytes()).await?;
+        Ok(tokio::task::spawn_blocking(move || URL_SAFE_NO_PAD.encode(bytes)).await?)
+    }
+
+    /// Compress binary input using the versioned external dictionary.
+    pub async fn compress_bytes(&self, value: &[u8]) -> anyhow::Result<Vec<u8>> {
         anyhow::ensure!(
             value.len() <= Self::MAX_BYTES,
             "compression input exceeds limit"
         );
-        let value = value.to_owned();
+        let value = value.to_vec();
         let prepared = Arc::clone(&self.prepared);
         tokio::task::spawn_blocking(move || {
-            let mut compressor = Compressor::with_prepared_dictionary(&prepared.encoder)?;
-            let compressed = compressor.compress(value.as_bytes())?;
+            let compressed =
+                lz4_flex::block::compress_prepend_size_with_dict(&value, &prepared.bytes);
             let mut output = Vec::with_capacity(prepared.fingerprint.len() + compressed.len());
             output.extend_from_slice(&prepared.fingerprint);
             output.extend_from_slice(&compressed);
-            Ok(URL_SAFE_NO_PAD.encode(output))
+            Ok(output)
         })
         .await?
     }
 
-    /// Decode only with the exact dictionary, limiting allocations and output size.
+    /// Decode with the exact dictionary and a bounded allocation.
     pub async fn decompress(&self, value: &str) -> anyhow::Result<String> {
-        // Zstd's maximum encoded output for our bounded input plus fingerprint.
-        let max_encoded = (zstd::zstd_safe::compress_bound(Self::MAX_BYTES) + 32).div_ceil(3) * 4;
+        let max_encoded =
+            (lz4_flex::block::get_maximum_output_size(Self::MAX_BYTES) + 36).div_ceil(3) * 4;
         anyhow::ensure!(value.len() <= max_encoded, "compressed input exceeds limit");
         let value = value.to_owned();
+        let bytes = tokio::task::spawn_blocking(move || URL_SAFE_NO_PAD.decode(value)).await??;
+        Ok(String::from_utf8(self.decompress_bytes(&bytes).await?)?)
+    }
+
+    /// Decompress a binary block with a bounded allocation.
+    pub async fn decompress_bytes(&self, value: &[u8]) -> anyhow::Result<Vec<u8>> {
+        anyhow::ensure!(
+            value.len() <= lz4_flex::block::get_maximum_output_size(Self::MAX_BYTES) + 36,
+            "compressed input exceeds limit"
+        );
+        let bytes = value.to_vec();
         let prepared = Arc::clone(&self.prepared);
         tokio::task::spawn_blocking(move || {
-            let bytes = URL_SAFE_NO_PAD.decode(value)?;
             anyhow::ensure!(
-                bytes.len() >= 32 && bytes[..32] == prepared.fingerprint,
+                bytes.len() >= 36 && bytes[..32] == prepared.fingerprint,
                 "dictionary mismatch"
             );
-            let mut decompressor = Decompressor::with_prepared_dictionary(&prepared.decoder)?;
-            Ok(String::from_utf8(
-                decompressor.decompress(&bytes[32..], Self::MAX_BYTES)?,
-            )?)
+            let size = u32::from_le_bytes(bytes[32..36].try_into()?) as usize;
+            anyhow::ensure!(
+                size <= Self::MAX_BYTES,
+                "decompression output exceeds limit"
+            );
+            let mut output = vec![0; size];
+            let written = lz4_flex::block::decompress_into_with_dict(
+                &bytes[36..],
+                &mut output,
+                &prepared.bytes,
+            )?;
+            anyhow::ensure!(written == size, "decompressed size mismatch");
+            Ok(output)
         })
         .await?
     }

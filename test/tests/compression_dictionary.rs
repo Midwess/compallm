@@ -7,14 +7,14 @@ use sea_orm::{DbBackend, MockDatabase, Value};
 use std::{collections::BTreeMap, sync::Arc};
 
 fn sample_rows(version: i32) -> Vec<BTreeMap<String, Value>> {
-    (0..100)
-        .map(|index| BTreeMap::from([
-            ("type".to_owned(), Value::from("access_token")),
-            ("version".to_owned(), Value::from(version)),
-            ("sample_index".to_owned(), Value::from(index)),
-            ("content".to_owned(), Value::from(format!("{{\"u\":{{\"s\":{{\"i\":{},\"u\":{},\"o\":{version}}},\"p\":{{\"c\":\"permit(principal, action == Compallm::Action::model.list, resource);\",\"r\":[{}]}}}}}}", index * 17 + 1, index * 31 + 2, index))),
-        ]))
-        .collect()
+    vec![BTreeMap::from([
+        ("type".to_owned(), Value::from("access_token")),
+        ("version".to_owned(), Value::from(version)),
+        (
+            "content".to_owned(),
+            Value::from(format!("Compallm::Action::model.list,version={version}")),
+        ),
+    ])]
 }
 
 #[tokio::test]
@@ -52,11 +52,7 @@ async fn repository_loads_ordered_version_once_and_preserves_old_dictionary() ->
     second.extend(sample_rows(2));
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([
-                second.clone(),
-                first,
-                second,
-            ])
+            .append_query_results([second.clone(), first, second])
             .into_connection(),
     );
     let context = DbContext::new(Arc::new(PostgresConnection::new(db.clone())));
@@ -173,7 +169,7 @@ async fn configured_repository_reads_committed_dictionary_during_transaction() -
         writer_log
             .iter()
             .flat_map(|tx| tx.statements())
-            .all(|statement| !statement.sql.contains("zstd_dictionary"))
+            .all(|statement| !statement.sql.contains("lz4_dictionary"))
     );
     assert_eq!(committed_log.len(), 2);
     Ok(())
@@ -253,19 +249,23 @@ async fn initial_seed_compresses_complete_default_access_claims() -> anyhow::Res
         .find(|migration| migration.name().ends_with("seed_access_token_dictionary"))
         .unwrap();
     let db = MockDatabase::new(DbBackend::Postgres)
-        .append_query_results([vec![BTreeMap::from([(
-            "version".to_owned(),
-            Value::from(1_i32),
-        )])]])
+        .append_exec_results([sea_orm::MockExecResult::default()])
         .into_connection();
     migration.up(&SchemaManager::new(&db)).await?;
     let log = db.into_transaction_log();
-    let statement = &log[0].statements()[0];
-    let samples = statement.values.as_ref().unwrap().0.iter().map(|value| match value {
-        Value::String(Some(content)) => Ok(content.to_string()),
-        _ => Err(anyhow::anyhow!("expected dictionary sample")),
-    }).collect::<anyhow::Result<Vec<_>>>()?;
-    let dictionary = DCompression::train(DictionaryType::AccessToken, 1, samples).await?;
+    let samples = log[0].statements()[0]
+        .values
+        .as_ref()
+        .unwrap()
+        .0
+        .iter()
+        .map(|value| match value {
+            Value::String(Some(content)) => Ok(content.to_string()),
+            _ => Err(anyhow::anyhow!("expected dictionary item")),
+        })
+        .collect::<anyhow::Result<Vec<_>>>()?;
+    let dictionary =
+        DCompression::from_items(DictionaryType::AccessToken, samples.len() as u32, samples)?;
     compallm_postgres::init_id_generator("dictionary-seed-test")?;
     let roles = Role::defaults(84).await?;
     for role in roles {
@@ -281,10 +281,16 @@ async fn initial_seed_compresses_complete_default_access_claims() -> anyhow::Res
             PolicySnapshot::new(&member),
             std::time::Duration::from_secs(60),
         )?);
-        let source = serde_json::to_string(&token)?;
-        let compressed = dictionary.compress(&source).await?;
-        assert_eq!(dictionary.decompress(&compressed).await?, source);
+        let mut source = Vec::new();
+        ciborium::ser::into_writer(&token, &mut source)?;
+        let compressed = dictionary.compress_bytes(&source).await?;
+        assert_eq!(dictionary.decompress_bytes(&compressed).await?, source);
         assert!(compressed.len() < source.len());
+        let encoded = token.compress(&dictionary).await?.encode(
+            "test-signing-secret-at-least-32-bytes",
+            std::time::Duration::from_secs(60),
+        )?;
+        assert!(encoded.len() <= AccessToken::MAX_ENCODED_BYTES);
     }
     Ok(())
 }

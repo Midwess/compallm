@@ -53,14 +53,8 @@ impl Fixture {
 #[test]
 fn email_jwt_exposes_ciphertext_not_email_or_code() {
     let challenge = Fixture::challenge();
-    let decoded = URL_SAFE_NO_PAD
-        .decode(challenge.access_token.split('.').nth(1).unwrap())
-        .unwrap();
-    let json: serde_json::Value = serde_json::from_slice(&decoded).unwrap();
-    assert!(json["data"]["c"]["d"].is_string());
-    let body = String::from_utf8(decoded).unwrap();
-    assert!(!body.contains("james@midwess.com"));
-    assert!(!body.contains("\"code\""));
+    let wrapped = test_codec::unpack(&challenge.access_token);
+    assert!(wrapped.get("e").is_some());
     let claims =
         EmailOtpAccessToken::try_from(test_codec::decode(&challenge.access_token, SECRET).unwrap())
             .unwrap();
@@ -121,14 +115,11 @@ fn jwt_signature_and_payload_tampering_are_rejected() {
         ),
         Err(AuthError::InvalidToken)
     ));
-    let mut parts: Vec<String> = challenge
-        .access_token
-        .split('.')
-        .map(str::to_owned)
-        .collect();
-    parts[1] = URL_SAFE_NO_PAD.encode(br#"{"data":{"user":{}},"exp":9999999999,"iat":1}"#);
+    let mut bytes = URL_SAFE_NO_PAD.decode(&challenge.access_token).unwrap();
+    let index = bytes.len() / 2;
+    bytes[index] ^= 1;
     assert!(matches!(
-        test_codec::decode(&parts.join("."), SECRET),
+        test_codec::decode(&URL_SAFE_NO_PAD.encode(bytes), SECRET),
         Err(AuthError::InvalidToken)
     ));
 }

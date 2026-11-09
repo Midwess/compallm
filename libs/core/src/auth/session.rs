@@ -9,7 +9,7 @@ use super::{AuthError, RefreshToken};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-/// A persisted login. JWTs own expiry; ordinary renewal does not change this record.
+/// A persisted login. CWTs own expiry; ordinary renewal does not change this record.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Session {
     #[serde(rename = "i")]
@@ -63,7 +63,7 @@ impl Session {
         Ok(())
     }
 
-    /// Renew JWT validity while preserving the database session.
+    /// Renew CWT validity while preserving the database session.
     pub fn refresh(
         &self,
         presented: &RefreshToken,

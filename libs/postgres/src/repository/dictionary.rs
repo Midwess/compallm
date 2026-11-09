@@ -7,13 +7,13 @@ use sea_orm::{ColumnTrait, EntityTrait, ModelTrait, QueryFilter, QueryOrder};
 use tokio::sync::Mutex;
 
 use crate::{
-    ZstdDictionarySchema, ZstdDictionaryTypeSchema, postgres_connection::PostgresConnection,
+    Lz4DictionarySchema, Lz4DictionaryTypeSchema, postgres_connection::PostgresConnection,
 };
 
-type Dictionaries = <ZstdDictionarySchema as ModelTrait>::Entity;
+type Dictionaries = <Lz4DictionarySchema as ModelTrait>::Entity;
 type Column = <Dictionaries as EntityTrait>::Column;
 
-impl From<DictionaryType> for ZstdDictionaryTypeSchema {
+impl From<DictionaryType> for Lz4DictionaryTypeSchema {
     fn from(kind: DictionaryType) -> Self {
         match kind {
             DictionaryType::AccessToken => Self::AccessToken,
@@ -54,7 +54,7 @@ impl DictionaryRepository {
         );
         let db = PostgresConnection::from_context(&context)?;
         let row = Dictionaries::find()
-            .filter(Column::Type.eq(ZstdDictionaryTypeSchema::from(kind)))
+            .filter(Column::Type.eq(Lz4DictionaryTypeSchema::from(kind)))
             .order_by_desc(Column::Version)
             .one(db)
             .await?;
@@ -90,10 +90,9 @@ impl DictionaryRepository {
         }
         let db = PostgresConnection::from_context(&context)?;
         let rows = Dictionaries::find()
-            .filter(Column::Type.eq(ZstdDictionaryTypeSchema::from(kind)))
+            .filter(Column::Type.eq(Lz4DictionaryTypeSchema::from(kind)))
             .filter(Column::Version.lte(version_db))
             .order_by_asc(Column::Version)
-            .order_by_asc(Column::SampleIndex)
             .all(db)
             .await?;
         if rows.last().is_none_or(|row| row.version != version_db) {
@@ -102,7 +101,7 @@ impl DictionaryRepository {
         let samples = rows.into_iter().map(|row| row.content).collect();
         Ok(Some(self.cache.insert(
             key,
-            Box::new(DCompression::train(kind, version, samples).await?),
+            Box::new(DCompression::from_items(kind, version, samples)?),
         )))
     }
 }

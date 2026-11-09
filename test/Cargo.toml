@@ -23,6 +23,10 @@ router = { path = "../router" }
 validify.workspace = true
 anyhow = { workspace = true, features = ["std"] }
 async-trait.workspace = true
+coset.workspace = true
+ciborium.workspace = true
+hmac.workspace = true
+sha2 = { workspace = true, features = ["std"] }
 compallm-core.workspace = true
 compallm-contract.workspace = true
 utoipa = { workspace = true, features = ["macros"] }

@@ -110,7 +110,7 @@ pub struct ConfirmSignupOtpRequest {
     #[validate(length(equal = 6), custom(function = AuthInput::otp))]
     pub code: String,
     /// Credential delivery: cookie (default) sets HttpOnly cookies and requires Origin;
-    /// token returns both JWTs in JSON without setting cookies.
+    /// token returns both CWTs in JSON without setting cookies.
     #[serde(default)]
     #[schema(default = "cookie")]
     pub delivery: TokenDelivery,
@@ -125,8 +125,8 @@ pub struct ConfirmSignupOtpRequest {
 /// Delivery defaults to cookie: sets both HttpOnly cookies and returns lifetime metadata.
 /// Send Origin matching AUTH_PUBLIC_ORIGIN (or the local loopback Host in development).
 /// Explicit delivery token returns accessToken and refreshToken in JSON and sets no cookies.
-/// The delivery choice is controller-only and is never stored in the signed JWTs.
-/// User access JWTs include the current compact Cedar policy snapshot; refresh JWTs do not.
+/// The delivery choice is controller-only and is never stored in the signed CWTs.
+/// User access CWTs include the current compact Cedar policy snapshot; refresh CWTs do not.
 /// Issuance exceeding 3,800 encoded bytes is rejected without returning credentials.
 /// An existing email is rejected rather than signed in. Request a new code if the challenge expired.
 #[utoipa::path(
@@ -220,7 +220,7 @@ pub struct ConfirmSigninOtpRequest {
     #[modify(trim)]
     #[validate(length(equal = 6), custom(function = AuthInput::otp))]
     pub code: String,
-    /// Cookie (default) sets HttpOnly cookies; token returns both JWTs in JSON.
+    /// Cookie (default) sets HttpOnly cookies; token returns both CWTs in JSON.
     #[serde(default)]
     #[schema(default = "cookie")]
     pub delivery: TokenDelivery,
@@ -233,8 +233,8 @@ pub struct ConfirmSigninOtpRequest {
 /// Requires an existing active user and an active organization membership.
 /// Records a new session. Cookie delivery (default) requires an allowed Origin, sets both
 /// HttpOnly cookies and returns lifetime metadata. Explicit delivery token returns
-/// accessToken and refreshToken in JSON without setting cookies. Delivery is not a JWT claim.
-/// User access JWTs require a current compact Cedar policy snapshot; refresh JWTs do not.
+/// accessToken and refreshToken in JSON without setting cookies. Delivery is not a CWT claim.
+/// User access CWTs require a current compact Cedar policy snapshot; refresh CWTs do not.
 /// Oversized authority returns 422 without recording a login session.
 #[utoipa::path(
     post, path = "/api/auth/signin/email/confirmation/otp", operation_id = "confirmSigninOtp", tag = "auth",
@@ -288,7 +288,7 @@ pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
 
 /// Read the current authenticated identity and organization scope.
 ///
-/// Accepts a user access JWT through Authorization Bearer or the configured access cookie.
+/// Accepts a user access CWT through Authorization Bearer or the configured access cookie.
 /// An explicit Authorization header takes precedence and never falls back to cookies.
 /// Cookie mode renews missing or expired access through the refresh cookie and returns
 /// replacement HttpOnly cookies when Origin is trusted, or a safe request has
@@ -296,7 +296,7 @@ pub fn protected_router() -> OpenApiRouter<&'static AuthService> {
 /// Middleware performs one scoped session-version lookup for valid user access.
 /// Matching versions reuse signed claims; stale claims rebuild before this handler runs.
 /// Cookie renewal requires a matching valid refresh cookie and trusted Origin.
-/// Stale bearer access returns 401 as expired. Present a valid refresh JWT to
+/// Stale bearer access returns 401 as expired. Present a valid refresh CWT to
 /// POST /api/auth/refresh, update both credentials, then retry the original request.
 /// Temporary session-storage errors return 503 and preserve browser credentials.
 #[utoipa::path(
@@ -356,18 +356,18 @@ async fn signout(
 
 /// Explicitly refresh bearer credentials.
 ///
-/// Send the unexpired refresh JWT as Authorization: Bearer. No request body is
+/// Send the unexpired refresh CWT as Authorization: Bearer. No request body is
 /// required. Access/OTP credentials and cookie-only requests are rejected.
 /// Revalidates current session/user/membership and rebuilds the permission snapshot.
-/// Returns both JWTs and lifetime metadata in JSON; no cookies are set or cleared.
-/// A stale authorization version on the refresh JWT is allowed; revoked, expired,
+/// Returns both CWTs and lifetime metadata in JSON; no cookies are set or cleared.
+/// A stale authorization version on the refresh CWT is allowed; revoked, expired,
 /// foreign or removed credentials cannot renew. Save both credentials and retry
 /// the original request after stale/expired access returns 401.
 #[utoipa::path(
     post, path = "/api/auth/refresh", operation_id = "refreshTokens", tag = "auth",
     security(("refreshToken" = [])),
     responses(
-        (status = 200, description = "Current access and refresh JWTs with lifetime metadata; no Set-Cookie", body = AuthTokensResponse),
+        (status = 200, description = "Current access and refresh CWTs with lifetime metadata; no Set-Cookie", body = AuthTokensResponse),
         (status = 401, description = "Missing explicit refresh bearer, wrong token type, expired/revoked/foreign credential, or unavailable membership", body = ErrorResponse),
         (status = 422, description = "Encoded credential exceeds the supported size limit", body = ErrorResponse),
         (status = 503, description = "Session storage unavailable; retry with the existing refresh credential", body = ErrorResponse),

@@ -45,9 +45,9 @@ pub enum UserStatus {
     Disabled,
 }
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "zstd_dictionary_type")]
-pub enum ZstdDictionaryType {
-    /// Shared Zstd vocabulary for complete serialized user access tokens.
+#[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "lz4_dictionary_type")]
+pub enum Lz4DictionaryType {
+    /// Shared LZ4 vocabulary for complete serialized user access tokens.
     #[sea_orm(string_value = "access_token")]
     AccessToken,
 }

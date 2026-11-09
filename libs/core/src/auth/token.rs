@@ -1,14 +1,22 @@
-//! Hero-signed JWT payloads. Only email OTP claims need extra encryption.
-//! The enum validates shared rules and delegates to the independent token types.
+//! Authenticated CBOR Web Tokens. Only email OTP claims need extra encryption.
 
 use super::AuthError;
 use crate::compression::{DCompression, DictionaryType};
 use crate::persistent::dictionary::DictionaryRepository;
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use compallm_utils::email::normalize_email;
 use compallm_utils::time::unix_timestamp;
-use hero::token::jwt::{create_jwt_token, decode_jwt_token};
+use coset::{
+    CborSerializable, CoseMac0, CoseMac0Builder, Header, HeaderBuilder,
+    cwt::{ClaimName, ClaimsSet, ClaimsSetBuilder, Timestamp},
+    iana,
+};
+use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
+use sha2::Sha256;
 use std::time::Duration;
+
+const TOKEN_CLAIM: i64 = -65537;
 
 mod compress_token;
 mod email_otp;
@@ -89,9 +97,11 @@ impl AccessToken {
             return Err(AuthError::WrongTokenVariant);
         }
         self.validate(unix_timestamp())?;
+        let mut serialized = Vec::new();
+        ciborium::ser::into_writer(&self, &mut serialized).map_err(|_| AuthError::InvalidToken)?;
         Ok(Self::Compressed(CompressedToken {
             dictionary_version: dictionary.version,
-            data: dictionary.compress(&serde_json::to_string(&self)?).await?,
+            data: dictionary.compress_bytes(&serialized).await?,
         }))
     }
 
@@ -103,13 +113,44 @@ impl AccessToken {
             return Err(AuthError::WrongTokenVariant);
         }
         self.validate(unix_timestamp())?;
-        let encoded =
-            create_jwt_token(self, secret, lifetime).map_err(|_| AuthError::InvalidToken)?;
+        let issued = unix_timestamp();
+        let expires = issued
+            .checked_add(lifetime.as_secs())
+            .ok_or(AuthError::InvalidConfiguration)?;
+        let mut token = Vec::new();
+        ciborium::ser::into_writer(self, &mut token).map_err(|_| AuthError::InvalidToken)?;
+        let claims = ClaimsSetBuilder::new()
+            .issued_at(Timestamp::WholeSeconds(
+                i64::try_from(issued).map_err(|_| AuthError::InvalidConfiguration)?,
+            ))
+            .expiration_time(Timestamp::WholeSeconds(
+                i64::try_from(expires).map_err(|_| AuthError::InvalidConfiguration)?,
+            ))
+            .private_claim(TOKEN_CLAIM, ciborium::value::Value::Bytes(token))
+            .build()
+            .to_vec()
+            .map_err(|_| AuthError::InvalidToken)?;
+        let protected = HeaderBuilder::new()
+            .algorithm(iana::Algorithm::HMAC_256_256)
+            .build();
+        let mac = CoseMac0Builder::new()
+            .protected(protected)
+            .payload(claims)
+            .try_create_tag(b"", |message| -> Result<Vec<u8>, AuthError> {
+                let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(secret.as_bytes())
+                    .map_err(|_| AuthError::InvalidConfiguration)?;
+                mac.update(message);
+                Ok(mac.finalize().into_bytes().to_vec())
+            })?
+            .build()
+            .to_vec()
+            .map_err(|_| AuthError::InvalidToken)?;
+        let encoded = URL_SAFE_NO_PAD.encode(mac);
         Self::check_size(encoded.len())?;
         Ok(encoded)
     }
 
-    /// Verify the signed envelope before decrypting or validating inner claims.
+    /// Verify COSE authentication and CWT expiry before decompressing inner claims.
     pub async fn decode(
         encoded: &str,
         secret: &str,
@@ -119,17 +160,60 @@ impl AccessToken {
             return Err(AuthError::InvalidConfiguration);
         }
         Self::check_size(encoded.len())?;
-        let token: Self = decode_jwt_token(encoded, secret).map_err(|error| match error {
-            hero::token::jwt::JwtErrors::CodingError(error)
-                if matches!(
-                    error.kind(),
-                    jsonwebtoken::errors::ErrorKind::ExpiredSignature
-                ) =>
-            {
-                AuthError::ExpiredToken
-            }
-            _ => AuthError::InvalidToken,
-        })?;
+        let bytes = URL_SAFE_NO_PAD
+            .decode(encoded)
+            .map_err(|_| AuthError::InvalidToken)?;
+        let cose = CoseMac0::from_slice(&bytes).map_err(|_| AuthError::InvalidToken)?;
+        let expected_header = HeaderBuilder::new()
+            .algorithm(iana::Algorithm::HMAC_256_256)
+            .build();
+        if cose.protected.header != expected_header || cose.unprotected != Header::default() {
+            return Err(AuthError::InvalidToken);
+        }
+        cose.verify_payload_tag(
+            b"",
+            || AuthError::InvalidToken,
+            |tag, message| {
+                let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(secret.as_bytes())
+                    .map_err(|_| AuthError::InvalidConfiguration)?;
+                mac.update(message);
+                mac.verify_slice(tag).map_err(|_| AuthError::InvalidToken)
+            },
+        )?;
+        let claims = ClaimsSet::from_slice(cose.payload.as_deref().ok_or(AuthError::InvalidToken)?)
+            .map_err(|_| AuthError::InvalidToken)?;
+        let (Some(Timestamp::WholeSeconds(issued)), Some(Timestamp::WholeSeconds(expires))) =
+            (claims.issued_at, claims.expiration_time)
+        else {
+            return Err(AuthError::InvalidToken);
+        };
+        let now = i64::try_from(unix_timestamp()).map_err(|_| AuthError::InvalidToken)?;
+        if issued < 0 || issued > now || expires <= issued {
+            return Err(AuthError::InvalidToken);
+        }
+        if now >= expires {
+            return Err(AuthError::ExpiredToken);
+        }
+        if claims.issuer.is_some()
+            || claims.subject.is_some()
+            || claims.audience.is_some()
+            || claims.not_before.is_some()
+            || claims.cwt_id.is_some()
+            || claims.rest.len() != 1
+        {
+            return Err(AuthError::InvalidToken);
+        }
+        let (ClaimName::PrivateUse(TOKEN_CLAIM), ciborium::value::Value::Bytes(token)) =
+            &claims.rest[0]
+        else {
+            return Err(AuthError::InvalidToken);
+        };
+        let mut input = token.as_slice();
+        let token: Self =
+            ciborium::de::from_reader(&mut input).map_err(|_| AuthError::InvalidToken)?;
+        if !input.is_empty() {
+            return Err(AuthError::InvalidToken);
+        }
         token.validate(unix_timestamp())?;
         let token = match token {
             Self::Compressed(payload) => {
@@ -143,10 +227,16 @@ impl AccessToken {
                     return Err(AuthError::DictionaryUnavailable);
                 }
                 let source = dictionary
-                    .decompress(&payload.data)
+                    .decompress_bytes(&payload.data)
                     .await
                     .map_err(|_| AuthError::InvalidToken)?;
-                serde_json::from_str(&source).map_err(|_| AuthError::InvalidToken)?
+                let mut source = source.as_slice();
+                let token =
+                    ciborium::de::from_reader(&mut source).map_err(|_| AuthError::InvalidToken)?;
+                if !source.is_empty() {
+                    return Err(AuthError::InvalidToken);
+                }
+                token
             }
             token => token,
         };

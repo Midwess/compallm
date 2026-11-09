@@ -219,7 +219,7 @@ impl AuthService {
         UserAccessToken::try_from(self.authenticate_token(token).await?)
     }
 
-    /// Read-only renewal: validates JWT/session state and never consumes the credential.
+    /// Read-only renewal: validates CWT/session state and never consumes the credential.
     pub async fn refresh(&self, refresh_token: &str) -> Result<UserTokens, AuthError> {
         let claims = RefreshToken::try_from(self.authenticate_token(refresh_token).await?)?;
         let (session, membership) = self

@@ -60,32 +60,33 @@ impl PolicySnapshot {
         }
     }
 
-    /// Remove unnecessary whitespace without altering comments or Cedar tokens.
+    /// Remove comments and unnecessary whitespace without altering Cedar tokens.
     fn compact(source: &str) -> String {
-        let Some((tokens, _)) = get_token_stream(source) else { return source.to_owned(); };
-        let Some(first) = tokens.first() else { return source.to_owned(); };
+        let Some((tokens, _)) = get_token_stream(source) else {
+            return source.to_owned();
+        };
+        if tokens.is_empty() {
+            return String::new();
+        }
         let mut result = String::with_capacity(source.len());
-        result.push_str(&source[..first.span.start]);
         for (index, token) in tokens.iter().enumerate() {
             if index > 0 {
                 let previous = &tokens[index - 1];
-                let gap = &source[previous.span.end..token.span.start];
-                if gap.chars().any(|character| !character.is_whitespace()) {
-                    result.push_str(gap);
-                } else {
-                    let left = &source[previous.span.clone()];
-                    let right = &source[token.span.clone()];
-                    let pair = format!("{left}{right}");
-                    let unchanged = get_token_stream(&pair).is_some_and(|(pair_tokens, _)| {
-                        pair_tokens.len() == 2 && pair_tokens[0].token == previous.token
-                            && pair_tokens[1].token == token.token && pair_tokens[0].span.end == left.len()
-                    });
-                    if !unchanged { result.push(' '); }
+                let left = &source[previous.span.clone()];
+                let right = &source[token.span.clone()];
+                let pair = format!("{left}{right}");
+                let unchanged = get_token_stream(&pair).is_some_and(|(pair_tokens, _)| {
+                    pair_tokens.len() == 2
+                        && pair_tokens[0].token == previous.token
+                        && pair_tokens[1].token == token.token
+                        && pair_tokens[0].span.end == left.len()
+                });
+                if !unchanged {
+                    result.push(' ');
                 }
             }
             result.push_str(&source[token.span.clone()]);
         }
-        result.push_str(&source[tokens.last().expect("nonempty tokens").span.end..]);
         result
     }
 }

@@ -24,12 +24,12 @@ pub fn api_router() -> OpenApiRouter<&'static AuthService> {
         "bearerAuth",
         SecurityScheme::Http({
             let mut bearer = Http::new(HttpAuthScheme::Bearer);
-            bearer.description = Some("User access JWT. Requests check the scoped session version. Stale or expired bearer access returns 401; call POST /api/auth/refresh with a valid refresh JWT, then retry. No automatic bearer replacement or cookie fallback.".into());
+            bearer.description = Some("User access CWT. Requests check the scoped session version. Stale or expired bearer access returns 401; call POST /api/auth/refresh with a valid refresh CWT, then retry. No automatic bearer replacement or cookie fallback.".into());
             bearer
         }),
     );
     let mut refresh = Http::new(HttpAuthScheme::Bearer);
-    refresh.description = Some("Refresh JWT sent explicitly as Authorization: Bearer to POST /api/auth/refresh. Access and OTP tokens are rejected; cookie-only credentials cannot renew through this endpoint.".into());
+    refresh.description = Some("Refresh CWT sent explicitly as Authorization: Bearer to POST /api/auth/refresh. Access and OTP tokens are rejected; cookie-only credentials cannot renew through this endpoint.".into());
     components.add_security_scheme("refreshToken", SecurityScheme::Http(refresh));
     let mut otp = Http::new(HttpAuthScheme::Bearer);
     otp.description = Some("Encrypted email OTP challenge returned by the code request. Requires the email-OTP token variant; user access and refresh tokens are rejected. Supply it as Authorization: Bearer <challenge>.".into());

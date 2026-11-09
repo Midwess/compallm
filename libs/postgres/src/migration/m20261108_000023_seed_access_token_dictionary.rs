@@ -1,11 +1,11 @@
-//! Synthetic, ordered samples for the initial authentication-token dictionary.
+//! Synthetic, ordered and human-reviewable items for the initial LZ4 dictionary.
 use sea_orm::{DbBackend, Statement, Value};
 use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
-const SAMPLES: &[&str] = &[
+const ITEMS: &[&str] = &[
     r####"{"u":{"s":{"i":101,"u":202,"o":303,"n":"Workspace","v":1,"r":null},"p":{"c":"","r":[404],"g":{}},"v":{"i":1700000000,"e":1700001800}}}"####,
     r####"{"r":{"s":{"i":101,"u":202,"o":303,"n":"Workspace","v":1,"r":null},"v":{"i":1700000000,"e":1702592000}}}"####,
     r####"{"e":"v1.encrypted_email_challenge"}"####,
@@ -87,46 +87,100 @@ const SAMPLES: &[&str] = &[
     r####"permit(principal in Compallm::Role::\"__ORG__:__ADMIN__\",action in[Compallm::Action::\"organization.settings.read\",Compallm::Action::\"organization.settings.update\",Compallm::Action::\"member.list\",Compallm::Action::\"member.invite\",Compallm::Action::\"member.metadata.read\",Compallm::Action::\"member.remove\",Compallm::Action::\"provider.list\",Compallm::Action::\"provider.create\",Compallm::Action::\"provider.connection.test\",Compallm::Action::\"provider.configuration.read\",Compallm::Action::\"provider.configuration.update\",Compallm::Action::\"provider.delete\",Compallm::Action::\"provider.credential.replace\",Compallm::Action::\"provider.model.list\",Compallm::Action::\"provider.model.create\",Compallm::Action::\"provider.model.configuration.read\",Compallm::Action::\"provider.model.configuration.update\",Compallm::Action::\"provider.model.pricing.update\",Compallm::Action::\"provider.model.delete\",Compallm::Action::\"model.list\",Compallm::Action::\"model.create\",Compallm::Action::\"model.metadata.read\",Compallm::Action::\"model.configuration.update\",Compallm::Action::\"model.delete\",Compallm::Action::\"model.use\",Compallm::Action::\"model.pricing.update\",Compallm::Action::\"role.list\",Compallm::Action::\"role.create\",Compallm::Action::\"role.metadata.read\",Compallm::Action::\"role.metadata.update\",Compallm::Action::\"role.policy.read\",Compallm::Action::\"role.policy.update\",Compallm::Action::\"role.delete\",Compallm::Action::\"group.list\",Compallm::Action::\"group.create\",Compallm::Action::\"group.metadata.read\",Compallm::Action::\"group.metadata.update\",Compallm::Action::\"group.delete\"],resource in Compallm::Organization::\"__ORG__\");permit(principal in Compallm::Role::\"__ORG__:__ADMIN__\",action in[Compallm::Action::\"member.role.assign\",Compallm::Action::\"member.role.unassign\",Compallm::Action::\"group.role.assign\",Compallm::Action::\"group.role.unassign\"],resource in Compallm::Organization::\"__ORG__\")when{context.role.organization==Compallm::Organization::\"__ORG__\" && context.role !=Compallm::Role::\"__ORG__:__OWNER__\"};permit(principal in Compallm::Role::\"__ORG__:__ADMIN__\",action in[Compallm::Action::\"group.member.add\",Compallm::Action::\"group.member.remove\"],resource in Compallm::Organization::\"__ORG__\")when{context.member.organization==Compallm::Organization::\"__ORG__\"}unless{resource in Compallm::Role::\"__ORG__:__OWNER__\"};permit(principal in Compallm::Role::\"__ORG__:__ADMIN__\",action in[Compallm::Action::\"model.route.add\",Compallm::Action::\"model.route.update\",Compallm::Action::\"model.route.remove\"],resource in Compallm::Organization::\"__ORG__\")when{context.providerModel.organization==Compallm::Organization::\"__ORG__\"};permit(principal in Compallm::Role::\"__ORG__:__ADMIN__\",action in[Compallm::Action::\"role.assign\",Compallm::Action::\"role.unassign\"],resource is Compallm::Role in Compallm::Organization::\"__ORG__\")unless{resource==Compallm::Role::\"__ORG__:__OWNER__\"};forbid(principal in Compallm::Role::\"__ORG__:__ADMIN__\",action==Compallm::Action::\"model.use\",resource is Compallm::Model in Compallm::Organization::\"__ORG__\")unless{resource.enabled};"####,
     r####"permit(principal in Compallm::Role::"__ORG__:__MEMBER__",action==Compallm::Action::"model.list",resource==Compallm::Organization::"__ORG__");permit(principal in Compallm::Role::"__ORG__:__MEMBER__",action==Compallm::Action::"model.metadata.read",resource is Compallm::Model in Compallm::Organization::"__ORG__");permit(principal in Compallm::Role::"__ORG__:__MEMBER__",action==Compallm::Action::"model.use",resource is Compallm::Model in Compallm::Organization::"__ORG__")when{resource.enabled};"####,
     r####"permit(principal in Compallm::Role::\"__ORG__:__MEMBER__\",action==Compallm::Action::\"model.list\",resource==Compallm::Organization::\"__ORG__\");permit(principal in Compallm::Role::\"__ORG__:__MEMBER__\",action==Compallm::Action::\"model.metadata.read\",resource is Compallm::Model in Compallm::Organization::\"__ORG__\");permit(principal in Compallm::Role::\"__ORG__:__MEMBER__\",action==Compallm::Action::\"model.use\",resource is Compallm::Model in Compallm::Organization::\"__ORG__\")when{resource.enabled};"####,
+    r####""c":{"v":"####,
+    r####""d":""####,
+    r####""u":{"s":{"i":"####,
+    r####""r":{"s":{"i":"####,
+    r####""p":{"c":""####,
+    r####""r":["####,
+    r####""g":{},"####,
+    r####""v":{"i":"####,
+    r####""e":"####,
+    r####"permit(principal in Compallm::Role::\""####,
+    r####"action in[Compallm::Action::\""####,
+    r####"resource in Compallm::Organization::\""####,
 ];
 
-fn samples() -> Vec<String> {
-    let mut result = SAMPLES.iter().map(|sample| (*sample).to_owned()).collect::<Vec<_>>();
-    let policies = SAMPLES.iter().copied().filter(|sample| sample.starts_with("permit(") && sample.len() > 400).collect::<Vec<_>>();
-    for index in 0..24u64 {
-        let organization = 100_000_000_000_000_000u64 + index * 37;
-        let role = 200_000_000_000_000_000u64 + index * 73;
-        let source = policies[index as usize % policies.len()]
-            .replace("__ORG__", &organization.to_string())
-            .replace("__OWNER__", &role.to_string())
-            .replace("__ADMIN__", &role.to_string())
-            .replace("__MEMBER__", &role.to_string());
-        result.push(serde_json::json!({
-            "u": {"s": {"i": role + 11, "u": role + 12, "o": organization, "n": "Workspace", "v": index + 1, "r": null},
-            "p": {"c": source, "r": [role], "g": {}}, "v": {"i": 1_700_000_000u64 + index, "e": 1_700_001_800u64 + index}}
-        }).to_string());
-    }
-    result
+const DOMAINS: &[&str] = &[
+    "@gmail.com",
+    "@googlemail.com",
+    "@outlook.com",
+    "@hotmail.com",
+    "@yahoo.com",
+    "@icloud.com",
+    "@proton.me",
+    ".com",
+    ".org",
+    ".ai",
+    ".net",
+    ".io",
+    ".edu",
+    ".gov",
+    ".vn",
+];
+
+fn items() -> Vec<String> {
+    let mut items = ITEMS.to_vec();
+    // LZ4's match selection depends on dictionary order. This ordering was
+    // measured against synthetic CBOR tokens for the built-in roles.
+    items.sort_by_key(|item| (!item.contains('\\'), item.len()));
+    items.extend_from_slice(DOMAINS);
+    items.into_iter().map(str::to_owned).collect()
 }
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let samples = samples();
-        let placeholders = (0..samples.len()).map(|index| format!("({}, ${}::text)", index, index + 1)).collect::<Vec<_>>().join(",");
-        let sql = format!("WITH batch AS MATERIALIZED (SELECT nextval(pg_get_serial_sequence('zstd_dictionary','version'))::integer AS version), samples(sample_index,content) AS (VALUES {placeholders}) INSERT INTO zstd_dictionary (type,version,sample_index,content) SELECT 'access_token'::zstd_dictionary_type,batch.version,samples.sample_index,samples.content FROM batch CROSS JOIN samples RETURNING version");
-        let values = samples.into_iter().map(Value::from).collect::<Vec<_>>();
-        let row = manager.get_connection().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres, sql, values)).await?
-            .ok_or_else(|| DbErr::Custom("dictionary seed did not return its version".into()))?;
-        let version: i32 = row.try_get("", "version")?;
-        if version != 1 { return Err(DbErr::Custom("initial dictionary must be version 1".into())); }
+        let items = items();
+        let placeholders = (0..items.len())
+            .map(|index| {
+                format!(
+                    "('access_token'::lz4_dictionary_type, ${}::text)",
+                    index + 1
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        let sql = format!("INSERT INTO lz4_dictionary (type,content) VALUES {placeholders}");
+        let values = items.into_iter().map(Value::from).collect::<Vec<_>>();
+        manager
+            .get_connection()
+            .execute_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                sql,
+                values,
+            ))
+            .await?;
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager.get_connection().execute_unprepared(
-            "DO $$ BEGIN IF EXISTS (SELECT 1 FROM zstd_dictionary WHERE type = 'access_token' AND version > 1) THEN RAISE EXCEPTION 'later access-token dictionaries depend on version 1'; END IF; END $$"
-        ).await?;
-        manager.get_connection().execute_unprepared("DELETE FROM zstd_dictionary WHERE type = 'access_token' AND version = 1").await?;
+        let rows = manager
+            .get_connection()
+            .query_all_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT content FROM lz4_dictionary WHERE type = 'access_token' ORDER BY version"
+                    .to_owned(),
+            ))
+            .await?;
+        let expected = items();
+        if rows.len() != expected.len() {
+            return Err(DbErr::Custom(
+                "dictionary contains modified or later items".into(),
+            ));
+        }
+        for (row, expected) in rows.iter().zip(&expected) {
+            let content: String = row.try_get("", "content")?;
+            if content != *expected {
+                return Err(DbErr::Custom(
+                    "dictionary contains modified or later items".into(),
+                ));
+            }
+        }
+        manager
+            .get_connection()
+            .execute_unprepared("DELETE FROM lz4_dictionary WHERE type = 'access_token'")
+            .await?;
         Ok(())
     }
 }

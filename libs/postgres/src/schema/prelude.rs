@@ -22,4 +22,4 @@ pub use super::provider_video_usage::Entity as ProviderVideoUsage;
 pub use super::providers::Entity as Providers;
 pub use super::user_sessions::Entity as UserSessions;
 pub use super::users::Entity as Users;
-pub use super::zstd_dictionary::Entity as ZstdDictionary;
+pub use super::lz4_dictionary::Entity as Lz4Dictionary;

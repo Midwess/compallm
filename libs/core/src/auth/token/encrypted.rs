@@ -13,7 +13,7 @@ use serde::{Serialize, de::DeserializeOwned};
 
 const AAD: &[u8] = b"compallm:auth:encrypted-access-token:v1";
 
-/// Concrete encryption helper configured from the same secret used by Hero JWT.
+/// Concrete encryption helper configured from the same secret used by the token MAC.
 /// HKDF separates the cipher key from the raw HS256 signing key. No env reads.
 pub struct EncryptedAccessToken {
     cipher: ChaCha20Poly1305,
@@ -76,7 +76,7 @@ impl EncryptedAccessToken {
     }
 }
 
-/// Opaque ciphertext nested in the signed JWT. Deliberately not Debug.
+/// Opaque ciphertext nested in the signed CWT. Deliberately not Debug.
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 pub struct EncryptedToken(pub String);

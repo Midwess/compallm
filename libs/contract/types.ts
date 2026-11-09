@@ -1,26 +1,10 @@
 // Generated from Rust. Do not edit; run cargo run -p compallm-api -- generate.
 export * from './display-types.ts'
+export * from './offline-provider-types.ts'
 export {
-  ProviderHeader,
-  TextModelProtocol,
-  ProviderEffortMapping,
-  ProviderModelCapability,
-  ProviderCatalogRef,
-  ProviderModelConfiguration,
-  ProviderModelWrite,
-  ProviderCreateInput,
-  CreateProvidersRequest,
   CredentialDelivery,
   EmailCodeInput,
   EmailInput,
-  ProviderHeaderUpdate,
-  PatchProviderRequest,
-  ProviderFields,
-  ProviderHeaders,
-  ProviderInputRules,
-  ProviderModelFields,
-  ProviderModels,
-  ReplaceProviderRequest,
   SignupEmailRequest,
   SigninEmailRequest,
   ConfirmSignupOtpRequest,

@@ -37,19 +37,8 @@ function visit(name) {
 }
 Object.keys(definitions).sort().forEach(visit)
 const formats = new Set(['baseUrl', 'nonblank', 'authorization', 'emailAddress', 'resourceId'])
-const objectRules = {
-  header: 'headerObject',
-  headers: 'headersObject',
-  models: 'modelsObject',
-  headerUpdate: 'headerUpdateObject',
-  createProvider: 'createProviderObject',
-  createProviders: 'createProvidersObject',
-  providerPatch: 'providerPatchObject',
-}
-const arrayRules = {
-  headers: '(entries) => headersObject({entries})',
-  modelWrites: 'modelWritesArray',
-}
+const objectRules = {}
+const arrayRules = {}
 const supported = new Set([
   '$ref',
   'type',
@@ -181,8 +170,9 @@ function render(schema) {
 }
 const lines = [
   banner,
+  "export * from './offline-provider-validation.ts'",
   "import { z } from 'zod'",
-  "import { inputString, stringInput, integerInput, headerObject, headersObject, modelsObject, headerUpdateObject, modelWritesArray, createProviderObject, createProvidersObject, providerPatchObject } from './runtime.ts'",
+  "import { inputString, stringInput, integerInput } from './runtime.ts'",
 ]
 for (const name of ordered) {
   const schema = definitions[name]
@@ -271,7 +261,10 @@ for (const name of names.filter((name) => !ordered.includes(name)))
 await writeTypescript(new URL('./form-types.ts', import.meta.url), declarations.join('\n') + '\n')
 await writeTypescript(
   new URL('./types.ts', import.meta.url),
-  banner + "export * from './display-types.ts'\nexport { " + names.join(', ') + " } from './form-types.ts'\n",
+  banner +
+    "export * from './display-types.ts'\nexport * from './offline-provider-types.ts'\nexport { " +
+    names.join(', ') +
+    " } from './form-types.ts'\n",
 )
 await generate(
   {

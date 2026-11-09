@@ -1,29 +1,11 @@
-// Interim safe display/response types; form input types are generated from Rust.
+// Interim safe display/response types. Provider preview types remain offline snapshots.
 import type {
-  EmailInput,
-  EmailCodeInput,
-  ProviderFields,
-  ProviderModelFields,
-  ProviderHeaders,
-  ProviderHeader,
-  ProviderModels,
-  ProviderInputRules,
-  CreateProvidersRequest,
-  ProviderCreateInput,
-  ProviderModelWrite,
   ProviderModelConfiguration,
-  TextModelProtocol,
-  ProviderEffortMapping,
   ProviderModelCapability,
-  ProviderCatalogRef,
-  ReplaceProviderRequest,
-  ProviderHeaderUpdate,
-  PatchProviderRequest,
-  SignupEmailRequest,
-  SigninEmailRequest,
-  ConfirmSignupOtpRequest,
-  ConfirmSigninOtpRequest,
-} from './form-types.ts'
+  ProviderEffortMapping,
+  TextModelProtocol,
+} from './offline-provider-types.ts'
+
 /**
  * Public timing metadata; contains no token claims or credentials.
  */

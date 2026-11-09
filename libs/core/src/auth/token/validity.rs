@@ -6,7 +6,9 @@ use std::time::Duration;
 /// Issuance and expiration timestamps with their shared validation rules.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct TokenValidity {
+    #[serde(rename = "i")]
     pub issued_at: u64,
+    #[serde(rename = "e")]
     pub expires_at: u64,
 }
 

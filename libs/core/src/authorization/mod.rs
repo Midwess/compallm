@@ -1,6 +1,8 @@
 //! Application-owned Cedar vocabulary. Schema definitions do not grant access.
 
-mod policy_snapshot;
+pub mod error;
+pub mod policy_snapshot;
+pub mod rbac;
 pub use policy_snapshot::PolicySnapshot;
 
 use std::sync::LazyLock;

@@ -10,6 +10,9 @@ async fn entity_creation_owns_ids_and_default_policy_relationships() {
     let user = User::from_email("james@example.com").await.unwrap();
     let organization = Organization::new("Research").await.unwrap();
     let roles = Role::defaults(organization.id).await.unwrap();
+    assert!(roles[0].org_owner());
+    assert!(!roles[1].org_owner());
+    assert!(!roles[2].org_owner());
     let owner = roles[0].clone();
     let custom = Role::new(organization.id, "Reviewer", "", " ")
         .await
@@ -68,4 +71,94 @@ async fn entity_creation_owns_ids_and_default_policy_relationships() {
     assert_ne!(model.id, expected.id);
     expected.id = model.id;
     assert_eq!(model, expected);
+}
+
+#[tokio::test]
+async fn role_constructor_validates_and_normalizes_iam_length() {
+    use compallm_core::organization::role::RoleCreationError;
+
+    compallm_postgres::init_id_generator("role-name-test").unwrap();
+    for invalid in ["  ".to_string(), "界".repeat(65)] {
+        assert!(matches!(
+            Role::new(1, invalid, "", "").await,
+            Err(RoleCreationError::InvalidName(_))
+        ));
+    }
+    let name = "界".repeat(64);
+    let role = Role::new(1, format!("  {name}  "), "", "").await.unwrap();
+    assert_eq!(role.name, name);
+    assert_ne!(role.id, 0);
+}
+
+#[tokio::test]
+async fn group_constructor_limits_assigned_roles() {
+    use compallm_core::organization::group::GroupCreationError;
+
+    compallm_postgres::init_id_generator("group-role-limit-test").unwrap();
+    let role = Role::new(1, "Role", "", "").await.unwrap();
+    let roles: Vec<_> = (0..Group::MAX_ROLES)
+        .map(|index| Role {
+            id: index as u64 + 1,
+            ..role.clone()
+        })
+        .collect();
+    assert_eq!(
+        Group::new(1, "Group", "", roles.clone())
+            .await
+            .unwrap()
+            .roles
+            .len(),
+        32
+    );
+    let mut too_many = roles;
+    too_many.push(too_many[0].clone());
+    assert!(matches!(
+        Group::new(1, "Group", "", too_many).await,
+        Err(GroupCreationError::TooManyRoles)
+    ));
+}
+
+#[tokio::test]
+async fn group_constructor_checks_name_and_role_scope() {
+    use compallm_core::organization::group::GroupCreationError;
+    compallm_postgres::init_id_generator("group-validation-test").unwrap();
+    let role = Role::new(1, "Role", "", "").await.unwrap();
+    assert!(matches!(
+        Group::new(1, "  ", "", vec![]).await,
+        Err(GroupCreationError::InvalidName(_))
+    ));
+    assert!(matches!(
+        Group::new(2, "Group", "", vec![role.clone()]).await,
+        Err(GroupCreationError::ForeignRole)
+    ));
+    assert!(matches!(
+        Group::new(1, "Group", "", vec![role.clone(), role]).await,
+        Err(GroupCreationError::DuplicateRole)
+    ));
+    let group = Group::new(1, "  Research  ", "", vec![]).await.unwrap();
+    assert_eq!(group.name, "Research");
+}
+
+#[tokio::test]
+async fn role_constructor_checks_cedar_and_preserves_source() {
+    use compallm_core::organization::role::RoleCreationError;
+    compallm_postgres::init_id_generator("role-policy-validation-test").unwrap();
+    for source in [
+        "invalid policy",
+        "permit(principal, action == Compallm::Action::\"unknown\", resource);",
+        "permit(principal == ?principal, action, resource);",
+    ] {
+        assert!(matches!(
+            Role::new(1, "Role", "", source).await,
+            Err(RoleCreationError::InvalidPolicy(_))
+        ));
+    }
+    let source = "// kept\npermit(principal, action == Compallm::Action::\"model.list\", resource is Compallm::Organization);\n";
+    let role = Role::new(1, "Role", "", source).await.unwrap();
+    assert_eq!(role.cedar_source, source);
+    assert!(role.ensure_deletable().is_ok());
+    let mut owner = role;
+    owner.org_owner = true;
+    owner.name = "Renamed".into();
+    assert!(owner.ensure_deletable().is_err());
 }

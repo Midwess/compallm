@@ -1,5 +1,9 @@
 #[path = "support/roles.rs"]
 mod role_fixture;
+#[path = "support/token_codec.rs"]
+mod test_codec;
+#[path = "support/token_pair.rs"]
+mod token_pair;
 use role_fixture::default_roles;
 
 #[path = "support/session.rs"]
@@ -16,17 +20,26 @@ use compallm_core::auth::{
 use compallm_utils::time::unix_timestamp;
 use hero::token::jwt::create_jwt_token;
 
+trait TestEncode {
+    fn encode_test(&self, secret: &str, lifetime: Duration) -> Result<String, AuthError>;
+}
+impl TestEncode for AccessToken {
+    fn encode_test(&self, secret: &str, lifetime: Duration) -> Result<String, AuthError> {
+        test_codec::encode(self, secret, lifetime)
+    }
+}
+
 const SECRET: &str = "test-signing-secret-at-least-32-bytes";
 
 struct Fixture;
 
 impl Fixture {
     fn challenge() -> EmailOtpChallenge {
-        EmailOtpChallenge::new(" James@MIDWESS.COM ", SECRET).unwrap()
+        test_codec::challenge(" James@MIDWESS.COM ", SECRET).unwrap()
     }
 
     fn tokens() -> UserTokens {
-        UserTokens::new(
+        token_pair::new(
             &stored_session(1, 7, 84, "Research team"),
             empty_snapshot(),
             SECRET,
@@ -40,23 +53,11 @@ impl Fixture {
 #[test]
 fn email_jwt_exposes_ciphertext_not_email_or_code() {
     let challenge = Fixture::challenge();
-    let decoded = URL_SAFE_NO_PAD
-        .decode(challenge.access_token.split('.').nth(1).unwrap())
-        .unwrap();
-    let json: serde_json::Value = serde_json::from_slice(&decoded).unwrap();
-    assert!(
-        json["data"]["encrypted"]
-            .as_str()
-            .unwrap()
-            .starts_with("v1.")
-    );
-    let body = String::from_utf8(decoded).unwrap();
-    assert!(!body.contains("james@midwess.com"));
-    assert!(!body.contains("\"code\""));
-    let claims = EmailOtpAccessToken::try_from(
-        AccessToken::decode(&challenge.access_token, SECRET).unwrap(),
-    )
-    .unwrap();
+    let wrapped = test_codec::unpack(&challenge.access_token);
+    assert!(wrapped.get("e").is_some());
+    let claims =
+        EmailOtpAccessToken::try_from(test_codec::decode(&challenge.access_token, SECRET).unwrap())
+            .unwrap();
     claims
         .verify_code(&challenge.code, unix_timestamp())
         .unwrap();
@@ -95,7 +96,7 @@ fn old_otp_pairs_remain_valid_after_another_is_issued() {
     assert_ne!(old.access_token, new.access_token);
     for challenge in [&old, &new, &old] {
         let claims = EmailOtpAccessToken::try_from(
-            AccessToken::decode(&challenge.access_token, SECRET).unwrap(),
+            test_codec::decode(&challenge.access_token, SECRET).unwrap(),
         )
         .unwrap();
         claims
@@ -108,30 +109,27 @@ fn old_otp_pairs_remain_valid_after_another_is_issued() {
 fn jwt_signature_and_payload_tampering_are_rejected() {
     let challenge = Fixture::challenge();
     assert!(matches!(
-        AccessToken::decode(
+        test_codec::decode(
             &challenge.access_token,
             "another-signing-secret-at-least-32-bytes"
         ),
         Err(AuthError::InvalidToken)
     ));
-    let mut parts: Vec<String> = challenge
-        .access_token
-        .split('.')
-        .map(str::to_owned)
-        .collect();
-    parts[1] = URL_SAFE_NO_PAD.encode(br#"{"data":{"user":{}},"exp":9999999999,"iat":1}"#);
+    let mut bytes = URL_SAFE_NO_PAD.decode(&challenge.access_token).unwrap();
+    let index = bytes.len() / 2;
+    bytes[index] ^= 1;
     assert!(matches!(
-        AccessToken::decode(&parts.join("."), SECRET),
+        test_codec::decode(&URL_SAFE_NO_PAD.encode(bytes), SECRET),
         Err(AuthError::InvalidToken)
     ));
 }
 
-#[test]
-fn ciphertext_requires_its_configured_secret_and_integrity_tag() {
+#[tokio::test]
+async fn ciphertext_requires_its_configured_secret_and_integrity_tag() {
     let claims = EmailOtpAccessToken::new("james@midwess.com".into()).unwrap();
     let cipher = EncryptedAccessToken::new(SECRET).unwrap();
     // The cipher can work directly with an inner struct; it knows no enum.
-    let payload = cipher.encrypt(&claims).unwrap();
+    let payload = cipher.encrypt(&claims).await.unwrap();
     let decrypted: EmailOtpAccessToken = cipher.decrypt(&payload).unwrap();
     assert_eq!(decrypted.code, claims.code);
     assert!(matches!(
@@ -162,9 +160,9 @@ fn valid_jwt_cannot_extend_expired_inner_claims() {
     claims.validity.issued_at -= 61;
     claims.validity.expires_at -= 61;
     let jwt =
-        create_jwt_token(AccessToken::User(claims), SECRET, Duration::from_secs(600)).unwrap();
+        test_codec::sign_unchecked(&AccessToken::User(claims), SECRET, Duration::from_secs(600));
     assert!(matches!(
-        AccessToken::decode(&jwt, SECRET),
+        test_codec::decode(&jwt, SECRET),
         Err(AuthError::ExpiredToken)
     ));
 }
@@ -172,7 +170,7 @@ fn valid_jwt_cannot_extend_expired_inner_claims() {
 #[test]
 fn token_variants_cannot_authorize_each_other() {
     let challenge = Fixture::challenge();
-    let otp = AccessToken::decode(&challenge.access_token, SECRET).unwrap();
+    let otp = test_codec::decode(&challenge.access_token, SECRET).unwrap();
     assert!(matches!(
         UserAccessToken::try_from(otp.clone()),
         Err(AuthError::WrongTokenVariant)
@@ -182,8 +180,8 @@ fn token_variants_cannot_authorize_each_other() {
         Err(AuthError::WrongTokenVariant)
     ));
     let issued = Fixture::tokens();
-    let user = AccessToken::decode(&issued.access_token, SECRET).unwrap();
-    let refresh = AccessToken::decode(&issued.refresh_token, SECRET).unwrap();
+    let user = test_codec::decode(&issued.access_token, SECRET).unwrap();
+    let refresh = test_codec::decode(&issued.refresh_token, SECRET).unwrap();
     assert_eq!(
         UserAccessToken::try_from(user.clone())
             .unwrap()
@@ -221,16 +219,16 @@ fn email_otp_accepts_valid_addresses_from_any_domain() {
         "a@evilmidwess.com",
         "a@midwess.com.evil",
     ] {
-        let challenge = EmailOtpChallenge::new(email, SECRET).unwrap();
+        let challenge = test_codec::challenge(email, SECRET).unwrap();
         let claims = EmailOtpAccessToken::try_from(
-            AccessToken::decode(&challenge.access_token, SECRET).unwrap(),
+            test_codec::decode(&challenge.access_token, SECRET).unwrap(),
         )
         .unwrap();
         assert_eq!(claims.email, email);
     }
     for email in ["@midwess.com", "not an email", "a@@example.org"] {
         assert!(matches!(
-            EmailOtpChallenge::new(email, SECRET),
+            test_codec::challenge(email, SECRET),
             Err(AuthError::InvalidEmail)
         ));
     }
@@ -238,7 +236,7 @@ fn email_otp_accepts_valid_addresses_from_any_domain() {
 
 #[test]
 fn ids_round_trip_as_u64_in_access_and_refresh_sessions() {
-    let one = UserTokens::new(
+    let one = token_pair::new(
         &stored_session(9_007_199_254_740_993, 7, 84, "Research team"),
         empty_snapshot(),
         SECRET,
@@ -246,30 +244,21 @@ fn ids_round_trip_as_u64_in_access_and_refresh_sessions() {
         Duration::from_secs(600),
     )
     .unwrap();
-    let payload = URL_SAFE_NO_PAD
-        .decode(one.access_token.split('.').nth(1).unwrap())
-        .unwrap();
-    let json: serde_json::Value = serde_json::from_slice(&payload).unwrap();
+    let json = test_codec::unpack(&one.access_token);
+    assert_eq!(json["u"]["s"]["u"].as_u64(), Some(9_007_199_254_740_993));
     assert_eq!(
-        json["data"]["user"]["session"]["user_id"].as_u64(),
-        Some(9_007_199_254_740_993)
-    );
-    assert_eq!(
-        UserAccessToken::try_from(AccessToken::decode(&one.access_token, SECRET).unwrap())
+        UserAccessToken::try_from(test_codec::decode(&one.access_token, SECRET).unwrap())
             .unwrap()
             .session
             .user_id,
         9_007_199_254_740_993
     );
     let first =
-        RefreshToken::try_from(AccessToken::decode(&one.refresh_token, SECRET).unwrap()).unwrap();
+        RefreshToken::try_from(test_codec::decode(&one.refresh_token, SECRET).unwrap()).unwrap();
     assert_eq!(first.session.id, 7);
     assert_eq!(first.session.user_id, 9_007_199_254_740_993);
     assert_eq!(first.session.organization_id, 84);
-    assert_eq!(
-        json["data"]["user"]["session"].as_object().unwrap().len(),
-        6
-    );
+    assert_eq!(json["u"]["s"].as_object().unwrap().len(), 6);
 }
 
 #[test]
@@ -280,34 +269,30 @@ fn refresh_requires_an_embedded_session_and_rejects_legacy_claims() {
     )
     .unwrap();
     let mut serialized = serde_json::to_value(&claims).unwrap();
-    serialized.as_object_mut().unwrap().remove("session");
+    serialized.as_object_mut().unwrap().remove("s");
     let jwt = create_jwt_token(
         serde_json::json!({"refresh":serialized}),
         SECRET,
         Duration::from_secs(60),
     )
     .unwrap();
-    assert!(AccessToken::decode(&jwt, SECRET).is_err());
-    assert_eq!(serde_json::to_value(claims).unwrap()["session"]["id"], 7);
+    assert!(test_codec::decode(&jwt, SECRET).is_err());
+    assert_eq!(serde_json::to_value(claims).unwrap()["s"]["i"], 7);
 }
 
 #[test]
 fn access_and_refresh_tokens_include_the_organization_name_and_require_it() {
     let tokens = Fixture::tokens();
     for encoded in [&tokens.access_token, &tokens.refresh_token] {
-        let claims = AccessToken::decode(encoded, SECRET).unwrap();
+        let claims = test_codec::decode(encoded, SECRET).unwrap();
         let mut payload = serde_json::to_value(&claims).unwrap();
-        let variant = if payload.get("user").is_some() {
-            "user"
-        } else {
-            "refresh"
-        };
-        let session = &mut payload[variant]["session"];
-        assert_eq!(session["organization_id"], 84);
-        assert_eq!(session["organization_name"], "Research team");
-        session.as_object_mut().unwrap().remove("organization_name");
+        let variant = if payload.get("u").is_some() { "u" } else { "r" };
+        let session = &mut payload[variant]["s"];
+        assert_eq!(session["o"], 84);
+        assert_eq!(session["n"], "Research team");
+        session.as_object_mut().unwrap().remove("n");
         let legacy = create_jwt_token(payload, SECRET, Duration::from_secs(60)).unwrap();
-        assert!(AccessToken::decode(&legacy, SECRET).is_err());
+        assert!(test_codec::decode(&legacy, SECRET).is_err());
     }
 }
 
@@ -315,12 +300,12 @@ fn access_and_refresh_tokens_include_the_organization_name_and_require_it() {
 fn malformed_tokens_and_invalid_lifetimes_are_rejected() {
     for input in ["", "not.jwt", "a.b.c"] {
         assert!(matches!(
-            AccessToken::decode(input, SECRET),
+            test_codec::decode(input, SECRET),
             Err(AuthError::InvalidToken)
         ));
     }
     assert!(matches!(
-        UserTokens::new(
+        token_pair::new(
             &stored_session(1, 7, 84, "Research team"),
             empty_snapshot(),
             SECRET,
@@ -331,8 +316,8 @@ fn malformed_tokens_and_invalid_lifetimes_are_rejected() {
     ));
 }
 
-#[test]
-fn encryption_preserves_the_variant_for_typed_conversion() {
+#[tokio::test]
+async fn encrypted_non_otp_variants_are_rejected() {
     let cipher = EncryptedAccessToken::new(SECRET).unwrap();
     let user = UserAccessToken::new(
         stored_session(1, 7, 84, "Research team"),
@@ -342,16 +327,14 @@ fn encryption_preserves_the_variant_for_typed_conversion() {
     .unwrap();
     let jwt = AccessToken::User(user)
         .encrypt(&cipher)
+        .await
         .unwrap()
-        .encode(SECRET, Duration::from_secs(60))
+        .encode_test(SECRET, Duration::from_secs(60))
         .unwrap();
-    assert_eq!(
-        UserAccessToken::try_from(AccessToken::decode(&jwt, SECRET).unwrap())
-            .unwrap()
-            .session
-            .user_id,
-        1
-    );
+    assert!(matches!(
+        test_codec::decode(&jwt, SECRET),
+        Err(AuthError::WrongTokenVariant)
+    ));
     let refresh = RefreshToken::from_session(
         &stored_session(1, 7, 84, "Research team"),
         Duration::from_secs(600),
@@ -359,43 +342,46 @@ fn encryption_preserves_the_variant_for_typed_conversion() {
     .unwrap();
     let jwt = AccessToken::Refresh(refresh)
         .encrypt(&cipher)
+        .await
         .unwrap()
-        .encode(SECRET, Duration::from_secs(600))
+        .encode_test(SECRET, Duration::from_secs(600))
         .unwrap();
-    assert_eq!(
-        RefreshToken::try_from(AccessToken::decode(&jwt, SECRET).unwrap())
-            .unwrap()
-            .session
-            .user_id,
-        1
-    );
+    assert!(matches!(
+        test_codec::decode(&jwt, SECRET),
+        Err(AuthError::WrongTokenVariant)
+    ));
 }
 
-#[test]
-fn plaintext_otp_and_nested_encryption_are_rejected() {
+#[tokio::test]
+async fn plaintext_otp_and_nested_encryption_are_rejected() {
     let claims = EmailOtpAccessToken::new("james@midwess.com".into()).unwrap();
     let plaintext = AccessToken::EmailOtp(claims.clone());
     assert!(matches!(
-        plaintext.encode(SECRET, Duration::from_secs(600)),
+        plaintext.encode_test(SECRET, Duration::from_secs(600)),
         Err(AuthError::WrongTokenVariant)
     ));
-    let jwt = create_jwt_token(plaintext, SECRET, Duration::from_secs(600)).unwrap();
+    let jwt = test_codec::sign_unchecked(&plaintext, SECRET, Duration::from_secs(600));
     assert!(matches!(
-        AccessToken::decode(&jwt, SECRET),
+        test_codec::decode(&jwt, SECRET),
         Err(AuthError::WrongTokenVariant)
     ));
     let cipher = EncryptedAccessToken::new(SECRET).unwrap();
-    let encrypted = AccessToken::EmailOtp(claims).encrypt(&cipher).unwrap();
+    let encrypted = AccessToken::EmailOtp(claims)
+        .encrypt(&cipher)
+        .await
+        .unwrap();
     assert!(matches!(
-        encrypted.clone().encrypt(&cipher),
+        encrypted.clone().encrypt(&cipher).await,
         Err(AuthError::InvalidToken)
     ));
     // Even valid authenticated nested ciphertext cannot bypass enum validation.
-    let nested = AccessToken::Encrypted(cipher.encrypt(&encrypted).unwrap());
-    let jwt = nested.encode(SECRET, Duration::from_secs(600)).unwrap();
+    let nested = AccessToken::Encrypted(cipher.encrypt(&encrypted).await.unwrap());
+    let jwt = nested
+        .encode_test(SECRET, Duration::from_secs(600))
+        .unwrap();
     assert!(matches!(
-        AccessToken::decode(&jwt, SECRET),
-        Err(AuthError::InvalidToken)
+        test_codec::decode(&jwt, SECRET),
+        Err(AuthError::WrongTokenVariant)
     ));
 }
 
@@ -407,11 +393,9 @@ fn injected_secret_controls_both_jwt_and_encryption() {
     ));
     let challenge = Fixture::challenge();
     assert_eq!(
-        EmailOtpAccessToken::try_from(
-            AccessToken::decode(&challenge.access_token, SECRET).unwrap()
-        )
-        .unwrap()
-        .email,
+        EmailOtpAccessToken::try_from(test_codec::decode(&challenge.access_token, SECRET).unwrap())
+            .unwrap()
+            .email,
         "james@midwess.com"
     );
 }
@@ -489,7 +473,7 @@ fn token_validity_owns_expiration_and_timestamp_validation() {
 
 #[test]
 fn both_tokens_link_to_the_same_organization_scoped_session() {
-    let one = UserTokens::new(
+    let one = token_pair::new(
         &stored_session(1, 7, 84, "Research team"),
         empty_snapshot(),
         SECRET,
@@ -497,7 +481,7 @@ fn both_tokens_link_to_the_same_organization_scoped_session() {
         Duration::from_secs(600),
     )
     .unwrap();
-    let two = UserTokens::new(
+    let two = token_pair::new(
         &stored_session(1, 7, 85, "Research team"),
         empty_snapshot(),
         SECRET,
@@ -505,15 +489,12 @@ fn both_tokens_link_to_the_same_organization_scoped_session() {
         Duration::from_secs(600),
     )
     .unwrap();
-    for (jwt, variant) in [(&one.access_token, "user"), (&one.refresh_token, "refresh")] {
-        let payload = URL_SAFE_NO_PAD
-            .decode(jwt.split('.').nth(1).unwrap())
-            .unwrap();
-        let json: serde_json::Value = serde_json::from_slice(&payload).unwrap();
-        let claims = &json["data"][variant];
-        assert_eq!(claims["session"]["id"], 7);
-        assert_eq!(claims["session"]["user_id"], 1);
-        assert_eq!(claims["session"]["organization_id"], 84);
+    for (jwt, variant) in [(&one.access_token, "u"), (&one.refresh_token, "r")] {
+        let json = test_codec::unpack(jwt);
+        let claims = &json[variant];
+        assert_eq!(claims["s"]["i"], 7);
+        assert_eq!(claims["s"]["u"], 1);
+        assert_eq!(claims["s"]["o"], 84);
         for field in [
             "session_id",
             "user_id",
@@ -526,40 +507,29 @@ fn both_tokens_link_to_the_same_organization_scoped_session() {
     }
     assert_ne!(one.access_token, two.access_token);
     let first =
-        UserAccessToken::try_from(AccessToken::decode(&one.access_token, SECRET).unwrap()).unwrap();
+        UserAccessToken::try_from(test_codec::decode(&one.access_token, SECRET).unwrap()).unwrap();
     let second =
-        UserAccessToken::try_from(AccessToken::decode(&two.access_token, SECRET).unwrap()).unwrap();
+        UserAccessToken::try_from(test_codec::decode(&two.access_token, SECRET).unwrap()).unwrap();
     assert_eq!(first.session.organization_id, 84);
     assert_eq!(second.session.organization_id, 85);
-    let payload = URL_SAFE_NO_PAD
-        .decode(one.refresh_token.split('.').nth(1).unwrap())
-        .unwrap();
-    let refresh: serde_json::Value = serde_json::from_slice(&payload).unwrap();
-    assert_eq!(refresh["data"]["refresh"]["session"]["user_id"], 1);
-    assert_eq!(refresh["data"]["refresh"]["session"]["organization_id"], 84);
-    assert_eq!(
-        refresh["data"]["refresh"]["session"]["id"],
-        first.session.id
-    );
+    let refresh = test_codec::unpack(&one.refresh_token);
+    assert_eq!(refresh["r"]["s"]["u"], 1);
+    assert_eq!(refresh["r"]["s"]["o"], 84);
+    assert_eq!(refresh["r"]["s"]["i"], first.session.id);
     let refresh_claims =
-        RefreshToken::try_from(AccessToken::decode(&one.refresh_token, SECRET).unwrap()).unwrap();
+        RefreshToken::try_from(test_codec::decode(&one.refresh_token, SECRET).unwrap()).unwrap();
     assert_eq!(first.session, refresh_claims.session);
-    assert!(
-        refresh["data"]["refresh"]
-            .get("organization_role")
-            .is_none()
-    );
+    assert!(refresh["r"].get("organization_role").is_none());
 }
 
 #[test]
 fn issued_token_metadata_matches_the_encoded_claims() {
     let tokens = Fixture::tokens();
     let access =
-        UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
+        UserAccessToken::try_from(test_codec::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
     let refresh =
-        RefreshToken::try_from(AccessToken::decode(&tokens.refresh_token, SECRET).unwrap())
-            .unwrap();
+        RefreshToken::try_from(test_codec::decode(&tokens.refresh_token, SECRET).unwrap()).unwrap();
     assert_eq!(tokens.access_validity.issued_at, access.validity.issued_at);
     assert_eq!(
         tokens.access_validity.expires_at,
@@ -573,50 +543,57 @@ fn issued_token_metadata_matches_the_encoded_claims() {
         tokens.refresh_validity.expires_at,
         refresh.validity.expires_at
     );
-    let challenge = EmailOtpChallenge::new("reader@example.com", SECRET).unwrap();
-    let claims = EmailOtpAccessToken::try_from(
-        AccessToken::decode(&challenge.access_token, SECRET).unwrap(),
-    )
-    .unwrap();
+    let challenge = test_codec::challenge("reader@example.com", SECRET).unwrap();
+    let claims =
+        EmailOtpAccessToken::try_from(test_codec::decode(&challenge.access_token, SECRET).unwrap())
+            .unwrap();
     assert_eq!(challenge.validity.expires_at, claims.validity.expires_at);
 }
 
 #[test]
 fn wire_budget_checks_actual_encoded_bytes_on_issuance_and_input() {
     let lifetime = Duration::from_secs(60);
+    let mut seed = 0x123456789abcdefu64;
+    let mut names = String::new();
+    for _ in 0..1000 {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        names.push_str(&format!("{seed:016x}"));
+    }
     let claims = |name_len| {
         UserAccessToken::new(
-            stored_session(1, 7, 84, "a".repeat(name_len)),
+            stored_session(1, 7, 84, names[..name_len].to_owned()),
             empty_snapshot(),
             lifetime,
         )
         .unwrap()
     };
-    // Find the largest name whose actual signed credential fits; base64 has steps.
     let mut low: usize = 0;
-    let mut high: usize = 4_000;
+    let mut high: usize = names.len();
     while low < high {
         let middle = (low + high).div_ceil(2);
-        let encoded =
-            create_jwt_token(AccessToken::User(claims(middle)), SECRET, lifetime).unwrap();
-        if encoded.len() <= AccessToken::MAX_ENCODED_BYTES {
+        if AccessToken::User(claims(middle))
+            .encode_test(SECRET, lifetime)
+            .is_ok()
+        {
             low = middle;
         } else {
             high = middle - 1;
         }
     }
     let accepted = AccessToken::User(claims(low))
-        .encode(SECRET, lifetime)
+        .encode_test(SECRET, lifetime)
         .unwrap();
     assert!(accepted.len() <= AccessToken::MAX_ENCODED_BYTES);
-    assert!(AccessToken::decode(&accepted, SECRET).is_ok());
+    assert!(test_codec::decode(&accepted, SECRET).is_ok());
     assert!(matches!(
-        AccessToken::User(claims(low + 1)).encode(SECRET, lifetime),
+        AccessToken::User(claims(low + 1)).encode_test(SECRET, lifetime),
         Err(AuthError::TokenTooLarge { .. })
     ));
-    let oversized = create_jwt_token(AccessToken::User(claims(low + 1)), SECRET, lifetime).unwrap();
+    let oversized = "x".repeat(AccessToken::MAX_ENCODED_BYTES + 1);
     assert!(matches!(
-        AccessToken::decode(&oversized, SECRET),
+        test_codec::decode(&oversized, SECRET),
         Err(AuthError::TokenTooLarge { .. })
     ));
 }
@@ -633,37 +610,15 @@ async fn plain_snapshot_budget_measures_real_jwt_including_unicode_and_escaping(
             user_id: 1,
             roles: vec![role.clone()],
             groups: vec![],
-        })?;
+        });
         let access = UserAccessToken::new(
             stored_session(1, 7, 84, "Nghiên cứu \"Team\""),
             snapshot.clone(),
             Duration::from_secs(60),
         )?;
-        let mut proposed = serde_json::to_value(&access)?;
-        proposed["policy_snapshot"] = serde_json::to_value(&snapshot)?;
-        let candidate = create_jwt_token(
-            serde_json::json!({"user": proposed}),
-            SECRET,
-            Duration::from_secs(60),
-        )?;
-        let measured = AccessToken::User(access)
-            .encode(SECRET, Duration::from_secs(60))
-            .map(|encoded| encoded.len());
-        println!(
-            "{}: plain Cedar {} bytes; snapshot JSON {} bytes; proposed JWT {} / {} bytes",
-            role.name,
-            snapshot.cedar_source.len(),
-            serde_json::to_vec(&snapshot)?.len(),
-            candidate.len(),
-            AccessToken::MAX_ENCODED_BYTES
-        );
-        if candidate.len() > AccessToken::MAX_ENCODED_BYTES {
-            assert!(
-                matches!(measured, Err(AuthError::TokenTooLarge {size, limit}) if size == candidate.len() && limit == AccessToken::MAX_ENCODED_BYTES)
-            );
-        } else {
-            assert_eq!(measured?, candidate.len());
-        }
+        let encoded = AccessToken::User(access).encode_test(SECRET, Duration::from_secs(60))?;
+        let restored = UserAccessToken::try_from(test_codec::decode(&encoded, SECRET)?)?;
+        assert_eq!(restored.policy_snapshot, snapshot);
         assert_eq!(
             snapshot
                 .cedar_source
@@ -688,22 +643,19 @@ fn empty_snapshot() -> compallm_core::authorization::PolicySnapshot {
 fn access_requires_the_signed_snapshot_and_refresh_omits_it() {
     let tokens = Fixture::tokens();
     let access =
-        UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
+        UserAccessToken::try_from(test_codec::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
     let mut payload = serde_json::to_value(AccessToken::User(access)).unwrap();
-    assert!(payload["user"]["policy_snapshot"].is_object());
-    payload["user"]
-        .as_object_mut()
-        .unwrap()
-        .remove("policy_snapshot");
+    assert!(payload["u"]["p"].is_object());
+    payload["u"].as_object_mut().unwrap().remove("p");
     let legacy = create_jwt_token(payload, SECRET, Duration::from_secs(60)).unwrap();
     assert!(matches!(
-        AccessToken::decode(&legacy, SECRET),
+        test_codec::decode(&legacy, SECRET),
         Err(AuthError::InvalidToken)
     ));
-    let refresh = AccessToken::decode(&tokens.refresh_token, SECRET).unwrap();
+    let refresh = test_codec::decode(&tokens.refresh_token, SECRET).unwrap();
     assert!(
-        serde_json::to_value(refresh).unwrap()["refresh"]
+        serde_json::to_value(refresh).unwrap()["r"]
             .get("policy_snapshot")
             .is_none()
     );

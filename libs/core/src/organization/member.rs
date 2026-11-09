@@ -16,6 +16,14 @@ pub struct OrganizationMember {
     pub groups: Vec<Group>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum MembershipAssignmentError {
+    #[error("assignment belongs to another organization")]
+    ForeignOrganization,
+    #[error("the organization owner role cannot be unassigned")]
+    OwnerRole,
+}
+
 impl SystemPolicy for OrganizationMember {
     /// Declares membership enumeration, metadata, and administration use cases.
     ///
@@ -59,6 +67,57 @@ namespace Compallm {
 }
 
 impl OrganizationMember {
+    pub fn assign_role(&mut self, role: Role) -> Result<(), MembershipAssignmentError> {
+        if role.organization_id != self.organization_id {
+            return Err(MembershipAssignmentError::ForeignOrganization);
+        }
+        if !self.roles.iter().any(|existing| existing.id == role.id) {
+            self.roles.push(role);
+        }
+        Ok(())
+    }
+
+    pub fn assign_group(&mut self, group: Group) -> Result<(), MembershipAssignmentError> {
+        if group.organization_id != self.organization_id
+            || group
+                .roles
+                .iter()
+                .any(|role| role.organization_id != self.organization_id)
+        {
+            return Err(MembershipAssignmentError::ForeignOrganization);
+        }
+        if !self.groups.iter().any(|existing| existing.id == group.id) {
+            self.groups.push(group);
+        }
+        Ok(())
+    }
+
+    /// Remove a direct role assignment. Group-inherited roles are unaffected.
+    pub fn unassign_role(&mut self, role_id: u64) -> Result<(), MembershipAssignmentError> {
+        if self
+            .roles
+            .iter()
+            .any(|role| role.id == role_id && role.org_owner())
+        {
+            return Err(MembershipAssignmentError::OwnerRole);
+        }
+        self.roles.retain(|role| role.id != role_id);
+        Ok(())
+    }
+
+    /// Remove a group membership, without changing the group's roles.
+    pub fn unassign_group(&mut self, group_id: u64) -> Result<(), MembershipAssignmentError> {
+        if self
+            .groups
+            .iter()
+            .any(|group| group.id == group_id && group.roles.iter().any(Role::org_owner))
+        {
+            return Err(MembershipAssignmentError::OwnerRole);
+        }
+        self.groups.retain(|group| group.id != group_id);
+        Ok(())
+    }
+
     pub fn effective_roles(&self) -> impl Iterator<Item = &Role> {
         self.roles
             .iter()

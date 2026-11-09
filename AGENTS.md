@@ -26,7 +26,7 @@ Do not write unit tests or automated browser/interaction test suites for `libs/s
 
 Unit test will take a lot of effort to maintains. Only write important, main flow tests or critical edge case tests.
 
-Each function only need 0 - 3 unit tests is enough.
+Important rule is every function is limit 0-2 unit tests.
 
 Focus on qualified each unit test function not test non-sense cases focus on main use case of function.
 
@@ -39,6 +39,8 @@ Use `From`/`TryFrom` for type conversions instead of standalone mapper functions
 Use Validify for HTTP normalization and shared domain validation. Keep domain invariants in Core and persistence conversions and concurrency guards in PostgreSQL. External integrations use concrete clients with reused pools and bounded timeouts. Never hold database transactions open across email or HTTP calls.
 
 Validation is Rust-first: define input rules in Rust and export them to the shared contract for Portal and Storybook. Field-error codes, parameters, and messages should follow the same path when implemented; detailed error-message generation is deferred, so do not add independent UI validation messages or error tooltips as part of rule integration.
+
+When writing repository implementation, always use sea-orm syntax, never write raw sql
 
 Only use transaction! when there are multiple update command, transaction must be ended as soon as possible while still maintaining correctness
 If there are multiple query before updating data, then the query should performed outside of transaction

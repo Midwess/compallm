@@ -4,13 +4,15 @@ use super::Session;
 use super::{
     AuthError,
     token::{
-        AccessToken, EmailOtpAccessToken, EmailOtpChallenge, EncryptedAccessToken, IssuedEmailOtp,
-        RefreshToken, UserAccessToken, UserTokens,
+        AccessToken, EmailOtpAccessToken, EncryptedAccessToken, IssuedEmailOtp, RefreshToken,
+        UserAccessToken, UserTokens,
     },
 };
 use crate::authorization::PolicySnapshot;
+use crate::compression::{DCompression, DictionaryType};
 use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode};
 use crate::organization::{Organization, OrganizationMember};
+use crate::persistent::dictionary::DictionaryRepository;
 use crate::persistent::session::SessionRepository;
 use crate::persistent::{DbContext, organization::OrganizationRepository, user::UserRepository};
 use crate::user::{RegistrationService, UserStatus};
@@ -27,6 +29,7 @@ pub struct AuthService {
     users: &'static Box<dyn UserRepository>,
     organizations: &'static Box<dyn OrganizationRepository>,
     sessions: &'static Box<dyn SessionRepository>,
+    dictionaries: &'static Box<dyn DictionaryRepository>,
     registration: &'static RegistrationService,
     jwt_secret: String,
     lifetimes: TokenLifetimes,
@@ -62,15 +65,6 @@ impl AuthService {
             .await?)
     }
 
-    /// Build compact authority from a trusted, already-loaded membership.
-    /// Session revalidation belongs to the caller; JWT size checks belong to issuance.
-    pub fn create_policy_snapshot(
-        &self,
-        membership: &OrganizationMember,
-    ) -> Result<PolicySnapshot, AuthError> {
-        Ok(PolicySnapshot::new(membership)?)
-    }
-
     /// Revoke only the persisted session identified by the verified access credential.
     pub async fn signout(&self, claims: &UserAccessToken) -> Result<(), AuthError> {
         claims.validate(unix_timestamp())?;
@@ -98,6 +92,7 @@ impl AuthService {
         users: &'static Box<dyn UserRepository>,
         organizations: &'static Box<dyn OrganizationRepository>,
         sessions: &'static Box<dyn SessionRepository>,
+        dictionaries: &'static Box<dyn DictionaryRepository>,
         registration: &'static RegistrationService,
         jwt_secret: String,
         lifetimes: TokenLifetimes,
@@ -109,6 +104,7 @@ impl AuthService {
             users,
             organizations,
             sessions,
+            dictionaries,
             registration,
             jwt_secret,
             lifetimes,
@@ -141,21 +137,29 @@ impl AuthService {
     }
 
     async fn send_email_otp(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
-        let challenge = EmailOtpChallenge::new(email, &self.jwt_secret)?;
+        let claims = EmailOtpAccessToken::new(compallm_utils::email::normalize_email(email))?;
+        let dictionary = self.latest_dictionary().await?;
+        let encrypted = AccessToken::EmailOtp(claims.clone())
+            .encrypt(&EncryptedAccessToken::new(&self.jwt_secret)?)
+            .await?;
+        let token = encrypted.compress(dictionary).await?.encode(
+            &self.jwt_secret,
+            Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),
+        )?;
         let sender = self.email.as_ref().ok_or(EmailError::Unavailable)?;
         sender
             .send(EmailRequest {
                 to: compallm_utils::email::normalize_email(email),
                 subject: "Your Compallm verification code".into(),
                 text: EmailTemplate::OtpCode(OtpCode::new(
-                    challenge.code,
+                    claims.code,
                     Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),
                 )),
             })
             .await?;
         Ok(IssuedEmailOtp {
-            token: challenge.access_token,
-            validity: challenge.validity,
+            token,
+            validity: claims.validity,
         })
     }
 
@@ -178,7 +182,9 @@ impl AuthService {
             .find_first_membership(user.id)
             .await?
             .ok_or(AuthError::OrganizationAccessDenied)?;
-        self.start_session(user.id, membership, organization).await
+        let dictionary = self.latest_dictionary().await?;
+        self.start_session(user.id, membership, organization, dictionary)
+            .await
     }
 
     pub async fn signup(
@@ -187,6 +193,7 @@ impl AuthService {
         code: &str,
     ) -> Result<UserTokens, AuthError> {
         claims.verify_code(code, unix_timestamp())?;
+        let dictionary = self.latest_dictionary().await?;
         crate::transaction!(self.db, {
             let user = self.registration.register(&claims.email).await?;
             if user.status != UserStatus::Active {
@@ -197,23 +204,24 @@ impl AuthService {
                 .find_first_membership(user.id)
                 .await?
                 .ok_or(AuthError::OrganizationAccessDenied)?;
-            self.start_session(user.id, membership, organization).await
+            self.start_session(user.id, membership, organization, dictionary)
+                .await
         })
     }
 
     /// Verify the envelope and inner claims, preserving the concrete token variant.
-    pub fn authenticate_token(&self, token: &str) -> Result<AccessToken, AuthError> {
-        AccessToken::decode(token, &self.jwt_secret)
+    pub async fn authenticate_token(&self, token: &str) -> Result<AccessToken, AuthError> {
+        AccessToken::decode(token, &self.jwt_secret, self.dictionaries.as_ref()).await
     }
 
-    /// Verify signed access claims without a database read; session changes apply on renewal.
-    pub fn authenticate_access(&self, token: &str) -> Result<UserAccessToken, AuthError> {
-        UserAccessToken::try_from(self.authenticate_token(token)?)
+    /// Verify and decompress access claims; dictionary versions are cached after loading.
+    pub async fn authenticate_access(&self, token: &str) -> Result<UserAccessToken, AuthError> {
+        UserAccessToken::try_from(self.authenticate_token(token).await?)
     }
 
-    /// Read-only renewal: validates JWT/session state and never consumes the credential.
+    /// Read-only renewal: validates CWT/session state and never consumes the credential.
     pub async fn refresh(&self, refresh_token: &str) -> Result<UserTokens, AuthError> {
-        let claims = RefreshToken::try_from(AccessToken::decode(refresh_token, &self.jwt_secret)?)?;
+        let claims = RefreshToken::try_from(self.authenticate_token(refresh_token).await?)?;
         let (session, membership) = self
             .sessions
             .find_policy_membership(&claims.session)
@@ -226,9 +234,10 @@ impl AuthService {
         {
             return Err(AuthError::InvalidSession);
         }
-        let snapshot = self.create_policy_snapshot(&membership)?;
+        let snapshot = PolicySnapshot::new(&membership);
         let renewed = session.refresh(&claims, self.lifetimes.refresh)?;
-        UserTokens::from_refresh(&renewed, snapshot, &self.jwt_secret, self.lifetimes.user)
+        let dictionary = self.latest_dictionary().await?;
+        self.issue_tokens(&renewed, snapshot, dictionary).await
     }
 
     pub async fn switch_organization(
@@ -236,7 +245,7 @@ impl AuthService {
         refresh_token: &str,
         organization_id: u64,
     ) -> Result<UserTokens, AuthError> {
-        let claims = RefreshToken::try_from(AccessToken::decode(refresh_token, &self.jwt_secret)?)?;
+        let claims = RefreshToken::try_from(self.authenticate_token(refresh_token).await?)?;
         let mut session = self
             .sessions
             .find(&claims.session)
@@ -262,13 +271,11 @@ impl AuthService {
         let previous = session.clone();
         session.switch_organization(&claims, organization_id, organization.name)?;
 
-        let tokens = UserTokens::new(
-            &session,
-            self.create_policy_snapshot(&membership)?,
-            &self.jwt_secret,
-            self.lifetimes.user,
-            self.lifetimes.refresh,
-        )?;
+        let dictionary = self.latest_dictionary().await?;
+        let refresh = RefreshToken::from_session(&session, self.lifetimes.refresh)?;
+        let tokens = self
+            .issue_tokens(&refresh, PolicySnapshot::new(&membership), dictionary)
+            .await?;
 
         if !self.sessions.update(&session, &previous).await? {
             return Err(AuthError::InvalidSession);
@@ -282,16 +289,47 @@ impl AuthService {
         user_id: u64,
         membership: OrganizationMember,
         organization: Organization,
+        dictionary: &DCompression,
     ) -> Result<UserTokens, AuthError> {
         let session = Session::new(user_id, membership.organization_id, organization.name).await?;
-        let tokens = UserTokens::new(
-            &session,
-            self.create_policy_snapshot(&membership)?,
-            &self.jwt_secret,
-            self.lifetimes.user,
-            self.lifetimes.refresh,
-        )?;
+        let refresh = RefreshToken::from_session(&session, self.lifetimes.refresh)?;
+        let tokens = self
+            .issue_tokens(&refresh, PolicySnapshot::new(&membership), dictionary)
+            .await?;
         self.sessions.create(session).await?;
         Ok(tokens)
+    }
+
+    async fn latest_dictionary(&self) -> Result<&DCompression, AuthError> {
+        self.dictionaries
+            .latest(DictionaryType::AccessToken)
+            .await
+            .map_err(|_| AuthError::DictionaryUnavailable)?
+            .ok_or(AuthError::DictionaryUnavailable)
+    }
+
+    async fn issue_tokens(
+        &self,
+        refresh: &RefreshToken,
+        snapshot: PolicySnapshot,
+        dictionary: &DCompression,
+    ) -> Result<UserTokens, AuthError> {
+        refresh.validate(unix_timestamp())?;
+        let user = UserAccessToken::new(refresh.session.clone(), snapshot, self.lifetimes.user)?;
+        let access_validity = user.validity.clone();
+        let refresh_lifetime =
+            Duration::from_secs(refresh.validity.expires_at.saturating_sub(unix_timestamp()));
+        Ok(UserTokens {
+            access_validity,
+            refresh_validity: refresh.validity.clone(),
+            access_token: AccessToken::User(user)
+                .compress(dictionary)
+                .await?
+                .encode(&self.jwt_secret, self.lifetimes.user)?,
+            refresh_token: AccessToken::Refresh(refresh.clone())
+                .compress(dictionary)
+                .await?
+                .encode(&self.jwt_secret, refresh_lifetime)?,
+        })
     }
 }

@@ -1,5 +1,7 @@
 use crate::authorization::SystemPolicy;
-use cedar_policy::{Entity, EntityUid, PolicySet, RestrictedExpression, SchemaFragment};
+use cedar_policy::{
+    Entity, EntityUid, PolicySet, RestrictedExpression, SchemaFragment, ValidationMode, Validator,
+};
 use hero::distributed_id::{generator::DistributedIdError, try_gen_id};
 use std::{
     collections::{HashMap, HashSet},
@@ -14,9 +16,66 @@ pub struct Role {
     pub name: String,
     pub description: String,
     pub cedar_source: String,
+    pub org_owner: bool,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum RoleCreationError {
+    #[error("role name must contain 1 to 64 characters")]
+    InvalidName(#[source] validify::ValidationErrors),
+    #[error("invalid Cedar policy")]
+    InvalidPolicy(#[source] anyhow::Error),
+    #[error("ID generation failed")]
+    IdGeneration(#[from] DistributedIdError),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum RoleDeletionError {
+    #[error("the organization owner role cannot be deleted")]
+    OwnerRole,
 }
 
 impl Role {
+    /// Whether this is the organization's designated Owner role.
+    pub fn org_owner(&self) -> bool {
+        self.org_owner
+    }
+
+    /// Check the role invariant before deleting its persisted record.
+    pub fn ensure_deletable(&self) -> Result<(), RoleDeletionError> {
+        if self.org_owner() {
+            return Err(RoleDeletionError::OwnerRole);
+        }
+        Ok(())
+    }
+
+    /// Validate Cedar syntax and the application schema without authorizing publication.
+    pub fn validate_policy(source: &str) -> anyhow::Result<()> {
+        let policies: PolicySet = source.parse()?;
+        anyhow::ensure!(
+            policies.templates().next().is_none(),
+            "unlinked role templates are unsupported"
+        );
+        let result = Validator::new(crate::authorization::all_policies().clone())
+            .validate(&policies, ValidationMode::Strict);
+        anyhow::ensure!(
+            result.validation_passed(),
+            "Cedar schema validation failed: {:?}",
+            result.validation_errors().collect::<Vec<_>>()
+        );
+        Ok(())
+    }
+    /// Maximum role name length, in Unicode characters, after trimming.
+    pub const MAX_NAME_LENGTH: usize = 64;
+
+    /// Normalize and validate a role name before a management write.
+    pub fn normalize_name(name: &str) -> Result<String, validify::ValidationErrors> {
+        use validify::Validify;
+        let mut name = RoleName { value: name.into() };
+        name.validify()?;
+        Ok(name.value)
+    }
+
     const OWNER_POLICY: &str = r###"// Application-owned initial Owner policy; organization/role IDs are trusted numeric values.
 permit (
     principal in Compallm::Role::"__ORG__:__OWNER__",
@@ -91,12 +150,13 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
 
     /// Initial role records rendered with application-generated IDs, never reserved identities.
     /// Labels do not establish authority; each stored Cedar source references the generated IDs.
-    pub async fn defaults(organization_id: u64) -> Result<Vec<Self>, DistributedIdError> {
+    pub async fn defaults(organization_id: u64) -> Result<Vec<Self>, RoleCreationError> {
         let mut roles = vec![
             Self::new(organization_id, "Owner", "", "").await?,
             Self::new(organization_id, "Admin", "", "").await?,
             Self::new(organization_id, "Member", "", "").await?,
         ];
+        roles[0].org_owner = true;
         let [owner_id, admin_id, member_id] = [roles[0].id, roles[1].id, roles[2].id];
         for (role, source) in
             roles
@@ -108,6 +168,7 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
                 .replace("__OWNER__", &owner_id.to_string())
                 .replace("__ADMIN__", &admin_id.to_string())
                 .replace("__MEMBER__", &member_id.to_string());
+            Self::validate_policy(&role.cedar_source).map_err(RoleCreationError::InvalidPolicy)?;
         }
         Ok(roles)
     }
@@ -117,15 +178,26 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
         name: impl Into<String>,
         description: impl Into<String>,
         cedar_source: impl Into<String>,
-    ) -> Result<Self, DistributedIdError> {
+    ) -> Result<Self, RoleCreationError> {
+        let name = Self::normalize_name(&name.into()).map_err(RoleCreationError::InvalidName)?;
+        let cedar_source = cedar_source.into();
+        Self::validate_policy(&cedar_source).map_err(RoleCreationError::InvalidPolicy)?;
         Ok(Self {
             id: try_gen_id().await?,
             organization_id,
-            name: name.into(),
+            name,
             description: description.into(),
-            cedar_source: cedar_source.into(),
+            cedar_source,
+            org_owner: false,
         })
     }
+}
+
+#[derive(validify::Validify)]
+struct RoleName {
+    #[modify(trim)]
+    #[validate(length(min = 1, max = 64))]
+    value: String,
 }
 
 impl TryFrom<&Role> for Entity {

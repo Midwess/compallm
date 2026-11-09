@@ -1,10 +1,12 @@
 #[path = "support/session.rs"]
 mod session_fixture;
+#[path = "support/token_codec.rs"]
+mod test_codec;
+#[path = "support/token_pair.rs"]
+mod token_pair;
 use session_fixture::stored_session;
 
-use compallm_core::auth::{
-    AccessToken, AuthError, RefreshToken, Session, UserAccessToken, UserTokens,
-};
+use compallm_core::auth::{AuthError, RefreshToken, Session, UserAccessToken};
 use std::time::Duration;
 const LIFETIME: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 const SECRET: &str = "test-signing-secret-at-least-32-bytes";
@@ -20,7 +22,7 @@ fn switching_changes_scope_and_both_tokens_reference_the_new_session() {
     assert_eq!(session.id, 7);
     assert_eq!(session.organization_id, 85);
     assert_eq!(session.organization_name, "Target team");
-    let tokens = UserTokens::new(
+    let tokens = token_pair::new(
         &session,
         empty_snapshot(),
         SECRET,
@@ -29,11 +31,10 @@ fn switching_changes_scope_and_both_tokens_reference_the_new_session() {
     )
     .unwrap();
     let access =
-        UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
+        UserAccessToken::try_from(test_codec::decode(&tokens.access_token, SECRET).unwrap())
             .unwrap();
     let refresh =
-        RefreshToken::try_from(AccessToken::decode(&tokens.refresh_token, SECRET).unwrap())
-            .unwrap();
+        RefreshToken::try_from(test_codec::decode(&tokens.refresh_token, SECRET).unwrap()).unwrap();
     assert_eq!(access.session, session);
     assert_eq!(refresh.session, session);
     assert!(matches!(
@@ -170,11 +171,8 @@ fn serialized_session_requires_its_version_and_version_is_not_identity() {
     newer.authorization_version = 42;
     assert!(session.has_same_identity(&newer));
     let mut value = serde_json::to_value(&newer).unwrap();
-    assert_eq!(value["authorization_version"], 42);
-    value
-        .as_object_mut()
-        .unwrap()
-        .remove("authorization_version");
+    assert_eq!(value["v"], 42);
+    value.as_object_mut().unwrap().remove("v");
     assert!(serde_json::from_value::<compallm_core::auth::Session>(value).is_err());
 }
 

@@ -5,7 +5,9 @@ use std::time::Duration;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct RefreshToken {
+    #[serde(rename = "s")]
     pub session: Session,
+    #[serde(rename = "v")]
     pub validity: TokenValidity,
 }
 

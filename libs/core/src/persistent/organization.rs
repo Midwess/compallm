@@ -1,12 +1,14 @@
 use async_trait::async_trait;
 
 use super::ConnectionError;
-use crate::organization::{Organization, OrganizationMember, Role};
+use crate::organization::{Group, Organization, OrganizationMember, Role};
 
 #[derive(Debug, thiserror::Error)]
 pub enum OrganizationRepositoryError {
     #[error("organization not found")]
     NotFound,
+    #[error("membership assignments changed concurrently")]
+    Conflict,
     #[error("database operation failed")]
     Database(#[from] anyhow::Error),
 }
@@ -26,6 +28,55 @@ impl From<ConnectionError> for OrganizationRepositoryError {
 /// Use the current DbContext and leave transaction ownership to the caller.
 #[async_trait]
 pub trait OrganizationRepository: Send + Sync {
+    /// Find a role using its organization-scoped identity.
+    async fn find_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<Option<Role>, OrganizationRepositoryError>;
+    async fn find_roles(
+        &self,
+        organization_id: u64,
+        role_ids: &[u64],
+    ) -> Result<Vec<Role>, OrganizationRepositoryError>;
+    /// Exclusively lock the scoped role for deletion, blocking new assignment links
+    /// until the active transaction ends, and return its current record.
+    async fn lock_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<Role, OrganizationRepositoryError>;
+    /// Lock groups linked to the role inside the same transaction.
+    async fn lock_role_groups(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<(), OrganizationRepositoryError>;
+    async fn lock_group(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+    ) -> Result<(), OrganizationRepositoryError>;
+    /// Find direct and group-inherited role assignees, deduplicated.
+    async fn role_assignees(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError>;
+    /// Delete the scoped role and its cascading relationships.
+    async fn delete_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<(), OrganizationRepositoryError>;
+    /// Find a group and its assigned roles using its organization-scoped identity.
+    async fn find_group(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+    ) -> Result<Option<Group>, OrganizationRepositoryError>;
+    /// Insert a group and its role links as one operation.
+    async fn create_group(&self, group: Group) -> Result<Group, OrganizationRepositoryError>;
     /// Return the member and active organization, using the compound key.
     async fn find_membership(
         &self,
@@ -52,4 +103,10 @@ pub trait OrganizationRepository: Send + Sync {
         &self,
         member: OrganizationMember,
     ) -> Result<OrganizationMember, OrganizationRepositoryError>;
+    /// Save assignment changes only if the previous membership is still current.
+    async fn save_member(
+        &self,
+        member: &OrganizationMember,
+        previous: &OrganizationMember,
+    ) -> Result<(), OrganizationRepositoryError>;
 }

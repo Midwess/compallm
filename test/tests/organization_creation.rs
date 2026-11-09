@@ -27,6 +27,55 @@ struct Repository {
 }
 #[async_trait::async_trait]
 impl OrganizationRepository for Repository {
+    async fn lock_role(&self, _: u64, _: u64) -> Result<Role, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn lock_role_groups(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn lock_group(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn role_assignees(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn delete_role(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn find_roles(
+        &self,
+        _: u64,
+        _: &[u64],
+    ) -> Result<Vec<Role>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn create_group(
+        &self,
+        _: compallm_core::organization::Group,
+    ) -> Result<compallm_core::organization::Group, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn find_role(&self, _: u64, _: u64) -> Result<Option<Role>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn find_group(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Option<compallm_core::organization::Group>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn save_member(
+        &self,
+        _member: &OrganizationMember,
+        _previous: &OrganizationMember,
+    ) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
     async fn find_membership(
         &self,
         _: u64,

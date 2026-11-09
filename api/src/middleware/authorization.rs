@@ -88,7 +88,7 @@ impl Authorization {
         method: &Method,
     ) -> Result<(AccessToken, Option<UserTokens>), ApiError> {
         if let Some(token) = Self::bearer(headers)? {
-            let token = auth.authenticate_token(token)?;
+            let token = auth.authenticate_token(token).await?;
             if let AccessToken::User(user) = &token
                 && !auth.validate_access(user).await?
             {
@@ -102,7 +102,7 @@ impl Authorization {
             if !safe {
                 settings.validate_cookie_request(headers, false)?;
             }
-            match auth.authenticate_token(&token) {
+            match auth.authenticate_token(&token).await {
                 Ok(AccessToken::User(user)) => {
                     if auth.validate_access(&user).await? {
                         return Ok((AccessToken::User(user), None));
@@ -110,7 +110,7 @@ impl Authorization {
                     let refresh =
                         Self::cookie(headers, names.1)?.ok_or(ApiError::Unauthenticated)?;
                     let refresh_claims =
-                        RefreshToken::try_from(auth.authenticate_token(&refresh)?)?;
+                        RefreshToken::try_from(auth.authenticate_token(&refresh).await?)?;
                     if !refresh_claims.session.has_same_identity(&user.session) {
                         return Err(AuthError::InvalidSession.into());
                     }
@@ -119,7 +119,7 @@ impl Authorization {
                         matches!(*method, Method::GET | Method::HEAD),
                     )?;
                     let tokens = auth.refresh(&refresh).await?;
-                    let rebuilt = auth.authenticate_access(&tokens.access_token)?;
+                    let rebuilt = auth.authenticate_access(&tokens.access_token).await?;
                     return Ok((AccessToken::User(rebuilt), Some(tokens)));
                 }
                 Ok(token @ AccessToken::EmailOtp(_)) => return Ok((token, None)),
@@ -131,7 +131,7 @@ impl Authorization {
         let refresh = Self::cookie(headers, names.1)?.ok_or(ApiError::Unauthenticated)?;
         settings.validate_cookie_request(headers, matches!(*method, Method::GET | Method::HEAD))?;
         let tokens = auth.refresh(&refresh).await?;
-        let user = auth.authenticate_access(&tokens.access_token)?;
+        let user = auth.authenticate_access(&tokens.access_token).await?;
         Ok((AccessToken::User(user), Some(tokens)))
     }
 
@@ -146,12 +146,14 @@ impl Authorization {
             AccessToken::EmailOtp(token) => {
                 extensions.insert(token);
             }
-            AccessToken::Encrypted(_) => return Err(ApiError::Unauthenticated),
+            AccessToken::Encrypted(_) | AccessToken::Compressed(_) => {
+                return Err(ApiError::Unauthenticated);
+            }
         }
         Ok(())
     }
 
-    fn insert_refresh(
+    async fn insert_refresh(
         auth: &AuthService,
         extensions: &mut Extensions,
         user: &UserAccessToken,
@@ -160,7 +162,7 @@ impl Authorization {
         let Some(encoded) = encoded else {
             return;
         };
-        let Ok(AccessToken::Refresh(refresh)) = auth.authenticate_token(encoded) else {
+        let Ok(AccessToken::Refresh(refresh)) = auth.authenticate_token(encoded).await else {
             return;
         };
         if !refresh.session.has_same_identity(&user.session) {
@@ -191,7 +193,7 @@ impl Authorization {
                         .ok()
                         .flatten()
                 });
-            Self::insert_refresh(auth, request.extensions_mut(), user, refresh.as_deref());
+            Self::insert_refresh(auth, request.extensions_mut(), user, refresh.as_deref()).await;
         }
         Self::insert_token(request.extensions_mut(), token)?;
         let mut response = next.run(request).await;

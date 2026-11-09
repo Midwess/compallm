@@ -41,3 +41,23 @@ async fn role_storage_keeps_canonical_source_and_enforces_organization_identity(
             .contains("DROP TABLE \"organization_roles\"")
     );
 }
+
+#[tokio::test]
+async fn owner_marker_is_backfilled_and_unique_per_organization() {
+    let migration = Migrator::migrations()
+        .into_iter()
+        .find(|migration| migration.name() == "m20261108_000027_add_organization_owner_role")
+        .unwrap();
+    let db = MockDatabase::new(DbBackend::Postgres)
+        .append_exec_results([MockExecResult::default(), MockExecResult::default()])
+        .into_connection();
+    let manager = SchemaManager::new(&db);
+    migration.up(&manager).await.unwrap();
+    migration.down(&manager).await.unwrap();
+    let log = db.into_transaction_log();
+    let up = &log[0].statements()[0].sql;
+    assert!(up.contains("org_owner boolean NOT NULL DEFAULT false"));
+    assert!(up.contains("WHERE name = 'Owner'"));
+    assert!(up.contains("(organization_id) WHERE org_owner"));
+    assert!(log[1].statements()[0].sql.contains("DROP COLUMN org_owner"));
+}

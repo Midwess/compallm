@@ -8,14 +8,31 @@ use compallm_core::{
     },
 };
 use sea_orm::{
-    ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, ExprTrait, ModelTrait, QueryFilter,
-    QuerySelect, Set, Statement,
+    ColumnTrait, ConnectionTrait, EntityTrait, ExprTrait, JoinType, ModelTrait, QueryFilter,
+    QuerySelect, QueryTrait, Set,
     prelude::{DateTimeUtc, DateTimeWithTimeZone},
-    sea_query::Expr,
+    sea_query::{Expr, UnionType},
 };
 
 type Sessions = <UserSessionSchema as ModelTrait>::Entity;
 type SessionColumn = <Sessions as EntityTrait>::Column;
+type Users = <crate::UserSchema as ModelTrait>::Entity;
+type UserColumn = <Users as EntityTrait>::Column;
+type Organizations = <crate::OrganizationSchema as ModelTrait>::Entity;
+type OrganizationColumn = <Organizations as EntityTrait>::Column;
+type Members = <crate::OrganizationMemberSchema as ModelTrait>::Entity;
+type MemberColumn = <Members as EntityTrait>::Column;
+type Roles = <crate::OrganizationRoleSchema as ModelTrait>::Entity;
+type RoleColumn = <Roles as EntityTrait>::Column;
+type MemberRoles = <crate::OrganizationMemberRoleSchema as ModelTrait>::Entity;
+type MemberRoleColumn = <MemberRoles as EntityTrait>::Column;
+type Groups = <crate::OrganizationGroupSchema as ModelTrait>::Entity;
+type GroupColumn = <Groups as EntityTrait>::Column;
+type GroupMembers = <crate::OrganizationGroupMemberSchema as ModelTrait>::Entity;
+type GroupMemberColumn = <GroupMembers as EntityTrait>::Column;
+type GroupRoles = <crate::OrganizationGroupRoleSchema as ModelTrait>::Entity;
+type GroupRoleColumn = <GroupRoles as EntityTrait>::Column;
+
 type SessionActiveModel = <Sessions as EntityTrait>::ActiveModel;
 
 #[derive(Default)]
@@ -73,33 +90,108 @@ impl CoreSessionRepository for SessionRepository {
     > {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
-        // All subqueries share one PostgreSQL statement snapshot. No read transaction
-        // or lock is needed, and role/group joins always retain organization scope.
-        let rows = db.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres, r#"
-SELECT s.*, o.name AS organization_name, a.*
-FROM user_sessions s
-JOIN users u ON u.id=s.user_id AND u.status='active'
-JOIN organizations o ON o.id=s.organization_id AND o.status='active'
-JOIN organization_members m ON m.organization_id=s.organization_id AND m.user_id=s.user_id AND m.status='active'
-LEFT JOIN LATERAL (
- SELECT NULL::bigint AS group_id, NULL::text AS group_name, NULL::text AS group_description,
-        r.id AS role_id, r.name AS role_name, r.description AS role_description, r.cedar_source
- FROM organization_member_roles mr
- JOIN organization_roles r ON r.organization_id=mr.organization_id AND r.id=mr.role_id
- WHERE mr.organization_id=s.organization_id AND mr.user_id=s.user_id
- UNION ALL
- SELECT g.id, g.name, g.description, r.id, r.name, r.description, r.cedar_source
- FROM organization_group_members gm
- JOIN organization_groups g ON g.organization_id=gm.organization_id AND g.id=gm.group_id
- LEFT JOIN organization_group_roles gr ON gr.organization_id=g.organization_id AND gr.group_id=g.id
- LEFT JOIN organization_roles r ON r.organization_id=gr.organization_id AND r.id=gr.role_id
- WHERE gm.organization_id=s.organization_id AND gm.user_id=s.user_id
-) a ON TRUE
-WHERE s.organization_id=$1 AND s.user_id=$2 AND s.id=$3 AND s.revoked_at IS NULL
-LIMIT $4
-"#, [Self::id(session.organization_id)?.into(), Self::id(session.user_id)?.into(), Self::id(session.id)?.into(),
-        ((compallm_core::authorization::PolicySnapshot::MAX_ASSIGNMENTS + compallm_core::authorization::PolicySnapshot::MAX_GROUPS + 1) as i64).into()]))
-            .await.map_err(anyhow::Error::from)?;
+        // Keep session state and all effective assignments in one MVCC statement.
+        let direct_relation = Roles::belongs_to(MemberRoles::default())
+            .from((RoleColumn::OrganizationId, RoleColumn::Id))
+            .to((MemberRoleColumn::OrganizationId, MemberRoleColumn::RoleId))
+            .into();
+        let mut direct = Roles::find()
+            .select_only()
+            .column_as(Expr::value(None::<i64>).cast_as("bigint"), "group_id")
+            .column_as(Expr::value(None::<String>).cast_as("text"), "group_name")
+            .column_as(
+                Expr::value(None::<String>).cast_as("text"),
+                "group_description",
+            )
+            .column_as(RoleColumn::Id, "role_id")
+            .column_as(RoleColumn::Name, "role_name")
+            .column_as(RoleColumn::Description, "role_description")
+            .column(RoleColumn::CedarSource)
+            .column(RoleColumn::OrgOwner)
+            .join(JoinType::InnerJoin, direct_relation)
+            .filter(
+                Expr::col((MemberRoles::default(), MemberRoleColumn::OrganizationId))
+                    .equals((Sessions::default(), SessionColumn::OrganizationId)),
+            )
+            .filter(
+                Expr::col((MemberRoles::default(), MemberRoleColumn::UserId))
+                    .equals((Sessions::default(), SessionColumn::UserId)),
+            );
+        let group_relation = GroupMembers::belongs_to(Groups::default())
+            .from((
+                GroupMemberColumn::OrganizationId,
+                GroupMemberColumn::GroupId,
+            ))
+            .to((GroupColumn::OrganizationId, GroupColumn::Id))
+            .into();
+        let group_role_relation = Groups::belongs_to(GroupRoles::default())
+            .from((GroupColumn::OrganizationId, GroupColumn::Id))
+            .to((GroupRoleColumn::OrganizationId, GroupRoleColumn::GroupId))
+            .into();
+        let role_relation = GroupRoles::belongs_to(Roles::default())
+            .from((GroupRoleColumn::OrganizationId, GroupRoleColumn::RoleId))
+            .to((RoleColumn::OrganizationId, RoleColumn::Id))
+            .into();
+        let inherited = GroupMembers::find()
+            .select_only()
+            .column_as(GroupColumn::Id, "group_id")
+            .column_as(GroupColumn::Name, "group_name")
+            .column_as(GroupColumn::Description, "group_description")
+            .column_as(RoleColumn::Id, "role_id")
+            .column_as(RoleColumn::Name, "role_name")
+            .column_as(RoleColumn::Description, "role_description")
+            .column(RoleColumn::CedarSource)
+            .column(RoleColumn::OrgOwner)
+            .join(JoinType::InnerJoin, group_relation)
+            .join(JoinType::LeftJoin, group_role_relation)
+            .join(JoinType::LeftJoin, role_relation)
+            .filter(
+                Expr::col((GroupMembers::default(), GroupMemberColumn::OrganizationId))
+                    .equals((Sessions::default(), SessionColumn::OrganizationId)),
+            )
+            .filter(
+                Expr::col((GroupMembers::default(), GroupMemberColumn::UserId))
+                    .equals((Sessions::default(), SessionColumn::UserId)),
+            );
+        QueryTrait::query(&mut direct).union(UnionType::All, inherited.into_query());
+        let membership_relation = Sessions::belongs_to(Members::default())
+            .from((SessionColumn::OrganizationId, SessionColumn::UserId))
+            .to((MemberColumn::OrganizationId, MemberColumn::UserId))
+            .into();
+        let mut query = Sessions::find()
+            .inner_join(Users::default())
+            .inner_join(Organizations::default())
+            .join(JoinType::InnerJoin, membership_relation)
+            .column_as(OrganizationColumn::Name, "organization_name")
+            .filter(UserColumn::Status.eq(crate::UserStatusSchema::Active))
+            .filter(OrganizationColumn::Status.eq(crate::OrganizationStatusSchema::Active))
+            .filter(MemberColumn::Status.eq(crate::UserStatusSchema::Active))
+            .filter(SessionColumn::OrganizationId.eq(Self::id(session.organization_id)?))
+            .filter(SessionColumn::UserId.eq(Self::id(session.user_id)?))
+            .filter(SessionColumn::Id.eq(Self::id(session.id)?))
+            .filter(SessionColumn::RevokedAt.is_null());
+        QueryTrait::query(&mut query).join_lateral(
+            JoinType::LeftJoin,
+            direct.into_query(),
+            "authority",
+            Expr::value(true),
+        );
+        for field in [
+            "group_id",
+            "group_name",
+            "group_description",
+            "role_id",
+            "role_name",
+            "role_description",
+            "cedar_source",
+            "org_owner",
+        ] {
+            query = query.column_as(Expr::col(("authority", field)), field);
+        }
+        let rows = db
+            .query_all(&query.into_query())
+            .await
+            .map_err(anyhow::Error::from)?;
         if rows.is_empty() {
             return Ok(None);
         }

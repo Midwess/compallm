@@ -54,15 +54,9 @@ impl TryFrom<Vec<sea_orm::QueryResult>> for MappedPolicyMembership {
     type Error = SessionRepositoryError;
 
     fn try_from(rows: Vec<sea_orm::QueryResult>) -> Result<Self, Self::Error> {
-        use compallm_core::{
-            authorization::PolicySnapshot,
-            organization::{Group, OrganizationMember, Role},
-        };
+        use compallm_core::organization::{Group, OrganizationMember, Role};
         use sea_orm::FromQueryResult;
         use std::collections::BTreeMap;
-        if rows.len() > PolicySnapshot::MAX_ASSIGNMENTS + PolicySnapshot::MAX_GROUPS {
-            return Err(anyhow::anyhow!("snapshot assignment row limit exceeded").into());
-        }
         let first = rows.first().context("missing authorization row")?;
         let session = Session::from(MappedSession::try_from((
             UserSessionSchema::from_query_result(first, "").map_err(anyhow::Error::from)?,
@@ -83,6 +77,7 @@ impl TryFrom<Vec<sea_orm::QueryResult>> for MappedPolicyMembership {
                         name: row.try_get("", "role_name")?,
                         description: row.try_get("", "role_description")?,
                         cedar_source: row.try_get("", "cedar_source")?,
+                        org_owner: row.try_get("", "org_owner")?,
                     })
                 })
                 .transpose()?;

@@ -62,7 +62,7 @@ impl IntoResponse for ApiError {
                 StatusCode::CONFLICT,
                 "Email is already registered. <a href=\"/login\">Sign in instead.</a>",
             ),
-            Self::Auth(AuthError::SessionPersistence(_)) => (
+            Self::Auth(AuthError::SessionPersistence(_) | AuthError::DictionaryUnavailable) => (
                 StatusCode::SERVICE_UNAVAILABLE,
                 "Session validation is temporarily unavailable; retry later",
             ),

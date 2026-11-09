@@ -1,5 +1,9 @@
 #[path = "support/roles.rs"]
 mod role_fixture;
+#[path = "support/token_codec.rs"]
+mod test_codec;
+#[path = "support/token_pair.rs"]
+mod token_pair;
 use role_fixture::default_roles;
 
 #[path = "support/session.rs"]
@@ -45,6 +49,103 @@ use sea_orm::{DatabaseConnection, DbBackend, DbErr, MockDatabase, Statement, Tra
 const SECRET: &str = "test-signing-secret-at-least-32-bytes";
 const REFRESH_LIFETIME: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 
+struct TestDictionary {
+    dictionary: compallm_core::compression::DCompression,
+    newer: Option<compallm_core::compression::DCompression>,
+}
+
+struct CountingDictionary {
+    inner: TestDictionary,
+    reads: Arc<std::sync::atomic::AtomicUsize>,
+}
+
+#[async_trait::async_trait]
+impl compallm_core::persistent::dictionary::DictionaryRepository for CountingDictionary {
+    async fn latest(
+        &self,
+        kind: compallm_core::compression::DictionaryType,
+    ) -> anyhow::Result<Option<&compallm_core::compression::DCompression>> {
+        self.reads.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        compallm_core::persistent::dictionary::DictionaryRepository::latest(&self.inner, kind).await
+    }
+    async fn get(
+        &self,
+        kind: compallm_core::compression::DictionaryType,
+        version: u32,
+    ) -> anyhow::Result<Option<&compallm_core::compression::DCompression>> {
+        self.reads.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        compallm_core::persistent::dictionary::DictionaryRepository::get(&self.inner, kind, version)
+            .await
+    }
+}
+
+struct TestEmail;
+
+#[async_trait::async_trait]
+impl compallm_core::mail::EmailService for TestEmail {
+    async fn send(
+        &self,
+        _: compallm_core::mail::EmailRequest,
+    ) -> Result<(), compallm_core::mail::EmailError> {
+        Ok(())
+    }
+}
+
+trait TestTokenEncoding {
+    fn encode_compressed(&self, secret: &str, lifetime: Duration) -> Result<String, AuthError>;
+}
+
+fn sign_unchecked(token: &AccessToken, lifetime: Duration) -> String {
+    test_codec::sign_unchecked(token, SECRET, lifetime)
+}
+
+fn make_oversized(role: &mut Role) {
+    let mut state = 0x123456789abcdefu64;
+    let mut random = String::new();
+    for _ in 0..500 {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        random.push_str(&format!("{state:016x}"));
+    }
+    role.cedar_source = format!("@note(\"{random}\")\n{}", role.cedar_source);
+}
+
+impl TestTokenEncoding for AccessToken {
+    fn encode_compressed(&self, secret: &str, lifetime: Duration) -> Result<String, AuthError> {
+        test_codec::encode(self, secret, lifetime)
+    }
+}
+
+#[async_trait::async_trait]
+impl compallm_core::persistent::dictionary::DictionaryRepository for TestDictionary {
+    async fn latest(
+        &self,
+        _: compallm_core::compression::DictionaryType,
+    ) -> anyhow::Result<Option<&compallm_core::compression::DCompression>> {
+        Ok(Some(self.newer.as_ref().unwrap_or(&self.dictionary)))
+    }
+    async fn get(
+        &self,
+        _: compallm_core::compression::DictionaryType,
+        version: u32,
+    ) -> anyhow::Result<Option<&compallm_core::compression::DCompression>> {
+        Ok(self
+            .newer
+            .as_ref()
+            .filter(|dictionary| dictionary.version == version)
+            .or_else(|| (version == self.dictionary.version).then_some(&self.dictionary)))
+    }
+}
+
+fn decode_token(encoded: &str, secret: &str) -> Result<AccessToken, AuthError> {
+    test_codec::decode(encoded, secret)
+}
+
+fn test_challenge(email: &str, secret: &str) -> Result<EmailOtpChallenge, AuthError> {
+    test_codec::challenge(email, secret)
+}
+
 #[derive(Default)]
 struct State {
     user: Option<User>,
@@ -77,6 +178,55 @@ struct OrganizationRepositoryStub(Arc<Mutex<State>>);
 
 #[async_trait::async_trait]
 impl OrganizationRepository for OrganizationRepositoryStub {
+    async fn lock_role(&self, _: u64, _: u64) -> Result<Role, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn lock_role_groups(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn lock_group(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn role_assignees(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn delete_role(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn find_roles(
+        &self,
+        _: u64,
+        _: &[u64],
+    ) -> Result<Vec<Role>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn create_group(
+        &self,
+        _: compallm_core::organization::Group,
+    ) -> Result<compallm_core::organization::Group, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn find_role(&self, _: u64, _: u64) -> Result<Option<Role>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn find_group(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Option<compallm_core::organization::Group>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn save_member(
+        &self,
+        _member: &OrganizationMember,
+        _previous: &OrganizationMember,
+    ) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
     async fn find_membership(
         &self,
         organization_id: u64,
@@ -400,7 +550,7 @@ struct Fixture {
 impl Fixture {
     fn otp(challenge: &EmailOtpChallenge) -> compallm_core::auth::EmailOtpAccessToken {
         compallm_core::auth::EmailOtpAccessToken::try_from(
-            AccessToken::decode(&challenge.access_token, SECRET).unwrap(),
+            decode_token(&challenge.access_token, SECRET).unwrap(),
         )
         .unwrap()
     }
@@ -435,6 +585,28 @@ impl Fixture {
     }
 
     fn service(&self) -> AuthService {
+        self.service_with_dictionaries(Box::new(TestDictionary {
+            dictionary: compallm_core::compression::DCompression::new(
+                compallm_core::compression::DictionaryType::AccessToken,
+                1,
+                "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source",
+            ).unwrap(),
+            newer: None,
+        }))
+    }
+
+    fn service_with_dictionaries(
+        &self,
+        dictionary: Box<dyn compallm_core::persistent::dictionary::DictionaryRepository>,
+    ) -> AuthService {
+        self.service_with_dependencies(dictionary, None)
+    }
+
+    fn service_with_dependencies(
+        &self,
+        dictionary: Box<dyn compallm_core::persistent::dictionary::DictionaryRepository>,
+        email: Option<&'static Box<dyn compallm_core::mail::EmailService>>,
+    ) -> AuthService {
         // Static dependencies mirror the application container. Test-only
         // allocations live for this test process and never touch a real DB.
         let db: &'static DbContext = Box::leak(Box::new(self.repo.1.clone()));
@@ -446,6 +618,7 @@ impl Fixture {
         )) as Box<dyn OrganizationRepository>));
         let creation = Box::leak(Box::new(CreationService::new(db, organizations)));
         let registration = Box::leak(Box::new(RegistrationService::new(db, users, creation)));
+        let dictionaries = Box::leak(Box::new(dictionary));
         AuthService::new(
             db,
             users,
@@ -453,13 +626,14 @@ impl Fixture {
             Box::leak(Box::new(
                 Box::new(self.repo.clone()) as Box<dyn SessionRepository>
             )),
+            dictionaries,
             registration,
             SECRET.into(),
             TokenLifetimes {
                 user: Duration::from_secs(60),
                 refresh: REFRESH_LIFETIME,
             },
-            None,
+            email,
         )
         .unwrap()
     }
@@ -504,7 +678,7 @@ impl Fixture {
     }
 
     fn remember(&self, token: &str) {
-        let refresh = RefreshToken::try_from(AccessToken::decode(token, SECRET).unwrap()).unwrap();
+        let refresh = RefreshToken::try_from(decode_token(token, SECRET).unwrap()).unwrap();
         self.repo
             .0
             .lock()
@@ -532,6 +706,7 @@ impl Fixture {
             name: ["Owner", "Admin", "Member"][index].into(),
             description: String::new(),
             cedar_source: String::new(),
+            org_owner: index == 0,
         };
         role.cedar_source = format!(
             r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.list", resource == Compallm::Organization::"{}");"#,
@@ -601,13 +776,13 @@ async fn direct_registration_rolls_back_when_default_organization_or_owner_fails
 #[tokio::test]
 async fn signin_checks_user_and_records_session_without_starting_a_transaction() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
     let issued = fixture
         .signin(&Fixture::otp(&challenge), &challenge.code)
         .await
         .unwrap();
     assert_eq!(
-        AccessToken::decode(&issued.access_token, SECRET)
+        decode_token(&issued.access_token, SECRET)
             .and_then(UserAccessToken::try_from)
             .unwrap()
             .session
@@ -616,8 +791,7 @@ async fn signin_checks_user_and_records_session_without_starting_a_transaction()
     );
     let contexts = fixture.repo.0.lock().unwrap().contexts.clone();
     let access =
-        UserAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
-            .unwrap();
+        UserAccessToken::try_from(decode_token(&issued.access_token, SECRET).unwrap()).unwrap();
     assert_eq!(access.session.organization_id, 84);
     assert_eq!(contexts.len(), 2);
     assert_eq!(fixture.repo.0.lock().unwrap().logins, [1]);
@@ -626,15 +800,338 @@ async fn signin_checks_user_and_records_session_without_starting_a_transaction()
 }
 
 #[tokio::test]
+async fn issued_tokens_use_signed_versioned_compression() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let service = fixture.service();
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    for (encoded, expected) in [
+        (&challenge.access_token, "otp"),
+        (&tokens.access_token, "user"),
+        (&tokens.refresh_token, "refresh"),
+    ] {
+        use base64::Engine;
+        use coset::{
+            CborSerializable, CoseMac0,
+            cwt::{ClaimName, ClaimsSet, Timestamp},
+            iana,
+        };
+        use hmac::Mac;
+        let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .decode(encoded)
+            .unwrap();
+        let cose = CoseMac0::from_slice(&bytes).unwrap();
+        assert_eq!(
+            cose.protected.header.alg,
+            Some(iana::Algorithm::HMAC_256_256.into())
+        );
+        cose.verify_payload_tag(
+            b"",
+            || (),
+            |tag, message| {
+                let mut mac =
+                    <hmac::Hmac<sha2::Sha256> as Mac>::new_from_slice(SECRET.as_bytes()).unwrap();
+                mac.update(message);
+                mac.verify_slice(tag).map_err(|_| ())
+            },
+        )
+        .unwrap();
+        let claims = ClaimsSet::from_slice(cose.payload.as_deref().unwrap()).unwrap();
+        assert!(matches!(
+            claims.expiration_time,
+            Some(Timestamp::WholeSeconds(_))
+        ));
+        assert!(matches!(claims.issued_at, Some(Timestamp::WholeSeconds(_))));
+        assert!(matches!(
+            &claims.rest[..],
+            [(
+                ClaimName::PrivateUse(-65537),
+                ciborium::value::Value::Bytes(_)
+            )]
+        ));
+        let token = fixture
+            .repo
+            .1
+            .scope(service.authenticate_token(encoded))
+            .await
+            .unwrap();
+        assert!(matches!(
+            (expected, token),
+            ("otp", AccessToken::EmailOtp(_))
+                | ("user", AccessToken::User(_))
+                | ("refresh", AccessToken::Refresh(_))
+        ));
+        let mut tampered = encoded.as_bytes().to_vec();
+        let index = tampered.len() - 4;
+        tampered[index] = if tampered[index] == b'a' { b'b' } else { b'a' };
+        assert!(
+            fixture
+                .repo
+                .1
+                .scope(service.authenticate_token(std::str::from_utf8(&tampered).unwrap()))
+                .await
+                .is_err()
+        );
+    }
+    let missing = AccessToken::Compressed(compallm_core::auth::token::CompressedToken {
+        dictionary_version: 999,
+        data: vec![1],
+    });
+    let encoded = test_codec::sign_raw(&missing, SECRET, Duration::from_secs(60));
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(service.authenticate_token(&encoded))
+            .await,
+        Err(AuthError::DictionaryUnavailable)
+    ));
+    let legacy = test_codec::sign_raw(
+        &AccessToken::Refresh(
+            RefreshToken::from_session(&stored_session(1, 7, 84, "Team"), REFRESH_LIFETIME)
+                .unwrap(),
+        ),
+        SECRET,
+        REFRESH_LIFETIME,
+    );
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(service.authenticate_token(&legacy))
+            .await,
+        Ok(AccessToken::Refresh(_))
+    ));
+    let wrong = compallm_core::compression::DCompression::new(
+        compallm_core::compression::DictionaryType::AccessToken,
+        1,
+        "a different dictionary",
+    )
+    .unwrap();
+    let payload = AccessToken::Compressed(compallm_core::auth::token::CompressedToken {
+        dictionary_version: 1,
+        data: wrong.compress_bytes(b"{}").await.unwrap(),
+    });
+    let encoded = test_codec::sign_raw(&payload, SECRET, Duration::from_secs(60));
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(service.authenticate_token(&encoded))
+            .await,
+        Err(AuthError::InvalidToken)
+    ));
+}
+
+#[tokio::test]
+async fn email_challenge_uses_compressed_wrapper_and_keeps_otp_encrypted() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let dictionary = Box::new(TestDictionary {
+        dictionary: compallm_core::compression::DCompression::new(
+            compallm_core::compression::DictionaryType::AccessToken, 1,
+            "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source",
+        ).unwrap(),
+        newer: None,
+    });
+    let email = Box::leak(Box::new(
+        Box::new(TestEmail) as Box<dyn compallm_core::mail::EmailService>
+    ));
+    let service = fixture.service_with_dependencies(dictionary, Some(email));
+    let issued = fixture
+        .repo
+        .1
+        .scope(service.signin_email("james@midwess.com"))
+        .await
+        .unwrap();
+    let token = fixture
+        .repo
+        .1
+        .scope(service.authenticate_token(&issued.token))
+        .await
+        .unwrap();
+    assert!(matches!(token, AccessToken::EmailOtp(_)));
+    let envelope = test_codec::envelope(&issued.token);
+    let AccessToken::Compressed(envelope) = envelope else {
+        panic!("expected compressed token")
+    };
+    let dictionary = compallm_core::compression::DCompression::new(
+        compallm_core::compression::DictionaryType::AccessToken,
+        1,
+        "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source",
+    )
+    .unwrap();
+    let source = dictionary.decompress_bytes(&envelope.data).await.unwrap();
+    assert!(
+        !source
+            .windows("james@midwess.com".len())
+            .any(|part| part == b"james@midwess.com")
+    );
+    assert!(matches!(
+        ciborium::de::from_reader::<AccessToken, _>(source.as_slice()).unwrap(),
+        AccessToken::Encrypted(_)
+    ));
+}
+
+#[tokio::test]
+async fn refresh_reads_old_dictionary_and_issues_with_latest() {
+    use compallm_core::compression::{DCompression, DictionaryType};
+    let original =
+        "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source";
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let rotated = fixture.service_with_dictionaries(Box::new(TestDictionary {
+        dictionary: DCompression::new(DictionaryType::AccessToken, 1, original).unwrap(),
+        newer: Some(
+            DCompression::new(
+                DictionaryType::AccessToken,
+                2,
+                &format!("{original} more vocabulary"),
+            )
+            .unwrap(),
+        ),
+    }));
+    let renewed = fixture
+        .repo
+        .1
+        .scope(rotated.refresh(&tokens.refresh_token))
+        .await
+        .unwrap();
+    for token in [&renewed.access_token, &renewed.refresh_token] {
+        let payload = test_codec::envelope(token);
+        let AccessToken::Compressed(payload) = payload else {
+            panic!("expected compressed token")
+        };
+        assert_eq!(payload.dictionary_version, 2);
+        assert!(
+            fixture
+                .repo
+                .1
+                .scope(rotated.authenticate_token(token))
+                .await
+                .is_ok()
+        );
+    }
+    assert!(
+        fixture
+            .repo
+            .1
+            .scope(rotated.authenticate_token(&tokens.access_token))
+            .await
+            .is_ok()
+    );
+}
+
+#[tokio::test]
+async fn invalid_signature_is_rejected_before_dictionary_lookup() {
+    use base64::Engine;
+    use coset::{
+        CborSerializable, CoseMac0Builder, HeaderBuilder,
+        cwt::{ClaimsSetBuilder, Timestamp},
+        iana,
+    };
+    use hmac::Mac;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let reads = Arc::new(AtomicUsize::new(0));
+    let service = fixture.service_with_dictionaries(Box::new(CountingDictionary {
+        inner: TestDictionary { dictionary: compallm_core::compression::DCompression::new(
+            compallm_core::compression::DictionaryType::AccessToken, 1,
+            "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source",
+        ).unwrap(), newer: None },
+        reads: reads.clone(),
+    }));
+    let mut tampered = challenge.access_token.as_bytes().to_vec();
+    let index = tampered.len() - 4;
+    tampered[index] = if tampered[index] == b'a' { b'b' } else { b'a' };
+    assert!(
+        fixture
+            .repo
+            .1
+            .scope(service.authenticate_token(std::str::from_utf8(&tampered).unwrap()))
+            .await
+            .is_err()
+    );
+    assert_eq!(reads.load(Ordering::SeqCst), 0);
+    let now = compallm_utils::time::unix_timestamp() as i64;
+    let claims = ClaimsSetBuilder::new()
+        .issued_at(Timestamp::WholeSeconds(now - 2))
+        .expiration_time(Timestamp::WholeSeconds(now - 1))
+        .private_claim(-65537, ciborium::value::Value::Bytes(vec![0]))
+        .build()
+        .to_vec()
+        .unwrap();
+    let expired = CoseMac0Builder::new()
+        .protected(
+            HeaderBuilder::new()
+                .algorithm(iana::Algorithm::HMAC_256_256)
+                .build(),
+        )
+        .payload(claims)
+        .create_tag(b"", |message| {
+            let mut mac =
+                <hmac::Hmac<sha2::Sha256> as Mac>::new_from_slice(SECRET.as_bytes()).unwrap();
+            mac.update(message);
+            mac.finalize().into_bytes().to_vec()
+        })
+        .build()
+        .to_vec()
+        .unwrap();
+    let expired = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(expired);
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(service.authenticate_token(&expired))
+            .await,
+        Err(AuthError::ExpiredToken)
+    ));
+    assert_eq!(reads.load(Ordering::SeqCst), 0);
+    let user = fixture.access_for_session(stored_session(1, 7, 84, "Team"));
+    let raw = test_codec::sign_raw(&AccessToken::User(user), SECRET, Duration::from_secs(60));
+    assert!(matches!(
+        fixture.repo.1.scope(service.authenticate_token(&raw)).await,
+        Ok(AccessToken::User(_))
+    ));
+    let otp = EmailOtpAccessToken::new("james@midwess.com".into()).unwrap();
+    let encrypted = AccessToken::EmailOtp(otp)
+        .encrypt(&compallm_core::auth::EncryptedAccessToken::new(SECRET).unwrap())
+        .await
+        .unwrap();
+    let raw = test_codec::sign_raw(&encrypted, SECRET, Duration::from_secs(60));
+    assert!(matches!(
+        fixture.repo.1.scope(service.authenticate_token(&raw)).await,
+        Ok(AccessToken::EmailOtp(_))
+    ));
+    assert_eq!(reads.load(Ordering::SeqCst), 0);
+    assert!(
+        fixture
+            .repo
+            .1
+            .scope(service.authenticate_token(&challenge.access_token))
+            .await
+            .is_ok()
+    );
+    assert_eq!(reads.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
 async fn signup_requires_verified_email_and_uses_one_caller_transaction() {
     let fixture = Fixture::new(None);
-    let challenge = EmailOtpChallenge::new("James@MIDWESS.COM", SECRET).unwrap();
+    let challenge = test_challenge("James@MIDWESS.COM", SECRET).unwrap();
     let issued = fixture
         .signup_in_transaction(&Fixture::otp(&challenge), &challenge.code)
         .await
         .unwrap();
     assert!(
-        AccessToken::decode(&issued.access_token, SECRET)
+        decode_token(&issued.access_token, SECRET)
             .and_then(UserAccessToken::try_from)
             .unwrap()
             .session
@@ -655,8 +1152,7 @@ async fn signup_requires_verified_email_and_uses_one_caller_transaction() {
         assert!(organization.id > 0);
         assert_eq!(organization.id, owner.organization_id);
         let access =
-            UserAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
-                .unwrap();
+            UserAccessToken::try_from(decode_token(&issued.access_token, SECRET).unwrap()).unwrap();
         assert_eq!(access.session.organization_id, organization.id);
         assert!(
             state
@@ -677,7 +1173,7 @@ async fn organization_or_owner_failure_rolls_back_the_entire_signup() {
             state.fail_organization = !fail_membership;
             state.fail_membership = fail_membership;
         }
-        let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+        let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
         assert!(matches!(
             fixture
                 .signup_in_transaction(&Fixture::otp(&challenge), &challenge.code)
@@ -692,7 +1188,7 @@ async fn organization_or_owner_failure_rolls_back_the_entire_signup() {
 #[tokio::test]
 async fn duplicate_signup_and_disabled_signin_are_rejected() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
     assert!(matches!(
         fixture
             .signup_in_transaction(&Fixture::otp(&challenge), &challenge.code)
@@ -719,7 +1215,7 @@ async fn duplicate_signup_and_disabled_signin_are_rejected() {
 async fn failed_session_insert_rejects_signin_without_returning_tokens() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     fixture.repo.0.lock().unwrap().fail_session = true;
-    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
     assert!(matches!(
         fixture
             .signin(&Fixture::otp(&challenge), &challenge.code)
@@ -736,7 +1232,7 @@ async fn failed_session_insert_rejects_signin_without_returning_tokens() {
 async fn failed_repository_operation_rolls_back_and_returns_no_tokens() {
     let fixture = Fixture::new(None);
     fixture.repo.0.lock().unwrap().fail_create = true;
-    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
     assert!(matches!(
         fixture
             .signup_in_transaction(&Fixture::otp(&challenge), &challenge.code)
@@ -749,7 +1245,7 @@ async fn failed_repository_operation_rolls_back_and_returns_no_tokens() {
 #[tokio::test]
 async fn invalid_otp_does_not_reach_persistence() {
     let fixture = Fixture::new(None);
-    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
     assert!(matches!(
         fixture.signin(&Fixture::otp(&challenge), "wrong").await,
         Err(AuthError::IncorrectCode)
@@ -774,7 +1270,7 @@ async fn signup_derives_user_name_and_default_organization_from_the_email() {
     ] {
         let fixture = Fixture::new(None);
         let email = format!("{local_part}@midwess.com");
-        let challenge = EmailOtpChallenge::new(&email, SECRET).unwrap();
+        let challenge = test_challenge(&email, SECRET).unwrap();
         fixture
             .signup_in_transaction(&Fixture::otp(&challenge), &challenge.code)
             .await
@@ -803,7 +1299,7 @@ async fn signup_derives_user_name_and_default_organization_from_the_email() {
 async fn refresh_requires_a_context_from_the_application_entry_point() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let service = fixture.service();
-    let tokens = UserTokens::new(
+    let tokens = token_pair::compressed_new(
         &stored_session(1, 7, 84, "Research team"),
         empty_snapshot(),
         SECRET,
@@ -840,7 +1336,7 @@ async fn refresh_requires_a_context_from_the_application_entry_point() {
 #[tokio::test]
 async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let original = UserTokens::new(
+    let original = token_pair::compressed_new(
         &stored_session(1, 7, 84, "Research team"),
         empty_snapshot(),
         SECRET,
@@ -849,8 +1345,7 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
     )
     .unwrap();
     let mut previous =
-        RefreshToken::try_from(AccessToken::decode(&original.refresh_token, SECRET).unwrap())
-            .unwrap();
+        RefreshToken::try_from(decode_token(&original.refresh_token, SECRET).unwrap()).unwrap();
     // Simulate a credential issued 29 days ago without waiting or replacing the clock.
     let elapsed = 29 * 24 * 60 * 60;
     previous.validity.issued_at -= elapsed;
@@ -858,15 +1353,14 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
     let original_session = previous.session.clone();
     let previous_expiry = previous.validity.expires_at;
     let old_refresh = AccessToken::Refresh(previous)
-        .encode(SECRET, REFRESH_LIFETIME)
+        .encode_compressed(SECRET, REFRESH_LIFETIME)
         .unwrap();
     fixture.remember(&old_refresh);
     let before_refresh = compallm_utils::time::unix_timestamp();
     let issued = fixture.refresh(&old_refresh).await.unwrap();
     let after_refresh = compallm_utils::time::unix_timestamp();
     let renewed =
-        RefreshToken::try_from(AccessToken::decode(&issued.refresh_token, SECRET).unwrap())
-            .unwrap();
+        RefreshToken::try_from(decode_token(&issued.refresh_token, SECRET).unwrap()).unwrap();
     assert_ne!(issued.refresh_token, old_refresh);
     assert_eq!(renewed.session, original_session);
     assert_eq!(renewed.session.user_id, 1);
@@ -886,7 +1380,7 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
         assert!(state.logins.is_empty(), "refresh is not a new login");
     }
     assert_eq!(
-        AccessToken::decode(&issued.access_token, SECRET)
+        decode_token(&issued.access_token, SECRET)
             .and_then(UserAccessToken::try_from)
             .unwrap()
             .session
@@ -912,7 +1406,7 @@ async fn renewal_refreshes_organization_name_in_both_tokens_without_a_session_wr
         name: "Original team".into(),
         status: compallm_core::organization::OrganizationStatus::Active,
     });
-    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
     let original = fixture
         .signin(&Fixture::otp(&challenge), &challenge.code)
         .await
@@ -920,6 +1414,7 @@ async fn renewal_refreshes_organization_name_in_both_tokens_without_a_session_wr
     let before = fixture
         .service()
         .authenticate_access(&original.access_token)
+        .await
         .unwrap();
     assert_eq!(before.session.organization_name, "Original team");
     fixture
@@ -935,10 +1430,10 @@ async fn renewal_refreshes_organization_name_in_both_tokens_without_a_session_wr
     let access = fixture
         .service()
         .authenticate_access(&tokens.access_token)
+        .await
         .unwrap();
     let refresh =
-        RefreshToken::try_from(AccessToken::decode(&tokens.refresh_token, SECRET).unwrap())
-            .unwrap();
+        RefreshToken::try_from(decode_token(&tokens.refresh_token, SECRET).unwrap()).unwrap();
     assert_eq!(access.session.organization_name, "Renamed team");
     assert_eq!(refresh.session.organization_name, "Renamed team");
     assert!(access.session.has_same_identity(&before.session));
@@ -950,6 +1445,7 @@ async fn renewal_refreshes_organization_name_in_both_tokens_without_a_session_wr
         fixture
             .service()
             .authenticate_access(&original.access_token)
+            .await
             .unwrap()
             .session
             .organization_name,
@@ -968,9 +1464,7 @@ async fn expired_refresh_requires_signin_before_reading_the_user() {
     expired.validity.issued_at -= elapsed;
     expired.validity.expires_at -= elapsed;
     // A valid JWT envelope must not bypass the expired inner claims.
-    let encoded =
-        hero::token::jwt::create_jwt_token(AccessToken::Refresh(expired), SECRET, REFRESH_LIFETIME)
-            .unwrap();
+    let encoded = sign_unchecked(&AccessToken::Refresh(expired), REFRESH_LIFETIME);
     assert!(matches!(
         fixture.refresh(&encoded).await,
         Err(AuthError::ExpiredToken)
@@ -997,14 +1491,13 @@ async fn signin_selects_first_active_membership_independent_of_roles() {
             groups: Vec::new(),
         },
     ];
-    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
     let tokens = fixture
         .signin(&Fixture::otp(&challenge), &challenge.code)
         .await
         .unwrap();
     let claims =
-        UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
-            .unwrap();
+        UserAccessToken::try_from(decode_token(&tokens.access_token, SECRET).unwrap()).unwrap();
     assert_eq!(claims.session.organization_id, 80);
     assert_eq!(claims.policy_snapshot.role_ids, vec![3]);
     fixture.assert_no_transaction();
@@ -1031,17 +1524,15 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
-    .encode(SECRET, REFRESH_LIFETIME)
+    .encode_compressed(SECRET, REFRESH_LIFETIME)
     .unwrap();
     fixture.remember(&refresh);
     let tokens = fixture.switch_organization(&refresh, 85).await.unwrap();
     let claims =
-        UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
-            .unwrap();
+        UserAccessToken::try_from(decode_token(&tokens.access_token, SECRET).unwrap()).unwrap();
     assert_eq!(claims.session.organization_id, 85);
     let refreshed =
-        RefreshToken::try_from(AccessToken::decode(&tokens.refresh_token, SECRET).unwrap())
-            .unwrap();
+        RefreshToken::try_from(decode_token(&tokens.refresh_token, SECRET).unwrap()).unwrap();
     assert_eq!(claims.session, refreshed.session);
     assert_eq!(
         fixture.repo.0.lock().unwrap().sessions[&7].organization_id,
@@ -1063,8 +1554,7 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
         .await
         .unwrap();
     let claims =
-        UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
-            .unwrap();
+        UserAccessToken::try_from(decode_token(&tokens.access_token, SECRET).unwrap()).unwrap();
     assert_eq!(claims.policy_snapshot.role_ids, vec![2]);
     assert!(matches!(
         fixture
@@ -1097,7 +1587,7 @@ async fn signin_rejects_missing_or_disabled_memberships() {
                 state.memberships.clear();
             }
         }
-        let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+        let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
         assert!(matches!(
             fixture
                 .signin(&Fixture::otp(&challenge), &challenge.code)
@@ -1127,13 +1617,12 @@ async fn refresh_without_selection_keeps_the_session_organization() {
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
-    .encode(SECRET, REFRESH_LIFETIME)
+    .encode_compressed(SECRET, REFRESH_LIFETIME)
     .unwrap();
     fixture.remember(&refresh);
     let tokens = fixture.refresh(&refresh).await.unwrap();
     let claims =
-        UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
-            .unwrap();
+        UserAccessToken::try_from(decode_token(&tokens.access_token, SECRET).unwrap()).unwrap();
     assert_eq!(claims.session.organization_id, 84);
 }
 
@@ -1144,7 +1633,7 @@ async fn original_and_renewed_refresh_tokens_remain_usable_without_database_writ
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
-    .encode(SECRET, REFRESH_LIFETIME)
+    .encode_compressed(SECRET, REFRESH_LIFETIME)
     .unwrap();
     fixture.remember(&original);
     let before = fixture.repo.0.lock().unwrap().sessions[&7].clone();
@@ -1168,7 +1657,7 @@ async fn original_and_renewed_refresh_tokens_remain_usable_without_database_writ
 async fn session_insert_failure_rolls_back_signup_and_returns_no_credentials() {
     let fixture = Fixture::new(None);
     fixture.repo.0.lock().unwrap().fail_session = true;
-    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
     assert!(matches!(
         fixture
             .signup_in_transaction(&Fixture::otp(&challenge), &challenge.code)
@@ -1182,7 +1671,7 @@ async fn session_insert_failure_rolls_back_signup_and_returns_no_credentials() {
 #[tokio::test]
 async fn each_successful_signin_creates_an_independent_session() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
     let one = fixture
         .signin(&Fixture::otp(&challenge), &challenge.code)
         .await
@@ -1191,10 +1680,8 @@ async fn each_successful_signin_creates_an_independent_session() {
         .signin(&Fixture::otp(&challenge), &challenge.code)
         .await
         .unwrap();
-    let one =
-        RefreshToken::try_from(AccessToken::decode(&one.refresh_token, SECRET).unwrap()).unwrap();
-    let two =
-        RefreshToken::try_from(AccessToken::decode(&two.refresh_token, SECRET).unwrap()).unwrap();
+    let one = RefreshToken::try_from(decode_token(&one.refresh_token, SECRET).unwrap()).unwrap();
+    let two = RefreshToken::try_from(decode_token(&two.refresh_token, SECRET).unwrap()).unwrap();
     assert_ne!(one.session.id, two.session.id);
     assert_eq!(fixture.repo.0.lock().unwrap().sessions.len(), 2);
     fixture
@@ -1215,10 +1702,10 @@ async fn each_successful_signin_creates_an_independent_session() {
         })
         .await;
     let one = AccessToken::Refresh(one)
-        .encode(SECRET, REFRESH_LIFETIME)
+        .encode_compressed(SECRET, REFRESH_LIFETIME)
         .unwrap();
     let two = AccessToken::Refresh(two)
-        .encode(SECRET, REFRESH_LIFETIME)
+        .encode_compressed(SECRET, REFRESH_LIFETIME)
         .unwrap();
     assert!(matches!(
         fixture.refresh(&one).await,
@@ -1238,7 +1725,7 @@ async fn missing_revoked_or_foreign_sessions_cannot_refresh() {
             )
             .unwrap(),
         )
-        .encode(SECRET, REFRESH_LIFETIME)
+        .encode_compressed(SECRET, REFRESH_LIFETIME)
         .unwrap();
         fixture.remember(&refresh);
         {
@@ -1286,11 +1773,11 @@ async fn invalid_signature_cannot_revoke_a_valid_session() {
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap();
     let valid = AccessToken::Refresh(claims.clone())
-        .encode(SECRET, REFRESH_LIFETIME)
+        .encode_compressed(SECRET, REFRESH_LIFETIME)
         .unwrap();
     fixture.remember(&valid);
     let forged = AccessToken::Refresh(claims)
-        .encode("wrong-key-at-least-32-bytes-long", REFRESH_LIFETIME)
+        .encode_compressed("wrong-key-at-least-32-bytes-long", REFRESH_LIFETIME)
         .unwrap();
     assert!(matches!(
         fixture.refresh(&forged).await,
@@ -1318,7 +1805,7 @@ async fn read_only_refresh_runs_inside_an_enclosing_transaction() {
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
-    .encode(SECRET, REFRESH_LIFETIME)
+    .encode_compressed(SECRET, REFRESH_LIFETIME)
     .unwrap();
     fixture.remember(&token);
     fixture
@@ -1340,7 +1827,7 @@ async fn failed_organization_switch_returns_no_credentials_and_preserves_the_ses
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap();
     let token = AccessToken::Refresh(claims.clone())
-        .encode(SECRET, REFRESH_LIFETIME)
+        .encode_compressed(SECRET, REFRESH_LIFETIME)
         .unwrap();
     fixture.remember(&token);
     fixture.repo.0.lock().unwrap().fail_rotation = true;
@@ -1359,7 +1846,7 @@ async fn competing_organization_switch_rejects_the_loser_without_revoking_the_wi
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
-    .encode(SECRET, REFRESH_LIFETIME)
+    .encode_compressed(SECRET, REFRESH_LIFETIME)
     .unwrap();
     fixture.remember(&token);
     fixture.repo.0.lock().unwrap().competing_rotation = true;
@@ -1380,14 +1867,14 @@ async fn token_for_another_organization_cannot_read_or_revoke_an_owned_session()
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
-    .encode(SECRET, REFRESH_LIFETIME)
+    .encode_compressed(SECRET, REFRESH_LIFETIME)
     .unwrap();
     fixture.remember(&valid);
     let foreign = AccessToken::Refresh(
         RefreshToken::from_session(&stored_session(1, 7, 85, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
-    .encode(SECRET, REFRESH_LIFETIME)
+    .encode_compressed(SECRET, REFRESH_LIFETIME)
     .unwrap();
     assert!(matches!(
         fixture.refresh(&foreign).await,
@@ -1410,7 +1897,7 @@ async fn organization_switch_joins_an_enclosing_transaction() {
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
             .unwrap(),
     )
-    .encode(SECRET, REFRESH_LIFETIME)
+    .encode_compressed(SECRET, REFRESH_LIFETIME)
     .unwrap();
     fixture.remember(&original);
     fixture
@@ -1433,8 +1920,7 @@ async fn organization_switch_joins_an_enclosing_transaction() {
         .await
         .unwrap();
     let claims =
-        RefreshToken::try_from(AccessToken::decode(&tokens.refresh_token, SECRET).unwrap())
-            .unwrap();
+        RefreshToken::try_from(decode_token(&tokens.refresh_token, SECRET).unwrap()).unwrap();
     assert_eq!(claims.session.organization_id, 85);
     assert!(matches!(
         fixture.refresh(&original).await,
@@ -1465,9 +1951,7 @@ async fn expired_refresh_never_writes_or_revokes_a_session() {
         .insert(7, stored.clone());
     token.validity.issued_at = at - REFRESH_LIFETIME.as_secs() - 1;
     token.validity.expires_at = at - 1;
-    let expired =
-        hero::token::jwt::create_jwt_token(AccessToken::Refresh(token), SECRET, REFRESH_LIFETIME)
-            .unwrap();
+    let expired = sign_unchecked(&AccessToken::Refresh(token), REFRESH_LIFETIME);
     assert!(matches!(
         fixture.refresh(&expired).await,
         Err(AuthError::ExpiredToken)
@@ -1519,7 +2003,7 @@ async fn signout_revokes_only_the_selected_session_and_is_repeatable() {
     }
     let refresh =
         AccessToken::Refresh(RefreshToken::from_session(&selected, REFRESH_LIFETIME).unwrap())
-            .encode(SECRET, REFRESH_LIFETIME)
+            .encode_compressed(SECRET, REFRESH_LIFETIME)
             .unwrap();
     assert!(matches!(
         fixture.refresh(&refresh).await,
@@ -1627,7 +2111,7 @@ async fn refresh_preserves_coherent_session_and_authority_without_restamping() {
     let service = fixture.service();
     let refresh =
         AccessToken::Refresh(RefreshToken::from_session(&presented, REFRESH_LIFETIME).unwrap())
-            .encode(SECRET, REFRESH_LIFETIME)
+            .encode_compressed(SECRET, REFRESH_LIFETIME)
             .unwrap();
     let issued = fixture
         .repo
@@ -1636,8 +2120,7 @@ async fn refresh_preserves_coherent_session_and_authority_without_restamping() {
         .await
         .unwrap();
     let claims =
-        UserAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
-            .unwrap();
+        UserAccessToken::try_from(decode_token(&issued.access_token, SECRET).unwrap()).unwrap();
     let session = claims.session;
     let snapshot = claims.policy_snapshot;
     assert_eq!(session.authorization_version, 4);
@@ -1665,8 +2148,6 @@ async fn refresh_rejects_unavailable_invalid_or_oversized_authority() {
         "disabled user",
         "missing member",
         "disabled organization",
-        "foreign role",
-        "invalid source",
         "missing session",
         "revoked session",
         "foreign organization",
@@ -1685,8 +2166,6 @@ async fn refresh_rejects_unavailable_invalid_or_oversized_authority() {
                 "disabled user" => state.user.as_mut().unwrap().status = UserStatus::Disabled,
                 "missing member" => state.memberships.clear(),
                 "disabled organization" => state.disabled_organizations.push(84),
-                "foreign role" => state.memberships[0].roles[0].organization_id = 99,
-                "invalid source" => state.memberships[0].roles[0].cedar_source = "invalid".into(),
                 "missing session" => state.sessions.clear(),
                 "revoked session" => state.sessions.get_mut(&7).unwrap().revoke(),
                 "foreign organization" => presented.organization_id = 99,
@@ -1694,6 +2173,7 @@ async fn refresh_rejects_unavailable_invalid_or_oversized_authority() {
                 "future version" => presented.authorization_version = 2,
                 "oversized" => {
                     state.memberships[0].roles = vec![fixture_roles_0.clone().remove(0)];
+                    make_oversized(&mut state.memberships[0].roles[0]);
                     state.full_default_policies = true;
                 }
                 "database failure" => state.fail_authority_read = true,
@@ -1702,13 +2182,10 @@ async fn refresh_rejects_unavailable_invalid_or_oversized_authority() {
         }
         let refresh =
             AccessToken::Refresh(RefreshToken::from_session(&presented, REFRESH_LIFETIME).unwrap())
-                .encode(SECRET, REFRESH_LIFETIME)
+                .encode_compressed(SECRET, REFRESH_LIFETIME)
                 .unwrap();
         let result = fixture.refresh(&refresh).await;
         match case {
-            "foreign role" | "invalid source" => {
-                assert!(matches!(result, Err(AuthError::Unexpected(_))))
-            }
             "oversized" => assert!(matches!(result, Err(AuthError::TokenTooLarge { .. }))),
             "database failure" => assert!(matches!(result, Err(AuthError::SessionPersistence(_)))),
             _ => assert!(matches!(result, Err(AuthError::InvalidSession)), "{case}"),
@@ -1722,25 +2199,17 @@ async fn snapshot_creation_uses_only_loaded_membership_without_session_or_contex
     let fixture_roles_0 = default_roles(84, [1, 2, 3]).await;
 
     let fixture = Fixture::new(None);
-    let service = fixture.service();
     let membership = OrganizationMember {
         organization_id: 84,
         user_id: 1,
         roles: fixture_roles_0.clone(),
         groups: vec![],
     };
-    // The pure snapshot fits its own bounds even when final token issuance may not.
-    let snapshot = service.create_policy_snapshot(&membership).unwrap();
+    let snapshot = compallm_core::authorization::PolicySnapshot::new(&membership);
     assert_eq!(snapshot.role_ids, vec![1, 2, 3]);
     assert!(!snapshot.cedar_source.is_empty());
     assert!(DbContext::current().is_err());
     assert!(fixture.repo.0.lock().unwrap().sessions.is_empty());
-    let mut invalid = membership.clone();
-    invalid.roles[0].organization_id = 99;
-    assert!(matches!(
-        service.create_policy_snapshot(&invalid),
-        Err(AuthError::Unexpected(_))
-    ));
     fixture.assert_no_transaction();
 }
 
@@ -1751,7 +2220,7 @@ async fn renewal_copies_current_session_version_and_keeps_stale_refresh_usable()
     assert_eq!(session.authorization_version, 1);
     let token =
         AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
-            .encode(SECRET, REFRESH_LIFETIME)
+            .encode_compressed(SECRET, REFRESH_LIFETIME)
             .unwrap();
     fixture.remember(&token);
     fixture
@@ -1765,11 +2234,9 @@ async fn renewal_copies_current_session_version_and_keeps_stale_refresh_usable()
         .authorization_version = 42;
     let renewed = fixture.refresh(&token).await.unwrap();
     let access =
-        UserAccessToken::try_from(AccessToken::decode(&renewed.access_token, SECRET).unwrap())
-            .unwrap();
+        UserAccessToken::try_from(decode_token(&renewed.access_token, SECRET).unwrap()).unwrap();
     let refresh =
-        RefreshToken::try_from(AccessToken::decode(&renewed.refresh_token, SECRET).unwrap())
-            .unwrap();
+        RefreshToken::try_from(decode_token(&renewed.refresh_token, SECRET).unwrap()).unwrap();
     assert_eq!(access.session.authorization_version, 42);
     assert_eq!(refresh.session.authorization_version, 42);
     assert_eq!(
@@ -1862,15 +2329,14 @@ async fn access_issuance_includes_direct_and_group_authority_and_refresh_rebuild
             roles: vec![fixture_roles_0.clone().remove(2)],
         });
     }
-    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
     let issued = fixture
         .signin(&Fixture::otp(&challenge), &challenge.code)
         .await
         .unwrap();
     let access =
-        UserAccessToken::try_from(AccessToken::decode(&issued.access_token, SECRET).unwrap())
-            .unwrap();
-    let expected = PolicySnapshot::new(&fixture.repo.0.lock().unwrap().memberships[0]).unwrap();
+        UserAccessToken::try_from(decode_token(&issued.access_token, SECRET).unwrap()).unwrap();
+    let expected = PolicySnapshot::new(&fixture.repo.0.lock().unwrap().memberships[0]);
     assert_eq!(access.policy_snapshot, expected);
     assert_eq!(access.policy_snapshot.role_ids, vec![1]);
     assert_eq!(access.policy_snapshot.group_roles[&9], vec![3]);
@@ -1887,15 +2353,14 @@ async fn access_issuance_includes_direct_and_group_authority_and_refresh_rebuild
 
     let renewed = fixture.refresh(&issued.refresh_token).await.unwrap();
     let new_access =
-        UserAccessToken::try_from(AccessToken::decode(&renewed.access_token, SECRET).unwrap())
-            .unwrap();
+        UserAccessToken::try_from(decode_token(&renewed.access_token, SECRET).unwrap()).unwrap();
     assert_eq!(new_access.session.authorization_version, 2);
     assert!(new_access.policy_snapshot.cedar_source.is_empty());
     assert!(new_access.policy_snapshot.role_ids.is_empty());
     assert!(new_access.policy_snapshot.group_roles.is_empty());
-    let refresh = AccessToken::decode(&renewed.refresh_token, SECRET).unwrap();
+    let refresh = decode_token(&renewed.refresh_token, SECRET).unwrap();
     assert!(
-        serde_json::to_value(refresh).unwrap()["refresh"]
+        serde_json::to_value(refresh).unwrap()["r"]
             .get("policy_snapshot")
             .is_none()
     );
@@ -1903,66 +2368,21 @@ async fn access_issuance_includes_direct_and_group_authority_and_refresh_rebuild
 }
 
 #[tokio::test]
-async fn actual_default_policy_oversize_returns_no_login_or_switched_session() {
-    let fixture_roles_0 = default_roles(84, [1, 2, 3]).await;
-    let fixture_roles_1 = default_roles(85, [1, 2, 3]).await;
-
+async fn default_policies_fit_with_compression() {
+    let roles = default_roles(84, [1, 2, 3]).await;
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     {
         let mut state = fixture.repo.0.lock().unwrap();
         state.full_default_policies = true;
-        state.memberships[0].roles = vec![fixture_roles_0.clone().remove(0)];
+        state.memberships[0].roles = vec![roles[0].clone()];
     }
-    let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
-    assert!(matches!(
-        fixture
-            .signin(&Fixture::otp(&challenge), &challenge.code)
-            .await,
-        Err(AuthError::TokenTooLarge { .. })
-    ));
-    assert!(fixture.repo.0.lock().unwrap().sessions.is_empty());
-    let session = stored_session(1, 7, 84, "Team");
-    let refresh =
-        AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
-            .encode(SECRET, REFRESH_LIFETIME)
-            .unwrap();
-    fixture.remember(&refresh);
-    assert!(matches!(
-        fixture.refresh(&refresh).await,
-        Err(AuthError::TokenTooLarge { .. })
-    ));
-    {
-        let mut state = fixture.repo.0.lock().unwrap();
-        state.memberships.push(OrganizationMember {
-            organization_id: 85,
-            user_id: 1,
-            roles: vec![fixture_roles_1.clone().remove(1)],
-            groups: vec![],
-        });
-    }
-    assert!(matches!(
-        fixture.switch_organization(&refresh, 85).await,
-        Err(AuthError::TokenTooLarge { .. })
-    ));
-    assert_eq!(fixture.repo.0.lock().unwrap().sessions[&7], session);
-    fixture.assert_no_transaction();
-
-    let signup = Fixture::new(None);
-    signup.repo.0.lock().unwrap().full_default_policies = true;
-    assert!(matches!(
-        signup
-            .repo
-            .1
-            .scope(
-                signup
-                    .service()
-                    .signup(&Fixture::otp(&challenge), &challenge.code)
-            )
-            .await,
-        Err(AuthError::TokenTooLarge { .. })
-    ));
-    assert!(signup.repo.0.lock().unwrap().sessions.is_empty());
-    signup.assert_transaction("ROLLBACK");
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    assert!(tokens.access_token.len() <= AccessToken::MAX_ENCODED_BYTES);
+    assert!(fixture.refresh(&tokens.refresh_token).await.is_ok());
 }
 
 impl Fixture {
@@ -1979,7 +2399,7 @@ impl Fixture {
     ) -> axum::response::Response {
         use axum::{body::Body, http::Request};
         let token = AccessToken::User(claims.clone())
-            .encode(SECRET, Duration::from_secs(60))
+            .encode_compressed(SECRET, Duration::from_secs(60))
             .unwrap();
         let mut request = Request::builder().uri("/check");
         if cookie {
@@ -2055,7 +2475,7 @@ async fn middleware_stale_bearer_requires_explicit_refresh_before_retry() {
     let claims = fixture.access_for_session(session.clone());
     let refresh =
         AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
-            .encode(SECRET, REFRESH_LIFETIME)
+            .encode_compressed(SECRET, REFRESH_LIFETIME)
             .unwrap();
     let mut current = session;
     current.authorization_version = 2;
@@ -2084,7 +2504,7 @@ async fn middleware_stale_bearer_requires_explicit_refresh_before_retry() {
         .unwrap();
     let tokens: serde_json::Value = serde_json::from_slice(&body).unwrap();
     let access = UserAccessToken::try_from(
-        AccessToken::decode(tokens["accessToken"].as_str().unwrap(), SECRET).unwrap(),
+        decode_token(tokens["accessToken"].as_str().unwrap(), SECRET).unwrap(),
     )
     .unwrap();
     assert_eq!(access.session.authorization_version, 2);
@@ -2114,7 +2534,7 @@ async fn middleware_stale_cookie_requires_matching_refresh_and_origin() {
         let token = AccessToken::Refresh(
             RefreshToken::from_session(&refresh_session, REFRESH_LIFETIME).unwrap(),
         )
-        .encode(SECRET, REFRESH_LIFETIME)
+        .encode_compressed(SECRET, REFRESH_LIFETIME)
         .unwrap();
         let response = fixture
             .request(
@@ -2196,18 +2616,18 @@ async fn middleware_invalid_or_wrong_variant_bearer_never_renews_from_cookies() 
             .insert(7, session.clone());
         let refresh =
             AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
-                .encode(SECRET, REFRESH_LIFETIME)
+                .encode_compressed(SECRET, REFRESH_LIFETIME)
                 .unwrap();
         let token = match case {
             "forged" => AccessToken::User(fixture.access_for_session(session.clone()))
-                .encode(
+                .encode_compressed(
                     "another-secret-at-least-32-bytes-long",
                     Duration::from_secs(60),
                 )
                 .unwrap(),
             "refresh" => refresh.clone(),
             "otp" => {
-                EmailOtpChallenge::new("james@midwess.com", SECRET)
+                test_challenge("james@midwess.com", SECRET)
                     .unwrap()
                     .access_token
             }
@@ -2215,15 +2635,10 @@ async fn middleware_invalid_or_wrong_variant_bearer_never_renews_from_cookies() 
                 let mut claims = fixture.access_for_session(session.clone());
                 claims.validity.issued_at -= 120;
                 claims.validity.expires_at -= 120;
-                hero::token::jwt::create_jwt_token(
-                    AccessToken::User(claims),
-                    SECRET,
-                    Duration::from_secs(60),
-                )
-                .unwrap()
+                sign_unchecked(&AccessToken::User(claims), Duration::from_secs(60))
             }
             _ => AccessToken::User(fixture.access_for_session(session.clone()))
-                .encode(SECRET, Duration::from_secs(60))
+                .encode_compressed(SECRET, Duration::from_secs(60))
                 .unwrap(),
         };
         let mut request = Request::builder()
@@ -2259,15 +2674,10 @@ async fn middleware_expired_cookie_renews_once() {
     let mut expired = fixture.access_for_session(session.clone());
     expired.validity.issued_at -= 120;
     expired.validity.expires_at -= 120;
-    let expired = hero::token::jwt::create_jwt_token(
-        AccessToken::User(expired),
-        SECRET,
-        Duration::from_secs(60),
-    )
-    .unwrap();
+    let expired = sign_unchecked(&AccessToken::User(expired), Duration::from_secs(60));
     let refresh =
         AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
-            .encode(SECRET, REFRESH_LIFETIME)
+            .encode_compressed(SECRET, REFRESH_LIFETIME)
             .unwrap();
     let response = fixture
         .execute(
@@ -2300,11 +2710,13 @@ async fn middleware_oversized_rebuild_fails_before_handler_without_new_credentia
         current.authorization_version = 2;
         state.sessions.insert(7, current);
         state.memberships[0].roles = vec![fixture_roles_0.clone().remove(0)];
+        make_oversized(&mut state.memberships[0].roles[0]);
+        state.full_default_policies = true;
     }
     let refresh = AccessToken::Refresh(
         RefreshToken::from_session(&claims.session, REFRESH_LIFETIME).unwrap(),
     )
-    .encode(SECRET, REFRESH_LIFETIME)
+    .encode_compressed(SECRET, REFRESH_LIFETIME)
     .unwrap();
     let response = fixture.request(&claims, true, Some(&refresh), true).await;
     assert_eq!(response.status(), 422);
@@ -2366,32 +2778,27 @@ async fn explicit_refresh_requires_valid_refresh_bearer_and_ignores_cookies() {
             .insert(7, session.clone());
         let valid =
             AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
-                .encode(SECRET, REFRESH_LIFETIME)
+                .encode_compressed(SECRET, REFRESH_LIFETIME)
                 .unwrap();
         let token = match case {
             "access" => AccessToken::User(fixture.access_for_session(session.clone()))
-                .encode(SECRET, Duration::from_secs(60))
+                .encode_compressed(SECRET, Duration::from_secs(60))
                 .unwrap(),
             "otp" => {
-                EmailOtpChallenge::new("james@midwess.com", SECRET)
+                test_challenge("james@midwess.com", SECRET)
                     .unwrap()
                     .access_token
             }
             "forged" => AccessToken::Refresh(
                 RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap(),
             )
-            .encode("a-different-secret-at-least-32-bytes", REFRESH_LIFETIME)
+            .encode_compressed("a-different-secret-at-least-32-bytes", REFRESH_LIFETIME)
             .unwrap(),
             "expired" => {
                 let mut token = RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap();
                 token.validity.issued_at -= REFRESH_LIFETIME.as_secs() + 1;
                 token.validity.expires_at -= REFRESH_LIFETIME.as_secs() + 1;
-                hero::token::jwt::create_jwt_token(
-                    AccessToken::Refresh(token),
-                    SECRET,
-                    REFRESH_LIFETIME,
-                )
-                .unwrap()
+                sign_unchecked(&AccessToken::Refresh(token), REFRESH_LIFETIME)
             }
             _ => valid.clone(),
         };
@@ -2440,14 +2847,13 @@ async fn signin_accepts_active_memberships_with_custom_or_no_roles() {
                 vec![]
             };
         }
-        let challenge = EmailOtpChallenge::new("james@midwess.com", SECRET).unwrap();
+        let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
         let tokens = fixture
             .signin(&Fixture::otp(&challenge), &challenge.code)
             .await
             .unwrap();
         let access =
-            UserAccessToken::try_from(AccessToken::decode(&tokens.access_token, SECRET).unwrap())
-                .unwrap();
+            UserAccessToken::try_from(decode_token(&tokens.access_token, SECRET).unwrap()).unwrap();
         assert_eq!(
             access.policy_snapshot.role_ids,
             if custom { vec![77] } else { vec![] }

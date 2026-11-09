@@ -12,15 +12,18 @@ workspace = true
 [dependencies]
 cedar-policy.workspace = true
 cedar-policy-formatter.workspace = true
-rayon.workspace = true
-jsonwebtoken.workspace = true
+lz4_flex.workspace = true
+coset.workspace = true
+ciborium.workspace = true
+hmac.workspace = true
+serde_bytes.workspace = true
 validify.workspace = true
 anyhow = { workspace = true, features = ["std"] }
 async-trait.workspace = true
 base64 = { workspace = true, features = ["std"] }
 chacha20poly1305 = { workspace = true, features = ["std"] }
 compallm-utils.workspace = true
-hero = { workspace = true, features = ["distributed-id", "token"] }
+hero = { workspace = true, features = ["distributed-id"] }
 hkdf = { workspace = true, features = ["std"] }
 maud.workspace = true
 rand = { workspace = true, features = ["std", "thread_rng"] }

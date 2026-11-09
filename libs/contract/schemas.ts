@@ -30,15 +30,15 @@ export type TokenLifetimeOutput = zod.output<typeof TokenLifetime>;
 
 export const AuthTokensResponse = zod.object({
   "accessLifetime": TokenLifetime.describe('Access-token validity, present for both delivery modes.'),
-  "accessToken": zod.string().nullish().describe('Access JWT, present only when delivery is token.'),
+  "accessToken": zod.string().nullish().describe('Access CWT, present only when delivery is token.'),
   "refreshLifetime": TokenLifetime.describe('Refresh-token validity, present for both delivery modes.'),
-  "refreshToken": zod.string().nullish().describe('Refresh JWT, present only when delivery is token.')
+  "refreshToken": zod.string().nullish().describe('Refresh CWT, present only when delivery is token.')
 }).describe('Both delivery modes return validity metadata; only token delivery includes credentials.');
 
 export type AuthTokensResponse = zod.input<typeof AuthTokensResponse>;
 export type AuthTokensResponseOutput = zod.output<typeof AuthTokensResponse>;
 
-export const TokenDelivery = zod.enum(['cookie', 'token']).describe('How each signup/signin step delivers access credentials. Never stored in JWT claims.');
+export const TokenDelivery = zod.enum(['cookie', 'token']).describe('How each signup/signin step delivers access credentials. Never stored in CWT claims.');
 
 export type TokenDelivery = zod.input<typeof TokenDelivery>;
 export type TokenDeliveryOutput = zod.output<typeof TokenDelivery>;
@@ -48,7 +48,7 @@ export const confirmSigninOtpRequestDeliveryDefault = 'cookie';
 
 export const ConfirmSigninOtpRequest = zod.object({
   "code": zod.string().regex(confirmSigninOtpRequestCodeRegExp).describe('Six ASCII digits received by email; surrounding whitespace is trimmed. Valid for ten minutes.'),
-  "delivery": TokenDelivery.default(confirmSigninOtpRequestDeliveryDefault).describe('Cookie (default) sets HttpOnly cookies; token returns both JWTs in JSON.')
+  "delivery": TokenDelivery.default(confirmSigninOtpRequestDeliveryDefault).describe('Cookie (default) sets HttpOnly cookies; token returns both CWTs in JSON.')
 }).describe('Email challenge, verification code, and credential delivery for an existing user.');
 
 export type ConfirmSigninOtpRequest = zod.input<typeof ConfirmSigninOtpRequest>;
@@ -59,7 +59,7 @@ export const confirmSignupOtpRequestDeliveryDefault = 'cookie';
 
 export const ConfirmSignupOtpRequest = zod.object({
   "code": zod.string().regex(confirmSignupOtpRequestCodeRegExp).describe('Six ASCII digits received by email; surrounding whitespace is trimmed. Submit before expiry.'),
-  "delivery": TokenDelivery.default(confirmSignupOtpRequestDeliveryDefault).describe('Credential delivery: cookie (default) sets HttpOnly cookies and requires Origin;\ntoken returns both JWTs in JSON without setting cookies.')
+  "delivery": TokenDelivery.default(confirmSignupOtpRequestDeliveryDefault).describe('Credential delivery: cookie (default) sets HttpOnly cookies and requires Origin;\ntoken returns both CWTs in JSON without setting cookies.')
 }).describe('Email challenge and code used to confirm signup.');
 
 export type ConfirmSignupOtpRequest = zod.input<typeof ConfirmSignupOtpRequest>;

@@ -59,5 +59,11 @@ syn = { version = "2", default-features = false }
 tempfile = { version = "3", default-features = false }
 maud = { version = "0.27", default-features = false }
 cedar-policy = { version = "4" }
-cedar-policy-formatter = { version = "4" }
 rayon = { version = "1" }
+lz4_flex = { version = "0.14", default-features = false, features = ["std", "checked-decode"] }
+coset = "0.4"
+ciborium = "0.2"
+hmac = "0.12"
+serde_bytes = "0.11"
+cedar-policy-formatter = { version = "4" }
+elsa = { version = "1" }

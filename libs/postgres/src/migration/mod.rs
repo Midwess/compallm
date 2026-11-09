@@ -38,6 +38,10 @@ mod m20261107_000025_replace_membership_role_enum;
 
 mod m20261108_000026_remove_reserved_role_ids;
 
+mod m20261108_000022_create_lz4_dictionary;
+mod m20261108_000023_seed_access_token_dictionary;
+mod m20261108_000027_add_organization_owner_role;
+
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -70,6 +74,9 @@ impl MigratorTrait for Migrator {
             Box::new(m20261107_000024_add_session_authorization_version::Migration),
             Box::new(m20261107_000025_replace_membership_role_enum::Migration),
             Box::new(m20261108_000026_remove_reserved_role_ids::Migration),
+            Box::new(m20261108_000022_create_lz4_dictionary::Migration),
+            Box::new(m20261108_000023_seed_access_token_dictionary::Migration),
+            Box::new(m20261108_000027_add_organization_owner_role::Migration),
             // inject-above (do not remove this comment)
         ]
     }

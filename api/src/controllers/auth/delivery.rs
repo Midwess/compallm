@@ -13,7 +13,7 @@ use cookie::{Cookie, SameSite, time::Duration};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-/// How each signup/signin step delivers access credentials. Never stored in JWT claims.
+/// How each signup/signin step delivers access credentials. Never stored in CWT claims.
 #[derive(Clone, Copy, Default, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TokenDelivery {
@@ -73,10 +73,10 @@ pub struct AuthTokensResponse {
     pub access_lifetime: TokenLifetime,
     /// Refresh-token validity, present for both delivery modes.
     pub refresh_lifetime: TokenLifetime,
-    /// Access JWT, present only when delivery is token.
+    /// Access CWT, present only when delivery is token.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub access_token: Option<String>,
-    /// Refresh JWT, present only when delivery is token.
+    /// Refresh CWT, present only when delivery is token.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub refresh_token: Option<String>,
 }

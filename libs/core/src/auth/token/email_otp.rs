@@ -8,8 +8,11 @@ use subtle::ConstantTimeEq;
 /// Never return these plaintext claims to a browser or log them.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct EmailOtpAccessToken {
+    #[serde(rename = "e")]
     pub email: String,
+    #[serde(rename = "c")]
     pub code: String,
+    #[serde(rename = "v")]
     pub validity: TokenValidity,
 }
 

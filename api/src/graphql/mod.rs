@@ -9,11 +9,11 @@ pub mod auth;
 pub mod endpoint;
 pub mod organization;
 pub mod provider;
-pub mod request;
 pub mod user;
 
 mod context;
 mod error;
+mod operation;
 mod schema;
 
 pub use context::GraphqlContext;

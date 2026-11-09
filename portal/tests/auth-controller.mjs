@@ -64,8 +64,8 @@ test('confirmed signup retries only identity loading after a temporary failure',
     identities++
     return identities === 1
       ? Response.json(
-          { errors: [{ message: 'Temporarily unavailable', extensions: { code: 'SERVICE_UNAVAILABLE' } }] },
-          { status: 503 },
+          { errors: [{ message: 'Temporarily unavailable', extensions: { code: 'SERVICE_UNAVAILABLE', status: 503 } }] },
+          { status: 200 },
         )
       : reply({ session: user })
   }

@@ -539,8 +539,8 @@ impl Fixture {
         };
         use compallm_api::{
             di::{AuthSettings, Di, GraphqlSettings},
-            graphql::{build_schema, endpoint, request},
-            middleware::authentication::{Authentication, AuthenticationSettings},
+            graphql::{build_schema, endpoint},
+            middleware::authentication::{self, Authentication, AuthenticationSettings},
         };
         let db = Box::leak(Box::new(self.repo.1.clone()));
         let email = Box::leak(Box::new(
@@ -585,8 +585,7 @@ impl Fixture {
             post(endpoint::handle)
                 .with_state(schema.clone())
                 .layer(axum::Extension(di as &'static Di))
-                .route_layer(from_fn_with_state(schema, request::authenticate))
-                .layer::<_, std::convert::Infallible>(axum::Extension(authentication))
+                .route_layer(from_fn_with_state(authentication, authentication::populate))
                 .layer(DefaultBodyLimit::max(65_536)),
         )
     }
@@ -2510,6 +2509,18 @@ async fn graphql_identity_uses_one_freshness_read_and_rejects_non_access_or_revo
         .unwrap();
     let router = fixture.graphql();
 
+    let introspection = graphql_operation(
+        &router,
+        "{ __schema { queryType { name } } }",
+        serde_json::json!({}),
+        None,
+        None,
+        false,
+    )
+    .await;
+    assert_eq!(introspection.status(), 200);
+    assert!(graphql_body(introspection).await["errors"].is_null());
+    assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, 0);
     let response = graphql_request(&router, Some(&tokens.access_token), None, false).await;
     assert_eq!(response.status(), 200);
     assert!(!response.headers().contains_key("set-cookie"));
@@ -2527,8 +2538,7 @@ async fn graphql_identity_uses_one_freshness_read_and_rejects_non_access_or_revo
         Some(challenge.access_token.as_str()),
     ] {
         let response = graphql_request(&router, token, None, false).await;
-        assert_eq!(response.status(), 401);
-        assert!(response.headers().contains_key("www-authenticate"));
+        assert_graphql_denial(response, 401).await;
     }
     assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, 1);
     fixture
@@ -2542,7 +2552,7 @@ async fn graphql_identity_uses_one_freshness_read_and_rejects_non_access_or_revo
         .unwrap()
         .revoke();
     let response = graphql_request(&router, Some(&tokens.access_token), None, false).await;
-    assert_eq!(response.status(), 401);
+    assert_graphql_denial(response, 401).await;
     let state = fixture.repo.0.lock().unwrap();
     assert_eq!(state.authority_reads, 0);
     assert_eq!(state.logins.len(), 1);
@@ -2573,13 +2583,13 @@ async fn graphql_stale_cookie_rebuilds_current_authority_but_bearer_and_unavaila
         tokens.access_token, tokens.refresh_token
     );
     let response = graphql_request(&router, Some(&tokens.access_token), Some(&cookies), true).await;
-    assert_eq!(response.status(), 401);
     assert!(!response.headers().contains_key("set-cookie"));
+    assert_graphql_denial(response, 401).await;
     assert_eq!(fixture.repo.0.lock().unwrap().authority_reads, 0);
 
     let response = graphql_request(&router, None, Some(&cookies), false).await;
-    assert_eq!(response.status(), 403);
     assert!(!response.headers().contains_key("set-cookie"));
+    assert_graphql_denial(response, 403).await;
     assert_eq!(fixture.repo.0.lock().unwrap().authority_reads, 0);
 
     let response = graphql_request(&router, None, Some(&cookies), true).await;
@@ -2602,8 +2612,8 @@ async fn graphql_stale_cookie_rebuilds_current_authority_but_bearer_and_unavaila
         state.fail_authority_read = true;
     }
     let response = graphql_request(&router, None, Some(&cookies), true).await;
-    assert_eq!(response.status(), 503);
     assert!(!response.headers().contains_key("set-cookie"));
+    assert_graphql_denial(response, 503).await;
     let state = fixture.repo.0.lock().unwrap();
     assert_eq!(state.authority_reads, 1);
     assert_eq!(state.logins.len(), 1);
@@ -2809,7 +2819,7 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     let router = fixture.graphql();
     let response = graphql_operation(&router,
         "mutation($input:EmailInput!){signinEmailRequest(input:$input){token lifetime{expiresInSeconds}}}",
-        serde_json::json!({"input":{"email":"james@midwess.com","delivery":"TOKEN"}}),None,None,false).await;
+        serde_json::json!({"input":{"email":"james@midwess.com","delivery":"TOKEN"}}),Some("invalid-bearer"),None,false).await;
     assert_eq!(response.status(), 200);
     assert!(!response.headers().contains_key("set-cookie"));
     let body = graphql_body(response).await;
@@ -2860,12 +2870,11 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     .await;
     assert!(!response.headers().contains_key("set-cookie"));
     assert_eq!(graphql_body(response).await["data"]["sessionRevoke"], true);
-    assert_eq!(
-        graphql_request(&router, Some(access), None, false)
-            .await
-            .status(),
-        401
-    );
+    assert_graphql_denial(
+        graphql_request(&router, Some(access), None, false).await,
+        401,
+    )
+    .await;
     fixture.assert_no_transaction();
 }
 
@@ -2894,7 +2903,7 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     let query = "mutation($input:EmailCodeInput!){signupEmailConfirm(input:$input){accessToken refreshToken accessLifetime{expiresInSeconds}}}";
     let response =
         graphql_operation(&router, query, input.clone(), None, Some(&cookies), false).await;
-    assert_eq!(response.status(), 403);
+    assert_graphql_denial(response, 403).await;
     assert!(fixture.repo.0.lock().unwrap().created.is_none());
     let response = graphql_operation(&router, query, input, None, Some(&cookies), true).await;
     let cookies = response_cookies(&response);
@@ -2919,7 +2928,7 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
         true,
     )
     .await;
-    assert_eq!(response.status(), 401);
+    assert_graphql_denial(response, 401).await;
     let response = graphql_operation(
         &router,
         "mutation{sessionRevoke}",
@@ -2931,10 +2940,16 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     .await;
     assert_eq!(response.headers().get_all("set-cookie").iter().count(), 2);
     assert_eq!(graphql_body(response).await["data"]["sessionRevoke"], true);
-    assert_eq!(
-        graphql_request(&router, None, Some(&cookies), true)
-            .await
-            .status(),
-        401
-    );
+    assert_graphql_denial(
+        graphql_request(&router, None, Some(&cookies), true).await,
+        401,
+    )
+    .await;
+}
+
+async fn assert_graphql_denial(response: axum::response::Response, status: u64) {
+    assert_eq!(response.status(), 200);
+    let body = graphql_body(response).await;
+    assert!(body["data"].is_null());
+    assert_eq!(body["errors"][0]["extensions"]["status"], status);
 }

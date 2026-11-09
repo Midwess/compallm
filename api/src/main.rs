@@ -1,51 +1,16 @@
 mod app;
-mod controllers;
 mod di;
-mod documentation;
-mod error;
-pub mod middleware;
 mod tasks;
 mod workers;
 
 use app::App;
-use clap::{Parser, Subcommand};
 use compallm_postgres::Migrator;
 use loco_rs::cli;
-use std::{
-    error::Error,
-    fs, io,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::error::Error;
+#[cfg(debug_assertions)]
+use std::path::{Path, PathBuf};
 
-#[derive(Parser)]
-#[command(name = "compallm-api")]
-struct CompallmCli {
-    #[command(subcommand)]
-    command: CompallmCommand,
-}
-
-#[derive(Subcommand)]
-enum CompallmCommand {
-    /// Generate OpenAPI and the TypeScript API client.
-    Generate {
-        /// Render public API guide pages to an explicit directory for Wiki publication.
-        #[arg(long, value_name = "DIRECTORY")]
-        docs_output: Option<PathBuf>,
-    },
-}
-
-fn project_root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("api crate should live below the project root")
-        .to_path_buf()
-}
-
-pub(crate) fn portal_root() -> PathBuf {
-    project_root().join("portal")
-}
-
+#[cfg(debug_assertions)]
 pub(crate) fn node_binary(root: &Path, name: &str) -> PathBuf {
     let executable = if cfg!(windows) {
         format!("{name}.cmd")
@@ -55,58 +20,8 @@ pub(crate) fn node_binary(root: &Path, name: &str) -> PathBuf {
     root.join("node_modules").join(".bin").join(executable)
 }
 
-fn export_openapi(output: &Path) -> Result<(), Box<dyn Error>> {
-    let document = serde_json::to_string_pretty(&controllers::openapi())?;
-    fs::write(output, document)?;
-    println!("wrote {}", output.display());
-    Ok(())
-}
-
-pub(crate) fn generate_contract(docs_output: Option<&Path>) -> Result<(), Box<dyn Error>> {
-    let portal = portal_root();
-    export_openapi(&portal.join("openapi.json"))?;
-
-    let status = Command::new(node_binary(&portal, "orval"))
-        .args(["--config", "orval.config.ts"])
-        .current_dir(&portal)
-        .status()?;
-
-    if !status.success() {
-        return Err(io::Error::other(format!("Orval exited with status {status}")).into());
-    }
-
-    let status = Command::new("node")
-        .arg(project_root().join("libs/contract/generate.mjs"))
-        .status()?;
-    if !status.success() {
-        return Err(io::Error::other("Shared validation generation failed").into());
-    }
-    let status = Command::new(node_binary(&portal, "tsc"))
-        .args(["-p"])
-        .arg(project_root().join("libs/contract/tsconfig.json"))
-        .status()?;
-    if !status.success() {
-        return Err(io::Error::other("Shared contract compilation failed").into());
-    }
-    println!("generated shared API and validation contracts in libs/contract");
-    if let Some(output) = docs_output {
-        let document = serde_json::from_str(&fs::read_to_string(portal.join("openapi.json"))?)?;
-        let count = documentation::ApiDocumentation::new(&document).generate(output)?;
-        println!("generated {count} API guide pages in {}", output.display());
-    }
-    Ok(())
-}
-
-fn compallm_command() -> Option<CompallmCommand> {
-    CompallmCli::try_parse().ok().map(|cli| cli.command)
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    if let Some(CompallmCommand::Generate { docs_output }) = compallm_command() {
-        return generate_contract(docs_output.as_deref());
-    }
-
     cli::main::<App, Migrator>()
         .await
         .map_err(|error| Box::new(error) as Box<dyn Error>)

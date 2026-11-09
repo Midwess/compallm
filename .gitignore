@@ -19,9 +19,7 @@
 /.pnpm-store
 /portal/.pnpm-store
 /portal/dist
-/portal/openapi.json
 /dist
-/openapi.json
 *.local
 *.log
 
@@ -41,9 +39,6 @@
 *.sln
 *.sw?
 
-# The generated API client is intentionally versioned.
-!/portal/src/contract/
-!/portal/src/contract/api.ts
 artifacts
 .codex
 

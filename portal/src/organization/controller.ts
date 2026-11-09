@@ -1,7 +1,7 @@
 import { createOrganizationStore, type OrganizationController as Controller } from '@compallm/storybook/pages/organization'
 import type { AuthController, UrlController } from '@compallm/storybook'
 import find from 'lodash-es/find'
-import type { CurrentUserResponse } from '../contract/api'
+import type { CurrentUserResponse } from '@compallm/contract/types'
 import { notify } from '../notifications/toast'
 import { organizationHome } from './paths'
 

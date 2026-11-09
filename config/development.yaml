@@ -18,10 +18,14 @@ settings:
       <%= get_env(name="SMTP_PASSWORD", default="") | indent(width=6) %>
     tls: |-
       <%= get_env(name="SMTP_TLS", default="none") | indent(width=6) %>
-  auth:
-    cookie_secure: <%= get_env(name="AUTH_COOKIE_SECURE", default="false") %>
+  graphql:
+    cookie_secure: <%= get_env(name="AUTH_COOKIE_false", default="false") %>
     public_origin: |-
       <%= get_env(name="AUTH_PUBLIC_ORIGIN", default="") | indent(width=6) %>
+    max_body_bytes: 65536
+    max_depth: 16
+    max_complexity: 256
+  auth:
     jwt_secret: "<%= get_env(name="AUTH_JWT_SECRET", default="local-development-signing-secret-change-before-production") %>"
     user_token_ttl_seconds: 1800
     refresh_token_ttl_seconds: 2592000

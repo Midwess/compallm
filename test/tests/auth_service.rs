@@ -10,20 +10,6 @@ use role_fixture::default_roles;
 mod session_fixture;
 use session_fixture::stored_session;
 
-// Exercise actual API middleware with mock persistence, without application startup.
-#[path = "../../api/src/controllers/auth.rs"]
-pub mod auth_controller;
-#[path = "../../api/src/middleware/authorization.rs"]
-pub mod authorization;
-#[path = "../../api/src/error.rs"]
-mod error;
-mod controllers {
-    pub use crate::auth_controller as auth;
-}
-mod middleware {
-    pub use crate::authorization;
-}
-
 use compallm_postgres::postgres_connection::PostgresConnection;
 use std::{
     sync::{Arc, Mutex},
@@ -158,7 +144,6 @@ struct State {
     fail_authority_read: bool,
     freshness_reads: usize,
     authority_reads: usize,
-    handled_requests: usize,
     fail_rotation: bool,
     competing_rotation: bool,
     logins: Vec<u64>,
@@ -548,6 +533,43 @@ struct Fixture {
 }
 
 impl Fixture {
+    fn graphql(&self) -> axum::Router {
+        use axum::{
+            Router, extract::DefaultBodyLimit, middleware::from_fn_with_state, routing::post,
+        };
+        use compallm_api::{
+            graphql::{Services, build_schema},
+            handlers,
+            middleware::authentication::{self, Authentication, AuthenticationSettings},
+        };
+        let db = Box::leak(Box::new(self.repo.1.clone()));
+        let auth = Box::leak(Box::new(self.service()));
+        let schema = build_schema(Services { auth }, 16, 256);
+        let authentication = Authentication::new(
+            db,
+            auth,
+            AuthenticationSettings {
+                cookie_secure: false,
+                public_origin: "http://localhost".into(),
+            },
+        )
+        .unwrap();
+        Router::new().route(
+            "/api/graphql",
+            post(handlers::graphql)
+                .with_state(schema)
+                .route_layer(from_fn_with_state(
+                    authentication,
+                    authentication::authenticate,
+                ))
+                .layer(DefaultBodyLimit::max(65_536)),
+        )
+    }
+
+    fn access_for_session(&self, session: Session) -> UserAccessToken {
+        UserAccessToken::new(session, empty_snapshot(), Duration::from_secs(60)).unwrap()
+    }
+
     fn otp(challenge: &EmailOtpChallenge) -> compallm_core::auth::EmailOtpAccessToken {
         compallm_core::auth::EmailOtpAccessToken::try_from(
             decode_token(&challenge.access_token, SECRET).unwrap(),
@@ -2385,453 +2407,6 @@ async fn default_policies_fit_with_compression() {
     assert!(fixture.refresh(&tokens.refresh_token).await.is_ok());
 }
 
-impl Fixture {
-    fn access_for_session(&self, session: Session) -> UserAccessToken {
-        UserAccessToken::new(session, empty_snapshot(), Duration::from_secs(60)).unwrap()
-    }
-
-    async fn request(
-        &self,
-        claims: &UserAccessToken,
-        cookie: bool,
-        refresh: Option<&str>,
-        origin: bool,
-    ) -> axum::response::Response {
-        use axum::{body::Body, http::Request};
-        let token = AccessToken::User(claims.clone())
-            .encode_compressed(SECRET, Duration::from_secs(60))
-            .unwrap();
-        let mut request = Request::builder().uri("/check");
-        if cookie {
-            let value = if let Some(refresh) = refresh {
-                format!("compallm-access={token}; compallm-refresh={refresh}")
-            } else {
-                format!("compallm-access={token}")
-            };
-            request = request.header("cookie", value);
-        } else {
-            request = request.header("authorization", format!("Bearer {token}"));
-            if let Some(refresh) = refresh {
-                request = request.header("cookie", format!("compallm-refresh={refresh}"));
-            }
-        }
-        if origin {
-            request = request.header("origin", "http://localhost");
-        }
-        self.execute(request.body(Body::empty()).unwrap()).await
-    }
-
-    async fn execute(&self, request: axum::extract::Request) -> axum::response::Response {
-        use axum::{Router, middleware::from_fn, routing::get};
-        use tower::ServiceExt;
-        let service = Arc::new(self.service());
-        let settings = Arc::new(auth_controller::delivery::TokenDeliverySettings {
-            secure: false,
-            public_origin: "http://localhost".into(),
-        });
-        let state = self.repo.0.clone();
-        let router=Router::new().route("/check",get(move |authorization::RequireToken(user):authorization::RequireToken<UserAccessToken>| {
-            let state=state.clone();
-            async move {
-                state.lock().unwrap().handled_requests+=1;
-                axum::Json(serde_json::json!({"version":user.session.authorization_version,"roles":user.policy_snapshot.role_ids}))
-            }
-        })).layer(from_fn(move |request,next| {
-            let service=service.clone();let settings=settings.clone();
-            async move {authorization::Authorization::authenticate(&service,&settings,request,next).await}
-        }));
-        self.repo.1.scope(router.oneshot(request)).await.unwrap()
-    }
-}
-
-#[tokio::test]
-async fn middleware_matching_version_uses_one_lookup_and_keeps_snapshot() {
-    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let session = stored_session(1, 7, 84, "Team");
-    fixture
-        .repo
-        .0
-        .lock()
-        .unwrap()
-        .sessions
-        .insert(7, session.clone());
-    let claims = fixture.access_for_session(session);
-    for cookie in [false, true] {
-        let response = fixture.request(&claims, cookie, None, false).await;
-        assert_eq!(response.status(), 200);
-        assert!(!response.headers().contains_key("set-cookie"));
-        assert!(!response.headers().contains_key("x-compallm-access-token"));
-    }
-    let state = fixture.repo.0.lock().unwrap();
-    assert_eq!(state.freshness_reads, 2);
-    assert_eq!(state.authority_reads, 0);
-    assert_eq!(state.handled_requests, 2);
-}
-
-#[tokio::test]
-async fn middleware_stale_bearer_requires_explicit_refresh_before_retry() {
-    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let session = stored_session(1, 7, 84, "Team");
-    let claims = fixture.access_for_session(session.clone());
-    let refresh =
-        AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
-            .encode_compressed(SECRET, REFRESH_LIFETIME)
-            .unwrap();
-    let mut current = session;
-    current.authorization_version = 2;
-    fixture.repo.0.lock().unwrap().sessions.insert(7, current);
-    let response = fixture.request(&claims, false, Some(&refresh), false).await;
-    assert_eq!(response.status(), 401);
-    assert!(
-        response.headers()["www-authenticate"]
-            .to_str()
-            .unwrap()
-            .contains("invalid_token")
-    );
-    assert!(!response.headers().contains_key("set-cookie"));
-    assert!(!response.headers().contains_key("x-compallm-access-token"));
-    {
-        let state = fixture.repo.0.lock().unwrap();
-        assert_eq!(state.freshness_reads, 1);
-        assert_eq!(state.authority_reads, 0);
-        assert_eq!(state.handled_requests, 0);
-    }
-    let response = fixture.explicit_refresh(Some(&refresh), None).await;
-    assert_eq!(response.status(), 200);
-    assert!(!response.headers().contains_key("set-cookie"));
-    let body = axum::body::to_bytes(response.into_body(), 16384)
-        .await
-        .unwrap();
-    let tokens: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    let access = UserAccessToken::try_from(
-        decode_token(tokens["accessToken"].as_str().unwrap(), SECRET).unwrap(),
-    )
-    .unwrap();
-    assert_eq!(access.session.authorization_version, 2);
-    assert_eq!(access.policy_snapshot.role_ids, vec![1]);
-    assert!(tokens["refreshToken"].is_string());
-    assert!(tokens["accessLifetime"]["expiresAt"].is_number());
-    assert_eq!(
-        fixture.request(&access, false, None, false).await.status(),
-        200
-    );
-    assert_eq!(fixture.repo.0.lock().unwrap().handled_requests, 1);
-}
-
-#[tokio::test]
-async fn middleware_stale_cookie_requires_matching_refresh_and_origin() {
-    for case in ["valid", "missing", "foreign", "origin"] {
-        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-        let session = stored_session(1, 7, 84, "Team");
-        let claims = fixture.access_for_session(session.clone());
-        let mut current = session.clone();
-        current.authorization_version = 2;
-        fixture.repo.0.lock().unwrap().sessions.insert(7, current);
-        let mut refresh_session = session;
-        if case == "foreign" {
-            refresh_session.user_id = 2;
-        }
-        let token = AccessToken::Refresh(
-            RefreshToken::from_session(&refresh_session, REFRESH_LIFETIME).unwrap(),
-        )
-        .encode_compressed(SECRET, REFRESH_LIFETIME)
-        .unwrap();
-        let response = fixture
-            .request(
-                &claims,
-                true,
-                if case == "missing" {
-                    None
-                } else {
-                    Some(&token)
-                },
-                case != "origin",
-            )
-            .await;
-        assert_eq!(
-            response.status().as_u16(),
-            match case {
-                "valid" => 200,
-                "origin" => 403,
-                _ => 401,
-            },
-            "{case}"
-        );
-        if case == "valid" {
-            assert_eq!(response.headers().get_all("set-cookie").iter().count(), 2);
-            let body = axum::body::to_bytes(response.into_body(), 8192)
-                .await
-                .unwrap();
-            assert_eq!(
-                serde_json::from_slice::<serde_json::Value>(&body).unwrap()["version"],
-                2
-            );
-        }
-    }
-}
-
-#[tokio::test]
-async fn middleware_rejects_invalid_session_state_and_preserves_cookies_on_db_failure() {
-    for case in ["missing", "revoked", "foreign", "ahead", "database"] {
-        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-        let session = stored_session(1, 7, 84, "Team");
-        let mut claims = fixture.access_for_session(session.clone());
-        {
-            let mut state = fixture.repo.0.lock().unwrap();
-            state.sessions.insert(7, session);
-            match case {
-                "missing" => {
-                    state.sessions.clear();
-                }
-                "revoked" => state.sessions.get_mut(&7).unwrap().revoke(),
-                "foreign" => state.sessions.get_mut(&7).unwrap().organization_id = 99,
-                "ahead" => claims.session.authorization_version = 2,
-                "database" => state.fail_authority_read = true,
-                _ => unreachable!(),
-            }
-        }
-        let response = fixture.request(&claims, true, None, false).await;
-        assert_eq!(
-            response.status().as_u16(),
-            if case == "database" { 503 } else { 401 }
-        );
-        if case == "database" {
-            assert!(!response.headers().contains_key("set-cookie"));
-        }
-    }
-}
-
-#[tokio::test]
-async fn middleware_invalid_or_wrong_variant_bearer_never_renews_from_cookies() {
-    use axum::{body::Body, http::Request};
-    for case in ["forged", "expired", "refresh", "otp", "duplicate"] {
-        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-        let session = stored_session(1, 7, 84, "Team");
-        fixture
-            .repo
-            .0
-            .lock()
-            .unwrap()
-            .sessions
-            .insert(7, session.clone());
-        let refresh =
-            AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
-                .encode_compressed(SECRET, REFRESH_LIFETIME)
-                .unwrap();
-        let token = match case {
-            "forged" => AccessToken::User(fixture.access_for_session(session.clone()))
-                .encode_compressed(
-                    "another-secret-at-least-32-bytes-long",
-                    Duration::from_secs(60),
-                )
-                .unwrap(),
-            "refresh" => refresh.clone(),
-            "otp" => {
-                test_challenge("james@midwess.com", SECRET)
-                    .unwrap()
-                    .access_token
-            }
-            "expired" => {
-                let mut claims = fixture.access_for_session(session.clone());
-                claims.validity.issued_at -= 120;
-                claims.validity.expires_at -= 120;
-                sign_unchecked(&AccessToken::User(claims), Duration::from_secs(60))
-            }
-            _ => AccessToken::User(fixture.access_for_session(session.clone()))
-                .encode_compressed(SECRET, Duration::from_secs(60))
-                .unwrap(),
-        };
-        let mut request = Request::builder()
-            .uri("/check")
-            .header("authorization", format!("Bearer {token}"))
-            .header("cookie", format!("compallm-refresh={refresh}"));
-        if case == "duplicate" {
-            request = request.header("authorization", format!("Bearer {token}"));
-        }
-        let response = fixture.execute(request.body(Body::empty()).unwrap()).await;
-        assert_eq!(response.status(), 401, "{case}");
-        assert!(!response.headers().contains_key("x-compallm-access-token"));
-        assert!(!response.headers().contains_key("set-cookie"));
-        let state = fixture.repo.0.lock().unwrap();
-        assert_eq!(state.freshness_reads, 0);
-        assert_eq!(state.authority_reads, 0);
-        assert_eq!(state.handled_requests, 0);
-    }
-}
-
-#[tokio::test]
-async fn middleware_expired_cookie_renews_once() {
-    use axum::{body::Body, http::Request};
-    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let session = stored_session(1, 7, 84, "Team");
-    fixture
-        .repo
-        .0
-        .lock()
-        .unwrap()
-        .sessions
-        .insert(7, session.clone());
-    let mut expired = fixture.access_for_session(session.clone());
-    expired.validity.issued_at -= 120;
-    expired.validity.expires_at -= 120;
-    let expired = sign_unchecked(&AccessToken::User(expired), Duration::from_secs(60));
-    let refresh =
-        AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
-            .encode_compressed(SECRET, REFRESH_LIFETIME)
-            .unwrap();
-    let response = fixture
-        .execute(
-            Request::builder()
-                .uri("/check")
-                .header("sec-fetch-site", "same-origin")
-                .header(
-                    "cookie",
-                    format!("compallm-access={expired}; compallm-refresh={refresh}"),
-                )
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await;
-    assert_eq!(response.status(), 200);
-    assert_eq!(response.headers().get_all("set-cookie").iter().count(), 2);
-    assert_eq!(fixture.repo.0.lock().unwrap().handled_requests, 1);
-}
-
-#[tokio::test]
-async fn middleware_oversized_rebuild_fails_before_handler_without_new_credentials() {
-    let fixture_roles_0 = default_roles(84, [1, 2, 3]).await;
-
-    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let session = stored_session(1, 7, 84, "Team");
-    let claims = fixture.access_for_session(session.clone());
-    {
-        let mut state = fixture.repo.0.lock().unwrap();
-        let mut current = session;
-        current.authorization_version = 2;
-        state.sessions.insert(7, current);
-        state.memberships[0].roles = vec![fixture_roles_0.clone().remove(0)];
-        make_oversized(&mut state.memberships[0].roles[0]);
-        state.full_default_policies = true;
-    }
-    let refresh = AccessToken::Refresh(
-        RefreshToken::from_session(&claims.session, REFRESH_LIFETIME).unwrap(),
-    )
-    .encode_compressed(SECRET, REFRESH_LIFETIME)
-    .unwrap();
-    let response = fixture.request(&claims, true, Some(&refresh), true).await;
-    assert_eq!(response.status(), 422);
-    assert!(!response.headers().contains_key("x-compallm-access-token"));
-    assert!(!response.headers().contains_key("set-cookie"));
-    assert_eq!(fixture.repo.0.lock().unwrap().handled_requests, 0);
-}
-
-impl Fixture {
-    async fn explicit_refresh(
-        &self,
-        bearer: Option<&str>,
-        cookie: Option<&str>,
-    ) -> axum::response::Response {
-        use axum::{Extension, body::Body, http::Request};
-        use tower::ServiceExt;
-        let service: &'static AuthService = Box::leak(Box::new(self.service()));
-        let settings: &'static auth_controller::delivery::TokenDeliverySettings =
-            Box::leak(Box::new(auth_controller::delivery::TokenDeliverySettings {
-                secure: false,
-                public_origin: "http://localhost".into(),
-            }));
-        let (router, _) = auth_controller::router().split_for_parts();
-        let router = router.with_state(service).layer(Extension(settings));
-        let mut request = Request::builder().method("POST").uri("/api/auth/refresh");
-        if let Some(bearer) = bearer {
-            request = request.header("authorization", format!("Bearer {bearer}"));
-        }
-        if let Some(cookie) = cookie {
-            request = request.header("cookie", format!("compallm-refresh={cookie}"));
-        }
-        self.repo
-            .1
-            .scope(router.oneshot(request.body(Body::empty()).unwrap()))
-            .await
-            .unwrap()
-    }
-}
-
-#[tokio::test]
-async fn explicit_refresh_requires_valid_refresh_bearer_and_ignores_cookies() {
-    for case in [
-        "cookie-only",
-        "access",
-        "otp",
-        "forged",
-        "expired",
-        "revoked",
-        "missing-member",
-    ] {
-        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-        let session = stored_session(1, 7, 84, "Team");
-        fixture
-            .repo
-            .0
-            .lock()
-            .unwrap()
-            .sessions
-            .insert(7, session.clone());
-        let valid =
-            AccessToken::Refresh(RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap())
-                .encode_compressed(SECRET, REFRESH_LIFETIME)
-                .unwrap();
-        let token = match case {
-            "access" => AccessToken::User(fixture.access_for_session(session.clone()))
-                .encode_compressed(SECRET, Duration::from_secs(60))
-                .unwrap(),
-            "otp" => {
-                test_challenge("james@midwess.com", SECRET)
-                    .unwrap()
-                    .access_token
-            }
-            "forged" => AccessToken::Refresh(
-                RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap(),
-            )
-            .encode_compressed("a-different-secret-at-least-32-bytes", REFRESH_LIFETIME)
-            .unwrap(),
-            "expired" => {
-                let mut token = RefreshToken::from_session(&session, REFRESH_LIFETIME).unwrap();
-                token.validity.issued_at -= REFRESH_LIFETIME.as_secs() + 1;
-                token.validity.expires_at -= REFRESH_LIFETIME.as_secs() + 1;
-                sign_unchecked(&AccessToken::Refresh(token), REFRESH_LIFETIME)
-            }
-            _ => valid.clone(),
-        };
-        if case == "revoked" {
-            fixture
-                .repo
-                .0
-                .lock()
-                .unwrap()
-                .sessions
-                .get_mut(&7)
-                .unwrap()
-                .revoke();
-        }
-        if case == "missing-member" {
-            fixture.repo.0.lock().unwrap().memberships.clear();
-        }
-        let response = fixture
-            .explicit_refresh(
-                if case == "cookie-only" {
-                    None
-                } else {
-                    Some(&token)
-                },
-                Some(&valid),
-            )
-            .await;
-        assert_eq!(response.status(), 401, "{case}");
-        assert!(!response.headers().contains_key("set-cookie"), "{case}");
-        assert_eq!(fixture.repo.0.lock().unwrap().handled_requests, 0);
-    }
-}
-
 #[tokio::test]
 async fn signin_accepts_active_memberships_with_custom_or_no_roles() {
     for custom in [false, true] {
@@ -2865,4 +2440,279 @@ async fn signin_accepts_active_memberships_with_custom_or_no_roles() {
                 .is_none()
         );
     }
+}
+
+async fn graphql_request(
+    router: &axum::Router,
+    bearer: Option<&str>,
+    cookies: Option<&str>,
+    trusted_origin: bool,
+) -> axum::response::Response {
+    use axum::{body::Body, http::Request};
+    use tower::ServiceExt;
+
+    let mut request = Request::builder()
+        .method("POST")
+        .uri("/api/graphql")
+        .header("content-type", "application/json")
+        .header("host", "localhost");
+    if let Some(token) = bearer {
+        request = request.header("authorization", format!("Bearer {token}"));
+    }
+    if let Some(cookies) = cookies {
+        request = request.header("cookie", cookies);
+    }
+    if trusted_origin {
+        request = request.header("origin", "http://localhost");
+    }
+    let body = serde_json::json!({
+        "query": "query { first: session { id userId organizationId organizationName } second: session { id } }"
+    });
+    router
+        .clone()
+        .oneshot(request.body(Body::from(body.to_string())).unwrap())
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn graphql_identity_uses_one_freshness_read_and_rejects_non_access_or_revoked_credentials() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let router = fixture.graphql();
+
+    let response = graphql_request(&router, Some(&tokens.access_token), None, false).await;
+    assert_eq!(response.status(), 200);
+    assert!(!response.headers().contains_key("set-cookie"));
+    let bytes = axum::body::to_bytes(response.into_body(), 8192)
+        .await
+        .unwrap();
+    let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert!(body.get("errors").is_none());
+    assert!(body["data"]["first"].is_object());
+    assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, 1);
+
+    for token in [
+        None,
+        Some(tokens.refresh_token.as_str()),
+        Some(challenge.access_token.as_str()),
+    ] {
+        let response = graphql_request(&router, token, None, false).await;
+        assert_eq!(response.status(), 401);
+        assert!(response.headers().contains_key("www-authenticate"));
+    }
+    assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, 1);
+    fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .values_mut()
+        .next()
+        .unwrap()
+        .revoke();
+    let response = graphql_request(&router, Some(&tokens.access_token), None, false).await;
+    assert_eq!(response.status(), 401);
+    let state = fixture.repo.0.lock().unwrap();
+    assert_eq!(state.authority_reads, 0);
+    assert_eq!(state.logins.len(), 1);
+}
+
+#[tokio::test]
+async fn graphql_stale_cookie_rebuilds_current_authority_but_bearer_and_unavailable_state_fail_closed()
+ {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let router = fixture.graphql();
+    {
+        let mut state = fixture.repo.0.lock().unwrap();
+        state.memberships[0].roles.clear();
+        state
+            .sessions
+            .values_mut()
+            .next()
+            .unwrap()
+            .authorization_version += 1;
+    }
+    let cookies = format!(
+        "compallm-access={}; compallm-refresh={}",
+        tokens.access_token, tokens.refresh_token
+    );
+    let response = graphql_request(&router, Some(&tokens.access_token), Some(&cookies), true).await;
+    assert_eq!(response.status(), 401);
+    assert!(!response.headers().contains_key("set-cookie"));
+    assert_eq!(fixture.repo.0.lock().unwrap().authority_reads, 0);
+
+    let response = graphql_request(&router, None, Some(&cookies), false).await;
+    assert_eq!(response.status(), 403);
+    assert!(!response.headers().contains_key("set-cookie"));
+    assert_eq!(fixture.repo.0.lock().unwrap().authority_reads, 0);
+
+    let response = graphql_request(&router, None, Some(&cookies), true).await;
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.headers().get_all("set-cookie").iter().count(), 2);
+    let renewed = response
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .find_map(|value| value.split(';').next()?.strip_prefix("compallm-access="))
+        .unwrap();
+    let renewed = UserAccessToken::try_from(decode_token(renewed, SECRET).unwrap()).unwrap();
+    assert_eq!(renewed.session.authorization_version, 2);
+    assert!(renewed.policy_snapshot.role_ids.is_empty());
+    {
+        let mut state = fixture.repo.0.lock().unwrap();
+        assert_eq!(state.authority_reads, 1);
+        assert_eq!(state.freshness_reads, 2);
+        state.fail_authority_read = true;
+    }
+    let response = graphql_request(&router, None, Some(&cookies), true).await;
+    assert_eq!(response.status(), 503);
+    assert!(!response.headers().contains_key("set-cookie"));
+    let state = fixture.repo.0.lock().unwrap();
+    assert_eq!(state.authority_reads, 1);
+    assert_eq!(state.logins.len(), 1);
+    assert_eq!(
+        state
+            .sessions
+            .values()
+            .next()
+            .unwrap()
+            .authorization_version,
+        2
+    );
+}
+
+#[tokio::test]
+async fn shared_http_authentication_passes_current_identity_and_blocks_revoked_requests() {
+    use axum::{
+        Extension, Router, body::Body, http::Request, middleware::from_fn_with_state, routing::post,
+    };
+    use compallm_api::middleware::authentication::{
+        self, Authentication, AuthenticationSettings, VerifiedAccess,
+    };
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use tower::ServiceExt;
+
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let authentication = Authentication::new(
+        Box::leak(Box::new(fixture.repo.1.clone())),
+        Box::leak(Box::new(fixture.service())),
+        AuthenticationSettings {
+            cookie_secure: false,
+            public_origin: "http://localhost".into(),
+        },
+    )
+    .unwrap();
+    let calls = Arc::new(AtomicUsize::new(0));
+    let handler_calls = calls.clone();
+    let router = Router::new().route(
+        "/protected",
+        post(move |Extension(identity): Extension<VerifiedAccess>| {
+            let calls = handler_calls.clone();
+            async move {
+                calls.fetch_add(1, Ordering::SeqCst);
+                axum::Json(identity.access().session.user_id)
+            }
+        })
+        .route_layer(from_fn_with_state(
+            authentication,
+            authentication::authenticate,
+        )),
+    );
+    let request = || {
+        Request::builder()
+            .method("POST")
+            .uri("/protected")
+            .header("authorization", format!("Bearer {}", tokens.access_token))
+            .body(Body::empty())
+            .unwrap()
+    };
+    let response = router.clone().oneshot(request()).await.unwrap();
+    assert_eq!(response.status(), 200);
+    let bytes = axum::body::to_bytes(response.into_body(), 8192)
+        .await
+        .unwrap();
+    let user_id: u64 = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(
+        user_id,
+        fixture.repo.0.lock().unwrap().user.as_ref().unwrap().id
+    );
+    assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, 1);
+
+    fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .values_mut()
+        .next()
+        .unwrap()
+        .revoke();
+    let response = router.oneshot(request()).await.unwrap();
+    assert_eq!(response.status(), 401);
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
+async fn graphql_shared_schema_keeps_concurrent_session_identities_separate() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let first_challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let first = fixture
+        .signin(&Fixture::otp(&first_challenge), &first_challenge.code)
+        .await
+        .unwrap();
+    let second_challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let second = fixture
+        .signin(&Fixture::otp(&second_challenge), &second_challenge.code)
+        .await
+        .unwrap();
+    let first_claims =
+        UserAccessToken::try_from(decode_token(&first.access_token, SECRET).unwrap()).unwrap();
+    let second_claims =
+        UserAccessToken::try_from(decode_token(&second.access_token, SECRET).unwrap()).unwrap();
+    assert_ne!(first_claims.session.id, second_claims.session.id);
+    let router = fixture.graphql();
+    let (first_response, second_response) = tokio::join!(
+        graphql_request(&router, Some(&first.access_token), None, false),
+        graphql_request(&router, Some(&second.access_token), None, false),
+    );
+    for (response, expected) in [
+        (first_response, first_claims.session),
+        (second_response, second_claims.session),
+    ] {
+        assert_eq!(response.status(), 200);
+        let bytes = axum::body::to_bytes(response.into_body(), 8192)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert!(body.get("errors").is_none());
+        assert_eq!(body["data"]["first"]["id"], expected.id.to_string());
+        assert_eq!(body["data"]["second"]["id"], expected.id.to_string());
+        assert_eq!(
+            body["data"]["first"]["userId"],
+            expected.user_id.to_string()
+        );
+        assert_eq!(
+            body["data"]["first"]["organizationId"],
+            expected.organization_id.to_string()
+        );
+    }
+    assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, 2);
 }

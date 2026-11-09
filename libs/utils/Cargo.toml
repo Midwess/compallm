@@ -12,6 +12,5 @@ workspace = true
 [dependencies]
 email_address.workspace = true
 regex = "1"
-serde_json = { workspace = true, features = ["std"] }
 url = "2"
 validify.workspace = true

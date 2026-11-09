@@ -1,10 +1,137 @@
 import { Button } from '../../components/buttons'
 import { Dialog } from '../../components/dialog'
 import { TextField, MultilineField } from '../../components/fields'
-import { Checkbox } from '../../components/selection'
 import { Select } from '../../components/dropdowns'
+import { useReorder } from '../../components/use-reorder'
+import { cx } from '../../components/shared'
+import { DotsSixVerticalIcon } from '@phosphor-icons/react/dist/csr/DotsSixVertical'
+import { HardDrivesIcon } from '@phosphor-icons/react/dist/csr/HardDrives'
+import { CubeIcon } from '@phosphor-icons/react/dist/csr/Cube'
+import { NotebookIcon } from '@phosphor-icons/react/dist/csr/Notebook'
+import { PlugsIcon } from '@phosphor-icons/react/dist/csr/Plugs'
 import { useSettings, useSettingsController } from './controller'
 import type { SettingsDialogKind } from './types'
+
+const sidebarIcons = { Providers: HardDrivesIcon, Models: CubeIcon, Notebooks: NotebookIcon, Plugins: PlugsIcon }
+const badgeOptions = [
+  {
+    value: 'Dot',
+    label: 'Dot',
+    icon: <span aria-hidden="true" className="mx-1 size-1.5 shrink-0 rounded-full bg-muted" />,
+  },
+  {
+    value: 'Count',
+    label: 'Count',
+    icon: (
+      <span aria-hidden="true" className="flex size-3.5 shrink-0 items-center justify-center text-xs text-muted">
+        1
+      </span>
+    ),
+  },
+]
+const visibilityOptions = ['Always show', 'Show when badged', "Don't show"].map((value) => ({ label: value, value }))
+
+function CustomizeSidebar() {
+  const controller = useSettingsController()
+  const preferences = useSettings((state) => state.preferences)
+  const order = String(preferences.sidebarOrder).split(',')
+  const { rowNodes, drag, preview, announcement, id, keyboardMove, startDrag, pointerMove, endDrag } = useReorder(
+    order,
+    (items) => controller.setPreference('sidebarOrder', items.join(',')),
+    false,
+    'Sidebar item',
+  )
+  return (
+    <Dialog onClose={controller.closeDialog}>
+      <Dialog.Content className="w-120 rounded-xl bg-inset">
+        <Dialog.Header className="h-14 px-6">
+          <Dialog.Title className="text-[15px]">Customize sidebar</Dialog.Title>
+          <Dialog.Close />
+        </Dialog.Header>
+        <Dialog.Body className="gap-6 px-6 pt-4 pb-6">
+          <div className="flex h-11 items-center justify-between rounded-lg bg-elevated px-3 text-[13px]">
+            <span>Default badge style</span>
+            <Select
+              aria-label="Default badge style"
+              className="w-26"
+              value={String(preferences.sidebarBadgeStyle)}
+              options={badgeOptions}
+              onValueChange={(value) => controller.setPreference('sidebarBadgeStyle', value)}
+            />
+          </div>
+          <div className="grid gap-2.5">
+            <h3 className="text-[13px] font-medium">Workspace</h3>
+            <div className="rounded-lg bg-elevated py-0.5">
+              {order.map((name, index) => {
+                const Icon = sidebarIcons[name as keyof typeof sidebarIcons]
+                return (
+                  <div
+                    key={name}
+                    ref={(node) => {
+                      if (node) rowNodes.current.set(name, node)
+                      else rowNodes.current.delete(name)
+                    }}
+                    style={preview ? { transform: `translateY(${preview.offsets[name] ?? 0}px)` } : undefined}
+                    className={cx(
+                      'relative flex h-9 items-center px-2',
+                      !!preview && 'motion-safe:transition-transform motion-safe:duration-150',
+                      preview?.key === name && 'opacity-0',
+                    )}
+                  >
+                    <button
+                      type="button"
+                      aria-label={`Reorder ${name}`}
+                      aria-describedby={`${id}-reorder`}
+                      className={`
+flex size-6 shrink-0 touch-none cursor-grab items-center justify-center text-muted hover:text-text
+active:cursor-grabbing focus-visible:outline-focus
+`}
+                      onPointerDown={(event) => startDrag(name, event)}
+                      onPointerMove={pointerMove}
+                      onPointerUp={(event) => {
+                        if (drag.current?.pointerId === event.pointerId) {
+                          endDrag(true)
+                          event.currentTarget.releasePointerCapture(event.pointerId)
+                        }
+                      }}
+                      onPointerCancel={() => endDrag(false)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape' && drag.current) {
+                          event.preventDefault()
+                          endDrag(false)
+                        } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+                          event.preventDefault()
+                          keyboardMove(index, index + (event.key === 'ArrowUp' ? -1 : 1))
+                        }
+                      }}
+                    >
+                      <DotsSixVerticalIcon aria-hidden="true" className="size-3" />
+                    </button>
+                    {Icon ? <Icon aria-hidden="true" className="mr-2 size-4 shrink-0 text-muted" /> : null}
+                    <span className="min-w-0 flex-1 text-[13px]">{name}</span>
+                    <Select
+                      aria-label={`${name} visibility`}
+                      className="w-35"
+                      value={String(preferences[`sidebar${name}`])}
+                      options={visibilityOptions}
+                      onValueChange={(value) => controller.setPreference(`sidebar${name}`, value)}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            <p id={`${id}-reorder`} className="sr-only">
+              Drag to reorder, or focus the grip and use Up and Down arrow keys.
+            </p>
+            <span role="status" className="sr-only">
+              {announcement}
+            </span>
+          </div>
+        </Dialog.Body>
+      </Dialog.Content>
+    </Dialog>
+  )
+}
 
 export function SettingsDialogs() {
   const c = useSettingsController(),
@@ -18,8 +145,8 @@ export function SettingsDialogs() {
   const passkeys = useSettings((s) => s.passkeys),
     apps = useSettings((s) => s.applications),
     keys = useSettings((s) => s.apiKeys)
-  const preferences = useSettings((s) => s.preferences)
   if (!d) return null
+  if (d.kind === 'customize-sidebar') return <CustomizeSidebar />
   const member = members.find((m) => m.id === d.targetId),
     role = roles.find((r) => r.id === d.targetId)
   const group = groups.find((g) => g.id === d.targetId),
@@ -200,17 +327,6 @@ export function SettingsDialogs() {
                 onChange={(e) => c.updateDialog({ value: e.target.value })}
               />
             ) : null}
-            {d.kind === 'customize-sidebar'
-              ? ['Providers', 'Models', 'Notebooks', 'Plugins'].map((name) => (
-                  <label key={name} className="flex items-center gap-2 text-[13px]">
-                    <Checkbox
-                      checked={preferences[`show${name}`] !== false}
-                      onChange={(e) => c.setPreference(`show${name}`, e.target.checked)}
-                    />
-                    {name}
-                  </label>
-                ))
-              : null}
           </Dialog.Body>
           <Dialog.Footer className="border-0 px-6 pb-6">
             {d.kind !== 'reveal-key' ? <Dialog.Cancel variant="ghost">Cancel</Dialog.Cancel> : null}

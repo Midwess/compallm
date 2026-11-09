@@ -4,7 +4,7 @@ import type {
   ProviderModelCapability,
   ProviderEffortMapping,
   ProviderCatalogRef,
-} from '@compallm/contract/api'
+} from '@compallm/contract/types'
 import type { NavigationRequest } from '../../../url'
 import type { StoreApi } from 'zustand/vanilla'
 

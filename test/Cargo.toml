@@ -10,13 +10,11 @@ publish = false
 workspace = true
 
 [dev-dependencies]
+compallm-api = { path = "../api" }
 axum = { workspace = true, features = ["http1", "json", "tokio"] }
-axum-valid = { workspace = true, features = ["validify", "json"] }
-cookie.workspace = true
+tower = { workspace = true, features = ["util"] }
 thiserror = { workspace = true, features = ["std"] }
 tracing = { workspace = true, features = ["std"] }
-utoipa-axum.workspace = true
-tower = { workspace = true, features = ["util"] }
 rayon.workspace = true
 sec.workspace = true
 router = { path = "../router" }
@@ -28,8 +26,6 @@ ciborium.workspace = true
 hmac.workspace = true
 sha2 = { workspace = true, features = ["std"] }
 compallm-core.workspace = true
-compallm-contract.workspace = true
-utoipa = { workspace = true, features = ["macros"] }
 serde = { workspace = true, features = ["derive"] }
 compallm-postgres = { workspace = true, features = ["cli"] }
 compallm-utils.workspace = true

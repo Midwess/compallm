@@ -1,5 +1,5 @@
 import { CreateProvidersRequest, ReplaceProviderRequest, ProviderInputRules } from '@compallm/contract/validation'
-import type { ProviderModelConfiguration, ProviderModelWrite } from '@compallm/contract/api'
+import type { ProviderModelConfiguration, ProviderModelWrite } from '@compallm/contract/types'
 import { modelPath, modelProtocol } from './model-options'
 import type { CreateProviderState, ProviderModel } from './types'
 
@@ -15,7 +15,7 @@ export type {
   CreateProvidersResponse,
   PatchProviderRequest,
   ReplaceProviderRequest,
-} from '@compallm/contract/api'
+} from '@compallm/contract/types'
 
 function modelConfiguration(model: ProviderModel): ProviderModelConfiguration {
   return {

@@ -1,7 +1,5 @@
-//! Shared stateless input validators and their contract exporters. Contract descriptions contain only safe rules,
-//! never submitted values. Custom formats have explicit browser implementations.
+//! Shared stateless input validators. Domain rules compose these helpers in Core.
 use regex::Regex;
-use serde_json::{Value, json};
 use std::sync::LazyLock;
 use validify::ValidationError;
 
@@ -10,33 +8,23 @@ pub const PRICE_INTEGER_DIGITS: u32 = 12;
 pub const PRICE_SCALE: u32 = 8;
 
 macro_rules! pattern_rule {
-    ($validate:ident, $contract:ident, $pattern:literal) => {
+    ($validate:ident, $pattern:literal) => {
         pub fn $validate(value: &str) -> Result<(), ValidationError> {
             static PATTERN: LazyLock<Regex> = LazyLock::new(|| Regex::new($pattern).unwrap());
-            PATTERN.is_match(value).then_some(()).ok_or_else(|| ValidationError::new_field(stringify!($validate)))
+            PATTERN
+                .is_match(value)
+                .then_some(())
+                .ok_or_else(|| ValidationError::new_field(stringify!($validate)))
         }
-        pub fn $contract() -> Value { json!({"pattern": $pattern}) }
     };
 }
 
-pattern_rule!(model_name, model_name_contract, r"^[A-Za-z0-9_-]+$");
-pattern_rule!(effort_value, effort_value_contract, r"^[A-Za-z0-9_-]+$");
-pattern_rule!(
-    endpoint_path,
-    endpoint_path_contract,
-    r"^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$"
-);
-pattern_rule!(api_key, api_key_contract, r"^[^\s]+$");
-pattern_rule!(
-    header_name,
-    header_name_contract,
-    r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
-);
-pattern_rule!(
-    header_value,
-    header_value_contract,
-    r"^[\t\x20-\x7e\x80-\xff]*$"
-);
+pattern_rule!(model_name, r"^[A-Za-z0-9_-]+$");
+pattern_rule!(effort_value, r"^[A-Za-z0-9_-]+$");
+pattern_rule!(endpoint_path, r"^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$");
+pattern_rule!(api_key, r"^[^\s]+$");
+pattern_rule!(header_name, r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$");
+pattern_rule!(header_value, r"^[\t\x20-\x7e\x80-\xff]*$");
 fn price_pattern() -> String {
     format!(r"^0*[0-9]{{1,{PRICE_INTEGER_DIGITS}}}(?:\.[0-9]{{1,{PRICE_SCALE}}})?$")
 }
@@ -47,26 +35,13 @@ pub fn price(value: &str) -> Result<(), ValidationError> {
         .then_some(())
         .ok_or_else(|| ValidationError::new_field("price"))
 }
-pub fn price_contract() -> Value {
-    json!({
-        "pattern": price_pattern(),
-        "x-compallm-input-pattern": format!(r"^0*[0-9]{{0,{PRICE_INTEGER_DIGITS}}}(?:\.[0-9]{{0,{PRICE_SCALE}}})?$")
-    })
-}
 
-pattern_rule!(
-    positive_integer,
-    positive_integer_contract,
-    r"^[1-9][0-9]*$"
-);
+pattern_rule!(positive_integer, r"^[1-9][0-9]*$");
 
 pub fn nonblank(value: &str) -> Result<(), ValidationError> {
     (!value.trim().is_empty())
         .then_some(())
         .ok_or_else(|| ValidationError::new_field("nonblank"))
-}
-pub fn nonblank_contract() -> Value {
-    json!({"x-compallm-format": "nonblank"})
 }
 
 pub fn base_url(value: &str) -> Result<(), ValidationError> {
@@ -85,9 +60,6 @@ pub fn base_url(value: &str) -> Result<(), ValidationError> {
     valid
         .then_some(())
         .ok_or_else(|| ValidationError::new_field("base_url"))
-}
-pub fn base_url_contract() -> Value {
-    json!({"maxLength": BASE_URL_MAX_LENGTH, "x-compallm-format": "baseUrl"})
 }
 
 pub fn authorization(value: &str) -> Result<(), ValidationError> {
@@ -112,9 +84,6 @@ pub fn authorization(value: &str) -> Result<(), ValidationError> {
         .then_some(())
         .ok_or_else(|| ValidationError::new_field("authorization"))
 }
-pub fn authorization_contract() -> Value {
-    json!({"x-compallm-format": "authorization"})
-}
 
 /// Positive decimal-string IDs preserve u64 precision in JavaScript.
 pub fn resource_id(value: &str) -> Result<(), ValidationError> {
@@ -123,7 +92,4 @@ pub fn resource_id(value: &str) -> Result<(), ValidationError> {
         && value.bytes().all(|c| c.is_ascii_digit()))
     .then_some(())
     .ok_or_else(|| ValidationError::new_field("resource_id"))
-}
-pub fn resource_id_contract() -> Value {
-    json!({"pattern": "^[1-9][0-9]*$", "x-compallm-format": "resourceId"})
 }

@@ -28,9 +28,7 @@ impl App {
         let not_found = || async {
             (
                 axum::http::StatusCode::NOT_FOUND,
-                axum::Json(crate::error::ErrorResponse {
-                    message: "API endpoint not found".into(),
-                }),
+                axum::Json(serde_json::json!({ "message": "API endpoint not found" })),
             )
         };
         router
@@ -91,8 +89,6 @@ impl Hooks for App {
         let listener = Self::tcp_listener(serve_params.port).await?;
         #[cfg(debug_assertions)]
         let dev_server = {
-            crate::generate_contract(None)
-                .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
             let vite = crate::node_binary(Path::new(PORTAL_ROOT), "vite")
                 .to_string_lossy()
                 .into_owned();
@@ -163,9 +159,20 @@ impl Hooks for App {
     }
 
     async fn before_routes(_ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
-        let mut router = AxumRouter::new();
-        Di::instance().inject(&mut router);
-        Ok(router)
+        use axum::{extract::DefaultBodyLimit, middleware::from_fn_with_state, routing::post};
+        use compallm_api::{handlers, middleware::authentication};
+
+        let di = Di::instance();
+        Ok(AxumRouter::new().route(
+            "/api/graphql",
+            post(handlers::graphql)
+                .with_state(di.graphql_schema().clone())
+                .route_layer(from_fn_with_state(
+                    di.authentication().clone(),
+                    authentication::authenticate,
+                ))
+                .layer(DefaultBodyLimit::max(di.max_request_body_bytes())),
+        ))
     }
 
     async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
@@ -185,7 +192,7 @@ impl Hooks for App {
     }
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
-        AppRoutes::with_default_routes()
+        AppRoutes::empty()
     }
 
     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {

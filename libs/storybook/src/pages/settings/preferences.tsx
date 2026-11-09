@@ -27,7 +27,7 @@ const general: Preference[] = [
     key: 'firstDay',
     label: 'First day of the week',
     description: 'Used in calendars and reporting periods.',
-    options: ['Monday', 'Sunday', 'Saturday'],
+    options: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
 ]
 const appearance: Preference[] = [
@@ -35,8 +35,9 @@ const appearance: Preference[] = [
     key: 'fontSize',
     label: 'Font size',
     description: 'Adjust the size of interface text.',
-    options: ['Small', 'Default', 'Large'],
+    options: ['Smaller', 'Small', 'Default', 'Large', 'Larger'],
   },
+  { key: 'pointerCursors', label: 'Use pointer cursors', description: 'Use a pointer cursor on interactive elements.' },
   { key: 'underlineLinks', label: 'Underline links', description: 'Always underline links in message content.' },
   { key: 'reduceMotion', label: 'Reduce motion', description: 'Keep animated images and emoji still.' },
 ]
@@ -57,7 +58,7 @@ const themes: Preference[] = [
     key: 'darkTheme',
     label: 'Dark theme',
     description: 'Used when your system has a dark appearance.',
-    options: ['Dark', 'Classic Dark'],
+    options: ['Dark', 'Magic Blue', 'Classic Dark'],
   },
 ]
 
@@ -165,7 +166,7 @@ function CodeAppearanceSection() {
           key: 'codeTheme',
           label: 'Code theme',
           description: 'Matches your interface theme unless overridden.',
-          options: ['Linear Dark', 'Linear Light', 'System preference'],
+          options: ['Linear Dark', 'Linear Light', 'System preference', 'Follow interface'],
         }}
       />
       <SettingsRow label="Font" className="min-h-15 bg-transparent px-4 py-3">

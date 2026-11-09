@@ -12,10 +12,6 @@
       "types": "./dist/auth.d.ts",
       "import": "./dist/auth.js"
     },
-    "./api": {
-      "types": "./dist/api.d.ts",
-      "import": "./dist/api.js"
-    },
     "./validation": {
       "types": "./dist/validation.d.ts",
       "import": "./dist/validation.js"
@@ -23,6 +19,10 @@
     "./provider": {
       "types": "./dist/provider.d.ts",
       "import": "./dist/provider.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
     }
   },
   "dependencies": {

@@ -6,7 +6,7 @@ import { organizationHome } from '../organization/paths'
 
 async function checkSession(refresh = false) {
   try {
-    return await (refresh ? authController.refreshCurrentUser(undefined, false) : authController.ensureCurrentUser())
+    return await (refresh ? authController.refreshCurrentUser() : authController.ensureCurrentUser())
   } catch (error) {
     notify.error(error)
     throw error
@@ -14,10 +14,7 @@ async function checkSession(refresh = false) {
 }
 
 export async function guestOnly() {
-  // A user-only identity check would clear the active OTP cookie.
-  if (authController.store.getState().step === 'code') return null
-  const user = await checkSession(true)
-  if (user) return redirect(organizationHome(user))
+  // Public forms remain available while protected session restoration is unavailable.
   return null
 }
 

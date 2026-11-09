@@ -1,4 +1,4 @@
-// Generated from Rust/OpenAPI. Do not edit; run cargo run -p compallm-api -- generate.
+// Interim offline validation snapshot; replacement Rust-owned export is planned.
 import * as raw from './schemas.ts'
 import { z } from 'zod'
 import { inputString, stringInput, integerInput, headerObject, headersObject, modelsObject, headerUpdateObject, modelWritesArray, createProviderObject, createProvidersObject, providerPatchObject } from './runtime.ts'

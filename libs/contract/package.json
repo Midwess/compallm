@@ -21,13 +21,13 @@
       "types": "./dist/provider.d.ts",
       "import": "./dist/provider.js"
     },
-    "./types": {
-      "types": "./dist/types.d.ts",
-      "import": "./dist/types.js"
-    },
     "./graphql": {
       "types": "./dist/graphql.d.ts",
       "import": "./dist/graphql.js"
+    },
+    "./preview": {
+      "types": "./dist/preview-types.d.ts",
+      "import": "./dist/preview-types.js"
     }
   },
   "dependencies": {
@@ -35,6 +35,7 @@
   },
   "devDependencies": {
     "@genql/cli": "^6.3.4",
+    "graphql": "^16.15.0",
     "prettier": "^3.9.10",
     "typescript": "~6.0.3"
   }

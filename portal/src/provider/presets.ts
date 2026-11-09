@@ -1,4 +1,4 @@
-import type { ProviderRegistryListResponse } from '@compallm/contract/types'
+import type { ProviderRegistryListResponse } from '@compallm/contract/preview'
 export const providers: ProviderRegistryListResponse['providers'] = [
   { id: 'openai', name: 'OpenAI', protocol: 'openai_compatible', baseUrl: 'https://api.openai.com/v1' },
   { id: 'anthropic', name: 'Anthropic', protocol: 'anthropic', baseUrl: 'https://api.anthropic.com/v1' },

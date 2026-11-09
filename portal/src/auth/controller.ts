@@ -1,7 +1,7 @@
 import { emailRequestSchema } from '@compallm/contract/auth'
 import { createSignupStore, type SignupController } from '@compallm/storybook/pages/signup'
 import type { SigninController } from '@compallm/storybook/pages/signin'
-import type { CurrentUserResponse } from '@compallm/contract/types'
+import type { CurrentUserResponse } from '@compallm/contract/preview'
 import type { UrlController } from '@compallm/storybook'
 import { urlController } from '../url/controller'
 import { notify } from '../notifications/toast'

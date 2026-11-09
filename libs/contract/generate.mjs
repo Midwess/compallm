@@ -1,10 +1,11 @@
-import { readFile, writeFile, readdir } from 'node:fs/promises'
+import { readFile, writeFile, readdir, rm } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 import { spawnSync } from 'node:child_process'
 import { format } from 'prettier'
+import { checkValidationCompatibility } from './validation-compatibility.mjs'
 
 async function writeTypescript(path, source) {
   await writeFile(
@@ -22,6 +23,14 @@ const banner = '// Generated from Rust. Do not edit; run cargo run -p compallm-a
 const document = JSON.parse(await readFile(new URL('./validation.schema.json', import.meta.url), 'utf8'))
 const definitions = document.$defs
 if (!definitions) throw new Error('Missing Rust input definitions')
+const compatibility = checkValidationCompatibility(
+  await readFile(new URL('./schema.graphql', import.meta.url), 'utf8'),
+  document,
+)
+console.log(
+  `Validation compatibility: ${compatibility.checked.length} exposed definitions checked; form-only: ${compatibility.formOnly.join(', ') || 'none'}`,
+)
+
 const ordered = []
 const visiting = new Set()
 function visit(name) {
@@ -199,8 +208,8 @@ for (const name of ordered) {
   }
   if (schema.description) lines.push(`/** ${schema.description.replaceAll('*/', '* /')} */`)
   lines.push(`export const ${name} = ${render(schema)}`)
-  lines.push(`export type ${name} = z.input<typeof ${name}>`)
-  lines.push(`export type ${name}Output = z.output<typeof ${name}>`)
+  lines.push(`export type ${name}FormInput = z.input<typeof ${name}>`)
+  lines.push(`export type ${name}FormOutput = z.output<typeof ${name}>`)
 }
 // Compatibility for offline consumers: only delivery naming changes. Rules come
 // exclusively from the actual exported GraphQL input definitions above.
@@ -218,57 +227,10 @@ for (const [name, source] of [
   lines.push(
     `export const ${name} = ${source}.omit({delivery:true}).extend({delivery:TokenDelivery.default(${source}.shape.delivery.parse(undefined).toLowerCase() as 'cookie' | 'token')})`,
   )
-  lines.push(`export type ${name} = z.input<typeof ${name}>`)
+  lines.push(`export type ${name}FormInput = z.input<typeof ${name}>`)
 }
 const output = lines.join('\n') + '\n'
 await writeTypescript(new URL('./validation.ts', import.meta.url), output)
-await writeTypescript(new URL('./schemas.ts', import.meta.url), banner + "export * from './validation.ts'\n")
-const names = [
-  ...ordered,
-  'SignupEmailRequest',
-  'SigninEmailRequest',
-  'ConfirmSignupOtpRequest',
-  'ConfirmSigninOtpRequest',
-]
-function typeOf(schema) {
-  const value = unwrapped(schema)
-  let result
-  if (value.$ref) result = value.$ref.split('/').at(-1)
-  else if (value.enum || value.oneOf)
-    result = (value.enum ?? value.oneOf.map((variant) => variant.const)).map((item) => JSON.stringify(item)).join(' | ')
-  else if (value.type === 'string') result = 'string'
-  else if (['integer', 'number'].includes(value.type)) result = 'number'
-  else if (value.type === 'boolean') result = 'boolean'
-  else if (value.type === 'array') result = `Array<${typeOf(value.items)}>`
-  else throw new Error('Unsupported form type')
-  return nullable(schema) && !schema['x-compallm-non-null'] ? `${result} | null` : result
-}
-const declarations = [banner, "import type { z } from 'zod'", "import * as schemas from './validation.ts'"]
-for (const name of ordered) {
-  const schema = definitions[name]
-  if (schema.description) declarations.push(`/** ${schema.description.replaceAll('*/', '* /')} */`)
-  if (schema.properties) {
-    declarations.push(`export interface ${name} {`)
-    for (const [key, property] of Object.entries(schema.properties)) {
-      if (property.description) declarations.push(`/** ${property.description.replaceAll('*/', '* /')} */`)
-      declarations.push(`${JSON.stringify(key)}${schema.required?.includes(key) ? '' : '?'}: ${typeOf(property)}`)
-    }
-    declarations.push('}')
-  } else {
-    declarations.push(`export type ${name} = ${typeOf(schema)}`)
-    if (schema.enum || schema.oneOf) declarations.push(`export const ${name} = schemas.${name}.enum`)
-  }
-}
-for (const name of names.filter((name) => !ordered.includes(name)))
-  declarations.push(`export type ${name} = z.input<typeof schemas.${name}>`)
-await writeTypescript(new URL('./form-types.ts', import.meta.url), declarations.join('\n') + '\n')
-await writeTypescript(
-  new URL('./types.ts', import.meta.url),
-  banner +
-    "export * from './display-types.ts'\nexport * from './offline-provider-types.ts'\nexport { " +
-    names.join(', ') +
-    " } from './form-types.ts'\n",
-)
 const generated = spawnSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'generate:graphql'], {
   cwd: new URL('.', import.meta.url),
   stdio: 'inherit',
@@ -315,6 +277,8 @@ async function normalizeGeneratedImports(directory) {
 await normalizeGeneratedImports(fileURLToPath(new URL('./graphql', import.meta.url)))
 
 await writeTypescript(new URL('./graphql.ts', import.meta.url), banner + "export * from './graphql/index.ts'\n")
+// Clear compiled artifacts so removed legacy modules cannot survive a generation.
+await rm(new URL('./dist', import.meta.url), { recursive: true, force: true })
 const build = spawnSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build'], {
   cwd: new URL('.', import.meta.url),
   stdio: 'inherit',

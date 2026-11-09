@@ -6,7 +6,7 @@ import { OrganizationPage } from '@compallm/storybook/pages/organization'
 import { useUrlController } from '../url/use-url-controller'
 import { useAuthController } from '../auth/use-auth-controller'
 import { OrganizationController } from '../organization/controller'
-import type { CurrentUserResponse } from '@compallm/contract/types'
+import type { CurrentUserResponse } from '@compallm/contract/preview'
 
 export function Component() {
   const auth = useAuthController()

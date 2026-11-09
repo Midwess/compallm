@@ -7,8 +7,8 @@ import { inputString, stringInput, integerInput } from './runtime.ts'
 export const CredentialDelivery = z
   .enum(['COOKIE', 'TOKEN'])
   .describe('How the request delivers credentials; this is never stored in signed claims.')
-export type CredentialDelivery = z.input<typeof CredentialDelivery>
-export type CredentialDeliveryOutput = z.output<typeof CredentialDelivery>
+export type CredentialDeliveryFormInput = z.input<typeof CredentialDelivery>
+export type CredentialDeliveryFormOutput = z.output<typeof CredentialDelivery>
 export const EmailCodeInputConstraints = {
   code: { minLength: 6, maxLength: 6, pattern: '^[0-9]*$', trim: true },
 } as const
@@ -30,8 +30,8 @@ export const EmailCodeInput = z
   .describe(
     'Shared input for confirming a signup or signin email challenge.\n\nThe verified encrypted challenge comes from request context, never this input.\nThe adapter calls `validify()` before Core verifies the code and challenge.',
   )
-export type EmailCodeInput = z.input<typeof EmailCodeInput>
-export type EmailCodeInputOutput = z.output<typeof EmailCodeInput>
+export type EmailCodeInputFormInput = z.input<typeof EmailCodeInput>
+export type EmailCodeInputFormOutput = z.output<typeof EmailCodeInput>
 export const EmailInputConstraints = {
   email: {
     format: 'emailAddress',
@@ -81,8 +81,8 @@ export const EmailInput = z
   .describe(
     'Shared input for requesting either a signup or a signin email challenge.\n\nCall `validify()` before Core execution. GraphQL parsing alone does not run\nnormalization, application validation, or email ownership checks.',
   )
-export type EmailInput = z.input<typeof EmailInput>
-export type EmailInputOutput = z.output<typeof EmailInput>
+export type EmailInputFormInput = z.input<typeof EmailInput>
+export type EmailInputFormOutput = z.output<typeof EmailInput>
 export const TokenDelivery = z.enum(
   CredentialDelivery.options.map((value) => value.toLowerCase()) as ['cookie', 'token'],
 )
@@ -91,22 +91,22 @@ export const SignupEmailRequestInput = EmailInputInput
 export const SignupEmailRequest = EmailInput.omit({ delivery: true }).extend({
   delivery: TokenDelivery.default(EmailInput.shape.delivery.parse(undefined).toLowerCase() as 'cookie' | 'token'),
 })
-export type SignupEmailRequest = z.input<typeof SignupEmailRequest>
+export type SignupEmailRequestFormInput = z.input<typeof SignupEmailRequest>
 export const SigninEmailRequestConstraints = EmailInputConstraints
 export const SigninEmailRequestInput = EmailInputInput
 export const SigninEmailRequest = EmailInput.omit({ delivery: true }).extend({
   delivery: TokenDelivery.default(EmailInput.shape.delivery.parse(undefined).toLowerCase() as 'cookie' | 'token'),
 })
-export type SigninEmailRequest = z.input<typeof SigninEmailRequest>
+export type SigninEmailRequestFormInput = z.input<typeof SigninEmailRequest>
 export const ConfirmSignupOtpRequestConstraints = EmailCodeInputConstraints
 export const ConfirmSignupOtpRequestInput = EmailCodeInputInput
 export const ConfirmSignupOtpRequest = EmailCodeInput.omit({ delivery: true }).extend({
   delivery: TokenDelivery.default(EmailCodeInput.shape.delivery.parse(undefined).toLowerCase() as 'cookie' | 'token'),
 })
-export type ConfirmSignupOtpRequest = z.input<typeof ConfirmSignupOtpRequest>
+export type ConfirmSignupOtpRequestFormInput = z.input<typeof ConfirmSignupOtpRequest>
 export const ConfirmSigninOtpRequestConstraints = EmailCodeInputConstraints
 export const ConfirmSigninOtpRequestInput = EmailCodeInputInput
 export const ConfirmSigninOtpRequest = EmailCodeInput.omit({ delivery: true }).extend({
   delivery: TokenDelivery.default(EmailCodeInput.shape.delivery.parse(undefined).toLowerCase() as 'cookie' | 'token'),
 })
-export type ConfirmSigninOtpRequest = z.input<typeof ConfirmSigninOtpRequest>
+export type ConfirmSigninOtpRequestFormInput = z.input<typeof ConfirmSigninOtpRequest>

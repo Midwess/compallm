@@ -2,6 +2,7 @@ import { createSignupStore, type SignupController } from '../../src/pages/signup
 import { createSigninStore, type SigninController } from '../../src/pages/signin'
 import type { AuthInitialState, AuthOperation, AuthResult, AuthState } from '../../src/pages/auth/types'
 import { emailRequestSchema, otpRequestSchema } from '@compallm/contract/auth'
+import type { EmailInput } from '@compallm/contract/graphql'
 
 export type AuthDemoScenario = 'default' | 'network-error' | 'throttled' | 'expired' | 'pending'
 
@@ -113,7 +114,7 @@ export class DemoAuthController implements SignupController, SigninController {
     const state = this.store.getState()
     if (state.pending || state.remaining > 0 || state.step === 'complete') return
     if ((operation === 'request' && state.step !== 'email') || (operation === 'resend' && state.step !== 'code')) return
-    const input = emailRequestSchema(this.mode).safeParse({ email: state.email, delivery: 'cookie' })
+    const input = emailRequestSchema(this.mode).safeParse({ email: state.email } satisfies EmailInput)
     if (!input.success) {
       this.onInvalidEmail()
       return

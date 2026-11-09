@@ -6,6 +6,9 @@ use schemars::JsonSchema;
 struct Inputs {
     email: super::auth::EmailInput,
     code: super::auth::EmailCodeInput,
+    provider_create: super::provider::input::ProvidersCreateInput,
+    provider_replace: super::provider::input::ProviderReplaceInput,
+    provider_patch: super::provider::input::ProviderPatchInput,
 }
 
 pub(crate) fn schema() -> serde_json::Value {

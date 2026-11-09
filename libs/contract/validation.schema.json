@@ -8,11 +8,23 @@
     },
     "code": {
       "$ref": "#/$defs/EmailCodeInput"
+    },
+    "provider_create": {
+      "$ref": "#/$defs/ProvidersCreateInput"
+    },
+    "provider_replace": {
+      "$ref": "#/$defs/ProviderReplaceInput"
+    },
+    "provider_patch": {
+      "$ref": "#/$defs/ProviderPatchInput"
     }
   },
   "required": [
     "email",
-    "code"
+    "code",
+    "provider_create",
+    "provider_replace",
+    "provider_patch"
   ],
   "$defs": {
     "EmailInput": {
@@ -85,6 +97,452 @@
         "code"
       ],
       "x-compallm-input": true
+    },
+    "ProvidersCreateInput": {
+      "description": "Atomic batch of new provider connections for the verified organization.",
+      "type": "object",
+      "properties": {
+        "providers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProviderCreateInput"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "providers"
+      ],
+      "x-compallm-input": true,
+      "x-compallm-object-rule": "createProviders"
+    },
+    "ProviderCreateInput": {
+      "description": "New connection definition; credentials and header values are write-only.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "x-compallm-trim": true,
+          "minLength": 1,
+          "maxLength": 120,
+          "x-compallm-format": "nonblank"
+        },
+        "baseUrl": {
+          "type": "string",
+          "maxLength": 512,
+          "x-compallm-format": "baseUrl"
+        },
+        "apiKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\s]+$"
+        },
+        "headers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProviderHeader"
+          },
+          "x-compallm-array-rule": "headers"
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProviderModelWrite"
+          },
+          "minItems": 1,
+          "x-compallm-array-rule": "modelWrites"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "baseUrl",
+        "apiKey",
+        "headers",
+        "models"
+      ],
+      "x-compallm-input": true,
+      "x-compallm-object-rule": "createProvider"
+    },
+    "ProviderHeader": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$",
+          "maxLength": 128
+        },
+        "value": {
+          "description": "Write-only header content; never returned by management reads.",
+          "type": "string",
+          "pattern": "^[\\t\\x20-\\x7e\\x80-\\xff]*$"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "value"
+      ],
+      "x-compallm-input": true,
+      "x-compallm-object-rule": "header"
+    },
+    "ProviderModelWrite": {
+      "description": "Persisted identity is omitted for new models and forbidden during provider creation.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Omit for a new model; supplied IDs must belong to this connection.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "pattern": "^[1-9][0-9]*$",
+          "x-compallm-format": "resourceId"
+        },
+        "configuration": {
+          "description": "Complete text-model configuration, including explicit token prices.",
+          "$ref": "#/$defs/ProviderModelConfiguration"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "configuration"
+      ],
+      "x-compallm-input": true
+    },
+    "ProviderModelConfiguration": {
+      "description": "Complete configured text-model values. Decimal prices are USD per million tokens.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "protocol": {
+          "$ref": "#/$defs/TextModelProtocol"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$",
+          "maxLength": 40
+        },
+        "maxContextTokens": {
+          "$ref": "#/$defs/ContextTokens"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "effortMapping": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProviderEffortMapping"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProviderModelCapability"
+          },
+          "default": []
+        },
+        "catalogRef": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProviderCatalogRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        },
+        "inputPrice": {
+          "type": "string",
+          "pattern": "^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$",
+          "x-compallm-input-pattern": "^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$"
+        },
+        "outputPrice": {
+          "type": "string",
+          "pattern": "^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$",
+          "x-compallm-input-pattern": "^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$"
+        },
+        "cachedPrice": {
+          "type": "string",
+          "pattern": "^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$",
+          "x-compallm-input-pattern": "^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "protocol",
+        "path",
+        "maxContextTokens",
+        "inputPrice",
+        "outputPrice",
+        "cachedPrice"
+      ],
+      "x-compallm-input": true
+    },
+    "TextModelProtocol": {
+      "description": "Text operation determining the upstream request and response format.",
+      "type": "string",
+      "enum": [
+        "OPENAI_CHAT_COMPLETIONS",
+        "OPENAI_RESPONSES",
+        "ANTHROPIC_MESSAGES"
+      ]
+    },
+    "ContextTokens": {
+      "description": "Positive u32 context size, encoded as an exact JSON number (1–4294967295).",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 1
+    },
+    "ProviderEffortMapping": {
+      "description": "Empty object means no configured effort levels. Configured values cannot be empty.",
+      "type": "object",
+      "properties": {
+        "low": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "minLength": 1,
+          "maxLength": 25,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "medium": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "minLength": 1,
+          "maxLength": 25,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "high": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "minLength": 1,
+          "maxLength": 25,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "xhigh": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "minLength": 1,
+          "maxLength": 25,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "max": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "minLength": 1,
+          "maxLength": 25,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true
+    },
+    "ProviderModelCapability": {
+      "description": "Capabilities declared by a catalog or configured model; not an authorization grant.",
+      "type": "string",
+      "enum": [
+        "TEXT",
+        "VISION",
+        "PDF",
+        "AUDIO",
+        "VIDEO",
+        "IMAGE_GENERATION",
+        "AUDIO_GENERATION",
+        "SEARCH",
+        "REASONING",
+        "TOOL_CALL",
+        "FORCED_TOOL_CHOICE",
+        "STRUCTURED_OUTPUT"
+      ]
+    },
+    "ProviderCatalogRef": {
+      "description": "Opaque registry identity, independent of an edited upstream model name.",
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "model"
+      ],
+      "x-compallm-input": true
+    },
+    "ProviderReplaceInput": {
+      "description": "Full non-secret replacement. Omitting apiKey preserves the saved credential.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "x-compallm-trim": true,
+          "minLength": 1,
+          "maxLength": 120,
+          "x-compallm-format": "nonblank"
+        },
+        "baseUrl": {
+          "type": "string",
+          "maxLength": 512,
+          "x-compallm-format": "baseUrl"
+        },
+        "apiKey": {
+          "description": "Omit to preserve the current credential. Empty strings and null are invalid.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\s]+$"
+        },
+        "headers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProviderHeaderUpdate"
+          },
+          "x-compallm-array-rule": "headers"
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProviderModelWrite"
+          },
+          "minItems": 1,
+          "x-compallm-array-rule": "modelWrites"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "baseUrl",
+        "headers",
+        "models"
+      ],
+      "x-compallm-input": true
+    },
+    "ProviderHeaderUpdate": {
+      "description": "Omit value to retain an existing header secret; new names require a value.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$",
+          "maxLength": 128
+        },
+        "value": {
+          "description": "Omit to preserve the saved value for this header name. New names require a value.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "pattern": "^[\\t\\x20-\\x7e\\x80-\\xff]*$"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "key"
+      ],
+      "x-compallm-input": true,
+      "x-compallm-object-rule": "headerUpdate"
+    },
+    "ProviderPatchInput": {
+      "description": "Partial update. Omitted fields are unchanged; explicit null is rejected.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "x-compallm-trim": true,
+          "minLength": 1,
+          "maxLength": 120,
+          "x-compallm-format": "nonblank"
+        },
+        "baseUrl": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "maxLength": 512,
+          "x-compallm-format": "baseUrl"
+        },
+        "apiKey": {
+          "description": "Omit to preserve the current credential. Empty strings and null are invalid.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\s]+$"
+        },
+        "headers": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/ProviderHeaderUpdate"
+          },
+          "x-compallm-non-null": true,
+          "x-compallm-array-rule": "headers"
+        },
+        "models": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/ProviderModelWrite"
+          },
+          "x-compallm-non-null": true,
+          "minItems": 1,
+          "x-compallm-array-rule": "modelWrites"
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true,
+      "x-compallm-object-rule": "providerPatch"
     }
   }
 }

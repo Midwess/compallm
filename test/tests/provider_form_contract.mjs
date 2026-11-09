@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import {
-  CreateProvidersRequest,
-  ReplaceProviderRequest,
-  PatchProviderRequest,
+  ProvidersCreateInput,
+  ProviderReplaceInput,
+  ProviderPatchInput,
 } from "../../libs/contract/dist/validation.js";
 const schemas = {
-  create: CreateProvidersRequest,
-  replace: ReplaceProviderRequest,
-  patch: PatchProviderRequest,
+  create: ProvidersCreateInput,
+  replace: ProviderReplaceInput,
+  patch: ProviderPatchInput,
 };
 const fixtures = JSON.parse(
   await readFile(

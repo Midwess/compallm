@@ -6,6 +6,17 @@ import ts from 'typescript'
 import { spawnSync } from 'node:child_process'
 import { format } from 'prettier'
 import { checkValidationCompatibility } from './validation-compatibility.mjs'
+import {
+  parse,
+  print,
+  visit as visitAst,
+  buildASTSchema,
+  typeFromAST,
+  isNonNullType,
+  isListType,
+  isEnumType,
+  isInputObjectType,
+} from 'graphql'
 
 async function writeTypescript(path, source) {
   await writeFile(
@@ -23,13 +34,52 @@ const banner = '// Generated from Rust. Do not edit; run cargo run -p compallm-a
 const document = JSON.parse(await readFile(new URL('./validation.schema.json', import.meta.url), 'utf8'))
 const definitions = document.$defs
 if (!definitions) throw new Error('Missing Rust input definitions')
-const compatibility = checkValidationCompatibility(
-  await readFile(new URL('./schema.graphql', import.meta.url), 'utf8'),
-  document,
-)
-console.log(
-  `Validation compatibility: ${compatibility.checked.length} exposed definitions checked; form-only: ${compatibility.formOnly.join(', ') || 'none'}`,
-)
+// Juniper's enum ToInputValue uses a string scalar, which as_sdl prints as a
+// quoted default. Restore enum literals using the Rust-exported field type.
+// This changes encoding only; defaults and enum members still come from Rust.
+const schemaUrl = new URL('./schema.graphql', import.meta.url)
+const ast = parse(await readFile(schemaUrl, 'utf8'))
+const exportedSchema = buildASTSchema(ast)
+function normalizeDefault(value, type) {
+  if (isNonNullType(type)) return normalizeDefault(value, type.ofType)
+  if (isEnumType(type) && value.kind === 'StringValue') {
+    if (!type.getValue(value.value)) throw new Error(`Unknown enum default for ${type.name}`)
+    return { ...value, kind: 'EnumValue' }
+  }
+  if (isListType(type) && value.kind === 'ListValue')
+    return {
+      ...value,
+      values: value.values.map((item) => normalizeDefault(item, type.ofType)),
+    }
+  if (isInputObjectType(type) && value.kind === 'ObjectValue')
+    return {
+      ...value,
+      fields: value.fields.map((field) => ({
+        ...field,
+        value: normalizeDefault(field.value, type.getFields()[field.name.value].type),
+      })),
+    }
+  return value
+}
+const normalizedSchema = (
+  print(
+    visitAst(ast, {
+      InputValueDefinition(node) {
+        return node.defaultValue
+          ? {
+              ...node,
+              defaultValue: normalizeDefault(node.defaultValue, typeFromAST(exportedSchema, node.type)),
+            }
+          : node
+      },
+    }),
+  ) + '\n'
+).replace(/[\t ]+$/gm, '')
+await writeFile(schemaUrl, normalizedSchema)
+const compatibility = checkValidationCompatibility(normalizedSchema, document, {
+  ContextTokens: 'integer',
+})
+console.log(`Validation compatibility: ${compatibility.checked.length} registered GraphQL definitions checked`)
 
 const ordered = []
 const visiting = new Set()
@@ -49,8 +99,17 @@ function visit(name) {
 }
 Object.keys(definitions).sort().forEach(visit)
 const formats = new Set(['baseUrl', 'nonblank', 'authorization', 'emailAddress', 'resourceId'])
-const objectRules = {}
-const arrayRules = {}
+const objectRules = {
+  header: 'headerObject',
+  headerUpdate: 'headerUpdateObject',
+  createProvider: 'createProviderObject',
+  createProviders: 'createProvidersObject',
+  providerPatch: 'providerPatchObject',
+}
+const arrayRules = {
+  headers: '(entries) => headersObject({entries})',
+  modelWrites: 'modelWritesArray',
+}
 const supported = new Set([
   '$ref',
   'type',
@@ -100,6 +159,11 @@ function validate(schema) {
 }
 Object.values(definitions).forEach(validate)
 function unwrapped(schema) {
+  if (schema.$ref)
+    return {
+      ...unwrapped(definitions[schema.$ref.split('/').at(-1)]),
+      ...schema,
+    }
   if (schema.anyOf) {
     const values = schema.anyOf.filter((value) => value.type !== 'null')
     if (values.length !== 1 || values.length === schema.anyOf.length) throw new Error('Unsupported input union')
@@ -182,9 +246,8 @@ function render(schema) {
 }
 const lines = [
   banner,
-  "export * from './offline-provider-validation.ts'",
   "import { z } from 'zod'",
-  "import { inputString, stringInput, integerInput } from './runtime.ts'",
+  "import { inputString, stringInput, integerInput, headerObject, headersObject, headerUpdateObject, modelWritesArray, createProviderObject, createProvidersObject, providerPatchObject } from './runtime.ts'",
 ]
 for (const name of ordered) {
   const schema = definitions[name]
@@ -197,7 +260,9 @@ for (const name of ordered) {
       guards.push(`${JSON.stringify(key)}: stringInput(${name}Constraints[${JSON.stringify(key)}])`)
     } else if (unwrapped(field).type === 'integer') {
       const numeric = Object.fromEntries(
-        ['minimum', 'maximum'].filter((key) => field[key] !== undefined).map((key) => [key, field[key]]),
+        ['minimum', 'maximum']
+          .filter((key) => unwrapped(field)[key] !== undefined)
+          .map((key) => [key, unwrapped(field)[key]]),
       )
       guards.push(`${JSON.stringify(key)}: integerInput(${JSON.stringify(numeric)})`)
     }
@@ -210,24 +275,6 @@ for (const name of ordered) {
   lines.push(`export const ${name} = ${render(schema)}`)
   lines.push(`export type ${name}FormInput = z.input<typeof ${name}>`)
   lines.push(`export type ${name}FormOutput = z.output<typeof ${name}>`)
-}
-// Compatibility for offline consumers: only delivery naming changes. Rules come
-// exclusively from the actual exported GraphQL input definitions above.
-lines.push(
-  "export const TokenDelivery = z.enum(CredentialDelivery.options.map((value) => value.toLowerCase()) as ['cookie', 'token'])",
-)
-for (const [name, source] of [
-  ['SignupEmailRequest', 'EmailInput'],
-  ['SigninEmailRequest', 'EmailInput'],
-  ['ConfirmSignupOtpRequest', 'EmailCodeInput'],
-  ['ConfirmSigninOtpRequest', 'EmailCodeInput'],
-]) {
-  lines.push(`export const ${name}Constraints = ${source}Constraints`)
-  lines.push(`export const ${name}Input = ${source}Input`)
-  lines.push(
-    `export const ${name} = ${source}.omit({delivery:true}).extend({delivery:TokenDelivery.default(${source}.shape.delivery.parse(undefined).toLowerCase() as 'cookie' | 'token')})`,
-  )
-  lines.push(`export type ${name}FormInput = z.input<typeof ${name}>`)
 }
 const output = lines.join('\n') + '\n'
 await writeTypescript(new URL('./validation.ts', import.meta.url), output)
@@ -246,7 +293,9 @@ async function normalizeGeneratedImports(directory) {
       continue
     }
     if (entry.name.endsWith('.graphql')) {
-      const schema = await format(await readFile(path, 'utf8'), { parser: 'graphql' })
+      const schema = await format(await readFile(path, 'utf8'), {
+        parser: 'graphql',
+      })
       await writeFile(path, schema.replace(/[\t ]+$/gm, ''))
       continue
     }
@@ -267,7 +316,11 @@ async function normalizeGeneratedImports(directory) {
           ? '/index.ts'
           : undefined
       if (!suffix) throw new Error(`Unresolved generated import: ${name} in ${path}`)
-      replacements.push({ start: specifier.getStart(ast) + 1, end: specifier.getEnd() - 1, value: name + suffix })
+      replacements.push({
+        start: specifier.getStart(ast) + 1,
+        end: specifier.getEnd() - 1,
+        value: name + suffix,
+      })
     }
     for (const change of replacements.reverse())
       source = source.slice(0, change.start) + change.value + source.slice(change.end)

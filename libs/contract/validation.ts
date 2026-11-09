@@ -1,8 +1,25 @@
 // Generated from Rust. Do not edit; run cargo run -p compallm-api -- generate.
 
-export * from './offline-provider-validation.ts'
 import { z } from 'zod'
-import { inputString, stringInput, integerInput } from './runtime.ts'
+import {
+  inputString,
+  stringInput,
+  integerInput,
+  headerObject,
+  headersObject,
+  headerUpdateObject,
+  modelWritesArray,
+  createProviderObject,
+  createProvidersObject,
+  providerPatchObject,
+} from './runtime.ts'
+/** Positive u32 context size, encoded as an exact JSON number (1–4294967295). */
+export const ContextTokens = z
+  .int()
+  .min(1)
+  .describe('Positive u32 context size, encoded as an exact JSON number (1–4294967295).')
+export type ContextTokensFormInput = z.input<typeof ContextTokens>
+export type ContextTokensFormOutput = z.output<typeof ContextTokens>
 /** How the request delivers credentials; this is never stored in signed claims. */
 export const CredentialDelivery = z
   .enum(['COOKIE', 'TOKEN'])
@@ -83,30 +100,253 @@ export const EmailInput = z
   )
 export type EmailInputFormInput = z.input<typeof EmailInput>
 export type EmailInputFormOutput = z.output<typeof EmailInput>
-export const TokenDelivery = z.enum(
-  CredentialDelivery.options.map((value) => value.toLowerCase()) as ['cookie', 'token'],
-)
-export const SignupEmailRequestConstraints = EmailInputConstraints
-export const SignupEmailRequestInput = EmailInputInput
-export const SignupEmailRequest = EmailInput.omit({ delivery: true }).extend({
-  delivery: TokenDelivery.default(EmailInput.shape.delivery.parse(undefined).toLowerCase() as 'cookie' | 'token'),
-})
-export type SignupEmailRequestFormInput = z.input<typeof SignupEmailRequest>
-export const SigninEmailRequestConstraints = EmailInputConstraints
-export const SigninEmailRequestInput = EmailInputInput
-export const SigninEmailRequest = EmailInput.omit({ delivery: true }).extend({
-  delivery: TokenDelivery.default(EmailInput.shape.delivery.parse(undefined).toLowerCase() as 'cookie' | 'token'),
-})
-export type SigninEmailRequestFormInput = z.input<typeof SigninEmailRequest>
-export const ConfirmSignupOtpRequestConstraints = EmailCodeInputConstraints
-export const ConfirmSignupOtpRequestInput = EmailCodeInputInput
-export const ConfirmSignupOtpRequest = EmailCodeInput.omit({ delivery: true }).extend({
-  delivery: TokenDelivery.default(EmailCodeInput.shape.delivery.parse(undefined).toLowerCase() as 'cookie' | 'token'),
-})
-export type ConfirmSignupOtpRequestFormInput = z.input<typeof ConfirmSignupOtpRequest>
-export const ConfirmSigninOtpRequestConstraints = EmailCodeInputConstraints
-export const ConfirmSigninOtpRequestInput = EmailCodeInputInput
-export const ConfirmSigninOtpRequest = EmailCodeInput.omit({ delivery: true }).extend({
-  delivery: TokenDelivery.default(EmailCodeInput.shape.delivery.parse(undefined).toLowerCase() as 'cookie' | 'token'),
-})
-export type ConfirmSigninOtpRequestFormInput = z.input<typeof ConfirmSigninOtpRequest>
+export const ProviderCatalogRefConstraints = {} as const
+export const ProviderCatalogRefInput = {}
+/** Opaque registry identity, independent of an edited upstream model name. */
+export const ProviderCatalogRef = z
+  .object({ provider: inputString({}), model: inputString({}) })
+  .strict()
+  .describe('Opaque registry identity, independent of an edited upstream model name.')
+export type ProviderCatalogRefFormInput = z.input<typeof ProviderCatalogRef>
+export type ProviderCatalogRefFormOutput = z.output<typeof ProviderCatalogRef>
+export const ProviderHeaderConstraints = {
+  key: { maxLength: 128, pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$" },
+  value: { pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$' },
+} as const
+export const ProviderHeaderInput = {
+  key: stringInput(ProviderHeaderConstraints['key']),
+  value: stringInput(ProviderHeaderConstraints['value']),
+}
+export const ProviderHeader = z
+  .object({
+    key: inputString({ maxLength: 128, pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$" }),
+    value: inputString({ pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$' }).describe(
+      'Write-only header content; never returned by management reads.',
+    ),
+  })
+  .strict()
+  .refine(headerObject, { message: 'Invalid input' })
+export type ProviderHeaderFormInput = z.input<typeof ProviderHeader>
+export type ProviderHeaderFormOutput = z.output<typeof ProviderHeader>
+/** Text operation determining the upstream request and response format. */
+export const TextModelProtocol = z
+  .enum(['OPENAI_CHAT_COMPLETIONS', 'OPENAI_RESPONSES', 'ANTHROPIC_MESSAGES'])
+  .describe('Text operation determining the upstream request and response format.')
+export type TextModelProtocolFormInput = z.input<typeof TextModelProtocol>
+export type TextModelProtocolFormOutput = z.output<typeof TextModelProtocol>
+export const ProviderEffortMappingConstraints = {
+  low: { minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' },
+  medium: { minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' },
+  high: { minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' },
+  xhigh: { minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' },
+  max: { minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' },
+} as const
+export const ProviderEffortMappingInput = {
+  low: stringInput(ProviderEffortMappingConstraints['low']),
+  medium: stringInput(ProviderEffortMappingConstraints['medium']),
+  high: stringInput(ProviderEffortMappingConstraints['high']),
+  xhigh: stringInput(ProviderEffortMappingConstraints['xhigh']),
+  max: stringInput(ProviderEffortMappingConstraints['max']),
+}
+/** Empty object means no configured effort levels. Configured values cannot be empty. */
+export const ProviderEffortMapping = z
+  .object({
+    low: inputString({ minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' }).optional(),
+    medium: inputString({ minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' }).optional(),
+    high: inputString({ minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' }).optional(),
+    xhigh: inputString({ minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' }).optional(),
+    max: inputString({ minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' }).optional(),
+  })
+  .strict()
+  .describe('Empty object means no configured effort levels. Configured values cannot be empty.')
+export type ProviderEffortMappingFormInput = z.input<typeof ProviderEffortMapping>
+export type ProviderEffortMappingFormOutput = z.output<typeof ProviderEffortMapping>
+/** Capabilities declared by a catalog or configured model; not an authorization grant. */
+export const ProviderModelCapability = z
+  .enum([
+    'TEXT',
+    'VISION',
+    'PDF',
+    'AUDIO',
+    'VIDEO',
+    'IMAGE_GENERATION',
+    'AUDIO_GENERATION',
+    'SEARCH',
+    'REASONING',
+    'TOOL_CALL',
+    'FORCED_TOOL_CHOICE',
+    'STRUCTURED_OUTPUT',
+  ])
+  .describe('Capabilities declared by a catalog or configured model; not an authorization grant.')
+export type ProviderModelCapabilityFormInput = z.input<typeof ProviderModelCapability>
+export type ProviderModelCapabilityFormOutput = z.output<typeof ProviderModelCapability>
+export const ProviderModelConfigurationConstraints = {
+  name: { minLength: 1, maxLength: 40, pattern: '^[A-Za-z0-9_-]+$' },
+  path: { maxLength: 40, pattern: '^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$' },
+  inputPrice: { pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$', inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$' },
+  outputPrice: { pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$', inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$' },
+  cachedPrice: { pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$', inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$' },
+} as const
+export const ProviderModelConfigurationInput = {
+  name: stringInput(ProviderModelConfigurationConstraints['name']),
+  path: stringInput(ProviderModelConfigurationConstraints['path']),
+  maxContextTokens: integerInput({ minimum: 1 }),
+  inputPrice: stringInput(ProviderModelConfigurationConstraints['inputPrice']),
+  outputPrice: stringInput(ProviderModelConfigurationConstraints['outputPrice']),
+  cachedPrice: stringInput(ProviderModelConfigurationConstraints['cachedPrice']),
+}
+/** Complete configured text-model values. Decimal prices are USD per million tokens. */
+export const ProviderModelConfiguration = z
+  .object({
+    name: inputString({ minLength: 1, maxLength: 40, pattern: '^[A-Za-z0-9_-]+$' }),
+    protocol: TextModelProtocol,
+    path: inputString({ maxLength: 40, pattern: '^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$' }),
+    maxContextTokens: ContextTokens,
+    enabled: z.boolean().default(true),
+    effortMapping: ProviderEffortMapping.optional(),
+    capabilities: z.array(ProviderModelCapability).default([]),
+    catalogRef: ProviderCatalogRef.optional(),
+    inputPrice: inputString({
+      pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$',
+      inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$',
+    }),
+    outputPrice: inputString({
+      pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$',
+      inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$',
+    }),
+    cachedPrice: inputString({
+      pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$',
+      inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$',
+    }),
+  })
+  .strict()
+  .describe('Complete configured text-model values. Decimal prices are USD per million tokens.')
+export type ProviderModelConfigurationFormInput = z.input<typeof ProviderModelConfiguration>
+export type ProviderModelConfigurationFormOutput = z.output<typeof ProviderModelConfiguration>
+export const ProviderModelWriteConstraints = { id: { pattern: '^[1-9][0-9]*$', format: 'resourceId' } } as const
+export const ProviderModelWriteInput = { id: stringInput(ProviderModelWriteConstraints['id']) }
+/** Persisted identity is omitted for new models and forbidden during provider creation. */
+export const ProviderModelWrite = z
+  .object({
+    id: inputString({ pattern: '^[1-9][0-9]*$', format: 'resourceId' })
+      .describe('Omit for a new model; supplied IDs must belong to this connection.')
+      .optional(),
+    configuration: ProviderModelConfiguration.describe(
+      'Complete text-model configuration, including explicit token prices.',
+    ),
+  })
+  .strict()
+  .describe('Persisted identity is omitted for new models and forbidden during provider creation.')
+export type ProviderModelWriteFormInput = z.input<typeof ProviderModelWrite>
+export type ProviderModelWriteFormOutput = z.output<typeof ProviderModelWrite>
+export const ProviderCreateInputConstraints = {
+  name: { minLength: 1, maxLength: 120, format: 'nonblank', trim: true },
+  baseUrl: { maxLength: 512, format: 'baseUrl' },
+  apiKey: { minLength: 1, maxLength: 512, pattern: '^[^\\s]+$' },
+} as const
+export const ProviderCreateInputInput = {
+  name: stringInput(ProviderCreateInputConstraints['name']),
+  baseUrl: stringInput(ProviderCreateInputConstraints['baseUrl']),
+  apiKey: stringInput(ProviderCreateInputConstraints['apiKey']),
+}
+/** New connection definition; credentials and header values are write-only. */
+export const ProviderCreateInput = z
+  .object({
+    name: inputString({ minLength: 1, maxLength: 120, format: 'nonblank', trim: true }),
+    baseUrl: inputString({ maxLength: 512, format: 'baseUrl' }),
+    apiKey: inputString({ minLength: 1, maxLength: 512, pattern: '^[^\\s]+$' }),
+    headers: z.array(ProviderHeader).refine((entries) => headersObject({ entries }), { message: 'Invalid input' }),
+    models: z.array(ProviderModelWrite).min(1).refine(modelWritesArray, { message: 'Invalid input' }),
+  })
+  .strict()
+  .refine(createProviderObject, { message: 'Invalid input' })
+  .describe('New connection definition; credentials and header values are write-only.')
+export type ProviderCreateInputFormInput = z.input<typeof ProviderCreateInput>
+export type ProviderCreateInputFormOutput = z.output<typeof ProviderCreateInput>
+export const ProviderHeaderUpdateConstraints = {
+  key: { maxLength: 128, pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$" },
+  value: { pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$' },
+} as const
+export const ProviderHeaderUpdateInput = {
+  key: stringInput(ProviderHeaderUpdateConstraints['key']),
+  value: stringInput(ProviderHeaderUpdateConstraints['value']),
+}
+/** Omit value to retain an existing header secret; new names require a value. */
+export const ProviderHeaderUpdate = z
+  .object({
+    key: inputString({ maxLength: 128, pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$" }),
+    value: inputString({ pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$' })
+      .describe('Omit to preserve the saved value for this header name. New names require a value.')
+      .optional(),
+  })
+  .strict()
+  .refine(headerUpdateObject, { message: 'Invalid input' })
+  .describe('Omit value to retain an existing header secret; new names require a value.')
+export type ProviderHeaderUpdateFormInput = z.input<typeof ProviderHeaderUpdate>
+export type ProviderHeaderUpdateFormOutput = z.output<typeof ProviderHeaderUpdate>
+export const ProviderPatchInputConstraints = {
+  name: { minLength: 1, maxLength: 120, format: 'nonblank', trim: true },
+  baseUrl: { maxLength: 512, format: 'baseUrl' },
+  apiKey: { minLength: 1, maxLength: 512, pattern: '^[^\\s]+$' },
+} as const
+export const ProviderPatchInputInput = {
+  name: stringInput(ProviderPatchInputConstraints['name']),
+  baseUrl: stringInput(ProviderPatchInputConstraints['baseUrl']),
+  apiKey: stringInput(ProviderPatchInputConstraints['apiKey']),
+}
+/** Partial update. Omitted fields are unchanged; explicit null is rejected. */
+export const ProviderPatchInput = z
+  .object({
+    name: inputString({ minLength: 1, maxLength: 120, format: 'nonblank', trim: true }).optional(),
+    baseUrl: inputString({ maxLength: 512, format: 'baseUrl' }).optional(),
+    apiKey: inputString({ minLength: 1, maxLength: 512, pattern: '^[^\\s]+$' })
+      .describe('Omit to preserve the current credential. Empty strings and null are invalid.')
+      .optional(),
+    headers: z
+      .array(ProviderHeaderUpdate)
+      .refine((entries) => headersObject({ entries }), { message: 'Invalid input' })
+      .optional(),
+    models: z.array(ProviderModelWrite).min(1).refine(modelWritesArray, { message: 'Invalid input' }).optional(),
+  })
+  .strict()
+  .refine(providerPatchObject, { message: 'Invalid input' })
+  .describe('Partial update. Omitted fields are unchanged; explicit null is rejected.')
+export type ProviderPatchInputFormInput = z.input<typeof ProviderPatchInput>
+export type ProviderPatchInputFormOutput = z.output<typeof ProviderPatchInput>
+export const ProviderReplaceInputConstraints = {
+  name: { minLength: 1, maxLength: 120, format: 'nonblank', trim: true },
+  baseUrl: { maxLength: 512, format: 'baseUrl' },
+  apiKey: { minLength: 1, maxLength: 512, pattern: '^[^\\s]+$' },
+} as const
+export const ProviderReplaceInputInput = {
+  name: stringInput(ProviderReplaceInputConstraints['name']),
+  baseUrl: stringInput(ProviderReplaceInputConstraints['baseUrl']),
+  apiKey: stringInput(ProviderReplaceInputConstraints['apiKey']),
+}
+/** Full non-secret replacement. Omitting apiKey preserves the saved credential. */
+export const ProviderReplaceInput = z
+  .object({
+    name: inputString({ minLength: 1, maxLength: 120, format: 'nonblank', trim: true }),
+    baseUrl: inputString({ maxLength: 512, format: 'baseUrl' }),
+    apiKey: inputString({ minLength: 1, maxLength: 512, pattern: '^[^\\s]+$' })
+      .describe('Omit to preserve the current credential. Empty strings and null are invalid.')
+      .optional(),
+    headers: z
+      .array(ProviderHeaderUpdate)
+      .refine((entries) => headersObject({ entries }), { message: 'Invalid input' }),
+    models: z.array(ProviderModelWrite).min(1).refine(modelWritesArray, { message: 'Invalid input' }),
+  })
+  .strict()
+  .describe('Full non-secret replacement. Omitting apiKey preserves the saved credential.')
+export type ProviderReplaceInputFormInput = z.input<typeof ProviderReplaceInput>
+export type ProviderReplaceInputFormOutput = z.output<typeof ProviderReplaceInput>
+export const ProvidersCreateInputConstraints = {} as const
+export const ProvidersCreateInputInput = {}
+/** Atomic batch of new provider connections for the verified organization. */
+export const ProvidersCreateInput = z
+  .object({ providers: z.array(ProviderCreateInput) })
+  .strict()
+  .refine(createProvidersObject, { message: 'Invalid input' })
+  .describe('Atomic batch of new provider connections for the verified organization.')
+export type ProvidersCreateInputFormInput = z.input<typeof ProvidersCreateInput>
+export type ProvidersCreateInputFormOutput = z.output<typeof ProvidersCreateInput>

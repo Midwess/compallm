@@ -2,12 +2,175 @@ schema {
   query: Query
 }
 
+"How the request delivers credentials; this is never stored in signed claims."
+enum CredentialDelivery {
+  "Set HttpOnly cookies and return metadata without credential values."
+  COOKIE
+  "Return credentials explicitly without setting browser cookies."
+  TOKEN
+}
+
+"Catalog connection family hint; each configured model selects its own operation."
+enum ProviderApiProtocol {
+  OPENAI_COMPATIBLE
+  ANTHROPIC
+  PROVIDER_SPECIFIC
+}
+
+"Capabilities declared by a catalog or configured model; not an authorization grant."
+enum ProviderModelCapability {
+  TEXT
+  VISION
+  PDF
+  AUDIO
+  VIDEO
+  IMAGE_GENERATION
+  AUDIO_GENERATION
+  SEARCH
+  REASONING
+  TOOL_CALL
+  FORCED_TOOL_CHOICE
+  STRUCTURED_OUTPUT
+}
+
+"Text operation determining the upstream request and response format."
+enum TextModelProtocol {
+  OPENAI_CHAT_COMPLETIONS
+  OPENAI_RESPONSES
+  ANTHROPIC_MESSAGES
+}
+
+"""
+Shared input for confirming a signup or signin email challenge.
+
+The verified encrypted challenge comes from request context, never this input.
+The adapter calls `validify()` before Core verifies the code and challenge.
+"""
+input EmailCodeInput {
+  "Exactly six ASCII digits after trimming surrounding whitespace."
+  code: String!
+  "Cookie delivery is the default; token delivery must be requested explicitly."
+  delivery: CredentialDelivery! = COOKIE
+}
+
+"""
+Shared input for requesting either a signup or a signin email challenge.
+
+Call `validify()` before Core execution. GraphQL parsing alone does not run
+normalization, application validation, or email ownership checks.
+"""
+input EmailInput {
+  "Trimmed and ASCII-lowercased using the shared Rust email policy."
+  email: String!
+  "Cookie delivery is the default; token delivery must be requested explicitly."
+  delivery: CredentialDelivery! = COOKIE
+}
+
+"Opaque registry identity, independent of an edited upstream model name."
+input ProviderCatalogRef {
+  provider: String!
+  model: String!
+}
+
+"New connection definition; credentials and header values are write-only."
+input ProviderCreateInput {
+  name: String!
+  baseUrl: String!
+  apiKey: String!
+  headers: [ProviderHeader!]!
+  models: [ProviderModelWrite!]!
+}
+
+"Empty object means no configured effort levels. Configured values cannot be empty."
+input ProviderEffortMapping {
+  low: String
+  medium: String
+  high: String
+  xhigh: String
+  max: String
+}
+
+input ProviderHeader {
+  key: String!
+  "Write-only header content; never returned by management reads."
+  value: String!
+}
+
+"Omit value to retain an existing header secret; new names require a value."
+input ProviderHeaderUpdate {
+  key: String!
+  "Omit to preserve the saved value for this header name. New names require a value."
+  value: String
+}
+
+"Complete configured text-model values. Decimal prices are USD per million tokens."
+input ProviderModelConfiguration {
+  name: String!
+  protocol: TextModelProtocol!
+  path: String!
+  maxContextTokens: ContextTokens!
+  enabled: Boolean! = true
+  effortMapping: ProviderEffortMapping
+  capabilities: [ProviderModelCapability!]! = []
+  catalogRef: ProviderCatalogRef
+  inputPrice: String!
+  outputPrice: String!
+  cachedPrice: String!
+}
+
+"Persisted identity is omitted for new models and forbidden during provider creation."
+input ProviderModelWrite {
+  "Omit for a new model; supplied IDs must belong to this connection."
+  id: ID
+  "Complete text-model configuration, including explicit token prices."
+  configuration: ProviderModelConfiguration!
+}
+
+"Partial update. Omitted fields are unchanged; explicit null is rejected."
+input ProviderPatchInput {
+  name: String
+  baseUrl: String
+  "Omit to preserve the current credential. Empty strings and null are invalid."
+  apiKey: String
+  headers: [ProviderHeaderUpdate!]
+  models: [ProviderModelWrite!]
+}
+
+"Full non-secret replacement. Omitting apiKey preserves the saved credential."
+input ProviderReplaceInput {
+  name: String!
+  baseUrl: String!
+  "Omit to preserve the current credential. Empty strings and null are invalid."
+  apiKey: String
+  headers: [ProviderHeaderUpdate!]!
+  models: [ProviderModelWrite!]!
+}
+
+"Atomic batch of new provider connections for the verified organization."
+input ProvidersCreateInput {
+  providers: [ProviderCreateInput!]!
+}
+
+"Positive u32 context size, encoded as an exact JSON number (1–4294967295)."
+scalar ContextTokens
+
+"Public catalog defaults; selecting a template creates no configured provider."
+type ProviderTemplate {
+  "Global opaque catalog identity, independent of organization resource IDs."
+  id: ID!
+  name: String!
+  "Family hint only; configured models select their own text operation."
+  protocol: ProviderApiProtocol!
+  "Unknown and account-specific addresses remain null."
+  baseUrl: String
+}
+
 type Query {
   """
-    Read the selected login's verified identity and organization-name snapshot.
+  Read the selected login's verified identity and organization-name snapshot.
 
-    Requires active, current user access. No credentials, policy source, or
-    freshness internals are exposed; no user/organization hydration is performed.
+  Requires active, current user access. No credentials, policy source, or
+  freshness internals are exposed; no user/organization hydration is performed.
   """
   session: Session!
 }

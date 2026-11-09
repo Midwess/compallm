@@ -116,8 +116,11 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                 })?;
             } else if attr.path().is_ident("graphql") {
                 attr.parse_nested_meta(|argument| {
-                    if !argument.path.is_ident("default") || argument.input.peek(syn::Token![=]) {
-                        return Err(argument.error("exported GraphQL fields support only the shared Default value; wire renames require explicit export support"));
+                    if !argument.path.is_ident("default") {
+                        return Err(argument.error("exported GraphQL fields support only defaults; wire renames require explicit export support"));
+                    }
+                    if argument.input.peek(syn::Token![=]) {
+                        let _: syn::Expr = argument.value()?.parse()?;
                     }
                     Ok(())
                 })?;

@@ -66,3 +66,7 @@ impl ProviderModel {
         self.0.enabled
     }
 }
+
+pub mod catalog;
+pub mod input;
+pub mod scalar;

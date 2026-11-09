@@ -1,7 +1,7 @@
 import { emailRequestSchema } from '@compallm/contract/auth'
 import { createSignupStore, type SignupController } from '@compallm/storybook/pages/signup'
 import type { SigninController } from '@compallm/storybook/pages/signin'
-import type { CurrentUserResponse } from '@compallm/contract/preview'
+import type { AuthUser } from '@compallm/storybook'
 import type { UrlController } from '@compallm/storybook'
 import { urlController } from '../url/controller'
 import { notify } from '../notifications/toast'
@@ -46,7 +46,7 @@ export class AuthController implements SignupController, SigninController {
   }
 
   requestCode = async () => {
-    const input = emailRequestSchema(this.mode).safeParse({ email: this.store.getState().email, delivery: 'cookie' })
+    const input = emailRequestSchema(this.mode).safeParse({ email: this.store.getState().email, delivery: 'COOKIE' })
     if (!input.success) {
       this.onInvalidEmail()
       return
@@ -64,9 +64,9 @@ export class AuthController implements SignupController, SigninController {
     notify.error(unavailable())
   }
 
-  ensureCurrentUser = async (): Promise<CurrentUserResponse | null> => this.refreshCurrentUser()
+  ensureCurrentUser = async (): Promise<AuthUser | null> => this.refreshCurrentUser()
 
-  refreshCurrentUser = async (signal?: AbortSignal): Promise<CurrentUserResponse | null> => {
+  refreshCurrentUser = async (signal?: AbortSignal): Promise<AuthUser | null> => {
     signal?.throwIfAborted()
     this.store.setState({ currentUser: null, status: 'error' })
     throw unavailable()

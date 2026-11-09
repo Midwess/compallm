@@ -1,4 +1,4 @@
-import { ProviderFields, ProviderModelFields, ProviderInputRules } from '@compallm/contract/validation'
+import { ProviderFields, ProviderModelFields, ProviderInputRules } from '@compallm/contract/provider'
 import { headersAreValid, acceptsHeaderInput } from '@compallm/contract/provider'
 import { modelPath, modelDraftFingerprint } from './model-options'
 import type { CreateProviderState, ModelDraft, ProviderSnapshot } from './types'

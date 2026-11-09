@@ -6,7 +6,7 @@
   "license": "Elastic-2.0",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "generate:graphql": "genql --schema schema.graphql --output graphql --sort"
+    "generate:graphql": "genql --schema schema.graphql --output graphql --sort --scalar ContextTokens:number"
   },
   "exports": {
     "./auth": {
@@ -24,10 +24,6 @@
     "./graphql": {
       "types": "./dist/graphql.d.ts",
       "import": "./dist/graphql.js"
-    },
-    "./preview": {
-      "types": "./dist/preview-types.d.ts",
-      "import": "./dist/preview-types.js"
     }
   },
   "dependencies": {

@@ -7,7 +7,6 @@ export function checkValidationCompatibility(sdl, document, scalarShapes = {}) {
   const definitions = document.$defs
   if (!definitions) throw new Error('Missing Rust validation definitions')
   const checked = []
-  const formOnly = []
   const visited = new Set()
   const scalarTypes = {
     ID: 'string',
@@ -118,13 +117,11 @@ export function checkValidationCompatibility(sdl, document, scalarShapes = {}) {
   }
   for (const [name, definition] of Object.entries(definitions)) {
     const type = schema.getType(name)
-    if (!type) {
-      formOnly.push(name)
-      continue
-    }
-    if (!isInputObjectType(type) && !isEnumType(type)) fail(name, 'metadata name refers to a non-input API type')
+    if (!type) fail(name, 'validation definition is not registered in GraphQL')
+    if (!isInputObjectType(type) && !isEnumType(type) && !isScalarType(type))
+      fail(name, 'metadata name refers to a non-input API type')
     compare(definition, type, name)
     checked.push(name)
   }
-  return { checked, formOnly }
+  return { checked }
 }

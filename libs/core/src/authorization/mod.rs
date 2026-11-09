@@ -2,9 +2,10 @@
 
 pub mod error;
 mod member_permission;
+pub mod policy;
 pub mod policy_snapshot;
 pub mod rbac;
-pub use member_permission::MemberPermission;
+pub use member_permission::{MemberPermission, MemberPermissionError};
 pub use policy_snapshot::PolicySnapshot;
 
 use std::sync::LazyLock;

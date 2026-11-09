@@ -162,7 +162,7 @@ impl Hooks for App {
         use axum::{
             Extension, extract::DefaultBodyLimit, middleware::from_fn_with_state, routing::post,
         };
-        use compallm_api::{graphql::endpoint, middleware::authentication};
+        use compallm_api::graphql::{endpoint, request};
 
         let di = Di::instance();
         Ok(AxumRouter::new().route(
@@ -171,9 +171,10 @@ impl Hooks for App {
                 .with_state(di.graphql_schema().clone())
                 .layer(Extension(di))
                 .route_layer(from_fn_with_state(
-                    di.authentication().clone(),
-                    authentication::authenticate,
+                    di.graphql_schema().clone(),
+                    request::authenticate,
                 ))
+                .layer::<_, std::convert::Infallible>(Extension(di.authentication().clone()))
                 .layer(DefaultBodyLimit::max(di.max_request_body_bytes())),
         ))
     }

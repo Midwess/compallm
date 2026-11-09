@@ -19,6 +19,14 @@ enum CredentialDelivery {
 }
 
 """
+Email admission succeeded; cookie delivery never exposes the OTP credential.
+"""
+type EmailChallenge {
+  lifetime: TokenLifetime!
+  token: String
+}
+
+"""
 Shared input for confirming a signup or signin email challenge.
 
 The verified encrypted challenge comes from request context, never this input.
@@ -33,7 +41,7 @@ input EmailCodeInput {
   """
   Cookie delivery is the default; token delivery must be requested explicitly.
   """
-  delivery: CredentialDelivery! = COOKIE
+  delivery: CredentialDelivery = COOKIE
 }
 
 """
@@ -46,12 +54,44 @@ input EmailInput {
   """
   Cookie delivery is the default; token delivery must be requested explicitly.
   """
-  delivery: CredentialDelivery! = COOKIE
+  delivery: CredentialDelivery = COOKIE
 
   """
   Trimmed and ASCII-lowercased using the shared Rust email policy.
   """
   email: String!
+}
+
+type Mutation {
+  """
+  Explicit refresh Bearer only. Rebuild current authority; never set browser cookies.
+  """
+  sessionRefresh: SessionCredentials!
+
+  """
+  Revoke this verified login only. Clear cookie credentials after successful revocation.
+  """
+  sessionRevoke: Boolean!
+
+  """
+  Confirm an existing user's middleware-verified OTP challenge and create a scoped session.
+  """
+  signinEmailConfirm(input: EmailCodeInput!): SessionCredentials!
+
+  """
+  Request signin email admission for an existing active account.
+  """
+  signinEmailRequest(input: EmailInput!): EmailChallenge!
+
+  """
+  Confirm the middleware-verified OTP challenge and atomically create the account and session.
+  """
+  signupEmailConfirm(input: EmailCodeInput!): SessionCredentials!
+
+  """
+  Request signup email admission. Reject existing accounts before sending or issuing a challenge.
+  """
+  signupEmailRequest(input: EmailInput!): EmailChallenge!
 }
 
 """
@@ -253,10 +293,30 @@ type Session {
 }
 
 """
+Timing is always returned; credential values exist only in explicit TOKEN delivery.
+"""
+type SessionCredentials {
+  accessLifetime: TokenLifetime!
+  accessToken: String
+  refreshLifetime: TokenLifetime!
+  refreshToken: String
+}
+
+"""
 Text operation determining the upstream request and response format.
 """
 enum TextModelProtocol {
   ANTHROPIC_MESSAGES
   OPENAI_CHAT_COMPLETIONS
   OPENAI_RESPONSES
+}
+
+"""
+Exact Unix-second validity and client throttle values encoded as decimal strings.
+"""
+type TokenLifetime {
+  expiresAt: String!
+  expiresInSeconds: String!
+  issuedAt: String!
+  throttleSeconds: String!
 }

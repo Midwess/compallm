@@ -12,10 +12,96 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use compallm_core::{
-    auth::{AuthError, AuthService, RefreshToken, UserAccessToken, UserTokens},
+    auth::{
+        AuthError, AuthService, EmailOtpAccessToken, RefreshToken, UserAccessToken, UserTokens,
+    },
     persistent::DbContext,
 };
 use cookie::{Cookie, SameSite};
+use std::sync::{Arc, Mutex};
+
+#[derive(Clone, Copy)]
+pub enum CredentialPolicy {
+    Public,
+    EmailOtp,
+    User,
+    Refresh,
+}
+
+/// Credential kinds stay separate; only the HTTP boundary constructs verified values.
+#[derive(Clone)]
+pub struct RequestIdentity(Identity);
+
+#[derive(Clone)]
+enum Identity {
+    Anonymous,
+    EmailOtp(EmailOtpAccessToken),
+    User(VerifiedAccess),
+    Refresh(String),
+}
+
+impl RequestIdentity {
+    pub fn user(&self) -> Result<&VerifiedAccess, AuthError> {
+        match &self.0 {
+            Identity::User(access) => Ok(access),
+            _ => Err(AuthError::WrongTokenVariant),
+        }
+    }
+
+    pub fn otp(&self) -> Result<&EmailOtpAccessToken, AuthError> {
+        match &self.0 {
+            Identity::EmailOtp(access) => Ok(access),
+            _ => Err(AuthError::WrongTokenVariant),
+        }
+    }
+
+    pub fn refresh(&self) -> Result<&str, AuthError> {
+        match &self.0 {
+            Identity::Refresh(encoded) => Ok(encoded),
+            _ => Err(AuthError::WrongTokenVariant),
+        }
+    }
+}
+
+/// Request-local cookie delivery. It never stores identity or service dependencies.
+#[derive(Clone)]
+pub struct CookieDelivery {
+    settings: AuthenticationSettings,
+    request: HeaderMap,
+    response: Arc<Mutex<HeaderMap>>,
+}
+
+impl CookieDelivery {
+    pub fn validate_origin(&self) -> Result<(), RequestError> {
+        self.settings.validate_origin(&self.request)
+    }
+
+    pub fn set_otp(&self, token: String, seconds: u64) -> Result<(), RequestError> {
+        let mut headers = HeaderMap::new();
+        let names = self.settings.names();
+        self.settings
+            .append_cookie(&mut headers, names.0, token, seconds)?;
+        self.settings
+            .append_cookie(&mut headers, names.1, String::new(), 0)?;
+        self.replace(headers)
+    }
+
+    pub fn set_user(&self, tokens: UserTokens) -> Result<(), RequestError> {
+        self.replace(self.settings.replacement_headers(tokens)?)
+    }
+
+    pub fn clear(&self) -> Result<(), RequestError> {
+        if self.request.contains_key(AUTHORIZATION) {
+            return Ok(());
+        }
+        self.replace(self.settings.clear_headers()?)
+    }
+
+    fn replace(&self, headers: HeaderMap) -> Result<(), RequestError> {
+        *self.response.lock().map_err(|_| RequestError::Internal)? = headers;
+        Ok(())
+    }
+}
 
 /// Verified request identity. Only this module can construct it.
 #[derive(Clone)]
@@ -223,32 +309,95 @@ impl Authentication {
         }
     }
 
-    async fn run(&self, mut request: Request, next: Next) -> Response {
+    /// Select a credential policy before execution, reusing the same HTTP boundary.
+    pub async fn run_policy(
+        &self,
+        mut request: Request,
+        next: Next,
+        policy: CredentialPolicy,
+    ) -> Response {
         let headers = request.headers().clone();
-        let cookie_mode = !headers.contains_key(AUTHORIZATION);
         self.db
             .scope(async {
-                let (user, replacements) = match self.authenticate(&headers).await {
-                    Ok(identity) => identity,
+                let delivery = CookieDelivery {
+                    settings: self.settings.clone(),
+                    request: headers.clone(),
+                    response: Arc::new(Mutex::new(HeaderMap::new())),
+                };
+                let verified: Result<_, RequestError> = async {
+                    match policy {
+                        CredentialPolicy::Public => {
+                            Ok((RequestIdentity(Identity::Anonymous), HeaderMap::new()))
+                        }
+                        CredentialPolicy::User => {
+                            self.authenticate(&headers).await.map(|(access, headers)| {
+                                (
+                                    RequestIdentity(Identity::User(VerifiedAccess(access))),
+                                    headers,
+                                )
+                            })
+                        }
+                        CredentialPolicy::EmailOtp => {
+                            let encoded = if let Some(encoded) = bearer(&headers)? {
+                                encoded.to_owned()
+                            } else {
+                                self.settings.validate_origin(&headers)?;
+                                cookie(&headers, self.settings.names().0)?
+                                    .ok_or(RequestError::Unauthenticated)?
+                            };
+                            let otp = EmailOtpAccessToken::try_from(
+                                self.auth
+                                    .authenticate_token(&encoded)
+                                    .await
+                                    .map_err(|error| {
+                                        if matches!(error, AuthError::ExpiredToken) {
+                                            RequestError::ExpiredChallenge
+                                        } else {
+                                            error.into()
+                                        }
+                                    })?,
+                            )?;
+                            Ok((RequestIdentity(Identity::EmailOtp(otp)), HeaderMap::new()))
+                        }
+                        CredentialPolicy::Refresh => {
+                            let encoded = bearer(&headers)?.ok_or(RequestError::Unauthenticated)?;
+                            RefreshToken::try_from(self.auth.authenticate_token(encoded).await?)?;
+                            Ok((
+                                RequestIdentity(Identity::Refresh(encoded.to_owned())),
+                                HeaderMap::new(),
+                            ))
+                        }
+                    }
+                }
+                .await;
+                let (identity, replacements) = match verified {
+                    Ok(value) => value,
                     Err(error) => {
-                        let clear = cookie_mode
+                        let clear = matches!(policy, CredentialPolicy::User)
+                            && !headers.contains_key(AUTHORIZATION)
                             && matches!(
                                 error,
                                 RequestError::Unauthenticated | RequestError::Expired
                             );
                         let mut response = error.into_response();
-                        if clear {
-                            match self.settings.clear_headers() {
-                                Ok(headers) => response.headers_mut().extend(headers),
-                                Err(error) => return error.into_response(),
-                            }
+                        if clear && let Ok(headers) = self.settings.clear_headers() {
+                            response.headers_mut().extend(headers);
                         }
                         return response;
                     }
                 };
-                request.extensions_mut().insert(VerifiedAccess(user));
+                if let RequestIdentity(Identity::User(access)) = &identity {
+                    request.extensions_mut().insert(access.clone());
+                }
+                request.extensions_mut().insert(identity);
+                request.extensions_mut().insert(delivery.clone());
                 let mut response = next.run(request).await;
-                // Explicit handler cookies take priority over automatic renewal.
+                let staged = match delivery.response.lock() {
+                    Ok(headers) => headers.clone(),
+                    Err(_) => return RequestError::Internal.into_response(),
+                };
+                response.headers_mut().extend(staged);
+                // Handler cookies, including revocation, override automatic renewal.
                 for value in replacements.get_all(SET_COOKIE) {
                     let replacement = value
                         .to_str()
@@ -279,7 +428,9 @@ pub async fn authenticate(
     request: Request,
     next: Next,
 ) -> Response {
-    authentication.run(request, next).await
+    authentication
+        .run_policy(request, next, CredentialPolicy::User)
+        .await
 }
 
 fn bearer(headers: &HeaderMap) -> Result<Option<&str>, RequestError> {
@@ -314,9 +465,11 @@ fn cookie(headers: &HeaderMap, name: &str) -> Result<Option<String>, RequestErro
     Ok(value)
 }
 
-enum RequestError {
+#[derive(Clone, Copy)]
+pub enum RequestError {
     Unauthenticated,
     Expired,
+    ExpiredChallenge,
     Origin,
     Unavailable,
     CredentialTooLarge,
@@ -357,6 +510,11 @@ impl IntoResponse for RequestError {
                 StatusCode::UNAUTHORIZED,
                 "UNAUTHENTICATED",
                 "Access token expired; refresh explicitly",
+            ),
+            Self::ExpiredChallenge => (
+                StatusCode::UNAUTHORIZED,
+                "EXPIRED_TOKEN",
+                "Email challenge expired; request a new code",
             ),
             Self::Origin => (
                 StatusCode::FORBIDDEN,

@@ -6,14 +6,15 @@ settings:
 
 overrides:
   '@compallm/storybook': link:../libs/storybook
+  '@compallm/contract': link:../libs/contract
 
 importers:
 
   .:
     dependencies:
       '@compallm/contract':
-        specifier: file:../libs/contract
-        version: file:../libs/contract
+        specifier: link:../libs/contract
+        version: link:../libs/contract
       '@compallm/storybook':
         specifier: link:../libs/storybook
         version: link:../libs/storybook
@@ -147,9 +148,6 @@ packages:
   '@babel/types@7.29.11':
     resolution: {integrity: sha512-WCsemW40Cpc6gouC1SrY6PBaZ+oLRlEVY9XBvZBI7il/HyUrb2nJ505wE1MHEFyDZNnrWDEuy4jL50WVHfTTSQ==}
     engines: {node: '>=6.9.0'}
-
-  '@compallm/contract@file:../libs/contract':
-    resolution: {directory: ../libs/contract, type: directory}
 
   '@esbuild/aix-ppc64@0.28.2':
     resolution: {integrity: sha512-XExcO+dvLKvVtNTibSTBej1NCAbaGhWn9Ww1ZPx80qsahhPFe/8jgWP0IchNe0F3HwkU7n8ejhH8bjonqht8mQ==}
@@ -1448,10 +1446,6 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.29.11
       '@babel/helper-validator-identifier': 7.29.7
-
-  '@compallm/contract@file:../libs/contract':
-    dependencies:
-      zod: 4.6.7
 
   '@esbuild/aix-ppc64@0.28.2':
     optional: true

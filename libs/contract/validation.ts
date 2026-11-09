@@ -17,6 +17,7 @@ import {
 export const ContextTokens = z
   .int()
   .min(1)
+  .max(4294967295)
   .describe('Positive u32 context size, encoded as an exact JSON number (1–4294967295).')
 export type ContextTokensFormInput = z.input<typeof ContextTokens>
 export type ContextTokensFormOutput = z.output<typeof ContextTokens>
@@ -190,7 +191,7 @@ export const ProviderModelConfigurationConstraints = {
 export const ProviderModelConfigurationInput = {
   name: stringInput(ProviderModelConfigurationConstraints['name']),
   path: stringInput(ProviderModelConfigurationConstraints['path']),
-  maxContextTokens: integerInput({ minimum: 1 }),
+  maxContextTokens: integerInput({ minimum: 1, maximum: 4294967295 }),
   inputPrice: stringInput(ProviderModelConfigurationConstraints['inputPrice']),
   outputPrice: stringInput(ProviderModelConfigurationConstraints['outputPrice']),
   cachedPrice: stringInput(ProviderModelConfigurationConstraints['cachedPrice']),

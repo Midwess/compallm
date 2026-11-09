@@ -2,12 +2,11 @@
 use crate::{
     di::Di,
     graphql::{ApplicationSchema, GraphqlContext},
-    middleware::authentication::VerifiedAccess,
+    middleware::authentication::{CookieDelivery, RequestIdentity},
 };
 use axum::{
-    Extension, Json,
-    extract::{State, rejection::JsonRejection},
-    http::StatusCode,
+    Extension,
+    extract::State,
     response::{IntoResponse, Response},
 };
 use juniper::http::{GraphQLBatchResponse, GraphQLRequest};
@@ -15,41 +14,14 @@ use juniper_axum::response::JuniperResponse;
 
 pub async fn handle(
     State(schema): State<ApplicationSchema>,
-    Extension(identity): Extension<VerifiedAccess>,
+    Extension(identity): Extension<RequestIdentity>,
+    Extension(delivery): Extension<CookieDelivery>,
     Extension(di): Extension<&'static Di>,
-    request: Result<Json<GraphQLRequest>, JsonRejection>,
+    Extension(request): Extension<GraphQLRequest>,
 ) -> Response {
-    match request {
-        Ok(Json(request)) => {
-            let context = GraphqlContext::new(di, identity);
-            JuniperResponse(GraphQLBatchResponse::Single(
-                request.execute(schema.as_ref(), &context).await,
-            ))
-            .into_response()
-        }
-        Err(error) => {
-            let status = match error.status() {
-                status @ (StatusCode::PAYLOAD_TOO_LARGE | StatusCode::UNSUPPORTED_MEDIA_TYPE) => {
-                    status
-                }
-                _ => StatusCode::BAD_REQUEST,
-            };
-            let message = match status {
-                StatusCode::PAYLOAD_TOO_LARGE => "GraphQL request body is too large",
-                StatusCode::UNSUPPORTED_MEDIA_TYPE => "Unsupported GraphQL request content type",
-                _ => "Invalid GraphQL request",
-            };
-            error_response(status, "BAD_REQUEST", message)
-        }
-    }
-}
-
-fn error_response(status: StatusCode, code: &'static str, message: &'static str) -> Response {
-    (
-        status,
-        Json(serde_json::json!({
-            "errors": [{ "message": message, "extensions": { "code": code } }]
-        })),
-    )
-        .into_response()
+    let context = GraphqlContext::new(di, identity, delivery);
+    JuniperResponse(GraphQLBatchResponse::Single(
+        request.execute(schema.as_ref(), &context).await,
+    ))
+    .into_response()
 }

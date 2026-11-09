@@ -539,30 +539,41 @@ impl Fixture {
         };
         use compallm_api::{
             di::{AuthSettings, Di, GraphqlSettings},
-            graphql::{build_schema, endpoint},
-            middleware::authentication::{self, Authentication, AuthenticationSettings},
+            graphql::{build_schema, endpoint, request},
+            middleware::authentication::{Authentication, AuthenticationSettings},
         };
         let db = Box::leak(Box::new(self.repo.1.clone()));
-        let auth = Box::leak(Box::new(self.service()));
+        let email = Box::leak(Box::new(
+            Box::new(TestEmail) as Box<dyn compallm_core::mail::EmailService>
+        ));
+        let service = self.service_with_dependencies(Box::new(TestDictionary {
+            dictionary: compallm_core::compression::DCompression::new(
+                compallm_core::compression::DictionaryType::AccessToken, 1,
+                "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source",
+            ).unwrap(), newer: None,
+        }), Some(email));
         let schema = build_schema(16, 256, 15_000);
-        let di = Box::leak(Box::new(Di::new(
-            self.repo.1.clone(),
-            AuthSettings {
-                jwt_secret: SECRET.into(),
-                user_token_ttl_seconds: 1800,
-                refresh_token_ttl_seconds: 2_592_000,
-            },
-            GraphqlSettings {
-                cookie_secure: false,
-                public_origin: "http://localhost".into(),
-                ..GraphqlSettings::default()
-            },
-            None,
-        )));
+        let di = Box::leak(Box::new(
+            Di::new(
+                self.repo.1.clone(),
+                AuthSettings {
+                    jwt_secret: SECRET.into(),
+                    user_token_ttl_seconds: 1800,
+                    refresh_token_ttl_seconds: 2_592_000,
+                },
+                GraphqlSettings {
+                    cookie_secure: false,
+                    public_origin: "http://localhost".into(),
+                    ..GraphqlSettings::default()
+                },
+                None,
+            )
+            .with_auth_service(service),
+        ));
         di.initialize_services().unwrap();
         let authentication = Authentication::new(
             db,
-            auth,
+            di.auth_service(),
             AuthenticationSettings {
                 cookie_secure: false,
                 public_origin: "http://localhost".into(),
@@ -572,12 +583,10 @@ impl Fixture {
         Router::new().route(
             "/api/graphql",
             post(endpoint::handle)
-                .with_state(schema)
+                .with_state(schema.clone())
                 .layer(axum::Extension(di as &'static Di))
-                .route_layer(from_fn_with_state(
-                    authentication,
-                    authentication::authenticate,
-                ))
+                .route_layer(from_fn_with_state(schema, request::authenticate))
+                .layer::<_, std::convert::Infallible>(axum::Extension(authentication))
                 .layer(DefaultBodyLimit::max(65_536)),
         )
     }
@@ -2731,4 +2740,201 @@ async fn graphql_shared_schema_keeps_concurrent_session_identities_separate() {
         );
     }
     assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, 2);
+}
+
+async fn graphql_operation(
+    router: &axum::Router,
+    query: &str,
+    variables: serde_json::Value,
+    bearer: Option<&str>,
+    cookies: Option<&str>,
+    origin: bool,
+) -> axum::response::Response {
+    use tower::ServiceExt;
+    let mut request = axum::http::Request::builder()
+        .method("POST")
+        .uri("/api/graphql")
+        .header("content-type", "application/json")
+        .header("host", "localhost");
+    if let Some(token) = bearer {
+        request = request.header("authorization", format!("Bearer {token}"));
+    }
+    if let Some(cookies) = cookies {
+        request = request.header("cookie", cookies);
+    }
+    if origin {
+        request = request.header("origin", "http://localhost");
+    }
+    router
+        .clone()
+        .oneshot(
+            request
+                .body(axum::body::Body::from(
+                    serde_json::json!({"query":query,"variables":variables}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+}
+
+async fn graphql_body(response: axum::response::Response) -> serde_json::Value {
+    let bytes = axum::body::to_bytes(response.into_body(), 16384)
+        .await
+        .unwrap();
+    serde_json::from_slice(&bytes).unwrap()
+}
+
+fn response_cookies(response: &axum::response::Response) -> String {
+    response
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .map(|value| {
+            value
+                .to_str()
+                .unwrap()
+                .split(';')
+                .next()
+                .unwrap()
+                .to_owned()
+        })
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+#[tokio::test]
+async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let router = fixture.graphql();
+    let response = graphql_operation(&router,
+        "mutation($input:EmailInput!){signinEmailRequest(input:$input){token lifetime{expiresInSeconds}}}",
+        serde_json::json!({"input":{"email":"james@midwess.com","delivery":"TOKEN"}}),None,None,false).await;
+    assert_eq!(response.status(), 200);
+    assert!(!response.headers().contains_key("set-cookie"));
+    let body = graphql_body(response).await;
+    let challenge = body["data"]["signinEmailRequest"]["token"]
+        .as_str()
+        .unwrap();
+    let claims = EmailOtpAccessToken::try_from(decode_token(challenge, SECRET).unwrap()).unwrap();
+    assert!(fixture.repo.0.lock().unwrap().logins.is_empty());
+    let response = graphql_operation(&router,
+        "mutation($input:EmailCodeInput!){signinEmailConfirm(input:$input){accessToken refreshToken}}",
+        serde_json::json!({"input":{"code":claims.code,"delivery":"TOKEN"}}),Some(challenge),None,false).await;
+    assert_eq!(response.status(), 200);
+    assert!(!response.headers().contains_key("set-cookie"));
+    let body = graphql_body(response).await;
+    let tokens = &body["data"]["signinEmailConfirm"];
+    let access = tokens["accessToken"].as_str().unwrap();
+    let refresh = tokens["refreshToken"].as_str().unwrap();
+    assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
+    assert_eq!(
+        graphql_request(&router, Some(access), None, false)
+            .await
+            .status(),
+        200
+    );
+    let response = graphql_operation(
+        &router,
+        "mutation{sessionRefresh{accessToken refreshToken}}",
+        serde_json::json!({}),
+        Some(refresh),
+        None,
+        false,
+    )
+    .await;
+    assert!(!response.headers().contains_key("set-cookie"));
+    let renewed = graphql_body(response).await;
+    let access = renewed["data"]["sessionRefresh"]["accessToken"]
+        .as_str()
+        .unwrap();
+    assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
+    let response = graphql_operation(
+        &router,
+        "mutation{sessionRevoke}",
+        serde_json::json!({}),
+        Some(access),
+        None,
+        false,
+    )
+    .await;
+    assert!(!response.headers().contains_key("set-cookie"));
+    assert_eq!(graphql_body(response).await["data"]["sessionRevoke"], true);
+    assert_eq!(
+        graphql_request(&router, Some(access), None, false)
+            .await
+            .status(),
+        401
+    );
+    fixture.assert_no_transaction();
+}
+
+#[tokio::test]
+async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before_effects() {
+    let fixture = Fixture::new(None);
+    let router = fixture.graphql();
+    let response = graphql_operation(&router,
+        "mutation($input:EmailInput!){signupEmailRequest(input:$input){token lifetime{expiresInSeconds}}}",
+        serde_json::json!({"input":{"email":"james@midwess.com"}}),None,None,true).await;
+    let cookies = response_cookies(&response);
+    assert_eq!(response.status(), 200);
+    assert!(graphql_body(response).await["data"]["signupEmailRequest"]["token"].is_null());
+    let challenge = cookies
+        .split(';')
+        .find_map(|value| value.trim().strip_prefix("compallm-access="))
+        .unwrap();
+    let claims = EmailOtpAccessToken::try_from(decode_token(challenge, SECRET).unwrap()).unwrap();
+    let input = serde_json::json!({"input":{"code":claims.code}});
+    // Aliases and fragments cannot conceal a second auth effect, even if skipped.
+    let response = graphql_operation(&router,
+        "mutation($input:EmailCodeInput!){...A second:signupEmailConfirm(input:$input) @skip(if:true){accessToken}} fragment A on Mutation{first:signupEmailConfirm(input:$input){accessToken}}",
+        input.clone(),None,Some(&cookies),true).await;
+    assert_eq!(response.status(), 400);
+    assert!(fixture.repo.0.lock().unwrap().created.is_none());
+    let query = "mutation($input:EmailCodeInput!){signupEmailConfirm(input:$input){accessToken refreshToken accessLifetime{expiresInSeconds}}}";
+    let response =
+        graphql_operation(&router, query, input.clone(), None, Some(&cookies), false).await;
+    assert_eq!(response.status(), 403);
+    assert!(fixture.repo.0.lock().unwrap().created.is_none());
+    let response = graphql_operation(&router, query, input, None, Some(&cookies), true).await;
+    let cookies = response_cookies(&response);
+    let body = graphql_body(response).await;
+    assert!(body["data"]["signupEmailConfirm"].is_object());
+    assert!(body["data"]["signupEmailConfirm"]["accessToken"].is_null());
+    assert!(body["data"]["signupEmailConfirm"]["refreshToken"].is_null());
+    assert!(fixture.repo.0.lock().unwrap().created.is_some());
+    assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
+    assert_eq!(
+        graphql_request(&router, None, Some(&cookies), true)
+            .await
+            .status(),
+        200
+    );
+    let response = graphql_operation(
+        &router,
+        "mutation{sessionRefresh{accessToken}}",
+        serde_json::json!({}),
+        None,
+        Some(&cookies),
+        true,
+    )
+    .await;
+    assert_eq!(response.status(), 401);
+    let response = graphql_operation(
+        &router,
+        "mutation{sessionRevoke}",
+        serde_json::json!({}),
+        None,
+        Some(&cookies),
+        true,
+    )
+    .await;
+    assert_eq!(response.headers().get_all("set-cookie").iter().count(), 2);
+    assert_eq!(graphql_body(response).await["data"]["sessionRevoke"], true);
+    assert_eq!(
+        graphql_request(&router, None, Some(&cookies), true)
+            .await
+            .status(),
+        401
+    );
 }

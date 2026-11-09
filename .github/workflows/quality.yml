@@ -110,6 +110,8 @@ jobs:
           npm --prefix ../libs/storybook run check
           npm --prefix ../libs/storybook run build
       - run: npm run lint:check
+      - name: Test authentication controller flows
+        run: npm test
       - name: Typecheck
         run: npm exec -- tsc -b
       - name: Build the frontend

@@ -13,6 +13,29 @@ export type Scalars = {
 /** How the request delivers credentials; this is never stored in signed claims. */
 export type CredentialDelivery = 'COOKIE' | 'TOKEN'
 
+/** Email admission succeeded; cookie delivery never exposes the OTP credential. */
+export interface EmailChallenge {
+  lifetime: TokenLifetime
+  token: Scalars['String'] | null
+  __typename: 'EmailChallenge'
+}
+
+export interface Mutation {
+  /** Explicit refresh Bearer only. Rebuild current authority; never set browser cookies. */
+  sessionRefresh: SessionCredentials
+  /** Revoke this verified login only. Clear cookie credentials after successful revocation. */
+  sessionRevoke: Scalars['Boolean']
+  /** Confirm an existing user's middleware-verified OTP challenge and create a scoped session. */
+  signinEmailConfirm: SessionCredentials
+  /** Request signin email admission for an existing active account. */
+  signinEmailRequest: EmailChallenge
+  /** Confirm the middleware-verified OTP challenge and atomically create the account and session. */
+  signupEmailConfirm: SessionCredentials
+  /** Request signup email admission. Reject existing accounts before sending or issuing a challenge. */
+  signupEmailRequest: EmailChallenge
+  __typename: 'Mutation'
+}
+
 /** Catalog connection family hint; each configured model selects its own operation. */
 export type ProviderApiProtocol = 'ANTHROPIC' | 'OPENAI_COMPATIBLE' | 'PROVIDER_SPECIFIC'
 
@@ -66,8 +89,34 @@ export interface Session {
   __typename: 'Session'
 }
 
+/** Timing is always returned; credential values exist only in explicit TOKEN delivery. */
+export interface SessionCredentials {
+  accessLifetime: TokenLifetime
+  accessToken: Scalars['String'] | null
+  refreshLifetime: TokenLifetime
+  refreshToken: Scalars['String'] | null
+  __typename: 'SessionCredentials'
+}
+
 /** Text operation determining the upstream request and response format. */
 export type TextModelProtocol = 'ANTHROPIC_MESSAGES' | 'OPENAI_CHAT_COMPLETIONS' | 'OPENAI_RESPONSES'
+
+/** Exact Unix-second validity and client throttle values encoded as decimal strings. */
+export interface TokenLifetime {
+  expiresAt: Scalars['String']
+  expiresInSeconds: Scalars['String']
+  issuedAt: Scalars['String']
+  throttleSeconds: Scalars['String']
+  __typename: 'TokenLifetime'
+}
+
+/** Email admission succeeded; cookie delivery never exposes the OTP credential. */
+export interface EmailChallengeGenqlSelection {
+  lifetime?: TokenLifetimeGenqlSelection
+  token?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
 
 /**
  * Shared input for confirming a signup or signin email challenge.
@@ -79,7 +128,7 @@ export interface EmailCodeInput {
   /** Exactly six ASCII digits after trimming surrounding whitespace. */
   code: Scalars['String']
   /** Cookie delivery is the default; token delivery must be requested explicitly. */
-  delivery?: CredentialDelivery
+  delivery?: CredentialDelivery | null
 }
 
 /**
@@ -90,9 +139,26 @@ export interface EmailCodeInput {
  */
 export interface EmailInput {
   /** Cookie delivery is the default; token delivery must be requested explicitly. */
-  delivery?: CredentialDelivery
+  delivery?: CredentialDelivery | null
   /** Trimmed and ASCII-lowercased using the shared Rust email policy. */
   email: Scalars['String']
+}
+
+export interface MutationGenqlSelection {
+  /** Explicit refresh Bearer only. Rebuild current authority; never set browser cookies. */
+  sessionRefresh?: SessionCredentialsGenqlSelection
+  /** Revoke this verified login only. Clear cookie credentials after successful revocation. */
+  sessionRevoke?: boolean | number
+  /** Confirm an existing user's middleware-verified OTP challenge and create a scoped session. */
+  signinEmailConfirm?: SessionCredentialsGenqlSelection & { __args: { input: EmailCodeInput } }
+  /** Request signin email admission for an existing active account. */
+  signinEmailRequest?: EmailChallengeGenqlSelection & { __args: { input: EmailInput } }
+  /** Confirm the middleware-verified OTP challenge and atomically create the account and session. */
+  signupEmailConfirm?: SessionCredentialsGenqlSelection & { __args: { input: EmailCodeInput } }
+  /** Request signup email admission. Reject existing accounts before sending or issuing a challenge. */
+  signupEmailRequest?: EmailChallengeGenqlSelection & { __args: { input: EmailInput } }
+  __typename?: boolean | number
+  __scalar?: boolean | number
 }
 
 /** Opaque registry identity, independent of an edited upstream model name. */
@@ -218,6 +284,38 @@ export interface SessionGenqlSelection {
   __scalar?: boolean | number
 }
 
+/** Timing is always returned; credential values exist only in explicit TOKEN delivery. */
+export interface SessionCredentialsGenqlSelection {
+  accessLifetime?: TokenLifetimeGenqlSelection
+  accessToken?: boolean | number
+  refreshLifetime?: TokenLifetimeGenqlSelection
+  refreshToken?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+/** Exact Unix-second validity and client throttle values encoded as decimal strings. */
+export interface TokenLifetimeGenqlSelection {
+  expiresAt?: boolean | number
+  expiresInSeconds?: boolean | number
+  issuedAt?: boolean | number
+  throttleSeconds?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+const EmailChallenge_possibleTypes: string[] = ['EmailChallenge']
+export const isEmailChallenge = (obj?: { __typename?: any } | null): obj is EmailChallenge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isEmailChallenge"')
+  return EmailChallenge_possibleTypes.includes(obj.__typename)
+}
+
+const Mutation_possibleTypes: string[] = ['Mutation']
+export const isMutation = (obj?: { __typename?: any } | null): obj is Mutation => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isMutation"')
+  return Mutation_possibleTypes.includes(obj.__typename)
+}
+
 const ProviderTemplate_possibleTypes: string[] = ['ProviderTemplate']
 export const isProviderTemplate = (obj?: { __typename?: any } | null): obj is ProviderTemplate => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isProviderTemplate"')
@@ -234,6 +332,18 @@ const Session_possibleTypes: string[] = ['Session']
 export const isSession = (obj?: { __typename?: any } | null): obj is Session => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isSession"')
   return Session_possibleTypes.includes(obj.__typename)
+}
+
+const SessionCredentials_possibleTypes: string[] = ['SessionCredentials']
+export const isSessionCredentials = (obj?: { __typename?: any } | null): obj is SessionCredentials => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isSessionCredentials"')
+  return SessionCredentials_possibleTypes.includes(obj.__typename)
+}
+
+const TokenLifetime_possibleTypes: string[] = ['TokenLifetime']
+export const isTokenLifetime = (obj?: { __typename?: any } | null): obj is TokenLifetime => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTokenLifetime"')
+  return TokenLifetime_possibleTypes.includes(obj.__typename)
 }
 
 export const enumCredentialDelivery = {

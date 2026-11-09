@@ -49,8 +49,16 @@
         },
         "delivery": {
           "description": "Cookie delivery is the default; token delivery must be requested explicitly.",
-          "$ref": "#/$defs/CredentialDelivery",
-          "default": "COOKIE"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CredentialDelivery"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "COOKIE",
+          "x-compallm-non-null": true
         }
       },
       "additionalProperties": false,
@@ -88,8 +96,16 @@
         },
         "delivery": {
           "description": "Cookie delivery is the default; token delivery must be requested explicitly.",
-          "$ref": "#/$defs/CredentialDelivery",
-          "default": "COOKIE"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CredentialDelivery"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "COOKIE",
+          "x-compallm-non-null": true
         }
       },
       "additionalProperties": false,
@@ -307,7 +323,8 @@
       "description": "Positive u32 context size, encoded as an exact JSON number (1–4294967295).",
       "type": "integer",
       "format": "uint32",
-      "minimum": 1
+      "minimum": 1,
+      "maximum": 4294967295
     },
     "ProviderEffortMapping": {
       "description": "Empty object means no configured effort levels. Configured values cannot be empty.",

@@ -18,7 +18,8 @@
     "preview": "vite preview",
     "lint:check": "eslint . && prettier . --check",
     "check": "tsc -b",
-    "postinstall": "npm --prefix ../libs/contract ci --ignore-scripts && npm --prefix ../libs/contract run build"
+    "postinstall": "npm --prefix ../libs/contract ci --ignore-scripts && npm --prefix ../libs/contract run build",
+    "test": "node --test tests/*.mjs"
   },
   "dependencies": {
     "@compallm/storybook": "file:../libs/storybook",

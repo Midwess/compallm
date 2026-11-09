@@ -1,5 +1,6 @@
 schema {
   query: Query
+  mutation: Mutation
 }
 
 "How the request delivers credentials; this is never stored in signed claims."
@@ -50,7 +51,7 @@ input EmailCodeInput {
   "Exactly six ASCII digits after trimming surrounding whitespace."
   code: String!
   "Cookie delivery is the default; token delivery must be requested explicitly."
-  delivery: CredentialDelivery! = COOKIE
+  delivery: CredentialDelivery = COOKIE
 }
 
 """
@@ -63,7 +64,7 @@ input EmailInput {
   "Trimmed and ASCII-lowercased using the shared Rust email policy."
   email: String!
   "Cookie delivery is the default; token delivery must be requested explicitly."
-  delivery: CredentialDelivery! = COOKIE
+  delivery: CredentialDelivery = COOKIE
 }
 
 "Opaque registry identity, independent of an edited upstream model name."
@@ -154,6 +155,27 @@ input ProvidersCreateInput {
 "Positive u32 context size, encoded as an exact JSON number (1–4294967295)."
 scalar ContextTokens
 
+"Email admission succeeded; cookie delivery never exposes the OTP credential."
+type EmailChallenge {
+  lifetime: TokenLifetime!
+  token: String
+}
+
+type Mutation {
+  "Request signup email admission. Reject existing accounts before sending or issuing a challenge."
+  signupEmailRequest(input: EmailInput!): EmailChallenge!
+  "Request signin email admission for an existing active account."
+  signinEmailRequest(input: EmailInput!): EmailChallenge!
+  "Confirm the middleware-verified OTP challenge and atomically create the account and session."
+  signupEmailConfirm(input: EmailCodeInput!): SessionCredentials!
+  "Confirm an existing user's middleware-verified OTP challenge and create a scoped session."
+  signinEmailConfirm(input: EmailCodeInput!): SessionCredentials!
+  "Explicit refresh Bearer only. Rebuild current authority; never set browser cookies."
+  sessionRefresh: SessionCredentials!
+  "Revoke this verified login only. Clear cookie credentials after successful revocation."
+  sessionRevoke: Boolean!
+}
+
 "Public catalog defaults; selecting a template creates no configured provider."
 type ProviderTemplate {
   "Global opaque catalog identity, independent of organization resource IDs."
@@ -184,4 +206,20 @@ type Session {
   organizationId: ID!
   "Signed display snapshot; the name never establishes organization authority."
   organizationName: String!
+}
+
+"Timing is always returned; credential values exist only in explicit TOKEN delivery."
+type SessionCredentials {
+  accessLifetime: TokenLifetime!
+  refreshLifetime: TokenLifetime!
+  accessToken: String
+  refreshToken: String
+}
+
+"Exact Unix-second validity and client throttle values encoded as decimal strings."
+type TokenLifetime {
+  issuedAt: String!
+  expiresAt: String!
+  expiresInSeconds: String!
+  throttleSeconds: String!
 }

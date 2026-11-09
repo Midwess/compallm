@@ -146,6 +146,13 @@ impl Di {
         }
     }
 
+    /// Supply an existing service before the container reaches its permanent address.
+    /// All request projections then borrow this same instance.
+    pub fn with_auth_service(mut self, auth: AuthService) -> Self {
+        self.auth = OnceLock::from(Box::new(auth));
+        self
+    }
+
     pub fn initialize_services(&'static self) -> Result<(), AuthError> {
         self.mailing_worker();
         self.organization_config_service();

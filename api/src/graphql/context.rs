@@ -1,21 +1,29 @@
 use compallm_core::auth::AuthService;
 use juniper::FromContext;
 
-use crate::{di::Di, middleware::authentication::VerifiedAccess};
+use crate::{
+    di::Di,
+    middleware::authentication::{CookieDelivery, RequestIdentity},
+};
 
 /// Request-local identity and a reference to the application's existing DI.
 ///
 /// Resolvers receive projected dependencies, never this container or DI itself.
 pub struct GraphqlContext {
     di: &'static Di,
-    access: VerifiedAccess,
+    identity: RequestIdentity,
+    delivery: CookieDelivery,
 }
 
 impl juniper::Context for GraphqlContext {}
 
 impl GraphqlContext {
-    pub fn new(di: &'static Di, access: VerifiedAccess) -> Self {
-        Self { di, access }
+    pub fn new(di: &'static Di, identity: RequestIdentity, delivery: CookieDelivery) -> Self {
+        Self {
+            di,
+            identity,
+            delivery,
+        }
     }
 }
 
@@ -25,8 +33,14 @@ impl FromContext<GraphqlContext> for AuthService {
     }
 }
 
-impl FromContext<GraphqlContext> for VerifiedAccess {
+impl FromContext<GraphqlContext> for RequestIdentity {
     fn from(context: &GraphqlContext) -> &Self {
-        &context.access
+        &context.identity
+    }
+}
+
+impl FromContext<GraphqlContext> for CookieDelivery {
+    fn from(context: &GraphqlContext) -> &Self {
+        &context.delivery
     }
 }

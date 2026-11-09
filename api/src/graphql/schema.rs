@@ -1,18 +1,17 @@
 use juniper::{
-    Arguments, DefaultScalarValue, EmptyMutation, EmptySubscription, ExecutionResult, Executor,
-    GraphQLType, GraphQLValue, GraphQLValueAsync, Registry, RootNode, graphql_object,
+    Arguments, DefaultScalarValue, EmptySubscription, ExecutionResult, Executor, GraphQLType,
+    GraphQLValue, GraphQLValueAsync, Registry, RootNode, graphql_object,
 };
 use std::sync::Arc;
 
-use crate::middleware::authentication::VerifiedAccess;
+use crate::middleware::authentication::RequestIdentity;
 
 use super::{
     GraphqlContext,
-    auth::{self, Session},
+    auth::{self, Mutation, Session},
 };
 
-pub type ApplicationSchema =
-    Arc<RootNode<Query, EmptyMutation<GraphqlContext>, EmptySubscription<GraphqlContext>>>;
+pub type ApplicationSchema = Arc<RootNode<Query, Mutation, EmptySubscription<GraphqlContext>>>;
 
 /// Flat public query root delegating to domain-owned operations.
 pub struct Query;
@@ -25,8 +24,10 @@ impl QueryFields {
     ///
     /// Requires active, current user access. No credentials, policy source, or
     /// freshness internals are exposed; no user/organization hydration is performed.
-    fn session(#[graphql(context)] access: &VerifiedAccess) -> Session {
-        auth::query::session(access)
+    fn session(
+        #[graphql(context)] identity: &RequestIdentity,
+    ) -> Result<Session, super::error::Error> {
+        Ok(auth::query::session(identity.user()?))
     }
 }
 
@@ -86,7 +87,7 @@ impl GraphQLValueAsync for Query {
 /// Construct the shared schema without storing any caller or service state.
 pub fn build_schema(max_depth: usize, max_fields: usize, max_tokens: usize) -> ApplicationSchema {
     Arc::new(
-        RootNode::new(Query, EmptyMutation::new(), EmptySubscription::new())
+        RootNode::new(Query, Mutation, EmptySubscription::new())
             .limit_depth(max_depth)
             .limit_fields(max_fields)
             .limit_tokens(max_tokens),

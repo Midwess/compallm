@@ -1,5 +1,5 @@
 // @ts-nocheck
-import type { QueryGenqlSelection, Query } from './schema.ts'
+import type { QueryGenqlSelection, Query, MutationGenqlSelection, Mutation } from './schema.ts'
 import {
   linkTypeMap,
   createClient as createClientOriginal,
@@ -18,6 +18,8 @@ const typeMap = linkTypeMap(types as any)
 
 export interface Client {
   query<R extends QueryGenqlSelection>(request: R & { __name?: string }): Promise<FieldsSelection<Query, R>>
+
+  mutation<R extends MutationGenqlSelection>(request: R & { __name?: string }): Promise<FieldsSelection<Mutation, R>>
 }
 
 export const createClient = function (options?: ClientOptions): Client {
@@ -40,4 +42,11 @@ export const generateQueryOp: (fields: QueryGenqlSelection & { __name?: string }
   fields,
 ) {
   return generateGraphqlOperation('query', typeMap.Query!, fields as any)
+}
+
+export type MutationResult<fields extends MutationGenqlSelection> = FieldsSelection<Mutation, fields>
+export const generateMutationOp: (fields: MutationGenqlSelection & { __name?: string }) => GraphqlOperation = function (
+  fields,
+) {
+  return generateGraphqlOperation('mutation', typeMap.Mutation!, fields as any)
 }

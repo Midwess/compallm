@@ -3,7 +3,7 @@ use compallm_validation_derive::ExportValidation;
 use juniper::{GraphQLEnum, GraphQLInputObject};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use validify::{ValidationError, Validify};
+use validify::{ValidationError, ValidationErrors, Validify};
 
 /// How the request delivers credentials; this is never stored in signed claims.
 #[derive(Clone, Copy, Default, GraphQLEnum, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
@@ -22,15 +22,17 @@ pub enum CredentialDelivery {
 /// normalization, application validation, or email ownership checks.
 #[derive(GraphQLInputObject, Validify, ExportValidation)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[validate(Self::validate_delivery)]
 pub struct EmailInput {
     /// Trimmed and ASCII-lowercased using the shared Rust email policy.
     #[modify(trim, custom(str::make_ascii_lowercase))]
     #[validate(custom(function = email::validate_email))]
     pub email: String,
     /// Cookie delivery is the default; token delivery must be requested explicitly.
-    #[graphql(default)]
-    #[serde(default)]
-    pub delivery: CredentialDelivery,
+    #[graphql(default = cookie_delivery())]
+    #[serde(default = "cookie_delivery")]
+    #[schemars(extend("x-compallm-non-null" = true))]
+    pub delivery: Option<CredentialDelivery>,
 }
 
 /// Shared input for confirming a signup or signin email challenge.
@@ -39,15 +41,17 @@ pub struct EmailInput {
 /// The adapter calls `validify()` before Core verifies the code and challenge.
 #[derive(GraphQLInputObject, Validify, ExportValidation)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[validate(Self::validate_delivery)]
 pub struct EmailCodeInput {
     /// Exactly six ASCII digits after trimming surrounding whitespace.
     #[modify(trim)]
     #[validate(length(equal = 6), custom(function = Self::ascii_digits))]
     pub code: String,
     /// Cookie delivery is the default; token delivery must be requested explicitly.
-    #[graphql(default)]
-    #[serde(default)]
-    pub delivery: CredentialDelivery,
+    #[graphql(default = cookie_delivery())]
+    #[serde(default = "cookie_delivery")]
+    #[schemars(extend("x-compallm-non-null" = true))]
+    pub delivery: Option<CredentialDelivery>,
 }
 
 impl EmailCodeInput {
@@ -62,4 +66,35 @@ impl EmailCodeInput {
             .then_some(())
             .ok_or_else(|| ValidationError::new_field("code"))
     }
+}
+
+fn cookie_delivery() -> Option<CredentialDelivery> {
+    Some(CredentialDelivery::Cookie)
+}
+
+impl EmailInput {
+    fn validate_delivery(value: &Self) -> Result<(), ValidationErrors> {
+        require_delivery(value.delivery)
+    }
+    fn validate_delivery_contract() -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+impl EmailCodeInput {
+    fn validate_delivery(value: &Self) -> Result<(), ValidationErrors> {
+        require_delivery(value.delivery)
+    }
+    fn validate_delivery_contract() -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+fn require_delivery(value: Option<CredentialDelivery>) -> Result<(), ValidationErrors> {
+    if value.is_some() {
+        return Ok(());
+    }
+    let mut errors = ValidationErrors::new();
+    errors.add(ValidationError::new_field("delivery"));
+    Err(errors)
 }

@@ -23,12 +23,22 @@
     "./types": {
       "types": "./dist/types.d.ts",
       "import": "./dist/types.js"
+    },
+    "./graphql": {
+      "types": "./dist/graphql.d.ts",
+      "import": "./dist/graphql.js"
     }
   },
   "dependencies": {
+    "@graphql-typed-document-node/core": "^3.2.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^8.0.0",
+    "@graphql-codegen/client-preset": "^7.0.0",
+    "@graphql-codegen/typescript": "^7.0.0",
+    "graphql": "^16.15.0",
+    "prettier": "^3.9.10",
     "typescript": "~6.0.3"
   }
 }

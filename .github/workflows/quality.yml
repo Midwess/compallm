@@ -79,6 +79,11 @@ jobs:
           cache-dependency-path: portal/package-lock.json
       - name: Install shared form dependencies
         run: npm ci --prefix portal
+      - name: Regenerate Rust-owned GraphQL and validation contracts
+        run: |
+          cargo run --locked -p compallm-api -- generate
+          git diff --exit-code -- libs/contract
+          test -z "$(git ls-files --others --exclude-standard -- libs/contract)"
       - name: Check shared offline form contracts
         run: node --test test/tests/input_contract.mjs test/tests/provider_form_contract.mjs
 

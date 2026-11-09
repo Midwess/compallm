@@ -79,7 +79,7 @@ Apply the same reader-first principles to consumers rather than internal reviewe
 
 Rust owns the GraphQL schema and validation rules. Follow the [application API](https://github.com/Midwess/compallm/wiki/API-reference) and [GraphQL guidelines](https://github.com/Midwess/compallm/wiki/GraphQL-guidelines). Keep operation descriptions sourced from Rust and preserve them in generated TypeScript JSDoc. Frontend operation selections are authored inputs, not a second schema.
 
-The single Cargo generation command is planned after transport cleanup. Do not invoke a generator that is not implemented or restore obsolete endpoint-generation crates and derives. Interim offline form types and validators are not active endpoint contracts. Public guides describe actually exposed operations; schema examples remain explicitly illustrative until runtime integration lands.
+The single `cargo run -p compallm-api -- generate` command exports Juniper SDL and Validify metadata, invokes GraphQL Code Generator, emits shared Zod/form contracts, and builds the package without backend startup or migrations. ExportValidation uses Schemars and explicit custom-rule metadata. Offline provider form contracts do not expose operations; safe response/catalog display snapshots remain interim. Public guides describe actually exposed operations, and examples for future operations remain illustrative.
 
 Publish API documentation in the separate Wiki and maintain page/navigation links together. Preserve generated-file ownership when a replacement generator exists. Neither startup, builds, nor ordinary generation may publish the Wiki automatically. Documentation generation and verification must not start the application or execute migrations.
 

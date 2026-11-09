@@ -20,6 +20,12 @@ pub(crate) fn node_binary(root: &Path, name: &str) -> PathBuf {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    if std::env::args().nth(1).as_deref() == Some("generate") {
+        if std::env::args().len() != 2 {
+            return Err("generate accepts no arguments".into());
+        }
+        return compallm_api::generation::generate();
+    }
     cli::main::<App, Migrator>()
         .await
         .map_err(|error| Box::new(error) as Box<dyn Error>)

@@ -1,0 +1,8 @@
+query CurrentSession {
+  session {
+    id
+    userId
+    organizationId
+    organizationName
+  }
+}

@@ -8,3 +8,7 @@ pub mod handlers;
 
 pub mod di;
 pub mod workers;
+
+pub mod contract;
+
+pub mod generation;

@@ -10,6 +10,8 @@ publish = false
 workspace = true
 
 [dependencies]
+schemars.workspace = true
+compallm-validation-derive.workspace = true
 juniper.workspace = true
 juniper_axum.workspace = true
 cookie.workspace = true

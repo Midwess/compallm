@@ -1,5 +1,5 @@
-use async_graphql::{ID, Object};
 use compallm_core::user::User as CoreUser;
+use juniper::{ID, graphql_object};
 
 /// Public identity fields backed directly by the existing Core entity.
 ///
@@ -12,15 +12,15 @@ impl From<CoreUser> for User {
     }
 }
 
-#[Object]
+#[graphql_object]
 impl User {
     /// Stable user identity, serialized as a string.
-    async fn id(&self) -> ID {
-        ID(self.0.id.to_string())
+    fn id(&self) -> ID {
+        ID::new(self.0.id.to_string())
     }
 
     /// Display name; this field does not establish identity or uniqueness.
-    async fn display_name(&self) -> &str {
+    fn display_name(&self) -> &str {
         &self.0.display_name
     }
 }

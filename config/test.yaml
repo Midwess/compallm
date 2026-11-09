@@ -24,7 +24,8 @@ settings:
       <%= get_env(name="AUTH_PUBLIC_ORIGIN", default="") | indent(width=6) %>
     max_body_bytes: 65536
     max_depth: 16
-    max_complexity: 256
+    max_fields: 256
+    max_tokens: 15000
   auth:
     jwt_secret: "test-signing-secret-at-least-32-bytes"
     user_token_ttl_seconds: 1800

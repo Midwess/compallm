@@ -14,20 +14,24 @@ use compallm_core::{
 use compallm_postgres::postgres_connection::PostgresConnection;
 use loco_rs::app::AppContext;
 use serde::Deserialize;
-use std::{sync::OnceLock, time::Duration};
+use std::{
+    sync::{Arc, OnceLock},
+    time::Duration,
+};
 use tokio::sync::OnceCell;
 
 static DI: OnceCell<Di> = OnceCell::const_new();
 
 /// HTTP cookie policy and GraphQL request bounds from application configuration.
 #[derive(Clone, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct GraphqlSettings {
     pub cookie_secure: bool,
     pub public_origin: String,
     pub max_body_bytes: usize,
     pub max_depth: usize,
-    pub max_complexity: usize,
+    pub max_fields: usize,
+    pub max_tokens: usize,
 }
 
 impl Default for GraphqlSettings {
@@ -37,7 +41,8 @@ impl Default for GraphqlSettings {
             public_origin: String::new(),
             max_body_bytes: 65_536,
             max_depth: 16,
-            max_complexity: 256,
+            max_fields: 256,
+            max_tokens: 15_000,
         }
     }
 }
@@ -72,6 +77,7 @@ pub struct Di {
     settings: AuthSettings,
     graphql_settings: GraphqlSettings,
     graphql: OnceLock<ApplicationSchema>,
+    graphql_services: OnceLock<Arc<Services>>,
     authentication: OnceLock<Authentication>,
     // Filled after Di reaches its permanent address so services can borrow it.
     auth: OnceLock<Box<AuthService>>,
@@ -136,6 +142,7 @@ impl Di {
             settings,
             graphql_settings,
             graphql: OnceLock::new(),
+            graphql_services: OnceLock::new(),
             authentication: OnceLock::new(),
             auth: OnceLock::new(),
             registration: OnceLock::new(),
@@ -174,7 +181,11 @@ impl Di {
 
     fn initialize_http(&'static self) -> Result<(), AuthError> {
         let settings = &self.graphql_settings;
-        if settings.max_body_bytes == 0 || settings.max_depth == 0 || settings.max_complexity == 0 {
+        if settings.max_body_bytes == 0
+            || settings.max_depth == 0
+            || settings.max_fields == 0
+            || settings.max_tokens == 0
+        {
             return Err(AuthError::InvalidConfiguration);
         }
         if self.authentication.get().is_none() {
@@ -188,16 +199,21 @@ impl Di {
             )?;
             let _ = self.authentication.set(authentication);
         }
+        self.graphql_services.get_or_init(|| {
+            Arc::new(Services {
+                auth: self.auth_service(),
+            })
+        });
         self.graphql.get_or_init(|| {
-            build_schema(
-                Services {
-                    auth: self.auth_service(),
-                },
-                settings.max_depth,
-                settings.max_complexity,
-            )
+            build_schema(settings.max_depth, settings.max_fields, settings.max_tokens)
         });
         Ok(())
+    }
+
+    pub fn graphql_services(&self) -> &Arc<Services> {
+        self.graphql_services
+            .get()
+            .expect("GraphQL services must be initialized")
     }
 
     pub fn graphql_schema(&self) -> &ApplicationSchema {

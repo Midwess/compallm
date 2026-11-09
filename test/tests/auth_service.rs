@@ -544,7 +544,8 @@ impl Fixture {
         };
         let db = Box::leak(Box::new(self.repo.1.clone()));
         let auth = Box::leak(Box::new(self.service()));
-        let schema = build_schema(Services { auth }, 16, 256);
+        let schema = build_schema(16, 256, 15_000);
+        let services = Arc::new(Services { auth });
         let authentication = Authentication::new(
             db,
             auth,
@@ -558,6 +559,7 @@ impl Fixture {
             "/api/graphql",
             post(handlers::graphql)
                 .with_state(schema)
+                .layer(axum::Extension(services))
                 .route_layer(from_fn_with_state(
                     authentication,
                     authentication::authenticate,

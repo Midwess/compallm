@@ -1,5 +1,5 @@
-use async_graphql::{ID, Object};
 use compallm_core::provider::{Provider as CoreProvider, ProviderModel as CoreProviderModel};
+use juniper::{ID, graphql_object};
 
 /// Safe provider metadata returned after establishing the caller's permission.
 ///
@@ -12,20 +12,20 @@ impl From<CoreProvider> for Provider {
     }
 }
 
-#[Object]
+#[graphql_object]
 impl Provider {
     /// Stable provider identity, serialized as a string.
-    async fn id(&self) -> ID {
-        ID(self.0.id.to_string())
+    fn id(&self) -> ID {
+        ID::new(self.0.id.to_string())
     }
 
     /// Owning organization; a supplied identifier never grants access.
-    async fn organization_id(&self) -> ID {
-        ID(self.0.organization_id.to_string())
+    fn organization_id(&self) -> ID {
+        ID::new(self.0.organization_id.to_string())
     }
 
     /// Provider display name within its organization.
-    async fn name(&self) -> &str {
+    fn name(&self) -> &str {
         &self.0.name
     }
 }
@@ -39,30 +39,30 @@ impl From<CoreProviderModel> for ProviderModel {
     }
 }
 
-#[Object]
+#[graphql_object]
 impl ProviderModel {
     /// Stable configured-model identity, serialized as a string.
-    async fn id(&self) -> ID {
-        ID(self.0.id.to_string())
+    fn id(&self) -> ID {
+        ID::new(self.0.id.to_string())
     }
 
     /// Owning organization identity.
-    async fn organization_id(&self) -> ID {
-        ID(self.0.organization_id.to_string())
+    fn organization_id(&self) -> ID {
+        ID::new(self.0.organization_id.to_string())
     }
 
     /// Owning provider identity.
-    async fn provider_id(&self) -> ID {
-        ID(self.0.provider_id.to_string())
+    fn provider_id(&self) -> ID {
+        ID::new(self.0.provider_id.to_string())
     }
 
     /// Configured upstream model name.
-    async fn name(&self) -> &str {
+    fn name(&self) -> &str {
         &self.0.name
     }
 
     /// Configured availability; this flag alone does not authorize invocation.
-    async fn enabled(&self) -> bool {
+    fn enabled(&self) -> bool {
         self.0.enabled
     }
 }

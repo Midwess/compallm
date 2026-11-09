@@ -1,22 +1,34 @@
-use async_graphql::{EmptyMutation, EmptySubscription, MergedObject, Schema};
+use juniper::{EmptyMutation, EmptySubscription, RootNode, graphql_object};
+use std::sync::Arc;
 
-use super::{Services, auth::AuthQuery};
+use super::{
+    GraphqlContext,
+    auth::{self, Session},
+};
 
-pub type ApplicationSchema = Schema<Query, EmptyMutation, EmptySubscription>;
+pub type ApplicationSchema =
+    Arc<RootNode<Query, EmptyMutation<GraphqlContext>, EmptySubscription<GraphqlContext>>>;
 
-/// Flat public query root composed from domain-owned operations.
-#[derive(Default, MergedObject)]
-pub struct Query(AuthQuery);
+/// Flat public query root delegating to domain-owned operations.
+pub struct Query;
 
-/// Construct the shared schema from DI-provided services and execution limits.
-pub fn build_schema(
-    services: Services,
-    max_depth: usize,
-    max_complexity: usize,
-) -> ApplicationSchema {
-    Schema::build(Query::default(), EmptyMutation, EmptySubscription)
-        .data(services)
-        .limit_depth(max_depth)
-        .limit_complexity(max_complexity)
-        .finish()
+#[graphql_object(context = GraphqlContext)]
+impl Query {
+    /// Read the selected login's verified identity and organization-name snapshot.
+    ///
+    /// Requires active, current user access. No credentials, policy source, or
+    /// freshness internals are exposed; no user/organization hydration is performed.
+    fn session(context: &GraphqlContext) -> Session {
+        auth::query::session(context)
+    }
+}
+
+/// Construct the shared schema without storing any caller or service state.
+pub fn build_schema(max_depth: usize, max_fields: usize, max_tokens: usize) -> ApplicationSchema {
+    Arc::new(
+        RootNode::new(Query, EmptyMutation::new(), EmptySubscription::new())
+            .limit_depth(max_depth)
+            .limit_fields(max_fields)
+            .limit_tokens(max_tokens),
+    )
 }

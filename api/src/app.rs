@@ -159,7 +159,9 @@ impl Hooks for App {
     }
 
     async fn before_routes(_ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
-        use axum::{extract::DefaultBodyLimit, middleware::from_fn_with_state, routing::post};
+        use axum::{
+            Extension, extract::DefaultBodyLimit, middleware::from_fn_with_state, routing::post,
+        };
         use compallm_api::{handlers, middleware::authentication};
 
         let di = Di::instance();
@@ -167,6 +169,7 @@ impl Hooks for App {
             "/api/graphql",
             post(handlers::graphql)
                 .with_state(di.graphql_schema().clone())
+                .layer(Extension(di.graphql_services().clone()))
                 .route_layer(from_fn_with_state(
                     di.authentication().clone(),
                     authentication::authenticate,

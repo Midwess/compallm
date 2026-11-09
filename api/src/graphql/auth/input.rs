@@ -1,9 +1,9 @@
-use async_graphql::{Enum, InputObject};
 use compallm_utils::email;
+use juniper::{GraphQLEnum, GraphQLInputObject};
 use validify::{ValidationError, Validify};
 
 /// How the request delivers credentials; this is never stored in signed claims.
-#[derive(Clone, Copy, Default, Enum, Eq, PartialEq)]
+#[derive(Clone, Copy, Default, GraphQLEnum, Eq, PartialEq)]
 pub enum CredentialDelivery {
     /// Set HttpOnly cookies and return metadata without credential values.
     #[default]
@@ -16,10 +16,9 @@ pub enum CredentialDelivery {
 ///
 /// Call `validify()` before Core execution. GraphQL parsing alone does not run
 /// normalization, application validation, or email ownership checks.
-#[derive(InputObject, Validify)]
+#[derive(GraphQLInputObject, Validify)]
 pub struct EmailInput {
     /// Trimmed and ASCII-lowercased using the shared Rust email policy.
-    #[graphql(secret)]
     #[modify(trim, custom(str::make_ascii_lowercase))]
     #[validate(custom(function = email::validate_email))]
     pub email: String,
@@ -32,10 +31,9 @@ pub struct EmailInput {
 ///
 /// The verified encrypted challenge comes from request context, never this input.
 /// The adapter calls `validify()` before Core verifies the code and challenge.
-#[derive(InputObject, Validify)]
+#[derive(GraphQLInputObject, Validify)]
 pub struct EmailCodeInput {
     /// Exactly six ASCII digits after trimming surrounding whitespace.
-    #[graphql(secret)]
     #[modify(trim)]
     #[validate(length(equal = 6), custom(function = Self::ascii_digits))]
     pub code: String,

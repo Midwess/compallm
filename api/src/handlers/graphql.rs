@@ -1,29 +1,31 @@
 //! Axum adapter for GraphQL execution; routing belongs to the application.
-use crate::{graphql::ApplicationSchema, middleware::authentication::VerifiedAccess};
-use async_graphql::{Error, ErrorExtensions};
-use async_graphql_axum::GraphQLResponse;
+use crate::{
+    graphql::{ApplicationSchema, GraphqlContext, Services},
+    middleware::authentication::VerifiedAccess,
+};
 use axum::{
     Extension, Json,
     extract::{State, rejection::JsonRejection},
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use juniper::http::{GraphQLBatchResponse, GraphQLRequest};
+use juniper_axum::response::JuniperResponse;
+use std::sync::Arc;
 
 pub async fn handle(
     State(schema): State<ApplicationSchema>,
     Extension(identity): Extension<VerifiedAccess>,
-    request: Result<Json<async_graphql::Request>, JsonRejection>,
+    Extension(services): Extension<Arc<Services>>,
+    request: Result<Json<GraphQLRequest>, JsonRejection>,
 ) -> Response {
     match request {
         Ok(Json(request)) => {
-            let result = schema.execute(request.data(identity)).await;
-            let request_failed = !result.errors.is_empty()
-                && result.errors.iter().all(|error| error.path.is_empty());
-            let mut response = GraphQLResponse::from(result).into_response();
-            if request_failed {
-                *response.status_mut() = StatusCode::BAD_REQUEST;
-            }
-            response
+            let context = GraphqlContext::new(services, identity);
+            JuniperResponse(GraphQLBatchResponse::Single(
+                request.execute(schema.as_ref(), &context).await,
+            ))
+            .into_response()
         }
         Err(error) => {
             let status = match error.status() {
@@ -43,11 +45,11 @@ pub async fn handle(
 }
 
 fn error_response(status: StatusCode, code: &'static str, message: &'static str) -> Response {
-    let error = Error::new(message).extend_with(|_, extensions| extensions.set("code", code));
-    let result = async_graphql::Response::from_errors(vec![
-        error.into_server_error(async_graphql::Pos::default()),
-    ]);
-    let mut response = GraphQLResponse::from(result).into_response();
-    *response.status_mut() = status;
-    response
+    (
+        status,
+        Json(serde_json::json!({
+            "errors": [{ "message": message, "extensions": { "code": code } }]
+        })),
+    )
+        .into_response()
 }

@@ -10,8 +10,8 @@ publish = false
 workspace = true
 
 [dependencies]
-async-graphql.workspace = true
-async-graphql-axum.workspace = true
+juniper.workspace = true
+juniper_axum.workspace = true
 cookie.workspace = true
 validify.workspace = true
 compallm-utils.workspace = true

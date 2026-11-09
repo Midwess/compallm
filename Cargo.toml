@@ -11,8 +11,8 @@ license = "Elastic-2.0"
 borrowed_box = "allow"
 
 [workspace.dependencies]
-async-graphql = { version = "7.2.1", default-features = false }
-async-graphql-axum = { version = "7.2.1", default-features = false }
+juniper = { version = "0.18.0", default-features = false }
+juniper_axum = { version = "0.4.0", default-features = false }
 cookie = { version = "0.18", default-features = false }
 tower = { version = "0.5", default-features = false }
 sec = { path = "sec" }

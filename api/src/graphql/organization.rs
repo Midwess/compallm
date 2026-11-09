@@ -1,5 +1,5 @@
-use async_graphql::{ID, Object};
 use compallm_core::organization::Organization as CoreOrganization;
+use juniper::{ID, graphql_object};
 
 /// Public organization identity backed directly by the Core entity.
 ///
@@ -12,15 +12,15 @@ impl From<CoreOrganization> for Organization {
     }
 }
 
-#[Object]
+#[graphql_object]
 impl Organization {
     /// Stable organization identity, serialized as a string.
-    async fn id(&self) -> ID {
-        ID(self.0.id.to_string())
+    fn id(&self) -> ID {
+        ID::new(self.0.id.to_string())
     }
 
     /// Display name; changing this value does not change resource ownership.
-    async fn name(&self) -> &str {
+    fn name(&self) -> &str {
         &self.0.name
     }
 }

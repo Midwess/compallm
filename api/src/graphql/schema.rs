@@ -1,6 +1,8 @@
 use juniper::{EmptyMutation, EmptySubscription, RootNode, graphql_object};
 use std::sync::Arc;
 
+use crate::middleware::authentication::VerifiedAccess;
+
 use super::{
     GraphqlContext,
     auth::{self, Session},
@@ -18,8 +20,8 @@ impl Query {
     ///
     /// Requires active, current user access. No credentials, policy source, or
     /// freshness internals are exposed; no user/organization hydration is performed.
-    fn session(context: &GraphqlContext) -> Session {
-        auth::query::session(context)
+    fn session(#[graphql(context)] access: &VerifiedAccess) -> Session {
+        auth::query::session(access)
     }
 }
 

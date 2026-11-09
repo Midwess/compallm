@@ -16,7 +16,7 @@ use loco_rs::{
 };
 use std::path::Path;
 
-use crate::di::Di;
+use compallm_api::di::Di;
 
 #[cfg(debug_assertions)]
 const PORTAL_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../portal");
@@ -169,7 +169,7 @@ impl Hooks for App {
             "/api/graphql",
             post(handlers::graphql)
                 .with_state(di.graphql_schema().clone())
-                .layer(Extension(di.graphql_services().clone()))
+                .layer(Extension(di))
                 .route_layer(from_fn_with_state(
                     di.authentication().clone(),
                     authentication::authenticate,

@@ -1,7 +1,5 @@
 mod app;
-mod di;
 mod tasks;
-mod workers;
 
 use app::App;
 use compallm_postgres::Migrator;

@@ -538,14 +538,29 @@ impl Fixture {
             Router, extract::DefaultBodyLimit, middleware::from_fn_with_state, routing::post,
         };
         use compallm_api::{
-            graphql::{Services, build_schema},
+            di::{AuthSettings, Di, GraphqlSettings},
+            graphql::build_schema,
             handlers,
             middleware::authentication::{self, Authentication, AuthenticationSettings},
         };
         let db = Box::leak(Box::new(self.repo.1.clone()));
         let auth = Box::leak(Box::new(self.service()));
         let schema = build_schema(16, 256, 15_000);
-        let services = Arc::new(Services { auth });
+        let di = Box::leak(Box::new(Di::new(
+            self.repo.1.clone(),
+            AuthSettings {
+                jwt_secret: SECRET.into(),
+                user_token_ttl_seconds: 1800,
+                refresh_token_ttl_seconds: 2_592_000,
+            },
+            GraphqlSettings {
+                cookie_secure: false,
+                public_origin: "http://localhost".into(),
+                ..GraphqlSettings::default()
+            },
+            None,
+        )));
+        di.initialize_services().unwrap();
         let authentication = Authentication::new(
             db,
             auth,
@@ -559,7 +574,7 @@ impl Fixture {
             "/api/graphql",
             post(handlers::graphql)
                 .with_state(schema)
-                .layer(axum::Extension(services))
+                .layer(axum::Extension(di as &'static Di))
                 .route_layer(from_fn_with_state(
                     authentication,
                     authentication::authenticate,

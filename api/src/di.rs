@@ -1,5 +1,5 @@
-use compallm_api::{
-    graphql::{ApplicationSchema, Services, build_schema},
+use crate::{
+    graphql::{ApplicationSchema, build_schema},
     middleware::authentication::{Authentication, AuthenticationSettings},
 };
 use compallm_core::{
@@ -14,10 +14,7 @@ use compallm_core::{
 use compallm_postgres::postgres_connection::PostgresConnection;
 use loco_rs::app::AppContext;
 use serde::Deserialize;
-use std::{
-    sync::{Arc, OnceLock},
-    time::Duration,
-};
+use std::{sync::OnceLock, time::Duration};
 use tokio::sync::OnceCell;
 
 static DI: OnceCell<Di> = OnceCell::const_new();
@@ -77,7 +74,6 @@ pub struct Di {
     settings: AuthSettings,
     graphql_settings: GraphqlSettings,
     graphql: OnceLock<ApplicationSchema>,
-    graphql_services: OnceLock<Arc<Services>>,
     authentication: OnceLock<Authentication>,
     // Filled after Di reaches its permanent address so services can borrow it.
     auth: OnceLock<Box<AuthService>>,
@@ -142,7 +138,6 @@ impl Di {
             settings,
             graphql_settings,
             graphql: OnceLock::new(),
-            graphql_services: OnceLock::new(),
             authentication: OnceLock::new(),
             auth: OnceLock::new(),
             registration: OnceLock::new(),
@@ -199,21 +194,10 @@ impl Di {
             )?;
             let _ = self.authentication.set(authentication);
         }
-        self.graphql_services.get_or_init(|| {
-            Arc::new(Services {
-                auth: self.auth_service(),
-            })
-        });
         self.graphql.get_or_init(|| {
             build_schema(settings.max_depth, settings.max_fields, settings.max_tokens)
         });
         Ok(())
-    }
-
-    pub fn graphql_services(&self) -> &Arc<Services> {
-        self.graphql_services
-            .get()
-            .expect("GraphQL services must be initialized")
     }
 
     pub fn graphql_schema(&self) -> &ApplicationSchema {
@@ -265,7 +249,7 @@ impl Di {
         })
     }
 
-    pub fn auth_service(&'static self) -> &'static AuthService {
+    pub fn auth_service(&self) -> &AuthService {
         self.auth.get().expect("Di services must be initialized")
     }
 
@@ -299,5 +283,12 @@ impl Di {
                 self.organization_repository(),
             ))
         })
+    }
+}
+
+/// Juniper borrows the initialized service from the application's sole DI container.
+impl juniper::FromContext<Di> for AuthService {
+    fn from(di: &Di) -> &Self {
+        di.auth_service()
     }
 }

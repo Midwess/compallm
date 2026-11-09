@@ -1,6 +1,7 @@
 //! Axum adapter for GraphQL execution; routing belongs to the application.
 use crate::{
-    graphql::{ApplicationSchema, GraphqlContext, Services},
+    di::Di,
+    graphql::{ApplicationSchema, GraphqlContext},
     middleware::authentication::VerifiedAccess,
 };
 use axum::{
@@ -11,17 +12,16 @@ use axum::{
 };
 use juniper::http::{GraphQLBatchResponse, GraphQLRequest};
 use juniper_axum::response::JuniperResponse;
-use std::sync::Arc;
 
 pub async fn handle(
     State(schema): State<ApplicationSchema>,
     Extension(identity): Extension<VerifiedAccess>,
-    Extension(services): Extension<Arc<Services>>,
+    Extension(di): Extension<&'static Di>,
     request: Result<Json<GraphQLRequest>, JsonRejection>,
 ) -> Response {
     match request {
         Ok(Json(request)) => {
-            let context = GraphqlContext::new(services, identity);
+            let context = GraphqlContext::new(di, identity);
             JuniperResponse(GraphQLBatchResponse::Single(
                 request.execute(schema.as_ref(), &context).await,
             ))

@@ -1,29 +1,32 @@
-use std::sync::Arc;
+use compallm_core::auth::AuthService;
+use juniper::FromContext;
 
-use super::Services;
-use crate::middleware::authentication::VerifiedAccess;
+use crate::{di::Di, middleware::authentication::VerifiedAccess};
 
-/// Request-local verified caller and shared Core dependencies.
+/// Request-local identity and a reference to the application's existing DI.
 ///
-/// The schema never retains caller identity. Only the HTTP adapter combines
-/// middleware-verified access with dependencies supplied by application DI.
+/// Resolvers receive projected dependencies, never this container or DI itself.
 pub struct GraphqlContext {
-    services: Arc<Services>,
+    di: &'static Di,
     access: VerifiedAccess,
 }
 
 impl juniper::Context for GraphqlContext {}
 
 impl GraphqlContext {
-    pub fn new(services: Arc<Services>, access: VerifiedAccess) -> Self {
-        Self { services, access }
+    pub fn new(di: &'static Di, access: VerifiedAccess) -> Self {
+        Self { di, access }
     }
+}
 
-    pub fn services(&self) -> &Services {
-        &self.services
+impl FromContext<GraphqlContext> for AuthService {
+    fn from(context: &GraphqlContext) -> &Self {
+        <Self as FromContext<Di>>::from(context.di)
     }
+}
 
-    pub fn access(&self) -> &VerifiedAccess {
-        &self.access
+impl FromContext<GraphqlContext> for VerifiedAccess {
+    fn from(context: &GraphqlContext) -> &Self {
+        &context.access
     }
 }

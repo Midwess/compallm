@@ -24,7 +24,7 @@ cargo run -p compallm-api -- start
 
 Compose starts the backing services, including PostgreSQL on port `7887`. Debug builds start the backend and Vite with frontend hot reload. Use `cargo run -r -p compallm-api -- start` to serve prebuilt `portal/dist` assets without Vite; build the Portal assets first. Vite uses internal port `41868` with strict binding; browse through the API origin. Open the URL logged by the API server: it prefers port `3000` and chooses the next available port when occupied. `PORT` or the server CLI port option sets the starting point, within `1–50100`. The API listens on all IPv4/IPv6 interfaces in development and production; deployment port mappings must match the selected port.
 
-Regenerate the Rust-owned GraphQL schema, operation types, form types, and Zod validation contract without starting the application or accessing the database:
+Regenerate the Rust-owned GraphQL schema, Genql TypeScript query builder, auth form types, and Zod validation contract without starting the application or accessing the database:
 
 ```bash
 npm --prefix libs/contract ci

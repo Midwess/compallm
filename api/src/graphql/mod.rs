@@ -6,6 +6,7 @@
 //! Axum delivery constructs a typed Juniper context with verified access and the existing DI.
 
 pub mod auth;
+pub mod endpoint;
 pub mod organization;
 pub mod provider;
 pub mod user;

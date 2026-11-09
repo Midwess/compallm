@@ -4,8 +4,6 @@ pub mod graphql;
 
 pub mod middleware;
 
-pub mod handlers;
-
 pub mod di;
 pub mod workers;
 

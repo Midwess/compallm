@@ -539,8 +539,7 @@ impl Fixture {
         };
         use compallm_api::{
             di::{AuthSettings, Di, GraphqlSettings},
-            graphql::build_schema,
-            handlers,
+            graphql::{build_schema, endpoint},
             middleware::authentication::{self, Authentication, AuthenticationSettings},
         };
         let db = Box::leak(Box::new(self.repo.1.clone()));
@@ -572,7 +571,7 @@ impl Fixture {
         .unwrap();
         Router::new().route(
             "/api/graphql",
-            post(handlers::graphql)
+            post(endpoint::handle)
                 .with_state(schema)
                 .layer(axum::Extension(di as &'static Di))
                 .route_layer(from_fn_with_state(

@@ -1,0 +1,31 @@
+type Query {
+  """
+  Read the selected login's verified identity and organization-name snapshot.
+
+  Requires active, current user access. No credentials, policy source, or
+  freshness internals are exposed; no user/organization hydration is performed.
+  """
+  session: Session!
+}
+
+type Session {
+  """
+  Login session identity, serialized as a string without numeric precision loss.
+  """
+  id: ID!
+
+  """
+  Organization selected for this verified session.
+  """
+  organizationId: ID!
+
+  """
+  Signed display snapshot; the name never establishes organization authority.
+  """
+  organizationName: String!
+
+  """
+  User owning this verified session.
+  """
+  userId: ID!
+}

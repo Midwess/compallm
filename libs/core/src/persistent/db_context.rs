@@ -2,15 +2,21 @@
 //! local data; they do not need `move`, `Send`, or a `'static` lifetime.
 
 use anyhow::Context;
+use async_once_cell::Lazy;
 use std::{
+    error::Error,
     future::Future,
+    pin::Pin,
     sync::{
-        Arc,
+        Arc, OnceLock,
         atomic::{AtomicBool, AtomicUsize, Ordering},
     },
 };
 
 use super::{Connection, ConnectionError};
+use crate::authorization::MemberPermission;
+
+static DEFAULT_CONNECTION: OnceLock<Arc<dyn Connection>> = OnceLock::new();
 
 tokio::task_local! {
     static CURRENT: DbContext;
@@ -44,6 +50,23 @@ macro_rules! transaction {
 pub struct DbContext {
     postgres: Arc<dyn Connection>,
     transaction: Option<Arc<TransactionState>>,
+    member_permission: Arc<OnceLock<LazyPermission>>,
+    request_started: Arc<AtomicBool>,
+}
+
+type PermissionLoadError = Arc<dyn Error + Send + Sync>;
+type PermissionResult = Result<Arc<MemberPermission>, PermissionLoadError>;
+type PermissionFuture = Pin<Box<dyn Future<Output = PermissionResult> + Send>>;
+type LazyPermission = Lazy<PermissionResult, PermissionFuture>;
+
+#[derive(Debug, thiserror::Error)]
+pub enum PermissionError {
+    #[error("member authority is not available")]
+    Missing,
+    #[error("member authority could not be loaded")]
+    Loading(#[source] PermissionLoadError),
+    #[error(transparent)]
+    Context(#[from] ConnectionError),
 }
 
 #[derive(Default)]
@@ -54,6 +77,19 @@ struct TransactionState {
 }
 
 impl DbContext {
+    /// Initialize the connection used by default contexts once at startup.
+    pub fn initialize_default(postgres: Arc<dyn Connection>) -> Result<(), ConnectionError> {
+        postgres.ensure_open()?;
+        if postgres.is_transaction() {
+            return Err(ConnectionError::database(anyhow::anyhow!(
+                "default connection cannot be a transaction"
+            )));
+        }
+        DEFAULT_CONNECTION.set(postgres).map_err(|_| {
+            ConnectionError::database(anyhow::anyhow!("default connection is already initialized"))
+        })
+    }
+
     /// Application dependency wiring supplies the already configured database.
     pub fn new(postgres: Arc<dyn Connection>) -> Self {
         let transaction = postgres
@@ -62,7 +98,69 @@ impl DbContext {
         Self {
             postgres,
             transaction,
+            member_permission: Arc::new(OnceLock::new()),
+            request_started: Arc::new(AtomicBool::new(false)),
         }
+    }
+
+    /// Register a loader for the request's member authority once.
+    pub fn restrict<F, E>(&self, loader: F) -> Result<Self, ConnectionError>
+    where
+        F: Future<Output = Result<Arc<MemberPermission>, E>> + Send + 'static,
+        E: Error + Send + Sync + 'static,
+    {
+        self.postgres.ensure_open()?;
+        self.ensure_active()?;
+        let loader: PermissionFuture = Box::pin(async move {
+            loader
+                .await
+                .map_err(|error| Arc::new(error) as PermissionLoadError)
+        });
+        self.member_permission.set(Lazy::new(loader)).map_err(|_| {
+            ConnectionError::database(anyhow::anyhow!("member authority is already set"))
+        })?;
+        Ok(self.clone())
+    }
+
+    /// Load the member authority once and share the result within this request.
+    pub async fn permission(&self) -> Result<&MemberPermission, PermissionError> {
+        self.postgres.ensure_open()?;
+        self.ensure_active()?;
+        let loader = self
+            .member_permission
+            .get()
+            .ok_or(PermissionError::Missing)?;
+        let result = loader.get_unpin().await;
+        self.postgres.ensure_open()?;
+        self.ensure_active()?;
+        result
+            .as_deref()
+            .map_err(|error| PermissionError::Loading(error.clone()))
+    }
+
+    /// Enter a new request scope without inheriting another task-local context.
+    pub async fn request_scope<F: Future>(
+        self,
+        operation: F,
+    ) -> Result<F::Output, ConnectionError> {
+        if CURRENT.try_with(|_| ()).is_ok() {
+            return Err(ConnectionError::database(anyhow::anyhow!(
+                "a request scope is already active"
+            )));
+        }
+        self.postgres.ensure_open()?;
+        self.ensure_active()?;
+        if self.postgres.is_transaction() {
+            return Err(ConnectionError::database(anyhow::anyhow!(
+                "a request context cannot start from a transaction"
+            )));
+        }
+        if self.request_started.swap(true, Ordering::AcqRel) {
+            return Err(ConnectionError::database(anyhow::anyhow!(
+                "the request context has already been used"
+            )));
+        }
+        Ok(CURRENT.scope(self, operation).await)
     }
 
     pub fn current() -> Result<Self, ConnectionError> {
@@ -76,10 +174,6 @@ impl DbContext {
 
     pub fn postgres(&self) -> &dyn Connection {
         self.postgres.as_ref()
-    }
-
-    pub fn same_context(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.postgres, &other.postgres)
     }
 
     /// Enter an application context without replacing an active transaction.
@@ -120,6 +214,8 @@ impl DbContext {
         let context = Self {
             postgres: transaction,
             transaction: Some(Arc::new(TransactionState::default())),
+            member_permission: source.member_permission.clone(),
+            request_started: source.request_started.clone(),
         };
         let guard = TransactionScope(context.clone());
         let result = CURRENT.scope(context.clone(), operation).await;
@@ -190,6 +286,15 @@ impl DbContext {
             )));
         }
         self.ensure_committable()
+    }
+}
+
+impl Default for DbContext {
+    fn default() -> Self {
+        let postgres = DEFAULT_CONNECTION
+            .get()
+            .expect("default database connection must be initialized");
+        Self::new(postgres.clone())
     }
 }
 

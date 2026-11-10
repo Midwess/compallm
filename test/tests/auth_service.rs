@@ -544,8 +544,7 @@ impl Fixture {
             di::{AuthSettings, Di, GraphqlSettings},
             graphql::{ApplicationSchema, GraphqlContext, build_schema, endpoint},
             http::authentication::{
-                Authentication, AuthenticationContext, AuthenticationSettings, CookieDelivery,
-                UserContext,
+                AuthenticationContext, AuthenticationSettings, CookieDelivery, UserContext,
             },
             http::authorization::AuthorizationContext,
             http::middleware::{AuthenticationMiddleware, AuthorizationMiddleware},
@@ -579,7 +578,7 @@ impl Fixture {
             .with_auth_service(service),
         ));
         di.initialize_services().unwrap();
-        let authentication = Authentication::new(
+        let authentication = AuthenticationMiddleware::optional(
             db,
             di.auth_service(),
             AuthenticationSettings {
@@ -594,7 +593,7 @@ impl Fixture {
                 |State(schema): State<ApplicationSchema>,
                  Extension(di): Extension<&'static Di>,
                  Extension(user): Extension<UserContext>,
-                 Extension(authentication): Extension<AuthenticationContext>,
+                 Extension(authentication): Extension<Arc<AuthenticationContext>>,
                  Extension(delivery): Extension<CookieDelivery>,
                  Extension(authorization): Extension<AuthorizationContext>,
                  request: Result<Json<endpoint::GraphQLRequest>, JsonRejection>| async move {
@@ -607,7 +606,7 @@ impl Fixture {
             .layer(axum::Extension(di as &'static Di))
             .route_layer(from_fn(AuthorizationMiddleware::handle))
             .route_layer(from_fn_with_state(
-                AuthenticationMiddleware::optional(authentication),
+                authentication,
                 AuthenticationMiddleware::handle,
             ))
             .layer(DefaultBodyLimit::max(65_536)),
@@ -2662,7 +2661,7 @@ async fn authorization_context_requires_current_verified_user() {
         routing::get,
     };
     use compallm_api::http::{
-        authentication::{Authentication, AuthenticationSettings},
+        authentication::AuthenticationSettings,
         authorization::{self, AuthorizationContext},
         middleware::{AuthenticationMiddleware, AuthorizationMiddleware},
     };
@@ -2674,7 +2673,7 @@ async fn authorization_context_requires_current_verified_user() {
         .signin(&Fixture::otp(&challenge), &challenge.code)
         .await
         .unwrap();
-    let authentication = Authentication::new(
+    let authentication = AuthenticationMiddleware::optional(
         Box::leak(Box::new(fixture.repo.1.clone())),
         Box::leak(Box::new(fixture.service())),
         AuthenticationSettings {
@@ -2698,7 +2697,7 @@ async fn authorization_context_requires_current_verified_user() {
         )
         .route_layer(from_fn(AuthorizationMiddleware::handle))
         .route_layer(from_fn_with_state(
-            AuthenticationMiddleware::optional(authentication),
+            authentication,
             AuthenticationMiddleware::handle,
         )),
     );
@@ -2747,7 +2746,7 @@ async fn shared_http_authentication_passes_current_identity_and_blocks_revoked_r
         Extension, Router, body::Body, http::Request, middleware::from_fn_with_state, routing::post,
     };
     use compallm_api::http::{
-        authentication::{Authentication, AuthenticationSettings, VerifiedAccess},
+        authentication::{AuthenticationSettings, VerifiedAccess},
         middleware::AuthenticationMiddleware,
     };
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -2759,7 +2758,7 @@ async fn shared_http_authentication_passes_current_identity_and_blocks_revoked_r
         .signin(&Fixture::otp(&challenge), &challenge.code)
         .await
         .unwrap();
-    let authentication = Authentication::new(
+    let authentication = AuthenticationMiddleware::required(
         Box::leak(Box::new(fixture.repo.1.clone())),
         Box::leak(Box::new(fixture.service())),
         AuthenticationSettings {
@@ -2780,7 +2779,7 @@ async fn shared_http_authentication_passes_current_identity_and_blocks_revoked_r
             }
         })
         .route_layer(from_fn_with_state(
-            AuthenticationMiddleware::required(authentication),
+            authentication,
             AuthenticationMiddleware::handle,
         )),
     );

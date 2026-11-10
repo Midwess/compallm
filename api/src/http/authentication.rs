@@ -2,35 +2,14 @@
 use std::sync::Arc;
 
 use axum::http::{HeaderMap, header::AUTHORIZATION};
-use compallm_core::{
-    authentication::{
-        AccessToken, AuthError, AuthService, EmailOtpAccessToken, RefreshToken, UserAccessToken,
-    },
-    persistent::DbContext,
+use compallm_core::authentication::{
+    AccessToken, AuthError, AuthService, EmailOtpAccessToken, RefreshToken, UserAccessToken,
 };
 use tokio::sync::OnceCell;
 
 pub use super::cookie::{AuthenticationSettings, CookieDelivery};
 pub use super::error::RequestError;
 use super::header;
-
-#[derive(Clone)]
-pub struct Authentication {
-    pub(super) db: &'static DbContext,
-    auth: &'static AuthService,
-    pub(super) settings: AuthenticationSettings,
-}
-
-impl Authentication {
-    pub fn new(
-        db: &'static DbContext,
-        auth: &'static AuthService,
-        settings: AuthenticationSettings,
-    ) -> Result<Self, AuthError> {
-        settings.validate()?;
-        Ok(Self { db, auth, settings })
-    }
-}
 
 #[derive(Clone)]
 pub struct VerifiedAccess(UserAccessToken);
@@ -53,54 +32,50 @@ enum CredentialSource {
     Cookie,
 }
 
-pub(super) struct VerifiedUser {
+struct VerifiedUser {
     access: VerifiedAccess,
     replacements: HeaderMap,
 }
 
-struct State {
-    authentication: Authentication,
+pub struct AuthenticationContext {
+    auth: &'static AuthService,
+    settings: AuthenticationSettings,
     headers: HeaderMap,
     selected: OnceCell<Result<SelectedToken, RequestError>>,
     user: OnceCell<Result<VerifiedUser, RequestError>>,
 }
 
 #[derive(Clone)]
-pub struct AuthenticationContext(Arc<State>);
-
-#[derive(Clone)]
-pub struct UserContext(AuthenticationContext);
+pub struct UserContext(pub(super) Arc<AuthenticationContext>);
 
 impl AuthenticationContext {
-    pub(super) fn new(authentication: Authentication, headers: HeaderMap) -> Self {
-        Self(Arc::new(State {
-            authentication,
+    pub(super) fn new(
+        auth: &'static AuthService,
+        settings: AuthenticationSettings,
+        headers: HeaderMap,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            auth,
+            settings,
             headers,
             selected: OnceCell::new(),
             user: OnceCell::new(),
-        }))
-    }
-
-    pub(super) fn user_context(&self) -> UserContext {
-        UserContext(self.clone())
+        })
     }
 
     async fn selected(&self) -> Result<&SelectedToken, RequestError> {
-        self.0
-            .selected
+        self.selected
             .get_or_init(|| async {
-                let headers = &self.0.headers;
+                let headers = &self.headers;
                 let bearer = header::bearer(headers)?;
                 let (encoded, source) = if let Some(bearer) = bearer {
                     (bearer.to_owned(), CredentialSource::Bearer)
                 } else {
-                    let encoded =
-                        header::cookie(headers, self.0.authentication.settings.names().0)?;
+                    let encoded = header::cookie(headers, self.settings.names().0)?;
                     if encoded.is_some()
-                        || header::cookie(headers, self.0.authentication.settings.names().1)?
-                            .is_some()
+                        || header::cookie(headers, self.settings.names().1)?.is_some()
                     {
-                        self.0.authentication.settings.validate_origin(headers)?;
+                        self.settings.validate_origin(headers)?;
                     }
                     (
                         encoded.ok_or(RequestError::Unauthenticated)?,
@@ -108,8 +83,6 @@ impl AuthenticationContext {
                     )
                 };
                 let token = self
-                    .0
-                    .authentication
                     .auth
                     .authenticate_token(&encoded)
                     .await
@@ -153,26 +126,15 @@ impl AuthenticationContext {
         &self,
         expected: Option<&UserAccessToken>,
     ) -> Result<VerifiedUser, RequestError> {
-        let settings = &self.0.authentication.settings;
-        let encoded = header::cookie(&self.0.headers, settings.names().1)?
+        let settings = &self.settings;
+        let encoded = header::cookie(&self.headers, settings.names().1)?
             .ok_or(RequestError::Unauthenticated)?;
-        let refresh = RefreshToken::try_from(
-            self.0
-                .authentication
-                .auth
-                .authenticate_token(&encoded)
-                .await?,
-        )?;
+        let refresh = RefreshToken::try_from(self.auth.authenticate_token(&encoded).await?)?;
         if expected.is_some_and(|user| !refresh.session.has_same_identity(&user.session)) {
             return Err(RequestError::Unauthenticated);
         }
-        let tokens = self.0.authentication.auth.refresh(&encoded).await?;
-        let access = self
-            .0
-            .authentication
-            .auth
-            .authenticate_access(&tokens.access_token)
-            .await?;
+        let tokens = self.auth.refresh(&encoded).await?;
+        let access = self.auth.authenticate_access(&tokens.access_token).await?;
         Ok(VerifiedUser {
             access: VerifiedAccess(access),
             replacements: settings.replacement_headers(tokens)?,
@@ -195,7 +157,7 @@ impl AuthenticationContext {
         user: &UserAccessToken,
         source: CredentialSource,
     ) -> Result<VerifiedUser, RequestError> {
-        match self.0.authentication.auth.validate_access(user).await {
+        match self.auth.validate_access(user).await {
             Ok(true) => Ok(VerifiedUser {
                 access: VerifiedAccess(user.clone()),
                 replacements: HeaderMap::new(),
@@ -212,7 +174,7 @@ impl AuthenticationContext {
         &self,
         error: RequestError,
     ) -> Result<VerifiedUser, RequestError> {
-        if self.0.headers.contains_key(AUTHORIZATION) {
+        if self.headers.contains_key(AUTHORIZATION) {
             return Err(error);
         }
         match error {
@@ -223,8 +185,8 @@ impl AuthenticationContext {
     }
 
     async fn renew_missing_access(&self) -> Result<VerifiedUser, RequestError> {
-        let headers = &self.0.headers;
-        let settings = &self.0.authentication.settings;
+        let headers = &self.headers;
+        let settings = &self.settings;
         let (access, refresh) = settings.names();
         if header::cookie(headers, access)?.is_some() || header::cookie(headers, refresh)?.is_none()
         {
@@ -233,16 +195,11 @@ impl AuthenticationContext {
         settings.validate_origin(headers)?;
         self.renew(None).await
     }
-
-    pub(super) fn user_result(&self) -> Option<&Result<VerifiedUser, RequestError>> {
-        self.0.user.get()
-    }
 }
 
 impl UserContext {
     pub async fn require(&self) -> Result<&VerifiedAccess, RequestError> {
         self.0
-            .0
             .user
             .get_or_init(|| self.0.load_user())
             .await
@@ -263,7 +220,7 @@ pub(super) fn finalize(
         .lock()
         .map_err(|_| RequestError::Internal)?
         .clone();
-    if let Some(user) = context.user_result() {
+    if let Some(user) = context.user.get() {
         match user {
             Ok(user) => {
                 for value in user.replacements.get_all(SET_COOKIE) {
@@ -273,11 +230,11 @@ pub(super) fn finalize(
                 }
             }
             Err(RequestError::Unauthenticated | RequestError::Expired)
-                if !context.0.headers.contains_key(AUTHORIZATION) && staged.is_empty() =>
+                if !context.headers.contains_key(AUTHORIZATION) && staged.is_empty() =>
             {
                 response
                     .headers_mut()
-                    .extend(context.0.authentication.settings.clear_headers()?)
+                    .extend(context.settings.clear_headers()?)
             }
             _ => {}
         }

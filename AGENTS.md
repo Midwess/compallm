@@ -47,3 +47,5 @@ When writing repository implementation, always use sea-orm syntax, never write r
 Only use transaction! when there are multiple update command, transaction must be ended as soon as possible while still maintaining correctness
 If there are multiple query before updating data, then the query should performed outside of transaction
 Transaction only for grouping multiple update command
+
+Use the $humanizer:humanizer and $technical-writing skill when writing code comment, document, wiki, technical doc.

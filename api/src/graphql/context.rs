@@ -1,5 +1,6 @@
 use compallm_core::authentication::AuthService;
 use juniper::FromContext;
+use std::sync::Arc;
 
 use crate::{
     di::Di,
@@ -13,7 +14,7 @@ use crate::{
 pub struct GraphqlContext {
     di: &'static Di,
     user: UserContext,
-    authentication: AuthenticationContext,
+    authentication: Arc<AuthenticationContext>,
     delivery: CookieDelivery,
     authorization: AuthorizationContext,
 }
@@ -24,7 +25,7 @@ impl GraphqlContext {
     pub fn new(
         di: &'static Di,
         user: UserContext,
-        authentication: AuthenticationContext,
+        authentication: Arc<AuthenticationContext>,
         delivery: CookieDelivery,
         authorization: AuthorizationContext,
     ) -> Self {

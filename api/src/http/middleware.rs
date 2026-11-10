@@ -1,7 +1,7 @@
 //! Axum request setup and response finalization.
 use super::{
-    authentication::{self, Authentication, AuthenticationContext},
-    cookie::CookieDelivery,
+    authentication::{self, AuthenticationContext, UserContext},
+    cookie::{AuthenticationSettings, CookieDelivery},
     error::no_store,
 };
 use axum::{
@@ -9,6 +9,10 @@ use axum::{
     extract::{Request, State},
     middleware::Next,
     response::{IntoResponse, Response},
+};
+use compallm_core::{
+    authentication::{AuthError, AuthService},
+    persistent::DbContext,
 };
 use std::sync::{Arc, Mutex};
 
@@ -29,22 +33,34 @@ impl AuthorizationMiddleware {
 
 #[derive(Clone)]
 pub struct AuthenticationMiddleware {
-    authentication: Authentication,
+    db: &'static DbContext,
+    auth: &'static AuthService,
+    settings: AuthenticationSettings,
     strict: bool,
 }
 
 impl AuthenticationMiddleware {
-    pub fn optional(authentication: Authentication) -> Self {
-        Self {
-            authentication,
+    pub fn optional(
+        db: &'static DbContext,
+        auth: &'static AuthService,
+        settings: AuthenticationSettings,
+    ) -> Result<Self, AuthError> {
+        settings.validate()?;
+        Ok(Self {
+            db,
+            auth,
+            settings,
             strict: false,
-        }
+        })
     }
-    pub fn required(authentication: Authentication) -> Self {
-        Self {
-            authentication,
-            strict: true,
-        }
+    pub fn required(
+        db: &'static DbContext,
+        auth: &'static AuthService,
+        settings: AuthenticationSettings,
+    ) -> Result<Self, AuthError> {
+        let mut middleware = Self::optional(db, auth, settings)?;
+        middleware.strict = true;
+        Ok(middleware)
     }
 
     pub async fn handle(
@@ -52,20 +68,19 @@ impl AuthenticationMiddleware {
         mut request: Request,
         next: Next,
     ) -> Response {
-        let authentication = middleware.authentication;
-        let strict = middleware.strict;
         let headers = request.headers().clone();
-        authentication
+        middleware
             .db
             .scope(async {
                 let delivery = CookieDelivery {
-                    settings: authentication.settings.clone(),
+                    settings: middleware.settings.clone(),
                     request: headers.clone(),
                     response: Arc::new(Mutex::new(Default::default())),
                 };
-                let context = AuthenticationContext::new(authentication, headers);
-                let user = context.user_context();
-                if strict {
+                let context =
+                    AuthenticationContext::new(middleware.auth, middleware.settings, headers);
+                let user = UserContext(context.clone());
+                if middleware.strict {
                     match user.require().await {
                         Ok(access) => {
                             request.extensions_mut().insert(access.clone());

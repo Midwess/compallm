@@ -1,6 +1,6 @@
 use crate::{
     graphql::{ApplicationSchema, build_schema},
-    http::authentication::{Authentication, AuthenticationSettings},
+    http::{authentication::AuthenticationSettings, middleware::AuthenticationMiddleware},
 };
 use compallm_core::{
     authentication::{AuthError, AuthService, TokenLifetimes},
@@ -74,7 +74,7 @@ pub struct Di {
     settings: AuthSettings,
     graphql_settings: GraphqlSettings,
     graphql: OnceLock<ApplicationSchema>,
-    authentication: OnceLock<Authentication>,
+    authentication: OnceLock<AuthenticationMiddleware>,
     // Filled after Di reaches its permanent address so services can borrow it.
     auth: OnceLock<Box<AuthService>>,
     registration: OnceLock<Box<RegistrationService>>,
@@ -191,7 +191,7 @@ impl Di {
             return Err(AuthError::InvalidConfiguration);
         }
         if self.authentication.get().is_none() {
-            let authentication = Authentication::new(
+            let authentication = AuthenticationMiddleware::optional(
                 self.db_context(),
                 self.auth_service(),
                 AuthenticationSettings {
@@ -213,7 +213,7 @@ impl Di {
             .expect("GraphQL schema must be initialized")
     }
 
-    pub fn authentication(&self) -> &Authentication {
+    pub fn authentication(&self) -> &AuthenticationMiddleware {
         self.authentication
             .get()
             .expect("HTTP authentication must be initialized")

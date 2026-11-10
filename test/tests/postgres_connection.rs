@@ -13,11 +13,17 @@ async fn nested_transaction_reuses_outer_context_without_savepoints() {
             let outer = DbContext::current()?;
             connection
                 .transaction(async {
-                    assert!(DbContext::current()?.same_context(&outer));
+                    assert!(std::ptr::eq(
+                        DbContext::current()?.postgres(),
+                        outer.postgres()
+                    ));
                     Ok::<_, ConnectionError>(())
                 })
                 .await?;
-            assert!(DbContext::current()?.same_context(&outer));
+            assert!(std::ptr::eq(
+                DbContext::current()?.postgres(),
+                outer.postgres()
+            ));
             Ok::<_, ConnectionError>(())
         })
         .await

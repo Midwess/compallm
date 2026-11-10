@@ -7,7 +7,7 @@ use validify::Validify;
 use super::{CredentialDelivery, EmailCodeInput, EmailInput};
 use crate::{
     graphql::{GraphqlContext, error::Error},
-    middleware::authentication::{CookieDelivery, RequestIdentity},
+    http::authentication::{AuthenticationContext, CookieDelivery, UserContext},
 };
 
 /// Exact Unix-second validity and client throttle values encoded as decimal strings.
@@ -131,7 +131,7 @@ impl Mutation {
     async fn signup_email_confirm(
         input: EmailCodeInput,
         #[graphql(context)] auth: &AuthService,
-        #[graphql(context)] identity: &RequestIdentity,
+        #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<SessionCredentials, Error> {
         let mut input = input;
@@ -141,7 +141,7 @@ impl Mutation {
             cookies.validate_origin()?;
         }
         (
-            auth.signup(identity.otp()?, &input.code).await?,
+            auth.signup(identity.otp().await?, &input.code).await?,
             mode,
             cookies,
         )
@@ -152,7 +152,7 @@ impl Mutation {
     async fn signin_email_confirm(
         mut input: EmailCodeInput,
         #[graphql(context)] auth: &AuthService,
-        #[graphql(context)] identity: &RequestIdentity,
+        #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<SessionCredentials, Error> {
         input.validify()?;
@@ -161,7 +161,7 @@ impl Mutation {
             cookies.validate_origin()?;
         }
         (
-            auth.signin(identity.otp()?, &input.code).await?,
+            auth.signin(identity.otp().await?, &input.code).await?,
             mode,
             cookies,
         )
@@ -171,11 +171,11 @@ impl Mutation {
     /// Explicit refresh Bearer only. Rebuild current authority; never set browser cookies.
     async fn session_refresh(
         #[graphql(context)] auth: &AuthService,
-        #[graphql(context)] identity: &RequestIdentity,
+        #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<SessionCredentials, Error> {
         (
-            auth.refresh(identity.refresh()?).await?,
+            auth.refresh(identity.refresh().await?).await?,
             CredentialDelivery::Token,
             cookies,
         )
@@ -185,10 +185,10 @@ impl Mutation {
     /// Revoke this verified login only. Clear cookie credentials after successful revocation.
     async fn session_revoke(
         #[graphql(context)] auth: &AuthService,
-        #[graphql(context)] identity: &RequestIdentity,
+        #[graphql(context)] user: &UserContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<bool, Error> {
-        auth.signout(identity.user()?.access()).await?;
+        auth.signout(user.require().await?.access()).await?;
         cookies.clear()?;
         Ok(true)
     }

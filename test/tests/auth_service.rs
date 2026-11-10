@@ -535,12 +535,20 @@ struct Fixture {
 impl Fixture {
     fn graphql(&self) -> axum::Router {
         use axum::{
-            Router, extract::DefaultBodyLimit, middleware::from_fn_with_state, routing::post,
+            Extension, Json, Router,
+            extract::{DefaultBodyLimit, State, rejection::JsonRejection},
+            middleware::{from_fn, from_fn_with_state},
+            routing::post,
         };
         use compallm_api::{
             di::{AuthSettings, Di, GraphqlSettings},
-            graphql::{build_schema, endpoint},
-            middleware::authentication::{self, Authentication, AuthenticationSettings},
+            graphql::{ApplicationSchema, GraphqlContext, build_schema, endpoint},
+            http::authentication::{
+                Authentication, AuthenticationContext, AuthenticationSettings, CookieDelivery,
+                UserContext,
+            },
+            http::authorization::AuthorizationContext,
+            http::middleware::{AuthenticationMiddleware, AuthorizationMiddleware},
         };
         let db = Box::leak(Box::new(self.repo.1.clone()));
         let email = Box::leak(Box::new(
@@ -582,11 +590,27 @@ impl Fixture {
         .unwrap();
         Router::new().route(
             "/api/graphql",
-            post(endpoint::handle)
-                .with_state(schema.clone())
-                .layer(axum::Extension(di as &'static Di))
-                .route_layer(from_fn_with_state(authentication, authentication::populate))
-                .layer(DefaultBodyLimit::max(65_536)),
+            post(
+                |State(schema): State<ApplicationSchema>,
+                 Extension(di): Extension<&'static Di>,
+                 Extension(user): Extension<UserContext>,
+                 Extension(authentication): Extension<AuthenticationContext>,
+                 Extension(delivery): Extension<CookieDelivery>,
+                 Extension(authorization): Extension<AuthorizationContext>,
+                 request: Result<Json<endpoint::GraphQLRequest>, JsonRejection>| async move {
+                    let context =
+                        GraphqlContext::new(di, user, authentication, delivery, authorization);
+                    endpoint::handle(schema, context, request).await
+                },
+            )
+            .with_state(schema.clone())
+            .layer(axum::Extension(di as &'static Di))
+            .route_layer(from_fn(AuthorizationMiddleware::handle))
+            .route_layer(from_fn_with_state(
+                AuthenticationMiddleware::optional(authentication),
+                AuthenticationMiddleware::handle,
+            ))
+            .layer(DefaultBodyLimit::max(65_536)),
         )
     }
 
@@ -2513,7 +2537,7 @@ async fn graphql_identity_uses_one_freshness_read_and_rejects_non_access_or_revo
         &router,
         "{ __schema { queryType { name } } }",
         serde_json::json!({}),
-        None,
+        Some(&tokens.access_token),
         None,
         false,
     )
@@ -2629,12 +2653,102 @@ async fn graphql_stale_cookie_rebuilds_current_authority_but_bearer_and_unavaila
 }
 
 #[tokio::test]
+async fn authorization_context_requires_current_verified_user() {
+    use axum::{
+        Extension, Router,
+        body::Body,
+        http::Request,
+        middleware::{from_fn, from_fn_with_state},
+        routing::get,
+    };
+    use compallm_api::http::{
+        authentication::{Authentication, AuthenticationSettings},
+        authorization::{self, AuthorizationContext},
+        middleware::{AuthenticationMiddleware, AuthorizationMiddleware},
+    };
+    use tower::ServiceExt;
+
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let authentication = Authentication::new(
+        Box::leak(Box::new(fixture.repo.1.clone())),
+        Box::leak(Box::new(fixture.service())),
+        AuthenticationSettings {
+            cookie_secure: false,
+            public_origin: "http://localhost".into(),
+        },
+    )
+    .unwrap();
+    let router = Router::new().route(
+        "/",
+        get(
+            |Extension(context): Extension<AuthorizationContext>| async move {
+                let first = context.member_permission().await? as *const _ as usize;
+                let permission = context.member_permission().await?;
+                assert_eq!(first, permission as *const _ as usize);
+                Ok::<_, authorization::AuthorizationError>(axum::Json((
+                    permission.user_id(),
+                    permission.organization_id(),
+                )))
+            },
+        )
+        .route_layer(from_fn(AuthorizationMiddleware::handle))
+        .route_layer(from_fn_with_state(
+            AuthenticationMiddleware::optional(authentication),
+            AuthenticationMiddleware::handle,
+        )),
+    );
+
+    let anonymous = router
+        .clone()
+        .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(anonymous.status(), 401);
+    let request = || {
+        Request::builder()
+            .uri("/")
+            .header("authorization", format!("Bearer {}", tokens.access_token))
+            .body(Body::empty())
+            .unwrap()
+    };
+    let response = router.clone().oneshot(request()).await.unwrap();
+    assert_eq!(response.status(), 200);
+    let body = axum::body::to_bytes(response.into_body(), 8192)
+        .await
+        .unwrap();
+    let (user_id, organization_id): (u64, u64) = serde_json::from_slice(&body).unwrap();
+    assert_eq!(organization_id, 84);
+    assert_eq!(
+        user_id,
+        fixture.repo.0.lock().unwrap().user.as_ref().unwrap().id
+    );
+    assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, 1);
+    fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .values_mut()
+        .next()
+        .unwrap()
+        .revoke();
+    assert_eq!(router.oneshot(request()).await.unwrap().status(), 401);
+}
+
+#[tokio::test]
 async fn shared_http_authentication_passes_current_identity_and_blocks_revoked_requests() {
     use axum::{
         Extension, Router, body::Body, http::Request, middleware::from_fn_with_state, routing::post,
     };
-    use compallm_api::middleware::authentication::{
-        self, Authentication, AuthenticationSettings, VerifiedAccess,
+    use compallm_api::http::{
+        authentication::{Authentication, AuthenticationSettings, VerifiedAccess},
+        middleware::AuthenticationMiddleware,
     };
     use std::sync::atomic::{AtomicUsize, Ordering};
     use tower::ServiceExt;
@@ -2666,8 +2780,8 @@ async fn shared_http_authentication_passes_current_identity_and_blocks_revoked_r
             }
         })
         .route_layer(from_fn_with_state(
-            authentication,
-            authentication::authenticate,
+            AuthenticationMiddleware::required(authentication),
+            AuthenticationMiddleware::handle,
         )),
     );
     let request = || {

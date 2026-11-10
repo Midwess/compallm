@@ -2,7 +2,7 @@
 
 pub mod graphql;
 
-pub mod middleware;
+pub mod http;
 
 pub mod di;
 pub mod workers;

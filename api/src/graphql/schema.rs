@@ -4,7 +4,7 @@ use juniper::{
 };
 use std::sync::Arc;
 
-use crate::middleware::authentication::RequestIdentity;
+use crate::http::authentication::UserContext;
 
 use super::{
     GraphqlContext,
@@ -24,10 +24,10 @@ impl QueryFields {
     ///
     /// Requires active, current user access. No credentials, policy source, or
     /// freshness internals are exposed; no user/organization hydration is performed.
-    fn session(
-        #[graphql(context)] identity: &RequestIdentity,
+    async fn session(
+        #[graphql(context)] user: &UserContext,
     ) -> Result<Session, super::error::Error> {
-        Ok(authentication::query::session(identity.user()?))
+        Ok(authentication::query::session(user.require().await?))
     }
 }
 

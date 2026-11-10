@@ -160,19 +160,44 @@ impl Hooks for App {
 
     async fn before_routes(_ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
         use axum::{
-            Extension, extract::DefaultBodyLimit, middleware::from_fn_with_state, routing::post,
+            Extension, Json,
+            extract::{DefaultBodyLimit, State, rejection::JsonRejection},
+            middleware::{from_fn, from_fn_with_state},
+            routing::post,
         };
-        use compallm_api::{graphql::endpoint, middleware::authentication};
+        use compallm_api::{
+            graphql::{ApplicationSchema, GraphqlContext, endpoint},
+            http::{
+                authentication::{AuthenticationContext, CookieDelivery, UserContext},
+                authorization::AuthorizationContext,
+                middleware::{AuthenticationMiddleware, AuthorizationMiddleware},
+            },
+        };
+        use juniper::http::GraphQLRequest;
+
+        async fn graphql_handler(
+            State(schema): State<ApplicationSchema>,
+            Extension(di): Extension<&'static Di>,
+            Extension(user): Extension<UserContext>,
+            Extension(authentication): Extension<AuthenticationContext>,
+            Extension(delivery): Extension<CookieDelivery>,
+            Extension(authorization): Extension<AuthorizationContext>,
+            request: std::result::Result<Json<GraphQLRequest>, JsonRejection>,
+        ) -> axum::response::Response {
+            let context = GraphqlContext::new(di, user, authentication, delivery, authorization);
+            endpoint::handle(schema, context, request).await
+        }
 
         let di = Di::instance();
         Ok(AxumRouter::new().route(
             "/api/graphql",
-            post(endpoint::handle)
+            post(graphql_handler)
                 .with_state(di.graphql_schema().clone())
                 .layer(Extension(di))
+                .route_layer(from_fn(AuthorizationMiddleware::handle))
                 .route_layer(from_fn_with_state(
-                    di.authentication().clone(),
-                    authentication::populate,
+                    AuthenticationMiddleware::optional(di.authentication().clone()),
+                    AuthenticationMiddleware::handle,
                 ))
                 .layer(DefaultBodyLimit::max(di.max_request_body_bytes())),
         ))

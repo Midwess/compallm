@@ -1,4 +1,4 @@
-use crate::middleware::authentication::RequestError;
+use crate::http::authentication::RequestError;
 use compallm_core::{
     authentication::AuthError, mail::EmailError, persistent::user::UserRepositoryError,
 };

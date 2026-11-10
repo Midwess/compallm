@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use compallm_core::{
     authentication::{Session, UserAccessToken},
-    authorization::{MemberPermission, MemberPermissionError, PolicySnapshot, policy::Action},
+    authorization::{MemberPermission, MemberPermissionError, PolicySnapshot, condition::CheckPermission, policy::Action},
     organization::{Group, OrganizationMember, Role},
 };
 
@@ -56,20 +56,20 @@ fn direct_and_group_permissions_apply_to_the_members_organization() {
     let permission = MemberPermission::try_from(access(7, &member)).unwrap();
     assert_eq!(permission.user_id(), 11);
     assert_eq!(permission.organization_id(), 7);
-    assert!(permission.require(Action::ProviderCreate).is_ok());
-    assert!(permission.require(Action::ProviderRead).is_ok());
+    assert!(Action::ProviderCreate.check_permission(&permission).is_ok());
+    assert!(Action::ProviderRead.check_permission(&permission).is_ok());
     assert!(matches!(
-        permission.require(Action::ModelRead),
+        Action::ModelRead.check_permission(&permission),
         Err(MemberPermissionError::Denied)
     ));
     // The same policy source cannot grant access in another organization.
     let foreign = MemberPermission::try_from(access(8, &member)).unwrap();
     assert!(matches!(
-        foreign.require(Action::ProviderCreate),
+        Action::ProviderCreate.check_permission(&foreign),
         Err(MemberPermissionError::Denied)
     ));
     assert!(matches!(
-        foreign.require(Action::ProviderRead),
+        Action::ProviderRead.check_permission(&foreign),
         Err(MemberPermissionError::Denied)
     ));
 }
@@ -92,14 +92,14 @@ fn forbid_and_evaluation_errors_cannot_be_overridden_by_a_permit() {
     };
     let permission = MemberPermission::try_from(access(7, &member)).unwrap();
     assert!(matches!(
-        permission.require(Action::ProviderRead),
+        Action::ProviderRead.check_permission(&permission),
         Err(MemberPermissionError::Denied)
     ));
     // A valid policy can still fail at evaluation, such as arithmetic overflow.
     member.groups[0].roles[0].cedar_source = r#"forbid(principal, action == Compallm::Action::"provider.read", resource == Compallm::Organization::"7") when { 9223372036854775807 + 1 > 0 };"#.into();
     let permission = MemberPermission::try_from(access(7, &member)).unwrap();
     assert!(matches!(
-        permission.require(Action::ProviderRead),
+        Action::ProviderRead.check_permission(&permission),
         Err(MemberPermissionError::Evaluation)
     ));
 }

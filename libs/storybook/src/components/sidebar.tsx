@@ -25,7 +25,7 @@ export function Sidebar({
     >
       <nav
         aria-label={navigationLabel}
-        className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto"
+        className="flex min-h-0 min-w-0 flex-1 flex-col gap-2.5 overflow-x-hidden overflow-y-auto"
       >
         {children}
       </nav>
@@ -91,7 +91,7 @@ export function SidebarHeader({
   }
 
   return (
-    <div className="mt-3 flex h-[34px] w-full min-w-0 shrink-0 items-center justify-between gap-2 pl-2 pr-1">
+    <div className="mt-3 flex h-10 w-full min-w-0 shrink-0 items-center justify-between gap-2 pl-2 pr-1">
       <button
         ref={trigger}
         popoverTarget={id}
@@ -110,7 +110,7 @@ export function SidebarHeader({
           }
         }}
         className={cx(
-          'flex min-w-0 flex-1 cursor-pointer items-center gap-0.5 rounded text-xs leading-[15px] text-text',
+          'flex min-w-0 flex-1 cursor-pointer items-center gap-1 rounded text-xs leading-4 text-text',
           focus,
         )}
       >
@@ -118,14 +118,14 @@ export function SidebarHeader({
           <span
             aria-hidden="true"
             className={`
-  flex size-[13px] shrink-0 items-center justify-center rounded-[4px] bg-[#ff6b00]
-  text-[8px] leading-none font-bold text-white
+  flex aspect-square p-0.5 h-4.5 shrink-0 items-center justify-center rounded-md bg-[#ff6b00]
+  text-xs leading-none font-bold text-white
 `}
           >
             c
           </span>
         )}
-        <span className="truncate font-bold leading-[15px]">{workspace}</span>
+        <span className="truncate font-medium leading-4">{workspace}</span>
         <CaretDownIcon size={10} className="ml-0.5 shrink-0 text-muted" aria-hidden="true" />
       </button>
       <div
@@ -231,7 +231,7 @@ export function SidebarHeader({
             } else if (event.key === 'Tab') close()
           }}
           className={`${popupMotion}
-            fixed inset-auto top-[anchor(top)] left-[anchor(right)] z-40 m-0 w-[220px] max-w-[calc(100vw-16px)]
+            fixed inset-auto top-[anchor(top)] left-[anchor(right)] z-40 m-0 w-55 max-w-[calc(100vw-16px)]
             rounded-lg border-[0.5px] border-border bg-menu p-1 text-text shadow-menu
             [position-try-fallbacks:flip-inline,flip-block]
           `}
@@ -307,22 +307,25 @@ export function SidebarSection({ label, children, defaultOpen = true, onAdd, add
           aria-controls={id}
           className={cx(
             `
-flex h-7 cursor-pointer list-none items-center gap-1 rounded px-2 pr-7 text-xs font-medium leading-[13px]
-text-disabled marker:hidden
+flex h-7 cursor-pointer list-none items-center gap-1 rounded px-2 pr-7 text-xs font-medium leading-3
+ text-muted marker:hidden
 [&::-webkit-details-marker]:hidden
 `,
             focus,
           )}
         >
           {label}
-          <CaretDownIcon
-            size={8}
-            weight="fill"
+          <svg
+            width="8"
+            height="8"
+            viewBox="0 0 8 8"
             aria-hidden="true"
             className="-rotate-90 group-open/sidebar-section:rotate-0 motion-safe:transition-transform motion-safe:duration-150"
-          />
+          >
+            <path d="M2 1.72h4a.4.4 0 0 1 .35.6l-2 3.96a.4.4 0 0 1-.7 0l-2-3.96a.4.4 0 0 1 .35-.6Z" fill="currentColor" />
+          </svg>
         </summary>
-        <div id={id} className="mt-0.5 grid gap-0.5">
+        <div id={id} className="grid gap-px">
           {children}
         </div>
       </details>
@@ -351,8 +354,8 @@ export function SidebarFolder({
           aria-controls={id}
           className={cx(
             `
-flex h-7 cursor-pointer list-none items-center gap-1.5 rounded px-2 pr-7 text-xs font-medium
-leading-[17px] text-muted hover:bg-elevated marker:hidden [&::-webkit-details-marker]:hidden
+flex h-7 cursor-pointer list-none items-center gap-1.5 rounded px-2 pr-7 text-xsm font-medium
+leading-4 text-muted hover:bg-elevated marker:hidden [&::-webkit-details-marker]:hidden
 `,
             focus,
           )}
@@ -361,14 +364,17 @@ leading-[17px] text-muted hover:bg-elevated marker:hidden [&::-webkit-details-ma
             {icon}
           </span>
           <span className="min-w-0 truncate">{label}</span>
-          <CaretDownIcon
-            size={8}
-            weight="fill"
+          <svg
+            width="8"
+            height="8"
+            viewBox="0 0 8 8"
             aria-hidden="true"
             className="-rotate-90 group-open/sidebar-folder:rotate-0 motion-safe:transition-transform motion-safe:duration-150"
-          />
+          >
+            <path d="M2 1.72h4a.4.4 0 0 1 .35.6l-2 3.96a.4.4 0 0 1-.7 0l-2-3.96a.4.4 0 0 1 .35-.6Z" fill="currentColor" />
+          </svg>
         </summary>
-        <div id={id} className="mt-0.5 grid gap-0.5 pl-4 pr-4 [&_a]:font-normal">
+        <div id={id} className="mt-0.5 grid gap-px pl-4 pr-4 [&_a]:font-normal">
           {children}
         </div>
       </details>
@@ -409,7 +415,7 @@ export function SidebarItem({
       title={label}
       className={cx(
         `
-flex h-7 min-w-0 items-center gap-1.5 rounded-[6px] px-2 text-xs font-medium leading-[17px] text-muted
+flex h-7 min-w-0 items-center gap-1.5 rounded-[6px] px-2 text-xsm font-medium leading-[17px] text-muted
 hover:bg-elevated hover:text-text aria-[current=page]:bg-elevated aria-[current=page]:text-text
 `,
         focus,

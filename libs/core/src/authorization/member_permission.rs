@@ -9,7 +9,7 @@ use crate::authentication::UserAccessToken;
 
 use super::{
     PolicySnapshot, all_policies,
-    policy::{Action, EntityType},
+    policy::Action,
 };
 
 /// A safe result for preparing or evaluating a member's permissions.
@@ -33,7 +33,6 @@ pub struct MemberPermission {
     user_id: u64,
     organization_id: u64,
     principal: EntityUid,
-    organization: EntityUid,
     policies: PolicySet,
     entities: Entities,
 }
@@ -57,16 +56,6 @@ impl MemberPermission {
 
     pub fn entities(&self) -> &Entities {
         &self.entities
-    }
-
-    /// Authorize an organization-scoped action against this member's own
-    /// organization. This performs no database access and never reparses policy.
-    /// Entity and contextual actions use authorization condition checks.
-    pub fn require(&self, action: Action) -> Result<(), MemberPermissionError> {
-        if action.resource() != EntityType::Organization || action.context().is_some() {
-            return Err(MemberPermissionError::Evaluation);
-        }
-        self.evaluate(action, self.organization.clone(), Context::empty(), &self.entities)
     }
 
     pub(super) fn evaluate(
@@ -126,15 +115,11 @@ impl TryFrom<UserAccessToken> for MemberPermission {
         let principal = format!("Compallm::User::\"{user_id}\"")
             .parse()
             .map_err(|_| MemberPermissionError::InvalidAuthority)?;
-        let organization = format!("Compallm::Organization::\"{organization_id}\"")
-            .parse()
-            .map_err(|_| MemberPermissionError::InvalidAuthority)?;
         let entities = MemberEntities::try_from((user_id, organization_id, &snapshot))?.0;
         Ok(Self {
             user_id,
             organization_id,
             principal,
-            organization,
             policies,
             entities,
         })

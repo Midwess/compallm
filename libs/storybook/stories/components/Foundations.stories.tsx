@@ -102,7 +102,7 @@ export const Typography: Story = {
       <SettingsPageTitle>Page title · 24 / 32 · Medium</SettingsPageTitle>
       <SettingsSectionTitle>Section title · 15 / 23 · Medium</SettingsSectionTitle>
       <FormFieldLabel>Field label · 14 / 21 · Medium</FormFieldLabel>
-      <p className="text-[13px] leading-5">Body text · 13 / 20 · Regular</p>
+      <p className="text-xsm leading-5">Body text · 13 / 20 · Regular</p>
       <HelperText>Helper text · 12 / 18 · Regular</HelperText>
     </div>
   ),

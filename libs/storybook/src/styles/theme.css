@@ -27,6 +27,7 @@
 
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --text-xsm: 13px;
   --shadow-action: 0 0.5px 1px 1px rgb(0 0 0 / 30%);
   --shadow-control: 0 0 0 0.5px rgb(255 255 255 / 14.3%), 0 0.5px 1px 1px rgb(0 0 0 / 30%);
   --shadow-menu: 0 3px 8px rgb(0 0 0 / 12.5%), 0 2px 5px rgb(0 0 0 / 12.5%), 0 1px 1px rgb(0 0 0 / 12.5%);

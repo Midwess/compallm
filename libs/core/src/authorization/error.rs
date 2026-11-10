@@ -9,7 +9,7 @@ pub enum AuthorizationError {
     #[error(transparent)]
     Connection(#[from] crate::persistent::ConnectionError),
     #[error(transparent)]
-    Auth(#[from] crate::auth::AuthError),
+    Auth(#[from] crate::authentication::AuthError),
     #[error(transparent)]
     Group(#[from] crate::organization::group::GroupCreationError),
     #[error(transparent)]

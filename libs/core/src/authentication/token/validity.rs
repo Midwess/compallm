@@ -1,4 +1,4 @@
-use crate::auth::AuthError;
+use crate::authentication::AuthError;
 use compallm_utils::time::unix_timestamp;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;

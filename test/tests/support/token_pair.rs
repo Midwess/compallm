@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use crate::test_codec;
 
-use compallm_core::auth::{
+use compallm_core::authentication::{
     AccessToken, AuthError, RefreshToken, Session, UserAccessToken, UserTokens,
 };
 use compallm_core::authorization::PolicySnapshot;

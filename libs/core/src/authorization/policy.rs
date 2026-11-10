@@ -11,11 +11,9 @@ pub enum EntityType {
     Member,
     Role,
     Group,
-    UserAuthentication,
     Provider,
     ProviderModel,
     Model,
-    Session,
 }
 
 impl EntityType {
@@ -25,11 +23,9 @@ impl EntityType {
         Self::Member,
         Self::Role,
         Self::Group,
-        Self::UserAuthentication,
         Self::Provider,
         Self::ProviderModel,
         Self::Model,
-        Self::Session,
     ];
 
     pub const fn name(self) -> &'static str {
@@ -39,11 +35,9 @@ impl EntityType {
             Self::Member => "Member",
             Self::Role => "Role",
             Self::Group => "Group",
-            Self::UserAuthentication => "UserAuthentication",
             Self::Provider => "Provider",
             Self::ProviderModel => "ProviderModel",
             Self::Model => "Model",
-            Self::Session => "Session",
         }
     }
 
@@ -52,10 +46,8 @@ impl EntityType {
             Self::User => &[Self::Role, Self::Group, Self::Organization],
             Self::Group => &[Self::Role, Self::Organization],
             Self::ProviderModel => &[Self::Provider, Self::Organization],
-            Self::Member | Self::Role | Self::Provider | Self::Model | Self::Session => {
-                &[Self::Organization]
-            }
-            Self::Organization | Self::UserAuthentication => &[],
+            Self::Member | Self::Role | Self::Provider | Self::Model => &[Self::Organization],
+            Self::Organization => &[],
         }
     }
 
@@ -70,9 +62,8 @@ impl EntityType {
             kind: AttributeType::Boolean,
         };
         match self {
-            Self::Member | Self::Session => &[ORG, USER],
+            Self::Member => &[ORG, USER],
             Self::Role | Self::Group | Self::Provider => &[ORG],
-            Self::UserAuthentication => &[USER],
             Self::ProviderModel => &[ORG, PROVIDER, ENABLED],
             Self::Model => &[ORG, ENABLED],
             Self::User | Self::Organization => &[],
@@ -189,11 +180,6 @@ actions! {
     GroupRoleAssign => ("group.role.assign", EntityType::Group, EntityType::Group, Some(Attribute::entity(AttributeName::Role, EntityType::Role))),
     GroupRoleUnassign => ("group.role.unassign", EntityType::Group, EntityType::Group, Some(Attribute::entity(AttributeName::Role, EntityType::Role))),
     GroupDelete => ("group.delete", EntityType::Group, EntityType::Group, None),
-    UserAuthenticationRead => ("user.authentication.read", EntityType::UserAuthentication, EntityType::UserAuthentication, None),
-    UserAuthenticationUpdate => ("user.authentication.update", EntityType::UserAuthentication, EntityType::UserAuthentication, None),
-    SessionList => ("session.list", EntityType::Session, EntityType::User, None),
-    SessionMetadataRead => ("session.metadata.read", EntityType::Session, EntityType::Session, None),
-    SessionRevoke => ("session.revoke", EntityType::Session, EntityType::Session, None),
     ProviderList => ("provider.list", EntityType::Provider, EntityType::Organization, None),
     ProviderCreate => ("provider.create", EntityType::Provider, EntityType::Organization, None),
     ProviderConnectionTest => ("provider.connection.test", EntityType::Provider, EntityType::Organization, None),
@@ -207,8 +193,6 @@ actions! {
     ProviderModelConfigurationUpdate => ("provider.model.configuration.update", EntityType::ProviderModel, EntityType::ProviderModel, None),
     ProviderModelPricingUpdate => ("provider.model.pricing.update", EntityType::ProviderModel, EntityType::ProviderModel, None),
     ProviderModelDelete => ("provider.model.delete", EntityType::ProviderModel, EntityType::ProviderModel, None),
-    UserProfileUpdate => ("user.profile.update", EntityType::User, EntityType::User, None),
-    UserAccountDelete => ("user.account.delete", EntityType::User, EntityType::User, None),
     ModelList => ("model.list", EntityType::Model, EntityType::Organization, None),
     ModelCreate => ("model.create", EntityType::Model, EntityType::Organization, None),
     ModelMetadataRead => ("model.metadata.read", EntityType::Model, EntityType::Model, None),

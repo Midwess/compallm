@@ -1,5 +1,5 @@
 use compallm_core::{
-    auth::Session,
+    authentication::Session,
     organization::{Group, Organization, Role},
     user::User,
 };

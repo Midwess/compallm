@@ -13,7 +13,6 @@ use std::sync::LazyLock;
 use cedar_policy::{Schema, SchemaFragment};
 
 use crate::{
-    auth::{Session, UserAuth},
     model::Model,
     organization::{Group, Organization, OrganizationMember, Role},
     provider::{Provider, ProviderModel},
@@ -45,13 +44,11 @@ pub fn all_policies() -> &'static Schema {
             User::policy(),
             Role::policy(),
             Group::policy(),
-            UserAuth::policy(),
             Organization::policy(),
             OrganizationMember::policy(),
             Provider::policy(),
             ProviderModel::policy(),
             Model::policy(),
-            Session::policy(),
         ])
         .expect("Core SystemPolicy fragments must form a complete, valid Cedar schema")
     });

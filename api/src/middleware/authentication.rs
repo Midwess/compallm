@@ -12,7 +12,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use compallm_core::{
-    auth::{
+    authentication::{
         AccessToken, AuthError, AuthService, EmailOtpAccessToken, RefreshToken, UserAccessToken,
         UserTokens,
     },

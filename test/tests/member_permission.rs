@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use compallm_core::{
-    auth::{Session, UserAccessToken},
+    authentication::{Session, UserAccessToken},
     authorization::{MemberPermission, MemberPermissionError, PolicySnapshot, policy::Action},
     organization::{Group, OrganizationMember, Role},
 };

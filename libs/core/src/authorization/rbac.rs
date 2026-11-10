@@ -1,6 +1,6 @@
 use crate::persistent::organization::OrganizationRepository;
 use crate::{
-    auth::AuthService, authorization::error::AuthorizationError, organization::Group,
+    authentication::AuthService, authorization::error::AuthorizationError, organization::Group,
     persistent::DbContext,
 };
 

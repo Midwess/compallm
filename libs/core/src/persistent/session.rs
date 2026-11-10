@@ -1,5 +1,5 @@
 use super::ConnectionError;
-use crate::auth::Session;
+use crate::authentication::Session;
 use crate::organization::OrganizationMember;
 
 #[derive(Debug, thiserror::Error)]

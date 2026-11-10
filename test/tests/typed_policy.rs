@@ -1,6 +1,5 @@
 use cedar_policy::{EntityUid, Schema, SchemaFragment};
 use compallm_core::{
-    auth::{Session, UserAuth},
     authorization::{
         SystemPolicy,
         policy::{Action, EntityType, Policy},
@@ -22,11 +21,9 @@ fn typed_vocabulary_matches_current_schema() -> anyhow::Result<()> {
         OrganizationMember::policy(),
         Role::policy(),
         Group::policy(),
-        UserAuth::policy(),
         Provider::policy(),
         ProviderModel::policy(),
         Model::policy(),
-        Session::policy(),
     ];
     assert_eq!(EntityType::ALL.len(), fragments.len());
     let baseline: Vec<Value> =

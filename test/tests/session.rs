@@ -6,7 +6,7 @@ mod test_codec;
 mod token_pair;
 use session_fixture::stored_session;
 
-use compallm_core::auth::{AuthError, RefreshToken, Session, UserAccessToken};
+use compallm_core::authentication::{AuthError, RefreshToken, Session, UserAccessToken};
 use std::time::Duration;
 const LIFETIME: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 const SECRET: &str = "test-signing-secret-at-least-32-bytes";
@@ -173,7 +173,7 @@ fn serialized_session_requires_its_version_and_version_is_not_identity() {
     let mut value = serde_json::to_value(&newer).unwrap();
     assert_eq!(value["v"], 42);
     value.as_object_mut().unwrap().remove("v");
-    assert!(serde_json::from_value::<compallm_core::auth::Session>(value).is_err());
+    assert!(serde_json::from_value::<compallm_core::authentication::Session>(value).is_err());
 }
 
 fn empty_snapshot() -> compallm_core::authorization::PolicySnapshot {

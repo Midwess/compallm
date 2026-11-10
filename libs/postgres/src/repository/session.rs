@@ -1,7 +1,7 @@
 use crate::{UserSessionSchema, postgres_connection::PostgresConnection};
 use anyhow::Context;
 use compallm_core::{
-    auth::Session,
+    authentication::Session,
     persistent::{
         DbContext,
         session::{SessionRepository as CoreSessionRepository, SessionRepositoryError},

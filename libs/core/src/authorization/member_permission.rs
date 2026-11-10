@@ -5,7 +5,7 @@ use cedar_policy::{
     RestrictedExpression, ValidationMode, Validator,
 };
 
-use crate::auth::UserAccessToken;
+use crate::authentication::UserAccessToken;
 
 use super::{
     PolicySnapshot, all_policies,

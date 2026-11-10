@@ -10,28 +10,7 @@
           ]
         }
       },
-      "actions": {
-        "user.account.delete": {
-          "appliesTo": {
-            "resourceTypes": [
-              "User"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        },
-        "user.profile.update": {
-          "appliesTo": {
-            "resourceTypes": [
-              "User"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        }
-      }
+      "actions": {}
     }
   },
   {
@@ -441,45 +420,6 @@
   {
     "Compallm": {
       "entityTypes": {
-        "UserAuthentication": {
-          "shape": {
-            "type": "Record",
-            "attributes": {
-              "user": {
-                "type": "Entity",
-                "name": "User"
-              }
-            }
-          }
-        }
-      },
-      "actions": {
-        "user.authentication.read": {
-          "appliesTo": {
-            "resourceTypes": [
-              "UserAuthentication"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        },
-        "user.authentication.update": {
-          "appliesTo": {
-            "resourceTypes": [
-              "UserAuthentication"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        }
-      }
-    }
-  },
-  {
-    "Compallm": {
-      "entityTypes": {
         "Provider": {
           "memberOfTypes": [
             "Organization"
@@ -802,62 +742,6 @@
           "appliesTo": {
             "resourceTypes": [
               "Model"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        }
-      }
-    }
-  },
-  {
-    "Compallm": {
-      "entityTypes": {
-        "Session": {
-          "memberOfTypes": [
-            "Organization"
-          ],
-          "shape": {
-            "type": "Record",
-            "attributes": {
-              "organization": {
-                "type": "Entity",
-                "name": "Organization"
-              },
-              "user": {
-                "type": "Entity",
-                "name": "User"
-              }
-            }
-          }
-        }
-      },
-      "actions": {
-        "session.list": {
-          "appliesTo": {
-            "resourceTypes": [
-              "User"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        },
-        "session.metadata.read": {
-          "appliesTo": {
-            "resourceTypes": [
-              "Session"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        },
-        "session.revoke": {
-          "appliesTo": {
-            "resourceTypes": [
-              "Session"
             ],
             "principalTypes": [
               "User"

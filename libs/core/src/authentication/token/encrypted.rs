@@ -8,7 +8,7 @@ use hkdf::Hkdf;
 use rand::RngCore;
 use sha2::Sha256;
 
-use crate::auth::AuthError;
+use crate::authentication::AuthError;
 use serde::{Serialize, de::DeserializeOwned};
 
 const AAD: &[u8] = b"compallm:auth:encrypted-access-token:v1";

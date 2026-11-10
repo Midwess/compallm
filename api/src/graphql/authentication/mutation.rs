@@ -1,4 +1,4 @@
-use compallm_core::auth::{
+use compallm_core::authentication::{
     AuthService, EmailOtpAccessToken, IssuedEmailOtp, TokenValidity, UserTokens,
 };
 use juniper::{GraphQLObject, graphql_object};

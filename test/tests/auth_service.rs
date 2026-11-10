@@ -17,7 +17,7 @@ use std::{
 };
 
 use compallm_core::{
-    auth::{
+    authentication::{
         AccessToken, AuthError, AuthService, EmailOtpAccessToken, EmailOtpChallenge, RefreshToken,
         Session, TokenLifetimes, UserAccessToken, UserTokens,
     },
@@ -594,8 +594,8 @@ impl Fixture {
         UserAccessToken::new(session, empty_snapshot(), Duration::from_secs(60)).unwrap()
     }
 
-    fn otp(challenge: &EmailOtpChallenge) -> compallm_core::auth::EmailOtpAccessToken {
-        compallm_core::auth::EmailOtpAccessToken::try_from(
+    fn otp(challenge: &EmailOtpChallenge) -> compallm_core::authentication::EmailOtpAccessToken {
+        compallm_core::authentication::EmailOtpAccessToken::try_from(
             decode_token(&challenge.access_token, SECRET).unwrap(),
         )
         .unwrap()
@@ -922,7 +922,7 @@ async fn issued_tokens_use_signed_versioned_compression() {
                 .is_err()
         );
     }
-    let missing = AccessToken::Compressed(compallm_core::auth::token::CompressedToken {
+    let missing = AccessToken::Compressed(compallm_core::authentication::token::CompressedToken {
         dictionary_version: 999,
         data: vec![1],
     });
@@ -957,7 +957,7 @@ async fn issued_tokens_use_signed_versioned_compression() {
         "a different dictionary",
     )
     .unwrap();
-    let payload = AccessToken::Compressed(compallm_core::auth::token::CompressedToken {
+    let payload = AccessToken::Compressed(compallm_core::authentication::token::CompressedToken {
         dictionary_version: 1,
         data: wrong.compress_bytes(b"{}").await.unwrap(),
     });
@@ -1148,7 +1148,7 @@ async fn invalid_signature_is_rejected_before_dictionary_lookup() {
     ));
     let otp = EmailOtpAccessToken::new("james@midwess.com".into()).unwrap();
     let encrypted = AccessToken::EmailOtp(otp)
-        .encrypt(&compallm_core::auth::EncryptedAccessToken::new(SECRET).unwrap())
+        .encrypt(&compallm_core::authentication::EncryptedAccessToken::new(SECRET).unwrap())
         .await
         .unwrap();
     let raw = test_codec::sign_raw(&encrypted, SECRET, Duration::from_secs(60));

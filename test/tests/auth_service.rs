@@ -234,7 +234,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
                 if !state.full_default_policies {
                     // Synthetic bounded policies for transport/lifecycle tests; full defaults have dedicated rejection tests.
                     for role in &mut member.roles {
-                        role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.list", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
+                        role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.read", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
                     }
                 }
                 let organization = state
@@ -274,7 +274,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
                 if !state.full_default_policies {
                     // Synthetic bounded policies for transport/lifecycle tests; full defaults have dedicated rejection tests.
                     for role in &mut member.roles {
-                        role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.list", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
+                        role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.read", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
                     }
                 }
                 let organization = state
@@ -778,7 +778,7 @@ impl Fixture {
             org_owner: index == 0,
         };
         role.cedar_source = format!(
-            r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.list", resource == Compallm::Organization::"{}");"#,
+            r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.read", resource == Compallm::Organization::"{}");"#,
             organization_id, role.id, organization_id
         );
         role

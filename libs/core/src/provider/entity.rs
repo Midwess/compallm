@@ -64,8 +64,7 @@ impl ProviderModel {
 impl SystemPolicy for Provider {
     /// Declares connection management without exposing provider secrets.
     ///
-    /// - `provider.list`: list safe connection summaries in the target Organization.
-    /// - `provider.configuration.read`: read non-secret configuration of a Provider in that organization;
+    /// - `provider.read`: list providers and read their non-secret configuration;
     ///   omit API keys and stored secret-header values from every response.
     /// - `provider.create`: create a connection in the destination Organization; creation
     ///   neither performs inference nor requires a successful connection test.
@@ -90,11 +89,10 @@ impl SystemPolicy for Provider {
 impl SystemPolicy for ProviderModel {
     /// Declares configured upstream models, distinct from logical Model resources.
     ///
-    /// - `provider.model.list`: enumerate safe configured-model summaries under a Provider.
+    /// - `provider.model.read`: list configured models and inspect their non-secret configuration,
+    ///   including configured costs; no API keys or secret header values are returned.
     /// - `provider.model.create`: configure an upstream model beneath that Provider;
     ///   it grants neither logical-model creation nor inference invocation.
-    /// - `provider.model.configuration.read`: inspect permitted non-secret upstream model configuration,
-    ///   including configured costs; no API keys or secret header values are returned.
     /// - `provider.model.configuration.update`: edit permitted routing/protocol/availability settings;
     ///   pricing and credential replacement require additional permissions.
     /// - `provider.model.pricing.update`: change upstream costs for this ProviderModel,

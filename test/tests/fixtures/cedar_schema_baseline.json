@@ -85,26 +85,6 @@
             ]
           }
         },
-        "member.list": {
-          "appliesTo": {
-            "resourceTypes": [
-              "Organization"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        },
-        "member.metadata.read": {
-          "appliesTo": {
-            "resourceTypes": [
-              "Member"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        },
         "member.remove": {
           "appliesTo": {
             "resourceTypes": [
@@ -151,6 +131,16 @@
                 }
               }
             }
+          }
+        },
+        "member.read": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
           }
         }
       }
@@ -205,26 +195,6 @@
             ]
           }
         },
-        "role.list": {
-          "appliesTo": {
-            "resourceTypes": [
-              "Organization"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        },
-        "role.metadata.read": {
-          "appliesTo": {
-            "resourceTypes": [
-              "Role"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        },
         "role.metadata.update": {
           "appliesTo": {
             "resourceTypes": [
@@ -259,6 +229,16 @@
           "appliesTo": {
             "resourceTypes": [
               "Role"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "role.read": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
             ],
             "principalTypes": [
               "User"
@@ -308,16 +288,6 @@
             ]
           }
         },
-        "group.list": {
-          "appliesTo": {
-            "resourceTypes": [
-              "Organization"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        },
         "group.member.add": {
           "appliesTo": {
             "resourceTypes": [
@@ -354,16 +324,6 @@
                 }
               }
             }
-          }
-        },
-        "group.metadata.read": {
-          "appliesTo": {
-            "resourceTypes": [
-              "Group"
-            ],
-            "principalTypes": [
-              "User"
-            ]
           }
         },
         "group.metadata.update": {
@@ -413,6 +373,16 @@
               }
             }
           }
+        },
+        "group.read": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
         }
       }
     }
@@ -436,16 +406,6 @@
         }
       },
       "actions": {
-        "provider.configuration.read": {
-          "appliesTo": {
-            "resourceTypes": [
-              "Provider"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        },
         "provider.configuration.update": {
           "appliesTo": {
             "resourceTypes": [
@@ -496,7 +456,7 @@
             ]
           }
         },
-        "provider.list": {
+        "provider.read": {
           "appliesTo": {
             "resourceTypes": [
               "Organization"
@@ -536,16 +496,6 @@
         }
       },
       "actions": {
-        "provider.model.configuration.read": {
-          "appliesTo": {
-            "resourceTypes": [
-              "ProviderModel"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        },
         "provider.model.configuration.update": {
           "appliesTo": {
             "resourceTypes": [
@@ -576,20 +526,20 @@
             ]
           }
         },
-        "provider.model.list": {
+        "provider.model.pricing.update": {
           "appliesTo": {
             "resourceTypes": [
-              "Provider"
+              "ProviderModel"
             ],
             "principalTypes": [
               "User"
             ]
           }
         },
-        "provider.model.pricing.update": {
+        "provider.model.read": {
           "appliesTo": {
             "resourceTypes": [
-              "ProviderModel"
+              "Organization"
             ],
             "principalTypes": [
               "User"
@@ -642,26 +592,6 @@
           }
         },
         "model.delete": {
-          "appliesTo": {
-            "resourceTypes": [
-              "Model"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        },
-        "model.list": {
-          "appliesTo": {
-            "resourceTypes": [
-              "Organization"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        },
-        "model.metadata.read": {
           "appliesTo": {
             "resourceTypes": [
               "Model"
@@ -742,6 +672,16 @@
           "appliesTo": {
             "resourceTypes": [
               "Model"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "model.read": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
             ],
             "principalTypes": [
               "User"

@@ -41,7 +41,7 @@ fn all_entity_policies_assemble_into_one_cached_schema() {
         Model::policy(),
     ])
     .unwrap();
-    assert_eq!(assembled.action_entities().unwrap().iter().count(), 50);
+    assert_eq!(assembled.action_entities().unwrap().iter().count(), 44);
     assert!(std::ptr::eq(all_policies(), all_policies()));
     let names = all_policies()
         .action_entities()
@@ -66,25 +66,20 @@ fn actions_have_explicit_resource_types_and_do_not_imply_grants() {
     for (prefix, operations, kind) in [
         ("organization", "delete", "Organization"),
         ("organization.settings", "read update", "Organization"),
-        ("member", "list invite", "Organization"),
+        ("member", "read invite", "Organization"),
         ("member", "remove", "Member"),
-        ("member.metadata", "read", "Member"),
-        ("provider", "list create", "Organization"),
+        ("provider", "read create", "Organization"),
         ("provider.connection", "test", "Organization"),
         ("provider", "delete", "Provider"),
-        ("provider.configuration", "read update", "Provider"),
+        ("provider.configuration", "update", "Provider"),
         ("provider.credential", "replace", "Provider"),
-        ("provider.model", "list create", "Provider"),
+        ("provider.model", "read", "Organization"),
+        ("provider.model", "create", "Provider"),
         ("provider.model", "delete", "ProviderModel"),
-        (
-            "provider.model.configuration",
-            "read update",
-            "ProviderModel",
-        ),
+        ("provider.model.configuration", "update", "ProviderModel"),
         ("provider.model.pricing", "update", "ProviderModel"),
-        ("model", "list create", "Organization"),
+        ("model", "read create", "Organization"),
         ("model", "delete use", "Model"),
-        ("model.metadata", "read", "Model"),
         ("model.configuration", "update", "Model"),
         ("model.pricing", "update", "Model"),
     ] {
@@ -132,12 +127,12 @@ fn schema_rejects_unknown_actions_and_credential_exposure() {
         "user.update",
         "user.delete",
         "organization.update",
-        "member.read",
-        "provider.read",
+        "member.list",
+        "provider.list",
         "provider.update",
-        "provider.model.read",
+        "provider.model.list",
         "provider.model.update",
-        "model.read",
+        "model.list",
         "model.update",
         "session.read",
         "provider.view",
@@ -157,7 +152,7 @@ fn schema_rejects_unknown_actions_and_credential_exposure() {
                 .validation_passed()
         );
     }
-    let secret = PolicySet::from_str("permit(principal, action == Compallm::Action::\"provider.configuration.read\", resource) when { resource.apiKey == \"secret\" };").unwrap();
+    let secret = PolicySet::from_str("permit(principal, action == Compallm::Action::\"provider.configuration.update\", resource) when { resource.apiKey == \"secret\" };").unwrap();
     assert!(
         !validator
             .validate(&secret, ValidationMode::Strict)
@@ -181,8 +176,8 @@ fn entities() -> Entities {
 fn role_inheritance_preserves_organization_scope_and_forbid_precedence() {
     let permit = r#"permit (
         principal in Compallm::Role::"42:7",
-        action == Compallm::Action::"provider.configuration.read",
-        resource is Compallm::Provider in Compallm::Organization::"42"
+        action == Compallm::Action::"provider.read",
+        resource == Compallm::Organization::"42"
     );"#;
     let mut policies = PolicySet::from_str(permit).unwrap();
     let validator = Validator::new(all_policies().clone());
@@ -192,7 +187,14 @@ fn role_inheritance_preserves_organization_scope_and_forbid_precedence() {
             .validation_passed()
     );
     let authorizer = Authorizer::new();
-    let local = request("provider.configuration.read", "Provider", Context::empty()).unwrap();
+    let local = Request::new(
+        uid("User", "100"),
+        uid("Action", "provider.read"),
+        uid("Organization", "42"),
+        Context::empty(),
+        Some(all_policies()),
+    )
+    .unwrap();
     assert_eq!(
         authorizer
             .is_authorized(&local, &policies, &entities())
@@ -201,8 +203,8 @@ fn role_inheritance_preserves_organization_scope_and_forbid_precedence() {
     );
     let foreign = Request::new(
         uid("User", "100"),
-        uid("Action", "provider.configuration.read"),
-        uid("Provider", "43:200"),
+        uid("Action", "provider.read"),
+        uid("Organization", "43"),
         Context::empty(),
         Some(all_policies()),
     )
@@ -213,7 +215,7 @@ fn role_inheritance_preserves_organization_scope_and_forbid_precedence() {
             .decision(),
         Decision::Deny
     );
-    policies = PolicySet::from_str(&format!("{permit}\nforbid(principal, action == Compallm::Action::\"provider.configuration.read\", resource is Compallm::Provider);" )).unwrap();
+    policies = PolicySet::from_str(&format!("{permit}\nforbid(principal, action == Compallm::Action::\"provider.read\", resource is Compallm::Organization);" )).unwrap();
     assert!(
         validator
             .validate(&policies, ValidationMode::Strict)
@@ -230,7 +232,7 @@ fn role_inheritance_preserves_organization_scope_and_forbid_precedence() {
 #[test]
 fn resource_relationships_exclude_nested_groups_and_untyped_ownership() {
     let set = PolicySet::from_str(
-        "permit(principal, action == Compallm::Action::\"provider.model.configuration.read\", resource) when { resource.provider.organization == resource.organization && resource.enabled };",
+        "permit(principal, action == Compallm::Action::\"provider.model.read\", resource) when { resource == Compallm::Organization::\"42\" };",
     ).unwrap();
     assert!(
         Validator::new(all_policies().clone())
@@ -302,8 +304,8 @@ fn public_profiles_have_no_rbac_action_or_broad_read_permit() {
 fn viewing_a_disabled_model_does_not_authorize_invocation() {
     let policies = PolicySet::from_str(
         r#"
-        permit(principal in Compallm::Role::"42:7", action == Compallm::Action::"model.metadata.read",
-            resource is Compallm::Model in Compallm::Organization::"42");
+        permit(principal in Compallm::Role::"42:7", action == Compallm::Action::"model.read",
+            resource == Compallm::Organization::"42");
         permit(principal in Compallm::Role::"42:7", action == Compallm::Action::"model.use",
             resource is Compallm::Model in Compallm::Organization::"42") when { resource.enabled };
     "#,
@@ -322,12 +324,23 @@ fn viewing_a_disabled_model_does_not_authorize_invocation() {
         let combined = entities()
             .add_entities(model_entities.iter().cloned(), Some(all_policies()))
             .unwrap();
-        for action in ["model.metadata.read", "model.use"] {
-            let req = request(action, "Model", Context::empty()).unwrap();
+        for action in ["model.read", "model.use"] {
+            let req = if action == "model.read" {
+                Request::new(
+                    uid("User", "100"),
+                    uid("Action", action),
+                    uid("Organization", "42"),
+                    Context::empty(),
+                    Some(all_policies()),
+                )
+                .unwrap()
+            } else {
+                request(action, "Model", Context::empty()).unwrap()
+            };
             let result = Authorizer::new().is_authorized(&req, &policies, &combined);
             assert_eq!(
                 result.decision(),
-                if action == "model.metadata.read" || enabled {
+                if action == "model.read" || enabled {
                     Decision::Allow
                 } else {
                     Decision::Deny
@@ -356,7 +369,6 @@ fn configuration_update_does_not_imply_secret_replacement_or_read_access() {
     for (action, expected) in [
         ("provider.configuration.update", Decision::Allow),
         ("provider.credential.replace", Decision::Deny),
-        ("provider.configuration.read", Decision::Deny),
     ] {
         let response = Authorizer::new().is_authorized(
             &request(action, "Provider", Context::empty()).unwrap(),

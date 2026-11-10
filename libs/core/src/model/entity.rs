@@ -34,12 +34,10 @@ impl Model {
 impl SystemPolicy for Model {
     /// Declares logical-model discovery, invocation, and administration separately.
     ///
-    /// - `model.list`: discover permitted model summaries in an Organization; it does
-    ///   not expose provider credentials or privileged routing configuration.
+    /// - `model.read`: list models and inspect organization-visible metadata, capabilities,
+    ///   and user-facing prices. It excludes provider credentials and privileged routing.
     /// - `model.create`: create a logical model inside the destination Organization.
-    /// - `model.metadata.read`: inspect permitted organization-visible model metadata such as capability
-    ///   and configured user-facing prices. First-release grants cover all models in
-    ///   the active organization; per-model grant selection is deferred.
+    ///   Grants cover all models in the active organization; per-model grants are deferred.
     /// - `model.use`: invoke an available logical model. The grant does not enable a
     ///   disabled model or bypass spending limits, admission, or routing availability.
     /// - `model.configuration.update`: change permitted metadata/availability; pricing and route changes

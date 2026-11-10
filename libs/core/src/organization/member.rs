@@ -30,9 +30,7 @@ pub enum MembershipAssignmentError {
 impl SystemPolicy for OrganizationMember {
     /// Declares membership enumeration, metadata, and administration use cases.
     ///
-    /// - `member.list`: enumerate permitted membership summaries in an Organization;
-    ///   this requires a membership-listing grant, not merely knowledge of its ID.
-    /// - `member.metadata.read`: inspect protected membership state and role assignments, not a
+    /// - `member.read`: list memberships and inspect protected state and role assignments, not a
     ///   public user profile. It exposes no authentication or private account data;
     ///   the membership response contract must define its exact projection.
     /// - `member.invite`: invite someone into the destination Organization; invitation

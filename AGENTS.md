@@ -1,47 +1,116 @@
----
-type: agent-instructions
-scope: repository
----
+The YAML below is the project’s agent configuration panel: treat its settings as feature toggles and its flows and conventions as instructions to follow.
+Check it for every request, detect the user’s intent, follow all applicable flows, and read the linked files. `must`, `never`, `when`, and `except` express requirements, prohibitions, conditions,
+and exceptions; `steps` are ordered. Paths are repository-relative. Explicit user instructions take precedence.
 
-# Agent workflow
+```yaml
+policy:
+  doc-first: false # Implementation need not wait for documentation.
+  backward-compatibility: false # Preserve only when explicitly requested.
+  issue-required-to-start: false
+  preserve: unrelated working-tree changes
+  migrations: respect user restrictions; startup and database tests may apply migrations
+  before-planning-or-changes: read root README and relevant Wiki architecture and focused pages in full from a freshly fetched external checkout; discover filenames via Home.md and _Sidebar.md; report access failures without inventing rules or using stale content
 
-Detect the user’s intent and follow the relevant flow. Read and apply the linked instructions and skills when their trigger applies; use multiple flows when requested. Explicit user instructions take precedence. Continue authorized work without requiring a PR or issue unless requested.
+flows:
+  discuss-research:
+    steps: inspect → research → explain
+    never: implement discussed changes unless requested; keep unresolved business rules explicit
+  coding-implement-refactoring:
+    steps: inspect → code → verify
+    conventions: apply engineering conventions below
+    testing:
+      scope: core business logic; important main flows and critical edge cases
+      unit-tests-per-function: 0–2
+      location: tests/ directories only; shared Rust tests in test/tests/; consumer business logic in the consuming application’s tests/
+      never: tests under api/ or inline in application source; tests of framework or dependency behavior, strings, logs, print content, error messages, or input validation
+      storybook: no unit tests, automated browser or interaction suites, test runners, or libs/storybook/tests; validate with lint, type checks, builds, and manual inspection
+    when-behavior-or-architecture-changes: update relevant Wiki documentation and ADR as needed; implementation need not wait for publication
+    when-writing-code-comments: use .agents/skills/writing/SKILL.md
+  write-review:
+    applies-to: code comments, documentation, Wiki, technical prose
+    steps: inspect → write → review
+    skill: .agents/skills/writing/SKILL.md
+    never: implement discussed changes unless requested
+    product-docs: Compallm Wiki at https://github.com/Midwess/compallm.wiki.git; never recreate a local docs tree or documentation website
+    organization: feature architecture pages own decisions and open questions; focused feature pages own flows and configuration; maintain Home.md and _Sidebar.md when adding or renaming pages
+    content: current architecture and direct solution; keep responsibilities, data flow, contracts, constraints, operational guidance, implementation status, and unresolved requirements as relevant
+    exclude: visual design, superseded alternatives, dates, review history, implementation diaries, and PR or branch narratives
+    adr: under six minutes including diagrams and tables; estimate 200 words per minute plus at least 30 seconds per diagram; aim for 500–800 words or fewer
+  create-issue:
+    steps: clarify → write → create
+    skill: .agents/skills/create-issue/SKILL.md
+    when-bug: .agents/skills/create-bug/SKILL.md
+    when-feature: .agents/skills/create-feature/SKILL.md
+    when-task: .agents/skills/create-task/SKILL.md
+  find-link-issue:
+    steps: inspect → reuse or link
+    skills:
+      - .agents/skills/related-issues/SKILL.md
+      - .agents/skills/link-issue/SKILL.md
+  create-pr:
+    steps: review → find issue → link → create
+    before-creation: use .agents/skills/related-issues/SKILL.md to inspect current PR, branch, and issue links; reuse relevant linked issues
+    when-no-related-issue: ask user to identify an existing issue or create one with the appropriate issue skill
+    new-issues: Midwess/compallm; add to https://github.com/orgs/Midwess/projects/7
+    link: use .agents/skills/link-issue/SKILL.md to link issues to the PR
+    missing-issue: only PR creation waits; continue authorized preparation and verification
+    when-decisions-affect-related-issues: record agreed behavior, scope, acceptance criteria, and published Wiki links or commit; reuse existing notes and preserve others’ content
 
-```xml
-<flows>
-  <flow request="discuss, research" steps="inspect → research → explain">
-    <instructions path=".agents/instructions/documentation.md" />
-  </flow>
-  <flow request="implement, refactor" steps="inspect → document when required → code → verify">
-    <instructions path=".agents/instructions/documentation.md" />
-    <instructions path=".agents/instructions/engineering.md" />
-    <instructions path=".agents/instructions/testing.md" />
-  </flow>
-  <flow request="write, edit, review prose" steps="inspect → write → review">
-    <skill path=".agents/skills/writing/SKILL.md" />
-    <instructions path=".agents/instructions/documentation.md" />
-  </flow>
-  <flow request="create issue" steps="clarify → write → create">
-    <skill path=".agents/skills/create-issue/SKILL.md" />
-    <skill when="bug" path=".agents/skills/create-bug/SKILL.md" />
-    <skill when="feature" path=".agents/skills/create-feature/SKILL.md" />
-    <skill when="task" path=".agents/skills/create-task/SKILL.md" />
-  </flow>
-  <flow request="find, link issue" steps="inspect → reuse or link">
-    <skill path=".agents/skills/related-issues/SKILL.md" />
-    <skill path=".agents/skills/link-issue/SKILL.md" />
-  </flow>
-  <flow request="create PR" steps="review → find issue → link → create">
-    <instructions path=".agents/instructions/pull-request.md" />
-  </flow>
-</flows>
+conventions:
+  graphql:
+    applies-to: designing, writing, reviewing, or changing schemas, resolvers, or client operations
+    rules: |
+      Before designing, writing, reviewing, or changing GraphQL schemas, resolvers, or client operations, read the [GraphQL design and execution rules](https://github.com/Midwess/compallm/wiki/GraphQL-guidelines)
+      in full from the freshly fetched Wiki checkout (`api/GraphQL-guidelines.md`).
+      This is the required project reference for GraphQL naming, lookups, inputs/results, relationships, pagination, operation composition, authorization, batching, caching, limits, and compatibility; follow its examples.
+      Check official GraphQL guidance for uncovered cases and keep unresolved business rules explicit.
+      Document the solution directly without design-reference comparisons or claims about another product's private implementation.
+      Keep project documentation, examples, issue notes, and explanations in Compallm's own terms; do not name the external product used as the GraphQL design reference.
+
+      Public API documentation lives in the Wiki. GraphQL definitions live in Rust under `api/src/graphql`. Core authentication uses `libs/core/src/authentication`; GraphQL authentication uses `api/src/graphql/authentication`, separate from authorization. POST /api/graphql exposes Query.session and signupEmailRequest/signinEmailRequest, signupEmailConfirm/signinEmailConfirm, sessionRefresh and sessionRevoke mutations. Provider management/catalog operations remain pending. Follow the [transport contract](https://github.com/Midwess/compallm/wiki/GraphQL-transport) when extending request handling. Reuse shared Axum middleware under `api/src/http/middleware.rs`; its request contexts lazily parse and verify the required credential and check user-session freshness once per request. Middleware never reads GraphQL documents or maintains resolver-name policies. Each resolver requires its own verified slot before effects; public fields require no credential. The Axum route assembles the GraphQL context from HTTP request state; the endpoint extracts bounded JSON and enforces the generic single-root mutation limit before execution. Anonymous introspection exposes schema only. Resolver authentication failures use GraphQL errors with safe code/status; strict ordinary HTTP routes may still reject before the handler. Keep credential verification, freshness, and cookie renewal out of GraphQL handlers. Register the GraphQL route and its middleware explicitly in `App::before_routes`; keep the HTTP entry point at `api/src/graphql/endpoint.rs`. The GraphQL module owns schema construction, domain resolvers, and endpoint.rs, with no router or Transport wrapper. Reuse the existing `di::Di` as the sole service container. Construct request-local GraphqlContext from shared DI and the HTTP user, authentication, cookie delivery, and authorization contexts. Apply automatic user-renewal/clearing cookies only if a resolver consumes user authority; explicit cookies override renewal. Project these narrow dependencies with native FromContext; identity accessors reject the wrong credential kind. COOKIE delivery defaults in Rust; explicit null is rejected by Validify. Implement Juniper `FromContext<Di>` service projections and delegate request-context projections to DI. Resolvers request individual services/access through `#[graphql(context)]` parameters; they never receive DI, call global DI, or construct services. Do not add a duplicate Services container. Use Juniper derives and flat roots delegating to domain functions. Portal uses typed Genql selections with per-request cancellation and safe GraphQL error handling. Never replay authentication writes automatically. `cargo run -p compallm-api -- generate` exports Juniper SDL and Rust validation JSON Schema, invokes the local Genql CLI against the exported SDL (`--schema schema.graphql --output graphql --sort`), emits shared Zod validators/input guards and inferred form-value aliases, and builds the contract package without starting the app or executing migrations. Input DTOs derive Validify plus ExportValidation from `libs/validation-derive`; custom validators provide sibling metadata functions. Unsupported rules fail export. Controllers author typed object selections checked with `satisfies QueryGenqlSelection` or the corresponding mutation type; generic client inference alone can admit extra properties. Do not add per-operation SDKs or operation strings. Normalize Genql-generated relative imports for the shared ESM package during generation. Genql is the sole generator of API models. Validation export emits runtime rules/constraints and inferred FormInput/FormOutput aliases; do not recreate separate API interfaces or the contract/types barrel. Generation checks all validation metadata against registered SDL definitions and rejects metadata absent from GraphQL. All API types come from Genql; do not add retained TypeScript API snapshots or a preview contract export. Compose UI form helpers from generated validators and constraints. Regenerate tracked artifacts when Rust contracts change; never edit generated files or duplicate rules in UI code. Export only actual input definitions under `api/src/graphql`; do not create a parallel API contract DTO tree. Register reusable auth/provider input and catalog types in the Juniper schema without placeholder operations. Type registration does not expose executable queries/mutations. ContextTokens maps explicitly to TypeScript number and positive-u32 validation metadata. Use generated string session identities and uppercase API enums; local UI drafts may derive lower-case labels and convert them at submission. Never publish the Wiki automatically from startup, builds, or generation.
+
+  architecture:
+    style: pragmatic domain-driven design
+    core:
+      owns: connection lifecycle trait, domain invariants
+      never: depend on SeaORM or Postgres; contain database types
+    postgres:
+      depends-on: Core
+      owns: SeaORM connections, transactions, models, queries, persistence conversions, concurrency guards
+      implements: Core connection lifecycle trait
+    avoid: strict Clean Architecture layers, generic network traits, custom units of work
+    except: concrete requirement
+    connection-contexts: scoped
+
+  integrations:
+    use: concrete clients, reused pools, bounded timeouts
+    never: hold database transactions across email or HTTP calls
+
+  database:
+    repository-queries:
+      must: SeaORM syntax
+      never: raw SQL
+    generic-created-at-updated-at:
+      never: add to migrations or matching models
+      except: timestamp required by a concrete business rule
+    transaction-macro:
+      when: grouping multiple update commands only
+      before: perform prerequisite queries outside the transaction
+      end: as soon as possible while maintaining correctness
+
+  conversions:
+    must: From or TryFrom instead of standalone mappers
+    multiple-inputs: tuple source; destructure in try_from
+    orphan-rules: local wrapper when tuple conversion for a foreign domain type is prohibited; convert wrapper into domain type
+    never: custom conversion trait
+    persistence: PostgreSQL crate
+
+  validation:
+    source: Rust
+    library: Validify for HTTP normalization and shared domain validation
+    rules: define in Rust; export to shared contract for Portal and Storybook
+    field-errors: share codes, parameters, and messages through the same path when implemented
+    detailed-error-message-generation: deferred
+    UI: no independent validation messages or error tooltips as part of rule integration
+
 ```
-
-## Conditional instructions
-
-- GraphQL schema, resolver, or client operation work → [GraphQL](.agents/instructions/graphql.md).
-- Code comments, documentation, Wiki, or technical prose → [Writing](.agents/skills/writing/SKILL.md).
-- Before planning or making changes → follow the Wiki and README discovery rules in [Documentation](.agents/instructions/documentation.md).
-- New features or behavior/architecture changes → publish documentation first and record decisions as specified in [Documentation](.agents/instructions/documentation.md).
-- Discussion or documentation only → do not implement the discussed changes.
-- Preserve unrelated working-tree changes. Respect explicit instructions not to execute migrations; startup and database-backed tests can apply them automatically.

@@ -44,7 +44,13 @@ impl VerifiedAccess {
 struct SelectedToken {
     token: AccessToken,
     encoded: String,
-    bearer: bool,
+    source: CredentialSource,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CredentialSource {
+    Bearer,
+    Cookie,
 }
 
 pub(super) struct VerifiedUser {
@@ -85,9 +91,8 @@ impl AuthenticationContext {
             .get_or_init(|| async {
                 let headers = &self.0.headers;
                 let bearer = header::bearer(headers)?;
-                let is_bearer = bearer.is_some();
-                let encoded = if let Some(bearer) = bearer {
-                    bearer.to_owned()
+                let (encoded, source) = if let Some(bearer) = bearer {
+                    (bearer.to_owned(), CredentialSource::Bearer)
                 } else {
                     let encoded =
                         header::cookie(headers, self.0.authentication.settings.names().0)?;
@@ -97,7 +102,10 @@ impl AuthenticationContext {
                     {
                         self.0.authentication.settings.validate_origin(headers)?;
                     }
-                    encoded.ok_or(RequestError::Unauthenticated)?
+                    (
+                        encoded.ok_or(RequestError::Unauthenticated)?,
+                        CredentialSource::Cookie,
+                    )
                 };
                 let token = self
                     .0
@@ -109,7 +117,7 @@ impl AuthenticationContext {
                 Ok(SelectedToken {
                     token,
                     encoded,
-                    bearer: is_bearer,
+                    source,
                 })
             })
             .await
@@ -130,15 +138,15 @@ impl AuthenticationContext {
     }
 
     pub async fn refresh(&self) -> Result<&str, RequestError> {
-        match self.selected().await {
-            Ok(SelectedToken {
-                token: AccessToken::Refresh(_),
-                encoded,
-                bearer: true,
-            }) => Ok(encoded),
-            Err(error) => Err(error),
-            _ => Err(RequestError::Unauthenticated),
-        }
+        let SelectedToken {
+            token: AccessToken::Refresh(_),
+            encoded,
+            source: CredentialSource::Bearer,
+        } = self.selected().await?
+        else {
+            return Err(RequestError::Unauthenticated);
+        };
+        Ok(encoded)
     }
 
     async fn renew(
@@ -172,46 +180,58 @@ impl AuthenticationContext {
     }
 
     async fn load_user(&self) -> Result<VerifiedUser, RequestError> {
-        let selected = self.selected().await;
-        match selected {
-            Ok(SelectedToken {
-                token: AccessToken::User(user),
-                bearer,
-                ..
-            }) => match self.0.authentication.auth.validate_access(user).await {
-                Ok(true) => Ok(VerifiedUser {
-                    access: VerifiedAccess(user.clone()),
-                    replacements: HeaderMap::new(),
-                }),
-                Ok(false) | Err(AuthError::ExpiredToken) if !bearer => self.renew(Some(user)).await,
-                Ok(false) | Err(AuthError::ExpiredToken) => Err(RequestError::Expired),
-                Err(error) => Err(error.into()),
-            },
-            Err(RequestError::Unauthenticated)
-                if !self.0.headers.contains_key(AUTHORIZATION)
-                    && header::cookie(
-                        &self.0.headers,
-                        self.0.authentication.settings.names().0,
-                    )?
-                    .is_none() =>
-            {
-                if header::cookie(&self.0.headers, self.0.authentication.settings.names().1)?
-                    .is_none()
-                {
-                    return Err(RequestError::Unauthenticated);
-                }
-                self.0
-                    .authentication
-                    .settings
-                    .validate_origin(&self.0.headers)?;
-                self.renew(None).await
+        let selected = match self.selected().await {
+            Ok(selected) => selected,
+            Err(error) => return self.handle_selection_error(error).await,
+        };
+        let AccessToken::User(user) = &selected.token else {
+            return Err(RequestError::Unauthenticated);
+        };
+        self.verify_user(user, selected.source).await
+    }
+
+    async fn verify_user(
+        &self,
+        user: &UserAccessToken,
+        source: CredentialSource,
+    ) -> Result<VerifiedUser, RequestError> {
+        match self.0.authentication.auth.validate_access(user).await {
+            Ok(true) => Ok(VerifiedUser {
+                access: VerifiedAccess(user.clone()),
+                replacements: HeaderMap::new(),
+            }),
+            Ok(false) | Err(AuthError::ExpiredToken) if source == CredentialSource::Cookie => {
+                self.renew(Some(user)).await
             }
-            Err(RequestError::Expired) if !self.0.headers.contains_key(AUTHORIZATION) => {
-                self.renew(None).await
-            }
-            Err(error) => Err(error),
-            _ => Err(RequestError::Unauthenticated),
+            Ok(false) | Err(AuthError::ExpiredToken) => Err(RequestError::Expired),
+            Err(error) => Err(error.into()),
         }
+    }
+
+    async fn handle_selection_error(
+        &self,
+        error: RequestError,
+    ) -> Result<VerifiedUser, RequestError> {
+        if self.0.headers.contains_key(AUTHORIZATION) {
+            return Err(error);
+        }
+        match error {
+            RequestError::Expired => self.renew(None).await,
+            RequestError::Unauthenticated => self.renew_missing_access().await,
+            _ => Err(error),
+        }
+    }
+
+    async fn renew_missing_access(&self) -> Result<VerifiedUser, RequestError> {
+        let headers = &self.0.headers;
+        let settings = &self.0.authentication.settings;
+        let (access, refresh) = settings.names();
+        if header::cookie(headers, access)?.is_some() || header::cookie(headers, refresh)?.is_none()
+        {
+            return Err(RequestError::Unauthenticated);
+        }
+        settings.validate_origin(headers)?;
+        self.renew(None).await
     }
 
     pub(super) fn user_result(&self) -> Option<&Result<VerifiedUser, RequestError>> {
@@ -238,7 +258,6 @@ pub(super) fn finalize(
     response: &mut axum::response::Response,
 ) -> Result<(), RequestError> {
     use axum::http::header::SET_COOKIE;
-    use cookie::Cookie;
     let staged = delivery
         .response
         .lock()
@@ -248,24 +267,7 @@ pub(super) fn finalize(
         match user {
             Ok(user) => {
                 for value in user.replacements.get_all(SET_COOKIE) {
-                    let replacement = value
-                        .to_str()
-                        .ok()
-                        .and_then(|value| Cookie::parse(value).ok());
-                    let overridden = replacement.is_some_and(|replacement| {
-                        staged
-                            .get_all(SET_COOKIE)
-                            .iter()
-                            .chain(response.headers().get_all(SET_COOKIE).iter())
-                            .any(|value| {
-                                value
-                                    .to_str()
-                                    .ok()
-                                    .and_then(|value| Cookie::parse(value).ok())
-                                    .is_some_and(|cookie| cookie.name() == replacement.name())
-                            })
-                    });
-                    if !overridden {
+                    if !cookie_is_overridden(value, &staged, response.headers()) {
                         response.headers_mut().append(SET_COOKIE, value.clone());
                     }
                 }
@@ -282,4 +284,31 @@ pub(super) fn finalize(
     }
     response.headers_mut().extend(staged);
     Ok(())
+}
+
+fn cookie_is_overridden(
+    replacement: &axum::http::HeaderValue,
+    staged: &HeaderMap,
+    response: &HeaderMap,
+) -> bool {
+    use axum::http::header::SET_COOKIE;
+    use cookie::Cookie;
+    let Some(replacement) = replacement
+        .to_str()
+        .ok()
+        .and_then(|value| Cookie::parse(value).ok())
+    else {
+        return false;
+    };
+    staged
+        .get_all(SET_COOKIE)
+        .iter()
+        .chain(response.get_all(SET_COOKIE).iter())
+        .any(|value| {
+            value
+                .to_str()
+                .ok()
+                .and_then(|value| Cookie::parse(value).ok())
+                .is_some_and(|cookie| cookie.name() == replacement.name())
+        })
 }

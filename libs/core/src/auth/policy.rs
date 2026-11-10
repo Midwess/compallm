@@ -4,7 +4,10 @@ use std::sync::LazyLock;
 
 use cedar_policy::SchemaFragment;
 
-use crate::authorization::SystemPolicy;
+use crate::authorization::{
+    SystemPolicy,
+    policy::{EntityType, Policy},
+};
 
 /// Schema definition for a user's private authentication settings, not a stored key.
 ///
@@ -28,23 +31,8 @@ impl SystemPolicy for UserAuth {
     /// These are account capabilities, not organization-administrator shortcuts;
     /// baseline-path isolation and mutation verification belong to runtime services.
     fn policy() -> SchemaFragment {
-        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
-            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(
-                r#"
-namespace Compallm {
-    entity UserAuthentication { user: User };
-    action "user.authentication.read" appliesTo { principal: User, resource: UserAuthentication };
-    action "user.authentication.update" appliesTo { principal: User, resource: UserAuthentication };
-}
-"#,
-            )
-            .expect("UserAuth SystemPolicy must be a valid static Cedar schema fragment");
-            assert!(
-                warnings.count() == 0,
-                "UserAuth SystemPolicy must not contain schema warnings"
-            );
-            fragment
-        });
+        static DEFINITION: LazyLock<SchemaFragment> =
+            LazyLock::new(|| Policy::new(EntityType::UserAuthentication).into());
         DEFINITION.clone()
     }
 }

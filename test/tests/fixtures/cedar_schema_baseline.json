@@ -1,0 +1,870 @@
+[
+  {
+    "Compallm": {
+      "entityTypes": {
+        "User": {
+          "memberOfTypes": [
+            "Role",
+            "Group",
+            "Organization"
+          ]
+        }
+      },
+      "actions": {
+        "user.account.delete": {
+          "appliesTo": {
+            "resourceTypes": [
+              "User"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "user.profile.update": {
+          "appliesTo": {
+            "resourceTypes": [
+              "User"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "Compallm": {
+      "entityTypes": {
+        "Organization": {}
+      },
+      "actions": {
+        "organization.delete": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "organization.settings.read": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "organization.settings.update": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "Compallm": {
+      "entityTypes": {
+        "Member": {
+          "memberOfTypes": [
+            "Organization"
+          ],
+          "shape": {
+            "type": "Record",
+            "attributes": {
+              "organization": {
+                "type": "Entity",
+                "name": "Organization"
+              },
+              "user": {
+                "type": "Entity",
+                "name": "User"
+              }
+            }
+          }
+        }
+      },
+      "actions": {
+        "member.invite": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "member.list": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "member.metadata.read": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Member"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "member.remove": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Member"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "member.role.assign": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Member"
+            ],
+            "principalTypes": [
+              "User"
+            ],
+            "context": {
+              "type": "Record",
+              "attributes": {
+                "role": {
+                  "type": "Entity",
+                  "name": "Role"
+                }
+              }
+            }
+          }
+        },
+        "member.role.unassign": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Member"
+            ],
+            "principalTypes": [
+              "User"
+            ],
+            "context": {
+              "type": "Record",
+              "attributes": {
+                "role": {
+                  "type": "Entity",
+                  "name": "Role"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "Compallm": {
+      "entityTypes": {
+        "Role": {
+          "memberOfTypes": [
+            "Organization"
+          ],
+          "shape": {
+            "type": "Record",
+            "attributes": {
+              "organization": {
+                "type": "Entity",
+                "name": "Organization"
+              }
+            }
+          }
+        }
+      },
+      "actions": {
+        "role.assign": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Role"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "role.create": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "role.delete": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Role"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "role.list": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "role.metadata.read": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Role"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "role.metadata.update": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Role"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "role.policy.read": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Role"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "role.policy.update": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Role"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "role.unassign": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Role"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "Compallm": {
+      "entityTypes": {
+        "Group": {
+          "memberOfTypes": [
+            "Role",
+            "Organization"
+          ],
+          "shape": {
+            "type": "Record",
+            "attributes": {
+              "organization": {
+                "type": "Entity",
+                "name": "Organization"
+              }
+            }
+          }
+        }
+      },
+      "actions": {
+        "group.create": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "group.delete": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Group"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "group.list": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "group.member.add": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Group"
+            ],
+            "principalTypes": [
+              "User"
+            ],
+            "context": {
+              "type": "Record",
+              "attributes": {
+                "member": {
+                  "type": "Entity",
+                  "name": "Member"
+                }
+              }
+            }
+          }
+        },
+        "group.member.remove": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Group"
+            ],
+            "principalTypes": [
+              "User"
+            ],
+            "context": {
+              "type": "Record",
+              "attributes": {
+                "member": {
+                  "type": "Entity",
+                  "name": "Member"
+                }
+              }
+            }
+          }
+        },
+        "group.metadata.read": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Group"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "group.metadata.update": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Group"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "group.role.assign": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Group"
+            ],
+            "principalTypes": [
+              "User"
+            ],
+            "context": {
+              "type": "Record",
+              "attributes": {
+                "role": {
+                  "type": "Entity",
+                  "name": "Role"
+                }
+              }
+            }
+          }
+        },
+        "group.role.unassign": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Group"
+            ],
+            "principalTypes": [
+              "User"
+            ],
+            "context": {
+              "type": "Record",
+              "attributes": {
+                "role": {
+                  "type": "Entity",
+                  "name": "Role"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "Compallm": {
+      "entityTypes": {
+        "UserAuthentication": {
+          "shape": {
+            "type": "Record",
+            "attributes": {
+              "user": {
+                "type": "Entity",
+                "name": "User"
+              }
+            }
+          }
+        }
+      },
+      "actions": {
+        "user.authentication.read": {
+          "appliesTo": {
+            "resourceTypes": [
+              "UserAuthentication"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "user.authentication.update": {
+          "appliesTo": {
+            "resourceTypes": [
+              "UserAuthentication"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "Compallm": {
+      "entityTypes": {
+        "Provider": {
+          "memberOfTypes": [
+            "Organization"
+          ],
+          "shape": {
+            "type": "Record",
+            "attributes": {
+              "organization": {
+                "type": "Entity",
+                "name": "Organization"
+              }
+            }
+          }
+        }
+      },
+      "actions": {
+        "provider.configuration.read": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Provider"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "provider.configuration.update": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Provider"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "provider.connection.test": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "provider.create": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "provider.credential.replace": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Provider"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "provider.delete": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Provider"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "provider.list": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "Compallm": {
+      "entityTypes": {
+        "ProviderModel": {
+          "memberOfTypes": [
+            "Provider",
+            "Organization"
+          ],
+          "shape": {
+            "type": "Record",
+            "attributes": {
+              "enabled": {
+                "type": "Boolean"
+              },
+              "organization": {
+                "type": "Entity",
+                "name": "Organization"
+              },
+              "provider": {
+                "type": "Entity",
+                "name": "Provider"
+              }
+            }
+          }
+        }
+      },
+      "actions": {
+        "provider.model.configuration.read": {
+          "appliesTo": {
+            "resourceTypes": [
+              "ProviderModel"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "provider.model.configuration.update": {
+          "appliesTo": {
+            "resourceTypes": [
+              "ProviderModel"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "provider.model.create": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Provider"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "provider.model.delete": {
+          "appliesTo": {
+            "resourceTypes": [
+              "ProviderModel"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "provider.model.list": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Provider"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "provider.model.pricing.update": {
+          "appliesTo": {
+            "resourceTypes": [
+              "ProviderModel"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "Compallm": {
+      "entityTypes": {
+        "Model": {
+          "memberOfTypes": [
+            "Organization"
+          ],
+          "shape": {
+            "type": "Record",
+            "attributes": {
+              "enabled": {
+                "type": "Boolean"
+              },
+              "organization": {
+                "type": "Entity",
+                "name": "Organization"
+              }
+            }
+          }
+        }
+      },
+      "actions": {
+        "model.configuration.update": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Model"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "model.create": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "model.delete": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Model"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "model.list": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "model.metadata.read": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Model"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "model.pricing.update": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Model"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "model.route.add": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Model"
+            ],
+            "principalTypes": [
+              "User"
+            ],
+            "context": {
+              "type": "Record",
+              "attributes": {
+                "providerModel": {
+                  "type": "Entity",
+                  "name": "ProviderModel"
+                }
+              }
+            }
+          }
+        },
+        "model.route.remove": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Model"
+            ],
+            "principalTypes": [
+              "User"
+            ],
+            "context": {
+              "type": "Record",
+              "attributes": {
+                "providerModel": {
+                  "type": "Entity",
+                  "name": "ProviderModel"
+                }
+              }
+            }
+          }
+        },
+        "model.route.update": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Model"
+            ],
+            "principalTypes": [
+              "User"
+            ],
+            "context": {
+              "type": "Record",
+              "attributes": {
+                "providerModel": {
+                  "type": "Entity",
+                  "name": "ProviderModel"
+                }
+              }
+            }
+          }
+        },
+        "model.use": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Model"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "Compallm": {
+      "entityTypes": {
+        "Session": {
+          "memberOfTypes": [
+            "Organization"
+          ],
+          "shape": {
+            "type": "Record",
+            "attributes": {
+              "organization": {
+                "type": "Entity",
+                "name": "Organization"
+              },
+              "user": {
+                "type": "Entity",
+                "name": "User"
+              }
+            }
+          }
+        }
+      },
+      "actions": {
+        "session.list": {
+          "appliesTo": {
+            "resourceTypes": [
+              "User"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "session.metadata.read": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Session"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "session.revoke": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Session"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        }
+      }
+    }
+  }
+]

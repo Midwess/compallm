@@ -3,7 +3,10 @@ use std::sync::LazyLock;
 
 use cedar_policy::SchemaFragment;
 
-use crate::authorization::SystemPolicy;
+use crate::authorization::{
+    SystemPolicy,
+    policy::{EntityType, Policy},
+};
 
 use super::{AuthError, RefreshToken};
 use serde::{Deserialize, Serialize};
@@ -108,24 +111,8 @@ impl SystemPolicy for Session {
     /// Existing authentication and token checks remain required; the schema itself
     /// neither proves ownership nor isolates baseline decisions from custom forbids.
     fn policy() -> SchemaFragment {
-        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
-            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(
-                r#"
-namespace Compallm {
-    entity Session in [Organization] { organization: Organization, user: User };
-    action "session.list" appliesTo { principal: User, resource: User };
-    action "session.metadata.read" appliesTo { principal: User, resource: Session };
-    action "session.revoke" appliesTo { principal: User, resource: Session };
-}
-"#,
-            )
-            .expect("Session SystemPolicy must be a valid static Cedar schema fragment");
-            assert!(
-                warnings.count() == 0,
-                "Session SystemPolicy must not contain schema warnings"
-            );
-            fragment
-        });
+        static DEFINITION: LazyLock<SchemaFragment> =
+            LazyLock::new(|| Policy::new(EntityType::Session).into());
         DEFINITION.clone()
     }
 }

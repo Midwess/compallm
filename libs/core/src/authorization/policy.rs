@@ -145,7 +145,7 @@ pub enum AttributeType {
 }
 
 // Each row maps a typed action identifier to its owning entity, resource and context.
-// Existing SystemPolicy fragments remain authoritative until migration.
+// SystemPolicy domain fragments use these definitions as their schema source.
 macro_rules! actions {
     ($( $variant:ident => ($name:literal, $owner:expr, $resource:expr, $context:expr), )*) => {
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]

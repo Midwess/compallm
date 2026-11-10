@@ -1,4 +1,7 @@
-use crate::authorization::SystemPolicy;
+use crate::authorization::{
+    SystemPolicy,
+    policy::{EntityType, Policy},
+};
 use cedar_policy::{
     Entity, EntityUid, PolicySet, RestrictedExpression, SchemaFragment, ValidationMode, Validator,
 };
@@ -255,26 +258,8 @@ impl SystemPolicy for Role {
     /// guards. These declarations do not implement publication or delegation checks;
     /// role management and its authorization flow remain separate work.
     fn policy() -> SchemaFragment {
-        static VALUE: LazyLock<SchemaFragment> = LazyLock::new(|| {
-            SchemaFragment::from_cedarschema_str(
-                r#"
-namespace Compallm {
- entity Role in [Organization] { organization: Organization };
- action "role.list" appliesTo { principal: User, resource: Organization };
- action "role.create" appliesTo { principal: User, resource: Organization };
- action "role.metadata.read" appliesTo { principal: User, resource: Role };
- action "role.metadata.update" appliesTo { principal: User, resource: Role };
- action "role.policy.read" appliesTo { principal: User, resource: Role };
- action "role.policy.update" appliesTo { principal: User, resource: Role };
- action "role.delete" appliesTo { principal: User, resource: Role };
- action "role.assign" appliesTo { principal: User, resource: Role };
- action "role.unassign" appliesTo { principal: User, resource: Role };
-}
-"#,
-            )
-            .expect("Role static schema")
-            .0
-        });
-        VALUE.clone()
+        static DEFINITION: LazyLock<SchemaFragment> =
+            LazyLock::new(|| Policy::new(EntityType::Role).into());
+        DEFINITION.clone()
     }
 }

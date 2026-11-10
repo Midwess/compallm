@@ -3,7 +3,10 @@ use std::sync::LazyLock;
 
 use cedar_policy::SchemaFragment;
 
-use crate::authorization::SystemPolicy;
+use crate::authorization::{
+    SystemPolicy,
+    policy::{EntityType, Policy},
+};
 
 use crate::provider::{Capability, ModelLimits, Pricing, ServiceKind, Thinking};
 
@@ -50,31 +53,8 @@ impl SystemPolicy for Model {
     /// Inspecting or managing a disabled model is valid. All checks apply to actual
     /// resources; schema validation cannot enforce availability, quotas, or consistency.
     fn policy() -> SchemaFragment {
-        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
-            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(
-                r#"
-namespace Compallm {
-    entity Model in [Organization] { organization: Organization, enabled: Bool };
-    action "model.list" appliesTo { principal: User, resource: Organization };
-    action "model.create" appliesTo { principal: User, resource: Organization };
-    action "model.metadata.read" appliesTo { principal: User, resource: Model };
-    action "model.configuration.update" appliesTo { principal: User, resource: Model };
-    action "model.delete" appliesTo { principal: User, resource: Model };
-    action "model.use" appliesTo { principal: User, resource: Model };
-    action "model.route.add" appliesTo { principal: User, resource: Model, context: { providerModel: ProviderModel } };
-    action "model.route.update" appliesTo { principal: User, resource: Model, context: { providerModel: ProviderModel } };
-    action "model.route.remove" appliesTo { principal: User, resource: Model, context: { providerModel: ProviderModel } };
-    action "model.pricing.update" appliesTo { principal: User, resource: Model };
-}
-"#,
-            )
-            .expect("Model SystemPolicy must be a valid static Cedar schema fragment");
-            assert!(
-                warnings.count() == 0,
-                "Model SystemPolicy must not contain schema warnings"
-            );
-            fragment
-        });
+        static DEFINITION: LazyLock<SchemaFragment> =
+            LazyLock::new(|| Policy::new(EntityType::Model).into());
         DEFINITION.clone()
     }
 }

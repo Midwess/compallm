@@ -6,7 +6,10 @@ use std::sync::LazyLock;
 use cedar_policy::SchemaFragment;
 use compallm_utils::email;
 
-use crate::authorization::SystemPolicy;
+use crate::authorization::{
+    SystemPolicy,
+    policy::{EntityType, Policy},
+};
 
 pub mod error;
 pub mod preferences;
@@ -94,23 +97,8 @@ impl SystemPolicy for User {
     /// UserAuth defines authentication operations separately. Role/Group types
     /// describe membership only; baseline account decisions exclude custom forbids.
     fn policy() -> SchemaFragment {
-        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
-            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(
-                r#"
-namespace Compallm {
-    entity User in [Role, Group, Organization];
-    action "user.profile.update" appliesTo { principal: User, resource: User };
-    action "user.account.delete" appliesTo { principal: User, resource: User };
-}
-"#,
-            )
-            .expect("User SystemPolicy must be a valid static Cedar schema fragment");
-            assert!(
-                warnings.count() == 0,
-                "User SystemPolicy must not contain schema warnings"
-            );
-            fragment
-        });
+        static DEFINITION: LazyLock<SchemaFragment> =
+            LazyLock::new(|| Policy::new(EntityType::User).into());
         DEFINITION.clone()
     }
 }

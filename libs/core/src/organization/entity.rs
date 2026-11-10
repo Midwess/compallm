@@ -3,7 +3,10 @@ use std::sync::LazyLock;
 
 use cedar_policy::SchemaFragment;
 
-use crate::authorization::SystemPolicy;
+use crate::authorization::{
+    SystemPolicy,
+    policy::{EntityType, Policy},
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OrganizationStatus {
@@ -68,24 +71,8 @@ impl SystemPolicy for Organization {
     /// Protected targets remain in the verified active organization; an ID or a
     /// role held elsewhere is insufficient. Schema declarations do not grant access.
     fn policy() -> SchemaFragment {
-        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
-            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(
-                r#"
-namespace Compallm {
-    entity Organization;
-    action "organization.settings.read" appliesTo { principal: User, resource: Organization };
-    action "organization.settings.update" appliesTo { principal: User, resource: Organization };
-    action "organization.delete" appliesTo { principal: User, resource: Organization };
-}
-"#,
-            )
-            .expect("Organization SystemPolicy must be a valid static Cedar schema fragment");
-            assert!(
-                warnings.count() == 0,
-                "Organization SystemPolicy must not contain schema warnings"
-            );
-            fragment
-        });
+        static DEFINITION: LazyLock<SchemaFragment> =
+            LazyLock::new(|| Policy::new(EntityType::Organization).into());
         DEFINITION.clone()
     }
 }

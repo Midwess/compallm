@@ -12,28 +12,10 @@ use compallm_core::{
 };
 use serde_json::Value;
 
-fn normalize_references(value: &mut Value) {
-    match value {
-        Value::Object(object) => {
-            if object.get("type").and_then(Value::as_str) == Some("EntityOrCommon") {
-                if object.get("name").and_then(Value::as_str) == Some("Bool") {
-                    object.insert("type".into(), Value::String("Boolean".into()));
-                    object.remove("name");
-                } else {
-                    object.insert("type".into(), Value::String("Entity".into()));
-                }
-            }
-            object.values_mut().for_each(normalize_references);
-        }
-        Value::Array(values) => values.iter_mut().for_each(normalize_references),
-        _ => {}
-    }
-}
-
 #[test]
 fn typed_vocabulary_matches_current_schema() -> anyhow::Result<()> {
-    // Compare Cedar's normalized fragment output, including attributes,
-    // ancestry and every action's principal, resource and context.
+    // Compare generated fragments with the normalized schema captured before migration,
+    // including attributes, ancestry and each action’s target and context.
     let fragments = [
         User::policy(),
         Organization::policy(),
@@ -47,14 +29,15 @@ fn typed_vocabulary_matches_current_schema() -> anyhow::Result<()> {
         Session::policy(),
     ];
     assert_eq!(EntityType::ALL.len(), fragments.len());
-    for (entity, legacy) in EntityType::ALL.iter().zip(fragments) {
+    let baseline: Vec<Value> =
+        serde_json::from_str(include_str!("fixtures/cedar_schema_baseline.json"))?;
+    assert_eq!(baseline.len(), fragments.len());
+    for ((entity, fragment), expected) in EntityType::ALL.iter().zip(fragments).zip(baseline) {
         let typed: SchemaFragment = Policy::new(*entity).into();
-        let mut legacy_json: Value = legacy.to_json_value()?;
+        let actual: Value = fragment.to_json_value()?;
         let typed_json: Value = typed.to_json_value()?;
-        // Cedar text syntax retains an unresolved EntityOrCommon reference;
-        // these definitions contain no common types, so it resolves to Entity.
-        normalize_references(&mut legacy_json);
-        assert_eq!(typed_json, legacy_json);
+        assert_eq!(actual, expected);
+        assert_eq!(typed_json, expected);
     }
     let typed = EntityType::ALL
         .iter()

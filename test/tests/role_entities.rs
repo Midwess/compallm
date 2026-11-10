@@ -147,7 +147,7 @@ async fn group_roles_keep_provenance_and_inherit_without_copying_to_direct_roles
     });
     assert!(member.roles.is_empty());
     assert_eq!(
-        decision(&member, "role.list", "Organization", 42, 0, true),
+        decision(&member, "role.read", "Organization", 42, 0, true),
         Decision::Allow
     );
     let mut foreign = member.clone();
@@ -194,7 +194,6 @@ async fn empty_groups_remain_inside_the_organization_resource_scope() {
         roles: vec![],
     };
     let entity = Entity::try_from(&group).unwrap();
-    let target = entity.uid();
     let data = Entities::try_from(&member)
         .unwrap()
         .add_entities([entity], Some(all_policies()))
@@ -202,8 +201,8 @@ async fn empty_groups_remain_inside_the_organization_resource_scope() {
     let policies = PolicySet::try_from(&member.roles[0]).unwrap();
     let request = Request::new(
         "Compallm::User::\"100\"".parse().unwrap(),
-        "Compallm::Action::\"group.metadata.read\"".parse().unwrap(),
-        target,
+        "Compallm::Action::\"group.read\"".parse().unwrap(),
+        "Compallm::Organization::\"42\"".parse().unwrap(),
         Context::empty(),
         Some(all_policies()),
     )

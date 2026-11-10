@@ -8,7 +8,7 @@ use axum::{
 };
 use compallm_core::authentication::AuthError;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum RequestError {
     Unauthenticated,
     Expired,

@@ -49,7 +49,7 @@ fn direct_and_group_permissions_apply_to_the_members_organization() {
             description: String::new(),
             roles: vec![role(
                 2,
-                r#"permit(principal in Compallm::Role::"7:2", action == Compallm::Action::"provider.list", resource == Compallm::Organization::"7");"#,
+                r#"permit(principal in Compallm::Role::"7:2", action == Compallm::Action::"provider.read", resource == Compallm::Organization::"7");"#,
             )],
         }],
     };
@@ -57,9 +57,9 @@ fn direct_and_group_permissions_apply_to_the_members_organization() {
     assert_eq!(permission.user_id(), 11);
     assert_eq!(permission.organization_id(), 7);
     assert!(permission.require(Action::ProviderCreate).is_ok());
-    assert!(permission.require(Action::ProviderList).is_ok());
+    assert!(permission.require(Action::ProviderRead).is_ok());
     assert!(matches!(
-        permission.require(Action::ModelList),
+        permission.require(Action::ModelRead),
         Err(MemberPermissionError::Denied)
     ));
     // The same policy source cannot grant access in another organization.
@@ -69,15 +69,15 @@ fn direct_and_group_permissions_apply_to_the_members_organization() {
         Err(MemberPermissionError::Denied)
     ));
     assert!(matches!(
-        foreign.require(Action::ProviderList),
+        foreign.require(Action::ProviderRead),
         Err(MemberPermissionError::Denied)
     ));
 }
 
 #[test]
 fn forbid_and_evaluation_errors_cannot_be_overridden_by_a_permit() {
-    let permit = r#"permit(principal, action == Compallm::Action::"provider.list", resource == Compallm::Organization::"7");"#;
-    let forbid = r#"forbid(principal, action == Compallm::Action::"provider.list", resource == Compallm::Organization::"7");"#;
+    let permit = r#"permit(principal, action == Compallm::Action::"provider.read", resource == Compallm::Organization::"7");"#;
+    let forbid = r#"forbid(principal, action == Compallm::Action::"provider.read", resource == Compallm::Organization::"7");"#;
     let mut member = OrganizationMember {
         organization_id: 7,
         user_id: 11,
@@ -92,14 +92,14 @@ fn forbid_and_evaluation_errors_cannot_be_overridden_by_a_permit() {
     };
     let permission = MemberPermission::try_from(access(7, &member)).unwrap();
     assert!(matches!(
-        permission.require(Action::ProviderList),
+        permission.require(Action::ProviderRead),
         Err(MemberPermissionError::Denied)
     ));
     // A valid policy can still fail at evaluation, such as arithmetic overflow.
-    member.groups[0].roles[0].cedar_source = r#"forbid(principal, action == Compallm::Action::"provider.list", resource == Compallm::Organization::"7") when { 9223372036854775807 + 1 > 0 };"#.into();
+    member.groups[0].roles[0].cedar_source = r#"forbid(principal, action == Compallm::Action::"provider.read", resource == Compallm::Organization::"7") when { 9223372036854775807 + 1 > 0 };"#.into();
     let permission = MemberPermission::try_from(access(7, &member)).unwrap();
     assert!(matches!(
-        permission.require(Action::ProviderList),
+        permission.require(Action::ProviderRead),
         Err(MemberPermissionError::Evaluation)
     ));
 }

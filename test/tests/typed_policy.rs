@@ -13,7 +13,7 @@ use serde_json::Value;
 
 #[test]
 fn typed_vocabulary_matches_current_schema() -> anyhow::Result<()> {
-    // Compare generated fragments with the normalized schema captured before migration,
+    // Compare generated fragments with the checked-in schema contract,
     // including attributes, ancestry and each action’s target and context.
     let fragments = [
         User::policy(),

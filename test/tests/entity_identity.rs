@@ -153,7 +153,7 @@ async fn role_constructor_checks_cedar_and_preserves_source() {
             Err(RoleCreationError::InvalidPolicy(_))
         ));
     }
-    let source = "// kept\npermit(principal, action == Compallm::Action::\"model.list\", resource is Compallm::Organization);\n";
+    let source = "// kept\npermit(principal, action == Compallm::Action::\"model.read\", resource is Compallm::Organization);\n";
     let role = Role::new(1, "Role", "", source).await.unwrap();
     assert_eq!(role.cedar_source, source);
     assert!(role.ensure_deletable().is_ok());

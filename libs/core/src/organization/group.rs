@@ -114,8 +114,8 @@ impl TryFrom<&Group> for Entity {
 }
 
 impl SystemPolicy for Group {
-    /// `group.list/create` target the Organization. `group.metadata.read/update`
-    /// protect group configuration; `group.delete` removes that group's assignments.
+    /// `group.read/create` target the Organization. `group.metadata.update`
+    /// changes group configuration; `group.delete` removes that group's assignments.
     /// `group.member.add/remove` identify the Member in context.member, without
     /// deleting a user; `group.role.assign/unassign` identify context.role and also
     /// require authority to delegate that Role. Both ends must share the actual

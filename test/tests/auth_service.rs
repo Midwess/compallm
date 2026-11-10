@@ -234,7 +234,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
                 if !state.full_default_policies {
                     // Synthetic bounded policies for transport/lifecycle tests; full defaults have dedicated rejection tests.
                     for role in &mut member.roles {
-                        role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.list", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
+                        role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.read", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
                     }
                 }
                 let organization = state
@@ -274,7 +274,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
                 if !state.full_default_policies {
                     // Synthetic bounded policies for transport/lifecycle tests; full defaults have dedicated rejection tests.
                     for role in &mut member.roles {
-                        role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.list", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
+                        role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.read", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
                     }
                 }
                 let organization = state
@@ -382,7 +382,11 @@ impl SessionRepository for Repository {
         &self,
         presented: &Session,
     ) -> Result<Option<u32>, SessionRepositoryError> {
-        DbContext::current()?;
+        assert!(
+            PostgresConnection::from_context(&DbContext::current()?)?
+                .rls()
+                .is_none()
+        );
         let mut state = self.0.lock().unwrap();
         state.freshness_reads += 1;
         if state.fail_authority_read {
@@ -544,13 +548,11 @@ impl Fixture {
             di::{AuthSettings, Di, GraphqlSettings},
             graphql::{ApplicationSchema, GraphqlContext, build_schema, endpoint},
             http::authentication::{
-                Authentication, AuthenticationContext, AuthenticationSettings, CookieDelivery,
-                UserContext,
+                AuthenticationContext, AuthenticationSettings, CookieDelivery, UserContext,
             },
             http::authorization::AuthorizationContext,
             http::middleware::{AuthenticationMiddleware, AuthorizationMiddleware},
         };
-        let db = Box::leak(Box::new(self.repo.1.clone()));
         let email = Box::leak(Box::new(
             Box::new(TestEmail) as Box<dyn compallm_core::mail::EmailService>
         ));
@@ -579,7 +581,8 @@ impl Fixture {
             .with_auth_service(service),
         ));
         di.initialize_services().unwrap();
-        let authentication = Authentication::new(
+        let db = Box::leak(Box::new(self.repo.1.clone()));
+        let authentication = AuthenticationMiddleware::optional(
             db,
             di.auth_service(),
             AuthenticationSettings {
@@ -594,7 +597,7 @@ impl Fixture {
                 |State(schema): State<ApplicationSchema>,
                  Extension(di): Extension<&'static Di>,
                  Extension(user): Extension<UserContext>,
-                 Extension(authentication): Extension<AuthenticationContext>,
+                 Extension(authentication): Extension<Arc<AuthenticationContext>>,
                  Extension(delivery): Extension<CookieDelivery>,
                  Extension(authorization): Extension<AuthorizationContext>,
                  request: Result<Json<endpoint::GraphQLRequest>, JsonRejection>| async move {
@@ -607,7 +610,7 @@ impl Fixture {
             .layer(axum::Extension(di as &'static Di))
             .route_layer(from_fn(AuthorizationMiddleware::handle))
             .route_layer(from_fn_with_state(
-                AuthenticationMiddleware::optional(authentication),
+                authentication,
                 AuthenticationMiddleware::handle,
             ))
             .layer(DefaultBodyLimit::max(65_536)),
@@ -679,18 +682,16 @@ impl Fixture {
     ) -> AuthService {
         // Static dependencies mirror the application container. Test-only
         // allocations live for this test process and never touch a real DB.
-        let db: &'static DbContext = Box::leak(Box::new(self.repo.1.clone()));
         let users = Box::leak(Box::new(
             Box::new(self.repo.clone()) as Box<dyn UserRepository>
         ));
         let organizations = Box::leak(Box::new(Box::new(OrganizationRepositoryStub(
             self.repo.0.clone(),
         )) as Box<dyn OrganizationRepository>));
-        let creation = Box::leak(Box::new(CreationService::new(db, organizations)));
-        let registration = Box::leak(Box::new(RegistrationService::new(db, users, creation)));
+        let creation = Box::leak(Box::new(CreationService::new(organizations)));
+        let registration = Box::leak(Box::new(RegistrationService::new(users, creation)));
         let dictionaries = Box::leak(Box::new(dictionary));
         AuthService::new(
-            db,
             users,
             organizations,
             Box::leak(Box::new(
@@ -758,15 +759,14 @@ impl Fixture {
     }
 
     fn registration(&self) -> RegistrationService {
-        let db = Box::leak(Box::new(self.repo.1.clone()));
         let users = Box::leak(Box::new(
             Box::new(self.repo.clone()) as Box<dyn UserRepository>
         ));
         let organizations = Box::leak(Box::new(Box::new(OrganizationRepositoryStub(
             self.repo.0.clone(),
         )) as Box<dyn OrganizationRepository>));
-        let creation = Box::leak(Box::new(CreationService::new(db, organizations)));
-        RegistrationService::new(db, users, creation)
+        let creation = Box::leak(Box::new(CreationService::new(organizations)));
+        RegistrationService::new(users, creation)
     }
 
     fn role(organization_id: u64, index: usize) -> Role {
@@ -779,7 +779,7 @@ impl Fixture {
             org_owner: index == 0,
         };
         role.cedar_source = format!(
-            r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.list", resource == Compallm::Organization::"{}");"#,
+            r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.read", resource == Compallm::Organization::"{}");"#,
             organization_id, role.id, organization_id
         );
         role
@@ -2662,7 +2662,7 @@ async fn authorization_context_requires_current_verified_user() {
         routing::get,
     };
     use compallm_api::http::{
-        authentication::{Authentication, AuthenticationSettings},
+        authentication::AuthenticationSettings,
         authorization::{self, AuthorizationContext},
         middleware::{AuthenticationMiddleware, AuthorizationMiddleware},
     };
@@ -2674,7 +2674,7 @@ async fn authorization_context_requires_current_verified_user() {
         .signin(&Fixture::otp(&challenge), &challenge.code)
         .await
         .unwrap();
-    let authentication = Authentication::new(
+    let authentication = AuthenticationMiddleware::optional(
         Box::leak(Box::new(fixture.repo.1.clone())),
         Box::leak(Box::new(fixture.service())),
         AuthenticationSettings {
@@ -2686,10 +2686,35 @@ async fn authorization_context_requires_current_verified_user() {
     let router = Router::new().route(
         "/",
         get(
-            |Extension(context): Extension<AuthorizationContext>| async move {
-                let first = context.member_permission().await? as *const _ as usize;
+            |Extension(context): Extension<AuthorizationContext>,
+             Extension(authentication): Extension<
+                Arc<compallm_api::http::authentication::AuthenticationContext>,
+            >| async move {
+                let db = DbContext::current().unwrap();
+                let first = Arc::as_ptr(&context.member_permission().await?) as usize;
                 let permission = context.member_permission().await?;
-                assert_eq!(first, permission as *const _ as usize);
+                assert_eq!(first, Arc::as_ptr(&permission) as usize);
+                assert_eq!(first, db.permission().await.unwrap() as *const _ as usize);
+                let rls = PostgresConnection::from_context(&db)
+                    .unwrap()
+                    .rls()
+                    .unwrap();
+                assert_eq!(
+                    rls.get().await.unwrap().organization_id(),
+                    permission.organization_id()
+                );
+                let trusted = authentication
+                    .execute(async {
+                        let current = DbContext::current()?;
+                        Ok(PostgresConnection::from_context(&current)?.rls().is_none())
+                    })
+                    .await
+                    .unwrap();
+                assert!(trusted);
+                assert_eq!(
+                    first,
+                    DbContext::current().unwrap().permission().await.unwrap() as *const _ as usize
+                );
                 Ok::<_, authorization::AuthorizationError>(axum::Json((
                     permission.user_id(),
                     permission.organization_id(),
@@ -2698,7 +2723,7 @@ async fn authorization_context_requires_current_verified_user() {
         )
         .route_layer(from_fn(AuthorizationMiddleware::handle))
         .route_layer(from_fn_with_state(
-            AuthenticationMiddleware::optional(authentication),
+            authentication,
             AuthenticationMiddleware::handle,
         )),
     );
@@ -2747,7 +2772,7 @@ async fn shared_http_authentication_passes_current_identity_and_blocks_revoked_r
         Extension, Router, body::Body, http::Request, middleware::from_fn_with_state, routing::post,
     };
     use compallm_api::http::{
-        authentication::{Authentication, AuthenticationSettings, VerifiedAccess},
+        authentication::{AuthenticationSettings, VerifiedAccess},
         middleware::AuthenticationMiddleware,
     };
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -2759,7 +2784,7 @@ async fn shared_http_authentication_passes_current_identity_and_blocks_revoked_r
         .signin(&Fixture::otp(&challenge), &challenge.code)
         .await
         .unwrap();
-    let authentication = Authentication::new(
+    let authentication = AuthenticationMiddleware::required(
         Box::leak(Box::new(fixture.repo.1.clone())),
         Box::leak(Box::new(fixture.service())),
         AuthenticationSettings {
@@ -2780,7 +2805,7 @@ async fn shared_http_authentication_passes_current_identity_and_blocks_revoked_r
             }
         })
         .route_layer(from_fn_with_state(
-            AuthenticationMiddleware::required(authentication),
+            authentication,
             AuthenticationMiddleware::handle,
         )),
     );
@@ -3066,4 +3091,300 @@ async fn assert_graphql_denial(response: axum::response::Response, status: u64) 
     let body = graphql_body(response).await;
     assert!(body["data"].is_null());
     assert_eq!(body["errors"][0]["extensions"]["status"], status);
+}
+
+#[tokio::test]
+async fn request_membership_is_lazy_and_concurrent_request_scopes_are_isolated() {
+    use axum::{
+        Extension, Router,
+        body::Body,
+        http::Request,
+        middleware::{from_fn, from_fn_with_state},
+        routing::get,
+    };
+    use compallm_api::http::{
+        authentication::AuthenticationSettings,
+        authorization::AuthorizationContext,
+        middleware::{AuthenticationMiddleware, AuthorizationMiddleware},
+    };
+    use tower::ServiceExt;
+
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let middleware = AuthenticationMiddleware::optional(
+        Box::leak(Box::new(fixture.repo.1.clone())),
+        Box::leak(Box::new(fixture.service())),
+        AuthenticationSettings {
+            cookie_secure: false,
+            public_origin: "http://localhost".into(),
+        },
+    )
+    .unwrap();
+    let barrier = Arc::new(tokio::sync::Barrier::new(2));
+    let contexts = Arc::new(Mutex::new(Vec::new()));
+    let handler_contexts = contexts.clone();
+    let router = Router::new()
+        .route(
+            "/public",
+            get(|| async { axum::http::StatusCode::NO_CONTENT }),
+        )
+        .route(
+            "/protected",
+            get(
+                move |Extension(authority): Extension<AuthorizationContext>| {
+                    let barrier = barrier.clone();
+                    let contexts = handler_contexts.clone();
+                    async move {
+                        let db = DbContext::current().unwrap();
+                        assert!(
+                            PostgresConnection::from_context(&db)
+                                .unwrap()
+                                .rls()
+                                .is_some()
+                        );
+                        barrier.wait().await;
+                        let permission = db.permission().await.unwrap();
+                        assert_eq!(permission.organization_id(), 84);
+                        let shared = authority.member_permission().await.unwrap();
+                        assert!(std::ptr::eq(permission, shared.as_ref()));
+                        contexts.lock().unwrap().push(db.clone());
+                        axum::http::StatusCode::OK
+                    }
+                },
+            ),
+        )
+        .route_layer(from_fn(AuthorizationMiddleware::handle))
+        .route_layer(from_fn_with_state(
+            middleware,
+            AuthenticationMiddleware::handle,
+        ));
+    let response = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/public")
+                .header("authorization", "Bearer intentionally-unused")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 204);
+    assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, 0);
+    let request = || {
+        Request::builder()
+            .uri("/protected")
+            .header("authorization", format!("Bearer {}", tokens.access_token))
+            .body(Body::empty())
+            .unwrap()
+    };
+    let (left, right) = tokio::join!(router.clone().oneshot(request()), router.oneshot(request()));
+    assert_eq!(left.unwrap().status(), 200);
+    assert_eq!(right.unwrap().status(), 200);
+    assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, 2);
+    let contexts = contexts.lock().unwrap();
+    assert!(!std::ptr::eq(
+        contexts[0].postgres(),
+        contexts[1].postgres()
+    ));
+    assert!(DbContext::current().is_err());
+}
+
+#[tokio::test]
+#[ignore = "requires COMPALLM_TEST_DATABASE_URL with the RLS migration applied"]
+async fn http_request_membership_drives_postgres_rls_and_returns_a_clean_connection() {
+    use axum::{
+        Router,
+        body::Body,
+        http::Request,
+        middleware::{from_fn, from_fn_with_state},
+        routing::get,
+    };
+    use compallm_api::http::{
+        authentication::AuthenticationSettings,
+        middleware::{AuthenticationMiddleware, AuthorizationMiddleware},
+    };
+    use sea_orm::{ConnectOptions, ConnectionTrait, Database};
+    use tower::ServiceExt;
+
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let mut options = ConnectOptions::new(std::env::var("COMPALLM_TEST_DATABASE_URL").unwrap());
+    options.max_connections(1).min_connections(1);
+    let pool = Arc::new(Database::connect(options).await.unwrap());
+    let baseline = pool
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT pg_backend_pid() AS pid, current_user::text AS role",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let middleware = AuthenticationMiddleware::optional(
+        Box::leak(Box::new(DbContext::new(Arc::new(PostgresConnection::new(
+            pool.clone(),
+        ))))),
+        Box::leak(Box::new(fixture.service())),
+        AuthenticationSettings {
+            cookie_secure: false,
+            public_origin: "http://localhost".into(),
+        },
+    )
+    .unwrap();
+    let router = Router::new().route("/", get(|| async {
+        let db = DbContext::current().unwrap();
+        let result = PostgresConnection::from_context(&db).unwrap().query_one_raw(
+            Statement::from_string(DbBackend::Postgres,
+                "SELECT pg_backend_pid() AS pid, current_user::text AS role, compallm_rls.organization_id() AS organization, compallm_rls.organization_allowed('model.read') AS model_read, compallm_rls.organization_allowed('provider.read') AS provider_read, (SELECT count(*) FROM providers) AS providers")
+        ).await.unwrap().unwrap();
+        assert_eq!(result.try_get::<String>("", "role").unwrap(), "compallm_restricted");
+        assert_eq!(result.try_get::<i64>("", "organization").unwrap(), 84);
+        assert!(result.try_get::<bool>("", "model_read").unwrap());
+        assert!(!result.try_get::<bool>("", "provider_read").unwrap());
+        assert_eq!(result.try_get::<i64>("", "providers").unwrap(), 0);
+        axum::http::StatusCode::OK
+    }))
+    .route_layer(from_fn(AuthorizationMiddleware::handle))
+    .route_layer(from_fn_with_state(middleware, AuthenticationMiddleware::handle));
+    let response = tokio::time::timeout(
+        Duration::from_secs(10),
+        router.oneshot(
+            Request::builder()
+                .header("authorization", format!("Bearer {}", tokens.access_token))
+                .body(Body::empty())
+                .unwrap(),
+        ),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(response.status(), 200);
+    assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, 1);
+    let clean = pool.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT pg_backend_pid() AS pid, current_user::text AS role, coalesce(current_setting('app.organization_id',true),'') AS organization, coalesce(current_setting('app.model.read',true),'') AS model_read"))
+        .await.unwrap().unwrap();
+    assert_eq!(
+        clean.try_get::<i32>("", "pid").unwrap(),
+        baseline.try_get::<i32>("", "pid").unwrap()
+    );
+    assert_eq!(
+        clean.try_get::<String>("", "role").unwrap(),
+        baseline.try_get::<String>("", "role").unwrap()
+    );
+    assert!(
+        clean
+            .try_get::<String>("", "organization")
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        clean
+            .try_get::<String>("", "model_read")
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[tokio::test]
+#[ignore = "requires COMPALLM_TEST_DATABASE_URL with the RLS migration applied"]
+async fn restricted_query_errors_and_cancellation_discard_dirty_connections() {
+    use sea_orm::{ConnectOptions, ConnectionTrait, Database};
+    use std::convert::Infallible;
+
+    let url = std::env::var("COMPALLM_TEST_DATABASE_URL").unwrap();
+    let mut options = ConnectOptions::new(&url);
+    options.max_connections(1).min_connections(1);
+    let pool = Arc::new(Database::connect(options).await.unwrap());
+    let baseline = pool
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT pg_backend_pid() AS pid, current_user::text AS role",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let member = OrganizationMember {
+        organization_id: 84,
+        user_id: 1,
+        roles: Vec::new(),
+        groups: Vec::new(),
+    };
+    let access = UserAccessToken::new(
+        stored_session(1, 1, 84, "RLS fixture"),
+        compallm_core::authorization::PolicySnapshot::new(&member),
+        Duration::from_secs(60),
+    )
+    .unwrap();
+    let permission =
+        Arc::new(compallm_core::authorization::MemberPermission::try_from(access).unwrap());
+    let restricted = DbContext::new(Arc::new(PostgresConnection::new(pool.clone())));
+    restricted
+        .restrict(async move { Ok::<_, Infallible>(permission) })
+        .unwrap();
+    assert!(
+        PostgresConnection::from_context(&restricted)
+            .unwrap()
+            .query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT 1 / 0"))
+            .await
+            .is_err()
+    );
+    let clean = pool.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT pg_backend_pid() AS pid, current_user::text AS role, coalesce(current_setting('app.organization_id',true),'') AS organization"))
+        .await.unwrap().unwrap();
+    let pid = clean.try_get::<i32>("", "pid").unwrap();
+    assert_ne!(pid, baseline.try_get::<i32>("", "pid").unwrap());
+    assert_eq!(
+        clean.try_get::<String>("", "role").unwrap(),
+        baseline.try_get::<String>("", "role").unwrap()
+    );
+    assert!(
+        clean
+            .try_get::<String>("", "organization")
+            .unwrap()
+            .is_empty()
+    );
+
+    let waiter = tokio::spawn(async move {
+        PostgresConnection::from_context(&restricted)
+            .unwrap()
+            .query_all_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT pg_sleep(20)",
+            ))
+            .await
+    });
+    let observer = Database::connect(&url).await.unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let row = observer.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+                "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE pid = $1 AND state = 'active' AND query = 'SELECT pg_sleep(20)') AS started",
+                [pid.into()])).await.unwrap().unwrap();
+            if row.try_get::<bool>("", "started").unwrap() { break; }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    }).await.unwrap();
+    waiter.abort();
+    assert!(waiter.await.unwrap_err().is_cancelled());
+    let clean = tokio::time::timeout(Duration::from_secs(5), pool.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT pg_backend_pid() AS pid, current_user::text AS role, coalesce(current_setting('app.organization_id',true),'') AS organization")))
+        .await.unwrap().unwrap().unwrap();
+    assert_ne!(clean.try_get::<i32>("", "pid").unwrap(), pid);
+    assert_eq!(
+        clean.try_get::<String>("", "role").unwrap(),
+        baseline.try_get::<String>("", "role").unwrap()
+    );
+    assert!(
+        clean
+            .try_get::<String>("", "organization")
+            .unwrap()
+            .is_empty()
+    );
 }

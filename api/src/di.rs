@@ -1,6 +1,6 @@
 use crate::{
     graphql::{ApplicationSchema, build_schema},
-    http::authentication::{Authentication, AuthenticationSettings},
+    http::{authentication::AuthenticationSettings, middleware::AuthenticationMiddleware},
 };
 use compallm_core::{
     authentication::{AuthError, AuthService, TokenLifetimes},
@@ -74,7 +74,7 @@ pub struct Di {
     settings: AuthSettings,
     graphql_settings: GraphqlSettings,
     graphql: OnceLock<ApplicationSchema>,
-    authentication: OnceLock<Authentication>,
+    authentication: OnceLock<AuthenticationMiddleware>,
     // Filled after Di reaches its permanent address so services can borrow it.
     auth: OnceLock<Box<AuthService>>,
     registration: OnceLock<Box<RegistrationService>>,
@@ -106,6 +106,8 @@ impl Di {
                     .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
                 let mut di = Self::new(db, settings.auth, settings.graphql, None);
                 di.mailing = mailing.map(Box::new);
+                DbContext::initialize_default(di.db.postgres().scoped())
+                    .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
                 Ok::<_, loco_rs::Error>(di)
             })
             .await?;
@@ -161,7 +163,6 @@ impl Di {
             return Ok(());
         }
         let service = Box::new(AuthService::new(
-            self.db_context(),
             self.user_repository(),
             self.organization_repository(),
             self.session_repository(),
@@ -191,7 +192,7 @@ impl Di {
             return Err(AuthError::InvalidConfiguration);
         }
         if self.authentication.get().is_none() {
-            let authentication = Authentication::new(
+            let authentication = AuthenticationMiddleware::optional(
                 self.db_context(),
                 self.auth_service(),
                 AuthenticationSettings {
@@ -213,7 +214,7 @@ impl Di {
             .expect("GraphQL schema must be initialized")
     }
 
-    pub fn authentication(&self) -> &Authentication {
+    pub fn authentication(&self) -> &AuthenticationMiddleware {
         self.authentication
             .get()
             .expect("HTTP authentication must be initialized")
@@ -263,7 +264,6 @@ impl Di {
     pub fn registration_service(&'static self) -> &'static RegistrationService {
         self.registration.get_or_init(|| {
             Box::new(RegistrationService::new(
-                self.db_context(),
                 self.user_repository(),
                 self.organization_creation_service(),
             ))
@@ -275,21 +275,13 @@ impl Di {
     }
 
     pub fn organization_creation_service(&'static self) -> &'static CreationService {
-        self.organization_creation.get_or_init(|| {
-            Box::new(CreationService::new(
-                self.db_context(),
-                self.organization_repository(),
-            ))
-        })
+        self.organization_creation
+            .get_or_init(|| Box::new(CreationService::new(self.organization_repository())))
     }
 
     pub fn organization_config_service(&'static self) -> &'static ConfigService {
-        self.organization_config.get_or_init(|| {
-            Box::new(ConfigService::new(
-                self.db_context(),
-                self.organization_repository(),
-            ))
-        })
+        self.organization_config
+            .get_or_init(|| Box::new(ConfigService::new(self.organization_repository())))
     }
 }
 

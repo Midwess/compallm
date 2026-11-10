@@ -179,7 +179,7 @@ impl Hooks for App {
             State(schema): State<ApplicationSchema>,
             Extension(di): Extension<&'static Di>,
             Extension(user): Extension<UserContext>,
-            Extension(authentication): Extension<AuthenticationContext>,
+            Extension(authentication): Extension<std::sync::Arc<AuthenticationContext>>,
             Extension(delivery): Extension<CookieDelivery>,
             Extension(authorization): Extension<AuthorizationContext>,
             request: std::result::Result<Json<GraphQLRequest>, JsonRejection>,
@@ -196,7 +196,7 @@ impl Hooks for App {
                 .layer(Extension(di))
                 .route_layer(from_fn(AuthorizationMiddleware::handle))
                 .route_layer(from_fn_with_state(
-                    AuthenticationMiddleware::optional(di.authentication().clone()),
+                    di.authentication().clone(),
                     AuthenticationMiddleware::handle,
                 ))
                 .layer(DefaultBodyLimit::max(di.max_request_body_bytes())),

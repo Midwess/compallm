@@ -47,6 +47,18 @@ impl MemberPermission {
         self.organization_id
     }
 
+    pub fn principal(&self) -> &EntityUid {
+        &self.principal
+    }
+
+    pub fn policies(&self) -> &PolicySet {
+        &self.policies
+    }
+
+    pub fn entities(&self) -> &Entities {
+        &self.entities
+    }
+
     /// Authorize an organization-scoped action against this member's own
     /// organization. This performs no database access and never reparses policy.
     /// Contextual actions and individual resources need separate contracts.

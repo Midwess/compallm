@@ -22,7 +22,9 @@ required-features = ["cli"]
 cedar-policy.workspace = true
 anyhow = { workspace = true, features = ["std"] }
 async-trait.workspace = true
+async-once-cell.workspace = true
 elsa.workspace = true
+serde = { workspace = true, features = ["std", "derive"] }
 serde_json = { workspace = true, features = ["std"] }
 validify.workspace = true
 clap = { workspace = true, optional = true, features = ["std", "derive", "env", "help", "usage", "error-context"] }
@@ -32,6 +34,7 @@ axum.workspace = true
 hero = { workspace = true, features = ["distributed-id"] }
 loco-rs = { workspace = true, features = ["with-db"] }
 sea-orm = { workspace = true, features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono"] }
+sea-query-sqlx = { version = "0.9.1", features = ["sqlx-postgres"] }
 sea-orm-migration = { workspace = true, features = ["sqlx-postgres", "runtime-tokio-rustls"] }
 sea-orm-cli = { workspace = true, optional = true, features = ["codegen", "sqlx-postgres", "runtime-tokio-rustls"] }
 tokio = { workspace = true, features = ["sync"] }

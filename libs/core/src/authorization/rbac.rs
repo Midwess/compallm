@@ -11,7 +11,6 @@ use crate::organization::Role;
     reason = "RBAC service is not wired until authorization is enforced"
 )]
 pub struct RbacService {
-    db: DbContext,
     auth_service: AuthService,
     organizations: Box<dyn OrganizationRepository>,
 }
@@ -43,7 +42,7 @@ impl RbacService {
             .await?
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
         role.ensure_deletable()?;
-        crate::transaction!(self.db, {
+        crate::transaction!(DbContext::current()?, {
             let role = self
                 .organizations
                 .lock_role(organization_id, role_id)
@@ -112,7 +111,7 @@ impl RbacService {
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
         let previous = member.clone();
         member.assign_role(role)?;
-        crate::transaction!(self.db, {
+        crate::transaction!(DbContext::current()?, {
             // Assignment foreign keys coordinate with the role-deletion lock.
             self.organizations.save_member(&member, &previous).await?;
             self.auth_service
@@ -138,7 +137,7 @@ impl RbacService {
         }
         let previous = member.clone();
         member.unassign_role(role_id)?;
-        crate::transaction!(self.db, {
+        crate::transaction!(DbContext::current()?, {
             self.organizations.save_member(&member, &previous).await?;
             self.auth_service
                 .invalidate_permissions(organization_id, &[user_id])
@@ -168,7 +167,7 @@ impl RbacService {
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
         let previous = member.clone();
         member.assign_group(group)?;
-        crate::transaction!(self.db, {
+        crate::transaction!(DbContext::current()?, {
             self.organizations
                 .lock_group(organization_id, group_id)
                 .await?;
@@ -196,7 +195,7 @@ impl RbacService {
         }
         let previous = member.clone();
         member.unassign_group(group_id)?;
-        crate::transaction!(self.db, {
+        crate::transaction!(DbContext::current()?, {
             self.organizations.save_member(&member, &previous).await?;
             self.auth_service
                 .invalidate_permissions(organization_id, &[user_id])

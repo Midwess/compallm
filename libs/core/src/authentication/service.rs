@@ -25,7 +25,6 @@ pub struct TokenLifetimes {
 }
 
 pub struct AuthService {
-    db: &'static DbContext,
     users: &'static Box<dyn UserRepository>,
     organizations: &'static Box<dyn OrganizationRepository>,
     sessions: &'static Box<dyn SessionRepository>,
@@ -88,7 +87,6 @@ impl AuthService {
     }
 
     pub fn new(
-        db: &'static DbContext,
         users: &'static Box<dyn UserRepository>,
         organizations: &'static Box<dyn OrganizationRepository>,
         sessions: &'static Box<dyn SessionRepository>,
@@ -100,7 +98,6 @@ impl AuthService {
     ) -> Result<Self, AuthError> {
         EncryptedAccessToken::new(&jwt_secret)?;
         Ok(Self {
-            db,
             users,
             organizations,
             sessions,
@@ -194,7 +191,7 @@ impl AuthService {
     ) -> Result<UserTokens, AuthError> {
         claims.verify_code(code, unix_timestamp())?;
         let dictionary = self.latest_dictionary().await?;
-        crate::transaction!(self.db, {
+        crate::transaction!(DbContext::current()?, {
             let user = self.registration.register(&claims.email).await?;
             if user.status != UserStatus::Active {
                 return Err(AuthError::UserDisabled);

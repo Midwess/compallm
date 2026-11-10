@@ -38,7 +38,7 @@ async fn default_sources_preserve_authorization() -> anyhow::Result<()> {
         };
         assert_eq!(structures(&before)?, structures(&after)?);
         for org in [7, 8] {
-            for action in ["model.list", "organization.delete"] {
+            for action in ["model.read", "organization.delete"] {
                 let request = Request::new(
                     "Compallm::User::\"11\"".parse()?,
                     format!("Compallm::Action::\"{action}\"").parse()?,
@@ -78,7 +78,7 @@ async fn assignments_are_deterministic_and_sources_are_not_duplicated() -> anyho
     let snapshot = PolicySnapshot::from(&member);
     assert_eq!(snapshot.role_ids, vec![1, 3]);
     assert_eq!(snapshot.group_roles[&8], vec![3]);
-    assert_eq!(PolicySet::try_from(&snapshot)?.policies().count(), 8);
+    assert_eq!(PolicySet::try_from(&snapshot)?.policies().count(), 7);
     member.roles.reverse();
     assert_eq!(snapshot, PolicySnapshot::from(&member));
     let encoded = serde_json::to_string(&snapshot)?;
@@ -98,8 +98,8 @@ async fn quoted_content_annotations_and_forbids_survive() -> anyhow::Result<()> 
     let mut role = fixture_roles_0.clone().remove(0);
     role.cedar_source = r#"// remove this comment
 @note("tiếng Việt // keep  two spaces")
-permit(principal in Compallm::Role::"7:1", action == Compallm::Action::"model.list", resource == Compallm::Organization::"7");
-forbid(principal in Compallm::Role::"7:1", action == Compallm::Action::"model.list", resource == Compallm::Organization::"7") when { "a // b" == "a // b" };
+permit(principal in Compallm::Role::"7:1", action == Compallm::Action::"model.read", resource == Compallm::Organization::"7");
+forbid(principal in Compallm::Role::"7:1", action == Compallm::Action::"model.read", resource == Compallm::Organization::"7") when { "a // b" == "a // b" };
 "#.into();
     let snapshot = PolicySnapshot::from(&member(vec![role.clone()]));
     assert!(
@@ -112,7 +112,7 @@ forbid(principal in Compallm::Role::"7:1", action == Compallm::Action::"model.li
     assert_eq!(original.policies().count(), restored.policies().count());
     let request = Request::new(
         "Compallm::User::\"11\"".parse()?,
-        "Compallm::Action::\"model.list\"".parse()?,
+        "Compallm::Action::\"model.read\"".parse()?,
         "Compallm::Organization::\"7\"".parse()?,
         Context::empty(),
         None,
@@ -149,8 +149,8 @@ async fn parallel_constructor_preserves_deterministic_authority() -> anyhow::Res
 
 #[test]
 fn merged_roles_preserve_inherited_forbid_over_direct_permit() -> anyhow::Result<()> {
-    let permit = r#"permit(principal, action == Compallm::Action::"model.list", resource == Compallm::Organization::"7");"#;
-    let forbid = r#"forbid(principal, action == Compallm::Action::"model.list", resource == Compallm::Organization::"7");"#;
+    let permit = r#"permit(principal, action == Compallm::Action::"model.read", resource == Compallm::Organization::"7");"#;
+    let forbid = r#"forbid(principal, action == Compallm::Action::"model.read", resource == Compallm::Organization::"7");"#;
     let role = |id, source: String| Role {
         id,
         organization_id: 7,
@@ -180,7 +180,7 @@ fn merged_roles_preserve_inherited_forbid_over_direct_permit() -> anyhow::Result
     let entities = Entities::try_from(&member)?;
     let request = Request::new(
         "Compallm::User::\"11\"".parse()?,
-        "Compallm::Action::\"model.list\"".parse()?,
+        "Compallm::Action::\"model.read\"".parse()?,
         "Compallm::Organization::\"7\"".parse()?,
         Context::empty(),
         None,

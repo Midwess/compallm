@@ -1,21 +1,14 @@
-use crate::persistent::{DbContext, organization::OrganizationRepository};
+use crate::persistent::organization::OrganizationRepository;
 
 use super::{Organization, OrganizationConfigError};
 
 pub struct ConfigService {
-    _db: &'static DbContext,
     organizations: &'static Box<dyn OrganizationRepository>,
 }
 
 impl ConfigService {
-    pub fn new(
-        db: &'static DbContext,
-        organizations: &'static Box<dyn OrganizationRepository>,
-    ) -> Self {
-        Self {
-            _db: db,
-            organizations,
-        }
+    pub fn new(organizations: &'static Box<dyn OrganizationRepository>) -> Self {
+        Self { organizations }
     }
 
     /// The caller must authorize configuration access before invoking this service.

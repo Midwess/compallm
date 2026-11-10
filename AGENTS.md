@@ -18,6 +18,9 @@ flows:
   coding-implement-refactoring:
     steps: inspect → code → verify
     conventions: apply engineering conventions below
+    after-code:
+      after-code: false
+      unit-test: false
     testing:
       scope: core business logic; important main flows and critical edge cases
       unit-tests-per-function: 0–2
@@ -48,8 +51,11 @@ flows:
       - .agents/skills/related-issues/SKILL.md
       - .agents/skills/link-issue/SKILL.md
   create-pr:
-    steps: review → find issue → link → create
-    before-creation: use .agents/skills/related-issues/SKILL.md to inspect current PR, branch, and issue links; reuse relevant linked issues
+    steps: review → unit-test -> run linter -> find issue → link → create
+    before-creation:
+      - use .agents/skills/related-issues/SKILL.md to inspect current PR, branch, and issue links; reuse relevant linked issues
+      - write unit-test
+      - run linter
     when-no-related-issue: ask user to identify an existing issue or create one with the appropriate issue skill
     new-issues: Midwess/compallm; add to https://github.com/orgs/Midwess/projects/7
     link: use .agents/skills/link-issue/SKILL.md to link issues to the PR

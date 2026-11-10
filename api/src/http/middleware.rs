@@ -1,14 +1,18 @@
 //! Axum request setup and response finalization.
 use super::{
-    authentication::{self, Authentication, AuthenticationContext},
-    cookie::CookieDelivery,
-    error::no_store,
+    authentication::{self, AuthenticationContext, UserContext},
+    cookie::{AuthenticationSettings, CookieDelivery},
+    error::{RequestError, no_store},
 };
 use axum::{
     Extension,
     extract::{Request, State},
     middleware::Next,
     response::{IntoResponse, Response},
+};
+use compallm_core::{
+    authentication::{AuthError, AuthService},
+    persistent::DbContext,
 };
 use std::sync::{Arc, Mutex};
 
@@ -20,31 +24,52 @@ impl AuthorizationMiddleware {
         mut request: Request,
         next: Next,
     ) -> Response {
-        request
-            .extensions_mut()
-            .insert(super::authorization::context(user));
+        let authorization = super::authorization::context(user);
+        let loader = authorization.clone();
+        let Ok(context) = DbContext::current() else {
+            return no_store(RequestError::Internal.into_response());
+        };
+        if context
+            .restrict(async move { loader.member_permission().await })
+            .is_err()
+        {
+            return no_store(RequestError::Internal.into_response());
+        }
+        request.extensions_mut().insert(authorization);
         next.run(request).await
     }
 }
 
 #[derive(Clone)]
 pub struct AuthenticationMiddleware {
-    authentication: Authentication,
+    db: &'static DbContext,
+    auth: &'static AuthService,
+    settings: AuthenticationSettings,
     strict: bool,
 }
 
 impl AuthenticationMiddleware {
-    pub fn optional(authentication: Authentication) -> Self {
-        Self {
-            authentication,
+    pub fn optional(
+        db: &'static DbContext,
+        auth: &'static AuthService,
+        settings: AuthenticationSettings,
+    ) -> Result<Self, AuthError> {
+        settings.validate()?;
+        Ok(Self {
+            db,
+            auth,
+            settings,
             strict: false,
-        }
+        })
     }
-    pub fn required(authentication: Authentication) -> Self {
-        Self {
-            authentication,
-            strict: true,
-        }
+    pub fn required(
+        db: &'static DbContext,
+        auth: &'static AuthService,
+        settings: AuthenticationSettings,
+    ) -> Result<Self, AuthError> {
+        let mut middleware = Self::optional(db, auth, settings)?;
+        middleware.strict = true;
+        Ok(middleware)
     }
 
     pub async fn handle(
@@ -52,20 +77,28 @@ impl AuthenticationMiddleware {
         mut request: Request,
         next: Next,
     ) -> Response {
-        let authentication = middleware.authentication;
-        let strict = middleware.strict;
         let headers = request.headers().clone();
-        authentication
-            .db
-            .scope(async {
+        let Ok(context_db) = middleware.db.fresh() else {
+            return no_store(RequestError::Internal.into_response());
+        };
+        let Ok(trusted_db) = middleware.db.fresh() else {
+            return no_store(RequestError::Internal.into_response());
+        };
+        context_db
+            .request_scope(async {
                 let delivery = CookieDelivery {
-                    settings: authentication.settings.clone(),
+                    settings: middleware.settings.clone(),
                     request: headers.clone(),
                     response: Arc::new(Mutex::new(Default::default())),
                 };
-                let context = AuthenticationContext::new(authentication, headers);
-                let user = context.user_context();
-                if strict {
+                let context = AuthenticationContext::new(
+                    middleware.auth,
+                    trusted_db,
+                    middleware.settings,
+                    headers,
+                );
+                let user = UserContext(context.clone());
+                if middleware.strict {
                     match user.require().await {
                         Ok(access) => {
                             request.extensions_mut().insert(access.clone());
@@ -91,5 +124,6 @@ impl AuthenticationMiddleware {
                 no_store(response)
             })
             .await
+            .unwrap_or_else(|_| no_store(RequestError::Internal.into_response()))
     }
 }

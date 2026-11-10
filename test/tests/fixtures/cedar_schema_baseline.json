@@ -416,16 +416,6 @@
             ]
           }
         },
-        "provider.connection.test": {
-          "appliesTo": {
-            "resourceTypes": [
-              "Organization"
-            ],
-            "principalTypes": [
-              "User"
-            ]
-          }
-        },
         "provider.create": {
           "appliesTo": {
             "resourceTypes": [

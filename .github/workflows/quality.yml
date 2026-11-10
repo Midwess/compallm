@@ -72,6 +72,12 @@ jobs:
         run: cargo check -p compallm-api --locked
       - name: Check the PostgreSQL management CLI
         run: cargo clippy -p compallm-postgres --all-targets --features cli --locked -- -D warnings
+      - name: Apply migrations to the disposable CI database
+        run: cargo run -p compallm-postgres --features cli --locked -- up
+      - name: Verify HTTP membership and PostgreSQL RLS lifecycle
+        env:
+          COMPALLM_TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: cargo test -p compallm-test --test auth_service --locked -- --ignored
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "22"

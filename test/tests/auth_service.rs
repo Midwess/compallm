@@ -3292,3 +3292,99 @@ async fn http_request_membership_drives_postgres_rls_and_returns_a_clean_connect
             .is_empty()
     );
 }
+
+#[tokio::test]
+#[ignore = "requires COMPALLM_TEST_DATABASE_URL with the RLS migration applied"]
+async fn restricted_query_errors_and_cancellation_discard_dirty_connections() {
+    use sea_orm::{ConnectOptions, ConnectionTrait, Database};
+    use std::convert::Infallible;
+
+    let url = std::env::var("COMPALLM_TEST_DATABASE_URL").unwrap();
+    let mut options = ConnectOptions::new(&url);
+    options.max_connections(1).min_connections(1);
+    let pool = Arc::new(Database::connect(options).await.unwrap());
+    let baseline = pool
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT pg_backend_pid() AS pid, current_user::text AS role",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let member = OrganizationMember {
+        organization_id: 84,
+        user_id: 1,
+        roles: Vec::new(),
+        groups: Vec::new(),
+    };
+    let access = UserAccessToken::new(
+        stored_session(1, 1, 84, "RLS fixture"),
+        compallm_core::authorization::PolicySnapshot::new(&member),
+        Duration::from_secs(60),
+    )
+    .unwrap();
+    let permission =
+        Arc::new(compallm_core::authorization::MemberPermission::try_from(access).unwrap());
+    let restricted = DbContext::new(Arc::new(PostgresConnection::new(pool.clone())));
+    restricted
+        .restrict(async move { Ok::<_, Infallible>(permission) })
+        .unwrap();
+    assert!(
+        PostgresConnection::from_context(&restricted)
+            .unwrap()
+            .query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT 1 / 0"))
+            .await
+            .is_err()
+    );
+    let clean = pool.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT pg_backend_pid() AS pid, current_user::text AS role, coalesce(current_setting('app.organization_id',true),'') AS organization"))
+        .await.unwrap().unwrap();
+    let pid = clean.try_get::<i32>("", "pid").unwrap();
+    assert_ne!(pid, baseline.try_get::<i32>("", "pid").unwrap());
+    assert_eq!(
+        clean.try_get::<String>("", "role").unwrap(),
+        baseline.try_get::<String>("", "role").unwrap()
+    );
+    assert!(
+        clean
+            .try_get::<String>("", "organization")
+            .unwrap()
+            .is_empty()
+    );
+
+    let waiter = tokio::spawn(async move {
+        PostgresConnection::from_context(&restricted)
+            .unwrap()
+            .query_all_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT pg_sleep(20)",
+            ))
+            .await
+    });
+    let observer = Database::connect(&url).await.unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let row = observer.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+                "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE pid = $1 AND state = 'active' AND query = 'SELECT pg_sleep(20)') AS started",
+                [pid.into()])).await.unwrap().unwrap();
+            if row.try_get::<bool>("", "started").unwrap() { break; }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    }).await.unwrap();
+    waiter.abort();
+    assert!(waiter.await.unwrap_err().is_cancelled());
+    let clean = tokio::time::timeout(Duration::from_secs(5), pool.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT pg_backend_pid() AS pid, current_user::text AS role, coalesce(current_setting('app.organization_id',true),'') AS organization")))
+        .await.unwrap().unwrap().unwrap();
+    assert_ne!(clean.try_get::<i32>("", "pid").unwrap(), pid);
+    assert_eq!(
+        clean.try_get::<String>("", "role").unwrap(),
+        baseline.try_get::<String>("", "role").unwrap()
+    );
+    assert!(
+        clean
+            .try_get::<String>("", "organization")
+            .unwrap()
+            .is_empty()
+    );
+}

@@ -65,7 +65,7 @@ async fn default_contexts_share_connection_without_sharing_member_authority() {
         second.permission().await,
         Err(PermissionError::Missing)
     ));
-    assert!(std::ptr::eq(first.postgres(), second.postgres()));
+    assert!(!std::ptr::eq(first.postgres(), second.postgres()));
     let reused = first.clone();
     first
         .request_scope(async {

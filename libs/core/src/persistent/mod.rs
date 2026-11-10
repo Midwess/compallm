@@ -10,4 +10,4 @@ pub mod session;
 pub mod user;
 
 pub use connection::{Connection, ConnectionError};
-pub use db_context::{DbContext, PermissionError};
+pub use db_context::{DbContext, PermissionError, PermissionLoader};

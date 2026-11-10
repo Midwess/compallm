@@ -3,9 +3,9 @@ use cedar_policy::{ActionConstraint, Effect, EntityUid, PrincipalConstraint, Res
 use compallm_core::authorization::{MemberPermission, policy::{Action, EntityType}};
 use serde_json::Value;
 
-use super::{Condition, Entity, Field, Operand, Permission, Rls, Rules};
+use super::{Condition, Entity, Field, Operand, Permission, RlsSettings, Rules};
 
-pub(super) fn prepare(member: &MemberPermission) -> anyhow::Result<Rls> {
+pub(super) fn prepare(member: &MemberPermission) -> anyhow::Result<RlsSettings> {
     let mut permissions: Vec<_> = Action::ALL.iter().map(|action| Permission {
         action: *action,
         rules: Rules { permits: Vec::new(), forbids: Vec::new() },
@@ -56,7 +56,7 @@ pub(super) fn prepare(member: &MemberPermission) -> anyhow::Result<Rls> {
             }
         }
     }
-    Ok(Rls { organization_id: member.organization_id(), permissions })
+    Ok(RlsSettings::new(member.organization_id(), permissions)?)
 }
 
 fn entity(uid: &EntityUid) -> anyhow::Result<Entity> {

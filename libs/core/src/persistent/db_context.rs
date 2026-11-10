@@ -50,14 +50,14 @@ macro_rules! transaction {
 pub struct DbContext {
     postgres: Arc<dyn Connection>,
     transaction: Option<Arc<TransactionState>>,
-    member_permission: Arc<OnceLock<LazyPermission>>,
+    member_permission: Arc<OnceLock<PermissionLoader>>,
     request_started: Arc<AtomicBool>,
 }
 
 type PermissionLoadError = Arc<dyn Error + Send + Sync>;
 type PermissionResult = Result<Arc<MemberPermission>, PermissionLoadError>;
 type PermissionFuture = Pin<Box<dyn Future<Output = PermissionResult> + Send>>;
-type LazyPermission = Lazy<PermissionResult, PermissionFuture>;
+pub type PermissionLoader = Arc<Lazy<PermissionResult, PermissionFuture>>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PermissionError {
@@ -92,6 +92,7 @@ impl DbContext {
 
     /// Application dependency wiring supplies the already configured database.
     pub fn new(postgres: Arc<dyn Connection>) -> Self {
+        let postgres = postgres.scoped();
         let transaction = postgres
             .is_transaction()
             .then(|| Arc::new(TransactionState::default()));
@@ -116,8 +117,17 @@ impl DbContext {
                 .await
                 .map_err(|error| Arc::new(error) as PermissionLoadError)
         });
-        self.member_permission.set(Lazy::new(loader)).map_err(|_| {
-            ConnectionError::database(anyhow::anyhow!("member authority is already set"))
+        if self.transaction.is_some() {
+            return Err(ConnectionError::database(anyhow::anyhow!(
+                "a transaction cannot acquire a new restriction"
+            )));
+        }
+        let permission = Arc::new(Lazy::new(loader));
+        self.postgres.restrict(permission.clone())?;
+        self.member_permission.set(permission).map_err(|_| {
+            ConnectionError::database(anyhow::anyhow!(
+                "member authority is already set or a transaction has started"
+            ))
         })?;
         Ok(self.clone())
     }

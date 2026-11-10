@@ -22,6 +22,7 @@ required-features = ["cli"]
 cedar-policy.workspace = true
 anyhow = { workspace = true, features = ["std"] }
 async-trait.workspace = true
+async-once-cell.workspace = true
 elsa.workspace = true
 serde = { workspace = true, features = ["std", "derive"] }
 serde_json = { workspace = true, features = ["std"] }

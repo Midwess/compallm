@@ -1,6 +1,7 @@
 //! Database lifecycle contract. SQL and ORM types belong to database adapters.
 
 use async_trait::async_trait;
+use super::db_context::PermissionLoader;
 use std::{any::Any, sync::Arc};
 
 #[derive(Debug, thiserror::Error)]
@@ -20,6 +21,8 @@ pub trait Connection: Any + Send + Sync {
     /// Adapter access without exposing its concrete types to Core.
     fn as_any(&self) -> &dyn Any;
     fn is_transaction(&self) -> bool;
+    fn scoped(&self) -> Arc<dyn Connection>;
+    fn restrict(&self, permission: PermissionLoader) -> Result<(), ConnectionError>;
     fn ensure_open(&self) -> Result<(), ConnectionError>;
     async fn begin(&self) -> Result<Arc<dyn Connection>, ConnectionError>;
     async fn commit(&self) -> Result<(), ConnectionError>;

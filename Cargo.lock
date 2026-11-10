@@ -1268,6 +1268,7 @@ name = "compallm-postgres"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-once-cell",
  "async-trait",
  "axum",
  "cedar-policy",

@@ -3,6 +3,11 @@ use std::collections::HashSet;
 use validify::Validate;
 
 use crate::{
+    authorization::{
+        MemberPermission, MemberPermissionError,
+        condition::{CheckPermission, ForAction},
+        policy::Action,
+    },
     persistent::{DbContext, provider::ProviderRepository},
     transaction,
 };
@@ -11,8 +16,8 @@ use super::{Provider, ProviderCreationError, validation::invalid};
 
 /// Creates organization-owned connections and their configured models.
 ///
-/// Callers authorize owner/admin access, set the parent organization from trusted
-/// context, and protect credentials before calling. No upstream calls are made.
+/// Requires provider and nested-model creation permission in the member's organization.
+/// Callers protect credentials before calling. No upstream calls are made.
 pub struct CreationService<'a> {
     providers: &'a dyn ProviderRepository,
 }
@@ -23,14 +28,19 @@ impl<'a> CreationService<'a> {
     }
 
     /// Input identities are replaced; the entity carries its encrypted credential.
-    pub async fn create(&self, provider: Provider) -> Result<Provider, ProviderCreationError> {
-        let mut created = self.create_many(vec![provider]).await?;
+    pub async fn create(
+        &self,
+        permission: &MemberPermission,
+        provider: Provider,
+    ) -> Result<Provider, ProviderCreationError> {
+        let mut created = self.create_many(permission, vec![provider]).await?;
         Ok(created.remove(0))
     }
 
     /// One provider uses the connection scope; multiple providers share a transaction.
     pub async fn create_many(
         &self,
+        permission: &MemberPermission,
         mut providers: Vec<Provider>,
     ) -> Result<Vec<Provider>, ProviderCreationError> {
         let organization_id = providers
@@ -52,8 +62,15 @@ impl<'a> CreationService<'a> {
             }
         }
 
+        if organization_id != permission.organization_id() {
+            return Err(MemberPermissionError::Denied.into());
+        }
+        Action::ProviderCreate.check_permission(permission)?;
         for provider in &mut providers {
             provider.initialize_ids().await?;
+            provider
+                .for_action(Action::ProviderModelCreate)
+                .check_permission(permission)?;
         }
 
         let db = DbContext::current()?;

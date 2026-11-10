@@ -31,10 +31,10 @@ const organization = [
   { page: 'members', label: 'Members', Icon: UsersIcon },
   { page: 'usage-limits', label: 'Usage & limits', Icon: ChartLineIcon },
 ] as const
-const category = '[&>details>summary]:text-[10px] [&>details>summary]:font-normal'
-const folder = `[&>details>summary]:text-xs [&>details>summary>span:first-child]:size-3
+const category = '[&>details>summary]:text-xs [&>details>summary]:font-normal'
+const folder = `[&>details>summary>span:first-child]:size-3
 [&>details>summary>svg:last-child]:ml-auto`
-const item = 'text-[13px] font-normal [&>span:first-child]:size-3 [&>span:first-child>svg]:size-3'
+const item = 'font-normal [&>span:first-child]:size-3 [&>span:first-child>svg]:size-3'
 
 export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) {
   const c = useSettingsController(),

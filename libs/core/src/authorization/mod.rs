@@ -1,5 +1,6 @@
 //! Application-owned Cedar vocabulary. Schema definitions do not grant access.
 
+pub mod condition;
 pub mod error;
 mod member_permission;
 pub mod policy;

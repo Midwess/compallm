@@ -7,10 +7,7 @@ use cedar_policy::{
 
 use crate::authentication::UserAccessToken;
 
-use super::{
-    PolicySnapshot, all_policies,
-    policy::{Action, EntityType},
-};
+use super::{PolicySnapshot, all_policies, policy::Action};
 
 /// A safe result for preparing or evaluating a member's permissions.
 #[derive(Debug, thiserror::Error)]
@@ -33,7 +30,6 @@ pub struct MemberPermission {
     user_id: u64,
     organization_id: u64,
     principal: EntityUid,
-    organization: EntityUid,
     policies: PolicySet,
     entities: Entities,
 }
@@ -59,22 +55,22 @@ impl MemberPermission {
         &self.entities
     }
 
-    /// Authorize an organization-scoped action against this member's own
-    /// organization. This performs no database access and never reparses policy.
-    /// Contextual actions and individual resources need separate contracts.
-    pub fn require(&self, action: Action) -> Result<(), MemberPermissionError> {
-        if action.resource() != EntityType::Organization || action.context().is_some() {
-            return Err(MemberPermissionError::Evaluation);
-        }
+    pub(super) fn evaluate(
+        &self,
+        action: Action,
+        resource: EntityUid,
+        context: Context,
+        entities: &Entities,
+    ) -> Result<(), MemberPermissionError> {
         let request = Request::new(
             self.principal.clone(),
             action.into(),
-            self.organization.clone(),
-            Context::empty(),
+            resource,
+            context,
             Some(all_policies()),
         )
         .map_err(|_| MemberPermissionError::Evaluation)?;
-        let response = Authorizer::new().is_authorized(&request, &self.policies, &self.entities);
+        let response = Authorizer::new().is_authorized(&request, &self.policies, entities);
         // Cedar skips individual policies on evaluation error. A skipped forbid
         // must not allow an unrelated permit to authorize this application.
         if response.diagnostics().errors().next().is_some() {
@@ -116,15 +112,11 @@ impl TryFrom<UserAccessToken> for MemberPermission {
         let principal = format!("Compallm::User::\"{user_id}\"")
             .parse()
             .map_err(|_| MemberPermissionError::InvalidAuthority)?;
-        let organization = format!("Compallm::Organization::\"{organization_id}\"")
-            .parse()
-            .map_err(|_| MemberPermissionError::InvalidAuthority)?;
         let entities = MemberEntities::try_from((user_id, organization_id, &snapshot))?.0;
         Ok(Self {
             user_id,
             organization_id,
             principal,
-            organization,
             policies,
             entities,
         })

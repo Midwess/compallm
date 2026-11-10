@@ -109,10 +109,7 @@ export function SidebarHeader({
             preference.current?.focus()
           }
         }}
-        className={cx(
-          'flex min-w-0 flex-1 cursor-pointer items-center gap-1 rounded text-xs leading-4 text-text',
-          focus,
-        )}
+        className={cx('flex min-w-0 flex-1 cursor-pointer items-center gap-1 rounded text-xs leading-4 text-text', focus)}
       >
         {mark ?? (
           <span

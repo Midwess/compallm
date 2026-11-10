@@ -34,6 +34,7 @@ axum.workspace = true
 hero = { workspace = true, features = ["distributed-id"] }
 loco-rs = { workspace = true, features = ["with-db"] }
 sea-orm = { workspace = true, features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono"] }
+sea-query-sqlx = { version = "0.9.1", features = ["sqlx-postgres"] }
 sea-orm-migration = { workspace = true, features = ["sqlx-postgres", "runtime-tokio-rustls"] }
 sea-orm-cli = { workspace = true, optional = true, features = ["codegen", "sqlx-postgres", "runtime-tokio-rustls"] }
 tokio = { workspace = true, features = ["sync"] }

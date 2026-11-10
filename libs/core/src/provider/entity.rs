@@ -3,7 +3,10 @@ use std::sync::LazyLock;
 
 use cedar_policy::SchemaFragment;
 
-use crate::authorization::SystemPolicy;
+use crate::authorization::{
+    SystemPolicy,
+    policy::{EntityType, Policy},
+};
 
 use super::ProviderApiKey;
 use super::configuration::{
@@ -78,28 +81,8 @@ impl SystemPolicy for Provider {
     /// must check their additional actions. Concrete targets, organization isolation,
     /// safe field projection, and deletion dependencies are service responsibilities.
     fn policy() -> SchemaFragment {
-        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
-            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(
-                r#"
-namespace Compallm {
-    entity Provider in [Organization] { organization: Organization };
-    action "provider.list" appliesTo { principal: User, resource: Organization };
-    action "provider.create" appliesTo { principal: User, resource: Organization };
-    action "provider.connection.test" appliesTo { principal: User, resource: Organization };
-    action "provider.configuration.read" appliesTo { principal: User, resource: Provider };
-    action "provider.configuration.update" appliesTo { principal: User, resource: Provider };
-    action "provider.delete" appliesTo { principal: User, resource: Provider };
-    action "provider.credential.replace" appliesTo { principal: User, resource: Provider };
-}
-"#,
-            )
-            .expect("Provider SystemPolicy must be a valid static Cedar schema fragment");
-            assert!(
-                warnings.count() == 0,
-                "Provider SystemPolicy must not contain schema warnings"
-            );
-            fragment
-        });
+        static DEFINITION: LazyLock<SchemaFragment> =
+            LazyLock::new(|| Policy::new(EntityType::Provider).into());
         DEFINITION.clone()
     }
 }
@@ -123,24 +106,8 @@ impl SystemPolicy for ProviderModel {
     /// reference alone does not prove that consistency. Reads/updates can target disabled
     /// models; this fragment supplies no grants or inference permission.
     fn policy() -> SchemaFragment {
-        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
-            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(r#"
-namespace Compallm {
-    entity ProviderModel in [Provider, Organization] { organization: Organization, provider: Provider, enabled: Bool };
-    action "provider.model.list" appliesTo { principal: User, resource: Provider };
-    action "provider.model.create" appliesTo { principal: User, resource: Provider };
-    action "provider.model.configuration.read" appliesTo { principal: User, resource: ProviderModel };
-    action "provider.model.configuration.update" appliesTo { principal: User, resource: ProviderModel };
-    action "provider.model.pricing.update" appliesTo { principal: User, resource: ProviderModel };
-    action "provider.model.delete" appliesTo { principal: User, resource: ProviderModel };
-}
-"#).expect("ProviderModel SystemPolicy must be a valid static Cedar schema fragment");
-            assert!(
-                warnings.count() == 0,
-                "ProviderModel SystemPolicy must not contain schema warnings"
-            );
-            fragment
-        });
+        static DEFINITION: LazyLock<SchemaFragment> =
+            LazyLock::new(|| Policy::new(EntityType::ProviderModel).into());
         DEFINITION.clone()
     }
 }

@@ -6,7 +6,10 @@ use std::{
 use cedar_policy::{Entities, Entity, EntityUid, RestrictedExpression, SchemaFragment};
 
 use super::{Group, Role};
-use crate::authorization::SystemPolicy;
+use crate::authorization::{
+    SystemPolicy,
+    policy::{EntityType, Policy},
+};
 
 #[derive(Clone, Debug)]
 pub struct OrganizationMember {
@@ -44,24 +47,8 @@ impl SystemPolicy for OrganizationMember {
     /// Membership administration is separate from unrestricted public profile reading. Role
     /// context is a typed reference, not evidence that the role exists or is assignable.
     fn policy() -> SchemaFragment {
-        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
-            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(r#"
-namespace Compallm {
-    entity Member in [Organization] { organization: Organization, user: User };
-    action "member.list" appliesTo { principal: User, resource: Organization };
-    action "member.invite" appliesTo { principal: User, resource: Organization };
-    action "member.metadata.read" appliesTo { principal: User, resource: Member };
-    action "member.remove" appliesTo { principal: User, resource: Member };
-    action "member.role.assign" appliesTo { principal: User, resource: Member, context: { role: Role } };
-    action "member.role.unassign" appliesTo { principal: User, resource: Member, context: { role: Role } };
-}
-"#).expect("OrganizationMember SystemPolicy must be a valid static Cedar schema fragment");
-            assert!(
-                warnings.count() == 0,
-                "OrganizationMember SystemPolicy must not contain schema warnings"
-            );
-            fragment
-        });
+        static DEFINITION: LazyLock<SchemaFragment> =
+            LazyLock::new(|| Policy::new(EntityType::Member).into());
         DEFINITION.clone()
     }
 }

@@ -7,7 +7,7 @@ mod session_fixture;
 use session_fixture::stored_session;
 
 use compallm_core::{
-    auth::{RefreshToken, Session},
+    authentication::{RefreshToken, Session},
     persistent::{DbContext, session::SessionRepository as _},
 };
 use compallm_postgres::mappers::session::MappedSession;

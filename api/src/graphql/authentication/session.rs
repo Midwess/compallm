@@ -1,4 +1,4 @@
-use compallm_core::auth::Session as CoreSession;
+use compallm_core::authentication::Session as CoreSession;
 use juniper::{ID, graphql_object};
 
 /// Session identity projected only after authenticating the selected credential.

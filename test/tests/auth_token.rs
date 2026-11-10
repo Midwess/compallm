@@ -13,7 +13,7 @@ use session_fixture::stored_session;
 use std::time::Duration;
 
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use compallm_core::auth::{
+use compallm_core::authentication::{
     AccessToken, AuthError, EmailOtpAccessToken, EmailOtpChallenge, EncryptedAccessToken,
     EncryptedToken, RefreshToken, UserAccessToken, UserTokens,
 };
@@ -436,7 +436,7 @@ fn enum_checks_common_timestamps_then_inner_invariants() {
 
 #[test]
 fn token_validity_owns_expiration_and_timestamp_validation() {
-    use compallm_core::auth::token::TokenValidity;
+    use compallm_core::authentication::token::TokenValidity;
 
     let validity = TokenValidity::new(Duration::from_secs(60)).unwrap();
     let now = validity.issued_at;

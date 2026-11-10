@@ -1,5 +1,5 @@
 use super::TokenValidity;
-use crate::auth::{AuthError, Session};
+use crate::authentication::{AuthError, Session};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 

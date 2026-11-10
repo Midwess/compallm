@@ -239,7 +239,7 @@ async fn repository_latest_tracks_new_versions_and_reuses_cached_prefixes() -> a
 #[tokio::test]
 async fn initial_seed_compresses_complete_default_access_claims() -> anyhow::Result<()> {
     use compallm_core::{
-        auth::{AccessToken, Session, UserAccessToken},
+        authentication::{AccessToken, Session, UserAccessToken},
         authorization::PolicySnapshot,
         organization::{OrganizationMember, Role},
     };

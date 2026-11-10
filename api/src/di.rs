@@ -3,7 +3,7 @@ use crate::{
     middleware::authentication::{Authentication, AuthenticationSettings},
 };
 use compallm_core::{
-    auth::{AuthError, AuthService, TokenLifetimes},
+    authentication::{AuthError, AuthService, TokenLifetimes},
     mail::EmailService,
     organization::{ConfigService, CreationService},
     persistent::dictionary::DictionaryRepository,

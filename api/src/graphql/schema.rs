@@ -8,7 +8,7 @@ use crate::middleware::authentication::RequestIdentity;
 
 use super::{
     GraphqlContext,
-    auth::{self, Mutation, Session},
+    authentication::{self, Mutation, Session},
 };
 
 pub type ApplicationSchema = Arc<RootNode<Query, Mutation, EmptySubscription<GraphqlContext>>>;
@@ -27,7 +27,7 @@ impl QueryFields {
     fn session(
         #[graphql(context)] identity: &RequestIdentity,
     ) -> Result<Session, super::error::Error> {
-        Ok(auth::query::session(identity.user()?))
+        Ok(authentication::query::session(identity.user()?))
     }
 }
 
@@ -40,11 +40,11 @@ impl GraphQLType for Query {
 
     fn meta(info: &(), registry: &mut Registry) -> juniper::meta::MetaType {
         use super::{
-            auth,
+            authentication,
             provider::{catalog, input},
         };
-        registry.get_type::<auth::EmailInput>(&());
-        registry.get_type::<auth::EmailCodeInput>(&());
+        registry.get_type::<authentication::EmailInput>(&());
+        registry.get_type::<authentication::EmailCodeInput>(&());
         registry.get_type::<input::ProvidersCreateInput>(&());
         registry.get_type::<input::ProviderReplaceInput>(&());
         registry.get_type::<input::ProviderPatchInput>(&());

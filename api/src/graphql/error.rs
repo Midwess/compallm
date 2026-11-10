@@ -1,5 +1,7 @@
 use crate::middleware::authentication::RequestError;
-use compallm_core::{auth::AuthError, mail::EmailError, persistent::user::UserRepositoryError};
+use compallm_core::{
+    authentication::AuthError, mail::EmailError, persistent::user::UserRepositoryError,
+};
 use juniper::{FieldError, IntoFieldError, ScalarValue, graphql_value};
 
 /// Safe operation failure, with no submitted values or internal diagnostics.

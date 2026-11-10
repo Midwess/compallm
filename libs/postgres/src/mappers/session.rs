@@ -1,6 +1,6 @@
 use crate::UserSessionSchema;
 use anyhow::Context;
-use compallm_core::{auth::Session, persistent::session::SessionRepositoryError};
+use compallm_core::{authentication::Session, persistent::session::SessionRepositoryError};
 
 pub struct MappedSession(Session);
 

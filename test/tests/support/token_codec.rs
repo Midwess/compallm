@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use compallm_core::{
-    auth::{AccessToken, AuthError, EmailOtpChallenge},
+    authentication::{AccessToken, AuthError, EmailOtpChallenge},
     compression::{DCompression, DictionaryType},
     persistent::dictionary::DictionaryRepository,
 };
@@ -134,7 +134,7 @@ pub fn sign_unchecked(token: &AccessToken, secret: &str, lifetime: Duration) -> 
             .unwrap()
     });
     sign_raw(
-        &AccessToken::Compressed(compallm_core::auth::token::CompressedToken {
+        &AccessToken::Compressed(compallm_core::authentication::token::CompressedToken {
             dictionary_version: 1,
             data,
         }),

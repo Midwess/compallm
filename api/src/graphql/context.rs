@@ -1,4 +1,4 @@
-use compallm_core::auth::AuthService;
+use compallm_core::authentication::AuthService;
 use juniper::FromContext;
 
 use crate::{

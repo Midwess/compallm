@@ -6,7 +6,10 @@ use std::sync::LazyLock;
 use cedar_policy::SchemaFragment;
 use compallm_utils::email;
 
-use crate::authorization::SystemPolicy;
+use crate::authorization::{
+    SystemPolicy,
+    policy::{EntityType, Policy},
+};
 
 pub mod error;
 pub mod preferences;
@@ -79,38 +82,11 @@ impl User {
 }
 
 impl SystemPolicy for User {
-    /// Declares protected profile mutation and account deletion, not profile reads.
-    ///
-    /// - `user.profile.update`: change one's own allowed profile fields. Public
-    ///   visibility of that profile never permits somebody else to edit it.
-    ///   Email verification and authentication changes are separate workflows.
-    /// - `user.account.delete`: delete one's own entire account through its
-    ///   confirmation, reauthentication, last-owner, and retention safeguards.
-    ///   Updating a profile does not imply account deletion.
-    ///
-    /// User profiles are readable by everyone without RBAC; no profile-read action
-    /// or permit belongs here. Public projections exclude private authentication
-    /// and membership-administration data. Knowing an ID grants no mutation rights.
-    /// UserAuth defines authentication operations separately. Role/Group types
-    /// describe membership only; baseline account decisions exclude custom forbids.
+    /// Declare the user principal and its organization role/group relationships.
+    /// Personal profile and account operations use their own ownership checks.
     fn policy() -> SchemaFragment {
-        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
-            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(
-                r#"
-namespace Compallm {
-    entity User in [Role, Group, Organization];
-    action "user.profile.update" appliesTo { principal: User, resource: User };
-    action "user.account.delete" appliesTo { principal: User, resource: User };
-}
-"#,
-            )
-            .expect("User SystemPolicy must be a valid static Cedar schema fragment");
-            assert!(
-                warnings.count() == 0,
-                "User SystemPolicy must not contain schema warnings"
-            );
-            fragment
-        });
+        static DEFINITION: LazyLock<SchemaFragment> =
+            LazyLock::new(|| Policy::new(EntityType::User).into());
         DEFINITION.clone()
     }
 }

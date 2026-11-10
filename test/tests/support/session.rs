@@ -1,4 +1,4 @@
-use compallm_core::auth::Session;
+use compallm_core::authentication::Session;
 
 /// A previously stored record with stable identity; not a new-session constructor.
 pub fn stored_session(

@@ -1,5 +1,5 @@
 use super::TokenValidity;
-use crate::auth::AuthError;
+use crate::authentication::AuthError;
 use compallm_utils::email;
 use rand::Rng;
 use serde::{Deserialize, Serialize};

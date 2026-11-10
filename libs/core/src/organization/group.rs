@@ -1,5 +1,8 @@
 use super::Role;
-use crate::authorization::SystemPolicy;
+use crate::authorization::{
+    SystemPolicy,
+    policy::{EntityType, Policy},
+};
 use cedar_policy::{Entity, EntityUid, RestrictedExpression, SchemaFragment};
 use hero::distributed_id::{generator::DistributedIdError, try_gen_id};
 use std::{
@@ -118,22 +121,8 @@ impl SystemPolicy for Group {
     /// require authority to delegate that Role. Both ends must share the actual
     /// organization; name edits cannot grant roles. Runtime writes invalidate sessions.
     fn policy() -> SchemaFragment {
-        static VALUE: LazyLock<SchemaFragment> = LazyLock::new(|| {
-            SchemaFragment::from_cedarschema_str(r#"
-namespace Compallm {
- entity Group in [Role, Organization] { organization: Organization };
- action "group.list" appliesTo { principal: User, resource: Organization };
- action "group.create" appliesTo { principal: User, resource: Organization };
- action "group.metadata.read" appliesTo { principal: User, resource: Group };
- action "group.metadata.update" appliesTo { principal: User, resource: Group };
- action "group.member.add" appliesTo { principal: User, resource: Group, context: { member: Member } };
- action "group.member.remove" appliesTo { principal: User, resource: Group, context: { member: Member } };
- action "group.role.assign" appliesTo { principal: User, resource: Group, context: { role: Role } };
- action "group.role.unassign" appliesTo { principal: User, resource: Group, context: { role: Role } };
- action "group.delete" appliesTo { principal: User, resource: Group };
-}
-"#).expect("Group static schema").0
-        });
-        VALUE.clone()
+        static DEFINITION: LazyLock<SchemaFragment> =
+            LazyLock::new(|| Policy::new(EntityType::Group).into());
+        DEFINITION.clone()
     }
 }

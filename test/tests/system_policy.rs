@@ -5,7 +5,6 @@ use cedar_policy::{
     Validator,
 };
 use compallm_core::{
-    auth::{Session, UserAuth},
     authorization::{SystemPolicy, all_policies},
     model::Model,
     organization::{Group, Organization, OrganizationMember, Role},
@@ -35,16 +34,14 @@ fn all_entity_policies_assemble_into_one_cached_schema() {
         User::policy(),
         Role::policy(),
         Group::policy(),
-        UserAuth::policy(),
         Organization::policy(),
         OrganizationMember::policy(),
         Provider::policy(),
         ProviderModel::policy(),
         Model::policy(),
-        Session::policy(),
     ])
     .unwrap();
-    assert_eq!(assembled.action_entities().unwrap().iter().count(), 57);
+    assert_eq!(assembled.action_entities().unwrap().iter().count(), 50);
     assert!(std::ptr::eq(all_policies(), all_policies()));
     let names = all_policies()
         .action_entities()
@@ -67,9 +64,6 @@ fn all_entity_policies_assemble_into_one_cached_schema() {
 #[test]
 fn actions_have_explicit_resource_types_and_do_not_imply_grants() {
     for (prefix, operations, kind) in [
-        ("user.profile", "update", "User"),
-        ("user.account", "delete", "User"),
-        ("user.authentication", "read update", "UserAuthentication"),
         ("organization", "delete", "Organization"),
         ("organization.settings", "read update", "Organization"),
         ("member", "list invite", "Organization"),
@@ -93,9 +87,6 @@ fn actions_have_explicit_resource_types_and_do_not_imply_grants() {
         ("model.metadata", "read", "Model"),
         ("model.configuration", "update", "Model"),
         ("model.pricing", "update", "Model"),
-        ("session", "list", "User"),
-        ("session", "revoke", "Session"),
-        ("session.metadata", "read", "Session"),
     ] {
         for operation in operations.split_whitespace() {
             let action = format!("{prefix}.{operation}");
@@ -238,17 +229,14 @@ fn role_inheritance_preserves_organization_scope_and_forbid_precedence() {
 
 #[test]
 fn resource_relationships_exclude_nested_groups_and_untyped_ownership() {
-    for policies in [
+    let set = PolicySet::from_str(
         "permit(principal, action == Compallm::Action::\"provider.model.configuration.read\", resource) when { resource.provider.organization == resource.organization && resource.enabled };",
-        "permit(principal, action == Compallm::Action::\"session.metadata.read\", resource) when { resource.user == principal };",
-    ] {
-        let set = PolicySet::from_str(policies).unwrap();
-        assert!(
-            Validator::new(all_policies().clone())
-                .validate(&set, ValidationMode::Strict)
-                .validation_passed()
-        );
-    }
+    ).unwrap();
+    assert!(
+        Validator::new(all_policies().clone())
+            .validate(&set, ValidationMode::Strict)
+            .validation_passed()
+    );
     let nested = json!([{"uid":{"type":"Compallm::Group","id":"42:9"},"attrs":{"organization":{"__entity":{"type":"Compallm::Organization","id":"42"}}},"parents":[{"type":"Compallm::Group","id":"42:10"}]}]);
     assert!(Entities::from_json_value(nested, Some(all_policies())).is_err());
 }
@@ -277,99 +265,6 @@ fn route_actions_identify_the_selected_upstream_model_with_typed_context() {
         )
         .unwrap();
         assert!(request(action, "Model", wrong).is_err());
-    }
-}
-
-fn baseline_entities() -> Entities {
-    Entities::from_json_value(json!([
-        {"uid":{"type":"Compallm::User","id":"100"},"attrs":{},"parents":[{"type":"Compallm::Organization","id":"42"}]},
-        {"uid":{"type":"Compallm::User","id":"101"},"attrs":{},"parents":[]},
-        {"uid":{"type":"Compallm::UserAuthentication","id":"100"},"attrs":{"user":{"__entity":{"type":"Compallm::User","id":"100"}}},"parents":[]},
-        {"uid":{"type":"Compallm::UserAuthentication","id":"101"},"attrs":{"user":{"__entity":{"type":"Compallm::User","id":"101"}}},"parents":[]},
-        {"uid":{"type":"Compallm::Organization","id":"42"},"attrs":{},"parents":[]},
-        {"uid":{"type":"Compallm::Organization","id":"43"},"attrs":{},"parents":[]},
-        {"uid":{"type":"Compallm::Session","id":"42:200"},"attrs":{"organization":{"__entity":{"type":"Compallm::Organization","id":"42"}},"user":{"__entity":{"type":"Compallm::User","id":"100"}}},"parents":[{"type":"Compallm::Organization","id":"42"}]},
-        {"uid":{"type":"Compallm::Session","id":"42:201"},"attrs":{"organization":{"__entity":{"type":"Compallm::Organization","id":"42"}},"user":{"__entity":{"type":"Compallm::User","id":"101"}}},"parents":[{"type":"Compallm::Organization","id":"42"}]},
-        {"uid":{"type":"Compallm::Member","id":"42:101"},"attrs":{"organization":{"__entity":{"type":"Compallm::Organization","id":"42"}},"user":{"__entity":{"type":"Compallm::User","id":"101"}}},"parents":[{"type":"Compallm::Organization","id":"42"}]}
-    ]),Some(all_policies())).unwrap()
-}
-
-#[test]
-fn baseline_self_account_and_session_access_do_not_require_a_custom_role() {
-    let policies = PolicySet::from_str(include_str!("fixtures/account_baseline.cedar")).unwrap();
-    assert!(
-        Validator::new(all_policies().clone())
-            .validate(&policies, ValidationMode::Strict)
-            .validation_passed()
-    );
-    let entities = baseline_entities();
-    let authorizer = Authorizer::new();
-    for (action, kind, id, expected) in [
-        ("user.profile.update", "User", "100", Decision::Allow),
-        (
-            "user.authentication.read",
-            "UserAuthentication",
-            "100",
-            Decision::Allow,
-        ),
-        (
-            "user.authentication.read",
-            "UserAuthentication",
-            "101",
-            Decision::Deny,
-        ),
-        (
-            "user.authentication.update",
-            "UserAuthentication",
-            "100",
-            Decision::Deny,
-        ),
-        (
-            "user.authentication.update",
-            "UserAuthentication",
-            "101",
-            Decision::Deny,
-        ),
-        ("user.profile.update", "User", "101", Decision::Deny),
-        ("user.account.delete", "User", "100", Decision::Deny),
-        ("session.list", "User", "100", Decision::Allow),
-        ("session.list", "User", "101", Decision::Deny),
-        (
-            "session.metadata.read",
-            "Session",
-            "42:200",
-            Decision::Allow,
-        ),
-        ("session.revoke", "Session", "42:200", Decision::Allow),
-        ("session.metadata.read", "Session", "42:201", Decision::Deny),
-        ("session.revoke", "Session", "42:201", Decision::Deny),
-        (
-            "organization.settings.read",
-            "Organization",
-            "42",
-            Decision::Deny,
-        ),
-        (
-            "organization.settings.update",
-            "Organization",
-            "42",
-            Decision::Deny,
-        ),
-        ("organization.delete", "Organization", "42", Decision::Deny),
-        ("member.list", "Organization", "42", Decision::Deny),
-        ("member.metadata.read", "Member", "42:101", Decision::Deny),
-    ] {
-        let req = Request::new(
-            uid("User", "100"),
-            uid("Action", action),
-            uid(kind, id),
-            Context::empty(),
-            Some(all_policies()),
-        )
-        .unwrap();
-        let response = authorizer.is_authorized(&req, &policies, &entities);
-        assert_eq!(response.decision(), expected, "{action} on {kind} {id}");
-        assert_eq!(response.diagnostics().errors().count(), 0, "{action}");
     }
 }
 

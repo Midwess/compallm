@@ -61,20 +61,30 @@ impl MemberPermission {
 
     /// Authorize an organization-scoped action against this member's own
     /// organization. This performs no database access and never reparses policy.
-    /// Contextual actions and individual resources need separate contracts.
+    /// Entity and contextual actions use authorization condition checks.
     pub fn require(&self, action: Action) -> Result<(), MemberPermissionError> {
         if action.resource() != EntityType::Organization || action.context().is_some() {
             return Err(MemberPermissionError::Evaluation);
         }
+        self.evaluate(action, self.organization.clone(), Context::empty(), &self.entities)
+    }
+
+    pub(super) fn evaluate(
+        &self,
+        action: Action,
+        resource: EntityUid,
+        context: Context,
+        entities: &Entities,
+    ) -> Result<(), MemberPermissionError> {
         let request = Request::new(
             self.principal.clone(),
             action.into(),
-            self.organization.clone(),
-            Context::empty(),
+            resource,
+            context,
             Some(all_policies()),
         )
         .map_err(|_| MemberPermissionError::Evaluation)?;
-        let response = Authorizer::new().is_authorized(&request, &self.policies, &self.entities);
+        let response = Authorizer::new().is_authorized(&request, &self.policies, entities);
         // Cedar skips individual policies on evaluation error. A skipped forbid
         // must not allow an unrelated permit to authorize this application.
         if response.diagnostics().errors().next().is_some() {

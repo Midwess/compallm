@@ -50,7 +50,7 @@ impl Fixture {
         Self {
             context,
             database,
-            service: ConfigService::new(context, organizations),
+            service: ConfigService::new(organizations),
         }
     }
 }

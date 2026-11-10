@@ -549,7 +549,6 @@ impl Fixture {
             http::authorization::AuthorizationContext,
             http::middleware::{AuthenticationMiddleware, AuthorizationMiddleware},
         };
-        let db = Box::leak(Box::new(self.repo.1.clone()));
         let email = Box::leak(Box::new(
             Box::new(TestEmail) as Box<dyn compallm_core::mail::EmailService>
         ));
@@ -578,6 +577,7 @@ impl Fixture {
             .with_auth_service(service),
         ));
         di.initialize_services().unwrap();
+        let db = Box::leak(Box::new(self.repo.1.clone()));
         let authentication = AuthenticationMiddleware::optional(
             db,
             di.auth_service(),
@@ -678,18 +678,16 @@ impl Fixture {
     ) -> AuthService {
         // Static dependencies mirror the application container. Test-only
         // allocations live for this test process and never touch a real DB.
-        let db: &'static DbContext = Box::leak(Box::new(self.repo.1.clone()));
         let users = Box::leak(Box::new(
             Box::new(self.repo.clone()) as Box<dyn UserRepository>
         ));
         let organizations = Box::leak(Box::new(Box::new(OrganizationRepositoryStub(
             self.repo.0.clone(),
         )) as Box<dyn OrganizationRepository>));
-        let creation = Box::leak(Box::new(CreationService::new(db, organizations)));
-        let registration = Box::leak(Box::new(RegistrationService::new(db, users, creation)));
+        let creation = Box::leak(Box::new(CreationService::new(organizations)));
+        let registration = Box::leak(Box::new(RegistrationService::new(users, creation)));
         let dictionaries = Box::leak(Box::new(dictionary));
         AuthService::new(
-            db,
             users,
             organizations,
             Box::leak(Box::new(
@@ -757,15 +755,14 @@ impl Fixture {
     }
 
     fn registration(&self) -> RegistrationService {
-        let db = Box::leak(Box::new(self.repo.1.clone()));
         let users = Box::leak(Box::new(
             Box::new(self.repo.clone()) as Box<dyn UserRepository>
         ));
         let organizations = Box::leak(Box::new(Box::new(OrganizationRepositoryStub(
             self.repo.0.clone(),
         )) as Box<dyn OrganizationRepository>));
-        let creation = Box::leak(Box::new(CreationService::new(db, organizations)));
-        RegistrationService::new(db, users, creation)
+        let creation = Box::leak(Box::new(CreationService::new(organizations)));
+        RegistrationService::new(users, creation)
     }
 
     fn role(organization_id: u64, index: usize) -> Role {

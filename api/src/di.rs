@@ -161,7 +161,6 @@ impl Di {
             return Ok(());
         }
         let service = Box::new(AuthService::new(
-            self.db_context(),
             self.user_repository(),
             self.organization_repository(),
             self.session_repository(),
@@ -263,7 +262,6 @@ impl Di {
     pub fn registration_service(&'static self) -> &'static RegistrationService {
         self.registration.get_or_init(|| {
             Box::new(RegistrationService::new(
-                self.db_context(),
                 self.user_repository(),
                 self.organization_creation_service(),
             ))
@@ -277,7 +275,6 @@ impl Di {
     pub fn organization_creation_service(&'static self) -> &'static CreationService {
         self.organization_creation.get_or_init(|| {
             Box::new(CreationService::new(
-                self.db_context(),
                 self.organization_repository(),
             ))
         })
@@ -286,7 +283,6 @@ impl Di {
     pub fn organization_config_service(&'static self) -> &'static ConfigService {
         self.organization_config.get_or_init(|| {
             Box::new(ConfigService::new(
-                self.db_context(),
                 self.organization_repository(),
             ))
         })

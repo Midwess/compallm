@@ -7,16 +7,12 @@ use crate::{
 use super::{Organization, OrganizationCreationError, OrganizationMember, Role};
 
 pub struct CreationService {
-    db: &'static DbContext,
     organizations: &'static Box<dyn OrganizationRepository>,
 }
 
 impl CreationService {
-    pub fn new(
-        db: &'static DbContext,
-        organizations: &'static Box<dyn OrganizationRepository>,
-    ) -> Self {
-        Self { db, organizations }
+    pub fn new(organizations: &'static Box<dyn OrganizationRepository>) -> Self {
+        Self { organizations }
     }
 
     /// Create the organization and its owner membership atomically.
@@ -37,7 +33,7 @@ impl CreationService {
     ) -> Result<Organization, OrganizationCreationError> {
         let organization = Organization::new(name).await?;
         let roles = Role::defaults(organization.id).await?;
-        transaction!(self.db, {
+        transaction!(DbContext::current()?, {
             let organization = self.organizations.create(organization).await?;
             self.organizations.create_roles(roles.clone()).await?;
             self.organizations

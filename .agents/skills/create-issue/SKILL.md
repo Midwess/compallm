@@ -1,11 +1,11 @@
 ---
 name: create-issue
-description: Resolve open requirements with the user, write a concise Compallm issue using the Technical Writing skill, and add it to the Project board. Use when issue creation is requested or accepted before a PR.
+description: Resolve open requirements with the user, write a concise Compallm issue using the Writing skill, and add it to the Project board. Use when issue creation is requested or accepted before a PR.
 ---
 
 # Create Issue
 
-Create issues in `Midwess/compallm` and add them to [Compallm Project 7](https://github.com/orgs/Midwess/projects/7). A creation request authorizes both actions once the requirements are settled. Read and apply [Technical Writing](../technical-writing/SKILL.md) to the issue description: establish its reader and outcome, use concrete language, and remove repetition. Issue descriptions belong in GitHub Issues; feature specifications remain in the Wiki.
+Create issues in `Midwess/compallm` and add them to [Compallm Project 7](https://github.com/orgs/Midwess/projects/7). A creation request authorizes both actions once the requirements are settled. Read and apply [Writing](../writing/SKILL.md) to the issue description: establish its reader and outcome, use concrete language, and remove repetition. Issue descriptions belong in GitHub Issues; feature specifications remain in the Wiki.
 
 ## Settle the requirements
 

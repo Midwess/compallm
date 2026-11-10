@@ -1,6 +1,8 @@
 use futures_io::{AsyncRead, AsyncWrite};
 
-use super::{decoder::RequestDecoder, encoder::RequestEncoder, event::RequestEvent};
+use super::{
+    RequestScratch, decoder::RequestDecoder, encoder::RequestEncoder, event::RequestEvent,
+};
 use crate::{
     codec::{DecodeStep, EncodeStep, TranslateStep},
     error::{CodecError, TranslationError},
@@ -12,6 +14,8 @@ use crate::{
 /// All four components are required. Setters reject active attempts; the first
 /// setter after completion/failure clears every old component. Configure four
 /// fresh components for reuse. Canceling next/flush preserves resumable progress.
+/// Decoded fragment/deferral scratch is prepared by set_decoder and never grows
+/// during processing. Pending text stays in scratch until encoding drains it.
 pub struct Text2TextRequestTranslator<S, T, D, E> {
     inner: Translator<S, T, RequestCodecs<D, E>>,
 }
@@ -27,6 +31,9 @@ impl<S: AsyncRead, T: AsyncWrite, D: RequestDecoder, E: RequestEncoder>
                 RequestCodecs {
                     decoder: None,
                     encoder: None,
+                    scratch: None,
+                    text_len: 0,
+                    text_consumed: 0,
                 },
             ),
         }
@@ -44,6 +51,14 @@ impl<S: AsyncRead, T: AsyncWrite, D: RequestDecoder, E: RequestEncoder>
     }
     pub fn set_decoder(&mut self, decoder: D) -> Result<&mut Self, TranslationError> {
         self.inner.configure()?;
+        let (fragment, deferred) = decoder.scratch_requirements();
+        let codecs = &mut self.inner.codecs;
+        match &mut codecs.scratch {
+            Some(scratch) => scratch.prepare(fragment, deferred),
+            None => RequestScratch::new(fragment, deferred)
+                .map(|scratch| codecs.scratch = Some(scratch)),
+        }
+        .map_err(|error| TranslationError::Stream(error.into()))?;
         self.inner.codecs.decoder = Some(decoder);
         Ok(self)
     }
@@ -71,6 +86,9 @@ impl<S: AsyncRead, T: AsyncWrite, D: RequestDecoder, E: RequestEncoder>
 struct RequestCodecs<D, E> {
     decoder: Option<D>,
     encoder: Option<E>,
+    scratch: Option<RequestScratch>,
+    text_len: usize,
+    text_consumed: usize,
 }
 impl<D: RequestDecoder, E: RequestEncoder> Codecs for RequestCodecs<D, E> {
     type Event = RequestEvent;
@@ -83,28 +101,68 @@ impl<D: RequestDecoder, E: RequestEncoder> Codecs for RequestCodecs<D, E> {
     fn clear(&mut self) {
         self.decoder = None;
         self.encoder = None;
+        if let Some(scratch) = &mut self.scratch {
+            scratch.reset();
+        }
+        self.text_len = 0;
+        self.text_consumed = 0;
     }
     fn decode(
         &mut self,
         input: &mut &[u8],
         eof: bool,
     ) -> Result<DecodeStep<RequestEvent>, CodecError> {
-        self.decoder
-            .as_mut()
-            .expect("validated decoder")
-            .advance(input, eof)
+        self.decoder.as_mut().expect("validated decoder").advance(
+            input,
+            eof,
+            self.scratch.as_mut().expect("configured scratch"),
+        )
     }
     fn accept(&mut self, event: RequestEvent) -> Result<(), CodecError> {
+        self.text_len = match event {
+            RequestEvent::TextFragment(len) => len,
+            _ => 0,
+        };
+        self.text_consumed = 0;
+        if self.text_len
+            > self
+                .scratch
+                .as_ref()
+                .expect("configured scratch")
+                .text()
+                .len()
+        {
+            return Err(CodecError::Contract(
+                "decoder reported invalid fragment length",
+            ));
+        }
         self.encoder
             .as_mut()
             .expect("validated encoder")
             .accept(event)
     }
     fn encode(&mut self, output: &mut [u8]) -> Result<EncodeStep, CodecError> {
-        self.encoder
+        let scratch = self.scratch.as_ref().expect("configured scratch");
+        let text = &scratch.text()[self.text_consumed..self.text_len];
+        let mut remaining = text;
+        let step = self
+            .encoder
             .as_mut()
             .expect("validated encoder")
-            .advance(output)
+            .advance(&mut remaining, output)?;
+        if remaining.len() > text.len()
+            || (!remaining.is_empty()
+                && remaining.as_ptr() != text.as_ptr().wrapping_add(text.len() - remaining.len()))
+        {
+            return Err(CodecError::Contract("encoder did not retain a text suffix"));
+        }
+        self.text_consumed += text.len() - remaining.len();
+        if matches!(step, EncodeStep::NeedEvent | EncodeStep::Finished)
+            && self.text_consumed != self.text_len
+        {
+            return Err(CodecError::Contract("encoder abandoned pending text"));
+        }
+        Ok(step)
     }
     fn finish(&mut self) -> Result<(), CodecError> {
         self.encoder.as_mut().expect("validated encoder").finish()

@@ -6,6 +6,7 @@ use adapter::{
     codec::{DecodeStep, EncodeStep},
     error::CodecError,
     t2t::request::{
+        RequestScratch,
         decoder::RequestDecoder,
         encoder::RequestEncoder,
         event::{RequestEvent, Role},
@@ -103,7 +104,7 @@ pub struct OpenAiTextDecoder {
     field: u8,
     seen: u8,
     message_count: usize,
-    events: VecDeque<RequestEvent>,
+    events: VecDeque<RequestEvent<Bytes>>,
 }
 
 impl Default for OpenAiTextDecoder {
@@ -224,19 +225,29 @@ impl OpenAiTextDecoder {
 }
 
 impl RequestDecoder for OpenAiTextDecoder {
+    fn scratch_requirements(&self) -> (usize, usize) {
+        (MAX_VALUE, 0)
+    }
     fn advance(
         &mut self,
         input: &mut &[u8],
         eof: bool,
+        scratch: &mut RequestScratch,
     ) -> Result<DecodeStep<RequestEvent>, CodecError> {
         if let Some(event) = self.events.pop_front() {
-            return Ok(DecodeStep::Event(event));
+            return Ok(DecodeStep::Event(event.map_text(|bytes| {
+                scratch.text_mut()[..bytes.len()].copy_from_slice(&bytes);
+                bytes.len()
+            })));
         }
         let count = input.len().min(4096);
         for _ in 0..count {
             self.byte(input.get_u8())?;
             if let Some(event) = self.events.pop_front() {
-                return Ok(DecodeStep::Event(event));
+                return Ok(DecodeStep::Event(event.map_text(|bytes| {
+                    scratch.text_mut()[..bytes.len()].copy_from_slice(&bytes);
+                    bytes.len()
+                })));
             }
         }
         if eof && input.is_empty() {
@@ -264,6 +275,7 @@ pub struct TargetProperties {
 
 pub struct AnthropicTextEncoder {
     pending: Bytes,
+    text_len: Option<usize>,
     first: bool,
     phase: u8,
     finished: bool,
@@ -278,6 +290,7 @@ impl AnthropicTextEncoder {
                 properties.max_tokens
             )),
             first: true,
+            text_len: None,
             phase: 0,
             finished: false,
         }
@@ -301,9 +314,8 @@ impl RequestEncoder for AnthropicTextEncoder {
                 self.phase = 1;
             }
             (1, RequestEvent::TextStarted) => self.phase = 2,
-            (2, RequestEvent::TextFragment(text)) => {
-                let text = std::str::from_utf8(&text).map_err(|_| invalid())?;
-                self.pending = Bytes::from(serde_json::to_vec(text).map_err(|_| invalid())?);
+            (2, RequestEvent::TextFragment(len)) => {
+                self.text_len = Some(len);
                 self.phase = 3;
             }
             (3, RequestEvent::TextEnded) => self.phase = 4,
@@ -316,7 +328,13 @@ impl RequestEncoder for AnthropicTextEncoder {
         Ok(())
     }
 
-    fn advance(&mut self, output: &mut [u8]) -> Result<EncodeStep, CodecError> {
+    fn advance(&mut self, text: &mut &[u8], output: &mut [u8]) -> Result<EncodeStep, CodecError> {
+        if let Some(len) = self.text_len.take() {
+            assert_eq!(text.len(), len);
+            let value = std::str::from_utf8(text).map_err(|_| invalid())?;
+            self.pending = Bytes::from(serde_json::to_vec(value).map_err(|_| invalid())?);
+            *text = &[];
+        }
         if !self.pending.is_empty() {
             let count = output.len().min(self.pending.len());
             output[..count].copy_from_slice(&self.pending[..count]);

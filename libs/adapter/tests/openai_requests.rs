@@ -6,10 +6,11 @@ use adapter::{
     t2t::{
         Text2TextRequestTranslator,
         openai::request::{
-            ChatCompletionsRequestDecoder, ChatCompletionsRequestEncoder, ResponsesRequestDecoder,
-            ResponsesRequestEncoder,
+            OpenAICompletionRequestDecoder, OpenAICompletionRequestEncoder,
+            OpenAIResponseRequestDecoder, OpenAIResponseRequestEncoder,
         },
         request::{
+            RequestScratch,
             decoder::RequestDecoder,
             encoder::RequestEncoder,
             event::{RequestEvent, Role},
@@ -29,14 +30,18 @@ const APIS: [Api; 2] = [Api::Chat, Api::Responses];
 
 fn decoder(api: Api, fragment: usize, deferred: usize) -> Box<dyn RequestDecoder> {
     match api {
-        Api::Chat => Box::new(ChatCompletionsRequestDecoder::new(fragment, deferred).unwrap()),
-        Api::Responses => Box::new(ResponsesRequestDecoder::new(fragment, deferred).unwrap()),
+        Api::Chat => Box::new(OpenAICompletionRequestDecoder::new(fragment, deferred).unwrap()),
+        Api::Responses => Box::new(OpenAIResponseRequestDecoder::new(fragment, deferred).unwrap()),
     }
 }
-fn encoder(api: Api, model: &str, fragment: usize) -> Box<dyn RequestEncoder> {
+fn encoder(api: Api, model: &str, fragment: usize) -> Box<dyn RequestEncoder + '_> {
     match api {
-        Api::Chat => Box::new(ChatCompletionsRequestEncoder::new(model, fragment).unwrap()),
-        Api::Responses => Box::new(ResponsesRequestEncoder::new(model, fragment).unwrap()),
+        Api::Chat => Box::new(
+            OpenAICompletionRequestEncoder::new(model, Default::default(), fragment).unwrap(),
+        ),
+        Api::Responses => Box::new(
+            OpenAIResponseRequestEncoder::new(model, Default::default(), fragment).unwrap(),
+        ),
     }
 }
 
@@ -45,18 +50,20 @@ fn decode<'a>(
     chunks: impl IntoIterator<Item = &'a [u8]>,
     fragment: usize,
     deferred: usize,
-) -> Result<Vec<RequestEvent>, CodecError> {
+) -> Result<Vec<RequestEvent<Bytes>>, CodecError> {
     let mut decoder = decoder(api, fragment, deferred);
+    let mut scratch = RequestScratch::new(fragment, deferred)?;
     let mut events = Vec::new();
     for mut input in chunks {
         loop {
             let before = input.len();
-            match decoder.advance(&mut input, false)? {
+            match decoder.advance(&mut input, false, &mut scratch)? {
                 DecodeStep::Event(event) => {
                     if let RequestEvent::TextFragment(bytes) = &event {
-                        assert!(bytes.len() <= fragment);
+                        assert!(*bytes <= fragment);
                     }
-                    events.push(event);
+                    events
+                        .push(event.map_text(|len| Bytes::copy_from_slice(&scratch.text()[..len])));
                 }
                 DecodeStep::Progress => assert!(input.len() < before),
                 DecodeStep::NeedInput => {
@@ -69,8 +76,10 @@ fn decode<'a>(
     }
     let mut input = &b""[..];
     for _ in 0..10000 {
-        match decoder.advance(&mut input, true)? {
-            DecodeStep::Event(event) => events.push(event),
+        match decoder.advance(&mut input, true, &mut scratch)? {
+            DecodeStep::Event(event) => {
+                events.push(event.map_text(|len| Bytes::copy_from_slice(&scratch.text()[..len])))
+            }
             DecodeStep::Finished => return Ok(events),
             _ => panic!("EOF must finalize or reject"),
         }
@@ -78,12 +87,13 @@ fn decode<'a>(
     panic!("decoder did not finish")
 }
 
-fn messages(events: &[RequestEvent]) -> Vec<(Role, Vec<u8>)> {
+fn messages(events: &[RequestEvent<Bytes>]) -> Vec<(Role, Vec<u8>)> {
     let mut result = Vec::new();
     let mut text = false;
     let mut message = false;
     for event in events {
         match event {
+            RequestEvent::Configuration(_) => assert!(!message && !text),
             RequestEvent::MessageStarted { role } => {
                 assert!(!message);
                 result.push((*role, Vec::new()));
@@ -116,23 +126,49 @@ fn drain(
     output: &mut Vec<u8>,
     size: usize,
 ) -> Result<bool, CodecError> {
+    drain_text(encoder, &mut &b""[..], output, size)
+}
+
+fn drain_text(
+    encoder: &mut dyn RequestEncoder,
+    text: &mut &[u8],
+    output: &mut Vec<u8>,
+    size: usize,
+) -> Result<bool, CodecError> {
     let mut buffer = vec![0xa5; size];
     for _ in 0..10000 {
-        match encoder.advance(&mut buffer)? {
+        match encoder.advance(text, &mut buffer)? {
             EncodeStep::Wrote(len) => {
                 assert!(len > 0 && len <= size);
                 output.extend_from_slice(&buffer[..len]);
             }
-            EncodeStep::NeedEvent => return Ok(false),
+            EncodeStep::NeedEvent => {
+                assert!(text.is_empty());
+                return Ok(false);
+            }
             EncodeStep::Finished => return Ok(true),
         }
     }
     panic!("encoder failed to drain")
 }
 
+fn accept_and_drain(
+    encoder: &mut dyn RequestEncoder,
+    event: RequestEvent<Bytes>,
+    output: &mut Vec<u8>,
+    size: usize,
+) -> Result<bool, CodecError> {
+    let text = match &event {
+        RequestEvent::TextFragment(bytes) => bytes.as_ref(),
+        _ => &[],
+    };
+    encoder.accept(event.clone().map_text(|bytes| bytes.len()))?;
+    drain_text(encoder, &mut &text[..], output, size)
+}
+
 fn encode(
     api: Api,
-    events: Vec<RequestEvent>,
+    events: Vec<RequestEvent<Bytes>>,
     size: usize,
     fragment: usize,
 ) -> Result<Vec<u8>, CodecError> {
@@ -140,8 +176,7 @@ fn encode(
     let mut output = Vec::new();
     assert!(!drain(&mut *encoder, &mut output, size)?);
     for event in events {
-        encoder.accept(event)?;
-        assert!(!drain(&mut *encoder, &mut output, size)?);
+        assert!(!accept_and_drain(&mut *encoder, event, &mut output, size)?);
     }
     encoder.finish()?;
     assert!(drain(&mut *encoder, &mut output, size)?);
@@ -261,12 +296,13 @@ fn long_role_first_text_emits_fragments_early_without_collecting_the_message() {
         );
         let mut input = body.as_bytes();
         let mut decoder = decoder(api, 7, 0);
+        let mut scratch = RequestScratch::new(7, 32).unwrap();
         let mut saw_fragment = false;
         for _ in 0..10 {
             if let DecodeStep::Event(RequestEvent::TextFragment(bytes)) =
-                decoder.advance(&mut input, false).unwrap()
+                decoder.advance(&mut input, false, &mut scratch).unwrap()
             {
-                assert_eq!(bytes, b"xxxxxxx".as_slice());
+                assert_eq!(&scratch.text()[..bytes], b"xxxxxxx");
                 saw_fragment = true;
                 break;
             }
@@ -275,10 +311,10 @@ fn long_role_first_text_emits_fragments_early_without_collecting_the_message() {
         assert!(input.len() > body.len() - 128);
         let mut decoded_bytes = 7;
         loop {
-            match decoder.advance(&mut input, false).unwrap() {
+            match decoder.advance(&mut input, false, &mut scratch).unwrap() {
                 DecodeStep::Event(RequestEvent::TextFragment(bytes)) => {
-                    assert!(bytes.len() <= 7);
-                    decoded_bytes += bytes.len();
+                    assert!(bytes <= 7);
+                    decoded_bytes += bytes;
                 }
                 DecodeStep::NeedInput => {
                     assert!(input.is_empty());
@@ -290,7 +326,7 @@ fn long_role_first_text_emits_fragments_early_without_collecting_the_message() {
         }
         assert_eq!(decoded_bytes, 1024 * 1024);
         assert!(matches!(
-            decoder.advance(&mut input, true).unwrap(),
+            decoder.advance(&mut input, true, &mut scratch).unwrap(),
             DecodeStep::Finished
         ));
         let late = format!(
@@ -300,7 +336,7 @@ fn long_role_first_text_emits_fragments_early_without_collecting_the_message() {
         let mut input = late.as_bytes();
         let mut decoder = self::decoder(api, 7, 32);
         assert!(matches!(
-            decoder.advance(&mut input, false),
+            decoder.advance(&mut input, false, &mut scratch),
             Err(CodecError::LimitExceeded(_))
         ));
         assert!(input.len() > late.len() - 128);
@@ -335,7 +371,7 @@ fn json_syntax_duplicates_unknown_fields_and_unsupported_semantics_are_rejected(
         r#"{"model":"m","messages":[{"role":"user","content":"x"}],"stream":null}"#,
         r#"{"model":"m","messages":[{"role":"user","content":"x"}],"stream":falsex}"#,
         r#"{"model":"m","messages":[{"role":"user","content":"x"}],"tools":[]}"#,
-        r#"{"model":"m","messages":[{"role":"user","content":"x"}],"max_tokens":1}"#,
+        r#"{"model":"m","messages":[{"role":"user","content":"x"}],"max_tokens":0}"#,
     ];
     for api in APIS {
         for body in invalid {
@@ -475,12 +511,12 @@ fn encoders_reject_invalid_order_oversized_fragments_and_incomplete_utf8() {
             Err(CodecError::Contract(_))
         ));
         assert!(
-            encoder.advance(&mut [0; 8]).is_err(),
+            encoder.advance(&mut &b""[..], &mut [0; 8]).is_err(),
             "errors must remain terminal"
         );
         let mut encoder = self::encoder(api, "target", 2);
         assert!(matches!(
-            encoder.advance(&mut []),
+            encoder.advance(&mut &b""[..], &mut []),
             Err(CodecError::Contract(_))
         ));
     }
@@ -488,19 +524,20 @@ fn encoders_reject_invalid_order_oversized_fragments_and_incomplete_utf8() {
 
 #[test]
 fn configuration_model_bounds_and_advance_work_are_bounded() {
-    assert!(ChatCompletionsRequestDecoder::new(0, 32).is_err());
-    assert!(ResponsesRequestDecoder::new(0, 32).is_err());
-    assert!(ChatCompletionsRequestEncoder::new("", 8).is_err());
-    assert!(ResponsesRequestEncoder::new("", 8).is_err());
-    assert!(ChatCompletionsRequestEncoder::new("model", 0).is_err());
-    assert!(ResponsesRequestEncoder::new("model", 0).is_err());
+    assert!(OpenAICompletionRequestDecoder::new(0, 32).is_err());
+    assert!(OpenAIResponseRequestDecoder::new(0, 32).is_err());
+    assert!(OpenAICompletionRequestEncoder::new("", Default::default(), 8).is_err());
+    assert!(OpenAIResponseRequestEncoder::new("", Default::default(), 8).is_err());
+    assert!(OpenAICompletionRequestEncoder::new("model", Default::default(), 0).is_err());
+    assert!(OpenAIResponseRequestEncoder::new("model", Default::default(), 0).is_err());
     for api in APIS {
         let mut padded = vec![b' '; 8192];
         padded.extend_from_slice(&fixture(api));
         let mut input = padded.as_slice();
         let mut bounded = decoder(api, 8, 32);
+        let mut scratch = RequestScratch::new(8, 32).unwrap();
         assert!(matches!(
-            bounded.advance(&mut input, false).unwrap(),
+            bounded.advance(&mut input, false, &mut scratch).unwrap(),
             DecodeStep::Progress
         ));
         assert_eq!(padded.len() - input.len(), 4096);
@@ -517,12 +554,19 @@ fn configuration_model_bounds_and_advance_work_are_bounded() {
             Err(CodecError::LimitExceeded(_))
         ));
         match api {
-            Api::Chat => assert!(ChatCompletionsRequestEncoder::new("m".repeat(1025), 8).is_err()),
-            Api::Responses => assert!(ResponsesRequestEncoder::new("m".repeat(1025), 8).is_err()),
+            Api::Chat => assert!(
+                OpenAICompletionRequestEncoder::new(&"m".repeat(1025), Default::default(), 8)
+                    .is_err()
+            ),
+            Api::Responses => assert!(
+                OpenAIResponseRequestEncoder::new(&"m".repeat(1025), Default::default(), 8)
+                    .is_err()
+            ),
         }
-        let mut encoder = encoder(api, &"\0".repeat(1024), 8);
+        let model = "\0".repeat(1024);
+        let mut encoder = encoder(api, &model, 8);
         let mut output = vec![0xa5; 16384];
-        let EncodeStep::Wrote(len) = encoder.advance(&mut output).unwrap() else {
+        let EncodeStep::Wrote(len) = encoder.advance(&mut &b""[..], &mut output).unwrap() else {
             panic!("expected model output");
         };
         assert_eq!(len, 4096);
@@ -545,21 +589,22 @@ fn encoder_validates_fragments_incrementally_instead_of_scanning_them_on_accept(
         let mut fragment = vec![b'x'; 8192];
         fragment[8191] = 0xff;
         encoder
-            .accept(RequestEvent::TextFragment(Bytes::from(fragment)))
+            .accept(RequestEvent::TextFragment(fragment.len()))
             .unwrap();
         let mut output = vec![0xa5; 16384];
-        let EncodeStep::Wrote(len) = encoder.advance(&mut output).unwrap() else {
+        let mut text = fragment.as_slice();
+        let EncodeStep::Wrote(len) = encoder.advance(&mut text, &mut output).unwrap() else {
             panic!("expected first fragment prefix");
         };
         assert_eq!(len, 4096);
         assert!(output[..len].iter().all(|byte| *byte == b'x'));
         assert!(output[len..].iter().all(|byte| *byte == 0xa5));
         assert!(matches!(
-            encoder.advance(&mut output),
+            encoder.advance(&mut text, &mut output),
             Err(CodecError::InvalidInput(_))
         ));
         assert!(matches!(
-            encoder.advance(&mut output),
+            encoder.advance(&mut text, &mut output),
             Err(CodecError::Contract(_))
         ));
     }
@@ -671,12 +716,12 @@ fn exact_model_bound_and_message_field_permutations_remain_supported() {
         )
         .unwrap();
         assert!(decode(api, body.chunks(1), 2, 32).is_ok());
-        let mut encoder = encoder(api, &"m".repeat(1024), 2);
+        let model = "m".repeat(1024);
+        let mut encoder = encoder(api, &model, 2);
         let mut output = Vec::new();
         assert!(!drain(&mut *encoder, &mut output, 7).unwrap());
         for event in decode(api, body.chunks(1), 2, 32).unwrap() {
-            encoder.accept(event).unwrap();
-            drain(&mut *encoder, &mut output, 7).unwrap();
+            accept_and_drain(&mut *encoder, event, &mut output, 7).unwrap();
         }
         encoder.finish().unwrap();
         assert!(drain(&mut *encoder, &mut output, 7).unwrap());
@@ -710,9 +755,10 @@ fn decoder_eof_is_explicit_and_codec_errors_remain_terminal() {
     for api in APIS {
         let body = fixture(api);
         let mut decoder = decoder(api, 3, 64);
+        let mut scratch = RequestScratch::new(3, 64).unwrap();
         let mut input = body.as_slice();
         loop {
-            match decoder.advance(&mut input, false).unwrap() {
+            match decoder.advance(&mut input, false, &mut scratch).unwrap() {
                 DecodeStep::NeedInput => {
                     assert!(input.is_empty());
                     break;
@@ -722,23 +768,27 @@ fn decoder_eof_is_explicit_and_codec_errors_remain_terminal() {
             }
         }
         assert!(matches!(
-            decoder.advance(&mut input, true).unwrap(),
+            decoder.advance(&mut input, true, &mut scratch).unwrap(),
             DecodeStep::Finished
         ));
         assert!(matches!(
-            decoder.advance(&mut input, true).unwrap(),
+            decoder.advance(&mut input, true, &mut scratch).unwrap(),
             DecodeStep::Finished
         ));
-        assert!(decoder.advance(&mut b"{}".as_slice(), true).is_err());
+        assert!(
+            decoder
+                .advance(&mut b"{}".as_slice(), true, &mut scratch)
+                .is_err()
+        );
         assert!(matches!(
-            decoder.advance(&mut input, true),
+            decoder.advance(&mut input, true, &mut scratch),
             Err(CodecError::Contract(_))
         ));
         let mut decoder = self::decoder(api, 3, 64);
         let mut bad = b"not json".as_slice();
-        assert!(decoder.advance(&mut bad, false).is_err());
+        assert!(decoder.advance(&mut bad, false, &mut scratch).is_err());
         assert!(matches!(
-            decoder.advance(&mut bad, false),
+            decoder.advance(&mut bad, false, &mut scratch),
             Err(CodecError::Contract(_))
         ));
     }
@@ -753,7 +803,7 @@ fn encoder_finish_requires_a_real_need_event_and_does_not_repeat() {
         // Draining the prefix with Wrote does not grant event readiness until
         // the caller actually observes NeedEvent.
         assert!(matches!(
-            early.advance(&mut [0; 4096]).unwrap(),
+            early.advance(&mut &b""[..], &mut [0; 4096]).unwrap(),
             EncodeStep::Wrote(_)
         ));
         assert!(matches!(
@@ -765,8 +815,7 @@ fn encoder_finish_requires_a_real_need_event_and_does_not_repeat() {
         let mut output = Vec::new();
         drain(&mut *encoder, &mut output, 1).unwrap();
         for event in events {
-            encoder.accept(event).unwrap();
-            drain(&mut *encoder, &mut output, 1).unwrap();
+            accept_and_drain(&mut *encoder, event, &mut output, 1).unwrap();
         }
         encoder.finish().unwrap();
         drain(&mut *encoder, &mut output, 1).unwrap();

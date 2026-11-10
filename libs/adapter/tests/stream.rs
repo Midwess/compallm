@@ -14,7 +14,9 @@ use adapter::{
     error::{CodecError, StreamError, TranslationError},
     t2t::{
         Text2TextRequestTranslator, Text2TextResponseTranslator,
-        request::{decoder::RequestDecoder, encoder::RequestEncoder, event::RequestEvent},
+        request::{
+            RequestScratch, decoder::RequestDecoder, encoder::RequestEncoder, event::RequestEvent,
+        },
         response::{decoder::ResponseDecoder, encoder::ResponseEncoder, event::ResponseEvent},
     },
 };
@@ -219,8 +221,27 @@ macro_rules! decoder {
         }
     };
 }
-decoder!(RequestDecoder, RequestEvent);
 decoder!(ResponseDecoder, ResponseEvent);
+
+impl RequestDecoder for Decoder {
+    fn advance(
+        &mut self,
+        input: &mut &[u8],
+        eof: bool,
+        scratch: &mut RequestScratch,
+    ) -> Result<DecodeStep<RequestEvent>, CodecError> {
+        Ok(match ResponseDecoder::advance(self, input, eof)? {
+            DecodeStep::Event(ResponseEvent::TextFragment(bytes)) => {
+                scratch.text_mut()[..bytes.len()].copy_from_slice(&bytes);
+                DecodeStep::Event(RequestEvent::TextFragment(bytes.len()))
+            }
+            DecodeStep::Event(_) => unreachable!(),
+            DecodeStep::Progress => DecodeStep::Progress,
+            DecodeStep::NeedInput => DecodeStep::NeedInput,
+            DecodeStep::Finished => DecodeStep::Finished,
+        })
+    }
+}
 
 #[derive(Clone, Copy, Default)]
 enum BadEncoder {
@@ -236,6 +257,7 @@ enum BadEncoder {
 #[derive(Default)]
 struct Encoder {
     pending: Bytes,
+    request_pending: usize,
     finished: bool,
     bad: BadEncoder,
     buffers: Rc<RefCell<Vec<(usize, usize)>>>,
@@ -290,8 +312,42 @@ macro_rules! encoder {
         }
     };
 }
-encoder!(RequestEncoder, RequestEvent);
 encoder!(ResponseEncoder, ResponseEvent);
+
+impl RequestEncoder for Encoder {
+    fn accept(&mut self, event: RequestEvent) -> Result<(), CodecError> {
+        ResponseEncoder::accept(self, ResponseEvent::TextFragment(Bytes::new()))?;
+        let RequestEvent::TextFragment(len) = event else {
+            return Err(CodecError::Unsupported("text only"));
+        };
+        self.request_pending = len;
+        Ok(())
+    }
+    fn advance(&mut self, text: &mut &[u8], output: &mut [u8]) -> Result<EncodeStep, CodecError> {
+        if matches!(
+            self.bad,
+            BadEncoder::None
+                | BadEncoder::Accept
+                | BadEncoder::Finish
+                | BadEncoder::NeedAfterFinish
+        ) && self.request_pending > 0
+        {
+            self.buffers
+                .borrow_mut()
+                .push((output.as_ptr() as usize, output.len()));
+            let len = self.request_pending.min(output.len());
+            output[..len].copy_from_slice(&text[..len]);
+            text.advance(len);
+            self.request_pending -= len;
+            Ok(EncodeStep::Wrote(len))
+        } else {
+            ResponseEncoder::advance(self, output)
+        }
+    }
+    fn finish(&mut self) -> Result<(), CodecError> {
+        ResponseEncoder::finish(self)
+    }
+}
 
 fn run<F: Future>(future: F) -> F::Output {
     let mut future = std::pin::pin!(future);
@@ -630,8 +686,9 @@ fn explicit_boxed_codec_types_allow_heterogeneous_setter_values() {
             &mut self,
             input: &mut &[u8],
             eof: bool,
+            scratch: &mut RequestScratch,
         ) -> Result<DecodeStep<RequestEvent>, CodecError> {
-            RequestDecoder::advance(&mut self.0, input, eof)
+            RequestDecoder::advance(&mut self.0, input, eof, scratch)
         }
     }
     struct OtherEncoder(Encoder);
@@ -639,8 +696,12 @@ fn explicit_boxed_codec_types_allow_heterogeneous_setter_values() {
         fn accept(&mut self, event: RequestEvent) -> Result<(), CodecError> {
             RequestEncoder::accept(&mut self.0, event)
         }
-        fn advance(&mut self, output: &mut [u8]) -> Result<EncodeStep, CodecError> {
-            RequestEncoder::advance(&mut self.0, output)
+        fn advance(
+            &mut self,
+            text: &mut &[u8],
+            output: &mut [u8],
+        ) -> Result<EncodeStep, CodecError> {
+            RequestEncoder::advance(&mut self.0, text, output)
         }
         fn finish(&mut self) -> Result<(), CodecError> {
             RequestEncoder::finish(&mut self.0)

@@ -18,7 +18,9 @@ mod drive;
 use adapter::{
     codec::{DecodeStep, EncodeStep},
     error::{CodecError, TranslationError},
-    t2t::request::{decoder::RequestDecoder, encoder::RequestEncoder, event::RequestEvent},
+    t2t::request::{
+        RequestScratch, decoder::RequestDecoder, encoder::RequestEncoder, event::RequestEvent,
+    },
 };
 use bytes::{Buf, Bytes};
 use futures_core::Stream;
@@ -58,12 +60,13 @@ impl RequestDecoder for TextDecoder {
         &mut self,
         input: &mut &[u8],
         eof: bool,
+        scratch: &mut RequestScratch,
     ) -> Result<DecodeStep<RequestEvent>, CodecError> {
         if !input.is_empty() {
             let len = input.len().min(4);
-            let bytes = Bytes::copy_from_slice(&input[..len]);
+            scratch.text_mut()[..len].copy_from_slice(&input[..len]);
             input.advance(len);
-            Ok(DecodeStep::Event(RequestEvent::TextFragment(bytes)))
+            Ok(DecodeStep::Event(RequestEvent::TextFragment(len)))
         } else if eof {
             Ok(DecodeStep::Finished)
         } else {
@@ -74,7 +77,7 @@ impl RequestDecoder for TextDecoder {
 
 #[derive(Default)]
 struct TextEncoder {
-    pending: Bytes,
+    pending: usize,
     finished: bool,
 }
 impl RequestEncoder for TextEncoder {
@@ -82,14 +85,16 @@ impl RequestEncoder for TextEncoder {
         let RequestEvent::TextFragment(bytes) = event else {
             return Err(CodecError::Unsupported("text only"));
         };
-        assert!(self.pending.is_empty());
+        assert_eq!(self.pending, 0);
         self.pending = bytes;
         Ok(())
     }
-    fn advance(&mut self, output: &mut [u8]) -> Result<EncodeStep, CodecError> {
-        if !self.pending.is_empty() {
-            let len = output.len().min(self.pending.len());
-            output[..len].copy_from_slice(&self.pending.split_to(len));
+    fn advance(&mut self, text: &mut &[u8], output: &mut [u8]) -> Result<EncodeStep, CodecError> {
+        if self.pending > 0 {
+            let len = output.len().min(self.pending);
+            output[..len].copy_from_slice(&text[..len]);
+            text.advance(len);
+            self.pending -= len;
             Ok(EncodeStep::Wrote(len))
         } else if self.finished {
             Ok(EncodeStep::Finished)

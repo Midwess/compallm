@@ -18,7 +18,11 @@ async fn provider_encoding_rejects_invalid_lengths_and_premature_completion() {
         fn accept(&mut self, _: RequestEvent) -> Result<(), CodecError> {
             unreachable!()
         }
-        fn advance(&mut self, output: &mut [u8]) -> Result<adapter::codec::EncodeStep, CodecError> {
+        fn advance(
+            &mut self,
+            _: &mut &[u8],
+            output: &mut [u8],
+        ) -> Result<adapter::codec::EncodeStep, CodecError> {
             Ok(match self.0 {
                 0 => adapter::codec::EncodeStep::Wrote(0),
                 1 => adapter::codec::EncodeStep::Wrote(output.len() + 1),

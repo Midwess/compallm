@@ -15,6 +15,6 @@ Use `rtk proxy gh pr edit` with `--body-file` pointing to a temporary file, then
 
 If there is no PR yet, retain the resolved issue URLs and intended relationship in the current work context and use them in the eventual PR description. Do not create a PR merely because `$link-issue` was invoked. When PR creation is already authorized, include the issue references in its initial body and verify them afterward.
 
-If the current work has a pending decision summary, apply [Writing](../writing/SKILL.md) to record it in the resolved issue with its published Wiki links before PR creation. Reuse an equivalent existing note. Pure issue linking does not require inventing a decision note.
+If the current work has a pending docs-first decision summary, apply [Technical Writing](../technical-writing/SKILL.md) to record it in the resolved issue with its published Wiki links before PR creation. Reuse an equivalent existing note. Pure issue linking does not require inventing a decision note.
 
 Run `gh` through `rtk` with an explicit repository. No sub-issues, unrelated comments, assignment changes, issue closure, or board status changes are implied by linking. Report the PR and linked issue URLs, or state that the issue mapping is ready for a forthcoming PR.

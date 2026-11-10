@@ -1,0 +1,4 @@
+interface:
+  display_name: "Technical Writing"
+  short_description: "Write and publish Compallm GitHub Wiki documentation"
+  default_prompt: "Use $technical-writing to read the latest Compallm Wiki pages, draft or review concise documentation, and publish authorized changes to the Wiki instead of the application repository."

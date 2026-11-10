@@ -1,4 +1,0 @@
-interface:
-  display_name: "Writing"
-  short_description: "Write and review concise Compallm documentation"
-  default_prompt: "Use $writing to draft or review clear Compallm documentation and publish authorized Wiki changes."

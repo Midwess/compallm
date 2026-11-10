@@ -85,6 +85,8 @@ Publish API documentation in the separate Wiki and maintain page/navigation link
 
 ## Edit for understanding
 
+Read and apply [Humanizer](../humanizer/SKILL.md) to drafted or revised prose before returning or publishing it, including Wiki pages and issue decision summaries. Use its embedded mode so the deliverable contains only the final prose. For existing files, read the complete current file before editing. Preserve technical meaning, requirement strength, uncertainty, implementation status and source attribution. Keep code, commands, identifiers, metadata, data, and link targets unchanged during this prose pass. Follow the project conventions above when style guidance conflicts, then recheck links and ADR reading estimates after the rewrite.
+
 Remove repetition, unexplained terminology, irrelevant history, and claims that do not support the reader's decision or next action. Use paragraphs for reasoning, lists for actions, and tables for comparisons. Do not repeat an entire flowchart as a numbered walkthrough.
 
 Read the result without relying on the conversation: can the intended reader explain the requirement, recommendation, main consequence, and next action? Check commands, links, examples, and status claims. Treat specific review feedback as evidence for revision (handbook bonus chapter, printed page 17).

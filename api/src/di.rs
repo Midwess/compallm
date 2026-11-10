@@ -1,6 +1,6 @@
 use crate::{
     graphql::{ApplicationSchema, build_schema},
-    middleware::authentication::{Authentication, AuthenticationSettings},
+    http::authentication::{Authentication, AuthenticationSettings},
 };
 use compallm_core::{
     authentication::{AuthError, AuthService, TokenLifetimes},

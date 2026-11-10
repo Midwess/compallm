@@ -1,7 +1,7 @@
 //! Database lifecycle contract. SQL and ORM types belong to database adapters.
 
-use async_trait::async_trait;
 use super::db_context::PermissionLoader;
+use async_trait::async_trait;
 use std::{any::Any, sync::Arc};
 
 #[derive(Debug, thiserror::Error)]

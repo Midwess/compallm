@@ -103,8 +103,8 @@ async fn stored_name_conflict_rolls_back_the_batch_and_keeps_the_domain_error() 
     let (db, context) = context();
     let repository = RecordingRepository(Mutex::new(Vec::new()), Some(1));
     let service = CreationService::new(&repository);
-    let result = context.scope(service
-        .create_many(vec![provider("First"), provider("Conflicting")]))
+    let result = context
+        .scope(service.create_many(vec![provider("First"), provider("Conflicting")]))
         .await;
     assert!(matches!(
         result,
@@ -127,8 +127,8 @@ async fn creates_batch_in_order_with_fresh_ids_and_parent_ownership() {
     disabled.enabled = false;
     first.models.push(disabled);
     let expected_model = first.models[0].clone();
-    let created = context.scope(service
-        .create_many(vec![first, provider("primary")]))
+    let created = context
+        .scope(service.create_many(vec![first, provider("primary")]))
         .await
         .unwrap();
     assert_eq!(
@@ -172,21 +172,25 @@ async fn rejects_invalid_batch_before_any_writes_or_transaction() {
         Err(ProviderCreationError::InvalidInput(_))
     ));
     assert!(matches!(
-        context.scope(service
-            .create_many(vec![provider("Same"), provider(" Same "),]))
+        context
+            .scope(service.create_many(vec![provider("Same"), provider(" Same "),]))
             .await,
         Err(ProviderCreationError::NameAlreadyExists)
     ));
     let mut other = provider("Other");
     other.organization_id = 999;
     assert!(matches!(
-        context.scope(service.create_many(vec![provider("First"), other,])).await,
+        context
+            .scope(service.create_many(vec![provider("First"), other,]))
+            .await,
         Err(ProviderCreationError::InvalidInput(_))
     ));
     let mut invalid = provider("Invalid");
     invalid.models.clear();
     assert!(matches!(
-        context.scope(service.create_many(vec![provider("First"), invalid,])).await,
+        context
+            .scope(service.create_many(vec![provider("First"), invalid,]))
+            .await,
         Err(ProviderCreationError::InvalidInput(_))
     ));
     assert!(repository.0.lock().unwrap().is_empty());
@@ -323,8 +327,8 @@ async fn later_model_failure_rolls_back_every_provider_in_the_batch() {
     let context = DbContext::new(Arc::new(PostgresConnection::new(db.clone())));
     let repository = compallm_postgres::repository::provider::ProviderRepository;
     let service = CreationService::new(&repository);
-    let result = context.scope(service
-        .create_many(vec![provider("Primary"), provider("Other")]))
+    let result = context
+        .scope(service.create_many(vec![provider("Primary"), provider("Other")]))
         .await;
     assert!(matches!(result, Err(ProviderCreationError::Persistence(_))));
     let transactions = db.as_ref().clone().into_transaction_log();
@@ -337,7 +341,10 @@ async fn create_many_with_one_provider_uses_a_scope_without_starting_a_transacti
     let (db, context) = context();
     let repository = RecordingRepository::default();
     let service = CreationService::new(&repository);
-    let created = context.scope(service.create_many(vec![provider("Single")])).await.unwrap();
+    let created = context
+        .scope(service.create_many(vec![provider("Single")]))
+        .await
+        .unwrap();
     assert_eq!(created.len(), 1);
     assert_eq!(repository.0.lock().unwrap().len(), 1);
     assert!(db.as_ref().clone().into_transaction_log().is_empty());

@@ -104,6 +104,31 @@ impl DbContext {
         }
     }
 
+    pub fn fresh(&self) -> Result<Self, ConnectionError> {
+        self.postgres.ensure_open()?;
+        self.ensure_active()?;
+        if self.transaction.is_some() || self.member_permission.get().is_some() {
+            return Err(ConnectionError::database(anyhow::anyhow!(
+                "a fresh context requires an unrestricted connection outside a transaction"
+            )));
+        }
+        Ok(Self::new(self.postgres.clone()))
+    }
+
+    pub async fn independent_scope<F: Future>(
+        &self,
+        operation: F,
+    ) -> Result<F::Output, ConnectionError> {
+        self.postgres.ensure_open()?;
+        self.ensure_active()?;
+        if self.transaction.is_some() || self.member_permission.get().is_some() {
+            return Err(ConnectionError::database(anyhow::anyhow!(
+                "independent authentication scope requires an unrestricted context"
+            )));
+        }
+        Ok(CURRENT.scope(self.clone(), operation).await)
+    }
+
     /// Register a loader for the request's member authority once.
     pub fn restrict<F, E>(&self, loader: F) -> Result<Self, ConnectionError>
     where

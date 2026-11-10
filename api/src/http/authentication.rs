@@ -1,5 +1,6 @@
 //! Request-scoped, lazily verified authentication.
-use std::sync::Arc;
+use compallm_core::persistent::DbContext;
+use std::{future::Future, sync::Arc};
 
 use axum::http::{HeaderMap, header::AUTHORIZATION};
 use compallm_core::authentication::{
@@ -39,6 +40,7 @@ struct VerifiedUser {
 
 pub struct AuthenticationContext {
     auth: &'static AuthService,
+    trusted: DbContext,
     settings: AuthenticationSettings,
     headers: HeaderMap,
     selected: OnceCell<Result<SelectedToken, RequestError>>,
@@ -51,16 +53,25 @@ pub struct UserContext(pub(super) Arc<AuthenticationContext>);
 impl AuthenticationContext {
     pub(super) fn new(
         auth: &'static AuthService,
+        trusted: DbContext,
         settings: AuthenticationSettings,
         headers: HeaderMap,
     ) -> Arc<Self> {
         Arc::new(Self {
             auth,
+            trusted,
             settings,
             headers,
             selected: OnceCell::new(),
             user: OnceCell::new(),
         })
+    }
+
+    pub async fn execute<T>(
+        &self,
+        operation: impl Future<Output = Result<T, AuthError>>,
+    ) -> Result<T, AuthError> {
+        self.trusted.independent_scope(operation).await?
     }
 
     async fn selected(&self) -> Result<&SelectedToken, RequestError> {
@@ -83,8 +94,7 @@ impl AuthenticationContext {
                     )
                 };
                 let token = self
-                    .auth
-                    .authenticate_token(&encoded)
+                    .execute(self.auth.authenticate_token(&encoded))
                     .await
                     .map_err(RequestError::from)?;
                 Ok(SelectedToken {
@@ -129,12 +139,15 @@ impl AuthenticationContext {
         let settings = &self.settings;
         let encoded = header::cookie(&self.headers, settings.names().1)?
             .ok_or(RequestError::Unauthenticated)?;
-        let refresh = RefreshToken::try_from(self.auth.authenticate_token(&encoded).await?)?;
+        let refresh =
+            RefreshToken::try_from(self.execute(self.auth.authenticate_token(&encoded)).await?)?;
         if expected.is_some_and(|user| !refresh.session.has_same_identity(&user.session)) {
             return Err(RequestError::Unauthenticated);
         }
-        let tokens = self.auth.refresh(&encoded).await?;
-        let access = self.auth.authenticate_access(&tokens.access_token).await?;
+        let tokens = self.execute(self.auth.refresh(&encoded)).await?;
+        let access = self
+            .execute(self.auth.authenticate_access(&tokens.access_token))
+            .await?;
         Ok(VerifiedUser {
             access: VerifiedAccess(access),
             replacements: settings.replacement_headers(tokens)?,
@@ -157,7 +170,7 @@ impl AuthenticationContext {
         user: &UserAccessToken,
         source: CredentialSource,
     ) -> Result<VerifiedUser, RequestError> {
-        match self.auth.validate_access(user).await {
+        match self.execute(self.auth.validate_access(user)).await {
             Ok(true) => Ok(VerifiedUser {
                 access: VerifiedAccess(user.clone()),
                 replacements: HeaderMap::new(),

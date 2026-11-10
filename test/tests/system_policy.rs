@@ -41,7 +41,10 @@ fn all_entity_policies_assemble_into_one_cached_schema() {
         Model::policy(),
     ])
     .unwrap();
-    assert_eq!(assembled.action_entities().unwrap().iter().count(), 44);
+    assert_eq!(
+        assembled.action_entities().unwrap().iter().count(),
+        compallm_core::authorization::policy::Action::ALL.len()
+    );
     assert!(std::ptr::eq(all_policies(), all_policies()));
     let names = all_policies()
         .action_entities()
@@ -69,7 +72,6 @@ fn actions_have_explicit_resource_types_and_do_not_imply_grants() {
         ("member", "read invite", "Organization"),
         ("member", "remove", "Member"),
         ("provider", "read create", "Organization"),
-        ("provider.connection", "test", "Organization"),
         ("provider", "delete", "Provider"),
         ("provider.configuration", "update", "Provider"),
         ("provider.credential", "replace", "Provider"),

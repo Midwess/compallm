@@ -106,6 +106,8 @@ impl Di {
                     .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
                 let mut di = Self::new(db, settings.auth, settings.graphql, None);
                 di.mailing = mailing.map(Box::new);
+                DbContext::initialize_default(di.db.postgres().scoped())
+                    .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
                 Ok::<_, loco_rs::Error>(di)
             })
             .await?;
@@ -273,19 +275,13 @@ impl Di {
     }
 
     pub fn organization_creation_service(&'static self) -> &'static CreationService {
-        self.organization_creation.get_or_init(|| {
-            Box::new(CreationService::new(
-                self.organization_repository(),
-            ))
-        })
+        self.organization_creation
+            .get_or_init(|| Box::new(CreationService::new(self.organization_repository())))
     }
 
     pub fn organization_config_service(&'static self) -> &'static ConfigService {
-        self.organization_config.get_or_init(|| {
-            Box::new(ConfigService::new(
-                self.organization_repository(),
-            ))
-        })
+        self.organization_config
+            .get_or_init(|| Box::new(ConfigService::new(self.organization_repository())))
     }
 }
 

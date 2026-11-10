@@ -160,9 +160,9 @@ impl Fixture {
 #[tokio::test]
 async fn default_organization_and_owner_are_inserted_in_one_transaction() {
     let fixture = Fixture::new(false);
-    let organization = fixture.context.scope(fixture
-        .service
-        .create_default(&Fixture::user()))
+    let organization = fixture
+        .context
+        .scope(fixture.service.create_default(&Fixture::user()))
         .await
         .unwrap();
     assert_eq!(organization.status, OrganizationStatus::Active);
@@ -196,7 +196,10 @@ async fn default_organization_and_owner_are_inserted_in_one_transaction() {
 async fn owner_insert_failure_rolls_back_organization_creation() {
     let fixture = Fixture::new(true);
     assert!(matches!(
-        fixture.context.scope(fixture.service.create("Team", &Fixture::user())).await,
+        fixture
+            .context
+            .scope(fixture.service.create("Team", &Fixture::user()))
+            .await,
         Err(OrganizationCreationError::Persistence(_))
     ));
     let sql = format!(
@@ -210,7 +213,10 @@ async fn owner_insert_failure_rolls_back_organization_creation() {
 async fn blank_organization_names_fail_before_any_database_operation() {
     let fixture = Fixture::new(false);
     assert!(matches!(
-        fixture.context.scope(fixture.service.create("  ", &Fixture::user())).await,
+        fixture
+            .context
+            .scope(fixture.service.create("  ", &Fixture::user()))
+            .await,
         Err(OrganizationCreationError::InvalidName)
     ));
     assert!(fixture.state.lock().unwrap().organization.is_none());

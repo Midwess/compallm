@@ -101,6 +101,7 @@ impl Mutation {
     async fn signup_email_request(
         input: EmailInput,
         #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<EmailChallenge, Error> {
         let mut input = input;
@@ -109,13 +110,19 @@ impl Mutation {
         if mode == CredentialDelivery::Cookie {
             cookies.validate_origin()?;
         }
-        (auth.signup_email(&input.email).await?, mode, cookies).try_into()
+        (
+            identity.execute(auth.signup_email(&input.email)).await?,
+            mode,
+            cookies,
+        )
+            .try_into()
     }
 
     /// Request signin email admission for an existing active account.
     async fn signin_email_request(
         input: EmailInput,
         #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<EmailChallenge, Error> {
         let mut input = input;
@@ -124,7 +131,12 @@ impl Mutation {
         if mode == CredentialDelivery::Cookie {
             cookies.validate_origin()?;
         }
-        (auth.signin_email(&input.email).await?, mode, cookies).try_into()
+        (
+            identity.execute(auth.signin_email(&input.email)).await?,
+            mode,
+            cookies,
+        )
+            .try_into()
     }
 
     /// Confirm the middleware-verified OTP challenge and atomically create the account and session.
@@ -141,7 +153,9 @@ impl Mutation {
             cookies.validate_origin()?;
         }
         (
-            auth.signup(identity.otp().await?, &input.code).await?,
+            identity
+                .execute(auth.signup(identity.otp().await?, &input.code))
+                .await?,
             mode,
             cookies,
         )
@@ -161,7 +175,9 @@ impl Mutation {
             cookies.validate_origin()?;
         }
         (
-            auth.signin(identity.otp().await?, &input.code).await?,
+            identity
+                .execute(auth.signin(identity.otp().await?, &input.code))
+                .await?,
             mode,
             cookies,
         )
@@ -175,7 +191,9 @@ impl Mutation {
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<SessionCredentials, Error> {
         (
-            auth.refresh(identity.refresh().await?).await?,
+            identity
+                .execute(auth.refresh(identity.refresh().await?))
+                .await?,
             CredentialDelivery::Token,
             cookies,
         )
@@ -185,10 +203,13 @@ impl Mutation {
     /// Revoke this verified login only. Clear cookie credentials after successful revocation.
     async fn session_revoke(
         #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<bool, Error> {
-        auth.signout(user.require().await?.access()).await?;
+        identity
+            .execute(auth.signout(user.require().await?.access()))
+            .await?;
         cookies.clear()?;
         Ok(true)
     }

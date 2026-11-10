@@ -58,9 +58,7 @@ impl<'a> CreationService<'a> {
 
         let db = DbContext::current()?;
         if providers.len() == 1 {
-            return Ok(vec![
-                self.providers.insert(providers.remove(0)).await?,
-            ]);
+            return Ok(vec![self.providers.insert(providers.remove(0)).await?]);
         }
 
         transaction!(db, {

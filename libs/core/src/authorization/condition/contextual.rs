@@ -1,5 +1,10 @@
 use super::Resource;
-use crate::{authorization::{MemberPermissionError, policy::AttributeName}, organization::{Group, OrganizationMember, Role}, model::Model, provider::ProviderModel};
+use crate::{
+    authorization::{MemberPermissionError, policy::AttributeName},
+    model::Model,
+    organization::{Group, OrganizationMember, Role},
+    provider::ProviderModel,
+};
 
 impl TryFrom<(&OrganizationMember, &Role)> for Resource {
     type Error = MemberPermissionError;
@@ -25,6 +30,9 @@ impl TryFrom<(&Group, &OrganizationMember)> for Resource {
 impl TryFrom<(&Model, &ProviderModel)> for Resource {
     type Error = MemberPermissionError;
     fn try_from((model, provider_model): (&Model, &ProviderModel)) -> Result<Self, Self::Error> {
-        Self::try_from(model)?.with_context(AttributeName::ProviderModel, Self::try_from(provider_model)?)
+        Self::try_from(model)?.with_context(
+            AttributeName::ProviderModel,
+            Self::try_from(provider_model)?,
+        )
     }
 }

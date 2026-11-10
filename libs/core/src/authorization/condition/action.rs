@@ -1,7 +1,10 @@
 use cedar_policy::{Context, EntityId, EntityUid};
 
 use super::CheckPermission;
-use crate::authorization::{MemberPermission, MemberPermissionError, policy::{Action, EntityType}};
+use crate::authorization::{
+    MemberPermission, MemberPermissionError,
+    policy::{Action, EntityType},
+};
 
 impl CheckPermission for Action {
     fn check_permission(&self, member: &MemberPermission) -> Result<(), MemberPermissionError> {

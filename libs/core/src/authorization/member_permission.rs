@@ -7,10 +7,7 @@ use cedar_policy::{
 
 use crate::authentication::UserAccessToken;
 
-use super::{
-    PolicySnapshot, all_policies,
-    policy::Action,
-};
+use super::{PolicySnapshot, all_policies, policy::Action};
 
 /// A safe result for preparing or evaluating a member's permissions.
 #[derive(Debug, thiserror::Error)]

@@ -2,7 +2,10 @@ use std::time::Duration;
 
 use compallm_core::{
     authentication::{Session, UserAccessToken},
-    authorization::{MemberPermission, MemberPermissionError, PolicySnapshot, condition::CheckPermission, policy::Action},
+    authorization::{
+        MemberPermission, MemberPermissionError, PolicySnapshot, condition::CheckPermission,
+        policy::Action,
+    },
     organization::{Group, OrganizationMember, Role},
 };
 

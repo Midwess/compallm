@@ -44,12 +44,17 @@ where
             (Some(required), Some((name, kind, uid)))
                 if required.name == name && required.kind == AttributeType::Entity(kind) =>
             {
-                Context::from_pairs([(name.name().to_owned(), RestrictedExpression::new_entity_uid(uid))])
-                    .map_err(|_| MemberPermissionError::Evaluation)?
+                Context::from_pairs([(
+                    name.name().to_owned(),
+                    RestrictedExpression::new_entity_uid(uid),
+                )])
+                .map_err(|_| MemberPermissionError::Evaluation)?
             }
             _ => return Err(MemberPermissionError::Evaluation),
         };
-        let entities = member.entities().clone()
+        let entities = member
+            .entities()
+            .clone()
             .add_entities(resource.entities, Some(all_policies()))
             .map_err(|_| MemberPermissionError::Evaluation)?;
         member.evaluate(self.action, resource.uid, context, &entities)
@@ -65,22 +70,45 @@ impl Resource {
         mut parents: HashSet<EntityUid>,
     ) -> Result<Self, MemberPermissionError> {
         let valid = |id: u64| id > 0 && id <= i64::MAX as u64;
-        if !valid(organization_id) || !valid(id) || (kind == EntityType::Organization && id != organization_id) {
+        if !valid(organization_id)
+            || !valid(id)
+            || (kind == EntityType::Organization && id != organization_id)
+        {
             return Err(MemberPermissionError::Evaluation);
         }
-        let organization = EntityUid::from_type_name_and_id(EntityType::Organization.into(), EntityId::new(organization_id.to_string()));
-        let identity = if kind == EntityType::Organization { id.to_string() } else { format!("{organization_id}:{id}") };
+        let organization = EntityUid::from_type_name_and_id(
+            EntityType::Organization.into(),
+            EntityId::new(organization_id.to_string()),
+        );
+        let identity = if kind == EntityType::Organization {
+            id.to_string()
+        } else {
+            format!("{organization_id}:{id}")
+        };
         let uid = EntityUid::from_type_name_and_id(kind.into(), EntityId::new(identity));
         if kind != EntityType::Organization {
-            attributes.insert("organization".into(), RestrictedExpression::new_entity_uid(organization.clone()));
+            attributes.insert(
+                "organization".into(),
+                RestrictedExpression::new_entity_uid(organization.clone()),
+            );
             parents.insert(organization);
         }
         let entity = Entity::new(uid.clone(), attributes, parents)
             .map_err(|_| MemberPermissionError::Evaluation)?;
-        Ok(Self { kind, organization_id, uid, entities: vec![entity], context: None })
+        Ok(Self {
+            kind,
+            organization_id,
+            uid,
+            entities: vec![entity],
+            context: None,
+        })
     }
 
-    pub(super) fn with_context(mut self, name: AttributeName, related: Self) -> Result<Self, MemberPermissionError> {
+    pub(super) fn with_context(
+        mut self,
+        name: AttributeName,
+        related: Self,
+    ) -> Result<Self, MemberPermissionError> {
         if self.organization_id != related.organization_id {
             return Err(MemberPermissionError::Denied);
         }

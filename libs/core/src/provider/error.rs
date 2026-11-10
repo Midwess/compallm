@@ -14,6 +14,8 @@ pub enum ProviderApiKeyError {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderCreationError {
+    #[error(transparent)]
+    Permission(#[from] crate::authorization::MemberPermissionError),
     #[error("invalid provider configuration")]
     InvalidInput(#[from] validify::ValidationErrors),
     #[error("provider name is already in use")]

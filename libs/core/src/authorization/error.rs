@@ -1,5 +1,7 @@
 #[derive(Debug, thiserror::Error)]
 pub enum AuthorizationError {
+    #[error(transparent)]
+    Permission(#[from] super::MemberPermissionError),
     #[error("Cedar error {}", 0)]
     CedarScriptFailed(#[from] anyhow::Error),
     #[error(transparent)]

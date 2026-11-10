@@ -1,3 +1,7 @@
+#[path = "support/permission.rs"]
+mod permission_fixture;
+use compallm_core::authorization::{MemberPermission, policy::Action};
+
 use compallm_core::{
     organization::{ConfigService, OrganizationConfigError},
     persistent::{
@@ -12,6 +16,7 @@ use sea_orm::{DbBackend, DbErr, IntoMockRow, MockDatabase};
 use std::{collections::BTreeMap, sync::Arc};
 
 struct Fixture {
+    permission: MemberPermission,
     context: &'static DbContext,
     database: Arc<sea_orm::DatabaseConnection>,
     service: ConfigService,
@@ -48,6 +53,7 @@ impl Fixture {
             compallm_postgres::repository::organization::OrganizationRepository,
         ) as Box<dyn OrganizationRepository>));
         Self {
+            permission: permission_fixture::permission(84, &[Action::OrganizationSettingsUpdate]),
             context,
             database,
             service: ConfigService::new(organizations),
@@ -60,7 +66,11 @@ async fn rename_updates_only_name_in_one_transaction() {
     let fixture = Fixture::new(Ok(Some("New-Team")));
     let organization = fixture
         .context
-        .transaction(fixture.service.update_name(84, " New-Team "))
+        .transaction(
+            fixture
+                .service
+                .update_name(&fixture.permission, " New-Team "),
+        )
         .await
         .unwrap();
     assert_eq!(organization.id, 84);
@@ -82,7 +92,7 @@ async fn missing_organization_or_query_failure_rolls_back() {
         let fixture = Fixture::new(result);
         let error = fixture
             .context
-            .transaction(fixture.service.update_name(84, "New-Team"))
+            .transaction(fixture.service.update_name(&fixture.permission, "New-Team"))
             .await
             .unwrap_err();
         if missing {
@@ -103,4 +113,21 @@ async fn missing_organization_or_query_failure_rolls_back() {
         assert!(log.contains("ROLLBACK"));
         assert!(!log.contains("COMMIT"));
     }
+}
+
+#[tokio::test]
+async fn settings_permission_is_required_before_repository_access() {
+    use compallm_core::authorization::MemberPermissionError;
+    let fixture = Fixture::new(Err(DbErr::Custom("unexpected repository access".into())));
+    let permission = permission_fixture::permission(84, &[]);
+    let result = fixture
+        .context
+        .scope(fixture.service.update_name(&permission, "New-Team"))
+        .await;
+    assert!(matches!(
+        result,
+        Err(OrganizationConfigError::Permission(
+            MemberPermissionError::Denied
+        ))
+    ));
 }

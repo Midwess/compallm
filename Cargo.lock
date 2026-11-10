@@ -1282,6 +1282,7 @@ dependencies = [
  "sea-orm",
  "sea-orm-cli",
  "sea-orm-migration",
+ "serde",
  "serde_json",
  "syn 2.0.119",
  "tokio",

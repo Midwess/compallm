@@ -23,6 +23,7 @@ cedar-policy.workspace = true
 anyhow = { workspace = true, features = ["std"] }
 async-trait.workspace = true
 elsa.workspace = true
+serde = { workspace = true, features = ["std", "derive"] }
 serde_json = { workspace = true, features = ["std"] }
 validify.workspace = true
 clap = { workspace = true, optional = true, features = ["std", "derive", "env", "help", "usage", "error-context"] }

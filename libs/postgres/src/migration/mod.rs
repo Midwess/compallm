@@ -42,6 +42,8 @@ mod m20261108_000022_create_lz4_dictionary;
 mod m20261108_000023_seed_access_token_dictionary;
 mod m20261108_000027_add_organization_owner_role;
 
+mod m20261110_000028_restricted_reads;
+
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -77,6 +79,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261108_000022_create_lz4_dictionary::Migration),
             Box::new(m20261108_000023_seed_access_token_dictionary::Migration),
             Box::new(m20261108_000027_add_organization_owner_role::Migration),
+            Box::new(m20261110_000028_restricted_reads::Migration),
             // inject-above (do not remove this comment)
         ]
     }

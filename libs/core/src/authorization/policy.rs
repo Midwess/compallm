@@ -179,7 +179,6 @@ actions! {
     GroupDelete => ("group.delete", EntityType::Group, EntityType::Group, None),
     ProviderRead => ("provider.read", EntityType::Provider, EntityType::Organization, None),
     ProviderCreate => ("provider.create", EntityType::Provider, EntityType::Organization, None),
-    ProviderConnectionTest => ("provider.connection.test", EntityType::Provider, EntityType::Organization, None),
     ProviderConfigurationUpdate => ("provider.configuration.update", EntityType::Provider, EntityType::Provider, None),
     ProviderDelete => ("provider.delete", EntityType::Provider, EntityType::Provider, None),
     ProviderCredentialReplace => ("provider.credential.replace", EntityType::Provider, EntityType::Provider, None),

@@ -68,7 +68,6 @@ impl SystemPolicy for Provider {
     ///   omit API keys and stored secret-header values from every response.
     /// - `provider.create`: create a connection in the destination Organization; creation
     ///   neither performs inference nor requires a successful connection test.
-    /// - `provider.connection.test`: test complete unsaved configuration within the Organization.
     ///   This targets the container, not a nonexistent Provider; admission, timeout,
     ///   upstream billing, and network-safety contracts remain required before shipping.
     /// - `provider.configuration.update`: change permitted non-secret connection configuration.

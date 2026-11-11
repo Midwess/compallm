@@ -38,7 +38,7 @@ export function OrganizationSettings() {
                     accept="image/*"
                     className="sr-only"
                     aria-label="Upload organization logo"
-                    onChange={(e) => c.setAvatar(e.target.files?.[0] ?? null, true)}
+                    onChange={(e) => c.pages.organization.setAvatar(e.target.files?.[0] ?? null)}
                   />
                 </label>
               </div>
@@ -48,7 +48,7 @@ export function OrganizationSettings() {
                 id="organization-name"
                 className="w-70 max-w-full"
                 value={org.name}
-                onChange={(e) => c.updateOrganization({ name: e.target.value })}
+                onChange={(e) => c.pages.organization.updateOrganization({ name: e.target.value })}
               />
             </Row>
             <Row label={<label htmlFor="organization-url">URL</label>} last>
@@ -56,7 +56,7 @@ export function OrganizationSettings() {
                 id="organization-url"
                 className="w-70 max-w-full"
                 value={org.slug}
-                onChange={(e) => c.updateOrganization({ slug: e.target.value })}
+                onChange={(e) => c.pages.organization.updateOrganization({ slug: e.target.value })}
               />
             </Row>
           </Rows>
@@ -69,7 +69,7 @@ export function OrganizationSettings() {
                 className="w-44"
                 value={org.fiscalMonth}
                 options={months.map((label) => ({ label, value: label }))}
-                onValueChange={(fiscalMonth) => c.updateOrganization({ fiscalMonth })}
+                onValueChange={(fiscalMonth) => c.pages.organization.updateOrganization({ fiscalMonth })}
               />
             </Row>
             <Row label="Region" description="Deployment region for this organization." last>
@@ -80,12 +80,12 @@ export function OrganizationSettings() {
         <Section title="Member onboarding" description="Configure the experience for your members.">
           <Rows>
             <Row label="Welcome message">
-              <Button variant="ghost" onClick={() => c.openDialog('welcome')}>
+              <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('welcome')}>
                 Edit
               </Button>
             </Row>
             <Row label="Announcements">
-              <Button variant="ghost" onClick={() => c.openDialog('announcements')}>
+              <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('announcements')}>
                 Edit
               </Button>
             </Row>
@@ -95,7 +95,7 @@ export function OrganizationSettings() {
                 className="w-44"
                 value={org.home}
                 options={['Chat', 'Models', 'Providers'].map((label) => ({ label, value: label }))}
-                onValueChange={(home) => c.updateOrganization({ home })}
+                onValueChange={(home) => c.pages.organization.updateOrganization({ home })}
               />
             </Row>
           </Rows>
@@ -103,7 +103,7 @@ export function OrganizationSettings() {
         <Section title="Danger zone" description="Manage deletion of this organization.">
           <Rows>
             <Row label="Delete organization" description="Manage deletion of this organization." last>
-              <Button variant="ghost" className="text-error" onClick={() => c.openDialog('delete-organization')}>
+              <Button variant="ghost" className="text-error" onClick={() => c.pages.dialogs.openDialog('delete-organization')}>
                 Delete organization
               </Button>
             </Row>

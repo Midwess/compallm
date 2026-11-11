@@ -230,7 +230,7 @@ export function GroupEditorSettings() {
                   variant="ghost"
                   className="text-error"
                   disabled={busy}
-                  onClick={() => c.openDialog('delete-group', draft.id!)}
+                  onClick={() => c.pages.dialogs.openDialog('delete-group', draft.id!)}
                 >
                   Delete group
                 </Button>

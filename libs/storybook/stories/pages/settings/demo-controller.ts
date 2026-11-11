@@ -10,9 +10,25 @@ import type { GroupDraft, RoleDraft } from '../../../src/pages/settings'
 import { initialSettings } from './fixtures'
 import { DemoRoleController } from './role/demo-controller'
 import { DemoGroupController } from './group/demo-controller'
+import { DemoProfileController } from './profile/demo-controller'
+import { DemoOrganizationController } from './organization/demo-controller'
 
 export class DemoSettingsController implements SettingsController {
   store = createSettingsStore(structuredClone(initialSettings))
+  pages: SettingsController['pages'] = {
+    search: { setQuery: (value) => this.setQuery(value), setFilter: (key, value) => this.setFilter(key, value) },
+    preferences: { setPreference: (key, value) => this.setPreference(key, value) },
+    profile: new DemoProfileController(this.store, (file) => this.avatarUrl(file)),
+    organization: new DemoOrganizationController(this.store, (file) => this.avatarUrl(file)),
+    members: { toggleMemberRole: (member, role) => this.toggleMemberRole(member, role) },
+    dialogs: {
+      openDialog: (kind, id) => this.openDialog(kind, id),
+      updateDialog: (value) => this.updateDialog(value),
+      closeDialog: () => this.closeDialog(),
+      confirmDialog: () => this.confirmDialog(),
+      copy: (value) => this.copy(value),
+    },
+  }
   private timers = new Set<ReturnType<typeof setTimeout>>()
   private urls: string[] = []
   private verificationTimer: ReturnType<typeof setTimeout> | undefined
@@ -90,16 +106,10 @@ export class DemoSettingsController implements SettingsController {
   setFilter = (key: string, value: string) => this.store.setState((s) => ({ filters: { ...s.filters, [key]: value } }))
   setPreference = (key: string, value: string | boolean) =>
     this.store.setState((s) => ({ preferences: { ...s.preferences, [key]: value } }))
-  updateProfile = (value: Partial<SettingsState['profile']>) =>
-    this.store.setState((s) => ({ profile: { ...s.profile, ...value } }))
-  saveProfile = () => this.commit(() => this.report('Profile saved'))
-  updateOrganization = (value: Partial<SettingsState['organization']>) =>
-    this.store.setState((s) => ({ organization: { ...s.organization, ...value } }))
-  setAvatar = (file: File | null, organization = false) => {
+  private avatarUrl = (file: File | null) => {
     const url = file ? URL.createObjectURL(file) : null
     if (url) this.urls.push(url)
-    if (organization) this.updateOrganization({ logo: url })
-    else this.updateProfile({ avatar: url })
+    return url
   }
   openDialog = (kind: SettingsDialogKind, targetId?: string) => {
     const s = this.store.getState()
@@ -200,8 +210,8 @@ export class DemoSettingsController implements SettingsController {
             : { memberDefaultLimitUsd: d.value || null },
         )
       if (d.kind === 'reset-schedule') this.store.setState({ timezone: d.value })
-      if (d.kind === 'welcome') this.updateOrganization({ welcome: d.value })
-      if (d.kind === 'announcements') this.updateOrganization({ announcements: d.value })
+      if (d.kind === 'welcome') this.pages.organization.updateOrganization({ welcome: d.value })
+      if (d.kind === 'announcements') this.pages.organization.updateOrganization({ announcements: d.value })
       this.store.setState({ dialog: null })
       const destructive = ['delete-account', 'delete-organization'].includes(d.kind)
       this.report(destructive ? 'Deletion requested' : 'Changes applied')

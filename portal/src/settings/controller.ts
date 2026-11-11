@@ -10,6 +10,7 @@ import { RoleController } from './role/controller'
 import { GroupController } from './group/controller'
 import { ApiError, graphql } from '../graphql-client'
 import type { QueryGenqlSelection } from '@compallm/contract/graphql'
+import { createSettingsPages } from './pages'
 
 export const settingsPages = [
   'general',
@@ -34,6 +35,7 @@ export class SettingsController implements Controller {
   readonly store = createSettingsStore({ readonly: true, codeExamples })
   readonly role = new RoleController()
   readonly group = new GroupController()
+  readonly pages = createSettingsPages(this.store)
   private readonly url: Pick<UrlController, 'navigate'>
   private readonly auth: Pick<AuthController, 'signOut'>
   private readonly base: string
@@ -103,27 +105,9 @@ export class SettingsController implements Controller {
     else this.unavailable()
   }
   setNavigationQuery = (navigationQuery: string) => this.store.setState({ navigationQuery })
-  setQuery = (query: string) => this.store.setState({ query })
-  setFilter = (key: string, value: string) => {
-    this.store.setState((state) => ({ filters: { ...state.filters, [key]: value } }))
-  }
   private unavailable = () => {
     notify.info('Settings changes are not available yet.')
   }
-  setPreference = (key: string, value: string | boolean) => {
-    if (!['codeTheme', 'codeFont', 'codeFontSize', 'codeLanguage'].includes(key)) return this.unavailable()
-    this.store.setState((state) => ({ preferences: { ...state.preferences, [key]: value } }))
-  }
-  updateProfile = this.unavailable
-  saveProfile = this.unavailable
-  setAvatar = this.unavailable
-  updateOrganization = this.unavailable
-  openDialog = this.unavailable
-  updateDialog = this.unavailable
-  closeDialog = () => this.store.setState({ dialog: null })
-  confirmDialog = this.unavailable
-  toggleMemberRole = this.unavailable
-  copy = this.unavailable
   signOut = () => {
     void this.auth.signOut()
   }

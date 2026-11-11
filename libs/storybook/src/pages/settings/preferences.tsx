@@ -78,10 +78,14 @@ function PreferenceControl({ item, last = false }: { item: Preference; last?: bo
           value={String(value)}
           className="w-44"
           options={item.options.map((label) => ({ label, value: label }))}
-          onValueChange={(v) => c.setPreference(item.key, v)}
+          onValueChange={(v) => c.pages.preferences.setPreference(item.key, v)}
         />
       ) : (
-        <Switch id={id} checked={Boolean(value)} onChange={(e) => c.setPreference(item.key, e.target.checked)} />
+        <Switch
+          id={id}
+          checked={Boolean(value)}
+          onChange={(e) => c.pages.preferences.setPreference(item.key, e.target.checked)}
+        />
       )}
     </Row>
   )
@@ -114,7 +118,7 @@ export function AppearanceSettings() {
         <Section title="Interface" description="Make the workspace comfortable for you.">
           <Rows>
             <Row label="App sidebar" description="Choose which items appear in your sidebar.">
-              <Button variant="ghost" onClick={() => c.openDialog('customize-sidebar')}>
+              <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('customize-sidebar')}>
                 Customize
               </Button>
             </Row>
@@ -178,14 +182,14 @@ function CodeAppearanceSection() {
           <Popup.Content aria-label="Code font settings">
             <Popup.Submenu label="Font size">
               {['12px', '13px', '14px', '16px'].map((size) => (
-                <Popup.Item key={size} onClick={() => c.setPreference('codeFontSize', size)}>
+                <Popup.Item key={size} onClick={() => c.pages.preferences.setPreference('codeFontSize', size)}>
                   {size}
                 </Popup.Item>
               ))}
             </Popup.Submenu>
             <Popup.Submenu label="Font">
               {['Default', 'Monospace'].map((value) => (
-                <Popup.Item key={value} onClick={() => c.setPreference('codeFont', value)}>
+                <Popup.Item key={value} onClick={() => c.pages.preferences.setPreference('codeFont', value)}>
                   {value}
                 </Popup.Item>
               ))}
@@ -199,7 +203,7 @@ function CodeAppearanceSection() {
           code={example.code}
           lineChanges={example.lineChanges}
           language={language}
-          onLanguageChange={(value) => c.setPreference('codeLanguage', value)}
+          onLanguageChange={(value) => c.pages.preferences.setPreference('codeLanguage', value)}
         />
       </div>
     </Rows>

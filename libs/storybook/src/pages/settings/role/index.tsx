@@ -63,7 +63,7 @@ function CedarEditor({ locked }: { locked: boolean }) {
             <Button variant="ghost" className="h-6 px-2 text-xs" disabled={invalid || locked} onClick={() => c.formatPolicy()}>
               Format
             </Button>
-            <Button variant="ghost" className="h-6 px-2 text-xs" onClick={() => shared.copy(draft.source)}>
+            <Button variant="ghost" className="h-6 px-2 text-xs" onClick={() => shared.pages.dialogs.copy(draft.source)}>
               Copy
             </Button>
           </>
@@ -213,7 +213,7 @@ export function RoleEditorSettings() {
                   variant="ghost"
                   className="text-error"
                   disabled={busy}
-                  onClick={() => shared.openDialog('delete-role', draft.id!)}
+                  onClick={() => shared.pages.dialogs.openDialog('delete-role', draft.id!)}
                 >
                   Delete role
                 </Button>

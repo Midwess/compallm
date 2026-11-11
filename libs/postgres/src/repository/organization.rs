@@ -47,6 +47,15 @@ type GroupMemberActiveModel = <GroupMembers as EntityTrait>::ActiveModel;
 pub struct OrganizationRepository;
 
 impl OrganizationRepository {
+    fn creation_error(error: sea_orm::DbErr) -> OrganizationRepositoryError {
+        match error.sql_err() {
+            Some(sea_orm::SqlErr::UniqueConstraintViolation(_)) => {
+                OrganizationRepositoryError::NameAlreadyExists
+            }
+            _ => OrganizationRepositoryError::database(error),
+        }
+    }
+
     async fn membership(
         &self,
         user_id: u64,
@@ -153,7 +162,9 @@ impl OrganizationRepository {
 
 #[async_trait::async_trait]
 impl CoreRepository for OrganizationRepository {
-    fn supports_role_policy(&self, source: &str) -> bool { crate::rls::validate_policy_source(source).is_ok() }
+    fn supports_role_policy(&self, source: &str) -> bool {
+        crate::rls::validate_policy_source(source).is_ok()
+    }
     async fn lock_role(
         &self,
         organization_id: u64,
@@ -314,18 +325,30 @@ impl CoreRepository for OrganizationRepository {
             .filter(RoleColumn::OrganizationId.eq(Self::database_id(organization_id)?))
             .filter(RoleColumn::Id.is_in(ids))
             .select_only()
-            .columns([RoleColumn::OrganizationId, RoleColumn::Id, RoleColumn::Name, RoleColumn::Description, RoleColumn::OrgOwner])
+            .columns([
+                RoleColumn::OrganizationId,
+                RoleColumn::Id,
+                RoleColumn::Name,
+                RoleColumn::Description,
+                RoleColumn::OrgOwner,
+            ])
             .order_by_asc(RoleColumn::Id)
             .into_tuple::<(i64, i64, String, String, bool)>()
             .all(db)
             .await
             .map_err(OrganizationRepositoryError::database)?
             .into_iter()
-            .map(|(organization_id, id, name, description, org_owner)| Ok(Role {
-                organization_id: crate::from_bigint(organization_id).map_err(OrganizationRepositoryError::database)?,
-                id: crate::from_bigint(id).map_err(OrganizationRepositoryError::database)?,
-                name, description, org_owner, cedar_source: String::new(),
-            }))
+            .map(|(organization_id, id, name, description, org_owner)| {
+                Ok(Role {
+                    organization_id: crate::from_bigint(organization_id)
+                        .map_err(OrganizationRepositoryError::database)?,
+                    id: crate::from_bigint(id).map_err(OrganizationRepositoryError::database)?,
+                    name,
+                    description,
+                    org_owner,
+                    cedar_source: String::new(),
+                })
+            })
             .collect()
     }
 
@@ -354,7 +377,7 @@ impl CoreRepository for OrganizationRepository {
             Groups::insert(model)
                 .exec_without_returning(PostgresConnection::from_context(&context)?)
                 .await
-                .map_err(OrganizationRepositoryError::database)?;
+                .map_err(Self::creation_error)?;
         } else {
             compallm_core::transaction!(context, {
                 let current = DbContext::current()?;
@@ -362,11 +385,11 @@ impl CoreRepository for OrganizationRepository {
                 Groups::insert(model)
                     .exec_without_returning(db)
                     .await
-                    .map_err(OrganizationRepositoryError::database)?;
+                    .map_err(Self::creation_error)?;
                 GroupRoles::insert_many(links)
                     .exec_without_returning(db)
                     .await
-                    .map_err(OrganizationRepositoryError::database)?;
+                    .map_err(Self::creation_error)?;
                 Ok::<_, OrganizationRepositoryError>(())
             })?;
         }
@@ -392,44 +415,92 @@ impl CoreRepository for OrganizationRepository {
         .map_err(OrganizationRepositoryError::database)
     }
 
-    async fn list_role_info(&self, organization_id: u64) -> Result<Vec<Role>, OrganizationRepositoryError> {
+    async fn list_role_info(
+        &self,
+        organization_id: u64,
+    ) -> Result<Vec<Role>, OrganizationRepositoryError> {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
         Roles::find()
             .select_only()
-            .columns([RoleColumn::OrganizationId, RoleColumn::Id, RoleColumn::Name, RoleColumn::Description, RoleColumn::OrgOwner])
+            .columns([
+                RoleColumn::OrganizationId,
+                RoleColumn::Id,
+                RoleColumn::Name,
+                RoleColumn::Description,
+                RoleColumn::OrgOwner,
+            ])
             .filter(RoleColumn::OrganizationId.eq(Self::database_id(organization_id)?))
             .order_by_asc(RoleColumn::Id)
             .into_tuple::<(i64, i64, String, String, bool)>()
-            .all(db).await.map_err(OrganizationRepositoryError::database)?
-            .into_iter().map(|(organization_id, id, name, description, org_owner)| Ok(Role {
-                organization_id: crate::from_bigint(organization_id).map_err(OrganizationRepositoryError::database)?,
-                id: crate::from_bigint(id).map_err(OrganizationRepositoryError::database)?,
-                name, description, org_owner, cedar_source: String::new(),
-            })).collect()
+            .all(db)
+            .await
+            .map_err(OrganizationRepositoryError::database)?
+            .into_iter()
+            .map(|(organization_id, id, name, description, org_owner)| {
+                Ok(Role {
+                    organization_id: crate::from_bigint(organization_id)
+                        .map_err(OrganizationRepositoryError::database)?,
+                    id: crate::from_bigint(id).map_err(OrganizationRepositoryError::database)?,
+                    name,
+                    description,
+                    org_owner,
+                    cedar_source: String::new(),
+                })
+            })
+            .collect()
     }
 
-    async fn list_group_info(&self, organization_id: u64) -> Result<Vec<compallm_core::organization::group::GroupInfo>, OrganizationRepositoryError> {
+    async fn list_group_info(
+        &self,
+        organization_id: u64,
+    ) -> Result<Vec<compallm_core::organization::group::GroupInfo>, OrganizationRepositoryError>
+    {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
-        Groups::find().filter(GroupColumn::OrganizationId.eq(Self::database_id(organization_id)?))
-            .order_by_asc(GroupColumn::Id).all(db).await.map_err(OrganizationRepositoryError::database)?
-            .into_iter().map(|group| Ok(compallm_core::organization::group::GroupInfo {
-                id: crate::from_bigint(group.id).map_err(OrganizationRepositoryError::database)?,
-                name: group.name, description: group.description,
-            })).collect()
+        Groups::find()
+            .filter(GroupColumn::OrganizationId.eq(Self::database_id(organization_id)?))
+            .order_by_asc(GroupColumn::Id)
+            .all(db)
+            .await
+            .map_err(OrganizationRepositoryError::database)?
+            .into_iter()
+            .map(|group| {
+                Ok(compallm_core::organization::group::GroupInfo {
+                    id: crate::from_bigint(group.id)
+                        .map_err(OrganizationRepositoryError::database)?,
+                    name: group.name,
+                    description: group.description,
+                })
+            })
+            .collect()
     }
 
-    async fn find_group_info(&self, organization_id: u64, group_id: u64) -> Result<Option<compallm_core::organization::group::GroupInfo>, OrganizationRepositoryError> {
+    async fn find_group_info(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+    ) -> Result<Option<compallm_core::organization::group::GroupInfo>, OrganizationRepositoryError>
+    {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
-        let group = Groups::find_by_id((Self::database_id(organization_id)?, Self::database_id(group_id)?))
-            .one(db).await.map_err(OrganizationRepositoryError::database)?;
-        group.map(|group| Ok(compallm_core::organization::group::GroupInfo {
-            id: crate::from_bigint(group.id).map_err(OrganizationRepositoryError::database)?,
-            name: group.name,
-            description: group.description,
-        })).transpose()
+        let group = Groups::find_by_id((
+            Self::database_id(organization_id)?,
+            Self::database_id(group_id)?,
+        ))
+        .one(db)
+        .await
+        .map_err(OrganizationRepositoryError::database)?;
+        group
+            .map(|group| {
+                Ok(compallm_core::organization::group::GroupInfo {
+                    id: crate::from_bigint(group.id)
+                        .map_err(OrganizationRepositoryError::database)?,
+                    name: group.name,
+                    description: group.description,
+                })
+            })
+            .transpose()
     }
 
     async fn find_group(
@@ -642,7 +713,7 @@ impl CoreRepository for OrganizationRepository {
             Roles::insert_many(rows)
                 .exec_without_returning(db)
                 .await
-                .map_err(OrganizationRepositoryError::database)?;
+                .map_err(Self::creation_error)?;
         }
         Ok(())
     }

@@ -1,8 +1,7 @@
-use juniper::{DefaultScalarValue, graphql_object};
 use super::GraphqlContext;
+use juniper::{DefaultScalarValue, graphql_object};
 
 pub struct Query;
-
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {

@@ -1,5 +1,8 @@
 use super::Session;
-use crate::{graphql::{GraphqlContext, error::Error}, http::authentication::UserContext};
+use crate::{
+    graphql::{GraphqlContext, error::Error},
+    http::authentication::UserContext,
+};
 
 pub struct Query;
 

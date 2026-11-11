@@ -11,8 +11,7 @@ impl From<CoreUser> for User {
     }
 }
 
-
-use juniper::{graphql_object, ID};
+use juniper::{ID, graphql_object};
 
 #[graphql_object]
 impl User {

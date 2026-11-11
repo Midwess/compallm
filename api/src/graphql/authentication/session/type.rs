@@ -11,8 +11,7 @@ impl From<CoreSession> for Session {
     }
 }
 
-
-use juniper::{graphql_object, ID};
+use juniper::{ID, graphql_object};
 
 #[graphql_object]
 impl Session {

@@ -1,6 +1,8 @@
-use compallm_core::authentication::{EmailOtpAccessToken, IssuedEmailOtp, TokenValidity, UserTokens};
-use crate::{graphql::error::Error, http::authentication::CookieDelivery};
 use super::input::CredentialDelivery;
+use crate::{graphql::error::Error, http::authentication::CookieDelivery};
+use compallm_core::authentication::{
+    EmailOtpAccessToken, IssuedEmailOtp, TokenValidity, UserTokens,
+};
 
 /// Exact Unix-second validity and client throttle values encoded as decimal strings.
 pub struct TokenLifetime {
@@ -82,29 +84,47 @@ impl TryFrom<(UserTokens, CredentialDelivery, &CookieDelivery)> for SessionCrede
     }
 }
 
-
-
 /// Exact Unix-second validity and client throttle values encoded as decimal strings.
 #[juniper::graphql_object]
 impl TokenLifetime {
-    fn issued_at(&self) -> &str { &self.issued_at }
-    fn expires_at(&self) -> &str { &self.expires_at }
-    fn expires_in_seconds(&self) -> &str { &self.expires_in_seconds }
-    fn throttle_seconds(&self) -> &str { &self.throttle_seconds }
+    fn issued_at(&self) -> &str {
+        &self.issued_at
+    }
+    fn expires_at(&self) -> &str {
+        &self.expires_at
+    }
+    fn expires_in_seconds(&self) -> &str {
+        &self.expires_in_seconds
+    }
+    fn throttle_seconds(&self) -> &str {
+        &self.throttle_seconds
+    }
 }
 
 /// Email admission succeeded; cookie delivery never exposes the OTP credential.
 #[juniper::graphql_object]
 impl EmailChallenge {
-    fn lifetime(&self) -> &TokenLifetime { &self.lifetime }
-    fn token(&self) -> Option<&str> { self.token.as_deref() }
+    fn lifetime(&self) -> &TokenLifetime {
+        &self.lifetime
+    }
+    fn token(&self) -> Option<&str> {
+        self.token.as_deref()
+    }
 }
 
 /// Timing is always returned; credential values exist only in explicit TOKEN delivery.
 #[juniper::graphql_object]
 impl SessionCredentials {
-    fn access_lifetime(&self) -> &TokenLifetime { &self.access_lifetime }
-    fn refresh_lifetime(&self) -> &TokenLifetime { &self.refresh_lifetime }
-    fn access_token(&self) -> Option<&str> { self.access_token.as_deref() }
-    fn refresh_token(&self) -> Option<&str> { self.refresh_token.as_deref() }
+    fn access_lifetime(&self) -> &TokenLifetime {
+        &self.access_lifetime
+    }
+    fn refresh_lifetime(&self) -> &TokenLifetime {
+        &self.refresh_lifetime
+    }
+    fn access_token(&self) -> Option<&str> {
+        self.access_token.as_deref()
+    }
+    fn refresh_token(&self) -> Option<&str> {
+        self.refresh_token.as_deref()
+    }
 }

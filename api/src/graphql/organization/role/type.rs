@@ -6,14 +6,23 @@ pub struct Role {
 
 impl From<compallm_core::organization::Role> for Role {
     fn from(role: compallm_core::organization::Role) -> Self {
-        Self { id: juniper::ID::new(role.id.to_string()), name: role.name, description: role.description }
+        Self {
+            id: juniper::ID::new(role.id.to_string()),
+            name: role.name,
+            description: role.description,
+        }
     }
 }
 
-
 #[juniper::graphql_object]
 impl Role {
-    fn id(&self) -> &juniper::ID { &self.id }
-    fn name(&self) -> &str { &self.name }
-    fn description(&self) -> &str { &self.description }
+    fn id(&self) -> &juniper::ID {
+        &self.id
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn description(&self) -> &str {
+        &self.description
+    }
 }

@@ -1,6 +1,5 @@
 pub(crate) mod query;
 
-
 pub(crate) mod input;
 pub(crate) mod mutation;
 

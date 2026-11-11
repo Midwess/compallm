@@ -20,8 +20,7 @@ impl From<CoreProviderModel> for ProviderModel {
     }
 }
 
-
-use juniper::{graphql_object, ID};
+use juniper::{ID, graphql_object};
 
 #[graphql_object]
 impl Provider {
@@ -40,7 +39,6 @@ impl Provider {
         &self.0.name
     }
 }
-
 
 #[graphql_object]
 impl ProviderModel {
@@ -69,4 +67,3 @@ impl ProviderModel {
         self.0.enabled
     }
 }
-

@@ -1,4 +1,4 @@
-use juniper::{graphql_object, ID};
+use juniper::{ID, graphql_object};
 
 use super::super::input::ProviderApiProtocol;
 
@@ -12,16 +12,22 @@ pub struct ProviderTemplate {
     pub base_url: Option<String>,
 }
 
-
-
 /// Public catalog defaults; selecting a template creates no configured provider.
 #[graphql_object]
 impl ProviderTemplate {
     /// Global opaque catalog identity, independent of organization resource IDs.
-    fn id(&self) -> &ID { &self.id }
-    fn name(&self) -> &str { &self.name }
+    fn id(&self) -> &ID {
+        &self.id
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
     /// Family hint only; configured models select their own text operation.
-    fn protocol(&self) -> ProviderApiProtocol { self.protocol }
+    fn protocol(&self) -> ProviderApiProtocol {
+        self.protocol
+    }
     /// Unknown and account-specific addresses remain null.
-    fn base_url(&self) -> Option<&str> { self.base_url.as_deref() }
+    fn base_url(&self) -> Option<&str> {
+        self.base_url.as_deref()
+    }
 }

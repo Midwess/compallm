@@ -1,6 +1,6 @@
-use super::{input::RoleCreateInput, Role};
+use super::{Role, input::RoleCreateInput};
 use crate::{graphql::error::Error, http::authorization::AuthorizationContext};
-use compallm_core::authorization::rbac::RbacService;
+use compallm_core::authorization::{condition::CheckPermission, policy::Action, rbac::RbacService};
 use validify::Validify;
 
 pub struct Mutation;
@@ -14,7 +14,6 @@ impl Mutation {
     ) -> Result<Role, Error> {
         input.validify()?;
         let permission = authority.member_permission().await?;
-        use compallm_core::authorization::{condition::CheckPermission, policy::Action};
         Action::RoleRead
             .check_permission(&permission)
             .map_err(compallm_core::authorization::error::AuthorizationError::from)?;

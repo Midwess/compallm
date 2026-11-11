@@ -97,8 +97,14 @@ pub(super) fn validate_source(source: &str) -> anyhow::Result<()> {
                 ActionConstraint::In(candidates) => candidates.contains(&uid),
             };
             if applies {
-                for condition in json["conditions"].as_array().context("missing policy conditions")? {
-                    anyhow::ensure!(matches!(condition["kind"].as_str(), Some("when" | "unless")), "unsupported policy condition");
+                for condition in json["conditions"]
+                    .as_array()
+                    .context("missing policy conditions")?
+                {
+                    anyhow::ensure!(
+                        matches!(condition["kind"].as_str(), Some("when" | "unless")),
+                        "unsupported policy condition"
+                    );
                     expression(&condition["body"], *action)?;
                 }
             }

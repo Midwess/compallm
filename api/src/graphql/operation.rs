@@ -34,14 +34,30 @@ pub(super) fn validate(request: &GraphQLRequest, schema: &ApplicationSchema) -> 
         return Err(());
     }
     let root = single_field(&selected.selection_set, &document, &mut Vec::new())?;
-    let Selection::Field(root) = root else { return Err(()); };
+    let Selection::Field(root) = root else {
+        return Err(());
+    };
     if root.item.name.item == "authentication" {
-        single_field(root.item.selection_set.as_deref().ok_or(())?, &document, &mut Vec::new())?;
+        single_field(
+            root.item.selection_set.as_deref().ok_or(())?,
+            &document,
+            &mut Vec::new(),
+        )?;
     }
     if root.item.name.item == "organization" {
-        let domain = single_field(root.item.selection_set.as_deref().ok_or(())?, &document, &mut Vec::new())?;
-        let Selection::Field(domain) = domain else { return Err(()); };
-        single_field(domain.item.selection_set.as_deref().ok_or(())?, &document, &mut Vec::new())?;
+        let domain = single_field(
+            root.item.selection_set.as_deref().ok_or(())?,
+            &document,
+            &mut Vec::new(),
+        )?;
+        let Selection::Field(domain) = domain else {
+            return Err(());
+        };
+        single_field(
+            domain.item.selection_set.as_deref().ok_or(())?,
+            &document,
+            &mut Vec::new(),
+        )?;
     }
     Ok(())
 }
@@ -65,16 +81,27 @@ fn collect_field<'a, 'b>(
     for selection in selections {
         match selection {
             Selection::Field(_) => {
-                if found.replace(selection).is_some() { return Err(()); }
+                if found.replace(selection).is_some() {
+                    return Err(());
+                }
             }
-            Selection::InlineFragment(fragment) => collect_field(&fragment.item.selection_set, document, visiting, found)?,
+            Selection::InlineFragment(fragment) => {
+                collect_field(&fragment.item.selection_set, document, visiting, found)?
+            }
             Selection::FragmentSpread(spread) => {
                 let name = spread.item.name.item;
-                if visiting.contains(&name) { return Err(()); }
-                let fragment = document.iter().find_map(|definition| match definition {
-                    Definition::Fragment(fragment) if fragment.item.name.item == name => Some(&fragment.item),
-                    _ => None,
-                }).ok_or(())?;
+                if visiting.contains(&name) {
+                    return Err(());
+                }
+                let fragment = document
+                    .iter()
+                    .find_map(|definition| match definition {
+                        Definition::Fragment(fragment) if fragment.item.name.item == name => {
+                            Some(&fragment.item)
+                        }
+                        _ => None,
+                    })
+                    .ok_or(())?;
                 visiting.push(name);
                 collect_field(&fragment.selection_set, document, visiting, found)?;
                 visiting.pop();

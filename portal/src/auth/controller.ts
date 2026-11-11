@@ -218,7 +218,9 @@ export class AuthController implements SignupController, SigninController {
       const selection = {
         authentication: { session: { id: true, userId: true, organizationId: true, organizationName: true } },
       } satisfies QueryGenqlSelection
-      const { authentication: { session: user } } = await graphql(requestSignal).query(selection)
+      const {
+        authentication: { session: user },
+      } = await graphql(requestSignal).query(selection)
       if (requestSignal.aborted || generation !== this.sessionGeneration) throw new DOMException('Cancelled', 'AbortError')
       this.store.setState({ currentUser: user ?? null, status: user ? 'authenticated' : 'anonymous' })
       if (!user && redirectAnonymous) this.navigate?.('/login')
@@ -258,8 +260,12 @@ export class AuthController implements SignupController, SigninController {
       operation,
       async (signal) => {
         const lifetime = { expiresInSeconds: true, throttleSeconds: true } as const
-        const signup = { authentication: { signupEmailRequest: { __args: { input: input.data }, lifetime } } } satisfies MutationGenqlSelection
-        const signin = { authentication: { signinEmailRequest: { __args: { input: input.data }, lifetime } } } satisfies MutationGenqlSelection
+        const signup = {
+          authentication: { signupEmailRequest: { __args: { input: input.data }, lifetime } },
+        } satisfies MutationGenqlSelection
+        const signin = {
+          authentication: { signinEmailRequest: { __args: { input: input.data }, lifetime } },
+        } satisfies MutationGenqlSelection
         const client = graphql(signal)
         const response =
           this.mode === 'signup'

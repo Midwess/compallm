@@ -1,5 +1,8 @@
 use super::{Organization, group, role};
-use crate::{graphql::{GraphqlContext, error::Error}, http::authentication::UserContext};
+use crate::{
+    graphql::{GraphqlContext, error::Error},
+    http::authentication::UserContext,
+};
 
 pub struct Query;
 
@@ -14,6 +17,10 @@ impl Query {
         })
     }
 
-    fn roles() -> role::query::Query { role::query::Query }
-    fn groups() -> group::query::Query { group::query::Query }
+    fn roles() -> role::query::Query {
+        role::query::Query
+    }
+    fn groups() -> group::query::Query {
+        group::query::Query
+    }
 }

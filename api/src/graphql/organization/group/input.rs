@@ -1,4 +1,6 @@
-#[derive(juniper::GraphQLInputObject, validify::Validify, compallm_validation_derive::ExportValidation)]
+#[derive(
+    juniper::GraphQLInputObject, validify::Validify, compallm_validation_derive::ExportValidation,
+)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GroupCreateInput {
     #[modify(trim)]
@@ -7,4 +9,3 @@ pub struct GroupCreateInput {
     pub description: String,
     pub role_ids: Vec<String>,
 }
-

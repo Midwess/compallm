@@ -1,5 +1,7 @@
-use juniper::{Arguments, ExecutionResult, Executor, GraphQLType, GraphQLValue, GraphQLValueAsync, Registry};
 use super::{GraphqlContext, query::Query};
+use juniper::{
+    Arguments, ExecutionResult, Executor, GraphQLType, GraphQLValue, GraphQLValueAsync, Registry,
+};
 
 pub struct RegisteredQuery;
 
@@ -55,4 +57,3 @@ impl GraphQLValueAsync for RegisteredQuery {
         Query.resolve_field_async(info, field_name, arguments, executor)
     }
 }
-

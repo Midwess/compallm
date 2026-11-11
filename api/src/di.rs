@@ -285,7 +285,12 @@ impl Di {
     }
 
     pub fn rbac_service(&'static self) -> &'static RbacService {
-        self.rbac.get_or_init(|| Box::new(RbacService::new(self.auth_service(), self.organization_repository())))
+        self.rbac.get_or_init(|| {
+            Box::new(RbacService::new(
+                self.auth_service(),
+                self.organization_repository(),
+            ))
+        })
     }
 
     pub fn organization_config_service(&'static self) -> &'static ConfigService {

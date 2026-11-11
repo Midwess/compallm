@@ -49,19 +49,25 @@ export class SettingsController implements Controller {
 
   private async loadPermissions(signal: AbortSignal, generation: number) {
     const readRoles = async () => {
-      const selection = { organization: { roles: { list: { id: true, name: true, description: true } } } } satisfies QueryGenqlSelection
+      const selection = {
+        organization: { roles: { list: { id: true, name: true, description: true } } },
+      } satisfies QueryGenqlSelection
       const { organization } = await graphql(signal).query(selection)
       return organization.roles.list.map((role) => ({ ...role, source: '', color: '' }))
     }
     const readGroups = async () => {
-      const selection = { organization: { groups: { list: { id: true, name: true, description: true } } } } satisfies QueryGenqlSelection
+      const selection = {
+        organization: { groups: { list: { id: true, name: true, description: true } } },
+      } satisfies QueryGenqlSelection
       const { organization } = await graphql(signal).query(selection)
       return organization.groups.list.map((group) => ({ ...group, roleIds: [], memberIds: [], color: '' }))
     }
     const [roles, groups] = await Promise.allSettled([readRoles(), readGroups()])
     if (signal.aborted || generation !== this.generation) return
     const failures = [roles, groups].filter((result) => result.status === 'rejected')
-    const unavailable = failures.some((result) => result.status === 'rejected' && !(result.reason instanceof ApiError && result.reason.code === 'FORBIDDEN'))
+    const unavailable = failures.some(
+      (result) => result.status === 'rejected' && !(result.reason instanceof ApiError && result.reason.code === 'FORBIDDEN'),
+    )
     this.store.setState({
       ...(roles.status === 'fulfilled' ? { roles: roles.value } : { roles: [] }),
       ...(groups.status === 'fulfilled' ? { groups: groups.value } : { groups: [] }),

@@ -1,21 +1,22 @@
-import { Button } from '../../components/buttons'
+import { Button } from '../../../components/buttons'
 import { XIcon } from '@phosphor-icons/react/dist/csr/X'
-import { ChoicePicker } from '../../components/choice-picker'
-import { TextField, SearchField } from '../../components/fields'
-import { Switch } from '../../components/selection'
-import { SectionSurface } from '../../components/surfaces'
-import { SettingsSectionTitle } from '../../components/settings'
-import { Table } from '../../components/table'
-import { useSettings, useSettingsController } from './controller'
-import { SettingsContent, Heading, Section, Rows, Row, Indicator, Empty } from './shared'
+import { ChoicePicker } from '../../../components/choice-picker'
+import { TextField, SearchField } from '../../../components/fields'
+import { Switch } from '../../../components/selection'
+import { SectionSurface } from '../../../components/surfaces'
+import { SettingsSectionTitle } from '../../../components/settings'
+import { Table } from '../../../components/table'
+import { useSettings, useSettingsController } from '../controller'
+import { useGroup, useGroupController } from './controller'
+import { SettingsContent, Heading, Section, Rows, Row, Indicator, Empty } from '../shared'
 
 function GroupMembers() {
-  const c = useSettingsController(),
-    draft = useSettings((s) => s.groupDraft),
+  const group = useGroupController(),
+    draft = useGroup((s) => s.draft),
     members = useSettings((s) => s.members),
-    query = useSettings((s) => s.filters['group-members-query'] ?? ''),
+    query = useGroup((s) => s.query),
     readonly = useSettings((s) => s.readonly),
-    busy = useSettings((s) => s.busy)
+    busy = useGroup((s) => s.busy)
   if (!draft) return null
   const entries = members.map((member) => ({ id: member.id, name: member.name, detail: member.email }))
   const selected = draft.memberIds
@@ -37,7 +38,7 @@ function GroupMembers() {
             placeholder="Search members…"
             className="[&>input]:border-border"
             value={query}
-            onChange={(event) => c.setFilter('group-members-query', event.target.value)}
+            onChange={(event) => group.setQuery(event.target.value)}
           />
         </div>
         <div
@@ -74,7 +75,7 @@ function GroupMembers() {
                         aria-label={`Include ${entry.name}`}
                         checked={selected.includes(entry.id)}
                         disabled={readonly || busy}
-                        onChange={() => c.toggleGroupMember(entry.id)}
+                        onChange={() => group.toggleGroupMember(entry.id)}
                       />
                     </Table.Cell>
                   </Table.Row>
@@ -97,10 +98,11 @@ function GroupMembers() {
 
 function GroupRoles() {
   const c = useSettingsController(),
-    draft = useSettings((s) => s.groupDraft),
+    group = useGroupController(),
+    draft = useGroup((s) => s.draft),
     roles = useSettings((s) => s.roles),
     readonly = useSettings((s) => s.readonly),
-    busy = useSettings((s) => s.busy)
+    busy = useGroup((s) => s.busy)
   if (!draft) return null
   const selected = roles.filter((role) => draft.roleIds.includes(role.id))
   const missing = draft.roleIds.filter((id) => !roles.some((role) => role.id === id))
@@ -125,7 +127,7 @@ function GroupRoles() {
           value={draft.roleIds}
           onValueChange={(next) => {
             for (const id of new Set([...draft.roleIds, ...next])) {
-              if (draft.roleIds.includes(id) !== next.includes(id)) c.toggleGroupRole(id)
+              if (draft.roleIds.includes(id) !== next.includes(id)) group.toggleGroupRole(id)
             }
           }}
         />
@@ -150,7 +152,7 @@ function GroupRoles() {
                   aria-label={`Remove ${role.name} from group`}
                   className="size-8 shrink-0 rounded-full p-0"
                   disabled={readonly || busy}
-                  onClick={() => c.toggleGroupRole(role.id)}
+                  onClick={() => group.toggleGroupRole(role.id)}
                 >
                   <XIcon size={14} aria-hidden="true" />
                 </Button>
@@ -167,9 +169,10 @@ function GroupRoles() {
 
 export function GroupEditorSettings() {
   const c = useSettingsController(),
-    draft = useSettings((s) => s.groupDraft),
+    group = useGroupController(),
+    draft = useGroup((s) => s.draft),
     readonly = useSettings((s) => s.readonly),
-    busy = useSettings((s) => s.busy)
+    busy = useGroup((s) => s.busy)
   if (!draft)
     return (
       <SettingsContent>
@@ -189,7 +192,7 @@ export function GroupEditorSettings() {
                 value={draft.name}
                 placeholder="Group name…"
                 disabled={readonly || busy}
-                onChange={(event) => c.updateGroup({ name: event.target.value })}
+                onChange={(event) => group.updateGroup({ name: event.target.value })}
               />
             </Row>
             <Row label={<label htmlFor="group-description">Description</label>} last>
@@ -199,7 +202,7 @@ export function GroupEditorSettings() {
                 value={draft.description}
                 placeholder="Describe this group…"
                 disabled={readonly || busy}
-                onChange={(event) => c.updateGroup({ description: event.target.value })}
+                onChange={(event) => group.updateGroup({ description: event.target.value })}
               />
             </Row>
           </Rows>
@@ -213,7 +216,7 @@ export function GroupEditorSettings() {
               className="w-32 rounded-md"
               loading={busy}
               disabled={!draft.name.trim()}
-              onClick={() => c.saveGroup()}
+              onClick={() => group.saveGroup()}
             >
               Create group
             </Button>

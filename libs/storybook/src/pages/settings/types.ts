@@ -1,4 +1,6 @@
 import type { StoreApi } from 'zustand/vanilla'
+import type { RoleController } from './role/controller'
+import type { GroupController } from './group/controller'
 
 export type SettingsDestination =
   | 'general'
@@ -166,8 +168,6 @@ export interface SettingsState {
   models: string[]
   groups: SettingsGroup[]
   members: SettingsMember[]
-  roleDraft: RoleDraft | null
-  groupDraft: GroupDraft | null
   passkeys: SettingsCredential[]
   applications: SettingsApplication[]
   apiKeys: SettingsApiKey[]
@@ -187,6 +187,8 @@ export interface SettingsState {
 }
 export interface SettingsController {
   store: StoreApi<SettingsState>
+  role: RoleController
+  group: GroupController
   navigate(page: SettingsDestination, id?: string): void
   setQuery(value: string): void
   setNavigationQuery(value: string): void
@@ -200,19 +202,6 @@ export interface SettingsController {
   updateDialog(value: Partial<SettingsDialog>): void
   closeDialog(): void
   confirmDialog(): void
-  updateRole(value: Partial<Pick<RoleDraft, 'name' | 'description'>>): void
-  setPolicyMode(mode: RoleDraft['mode']): void
-  setPolicySource(source: string): void
-  togglePolicyAction(action: string): void
-  setPolicyActions(actions: string[], enabled: boolean): void
-  formatPolicy(): void
-  saveRole(): void
-  resetRole(): void
-  updateGroup(value: Partial<Pick<GroupDraft, 'name' | 'description'>>): void
-  toggleGroupMember(id: string): void
-  toggleGroupRole(id: string): void
-  saveGroup(): void
-  resetGroup(): void
   toggleMemberRole(memberId: string, roleId: string): void
   copy(value: string): void
   signOut(): void

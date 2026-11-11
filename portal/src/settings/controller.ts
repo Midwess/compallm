@@ -6,6 +6,8 @@ import {
 import type { UrlController, AuthController } from '@compallm/storybook'
 import { notify } from '../notifications/toast'
 import { codeExamples } from './code-examples'
+import { RoleController } from './role/controller'
+import { GroupController } from './group/controller'
 import { ApiError, graphql } from '../graphql-client'
 import type { QueryGenqlSelection } from '@compallm/contract/graphql'
 
@@ -30,6 +32,8 @@ export const settingsPages = [
 
 export class SettingsController implements Controller {
   readonly store = createSettingsStore({ readonly: true, codeExamples })
+  readonly role = new RoleController()
+  readonly group = new GroupController()
   private readonly url: Pick<UrlController, 'navigate'>
   private readonly auth: Pick<AuthController, 'signOut'>
   private readonly base: string
@@ -90,27 +94,9 @@ export class SettingsController implements Controller {
   }
 
   setPage = (page: SettingsDestination) => {
-    this.store.setState((state) => ({
-      location: { page },
-      ...(page === 'new-role' && !state.roleDraft
-        ? {
-            roleDraft: {
-              id: null,
-              name: '',
-              description: '',
-              source: '',
-              mode: 'visual',
-              projection: [],
-              diagnostics: [],
-              parsing: false,
-              builtin: false,
-            },
-          }
-        : {}),
-      ...(page === 'new-group' && !state.groupDraft
-        ? { groupDraft: { id: null, name: '', description: '', memberIds: [], roleIds: [] } }
-        : {}),
-    }))
+    this.store.setState({ location: { page } })
+    if (page === 'new-role') this.role.open()
+    if (page === 'new-group') this.group.open()
   }
   navigate = (page: SettingsDestination) => {
     if (settingsPages.some((entry) => entry === page)) this.url.navigate(`${this.base}/settings/${page}`)
@@ -136,19 +122,6 @@ export class SettingsController implements Controller {
   updateDialog = this.unavailable
   closeDialog = () => this.store.setState({ dialog: null })
   confirmDialog = this.unavailable
-  updateRole = this.unavailable
-  setPolicyMode = this.unavailable
-  setPolicySource = this.unavailable
-  togglePolicyAction = this.unavailable
-  setPolicyActions = this.unavailable
-  formatPolicy = this.unavailable
-  saveRole = this.unavailable
-  resetRole = this.unavailable
-  updateGroup = this.unavailable
-  toggleGroupMember = this.unavailable
-  toggleGroupRole = this.unavailable
-  saveGroup = this.unavailable
-  resetGroup = this.unavailable
   toggleMemberRole = this.unavailable
   copy = this.unavailable
   signOut = () => {

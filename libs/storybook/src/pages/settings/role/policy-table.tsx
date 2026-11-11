@@ -1,21 +1,22 @@
 import { useId, useState } from 'react'
 import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
 import { FunnelIcon } from '@phosphor-icons/react/dist/csr/Funnel'
-import { Button } from '../../components/buttons'
-import { SearchField } from '../../components/fields'
-import { Popup } from '../../components/popup'
-import { Switch } from '../../components/selection'
-import { SectionSurface } from '../../components/surfaces'
-import { Table } from '../../components/table'
-import { useSettings, useSettingsController } from './controller'
-import type { PolicyProjection, SettingsPolicyAction } from './types'
+import { Button } from '../../../components/buttons'
+import { SearchField } from '../../../components/fields'
+import { Popup } from '../../../components/popup'
+import { Switch } from '../../../components/selection'
+import { SectionSurface } from '../../../components/surfaces'
+import { Table } from '../../../components/table'
+import { useSettings } from '../controller'
+import { useRole, useRoleController } from './controller'
+import type { PolicyProjection, SettingsPolicyAction } from '../types'
 
 const defaultExpanded = ['Models', 'Providers', 'Usage & limits']
 const accessLevels = ['Read', 'Use', 'Write', 'Admin', 'Sensitive']
 
 function PolicyFilters({ categories }: { categories: string[] }) {
-  const c = useSettingsController(),
-    filters = useSettings((s) => s.filters)
+  const c = useRoleController(),
+    filters = useRole((s) => s.filters)
   const options = (key: string, values: { value: string; label: string }[]) =>
     values.map(({ value, label }) => (
       <Popup.Item
@@ -78,7 +79,7 @@ function PermissionRow({
   statements: PolicyProjection[]
   disabled: boolean
 }) {
-  const c = useSettingsController()
+  const c = useRoleController()
   const advanced = statements.some((p) => !p.editable || p.advanced)
   return (
     <Table.Row id={id} className="[&>td]:border-b [&>td]:border-divider">
@@ -108,13 +109,13 @@ function PermissionRow({
 }
 
 export function PolicyTable() {
-  const c = useSettingsController(),
+  const c = useRoleController(),
     actions = useSettings((s) => s.policyActions),
-    draft = useSettings((s) => s.roleDraft),
-    query = useSettings((s) => s.query),
-    filters = useSettings((s) => s.filters),
+    draft = useRole((s) => s.draft),
+    query = useRole((s) => s.query),
+    filters = useRole((s) => s.filters),
     readonly = useSettings((s) => s.readonly),
-    busy = useSettings((s) => s.busy)
+    busy = useRole((s) => s.busy)
   const [disclosure, setDisclosure] = useState<Record<string, boolean>>({})
   const id = useId()
   if (!draft) return null

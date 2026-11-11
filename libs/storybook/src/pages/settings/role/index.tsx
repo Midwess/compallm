@@ -1,19 +1,20 @@
 import { motion } from 'motion/react'
-import { animation, useTransition } from '../../components/motion'
-import { Button } from '../../components/buttons'
-import { TextField } from '../../components/fields'
-import { CodeEditor } from '../../components/code-block'
-import { SectionSurface } from '../../components/surfaces'
-import { SettingsSectionTitle } from '../../components/settings'
-import { useSettings, useSettingsController, useCodeAppearance } from './controller'
+import { animation, useTransition } from '../../../components/motion'
+import { Button } from '../../../components/buttons'
+import { TextField } from '../../../components/fields'
+import { CodeEditor } from '../../../components/code-block'
+import { SectionSurface } from '../../../components/surfaces'
+import { SettingsSectionTitle } from '../../../components/settings'
+import { useSettings, useSettingsController, useCodeAppearance } from '../controller'
+import { useRole, useRoleController } from './controller'
 import { PolicyTable } from './policy-table'
-import { SettingsContent, Heading, Section, Rows, Row, Empty } from './shared'
+import { SettingsContent, Heading, Section, Rows, Row, Empty } from '../shared'
 
 function EditingMode() {
   const timing = useTransition('panel')
-  const c = useSettingsController(),
-    mode = useSettings((s) => s.roleDraft?.mode),
-    invalid = useSettings((s) => Boolean(s.roleDraft?.parsing || s.roleDraft?.diagnostics.length))
+  const c = useRoleController(),
+    mode = useRole((s) => s.draft?.mode),
+    invalid = useRole((s) => Boolean(s.draft?.parsing || s.draft?.diagnostics.length))
   return (
     <div
       role="group"
@@ -45,8 +46,9 @@ rounded-full bg-elevated shadow-control"
 }
 
 function CedarEditor({ locked }: { locked: boolean }) {
-  const c = useSettingsController(),
-    draft = useSettings((s) => s.roleDraft)
+  const c = useRoleController(),
+    shared = useSettingsController(),
+    draft = useRole((s) => s.draft)
   const appearance = useCodeAppearance()
   if (!draft) return null
   const invalid = draft.parsing || draft.diagnostics.length > 0
@@ -61,7 +63,7 @@ function CedarEditor({ locked }: { locked: boolean }) {
             <Button variant="ghost" className="h-6 px-2 text-xs" disabled={invalid || locked} onClick={() => c.formatPolicy()}>
               Format
             </Button>
-            <Button variant="ghost" className="h-6 px-2 text-xs" onClick={() => c.copy(draft.source)}>
+            <Button variant="ghost" className="h-6 px-2 text-xs" onClick={() => shared.copy(draft.source)}>
               Copy
             </Button>
           </>
@@ -77,10 +79,11 @@ function CedarEditor({ locked }: { locked: boolean }) {
 
 export function RoleEditorSettings() {
   const timing = useTransition('panel')
-  const c = useSettingsController(),
-    draft = useSettings((s) => s.roleDraft),
+  const c = useRoleController(),
+    shared = useSettingsController(),
+    draft = useRole((s) => s.draft),
     readonly = useSettings((s) => s.readonly),
-    busy = useSettings((s) => s.busy)
+    busy = useRole((s) => s.busy)
   if (!draft)
     return (
       <SettingsContent>
@@ -210,7 +213,7 @@ export function RoleEditorSettings() {
                   variant="ghost"
                   className="text-error"
                   disabled={busy}
-                  onClick={() => c.openDialog('delete-role', draft.id!)}
+                  onClick={() => shared.openDialog('delete-role', draft.id!)}
                 >
                   Delete role
                 </Button>

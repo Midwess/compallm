@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { SettingsControllerContext } from '../../../src/context'
 import { SettingsPage } from '../../../src/pages/settings'
-import type { SettingsState, SettingsDestination } from '../../../src/pages/settings'
+import type { SettingsState, SettingsDestination, RoleDraft, GroupDraft } from '../../../src/pages/settings'
 import { DemoSettingsController } from './demo-controller'
 import { advancedSource, modelOperatorSource } from './fixtures'
 
@@ -14,7 +14,7 @@ function Demo({
 }: {
   page?: SettingsDestination
   id?: string
-  initial?: Partial<SettingsState>
+  initial?: Partial<SettingsState> & { roleDraft?: RoleDraft | null; groupDraft?: GroupDraft | null }
   failure?: boolean | 'conflict'
 }) {
   const [controller] = useState(() => new DemoSettingsController({ location: { page, id }, ...initial }, failure))

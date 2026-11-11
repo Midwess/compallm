@@ -48,8 +48,6 @@ export function createSettingsStore(initial: Partial<SettingsState> = {}) {
     models: [],
     groups: [],
     members: [],
-    roleDraft: null,
-    groupDraft: null,
     passkeys: [],
     applications: [],
     apiKeys: [],

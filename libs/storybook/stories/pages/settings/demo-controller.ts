@@ -7,43 +7,54 @@ import type {
   SettingsDialog,
 } from '../../../src/pages/settings'
 import type { GroupDraft, RoleDraft } from '../../../src/pages/settings'
-import { initialSettings, actionSource } from './fixtures'
-import { cedar, project } from './cedar'
+import { initialSettings } from './fixtures'
+import { DemoRoleController } from './role/demo-controller'
+import { DemoGroupController } from './group/demo-controller'
 
-const colors = ['#A49ADA', '#6EB8A8', '#D7A466', '#8CAFD1']
 export class DemoSettingsController implements SettingsController {
   store = createSettingsStore(structuredClone(initialSettings))
   private timers = new Set<ReturnType<typeof setTimeout>>()
   private urls: string[] = []
-  private revision = 0
-  private parseTimer: ReturnType<typeof setTimeout> | undefined
   private verificationTimer: ReturnType<typeof setTimeout> | undefined
   private closed = false
+  readonly role: DemoRoleController
+  readonly group: DemoGroupController
   constructor(
-    initial: Partial<SettingsState> = {},
+    initial: Partial<SettingsState> & { roleDraft?: RoleDraft | null; groupDraft?: GroupDraft | null } = {},
     private failWrites: boolean | 'conflict' = false,
   ) {
-    this.store.setState(structuredClone(initial))
+    const { roleDraft, groupDraft, ...shared } = initial
+    this.store.setState(structuredClone(shared))
+    this.role = new DemoRoleController(this, failWrites)
+    this.group = new DemoGroupController(this, failWrites)
     const location = this.store.getState().location
     this.navigate(location.page, location.id)
-    if (initial.roleDraft) this.store.setState({ roleDraft: structuredClone(initial.roleDraft) })
-    if (initial.groupDraft) this.store.setState({ groupDraft: structuredClone(initial.groupDraft) })
-    if (initial.filters) this.store.setState({ filters: structuredClone(initial.filters) })
-    if (initial.query !== undefined) this.store.setState({ query: initial.query })
+    if (roleDraft) this.role.store.setState({ draft: structuredClone(roleDraft) })
+    if (groupDraft) this.group.store.setState({ draft: structuredClone(groupDraft) })
+    if (initial.filters) {
+      this.store.setState({ filters: structuredClone(initial.filters) })
+      this.role.store.setState({ filters: structuredClone(initial.filters) })
+      this.group.store.setState({ query: initial.filters['group-members-query'] ?? '' })
+    }
+    if (initial.query !== undefined) {
+      this.store.setState({ query: initial.query })
+      this.role.store.setState({ query: initial.query })
+    }
     if (initial.dialog) this.store.setState({ dialog: initial.dialog })
   }
   start = () => {
     this.closed = false
-    const draft = this.store.getState().roleDraft
-    if (draft?.source) this.setPolicySource(draft.source)
+    this.role.start()
+    this.group.start()
   }
   stop = () => {
     this.closed = true
-    this.revision++
+    this.role.stop()
+    this.group.stop()
     this.timers.forEach(clearTimeout)
     this.urls.forEach(URL.revokeObjectURL)
   }
-  private report(notice: string) {
+  report(notice: string) {
     this.store.setState({ notice, error: null })
   }
   private commit(operation: () => void) {
@@ -68,45 +79,11 @@ export class DemoSettingsController implements SettingsController {
     this.timers.add(timer)
   }
   navigate = (page: SettingsDestination, id?: string) => {
-    this.revision++
-    const s = this.store.getState()
+    this.role.cancel()
     this.store.setState({ location: { page, id }, query: '', filters: {}, error: null, dialog: null })
     if (page === 'new-role' || page === 'new-group') this.store.setState({ navigationQuery: '' })
-    if (page === 'role' || page === 'new-role') {
-      const role = page === 'role' ? s.roles.find((r) => r.id === id) : null
-      if (role && s.roleDraft?.id === role.id) {
-        this.setPolicySource(s.roleDraft.source)
-        return
-      }
-      const draft: RoleDraft = {
-        id: role?.id ?? null,
-        name: role?.name ?? '',
-        description: role?.description ?? '',
-        source: role?.source ?? '',
-        mode: 'visual',
-        projection: [],
-        diagnostics: [],
-        parsing: false,
-        builtin: role?.builtin ?? false,
-      }
-      this.store.setState({ roleDraft: draft })
-      if (draft.source) this.setPolicySource(draft.source)
-    }
-    if (page === 'group' || page === 'new-group') {
-      const group = page === 'group' ? s.groups.find((g) => g.id === id) : null
-      if (group && s.groupDraft?.id === group.id) return
-      this.store.setState({
-        groupDraft: group
-          ? {
-              id: group.id,
-              name: group.name,
-              description: group.description,
-              memberIds: [...group.memberIds],
-              roleIds: [...group.roleIds],
-            }
-          : { id: null, name: '', description: '', memberIds: [], roleIds: [] },
-      })
-    }
+    if (page === 'role' || page === 'new-role') this.role.open(page === 'role' ? id : undefined)
+    if (page === 'group' || page === 'new-group') this.group.open(page === 'group' ? id : undefined)
   }
   setQuery = (query: string) => this.store.setState({ query })
   setNavigationQuery = (navigationQuery: string) => this.store.setState({ navigationQuery })
@@ -188,9 +165,10 @@ export class DemoSettingsController implements SettingsController {
         this.store.setState((p) => ({
           members: p.members.filter((m) => m.id !== id),
           groups: p.groups.map((g) => ({ ...g, memberIds: g.memberIds.filter((member) => member !== id) })),
-          groupDraft: p.groupDraft
-            ? { ...p.groupDraft, memberIds: p.groupDraft.memberIds.filter((member) => member !== id) }
-            : null,
+        }))
+      if (d.kind === 'remove-member')
+        this.group.store.setState((s) => ({
+          draft: s.draft ? { ...s.draft, memberIds: s.draft.memberIds.filter((member) => member !== id) } : null,
         }))
       if (d.kind === 'remove-passkey') this.store.setState((p) => ({ passkeys: p.passkeys.filter((key) => key.id !== id) }))
       if (d.kind === 'application')
@@ -198,22 +176,22 @@ export class DemoSettingsController implements SettingsController {
       if (d.kind === 'revoke-key') this.store.setState((p) => ({ apiKeys: p.apiKeys.filter((key) => key.id !== id) }))
       if (d.kind === 'revoke-sessions') this.store.setState({ hasOtherSessions: false })
       if (d.kind === 'delete-role') {
+        this.role.store.setState({ draft: null })
+        this.group.store.setState({ draft: null })
         this.store.setState((p) => ({
           roles: p.roles.filter((r) => r.id !== id),
-          roleDraft: null,
-          groupDraft: null,
           groups: p.groups.map((g) => ({ ...g, roleIds: g.roleIds.filter((role) => role !== id) })),
           members: p.members.map((m) => ({ ...m, roleIds: m.roleIds.filter((role) => role !== id) })),
           location: { page: 'general' },
         }))
       }
+      if (d.kind === 'delete-group') this.group.store.setState({ draft: null })
       if (d.kind === 'delete-group')
         this.store.setState((p) => ({
           groups: p.groups.filter((g) => g.id !== id),
-          groupDraft: null,
           location: { page: 'general' },
         }))
-      if (d.kind === 'remove-group-member') this.toggleGroupMember(id!)
+      if (d.kind === 'remove-group-member') this.group.toggleGroupMember(id!)
       if (d.kind === 'organization-limit') this.store.setState({ organizationLimitUsd: d.value || null })
       if (d.kind === 'member-limit')
         this.store.setState((p) =>
@@ -228,160 +206,6 @@ export class DemoSettingsController implements SettingsController {
       const destructive = ['delete-account', 'delete-organization'].includes(d.kind)
       this.report(destructive ? 'Deletion requested' : 'Changes applied')
     })
-  }
-  updateRole = (value: Partial<Pick<RoleDraft, 'name' | 'description'>>) =>
-    this.store.setState((s) => ({ roleDraft: s.roleDraft ? { ...s.roleDraft, ...value } : null }))
-  setPolicyMode = (mode: RoleDraft['mode']) =>
-    this.store.setState((s) => ({
-      roleDraft:
-        s.roleDraft && !(mode === 'visual' && (s.roleDraft.parsing || s.roleDraft.diagnostics.length))
-          ? { ...s.roleDraft, mode }
-          : s.roleDraft,
-    }))
-  setPolicySource = (source: string) => {
-    const revision = ++this.revision
-    this.store.setState((s) => ({ roleDraft: s.roleDraft ? { ...s.roleDraft, source, parsing: true } : null }))
-    if (this.parseTimer) {
-      clearTimeout(this.parseTimer)
-      this.timers.delete(this.parseTimer)
-    }
-    const timer = setTimeout(() => {
-      this.timers.delete(timer)
-      void project(source)
-        .then((result) => {
-          if (this.closed || revision !== this.revision) return
-          this.store.setState((s) => ({
-            roleDraft: s.roleDraft
-              ? {
-                  ...s.roleDraft,
-                  source,
-                  parsing: false,
-                  diagnostics: result.diagnostics,
-                  projection: result.diagnostics.length ? s.roleDraft.projection : result.projection,
-                }
-              : null,
-          }))
-        })
-        .catch(() => {
-          if (this.closed || revision !== this.revision) return
-          this.store.setState((s) => ({
-            roleDraft: s.roleDraft
-              ? { ...s.roleDraft, parsing: false, diagnostics: ['Policy parser is unavailable. Your draft is retained.'] }
-              : null,
-          }))
-        })
-    }, 150)
-    this.parseTimer = timer
-    this.timers.add(timer)
-  }
-  togglePolicyAction = (action: string) => {
-    const draft = this.store.getState().roleDraft
-    this.setPolicyActions([action], !draft?.projection.some((p) => p.action === action))
-  }
-  setPolicyActions = (actions: string[], enabled: boolean) => {
-    const state = this.store.getState(),
-      draft = state.roleDraft
-    if (!draft || draft.parsing || draft.diagnostics.length || draft.builtin || state.readonly || state.busy) return
-    const allowed = new Set(state.policyActions.map((a) => a.id))
-    let source = draft.source
-    for (const action of new Set(actions)) {
-      if (!allowed.has(action)) continue
-      const present = draft.projection.filter((p) => p.action === action)
-      if (present.some((p) => !p.editable)) continue
-      if (!enabled) {
-        for (const p of present) source = source.replace(p.source, '')
-      } else if (!present.length) source += `${source ? '\n\n' : ''}${actionSource(action)}`
-    }
-    if (source !== draft.source) this.setPolicySource(source)
-  }
-  formatPolicy = () => {
-    const draft = this.store.getState().roleDraft
-    if (!draft || draft.parsing || draft.diagnostics.length) return
-    const source = draft.source
-    void cedar().then((c) => {
-      if (this.closed || this.store.getState().roleDraft?.source !== source) return
-      const result = c.formatPolicies({ policyText: source, lineWidth: 80, indentWidth: 2 })
-      if (result.type === 'success') this.setPolicySource(result.formatted_policy)
-    })
-  }
-  saveRole = () => {
-    const d = this.store.getState().roleDraft
-    if (!d || !d.name.trim() || !d.source.trim() || d.parsing || d.diagnostics.length || d.builtin) return
-    this.commit(() => {
-      const id = d.id ?? crypto.randomUUID(),
-        roles = this.store.getState().roles
-      const role = {
-        id,
-        name: d.name.trim(),
-        description: d.description,
-        source: d.source,
-        color: roles.find((r) => r.id === id)?.color ?? colors[roles.length % colors.length],
-      }
-      this.store.setState({
-        roles: roles.some((r) => r.id === id) ? roles.map((r) => (r.id === id ? role : r)) : [...roles, role],
-        roleDraft: { ...d, id },
-        location: { page: 'role', id },
-      })
-      this.report(d.id ? 'Role saved' : 'Role created')
-    })
-  }
-  resetRole = () => {
-    const d = this.store.getState().roleDraft
-    this.store.setState({ roleDraft: null })
-    this.navigate(d?.id ? 'role' : 'general', d?.id ?? undefined)
-  }
-  updateGroup = (value: Partial<Pick<GroupDraft, 'name' | 'description'>>) =>
-    this.store.setState((s) => ({ groupDraft: s.groupDraft ? { ...s.groupDraft, ...value } : null }))
-  toggleGroupMember = (id: string) => {
-    if (this.store.getState().readonly || this.store.getState().busy) return
-    this.store.setState((s) => ({
-      groupDraft: s.groupDraft
-        ? {
-            ...s.groupDraft,
-            memberIds: s.groupDraft.memberIds.includes(id)
-              ? s.groupDraft.memberIds.filter((value) => value !== id)
-              : [...s.groupDraft.memberIds, id],
-          }
-        : null,
-    }))
-  }
-  toggleGroupRole = (id: string) => {
-    if (this.store.getState().readonly || this.store.getState().busy) return
-    this.store.setState((s) => ({
-      groupDraft: s.groupDraft
-        ? {
-            ...s.groupDraft,
-            roleIds: s.groupDraft.roleIds.includes(id)
-              ? s.groupDraft.roleIds.filter((value) => value !== id)
-              : [...s.groupDraft.roleIds, id],
-          }
-        : null,
-    }))
-  }
-  saveGroup = () => {
-    const d = this.store.getState().groupDraft
-    if (!d?.name.trim()) return
-    this.commit(() => {
-      const id = d.id ?? crypto.randomUUID(),
-        groups = this.store.getState().groups
-      const group = {
-        ...d,
-        id,
-        name: d.name.trim(),
-        color: groups.find((g) => g.id === id)?.color ?? colors[groups.length % colors.length],
-      }
-      this.store.setState({
-        groups: groups.some((g) => g.id === id) ? groups.map((g) => (g.id === id ? group : g)) : [...groups, group],
-        groupDraft: { ...d, id },
-        location: { page: 'group', id },
-      })
-      this.report(d.id ? 'Group saved' : 'Group created')
-    })
-  }
-  resetGroup = () => {
-    const draft = this.store.getState().groupDraft
-    this.store.setState({ groupDraft: null })
-    this.navigate(draft?.id ? 'group' : 'general', draft?.id ?? undefined)
   }
   toggleMemberRole = (memberId: string, roleId: string) => {
     if (this.store.getState().readonly) return

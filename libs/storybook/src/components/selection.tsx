@@ -130,10 +130,10 @@ export function ChoiceCard({
     <animated.label
       className={cx(
         `
-  flex min-h-15.5 w-75 max-w-full cursor-pointer items-center gap-1.5 rounded-[8px] border
+  flex min-h-15.5 w-75 max-w-full cursor-pointer items-center gap-1.5 rounded-lg border
   border-border bg-inset px-1.5 py-1.5 has-checked:border-primary
   has-checked:bg-[color-mix(in_srgb,var(--color-primary)_14%,var(--color-inset))]
-  has-disabled:cursor-not-allowed has-disabled:opacity-50 [&_strong]:text-[13px] [&_strong]:font-medium
+  has-disabled:cursor-not-allowed has-disabled:opacity-50 [&_strong]:text-xsm [&_strong]:font-medium
   [&>span>span]:block
 `,
         className,
@@ -142,14 +142,14 @@ export function ChoiceCard({
       <Radio {...props} />
       <span>
         <strong>{children}</strong>
-        {description ? <span className="text-[12px] leading-[18px] text-muted">{description}</span> : null}
+        {description ? <span className="text-[12px] leading-4.5 text-muted">{description}</span> : null}
       </span>
     </animated.label>
   )
 }
 export function CheckboxOption({ children, className, ...props }: CheckboxProps & { children: ReactNode }) {
   return (
-    <animated.label className={cx('inline-flex min-h-6 cursor-pointer items-center gap-0.5 text-[13px]', className)}>
+    <animated.label className={cx('inline-flex min-h-6 cursor-pointer items-center gap-0.5 text-xsm', className)}>
       <Checkbox {...props} />
       <span>{children}</span>
     </animated.label>

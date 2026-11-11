@@ -57,7 +57,7 @@ export function ChoicePicker({
         <Combobox.Positioner sideOffset={6} align="end" collisionPadding={8} className="z-50 outline-none">
           <Combobox.Popup
             render={<overlay.div />}
-            className="flex max-h-[var(--available-height)] w-72 max-w-[calc(100vw-1rem)] flex-col overflow-hidden
+            className="flex max-h-(--available-height) w-2xs max-w-[calc(100vw-1rem)] flex-col overflow-hidden
 rounded-lg border border-border bg-menu font-sans text-text shadow-menu"
           >
             <div className="p-2 pb-0">
@@ -77,7 +77,7 @@ rounded-lg border border-border bg-menu font-sans text-text shadow-menu"
                   key={option.id}
                   value={option}
                   disabled={option.disabled}
-                  className="flex min-h-9 cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left text-[13px]
+                  className="flex min-h-9 cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left text-xsm
 outline-none data-highlighted:bg-elevated data-disabled:cursor-not-allowed data-disabled:opacity-50"
                 >
                   {option.color ? (

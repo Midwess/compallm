@@ -86,7 +86,7 @@ function Content({ className, role = 'dialog', ...props }: DialogHTMLAttributes<
 }
 function AlertContent(props: DialogHTMLAttributes<HTMLDialogElement>) {
   const { descriptionId } = useDialog()
-  return <Content {...props} role="alertdialog" aria-describedby={descriptionId} className={cx('w-96', props.className)} />
+  return <Content {...props} role="alertdialog" aria-describedby={descriptionId} className={cx('w-sm', props.className)} />
 }
 function Header({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (

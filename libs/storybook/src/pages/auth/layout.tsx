@@ -20,7 +20,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
       >
         <div
           className={`
-  absolute top-8 left-8 flex items-center gap-4 text-[22px] leading-[32px] font-medium
+  absolute top-8 left-8 flex items-center gap-4 text-[22px] leading-8 font-medium
   [&>svg]:text-focus
 `}
         >
@@ -30,8 +30,8 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         <div
           className={`
   z-1 w-full max-w-185 text-center [&>h2]:m-0 [&>h2]:text-[clamp(32px,3.34vw,48px)]
-  [&>h2]:leading-[1.25] [&>h2]:font-medium [&>h2]:tracking-[-1.2px] [&>p]:mt-4
-  [&>p]:text-[clamp(16px,1.4vw,20px)] [&>p]:leading-[32px] [&>p]:text-muted
+  [&>h2]:leading-tight [&>h2]:font-medium [&>h2]:tracking-[-1.2px] [&>p]:mt-4
+  [&>p]:text-[clamp(16px,1.4vw,20px)] [&>p]:leading-8 [&>p]:text-muted
 `}
         >
           <SparkleIcon className="mx-auto mb-8 block text-focus" size={49} aria-hidden="true" />
@@ -56,7 +56,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
       >
         <div
           className={`
-  hidden items-center gap-4 text-[22px] leading-[32px] font-medium max-[800px]:absolute
+  hidden items-center gap-4 text-[22px] leading-8 font-medium max-[800px]:absolute
   max-[800px]:top-4 max-[800px]:left-4 max-[800px]:flex [&>svg]:text-focus
 `}
         >

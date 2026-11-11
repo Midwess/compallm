@@ -47,7 +47,7 @@ function GroupMembers() {
           className="mx-4 min-w-0 overflow-x-auto outline-offset-2 focus-visible:outline-2 focus-visible:outline-focus"
         >
           <Table className="overflow-visible">
-            <Table.Content aria-label="Select group members" className="min-w-112">
+            <Table.Content aria-label="Select group members" className="min-w-md">
               <colgroup>
                 <col className="w-[42%]" />
                 <col />
@@ -64,7 +64,7 @@ function GroupMembers() {
                 {visible.map((entry) => (
                   <Table.Row key={entry.id}>
                     <Table.Cell className="px-0 pr-3">
-                      <span className="flex items-center gap-2 truncate text-[13px] leading-[18px]">{entry.name}</span>
+                      <span className="flex items-center gap-2 truncate text-xsm leading-4.5">{entry.name}</span>
                     </Table.Cell>
                     <Table.Cell className="truncate px-0 pr-3 text-xs text-muted" title={entry.detail}>
                       {entry.detail}
@@ -142,7 +142,7 @@ function GroupRoles() {
               <li key={role.id} className="flex min-w-0 items-center gap-3 border-b border-divider px-4 py-2 last:border-0">
                 <Indicator color={role.color} />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px]">{role.name}</div>
+                  <div className="truncate text-xsm">{role.name}</div>
                   {role.description ? <div className="truncate text-xs text-muted">{role.description}</div> : null}
                 </div>
                 <Button
@@ -181,11 +181,11 @@ export function GroupEditorSettings() {
       <Heading className="mb-8 shrink-0">{draft.id ? draft.name : 'New group'}</Heading>
       <div className="flex min-w-0 flex-col gap-6">
         <Section title="Group details" className="shrink-0">
-          <Rows className="[&_[role=separator]]:bg-border">
+          <Rows className="**:[[role=separator]]:bg-border">
             <Row label={<label htmlFor="group-name">Name</label>}>
               <TextField
                 id="group-name"
-                className="w-144 max-w-full border-border max-lg:w-96"
+                className="w-xl max-w-full border-border max-lg:w-sm"
                 value={draft.name}
                 placeholder="Group name…"
                 disabled={readonly || busy}
@@ -195,7 +195,7 @@ export function GroupEditorSettings() {
             <Row label={<label htmlFor="group-description">Description</label>} last>
               <TextField
                 id="group-description"
-                className="w-144 max-w-full border-border max-lg:w-96"
+                className="w-xl max-w-full border-border max-lg:w-sm"
                 value={draft.description}
                 placeholder="Describe this group…"
                 disabled={readonly || busy}

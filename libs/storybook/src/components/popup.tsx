@@ -143,7 +143,7 @@ function Separator() {
 function CheckboxItem({ children, className, ...props }: CheckboxProps & { children: ReactNode }) {
   return (
     <animated.label
-      className={cx('flex min-h-9 cursor-pointer items-center gap-3 rounded px-2 text-[13px] hover:bg-border', className)}
+      className={cx('flex min-h-9 cursor-pointer items-center gap-3 rounded px-2 text-xsm hover:bg-border', className)}
     >
       <Checkbox {...props} role="menuitemcheckbox" />
       {children}

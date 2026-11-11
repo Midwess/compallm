@@ -16,7 +16,7 @@ export function BreadcrumbTrail({ items, label = 'Breadcrumb' }: { items: Breadc
     <nav aria-label={label}>
       <ol
         className={`
-  flex list-none items-center gap-1.5 p-0 text-[13px] [&>li]:flex [&>li]:min-w-0 [&>li]:items-center
+  flex list-none items-center gap-1.5 p-0 text-xsm [&>li]:flex [&>li]:min-w-0 [&>li]:items-center
   [&>li]:gap-1.5 [&_a]:text-muted [&_a]:focus-visible:outline-2 [&_a]:focus-visible:outline-offset-2
   [&_a]:focus-visible:outline-focus
 `}
@@ -41,7 +41,7 @@ export function BackBreadcrumb({ href, children }: { href: string; children: Rea
   return (
     <animated.a
       className={`
-  inline-flex min-h-7 items-center gap-1 text-[13px] focus-visible:outline-2
+  inline-flex min-h-7 items-center gap-1 text-xsm focus-visible:outline-2
   focus-visible:outline-offset-2 focus-visible:outline-focus
 `}
       href={href}
@@ -114,7 +114,7 @@ export function DragHandle({
   ...props
 }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> & { label: string }) {
   return (
-    <ToolbarAction {...props} label={label} className={cx('w-6 cursor-grab rounded-[6px] active:cursor-grabbing', className)}>
+    <ToolbarAction {...props} label={label} className={cx('w-6 cursor-grab rounded-md active:cursor-grabbing', className)}>
       <DotsSixVerticalIcon size={14} aria-hidden="true" />
     </ToolbarAction>
   )

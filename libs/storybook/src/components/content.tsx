@@ -15,8 +15,8 @@ export function SectionHeading({
   return (
     <div {...props} className={cx('flex min-w-0 items-center justify-between gap-1.5', className)}>
       <div className="min-w-0">
-        <h2 className="text-[15px] leading-[23px] font-medium">{children}</h2>
-        {description ? <p className="mt-0.5 text-[13px] leading-5 text-muted">{description}</p> : null}
+        <h2 className="text-[15px] leading-5.75 font-medium">{children}</h2>
+        {description ? <p className="mt-0.5 text-xsm leading-5 text-muted">{description}</p> : null}
       </div>
       {action}
     </div>
@@ -39,14 +39,14 @@ export function SettingsRow({
       className={cx(
         `
   flex min-h-16.5 items-center gap-1.5 bg-inset p-2 max-[480px]:flex-wrap
-  [&>div:first-child]:min-w-0 [&>div:first-child]:flex-1 [&_strong]:text-[13px] [&_strong]:font-medium
+  [&>div:first-child]:min-w-0 [&>div:first-child]:flex-1 [&_strong]:text-xsm [&_strong]:font-medium
 `,
         className,
       )}
     >
       <div>
         <strong className="block leading-4">{label}</strong>
-        {description ? <p className="mt-0.5 text-[12px] leading-[15px] text-muted">{description}</p> : null}
+        {description ? <p className="mt-0.5 text-[12px] leading-3.75 text-muted">{description}</p> : null}
       </div>
       {children}
     </div>
@@ -63,7 +63,7 @@ export function Avatar({ name, src, size = 40 }: { name: string; src?: string; s
   return (
     <span
       className={`
-  inline-flex flex-none items-center justify-center overflow-hidden rounded-full bg-elevated text-[13px]
+  inline-flex flex-none items-center justify-center overflow-hidden rounded-full bg-elevated text-xsm
   size-(--avatar-size) font-medium [&>img]:size-full [&>img]:object-cover
 `}
       style={{ '--avatar-size': `${size}px` } as CSSProperties}
@@ -81,7 +81,7 @@ export function Badge({ tone = 'neutral', className, ...props }: HTMLAttributes<
       {...props}
       className={cx(
         `
-  inline-flex min-h-6 items-center justify-center gap-1 rounded-[6px] bg-elevated px-1
+  inline-flex min-h-6 items-center justify-center gap-1 rounded-md bg-elevated px-1
   py-0 text-[12px] font-medium data-[tone=success]:text-success data-[tone=warning]:text-warning
   data-[tone=error]:text-error
 `,
@@ -134,13 +134,13 @@ export function MemberRow({
     <div
       className={`
   flex min-h-16 flex-wrap items-center gap-1.5 bg-inset p-2 max-[480px]:gap-1
-  [&_strong]:text-[13px] [&_strong]:font-medium
+  [&_strong]:text-xsm [&_strong]:font-medium
 `}
     >
       <Avatar name={name} />
       <div className="min-w-0 flex-1">
         <strong>{name}</strong>
-        {email ? <p className="text-[12px] leading-[18px] text-muted">{email}</p> : null}
+        {email ? <p className="text-[12px] leading-4.5 text-muted">{email}</p> : null}
       </div>
       <Badge>{role}</Badge>
       {children}
@@ -149,7 +149,7 @@ export function MemberRow({
 }
 export function EditTimestamp({ dateTime, children }: { dateTime: string; children: ReactNode }) {
   return (
-    <span className="text-[12px] leading-[18px] text-muted">
+    <span className="text-[12px] leading-4.5 text-muted">
       Last edited <time dateTime={dateTime}>{children}</time>
     </span>
   )
@@ -158,8 +158,8 @@ export function ChangedFile({ path, added = 0, removed = 0 }: { path: string; ad
   return (
     <span
       className={`
-  inline-flex items-center gap-1 rounded-[6px] bg-inset px-1 py-0.5 text-[11px]
-  [&>code]:wrap-anywhere [&>[data-tone=success]]:text-success [&>[data-tone=error]]:text-error
+  inline-flex items-center gap-1 rounded-md bg-inset px-1 py-0.5 text-[11px]
+  [&>code]:wrap-anywhere *:data-[tone=success]:text-success *:data-[tone=error]:text-error
 `}
     >
       <FileTextIcon size={14} aria-hidden="true" />

@@ -13,7 +13,7 @@ export function TextField({ className, ...props }: TextFieldProps) {
       className={cx(
         `
   block h-8 w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
-  py-1 text-left text-sm leading-[22px] text-text placeholder:text-muted placeholder:opacity-100
+  py-1 text-left text-sm leading-5.5 text-text placeholder:text-muted placeholder:opacity-100
   focus:border-muted/60 focus:outline-none aria-invalid:border-error
   disabled:cursor-not-allowed disabled:opacity-50
 `,
@@ -29,8 +29,8 @@ export function MultilineField({ className, ...props }: TextareaHTMLAttributes<H
       {...props}
       className={cx(
         `
-  block h-8 w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
-  py-1 text-left text-sm leading-[22px] text-text placeholder:text-muted placeholder:opacity-100
+  block w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
+  py-1 text-left text-sm leading-5.5 text-text placeholder:text-muted placeholder:opacity-100
   focus:border-muted/60 focus:outline-none aria-invalid:border-error
   disabled:cursor-not-allowed disabled:opacity-50 h-auto min-h-16 resize-y
 `,
@@ -52,7 +52,7 @@ function SearchboxRoot({ className, children, ...props }: import('react').HTMLAt
   )
 }
 function SearchboxInput(props: TextFieldProps) {
-  return <TextField type="search" {...props} className={cx('h-8 py-1 pr-1.5 pl-6 text-[13px] leading-5', props.className)} />
+  return <TextField type="search" {...props} className={cx('h-8 py-1 pr-1.5 pl-6 text-xsm leading-5', props.className)} />
 }
 export const Searchbox = Object.assign(SearchboxRoot, { Input: SearchboxInput })
 export function SearchField({ className, ...props }: TextFieldProps) {
@@ -172,13 +172,13 @@ export function CodeEntry({
 }
 
 export function GuidanceEditor({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <MultilineField {...props} className={cx('min-h-45 text-[13px]', className)} />
+  return <MultilineField {...props} className={cx('min-h-45 text-xsm', className)} />
 }
 export function InlineTitleEditor({ className, ...props }: TextFieldProps) {
   return (
     <TextField
       {...props}
-      className={cx('border-transparent bg-transparent p-0 h-8 text-[24px] leading-[32px] font-medium', className)}
+      className={cx('border-transparent bg-transparent p-0 h-8 text-[24px] leading-8 font-medium', className)}
     />
   )
 }
@@ -186,7 +186,7 @@ export function InlineSummaryEditor({ className, ...props }: TextFieldProps) {
   return <TextField {...props} className={cx('border-transparent bg-transparent p-0', className)} />
 }
 export function DescriptionEditor({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <MultilineField {...props} className={cx('border-transparent bg-transparent p-0 min-h-27.5 text-[13px]', className)} />
+  return <MultilineField {...props} className={cx('border-transparent bg-transparent p-0 min-h-27.5 text-xsm', className)} />
 }
 export function DocumentTitleEditor(props: TextFieldProps) {
   return <InlineTitleEditor {...props} />
@@ -195,7 +195,7 @@ export function DocumentBodyEditor({ className, ...props }: TextareaHTMLAttribut
   return (
     <MultilineField
       {...props}
-      className={cx('border-transparent bg-transparent p-0 min-h-24 text-[15px] leading-[24px]', className)}
+      className={cx('border-transparent bg-transparent p-0 min-h-24 text-[15px] leading-6', className)}
     />
   )
 }

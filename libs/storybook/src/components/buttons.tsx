@@ -41,7 +41,7 @@ export function Button({
       aria-busy={loading || undefined}
       className={cx(
         'inline-flex max-w-full shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full',
-        'border-[0.5px] border-transparent px-1.5 py-0 text-[13px] leading-[20px] font-medium no-underline',
+        'border-[0.5px] border-transparent px-1.5 py-0 text-xsm leading-5 font-medium no-underline',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
         'disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:border-transparent [&_svg]:shrink-0',
         sizes[size],
@@ -95,7 +95,7 @@ export function AccountPrompt({
   ...props
 }: HTMLAttributes<HTMLParagraphElement> & { action: ReactNode }) {
   return (
-    <p {...props} className={cx('flex flex-wrap items-center gap-1 text-[13px] text-muted', className)}>
+    <p {...props} className={cx('flex flex-wrap items-center gap-1 text-xsm text-muted', className)}>
       <span>{children}</span>
       {action}
     </p>

@@ -57,7 +57,7 @@ export function ProjectTable({ children, label }: { children: ReactNode; label: 
     <Table tabIndex={0} role="region" aria-label={label}>
       <Table.Content
         className={`
-  w-full min-w-160 border-collapse text-left text-[13px] [&_th]:h-8 [&_th]:text-[12px]
+  w-full min-w-160 border-collapse text-left text-xsm [&_th]:h-8 [&_th]:text-[12px]
   [&_th]:font-normal [&_th]:text-muted [&_td]:h-12 [&_th]:border-b-[0.5px] [&_th]:border-divider
   [&_th]:px-1.5 [&_th]:py-1 [&_td]:border-b-[0.5px] [&_td]:border-divider [&_td]:px-1.5
   [&_td]:py-1
@@ -72,7 +72,7 @@ export function ProjectIcon() {
   return (
     <span
       className={`
-  inline-flex size-9 items-center justify-center rounded-[6px] bg-warning text-background
+  inline-flex size-9 items-center justify-center rounded-md bg-warning text-background
 `}
     >
       <FolderIcon size={18} aria-hidden="true" />
@@ -139,7 +139,7 @@ export function ActivityEvent({
 }
 export function PropertyChip({ icon, children, className, ...props }: ButtonProps & { icon?: ReactNode }) {
   return (
-    <Button variant="ghost" size="content" {...props} className={cx('text-[13px]', className)}>
+    <Button variant="ghost" size="content" {...props} className={cx('text-xsm', className)}>
       {icon}
       {children}
     </Button>
@@ -148,7 +148,7 @@ export function PropertyChip({ icon, children, className, ...props }: ButtonProp
 export function PropertyRow({ label, children, className, ...props }: HTMLAttributes<HTMLDivElement> & { label: ReactNode }) {
   return (
     <div {...props} className={cx('grid min-h-7 grid-cols-[minmax(80px,1fr)_2fr] items-center gap-1.5', className)}>
-      <span className="text-[12px] leading-[18px] text-muted">{label}</span>
+      <span className="text-[12px] leading-4.5 text-muted">{label}</span>
       <div>{children}</div>
     </div>
   )

@@ -417,7 +417,7 @@ export function SidebarItem({
       title={label}
       className={cx(
         `
-flex h-7 min-w-0 items-center gap-1.5 rounded-[6px] px-2 text-xsm font-medium leading-[17px] text-muted
+flex h-7 min-w-0 items-center gap-1.5 rounded-md px-2 text-xsm font-medium leading-4.25 text-muted
 hover:bg-elevated hover:text-text aria-[current=page]:bg-elevated aria-[current=page]:text-text
 `,
         focus,

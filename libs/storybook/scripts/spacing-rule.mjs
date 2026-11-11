@@ -1,7 +1,7 @@
 const dimension = new RegExp(
   '(?<![\\w-])-?(?:min-w|min-h|max-w|max-h|size|w|h|p[xytrblse]?|m[xytrblse]?|' +
     'gap(?:-[xy])?|top|bottom|left|right|inset(?:-[xy])?|space-[xy])-' +
-    '(?:\\[(\\d+(?:\\.\\d+)?)px\\]|(\\d+(?:\\.\\d+)?)|(px))(?![\\w./%-])',
+    '(?:\\[(-?\\d+(?:\\.\\d+)?)px\\]|(\\d+(?:\\.\\d+)?)|(px))(?![\\w./%-])',
   'g',
 )
 

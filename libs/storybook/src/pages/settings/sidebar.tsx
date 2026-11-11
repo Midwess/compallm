@@ -65,7 +65,7 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
       <button
         type="button"
         onClick={() => c.leaveSettings()}
-        className="flex h-7 items-center gap-2 px-2 text-left text-[13px] text-muted hover:text-text"
+        className="flex h-7 items-center gap-2 px-2 text-left text-xsm text-muted hover:text-text"
       >
         <ArrowLeftIcon className="size-3" aria-hidden="true" />
         Back to app
@@ -101,7 +101,7 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
                 label={g.name}
                 href={`#/settings/groups/${g.id}`}
                 icon={<Indicator color={g.color} />}
-                className="gap-2 text-[13px] [&>span:first-child]:size-1.5"
+                className="gap-2 text-xsm [&>span:first-child]:size-1.5"
                 selected={location.page === 'group' && location.id === g.id}
                 onNavigate={() => navigate('group', g.id)}
               />
@@ -122,7 +122,7 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
                 label={r.name}
                 href={`#/settings/roles/${r.id}`}
                 icon={<Indicator color={r.color} />}
-                className="gap-2 text-[13px] [&>span:first-child]:size-1.5"
+                className="gap-2 text-xsm [&>span:first-child]:size-1.5"
                 selected={location.page === 'role' && location.id === r.id}
                 onNavigate={() => navigate('role', r.id)}
               />

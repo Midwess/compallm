@@ -42,15 +42,15 @@ export const Mapping: Story = {
     <div className="grid gap-6 p-6">
       <div className="grid gap-2">
         <SettingsPageTitle>Design foundations</SettingsPageTitle>
-        <p className="text-[13px] leading-5 text-muted">
+        <p className="text-xsm leading-5 text-muted">
           Penpot foundation families map to shared components and their existing Storybook previews.
         </p>
       </div>
       <Table>
-        <Table.Content className="min-w-192 text-[13px]" aria-label="Penpot to Storybook foundation mapping">
+        <Table.Content className="min-w-3xl text-xsm" aria-label="Penpot to Storybook foundation mapping">
           <Table.Header>
             <Table.Row>
-              <Table.Head className="w-64">Penpot family</Table.Head>
+              <Table.Head className="w-3xs">Penpot family</Table.Head>
               <Table.Head>Library source</Table.Head>
               <Table.Head className="w-32">Preview</Table.Head>
             </Table.Row>
@@ -63,7 +63,7 @@ export const Mapping: Story = {
                     {family.name}
                   </a>
                 </Table.Cell>
-                <Table.Cell className="break-words text-muted">{family.source}</Table.Cell>
+                <Table.Cell className="wrap-break-word text-muted">{family.source}</Table.Cell>
                 <Table.Cell>
                   <a href={`/?path=/story/${family.story}`} target="_top" className={linkClassName}>
                     Open story
@@ -86,7 +86,7 @@ export const Colors: Story = {
         {colors.map(([name, background, hex]) => (
           <figure key={name} className="grid gap-2">
             <div className={`${background} h-16 rounded-lg border-[0.5px] border-input-border`} />
-            <figcaption className="text-[13px]">
+            <figcaption className="text-xsm">
               {name} <span className="block text-xs text-muted">{hex}</span>
             </figcaption>
           </figure>

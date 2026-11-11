@@ -17,7 +17,7 @@ export function ControllerSubscriptions() {
   }
   return (
     <AuthControllerContext value={controller}>
-      <main className="grid max-w-[720px] gap-4 p-4 font-sans text-text">
+      <main className="grid max-w-180 gap-4 p-4 font-sans text-text">
         <h1>Controller subscriptions</h1>
         <p>One controller, four independent UI subscriptions. Counts record React commits.</p>
         {['email', 'continue', 'code', 'resend'].map((id) => (

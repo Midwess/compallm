@@ -94,6 +94,7 @@ export function Row({
           </div>
         ) : null}
       </SettingsRow>
+      {/* eslint-disable-next-line design/spacing -- Align the 0.5px divider with the preceding row. */}
       {!last ? <SettingsDivider className="mx-4 -mt-[0.5px]" /> : null}
     </>
   )

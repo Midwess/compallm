@@ -38,7 +38,7 @@ export function SettingsRow({
       {...props}
       className={cx(
         `
-  flex min-h-[65px] items-center gap-1.5 bg-inset p-2 max-[480px]:flex-wrap
+  flex min-h-16.5 items-center gap-1.5 bg-inset p-2 max-[480px]:flex-wrap
   [&>div:first-child]:min-w-0 [&>div:first-child]:flex-1 [&_strong]:text-[13px] [&_strong]:font-medium
 `,
         className,
@@ -81,7 +81,7 @@ export function Badge({ tone = 'neutral', className, ...props }: HTMLAttributes<
       {...props}
       className={cx(
         `
-  inline-flex min-h-[24px] items-center justify-center gap-1 rounded-[6px] bg-elevated px-1
+  inline-flex min-h-6 items-center justify-center gap-1 rounded-[6px] bg-elevated px-1
   py-0 text-[12px] font-medium data-[tone=success]:text-success data-[tone=warning]:text-warning
   data-[tone=error]:text-error
 `,
@@ -104,12 +104,12 @@ export function DiffLine({
   return (
     <div
       className={`
-  flex min-h-[20px] gap-1 overflow-x-auto text-[12px] whitespace-pre
+  flex min-h-5 gap-1 overflow-x-auto text-[12px] whitespace-pre
   data-[change=added]:bg-success/12 data-[change=removed]:bg-error/12
 `}
       data-change={change}
     >
-      <span className="min-w-[32px] text-right text-muted" aria-label={lineNumber ? `Line ${lineNumber}` : undefined}>
+      <span className="min-w-8 text-right text-muted" aria-label={lineNumber ? `Line ${lineNumber}` : undefined}>
         {lineNumber}
       </span>
       <span aria-label={change === 'context' ? undefined : change}>
@@ -133,7 +133,7 @@ export function MemberRow({
   return (
     <div
       className={`
-  flex min-h-[64px] flex-wrap items-center gap-1.5 bg-inset p-2 max-[480px]:gap-1
+  flex min-h-16 flex-wrap items-center gap-1.5 bg-inset p-2 max-[480px]:gap-1
   [&_strong]:text-[13px] [&_strong]:font-medium
 `}
     >

@@ -152,10 +152,10 @@ function AccountLink({ mode }: { mode: Mode }) {
   const target = mode === 'signup' ? 'signin' : 'signup'
   return (
     <AccountPrompt
-      className="mt-2 min-h-[44px]"
+      className="mt-2 min-h-11"
       action={
         <TextLink
-          className="inline-flex min-h-[44px] items-center"
+          className="inline-flex min-h-11 items-center"
           href={controller.links?.[target] ?? pagePaths[target]}
           onClick={(event) => {
             if (

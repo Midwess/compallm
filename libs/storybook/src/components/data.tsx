@@ -57,8 +57,8 @@ export function ProjectTable({ children, label }: { children: ReactNode; label: 
     <Table tabIndex={0} role="region" aria-label={label}>
       <Table.Content
         className={`
-  w-full min-w-[640px] border-collapse text-left text-[13px] [&_th]:h-[32px] [&_th]:text-[12px]
-  [&_th]:font-normal [&_th]:text-muted [&_td]:h-[48px] [&_th]:border-b-[0.5px] [&_th]:border-divider
+  w-full min-w-160 border-collapse text-left text-[13px] [&_th]:h-8 [&_th]:text-[12px]
+  [&_th]:font-normal [&_th]:text-muted [&_td]:h-12 [&_th]:border-b-[0.5px] [&_th]:border-divider
   [&_th]:px-1.5 [&_th]:py-1 [&_td]:border-b-[0.5px] [&_td]:border-divider [&_td]:px-1.5
   [&_td]:py-1
 `}
@@ -72,7 +72,7 @@ export function ProjectIcon() {
   return (
     <span
       className={`
-  inline-flex size-[36px] items-center justify-center rounded-[6px] bg-warning text-background
+  inline-flex size-9 items-center justify-center rounded-[6px] bg-warning text-background
 `}
     >
       <FolderIcon size={18} aria-hidden="true" />
@@ -92,7 +92,7 @@ export function ProjectProgress({ value }: { value: number }) {
   return (
     <span
       className={`
-  inline-flex items-center gap-1 text-[12px] text-muted [&>progress]:h-[4px] [&>progress]:w-[32px]
+  inline-flex items-center gap-1 text-[12px] text-muted [&>progress]:h-1 [&>progress]:w-8
   [&>progress]:accent-primary
 `}
     >
@@ -147,7 +147,7 @@ export function PropertyChip({ icon, children, className, ...props }: ButtonProp
 }
 export function PropertyRow({ label, children, className, ...props }: HTMLAttributes<HTMLDivElement> & { label: ReactNode }) {
   return (
-    <div {...props} className={cx('grid min-h-[28px] grid-cols-[minmax(80px,1fr)_2fr] items-center gap-1.5', className)}>
+    <div {...props} className={cx('grid min-h-7 grid-cols-[minmax(80px,1fr)_2fr] items-center gap-1.5', className)}>
       <span className="text-[12px] leading-[18px] text-muted">{label}</span>
       <div>{children}</div>
     </div>

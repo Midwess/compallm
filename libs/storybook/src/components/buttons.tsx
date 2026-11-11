@@ -17,10 +17,10 @@ const variants = {
   link: 'bg-transparent p-0 text-focus shadow-none enabled:hover:brightness-110 !px-0',
 }
 const sizes = {
-  compact: 'h-[32px]',
-  standard: 'h-[40px]',
-  authentication: 'h-[48px] w-[352px] text-[15px]',
-  content: 'h-[28px]',
+  compact: 'h-8',
+  standard: 'h-10',
+  authentication: 'h-12 w-88 text-[15px]',
+  content: 'h-7',
 }
 
 export function Button({
@@ -46,7 +46,7 @@ export function Button({
         'disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:border-transparent [&_svg]:shrink-0',
         sizes[size],
         variants[variant],
-        size === 'compact' && variant === 'neutral' && 'h-[26px]',
+        size === 'compact' && variant === 'neutral' && 'h-6.5',
         className,
       )}
     >
@@ -60,7 +60,7 @@ export function Button({
   )
 }
 export function ContentButton({ className, ...props }: ButtonProps) {
-  return <Button size="content" {...props} className={cx('min-w-[166px]', className)} />
+  return <Button size="content" {...props} className={cx('min-w-41.5', className)} />
 }
 
 export interface TextLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {

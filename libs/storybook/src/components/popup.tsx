@@ -137,6 +137,7 @@ function IconTrigger(props: ButtonHTMLAttributes<HTMLButtonElement>) {
   )
 }
 function Separator() {
+  // eslint-disable-next-line design/spacing -- The separator is a 1px hairline.
   return <div role="separator" className="my-1 h-px bg-border/60" />
 }
 function CheckboxItem({ children, className, ...props }: CheckboxProps & { children: ReactNode }) {

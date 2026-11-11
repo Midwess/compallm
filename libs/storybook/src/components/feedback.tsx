@@ -37,7 +37,7 @@ export function Toast({
       data-ui="toast"
       data-tone={tone}
       className={cx(
-        'flex min-h-[72px] w-[360px] max-w-full items-center gap-2 rounded-[10px]',
+        'flex min-h-18 w-90 max-w-full items-center gap-2 rounded-[10px]',
         'border-[0.5px] border-border bg-elevated p-4 font-sans text-[13px] leading-5 text-text',
         className,
       )}
@@ -78,7 +78,7 @@ export function KeyboardKey({ children }: { children: ReactNode }) {
   return (
     <kbd
       className={`
-  inline-flex h-[28px] min-w-[28px] items-center justify-center rounded-[6px] bg-elevated p-0.5
+  inline-flex h-7 min-w-7 items-center justify-center rounded-[6px] bg-elevated p-0.5
   font-sans text-[14px]
 `}
     >

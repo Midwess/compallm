@@ -113,6 +113,7 @@ const spaces = [
   ['4', 'w-1'],
   ['6', 'w-1.5'],
   ['8', 'w-2'],
+  ['10', 'w-2.5'],
   ['12', 'w-3'],
   ['16', 'w-4'],
   ['24', 'w-6'],
@@ -125,7 +126,7 @@ export const Spacing: Story = {
   render: () => (
     <div className="grid max-w-xl gap-4 p-6">
       <SettingsPageTitle>Resolved spacing</SettingsPageTitle>
-      <HelperText>Use Tailwind’s standard spacing utilities for the resolved design dimensions.</HelperText>
+      <HelperText>Use half steps on Tailwind’s default scale, starting at 2 px, and preserve justified exceptions.</HelperText>
       {spaces.map(([pixels, width]) => (
         <div key={pixels} className="flex items-center gap-4 text-xs">
           <span className="w-12 text-muted">{pixels} px</span>

@@ -196,7 +196,7 @@ export function CodeEditor({
         className="pointer-events-none absolute inset-0 overflow-hidden font-mono [font-variant-ligatures:none]"
         style={style}
       >
-        <pre ref={content} className="absolute top-0 left-[61px] m-0 w-max min-w-full font-mono" style={style}>
+        <pre ref={content} className="absolute top-0 left-15.5 m-0 w-max min-w-full font-mono" style={style}>
           <code>
             {tokens.map((line, i) => (
               <span key={i} className="block whitespace-pre">
@@ -224,7 +224,7 @@ export function CodeEditor({
         autoCorrect="off"
         wrap="off"
         className="absolute inset-0 h-full min-h-0 w-full resize-none rounded-none border-0 bg-transparent p-0
-pl-[61px] pr-4 font-mono text-transparent caret-text selection:bg-focus/25
+pl-15.5 pr-4 font-mono text-transparent caret-text selection:bg-focus/25
 [font-variant-ligatures:none] [-webkit-text-fill-color:transparent]"
         style={{ ...style, caretColor: foreground[theme] }}
         onChange={(event) => onValueChange(event.target.value)}

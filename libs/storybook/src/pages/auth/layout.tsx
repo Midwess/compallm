@@ -29,7 +29,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         </div>
         <div
           className={`
-  z-1 w-full max-w-[740px] text-center [&>h2]:m-0 [&>h2]:text-[clamp(32px,3.34vw,48px)]
+  z-1 w-full max-w-185 text-center [&>h2]:m-0 [&>h2]:text-[clamp(32px,3.34vw,48px)]
   [&>h2]:leading-[1.25] [&>h2]:font-medium [&>h2]:tracking-[-1.2px] [&>p]:mt-4
   [&>p]:text-[clamp(16px,1.4vw,20px)] [&>p]:leading-[32px] [&>p]:text-muted
 `}
@@ -63,7 +63,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           <BookOpenIcon size={24} aria-hidden="true" />
           <span>Compallm</span>
         </div>
-        <div className="-mt-8 w-[352px] max-w-full max-[800px]:mt-0">{children}</div>
+        <div className="-mt-8 w-88 max-w-full max-[800px]:mt-0">{children}</div>
       </section>
     </main>
   )

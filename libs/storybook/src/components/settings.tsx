@@ -18,5 +18,6 @@ export function SettingsSectionDescription({ className, ...props }: HTMLAttribut
 }
 
 export function SettingsDivider({ className, ...props }: HTMLAttributes<HTMLHRElement>) {
+  // eslint-disable-next-line design/spacing -- Preserve the 0.5px divider hairline.
   return <hr {...props} className={cx('m-0 h-[0.5px] shrink-0 border-0 bg-divider', className)} />
 }

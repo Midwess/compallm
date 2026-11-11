@@ -20,7 +20,7 @@ export function FormStepMarker({ children }: { children: ReactNode }) {
   return (
     <span
       className={`
-  inline-flex size-[20px] items-center justify-center rounded-full border-[0.5px] border-input-border
+  inline-flex size-5 items-center justify-center rounded-full border-[0.5px] border-input-border
   bg-elevated text-[12px] font-normal
 `}
     >
@@ -37,7 +37,7 @@ export function FormStepHeading({ step, children }: { step: number; children: Re
   )
 }
 export function FormStepConnector() {
-  return <span className="block h-[144px] w-[2px] bg-border" aria-hidden="true" />
+  return <span className="block h-36 w-0.5 bg-border" aria-hidden="true" />
 }
 export function FormFieldLabel({ className, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
   return <animated.label {...props} className={cx('block text-[14px] leading-[21px] font-medium', className)} />

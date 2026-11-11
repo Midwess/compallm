@@ -2,6 +2,8 @@ import { createContext, useContext, useId, type HTMLAttributes } from 'react'
 import { cx } from './shared'
 import { SectionSurface } from './surfaces'
 const SectionContext = createContext<string | null>(null)
+// eslint-disable-next-line design/spacing -- The connector is a 1px hairline.
+const connectorWidth = 'w-px'
 function Root({ children, className, ...props }: HTMLAttributes<HTMLElement>) {
   const id = useId()
   return (
@@ -9,7 +11,10 @@ function Root({ children, className, ...props }: HTMLAttributes<HTMLElement>) {
       <section {...props} aria-labelledby={id} className={cx('group/section relative grid min-w-0 gap-4 pl-4', className)}>
         <div
           aria-hidden="true"
-          className="absolute top-3 -bottom-9 -left-0.5 w-px -translate-x-1/2 bg-border group-last-of-type/section:hidden"
+          className={cx(
+            'absolute top-3 -bottom-9 -left-0.5 -translate-x-1/2 bg-border group-last-of-type/section:hidden',
+            connectorWidth,
+          )}
         />
         {children}
       </section>

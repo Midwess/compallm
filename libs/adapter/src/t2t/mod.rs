@@ -1,5 +1,6 @@
 pub mod anthropic;
-mod configuration;
+pub mod configuration;
+pub mod copenai;
 pub mod openai;
 pub mod request;
 pub mod response;

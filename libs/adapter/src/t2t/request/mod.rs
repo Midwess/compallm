@@ -1,8 +1,10 @@
 pub mod decoder;
 pub mod encoder;
 pub mod event;
-mod json;
+pub(crate) mod json;
+pub mod output_format;
 mod scratch;
+pub(crate) mod stop;
 pub mod translator;
 
 pub use scratch::RequestScratch;
@@ -15,4 +17,28 @@ pub(crate) enum Format {
     Anthropic,
 }
 
-const MODEL_BYTES: usize = 1024;
+impl Format {
+    pub(crate) fn streaming_suffix(
+        self,
+        stream: bool,
+        include_usage: Option<bool>,
+    ) -> &'static [u8] {
+        match (
+            stream,
+            if self == Self::Chat {
+                include_usage
+            } else {
+                None
+            },
+        ) {
+            (false, _) => b",\"stream\":false}",
+            (true, None) => b",\"stream\":true}",
+            (true, Some(true)) => b",\"stream\":true,\"stream_options\":{\"include_usage\":true}}",
+            (true, Some(false)) => {
+                b",\"stream\":true,\"stream_options\":{\"include_usage\":false}}"
+            }
+        }
+    }
+}
+
+pub(crate) const MODEL_BYTES: usize = 1024;

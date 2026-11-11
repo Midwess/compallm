@@ -225,9 +225,6 @@ impl OpenAiTextDecoder {
 }
 
 impl RequestDecoder for OpenAiTextDecoder {
-    fn scratch_requirements(&self) -> (usize, usize) {
-        (MAX_VALUE, 0)
-    }
     fn advance(
         &mut self,
         input: &mut &[u8],

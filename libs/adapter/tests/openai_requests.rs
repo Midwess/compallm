@@ -28,20 +28,20 @@ enum Api {
 }
 const APIS: [Api; 2] = [Api::Chat, Api::Responses];
 
-fn decoder(api: Api, fragment: usize, deferred: usize) -> Box<dyn RequestDecoder> {
+fn decoder(api: Api) -> Box<dyn RequestDecoder> {
     match api {
-        Api::Chat => Box::new(OpenAICompletionRequestDecoder::new(fragment, deferred).unwrap()),
-        Api::Responses => Box::new(OpenAIResponseRequestDecoder::new(fragment, deferred).unwrap()),
+        Api::Chat => Box::new(OpenAICompletionRequestDecoder::new()),
+        Api::Responses => Box::new(OpenAIResponseRequestDecoder::new()),
     }
 }
-fn encoder(api: Api, model: &str, fragment: usize) -> Box<dyn RequestEncoder + '_> {
+fn encoder(api: Api, model: &str) -> Box<dyn RequestEncoder + '_> {
     match api {
-        Api::Chat => Box::new(
-            OpenAICompletionRequestEncoder::new(model, Default::default(), fragment).unwrap(),
-        ),
-        Api::Responses => Box::new(
-            OpenAIResponseRequestEncoder::new(model, Default::default(), fragment).unwrap(),
-        ),
+        Api::Chat => {
+            Box::new(OpenAICompletionRequestEncoder::new(model, Default::default()).unwrap())
+        }
+        Api::Responses => {
+            Box::new(OpenAIResponseRequestEncoder::new(model, Default::default()).unwrap())
+        }
     }
 }
 
@@ -51,7 +51,7 @@ fn decode<'a>(
     fragment: usize,
     deferred: usize,
 ) -> Result<Vec<RequestEvent<Bytes>>, CodecError> {
-    let mut decoder = decoder(api, fragment, deferred);
+    let mut decoder = decoder(api);
     let mut scratch = RequestScratch::new(fragment, deferred)?;
     let mut events = Vec::new();
     for mut input in chunks {
@@ -93,7 +93,19 @@ fn messages(events: &[RequestEvent<Bytes>]) -> Vec<(Role, Vec<u8>)> {
     let mut message = false;
     for event in events {
         match event {
-            RequestEvent::Configuration(_) => assert!(!message && !text),
+            RequestEvent::OutputFormat(_) | RequestEvent::SchemaFragment(_) => {
+                panic!("format events require the format test helper")
+            }
+            RequestEvent::Structure(_) => panic!("standard codecs emit message events"),
+            RequestEvent::StopSequencesStarted
+            | RequestEvent::StopSequenceStarted
+            | RequestEvent::StopSequenceEnded
+            | RequestEvent::StopSequencesEnded
+            | RequestEvent::Configuration(_)
+            | RequestEvent::Streaming { .. }
+            | RequestEvent::TopP(_) => {
+                assert!(!message && !text)
+            }
             RequestEvent::MessageStarted { role } => {
                 assert!(!message);
                 result.push((*role, Vec::new()));
@@ -166,13 +178,8 @@ fn accept_and_drain(
     drain_text(encoder, &mut &text[..], output, size)
 }
 
-fn encode(
-    api: Api,
-    events: Vec<RequestEvent<Bytes>>,
-    size: usize,
-    fragment: usize,
-) -> Result<Vec<u8>, CodecError> {
-    let mut encoder = encoder(api, "target\"\\🙂", fragment);
+fn encode(api: Api, events: Vec<RequestEvent<Bytes>>, size: usize) -> Result<Vec<u8>, CodecError> {
+    let mut encoder = encoder(api, "target\"\\🙂");
     let mut output = Vec::new();
     assert!(!drain(&mut *encoder, &mut output, size)?);
     for event in events {
@@ -223,7 +230,7 @@ fn all_four_format_pairings_round_trip_through_one_byte_encoder_output() {
                     let original = fixture(source);
                     let events = decode(source, original.chunks(1), fragment, 64).unwrap();
                     let expected = messages(&events);
-                    let output = encode(target, events, output_size, fragment).unwrap();
+                    let output = encode(target, events, output_size).unwrap();
                     let value: Value = serde_json::from_slice(&output).unwrap();
                     assert_eq!(value["model"], "target\"\\🙂");
                     assert_eq!(value["stream"], false);
@@ -295,7 +302,7 @@ fn long_role_first_text_emits_fragments_early_without_collecting_the_message() {
             "x".repeat(1024 * 1024)
         );
         let mut input = body.as_bytes();
-        let mut decoder = decoder(api, 7, 0);
+        let mut decoder = decoder(api);
         let mut scratch = RequestScratch::new(7, 32).unwrap();
         let mut saw_fragment = false;
         for _ in 0..10 {
@@ -334,7 +341,7 @@ fn long_role_first_text_emits_fragments_early_without_collecting_the_message() {
             "x".repeat(1024 * 1024)
         );
         let mut input = late.as_bytes();
-        let mut decoder = self::decoder(api, 7, 32);
+        let mut decoder = self::decoder(api);
         assert!(matches!(
             decoder.advance(&mut input, false, &mut scratch),
             Err(CodecError::LimitExceeded(_))
@@ -367,7 +374,7 @@ fn json_syntax_duplicates_unknown_fields_and_unsupported_semantics_are_rejected(
         r#"{"model":"m","messages":[{"role":"user","content":"x"},]}"#,
         r#"{"model":"m","messages":[{"role":"user","content":"x",}]}"#,
         r#"{"model":"m","messages":[{"role":"user","content":"x"}],}"#,
-        r#"{"model":"m","messages":[{"role":"user","content":"x"}],"stream":true}"#,
+        r#"{"model":"m","messages":[{"role":"user","content":"x"}],"stream":0}"#,
         r#"{"model":"m","messages":[{"role":"user","content":"x"}],"stream":null}"#,
         r#"{"model":"m","messages":[{"role":"user","content":"x"}],"stream":falsex}"#,
         r#"{"model":"m","messages":[{"role":"user","content":"x"}],"tools":[]}"#,
@@ -469,7 +476,7 @@ fn escaped_keys_roles_and_raw_utf8_are_recognized_without_changing_content() {
 }
 
 #[test]
-fn encoders_reject_invalid_order_oversized_fragments_and_incomplete_utf8() {
+fn encoders_reject_invalid_order_and_incomplete_utf8() {
     for api in APIS {
         let cases = vec![
             vec![],
@@ -503,9 +510,9 @@ fn encoders_reject_invalid_order_oversized_fragments_and_incomplete_utf8() {
             ],
         ];
         for events in cases {
-            assert!(encode(api, events, 1, 2).is_err());
+            assert!(encode(api, events, 1).is_err());
         }
-        let mut encoder = encoder(api, "target", 2);
+        let mut encoder = encoder(api, "target");
         assert!(matches!(
             encoder.accept(RequestEvent::TextStarted),
             Err(CodecError::Contract(_))
@@ -514,7 +521,7 @@ fn encoders_reject_invalid_order_oversized_fragments_and_incomplete_utf8() {
             encoder.advance(&mut &b""[..], &mut [0; 8]).is_err(),
             "errors must remain terminal"
         );
-        let mut encoder = self::encoder(api, "target", 2);
+        let mut encoder = self::encoder(api, "target");
         assert!(matches!(
             encoder.advance(&mut &b""[..], &mut []),
             Err(CodecError::Contract(_))
@@ -524,17 +531,13 @@ fn encoders_reject_invalid_order_oversized_fragments_and_incomplete_utf8() {
 
 #[test]
 fn configuration_model_bounds_and_advance_work_are_bounded() {
-    assert!(OpenAICompletionRequestDecoder::new(0, 32).is_err());
-    assert!(OpenAIResponseRequestDecoder::new(0, 32).is_err());
-    assert!(OpenAICompletionRequestEncoder::new("", Default::default(), 8).is_err());
-    assert!(OpenAIResponseRequestEncoder::new("", Default::default(), 8).is_err());
-    assert!(OpenAICompletionRequestEncoder::new("model", Default::default(), 0).is_err());
-    assert!(OpenAIResponseRequestEncoder::new("model", Default::default(), 0).is_err());
+    assert!(OpenAICompletionRequestEncoder::new("", Default::default()).is_err());
+    assert!(OpenAIResponseRequestEncoder::new("", Default::default()).is_err());
     for api in APIS {
         let mut padded = vec![b' '; 8192];
         padded.extend_from_slice(&fixture(api));
         let mut input = padded.as_slice();
-        let mut bounded = decoder(api, 8, 32);
+        let mut bounded = decoder(api);
         let mut scratch = RequestScratch::new(8, 32).unwrap();
         assert!(matches!(
             bounded.advance(&mut input, false, &mut scratch).unwrap(),
@@ -555,16 +558,14 @@ fn configuration_model_bounds_and_advance_work_are_bounded() {
         ));
         match api {
             Api::Chat => assert!(
-                OpenAICompletionRequestEncoder::new(&"m".repeat(1025), Default::default(), 8)
-                    .is_err()
+                OpenAICompletionRequestEncoder::new(&"m".repeat(1025), Default::default()).is_err()
             ),
             Api::Responses => assert!(
-                OpenAIResponseRequestEncoder::new(&"m".repeat(1025), Default::default(), 8)
-                    .is_err()
+                OpenAIResponseRequestEncoder::new(&"m".repeat(1025), Default::default()).is_err()
             ),
         }
         let model = "\0".repeat(1024);
-        let mut encoder = encoder(api, &model, 8);
+        let mut encoder = encoder(api, &model);
         let mut output = vec![0xa5; 16384];
         let EncodeStep::Wrote(len) = encoder.advance(&mut &b""[..], &mut output).unwrap() else {
             panic!("expected model output");
@@ -577,7 +578,7 @@ fn configuration_model_bounds_and_advance_work_are_bounded() {
 #[test]
 fn encoder_validates_fragments_incrementally_instead_of_scanning_them_on_accept() {
     for api in APIS {
-        let mut encoder = encoder(api, "target", 8192);
+        let mut encoder = encoder(api, "target");
         let mut ignored = Vec::new();
         drain(&mut *encoder, &mut ignored, 16).unwrap();
         encoder
@@ -623,15 +624,15 @@ async fn concrete_codecs_work_through_the_explicit_translator_step_api() {
                 .map_err(std::io::Error::other)
                 .into_async_read();
             let mut writer = Cursor::new(Vec::new());
-            let mut translator = Text2TextRequestTranslator::new(3, 2);
+            let mut translator = Text2TextRequestTranslator::new(64, 2);
             translator
                 .set_source_stream(reader)
                 .unwrap()
                 .set_target_stream(&mut writer)
                 .unwrap()
-                .set_decoder(decoder(source, 2, 64))
+                .set_decoder(decoder(source))
                 .unwrap()
-                .set_encoder(encoder(target, "selected-model", 2))
+                .set_encoder(encoder(target, "selected-model"))
                 .unwrap();
             for _ in 0..10000 {
                 match translator.translate().unwrap() {
@@ -697,7 +698,7 @@ fn surrogate_extremes_and_mixed_control_unicode_text_round_trip() {
                 serde_json::to_vec(&json!({"model":"m", key:[{"content":text,"role":"user"}]}))
                     .unwrap();
             let events = decode(api, body.chunks(1), 1, 512).unwrap();
-            let output = encode(api, events, 1, 1).unwrap();
+            let output = encode(api, events, 1).unwrap();
             let parsed: Value = serde_json::from_slice(&output).unwrap();
             assert_eq!(parsed[key][0]["content"], text);
         }
@@ -717,7 +718,7 @@ fn exact_model_bound_and_message_field_permutations_remain_supported() {
         .unwrap();
         assert!(decode(api, body.chunks(1), 2, 32).is_ok());
         let model = "m".repeat(1024);
-        let mut encoder = encoder(api, &model, 2);
+        let mut encoder = encoder(api, &model);
         let mut output = Vec::new();
         assert!(!drain(&mut *encoder, &mut output, 7).unwrap());
         for event in decode(api, body.chunks(1), 2, 32).unwrap() {
@@ -754,7 +755,7 @@ fn exact_model_bound_and_message_field_permutations_remain_supported() {
 fn decoder_eof_is_explicit_and_codec_errors_remain_terminal() {
     for api in APIS {
         let body = fixture(api);
-        let mut decoder = decoder(api, 3, 64);
+        let mut decoder = decoder(api);
         let mut scratch = RequestScratch::new(3, 64).unwrap();
         let mut input = body.as_slice();
         loop {
@@ -784,7 +785,7 @@ fn decoder_eof_is_explicit_and_codec_errors_remain_terminal() {
             decoder.advance(&mut input, true, &mut scratch),
             Err(CodecError::Contract(_))
         ));
-        let mut decoder = self::decoder(api, 3, 64);
+        let mut decoder = self::decoder(api);
         let mut bad = b"not json".as_slice();
         assert!(decoder.advance(&mut bad, false, &mut scratch).is_err());
         assert!(matches!(
@@ -797,9 +798,9 @@ fn decoder_eof_is_explicit_and_codec_errors_remain_terminal() {
 #[test]
 fn encoder_finish_requires_a_real_need_event_and_does_not_repeat() {
     for api in APIS {
-        let mut early = encoder(api, "target", 3);
+        let mut early = encoder(api, "target");
         assert!(matches!(early.finish(), Err(CodecError::Contract(_))));
-        let mut early = encoder(api, "target", 3);
+        let mut early = encoder(api, "target");
         // Draining the prefix with Wrote does not grant event readiness until
         // the caller actually observes NeedEvent.
         assert!(matches!(
@@ -811,7 +812,7 @@ fn encoder_finish_requires_a_real_need_event_and_does_not_repeat() {
             Err(CodecError::Contract(_))
         ));
         let events = decode(api, [fixture(api).as_slice()], 3, 64).unwrap();
-        let mut encoder = encoder(api, "target", 3);
+        let mut encoder = encoder(api, "target");
         let mut output = Vec::new();
         drain(&mut *encoder, &mut output, 1).unwrap();
         for event in events {

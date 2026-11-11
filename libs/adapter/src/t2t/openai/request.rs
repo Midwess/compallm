@@ -1,5 +1,5 @@
-//! Incremental text-only OpenAI requests. Unsupported semantics fail explicitly;
-//! these codecs do not implement the complete Chat or Responses APIs.
+//! Incremental standard text-only OpenAI requests. These profiles do not implement
+//! the complete Chat or Responses APIs. Compatible extensions live in copenai.
 
 use crate::t2t::request::{Format, decoder, encoder};
 
@@ -17,23 +17,17 @@ macro_rules! request_decoder {
         #[doc = $description]
         pub struct $name(decoder::Decoder);
         impl $name {
-            /// Bound emitted fragments and decoded text deferred before role.
-            /// Zero deferral permits only empty content before role.
-            pub fn new(
-                fragment_bytes: usize,
-                deferred_text_bytes: usize,
-            ) -> Result<Self, CodecError> {
-                Ok(Self(decoder::Decoder::new(
-                    $format,
-                    fragment_bytes,
-                    deferred_text_bytes,
-                )?))
+            /// Create a decoder using the capacities of caller-owned scratch.
+            pub fn new() -> Self {
+                Self(decoder::Decoder::new($format))
+            }
+        }
+        impl Default for $name {
+            fn default() -> Self {
+                Self::new()
             }
         }
         impl RequestDecoder for $name {
-            fn scratch_requirements(&self) -> (usize, usize) {
-                self.0.scratch_requirements()
-            }
             fn advance(
                 &mut self,
                 input: &mut &[u8],
@@ -61,21 +55,16 @@ macro_rules! request_encoder {
         #[doc = $description]
         pub struct $name<'model>(encoder::Encoder<'model>);
         impl<'model> $name<'model> {
-            /// Select the target model and bound each accepted decoded fragment.
+            /// Select the target model and fallback generation configuration.
             /// The model is borrowed for the encoder lifetime, limited to 1024 bytes.
             /// Configuration supplies fallbacks; explicit source limits replace them.
-            /// Emits stream=false; sampling/tools/media are not represented.
+            /// Request events supply streaming and top_p. Other sampling
+            /// settings, tools, and media are outside this standard text profile.
             pub fn new(
                 model: &'model str,
                 configuration: Text2TextTranslatorConfiguration,
-                fragment_bytes: usize,
             ) -> Result<Self, CodecError> {
-                Ok(Self(encoder::Encoder::new(
-                    $format,
-                    model,
-                    fragment_bytes,
-                    configuration,
-                )?))
+                Ok(Self(encoder::Encoder::new($format, model, configuration)?))
             }
         }
         impl RequestEncoder for $name<'_> {

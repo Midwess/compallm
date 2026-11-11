@@ -6,7 +6,7 @@ use super::{
 use crate::{
     codec::{DecodeStep, EncodeStep, TranslateStep},
     error::{CodecError, TranslationError},
-    stream::{Codecs, Translator},
+    stream::{Codecs, DEFAULT_BUFFER_BYTES, Translator},
 };
 
 /// Explicitly configured, incrementally stepped request translation. Reader,
@@ -14,8 +14,8 @@ use crate::{
 /// All four components are required. Setters reject active attempts; the first
 /// setter after completion/failure clears every old component. Configure four
 /// fresh components for reuse. Canceling next/flush preserves resumable progress.
-/// Decoded fragment/deferral scratch is prepared by set_decoder and never grows
-/// during processing. Pending text stays in scratch until encoding drains it.
+/// Decoded fragment/deferral scratch is allocated in new, with each window sized
+/// like the I/O buffers, and never grows. Pending text stays until encoding drains it.
 pub struct Text2TextRequestTranslator<S, T, D, E> {
     inner: Translator<S, T, RequestCodecs<D, E>>,
 }
@@ -23,7 +23,14 @@ pub struct Text2TextRequestTranslator<S, T, D, E> {
 impl<S: AsyncRead, T: AsyncWrite, D: RequestDecoder, E: RequestEncoder>
     Text2TextRequestTranslator<S, T, D, E>
 {
+    /// Allocate transport buffers and two scratch windows of buffer_bytes each.
+    /// Zero selects 16 KiB per window and a 64-step cooperative work budget.
     pub fn new(buffer_bytes: usize, steps_before_yield: usize) -> Self {
+        let bytes = if buffer_bytes == 0 {
+            DEFAULT_BUFFER_BYTES
+        } else {
+            buffer_bytes
+        };
         Self {
             inner: Translator::new(
                 buffer_bytes,
@@ -31,7 +38,8 @@ impl<S: AsyncRead, T: AsyncWrite, D: RequestDecoder, E: RequestEncoder>
                 RequestCodecs {
                     decoder: None,
                     encoder: None,
-                    scratch: None,
+                    scratch: RequestScratch::new(bytes, bytes)
+                        .expect("request scratch capacity unavailable"),
                     text_len: 0,
                     text_consumed: 0,
                 },
@@ -51,14 +59,6 @@ impl<S: AsyncRead, T: AsyncWrite, D: RequestDecoder, E: RequestEncoder>
     }
     pub fn set_decoder(&mut self, decoder: D) -> Result<&mut Self, TranslationError> {
         self.inner.configure()?;
-        let (fragment, deferred) = decoder.scratch_requirements();
-        let codecs = &mut self.inner.codecs;
-        match &mut codecs.scratch {
-            Some(scratch) => scratch.prepare(fragment, deferred),
-            None => RequestScratch::new(fragment, deferred)
-                .map(|scratch| codecs.scratch = Some(scratch)),
-        }
-        .map_err(|error| TranslationError::Stream(error.into()))?;
         self.inner.codecs.decoder = Some(decoder);
         Ok(self)
     }
@@ -86,7 +86,7 @@ impl<S: AsyncRead, T: AsyncWrite, D: RequestDecoder, E: RequestEncoder>
 struct RequestCodecs<D, E> {
     decoder: Option<D>,
     encoder: Option<E>,
-    scratch: Option<RequestScratch>,
+    scratch: RequestScratch,
     text_len: usize,
     text_consumed: usize,
 }
@@ -101,9 +101,7 @@ impl<D: RequestDecoder, E: RequestEncoder> Codecs for RequestCodecs<D, E> {
     fn clear(&mut self) {
         self.decoder = None;
         self.encoder = None;
-        if let Some(scratch) = &mut self.scratch {
-            scratch.reset();
-        }
+        self.scratch.reset();
         self.text_len = 0;
         self.text_consumed = 0;
     }
@@ -112,26 +110,18 @@ impl<D: RequestDecoder, E: RequestEncoder> Codecs for RequestCodecs<D, E> {
         input: &mut &[u8],
         eof: bool,
     ) -> Result<DecodeStep<RequestEvent>, CodecError> {
-        self.decoder.as_mut().expect("validated decoder").advance(
-            input,
-            eof,
-            self.scratch.as_mut().expect("configured scratch"),
-        )
+        self.decoder
+            .as_mut()
+            .expect("validated decoder")
+            .advance(input, eof, &mut self.scratch)
     }
     fn accept(&mut self, event: RequestEvent) -> Result<(), CodecError> {
         self.text_len = match event {
-            RequestEvent::TextFragment(len) => len,
+            RequestEvent::TextFragment(len) | RequestEvent::SchemaFragment(len) => len,
             _ => 0,
         };
         self.text_consumed = 0;
-        if self.text_len
-            > self
-                .scratch
-                .as_ref()
-                .expect("configured scratch")
-                .text()
-                .len()
-        {
+        if self.text_len > self.scratch.text().len() {
             return Err(CodecError::Contract(
                 "decoder reported invalid fragment length",
             ));
@@ -142,7 +132,7 @@ impl<D: RequestDecoder, E: RequestEncoder> Codecs for RequestCodecs<D, E> {
             .accept(event)
     }
     fn encode(&mut self, output: &mut [u8]) -> Result<EncodeStep, CodecError> {
-        let scratch = self.scratch.as_ref().expect("configured scratch");
+        let scratch = &self.scratch;
         let text = &scratch.text()[self.text_consumed..self.text_len];
         let mut remaining = text;
         let step = self

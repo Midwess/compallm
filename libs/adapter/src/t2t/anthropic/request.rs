@@ -1,5 +1,5 @@
 //! Incremental Anthropic Messages requests for the string-content text subset.
-//! Tools, media, content-block arrays, and response streaming are unsupported.
+//! Tools, media, content-block arrays, and SSE response codecs are unsupported.
 
 use crate::{
     codec::{DecodeStep, EncodeStep},
@@ -18,20 +18,19 @@ use crate::{
 pub struct AnthropicRequestDecoder(decoder::Decoder);
 
 impl AnthropicRequestDecoder {
-    /// Bound emitted fragments and decoded content deferred before its role.
-    pub fn new(fragment_bytes: usize, deferred_text_bytes: usize) -> Result<Self, CodecError> {
-        Ok(Self(decoder::Decoder::new(
-            Format::Anthropic,
-            fragment_bytes,
-            deferred_text_bytes,
-        )?))
+    /// Create a decoder using the capacities of caller-owned scratch.
+    pub fn new() -> Self {
+        Self(decoder::Decoder::new(Format::Anthropic))
+    }
+}
+
+impl Default for AnthropicRequestDecoder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl RequestDecoder for AnthropicRequestDecoder {
-    fn scratch_requirements(&self) -> (usize, usize) {
-        self.0.scratch_requirements()
-    }
     fn advance(
         &mut self,
         input: &mut &[u8],
@@ -47,16 +46,14 @@ pub struct AnthropicRequestEncoder<'model>(encoder::Encoder<'model>);
 
 impl<'model> AnthropicRequestEncoder<'model> {
     /// Select target model and fallback settings. Explicit source limits replace
-    /// the fallback. Require a positive budget/fragment bound and model <= 1024 bytes.
+    /// the fallback. Require a positive budget and model <= 1024 bytes.
     pub fn new(
         model: &'model str,
         configuration: Text2TextTranslatorConfiguration,
-        fragment_bytes: usize,
     ) -> Result<Self, CodecError> {
         Ok(Self(encoder::Encoder::new(
             Format::Anthropic,
             model,
-            fragment_bytes,
             configuration,
         )?))
     }

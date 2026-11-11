@@ -11,41 +11,27 @@ pub struct RequestScratch {
 
 impl RequestScratch {
     pub fn new(fragment_bytes: usize, deferred_bytes: usize) -> Result<Self, CodecError> {
-        let mut scratch = Self {
-            bytes: Vec::new(),
-            fragment_bytes: 0,
-            deferred_bytes: 0,
-            fragment_len: 0,
-            deferred_len: 0,
-        };
-        scratch.prepare(fragment_bytes, deferred_bytes)?;
-        Ok(scratch)
-    }
-
-    pub(crate) fn prepare(
-        &mut self,
-        fragment_bytes: usize,
-        deferred_bytes: usize,
-    ) -> Result<(), CodecError> {
         if fragment_bytes == 0 {
             return Err(CodecError::InvalidInput("fragment_bytes must exceed zero"));
         }
         let len = fragment_bytes
             .checked_add(deferred_bytes)
             .ok_or(CodecError::LimitExceeded("scratch capacity overflow"))?;
-        if len > self.bytes.len() {
-            self.bytes
-                .try_reserve_exact(len - self.bytes.len())
-                .map_err(|_| CodecError::LimitExceeded("scratch capacity unavailable"))?;
-            self.bytes.resize(len, 0);
-        }
-        self.fragment_bytes = fragment_bytes;
-        self.deferred_bytes = deferred_bytes;
-        self.reset();
-        Ok(())
+        let mut bytes = Vec::new();
+        bytes
+            .try_reserve_exact(len)
+            .map_err(|_| CodecError::LimitExceeded("scratch capacity unavailable"))?;
+        bytes.resize(len, 0);
+        Ok(Self {
+            bytes,
+            fragment_bytes,
+            deferred_bytes,
+            fragment_len: 0,
+            deferred_len: 0,
+        })
     }
 
-    /// Decoded fragment window. Only the prefix reported by TextFragment is valid.
+    /// Payload window for decoded text or raw schema bytes, identified by the event.
     pub fn text(&self) -> &[u8] {
         &self.bytes[..self.fragment_bytes]
     }

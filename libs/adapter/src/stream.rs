@@ -7,6 +7,8 @@ use crate::{
     error::{CodecError, StreamError, TranslationError},
 };
 
+pub(crate) const DEFAULT_BUFFER_BYTES: usize = 16 * 1024;
+
 /// Private bridge sharing state transitions without unifying event contracts.
 pub(crate) trait Codecs {
     type Event;
@@ -52,7 +54,7 @@ pub(crate) struct Translator<S, T, C> {
 impl<S: AsyncRead, T: AsyncWrite, C: Codecs> Translator<S, T, C> {
     pub(crate) fn new(mut buffer_bytes: usize, mut steps_before_yield: usize, codecs: C) -> Self {
         if buffer_bytes == 0 {
-            buffer_bytes = 16 * 1024;
+            buffer_bytes = DEFAULT_BUFFER_BYTES;
         }
         if steps_before_yield == 0 {
             steps_before_yield = 64;

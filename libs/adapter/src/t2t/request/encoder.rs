@@ -1,4 +1,9 @@
-use super::{Format, MODEL_BYTES, json::Utf8};
+use super::stop::{CHAT_STOP_COUNT, STOP_BYTES, STOP_COUNT, StopWriter, Stops};
+use super::{
+    Format, MODEL_BYTES,
+    json::{JsonFloat, Utf8},
+};
+use super::{event::OutputFormatEvent, output_format::FormatWriter};
 use crate::{
     codec::EncodeStep,
     error::CodecError,
@@ -43,6 +48,8 @@ enum TextSource {
 
 enum Segment {
     Literal(&'static [u8], usize),
+    Number(JsonFloat, usize),
+    Stops(StopWriter),
     Text {
         source: TextSource,
         len: usize,
@@ -67,6 +74,8 @@ impl Segment {
     fn done(&self) -> bool {
         match self {
             Self::Literal(bytes, offset) => *offset == bytes.len(),
+            Self::Number(bytes, offset) => *offset == bytes.as_ref().len(),
+            Self::Stops(writer) => writer.done(),
             Self::Text {
                 len,
                 offset,
@@ -81,10 +90,19 @@ impl Segment {
         text: &mut &[u8],
         model: &[u8],
         number: &[u8],
+        stops: &Stops,
         output: &mut [u8],
         utf8: &mut Utf8,
     ) -> Result<usize, CodecError> {
         match self {
+            Self::Stops(writer) => Ok(writer.write(output, stops)),
+            Self::Number(bytes, offset) => {
+                let bytes = bytes.as_ref();
+                let len = output.len().min(bytes.len() - *offset);
+                output[..len].copy_from_slice(&bytes[*offset..*offset + len]);
+                *offset += len;
+                Ok(len)
+            }
             Self::Literal(bytes, offset) => {
                 let len = output.len().min(bytes.len() - *offset);
                 output[..len].copy_from_slice(&bytes[*offset..*offset + len]);
@@ -155,7 +173,7 @@ impl Segment {
 /// A fixed number of syntax/data segments; never an event queue or
 /// a serialized body buffer. Text segments retain only source/offset metadata.
 struct Output {
-    segments: [Option<Segment>; 6],
+    segments: [Option<Segment>; 8],
     head: usize,
     len: usize,
 }
@@ -186,6 +204,7 @@ impl Output {
         text: &mut &[u8],
         model: &[u8],
         number: &[u8],
+        stops: &Stops,
         output: &mut [u8],
         utf8: &mut Utf8,
     ) -> Result<usize, CodecError> {
@@ -194,7 +213,7 @@ impl Output {
             let segment = self.segments[self.head]
                 .as_mut()
                 .expect("occupied output slot");
-            written += segment.write(text, model, number, &mut output[written..], utf8)?;
+            written += segment.write(text, model, number, stops, &mut output[written..], utf8)?;
             if segment.done() {
                 self.segments[self.head] = None;
                 self.head = (self.head + 1) % self.segments.len();
@@ -213,6 +232,8 @@ enum Phase {
     Message,
     Text,
     AfterText,
+    StopList,
+    StopText,
 }
 
 pub(crate) struct Encoder<'model> {
@@ -220,15 +241,22 @@ pub(crate) struct Encoder<'model> {
     phase: Phase,
     output: Output,
     has_message: bool,
+    messages_closed: bool,
+    output_format: FormatWriter,
     has_system: bool,
     system: bool,
     utf8: Utf8,
-    fragment_bytes: usize,
     finished: bool,
     failed: bool,
     ready: bool,
     configuration: Text2TextTranslatorConfiguration,
     has_configuration: bool,
+    stream: bool,
+    include_usage: Option<bool>,
+    top_p: Option<f64>,
+    stops: Stops,
+    has_stops: bool,
+    has_streaming: bool,
     model: &'model str,
     number: [u8; 10],
     number_start: usize,
@@ -239,7 +267,6 @@ impl<'model> Encoder<'model> {
     pub fn new(
         format: Format,
         model: &'model str,
-        fragment_bytes: usize,
         configuration: Text2TextTranslatorConfiguration,
     ) -> Result<Self, CodecError> {
         if model.is_empty() {
@@ -250,9 +277,6 @@ impl<'model> Encoder<'model> {
                 "target model exceeds identifier allowance",
             ));
         }
-        if fragment_bytes == 0 {
-            return Err(CodecError::InvalidInput("fragment_bytes must exceed zero"));
-        }
         if configuration.max_output_tokens == 0 {
             return Err(CodecError::InvalidInput(
                 "max_output_tokens must exceed zero",
@@ -261,25 +285,28 @@ impl<'model> Encoder<'model> {
         let mut output = Output::new();
         output.literal(b"{\"model\":\"");
         output.push(Segment::text(TextSource::Model, model.len()));
-        match format {
-            Format::Chat => output.literal(b"\",\"stream\":false,\"messages\":["),
-            Format::Responses => output.literal(b"\",\"stream\":false,\"input\":["),
-            Format::Anthropic => output.literal(b"\",\"stream\":false"),
-        }
+        output.literal(b"\"");
         Ok(Self {
             format,
             phase: Phase::Outside,
             output,
             has_message: false,
+            messages_closed: false,
+            output_format: FormatWriter::new(format),
             has_system: false,
             system: false,
             utf8: Utf8::default(),
-            fragment_bytes,
             finished: false,
             failed: false,
             ready: false,
             configuration,
             has_configuration: false,
+            stream: false,
+            include_usage: None,
+            top_p: None,
+            stops: Stops::default(),
+            has_stops: false,
+            has_streaming: false,
             model,
             number: [0; 10],
             number_start: 10,
@@ -305,7 +332,90 @@ impl<'model> Encoder<'model> {
             ));
         }
         self.ready = false;
+        if matches!(
+            event,
+            RequestEvent::OutputFormat(OutputFormatEvent::Started)
+        ) {
+            if !matches!(self.phase, Phase::Outside) {
+                return Err(CodecError::InvalidInput("output format inside message"));
+            }
+            let close = self.has_message && !self.messages_closed;
+            self.output_format.start(close)?;
+            return Ok(());
+        }
+        if self.output_format.processing() {
+            return self.output_format.accept(event);
+        }
         match (self.phase, event) {
+            (Phase::Outside, RequestEvent::StopSequencesStarted) => {
+                if self.has_stops {
+                    return Err(CodecError::InvalidInput("duplicate stop sequences"));
+                }
+                self.has_stops = true;
+                self.phase = Phase::StopList;
+            }
+            (Phase::StopList, RequestEvent::StopSequenceStarted) => {
+                if self.format == Format::Responses {
+                    return Err(CodecError::Unsupported(
+                        "Responses has no stop-sequence parameter",
+                    ));
+                }
+                self.stops.begin(if self.format == Format::Anthropic {
+                    STOP_COUNT
+                } else {
+                    CHAT_STOP_COUNT
+                })?;
+                self.utf8 = Utf8::default();
+                self.phase = Phase::StopText;
+            }
+            (Phase::StopText, RequestEvent::TextFragment(len)) => {
+                if len > STOP_BYTES {
+                    return Err(CodecError::LimitExceeded(
+                        "stop fragment exceeds control capacity",
+                    ));
+                }
+                self.text_remaining = len;
+            }
+            (Phase::StopText, RequestEvent::StopSequenceEnded) => {
+                if !self.utf8.complete() {
+                    return Err(CodecError::InvalidInput("incomplete UTF-8 stop sequence"));
+                }
+                self.stops.end()?;
+                self.phase = Phase::StopList;
+            }
+            (Phase::StopList, RequestEvent::StopSequencesEnded) => self.phase = Phase::Outside,
+            (Phase::Outside, RequestEvent::TopP(value)) => {
+                if self.top_p.is_some() || !value.is_finite() || !(0.0..=1.0).contains(&value) {
+                    return Err(CodecError::InvalidInput("invalid or duplicate top_p"));
+                }
+                self.top_p = Some(value);
+            }
+            (
+                Phase::Outside,
+                RequestEvent::Streaming {
+                    stream,
+                    include_usage,
+                },
+            ) => {
+                if self.has_streaming {
+                    return Err(CodecError::InvalidInput(
+                        "duplicate streaming configuration",
+                    ));
+                }
+                if !stream && include_usage.is_some() {
+                    return Err(CodecError::InvalidInput(
+                        "stream options require stream=true",
+                    ));
+                }
+                self.stream = stream;
+                self.include_usage = include_usage;
+                self.has_streaming = true;
+            }
+            (_, RequestEvent::Structure(_)) => {
+                return Err(CodecError::Unsupported(
+                    "structured compatible Chat events require a compatible encoder",
+                ));
+            }
             (Phase::Outside, RequestEvent::Configuration(configuration)) => {
                 if self.has_configuration || configuration.max_output_tokens == 0 {
                     return Err(CodecError::InvalidInput(
@@ -316,6 +426,11 @@ impl<'model> Encoder<'model> {
                 self.has_configuration = true;
             }
             (Phase::Outside, RequestEvent::MessageStarted { role }) => {
+                if self.messages_closed {
+                    return Err(CodecError::Unsupported(
+                        "output format cannot split the target conversation",
+                    ));
+                }
                 self.system = self.format == Format::Anthropic && role == Role::System;
                 if self.system {
                     if self.has_message || self.has_system {
@@ -327,8 +442,12 @@ impl<'model> Encoder<'model> {
                     self.phase = Phase::Message;
                     return Ok(());
                 }
-                if self.format == Format::Anthropic && !self.has_message {
-                    self.output.literal(b",\"messages\":[");
+                if !self.has_message {
+                    self.output.literal(if self.format == Format::Responses {
+                        b",\"input\":["
+                    } else {
+                        b",\"messages\":["
+                    });
                 }
                 if self.has_message {
                     self.output.literal(b",");
@@ -352,11 +471,6 @@ impl<'model> Encoder<'model> {
                 self.phase = Phase::Text;
             }
             (Phase::Text, RequestEvent::TextFragment(len)) => {
-                if len > self.fragment_bytes {
-                    return Err(CodecError::LimitExceeded(
-                        "text fragment exceeds encoder allowance",
-                    ));
-                }
                 self.text_remaining = len;
                 if len > 0 {
                     self.output.push(Segment::text(TextSource::Fragment, len));
@@ -406,11 +520,36 @@ impl<'model> Encoder<'model> {
                 "encoder output slice must not be empty",
             ));
         }
+        if self.output_format.processing() {
+            let result = self.output_format.advance(text, output);
+            if result.is_err() {
+                self.failed = true;
+            }
+            if matches!(&result, Ok(EncodeStep::NeedEvent)) {
+                self.ready = true;
+                self.messages_closed |= self.output_format.closed_messages;
+            }
+            return result;
+        }
         if text.len() != self.text_remaining {
             self.failed = true;
             return Err(CodecError::Contract(
                 "pending text length does not match event progress",
             ));
+        }
+        if matches!(self.phase, Phase::StopText) {
+            let result = (|| {
+                for &byte in *text {
+                    self.utf8.push(byte)?;
+                }
+                self.stops.append(text)
+            })();
+            if let Err(error) = result {
+                self.failed = true;
+                return Err(error);
+            }
+            *text = &[];
+            self.text_remaining = 0;
         }
         let len = output.len().min(4096);
         let before = text.len();
@@ -418,6 +557,7 @@ impl<'model> Encoder<'model> {
             text,
             self.model.as_bytes(),
             &self.number[self.number_start..],
+            &self.stops,
             &mut output[..len],
             &mut self.utf8,
         ) {
@@ -450,16 +590,22 @@ impl<'model> Encoder<'model> {
                 "finish requires NeedEvent and a fresh finalization",
             ));
         }
-        if !matches!(self.phase, Phase::Outside) || !self.has_message {
+        if !matches!(self.phase, Phase::Outside)
+            || !self.has_message
+            || self.output_format.processing()
+        {
             self.failed = true;
             return Err(CodecError::InvalidInput(
                 "request requires complete text messages",
             ));
         }
+        if !self.messages_closed {
+            self.output.literal(b"]");
+        }
         self.output.literal(match self.format {
-            Format::Chat => b"],\"max_completion_tokens\":",
-            Format::Responses => b"],\"max_output_tokens\":",
-            Format::Anthropic => b"],\"max_tokens\":",
+            Format::Chat => b",\"max_completion_tokens\":",
+            Format::Responses => b",\"max_output_tokens\":",
+            Format::Anthropic => b",\"max_tokens\":",
         });
         let mut value = self.configuration.max_output_tokens;
         self.number_start = self.number.len();
@@ -472,7 +618,25 @@ impl<'model> Encoder<'model> {
             TextSource::Number,
             self.number.len() - self.number_start,
         ));
-        self.output.literal(b"}");
+        if self.format != Format::Anthropic
+            && let Some(value) = self.top_p
+        {
+            self.output.literal(b",\"top_p\":");
+            self.output
+                .push(Segment::Number(JsonFloat::try_from(value)?, 0));
+        }
+        if self.stops.count() > 0 {
+            self.output.literal(if self.format == Format::Anthropic {
+                b",\"stop_sequences\":"
+            } else {
+                b",\"stop\":"
+            });
+            self.output.push(Segment::Stops(StopWriter::default()));
+        }
+        self.output.literal(
+            self.format
+                .streaming_suffix(self.stream, self.include_usage),
+        );
         self.finished = true;
         self.ready = false;
         Ok(())

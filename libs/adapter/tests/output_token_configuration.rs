@@ -52,9 +52,9 @@ impl Api {
 
     fn decoder(self) -> Box<dyn RequestDecoder> {
         match self {
-            Self::Chat => Box::new(OpenAICompletionRequestDecoder::new(1, 0).unwrap()),
-            Self::Responses => Box::new(OpenAIResponseRequestDecoder::new(1, 0).unwrap()),
-            Self::Anthropic => Box::new(AnthropicRequestDecoder::new(1, 0).unwrap()),
+            Self::Chat => Box::new(OpenAICompletionRequestDecoder::new()),
+            Self::Responses => Box::new(OpenAIResponseRequestDecoder::new()),
+            Self::Anthropic => Box::new(AnthropicRequestDecoder::new()),
         }
     }
 
@@ -70,14 +70,11 @@ impl Api {
             Self::Chat => Box::new(OpenAICompletionRequestEncoder::new(
                 "target",
                 configuration,
-                1,
             )?),
-            Self::Responses => Box::new(OpenAIResponseRequestEncoder::new(
-                "target",
-                configuration,
-                1,
-            )?),
-            Self::Anthropic => Box::new(AnthropicRequestEncoder::new("target", configuration, 1)?),
+            Self::Responses => {
+                Box::new(OpenAIResponseRequestEncoder::new("target", configuration)?)
+            }
+            Self::Anthropic => Box::new(AnthropicRequestEncoder::new("target", configuration)?),
         })
     }
 }

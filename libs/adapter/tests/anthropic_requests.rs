@@ -17,7 +17,7 @@ use bytes::Bytes;
 use futures_util::io::Cursor;
 use serde_json::{Value, json};
 
-const BODY: &[u8] = br#"{"system":"guide\n\uD83D\uDE00","messages":[{"content":"hi \"there\"","role":"user"},{"role":"assistant","content":""}],"max_tokens":123,"stream":false,"model":"source"}"#;
+const BODY: &[u8] = br#"{"system":"guide\n\uD83D\uDE00","stop_sequences":["END","\nUser:","\uD83D\uDE00"],"messages":[{"content":"hi \"there\"","role":"user"},{"role":"assistant","content":""}],"max_tokens":123,"stream":false,"model":"source"}"#;
 
 fn configuration(max_output_tokens: u32) -> Text2TextTranslatorConfiguration {
     Text2TextTranslatorConfiguration { max_output_tokens }
@@ -28,7 +28,7 @@ fn decode(
     fragment: usize,
     deferred: usize,
 ) -> Result<Vec<RequestEvent<Bytes>>, CodecError> {
-    let mut decoder = AnthropicRequestDecoder::new(fragment, deferred)?;
+    let mut decoder = AnthropicRequestDecoder::new();
     let mut scratch = RequestScratch::new(fragment, deferred)?;
     let mut events = Vec::new();
     for chunk in chunks {
@@ -103,7 +103,7 @@ fn encode(
 }
 
 fn expected() -> Value {
-    json!({"model":"target\"\\", "max_tokens":123, "stream":false,
+    json!({"model":"target\"\\", "max_tokens":123, "stream":false,"stop_sequences":["END","\nUser:","😀"],
         "system":"guide\n\u{1f600}", "messages":[
             {"role":"user","content":"hi \"there\""},
             {"role":"assistant","content":""}]})
@@ -113,14 +113,12 @@ fn expected() -> Value {
 fn round_trip_at_every_split_and_one_byte_transport() {
     for split in 0..=BODY.len() {
         let events = decode([&BODY[..split], &BODY[split..]], 1, 100).unwrap();
-        let mut encoder =
-            AnthropicRequestEncoder::new("target\"\\", configuration(456), 1).unwrap();
+        let mut encoder = AnthropicRequestEncoder::new("target\"\\", configuration(456)).unwrap();
         assert_eq!(encode(&mut encoder, events, 1).unwrap(), expected());
     }
     let events = decode(BODY.chunks(1), 3, 100).unwrap();
     for size in [1, 2, 7, 4097] {
-        let mut encoder =
-            AnthropicRequestEncoder::new("target\"\\", configuration(456), 3).unwrap();
+        let mut encoder = AnthropicRequestEncoder::new("target\"\\", configuration(456)).unwrap();
         assert_eq!(
             encode(&mut encoder, events.clone(), size).unwrap(),
             expected()
@@ -131,11 +129,11 @@ fn round_trip_at_every_split_and_one_byte_transport() {
 #[test]
 fn translates_anthropic_to_openai() {
     let mut encoder =
-        OpenAICompletionRequestEncoder::new("openai-target", Default::default(), 2).unwrap();
+        OpenAICompletionRequestEncoder::new("openai-target", Default::default()).unwrap();
     let output = encode(&mut encoder, decode(BODY.chunks(1), 2, 100).unwrap(), 1).unwrap();
     assert_eq!(
         output,
-        json!({"model":"openai-target","stream":false,"max_completion_tokens":123,"messages":[
+        json!({"model":"openai-target","stream":false,"max_completion_tokens":123,"stop":["END","\nUser:","😀"],"messages":[
         {"role":"system","content":"guide\n\u{1f600}"},
         {"role":"user","content":"hi \"there\""},
         {"role":"assistant","content":""}]})
@@ -165,8 +163,7 @@ fn optional_system_empty_text_and_root_field_order() {
                 .collect();
             let body = format!("{{{}}} \n\t", members.join(","));
             let events = decode(body.as_bytes().chunks(1), 1, 4).unwrap();
-            let mut encoder =
-                AnthropicRequestEncoder::new("m", configuration(u32::MAX), 1).unwrap();
+            let mut encoder = AnthropicRequestEncoder::new("m", configuration(u32::MAX)).unwrap();
             source["stream"] = json!(false);
             assert_eq!(encode(&mut encoder, events, 1).unwrap(), source);
         }
@@ -175,8 +172,8 @@ fn optional_system_empty_text_and_root_field_order() {
 
 #[test]
 fn decoder_requires_eof_and_emits_system_fragments_before_full_input() {
-    let mut decoder = AnthropicRequestDecoder::new(2, 0).unwrap();
-    let mut scratch = RequestScratch::new(100, 100).unwrap();
+    let mut decoder = AnthropicRequestDecoder::new();
+    let mut scratch = RequestScratch::new(2, 100).unwrap();
     let mut input = &br#"{"system":"abcdef"#[..];
     assert!(matches!(
         decoder.advance(&mut input, false, &mut scratch).unwrap(),
@@ -193,7 +190,7 @@ fn decoder_requires_eof_and_emits_system_fragments_before_full_input() {
     assert_eq!(&scratch.text()[..2], b"ab");
     assert!(!input.is_empty());
 
-    let mut decoder = AnthropicRequestDecoder::new(100, 100).unwrap();
+    let mut decoder = AnthropicRequestDecoder::default();
     scratch.reset();
     let mut input = BODY;
     loop {
@@ -224,9 +221,9 @@ async fn translates_openai_to_anthropic_through_driver() {
         .unwrap()
         .set_target_stream(&mut output)
         .unwrap()
-        .set_decoder(OpenAICompletionRequestDecoder::new(1, 0).unwrap())
+        .set_decoder(OpenAICompletionRequestDecoder::new())
         .unwrap()
-        .set_encoder(AnthropicRequestEncoder::new("claude-target", configuration(789), 1).unwrap())
+        .set_encoder(AnthropicRequestEncoder::new("claude-target", configuration(789)).unwrap())
         .unwrap();
     loop {
         match translator.translate().unwrap() {
@@ -285,7 +282,7 @@ fn rejects_invalid_or_unsupported_requests_at_single_byte_boundaries() {
         assert!(decode(body.as_bytes().chunks(1), 1, 10).is_err(), "{body}");
     }
     for (key, value) in [
-        ("stream", json!(true)),
+        ("stream", json!("true")),
         ("stream", json!(null)),
         ("tools", json!([])),
         ("temperature", json!(1)),
@@ -309,11 +306,9 @@ fn rejects_invalid_or_unsupported_requests_at_single_byte_boundaries() {
 
 #[test]
 fn enforces_bounds_but_streams_long_role_first_content() {
-    assert!(AnthropicRequestDecoder::new(0, 10).is_err());
-    assert!(AnthropicRequestEncoder::new("m", configuration(0), 1).is_err());
-    assert!(AnthropicRequestEncoder::new("", configuration(1), 1).is_err());
-    assert!(AnthropicRequestEncoder::new("m", configuration(1), 0).is_err());
-    assert!(AnthropicRequestEncoder::new(&"m".repeat(1025), configuration(1), 1).is_err());
+    assert!(AnthropicRequestEncoder::new("m", configuration(0)).is_err());
+    assert!(AnthropicRequestEncoder::new("", configuration(1)).is_err());
+    assert!(AnthropicRequestEncoder::new(&"m".repeat(1025), configuration(1)).is_err());
     let text = "x".repeat(100_000);
     let body = format!(
         r#"{{"model":"m","max_tokens":4294967295,"messages":[{{"role":"user","content":"{text}"}}]}}"#
@@ -386,17 +381,17 @@ fn rejects_misordered_events_and_invalid_utf8() {
             RequestEvent::TextFragment(Bytes::from_static(b"too long")),
         ],
     ] {
-        let mut encoder = AnthropicRequestEncoder::new("m", configuration(1), 2).unwrap();
+        let mut encoder = AnthropicRequestEncoder::new("m", configuration(1)).unwrap();
         assert!(encode(&mut encoder, events, 1).is_err());
         assert!(encoder.advance(&mut &b""[..], &mut [0]).is_err());
     }
-    let mut encoder = AnthropicRequestEncoder::new("m", configuration(1), 1).unwrap();
+    let mut encoder = AnthropicRequestEncoder::new("m", configuration(1)).unwrap();
     assert!(
         encoder
             .accept(RequestEvent::MessageStarted { role: Role::User })
             .is_err()
     );
-    let mut decoder = AnthropicRequestDecoder::new(1, 0).unwrap();
+    let mut decoder = AnthropicRequestDecoder::new();
     let mut scratch = RequestScratch::new(1, 0).unwrap();
     assert!(
         decoder

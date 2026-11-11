@@ -1,13 +1,13 @@
 pub mod user;
 
 use async_trait::async_trait;
-use modql::filter::{FilterGroups, ListOptions};
+use modql::filter::ListOptions;
 use validify::Validify;
 
 #[async_trait]
 pub trait Queryable<Query>: Send + Sync
 where
-    Query: Into<FilterGroups> + Validify + Send + 'static,
+    Query: Validify + Send + 'static,
 {
     type Entity: Send;
     type Error: Send;

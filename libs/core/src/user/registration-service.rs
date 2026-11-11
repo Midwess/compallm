@@ -31,7 +31,7 @@ impl RegistrationService {
             .users
             .one(
                 UserFilter {
-                    email: Some(user.email.clone().into()),
+                    email: Some(user.email.clone()),
                     ..Default::default()
                 },
                 ListOptions::default(),

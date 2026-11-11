@@ -120,7 +120,7 @@ impl AuthService {
             .users
             .one(
                 UserFilter {
-                    email: Some(email.clone().into()),
+                    email: Some(email.clone()),
                     ..Default::default()
                 },
                 ListOptions::default(),
@@ -141,7 +141,7 @@ impl AuthService {
             .users
             .one(
                 UserFilter {
-                    email: Some(email.clone().into()),
+                    email: Some(email.clone()),
                     ..Default::default()
                 },
                 ListOptions::default(),
@@ -191,7 +191,7 @@ impl AuthService {
             .users
             .one(
                 UserFilter {
-                    email: Some(claims.email.clone().into()),
+                    email: Some(claims.email.clone()),
                     ..Default::default()
                 },
                 ListOptions::default(),
@@ -282,9 +282,8 @@ impl AuthService {
             .one(
                 UserFilter {
                     id: Some(
-                        (i64::try_from(claims.session.user_id)
-                            .map_err(crate::repository::user::UserRepositoryError::database)?)
-                        .into(),
+                        i64::try_from(claims.session.user_id)
+                            .map_err(crate::repository::user::UserRepositoryError::database)?,
                     ),
                     ..Default::default()
                 },

@@ -1237,7 +1237,6 @@ dependencies = [
  "modql",
  "rand 0.9.5",
  "rust_decimal",
- "sea-query",
  "serde",
  "serde_bytes",
  "serde_json",

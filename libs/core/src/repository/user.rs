@@ -1,46 +1,24 @@
 use crate::persistent::ConnectionError;
 use crate::user::User;
 use async_trait::async_trait;
-use modql::filter::{
-    FilterNodes, ListOptions, OpValString, OpValsInt64, OpValsString, OrderBy, OrderBys,
-};
+use modql::filter::{ListOptions, OrderBy, OrderBys};
 
 use super::Queryable;
 use validify::{ValidationError, Validify};
 
-/// Indexed user filters. ID operators and email equality/membership are supported.
-/// Validify trims and ASCII-lowercases email equality and membership values.
-#[derive(Clone, Debug, Default, FilterNodes, Validify)]
-#[modql(rel = "users")]
+#[derive(Clone, Debug, Default, Validify)]
 pub struct UserFilter {
-    pub id: Option<OpValsInt64>,
-    #[modify(custom(normalize_email_filter))]
-    #[validate(custom(function = validate_email_filter))]
-    pub email: Option<OpValsString>,
+    pub id: Option<i64>,
+    pub ids: Option<Vec<i64>>,
+    #[modify(trim, custom(str::make_ascii_lowercase))]
+    pub email: Option<String>,
+    #[modify(custom(normalize_emails))]
+    pub emails: Option<Vec<String>>,
 }
 
-fn validate_email_filter(filter: &OpValsString) -> Result<(), ValidationError> {
-    filter
-        .0
-        .iter()
-        .all(|op| matches!(op, OpValString::Eq(_) | OpValString::In(_)))
-        .then_some(())
-        .ok_or_else(|| ValidationError::new_field("email_operator"))
-}
-
-fn normalize_email_filter(filter: &mut OpValsString) {
-    for op in &mut filter.0 {
-        match op {
-            OpValString::Eq(value) => {
-                *value = compallm_utils::email::normalize_email(value);
-            }
-            OpValString::In(values) => {
-                for value in values {
-                    *value = compallm_utils::email::normalize_email(value);
-                }
-            }
-            _ => {}
-        }
+fn normalize_emails(values: &mut [String]) {
+    for value in values {
+        *value = compallm_utils::email::normalize_email(value);
     }
 }
 

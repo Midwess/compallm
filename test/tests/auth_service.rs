@@ -377,30 +377,30 @@ impl compallm_core::repository::Queryable<compallm_core::repository::user::UserF
         mut query: compallm_core::repository::user::UserFilter,
         options: modql::filter::ListOptions,
     ) -> Result<Vec<User>, UserRepositoryError> {
-        use modql::filter::{OpVal, OpValInt64, OpValString};
         validify::Validify::validify(&mut query)?;
         let mut state = self.0.lock().unwrap();
         state
             .contexts
             .push(PostgresConnection::from_context(&DbContext::current()?)? as *const _ as usize);
-        let groups = modql::filter::FilterGroups::from(query).into_vec();
         Ok(state
             .user
             .clone()
             .filter(|user| {
-                groups.iter().any(|group| {
-                    group.nodes().iter().all(|node| {
-                        node.opvals.iter().all(|op| match (node.name.as_str(), op) {
-                            ("id", OpVal::Int64(OpValInt64::Eq(id))) => {
-                                u64::try_from(*id).ok() == Some(user.id)
-                            }
-                            ("email", OpVal::String(OpValString::Eq(email))) => {
-                                *email == user.email
-                            }
-                            _ => false,
-                        })
+                query
+                    .id
+                    .is_none_or(|id| u64::try_from(id).ok() == Some(user.id))
+                    && query.ids.as_ref().is_none_or(|ids| {
+                        ids.iter()
+                            .any(|id| u64::try_from(*id).ok() == Some(user.id))
                     })
-                })
+                    && query
+                        .email
+                        .as_ref()
+                        .is_none_or(|email| *email == user.email)
+                    && query
+                        .emails
+                        .as_ref()
+                        .is_none_or(|emails| emails.contains(&user.email))
             })
             .into_iter()
             .skip(options.offset.unwrap_or(0) as usize)

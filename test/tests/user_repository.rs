@@ -128,7 +128,7 @@ async fn find_by_id_maps_disabled_users_and_missing_rows() {
             let user = repository
                 .one(
                     UserFilter {
-                        id: Some(42_i64.into()),
+                        id: Some(42_i64),
                         ..Default::default()
                     },
                     ListOptions::default(),
@@ -141,7 +141,7 @@ async fn find_by_id_maps_disabled_users_and_missing_rows() {
                 repository
                     .one(
                         UserFilter {
-                            id: Some(43_i64.into()),
+                            id: Some(43_i64),
                             ..Default::default()
                         },
                         ListOptions::default()
@@ -169,7 +169,7 @@ async fn invalid_database_ids_are_rejected() {
                 UserRepository
                     .one(
                         UserFilter {
-                            id: Some(42_i64.into()),
+                            id: Some(42_i64),
                             ..Default::default()
                         },
                         ListOptions::default()
@@ -257,7 +257,7 @@ async fn list_returns_multiple_users_with_their_statuses() {
             let users = repository
                 .list(
                     UserFilter {
-                        id: Some(modql::filter::OpValInt64::In(vec![42, 43]).into()),
+                        ids: Some(vec![42, 43]),
                         ..Default::default()
                     },
                     ListOptions::from_limit(20),
@@ -270,6 +270,60 @@ async fn list_returns_multiple_users_with_their_statuses() {
             );
             assert_eq!(users[0].status, UserStatus::Active);
             assert_eq!(users[1].status, UserStatus::Disabled);
+        })
+        .await;
+}
+
+#[derive(Default, validify::Validify)]
+struct UserIdQuery {
+    id: Option<i64>,
+}
+
+compallm_postgres::impl_queryable!(UserRepository, UserIdQuery);
+
+impl compallm_postgres::repository::queryable::QueryDefinition<UserIdQuery> for UserRepository {
+    type Entity = User;
+    type Error = UserRepositoryError;
+    type Options = compallm_core::repository::user::UserListOptions;
+}
+
+impl compallm_postgres::repository::queryable::IntoSelect for UserIdQuery {
+    type Table = <UserSchema as sea_orm::ModelTrait>::Entity;
+
+    fn into_select(self) -> sea_orm::Select<Self::Table> {
+        use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+        type Column = <<UserSchema as sea_orm::ModelTrait>::Entity as EntityTrait>::Column;
+        Self::Table::find()
+            .filter(sea_orm::Condition::all().add_option(self.id.map(|id| Column::Id.eq(id))))
+    }
+}
+
+#[tokio::test]
+async fn additional_native_query_uses_shared_execution_and_domain_mapping() {
+    let context = Fixture::context(Arc::new(
+        MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([vec![Fixture::mock_row(Fixture::row())], vec![]])
+            .into_connection(),
+    ));
+    context
+        .scope(async {
+            let users = UserRepository
+                .list(
+                    UserIdQuery { id: Some(42_i64) },
+                    ListOptions::from_limit(20),
+                )
+                .await
+                .unwrap();
+            assert_eq!(users.len(), 1);
+            assert_eq!(users[0].id, 42);
+            assert_eq!(users[0].status, UserStatus::Active);
+            assert!(
+                UserRepository
+                    .one(UserIdQuery { id: Some(43_i64) }, ListOptions::default(),)
+                    .await
+                    .unwrap()
+                    .is_none()
+            );
         })
         .await;
 }

@@ -1,5 +1,5 @@
 use crate::error::CodecError;
-use crate::t2t::request::stop::{CHAT_STOP_COUNT, STOP_BYTES};
+use crate::t2t::request::decoder::stop::{CHAT_STOP_COUNT, STOP_BYTES};
 use crate::t2t::request::{
     MODEL_BYTES,
     event::{RequestField as F, Structure as S},

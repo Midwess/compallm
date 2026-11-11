@@ -3,7 +3,7 @@ use adapter::{
     error::CodecError,
     t2t::{
         Text2TextRequestTranslator, Text2TextTranslatorConfiguration,
-        copenai::request::{
+        copenai::{
             CompatibleOpenAIRequestDecoder as Decoder, CompatibleOpenAIRequestEncoder as Encoder,
         },
         openai::request::{OpenAICompletionRequestDecoder, OpenAICompletionRequestEncoder},

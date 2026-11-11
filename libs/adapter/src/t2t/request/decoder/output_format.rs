@@ -3,7 +3,10 @@ use super::super::{
     event::RequestEvent,
     json::{JsonString, Piece},
 };
-use super::{OutputFormatEvent as E, OutputFormatKind as K, SchemaValue};
+use super::{
+    super::event::{OutputFormatEvent as E, OutputFormatKind as K},
+    SchemaValue,
+};
 use crate::{codec::DecodeStep, error::CodecError};
 
 #[derive(Clone, Copy, PartialEq, Eq)]

@@ -4,7 +4,7 @@ use adapter::{
     t2t::{
         Text2TextRequestTranslator,
         anthropic::request::{AnthropicRequestDecoder, AnthropicRequestEncoder},
-        copenai::request::{CompatibleOpenAIRequestDecoder, CompatibleOpenAIRequestEncoder},
+        copenai::{CompatibleOpenAIRequestDecoder, CompatibleOpenAIRequestEncoder},
         openai::request::{
             OpenAICompletionRequestDecoder, OpenAICompletionRequestEncoder,
             OpenAIResponseRequestDecoder, OpenAIResponseRequestEncoder,

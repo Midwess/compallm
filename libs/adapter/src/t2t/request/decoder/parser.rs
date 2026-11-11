@@ -1,169 +1,58 @@
-use super::output_format::FormatDecoder;
 use super::stop::{CHAT_STOP_COUNT, STOP_BYTES, STOP_COUNT};
 use super::{
-    Format, MODEL_BYTES, RequestScratch,
-    json::{JsonString, Number, Piece},
+    CONTROL_BYTES, Field, Format, FormatDecoder, Message, Phase, Purpose, RequestEvent,
+    Text2TextTranslatorConfiguration, Token, WORK_BYTES,
 };
 use crate::{
     codec::DecodeStep,
     error::CodecError,
-    t2t::{
-        Text2TextTranslatorConfiguration,
-        request::event::{RequestEvent, Role},
+    t2t::request::{
+        MODEL_BYTES, RequestScratch,
+        event::Role,
+        json::{JsonString, Number, Piece},
     },
 };
 
-pub trait RequestDecoder {
-    /// Consume a prefix of `input`, returning at most one bounded event.
-    ///
-    /// Advance `input` to its remaining suffix. NeedInput requires an empty
-    /// suffix and is invalid at EOF. Finished requires EOF and no remaining
-    /// bytes. Retain bounded state, validate trailing input, and reject semantics
-    /// that cannot be represented instead of silently discarding them.
-    /// Input and scratch borrow reusable caller storage; do not retain either.
-    /// Supplied scratch capacities determine fragment and role-late bounds.
-    /// TextFragment and SchemaFragment report lengths into scratch.text(). Consume that prefix
-    /// before calling advance again; the next call may overwrite it. Keep the
-    /// same scratch throughout an attempt, including across NeedInput/Progress.
-    fn advance(
-        &mut self,
-        input: &mut &[u8],
-        eof: bool,
-        scratch: &mut RequestScratch,
-    ) -> Result<DecodeStep<RequestEvent>, CodecError>;
-}
-
-impl<D: RequestDecoder + ?Sized> RequestDecoder for Box<D> {
-    fn advance(
-        &mut self,
-        input: &mut &[u8],
-        eof: bool,
-        scratch: &mut RequestScratch,
-    ) -> Result<DecodeStep<RequestEvent>, CodecError> {
-        (**self).advance(input, eof, scratch)
-    }
-}
-
-const WORK_BYTES: usize = 4096;
-const CONTROL_BYTES: usize = 24;
-
-fn invalid() -> CodecError {
-    CodecError::InvalidInput("invalid or incomplete text request")
-}
-fn unsupported() -> CodecError {
-    CodecError::Unsupported("request field, role, or shape is outside the text-only subset")
-}
-
-#[derive(Clone, Copy)]
-enum Field {
-    Model,
-    Stream,
-    Body,
-    Role,
-    Content,
-    Type,
-    MaxTokens,
-    System,
-    StreamOptions,
-    IncludeUsage,
-    TopP,
-    Stop,
-    OutputFormat,
-}
-#[derive(Clone, Copy)]
-enum Phase {
-    Root,
-    RootKey(bool),
-    RootColon,
-    RootValue,
-    RootAfter,
-    ArrayFirst,
-    ArrayNext,
-    MessageKey(bool),
-    MessageColon,
-    MessageValue,
-    MessageAfter,
-    ArrayAfter,
-    Done,
-    OptionsKey(bool),
-    OptionsColon,
-    OptionsValue,
-    OptionsAfter,
-    StopFirst,
-    StopNext,
-    StopAfter,
-}
-#[derive(Clone, Copy)]
-enum Purpose {
-    RootKey,
-    MessageKey,
-    Model,
-    Role,
-    Type,
-    Content,
-    OptionKey,
-    Stop,
-}
-struct Token {
-    purpose: Purpose,
-    string: JsonString,
-}
-
-#[derive(Default)]
-struct Message {
-    role: Option<Role>,
-    seen: u8,
-    content_started: bool,
-    content_done: bool,
-    closed: bool,
-    started: bool,
-    text_started: bool,
-    text_ended: bool,
-    deferred_pos: usize,
-    short_input: bool,
-    system: bool,
-}
-
 pub(crate) struct Decoder {
-    format: Format,
-    phase: Phase,
-    field: Field,
-    root_seen: u16,
-    output_format: Option<FormatDecoder>,
-    has_message: bool,
-    token: Option<Token>,
-    literal: Option<(&'static [u8], usize, bool)>,
-    null_literal: Option<usize>,
-    options_seen: bool,
-    options_object: bool,
-    stream: bool,
-    include_usage: Option<bool>,
-    pending_streaming: bool,
-    probability: Option<Number>,
-    probability_bytes: [u8; 256],
-    probability_len: usize,
-    pending_top_p: Option<f64>,
-    pending_stop: Option<RequestEvent>,
-    stop_start_pending: bool,
-    stop_end_pending: bool,
-    stop_list_end_pending: bool,
-    stop_single: bool,
-    stop_count: usize,
-    stop_bytes: usize,
-    stop_sequence_bytes: usize,
-    max_tokens: Option<u32>,
-    configuration: Option<Text2TextTranslatorConfiguration>,
-    small: [u8; CONTROL_BYTES],
-    small_len: usize,
-    model_bytes: usize,
-    message: Option<Message>,
-    fragment_emitted: bool,
-    piece: [u8; 4],
-    piece_pos: usize,
-    piece_len: usize,
-    piece_purpose: Purpose,
-    failed: bool,
-    completed: bool,
+    pub(super) format: Format,
+    pub(super) phase: Phase,
+    pub(super) field: Field,
+    pub(super) root_seen: u16,
+    pub(super) output_format: Option<FormatDecoder>,
+    pub(super) has_message: bool,
+    pub(super) token: Option<Token>,
+    pub(super) literal: Option<(&'static [u8], usize, bool)>,
+    pub(super) null_literal: Option<usize>,
+    pub(super) options_seen: bool,
+    pub(super) options_object: bool,
+    pub(super) stream: bool,
+    pub(super) include_usage: Option<bool>,
+    pub(super) pending_streaming: bool,
+    pub(super) probability: Option<Number>,
+    pub(super) probability_bytes: [u8; 256],
+    pub(super) probability_len: usize,
+    pub(super) pending_top_p: Option<f64>,
+    pub(super) pending_stop: Option<RequestEvent>,
+    pub(super) stop_start_pending: bool,
+    pub(super) stop_end_pending: bool,
+    pub(super) stop_list_end_pending: bool,
+    pub(super) stop_single: bool,
+    pub(super) stop_count: usize,
+    pub(super) stop_bytes: usize,
+    pub(super) stop_sequence_bytes: usize,
+    pub(super) max_tokens: Option<u32>,
+    pub(super) configuration: Option<Text2TextTranslatorConfiguration>,
+    pub(super) small: [u8; CONTROL_BYTES],
+    pub(super) small_len: usize,
+    pub(super) model_bytes: usize,
+    pub(super) message: Option<Message>,
+    pub(super) fragment_emitted: bool,
+    pub(super) piece: [u8; 4],
+    pub(super) piece_pos: usize,
+    pub(super) piece_len: usize,
+    pub(super) piece_purpose: Purpose,
+    pub(super) failed: bool,
+    pub(super) completed: bool,
 }
 
 impl Decoder {
@@ -209,6 +98,13 @@ impl Decoder {
             failed: false,
             completed: false,
         }
+    }
+    fn invalid() -> CodecError {
+        CodecError::InvalidInput("invalid or incomplete text request")
+    }
+
+    fn unsupported() -> CodecError {
+        CodecError::Unsupported("request field, role, or shape is outside the text-only subset")
     }
 
     fn event(&mut self, scratch: &mut RequestScratch) -> Option<RequestEvent> {
@@ -335,10 +231,10 @@ impl Decoder {
                         }
                         (Field::System, 16)
                     }
-                    _ => return Err(unsupported()),
+                    _ => return Err(Self::unsupported()),
                 };
                 if self.root_seen & bit != 0 {
-                    return Err(invalid());
+                    return Err(Self::invalid());
                 }
                 self.root_seen |= bit;
                 self.field = field;
@@ -349,11 +245,11 @@ impl Decoder {
                     b"role" => (Field::Role, 1),
                     b"content" => (Field::Content, 2),
                     b"type" if self.format == Format::Responses => (Field::Type, 4),
-                    _ => return Err(unsupported()),
+                    _ => return Err(Self::unsupported()),
                 };
                 let message = self.message.as_mut().expect("message grammar");
                 if message.seen & bit != 0 {
-                    return Err(invalid());
+                    return Err(Self::invalid());
                 }
                 message.seen |= bit;
                 self.field = field;
@@ -361,7 +257,7 @@ impl Decoder {
             }
             Purpose::Model => {
                 if self.model_bytes == 0 {
-                    return Err(invalid());
+                    return Err(Self::invalid());
                 }
                 self.phase = Phase::RootAfter;
             }
@@ -371,13 +267,13 @@ impl Decoder {
                         b"system" if self.format != Format::Anthropic => Role::System,
                         b"user" => Role::User,
                         b"assistant" => Role::Assistant,
-                        _ => return Err(unsupported()),
+                        _ => return Err(Self::unsupported()),
                     });
                 self.phase = Phase::MessageAfter;
             }
             Purpose::Type => {
                 if &self.small[..self.small_len] != b"message" {
-                    return Err(unsupported());
+                    return Err(Self::unsupported());
                 }
                 self.phase = Phase::MessageAfter;
             }
@@ -393,10 +289,10 @@ impl Decoder {
             }
             Purpose::OptionKey => {
                 if &self.small[..self.small_len] != b"include_usage" {
-                    return Err(unsupported());
+                    return Err(Self::unsupported());
                 }
                 if self.options_seen {
-                    return Err(invalid());
+                    return Err(Self::invalid());
                 }
                 self.options_seen = true;
                 self.field = Field::IncludeUsage;
@@ -404,7 +300,7 @@ impl Decoder {
             }
             Purpose::Stop => {
                 if self.stop_sequence_bytes == 0 {
-                    return Err(invalid());
+                    return Err(Self::invalid());
                 }
                 self.stop_count += 1;
                 self.stop_end_pending = true;
@@ -456,7 +352,7 @@ impl Decoder {
             }
             _ => {
                 if self.small_len == CONTROL_BYTES {
-                    return Err(unsupported());
+                    return Err(Self::unsupported());
                 }
                 self.small[self.small_len] = byte;
                 self.small_len += 1;
@@ -468,7 +364,7 @@ impl Decoder {
     fn close_message(&mut self) -> Result<(), CodecError> {
         let message = self.message.as_mut().expect("message grammar");
         if message.seen & 3 != 3 || message.role.is_none() || !message.content_done {
-            return Err(invalid());
+            return Err(Self::invalid());
         }
         message.closed = true;
         self.phase = Phase::ArrayAfter;
@@ -529,7 +425,7 @@ impl Decoder {
         }
         if let Some((literal, position, value)) = self.literal {
             if byte != literal[position] {
-                return Err(invalid());
+                return Err(Self::invalid());
             }
             if position + 1 == literal.len() {
                 self.literal = None;
@@ -547,7 +443,7 @@ impl Decoder {
         }
         if let Some(position) = self.null_literal {
             if byte != b"null"[position] {
-                return Err(invalid());
+                return Err(Self::invalid());
             }
             if position == 3 {
                 self.null_literal = None;
@@ -563,7 +459,7 @@ impl Decoder {
         if let Some(value) = self.max_tokens {
             if byte.is_ascii_digit() {
                 if value == 0 {
-                    return Err(invalid());
+                    return Err(Self::invalid());
                 }
                 self.max_tokens = Some(
                     value
@@ -574,7 +470,7 @@ impl Decoder {
                 return Ok(());
             }
             if value == 0 {
-                return Err(invalid());
+                return Err(Self::invalid());
             }
             self.max_tokens = None;
             self.configuration = Some(Text2TextTranslatorConfiguration {
@@ -590,13 +486,13 @@ impl Decoder {
             (Phase::RootKey(_), b'"') => self.start_string(Purpose::RootKey),
             (Phase::RootKey(true) | Phase::RootAfter, b'}') => {
                 if self.root_seen & 5 != 5 || !self.has_message {
-                    return Err(invalid());
+                    return Err(Self::invalid());
                 }
                 if self.format == Format::Anthropic && self.root_seen & 8 == 0 {
-                    return Err(invalid());
+                    return Err(Self::invalid());
                 }
                 if self.options_object && !self.stream {
-                    return Err(invalid());
+                    return Err(Self::invalid());
                 }
                 if self.root_seen & 34 != 0 {
                     self.pending_streaming = true;
@@ -654,7 +550,7 @@ impl Decoder {
                     });
                     self.start_string(Purpose::Content);
                 }
-                Field::System => return Err(unsupported()),
+                Field::System => return Err(Self::unsupported()),
                 Field::Body if byte == b'[' => self.phase = Phase::ArrayFirst,
                 Field::Body if byte == b'"' && self.format == Format::Responses => {
                     self.message = Some(Message {
@@ -665,8 +561,8 @@ impl Decoder {
                     });
                     self.start_string(Purpose::Content);
                 }
-                Field::Body => return Err(unsupported()),
-                _ => return Err(invalid()),
+                Field::Body => return Err(Self::unsupported()),
+                _ => return Err(Self::invalid()),
             },
             (Phase::RootAfter, b',') => self.phase = Phase::RootKey(false),
             (Phase::ArrayFirst | Phase::ArrayNext, b'{') => {
@@ -686,10 +582,10 @@ impl Decoder {
                         .content_started = true;
                     self.start_string(Purpose::Content);
                 }
-                _ => return Err(invalid()),
+                _ => return Err(Self::invalid()),
             },
             (Phase::MessageValue, _) if matches!(self.field, Field::Content) => {
-                return Err(unsupported());
+                return Err(Self::unsupported());
             }
             (Phase::MessageAfter, b',') => self.phase = Phase::MessageKey(false),
             (Phase::ArrayAfter, b',') => self.phase = Phase::ArrayNext,
@@ -706,7 +602,7 @@ impl Decoder {
                 self.stop_list_end_pending = true;
             }
             (Phase::StopAfter, b',') => self.phase = Phase::StopNext,
-            _ => return Err(invalid()),
+            _ => return Err(Self::invalid()),
         }
         Ok(())
     }
@@ -725,7 +621,7 @@ impl Decoder {
                 return Ok(DecodeStep::Finished);
             }
             self.failed = true;
-            return Err(invalid());
+            return Err(Self::invalid());
         }
         if self.fragment_emitted {
             scratch.fragment_len = 0;
@@ -794,7 +690,7 @@ impl Decoder {
                 || self.message.is_some()
                 || self.output_format.is_some()
             {
-                return Err(invalid());
+                return Err(Self::invalid());
             }
             self.completed = true;
             Ok(DecodeStep::Finished)

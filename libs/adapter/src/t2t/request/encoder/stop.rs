@@ -1,8 +1,6 @@
 use crate::error::CodecError;
 
-pub(crate) const STOP_BYTES: usize = 4096;
-pub(crate) const STOP_COUNT: usize = 32;
-pub(crate) const CHAT_STOP_COUNT: usize = 4;
+use super::super::decoder::stop::{STOP_BYTES, STOP_COUNT};
 
 pub(crate) struct Stops {
     bytes: [u8; STOP_BYTES],

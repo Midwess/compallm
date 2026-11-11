@@ -1,9 +1,11 @@
-use super::stop::{CHAT_STOP_COUNT, STOP_BYTES, STOP_COUNT, StopWriter, Stops};
-use super::{
+use super::super::decoder::stop::{CHAT_STOP_COUNT, STOP_BYTES, STOP_COUNT};
+use super::super::event::OutputFormatEvent;
+use super::super::{
     Format, MODEL_BYTES,
     json::{JsonFloat, Utf8},
 };
-use super::{event::OutputFormatEvent, output_format::FormatWriter};
+use super::FormatWriter;
+use super::{StopWriter, Stops};
 use crate::{
     codec::EncodeStep,
     error::CodecError,
@@ -12,33 +14,6 @@ use crate::{
         request::event::{RequestEvent, Role},
     },
 };
-
-pub trait RequestEncoder {
-    /// Called only after NeedEvent. Retain metadata, never payload bytes.
-    fn accept(&mut self, event: RequestEvent) -> Result<(), CodecError>;
-
-    /// Write into the supplied slice without blocking. Wrote must report a
-    /// nonzero length within the slice. NeedEvent must remain repeatable until
-    /// accept/finish. Finished is valid only after finish and all output drains.
-    /// Consume the pending text suffix; caller retains it across output flushes.
-    fn advance(&mut self, text: &mut &[u8], output: &mut [u8]) -> Result<EncodeStep, CodecError>;
-
-    /// Called once after source EOF validation, while the encoder needs an event.
-    /// Subsequent advance calls must drain final output and then return Finished.
-    fn finish(&mut self) -> Result<(), CodecError>;
-}
-
-impl<E: RequestEncoder + ?Sized> RequestEncoder for Box<E> {
-    fn accept(&mut self, event: RequestEvent) -> Result<(), CodecError> {
-        (**self).accept(event)
-    }
-    fn advance(&mut self, text: &mut &[u8], output: &mut [u8]) -> Result<EncodeStep, CodecError> {
-        (**self).advance(text, output)
-    }
-    fn finish(&mut self) -> Result<(), CodecError> {
-        (**self).finish()
-    }
-}
 
 enum TextSource {
     Model,

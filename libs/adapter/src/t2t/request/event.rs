@@ -1,7 +1,27 @@
 //! Incremental message and structured request vocabulary.
 
-pub use super::output_format::{OutputFormatEvent, OutputFormatKind};
 use crate::t2t::Text2TextTranslatorConfiguration;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OutputFormatKind {
+    Text,
+    JsonObject,
+    JsonSchema,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OutputFormatEvent {
+    Started,
+    Mode(OutputFormatKind),
+    NameStarted,
+    NameEnded,
+    DescriptionStarted,
+    DescriptionEnded,
+    Strict(Option<bool>),
+    SchemaStarted,
+    SchemaEnded,
+    Ended,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Role {

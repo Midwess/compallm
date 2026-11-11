@@ -1,3 +1,7 @@
-//! OpenAI-compatible Chat codecs with function tools and reasoning history.
+//! OpenAI-compatible Chat request codecs with function tools and reasoning history.
+mod decoder;
+mod encoder;
+mod schema;
 
-pub mod request;
+pub use decoder::CompatibleOpenAIRequestDecoder;
+pub use encoder::CompatibleOpenAIRequestEncoder;

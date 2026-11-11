@@ -1,5 +1,9 @@
-use super::super::{Format, event::RequestEvent, json::Utf8};
-use super::{OutputFormatEvent as E, OutputFormatKind as K, SchemaValue};
+use super::super::{
+    Format,
+    decoder::SchemaValue,
+    event::{OutputFormatEvent as E, OutputFormatKind as K, RequestEvent},
+    json::Utf8,
+};
 use crate::{codec::EncodeStep, error::CodecError};
 
 #[derive(Clone, Copy, PartialEq, Eq)]

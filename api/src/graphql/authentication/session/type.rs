@@ -1,16 +1,18 @@
 use compallm_core::authentication::Session as CoreSession;
-use juniper::{ID, graphql_object};
 
 /// Session identity projected only after authenticating the selected credential.
 ///
 /// Token material, permission source, and internal freshness state are omitted.
-pub struct Session(CoreSession);
+pub struct Session(pub(super) CoreSession);
 
 impl From<CoreSession> for Session {
     fn from(session: CoreSession) -> Self {
         Self(session)
     }
 }
+
+
+use juniper::{graphql_object, ID};
 
 #[graphql_object]
 impl Session {

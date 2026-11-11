@@ -1,4 +1,4 @@
-use compallm_core::authentication::AuthService;
+use compallm_core::{authentication::AuthService, authorization::rbac::RbacService};
 use juniper::FromContext;
 use std::sync::Arc;
 
@@ -42,6 +42,12 @@ impl GraphqlContext {
 impl FromContext<GraphqlContext> for AuthorizationContext {
     fn from(context: &GraphqlContext) -> &Self {
         &context.authorization
+    }
+}
+
+impl FromContext<GraphqlContext> for RbacService {
+    fn from(context: &GraphqlContext) -> &Self {
+        <Self as FromContext<Di>>::from(context.di)
     }
 }
 

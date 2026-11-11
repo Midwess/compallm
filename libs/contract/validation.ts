@@ -362,3 +362,14 @@ export const ProvidersCreateInput = z
   .describe('Atomic batch of new provider connections for the verified organization.')
 export type ProvidersCreateInputFormInput = z.input<typeof ProvidersCreateInput>
 export type ProvidersCreateInputFormOutput = z.output<typeof ProvidersCreateInput>
+export const RoleCreateInputConstraints = { name: { minLength: 1, maxLength: 64, trim: true } } as const
+export const RoleCreateInputInput = { name: stringInput(RoleCreateInputConstraints['name']) }
+export const RoleCreateInput = z
+  .object({
+    name: inputString({ minLength: 1, maxLength: 64, trim: true }),
+    description: inputString({}),
+    cedarSource: inputString({}),
+  })
+  .strict()
+export type RoleCreateInputFormInput = z.input<typeof RoleCreateInput>
+export type RoleCreateInputFormOutput = z.output<typeof RoleCreateInput>

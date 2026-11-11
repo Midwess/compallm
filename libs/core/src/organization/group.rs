@@ -10,6 +10,13 @@ use std::{
     sync::LazyLock,
 };
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GroupInfo {
+    pub id: u64,
+    pub name: String,
+    pub description: String,
+}
+
 /// Group-assigned roles retain their provenance; groups do not contain groups.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Group {

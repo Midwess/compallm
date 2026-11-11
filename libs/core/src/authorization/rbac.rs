@@ -23,14 +23,38 @@ impl RbacService {
         Self { auth_service, organizations }
     }
 
-    async fn new_role(
+    pub async fn list_roles(&self, permission: &MemberPermission) -> Result<Vec<Role>, AuthorizationError> {
+        Action::RoleRead.check_permission(permission)?;
+        Ok(self.organizations.list_role_info(permission.organization_id()).await?)
+    }
+
+    pub async fn list_groups(&self, permission: &MemberPermission) -> Result<Vec<crate::organization::group::GroupInfo>, AuthorizationError> {
+        Action::GroupRead.check_permission(permission)?;
+        Ok(self.organizations.list_group_info(permission.organization_id()).await?)
+    }
+
+    pub async fn get_role(&self, permission: &MemberPermission, id: u64) -> Result<Option<Role>, AuthorizationError> {
+        Action::RoleRead.check_permission(permission)?;
+        Ok(self.organizations.find_roles_for_assignment(permission.organization_id(), &[id]).await?.into_iter().next())
+    }
+
+    pub async fn get_group(&self, permission: &MemberPermission, id: u64) -> Result<Option<crate::organization::group::GroupInfo>, AuthorizationError> {
+        Action::GroupRead.check_permission(permission)?;
+        Ok(self.organizations.find_group_info(permission.organization_id(), id).await?)
+    }
+
+    pub async fn new_role(
         &self,
         permission: &MemberPermission,
         name: &str,
+        description: &str,
         cedar_script: String,
     ) -> Result<Role, AuthorizationError> {
         Action::RoleCreate.check_permission(permission)?;
-        let role = Role::new(permission.organization_id(), name, "", cedar_script).await?;
+        let role = Role::new(permission.organization_id(), name, description, cedar_script).await?;
+        if !self.organizations.supports_role_policy(&role.cedar_source) {
+            return Err(AuthorizationError::UnsupportedPolicy);
+        }
         self.organizations.create_roles(vec![role.clone()]).await?;
         Ok(role)
     }

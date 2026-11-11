@@ -3,6 +3,9 @@
   "title": "Inputs",
   "type": "object",
   "properties": {
+    "role_create": {
+      "$ref": "#/$defs/RoleCreateInput"
+    },
     "group_create": {
       "$ref": "#/$defs/GroupCreateInput"
     },
@@ -23,6 +26,7 @@
     }
   },
   "required": [
+    "role_create",
     "group_create",
     "email",
     "code",
@@ -31,6 +35,30 @@
     "provider_patch"
   ],
   "$defs": {
+    "RoleCreateInput": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "x-compallm-trim": true,
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "description": {
+          "type": "string"
+        },
+        "cedarSource": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "cedarSource"
+      ],
+      "x-compallm-input": true
+    },
     "GroupCreateInput": {
       "type": "object",
       "properties": {

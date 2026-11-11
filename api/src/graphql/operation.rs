@@ -33,49 +33,52 @@ pub(super) fn validate(request: &GraphQLRequest, schema: &ApplicationSchema) -> 
     if selected.operation_type != OperationType::Mutation {
         return Err(());
     }
-    let mut fields = 0;
-    root_fields(
-        &selected.selection_set,
-        &document,
-        &mut Vec::new(),
-        &mut fields,
-    )?;
-    if fields == 1 { Ok(()) } else { Err(()) }
+    let root = single_field(&selected.selection_set, &document, &mut Vec::new())?;
+    let Selection::Field(root) = root else { return Err(()); };
+    if root.item.name.item == "authentication" {
+        single_field(root.item.selection_set.as_deref().ok_or(())?, &document, &mut Vec::new())?;
+    }
+    if root.item.name.item == "organization" {
+        let domain = single_field(root.item.selection_set.as_deref().ok_or(())?, &document, &mut Vec::new())?;
+        let Selection::Field(domain) = domain else { return Err(()); };
+        single_field(domain.item.selection_set.as_deref().ok_or(())?, &document, &mut Vec::new())?;
+    }
+    Ok(())
 }
 
-fn root_fields<'a>(
-    selections: &[Selection<'a>],
-    document: &[Definition<'a, juniper::DefaultScalarValue>],
+fn single_field<'a, 'b>(
+    selections: &'b [Selection<'a>],
+    document: &'b [Definition<'a, juniper::DefaultScalarValue>],
     visiting: &mut Vec<&'a str>,
-    fields: &mut usize,
+) -> Result<&'b Selection<'a>, ()> {
+    let mut found = None;
+    collect_field(selections, document, visiting, &mut found)?;
+    found.ok_or(())
+}
+
+fn collect_field<'a, 'b>(
+    selections: &'b [Selection<'a>],
+    document: &'b [Definition<'a, juniper::DefaultScalarValue>],
+    visiting: &mut Vec<&'a str>,
+    found: &mut Option<&'b Selection<'a>>,
 ) -> Result<(), ()> {
     for selection in selections {
         match selection {
-            Selection::Field(_) => *fields += 1,
-            Selection::InlineFragment(fragment) => {
-                root_fields(&fragment.item.selection_set, document, visiting, fields)?
+            Selection::Field(_) => {
+                if found.replace(selection).is_some() { return Err(()); }
             }
+            Selection::InlineFragment(fragment) => collect_field(&fragment.item.selection_set, document, visiting, found)?,
             Selection::FragmentSpread(spread) => {
                 let name = spread.item.name.item;
-                if visiting.contains(&name) {
-                    return Err(());
-                }
-                let fragment = document
-                    .iter()
-                    .find_map(|definition| match definition {
-                        Definition::Fragment(fragment) if fragment.item.name.item == name => {
-                            Some(&fragment.item)
-                        }
-                        _ => None,
-                    })
-                    .ok_or(())?;
+                if visiting.contains(&name) { return Err(()); }
+                let fragment = document.iter().find_map(|definition| match definition {
+                    Definition::Fragment(fragment) if fragment.item.name.item == name => Some(&fragment.item),
+                    _ => None,
+                }).ok_or(())?;
                 visiting.push(name);
-                root_fields(&fragment.selection_set, document, visiting, fields)?;
+                collect_field(&fragment.selection_set, document, visiting, found)?;
                 visiting.pop();
             }
-        }
-        if *fields > 1 {
-            return Err(());
         }
     }
     Ok(())

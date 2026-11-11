@@ -163,6 +163,7 @@ struct OrganizationRepositoryStub(Arc<Mutex<State>>);
 
 #[async_trait::async_trait]
 impl OrganizationRepository for OrganizationRepositoryStub {
+    fn supports_role_policy(&self, _: &str) -> bool { true }
     async fn lock_role(&self, _: u64, _: u64) -> Result<Role, OrganizationRepositoryError> {
         unimplemented!()
     }
@@ -182,7 +183,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
     async fn delete_role(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
         unimplemented!()
     }
-    async fn find_roles(
+    async fn find_roles_for_assignment(
         &self,
         _: u64,
         _: &[u64],
@@ -196,6 +197,11 @@ impl OrganizationRepository for OrganizationRepositoryStub {
         unimplemented!()
     }
     async fn find_role(&self, _: u64, _: u64) -> Result<Option<Role>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn list_role_info(&self, _: u64) -> Result<Vec<Role>, OrganizationRepositoryError> { unimplemented!() }
+    async fn list_group_info(&self, _: u64) -> Result<Vec<compallm_core::organization::group::GroupInfo>, OrganizationRepositoryError> { unimplemented!() }
+    async fn find_group_info(&self, _: u64, _: u64) -> Result<Option<compallm_core::organization::group::GroupInfo>, OrganizationRepositoryError> {
         unimplemented!()
     }
     async fn find_group(
@@ -2514,7 +2520,7 @@ async fn graphql_request(
         request = request.header("origin", "http://localhost");
     }
     let body = serde_json::json!({
-        "query": "query { first: session { id userId organizationId organizationName } second: session { id } }"
+        "query": "query { authentication { first: session { id userId organizationId organizationName } second: session { id } } }"
     });
     router
         .clone()
@@ -2553,7 +2559,7 @@ async fn graphql_identity_uses_one_freshness_read_and_rejects_non_access_or_revo
         .unwrap();
     let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     assert!(body.get("errors").is_none());
-    assert!(body["data"]["first"].is_object());
+    assert!(body["data"]["authentication"]["first"].is_object());
     assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, 1);
 
     for token in [
@@ -2877,14 +2883,14 @@ async fn graphql_shared_schema_keeps_concurrent_session_identities_separate() {
             .unwrap();
         let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert!(body.get("errors").is_none());
-        assert_eq!(body["data"]["first"]["id"], expected.id.to_string());
-        assert_eq!(body["data"]["second"]["id"], expected.id.to_string());
+        assert_eq!(body["data"]["authentication"]["first"]["id"], expected.id.to_string());
+        assert_eq!(body["data"]["authentication"]["second"]["id"], expected.id.to_string());
         assert_eq!(
-            body["data"]["first"]["userId"],
+            body["data"]["authentication"]["first"]["userId"],
             expected.user_id.to_string()
         );
         assert_eq!(
-            body["data"]["first"]["organizationId"],
+            body["data"]["authentication"]["first"]["organizationId"],
             expected.organization_id.to_string()
         );
     }
@@ -2927,6 +2933,22 @@ async fn graphql_operation(
         .unwrap()
 }
 
+#[tokio::test]
+async fn graphql_rejects_multiple_nested_organization_writes() {
+    let fixture = Fixture::new(None);
+    let router = fixture.graphql();
+    let query = r#"mutation { organization { roles { first: create(input: {name: "one", description: "", cedarSource: ""}) { id } second: create(input: {name: "two", description: "", cedarSource: ""}) { id } } } }"#;
+    let response = graphql_operation(&router, query, serde_json::json!({}), None, None, false).await;
+    assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
+    let fragment_query = r#"mutation { organization { groups { ...Writes } } } fragment Writes on GroupMutation { first: create(input: {name: "one", description: "", roleIds: []}) { id } second: create(input: {name: "two", description: "", roleIds: []}) { id } }"#;
+    let response = graphql_operation(&router, fragment_query, serde_json::json!({}), None, None, false).await;
+    assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
+    let single = r#"mutation { organization { groups { create(input: {name: "one", description: "", roleIds: []}) { id } } } }"#;
+    let response = graphql_operation(&router, single, serde_json::json!({}), None, None, false).await;
+    assert_eq!(response.status(), axum::http::StatusCode::OK);
+    assert_eq!(graphql_body(response).await["errors"][0]["extensions"]["status"], 401);
+}
+
 async fn graphql_body(response: axum::response::Response) -> serde_json::Value {
     let bytes = axum::body::to_bytes(response.into_body(), 16384)
         .await
@@ -2957,23 +2979,23 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let router = fixture.graphql();
     let response = graphql_operation(&router,
-        "mutation($input:EmailInput!){signinEmailRequest(input:$input){token lifetime{expiresInSeconds}}}",
+        "mutation($input:EmailInput!){authentication{signinEmailRequest(input:$input){token lifetime{expiresInSeconds}}}}",
         serde_json::json!({"input":{"email":"james@midwess.com","delivery":"TOKEN"}}),Some("invalid-bearer"),None,false).await;
     assert_eq!(response.status(), 200);
     assert!(!response.headers().contains_key("set-cookie"));
     let body = graphql_body(response).await;
-    let challenge = body["data"]["signinEmailRequest"]["token"]
+    let challenge = body["data"]["authentication"]["signinEmailRequest"]["token"]
         .as_str()
         .unwrap();
     let claims = EmailOtpAccessToken::try_from(decode_token(challenge, SECRET).unwrap()).unwrap();
     assert!(fixture.repo.0.lock().unwrap().logins.is_empty());
     let response = graphql_operation(&router,
-        "mutation($input:EmailCodeInput!){signinEmailConfirm(input:$input){accessToken refreshToken}}",
+        "mutation($input:EmailCodeInput!){authentication{signinEmailConfirm(input:$input){accessToken refreshToken}}}",
         serde_json::json!({"input":{"code":claims.code,"delivery":"TOKEN"}}),Some(challenge),None,false).await;
     assert_eq!(response.status(), 200);
     assert!(!response.headers().contains_key("set-cookie"));
     let body = graphql_body(response).await;
-    let tokens = &body["data"]["signinEmailConfirm"];
+    let tokens = &body["data"]["authentication"]["signinEmailConfirm"];
     let access = tokens["accessToken"].as_str().unwrap();
     let refresh = tokens["refreshToken"].as_str().unwrap();
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
@@ -2985,7 +3007,7 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     );
     let response = graphql_operation(
         &router,
-        "mutation{sessionRefresh{accessToken refreshToken}}",
+        "mutation{authentication{sessionRefresh{accessToken refreshToken}}}",
         serde_json::json!({}),
         Some(refresh),
         None,
@@ -2994,13 +3016,13 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     .await;
     assert!(!response.headers().contains_key("set-cookie"));
     let renewed = graphql_body(response).await;
-    let access = renewed["data"]["sessionRefresh"]["accessToken"]
+    let access = renewed["data"]["authentication"]["sessionRefresh"]["accessToken"]
         .as_str()
         .unwrap();
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
     let response = graphql_operation(
         &router,
-        "mutation{sessionRevoke}",
+        "mutation{authentication{sessionRevoke}}",
         serde_json::json!({}),
         Some(access),
         None,
@@ -3008,7 +3030,7 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     )
     .await;
     assert!(!response.headers().contains_key("set-cookie"));
-    assert_eq!(graphql_body(response).await["data"]["sessionRevoke"], true);
+    assert_eq!(graphql_body(response).await["data"]["authentication"]["sessionRevoke"], true);
     assert_graphql_denial(
         graphql_request(&router, Some(access), None, false).await,
         401,
@@ -3022,11 +3044,11 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     let fixture = Fixture::new(None);
     let router = fixture.graphql();
     let response = graphql_operation(&router,
-        "mutation($input:EmailInput!){signupEmailRequest(input:$input){token lifetime{expiresInSeconds}}}",
+        "mutation($input:EmailInput!){authentication{signupEmailRequest(input:$input){token lifetime{expiresInSeconds}}}}",
         serde_json::json!({"input":{"email":"james@midwess.com"}}),None,None,true).await;
     let cookies = response_cookies(&response);
     assert_eq!(response.status(), 200);
-    assert!(graphql_body(response).await["data"]["signupEmailRequest"]["token"].is_null());
+    assert!(graphql_body(response).await["data"]["authentication"]["signupEmailRequest"]["token"].is_null());
     let challenge = cookies
         .split(';')
         .find_map(|value| value.trim().strip_prefix("compallm-access="))
@@ -3035,11 +3057,11 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     let input = serde_json::json!({"input":{"code":claims.code}});
     // Aliases and fragments cannot conceal a second auth effect, even if skipped.
     let response = graphql_operation(&router,
-        "mutation($input:EmailCodeInput!){...A second:signupEmailConfirm(input:$input) @skip(if:true){accessToken}} fragment A on Mutation{first:signupEmailConfirm(input:$input){accessToken}}",
+        "mutation($input:EmailCodeInput!){authentication{...A second:signupEmailConfirm(input:$input) @skip(if:true){accessToken}}} fragment A on AuthenticationMutation{first:signupEmailConfirm(input:$input){accessToken}}",
         input.clone(),None,Some(&cookies),true).await;
     assert_eq!(response.status(), 400);
     assert!(fixture.repo.0.lock().unwrap().created.is_none());
-    let query = "mutation($input:EmailCodeInput!){signupEmailConfirm(input:$input){accessToken refreshToken accessLifetime{expiresInSeconds}}}";
+    let query = "mutation($input:EmailCodeInput!){authentication{signupEmailConfirm(input:$input){accessToken refreshToken accessLifetime{expiresInSeconds}}}}";
     let response =
         graphql_operation(&router, query, input.clone(), None, Some(&cookies), false).await;
     assert_graphql_denial(response, 403).await;
@@ -3047,9 +3069,9 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     let response = graphql_operation(&router, query, input, None, Some(&cookies), true).await;
     let cookies = response_cookies(&response);
     let body = graphql_body(response).await;
-    assert!(body["data"]["signupEmailConfirm"].is_object());
-    assert!(body["data"]["signupEmailConfirm"]["accessToken"].is_null());
-    assert!(body["data"]["signupEmailConfirm"]["refreshToken"].is_null());
+    assert!(body["data"]["authentication"]["signupEmailConfirm"].is_object());
+    assert!(body["data"]["authentication"]["signupEmailConfirm"]["accessToken"].is_null());
+    assert!(body["data"]["authentication"]["signupEmailConfirm"]["refreshToken"].is_null());
     assert!(fixture.repo.0.lock().unwrap().created.is_some());
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
     assert_eq!(
@@ -3060,7 +3082,7 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     );
     let response = graphql_operation(
         &router,
-        "mutation{sessionRefresh{accessToken}}",
+        "mutation{authentication{sessionRefresh{accessToken}}}",
         serde_json::json!({}),
         None,
         Some(&cookies),
@@ -3070,7 +3092,7 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     assert_graphql_denial(response, 401).await;
     let response = graphql_operation(
         &router,
-        "mutation{sessionRevoke}",
+        "mutation{authentication{sessionRevoke}}",
         serde_json::json!({}),
         None,
         Some(&cookies),
@@ -3078,7 +3100,7 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     )
     .await;
     assert_eq!(response.headers().get_all("set-cookie").iter().count(), 2);
-    assert_eq!(graphql_body(response).await["data"]["sessionRevoke"], true);
+    assert_eq!(graphql_body(response).await["data"]["authentication"]["sessionRevoke"], true);
     assert_graphql_denial(
         graphql_request(&router, None, Some(&cookies), true).await,
         401,

@@ -84,6 +84,29 @@ pub(super) fn prepare(member: &MemberPermission) -> anyhow::Result<RlsSettings> 
     Ok(RlsSettings::new(member.organization_id(), permissions)?)
 }
 
+pub(super) fn validate_source(source: &str) -> anyhow::Result<()> {
+    let policies: cedar_policy::PolicySet = source.parse()?;
+    for policy in policies.policies() {
+        scope(policy.resource_constraint())?;
+        let json = policy.to_json()?;
+        for action in Action::ALL {
+            let uid: EntityUid = (*action).into();
+            let applies = match policy.action_constraint() {
+                ActionConstraint::Any => true,
+                ActionConstraint::Eq(candidate) => uid == candidate,
+                ActionConstraint::In(candidates) => candidates.contains(&uid),
+            };
+            if applies {
+                for condition in json["conditions"].as_array().context("missing policy conditions")? {
+                    anyhow::ensure!(matches!(condition["kind"].as_str(), Some("when" | "unless")), "unsupported policy condition");
+                    expression(&condition["body"], *action)?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 fn entity(uid: &EntityUid) -> anyhow::Result<Entity> {
     let kind = EntityType::ALL
         .iter()

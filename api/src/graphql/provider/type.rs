@@ -1,16 +1,27 @@
 use compallm_core::provider::{Provider as CoreProvider, ProviderModel as CoreProviderModel};
-use juniper::{ID, graphql_object};
 
 /// Safe provider metadata returned after establishing the caller's permission.
 ///
 /// Connections, headers, credentials, and upstream costs are never projected here.
-pub struct Provider(CoreProvider);
+pub struct Provider(pub(super) CoreProvider);
 
 impl From<CoreProvider> for Provider {
     fn from(provider: CoreProvider) -> Self {
         Self(provider)
     }
 }
+
+/// Safe configured-model metadata returned after authorizing its owning resources.
+pub struct ProviderModel(pub(super) CoreProviderModel);
+
+impl From<CoreProviderModel> for ProviderModel {
+    fn from(model: CoreProviderModel) -> Self {
+        Self(model)
+    }
+}
+
+
+use juniper::{graphql_object, ID};
 
 #[graphql_object]
 impl Provider {
@@ -30,14 +41,6 @@ impl Provider {
     }
 }
 
-/// Safe configured-model metadata returned after authorizing its owning resources.
-pub struct ProviderModel(CoreProviderModel);
-
-impl From<CoreProviderModel> for ProviderModel {
-    fn from(model: CoreProviderModel) -> Self {
-        Self(model)
-    }
-}
 
 #[graphql_object]
 impl ProviderModel {
@@ -67,6 +70,3 @@ impl ProviderModel {
     }
 }
 
-pub mod catalog;
-pub mod input;
-pub mod scalar;

@@ -4,8 +4,10 @@ use schemars::JsonSchema;
 #[derive(JsonSchema)]
 #[allow(dead_code)]
 struct Inputs {
-    email: super::authentication::EmailInput,
-    code: super::authentication::EmailCodeInput,
+    role_create: super::organization::role::input::RoleCreateInput,
+    group_create: super::organization::group::input::GroupCreateInput,
+    email: super::authentication::input::EmailInput,
+    code: super::authentication::input::EmailCodeInput,
     provider_create: super::provider::input::ProvidersCreateInput,
     provider_replace: super::provider::input::ProviderReplaceInput,
     provider_patch: super::provider::input::ProviderPatchInput,

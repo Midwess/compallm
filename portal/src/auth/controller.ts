@@ -178,9 +178,9 @@ export class AuthController implements SignupController, SigninController {
 
   private async performSignOut() {
     try {
-      const selection = { sessionRevoke: true } satisfies MutationGenqlSelection
+      const selection = { authentication: { sessionRevoke: true } } satisfies MutationGenqlSelection
       const result = await graphql().mutation(selection)
-      if (!result.sessionRevoke) throw new Error('Session could not be revoked')
+      if (!result.authentication.sessionRevoke) throw new Error('Session could not be revoked')
       this.sessionGeneration += 1
       this.sessionRequest?.abort()
       this.sessionPending = undefined
@@ -216,9 +216,9 @@ export class AuthController implements SignupController, SigninController {
   private async fetchCurrentUser(requestSignal: AbortSignal, generation: number, redirectAnonymous: boolean) {
     try {
       const selection = {
-        session: { id: true, userId: true, organizationId: true, organizationName: true },
+        authentication: { session: { id: true, userId: true, organizationId: true, organizationName: true } },
       } satisfies QueryGenqlSelection
-      const { session: user } = await graphql(requestSignal).query(selection)
+      const { authentication: { session: user } } = await graphql(requestSignal).query(selection)
       if (requestSignal.aborted || generation !== this.sessionGeneration) throw new DOMException('Cancelled', 'AbortError')
       this.store.setState({ currentUser: user ?? null, status: user ? 'authenticated' : 'anonymous' })
       if (!user && redirectAnonymous) this.navigate?.('/login')
@@ -258,13 +258,13 @@ export class AuthController implements SignupController, SigninController {
       operation,
       async (signal) => {
         const lifetime = { expiresInSeconds: true, throttleSeconds: true } as const
-        const signup = { signupEmailRequest: { __args: { input: input.data }, lifetime } } satisfies MutationGenqlSelection
-        const signin = { signinEmailRequest: { __args: { input: input.data }, lifetime } } satisfies MutationGenqlSelection
+        const signup = { authentication: { signupEmailRequest: { __args: { input: input.data }, lifetime } } } satisfies MutationGenqlSelection
+        const signin = { authentication: { signinEmailRequest: { __args: { input: input.data }, lifetime } } } satisfies MutationGenqlSelection
         const client = graphql(signal)
         const response =
           this.mode === 'signup'
-            ? (await client.mutation(signup)).signupEmailRequest
-            : (await client.mutation(signin)).signinEmailRequest
+            ? (await client.mutation(signup)).authentication.signupEmailRequest
+            : (await client.mutation(signin)).authentication.signinEmailRequest
         if (!response) throw new Error('Email challenge was not issued')
         const seconds = Number(response.lifetime.throttleSeconds)
         deadline = typeof seconds === 'number' && Number.isFinite(seconds) && seconds >= 0 ? Date.now() + seconds * 1000 : 0
@@ -296,16 +296,16 @@ export class AuthController implements SignupController, SigninController {
         if (!this.confirmed) {
           const lifetime = { expiresInSeconds: true } as const
           const signup = {
-            signupEmailConfirm: { __args: { input: input.data }, accessLifetime: lifetime },
+            authentication: { signupEmailConfirm: { __args: { input: input.data }, accessLifetime: lifetime } },
           } satisfies MutationGenqlSelection
           const signin = {
-            signinEmailConfirm: { __args: { input: input.data }, accessLifetime: lifetime },
+            authentication: { signinEmailConfirm: { __args: { input: input.data }, accessLifetime: lifetime } },
           } satisfies MutationGenqlSelection
           const client = graphql(signal)
           const result =
             this.mode === 'signup'
-              ? (await client.mutation(signup)).signupEmailConfirm
-              : (await client.mutation(signin)).signinEmailConfirm
+              ? (await client.mutation(signup)).authentication.signupEmailConfirm
+              : (await client.mutation(signin)).authentication.signinEmailConfirm
           if (!result) throw new Error('Session could not be confirmed')
           if (signal.aborted) throw new DOMException('Cancelled', 'AbortError')
           this.confirmed = true

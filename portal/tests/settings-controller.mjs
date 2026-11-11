@@ -20,7 +20,7 @@ test('role and group add actions navigate to their creation screens', () => {
   controller.setPage('new-group')
   assert.equal(paths.at(-1), '/Research%20team/settings/new-group')
   assert.equal(controller.store.getState().location.page, 'new-group')
-  assert.deepEqual(controller.store.getState().groupDraft, {
+  assert.deepEqual(controller.group.store.getState().draft, {
     id: null,
     name: '',
     description: '',
@@ -31,7 +31,7 @@ test('role and group add actions navigate to their creation screens', () => {
   controller.setPage('new-role')
   assert.equal(paths.at(-1), '/Research%20team/settings/new-role')
   assert.equal(controller.store.getState().location.page, 'new-role')
-  assert.equal(controller.store.getState().roleDraft?.id, null)
+  assert.equal(controller.role.store.getState().draft?.id, null)
 })
 
 test('direct visits initialize the requested creation screen', () => {
@@ -39,6 +39,15 @@ test('direct visits initialize the requested creation screen', () => {
     const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, page)
     const state = controller.store.getState()
     assert.equal(state.location.page, page)
-    assert.ok(page === 'new-group' ? state.groupDraft : state.roleDraft)
+    assert.ok(page === 'new-group' ? controller.group.store.getState().draft : controller.role.store.getState().draft)
   }
+})
+
+test('role and group drafts remain independent when navigating between pages', () => {
+  const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'new-role')
+  controller.role.store.setState((state) => ({ draft: { ...state.draft, name: 'Editor' } }))
+  controller.setPage('new-group')
+  controller.group.store.setState((state) => ({ draft: { ...state.draft, name: 'Design' } }))
+  assert.equal(controller.role.store.getState().draft.name, 'Editor')
+  assert.equal(controller.group.store.getState().draft.name, 'Design')
 })

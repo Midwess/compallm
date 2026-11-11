@@ -40,12 +40,12 @@ function CustomizeSidebar() {
   const order = String(preferences.sidebarOrder).split(',')
   const { rowNodes, drag, preview, announcement, id, keyboardMove, startDrag, pointerMove, endDrag } = useReorder(
     order,
-    (items) => controller.setPreference('sidebarOrder', items.join(',')),
+    (items) => controller.pages.preferences.setPreference('sidebarOrder', items.join(',')),
     false,
     'Sidebar item',
   )
   return (
-    <Dialog onClose={controller.closeDialog}>
+    <Dialog onClose={controller.pages.dialogs.closeDialog}>
       <Dialog.Content className="w-120 rounded-xl bg-inset">
         <Dialog.Header className="h-14 px-6">
           <Dialog.Title className="text-[15px]">Customize sidebar</Dialog.Title>
@@ -59,7 +59,7 @@ function CustomizeSidebar() {
               className="w-26"
               value={String(preferences.sidebarBadgeStyle)}
               options={badgeOptions}
-              onValueChange={(value) => controller.setPreference('sidebarBadgeStyle', value)}
+              onValueChange={(value) => controller.pages.preferences.setPreference('sidebarBadgeStyle', value)}
             />
           </div>
           <div className="grid gap-2.5">
@@ -115,7 +115,7 @@ active:cursor-grabbing focus-visible:outline-focus
                       className="w-35"
                       value={String(preferences[`sidebar${name}`])}
                       options={visibilityOptions}
-                      onValueChange={(value) => controller.setPreference(`sidebar${name}`, value)}
+                      onValueChange={(value) => controller.pages.preferences.setPreference(`sidebar${name}`, value)}
                     />
                   </motion.div>
                 )
@@ -234,12 +234,12 @@ export function SettingsDialogs() {
                     : 'Save changes'
   const disabled = busy || Boolean(phrase && d.phrase !== phrase) || (named.includes(d.kind) && !d.name.trim())
   return (
-    <Dialog onClose={() => c.closeDialog()}>
+    <Dialog onClose={() => c.pages.dialogs.closeDialog()}>
       <Dialog.Content className="w-110 rounded-xl bg-elevated">
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            c.confirmDialog()
+            c.pages.dialogs.confirmDialog()
           }}
         >
           <Dialog.Header className="border-0 px-6 pt-6">
@@ -261,14 +261,19 @@ export function SettingsDialogs() {
                   id="confirmation-phrase"
                   placeholder="Enter confirmation phrase"
                   value={d.phrase}
-                  onChange={(e) => c.updateDialog({ phrase: e.target.value })}
+                  onChange={(e) => c.pages.dialogs.updateDialog({ phrase: e.target.value })}
                 />
               </>
             ) : null}
             {named.includes(d.kind) ? (
               <label className="grid gap-2 text-xs text-muted">
                 {d.kind === 'add-passkey' ? 'Passkey name' : 'Name'}
-                <TextField autoFocus value={d.name} required onChange={(e) => c.updateDialog({ name: e.target.value })} />
+                <TextField
+                  autoFocus
+                  value={d.name}
+                  required
+                  onChange={(e) => c.pages.dialogs.updateDialog({ name: e.target.value })}
+                />
               </label>
             ) : null}
             {d.kind === 'verify-passkey' ? (
@@ -279,7 +284,7 @@ export function SettingsDialogs() {
             {d.kind === 'reveal-key' ? (
               <div className="flex gap-2">
                 <TextField aria-label="Generated API key" readOnly value={d.revealedKey ?? ''} />
-                <Button onClick={() => c.copy(d.revealedKey ?? '')}>Copy</Button>
+                <Button onClick={() => c.pages.dialogs.copy(d.revealedKey ?? '')}>Copy</Button>
               </div>
             ) : null}
             {limit ? (
@@ -292,7 +297,7 @@ export function SettingsDialogs() {
                   step="0.01"
                   placeholder="No limit set"
                   value={d.value}
-                  onChange={(e) => c.updateDialog({ value: e.target.value })}
+                  onChange={(e) => c.pages.dialogs.updateDialog({ value: e.target.value })}
                 />
                 <span>Leave empty to use {d.targetId ? 'the organization default' : 'no limit'}.</span>
               </label>
@@ -315,7 +320,7 @@ export function SettingsDialogs() {
                     value={d.value}
                     className="w-full"
                     options={['Workspace timezone', 'UTC', 'Asia/Ho_Chi_Minh'].map((label) => ({ label, value: label }))}
-                    onValueChange={(value) => c.updateDialog({ value })}
+                    onValueChange={(value) => c.pages.dialogs.updateDialog({ value })}
                   />
                 </label>
               </>
@@ -325,7 +330,7 @@ export function SettingsDialogs() {
                 aria-label={titles[d.kind]}
                 className="min-h-32"
                 value={d.value}
-                onChange={(e) => c.updateDialog({ value: e.target.value })}
+                onChange={(e) => c.pages.dialogs.updateDialog({ value: e.target.value })}
               />
             ) : null}
           </Dialog.Body>

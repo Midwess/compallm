@@ -8,12 +8,14 @@ import { GeneralSettings, AppearanceSettings, MessagingSettings, CodeSettings } 
 import { ProfileSettings, SecuritySettings, ApiKeySettings, DangerSettings } from './account'
 import { OrganizationSettings } from './organization'
 import { MembersSettings } from './members'
-import { GroupEditorSettings } from './group-editor'
-import { RoleEditorSettings } from './role-editor'
+import { GroupEditorSettings } from './group'
+import { RoleEditorSettings } from './role'
 import { UsageLimitSettings, MemberLimitSettings, UsageExplorerSettings, AuditSettings } from './usage'
 import { useSettings, useSettingsController } from './controller'
 import { cx } from '../../components/shared'
 import { Empty, SettingsContent } from './shared'
+import { useRole } from './role/controller'
+import { useGroup } from './group/controller'
 
 function SettingsScreen() {
   const page = useSettings((s) => s.location.page),
@@ -67,7 +69,13 @@ export function SettingsPage() {
   const [open, setOpen] = useState(false),
     c = useSettingsController()
   const notice = useSettings((s) => s.notice),
-    error = useSettings((s) => s.error)
+    sharedError = useSettings((s) => s.error),
+    page = useSettings((s) => s.location.page),
+    roleError = useRole((s) => s.error),
+    groupError = useGroup((s) => s.error)
+  const error =
+    (page === 'role' || page === 'new-role' ? roleError : page === 'group' || page === 'new-group' ? groupError : null) ??
+    sharedError
   return (
     <div className="relative flex h-dvh min-h-0 overflow-hidden bg-background font-sans text-text">
       {open ? (
@@ -114,3 +122,10 @@ rounded-lg border border-border bg-elevated px-4 py-3 text-xsm shadow-menu"
 }
 export { createSettingsStore } from './store'
 export type * from './types'
+
+export { createRoleStore } from './role/store'
+export { createGroupStore } from './group/store'
+export type { RoleController, RoleState } from './role/controller'
+export type { GroupController, GroupState } from './group/controller'
+export type { ProfileController } from './profile/controller'
+export type { OrganizationController } from './organization/controller'

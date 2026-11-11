@@ -1,4 +1,8 @@
 import type { StoreApi } from 'zustand/vanilla'
+import type { RoleController } from './role/controller'
+import type { GroupController } from './group/controller'
+import type { ProfileController } from './profile/controller'
+import type { OrganizationController } from './organization/controller'
 
 export type SettingsDestination =
   | 'general'
@@ -166,8 +170,6 @@ export interface SettingsState {
   models: string[]
   groups: SettingsGroup[]
   members: SettingsMember[]
-  roleDraft: RoleDraft | null
-  groupDraft: GroupDraft | null
   passkeys: SettingsCredential[]
   applications: SettingsApplication[]
   apiKeys: SettingsApiKey[]
@@ -187,35 +189,27 @@ export interface SettingsState {
 }
 export interface SettingsController {
   store: StoreApi<SettingsState>
+  role: RoleController
+  group: GroupController
+  pages: SettingsPageControllers
   navigate(page: SettingsDestination, id?: string): void
-  setQuery(value: string): void
   setNavigationQuery(value: string): void
-  setFilter(key: string, value: string): void
-  setPreference(key: string, value: string | boolean): void
-  updateProfile(value: Partial<SettingsProfile>): void
-  saveProfile(): void
-  setAvatar(file: File | null, organization?: boolean): void
-  updateOrganization(value: Partial<SettingsOrganization>): void
-  openDialog(kind: SettingsDialogKind, targetId?: string): void
-  updateDialog(value: Partial<SettingsDialog>): void
-  closeDialog(): void
-  confirmDialog(): void
-  updateRole(value: Partial<Pick<RoleDraft, 'name' | 'description'>>): void
-  setPolicyMode(mode: RoleDraft['mode']): void
-  setPolicySource(source: string): void
-  togglePolicyAction(action: string): void
-  setPolicyActions(actions: string[], enabled: boolean): void
-  formatPolicy(): void
-  saveRole(): void
-  resetRole(): void
-  updateGroup(value: Partial<Pick<GroupDraft, 'name' | 'description'>>): void
-  toggleGroupMember(id: string): void
-  toggleGroupRole(id: string): void
-  saveGroup(): void
-  resetGroup(): void
-  toggleMemberRole(memberId: string, roleId: string): void
-  copy(value: string): void
   signOut(): void
   leaveSettings(): void
   dismissNotice(): void
+}
+
+export interface SettingsPageControllers {
+  search: { setQuery(value: string): void; setFilter(key: string, value: string): void }
+  preferences: { setPreference(key: string, value: string | boolean): void }
+  profile: ProfileController
+  organization: OrganizationController
+  members: { toggleMemberRole(memberId: string, roleId: string): void }
+  dialogs: {
+    openDialog(kind: SettingsDialogKind, targetId?: string): void
+    updateDialog(value: Partial<SettingsDialog>): void
+    closeDialog(): void
+    confirmDialog(): void
+    copy(value: string): void
+  }
 }

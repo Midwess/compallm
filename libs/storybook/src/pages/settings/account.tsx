@@ -43,7 +43,7 @@ focus-within:outline-2 focus-within:outline-focus"
                 disabled={busy}
                 onChange={(event) => {
                   const file = event.target.files?.[0]
-                  if (file) c.setAvatar(file)
+                  if (file) c.pages.profile.setAvatar(file)
                   event.target.value = ''
                 }}
               />
@@ -54,7 +54,7 @@ focus-within:outline-2 focus-within:outline-focus"
               id="settings-full-name"
               className="w-70 max-w-full"
               value={profile.name}
-              onChange={(e) => c.updateProfile({ name: e.target.value })}
+              onChange={(e) => c.pages.profile.updateProfile({ name: e.target.value })}
             />
           </Row>
           <Row label={<label htmlFor="settings-username">Username</label>} description="Your preferred display name">
@@ -62,7 +62,7 @@ focus-within:outline-2 focus-within:outline-focus"
               id="settings-username"
               className="w-70 max-w-full"
               value={profile.username}
-              onChange={(e) => c.updateProfile({ username: e.target.value })}
+              onChange={(e) => c.pages.profile.updateProfile({ username: e.target.value })}
             />
           </Row>
           <Row label={<label htmlFor="settings-email">Email</label>} description="The email address for this account" last>
@@ -71,7 +71,7 @@ focus-within:outline-2 focus-within:outline-focus"
               type="email"
               className="w-70 max-w-full"
               value={profile.email}
-              onChange={(e) => c.updateProfile({ email: e.target.value })}
+              onChange={(e) => c.pages.profile.updateProfile({ email: e.target.value })}
             />
           </Row>
         </Rows>
@@ -101,7 +101,7 @@ export function DangerSettings() {
       <Section title="Delete account" description="Permanently delete your personal account.">
         <Rows>
           <Row label="Delete account" description="Manage the deletion of your Compallm account." last>
-            <Button variant="ghost" className="text-error" onClick={() => c.openDialog('delete-account')}>
+            <Button variant="ghost" className="text-error" onClick={() => c.pages.dialogs.openDialog('delete-account')}>
               Delete account
             </Button>
           </Row>
@@ -130,7 +130,7 @@ export function SecuritySettings() {
               last
             >
               {others ? (
-                <Button variant="ghost" onClick={() => c.openDialog('revoke-sessions')}>
+                <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('revoke-sessions')}>
                   Revoke all
                 </Button>
               ) : null}
@@ -142,7 +142,7 @@ export function SecuritySettings() {
           description="Sign in with your fingerprint, face, or security key."
           action={
             passkeys.length ? (
-              <Button variant="ghost" onClick={() => c.openDialog('add-passkey')}>
+              <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('add-passkey')}>
                 Add passkey
               </Button>
             ) : null
@@ -152,14 +152,17 @@ export function SecuritySettings() {
             <Rows>
               {passkeys.map((key, i) => (
                 <Row key={key.id} label={key.name} description="Use this passkey to sign in." last={i === passkeys.length - 1}>
-                  <Button variant="ghost" onClick={() => c.openDialog('remove-passkey', key.id)}>
+                  <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('remove-passkey', key.id)}>
                     Remove
                   </Button>
                 </Row>
               ))}
             </Rows>
           ) : (
-            <Empty title="No passkeys yet" action={<Button onClick={() => c.openDialog('add-passkey')}>Add passkey</Button>}>
+            <Empty
+              title="No passkeys yet"
+              action={<Button onClick={() => c.pages.dialogs.openDialog('add-passkey')}>Add passkey</Button>}
+            >
               Add a passkey for a simpler sign-in experience.
             </Empty>
           )}
@@ -169,7 +172,7 @@ export function SecuritySettings() {
             <Rows>
               {apps.map((app, i) => (
                 <Row key={app.id} label={app.name} description={`Granted access: ${app.scope}`} last={i === apps.length - 1}>
-                  <Button variant="ghost" onClick={() => c.openDialog('application', app.id)}>
+                  <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('application', app.id)}>
                     Review
                   </Button>
                 </Row>
@@ -198,20 +201,23 @@ export function ApiKeySettings() {
       <Section
         title="Personal API keys"
         description="Keys are scoped to your current organization membership."
-        action={keys.length ? <Button onClick={() => c.openDialog('create-key')}>Create API key</Button> : null}
+        action={keys.length ? <Button onClick={() => c.pages.dialogs.openDialog('create-key')}>Create API key</Button> : null}
       >
         {keys.length ? (
           <Rows>
             {keys.map((key, i) => (
               <Row key={key.id} label={key.name} description={key.prefix} last={i === keys.length - 1}>
-                <Button variant="ghost" onClick={() => c.openDialog('revoke-key', key.id)}>
+                <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('revoke-key', key.id)}>
                   Revoke
                 </Button>
               </Row>
             ))}
           </Rows>
         ) : (
-          <Empty title="No API keys yet" action={<Button onClick={() => c.openDialog('create-key')}>Create API key</Button>}>
+          <Empty
+            title="No API keys yet"
+            action={<Button onClick={() => c.pages.dialogs.openDialog('create-key')}>Create API key</Button>}
+          >
             Create a key to connect your tools to Compallm.
           </Empty>
         )}

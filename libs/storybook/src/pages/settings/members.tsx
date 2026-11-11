@@ -48,7 +48,7 @@ function MemberRoles({ member }: { member: SettingsMember }) {
               aria-label={r.name}
               checked={ids.has(r.id)}
               disabled={inherited.has(r.id)}
-              onChange={() => c.toggleMemberRole(member.id, r.id)}
+              onChange={() => c.pages.members.toggleMemberRole(member.id, r.id)}
             >
               <span className="flex-1 text-left">{r.name}</span>
               {inherited.has(r.id) ? <span className="text-[11px] text-muted">Group</span> : null}
@@ -69,7 +69,7 @@ function MemberActions({ member }: { member: SettingsMember }) {
         <DotsThreeIcon className="size-4" aria-hidden="true" />
       </Popup.Trigger>
       <Popup.Content aria-label={`Actions for ${member.name}`} className="bg-elevated">
-        <Popup.Item className="h-10 text-error" onClick={() => c.openDialog('remove-member', member.id)}>
+        <Popup.Item className="h-10 text-error" onClick={() => c.pages.dialogs.openDialog('remove-member', member.id)}>
           Remove member
         </Popup.Item>
       </Popup.Content>
@@ -98,14 +98,14 @@ export function MembersSettings() {
           aria-label="Search members"
           placeholder="Search by name or email"
           value={query}
-          onChange={(e) => c.setQuery(e.target.value)}
+          onChange={(e) => c.pages.search.setQuery(e.target.value)}
           className="w-75 max-w-full"
         />
         <Select
           aria-label="Filter members by role"
           value={roleFilter}
           className={roleFilter === 'all' ? 'w-16' : 'w-48'}
-          onValueChange={(v) => c.setFilter('memberRole', v)}
+          onValueChange={(v) => c.pages.search.setFilter('memberRole', v)}
           options={[{ value: 'all', label: 'All' }, ...roles.map((r) => ({ value: r.id, label: r.name }))]}
         />
         <span className="ml-auto text-xs text-muted">{visible.length} members</span>

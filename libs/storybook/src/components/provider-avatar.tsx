@@ -1,3 +1,4 @@
+import { animated } from './motion'
 import { useRef } from 'react'
 import { ProviderIcon } from './provider-icons'
 import { Popup } from './popup'
@@ -19,7 +20,7 @@ export function ProviderAvatar({
   const input = useRef<HTMLInputElement>(null)
   return (
     <>
-      <input
+      <animated.input
         ref={input}
         type="file"
         accept="image/png,image/jpeg,image/webp,image/svg+xml"

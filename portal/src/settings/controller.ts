@@ -20,6 +20,8 @@ export const settingsPages = [
   'danger',
   'organization',
   'members',
+  'new-role',
+  'new-group',
   'usage-limits',
   'member-limits',
   'usage-explorer',
@@ -84,10 +86,32 @@ export class SettingsController implements Controller {
     this.url = url
     this.auth = auth
     this.base = `/${encodeURIComponent(organizationName)}`
-    this.store.setState({ location: { page } })
+    this.setPage(page)
   }
 
-  setPage = (page: SettingsDestination) => this.store.setState({ location: { page } })
+  setPage = (page: SettingsDestination) => {
+    this.store.setState((state) => ({
+      location: { page },
+      ...(page === 'new-role' && !state.roleDraft
+        ? {
+            roleDraft: {
+              id: null,
+              name: '',
+              description: '',
+              source: '',
+              mode: 'visual',
+              projection: [],
+              diagnostics: [],
+              parsing: false,
+              builtin: false,
+            },
+          }
+        : {}),
+      ...(page === 'new-group' && !state.groupDraft
+        ? { groupDraft: { id: null, name: '', description: '', memberIds: [], roleIds: [] } }
+        : {}),
+    }))
+  }
   navigate = (page: SettingsDestination) => {
     if (settingsPages.some((entry) => entry === page)) this.url.navigate(`${this.base}/settings/${page}`)
     else this.unavailable()

@@ -81,8 +81,8 @@ export function SettingsPage() {
         <SettingsNavigation onNavigate={() => setOpen(false)} />
       </div>
       <main
-        className="relative my-2 mr-2 ml-2 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto rounded-xl border-[0.5px]
-border-divider bg-surface pr-2 md:ml-0"
+        className="@container relative my-2 mr-2 ml-2 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto
+rounded-xl border-[0.5px] border-divider bg-surface pr-2 [scrollbar-gutter:stable] md:ml-0"
         aria-label="Settings content"
       >
         <button

@@ -1,6 +1,10 @@
+import { animate } from 'motion'
+import { motion } from 'motion/react'
+import { animated, animation, transition, useTransition } from './motion'
 import {
   useState,
   useEffect,
+  useLayoutEffect,
   useRef,
   type ReactNode,
   type HTMLAttributes,
@@ -82,10 +86,45 @@ export interface TableCategoryProps {
 }
 
 function Category({ label, count, action, columns = 3, open, defaultOpen = true, onOpenChange, children }: TableCategoryProps) {
+  const timing = useTransition('disclosure')
   const [localOpen, setLocalOpen] = useState(defaultOpen)
   const expanded = open ?? localOpen
+  const body = useRef<HTMLTableSectionElement>(null)
+  const previous = useRef(expanded)
+  useLayoutEffect(() => {
+    const rows = [...(body.current?.querySelectorAll<HTMLTableRowElement>('tr[data-slot="table-row"]') ?? [])]
+    const changed = previous.current !== expanded
+    previous.current = expanded
+    for (const row of rows) {
+      row.hidden = !expanded && !changed
+      row.inert = !expanded
+      if (!changed) {
+        row.style.opacity = expanded ? '1' : '0'
+        row.style.transform = ''
+      }
+    }
+    if (!changed) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced || rows.length === 0) {
+      for (const row of rows) row.hidden = !expanded
+      return
+    }
+    let active = true
+    const animations = rows.map((row) =>
+      animate(row, { opacity: expanded ? 1 : 0, y: expanded ? 0 : -animation.distance }, transition('disclosure')),
+    )
+    void Promise.all(animations).then(() => {
+      if (!active) return
+      if (!expanded) for (const row of rows) row.hidden = true
+      animations.forEach((control) => control.stop())
+    })
+    return () => {
+      active = false
+      animations.forEach((control) => control.stop())
+    }
+  }, [expanded, children])
   return (
-    <tbody data-slot="table-category" className="[&:not(:first-of-type)>tr:first-child]:table-row">
+    <tbody ref={body} data-slot="table-category" className="[&:not(:first-of-type)>tr:first-child]:table-row">
       <tr aria-hidden="true" className="hidden h-2">
         <td colSpan={columns} className="h-2 p-0" />
       </tr>
@@ -93,12 +132,12 @@ function Category({ label, count, action, columns = 3, open, defaultOpen = true,
         <td
           colSpan={action ? columns - 1 : columns}
           className={cx(
-            `sticky top-8 z-10 rounded-l-md bg-composer p-0
+            `sticky top-8 z-10 rounded-l-md bg-elevated p-0
 translate-y-[var(--category-offset,0px)]`,
             !action && 'rounded-r-md',
           )}
         >
-          <button
+          <animated.button
             type="button"
             aria-expanded={expanded}
             aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label}`}
@@ -110,21 +149,28 @@ focus-visible:outline-2 focus-visible:outline-focus"
               onOpenChange?.(next)
             }}
           >
-            <CaretDownIcon weight="fill" aria-hidden="true" className={cx('size-2 shrink-0', !expanded && '-rotate-90')} />
+            <motion.span
+              initial={false}
+              animate={{ rotate: expanded ? 0 : animation.collapsedRotation }}
+              transition={timing}
+              className="inline-flex size-2 shrink-0"
+            >
+              <CaretDownIcon weight="fill" aria-hidden="true" className="size-2" />
+            </motion.span>
             <span className="min-w-0 text-[13px] font-medium">{label}</span>
             {count !== undefined ? <span className="text-xs font-normal text-muted">{count}</span> : null}
-          </button>
+          </animated.button>
         </td>
         {action ? (
           <td
-            className="sticky top-8 z-10 rounded-r-md bg-composer px-2 py-0
+            className="sticky top-8 z-10 rounded-r-md bg-elevated px-2 py-0
 translate-y-[var(--category-offset,0px)]"
           >
             {action}
           </td>
         ) : null}
       </tr>
-      {expanded ? children : null}
+      {children}
     </tbody>
   )
 }

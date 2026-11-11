@@ -3,14 +3,10 @@ import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGlass'
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { ToolbarAction } from './navigation'
-import { cx, popupMotion } from './shared'
+import { cx } from './shared'
+import { animated, overlay, useDisclosure } from './motion'
 
 const focus = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus'
-const disclosureMotion = `
-  [interpolate-size:allow-keywords] [&::details-content]:h-0 [&::details-content]:overflow-clip
-  [&[open]::details-content]:h-auto motion-safe:[&::details-content]:transition-[height,content-visibility]
-  motion-safe:[&::details-content]:duration-150 motion-safe:[&::details-content]:transition-discrete
-`
 
 export function Sidebar({
   children,
@@ -92,7 +88,7 @@ export function SidebarHeader({
 
   return (
     <div className="mt-3 flex h-10 w-full min-w-0 shrink-0 items-center justify-between gap-2 pl-2 pr-1">
-      <button
+      <animated.button
         ref={trigger}
         popoverTarget={id}
         style={{ anchorName: anchor } as CSSProperties}
@@ -124,8 +120,8 @@ export function SidebarHeader({
         )}
         <span className="truncate font-medium leading-4">{workspace}</span>
         <CaretDownIcon size={10} className="ml-0.5 shrink-0 text-muted" aria-hidden="true" />
-      </button>
-      <div
+      </animated.button>
+      <overlay.div
         ref={menu}
         id={id}
         popover="auto"
@@ -158,13 +154,13 @@ export function SidebarHeader({
           }
           if (event.key === 'Tab') menu.current?.hidePopover()
         }}
-        className={`${popupMotion}
+        className={`
   fixed inset-auto top-[anchor(bottom)] left-[anchor(left)] z-30 mt-2 w-[220px] max-w-[calc(100vw-16px)]
   rounded-lg border-[0.5px] border-border bg-menu p-1 text-text shadow-menu
   [position-try-fallbacks:flip-block,flip-inline]
 `}
       >
-        <button
+        <animated.button
           ref={preference}
           type="button"
           role="menuitem"
@@ -175,8 +171,8 @@ export function SidebarHeader({
           }}
         >
           Settings
-        </button>
-        <button
+        </animated.button>
+        <animated.button
           ref={switcher}
           type="button"
           role="menuitem"
@@ -197,8 +193,8 @@ export function SidebarHeader({
           }}
         >
           <span className="flex-1 text-left">Switch organization</span>
-        </button>
-        <div
+        </animated.button>
+        <overlay.div
           ref={submenu}
           id={submenuId}
           popover="auto"
@@ -227,7 +223,7 @@ export function SidebarHeader({
               items[next]?.focus()
             } else if (event.key === 'Tab') close()
           }}
-          className={`${popupMotion}
+          className={`
             fixed inset-auto top-[anchor(top)] left-[anchor(right)] z-40 m-0 w-55 max-w-[calc(100vw-16px)]
             rounded-lg border-[0.5px] border-border bg-menu p-1 text-text shadow-menu
             [position-try-fallbacks:flip-inline,flip-block]
@@ -235,7 +231,7 @@ export function SidebarHeader({
         >
           {organizations.length ? (
             organizations.map((organization) => (
-              <button
+              <animated.button
                 key={organization.id}
                 type="button"
                 role="menuitemradio"
@@ -251,14 +247,14 @@ export function SidebarHeader({
                 }}
               >
                 <span className="min-w-0 flex-1 truncate">{organization.name}</span>
-              </button>
+              </animated.button>
             ))
           ) : (
             <p className="p-2 text-xs text-muted">No organizations available</p>
           )}
-        </div>
+        </overlay.div>
         {onSignOut ? (
-          <button
+          <animated.button
             type="button"
             role="menuitem"
             className={cx('flex h-8 w-full cursor-pointer items-center rounded px-2 text-xs text-error hover:bg-border', focus)}
@@ -268,9 +264,9 @@ export function SidebarHeader({
             }}
           >
             Sign out
-          </button>
+          </animated.button>
         ) : null}
-      </div>
+      </overlay.div>
       <ToolbarAction label="Search workspace" onClick={onSearch} className="size-3.5 shrink-0 rounded">
         <MagnifyingGlassIcon size={14} aria-hidden="true" />
       </ToolbarAction>
@@ -289,7 +285,7 @@ interface DisclosureProps {
 
 function AddAction({ onAdd, label }: { onAdd?: () => void; label: string }) {
   return onAdd ? (
-    <ToolbarAction label={label} onClick={onAdd} className="absolute top-1.5 right-0 size-4 rounded text-disabled">
+    <ToolbarAction label={label} onClick={onAdd} className="absolute top-1.5 right-0 size-4 rounded text-text">
       <PlusIcon size={8.28} aria-hidden="true" />
     </ToolbarAction>
   ) : null
@@ -297,10 +293,15 @@ function AddAction({ onAdd, label }: { onAdd?: () => void; label: string }) {
 
 export function SidebarSection({ label, children, defaultOpen = true, onAdd, addLabel, className }: DisclosureProps) {
   const id = useId()
+  const { detailsRef, contentRef, caretRef, toggle } = useDisclosure(defaultOpen)
   return (
     <div className={cx('relative shrink-0', className)}>
-      <details open={defaultOpen} className={cx('group/sidebar-section', disclosureMotion)}>
+      <details ref={detailsRef} open={defaultOpen} className="group/sidebar-section">
         <summary
+          onClick={(event) => {
+            event.preventDefault()
+            toggle()
+          }}
           aria-controls={id}
           className={cx(
             `
@@ -312,17 +313,17 @@ flex h-7 cursor-pointer list-none items-center gap-1 rounded px-2 pr-7 text-xs f
           )}
         >
           {label}
-          <svg
-            width="8"
-            height="8"
-            viewBox="0 0 8 8"
-            aria-hidden="true"
-            className="-rotate-90 group-open/sidebar-section:rotate-0 motion-safe:transition-transform motion-safe:duration-150"
-          >
-            <path d="M2 1.72h4a.4.4 0 0 1 .35.6l-2 3.96a.4.4 0 0 1-.7 0l-2-3.96a.4.4 0 0 1 .35-.6Z" fill="currentColor" />
+          <svg width="7" height="7" viewBox="0 0 8 8" aria-hidden="true" ref={caretRef}>
+            <path
+              d="M2 1.72h4a.4.4 0 0 1 .35.6l-2 3.96a.4.4 0 0 1-.7 0l-2-3.96a.4.4 0 0 1 .35-.6Z"
+              fill="currentColor"
+              stroke="currentColor"
+              strokeWidth="0.8"
+              strokeLinejoin="round"
+            />
           </svg>
         </summary>
-        <div id={id} className="grid">
+        <div ref={contentRef} id={id} className="grid">
           {children}
         </div>
       </details>
@@ -343,15 +344,19 @@ export function SidebarFolder({
   icon: ReactNode
 }) {
   const id = useId()
-  const disclosure = useRef<HTMLDetailsElement>(null)
+  const { detailsRef, contentRef, caretRef, toggle, expand } = useDisclosure(defaultOpen)
   return (
     <div className={cx('relative', className)}>
-      <details ref={disclosure} open={defaultOpen} className={cx('group/sidebar-folder', disclosureMotion)}>
+      <details ref={detailsRef} open={defaultOpen} className="group/sidebar-folder">
         <summary
+          onClick={(event) => {
+            event.preventDefault()
+            toggle()
+          }}
           aria-controls={id}
           className={cx(
             `
-flex h-7 cursor-pointer list-none items-center gap-1.5 rounded px-2 pr-7 text-xsm font-medium
+flex h-7 cursor-pointer list-none items-center gap-1.5 rounded px-2 pr-7 text-xsm font-normal
 leading-4 text-muted hover:bg-elevated marker:hidden [&::-webkit-details-marker]:hidden
 `,
             focus,
@@ -361,17 +366,17 @@ leading-4 text-muted hover:bg-elevated marker:hidden [&::-webkit-details-marker]
             {icon}
           </span>
           <span className="min-w-0 truncate">{label}</span>
-          <svg
-            width="8"
-            height="8"
-            viewBox="0 0 8 8"
-            aria-hidden="true"
-            className="-rotate-90 group-open/sidebar-folder:rotate-0 motion-safe:transition-transform motion-safe:duration-150"
-          >
-            <path d="M2 1.72h4a.4.4 0 0 1 .35.6l-2 3.96a.4.4 0 0 1-.7 0l-2-3.96a.4.4 0 0 1 .35-.6Z" fill="currentColor" />
+          <svg width="7" height="7" viewBox="0 0 8 8" aria-hidden="true" ref={caretRef}>
+            <path
+              d="M2 1.72h4a.4.4 0 0 1 .35.6l-2 3.96a.4.4 0 0 1-.7 0l-2-3.96a.4.4 0 0 1 .35-.6Z"
+              fill="currentColor"
+              stroke="currentColor"
+              strokeWidth="0.8"
+              strokeLinejoin="round"
+            />
           </svg>
         </summary>
-        <div id={id} className="mt-0.5 grid pl-4 pr-4 [&_a]:font-normal">
+        <div ref={contentRef} id={id} className="mt-0.5 grid pl-4 pr-4 [&_a]:font-normal">
           {children}
         </div>
       </details>
@@ -379,7 +384,7 @@ leading-4 text-muted hover:bg-elevated marker:hidden [&::-webkit-details-marker]
         onAdd={
           onAdd
             ? () => {
-                if (disclosure.current) disclosure.current.open = true
+                expand()
                 onAdd()
               }
             : undefined
@@ -406,7 +411,7 @@ export function SidebarItem({
   className?: string
 }) {
   return (
-    <a
+    <animated.a
       href={href}
       aria-current={selected ? 'page' : undefined}
       title={label}
@@ -437,6 +442,6 @@ hover:bg-elevated hover:text-text aria-[current=page]:bg-elevated aria-[current=
         {icon}
       </span>
       <span className="min-w-0 truncate">{label}</span>
-    </a>
+    </animated.a>
   )
 }

@@ -1,3 +1,4 @@
+import { animated, overlay } from './motion'
 import {
   useEffect,
   useId,
@@ -11,7 +12,7 @@ import {
 } from 'react'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
-import { cx, popupMotion } from './shared'
+import { cx } from './shared'
 
 export interface SelectItem {
   value: string
@@ -106,7 +107,7 @@ export function Dropdown({
   }
   return (
     <div ref={root} data-ui="dropdown" className={cx('relative inline-block w-[240px] max-w-full', className)}>
-      <button
+      <animated.button
         ref={trigger}
         style={{ anchorName: anchor } as CSSProperties}
         type="button"
@@ -143,9 +144,9 @@ export function Dropdown({
           <span className="truncate">{selectedOption?.label ?? label}</span>
         </span>
         <CaretDownIcon size={10} aria-hidden="true" />
-      </button>
+      </animated.button>
       {open && !disabled ? (
-        <div
+        <overlay.div
           ref={list}
           popover="manual"
           style={{ positionAnchor: anchor } as CSSProperties}
@@ -153,7 +154,7 @@ export function Dropdown({
           role="listbox"
           aria-label={label}
           tabIndex={-1}
-          className={`${popupMotion}
+          className={`
   fixed inset-auto top-[anchor(bottom)] left-[anchor(left)] z-20 my-0.75 mx-0
   max-h-[min(320px,calc(100dvh-16px))] w-[anchor-size(width)] max-w-[calc(100vw-16px)] overflow-y-auto
   rounded-[8px] border-[0.5px] border-border bg-elevated p-1 text-text shadow-menu
@@ -163,7 +164,7 @@ export function Dropdown({
           onKeyDown={keydown}
         >
           {options.map((item, index) => (
-            <div
+            <animated.div
               key={item.value}
               id={`${id}-${index}`}
               role="option"
@@ -182,9 +183,9 @@ export function Dropdown({
               {item.icon}
               <span className="min-w-0 flex-1">{item.label}</span>
               {item.value === selected ? <CheckIcon size={14} aria-hidden="true" /> : null}
-            </div>
+            </animated.div>
           ))}
-        </div>
+        </overlay.div>
       ) : null}
     </div>
   )
@@ -221,7 +222,7 @@ export function SelectOption({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { selected?: boolean }) {
   return (
-    <button
+    <animated.button
       type="button"
       {...props}
       aria-pressed={selected}
@@ -236,6 +237,6 @@ export function SelectOption({
     >
       {children}
       {selected ? <CheckIcon size={14} aria-hidden="true" /> : null}
-    </button>
+    </animated.button>
   )
 }

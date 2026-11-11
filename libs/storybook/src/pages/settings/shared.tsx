@@ -9,7 +9,11 @@ export function SettingsContent({ wide = false, className, ...props }: HTMLAttri
   return (
     <article
       {...props}
-      className={cx('mx-auto w-full py-16', wide ? 'min-w-0 px-6 lg:px-14 [&>div:first-child]:px-0' : 'max-w-160', className)}
+      className={cx(
+        'mx-auto min-w-0 py-16',
+        wide ? 'w-full px-6 lg:px-14 [&>div:first-child]:px-0' : 'w-[calc(100%-2.75rem)] max-w-160',
+        className,
+      )}
     />
   )
 }
@@ -79,12 +83,12 @@ export function Row({
       <SettingsRow
         label={label}
         description={description}
-        className="gap-4 bg-transparent p-4 max-sm:flex-col max-sm:items-stretch"
+        className="gap-4 bg-transparent p-4 @max-[22rem]:flex-col @max-[22rem]:items-stretch"
       >
         {children ? (
           <div
-            className="max-w-full shrink-0 max-sm:flex max-sm:w-full max-sm:justify-end
-max-sm:[&>input]:w-full max-sm:[&>[data-ui=dropdown]]:w-full"
+            className="min-w-0 max-w-[65%] shrink @max-[22rem]:flex @max-[22rem]:w-full @max-[22rem]:max-w-full
+@max-[22rem]:justify-end @max-[22rem]:[&>input]:w-full @max-[22rem]:[&>[data-ui=dropdown]]:w-full"
           >
             {children}
           </div>

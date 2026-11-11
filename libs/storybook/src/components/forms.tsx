@@ -1,3 +1,4 @@
+import { animated } from './motion'
 import { useId, type InputHTMLAttributes, type LabelHTMLAttributes, type ReactNode } from 'react'
 import { TextField } from './fields'
 import { HelperText, InlineError } from './feedback'
@@ -39,7 +40,7 @@ export function FormStepConnector() {
   return <span className="block h-[144px] w-[2px] bg-border" aria-hidden="true" />
 }
 export function FormFieldLabel({ className, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
-  return <label {...props} className={cx('block text-[14px] leading-[21px] font-medium', className)} />
+  return <animated.label {...props} className={cx('block text-[14px] leading-[21px] font-medium', className)} />
 }
 export interface LabeledFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string

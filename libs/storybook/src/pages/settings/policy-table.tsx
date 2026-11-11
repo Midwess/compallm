@@ -139,7 +139,7 @@ export function PolicyTable() {
   const disabled = readonly || draft.builtin || busy || draft.parsing || draft.diagnostics.length > 0
   const selectedCount = actions.filter((a) => projection.has(a.id)).length
   return (
-    <SectionSurface className="flex min-h-[650px] !max-h-[80vh] flex-1 flex-col overflow-hidden p-0">
+    <SectionSurface className="flex min-w-0 flex-col overflow-hidden p-0">
       <div className="flex shrink-0 flex-wrap items-center gap-2 p-4">
         <SearchField
           aria-label="Search policies"
@@ -162,15 +162,14 @@ export function PolicyTable() {
         tabIndex={0}
         role="region"
         aria-label="Permission catalog"
-        className="mx-2 min-h-32 max-h-[90vh] flex-1 overflow-auto overscroll-contain
-outline-offset-2 [scrollbar-gutter:stable] focus-visible:outline-2 focus-visible:outline-focus"
+        className="mx-2 min-w-0 overflow-x-auto outline-offset-2 focus-visible:outline-2 focus-visible:outline-focus"
       >
         <Table className="overflow-visible">
           <Table.Content aria-label="Permission policies" className="min-w-112 border-separate border-spacing-0">
             <colgroup>
-              <col className="w-[55%]" />
-              <col className="w-[30%]" />
-              <col className="w-[15%]" />
+              <col className="w-[60%]" />
+              <col />
+              <col className="w-16" />
             </colgroup>
             <Table.Header className="sticky top-0 z-20 bg-inset">
               <Table.Row>

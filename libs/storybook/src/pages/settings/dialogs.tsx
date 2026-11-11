@@ -1,3 +1,5 @@
+import { motion } from 'motion/react'
+import { useTransition } from '../../components/motion'
 import { Button } from '../../components/buttons'
 import { Dialog } from '../../components/dialog'
 import { TextField, MultilineField } from '../../components/fields'
@@ -32,6 +34,7 @@ const badgeOptions = [
 const visibilityOptions = ['Always show', 'Show when badged', "Don't show"].map((value) => ({ label: value, value }))
 
 function CustomizeSidebar() {
+  const timing = useTransition('reorder')
   const controller = useSettingsController()
   const preferences = useSettings((state) => state.preferences)
   const order = String(preferences.sidebarOrder).split(',')
@@ -65,18 +68,16 @@ function CustomizeSidebar() {
               {order.map((name, index) => {
                 const Icon = sidebarIcons[name as keyof typeof sidebarIcons]
                 return (
-                  <div
+                  <motion.div
                     key={name}
+                    initial={false}
+                    animate={{ y: preview?.offsets[name] ?? 0 }}
+                    transition={timing}
                     ref={(node) => {
                       if (node) rowNodes.current.set(name, node)
                       else rowNodes.current.delete(name)
                     }}
-                    style={preview ? { transform: `translateY(${preview.offsets[name] ?? 0}px)` } : undefined}
-                    className={cx(
-                      'relative flex h-9 items-center px-2',
-                      !!preview && 'motion-safe:transition-transform motion-safe:duration-150',
-                      preview?.key === name && 'opacity-0',
-                    )}
+                    className={cx('relative flex h-9 items-center px-2', preview?.key === name && 'opacity-0')}
                   >
                     <button
                       type="button"
@@ -116,7 +117,7 @@ active:cursor-grabbing focus-visible:outline-focus
                       options={visibilityOptions}
                       onValueChange={(value) => controller.setPreference(`sidebar${name}`, value)}
                     />
-                  </div>
+                  </motion.div>
                 )
               })}
             </div>

@@ -1,5 +1,10 @@
 allowBuilds:
   esbuild: false
 
+minimumReleaseAgeExclude:
+  - framer-motion@14.12.0
+  - motion-dom@14.12.0
+  - motion@14.12.0
+
 overrides:
   '@compallm/contract': link:../contract

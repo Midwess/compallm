@@ -14,9 +14,12 @@ pub mod user;
 mod context;
 mod error;
 mod operation;
+mod query;
+mod registration;
 mod schema;
 
 pub use context::GraphqlContext;
-pub use schema::{ApplicationSchema, Query, build_schema};
+pub use query::Query;
+pub use schema::{ApplicationSchema, build_schema};
 
 pub(crate) mod validation;

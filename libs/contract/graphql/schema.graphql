@@ -1,7 +1,50 @@
+type AuthenticationMutation {
+  """
+  Explicit refresh Bearer only. Rebuild current authority; never set browser cookies.
+  """
+  sessionRefresh: SessionCredentials!
+
+  """
+  Revoke this verified login only. Clear cookie credentials after successful revocation.
+  """
+  sessionRevoke: Boolean!
+
+  """
+  Confirm an existing user's middleware-verified OTP challenge and create a scoped session.
+  """
+  signinEmailConfirm(input: EmailCodeInput!): SessionCredentials!
+
+  """
+  Request signin email admission for an existing active account.
+  """
+  signinEmailRequest(input: EmailInput!): EmailChallenge!
+
+  """
+  Confirm the middleware-verified OTP challenge and atomically create the account and session.
+  """
+  signupEmailConfirm(input: EmailCodeInput!): SessionCredentials!
+
+  """
+  Request signup email admission. Reject existing accounts before sending or issuing a challenge.
+  """
+  signupEmailRequest(input: EmailInput!): EmailChallenge!
+}
+
+type AuthenticationQuery {
+  session: Session!
+}
+
 """
 Positive u32 context size, encoded as an exact JSON number (1–4294967295).
 """
 scalar ContextTokens
+
+type CreatedGroup {
+  description: String!
+  id: ID!
+  name: String!
+  roleIds: [ID!]!
+}
 
 """
 How the request delivers credentials; this is never stored in signed claims.
@@ -62,36 +105,46 @@ input EmailInput {
   email: String!
 }
 
+type Group {
+  description: String!
+  id: ID!
+  name: String!
+}
+
+input GroupCreateInput {
+  description: String!
+  name: String!
+  roleIds: [String!]!
+}
+
+type GroupMutation {
+  create(input: GroupCreateInput!): CreatedGroup!
+}
+
+type GroupQuery {
+  get(id: ID!): Group
+  list: [Group!]!
+}
+
 type Mutation {
-  """
-  Explicit refresh Bearer only. Rebuild current authority; never set browser cookies.
-  """
-  sessionRefresh: SessionCredentials!
+  authentication: AuthenticationMutation!
+  organization: OrganizationMutation!
+}
 
-  """
-  Revoke this verified login only. Clear cookie credentials after successful revocation.
-  """
-  sessionRevoke: Boolean!
+type Organization {
+  id: ID!
+  name: String!
+}
 
-  """
-  Confirm an existing user's middleware-verified OTP challenge and create a scoped session.
-  """
-  signinEmailConfirm(input: EmailCodeInput!): SessionCredentials!
+type OrganizationMutation {
+  groups: GroupMutation!
+  roles: RoleMutation!
+}
 
-  """
-  Request signin email admission for an existing active account.
-  """
-  signinEmailRequest(input: EmailInput!): EmailChallenge!
-
-  """
-  Confirm the middleware-verified OTP challenge and atomically create the account and session.
-  """
-  signupEmailConfirm(input: EmailCodeInput!): SessionCredentials!
-
-  """
-  Request signup email admission. Reject existing accounts before sending or issuing a challenge.
-  """
-  signupEmailRequest(input: EmailInput!): EmailChallenge!
+type OrganizationQuery {
+  get: Organization!
+  groups: GroupQuery!
+  roles: RoleQuery!
 }
 
 """
@@ -261,13 +314,29 @@ input ProvidersCreateInput {
 }
 
 type Query {
-  """
-  Read the selected login's verified identity and organization-name snapshot.
+  authentication: AuthenticationQuery!
+  organization: OrganizationQuery!
+}
 
-  Requires active, current user access. No credentials, policy source, or
-  freshness internals are exposed; no user/organization hydration is performed.
-  """
-  session: Session!
+type Role {
+  description: String!
+  id: ID!
+  name: String!
+}
+
+input RoleCreateInput {
+  cedarSource: String!
+  description: String!
+  name: String!
+}
+
+type RoleMutation {
+  create(input: RoleCreateInput!): Role!
+}
+
+type RoleQuery {
+  get(id: ID!): Role
+  list: [Role!]!
 }
 
 type Session {

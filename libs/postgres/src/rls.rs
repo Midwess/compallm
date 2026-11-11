@@ -152,3 +152,7 @@ impl TryFrom<&MemberPermission> for RlsSettings {
         preparation::prepare(permission)
     }
 }
+
+pub fn validate_policy_source(source: &str) -> anyhow::Result<()> {
+    preparation::validate_source(source)
+}

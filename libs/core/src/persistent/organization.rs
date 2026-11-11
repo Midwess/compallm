@@ -5,6 +5,8 @@ use crate::organization::{Group, Organization, OrganizationMember, Role};
 
 #[derive(Debug, thiserror::Error)]
 pub enum OrganizationRepositoryError {
+    #[error("name already exists in this organization")]
+    NameAlreadyExists,
     #[error("organization not found")]
     NotFound,
     #[error("membership assignments changed concurrently")]
@@ -28,13 +30,15 @@ impl From<ConnectionError> for OrganizationRepositoryError {
 /// Use the current DbContext and leave transaction ownership to the caller.
 #[async_trait]
 pub trait OrganizationRepository: Send + Sync {
+    fn supports_role_policy(&self, source: &str) -> bool;
     /// Find a role using its organization-scoped identity.
     async fn find_role(
         &self,
         organization_id: u64,
         role_id: u64,
     ) -> Result<Option<Role>, OrganizationRepositoryError>;
-    async fn find_roles(
+    /// Load role metadata for assignment checks; the policy source is not returned.
+    async fn find_roles_for_assignment(
         &self,
         organization_id: u64,
         role_ids: &[u64],
@@ -69,6 +73,19 @@ pub trait OrganizationRepository: Send + Sync {
         organization_id: u64,
         role_id: u64,
     ) -> Result<(), OrganizationRepositoryError>;
+    async fn list_role_info(
+        &self,
+        organization_id: u64,
+    ) -> Result<Vec<Role>, OrganizationRepositoryError>;
+    async fn list_group_info(
+        &self,
+        organization_id: u64,
+    ) -> Result<Vec<crate::organization::group::GroupInfo>, OrganizationRepositoryError>;
+    async fn find_group_info(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+    ) -> Result<Option<crate::organization::group::GroupInfo>, OrganizationRepositoryError>;
     /// Find a group and its assigned roles using its organization-scoped identity.
     async fn find_group(
         &self,

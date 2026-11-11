@@ -1,7 +1,14 @@
 use super::Session;
-use crate::http::authentication::VerifiedAccess;
+use crate::{
+    graphql::{GraphqlContext, error::Error},
+    http::authentication::UserContext,
+};
 
-/// Project the already-verified login without hydration or another freshness lookup.
-pub(crate) fn session(access: &VerifiedAccess) -> Session {
-    access.access().session.clone().into()
+pub struct Query;
+
+#[juniper::graphql_object(name = "AuthenticationQuery", context = GraphqlContext)]
+impl Query {
+    async fn session(#[graphql(context)] user: &UserContext) -> Result<Session, Error> {
+        Ok(user.require().await?.access().session.clone().into())
+    }
 }

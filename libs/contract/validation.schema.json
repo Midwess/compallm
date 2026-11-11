@@ -3,6 +3,12 @@
   "title": "Inputs",
   "type": "object",
   "properties": {
+    "role_create": {
+      "$ref": "#/$defs/RoleCreateInput"
+    },
+    "group_create": {
+      "$ref": "#/$defs/GroupCreateInput"
+    },
     "email": {
       "$ref": "#/$defs/EmailInput"
     },
@@ -20,6 +26,8 @@
     }
   },
   "required": [
+    "role_create",
+    "group_create",
     "email",
     "code",
     "provider_create",
@@ -27,6 +35,57 @@
     "provider_patch"
   ],
   "$defs": {
+    "RoleCreateInput": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "x-compallm-trim": true,
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "description": {
+          "type": "string"
+        },
+        "cedarSource": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "cedarSource"
+      ],
+      "x-compallm-input": true
+    },
+    "GroupCreateInput": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "x-compallm-trim": true,
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "description": {
+          "type": "string"
+        },
+        "roleIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "roleIds"
+      ],
+      "x-compallm-input": true
+    },
     "EmailInput": {
       "description": "Shared input for requesting either a signup or a signin email challenge.\n\nCall `validify()` before Core execution. GraphQL parsing alone does not run\nnormalization, application validation, or email ownership checks.",
       "type": "object",

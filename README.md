@@ -10,7 +10,7 @@ See the [Compallm Wiki](https://github.com/Midwess/compallm/wiki) and [product o
 
 ## Development
 
-The frontend uses React with Vite, and the Rust server uses Loco and Axum. PostgreSQL is accessed through SeaORM. GraphQL is served at `POST /api/graphql` through Juniper and its Axum adapter, with Rust definitions under `api/src/graphql`. The authenticated session query and email-login, explicit refresh and signout mutations preserve credential policies, access freshness and cookie renewal. Portal uses the generated Genql client for authentication; provider runtime operations remain pending. Core services and offline component previews remain available.
+The frontend uses React with Vite, and the Rust server uses Loco and Axum. PostgreSQL is accessed through SeaORM. GraphQL is served at `POST /api/graphql` through Juniper and its Axum adapter, with Rust definitions under `api/src/graphql`. The authenticated session query and email-login, explicit refresh and signout mutations preserve credential policies, access freshness and cookie renewal. Portal uses the generated Genql client for authentication and role/group summaries. Protected role/group creation and metadata reads are available through organization query and mutation objects; editing, member assignments, and provider runtime operations remain pending. Core services and offline component previews remain available.
 
 Axum serves the frontend in both local development and production. In development, it proxies the Vite dev server, including hot reload. In production, it directly serves Vite's built static files. The frontend and API share the same public origin.
 

@@ -1,16 +1,17 @@
 use compallm_core::user::User as CoreUser;
-use juniper::{ID, graphql_object};
 
 /// Public identity fields backed directly by the existing Core entity.
 ///
 /// Email, account status, and authentication metadata require separate contracts.
-pub struct User(CoreUser);
+pub struct User(pub(super) CoreUser);
 
 impl From<CoreUser> for User {
     fn from(user: CoreUser) -> Self {
         Self(user)
     }
 }
+
+use juniper::{ID, graphql_object};
 
 #[graphql_object]
 impl User {

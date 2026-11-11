@@ -1,5 +1,7 @@
 #[derive(Debug, thiserror::Error)]
 pub enum AuthorizationError {
+    #[error("policy is not supported by data protection")]
+    UnsupportedPolicy,
     #[error(transparent)]
     Permission(#[from] super::MemberPermissionError),
     #[error("Cedar error {}", 0)]

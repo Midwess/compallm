@@ -67,6 +67,12 @@ input EmailInput {
   delivery: CredentialDelivery = COOKIE
 }
 
+input GroupCreateInput {
+  name: String!
+  description: String!
+  roleIds: [String!]!
+}
+
 "Opaque registry identity, independent of an edited upstream model name."
 input ProviderCatalogRef {
   provider: String!
@@ -152,16 +158,16 @@ input ProvidersCreateInput {
   providers: [ProviderCreateInput!]!
 }
 
+input RoleCreateInput {
+  name: String!
+  description: String!
+  cedarSource: String!
+}
+
 "Positive u32 context size, encoded as an exact JSON number (1–4294967295)."
 scalar ContextTokens
 
-"Email admission succeeded; cookie delivery never exposes the OTP credential."
-type EmailChallenge {
-  lifetime: TokenLifetime!
-  token: String
-}
-
-type Mutation {
+type AuthenticationMutation {
   "Request signup email admission. Reject existing accounts before sending or issuing a challenge."
   signupEmailRequest(input: EmailInput!): EmailChallenge!
   "Request signin email admission for an existing active account."
@@ -176,6 +182,59 @@ type Mutation {
   sessionRevoke: Boolean!
 }
 
+type AuthenticationQuery {
+  session: Session!
+}
+
+type CreatedGroup {
+  id: ID!
+  name: String!
+  description: String!
+  roleIds: [ID!]!
+}
+
+"Email admission succeeded; cookie delivery never exposes the OTP credential."
+type EmailChallenge {
+  lifetime: TokenLifetime!
+  token: String
+}
+
+type Group {
+  id: ID!
+  name: String!
+  description: String!
+}
+
+type GroupMutation {
+  create(input: GroupCreateInput!): CreatedGroup!
+}
+
+type GroupQuery {
+  get(id: ID!): Group
+  list: [Group!]!
+}
+
+type Mutation {
+  authentication: AuthenticationMutation!
+  organization: OrganizationMutation!
+}
+
+type Organization {
+  id: ID!
+  name: String!
+}
+
+type OrganizationMutation {
+  roles: RoleMutation!
+  groups: GroupMutation!
+}
+
+type OrganizationQuery {
+  get: Organization!
+  roles: RoleQuery!
+  groups: GroupQuery!
+}
+
 "Public catalog defaults; selecting a template creates no configured provider."
 type ProviderTemplate {
   "Global opaque catalog identity, independent of organization resource IDs."
@@ -188,13 +247,23 @@ type ProviderTemplate {
 }
 
 type Query {
-  """
-  Read the selected login's verified identity and organization-name snapshot.
+  organization: OrganizationQuery!
+  authentication: AuthenticationQuery!
+}
 
-  Requires active, current user access. No credentials, policy source, or
-  freshness internals are exposed; no user/organization hydration is performed.
-  """
-  session: Session!
+type Role {
+  id: ID!
+  name: String!
+  description: String!
+}
+
+type RoleMutation {
+  create(input: RoleCreateInput!): Role!
+}
+
+type RoleQuery {
+  get(id: ID!): Role
+  list: [Role!]!
 }
 
 type Session {

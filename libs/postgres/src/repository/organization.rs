@@ -295,7 +295,7 @@ impl CoreRepository for OrganizationRepository {
         Ok(())
     }
 
-    async fn find_roles(
+    async fn find_roles_for_assignment(
         &self,
         organization_id: u64,
         role_ids: &[u64],
@@ -312,14 +312,20 @@ impl CoreRepository for OrganizationRepository {
         Roles::find()
             .filter(RoleColumn::OrganizationId.eq(Self::database_id(organization_id)?))
             .filter(RoleColumn::Id.is_in(ids))
+            .select_only()
+            .columns([RoleColumn::OrganizationId, RoleColumn::Id, RoleColumn::Name, RoleColumn::Description, RoleColumn::OrgOwner])
             .order_by_asc(RoleColumn::Id)
+            .into_tuple::<(i64, i64, String, String, bool)>()
             .all(db)
             .await
             .map_err(OrganizationRepositoryError::database)?
             .into_iter()
-            .map(Role::try_from)
-            .collect::<Result<_, _>>()
-            .map_err(OrganizationRepositoryError::database)
+            .map(|(organization_id, id, name, description, org_owner)| Ok(Role {
+                organization_id: crate::from_bigint(organization_id).map_err(OrganizationRepositoryError::database)?,
+                id: crate::from_bigint(id).map_err(OrganizationRepositoryError::database)?,
+                name, description, org_owner, cedar_source: String::new(),
+            }))
+            .collect()
     }
 
     async fn create_group(&self, group: Group) -> Result<Group, OrganizationRepositoryError> {

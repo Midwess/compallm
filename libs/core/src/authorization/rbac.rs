@@ -13,12 +13,16 @@ use crate::organization::Role;
 
 #[expect(dead_code, reason = "RBAC administration endpoints remain pending")]
 pub struct RbacService {
-    auth_service: AuthService,
-    organizations: Box<dyn OrganizationRepository>,
+    auth_service: &'static AuthService,
+    organizations: &'static Box<dyn OrganizationRepository>,
 }
 
 #[expect(dead_code, reason = "RBAC administration endpoints remain pending")]
 impl RbacService {
+    pub fn new(auth_service: &'static AuthService, organizations: &'static Box<dyn OrganizationRepository>) -> Self {
+        Self { auth_service, organizations }
+    }
+
     async fn new_role(
         &self,
         permission: &MemberPermission,
@@ -68,10 +72,11 @@ impl RbacService {
         })
     }
 
-    async fn create_group(
+    pub async fn create_group(
         &self,
         permission: &MemberPermission,
         name: &str,
+        description: &str,
         roles: Vec<u64>,
     ) -> Result<Group, AuthorizationError> {
         Action::GroupCreate.check_permission(permission)?;
@@ -84,14 +89,14 @@ impl RbacService {
         }
         let assigned = self
             .organizations
-            .find_roles(organization_id, &roles)
+            .find_roles_for_assignment(organization_id, &roles)
             .await?;
         if assigned.len() != roles.len() {
             return Err(
                 crate::persistent::organization::OrganizationRepositoryError::NotFound.into(),
             );
         }
-        let group = Group::new(organization_id, name, "", assigned).await?;
+        let group = Group::new(organization_id, name, description, assigned).await?;
         for role in &group.roles {
             (&group, role)
                 .for_action(Action::GroupRoleAssign)

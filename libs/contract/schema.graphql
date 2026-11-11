@@ -67,6 +67,12 @@ input EmailInput {
   delivery: CredentialDelivery = COOKIE
 }
 
+input GroupCreateInput {
+  name: String!
+  description: String!
+  roleIds: [String!]!
+}
+
 "Opaque registry identity, independent of an edited upstream model name."
 input ProviderCatalogRef {
   provider: String!
@@ -155,6 +161,13 @@ input ProvidersCreateInput {
 "Positive u32 context size, encoded as an exact JSON number (1–4294967295)."
 scalar ContextTokens
 
+type CreatedGroup {
+  id: ID!
+  name: String!
+  description: String!
+  roleIds: [ID!]!
+}
+
 "Email admission succeeded; cookie delivery never exposes the OTP credential."
 type EmailChallenge {
   lifetime: TokenLifetime!
@@ -162,6 +175,7 @@ type EmailChallenge {
 }
 
 type Mutation {
+  groupCreate(input: GroupCreateInput!): CreatedGroup!
   "Request signup email admission. Reject existing accounts before sending or issuing a challenge."
   signupEmailRequest(input: EmailInput!): EmailChallenge!
   "Request signin email admission for an existing active account."

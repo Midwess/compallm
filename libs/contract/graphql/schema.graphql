@@ -3,6 +3,13 @@ Positive u32 context size, encoded as an exact JSON number (1–4294967295).
 """
 scalar ContextTokens
 
+type CreatedGroup {
+  description: String!
+  id: ID!
+  name: String!
+  roleIds: [ID!]!
+}
+
 """
 How the request delivers credentials; this is never stored in signed claims.
 """
@@ -62,7 +69,15 @@ input EmailInput {
   email: String!
 }
 
+input GroupCreateInput {
+  description: String!
+  name: String!
+  roleIds: [String!]!
+}
+
 type Mutation {
+  groupCreate(input: GroupCreateInput!): CreatedGroup!
+
   """
   Explicit refresh Bearer only. Rebuild current authority; never set browser cookies.
   """

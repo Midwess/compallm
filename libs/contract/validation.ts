@@ -101,6 +101,17 @@ export const EmailInput = z
   )
 export type EmailInputFormInput = z.input<typeof EmailInput>
 export type EmailInputFormOutput = z.output<typeof EmailInput>
+export const GroupCreateInputConstraints = { name: { minLength: 1, maxLength: 128, trim: true } } as const
+export const GroupCreateInputInput = { name: stringInput(GroupCreateInputConstraints['name']) }
+export const GroupCreateInput = z
+  .object({
+    name: inputString({ minLength: 1, maxLength: 128, trim: true }),
+    description: inputString({}),
+    roleIds: z.array(inputString({})),
+  })
+  .strict()
+export type GroupCreateInputFormInput = z.input<typeof GroupCreateInput>
+export type GroupCreateInputFormOutput = z.output<typeof GroupCreateInput>
 export const ProviderCatalogRefConstraints = {} as const
 export const ProviderCatalogRefInput = {}
 /** Opaque registry identity, independent of an edited upstream model name. */

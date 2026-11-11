@@ -34,7 +34,8 @@ pub trait OrganizationRepository: Send + Sync {
         organization_id: u64,
         role_id: u64,
     ) -> Result<Option<Role>, OrganizationRepositoryError>;
-    async fn find_roles(
+    /// Load role metadata for assignment checks; the policy source is not returned.
+    async fn find_roles_for_assignment(
         &self,
         organization_id: u64,
         role_ids: &[u64],

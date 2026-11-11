@@ -322,7 +322,7 @@ flex h-7 cursor-pointer list-none items-center gap-1 rounded px-2 pr-7 text-xs f
             <path d="M2 1.72h4a.4.4 0 0 1 .35.6l-2 3.96a.4.4 0 0 1-.7 0l-2-3.96a.4.4 0 0 1 .35-.6Z" fill="currentColor" />
           </svg>
         </summary>
-        <div id={id} className="grid gap-px">
+        <div id={id} className="grid">
           {children}
         </div>
       </details>
@@ -371,7 +371,7 @@ leading-4 text-muted hover:bg-elevated marker:hidden [&::-webkit-details-marker]
             <path d="M2 1.72h4a.4.4 0 0 1 .35.6l-2 3.96a.4.4 0 0 1-.7 0l-2-3.96a.4.4 0 0 1 .35-.6Z" fill="currentColor" />
           </svg>
         </summary>
-        <div id={id} className="mt-0.5 grid gap-px pl-4 pr-4 [&_a]:font-normal">
+        <div id={id} className="mt-0.5 grid pl-4 pr-4 [&_a]:font-normal">
           {children}
         </div>
       </details>

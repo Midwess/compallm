@@ -10,6 +10,14 @@ export type Scalars = {
   String: string
 }
 
+export interface CreatedGroup {
+  description: Scalars['String']
+  id: Scalars['ID']
+  name: Scalars['String']
+  roleIds: Scalars['ID'][]
+  __typename: 'CreatedGroup'
+}
+
 /** How the request delivers credentials; this is never stored in signed claims. */
 export type CredentialDelivery = 'COOKIE' | 'TOKEN'
 
@@ -21,6 +29,7 @@ export interface EmailChallenge {
 }
 
 export interface Mutation {
+  groupCreate: CreatedGroup
   /** Explicit refresh Bearer only. Rebuild current authority; never set browser cookies. */
   sessionRefresh: SessionCredentials
   /** Revoke this verified login only. Clear cookie credentials after successful revocation. */
@@ -110,6 +119,15 @@ export interface TokenLifetime {
   __typename: 'TokenLifetime'
 }
 
+export interface CreatedGroupGenqlSelection {
+  description?: boolean | number
+  id?: boolean | number
+  name?: boolean | number
+  roleIds?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 /** Email admission succeeded; cookie delivery never exposes the OTP credential. */
 export interface EmailChallengeGenqlSelection {
   lifetime?: TokenLifetimeGenqlSelection
@@ -144,7 +162,14 @@ export interface EmailInput {
   email: Scalars['String']
 }
 
+export interface GroupCreateInput {
+  description: Scalars['String']
+  name: Scalars['String']
+  roleIds: Scalars['String'][]
+}
+
 export interface MutationGenqlSelection {
+  groupCreate?: CreatedGroupGenqlSelection & { __args: { input: GroupCreateInput } }
   /** Explicit refresh Bearer only. Rebuild current authority; never set browser cookies. */
   sessionRefresh?: SessionCredentialsGenqlSelection
   /** Revoke this verified login only. Clear cookie credentials after successful revocation. */
@@ -302,6 +327,12 @@ export interface TokenLifetimeGenqlSelection {
   throttleSeconds?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
+}
+
+const CreatedGroup_possibleTypes: string[] = ['CreatedGroup']
+export const isCreatedGroup = (obj?: { __typename?: any } | null): obj is CreatedGroup => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isCreatedGroup"')
+  return CreatedGroup_possibleTypes.includes(obj.__typename)
 }
 
 const EmailChallenge_possibleTypes: string[] = ['EmailChallenge']

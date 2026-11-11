@@ -10,6 +10,6 @@
     "rewriteRelativeImportExtensions": true,
     "outDir": "dist"
   },
-  "include": ["*.ts"],
+  "include": ["*.ts", "graphql/**/*.ts"],
   "exclude": ["dist", "node_modules"]
 }

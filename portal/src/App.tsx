@@ -56,6 +56,13 @@ export const router = createBrowserRouter([
         lazy: () => import('./routes/organization'),
         children: [
           { index: true, loader: organizationIndex, Component: () => null },
+          {
+            path: 'settings',
+            children: [
+              { index: true, loader: () => redirect('general') },
+              { path: ':page', lazy: () => import('./routes/settings') },
+            ],
+          },
           { path: 'chat', lazy: () => import('./routes/chat') },
           {
             path: 'providers/new',

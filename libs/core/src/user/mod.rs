@@ -6,9 +6,13 @@ use std::sync::LazyLock;
 use cedar_policy::SchemaFragment;
 use compallm_utils::email;
 
-use crate::authorization::SystemPolicy;
+use crate::authorization::{
+    SystemPolicy,
+    policy::{EntityType, Policy},
+};
 
 pub mod error;
+pub mod preferences;
 #[path = "registration-service.rs"]
 pub mod registration_service;
 
@@ -34,10 +38,10 @@ pub struct User {
 
 impl User {
     /// Prepare a canonical user after the caller verifies ownership of the email.
-    pub fn from_email(id: u64, email: &str) -> Result<Self, RegistrationError> {
+    pub async fn from_email(email: &str) -> Result<Self, RegistrationError> {
         use validify::{Modify, Validate};
         let mut user = Self {
-            id,
+            id: 0,
             email: email.into(),
             display_name: String::new(),
             status: UserStatus::Active,
@@ -59,6 +63,7 @@ impl User {
                 RegistrationError::InvalidDisplayName
             }
         })?;
+        user.id = hero::distributed_id::try_gen_id().await?;
         Ok(user)
     }
 
@@ -77,38 +82,11 @@ impl User {
 }
 
 impl SystemPolicy for User {
-    /// Declares protected profile mutation and account deletion, not profile reads.
-    ///
-    /// - `user.profile.update`: change one's own allowed profile fields. Public
-    ///   visibility of that profile never permits somebody else to edit it.
-    ///   Email verification and authentication changes are separate workflows.
-    /// - `user.account.delete`: delete one's own entire account through its
-    ///   confirmation, reauthentication, last-owner, and retention safeguards.
-    ///   Updating a profile does not imply account deletion.
-    ///
-    /// User profiles are readable by everyone without RBAC; no profile-read action
-    /// or permit belongs here. Public projections exclude private authentication
-    /// and membership-administration data. Knowing an ID grants no mutation rights.
-    /// UserAuth defines authentication operations separately. Role/Group types
-    /// describe membership only; baseline account decisions exclude custom forbids.
+    /// Declare the user principal and its organization role/group relationships.
+    /// Personal profile and account operations use their own ownership checks.
     fn policy() -> SchemaFragment {
-        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
-            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(
-                r#"
-namespace Compallm {
-    entity User in [Role, Group, Organization];
-    action "user.profile.update" appliesTo { principal: User, resource: User };
-    action "user.account.delete" appliesTo { principal: User, resource: User };
-}
-"#,
-            )
-            .expect("User SystemPolicy must be a valid static Cedar schema fragment");
-            assert!(
-                warnings.count() == 0,
-                "User SystemPolicy must not contain schema warnings"
-            );
-            fragment
-        });
+        static DEFINITION: LazyLock<SchemaFragment> =
+            LazyLock::new(|| Policy::new(EntityType::User).into());
         DEFINITION.clone()
     }
 }

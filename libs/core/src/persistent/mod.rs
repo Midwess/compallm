@@ -2,6 +2,7 @@
 
 pub mod connection;
 pub mod db_context;
+pub mod dictionary;
 pub mod model;
 pub mod organization;
 pub mod provider;
@@ -9,4 +10,4 @@ pub mod session;
 pub mod user;
 
 pub use connection::{Connection, ConnectionError};
-pub use db_context::DbContext;
+pub use db_context::{DbContext, PermissionError, PermissionLoader};

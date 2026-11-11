@@ -3,7 +3,7 @@ import {
   ProviderFieldsInput,
   ProviderFieldsConstraints,
   ProviderHeaderConstraints,
-} from '@compallm/contract/validation'
+} from '@compallm/contract/provider'
 import { useState } from 'react'
 import { EyeIcon } from '@phosphor-icons/react/dist/csr/Eye'
 import { EyeSlashIcon } from '@phosphor-icons/react/dist/csr/EyeSlash'

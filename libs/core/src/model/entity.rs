@@ -1,8 +1,12 @@
+use hero::distributed_id::{generator::DistributedIdError, try_gen_id};
 use std::sync::LazyLock;
 
 use cedar_policy::SchemaFragment;
 
-use crate::authorization::SystemPolicy;
+use crate::authorization::{
+    SystemPolicy,
+    policy::{EntityType, Policy},
+};
 
 use crate::provider::{Capability, ModelLimits, Pricing, ServiceKind, Thinking};
 
@@ -20,15 +24,20 @@ pub struct Model {
     pub pricing: Pricing,
 }
 
+impl Model {
+    pub async fn initialize_id(&mut self) -> Result<(), DistributedIdError> {
+        self.id = try_gen_id().await?;
+        Ok(())
+    }
+}
+
 impl SystemPolicy for Model {
     /// Declares logical-model discovery, invocation, and administration separately.
     ///
-    /// - `model.list`: discover permitted model summaries in an Organization; it does
-    ///   not expose provider credentials or privileged routing configuration.
+    /// - `model.read`: list models and inspect organization-visible metadata, capabilities,
+    ///   and user-facing prices. It excludes provider credentials and privileged routing.
     /// - `model.create`: create a logical model inside the destination Organization.
-    /// - `model.metadata.read`: inspect permitted organization-visible model metadata such as capability
-    ///   and configured user-facing prices. First-release grants cover all models in
-    ///   the active organization; per-model grant selection is deferred.
+    ///   Grants cover all models in the active organization; per-model grants are deferred.
     /// - `model.use`: invoke an available logical model. The grant does not enable a
     ///   disabled model or bypass spending limits, admission, or routing availability.
     /// - `model.configuration.update`: change permitted metadata/availability; pricing and route changes
@@ -42,31 +51,8 @@ impl SystemPolicy for Model {
     /// Inspecting or managing a disabled model is valid. All checks apply to actual
     /// resources; schema validation cannot enforce availability, quotas, or consistency.
     fn policy() -> SchemaFragment {
-        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
-            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(
-                r#"
-namespace Compallm {
-    entity Model in [Organization] { organization: Organization, enabled: Bool };
-    action "model.list" appliesTo { principal: User, resource: Organization };
-    action "model.create" appliesTo { principal: User, resource: Organization };
-    action "model.metadata.read" appliesTo { principal: User, resource: Model };
-    action "model.configuration.update" appliesTo { principal: User, resource: Model };
-    action "model.delete" appliesTo { principal: User, resource: Model };
-    action "model.use" appliesTo { principal: User, resource: Model };
-    action "model.route.add" appliesTo { principal: User, resource: Model, context: { providerModel: ProviderModel } };
-    action "model.route.update" appliesTo { principal: User, resource: Model, context: { providerModel: ProviderModel } };
-    action "model.route.remove" appliesTo { principal: User, resource: Model, context: { providerModel: ProviderModel } };
-    action "model.pricing.update" appliesTo { principal: User, resource: Model };
-}
-"#,
-            )
-            .expect("Model SystemPolicy must be a valid static Cedar schema fragment");
-            assert!(
-                warnings.count() == 0,
-                "Model SystemPolicy must not contain schema warnings"
-            );
-            fragment
-        });
+        static DEFINITION: LazyLock<SchemaFragment> =
+            LazyLock::new(|| Policy::new(EntityType::Model).into());
         DEFINITION.clone()
     }
 }

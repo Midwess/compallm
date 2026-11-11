@@ -1,0 +1,322 @@
+"""
+Positive u32 context size, encoded as an exact JSON number (1–4294967295).
+"""
+scalar ContextTokens
+
+"""
+How the request delivers credentials; this is never stored in signed claims.
+"""
+enum CredentialDelivery {
+  """
+  Set HttpOnly cookies and return metadata without credential values.
+  """
+  COOKIE
+
+  """
+  Return credentials explicitly without setting browser cookies.
+  """
+  TOKEN
+}
+
+"""
+Email admission succeeded; cookie delivery never exposes the OTP credential.
+"""
+type EmailChallenge {
+  lifetime: TokenLifetime!
+  token: String
+}
+
+"""
+Shared input for confirming a signup or signin email challenge.
+
+The verified encrypted challenge comes from request context, never this input.
+The adapter calls `validify()` before Core verifies the code and challenge.
+"""
+input EmailCodeInput {
+  """
+  Exactly six ASCII digits after trimming surrounding whitespace.
+  """
+  code: String!
+
+  """
+  Cookie delivery is the default; token delivery must be requested explicitly.
+  """
+  delivery: CredentialDelivery = COOKIE
+}
+
+"""
+Shared input for requesting either a signup or a signin email challenge.
+
+Call `validify()` before Core execution. GraphQL parsing alone does not run
+normalization, application validation, or email ownership checks.
+"""
+input EmailInput {
+  """
+  Cookie delivery is the default; token delivery must be requested explicitly.
+  """
+  delivery: CredentialDelivery = COOKIE
+
+  """
+  Trimmed and ASCII-lowercased using the shared Rust email policy.
+  """
+  email: String!
+}
+
+type Mutation {
+  """
+  Explicit refresh Bearer only. Rebuild current authority; never set browser cookies.
+  """
+  sessionRefresh: SessionCredentials!
+
+  """
+  Revoke this verified login only. Clear cookie credentials after successful revocation.
+  """
+  sessionRevoke: Boolean!
+
+  """
+  Confirm an existing user's middleware-verified OTP challenge and create a scoped session.
+  """
+  signinEmailConfirm(input: EmailCodeInput!): SessionCredentials!
+
+  """
+  Request signin email admission for an existing active account.
+  """
+  signinEmailRequest(input: EmailInput!): EmailChallenge!
+
+  """
+  Confirm the middleware-verified OTP challenge and atomically create the account and session.
+  """
+  signupEmailConfirm(input: EmailCodeInput!): SessionCredentials!
+
+  """
+  Request signup email admission. Reject existing accounts before sending or issuing a challenge.
+  """
+  signupEmailRequest(input: EmailInput!): EmailChallenge!
+}
+
+"""
+Catalog connection family hint; each configured model selects its own operation.
+"""
+enum ProviderApiProtocol {
+  ANTHROPIC
+  OPENAI_COMPATIBLE
+  PROVIDER_SPECIFIC
+}
+
+"""
+Opaque registry identity, independent of an edited upstream model name.
+"""
+input ProviderCatalogRef {
+  model: String!
+  provider: String!
+}
+
+"""
+New connection definition; credentials and header values are write-only.
+"""
+input ProviderCreateInput {
+  apiKey: String!
+  baseUrl: String!
+  headers: [ProviderHeader!]!
+  models: [ProviderModelWrite!]!
+  name: String!
+}
+
+"""
+Empty object means no configured effort levels. Configured values cannot be empty.
+"""
+input ProviderEffortMapping {
+  high: String
+  low: String
+  max: String
+  medium: String
+  xhigh: String
+}
+
+input ProviderHeader {
+  key: String!
+
+  """
+  Write-only header content; never returned by management reads.
+  """
+  value: String!
+}
+
+"""
+Omit value to retain an existing header secret; new names require a value.
+"""
+input ProviderHeaderUpdate {
+  key: String!
+
+  """
+  Omit to preserve the saved value for this header name. New names require a value.
+  """
+  value: String
+}
+
+"""
+Capabilities declared by a catalog or configured model; not an authorization grant.
+"""
+enum ProviderModelCapability {
+  AUDIO
+  AUDIO_GENERATION
+  FORCED_TOOL_CHOICE
+  IMAGE_GENERATION
+  PDF
+  REASONING
+  SEARCH
+  STRUCTURED_OUTPUT
+  TEXT
+  TOOL_CALL
+  VIDEO
+  VISION
+}
+
+"""
+Complete configured text-model values. Decimal prices are USD per million tokens.
+"""
+input ProviderModelConfiguration {
+  cachedPrice: String!
+  capabilities: [ProviderModelCapability!]! = []
+  catalogRef: ProviderCatalogRef
+  effortMapping: ProviderEffortMapping
+  enabled: Boolean! = true
+  inputPrice: String!
+  maxContextTokens: ContextTokens!
+  name: String!
+  outputPrice: String!
+  path: String!
+  protocol: TextModelProtocol!
+}
+
+"""
+Persisted identity is omitted for new models and forbidden during provider creation.
+"""
+input ProviderModelWrite {
+  """
+  Complete text-model configuration, including explicit token prices.
+  """
+  configuration: ProviderModelConfiguration!
+
+  """
+  Omit for a new model; supplied IDs must belong to this connection.
+  """
+  id: ID
+}
+
+"""
+Partial update. Omitted fields are unchanged; explicit null is rejected.
+"""
+input ProviderPatchInput {
+  """
+  Omit to preserve the current credential. Empty strings and null are invalid.
+  """
+  apiKey: String
+  baseUrl: String
+  headers: [ProviderHeaderUpdate!]
+  models: [ProviderModelWrite!]
+  name: String
+}
+
+"""
+Full non-secret replacement. Omitting apiKey preserves the saved credential.
+"""
+input ProviderReplaceInput {
+  """
+  Omit to preserve the current credential. Empty strings and null are invalid.
+  """
+  apiKey: String
+  baseUrl: String!
+  headers: [ProviderHeaderUpdate!]!
+  models: [ProviderModelWrite!]!
+  name: String!
+}
+
+"""
+Public catalog defaults; selecting a template creates no configured provider.
+"""
+type ProviderTemplate {
+  """
+  Unknown and account-specific addresses remain null.
+  """
+  baseUrl: String
+
+  """
+  Global opaque catalog identity, independent of organization resource IDs.
+  """
+  id: ID!
+  name: String!
+
+  """
+  Family hint only; configured models select their own text operation.
+  """
+  protocol: ProviderApiProtocol!
+}
+
+"""
+Atomic batch of new provider connections for the verified organization.
+"""
+input ProvidersCreateInput {
+  providers: [ProviderCreateInput!]!
+}
+
+type Query {
+  """
+  Read the selected login's verified identity and organization-name snapshot.
+
+  Requires active, current user access. No credentials, policy source, or
+  freshness internals are exposed; no user/organization hydration is performed.
+  """
+  session: Session!
+}
+
+type Session {
+  """
+  Login session identity, serialized as a string without numeric precision loss.
+  """
+  id: ID!
+
+  """
+  Organization selected for this verified session.
+  """
+  organizationId: ID!
+
+  """
+  Signed display snapshot; the name never establishes organization authority.
+  """
+  organizationName: String!
+
+  """
+  User owning this verified session.
+  """
+  userId: ID!
+}
+
+"""
+Timing is always returned; credential values exist only in explicit TOKEN delivery.
+"""
+type SessionCredentials {
+  accessLifetime: TokenLifetime!
+  accessToken: String
+  refreshLifetime: TokenLifetime!
+  refreshToken: String
+}
+
+"""
+Text operation determining the upstream request and response format.
+"""
+enum TextModelProtocol {
+  ANTHROPIC_MESSAGES
+  OPENAI_CHAT_COMPLETIONS
+  OPENAI_RESPONSES
+}
+
+"""
+Exact Unix-second validity and client throttle values encoded as decimal strings.
+"""
+type TokenLifetime {
+  expiresAt: String!
+  expiresInSeconds: String!
+  issuedAt: String!
+  throttleSeconds: String!
+}

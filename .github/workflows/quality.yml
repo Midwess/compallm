@@ -34,10 +34,10 @@ jobs:
     timeout-minutes: 30
     env:
       CARGO_TERM_COLOR: always
-      CARGO_INCREMENTAL: '0'
-      CARGO_PROFILE_DEV_DEBUG: '0'
-      CARGO_PROFILE_TEST_DEBUG: '0'
-      # Only the disposable CI service is migrated by the API tests.
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      # Database-backed tests use only the disposable CI service.
       DATABASE_URL: postgres://root:shh@127.0.0.1:5432/compallm
     services:
       postgres:
@@ -66,25 +66,32 @@ jobs:
           cache-on-failure: true
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - name: Test the workspace, including API integration tests
+      - name: Test the workspace
         run: cargo test --workspace --locked
       - name: Check the development frontend proxy
-        run: cargo check -p compallm-api --features frontend-dev --locked
+        run: cargo check -p compallm-api --locked
       - name: Check the PostgreSQL management CLI
         run: cargo clippy -p compallm-postgres --all-targets --features cli --locked -- -D warnings
+      - name: Apply migrations to the disposable CI database
+        run: cargo run -p compallm-postgres --features cli --locked -- up
+      - name: Verify HTTP membership and PostgreSQL RLS lifecycle
+        env:
+          COMPALLM_TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: cargo test -p compallm-test --test auth_service --locked -- --ignored
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: '22'
+          node-version: "22"
           cache: npm
           cache-dependency-path: portal/package-lock.json
-      - name: Install API client generator
+      - name: Install shared form dependencies
         run: npm ci --prefix portal
-      - name: Check generated contracts and shared validation
+      - name: Regenerate Rust-owned GraphQL and validation contracts
         run: |
           cargo run --locked -p compallm-api -- generate
-          git diff --exit-code -- libs/contract/api.ts libs/contract/operations.ts libs/contract/schemas.ts libs/contract/validation.ts
-          test -z "$(git ls-files --others --exclude-standard -- libs/contract/*.ts)"
-          node --test test/tests/input_contract.mjs test/tests/provider_api_contract.mjs
+          git diff --exit-code -- libs/contract
+          test -z "$(git ls-files --others --exclude-standard -- libs/contract)"
+      - name: Check shared offline form contracts
+        run: node --test test/tests/input_contract.mjs test/tests/provider_form_contract.mjs
 
   portal:
     name: Frontend checks
@@ -97,7 +104,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: '22'
+          node-version: "22"
           cache: npm
           cache-dependency-path: portal/package-lock.json
       - run: npm ci
@@ -109,14 +116,12 @@ jobs:
           npm --prefix ../libs/storybook run check
           npm --prefix ../libs/storybook run build
       - run: npm run lint:check
+      - name: Test authentication controller flows
+        run: npm test
       - name: Typecheck
         run: npm exec -- tsc -b
       - name: Build the frontend
         run: npm exec -- vite build
-      - name: Install browser for portal session checks
-        run: npm exec -- playwright install --with-deps chromium
-      - name: Test portal authentication and session state
-        run: npm test
 
   quality:
     name: Quality gate

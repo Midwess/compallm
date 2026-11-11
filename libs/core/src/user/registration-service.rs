@@ -6,19 +6,16 @@ use crate::transaction;
 use super::{RegistrationError, User};
 
 pub struct RegistrationService {
-    db: &'static DbContext,
     users: &'static Box<dyn UserRepository>,
     organizations: &'static CreationService,
 }
 
 impl RegistrationService {
     pub fn new(
-        db: &'static DbContext,
         users: &'static Box<dyn UserRepository>,
         organizations: &'static CreationService,
     ) -> Self {
         Self {
-            db,
             users,
             organizations,
         }
@@ -28,12 +25,12 @@ impl RegistrationService {
     /// User, default organization, and owner membership succeed atomically.
     /// Joins an existing transaction when invoked by another service.
     pub async fn register(&self, email: &str) -> Result<User, RegistrationError> {
-        let user = User::from_email(hero::distributed_id::try_gen_id().await?, email)?;
+        let user = User::from_email(email).await?;
         if self.users.find_by_email(&user.email).await?.is_some() {
             return Err(UserRepositoryError::EmailAlreadyExists.into());
         }
 
-        transaction!(self.db, {
+        transaction!(DbContext::current()?, {
             let user = self.users.create(user).await?;
             self.organizations.create_default(&user).await?;
             Ok(user)

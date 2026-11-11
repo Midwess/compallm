@@ -3,14 +3,19 @@ use compallm_core::{
     persistent::provider::ProviderRepositoryError,
     provider::{Provider, ProviderApiKey, ProviderModel},
 };
-use sea_orm::{DbBackend, Statement};
+use sea_orm::{EntityTrait, ModelTrait, Set};
 
 use crate::schema::{ProviderModelSchema, ProviderSchema};
 use validify::Validate;
 
-/// Prepared PostgreSQL insert and the explicitly supplied model configuration.
+type ProviderActiveModel = <<ProviderSchema as ModelTrait>::Entity as EntityTrait>::ActiveModel;
+type ProviderModelActiveModel =
+    <<ProviderModelSchema as ModelTrait>::Entity as EntityTrait>::ActiveModel;
+
+/// Prepared provider and model writes; conversion finishes before a transaction starts.
 pub(crate) struct ProviderInsert {
-    pub statement: Statement,
+    pub provider: ProviderActiveModel,
+    pub model_writes: Vec<ProviderModelActiveModel>,
     pub models: Vec<ProviderModel>,
 }
 
@@ -23,7 +28,7 @@ impl TryFrom<Provider> for ProviderInsert {
                 "provider and organization IDs must be positive"
             )));
         }
-        let mut models = Vec::with_capacity(provider.models.len());
+        let mut model_writes = Vec::with_capacity(provider.models.len());
         for model in &provider.models {
             if model.id == 0
                 || model.organization_id != provider.organization_id
@@ -33,60 +38,61 @@ impl TryFrom<Provider> for ProviderInsert {
                     "provider model identity or ownership is invalid"
                 )));
             }
-            models.push(serde_json::json!({
-                "id": crate::to_bigint(model.id).context("provider model ID exceeds BIGINT")?,
-                "name": model.name, "enabled": model.enabled,
-                "service_kind": model.service_kind, "protocol": model.protocol,
-                "connection": model.connection, "headers": model.headers,
-                "capabilities": model.capabilities, "limits": model.limits,
-                "thinking": model.thinking, "pricing": model.pricing,
-            }));
+            model_writes.push(ProviderModelActiveModel::try_from(model)?);
         }
-        let statement = Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            r#"
-            WITH created_provider AS (
-                INSERT INTO public.providers (id, organization_id, name, connection, headers, credentials)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                RETURNING *
-            ), created_models AS (
-                INSERT INTO public.provider_models (
-                    id, organization_id, provider_id, name, enabled, service_kind, protocol,
-                    connection, headers, capabilities, limits, thinking, pricing
-                )
-                SELECT m.id, p.organization_id, p.id, m.name, m.enabled, m.service_kind, m.protocol,
-                    m.connection, m.headers, m.capabilities, m.limits, m.thinking, m.pricing
-                FROM created_provider p
-                CROSS JOIN jsonb_to_recordset($7::jsonb) AS m (
-                    id bigint, name text, enabled boolean, service_kind text, protocol text,
-                    connection jsonb, headers jsonb, capabilities jsonb, limits jsonb,
-                    thinking jsonb, pricing jsonb
-                )
-                RETURNING id
-            )
-            SELECT * FROM created_provider
-        "#,
-            [
-                crate::to_bigint(provider.id)
-                    .context("provider ID exceeds BIGINT")?
-                    .into(),
-                crate::to_bigint(provider.organization_id)
-                    .context("organization ID exceeds BIGINT")?
-                    .into(),
-                provider.name.into(),
-                serde_json::to_value(provider.connection)
-                    .context("invalid provider connection")?
-                    .into(),
-                serde_json::to_value(provider.headers)
-                    .context("invalid provider headers")?
-                    .into(),
-                String::from(provider.api_key).into(),
-                serde_json::Value::Array(models).into(),
-            ],
-        );
         Ok(Self {
-            statement,
+            provider: ProviderActiveModel {
+                id: Set(crate::to_bigint(provider.id).context("provider ID exceeds BIGINT")?),
+                organization_id: Set(crate::to_bigint(provider.organization_id)
+                    .context("organization ID exceeds BIGINT")?),
+                name: Set(provider.name),
+                connection: Set(serde_json::to_value(provider.connection)
+                    .context("invalid provider connection")?),
+                headers: Set(
+                    serde_json::to_value(provider.headers).context("invalid provider headers")?
+                ),
+                credentials: Set(String::from(provider.api_key)),
+            },
+            model_writes,
             models: provider.models,
+        })
+    }
+}
+
+impl TryFrom<&ProviderModel> for ProviderModelActiveModel {
+    type Error = ProviderRepositoryError;
+
+    fn try_from(model: &ProviderModel) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: Set(crate::to_bigint(model.id).context("provider model ID exceeds BIGINT")?),
+            organization_id: Set(crate::to_bigint(model.organization_id)
+                .context("organization ID exceeds BIGINT")?),
+            provider_id: Set(
+                crate::to_bigint(model.provider_id).context("provider ID exceeds BIGINT")?
+            ),
+            name: Set(model.name.clone()),
+            enabled: Set(model.enabled),
+            service_kind: Set(model.service_kind.into()),
+            protocol: Set(serde_json::to_value(model.protocol)
+                .context("invalid provider model protocol")?
+                .as_str()
+                .context("invalid provider model protocol")?
+                .to_owned()),
+            connection: Set(
+                serde_json::to_value(&model.connection).context("invalid model connection")?
+            ),
+            headers: Set(serde_json::to_value(&model.headers).context("invalid model headers")?),
+            capabilities: Set(
+                serde_json::to_value(&model.capabilities).context("invalid model capabilities")?
+            ),
+            limits: Set(serde_json::to_value(&model.limits).context("invalid model limits")?),
+            thinking: Set(model
+                .thinking
+                .as_ref()
+                .map(serde_json::to_value)
+                .transpose()
+                .context("invalid model thinking")?),
+            pricing: Set(serde_json::to_value(&model.pricing).context("invalid model pricing")?),
         })
     }
 }

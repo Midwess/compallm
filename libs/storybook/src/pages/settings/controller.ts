@@ -28,7 +28,7 @@ export function useCodeAppearance() {
       () => window.matchMedia(systemTheme).matches,
       () => false,
     )
-  const effective = selected === 'System preference' ? appTheme : selected
+  const effective = selected === 'Follow interface' ? appTheme : selected
   return {
     theme: (String(effective).includes('Light') || (effective === 'System preference' && light) ? 'light' : 'dark') as
       'light' | 'dark',

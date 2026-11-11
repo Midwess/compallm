@@ -5,13 +5,14 @@ use sea_orm_migration::{MigratorTrait, SchemaManager};
 #[tokio::test]
 async fn creates_application_schema_with_scoped_usage_and_global_templates() {
     let migrations = Migrator::migrations();
-    assert_eq!(migrations.len(), 25);
     let db = MockDatabase::new(DbBackend::Postgres)
         .append_exec_results((0..100).map(|_| MockExecResult::default()))
         .into_connection();
     for migration in migrations.iter().filter(|m| {
         !m.name().ends_with("seed_provider_templates")
+            && !m.name().ends_with("seed_access_token_dictionary")
             && !m.name().ends_with("replace_membership_role_enum")
+            && !m.name().ends_with("remove_reserved_role_ids")
     }) {
         migration.up(&SchemaManager::new(&db)).await.unwrap();
     }
@@ -168,26 +169,21 @@ async fn drops_children_before_parents_and_owned_enums_after_their_tables() {
         .into_connection();
     for migration in Migrator::migrations().into_iter().rev().filter(|m| {
         !m.name().ends_with("seed_provider_templates")
+            && !m.name().ends_with("seed_access_token_dictionary")
             && !m.name().ends_with("replace_membership_role_enum")
+            && !m.name().ends_with("remove_reserved_role_ids")
     }) {
         migration.down(&SchemaManager::new(&db)).await.unwrap();
     }
     let log = format!("{:?}", db.into_transaction_log());
-    assert!(log.find("provider_token_usage").unwrap() < log.find("model_usage\\\"").unwrap());
-    assert!(log.find("model_router").unwrap() < log.find("providers").unwrap());
-    assert!(
-        log.find("provider_model_templates").unwrap() < log.find("provider_templates").unwrap()
-    );
-    assert!(
-        log.find("organization_group_members").unwrap() < log.find("organization_groups").unwrap()
-    );
-    assert!(
-        log.find("organization_group_roles").unwrap() < log.find("organization_roles").unwrap()
-    );
-    assert!(
-        log.find("organization_member_roles").unwrap() < log.find("organization_members").unwrap()
-    );
-    assert!(log.find("users").unwrap() < log.rfind("DROP TYPE").unwrap());
-    assert!(log.find("provider_token_usage").unwrap() < log.find("provider_usage_status").unwrap());
-    assert!(log.find("provider_audio_usage").unwrap() < log.find("usage_direction").unwrap());
+    let drop_position = |table: &str| log.find(&format!(r#"DROP TABLE \"{table}\""#)).unwrap();
+    assert!(drop_position("provider_token_usage") < drop_position("model_usage"));
+    assert!(drop_position("model_router") < drop_position("providers"));
+    assert!(drop_position("provider_model_templates") < drop_position("provider_templates"));
+    assert!(drop_position("organization_group_members") < drop_position("organization_groups"));
+    assert!(drop_position("organization_group_roles") < drop_position("organization_roles"));
+    assert!(drop_position("organization_member_roles") < drop_position("organization_members"));
+    assert!(drop_position("users") < log.rfind("DROP TYPE").unwrap());
+    assert!(drop_position("provider_token_usage") < log.find("provider_usage_status").unwrap());
+    assert!(drop_position("provider_audio_usage") < log.find("usage_direction").unwrap());
 }

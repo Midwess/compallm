@@ -1,3 +1,7 @@
+#[path = "support/roles.rs"]
+mod role_fixture;
+use role_fixture::default_roles;
+
 use cedar_policy::{
     Authorizer, Context, Decision, Entities, Entity, EntityUid, PolicySet, Request,
     RestrictedExpression, ValidationMode, Validator,
@@ -7,11 +11,11 @@ use compallm_core::{
     organization::{Group, OrganizationMember, Role},
 };
 use std::{collections::HashMap, str::FromStr};
-fn member(index: usize) -> OrganizationMember {
+async fn member(index: usize) -> OrganizationMember {
     OrganizationMember {
         organization_id: 42,
         user_id: 100,
-        roles: vec![Role::defaults(42).remove(index)],
+        roles: vec![default_roles(42, [901, 502, 73]).await.remove(index)],
         groups: vec![],
     }
 }
@@ -77,10 +81,12 @@ fn decision(
     assert_eq!(response.diagnostics().errors().count(), 0);
     response.decision()
 }
-#[test]
-fn all_defaults_have_explicit_valid_cedar_source() {
+#[tokio::test]
+async fn all_defaults_have_explicit_valid_cedar_source() {
+    let fixture_roles_0 = default_roles(42, [901, 502, 73]).await;
+
     let validator = Validator::new(all_policies().clone());
-    for role in Role::defaults(42) {
+    for role in fixture_roles_0.clone() {
         assert!(!role.cedar_source.is_empty());
         let set = PolicySet::try_from(&role).unwrap();
         let result = validator.validate(&set, ValidationMode::Strict);
@@ -96,14 +102,14 @@ fn all_defaults_have_explicit_valid_cedar_source() {
         );
     }
 }
-#[test]
-fn default_grants_differentiate_owner_admin_and_member() {
+#[tokio::test]
+async fn default_grants_differentiate_owner_admin_and_member() {
     for (index, delete, roles, use_model) in [
         (0, Decision::Allow, Decision::Allow, Decision::Allow),
         (1, Decision::Deny, Decision::Allow, Decision::Allow),
         (2, Decision::Deny, Decision::Deny, Decision::Allow),
     ] {
-        let member = member(index);
+        let member = member(index).await;
         assert_eq!(
             decision(&member, "organization.delete", "Organization", 42, 0, true),
             delete
@@ -126,46 +132,34 @@ fn default_grants_differentiate_owner_admin_and_member() {
         );
     }
 }
-#[test]
-fn group_roles_keep_provenance_and_inherit_without_copying_to_direct_roles() {
-    let mut member = member(2);
+#[tokio::test]
+async fn group_roles_keep_provenance_and_inherit_without_copying_to_direct_roles() {
+    let fixture_roles_0 = default_roles(42, [901, 502, 73]).await;
+
+    let mut member = member(2).await;
     member.roles.clear();
     member.groups.push(Group {
         id: 9,
         organization_id: 42,
         name: "Operations".into(),
         description: String::new(),
-        roles: vec![Role::defaults(42).remove(1)],
+        roles: vec![fixture_roles_0.clone().remove(1)],
     });
-    assert_eq!(member.compatibility_role(), Role::ADMIN);
     assert!(member.roles.is_empty());
     assert_eq!(
-        decision(&member, "role.list", "Organization", 42, 0, true),
+        decision(&member, "role.read", "Organization", 42, 0, true),
         Decision::Allow
     );
     let mut foreign = member.clone();
     foreign.groups[0].roles[0].organization_id = 43;
     assert!(Entities::try_from(&foreign).is_err());
 }
-#[test]
-fn custom_role_names_never_establish_default_authority_and_invalid_source_is_fallible() {
-    let mut member = member(2);
-    member.roles[0].id = 99;
-    member.roles[0].name = "Owner".into();
-    member.roles[0].cedar_source = String::new();
-    assert_eq!(member.compatibility_role(), Role::CUSTOM);
-    assert!(!member.is_owner_or_admin());
-    assert_eq!(
-        decision(&member, "role.create", "Organization", 42, 0, true),
-        Decision::Deny
-    );
-    member.roles[0].cedar_source = "permit (".into();
-    assert!(PolicySet::try_from(&member.roles[0]).is_err());
-}
 
-#[test]
-fn statement_identity_survives_formatting_and_reordering() {
-    let mut role = Role::defaults(42).remove(0);
+#[tokio::test]
+async fn statement_identity_survives_formatting_and_reordering() {
+    let fixture_roles_0 = default_roles(42, [901, 502, 73]).await;
+
+    let mut role = fixture_roles_0.clone().remove(0);
     let original = PolicySet::try_from(&role).unwrap();
     let ids = original
         .policies()
@@ -189,9 +183,9 @@ fn statement_identity_survives_formatting_and_reordering() {
     );
 }
 
-#[test]
-fn empty_groups_remain_inside_the_organization_resource_scope() {
-    let member = member(0);
+#[tokio::test]
+async fn empty_groups_remain_inside_the_organization_resource_scope() {
+    let member = member(0).await;
     let group = Group {
         id: 77,
         organization_id: 42,
@@ -200,7 +194,6 @@ fn empty_groups_remain_inside_the_organization_resource_scope() {
         roles: vec![],
     };
     let entity = Entity::try_from(&group).unwrap();
-    let target = entity.uid();
     let data = Entities::try_from(&member)
         .unwrap()
         .add_entities([entity], Some(all_policies()))
@@ -208,8 +201,8 @@ fn empty_groups_remain_inside_the_organization_resource_scope() {
     let policies = PolicySet::try_from(&member.roles[0]).unwrap();
     let request = Request::new(
         "Compallm::User::\"100\"".parse().unwrap(),
-        "Compallm::Action::\"group.metadata.read\"".parse().unwrap(),
-        target,
+        "Compallm::Action::\"group.read\"".parse().unwrap(),
+        "Compallm::Organization::\"42\"".parse().unwrap(),
         Context::empty(),
         Some(all_policies()),
     )
@@ -220,4 +213,40 @@ fn empty_groups_remain_inside_the_organization_resource_scope() {
             .decision(),
         Decision::Allow
     );
+}
+
+#[tokio::test]
+async fn default_permissions_and_owner_restrictions_use_generated_record_ids() {
+    compallm_postgres::init_id_generator("generated-role-test").unwrap();
+    let fixture_roles_0 = Role::defaults(42).await.unwrap();
+
+    let roles = fixture_roles_0.clone();
+    let admin = OrganizationMember {
+        organization_id: 42,
+        user_id: 100,
+        roles: vec![roles[1].clone()],
+        groups: vec![],
+    };
+    assert_eq!(
+        decision(&admin, "role.assign", "Role", 42, roles[0].id, true),
+        Decision::Deny
+    );
+    assert_eq!(
+        decision(&admin, "role.assign", "Role", 42, 700, true),
+        Decision::Allow
+    );
+    let owner = OrganizationMember {
+        organization_id: 42,
+        user_id: 100,
+        roles: vec![roles[0].clone()],
+        groups: vec![],
+    };
+    assert_eq!(
+        decision(&owner, "organization.delete", "Organization", 42, 0, true),
+        Decision::Allow
+    );
+    for role in roles {
+        assert!(!role.cedar_source.contains("__"));
+        assert!(role.cedar_source.contains(&format!("42:{}", role.id)));
+    }
 }

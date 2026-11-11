@@ -1,8 +1,12 @@
+use hero::distributed_id::{generator::DistributedIdError, try_gen_id};
 use std::sync::LazyLock;
 
 use cedar_policy::SchemaFragment;
 
-use crate::authorization::SystemPolicy;
+use crate::authorization::{
+    SystemPolicy,
+    policy::{EntityType, Policy},
+};
 
 use super::ProviderApiKey;
 use super::configuration::{
@@ -37,15 +41,33 @@ pub struct ProviderModel {
     pub pricing: Pricing,
 }
 
+impl Provider {
+    /// Initialize a new aggregate identity and derive configured-model ownership.
+    pub async fn initialize_ids(&mut self) -> Result<(), DistributedIdError> {
+        self.id = try_gen_id().await?;
+        for model in &mut self.models {
+            model.initialize_id().await?;
+            model.organization_id = self.organization_id;
+            model.provider_id = self.id;
+        }
+        Ok(())
+    }
+}
+
+impl ProviderModel {
+    pub async fn initialize_id(&mut self) -> Result<(), DistributedIdError> {
+        self.id = try_gen_id().await?;
+        Ok(())
+    }
+}
+
 impl SystemPolicy for Provider {
     /// Declares connection management without exposing provider secrets.
     ///
-    /// - `provider.list`: list safe connection summaries in the target Organization.
-    /// - `provider.configuration.read`: read non-secret configuration of a Provider in that organization;
+    /// - `provider.read`: list providers and read their non-secret configuration;
     ///   omit API keys and stored secret-header values from every response.
     /// - `provider.create`: create a connection in the destination Organization; creation
     ///   neither performs inference nor requires a successful connection test.
-    /// - `provider.connection.test`: test complete unsaved configuration within the Organization.
     ///   This targets the container, not a nonexistent Provider; admission, timeout,
     ///   upstream billing, and network-safety contracts remain required before shipping.
     /// - `provider.configuration.update`: change permitted non-secret connection configuration.
@@ -57,28 +79,8 @@ impl SystemPolicy for Provider {
     /// must check their additional actions. Concrete targets, organization isolation,
     /// safe field projection, and deletion dependencies are service responsibilities.
     fn policy() -> SchemaFragment {
-        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
-            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(
-                r#"
-namespace Compallm {
-    entity Provider in [Organization] { organization: Organization };
-    action "provider.list" appliesTo { principal: User, resource: Organization };
-    action "provider.create" appliesTo { principal: User, resource: Organization };
-    action "provider.connection.test" appliesTo { principal: User, resource: Organization };
-    action "provider.configuration.read" appliesTo { principal: User, resource: Provider };
-    action "provider.configuration.update" appliesTo { principal: User, resource: Provider };
-    action "provider.delete" appliesTo { principal: User, resource: Provider };
-    action "provider.credential.replace" appliesTo { principal: User, resource: Provider };
-}
-"#,
-            )
-            .expect("Provider SystemPolicy must be a valid static Cedar schema fragment");
-            assert!(
-                warnings.count() == 0,
-                "Provider SystemPolicy must not contain schema warnings"
-            );
-            fragment
-        });
+        static DEFINITION: LazyLock<SchemaFragment> =
+            LazyLock::new(|| Policy::new(EntityType::Provider).into());
         DEFINITION.clone()
     }
 }
@@ -86,11 +88,10 @@ namespace Compallm {
 impl SystemPolicy for ProviderModel {
     /// Declares configured upstream models, distinct from logical Model resources.
     ///
-    /// - `provider.model.list`: enumerate safe configured-model summaries under a Provider.
+    /// - `provider.model.read`: list configured models and inspect their non-secret configuration,
+    ///   including configured costs; no API keys or secret header values are returned.
     /// - `provider.model.create`: configure an upstream model beneath that Provider;
     ///   it grants neither logical-model creation nor inference invocation.
-    /// - `provider.model.configuration.read`: inspect permitted non-secret upstream model configuration,
-    ///   including configured costs; no API keys or secret header values are returned.
     /// - `provider.model.configuration.update`: edit permitted routing/protocol/availability settings;
     ///   pricing and credential replacement require additional permissions.
     /// - `provider.model.pricing.update`: change upstream costs for this ProviderModel,
@@ -102,24 +103,8 @@ impl SystemPolicy for ProviderModel {
     /// reference alone does not prove that consistency. Reads/updates can target disabled
     /// models; this fragment supplies no grants or inference permission.
     fn policy() -> SchemaFragment {
-        static DEFINITION: LazyLock<SchemaFragment> = LazyLock::new(|| {
-            let (fragment, warnings) = SchemaFragment::from_cedarschema_str(r#"
-namespace Compallm {
-    entity ProviderModel in [Provider, Organization] { organization: Organization, provider: Provider, enabled: Bool };
-    action "provider.model.list" appliesTo { principal: User, resource: Provider };
-    action "provider.model.create" appliesTo { principal: User, resource: Provider };
-    action "provider.model.configuration.read" appliesTo { principal: User, resource: ProviderModel };
-    action "provider.model.configuration.update" appliesTo { principal: User, resource: ProviderModel };
-    action "provider.model.pricing.update" appliesTo { principal: User, resource: ProviderModel };
-    action "provider.model.delete" appliesTo { principal: User, resource: ProviderModel };
-}
-"#).expect("ProviderModel SystemPolicy must be a valid static Cedar schema fragment");
-            assert!(
-                warnings.count() == 0,
-                "ProviderModel SystemPolicy must not contain schema warnings"
-            );
-            fragment
-        });
+        static DEFINITION: LazyLock<SchemaFragment> =
+            LazyLock::new(|| Policy::new(EntityType::ProviderModel).into());
         DEFINITION.clone()
     }
 }

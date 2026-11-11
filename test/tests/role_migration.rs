@@ -35,3 +35,24 @@ async fn enum_transition_backfills_records_and_refuses_lossy_rollback() {
     assert!(down.contains("cannot downgrade multi-role/custom/group memberships"));
     assert!(down.contains("count(mr.role_id)<>1"));
 }
+
+#[tokio::test]
+async fn dynamic_role_cleanup_removes_reserved_identity_protection_without_rewriting_data() {
+    let migration = Migrator::migrations()
+        .into_iter()
+        .find(|m| m.name().ends_with("remove_reserved_role_ids"))
+        .unwrap();
+    let db = MockDatabase::new(DbBackend::Postgres)
+        .append_exec_results([MockExecResult::default()])
+        .into_connection();
+    migration.up(&SchemaManager::new(&db)).await.unwrap();
+    let log = db.into_transaction_log();
+    let sql = &log[0].statements()[0].sql;
+    assert!(sql.contains("DROP TRIGGER IF EXISTS protect_default_organization_role"));
+    assert!(sql.contains("DROP FUNCTION IF EXISTS protect_default_organization_role"));
+    assert!(
+        !sql.contains("INSERT")
+            && !sql.contains("DELETE FROM")
+            && !sql.contains("UPDATE organization_roles")
+    );
+}

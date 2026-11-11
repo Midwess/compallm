@@ -10,10 +10,8 @@ import {
   ProviderHeader,
   ProviderInputRules,
   ProviderInputRulesInput,
-  ConfirmSignupOtpRequest,
-  SigninEmailRequest,
-  SignupEmailRequest,
-} from '../../libs/contract/dist/validation.js'
+} from '../../libs/contract/dist/provider.js'
+import { EmailCodeInput, EmailInput } from '../../libs/contract/dist/validation.js'
 import { otpCharacters, otpLength, otpRequestSchema } from '../../libs/contract/dist/auth.js'
 import { headersAreValid, acceptsHeaderInput } from '../../libs/contract/dist/provider.js'
 
@@ -38,9 +36,9 @@ for (const [index, fixture] of cases.entries()) {
   })
 }
 test('normalization precedes OTP validation; unknown body fields are rejected', () => {
-  assert.equal(ConfirmSignupOtpRequest.parse({ code: '\u0085123456\u0085' }).code, '123456')
-  assert.equal(ConfirmSignupOtpRequest.safeParse({ code: '\ufeff123456' }).success, false)
-  assert.equal(ConfirmSignupOtpRequest.safeParse({ code: '123456', unknown: true }).success, false)
+  assert.equal(EmailCodeInput.parse({ code: '\u0085123456\u0085' }).code, '123456')
+  assert.equal(EmailCodeInput.safeParse({ code: '\ufeff123456' }).success, false)
+  assert.equal(EmailCodeInput.safeParse({ code: '123456', unknown: true }).success, false)
 })
 test('header names are case-insensitively unique and UI row identifiers are ignored', () => {
   assert.equal(headersAreValid([{ id: 'a', key: 'X-Key', value: '' }]), true)
@@ -54,7 +52,14 @@ test('header names are case-insensitively unique and UI row identifiers are igno
 })
 
 test('model collections require a valid entry and unique names', () => {
-  const model = { name: 'model', path: '/responses', maxContextTokens: 1, inputPrice: '0', outputPrice: '0', cachedPrice: '0' }
+  const model = {
+    name: 'model',
+    path: '/responses',
+    maxContextTokens: 1,
+    inputPrice: '0',
+    outputPrice: '0',
+    cachedPrice: '0',
+  }
   assert.equal(ProviderModels.safeParse({ entries: [] }).success, false)
   assert.equal(ProviderModels.safeParse({ entries: [model] }).success, true)
   assert.equal(ProviderModels.safeParse({ entries: [model, model] }).success, false)
@@ -62,7 +67,11 @@ test('model collections require a valid entry and unique names', () => {
 })
 
 test('generated entry guards reject invalid characters and preserve clearable fields', () => {
-  for (const guard of [ProviderModelFieldsInput.name, ProviderInputRulesInput.effortValue, ProviderFieldsInput.apiKey]) {
+  for (const guard of [
+    ProviderModelFieldsInput.name,
+    ProviderInputRulesInput.effortValue,
+    ProviderFieldsInput.apiKey,
+  ]) {
     assert.equal(guard('valid-value_1'), true)
     assert.equal(guard(''), true)
     assert.equal(guard('invalid value'), false)
@@ -111,13 +120,13 @@ test('header entry guards permit incomplete credentials and reject invalid paste
 const emailCases = JSON.parse(await readFile(new URL('./auth-input-fixtures.json', import.meta.url), 'utf8'))
 for (const [index, fixture] of emailCases.entries()) {
   test(`Rust email policy fixture ${index}: signup and signin`, () => {
-    for (const schema of [SignupEmailRequest, SigninEmailRequest]) {
+    for (const schema of [EmailInput]) {
       assert.equal(schema.safeParse({ email: fixture.value }).success, fixture.valid)
     }
   })
 }
 test('authentication contracts normalize email and supply OTP entry constraints', () => {
-  for (const schema of [SignupEmailRequest, SigninEmailRequest]) {
+  for (const schema of [EmailInput]) {
     assert.equal(schema.parse({ email: '\u0085DÖRTE@EXAMPLE.COM\u0085' }).email, 'dÖrte@example.com')
     assert.equal(schema.safeParse({ email: 'reader@example.com', unknown: true }).success, false)
   }

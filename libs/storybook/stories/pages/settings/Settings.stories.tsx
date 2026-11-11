@@ -45,6 +45,9 @@ type Story = StoryObj<typeof meta>
 
 export const General: Story = { render: () => <Demo /> }
 export const Appearance: Story = { render: () => <Demo page="appearance" /> }
+export const SidebarPreferences: Story = {
+  render: () => <Demo page="appearance" initial={{ dialog: { kind: 'customize-sidebar', name: '', value: '', phrase: '' } }} />,
+}
 export const Messaging: Story = { render: () => <Demo page="messaging" /> }
 export const CodeAppearance: Story = { render: () => <Demo page="code" /> }
 export const Profile: Story = { render: () => <Demo page="profile" /> }

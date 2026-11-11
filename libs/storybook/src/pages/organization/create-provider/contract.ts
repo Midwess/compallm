@@ -1,37 +1,27 @@
-import { CreateProvidersRequest, ReplaceProviderRequest, ProviderInputRules } from '@compallm/contract/validation'
-import type { ProviderModelConfiguration, ProviderModelWrite } from '@compallm/contract/api'
+import {
+  ProvidersCreateInput,
+  ProviderReplaceInput,
+  TextModelProtocol,
+  ProviderModelCapability,
+} from '@compallm/contract/validation'
+import type { ProviderModelConfiguration, ProviderModelWrite } from '@compallm/contract/graphql'
+import { contextTokensFromText } from '@compallm/contract/provider'
 import { modelPath, modelProtocol } from './model-options'
 import type { CreateProviderState, ProviderModel } from './types'
-
-export type {
-  ProviderRegistryEntry,
-  ProviderRegistryListResponse,
-  ProviderRegistryDetailResponse,
-  ProviderRegistryModel,
-  ProviderSummary,
-  ProviderListResponse,
-  ProviderDetailResponse,
-  CreateProvidersRequest,
-  CreateProvidersResponse,
-  PatchProviderRequest,
-  ReplaceProviderRequest,
-} from '@compallm/contract/api'
 
 function modelConfiguration(model: ProviderModel): ProviderModelConfiguration {
   return {
     name: model.name,
-    protocol: modelProtocol(model),
+    protocol: TextModelProtocol.parse(modelProtocol(model).toUpperCase()),
     path: modelPath(model),
-    maxContextTokens: ProviderInputRules.shape.positiveInteger.safeParse(model.maxContextTokens).success
-      ? Number(model.maxContextTokens)
-      : Number.NaN,
+    maxContextTokens: contextTokensFromText(model.maxContextTokens),
     enabled: model.enabled,
     effortMapping: Object.fromEntries(
       Object.entries(model.effortMapping ?? Object.fromEntries(model.thinkingLevels.map((level) => [level, level]))).filter(
         ([, value]) => !!value,
       ),
     ),
-    capabilities: model.capabilities ?? [],
+    capabilities: (model.capabilities ?? []).map((value) => ProviderModelCapability.parse(value.toUpperCase())),
     ...(model.catalogRef ? { catalogRef: model.catalogRef } : {}),
     inputPrice: model.inputPrice,
     outputPrice: model.outputPrice,
@@ -40,8 +30,8 @@ function modelConfiguration(model: ProviderModel): ProviderModelConfiguration {
 }
 
 /** Build and validate a batch payload; never sends a request or persists a credential. */
-export function providerCreateRequest(state: CreateProviderState): ReturnType<typeof CreateProvidersRequest.safeParse> {
-  return CreateProvidersRequest.safeParse({
+export function providerCreateRequest(state: CreateProviderState): ReturnType<typeof ProvidersCreateInput.safeParse> {
+  return ProvidersCreateInput.safeParse({
     providers: [
       {
         name: state.name,
@@ -55,12 +45,12 @@ export function providerCreateRequest(state: CreateProviderState): ReturnType<ty
 }
 
 /** Persisted IDs are supplied only by loaded detail data, never by local UI IDs. */
-export function providerReplaceRequest(state: CreateProviderState): ReturnType<typeof ReplaceProviderRequest.safeParse> {
+export function providerReplaceRequest(state: CreateProviderState): ReturnType<typeof ProviderReplaceInput.safeParse> {
   const models: ProviderModelWrite[] = state.models.map((model) => ({
     ...(model.persistedId ? { id: model.persistedId } : {}),
     configuration: modelConfiguration(model),
   }))
-  return ReplaceProviderRequest.safeParse({
+  return ProviderReplaceInput.safeParse({
     name: state.name,
     baseUrl: state.baseUrl,
     ...(state.apiKey ? { apiKey: state.apiKey } : {}),

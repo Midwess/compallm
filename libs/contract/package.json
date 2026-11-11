@@ -5,16 +5,13 @@
   "type": "module",
   "license": "Elastic-2.0",
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "generate:graphql": "genql --schema schema.graphql --output graphql --sort --scalar ContextTokens:number"
   },
   "exports": {
     "./auth": {
       "types": "./dist/auth.d.ts",
       "import": "./dist/auth.js"
-    },
-    "./api": {
-      "types": "./dist/api.d.ts",
-      "import": "./dist/api.js"
     },
     "./validation": {
       "types": "./dist/validation.d.ts",
@@ -23,12 +20,19 @@
     "./provider": {
       "types": "./dist/provider.d.ts",
       "import": "./dist/provider.js"
+    },
+    "./graphql": {
+      "types": "./dist/graphql.d.ts",
+      "import": "./dist/graphql.js"
     }
   },
   "dependencies": {
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@genql/cli": "^6.3.4",
+    "graphql": "^16.15.0",
+    "prettier": "^3.9.10",
     "typescript": "~6.0.3"
   }
 }

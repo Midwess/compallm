@@ -4,12 +4,15 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@compallm/contract': link:../contract
+
 importers:
   .:
     dependencies:
       '@compallm/contract':
-        specifier: file:../contract
-        version: file:../contract
+        specifier: link:../contract
+        version: link:../contract
       '@fontsource/inter':
         specifier: ^5.3.0
         version: 5.3.0
@@ -179,9 +182,6 @@ packages:
 
   '@cedar-policy/cedar-wasm@4.14.0':
     resolution: { integrity: sha512-TPyz3zMl5r7W5iSHq51IgG+NTILGoXB0VPrEcXnzCEpPUqL/7b+AtMPVVHB/UoJWuXA8YORjLuWxKHUW33ePAA== }
-
-  '@compallm/contract@file:../contract':
-    resolution: { directory: ../contract, type: directory }
 
   '@emnapi/core@1.11.0':
     resolution: { integrity: sha512-l9Oo58x0HOP5znGzVhYW9U3e5wVuA4LAZU2AGezTmkhO1CgQRFDhDg4nneHsu/t3WniXg9QrG2nIXL/ZS8ln8Q== }
@@ -2455,10 +2455,6 @@ snapshots:
       '@babel/helper-validator-identifier': 7.29.7
 
   '@cedar-policy/cedar-wasm@4.14.0': {}
-
-  '@compallm/contract@file:../contract':
-    dependencies:
-      zod: 4.6.7
 
   '@emnapi/core@1.11.0':
     dependencies:

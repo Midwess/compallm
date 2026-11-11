@@ -14,13 +14,12 @@ use super::{Provider, ProviderCreationError, validation::invalid};
 /// Callers authorize owner/admin access, set the parent organization from trusted
 /// context, and protect credentials before calling. No upstream calls are made.
 pub struct CreationService<'a> {
-    db: &'a DbContext,
     providers: &'a dyn ProviderRepository,
 }
 
 impl<'a> CreationService<'a> {
-    pub fn new(db: &'a DbContext, providers: &'a dyn ProviderRepository) -> Self {
-        Self { db, providers }
+    pub fn new(providers: &'a dyn ProviderRepository) -> Self {
+        Self { providers }
     }
 
     /// Input identities are replaced; the entity carries its encrypted credential.
@@ -54,23 +53,15 @@ impl<'a> CreationService<'a> {
         }
 
         for provider in &mut providers {
-            provider.id = hero::distributed_id::try_gen_id().await?;
-            for model in &mut provider.models {
-                model.id = hero::distributed_id::try_gen_id().await?;
-                model.organization_id = organization_id;
-                model.provider_id = provider.id;
-            }
+            provider.initialize_ids().await?;
         }
 
+        let db = DbContext::current()?;
         if providers.len() == 1 {
-            return Ok(vec![
-                self.db
-                    .scope(self.providers.insert(providers.remove(0)))
-                    .await?,
-            ]);
+            return Ok(vec![self.providers.insert(providers.remove(0)).await?]);
         }
 
-        transaction!(self.db, {
+        transaction!(db, {
             let mut created = Vec::with_capacity(providers.len());
             for provider in providers {
                 created.push(self.providers.insert(provider).await?);

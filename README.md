@@ -10,19 +10,26 @@ See the [Compallm Wiki](https://github.com/Midwess/compallm/wiki) and [product o
 
 ## Development
 
-The frontend uses React with Vite, and the Rust server uses Loco and Axum. PostgreSQL is accessed through SeaORM; Utoipa and Orval generate the TypeScript API client.
+The frontend uses React with Vite, and the Rust server uses Loco and Axum. PostgreSQL is accessed through SeaORM. GraphQL is served at `POST /api/graphql` through Juniper and its Axum adapter, with Rust definitions under `api/src/graphql`. The authenticated session query and email-login, explicit refresh and signout mutations preserve credential policies, access freshness and cookie renewal. Portal uses the generated Genql client for authentication; provider runtime operations remain pending. Core services and offline component previews remain available.
 
 Axum serves the frontend in both local development and production. In development, it proxies the Vite dev server, including hot reload. In production, it directly serves Vite's built static files. The frontend and API share the same public origin.
 
-Requires Rust, Node.js 22 or newer, and Docker Compose. From the repository root:
+Requires Rust, Node.js 22.18 or newer, and Docker Compose. From the repository root:
 
 ```bash
-npm ci
+npm --prefix portal ci
 docker compose up -d
 cargo run -p compallm-api -- start
 ```
 
 Compose starts the backing services, including PostgreSQL on port `7887`. Debug builds start the backend and Vite with frontend hot reload. Use `cargo run -r -p compallm-api -- start` to serve prebuilt `portal/dist` assets without Vite; build the Portal assets first. Vite uses internal port `41868` with strict binding; browse through the API origin. Open the URL logged by the API server: it prefers port `3000` and chooses the next available port when occupied. `PORT` or the server CLI port option sets the starting point, within `1–50100`. The API listens on all IPv4/IPv6 interfaces in development and production; deployment port mappings must match the selected port.
+
+Regenerate the Rust-owned GraphQL schema, Genql TypeScript query builder, and Rust-owned validation rules/constraints without starting the application or accessing the database:
+
+```bash
+npm --prefix libs/contract ci
+cargo run -p compallm-api -- generate
+```
 
 Development email uses MailDev: SMTP on `1025`, inbox at http://127.0.0.1:1080. See [mailing](https://github.com/Midwess/compallm/wiki/Mailing) for queue limits and [email login](https://github.com/Midwess/compallm/wiki/Login-email) for SMTP environment variables.
 

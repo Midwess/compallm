@@ -50,6 +50,7 @@ export function Dropdown({
   const [open, setOpen] = useState(defaultOpen)
   const [active, setActive] = useState(0)
   const selected = value ?? local
+  const selectedOption = options.find((item) => item.value === selected)
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const list = useRef<HTMLDivElement>(null)
@@ -137,7 +138,10 @@ export function Dropdown({
           }
         }}
       >
-        <span>{options.find((item) => item.value === selected)?.label ?? label}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          {selectedOption?.icon}
+          <span className="truncate">{selectedOption?.label ?? label}</span>
+        </span>
         <CaretDownIcon size={10} aria-hidden="true" />
       </button>
       {open && !disabled ? (
@@ -168,7 +172,6 @@ export function Dropdown({
               className={`
   flex min-h-[32px] w-full cursor-pointer items-center gap-1 rounded-[4px] px-1.5 py-0.5
   text-[13px] data-active:bg-border aria-disabled:cursor-not-allowed aria-disabled:opacity-50
-  [&>span]:flex-1
 `}
               data-active={index === active || undefined}
               onPointerMove={() => {
@@ -177,7 +180,7 @@ export function Dropdown({
               onClick={() => select(index)}
             >
               {item.icon}
-              <span>{item.label}</span>
+              <span className="min-w-0 flex-1">{item.label}</span>
               {item.value === selected ? <CheckIcon size={14} aria-hidden="true" /> : null}
             </div>
           ))}

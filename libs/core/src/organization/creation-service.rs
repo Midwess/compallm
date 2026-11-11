@@ -4,21 +4,15 @@ use crate::{
     user::User,
 };
 
-use super::{
-    Organization, OrganizationCreationError, OrganizationMember, OrganizationStatus, Role,
-};
+use super::{Organization, OrganizationCreationError, OrganizationMember, Role};
 
 pub struct CreationService {
-    db: &'static DbContext,
     organizations: &'static Box<dyn OrganizationRepository>,
 }
 
 impl CreationService {
-    pub fn new(
-        db: &'static DbContext,
-        organizations: &'static Box<dyn OrganizationRepository>,
-    ) -> Self {
-        Self { db, organizations }
+    pub fn new(organizations: &'static Box<dyn OrganizationRepository>) -> Self {
+        Self { organizations }
     }
 
     /// Create the organization and its owner membership atomically.
@@ -37,16 +31,10 @@ impl CreationService {
         name: &str,
         user: &User,
     ) -> Result<Organization, OrganizationCreationError> {
-        transaction!(self.db, {
-            let organization = self
-                .organizations
-                .create(Organization {
-                    id: hero::distributed_id::try_gen_id().await?,
-                    name: name.into(),
-                    status: OrganizationStatus::Active,
-                })
-                .await?;
-            let roles = Role::defaults(organization.id);
+        let organization = Organization::new(name).await?;
+        let roles = Role::defaults(organization.id).await?;
+        transaction!(DbContext::current()?, {
+            let organization = self.organizations.create(organization).await?;
             self.organizations.create_roles(roles.clone()).await?;
             self.organizations
                 .add_member(OrganizationMember {

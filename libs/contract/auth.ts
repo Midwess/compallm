@@ -1,21 +1,14 @@
-import {
-  SignupEmailRequest,
-  SigninEmailRequest,
-  ConfirmSignupOtpRequest,
-  ConfirmSigninOtpRequest,
-  ConfirmSignupOtpRequestConstraints,
-  ConfirmSignupOtpRequestInput,
-} from './validation.ts'
+import { EmailInput, EmailCodeInput, EmailCodeInputConstraints, EmailCodeInputInput } from './validation.ts'
 
-export const emailRequestSchema = (mode: 'signup' | 'signin') => (mode === 'signup' ? SignupEmailRequest : SigninEmailRequest)
+export const emailRequestSchema = (mode: 'signup' | 'signin') => ({ signup: EmailInput, signin: EmailInput })[mode]
 export const otpRequestSchema = (mode: 'signup' | 'signin') =>
-  mode === 'signup' ? ConfirmSignupOtpRequest : ConfirmSigninOtpRequest
-export const otpLength = ConfirmSignupOtpRequestConstraints.code.maxLength
-export const otpPattern = ConfirmSignupOtpRequestConstraints.code.pattern
+  ({ signup: EmailCodeInput, signin: EmailCodeInput })[mode]
+export const otpLength = EmailCodeInputConstraints.code.maxLength
+export const otpPattern = EmailCodeInputConstraints.code.pattern
 
 export function otpCharacters(value: string): string {
   return [...value]
-    .filter((character) => ConfirmSignupOtpRequestInput.code(character))
+    .filter((character) => EmailCodeInputInput.code(character))
     .slice(0, otpLength)
     .join('')
 }

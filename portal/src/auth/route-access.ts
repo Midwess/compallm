@@ -14,11 +14,10 @@ async function checkSession(refresh = false) {
 }
 
 export async function guestOnly() {
-  // A user-only identity check would clear the active OTP cookie.
+  // A user-only identity check would clear an in-progress OTP cookie.
   if (authController.store.getState().step === 'code') return null
   const user = await checkSession(true)
-  if (user) return redirect(organizationHome(user))
-  return null
+  return user ? redirect(organizationHome(user)) : null
 }
 
 export async function requireCurrentUser({ params }: LoaderFunctionArgs) {
@@ -39,7 +38,7 @@ export function confirmationAccess({ request }: LoaderFunctionArgs) {
   if (user) return redirect(organizationHome(user))
   const email = url.searchParams.get('email')
   const mode = url.pathname.startsWith('/signup') ? 'signup' : 'signin'
-  if (!emailRequestSchema(mode).safeParse({ email, delivery: 'cookie' }).success) {
+  if (!emailRequestSchema(mode).safeParse({ email, delivery: 'COOKIE' }).success) {
     return redirect(url.pathname.startsWith('/signup') ? '/signup' : '/login')
   }
   return null

@@ -1,4 +1,4 @@
-import { ProviderInputRules, ProviderInputRulesInput, ProviderInputRulesConstraints } from '@compallm/contract/validation'
+import { ProviderInputRules, ProviderInputRulesInput, ProviderInputRulesConstraints } from '@compallm/contract/provider'
 import { useId, useRef, useState } from 'react'
 import { CaretLeftIcon } from '@phosphor-icons/react/dist/csr/CaretLeft'
 import { CaretRightIcon } from '@phosphor-icons/react/dist/csr/CaretRight'

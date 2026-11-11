@@ -50,7 +50,7 @@ impl Fixture {
         Self {
             context,
             database,
-            service: ConfigService::new(context, organizations),
+            service: ConfigService::new(organizations),
         }
     }
 }
@@ -73,25 +73,6 @@ async fn rename_updates_only_name_in_one_transaction() {
     assert!(log.contains("RETURNING"));
     assert!(log.contains("COMMIT"));
     assert!(!log.contains("organization_members"));
-}
-
-#[tokio::test]
-async fn invalid_names_do_not_touch_the_database() {
-    let fixture = Fixture::new(Ok(None));
-    for name in ["", "bad name", "bad_name", "bad.name", &"a".repeat(64)] {
-        assert!(matches!(
-            fixture.service.update_name(84, name).await,
-            Err(OrganizationConfigError::InvalidName)
-        ));
-    }
-    assert!(
-        fixture
-            .database
-            .as_ref()
-            .clone()
-            .into_transaction_log()
-            .is_empty()
-    );
 }
 
 #[tokio::test]

@@ -44,7 +44,7 @@ function ChatInput() {
   return (
     <form
       aria-label="Create chat"
-      className="w-full max-w-[821px]"
+      className="w-full max-w-205.5"
       onSubmit={(event) => {
         event.preventDefault()
         if (canSend) controller.onCreateChat()
@@ -68,7 +68,7 @@ function ChatInput() {
             options={models}
             value={modelId}
             onValueChange={controller.onModelChanged}
-            className="w-[140px] [&>button>span]:flex-1 [&>button>span]:text-center"
+            className="w-35 [&>button>span]:flex-1 [&>button>span]:text-center"
             disabled={creating || !models.length}
           />
           <ToolbarAction label="Attach file" onClick={controller.onAttach} disabled={creating} className="ml-auto">

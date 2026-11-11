@@ -110,7 +110,7 @@ jobs:
       - run: npm ci
       - name: Install UI library dependencies
         run: npm ci --prefix ../libs/storybook
-      - name: Check and build UI library
+      - name: Lint (including Tailwind), typecheck, and build UI library
         run: |
           npm --prefix ../libs/storybook run lint:check
           npm --prefix ../libs/storybook run check

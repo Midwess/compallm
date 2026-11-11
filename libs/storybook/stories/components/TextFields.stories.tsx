@@ -22,7 +22,7 @@ export const TextField: Story = {
           defaultValue="Invalid value"
           aria-describedby="text-error"
         />
-        <p id="text-error" className="text-[13px] leading-[20px] text-error">
+        <p id="text-error" className="text-xsm leading-5 text-error">
           Check this value.
         </p>
       </Sample>

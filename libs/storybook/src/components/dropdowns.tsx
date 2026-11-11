@@ -106,14 +106,14 @@ export function Dropdown({
     }
   }
   return (
-    <div ref={root} data-ui="dropdown" className={cx('relative inline-block w-[240px] max-w-full', className)}>
+    <div ref={root} data-ui="dropdown" className={cx('relative inline-block w-60 max-w-full', className)}>
       <animated.button
         ref={trigger}
         style={{ anchorName: anchor } as CSSProperties}
         type="button"
         className={`
-  block h-[30px] w-full min-w-0 rounded-[8px] border-[0.5px] border-input-border bg-elevated px-1.25
-  py-0 text-[13px] leading-[20px] text-text focus:outline-1 focus:outline-offset-1 focus:outline-focus
+  h-7.5 w-full min-w-0 rounded-lg border-[0.5px] bg-elevated px-1.5
+  py-0 text-xsm leading-5 text-text focus:outline-1 focus:outline-offset-1 focus:outline-focus
   disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none flex cursor-pointer items-center justify-between
   gap-1 border-transparent shadow-control
 `}
@@ -155,9 +155,9 @@ export function Dropdown({
           aria-label={label}
           tabIndex={-1}
           className={`
-  fixed inset-auto top-[anchor(bottom)] left-[anchor(left)] z-20 my-0.75 mx-0
+  fixed inset-auto top-[anchor(bottom)] left-[anchor(left)] z-20 my-1 mx-0
   max-h-[min(320px,calc(100dvh-16px))] w-[anchor-size(width)] max-w-[calc(100vw-16px)] overflow-y-auto
-  rounded-[8px] border-[0.5px] border-border bg-elevated p-1 text-text shadow-menu
+  rounded-lg border-[0.5px] border-border bg-elevated p-1 text-text shadow-menu
   [position-try-fallbacks:flip-block,flip-inline]
 `}
           aria-activedescendant={`${id}-${active}`}
@@ -171,8 +171,8 @@ export function Dropdown({
               aria-selected={item.value === selected}
               aria-disabled={item.disabled || undefined}
               className={`
-  flex min-h-[32px] w-full cursor-pointer items-center gap-1 rounded-[4px] px-1.5 py-0.5
-  text-[13px] data-active:bg-border aria-disabled:cursor-not-allowed aria-disabled:opacity-50
+  flex min-h-8 w-full cursor-pointer items-center gap-1 rounded-sm px-1.5 py-0.5
+  text-xsm data-active:bg-border aria-disabled:cursor-not-allowed aria-disabled:opacity-50
 `}
               data-active={index === active || undefined}
               onPointerMove={() => {
@@ -228,8 +228,8 @@ export function SelectOption({
       aria-pressed={selected}
       className={cx(
         `
-  flex min-h-[32px] w-full cursor-pointer items-center justify-between gap-1 rounded-[4px] border-0
-  bg-transparent px-1.5 py-0.5 text-left text-[13px] text-inherit hover:bg-border
+  flex min-h-8 w-full cursor-pointer items-center justify-between gap-1 rounded-sm border-0
+  bg-transparent px-1.5 py-0.5 text-left text-xsm text-inherit hover:bg-border
   aria-pressed:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus
 `,
         className,

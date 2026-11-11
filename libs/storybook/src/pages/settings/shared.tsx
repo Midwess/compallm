@@ -34,7 +34,7 @@ export function Heading({
         <SettingsPageTitle>{children}</SettingsPageTitle>
         {action}
       </div>
-      {description ? <p className="mt-2 text-[13px] leading-[22px] text-muted">{description}</p> : null}
+      {description ? <p className="mt-2 text-xsm leading-5.5 text-muted">{description}</p> : null}
     </div>
   )
 }
@@ -88,21 +88,22 @@ export function Row({
         {children ? (
           <div
             className="min-w-0 max-w-[65%] shrink @max-[22rem]:flex @max-[22rem]:w-full @max-[22rem]:max-w-full
-@max-[22rem]:justify-end @max-[22rem]:[&>input]:w-full @max-[22rem]:[&>[data-ui=dropdown]]:w-full"
+@max-[22rem]:justify-end @max-[22rem]:[&>input]:w-full @max-[22rem]:*:data-[ui=dropdown]:w-full"
           >
             {children}
           </div>
         ) : null}
       </SettingsRow>
-      {!last ? <SettingsDivider className="mx-4 -mt-[0.5px]" /> : null}
+      {/* eslint-disable-next-line design/spacing -- Align the 0.5px divider with the preceding row. */}
+      {!last ? <SettingsDivider className="mx-4 mt-[-0.5px]" /> : null}
     </>
   )
 }
 export function Empty({ title, children, action }: { title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <SectionSurface className="grid gap-3">
-      <h3 className="text-[13px] leading-5 font-medium">{title}</h3>
-      {children ? <p className="text-xs leading-[18px] text-muted">{children}</p> : null}
+      <h3 className="text-xsm leading-5 font-medium">{title}</h3>
+      {children ? <p className="text-xs leading-4.5 text-muted">{children}</p> : null}
       {action ? <div>{action}</div> : null}
     </SectionSurface>
   )

@@ -4,6 +4,12 @@ import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
 import { MinusIcon } from '@phosphor-icons/react/dist/csr/Minus'
 import { cx } from './shared'
 
+// The 3px inset centers the thumb and standard checkbox track.
+// eslint-disable-next-line design/spacing -- Preserve the current switch alignment.
+const switchIndicatorPosition = 'top-2.25 left-2.25'
+// eslint-disable-next-line design/spacing -- Preserve the standard checkbox track size.
+const checkboxTrackInset = 'inset-0.75'
+
 export function Switch({ className, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'role'>) {
   const input = useRef<HTMLInputElement>(null)
   useSelectionMotion(input, 'switch')
@@ -29,7 +35,7 @@ border-[0.5px] border-input-border bg-disabled"
       <span
         data-selection-indicator
         aria-hidden="true"
-        className="pointer-events-none absolute top-2.25 left-2.25 size-3.5 rounded-full bg-on-primary"
+        className={cx('pointer-events-none absolute size-3.5 rounded-full bg-on-primary', switchIndicatorPosition)}
       />
     </span>
   )
@@ -66,7 +72,7 @@ export function Checkbox({ indeterminate = false, size = 'standard', className, 
         aria-hidden="true"
         className={cx(
           'pointer-events-none absolute rounded-sm border border-input-border',
-          size === 'compact' ? 'inset-1' : 'inset-0.75',
+          size === 'compact' ? 'inset-1' : checkboxTrackInset,
         )}
       />
       <span data-selection-indicator aria-hidden="true" className="pointer-events-none relative inline-flex">
@@ -124,10 +130,10 @@ export function ChoiceCard({
     <animated.label
       className={cx(
         `
-  flex min-h-[62px] w-[300px] max-w-full cursor-pointer items-center gap-1.5 rounded-[8px] border
-  border-border bg-inset px-1.5 py-1.375 has-checked:border-primary
+  flex min-h-15.5 w-75 max-w-full cursor-pointer items-center gap-1.5 rounded-lg border
+  border-border bg-inset px-1.5 py-1.5 has-checked:border-primary
   has-checked:bg-[color-mix(in_srgb,var(--color-primary)_14%,var(--color-inset))]
-  has-disabled:cursor-not-allowed has-disabled:opacity-50 [&_strong]:text-[13px] [&_strong]:font-medium
+  has-disabled:cursor-not-allowed has-disabled:opacity-50 [&_strong]:text-xsm [&_strong]:font-medium
   [&>span>span]:block
 `,
         className,
@@ -136,14 +142,14 @@ export function ChoiceCard({
       <Radio {...props} />
       <span>
         <strong>{children}</strong>
-        {description ? <span className="text-[12px] leading-[18px] text-muted">{description}</span> : null}
+        {description ? <span className="text-[12px] leading-4.5 text-muted">{description}</span> : null}
       </span>
     </animated.label>
   )
 }
 export function CheckboxOption({ children, className, ...props }: CheckboxProps & { children: ReactNode }) {
   return (
-    <animated.label className={cx('inline-flex min-h-[24px] cursor-pointer items-center gap-0.5 text-[13px]', className)}>
+    <animated.label className={cx('inline-flex min-h-6 cursor-pointer items-center gap-0.5 text-xsm', className)}>
       <Checkbox {...props} />
       <span>{children}</span>
     </animated.label>

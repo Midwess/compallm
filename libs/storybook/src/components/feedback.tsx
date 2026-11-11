@@ -37,8 +37,8 @@ export function Toast({
       data-ui="toast"
       data-tone={tone}
       className={cx(
-        'flex min-h-[72px] w-[360px] max-w-full items-center gap-2 rounded-[10px]',
-        'border-[0.5px] border-border bg-elevated p-4 font-sans text-[13px] leading-5 text-text',
+        'flex min-h-18 w-90 max-w-full items-center gap-2 rounded-[10px]',
+        'border-[0.5px] border-border bg-elevated p-4 font-sans text-xsm leading-5 text-text',
         className,
       )}
     >
@@ -63,10 +63,10 @@ export function Toast({
 }
 
 export function HelperText({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p {...props} className={cx('text-[12px] leading-[18px] text-muted', className)} />
+  return <p {...props} className={cx('text-[12px] leading-4.5 text-muted', className)} />
 }
 export function InlineError({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p role="alert" {...props} className={cx('text-[13px] leading-[20px] text-error', className)} />
+  return <p role="alert" {...props} className={cx('text-xsm leading-5 text-error', className)} />
 }
 export function CodeError(props: HTMLAttributes<HTMLParagraphElement>) {
   return <InlineError {...props}>{props.children ?? 'Incorrect code. Try again.'}</InlineError>
@@ -78,7 +78,7 @@ export function KeyboardKey({ children }: { children: ReactNode }) {
   return (
     <kbd
       className={`
-  inline-flex h-[28px] min-w-[28px] items-center justify-center rounded-[6px] bg-elevated p-0.5
+  inline-flex h-7 min-w-7 items-center justify-center rounded-md bg-elevated p-0.5
   font-sans text-[14px]
 `}
     >
@@ -122,8 +122,8 @@ export function Tooltip({
           id={id}
           role="tooltip"
           className={`
-  absolute bottom-[calc(100%+--spacing(1))] left-1/2 z-30 -translate-x-1/2
-  rounded-[6px] bg-menu p-1 text-[12px] whitespace-nowrap text-text
+  absolute bottom-[calc(100%+(--spacing(1)))] left-1/2 z-30 -translate-x-1/2
+  rounded-md bg-menu p-1 text-[12px] whitespace-nowrap text-text
 `}
         >
           {content}
@@ -190,7 +190,7 @@ focus-visible:text-text focus-visible:outline-1 focus-visible:outline-muted
         role="tooltip"
         popover="manual"
         className={`
-fixed m-0 w-72 max-w-[calc(100vw-1rem)] overflow-visible border-0 bg-transparent pt-1 text-left
+fixed m-0 w-2xs max-w-[calc(100vw-1rem)] overflow-visible border-0 bg-transparent pt-1 text-left
 text-xs leading-4 font-normal text-text
 `}
       >
@@ -208,7 +208,7 @@ export function EmptyState({ title, children, action }: { title: ReactNode; chil
 `}
     >
       <h3>{title}</h3>
-      <div className="text-[13px] leading-5 text-muted">{children}</div>
+      <div className="text-xsm leading-5 text-muted">{children}</div>
       {action}
     </div>
   )

@@ -121,7 +121,7 @@ export function MemberLimitSettings() {
             {visible.map((m) => (
               <Table.Row key={m.id}>
                 <Table.Cell>
-                  <span className="block text-[13px] font-medium">{m.name}</span>
+                  <span className="block text-xsm font-medium">{m.name}</span>
                   <span className="text-muted">{m.email}</span>
                 </Table.Cell>
                 {columns.includes('previous') ? <Table.Cell>{money(m.previousUsageUsd)}</Table.Cell> : null}
@@ -241,7 +241,7 @@ export function AuditSettings() {
           placeholder="Search events…"
           value={query}
           onChange={(e) => c.setQuery(e.target.value)}
-          className="w-80 max-w-full"
+          className="w-xs max-w-full"
         />
         <ReportFilter name="Actors" options={actors.map((m) => m.name)} />
         <ReportFilter name="Actions" options={[...new Set(data.map((e) => e.action))]} />

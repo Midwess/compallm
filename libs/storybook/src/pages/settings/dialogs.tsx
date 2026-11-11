@@ -52,7 +52,7 @@ function CustomizeSidebar() {
           <Dialog.Close />
         </Dialog.Header>
         <Dialog.Body className="gap-6 px-6 pt-4 pb-6">
-          <div className="flex h-11 items-center justify-between rounded-lg bg-elevated px-3 text-[13px]">
+          <div className="flex h-11 items-center justify-between rounded-lg bg-elevated px-3 text-xsm">
             <span>Default badge style</span>
             <Select
               aria-label="Default badge style"
@@ -63,7 +63,7 @@ function CustomizeSidebar() {
             />
           </div>
           <div className="grid gap-2.5">
-            <h3 className="text-[13px] font-medium">Workspace</h3>
+            <h3 className="text-xsm font-medium">Workspace</h3>
             <div className="rounded-lg bg-elevated py-0.5">
               {order.map((name, index) => {
                 const Icon = sidebarIcons[name as keyof typeof sidebarIcons]
@@ -109,7 +109,7 @@ active:cursor-grabbing focus-visible:outline-focus
                       <DotsSixVerticalIcon aria-hidden="true" className="size-3" />
                     </button>
                     {Icon ? <Icon aria-hidden="true" className="mr-2 size-4 shrink-0 text-muted" /> : null}
-                    <span className="min-w-0 flex-1 text-[13px]">{name}</span>
+                    <span className="min-w-0 flex-1 text-xsm">{name}</span>
                     <Select
                       aria-label={`${name} visibility`}
                       className="w-35"
@@ -248,11 +248,11 @@ export function SettingsDialogs() {
           </Dialog.Header>
           <Dialog.Body className="gap-4 px-6 pt-4 pb-6">
             {descriptions[d.kind] ? (
-              <Dialog.Description className="text-[13px] leading-[22px]">{descriptions[d.kind]}</Dialog.Description>
+              <Dialog.Description className="text-xsm leading-5.5">{descriptions[d.kind]}</Dialog.Description>
             ) : null}
             {phrase ? (
               <>
-                <code className="text-[13px] break-words">{phrase}</code>
+                <code className="text-xsm wrap-break-word">{phrase}</code>
                 <label className="sr-only" htmlFor="confirmation-phrase">
                   Confirmation phrase
                 </label>
@@ -272,7 +272,7 @@ export function SettingsDialogs() {
               </label>
             ) : null}
             {d.kind === 'verify-passkey' ? (
-              <p role="status" className="text-[13px]">
+              <p role="status" className="text-xsm">
                 Waiting for your device…
               </p>
             ) : null}

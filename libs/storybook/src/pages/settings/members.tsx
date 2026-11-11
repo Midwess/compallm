@@ -32,7 +32,7 @@ function MemberRoles({ member }: { member: SettingsMember }) {
         </span>
         <CaretDownIcon className="size-2.5 shrink-0" aria-hidden="true" />
       </Popup.Trigger>
-      <Popup.Content aria-label={`Roles for ${member.name}`} className="w-72 bg-elevated p-2">
+      <Popup.Content aria-label={`Roles for ${member.name}`} className="w-2xs bg-elevated p-2">
         <SearchField
           aria-label="Search roles"
           placeholder="Search roles…"
@@ -139,7 +139,7 @@ export function MembersSettings() {
                 <Table.Cell className="px-4 lg:px-13">
                   <div className="flex items-center gap-2.5">
                     <Avatar name={m.name} size={24} />
-                    <span className="text-[13px] font-medium">{m.name}</span>
+                    <span className="text-xsm font-medium">{m.name}</span>
                   </div>
                 </Table.Cell>
                 <Table.Cell className="px-4 text-muted">{m.email}</Table.Cell>

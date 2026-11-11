@@ -216,7 +216,7 @@ export function ApiKeySettings() {
           </Empty>
         )}
       </Section>
-      <p className="mt-4 px-4 text-[13px] leading-[22px] text-muted">
+      <p className="mt-4 px-4 text-xsm leading-5.5 text-muted">
         Keep API keys private. Revoke a key when it is no longer needed.
       </p>
     </SettingsContent>

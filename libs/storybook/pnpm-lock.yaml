@@ -62,6 +62,9 @@ importers:
       '@storybook/react-vite':
         specifier: 10.6.4
         version: 10.6.4(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(storybook@10.6.4(@types/react@19.3.0)(prettier@3.9.10)(react@19.3.1))(typescript@6.0.3)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0))
+      '@tailwindcss/language-server':
+        specifier: 0.16.0
+        version: 0.16.0
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0))
@@ -976,6 +979,11 @@ packages:
         optional: true
       typescript:
         optional: true
+
+  '@tailwindcss/language-server@0.16.0':
+    resolution: { integrity: sha512-ko2xr4nlFIkqwJFnnw7hfdpjbsnK0DOk+QEEI51tvKOCF97OG0RU59iGfadoaOoY6I9xkSMbTW+AAwgnGnLH3w== }
+    engines: { node: '>=18.0.0' }
+    hasBin: true
 
   '@tailwindcss/node@4.3.3':
     resolution: { integrity: sha512-/T8IKEsf9VTU6tLjgC7+sv2mOPtQxzE2jMw7u4Tt40Tx+QSZxpzh95/H6cMKoja9XuW7iMdLJYBB0o9G1CaAgg== }
@@ -3128,6 +3136,8 @@ snapshots:
       typescript: 6.0.3
     transitivePeerDependencies:
       - supports-color
+
+  '@tailwindcss/language-server@0.16.0': {}
 
   '@tailwindcss/node@4.3.3':
     dependencies:

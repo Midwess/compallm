@@ -133,7 +133,7 @@ function Category({ label, count, action, columns = 3, open, defaultOpen = true,
           colSpan={action ? columns - 1 : columns}
           className={cx(
             `sticky top-8 z-10 rounded-l-md bg-elevated p-0
-translate-y-[var(--category-offset,0px)]`,
+translate-y-(--category-offset,0px)`,
             !action && 'rounded-r-md',
           )}
         >
@@ -157,14 +157,14 @@ focus-visible:outline-2 focus-visible:outline-focus"
             >
               <CaretDownIcon weight="fill" aria-hidden="true" className="size-2" />
             </motion.span>
-            <span className="min-w-0 text-[13px] font-medium">{label}</span>
+            <span className="min-w-0 text-xsm font-medium">{label}</span>
             {count !== undefined ? <span className="text-xs font-normal text-muted">{count}</span> : null}
           </animated.button>
         </td>
         {action ? (
           <td
             className="sticky top-8 z-10 rounded-r-md bg-elevated px-2 py-0
-translate-y-[var(--category-offset,0px)]"
+translate-y-(--category-offset,0px)"
           >
             {action}
           </td>

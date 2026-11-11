@@ -33,7 +33,7 @@ rounded-full bg-elevated shadow-control"
           key={value}
           aria-pressed={mode === value}
           variant="ghost"
-          className="relative z-10 h-6 min-h-0 min-w-0 flex-1 rounded-full px-1 text-xs leading-[18px]"
+          className="relative z-10 h-6 min-h-0 min-w-0 flex-1 rounded-full px-1 text-xs leading-4.5"
           disabled={value === 'visual' && mode === 'cedar' && invalid}
           onClick={() => c.setPolicyMode(value)}
         >
@@ -95,11 +95,11 @@ export function RoleEditorSettings() {
       <Heading className="mb-8 shrink-0">{draft.id ? draft.name : 'New role'}</Heading>
       <div className="flex min-w-0 flex-1 flex-col gap-6">
         <Section title="Role details" className="shrink-0">
-          <Rows className="[&_[role=separator]]:bg-border">
+          <Rows className="**:[[role=separator]]:bg-border">
             <Row label={<label htmlFor="role-name">Name</label>}>
               <TextField
                 id="role-name"
-                className="w-144 max-w-full border-border max-lg:w-96"
+                className="w-xl max-w-full border-border max-lg:w-sm"
                 placeholder="Role name…"
                 value={draft.name}
                 disabled={locked || busy}
@@ -109,7 +109,7 @@ export function RoleEditorSettings() {
             <Row label={<label htmlFor="role-description">Description</label>} last>
               <TextField
                 id="role-description"
-                className="w-144 max-w-full border-border max-lg:w-96"
+                className="w-xl max-w-full border-border max-lg:w-sm"
                 placeholder="Describe this role…"
                 value={draft.description}
                 disabled={locked || busy}
@@ -175,7 +175,7 @@ export function RoleEditorSettings() {
               </Button>
             </div>
           ) : null}
-          <div aria-live="polite" className="mt-2 shrink-0 px-4 text-xs leading-[18px] text-muted">
+          <div aria-live="polite" className="mt-2 shrink-0 px-4 text-xs leading-4.5 text-muted">
             {draft.parsing ? (
               'Checking policy…'
             ) : draft.diagnostics.length ? (

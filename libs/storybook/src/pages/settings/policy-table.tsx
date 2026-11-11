@@ -83,7 +83,7 @@ function PermissionRow({
   return (
     <Table.Row id={id} className="[&>td]:border-b [&>td]:border-divider">
       <Table.Cell className="py-1.5 pl-6 pr-4">
-        <span className="block truncate text-[13px] leading-[18px] font-medium" title={action.description}>
+        <span className="block truncate text-xsm leading-4.5 font-medium" title={action.description}>
           {action.label}
         </span>
         <span className="block truncate text-[11px] leading-4 text-muted">{action.id}</span>
@@ -165,7 +165,7 @@ export function PolicyTable() {
         className="mx-2 min-w-0 overflow-x-auto outline-offset-2 focus-visible:outline-2 focus-visible:outline-focus"
       >
         <Table className="overflow-visible">
-          <Table.Content aria-label="Permission policies" className="min-w-112 border-separate border-spacing-0">
+          <Table.Content aria-label="Permission policies" className="min-w-md border-separate border-spacing-0">
             <colgroup>
               <col className="w-[60%]" />
               <col />
@@ -231,7 +231,7 @@ export function PolicyTable() {
           </Table.Content>
         </Table>
       </div>
-      <p className="shrink-0 px-4 py-4 text-xs leading-[18px] text-muted" aria-live="polite">
+      <p className="shrink-0 px-4 py-4 text-xs leading-4.5 text-muted" aria-live="polite">
         {selectedCount} selected · {filtered.length} policies
       </p>
     </SectionSurface>

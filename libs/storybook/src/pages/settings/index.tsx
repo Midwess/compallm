@@ -82,7 +82,7 @@ export function SettingsPage() {
       </div>
       <main
         className="@container relative my-2 mr-2 ml-2 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto
-rounded-xl border-[0.5px] border-divider bg-surface pr-2 [scrollbar-gutter:stable] md:ml-0"
+rounded-xl border-[0.5px] border-divider bg-surface pr-2 scrollbar-gutter-stable md:ml-0"
         aria-label="Settings content"
       >
         <button
@@ -100,7 +100,7 @@ rounded-xl border-[0.5px] border-divider bg-surface pr-2 [scrollbar-gutter:stabl
         <div
           role="status"
           className="fixed right-6 bottom-6 z-50 flex max-w-[calc(100vw-3rem)] items-center gap-4
-rounded-lg border border-border bg-elevated px-4 py-3 text-[13px] shadow-menu"
+rounded-lg border border-border bg-elevated px-4 py-3 text-xsm shadow-menu"
         >
           {notice}
           <Button variant="ghost" className="h-6 p-0" onClick={() => c.dismissNotice()}>

@@ -13,7 +13,8 @@
     "build:storybook": "storybook build --disable-telemetry && vite build --config vite.pages.config.ts && node scripts/finish-pages.mjs",
     "check": "tsc --noEmit",
     "lint": "prettier . --write && eslint . --fix",
-    "lint:check": "eslint . && prettier . --check",
+    "lint:check": "eslint . && prettier . --check && npm run lint:tailwind",
+    "lint:tailwind": "node scripts/tailwind-lint.mjs",
     "prepack": "npm run build",
     "postinstall": "npm --prefix ../contract ci --ignore-scripts && npm --prefix ../contract run build"
   },
@@ -37,6 +38,7 @@
     "@storybook/addon-docs": "10.6.4",
     "@storybook/addon-mcp": "10.6.4",
     "@storybook/react-vite": "10.6.4",
+    "@tailwindcss/language-server": "0.16.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",

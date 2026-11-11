@@ -87,7 +87,7 @@ export function EffortMapping({
                   autoFocus={defaultFocused === level}
                   size={Math.max(4, mapped.length || 4)}
                   className={cx(
-                    'h-6 w-auto min-w-10 max-w-full text-center text-xs leading-4 [field-sizing:content]',
+                    'h-6 w-auto min-w-10 max-w-full text-center text-xs leading-4 field-sizing-content',
                     !editing && !current && 'border-transparent bg-transparent text-center placeholder:text-transparent',
                     (editing || current) && 'border border-muted/80 bg-inset focus:border focus:border-muted/80',
                   )}

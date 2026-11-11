@@ -15,6 +15,11 @@ authoritative and can be edited directly.
   `src/pages/`.
 - Main design: dark neutral surfaces, violet primary actions, Inter typography, and Phosphor Regular SVG icons. Reuse the shared
   Tailwind v4 theme in `src/styles/theme.css`.
+- Always consider transition consistency when designing or changing components and pages. Reuse the shared Motion presets and
+  helpers in `src/components/motion.tsx` for interaction feedback, entrances, exits, disclosure, and reordering. Keep equivalent
+  interactions consistent in timing, easing, and movement. Adjust shared presets centrally; do not introduce component-specific
+  timing, CSS animations, CSS transitions, or direct browser animation calls. Respect reduced motion and preserve keyboard,
+  focus, and native control behavior, including during interrupted transitions.
 - Add meaningful variants for loading, empty, disabled, and error states where relevant. Keep semantic HTML, keyboard focus, and
   responsive behavior.
 - Use Tailwind’s default spacing scale with standard utilities such as `p-4`, `gap-2`, and `mr-8`. Do not add custom spacing

@@ -32,8 +32,7 @@ const organization = [
   { page: 'usage-limits', label: 'Usage & limits', Icon: ChartLineIcon },
 ] as const
 const category = '[&>details>summary]:text-xs [&>details>summary]:font-normal'
-const folder = `[&>details>summary>span:first-child]:size-3
-[&>details>summary>svg:last-child]:ml-auto`
+const folder = '[&>details>summary>span:first-child]:size-3'
 const item = 'font-normal [&>span:first-child]:size-3 [&>span:first-child>svg]:size-3'
 
 export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) {
@@ -41,8 +40,7 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
     location = useSettings((s) => s.location),
     query = useSettings((s) => s.navigationQuery)
   const roles = useSettings((s) => s.roles),
-    groups = useSettings((s) => s.groups),
-    readonly = useSettings((s) => s.readonly)
+    groups = useSettings((s) => s.groups)
   const match = (label: string) => label.toLowerCase().includes(query.toLowerCase())
   const navigate = (page: SettingsDestination, id?: string) => {
     c.navigate(page, id)
@@ -92,7 +90,7 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
           label="Groups"
           icon={<UsersThreeIcon />}
           className={folder}
-          onAdd={readonly ? undefined : () => navigate('new-group')}
+          onAdd={() => navigate('new-group')}
           addLabel="Create group"
         >
           {groups
@@ -113,7 +111,7 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
           label="Roles"
           icon={<ShieldCheckIcon />}
           className={folder}
-          onAdd={readonly ? undefined : () => navigate('new-role')}
+          onAdd={() => navigate('new-role')}
           addLabel="Create role"
         >
           {roles

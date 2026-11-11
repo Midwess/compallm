@@ -1,3 +1,4 @@
+import { animated } from './motion'
 import { createContext, useContext, useId, type ReactNode, type HTMLAttributes, type LabelHTMLAttributes } from 'react'
 import { TextField, type TextFieldProps } from './fields'
 import { cx } from './shared'
@@ -19,7 +20,7 @@ function Root({ children, className, ...props }: HTMLAttributes<HTMLDivElement> 
 }
 function Label(props: LabelHTMLAttributes<HTMLLabelElement>) {
   const id = useFieldId()
-  return <label {...props} htmlFor={id} className={cx('text-sm font-medium', props.className)} />
+  return <animated.label {...props} htmlFor={id} className={cx('text-sm font-medium', props.className)} />
 }
 function Input(props: TextFieldProps) {
   const id = useFieldId()

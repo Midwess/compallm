@@ -1,3 +1,4 @@
+import { animated } from './motion'
 import { otpLength, otpPattern, otpCharacters } from '@compallm/contract/auth'
 import { useEffect, useRef, useState, type ComponentPropsWithRef, type TextareaHTMLAttributes } from 'react'
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGlass'
@@ -7,7 +8,7 @@ export type TextFieldProps = ComponentPropsWithRef<'input'>
 
 export function TextField({ className, ...props }: TextFieldProps) {
   return (
-    <input
+    <animated.input
       {...props}
       className={cx(
         `
@@ -24,7 +25,7 @@ export function TextField({ className, ...props }: TextFieldProps) {
 
 export function MultilineField({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
-    <textarea
+    <animated.textarea
       {...props}
       className={cx(
         `

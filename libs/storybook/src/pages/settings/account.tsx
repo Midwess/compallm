@@ -1,10 +1,14 @@
+import { motion } from 'motion/react'
+import { useTransition } from '../../components/motion'
 import { Button } from '../../components/buttons'
 import { TextField } from '../../components/fields'
 import { Avatar } from '../../components/content'
+import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { SettingsContent, Heading, Section, Rows, Row, Empty } from './shared'
 import { useSettings, useSettingsController } from './controller'
 
 export function ProfileSettings() {
+  const timing = useTransition('interaction')
   const c = useSettingsController(),
     profile = useSettings((s) => s.profile),
     busy = useSettings((s) => s.busy)
@@ -12,62 +16,65 @@ export function ProfileSettings() {
     <SettingsContent>
       <Heading>Profile</Heading>
       <div className="grid gap-12">
-        <Section title="Your profile" description="Manage how you appear across your organizations.">
-          <Rows>
-            <Row label="Profile picture" description="Choose a photo for your account">
-              <div className="flex items-center gap-3">
-                <Avatar name={profile.name} src={profile.avatar ?? undefined} />
-                <label className="cursor-pointer rounded-lg border border-input-border px-3 py-1.5 text-xs">
-                  Upload
-                  <input
-                    className="sr-only"
-                    type="file"
-                    accept="image/*"
-                    aria-label="Upload profile photo"
-                    onChange={(e) => c.setAvatar(e.target.files?.[0] ?? null)}
-                  />
-                </label>
-                <Button variant="ghost" onClick={() => c.setAvatar(null)}>
-                  Remove
-                </Button>
-              </div>
-            </Row>
-            <Row
-              label={<label htmlFor="settings-full-name">Full name</label>}
-              description="Your name as it appears in Compallm"
+        <Rows>
+          <Row label="Profile picture" description="Choose a photo for your account">
+            <motion.label
+              initial="rest"
+              whileHover="active"
+              whileFocus="active"
+              className="group relative inline-flex size-10 cursor-pointer rounded-full
+focus-within:outline-2 focus-within:outline-focus"
             >
-              <TextField
-                id="settings-full-name"
-                className="w-70 max-w-full"
-                value={profile.name}
-                onChange={(e) => c.updateProfile({ name: e.target.value })}
+              <Avatar name={profile.name} src={profile.avatar ?? undefined} />
+              <motion.span
+                variants={{ rest: { opacity: 0 }, active: { opacity: 1 } }}
+                transition={timing}
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 grid place-items-center rounded-full bg-black/50 text-white
+[@media(hover:none)]:opacity-100!"
+              >
+                <PlusIcon className="size-5" weight="bold" />
+              </motion.span>
+              <input
+                className="sr-only"
+                type="file"
+                accept="image/*"
+                aria-label="Upload profile photo"
+                disabled={busy}
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (file) c.setAvatar(file)
+                  event.target.value = ''
+                }}
               />
-            </Row>
-            <Row label={<label htmlFor="settings-username">Username</label>} description="Your preferred display name">
-              <TextField
-                id="settings-username"
-                className="w-70 max-w-full"
-                value={profile.username}
-                onChange={(e) => c.updateProfile({ username: e.target.value })}
-              />
-            </Row>
-            <Row label={<label htmlFor="settings-email">Email</label>} description="The email address for this account" last>
-              <TextField
-                id="settings-email"
-                type="email"
-                className="w-70 max-w-full"
-                value={profile.email}
-                onChange={(e) => c.updateProfile({ email: e.target.value })}
-              />
-            </Row>
-          </Rows>
-          <div className="flex justify-between">
-            <Button onClick={() => c.signOut()}>Sign out</Button>
-            <Button variant="primary" loading={busy} onClick={() => c.saveProfile()}>
-              Save changes
-            </Button>
-          </div>
-        </Section>
+            </motion.label>
+          </Row>
+          <Row label={<label htmlFor="settings-full-name">Full name</label>} description="Your name as it appears in Compallm">
+            <TextField
+              id="settings-full-name"
+              className="w-70 max-w-full"
+              value={profile.name}
+              onChange={(e) => c.updateProfile({ name: e.target.value })}
+            />
+          </Row>
+          <Row label={<label htmlFor="settings-username">Username</label>} description="Your preferred display name">
+            <TextField
+              id="settings-username"
+              className="w-70 max-w-full"
+              value={profile.username}
+              onChange={(e) => c.updateProfile({ username: e.target.value })}
+            />
+          </Row>
+          <Row label={<label htmlFor="settings-email">Email</label>} description="The email address for this account" last>
+            <TextField
+              id="settings-email"
+              type="email"
+              className="w-70 max-w-full"
+              value={profile.email}
+              onChange={(e) => c.updateProfile({ email: e.target.value })}
+            />
+          </Row>
+        </Rows>
         <Section title="Account access" description="Manage sign-in methods and connected applications.">
           <Rows>
             <Row label="Security & access" description="Sessions, passkeys and authorized applications.">

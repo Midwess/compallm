@@ -1,4 +1,5 @@
 export * from './components/buttons'
+export * from './components/choice-picker'
 export * from './components/content'
 export * from './components/data'
 export * from './components/dropdowns'

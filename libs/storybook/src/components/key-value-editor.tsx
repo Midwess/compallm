@@ -1,3 +1,5 @@
+import { motion } from 'motion/react'
+import { animated, useDisclosure, useTransition } from './motion'
 import { createContext, useContext, useRef, type ReactNode } from 'react'
 import { useReorder } from './use-reorder'
 import { DotsSixVerticalIcon } from '@phosphor-icons/react/dist/csr/DotsSixVertical'
@@ -48,23 +50,27 @@ function Root({
   )
 }
 function Disclosure({ children = 'Headers', defaultOpen = false }: { children?: ReactNode; defaultOpen?: boolean }) {
+  const { detailsRef, contentRef, caretRef, toggle } = useDisclosure(defaultOpen)
   return (
-    <details className="group/headers w-full min-w-0 max-w-full" open={defaultOpen || undefined}>
-      <summary className="flex h-7 w-fit cursor-pointer list-none items-center gap-1 text-sm font-medium">
+    <details ref={detailsRef} className="group/headers w-full min-w-0 max-w-full" open={defaultOpen || undefined}>
+      <summary
+        onClick={(event) => {
+          event.preventDefault()
+          toggle()
+        }}
+        className="flex h-7 w-fit cursor-pointer list-none items-center gap-1 text-sm font-medium"
+      >
         {children}
-        <CaretDownIcon
-          weight="fill"
-          aria-hidden="true"
-          className="size-2 -rotate-90 transition-transform group-open/headers:rotate-0"
-        />
+        <CaretDownIcon weight="fill" aria-hidden="true" className="size-2" ref={caretRef} />
       </summary>
-      <div className="min-w-0 pt-3">
+      <div ref={contentRef} className="min-w-0 pt-3">
         <Content />
       </div>
     </details>
   )
 }
 function Content() {
+  const timing = useTransition('reorder')
   const { entries, change, disabled, acceptEntry, keyMaxLength } = useEditor()
   const pendingFocus = useRef<string | null>(null)
   const { rowNodes, drag, preview, announcement, id, keyboardMove, startDrag, pointerMove, endDrag } = useReorder(
@@ -96,23 +102,21 @@ function Content() {
         </span>
       </div>
       {entries.map((entry, index) => (
-        <div
+        <motion.div
           key={entry.id}
+          initial={false}
+          animate={{ y: preview?.offsets[entry.id] ?? 0 }}
+          transition={timing}
           role="row"
           data-dragging={preview?.key === entry.id || undefined}
           ref={(node) => {
             if (node) rowNodes.current.set(entry.id, node)
             else rowNodes.current.delete(entry.id)
           }}
-          style={preview ? { transform: `translateY(${preview.offsets[entry.id] ?? 0}px)` } : undefined}
-          className={cx(
-            'relative flex min-w-0 items-center gap-2',
-            !!preview && 'motion-safe:transition-transform motion-safe:duration-150',
-            preview?.key === entry.id && 'opacity-0',
-          )}
+          className={cx('relative flex min-w-0 items-center gap-2', preview?.key === entry.id && 'opacity-0')}
         >
           <span role="cell" className="w-6 shrink-0">
-            <button
+            <animated.button
               type="button"
               disabled={disabled}
               aria-label={`Reorder header ${index + 1}`}
@@ -141,7 +145,7 @@ active:cursor-grabbing focus-visible:outline-muted disabled:opacity-40
               }}
             >
               <DotsSixVerticalIcon aria-hidden="true" className="size-3" />
-            </button>
+            </animated.button>
           </span>
           <div
             className={`
@@ -178,7 +182,7 @@ p-1
               />
             </span>
             <span role="cell">
-              <button
+              <animated.button
                 type="button"
                 disabled={disabled}
                 aria-label={`Remove header ${index + 1}`}
@@ -189,10 +193,10 @@ disabled:opacity-40
                 onClick={() => change(entries.filter((row) => row.id !== entry.id))}
               >
                 <TrashIcon aria-hidden="true" className="size-3" />
-              </button>
+              </animated.button>
             </span>
           </div>
-        </div>
+        </motion.div>
       ))}
       <div role="row" className="flex min-w-0 gap-2">
         <span role="cell" className="w-6 shrink-0" />

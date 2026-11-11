@@ -1,3 +1,4 @@
+import { animated, LoadingMotion } from './motion'
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react'
 import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
 import { cx } from './shared'
@@ -12,7 +13,7 @@ const variants = {
   primary: 'bg-primary text-on-primary shadow-action enabled:hover:bg-primary-hover',
   neutral: 'bg-elevated text-text shadow-control enabled:hover:brightness-110',
   ghost: 'bg-transparent text-text shadow-none enabled:hover:brightness-110',
-  destructive: 'bg-elevated text-error shadow-control enabled:hover:brightness-110',
+  destructive: 'bg-error text-background shadow-action enabled:hover:brightness-110',
   link: 'bg-transparent p-0 text-focus shadow-none enabled:hover:brightness-110 !px-0',
 }
 const sizes = {
@@ -33,7 +34,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   return (
-    <button
+    <animated.button
       {...props}
       type={type}
       disabled={disabled || loading}
@@ -49,9 +50,13 @@ export function Button({
         className,
       )}
     >
-      {loading ? <CircleNotchIcon className="animate-spin motion-reduce:animate-none" size={14} aria-hidden="true" /> : null}
+      {loading ? (
+        <LoadingMotion>
+          <CircleNotchIcon size={14} aria-hidden="true" />
+        </LoadingMotion>
+      ) : null}
       {children}
-    </button>
+    </animated.button>
   )
 }
 export function ContentButton({ className, ...props }: ButtonProps) {
@@ -64,7 +69,7 @@ export interface TextLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
 }
 export function TextLink({ tone = 'secondary', disabled = false, className, href, ...props }: TextLinkProps) {
   return (
-    <a
+    <animated.a
       {...props}
       href={disabled ? undefined : href}
       aria-disabled={disabled || undefined}
@@ -109,12 +114,12 @@ export function ResendPrompt({ remaining = 0, onResend }: { remaining?: number; 
 
 export function IconButton({ className, type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button
+    <animated.button
       {...props}
       type={type}
       className={cx(
         'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border/60',
-        'bg-inset text-muted transition-colors hover:border-input-border hover:text-text focus-visible:outline-1',
+        'bg-inset text-muted hover:border-input-border hover:text-text focus-visible:outline-1',
         `
 focus-visible:outline-offset-2 focus-visible:outline-muted disabled:cursor-not-allowed disabled:opacity-40
 [&_svg]:size-3.5

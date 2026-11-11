@@ -1,3 +1,5 @@
+import { animate } from 'motion'
+import { transition } from './motion'
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 
 interface DragState {
@@ -30,11 +32,7 @@ export function useReorder(keys: string[], onChange: (order: string[]) => void, 
       if (top === undefined || reduced) continue
       const offset = top - node.offsetTop
       if (Math.abs(offset) > 1) {
-        for (const animation of node.getAnimations()) animation.cancel()
-        node.animate([{ transform: `translateY(${offset}px)` }, { transform: 'translateY(0)' }], {
-          duration: 150,
-          easing: 'ease-out',
-        })
+        animate(node, { y: [offset, 0] }, transition('reorder'))
       }
     }
     beforeMove.current.clear()

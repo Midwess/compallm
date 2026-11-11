@@ -1,3 +1,4 @@
+import { animated } from './motion'
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react'
 import { ArrowLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowLeft'
 import { CaretRightIcon } from '@phosphor-icons/react/dist/csr/CaretRight'
@@ -24,9 +25,9 @@ export function BreadcrumbTrail({ items, label = 'Breadcrumb' }: { items: Breadc
           <li key={`${item.label}-${index}`}>
             {index > 0 ? <CaretRightIcon size={12} aria-hidden="true" /> : null}
             {item.href ? (
-              <a href={item.href} aria-current={index === items.length - 1 ? 'page' : undefined}>
+              <animated.a href={item.href} aria-current={index === items.length - 1 ? 'page' : undefined}>
                 {item.label}
-              </a>
+              </animated.a>
             ) : (
               <span aria-current={index === items.length - 1 ? 'page' : undefined}>{item.label}</span>
             )}
@@ -38,7 +39,7 @@ export function BreadcrumbTrail({ items, label = 'Breadcrumb' }: { items: Breadc
 }
 export function BackBreadcrumb({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <a
+    <animated.a
       className={`
   inline-flex min-h-[28px] items-center gap-1 text-[13px] focus-visible:outline-2
   focus-visible:outline-offset-2 focus-visible:outline-focus
@@ -47,7 +48,7 @@ export function BackBreadcrumb({ href, children }: { href: string; children: Rea
     >
       <ArrowLeftIcon size={14} aria-hidden="true" />
       {children}
-    </a>
+    </animated.a>
   )
 }
 export function ViewPill({ className, ...props }: ButtonProps) {
@@ -67,7 +68,7 @@ export function NavigationTab({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { selected?: boolean }) {
   return (
-    <button
+    <animated.button
       type="button"
       {...props}
       aria-pressed={selected}
@@ -89,7 +90,7 @@ export function ToolbarAction({
   ...props
 }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> & { label: string }) {
   return (
-    <button
+    <animated.button
       type="button"
       {...props}
       aria-label={label}
@@ -104,7 +105,7 @@ export function ToolbarAction({
       )}
     >
       {children}
-    </button>
+    </animated.button>
   )
 }
 export function DragHandle({

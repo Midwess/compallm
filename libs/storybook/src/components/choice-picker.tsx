@@ -60,14 +60,16 @@ export function ChoicePicker({
             className="flex max-h-[var(--available-height)] w-72 max-w-[calc(100vw-1rem)] flex-col overflow-hidden
 rounded-lg border border-border bg-menu font-sans text-text shadow-menu"
           >
-            <div className="p-2">
+            <div className="p-2 pb-0">
               <Searchbox>
                 <Combobox.Input render={<Searchbox.Input />} aria-label={searchLabel} placeholder={placeholder} />
               </Searchbox>
             </div>
-            <Combobox.Empty className="px-3 py-4 text-center text-xs text-muted">
-              <div>{emptyMessage}</div>
-              {emptyAction}
+            <Combobox.Empty>
+              <div className="px-3 py-4 text-center text-xs text-muted">
+                <div>{emptyMessage}</div>
+                {emptyAction}
+              </div>
             </Combobox.Empty>
             <Combobox.List className="min-h-0 max-h-64 flex-1 overflow-y-auto overscroll-contain p-1">
               {(option: ChoicePickerOption) => (

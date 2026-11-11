@@ -11,6 +11,8 @@ license = "Elastic-2.0"
 borrowed_box = "allow"
 
 [workspace.dependencies]
+sea-query = { version = "1.0.2", default-features = false }
+modql = { version = "=0.7.0", default-features = false }
 schemars = { version = "=1.2.1", default-features = false, features = ["derive", "std"] }
 compallm-validation-derive = { path = "libs/validation-derive" }
 juniper = { version = "0.18.0", default-features = false, features = ["schema-language"] }

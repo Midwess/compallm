@@ -1,3 +1,4 @@
+use modql::filter::ListOptions;
 use std::time::Duration;
 
 use super::Session;
@@ -14,8 +15,11 @@ use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode
 use crate::organization::{Organization, OrganizationMember};
 use crate::persistent::dictionary::DictionaryRepository;
 use crate::persistent::session::SessionRepository;
-use crate::persistent::{DbContext, organization::OrganizationRepository, user::UserRepository};
 use crate::user::{RegistrationService, UserStatus};
+use crate::{
+    persistent::{DbContext, organization::OrganizationRepository},
+    repository::user::{UserFilter, UserRepository},
+};
 use compallm_utils::time::unix_timestamp;
 
 /// Explicit policy supplied by application configuration.
@@ -112,8 +116,19 @@ impl AuthService {
     /// Reject existing accounts before requesting OTP delivery for signup.
     pub async fn signup_email(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
         let email = compallm_utils::email::normalize_email(email);
-        if self.users.find_by_email(&email).await?.is_some() {
-            return Err(crate::persistent::user::UserRepositoryError::EmailAlreadyExists.into());
+        if self
+            .users
+            .one(
+                UserFilter {
+                    email: Some(email.clone().into()),
+                    ..Default::default()
+                },
+                ListOptions::default(),
+            )
+            .await?
+            .is_some()
+        {
+            return Err(crate::repository::user::UserRepositoryError::EmailAlreadyExists.into());
         }
         self.send_email_otp(&email).await
     }
@@ -124,7 +139,13 @@ impl AuthService {
         compallm_utils::email::validate_email(&email).map_err(|_| AuthError::InvalidEmail)?;
         let user = self
             .users
-            .find_by_email(&email)
+            .one(
+                UserFilter {
+                    email: Some(email.clone().into()),
+                    ..Default::default()
+                },
+                ListOptions::default(),
+            )
             .await?
             .ok_or(AuthError::UserNotFound)?;
         if user.status != UserStatus::Active {
@@ -168,7 +189,13 @@ impl AuthService {
         claims.verify_code(code, unix_timestamp())?;
         let user = self
             .users
-            .find_by_email(&claims.email)
+            .one(
+                UserFilter {
+                    email: Some(claims.email.clone().into()),
+                    ..Default::default()
+                },
+                ListOptions::default(),
+            )
             .await?
             .ok_or(AuthError::UserNotFound)?;
         if user.status != UserStatus::Active {
@@ -252,7 +279,17 @@ impl AuthService {
         session.validate_credential(&claims)?;
         let user = self
             .users
-            .find_by_id(claims.session.user_id)
+            .one(
+                UserFilter {
+                    id: Some(
+                        (i64::try_from(claims.session.user_id)
+                            .map_err(crate::repository::user::UserRepositoryError::database)?)
+                        .into(),
+                    ),
+                    ..Default::default()
+                },
+                ListOptions::default(),
+            )
             .await?
             .ok_or(AuthError::UserNotFound)?;
         if user.status != UserStatus::Active {

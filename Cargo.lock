@@ -1234,8 +1234,10 @@ dependencies = [
  "lz4_flex",
  "maud",
  "midwess-hero",
+ "modql",
  "rand 0.9.5",
  "rust_decimal",
+ "sea-query",
  "serde",
  "serde_bytes",
  "serde_json",
@@ -1279,6 +1281,7 @@ dependencies = [
  "heck 0.5.0",
  "loco-rs",
  "midwess-hero",
+ "modql",
  "pluralizer",
  "sea-orm",
  "sea-orm-cli",
@@ -1309,6 +1312,7 @@ dependencies = [
  "coset",
  "hmac 0.12.1",
  "midwess-hero",
+ "modql",
  "rayon",
  "router",
  "sea-orm",
@@ -3845,6 +3849,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "modql"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c56a0e387a0dc785a9d23dcd34b1aa34b3be02b4ee76efddc0ab586c58dce69"
+dependencies = [
+ "modql-macros",
+ "sea-query",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "modql-macros"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ef560a8ad33ab0b7dd1460da6aa092cbe145088929e0af2c789509f1c86b67f"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "sea-query",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "moka"
 version = "0.12.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5311,6 +5339,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "546040c653a705e60ec65ecd3191a809603734bebbc225775916dea9ae409b31"
 dependencies = [
  "chrono",
+ "itoa",
  "ordered-float",
  "rust_decimal",
  "sea-query-derive",

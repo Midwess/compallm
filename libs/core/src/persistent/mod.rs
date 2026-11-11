@@ -7,7 +7,6 @@ pub mod model;
 pub mod organization;
 pub mod provider;
 pub mod session;
-pub mod user;
 
 pub use connection::{Connection, ConnectionError};
 pub use db_context::{DbContext, PermissionError, PermissionLoader};

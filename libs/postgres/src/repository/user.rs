@@ -1,16 +1,21 @@
 use anyhow::Context;
 use compallm_core::{
-    persistent::{
-        DbContext,
-        user::{UserRepository as CoreUserRepository, UserRepositoryError},
+    persistent::DbContext,
+    repository::{
+        Queryable,
+        user::{
+            UserFilter, UserListOptions, UserRepository as CoreUserRepository, UserRepositoryError,
+        },
     },
     user::{User, UserStatus},
 };
+use modql::filter::{FilterGroups, ListOptions, OpValString};
 use sea_orm::{
-    ActiveModelTrait, DbErr, EntityTrait, ModelTrait, QueryFilter, RuntimeErr, Set,
+    ActiveModelTrait, DbErr, EntityTrait, ModelTrait, QueryFilter, QueryTrait, RuntimeErr, Set,
     prelude::ChronoUtc,
-    sea_query::{Expr, ExprTrait, Func},
+    sea_query::{Condition, Expr, ExprTrait, Func, IntoColumnRef},
 };
+use validify::Validify;
 
 use crate::{UserSchema, postgres_connection::PostgresConnection, schema::UserStatusSchema};
 
@@ -43,31 +48,58 @@ impl UserRepository {
 }
 
 #[async_trait::async_trait]
+impl Queryable<UserFilter> for UserRepository {
+    type Entity = User;
+    type Error = UserRepositoryError;
+
+    async fn list(
+        &self,
+        mut query: UserFilter,
+        options: ListOptions,
+    ) -> Result<Vec<User>, UserRepositoryError> {
+        query.validify()?;
+        let email = query.email.take();
+        let filters: FilterGroups = query.into();
+        let mut condition = Condition::all().add(
+            filters
+                .into_sea_condition()
+                .map_err(UserRepositoryError::database)?,
+        );
+        if let Some(email) = email {
+            for op in email.0 {
+                let column = Func::lower(Expr::col((Users::default(), UserColumn::Email)));
+                let predicate = match op {
+                    OpValString::Eq(value) => Condition::all().add(column.eq(value)),
+                    OpValString::In(values) => Condition::all().add(column.is_in(values)),
+                    op => op
+                        .into_sea_cond_expr(
+                            &(Users::default(), UserColumn::Email).into_column_ref(),
+                            &Default::default(),
+                        )
+                        .map_err(UserRepositoryError::database)?,
+                };
+                condition = condition.add(predicate);
+            }
+        }
+        let mut options = UserListOptions::from(options);
+        options.validify()?;
+        let options = ListOptions::from(options).append_order_by("id");
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let mut query = Users::find().filter(condition);
+        options.apply_to_sea_query(QueryTrait::query(&mut query));
+        query
+            .all(db)
+            .await
+            .map_err(UserRepositoryError::database)?
+            .into_iter()
+            .map(User::try_from)
+            .collect()
+    }
+}
+
+#[async_trait::async_trait]
 impl CoreUserRepository for UserRepository {
-    async fn find_by_email(&self, email: &str) -> Result<Option<User>, UserRepositoryError> {
-        let context = DbContext::current()?;
-        let db = PostgresConnection::from_context(&context)?;
-        Users::find()
-            .filter(Func::lower(Expr::col(UserColumn::Email)).eq(email))
-            .one(db)
-            .await
-            .map_err(UserRepositoryError::database)?
-            .map(User::try_from)
-            .transpose()
-    }
-
-    async fn find_by_id(&self, user_id: u64) -> Result<Option<User>, UserRepositoryError> {
-        let id = Self::database_id(user_id)?;
-        let context = DbContext::current()?;
-        let db = PostgresConnection::from_context(&context)?;
-        Users::find_by_id(id)
-            .one(db)
-            .await
-            .map_err(UserRepositoryError::database)?
-            .map(User::try_from)
-            .transpose()
-    }
-
     async fn create(&self, user: User) -> Result<User, UserRepositoryError> {
         let id = Self::database_id(user.id)?;
         let context = DbContext::current()?;

@@ -1,4 +1,4 @@
-use compallm_core::persistent::user::UserRepositoryError;
+use compallm_core::repository::user::UserRepositoryError;
 
 #[test]
 fn transaction_errors_share_the_persistence_error_boundary() {

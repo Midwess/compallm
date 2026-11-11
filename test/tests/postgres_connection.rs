@@ -1,5 +1,5 @@
-use compallm_core::persistent::user::UserRepositoryError;
 use compallm_core::persistent::{ConnectionError, DbContext};
+use compallm_core::repository::user::UserRepositoryError;
 use compallm_postgres::postgres_connection::PostgresConnection;
 use sea_orm::{ConnectionTrait, DbBackend, MockDatabase, Statement, Transaction};
 use std::sync::Arc;

@@ -1,7 +1,8 @@
 use crate::organization::CreationService;
 use crate::persistent::DbContext;
-use crate::persistent::user::{UserRepository, UserRepositoryError};
+use crate::repository::user::{UserFilter, UserRepository, UserRepositoryError};
 use crate::transaction;
+use modql::filter::ListOptions;
 
 use super::{RegistrationError, User};
 
@@ -26,7 +27,18 @@ impl RegistrationService {
     /// Joins an existing transaction when invoked by another service.
     pub async fn register(&self, email: &str) -> Result<User, RegistrationError> {
         let user = User::from_email(email).await?;
-        if self.users.find_by_email(&user.email).await?.is_some() {
+        if self
+            .users
+            .one(
+                UserFilter {
+                    email: Some(user.email.clone().into()),
+                    ..Default::default()
+                },
+                ListOptions::default(),
+            )
+            .await?
+            .is_some()
+        {
             return Err(UserRepositoryError::EmailAlreadyExists.into());
         }
 

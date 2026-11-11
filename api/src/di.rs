@@ -9,7 +9,8 @@ use compallm_core::{
     organization::{ConfigService, CreationService},
     persistent::dictionary::DictionaryRepository,
     persistent::session::SessionRepository,
-    persistent::{DbContext, organization::OrganizationRepository, user::UserRepository},
+    persistent::{DbContext, organization::OrganizationRepository},
+    repository::user::UserRepository,
     user::RegistrationService,
 };
 use compallm_postgres::postgres_connection::PostgresConnection;

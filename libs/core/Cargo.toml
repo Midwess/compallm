@@ -10,6 +10,8 @@ publish = false
 workspace = true
 
 [dependencies]
+modql = { workspace = true, features = ["with-sea-query"] }
+sea-query.workspace = true
 cedar-policy.workspace = true
 cedar-policy-formatter.workspace = true
 lz4_flex.workspace = true

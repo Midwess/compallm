@@ -19,6 +19,7 @@ path = "src/main.rs"
 required-features = ["cli"]
 
 [dependencies]
+modql = { workspace = true, features = ["with-sea-query"] }
 cedar-policy.workspace = true
 anyhow = { workspace = true, features = ["std"] }
 async-trait.workspace = true

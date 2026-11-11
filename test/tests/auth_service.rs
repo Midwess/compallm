@@ -27,8 +27,8 @@ use compallm_core::{
         DbContext,
         organization::{OrganizationRepository, OrganizationRepositoryError},
         session::{SessionRepository, SessionRepositoryError},
-        user::{UserRepository, UserRepositoryError},
     },
+    repository::user::{UserRepository, UserRepositoryError},
     user::{RegistrationService, User, UserStatus},
 };
 use sea_orm::{DatabaseConnection, DbBackend, DbErr, MockDatabase, Statement, Transaction};
@@ -366,23 +366,51 @@ impl OrganizationRepository for OrganizationRepositoryStub {
 }
 
 #[async_trait::async_trait]
+impl compallm_core::repository::Queryable<compallm_core::repository::user::UserFilter>
+    for Repository
+{
+    type Entity = User;
+    type Error = UserRepositoryError;
+
+    async fn list(
+        &self,
+        mut query: compallm_core::repository::user::UserFilter,
+        options: modql::filter::ListOptions,
+    ) -> Result<Vec<User>, UserRepositoryError> {
+        use modql::filter::{OpVal, OpValInt64, OpValString};
+        validify::Validify::validify(&mut query)?;
+        let mut state = self.0.lock().unwrap();
+        state
+            .contexts
+            .push(PostgresConnection::from_context(&DbContext::current()?)? as *const _ as usize);
+        let groups = modql::filter::FilterGroups::from(query).into_vec();
+        Ok(state
+            .user
+            .clone()
+            .filter(|user| {
+                groups.iter().any(|group| {
+                    group.nodes().iter().all(|node| {
+                        node.opvals.iter().all(|op| match (node.name.as_str(), op) {
+                            ("id", OpVal::Int64(OpValInt64::Eq(id))) => {
+                                u64::try_from(*id).ok() == Some(user.id)
+                            }
+                            ("email", OpVal::String(OpValString::Eq(email))) => {
+                                *email == user.email
+                            }
+                            _ => false,
+                        })
+                    })
+                })
+            })
+            .into_iter()
+            .skip(options.offset.unwrap_or(0) as usize)
+            .take(options.limit.unwrap_or(100) as usize)
+            .collect())
+    }
+}
+
+#[async_trait::async_trait]
 impl UserRepository for Repository {
-    async fn find_by_email(&self, email: &str) -> Result<Option<User>, UserRepositoryError> {
-        let mut state = self.0.lock().unwrap();
-        state
-            .contexts
-            .push(PostgresConnection::from_context(&DbContext::current()?)? as *const _ as usize);
-        Ok(state.user.clone().filter(|u| u.email == email))
-    }
-
-    async fn find_by_id(&self, id: u64) -> Result<Option<User>, UserRepositoryError> {
-        let mut state = self.0.lock().unwrap();
-        state
-            .contexts
-            .push(PostgresConnection::from_context(&DbContext::current()?)? as *const _ as usize);
-        Ok(state.user.clone().filter(|u| u.id == id))
-    }
-
     async fn create(&self, user: User) -> Result<User, UserRepositoryError> {
         let mut state = self.0.lock().unwrap();
         state

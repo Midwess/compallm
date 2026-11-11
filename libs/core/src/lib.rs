@@ -11,4 +11,5 @@ pub mod model;
 pub mod organization;
 pub mod persistent;
 pub mod provider;
+pub mod repository;
 pub mod user;

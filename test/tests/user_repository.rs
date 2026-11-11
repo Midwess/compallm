@@ -1,7 +1,8 @@
 use compallm_core::{
-    persistent::{
-        DbContext,
-        user::{UserRepository as _, UserRepositoryError},
+    persistent::DbContext,
+    repository::{
+        Queryable,
+        user::{UserFilter, UserRepository as CoreUserRepository, UserRepositoryError},
     },
     user::{User, UserStatus},
 };
@@ -9,6 +10,7 @@ use compallm_postgres::{
     UserSchema, postgres_connection::PostgresConnection, repository::user::UserRepository,
     schema::UserStatusSchema,
 };
+use modql::filter::ListOptions;
 use sea_orm::{ActiveEnum, DbBackend, DbErr, IntoMockRow, MockDatabase, RuntimeErr};
 use std::{borrow::Cow, collections::BTreeMap, error::Error, fmt, sync::Arc};
 
@@ -62,8 +64,15 @@ async fn lookup_uses_the_callers_scoped_transaction() {
     let context = Fixture::context(db.clone());
     context
         .transaction(async {
-            let user = UserRepository
-                .find_by_email("james@midwess.com")
+            let repository: &dyn CoreUserRepository = &UserRepository;
+            let user = repository
+                .one(
+                    UserFilter {
+                        email: Some("  JAMES@MIDWESS.COM  ".into()),
+                        ..Default::default()
+                    },
+                    ListOptions::default(),
+                )
                 .await?
                 .unwrap();
             assert_eq!(user.id, 42);
@@ -115,19 +124,34 @@ async fn find_by_id_maps_disabled_users_and_missing_rows() {
     ));
     context
         .scope(async {
-            let user = UserRepository.find_by_id(42).await.unwrap().unwrap();
+            let repository: &dyn CoreUserRepository = &UserRepository;
+            let user = repository
+                .one(
+                    UserFilter {
+                        id: Some(42_i64.into()),
+                        ..Default::default()
+                    },
+                    ListOptions::default(),
+                )
+                .await
+                .unwrap()
+                .unwrap();
             assert_eq!(user.status, UserStatus::Disabled);
-            assert!(UserRepository.find_by_id(43).await.unwrap().is_none());
+            assert!(
+                repository
+                    .one(
+                        UserFilter {
+                            id: Some(43_i64.into()),
+                            ..Default::default()
+                        },
+                        ListOptions::default()
+                    )
+                    .await
+                    .unwrap()
+                    .is_none()
+            );
         })
         .await;
-}
-
-#[tokio::test]
-async fn invalid_ids_are_database_errors() {
-    assert!(matches!(
-        UserRepository.find_by_id(u64::MAX).await,
-        Err(UserRepositoryError::Database(_))
-    ));
 }
 
 #[tokio::test]
@@ -142,7 +166,15 @@ async fn invalid_database_ids_are_rejected() {
     context
         .scope(async {
             assert!(matches!(
-                UserRepository.find_by_id(42).await,
+                UserRepository
+                    .one(
+                        UserFilter {
+                            id: Some(42_i64.into()),
+                            ..Default::default()
+                        },
+                        ListOptions::default()
+                    )
+                    .await,
                 Err(UserRepositoryError::Database(_))
             ));
         })
@@ -205,4 +237,39 @@ async fn only_email_unique_conflicts_become_email_already_exists() {
             assert!(matches!(error, UserRepositoryError::Database(_)));
         }
     }
+}
+
+#[tokio::test]
+async fn list_returns_multiple_users_with_their_statuses() {
+    let first = Fixture::row();
+    let mut second = Fixture::row();
+    second.id = 43;
+    second.email = "other@midwess.com".into();
+    second.status = UserStatusSchema::Disabled;
+    let context = Fixture::context(Arc::new(
+        MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([vec![Fixture::mock_row(first), Fixture::mock_row(second)]])
+            .into_connection(),
+    ));
+    context
+        .scope(async {
+            let repository: &dyn CoreUserRepository = &UserRepository;
+            let users = repository
+                .list(
+                    UserFilter {
+                        id: Some(modql::filter::OpValInt64::In(vec![42, 43]).into()),
+                        ..Default::default()
+                    },
+                    ListOptions::from_limit(20),
+                )
+                .await
+                .unwrap();
+            assert_eq!(
+                users.iter().map(|user| user.id).collect::<Vec<_>>(),
+                vec![42, 43]
+            );
+            assert_eq!(users[0].status, UserStatus::Active);
+            assert_eq!(users[1].status, UserStatus::Disabled);
+        })
+        .await;
 }

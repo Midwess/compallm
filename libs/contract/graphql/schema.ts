@@ -153,6 +153,7 @@ export interface Query {
 }
 
 export interface Role {
+  color: Scalars['String']
   description: Scalars['String']
   id: Scalars['ID']
   name: Scalars['String']
@@ -473,6 +474,7 @@ export interface QueryGenqlSelection {
 }
 
 export interface RoleGenqlSelection {
+  color?: boolean | number
   description?: boolean | number
   id?: boolean | number
   name?: boolean | number

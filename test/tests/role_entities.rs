@@ -11,6 +11,20 @@ use compallm_core::{
     organization::{Group, OrganizationMember, Role},
 };
 use std::{collections::HashMap, str::FromStr};
+
+#[tokio::test]
+async fn role_color_is_stable_and_warm() {
+    let mut role = default_roles(42, [901, 502, 73]).await.remove(0);
+    let color = role.color();
+    assert_eq!(color.len(), 7);
+    assert!(color.starts_with('#'));
+    let rgb = u32::from_str_radix(&color[1..], 16).unwrap();
+    assert!(rgb >> 16 > (rgb >> 8) & 255);
+    assert!(rgb >> 16 > rgb & 255);
+    assert_eq!(role.color(), color);
+    role.name = "Different role".into();
+    assert_ne!(role.color(), color);
+}
 async fn member(index: usize) -> OrganizationMember {
     OrganizationMember {
         organization_id: 42,

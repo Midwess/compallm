@@ -221,6 +221,7 @@ export default {
       __typename: [43],
     },
     Role: {
+      color: [43],
       description: [43],
       id: [15],
       name: [43],

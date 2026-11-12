@@ -2551,6 +2551,77 @@ async fn graphql_request(
 }
 
 #[tokio::test]
+async fn invalid_authorization_clears_cookies_without_revoking_session() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let session = fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    let invalid = token_pair::new(
+        &session,
+        PolicySnapshot {
+            cedar_source:
+                "permit(principal, action == Compallm::Action::\"retired.action\", resource);"
+                    .into(),
+            role_ids: Vec::new(),
+            group_roles: Default::default(),
+        },
+        SECRET,
+        Duration::from_secs(60),
+        REFRESH_LIFETIME,
+    )
+    .unwrap();
+    let cookies = format!(
+        "compallm-access={}; compallm-refresh={}",
+        invalid.access_token, tokens.refresh_token
+    );
+    let response = graphql_operation(
+        &fixture.graphql(),
+        "{ roles { edges { node { id } } } }",
+        serde_json::json!({}),
+        None,
+        Some(&cookies),
+        true,
+    )
+    .await;
+    let headers: Vec<_> = response
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .map(|value| value.to_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(headers.len(), 2);
+    assert!(headers.iter().all(|value| value.contains("Max-Age=0")));
+    assert_eq!(
+        graphql_body(response).await["errors"][0]["extensions"]["code"],
+        "INVALID_AUTHORIZATION_STATE"
+    );
+    assert!(
+        fixture
+            .repo
+            .0
+            .lock()
+            .unwrap()
+            .sessions
+            .get(&session.id)
+            .unwrap()
+            .revoked_at
+            .is_none()
+    );
+}
+
+#[tokio::test]
 async fn graphql_identity_uses_one_freshness_read_and_rejects_non_access_or_revoked_credentials() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let challenge = test_challenge("james@midwess.com", SECRET).unwrap();

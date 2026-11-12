@@ -39,6 +39,15 @@ pub enum RoleDeletionError {
 }
 
 impl Role {
+    pub fn color(&self) -> String {
+        use sha2::{Digest, Sha256};
+        let hash = Sha256::digest(self.name.as_bytes());
+        let red = 176 + u16::from(hash[0]) * 79 / 255;
+        let green = 48 + u16::from(hash[1]) * 112 / 255;
+        let blue = 32 + u16::from(hash[2]) * 96 / 255;
+        format!("#{red:02x}{green:02x}{blue:02x}")
+    }
+
     /// Whether this is the organization's designated Owner role.
     pub fn org_owner(&self) -> bool {
         self.org_owner

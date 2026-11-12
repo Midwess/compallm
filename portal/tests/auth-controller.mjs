@@ -46,6 +46,16 @@ const user = {
 }
 const reply = (data) => Response.json({ data })
 
+test('invalid authorization clears in-memory identity and returns to sign in', () => {
+  const url = urlController()
+  const controller = new AuthController(url)
+  controller.store.setState({ currentUser: user, status: 'authenticated' })
+  controller.invalidAuthorization()
+  assert.equal(controller.store.getState().currentUser, null)
+  assert.equal(controller.store.getState().status, 'anonymous')
+  assert.equal(url.destinations.at(-1), '/login')
+})
+
 test('confirmed signup retries only identity loading after a temporary failure', { timeout: 10000 }, async () => {
   const original = globalThis.fetch
   const url = urlController()

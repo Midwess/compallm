@@ -8,7 +8,7 @@ import { notify } from '../notifications/toast'
 import { codeExamples } from './code-examples'
 import { RoleController } from './role/controller'
 import { GroupController } from './group/controller'
-import { ApiError, graphql } from '../graphql-client'
+import { graphql } from '../graphql-client'
 import type { QueryGenqlSelection } from '@compallm/contract/graphql'
 import { createSettingsPages } from './pages'
 
@@ -47,6 +47,7 @@ export class SettingsController implements Controller {
     this.request?.abort()
     this.request = controller
     const generation = ++this.generation
+    this.store.setState({ roles: [], groups: [] })
     void this.loadPermissions(controller.signal, generation)
     return () => {
       controller.abort()
@@ -58,10 +59,10 @@ export class SettingsController implements Controller {
   private async loadPermissions(signal: AbortSignal, generation: number) {
     const readRoles = async () => {
       const selection = {
-        roles: { edges: { node: { id: true, name: true, description: true } } },
+        roles: { edges: { node: { id: true, name: true, description: true, color: true } } },
       } satisfies QueryGenqlSelection
       const { roles } = await graphql(signal).query(selection)
-      return roles.edges.map(({ node: role }) => ({ ...role, source: '', color: '' }))
+      return roles.edges.map(({ node: role }) => ({ ...role, source: '' }))
     }
     const readGroups = async () => {
       const selection = {
@@ -72,15 +73,13 @@ export class SettingsController implements Controller {
     }
     const [roles, groups] = await Promise.allSettled([readRoles(), readGroups()])
     if (signal.aborted || generation !== this.generation) return
-    const failures = [roles, groups].filter((result) => result.status === 'rejected')
-    const unavailable = failures.some(
-      (result) => result.status === 'rejected' && !(result.reason instanceof ApiError && result.reason.code === 'FORBIDDEN'),
-    )
     this.store.setState({
       ...(roles.status === 'fulfilled' ? { roles: roles.value } : { roles: [] }),
       ...(groups.status === 'fulfilled' ? { groups: groups.value } : { groups: [] }),
-      ...(unavailable ? { error: 'Could not load permission settings. Please try again.' } : {}),
     })
+    for (const result of [roles, groups]) {
+      if (result.status === 'rejected') notify.error(result.reason)
+    }
   }
 
   constructor(

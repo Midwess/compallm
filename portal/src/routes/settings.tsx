@@ -20,7 +20,17 @@ export function Component() {
   const auth = useAuthController()
   const organization = useOrganizationController().getCurrentOrganization()!
   const [controller] = useState(() => new SettingsController(organization.name, url, auth, page))
-  useEffect(() => controller.start(), [controller])
+  useEffect(() => {
+    let disposed = false
+    let stop: (() => void) | undefined
+    queueMicrotask(() => {
+      if (!disposed) stop = controller.start()
+    })
+    return () => {
+      disposed = true
+      stop?.()
+    }
+  }, [controller])
   useEffect(() => controller.setPage(page), [controller, page])
   return (
     <SettingsControllerContext value={controller}>

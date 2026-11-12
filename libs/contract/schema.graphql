@@ -277,6 +277,7 @@ type Role {
   id: ID!
   name: String!
   description: String!
+  color: String!
 }
 
 type RoleConnection {

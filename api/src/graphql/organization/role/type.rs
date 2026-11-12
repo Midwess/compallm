@@ -2,14 +2,17 @@ pub struct Role {
     pub id: juniper::ID,
     pub name: String,
     pub description: String,
+    pub color: String,
 }
 
 impl From<compallm_core::organization::Role> for Role {
     fn from(role: compallm_core::organization::Role) -> Self {
+        let color = role.color();
         Self {
             id: juniper::ID::new(role.id.to_string()),
             name: role.name,
             description: role.description,
+            color,
         }
     }
 }
@@ -24,5 +27,8 @@ impl Role {
     }
     fn description(&self) -> &str {
         &self.description
+    }
+    fn color(&self) -> &str {
+        &self.color
     }
 }

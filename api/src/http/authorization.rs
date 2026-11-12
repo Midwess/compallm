@@ -9,12 +9,13 @@ use tokio::sync::OnceCell;
 
 use compallm_core::authorization::{MemberPermission, MemberPermissionError};
 
-use super::authentication::{RequestError, UserContext};
+use super::authentication::{CookieDelivery, RequestError, UserContext};
 
 /// Shares the authenticated request facts without evaluating permissions.
 #[derive(Clone)]
 pub struct AuthorizationContext {
     user: UserContext,
+    cookies: CookieDelivery,
     permission: Arc<OnceCell<Result<Arc<MemberPermission>, MemberPermissionError>>>,
 }
 
@@ -52,20 +53,26 @@ impl AuthorizationContext {
             .require()
             .await
             .map_err(AuthorizationError::Authentication)?;
-        self.permission
+        let result = self
+            .permission
             .get_or_init(|| async {
                 MemberPermission::try_from(user.access().clone()).map(Arc::new)
             })
             .await
             .as_ref()
             .cloned()
-            .map_err(|_| AuthorizationError::InvalidAuthority)
+            .map_err(|_| AuthorizationError::InvalidAuthority);
+        if result.is_err() {
+            self.user.signout_invalid_authority(&self.cookies);
+        }
+        result
     }
 }
 
-pub(super) fn context(user: UserContext) -> AuthorizationContext {
+pub(super) fn context(user: UserContext, cookies: CookieDelivery) -> AuthorizationContext {
     AuthorizationContext {
         user,
+        cookies,
         permission: Arc::new(OnceCell::new()),
     }
 }

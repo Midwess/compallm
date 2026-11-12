@@ -7,6 +7,9 @@ import '@compallm/storybook/styles.css'
 import { UrlControllerContext, AuthControllerContext } from '@compallm/storybook/context'
 import { urlController } from './url/controller'
 import { authController } from './auth/controller'
+import { onInvalidAuthorization } from './graphql-client'
+
+onInvalidAuthorization(authController.invalidAuthorization)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

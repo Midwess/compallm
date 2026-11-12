@@ -364,6 +364,7 @@ type Query {
 }
 
 type Role {
+  color: String!
   description: String!
   id: ID!
   name: String!

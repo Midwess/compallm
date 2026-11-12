@@ -13,6 +13,7 @@ impl From<RoleName> for Role {
             id: juniper::ID::new("42:1"),
             name: value.0,
             description: "Administrator".into(),
+            color: "#c06040".into(),
         }
     }
 }

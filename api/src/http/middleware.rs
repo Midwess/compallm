@@ -21,10 +21,11 @@ pub struct AuthorizationMiddleware;
 impl AuthorizationMiddleware {
     pub async fn handle(
         Extension(user): Extension<super::authentication::UserContext>,
+        Extension(cookies): Extension<CookieDelivery>,
         mut request: Request,
         next: Next,
     ) -> Response {
-        let authorization = super::authorization::context(user);
+        let authorization = super::authorization::context(user, cookies);
         let loader = authorization.clone();
         let Ok(context) = DbContext::current() else {
             return no_store(RequestError::Internal.into_response());

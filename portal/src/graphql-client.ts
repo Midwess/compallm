@@ -1,5 +1,11 @@
 import { createClient } from '@compallm/contract/graphql'
 
+let invalidAuthorizationHandler: (() => void) | undefined
+
+export function onInvalidAuthorization(handler: () => void) {
+  invalidAuthorizationHandler = handler
+}
+
 /** A safe GraphQL or HTTP failure. Partial results never establish authenticated state. */
 export class ApiError extends Error {
   readonly status: number
@@ -22,6 +28,14 @@ const requestFetch: typeof fetch = async (input, init) => {
     .catch(() => null)
   const failure = payload?.errors?.[0]
   if (!response.ok || failure) {
+    if (
+      !init?.signal?.aborted &&
+      payload?.errors?.some(
+        (error: { extensions?: { code?: string } }) => error.extensions?.code === 'INVALID_AUTHORIZATION_STATE',
+      )
+    ) {
+      invalidAuthorizationHandler?.()
+    }
     const message = typeof failure?.message === 'string' ? failure.message : 'Request failed. Please try again.'
     const status = response.ok && Number.isInteger(failure?.extensions?.status) ? failure.extensions.status : response.status
     throw new ApiError(

@@ -16,15 +16,13 @@ fn adding_a_filter_preserves_an_existing_or_group() {
     let query = Box::new(
         Query {
             predicate: alternatives.clone(),
-            ..Default::default()
         }
         .filter(
             "name",
             Operation::String(StringOperation::StartsWith("A".into())),
         ),
     )
-    .into_query()
-    .unwrap();
+    .into_query();
     let Predicate::And(predicates) = query.predicate else {
         panic!("expected conjunctive query")
     };

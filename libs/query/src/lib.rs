@@ -11,8 +11,8 @@ pub mod scalar;
 
 pub use connection::{Connection, Edge, PageInfo};
 pub use order::{OrderBy, OrderByDirection};
-pub use pagination::{CollectionArguments, Pagination, PaginationError};
-pub use query::{IntoQuery, Predicate, Query, QueryError};
+pub use pagination::{Pagination, PaginationError};
+pub use query::{IntoQuery, Predicate, Query};
 pub use scalar::Cursor;
 
 #[cfg(feature = "graphql")]

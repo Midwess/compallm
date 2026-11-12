@@ -12,5 +12,5 @@ fn main() {
             ..Default::default()
         }),
     });
-    let _query: Query = input.into_query().unwrap();
+    let _query: Query = input.into_query();
 }

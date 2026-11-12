@@ -115,9 +115,7 @@ impl Query {
         pagination
             .validate()
             .map_err(|error| juniper::FieldError::new(error.to_string(), juniper::Value::null()))?;
-        let mut _query = Box::new(filter.unwrap_or_default())
-            .into_query()
-            .map_err(|error| juniper::FieldError::new(error.to_string(), juniper::Value::null()))?;
+        let _query = Box::new(filter.unwrap_or_default()).into_query();
         let _ordering: Vec<compallm_query::OrderBy> = order_by
             .unwrap_or_default()
             .into_iter()
@@ -126,8 +124,7 @@ impl Query {
             .map_err(|error: compallm_query::order::OrderByError| {
                 juniper::FieldError::new(error.to_string(), juniper::Value::null())
             })?;
-        _query.order_by = _ordering;
-        _query.pagination = pagination;
+        let _options = (pagination, _ordering);
         Ok(BlogConnection {
             edges: vec![],
             page_info: PageInfo::default(),

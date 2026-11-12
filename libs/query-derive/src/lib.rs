@@ -76,20 +76,8 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                         .get_ident()
                         .map(ToString::to_string)
                         .unwrap_or_default();
-                    if ![
-                        "and",
-                        "or",
-                        "not",
-                        "skip",
-                        "filter",
-                        "order_by",
-                        "pagination",
-                    ]
-                    .contains(&key.as_str())
-                    {
-                        return Err(meta.error(
-                            "expected field, and, or, not, filter, order_by, pagination, or skip",
-                        ));
+                    if !["and", "or", "not", "skip", "filter"].contains(&key.as_str()) {
+                        return Err(meta.error("expected field, and, or, not, filter, or skip"));
                     }
                     kind = Some(key);
                 }
@@ -117,27 +105,19 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                 quote! {
                     let mut __query_group = ::std::vec::Vec::new();
                     for __query_child in __query_value {
-                        let __query_child: #runtime::Query = #runtime::IntoQuery::into_query(::std::boxed::Box::new(__query_child))?;
-                        __query_group.push(__query_child.into_predicate()?);
+                        let __query_child: #runtime::Query = #runtime::IntoQuery::into_query(::std::boxed::Box::new(__query_child));
+                        __query_group.push(__query_child.into_predicate());
                     }
                     __query_predicates.push(#runtime::Predicate::#variant(__query_group));
                 }
             }
             "not" => quote! {
-                let __query_child: #runtime::Query = #runtime::IntoQuery::into_query(::std::boxed::Box::new(__query_value))?;
-                __query_predicates.push(#runtime::Predicate::Not(::std::boxed::Box::new(__query_child.into_predicate()?)));
+                let __query_child: #runtime::Query = #runtime::IntoQuery::into_query(::std::boxed::Box::new(__query_value));
+                __query_predicates.push(#runtime::Predicate::Not(::std::boxed::Box::new(__query_child.into_predicate())));
             },
             "filter" => quote! {
-                let __query_child: #runtime::Query = #runtime::IntoQuery::into_query(::std::boxed::Box::new(__query_value))?;
-                __query_predicates.push(__query_child.into_predicate()?);
-            },
-            "order_by" => quote! {
-                for __query_order in __query_value {
-                    __query_ordering.push(::std::convert::TryInto::try_into(__query_order)?);
-                }
-            },
-            "pagination" => quote! {
-                __query_pagination = __query_value;
+                let __query_child: #runtime::Query = #runtime::IntoQuery::into_query(::std::boxed::Box::new(__query_value));
+                __query_predicates.push(__query_child.into_predicate());
             },
             _ => {
                 let mapped = mapped.unwrap_or_else(|| {
@@ -167,16 +147,12 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
     Ok(quote! {
         impl #impl_generics #runtime::IntoQuery for #name #type_generics #where_clause {
-            fn into_query(self: ::std::boxed::Box<Self>) -> ::std::result::Result<#runtime::Query, #runtime::QueryError> {
+            fn into_query(self: ::std::boxed::Box<Self>) -> #runtime::Query {
                 let mut __query_predicates = ::std::vec::Vec::new();
-                let mut __query_ordering = ::std::vec::Vec::new();
-                let mut __query_pagination = #runtime::Pagination::default();
                 #(#statements)*
-                ::std::result::Result::Ok(#runtime::Query {
+                #runtime::Query {
                     predicate: #runtime::Predicate::And(__query_predicates),
-                    order_by: __query_ordering,
-                    pagination: __query_pagination,
-                })
+                }
             }
         }
     })

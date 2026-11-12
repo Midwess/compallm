@@ -11,8 +11,8 @@ pub enum OrderByDirection {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct OrderBy<Field> {
-    pub field: Field,
+pub struct OrderBy {
+    pub field: String,
     pub direction: OrderByDirection,
 }
 

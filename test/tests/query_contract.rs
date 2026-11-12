@@ -1,20 +1,11 @@
 use compallm_query::{
-    IntoQuery, Predicate, Query, QueryTarget,
+    IntoQuery, Predicate, Query,
     operation::{Operation, StringOperation},
 };
 
-struct Role;
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum RoleField {
-    Name,
-}
-impl QueryTarget for Role {
-    type Field = RoleField;
-}
-
-fn name(value: &str) -> Predicate<RoleField> {
+fn name(value: &str) -> Predicate {
     Predicate::Field {
-        field: RoleField::Name,
+        field: "name".into(),
         operation: Operation::String(StringOperation::Eq(value.into())),
     }
 }
@@ -22,13 +13,15 @@ fn name(value: &str) -> Predicate<RoleField> {
 #[test]
 fn adding_a_filter_preserves_an_existing_or_group() {
     let alternatives = Predicate::Or(vec![name("Admin"), name("Owner")]);
-    let query = Query::<Role> {
-        predicate: alternatives.clone(),
-        ..Default::default()
-    }
-    .filter(
-        RoleField::Name,
-        Operation::String(StringOperation::StartsWith("A".into())),
+    let query = Box::new(
+        Query {
+            predicate: alternatives.clone(),
+            ..Default::default()
+        }
+        .filter(
+            "name",
+            Operation::String(StringOperation::StartsWith("A".into())),
+        ),
     )
     .into_query()
     .unwrap();
@@ -41,13 +34,13 @@ fn adding_a_filter_preserves_an_existing_or_group() {
 
 #[test]
 fn successive_filters_preserve_their_predicates_without_reordering() {
-    let query = Query::<Role>::new()
+    let query = Query::new()
         .filter(
-            RoleField::Name,
+            "name",
             Operation::String(StringOperation::Eq("Admin".into())),
         )
         .filter(
-            RoleField::Name,
+            "name",
             Operation::String(StringOperation::Neq("Owner".into())),
         );
     assert_eq!(
@@ -55,7 +48,7 @@ fn successive_filters_preserve_their_predicates_without_reordering() {
         Predicate::And(vec![
             name("Admin"),
             Predicate::Field {
-                field: RoleField::Name,
+                field: "name".into(),
                 operation: Operation::String(StringOperation::Neq("Owner".into()))
             },
         ])

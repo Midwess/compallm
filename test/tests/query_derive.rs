@@ -1,23 +1,11 @@
 use compallm_query as query_runtime;
 use compallm_query::{
-    IntoQuery, OrderBy, OrderByDirection, Pagination, Predicate, QueryTarget,
+    IntoQuery, OrderBy, OrderByDirection, Pagination, Predicate,
     filter::{FilterIs, IntFilter, StringFilter, StringListFilter},
     operation::{Comparison, ListOperation, Operation, StringOperation},
 };
 
-struct Role;
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum RoleField {
-    Id,
-    Name,
-    Tags,
-}
-impl QueryTarget for Role {
-    type Field = RoleField;
-}
-
 #[derive(Default, IntoQuery)]
-#[query(target = Role, fields = RoleField)]
 struct RoleFilter {
     id: Option<IntFilter>,
     name: Option<StringFilter>,
@@ -39,7 +27,7 @@ fn name(value: &str) -> RoleFilter {
 
 #[test]
 fn derived_filter_preserves_each_operation_and_nested_boolean_group() {
-    let query = RoleFilter {
+    let query = Box::new(RoleFilter {
         id: Some(IntFilter {
             gte: Some(10),
             lt: Some(100),
@@ -54,7 +42,7 @@ fn derived_filter_preserves_each_operation_and_nested_boolean_group() {
             ..Default::default()
         })),
         ..Default::default()
-    }
+    })
     .into_query()
     .unwrap();
     let Predicate::And(predicates) = query.predicate else {
@@ -64,11 +52,11 @@ fn derived_filter_preserves_each_operation_and_nested_boolean_group() {
         &predicates[..2],
         &[
             Predicate::Field {
-                field: RoleField::Id,
+                field: "id".into(),
                 operation: Operation::Int(Comparison::Gte(10))
             },
             Predicate::Field {
-                field: RoleField::Id,
+                field: "id".into(),
                 operation: Operation::Int(Comparison::Lt(100))
             },
         ]
@@ -80,38 +68,38 @@ fn derived_filter_preserves_each_operation_and_nested_boolean_group() {
 }
 
 #[derive(IntoQuery)]
-#[query(target = Role, crate = query_runtime)]
+#[query(crate = query_runtime)]
 struct RenamedFilter<'a, T> {
-    #[query(field = RoleField::Name)]
+    #[query(field = "name")]
     search: T,
     #[query(skip)]
     _metadata: &'a str,
     #[query(order_by)]
-    order: Vec<OrderBy<RoleField>>,
+    order: Vec<OrderBy>,
     #[query(pagination)]
     page: Pagination,
 }
 
 #[test]
 fn explicit_mapping_accepts_operations_and_keeps_ordering_and_pagination() {
-    let query = RenamedFilter {
+    let query = Box::new(RenamedFilter {
         search: StringOperation::Is(FilterIs::NotNull),
         _metadata: "metadata stays outside the query",
         order: vec![OrderBy {
-            field: RoleField::Name,
+            field: "name".into(),
             direction: OrderByDirection::DescNullsLast,
         }],
         page: Pagination {
             first: Some(20),
             ..Default::default()
         },
-    }
+    })
     .into_query()
     .unwrap();
     assert_eq!(
         query.predicate,
         Predicate::And(vec![Predicate::Field {
-            field: RoleField::Name,
+            field: "name".into(),
             operation: Operation::String(StringOperation::Is(FilterIs::NotNull))
         }])
     );

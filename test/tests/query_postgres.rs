@@ -1,9 +1,6 @@
-use compallm_postgres::{
-    UserSchema,
-    query::{IntoSeaQuery, PostgresQueryTarget},
-};
+use compallm_postgres::{UserSchema, query::IntoSeaQuery};
 use compallm_query::{
-    IntoQuery, OrderBy, OrderByDirection, Pagination, Predicate, Query, QueryTarget,
+    IntoQuery, OrderBy, OrderByDirection, Pagination, Predicate, Query,
     filter::{BigIntFilter, StringFilter},
     operation::{Comparison, Operation, StringOperation},
 };
@@ -15,29 +12,7 @@ use sea_orm::{
 type Users = <UserSchema as ModelTrait>::Entity;
 type Column = <Users as EntityTrait>::Column;
 
-struct UserTarget;
-#[derive(Clone, Copy)]
-enum UserField {
-    Id,
-    Email,
-    DisplayName,
-}
-impl QueryTarget for UserTarget {
-    type Field = UserField;
-}
-impl PostgresQueryTarget for UserTarget {
-    type Table = Users;
-    fn column(field: &UserField) -> Column {
-        match field {
-            UserField::Id => Column::Id,
-            UserField::Email => Column::Email,
-            UserField::DisplayName => Column::DisplayName,
-        }
-    }
-}
-
 #[derive(Default, IntoQuery)]
-#[query(target = UserTarget, fields = UserField)]
 struct UserFilter {
     id: Option<BigIntFilter>,
     email: Option<StringFilter>,
@@ -55,7 +30,7 @@ fn derived_inputs_compile_to_bound_predicates_and_stable_ordering() {
         }),
         ..Default::default()
     };
-    let mut actual = input.into_sea_query().unwrap();
+    let mut actual = Box::new(input).into_sea_query::<Users>().unwrap();
     let mut expected = Users::find()
         .filter(
             Condition::all().add(
@@ -77,13 +52,13 @@ fn derived_inputs_compile_to_bound_predicates_and_stable_ordering() {
 
 #[test]
 fn ordering_and_offset_preserve_user_order_and_append_the_primary_key() {
-    let query = Query::<UserTarget> {
+    let query = Query {
         predicate: Predicate::Field {
-            field: UserField::Id,
+            field: "id".into(),
             operation: Operation::Int(Comparison::Gte(10)),
         },
         order_by: vec![OrderBy {
-            field: UserField::DisplayName,
+            field: "display_name".into(),
             direction: OrderByDirection::DescNullsFirst,
         }],
         pagination: Pagination {
@@ -92,7 +67,7 @@ fn ordering_and_offset_preserve_user_order_and_append_the_primary_key() {
             ..Default::default()
         },
     };
-    let mut actual = query.into_sea_query().unwrap();
+    let mut actual = Box::new(query).into_sea_query::<Users>().unwrap();
     let mut expected = Users::find()
         .filter(Condition::all().add(Expr::col((Users::default(), Column::Id)).gte(10)))
         .order_by_with_nulls(
@@ -115,11 +90,11 @@ fn ordering_and_offset_preserve_user_order_and_append_the_primary_key() {
 
 #[test]
 fn explicit_empty_or_is_false_and_negation_is_preserved() {
-    let mut actual = Query::<UserTarget> {
+    let mut actual = Box::new(Query {
         predicate: Predicate::Not(Box::new(Predicate::Or(vec![]))),
         ..Default::default()
-    }
-    .into_sea_query()
+    })
+    .into_sea_query::<Users>()
     .unwrap();
     let mut expected = Users::find()
         .filter(Condition::any().add(Expr::Constant(false.into())).not())
@@ -135,36 +110,24 @@ fn explicit_empty_or_is_false_and_negation_is_preserved() {
     );
 }
 
-struct ScopedUserTarget;
-impl QueryTarget for ScopedUserTarget {
-    type Field = UserField;
-}
-impl PostgresQueryTarget for ScopedUserTarget {
-    type Table = Users;
-    fn column(field: &UserField) -> Column {
-        UserTarget::column(field)
-    }
-    fn select() -> sea_orm::Select<Users> {
-        Users::find().filter(Column::Id.eq(42_i64))
-    }
-}
-
 #[test]
 fn trusted_base_selection_remains_outside_client_or_conditions() {
-    let query = Query::<ScopedUserTarget> {
+    let query = Query {
         predicate: Predicate::Or(vec![
             Predicate::Field {
-                field: UserField::Email,
+                field: "email".into(),
                 operation: Operation::String(StringOperation::Eq("a@example.com".into())),
             },
             Predicate::Field {
-                field: UserField::Email,
+                field: "email".into(),
                 operation: Operation::String(StringOperation::Eq("b@example.com".into())),
             },
         ]),
         ..Default::default()
     };
-    let mut actual = query.into_sea_query().unwrap();
+    let mut actual = Box::new(query)
+        .apply_to_sea_query(Users::find().filter(Column::Id.eq(42_i64)), 30)
+        .unwrap();
     let mut expected = Users::find()
         .filter(Column::Id.eq(42_i64))
         .filter(
@@ -204,31 +167,16 @@ mod records {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
-struct RecordTarget;
-enum RecordField {
-    Tags,
-}
-impl QueryTarget for RecordTarget {
-    type Field = RecordField;
-}
-impl PostgresQueryTarget for RecordTarget {
-    type Table = records::Entity;
-    fn column(_: &RecordField) -> records::Column {
-        records::Column::Tags
-    }
-}
-
 #[test]
 fn array_membership_preserves_array_type_and_bound_values() {
     use compallm_query::operation::ListOperation;
     use sea_orm::sea_query::{Alias, ArrayType, BinOper, Value, extension::postgres::PgBinOper};
-    let mut actual = Query::<RecordTarget>::new()
-        .filter(
-            RecordField::Tags,
-            Operation::StringList(ListOperation::Contains(vec!["visible".into()])),
-        )
-        .into_sea_query()
-        .unwrap();
+    let mut actual = Box::new(Query::new().filter(
+        "tags",
+        Operation::StringList(ListOperation::Contains(vec!["visible".into()])),
+    ))
+    .into_sea_query::<records::Entity>()
+    .unwrap();
     let values = Value::Array(
         ArrayType::String,
         Some(Box::new(vec![Value::String(Some("visible".into()))])),
@@ -255,13 +203,12 @@ fn array_membership_preserves_array_type_and_bound_values() {
 fn ilike_keeps_patterns_as_bound_values() {
     use sea_orm::sea_query::extension::postgres::PgBinOper;
     let pattern = "%O'Reilly_!%";
-    let mut actual = Query::<UserTarget>::new()
-        .filter(
-            UserField::Email,
-            Operation::String(StringOperation::ILike(pattern.into())),
-        )
-        .into_sea_query()
-        .unwrap();
+    let mut actual = Box::new(Query::new().filter(
+        "email",
+        Operation::String(StringOperation::ILike(pattern.into())),
+    ))
+    .into_sea_query::<Users>()
+    .unwrap();
     let mut expected = Users::find()
         .filter(
             Condition::all().add(
@@ -281,4 +228,47 @@ fn ilike_keeps_patterns_as_bound_values() {
         QueryTrait::query(&mut actual),
         QueryTrait::query(&mut expected)
     );
+}
+
+#[derive(IntoQuery)]
+struct RecordFilter {
+    tags: Option<compallm_query::filter::StringListFilter>,
+}
+
+#[async_trait::async_trait]
+trait RecordRepository: Send + Sync {
+    async fn list(&self, query: Box<dyn IntoQuery>) -> anyhow::Result<Vec<records::Model>>;
+}
+
+struct PgRecords(sea_orm::DatabaseConnection);
+
+#[async_trait::async_trait]
+impl RecordRepository for PgRecords {
+    async fn list(&self, query: Box<dyn IntoQuery>) -> anyhow::Result<Vec<records::Model>> {
+        Ok(query
+            .into_sea_query::<records::Entity>()?
+            .all(&self.0)
+            .await?)
+    }
+}
+
+#[tokio::test]
+async fn repository_trait_object_accepts_a_derived_query_trait_object() {
+    let db = sea_orm::MockDatabase::new(sea_orm::DbBackend::Postgres)
+        .append_query_results([vec![records::Model {
+            id: 42,
+            tags: vec!["visible".into()],
+        }]])
+        .into_connection();
+    let repository: Box<dyn RecordRepository> = Box::new(PgRecords(db));
+    let input: Box<dyn IntoQuery> = Box::new(RecordFilter {
+        tags: Some(compallm_query::filter::StringListFilter {
+            contains: Some(vec!["visible".into()]),
+            ..Default::default()
+        }),
+    });
+    let records = repository.list(input).await.unwrap();
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].id, 42);
+    assert_eq!(records[0].tags, vec!["visible"]);
 }

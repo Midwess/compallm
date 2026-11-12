@@ -1,26 +1,16 @@
-use compallm_query::{IntoQuery, Query, QueryTarget, filter::StringFilter};
-
-struct Role;
-enum RoleField {
-    Name,
-}
-impl QueryTarget for Role {
-    type Field = RoleField;
-}
+use compallm_query::{IntoQuery, Query, filter::StringFilter};
 
 #[derive(IntoQuery)]
-#[query(target = Role, fields = RoleField)]
 struct NameInput {
     name: Option<StringFilter>,
 }
 
 fn main() {
-    let _query: Query<Role> = NameInput {
+    let input: Box<dyn IntoQuery> = Box::new(NameInput {
         name: Some(StringFilter {
             eq: Some("Admin".into()),
             ..Default::default()
         }),
-    }
-    .into_query()
-    .unwrap();
+    });
+    let _query: Query = input.into_query().unwrap();
 }

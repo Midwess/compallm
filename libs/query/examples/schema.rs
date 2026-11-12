@@ -1,16 +1,10 @@
 use compallm_query::{
-    Cursor, IntoQuery, OrderByDirection, PageInfo, Pagination, QueryTarget,
+    Cursor, IntoQuery, OrderByDirection, PageInfo, Pagination,
     filter::{IDFilter, IntFilter, StringFilter, StringListFilter},
 };
 use juniper::{EmptyMutation, EmptySubscription, GraphQLInputObject, GraphQLObject, RootNode};
 
-struct BlogTarget;
-impl QueryTarget for BlogTarget {
-    type Field = BlogField;
-}
-
 #[derive(Clone, Debug, Default, GraphQLInputObject, IntoQuery)]
-#[query(target = BlogTarget, fields = BlogField)]
 struct BlogFilter {
     node_id: Option<IDFilter>,
     id: Option<IntFilter>,
@@ -27,24 +21,17 @@ struct BlogOrderBy {
     name: Option<OrderByDirection>,
 }
 
-enum BlogField {
-    NodeId,
-    Id,
-    Name,
-    Tags,
-}
-
-impl TryFrom<BlogOrderBy> for compallm_query::OrderBy<BlogField> {
+impl TryFrom<BlogOrderBy> for compallm_query::OrderBy {
     type Error = compallm_query::order::OrderByError;
 
     fn try_from(value: BlogOrderBy) -> Result<Self, Self::Error> {
         match (value.id, value.name) {
             (Some(direction), None) => Ok(Self {
-                field: BlogField::Id,
+                field: "id".into(),
                 direction,
             }),
             (None, Some(direction)) => Ok(Self {
-                field: BlogField::Name,
+                field: "name".into(),
                 direction,
             }),
             _ => Err(Self::Error::ExactlyOneField),
@@ -128,11 +115,10 @@ impl Query {
         pagination
             .validate()
             .map_err(|error| juniper::FieldError::new(error.to_string(), juniper::Value::null()))?;
-        let mut _query = filter
-            .unwrap_or_default()
+        let mut _query = Box::new(filter.unwrap_or_default())
             .into_query()
             .map_err(|error| juniper::FieldError::new(error.to_string(), juniper::Value::null()))?;
-        let _ordering: Vec<compallm_query::OrderBy<BlogField>> = order_by
+        let _ordering: Vec<compallm_query::OrderBy> = order_by
             .unwrap_or_default()
             .into_iter()
             .map(TryInto::try_into)

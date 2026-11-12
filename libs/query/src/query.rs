@@ -3,50 +3,39 @@ use crate::{
 };
 use std::convert::Infallible;
 
-/// Identifies a resource and its allowlisted fields without database metadata.
-pub trait QueryTarget {
-    type Field;
-}
-
 #[derive(Clone, Debug, PartialEq)]
-pub enum Predicate<Field> {
+pub enum Predicate {
     And(Vec<Self>),
     Or(Vec<Self>),
     Not(Box<Self>),
-    Field { field: Field, operation: Operation },
+    Field { field: String, operation: Operation },
 }
 
-impl<Field> Default for Predicate<Field> {
+impl Default for Predicate {
     fn default() -> Self {
         Self::And(Vec::new())
     }
 }
 
 /// A read description. Authority and database connections are supplied separately.
-pub struct Query<Target: QueryTarget> {
-    pub predicate: Predicate<Target::Field>,
-    pub order_by: Vec<OrderBy<Target::Field>>,
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Query {
+    pub predicate: Predicate,
+    pub order_by: Vec<OrderBy>,
     pub pagination: Pagination,
 }
 
-impl<Target: QueryTarget> Default for Query<Target> {
-    fn default() -> Self {
-        Self {
-            predicate: Predicate::default(),
-            order_by: Vec::new(),
-            pagination: Pagination::default(),
-        }
-    }
-}
-
-impl<Target: QueryTarget> Query<Target> {
+impl Query {
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Adds an AND predicate without changing existing Boolean group boundaries.
-    pub fn filter(mut self, field: Target::Field, operation: Operation) -> Self {
-        let predicate = Predicate::Field { field, operation };
+    pub fn filter(mut self, field: impl Into<String>, operation: Operation) -> Self {
+        let predicate = Predicate::Field {
+            field: field.into(),
+            operation,
+        };
         self.predicate = match self.predicate {
             Predicate::And(mut predicates) => {
                 predicates.push(predicate);
@@ -74,8 +63,8 @@ impl From<Infallible> for QueryError {
     }
 }
 
-impl<Target: QueryTarget> Query<Target> {
-    pub fn into_predicate(self) -> Result<Predicate<Target::Field>, QueryError> {
+impl Query {
+    pub fn into_predicate(self) -> Result<Predicate, QueryError> {
         if !self.order_by.is_empty() || self.pagination != Pagination::default() {
             return Err(QueryError::NestedQueryOptions);
         }
@@ -83,28 +72,19 @@ impl<Target: QueryTarget> Query<Target> {
     }
 }
 
-/// Converts typed inputs into a resource-bound read description, never into SQL.
-pub trait IntoQuery {
-    type Target: QueryTarget;
-    type Error;
-
-    fn into_query(self) -> Result<Query<Self::Target>, Self::Error>;
+/// Consumes a typed request into a database-independent read description.
+pub trait IntoQuery: Send {
+    fn into_query(self: Box<Self>) -> Result<Query, QueryError>;
 }
 
-impl<Target: QueryTarget> IntoQuery for Query<Target> {
-    type Target = Target;
-    type Error = Infallible;
-
-    fn into_query(self) -> Result<Self, Self::Error> {
-        Ok(self)
+impl IntoQuery for Query {
+    fn into_query(self: Box<Self>) -> Result<Query, QueryError> {
+        Ok(*self)
     }
 }
 
-impl<Q: IntoQuery> IntoQuery for Box<Q> {
-    type Target = Q::Target;
-    type Error = Q::Error;
-
-    fn into_query(self) -> Result<Query<Self::Target>, Self::Error> {
+impl<Q: IntoQuery + ?Sized> IntoQuery for Box<Q> {
+    fn into_query(self: Box<Self>) -> Result<Query, QueryError> {
         (*self).into_query()
     }
 }

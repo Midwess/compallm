@@ -1334,6 +1334,7 @@ dependencies = [
  "compallm-utils",
  "coset",
  "hmac 0.12.1",
+ "juniper",
  "midwess-hero",
  "rayon",
  "router",

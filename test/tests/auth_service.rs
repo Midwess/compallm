@@ -250,15 +250,15 @@ impl OrganizationRepository for OrganizationRepositoryStub {
                     && !state
                         .disabled_organizations
                         .contains(&member.organization_id)
-            })
+          })
             .cloned()
             .map(|mut member| {
                 if !state.full_default_policies {
                     // Synthetic bounded policies for transport/lifecycle tests; full defaults have dedicated rejection tests.
                     for role in &mut member.roles {
                         role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.read", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
-                    }
-                }
+                  }
+              }
                 let organization = state
                     .organization
                     .clone()
@@ -267,13 +267,13 @@ impl OrganizationRepository for OrganizationRepositoryStub {
                         id: member.organization_id,
                         name: if member.organization_id == 84 {
                             "Research team".into()
-                        } else {
+                      } else {
                             format!("Organization {}", member.organization_id)
-                        },
+                      },
                         status: compallm_core::organization::OrganizationStatus::Active,
-                    });
+                  });
                 (member, organization)
-            }))
+          }))
     }
 
     async fn find_first_membership(
@@ -290,15 +290,15 @@ impl OrganizationRepository for OrganizationRepositoryStub {
                     && !state
                         .disabled_organizations
                         .contains(&member.organization_id)
-            })
+          })
             .cloned()
             .map(|mut member| {
                 if !state.full_default_policies {
                     // Synthetic bounded policies for transport/lifecycle tests; full defaults have dedicated rejection tests.
                     for role in &mut member.roles {
                         role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.read", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
-                    }
-                }
+                  }
+              }
                 let organization = state
                     .organization
                     .clone()
@@ -307,13 +307,13 @@ impl OrganizationRepository for OrganizationRepositoryStub {
                         id: member.organization_id,
                         name: if member.organization_id == 84 {
                             "Research team".into()
-                        } else {
+                      } else {
                             format!("Organization {}", member.organization_id)
-                        },
+                      },
                         status: compallm_core::organization::OrganizationStatus::Active,
-                    });
+                  });
                 (member, organization)
-            }))
+          }))
     }
 
     async fn update_name(
@@ -587,7 +587,7 @@ impl Fixture {
                 compallm_core::compression::DictionaryType::AccessToken, 1,
                 "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source",
             ).unwrap(), newer: None,
-        }), Some(email));
+      }), Some(email));
         let schema = build_schema(16, 256, 15_000);
         let di = Box::leak(Box::new(
             Di::new(
@@ -691,7 +691,7 @@ impl Fixture {
                 "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source",
             ).unwrap(),
             newer: None,
-        }))
+      }))
     }
 
     fn service_with_dictionaries(
@@ -1031,7 +1031,7 @@ async fn email_challenge_uses_compressed_wrapper_and_keeps_otp_encrypted() {
             "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source",
         ).unwrap(),
         newer: None,
-    });
+  });
     let email = Box::leak(Box::new(
         Box::new(TestEmail) as Box<dyn compallm_core::mail::EmailService>
     ));
@@ -1143,7 +1143,7 @@ async fn invalid_signature_is_rejected_before_dictionary_lookup() {
             "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source",
         ).unwrap(), newer: None },
         reads: reads.clone(),
-    }));
+  }));
     let mut tampered = challenge.access_token.as_bytes().to_vec();
     let index = tampered.len() - 4;
     tampered[index] = if tampered[index] == b'a' { b'b' } else { b'a' };
@@ -2540,7 +2540,7 @@ async fn graphql_request(
         request = request.header("origin", "http://localhost");
     }
     let body = serde_json::json!({
-        "query": "query { authentication { first: session {node{ id userId organizationId organizationName }} second: session {node{ id }} } }"
+          "query": "query { __typename first: session {node{ id userId organizationId organizationName }} second: session {node{ id }}  }"
     });
     router
         .clone()
@@ -2579,7 +2579,8 @@ async fn graphql_identity_uses_one_freshness_read_and_rejects_non_access_or_revo
         .unwrap();
     let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     assert!(body.get("errors").is_none());
-    assert!(body["data"]["authentication"]["first"]["node"].is_object());
+    assert!(body["data"]["first"]["node"].is_object());
+    assert_eq!(body["data"]["__typename"], "Query");
     assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, 1);
 
     for token in [
@@ -2903,20 +2904,17 @@ async fn graphql_shared_schema_keeps_concurrent_session_identities_separate() {
             .unwrap();
         let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert!(body.get("errors").is_none());
+        assert_eq!(body["data"]["first"]["node"]["id"], expected.id.to_string());
         assert_eq!(
-            body["data"]["authentication"]["first"]["node"]["id"],
+            body["data"]["second"]["node"]["id"],
             expected.id.to_string()
         );
         assert_eq!(
-            body["data"]["authentication"]["second"]["node"]["id"],
-            expected.id.to_string()
-        );
-        assert_eq!(
-            body["data"]["authentication"]["first"]["node"]["userId"],
+            body["data"]["first"]["node"]["userId"],
             expected.user_id.to_string()
         );
         assert_eq!(
-            body["data"]["authentication"]["first"]["node"]["organizationId"],
+            body["data"]["first"]["node"]["organizationId"],
             expected.organization_id.to_string()
         );
     }
@@ -2960,14 +2958,14 @@ async fn graphql_operation(
 }
 
 #[tokio::test]
-async fn graphql_rejects_multiple_nested_organization_writes() {
+async fn graphql_rejects_multiple_root_writes() {
     let fixture = Fixture::new(None);
     let router = fixture.graphql();
-    let query = r#"mutation { organization { roles { first: create(input: {name: "one", description: "", cedarSource: ""}) {node{ id }} second: create(input: {name: "two", description: "", cedarSource: ""}) {node{ id }} } } }"#;
+    let query = r#"mutation { first: roleCreate(input: {name: "one", description: "", cedarSource: ""}) {node{ id }} second: roleCreate(input: {name: "two", description: "", cedarSource: ""}) {node{ id }} }"#;
     let response =
         graphql_operation(&router, query, serde_json::json!({}), None, None, false).await;
     assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
-    let fragment_query = r#"mutation { organization { groups { ...Writes } } } fragment Writes on GroupMutation { first: create(input: {name: "one", description: "", roleIds: []}) {node{ id }} second: create(input: {name: "two", description: "", roleIds: []}) {node{ id }} }"#;
+    let fragment_query = r#"mutation { ...Writes } fragment Writes on Mutation { first: groupCreate(input: {name: "one", description: "", roleIds: []}) {node{ id }} second: groupCreate(input: {name: "two", description: "", roleIds: []}) {node{ id }} }"#;
     let response = graphql_operation(
         &router,
         fragment_query,
@@ -2978,13 +2976,27 @@ async fn graphql_rejects_multiple_nested_organization_writes() {
     )
     .await;
     assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
-    let single = r#"mutation { organization { groups { create(input: {name: "one", description: "", roleIds: []}) {node{ id }} } } }"#;
+    let single = r#"mutation { ...Write } fragment Write on Mutation { groupCreate(input: {name: "one", description: "", roleIds: []}) {node{ id }} }"#;
     let response =
         graphql_operation(&router, single, serde_json::json!({}), None, None, false).await;
     assert_eq!(response.status(), axum::http::StatusCode::OK);
     assert_eq!(
         graphql_body(response).await["errors"][0]["extensions"]["status"],
         401
+    );
+    let response = graphql_operation(
+        &router,
+        "query { session { node { id } } organization { node { id } } role(id: \"1\") { node { id } } roles { edges { node { id } } } group(id: \"1\") { node { id } } groups { edges { node { id } } } }",
+        serde_json::json!({}), None, None, false,
+    ).await;
+    assert_eq!(response.status(), axum::http::StatusCode::OK);
+    let body = graphql_body(response).await;
+    assert!(
+        body["errors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|error| error["extensions"]["status"] == 401)
     );
 }
 
@@ -3018,23 +3030,23 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let router = fixture.graphql();
     let response = graphql_operation(&router,
-        "mutation($input:EmailInput!){authentication{signinEmailRequest(input:$input){node{token lifetime{expiresInSeconds}}}}}",
+        "mutation($input:EmailInput!){emailSigninRequest(input:$input){node{token lifetime{expiresInSeconds}}}}",
         serde_json::json!({"input":{"email":"james@midwess.com","delivery":"TOKEN"}}),Some("invalid-bearer"),None,false).await;
     assert_eq!(response.status(), 200);
     assert!(!response.headers().contains_key("set-cookie"));
     let body = graphql_body(response).await;
-    let challenge = body["data"]["authentication"]["signinEmailRequest"]["node"]["token"]
+    let challenge = body["data"]["emailSigninRequest"]["node"]["token"]
         .as_str()
         .unwrap();
     let claims = EmailOtpAccessToken::try_from(decode_token(challenge, SECRET).unwrap()).unwrap();
     assert!(fixture.repo.0.lock().unwrap().logins.is_empty());
     let response = graphql_operation(&router,
-        "mutation($input:EmailCodeInput!){authentication{signinEmailConfirm(input:$input){node{accessToken refreshToken}}}}",
+        "mutation($input:EmailCodeInput!){emailSigninConfirm(input:$input){node{accessToken refreshToken}}}",
         serde_json::json!({"input":{"code":claims.code,"delivery":"TOKEN"}}),Some(challenge),None,false).await;
     assert_eq!(response.status(), 200);
     assert!(!response.headers().contains_key("set-cookie"));
     let body = graphql_body(response).await;
-    let tokens = &body["data"]["authentication"]["signinEmailConfirm"]["node"];
+    let tokens = &body["data"]["emailSigninConfirm"]["node"];
     let access = tokens["accessToken"].as_str().unwrap();
     let refresh = tokens["refreshToken"].as_str().unwrap();
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
@@ -3046,7 +3058,7 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     );
     let response = graphql_operation(
         &router,
-        "mutation{authentication{sessionRefresh{node{accessToken refreshToken}}}}",
+        "mutation{sessionRefresh{node{accessToken refreshToken}}}",
         serde_json::json!({}),
         Some(refresh),
         None,
@@ -3055,13 +3067,13 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     .await;
     assert!(!response.headers().contains_key("set-cookie"));
     let renewed = graphql_body(response).await;
-    let access = renewed["data"]["authentication"]["sessionRefresh"]["node"]["accessToken"]
+    let access = renewed["data"]["sessionRefresh"]["node"]["accessToken"]
         .as_str()
         .unwrap();
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
     let response = graphql_operation(
         &router,
-        "mutation{authentication{sessionRevoke{node}}}",
+        "mutation{sessionRevoke{node}}",
         serde_json::json!({}),
         Some(access),
         None,
@@ -3070,7 +3082,7 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     .await;
     assert!(!response.headers().contains_key("set-cookie"));
     assert_eq!(
-        graphql_body(response).await["data"]["authentication"]["sessionRevoke"]["node"],
+        graphql_body(response).await["data"]["sessionRevoke"]["node"],
         true
     );
     assert_graphql_denial(
@@ -3086,14 +3098,11 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     let fixture = Fixture::new(None);
     let router = fixture.graphql();
     let response = graphql_operation(&router,
-        "mutation($input:EmailInput!){authentication{signupEmailRequest(input:$input){node{token lifetime{expiresInSeconds}}}}}",
+        "mutation($input:EmailInput!){emailSignupRequest(input:$input){node{token lifetime{expiresInSeconds}}}}",
         serde_json::json!({"input":{"email":"james@midwess.com"}}),None,None,true).await;
     let cookies = response_cookies(&response);
     assert_eq!(response.status(), 200);
-    assert!(
-        graphql_body(response).await["data"]["authentication"]["signupEmailRequest"]["node"]["token"]
-            .is_null()
-    );
+    assert!(graphql_body(response).await["data"]["emailSignupRequest"]["node"]["token"].is_null());
     let challenge = cookies
         .split(';')
         .find_map(|value| value.trim().strip_prefix("compallm-access="))
@@ -3102,11 +3111,11 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     let input = serde_json::json!({"input":{"code":claims.code}});
     // Aliases and fragments cannot conceal a second auth effect, even if skipped.
     let response = graphql_operation(&router,
-        "mutation($input:EmailCodeInput!){authentication{...A second:signupEmailConfirm(input:$input) @skip(if:true){node{accessToken}}}} fragment A on AuthenticationMutation{first:signupEmailConfirm(input:$input){node{accessToken}}}",
+        "mutation($input:EmailCodeInput!){...A second:emailSignupConfirm(input:$input) @skip(if:true){node{accessToken}}} fragment A on Mutation{first:emailSignupConfirm(input:$input){node{accessToken}}}",
         input.clone(),None,Some(&cookies),true).await;
     assert_eq!(response.status(), 400);
     assert!(fixture.repo.0.lock().unwrap().created.is_none());
-    let query = "mutation($input:EmailCodeInput!){authentication{signupEmailConfirm(input:$input){node{accessToken refreshToken accessLifetime{expiresInSeconds}}}}}";
+    let query = "mutation($input:EmailCodeInput!){emailSignupConfirm(input:$input){node{accessToken refreshToken accessLifetime{expiresInSeconds}}}}";
     let response =
         graphql_operation(&router, query, input.clone(), None, Some(&cookies), false).await;
     assert_graphql_denial(response, 403).await;
@@ -3114,9 +3123,9 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     let response = graphql_operation(&router, query, input, None, Some(&cookies), true).await;
     let cookies = response_cookies(&response);
     let body = graphql_body(response).await;
-    assert!(body["data"]["authentication"]["signupEmailConfirm"]["node"].is_object());
-    assert!(body["data"]["authentication"]["signupEmailConfirm"]["node"]["accessToken"].is_null());
-    assert!(body["data"]["authentication"]["signupEmailConfirm"]["node"]["refreshToken"].is_null());
+    assert!(body["data"]["emailSignupConfirm"]["node"].is_object());
+    assert!(body["data"]["emailSignupConfirm"]["node"]["accessToken"].is_null());
+    assert!(body["data"]["emailSignupConfirm"]["node"]["refreshToken"].is_null());
     assert!(fixture.repo.0.lock().unwrap().created.is_some());
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
     assert_eq!(
@@ -3127,7 +3136,7 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     );
     let response = graphql_operation(
         &router,
-        "mutation{authentication{sessionRefresh{node{accessToken}}}}",
+        "mutation{sessionRefresh{node{accessToken}}}",
         serde_json::json!({}),
         None,
         Some(&cookies),
@@ -3137,7 +3146,7 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     assert_graphql_denial(response, 401).await;
     let response = graphql_operation(
         &router,
-        "mutation{authentication{sessionRevoke{node}}}",
+        "mutation{sessionRevoke{node}}",
         serde_json::json!({}),
         None,
         Some(&cookies),
@@ -3146,7 +3155,7 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     .await;
     assert_eq!(response.headers().get_all("set-cookie").iter().count(), 2);
     assert_eq!(
-        graphql_body(response).await["data"]["authentication"]["sessionRevoke"]["node"],
+        graphql_body(response).await["data"]["sessionRevoke"]["node"],
         true
     );
     assert_graphql_denial(
@@ -3321,7 +3330,7 @@ async fn http_request_membership_drives_postgres_rls_and_returns_a_clean_connect
         assert!(!result.try_get::<bool>("", "provider_read").unwrap());
         assert_eq!(result.try_get::<i64>("", "providers").unwrap(), 0);
         axum::http::StatusCode::OK
-    }))
+  }))
     .route_layer(from_fn(AuthorizationMiddleware::handle))
     .route_layer(from_fn_with_state(middleware, AuthenticationMiddleware::handle));
     let response = tokio::time::timeout(
@@ -3439,8 +3448,8 @@ async fn restricted_query_errors_and_cancellation_discard_dirty_connections() {
                 [pid.into()])).await.unwrap().unwrap();
             if row.try_get::<bool>("", "started").unwrap() { break; }
             tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    }).await.unwrap();
+      }
+  }).await.unwrap();
     waiter.abort();
     assert!(waiter.await.unwrap_err().is_cancelled());
     let clean = tokio::time::timeout(Duration::from_secs(5), pool.query_one_raw(Statement::from_string(DbBackend::Postgres,
@@ -3524,11 +3533,12 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
         r#"permit(principal, action == Compallm::Action::"model.read", resource == Compallm::Organization::"{}");"#,
         organization.id
     );
-    let create_role = "mutation($input:RoleCreateInput!){organization{roles{create(input:$input){node{id name description}}}}}";
+    let create_role =
+        "mutation($input:RoleCreateInput!){roleCreate(input:$input){node{id name description}}}";
     let response = graphql_operation(&router, create_role, serde_json::json!({"input":{"name":"  API reader  ","description":"Read models", "cedarSource":policy}}), Some(&tokens.access_token), None, false).await;
     let body = graphql_body(response).await;
     assert!(body["errors"].is_null(), "{body}");
-    let role = &body["data"]["organization"]["roles"]["create"]["node"];
+    let role = &body["data"]["roleCreate"]["node"];
     assert_eq!(role["name"], "API reader");
     let role_id = role["id"].as_str().unwrap().to_owned();
     let stored = db
@@ -3539,12 +3549,18 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
     assert_eq!(stored.cedar_source, policy);
     assert!(!stored.org_owner);
 
-    let response = graphql_operation(&router,
-        "mutation($input:GroupCreateInput!){organization{groups{create(input:$input){node{id name roleIds}}}}}",
-        serde_json::json!({"input":{"name":"API readers", "description":"", "roleIds":[role_id]}}), Some(&tokens.access_token), None, false).await;
+    let response = graphql_operation(
+        &router,
+        "mutation($input:GroupCreateInput!){groupCreate(input:$input){node{id name roleIds}}}",
+        serde_json::json!({"input":{"name":"API readers", "description":"", "roleIds":[role_id]}}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
     let body = graphql_body(response).await;
     assert!(body["errors"].is_null(), "{body}");
-    let group = &body["data"]["organization"]["groups"]["create"]["node"];
+    let group = &body["data"]["groupCreate"]["node"];
     assert_eq!(group["roleIds"], serde_json::json!([role_id]));
     let group_id = group["id"].as_str().unwrap().to_owned();
     let stored = db
@@ -3556,27 +3572,21 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
     assert_eq!(stored.roles[0].id.to_string(), role_id);
 
     let response = graphql_operation(&router,
-        "query($role:ID!, $group:ID!, $foreign:ID!){organization{roles{list{edges{node{id}}} get(id:$role){node{id}} foreign:get(id:$foreign){node{id}}} groups{list{edges{node{id}}} get(id:$group){node{id}}}}}",
+        "query($role:ID!, $group:ID!, $foreign:ID!){roles{edges{node{id}}} role(id:$role){node{id}} foreign:role(id:$foreign){node{id}} groups{edges{node{id}}} group(id:$group){node{id}}}",
         serde_json::json!({"role":role_id,"group":group_id,"foreign":foreign_role.id.to_string()}), Some(&tokens.access_token), None, false).await;
     let body = graphql_body(response).await;
     assert!(body["errors"].is_null(), "{body}");
     assert_eq!(
-        body["data"]["organization"]["roles"]["list"]["edges"],
+        body["data"]["roles"]["edges"],
         serde_json::json!([{"node":{"id":role_id}}])
     );
     assert_eq!(
-        body["data"]["organization"]["groups"]["list"]["edges"],
+        body["data"]["groups"]["edges"],
         serde_json::json!([{"node":{"id":group_id}}])
     );
-    assert_eq!(
-        body["data"]["organization"]["roles"]["get"]["node"]["id"],
-        role_id
-    );
-    assert_eq!(
-        body["data"]["organization"]["groups"]["get"]["node"]["id"],
-        group_id
-    );
-    assert!(body["data"]["organization"]["roles"]["foreign"].is_null());
+    assert_eq!(body["data"]["role"]["node"]["id"], role_id);
+    assert_eq!(body["data"]["group"]["node"]["id"], group_id);
+    assert!(body["data"]["foreign"].is_null());
 
     let duplicate = graphql_operation(
         &router,
@@ -3609,7 +3619,7 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
             serde_json::json!({"name":"Denied role", "description":"", "cedarSource":""}),
         ),
         (
-            "mutation($input:GroupCreateInput!){organization{groups{create(input:$input){node{id}}}}}",
+            "mutation($input:GroupCreateInput!){groupCreate(input:$input){node{id}}}",
             serde_json::json!({"name":"Denied group", "description":"", "roleIds":[]}),
         ),
     ] {
@@ -3625,7 +3635,7 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
         assert_graphql_denial(response, 403).await;
     }
     let response = graphql_operation(&router,
-        "mutation($input:GroupCreateInput!){organization{groups{create(input:$input){node{id}}}}}",
+        "mutation($input:GroupCreateInput!){groupCreate(input:$input){node{id}}}",
         serde_json::json!({"input":{"name":"Foreign assignment", "description":"", "roleIds":[foreign_role.id.to_string()]}}), Some(&tokens.access_token), None, false).await;
     assert_graphql_denial(response, 404).await;
     assert_eq!(

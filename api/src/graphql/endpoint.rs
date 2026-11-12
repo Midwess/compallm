@@ -80,32 +80,7 @@ fn validate(request: &GraphQLRequest, schema: &ApplicationSchema) -> Result<(), 
     if selected.operation_type != OperationType::Mutation {
         return Err(());
     }
-    let root = single_field(&selected.selection_set, &document, &mut Vec::new())?;
-    let Selection::Field(root) = root else {
-        return Err(());
-    };
-    if root.item.name.item == "authentication" {
-        single_field(
-            root.item.selection_set.as_deref().ok_or(())?,
-            &document,
-            &mut Vec::new(),
-        )?;
-    }
-    if root.item.name.item == "organization" {
-        let domain = single_field(
-            root.item.selection_set.as_deref().ok_or(())?,
-            &document,
-            &mut Vec::new(),
-        )?;
-        let Selection::Field(domain) = domain else {
-            return Err(());
-        };
-        single_field(
-            domain.item.selection_set.as_deref().ok_or(())?,
-            &document,
-            &mut Vec::new(),
-        )?;
-    }
+    single_field(&selected.selection_set, &document, &mut Vec::new())?;
     Ok(())
 }
 

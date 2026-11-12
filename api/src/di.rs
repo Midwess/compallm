@@ -311,3 +311,9 @@ impl juniper::FromContext<Di> for RbacService {
         di.rbac.get().expect("RBAC service must be initialized")
     }
 }
+
+impl juniper::FromContext<Di> for Box<dyn OrganizationRepository> {
+    fn from(di: &Di) -> &Self {
+        &di.organizations
+    }
+}

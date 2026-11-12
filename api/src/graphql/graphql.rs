@@ -21,7 +21,7 @@ impl Query {
 
 pub struct Mutation;
 
-#[graphql_object(context = GraphqlContext)]
+#[graphql_object(context = GraphqlContext, scalar = juniper::DefaultScalarValue)]
 impl Mutation {
     fn authentication() -> super::authentication::mutation::Mutation {
         super::authentication::mutation::Mutation

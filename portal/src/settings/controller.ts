@@ -58,17 +58,17 @@ export class SettingsController implements Controller {
   private async loadPermissions(signal: AbortSignal, generation: number) {
     const readRoles = async () => {
       const selection = {
-        organization: { roles: { list: { id: true, name: true, description: true } } },
+        organization: { roles: { list: { edges: { node: { id: true, name: true, description: true } } } } },
       } satisfies QueryGenqlSelection
       const { organization } = await graphql(signal).query(selection)
-      return organization.roles.list.map((role) => ({ ...role, source: '', color: '' }))
+      return organization.roles.list.edges.map(({ node: role }) => ({ ...role, source: '', color: '' }))
     }
     const readGroups = async () => {
       const selection = {
-        organization: { groups: { list: { id: true, name: true, description: true } } },
+        organization: { groups: { list: { edges: { node: { id: true, name: true, description: true } } } } },
       } satisfies QueryGenqlSelection
       const { organization } = await graphql(signal).query(selection)
-      return organization.groups.list.map((group) => ({ ...group, roleIds: [], memberIds: [], color: '' }))
+      return organization.groups.list.edges.map(({ node: group }) => ({ ...group, roleIds: [], memberIds: [], color: '' }))
     }
     const [roles, groups] = await Promise.allSettled([readRoles(), readGroups()])
     if (signal.aborted || generation !== this.generation) return

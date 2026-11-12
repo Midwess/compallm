@@ -2,36 +2,40 @@ type AuthenticationMutation {
   """
   Explicit refresh Bearer only. Rebuild current authority; never set browser cookies.
   """
-  sessionRefresh: SessionCredentials!
+  sessionRefresh: SessionCredentialsPayload!
 
   """
   Revoke this verified login only. Clear cookie credentials after successful revocation.
   """
-  sessionRevoke: Boolean!
+  sessionRevoke: BooleanPayload!
 
   """
   Confirm an existing user's middleware-verified OTP challenge and create a scoped session.
   """
-  signinEmailConfirm(input: EmailCodeInput!): SessionCredentials!
+  signinEmailConfirm(input: EmailCodeInput!): SessionCredentialsPayload!
 
   """
   Request signin email admission for an existing active account.
   """
-  signinEmailRequest(input: EmailInput!): EmailChallenge!
+  signinEmailRequest(input: EmailInput!): EmailChallengePayload!
 
   """
   Confirm the middleware-verified OTP challenge and atomically create the account and session.
   """
-  signupEmailConfirm(input: EmailCodeInput!): SessionCredentials!
+  signupEmailConfirm(input: EmailCodeInput!): SessionCredentialsPayload!
 
   """
   Request signup email admission. Reject existing accounts before sending or issuing a challenge.
   """
-  signupEmailRequest(input: EmailInput!): EmailChallenge!
+  signupEmailRequest(input: EmailInput!): EmailChallengePayload!
 }
 
 type AuthenticationQuery {
-  session: Session!
+  session: SessionPayload!
+}
+
+type BooleanPayload {
+  node: Boolean!
 }
 
 """
@@ -44,6 +48,10 @@ type CreatedGroup {
   id: ID!
   name: String!
   roleIds: [ID!]!
+}
+
+type CreatedGroupPayload {
+  node: CreatedGroup!
 }
 
 """
@@ -67,6 +75,10 @@ Email admission succeeded; cookie delivery never exposes the OTP credential.
 type EmailChallenge {
   lifetime: TokenLifetime!
   token: String
+}
+
+type EmailChallengePayload {
+  node: EmailChallenge!
 }
 
 """
@@ -111,19 +123,33 @@ type Group {
   name: String!
 }
 
+type GroupConnection {
+  edges: [GroupEdge!]!
+  pageInfo: PageInfo!
+}
+
 input GroupCreateInput {
   description: String!
   name: String!
   roleIds: [String!]!
 }
 
+type GroupEdge {
+  cursor: String!
+  node: Group!
+}
+
 type GroupMutation {
-  create(input: GroupCreateInput!): CreatedGroup!
+  create(input: GroupCreateInput!): CreatedGroupPayload!
+}
+
+type GroupPayload {
+  node: Group!
 }
 
 type GroupQuery {
-  get(id: ID!): Group
-  list: [Group!]!
+  get(id: ID!): GroupPayload
+  list: GroupConnection!
 }
 
 type Mutation {
@@ -141,10 +167,21 @@ type OrganizationMutation {
   roles: RoleMutation!
 }
 
+type OrganizationPayload {
+  node: Organization!
+}
+
 type OrganizationQuery {
-  get: Organization!
+  get: OrganizationPayload!
   groups: GroupQuery!
   roles: RoleQuery!
+}
+
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
 }
 
 """
@@ -324,19 +361,33 @@ type Role {
   name: String!
 }
 
+type RoleConnection {
+  edges: [RoleEdge!]!
+  pageInfo: PageInfo!
+}
+
 input RoleCreateInput {
   cedarSource: String!
   description: String!
   name: String!
 }
 
+type RoleEdge {
+  cursor: String!
+  node: Role!
+}
+
 type RoleMutation {
-  create(input: RoleCreateInput!): Role!
+  create(input: RoleCreateInput!): RolePayload!
+}
+
+type RolePayload {
+  node: Role!
 }
 
 type RoleQuery {
-  get(id: ID!): Role
-  list: [Role!]!
+  get(id: ID!): RolePayload
+  list: RoleConnection!
 }
 
 type Session {
@@ -369,6 +420,14 @@ type SessionCredentials {
   accessToken: String
   refreshLifetime: TokenLifetime!
   refreshToken: String
+}
+
+type SessionCredentialsPayload {
+  node: SessionCredentials!
+}
+
+type SessionPayload {
+  node: Session!
 }
 
 """

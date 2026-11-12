@@ -169,21 +169,25 @@ scalar ContextTokens
 
 type AuthenticationMutation {
   "Request signup email admission. Reject existing accounts before sending or issuing a challenge."
-  signupEmailRequest(input: EmailInput!): EmailChallenge!
+  signupEmailRequest(input: EmailInput!): EmailChallengePayload!
   "Request signin email admission for an existing active account."
-  signinEmailRequest(input: EmailInput!): EmailChallenge!
+  signinEmailRequest(input: EmailInput!): EmailChallengePayload!
   "Confirm the middleware-verified OTP challenge and atomically create the account and session."
-  signupEmailConfirm(input: EmailCodeInput!): SessionCredentials!
+  signupEmailConfirm(input: EmailCodeInput!): SessionCredentialsPayload!
   "Confirm an existing user's middleware-verified OTP challenge and create a scoped session."
-  signinEmailConfirm(input: EmailCodeInput!): SessionCredentials!
+  signinEmailConfirm(input: EmailCodeInput!): SessionCredentialsPayload!
   "Explicit refresh Bearer only. Rebuild current authority; never set browser cookies."
-  sessionRefresh: SessionCredentials!
+  sessionRefresh: SessionCredentialsPayload!
   "Revoke this verified login only. Clear cookie credentials after successful revocation."
-  sessionRevoke: Boolean!
+  sessionRevoke: BooleanPayload!
 }
 
 type AuthenticationQuery {
-  session: Session!
+  session: SessionPayload!
+}
+
+type BooleanPayload {
+  node: Boolean!
 }
 
 type CreatedGroup {
@@ -193,10 +197,18 @@ type CreatedGroup {
   roleIds: [ID!]!
 }
 
+type CreatedGroupPayload {
+  node: CreatedGroup!
+}
+
 "Email admission succeeded; cookie delivery never exposes the OTP credential."
 type EmailChallenge {
   lifetime: TokenLifetime!
   token: String
+}
+
+type EmailChallengePayload {
+  node: EmailChallenge!
 }
 
 type Group {
@@ -205,13 +217,27 @@ type Group {
   description: String!
 }
 
+type GroupConnection {
+  edges: [GroupEdge!]!
+  pageInfo: PageInfo!
+}
+
+type GroupEdge {
+  cursor: String!
+  node: Group!
+}
+
 type GroupMutation {
-  create(input: GroupCreateInput!): CreatedGroup!
+  create(input: GroupCreateInput!): CreatedGroupPayload!
+}
+
+type GroupPayload {
+  node: Group!
 }
 
 type GroupQuery {
-  get(id: ID!): Group
-  list: [Group!]!
+  get(id: ID!): GroupPayload
+  list: GroupConnection!
 }
 
 type Mutation {
@@ -229,10 +255,21 @@ type OrganizationMutation {
   groups: GroupMutation!
 }
 
+type OrganizationPayload {
+  node: Organization!
+}
+
 type OrganizationQuery {
-  get: Organization!
+  get: OrganizationPayload!
   roles: RoleQuery!
   groups: GroupQuery!
+}
+
+type PageInfo {
+  startCursor: String
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
 }
 
 "Public catalog defaults; selecting a template creates no configured provider."
@@ -257,13 +294,27 @@ type Role {
   description: String!
 }
 
+type RoleConnection {
+  edges: [RoleEdge!]!
+  pageInfo: PageInfo!
+}
+
+type RoleEdge {
+  cursor: String!
+  node: Role!
+}
+
 type RoleMutation {
-  create(input: RoleCreateInput!): Role!
+  create(input: RoleCreateInput!): RolePayload!
+}
+
+type RolePayload {
+  node: Role!
 }
 
 type RoleQuery {
-  get(id: ID!): Role
-  list: [Role!]!
+  get(id: ID!): RolePayload
+  list: RoleConnection!
 }
 
 type Session {
@@ -283,6 +334,14 @@ type SessionCredentials {
   refreshLifetime: TokenLifetime!
   accessToken: String
   refreshToken: String
+}
+
+type SessionCredentialsPayload {
+  node: SessionCredentials!
+}
+
+type SessionPayload {
+  node: Session!
 }
 
 "Exact Unix-second validity and client throttle values encoded as decimal strings."

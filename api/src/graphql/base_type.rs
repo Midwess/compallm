@@ -9,6 +9,17 @@ use juniper::{
 pub use compallm_query::PageInfo;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Payload<T> {
+    pub node: T,
+}
+
+impl<T> From<T> for Payload<T> {
+    fn from(node: T) -> Self {
+        Self { node }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Edge<T> {
     pub cursor: String,
     pub node: T,
@@ -24,6 +35,31 @@ pub struct Connection<T> {
 pub type Collection<T> = Connection<T>;
 
 impl<T> Connection<T> {
+    /// Wraps a complete authorized result. Callers supply stable ordering values and scope.
+    pub fn complete(
+        nodes: Vec<T>,
+        scope: &str,
+        position: impl Fn(&T) -> Vec<Option<String>>,
+    ) -> Result<Self, compallm_query::CursorError> {
+        let edges = nodes
+            .into_iter()
+            .map(|node| {
+                Ok(Edge {
+                    cursor: compallm_query::Cursor::encode(position(&node), scope)?.0,
+                    node,
+                })
+            })
+            .collect::<Result<Vec<_>, compallm_query::CursorError>>()?;
+        Ok(Self {
+            page_info: PageInfo {
+                start_cursor: edges.first().map(|edge| edge.cursor.clone()),
+                end_cursor: edges.last().map(|edge| edge.cursor.clone()),
+                ..Default::default()
+            },
+            edges,
+        })
+    }
+
     pub fn map_nodes<U>(self, mut map: impl FnMut(T) -> U) -> Connection<U> {
         Connection {
             edges: self
@@ -120,6 +156,7 @@ macro_rules! connection_type {
     };
 }
 
+connection_type!(Payload, "Payload");
 connection_type!(Edge, "Edge");
 connection_type!(Connection, "Connection");
 
@@ -256,6 +293,70 @@ where
                 "edges" => executor.resolve_async(&(), &self.edges).await,
                 "pageInfo" => executor.resolve_with_ctx_async(&(), &self.page_info).await,
                 _ => Err(FieldError::from("Unknown connection field")),
+            }
+        })
+    }
+}
+
+impl<T> GraphQLType for Payload<T>
+where
+    T: GraphQLType<TypeInfo = ()> + BaseType<DefaultScalarValue>,
+{
+    fn name(_: &()) -> Option<ArcStr> {
+        Some(Self::NAME.into())
+    }
+
+    fn meta(_: &(), registry: &mut Registry) -> MetaType {
+        let fields = [registry.field::<T>("node", &())];
+        registry.build_object_type::<Self>(&(), &fields).into_meta()
+    }
+}
+
+impl<T> GraphQLValue for Payload<T>
+where
+    T: GraphQLType<TypeInfo = ()> + BaseType<DefaultScalarValue>,
+{
+    type Context = T::Context;
+    type TypeInfo = ();
+
+    fn type_name(&self, _: &()) -> Option<ArcStr> {
+        Self::name(&())
+    }
+
+    fn concrete_type_name(&self, _: &Self::Context, _: &()) -> String {
+        Self::NAME.into()
+    }
+
+    fn resolve_field(
+        &self,
+        _: &(),
+        field: &str,
+        _: &Arguments,
+        executor: &Executor<Self::Context>,
+    ) -> ExecutionResult {
+        match field {
+            "node" => executor.resolve(&(), &self.node),
+            _ => Err(FieldError::from("Unknown payload field")),
+        }
+    }
+}
+
+impl<T> GraphQLValueAsync for Payload<T>
+where
+    T: GraphQLType<TypeInfo = ()> + GraphQLValueAsync + BaseType<DefaultScalarValue>,
+    T::Context: Sync,
+{
+    fn resolve_field_async<'a>(
+        &'a self,
+        _: &'a (),
+        field: &'a str,
+        _: &'a Arguments,
+        executor: &'a Executor<Self::Context>,
+    ) -> BoxFuture<'a, ExecutionResult> {
+        Box::pin(async move {
+            match field {
+                "node" => executor.resolve_async(&(), &self.node).await,
+                _ => Err(FieldError::from("Unknown payload field")),
             }
         })
     }

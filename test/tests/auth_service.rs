@@ -2540,7 +2540,7 @@ async fn graphql_request(
         request = request.header("origin", "http://localhost");
     }
     let body = serde_json::json!({
-        "query": "query { authentication { first: session { id userId organizationId organizationName } second: session { id } } }"
+        "query": "query { authentication { first: session {node{ id userId organizationId organizationName }} second: session {node{ id }} } }"
     });
     router
         .clone()
@@ -2579,7 +2579,7 @@ async fn graphql_identity_uses_one_freshness_read_and_rejects_non_access_or_revo
         .unwrap();
     let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     assert!(body.get("errors").is_none());
-    assert!(body["data"]["authentication"]["first"].is_object());
+    assert!(body["data"]["authentication"]["first"]["node"].is_object());
     assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, 1);
 
     for token in [
@@ -2904,19 +2904,19 @@ async fn graphql_shared_schema_keeps_concurrent_session_identities_separate() {
         let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert!(body.get("errors").is_none());
         assert_eq!(
-            body["data"]["authentication"]["first"]["id"],
+            body["data"]["authentication"]["first"]["node"]["id"],
             expected.id.to_string()
         );
         assert_eq!(
-            body["data"]["authentication"]["second"]["id"],
+            body["data"]["authentication"]["second"]["node"]["id"],
             expected.id.to_string()
         );
         assert_eq!(
-            body["data"]["authentication"]["first"]["userId"],
+            body["data"]["authentication"]["first"]["node"]["userId"],
             expected.user_id.to_string()
         );
         assert_eq!(
-            body["data"]["authentication"]["first"]["organizationId"],
+            body["data"]["authentication"]["first"]["node"]["organizationId"],
             expected.organization_id.to_string()
         );
     }
@@ -2963,11 +2963,11 @@ async fn graphql_operation(
 async fn graphql_rejects_multiple_nested_organization_writes() {
     let fixture = Fixture::new(None);
     let router = fixture.graphql();
-    let query = r#"mutation { organization { roles { first: create(input: {name: "one", description: "", cedarSource: ""}) { id } second: create(input: {name: "two", description: "", cedarSource: ""}) { id } } } }"#;
+    let query = r#"mutation { organization { roles { first: create(input: {name: "one", description: "", cedarSource: ""}) {node{ id }} second: create(input: {name: "two", description: "", cedarSource: ""}) {node{ id }} } } }"#;
     let response =
         graphql_operation(&router, query, serde_json::json!({}), None, None, false).await;
     assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
-    let fragment_query = r#"mutation { organization { groups { ...Writes } } } fragment Writes on GroupMutation { first: create(input: {name: "one", description: "", roleIds: []}) { id } second: create(input: {name: "two", description: "", roleIds: []}) { id } }"#;
+    let fragment_query = r#"mutation { organization { groups { ...Writes } } } fragment Writes on GroupMutation { first: create(input: {name: "one", description: "", roleIds: []}) {node{ id }} second: create(input: {name: "two", description: "", roleIds: []}) {node{ id }} }"#;
     let response = graphql_operation(
         &router,
         fragment_query,
@@ -2978,7 +2978,7 @@ async fn graphql_rejects_multiple_nested_organization_writes() {
     )
     .await;
     assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
-    let single = r#"mutation { organization { groups { create(input: {name: "one", description: "", roleIds: []}) { id } } } }"#;
+    let single = r#"mutation { organization { groups { create(input: {name: "one", description: "", roleIds: []}) {node{ id }} } } }"#;
     let response =
         graphql_operation(&router, single, serde_json::json!({}), None, None, false).await;
     assert_eq!(response.status(), axum::http::StatusCode::OK);
@@ -3018,23 +3018,23 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let router = fixture.graphql();
     let response = graphql_operation(&router,
-        "mutation($input:EmailInput!){authentication{signinEmailRequest(input:$input){token lifetime{expiresInSeconds}}}}",
+        "mutation($input:EmailInput!){authentication{signinEmailRequest(input:$input){node{token lifetime{expiresInSeconds}}}}}",
         serde_json::json!({"input":{"email":"james@midwess.com","delivery":"TOKEN"}}),Some("invalid-bearer"),None,false).await;
     assert_eq!(response.status(), 200);
     assert!(!response.headers().contains_key("set-cookie"));
     let body = graphql_body(response).await;
-    let challenge = body["data"]["authentication"]["signinEmailRequest"]["token"]
+    let challenge = body["data"]["authentication"]["signinEmailRequest"]["node"]["token"]
         .as_str()
         .unwrap();
     let claims = EmailOtpAccessToken::try_from(decode_token(challenge, SECRET).unwrap()).unwrap();
     assert!(fixture.repo.0.lock().unwrap().logins.is_empty());
     let response = graphql_operation(&router,
-        "mutation($input:EmailCodeInput!){authentication{signinEmailConfirm(input:$input){accessToken refreshToken}}}",
+        "mutation($input:EmailCodeInput!){authentication{signinEmailConfirm(input:$input){node{accessToken refreshToken}}}}",
         serde_json::json!({"input":{"code":claims.code,"delivery":"TOKEN"}}),Some(challenge),None,false).await;
     assert_eq!(response.status(), 200);
     assert!(!response.headers().contains_key("set-cookie"));
     let body = graphql_body(response).await;
-    let tokens = &body["data"]["authentication"]["signinEmailConfirm"];
+    let tokens = &body["data"]["authentication"]["signinEmailConfirm"]["node"];
     let access = tokens["accessToken"].as_str().unwrap();
     let refresh = tokens["refreshToken"].as_str().unwrap();
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
@@ -3046,7 +3046,7 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     );
     let response = graphql_operation(
         &router,
-        "mutation{authentication{sessionRefresh{accessToken refreshToken}}}",
+        "mutation{authentication{sessionRefresh{node{accessToken refreshToken}}}}",
         serde_json::json!({}),
         Some(refresh),
         None,
@@ -3055,13 +3055,13 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     .await;
     assert!(!response.headers().contains_key("set-cookie"));
     let renewed = graphql_body(response).await;
-    let access = renewed["data"]["authentication"]["sessionRefresh"]["accessToken"]
+    let access = renewed["data"]["authentication"]["sessionRefresh"]["node"]["accessToken"]
         .as_str()
         .unwrap();
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
     let response = graphql_operation(
         &router,
-        "mutation{authentication{sessionRevoke}}",
+        "mutation{authentication{sessionRevoke{node}}}",
         serde_json::json!({}),
         Some(access),
         None,
@@ -3070,7 +3070,7 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     .await;
     assert!(!response.headers().contains_key("set-cookie"));
     assert_eq!(
-        graphql_body(response).await["data"]["authentication"]["sessionRevoke"],
+        graphql_body(response).await["data"]["authentication"]["sessionRevoke"]["node"],
         true
     );
     assert_graphql_denial(
@@ -3086,12 +3086,12 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     let fixture = Fixture::new(None);
     let router = fixture.graphql();
     let response = graphql_operation(&router,
-        "mutation($input:EmailInput!){authentication{signupEmailRequest(input:$input){token lifetime{expiresInSeconds}}}}",
+        "mutation($input:EmailInput!){authentication{signupEmailRequest(input:$input){node{token lifetime{expiresInSeconds}}}}}",
         serde_json::json!({"input":{"email":"james@midwess.com"}}),None,None,true).await;
     let cookies = response_cookies(&response);
     assert_eq!(response.status(), 200);
     assert!(
-        graphql_body(response).await["data"]["authentication"]["signupEmailRequest"]["token"]
+        graphql_body(response).await["data"]["authentication"]["signupEmailRequest"]["node"]["token"]
             .is_null()
     );
     let challenge = cookies
@@ -3102,11 +3102,11 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     let input = serde_json::json!({"input":{"code":claims.code}});
     // Aliases and fragments cannot conceal a second auth effect, even if skipped.
     let response = graphql_operation(&router,
-        "mutation($input:EmailCodeInput!){authentication{...A second:signupEmailConfirm(input:$input) @skip(if:true){accessToken}}} fragment A on AuthenticationMutation{first:signupEmailConfirm(input:$input){accessToken}}",
+        "mutation($input:EmailCodeInput!){authentication{...A second:signupEmailConfirm(input:$input) @skip(if:true){node{accessToken}}}} fragment A on AuthenticationMutation{first:signupEmailConfirm(input:$input){node{accessToken}}}",
         input.clone(),None,Some(&cookies),true).await;
     assert_eq!(response.status(), 400);
     assert!(fixture.repo.0.lock().unwrap().created.is_none());
-    let query = "mutation($input:EmailCodeInput!){authentication{signupEmailConfirm(input:$input){accessToken refreshToken accessLifetime{expiresInSeconds}}}}";
+    let query = "mutation($input:EmailCodeInput!){authentication{signupEmailConfirm(input:$input){node{accessToken refreshToken accessLifetime{expiresInSeconds}}}}}";
     let response =
         graphql_operation(&router, query, input.clone(), None, Some(&cookies), false).await;
     assert_graphql_denial(response, 403).await;
@@ -3114,9 +3114,9 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     let response = graphql_operation(&router, query, input, None, Some(&cookies), true).await;
     let cookies = response_cookies(&response);
     let body = graphql_body(response).await;
-    assert!(body["data"]["authentication"]["signupEmailConfirm"].is_object());
-    assert!(body["data"]["authentication"]["signupEmailConfirm"]["accessToken"].is_null());
-    assert!(body["data"]["authentication"]["signupEmailConfirm"]["refreshToken"].is_null());
+    assert!(body["data"]["authentication"]["signupEmailConfirm"]["node"].is_object());
+    assert!(body["data"]["authentication"]["signupEmailConfirm"]["node"]["accessToken"].is_null());
+    assert!(body["data"]["authentication"]["signupEmailConfirm"]["node"]["refreshToken"].is_null());
     assert!(fixture.repo.0.lock().unwrap().created.is_some());
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
     assert_eq!(
@@ -3127,7 +3127,7 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     );
     let response = graphql_operation(
         &router,
-        "mutation{authentication{sessionRefresh{accessToken}}}",
+        "mutation{authentication{sessionRefresh{node{accessToken}}}}",
         serde_json::json!({}),
         None,
         Some(&cookies),
@@ -3137,7 +3137,7 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     assert_graphql_denial(response, 401).await;
     let response = graphql_operation(
         &router,
-        "mutation{authentication{sessionRevoke}}",
+        "mutation{authentication{sessionRevoke{node}}}",
         serde_json::json!({}),
         None,
         Some(&cookies),
@@ -3146,7 +3146,7 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
     .await;
     assert_eq!(response.headers().get_all("set-cookie").iter().count(), 2);
     assert_eq!(
-        graphql_body(response).await["data"]["authentication"]["sessionRevoke"],
+        graphql_body(response).await["data"]["authentication"]["sessionRevoke"]["node"],
         true
     );
     assert_graphql_denial(
@@ -3524,11 +3524,11 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
         r#"permit(principal, action == Compallm::Action::"model.read", resource == Compallm::Organization::"{}");"#,
         organization.id
     );
-    let create_role = "mutation($input:RoleCreateInput!){organization{roles{create(input:$input){id name description}}}}";
+    let create_role = "mutation($input:RoleCreateInput!){organization{roles{create(input:$input){node{id name description}}}}}";
     let response = graphql_operation(&router, create_role, serde_json::json!({"input":{"name":"  API reader  ","description":"Read models", "cedarSource":policy}}), Some(&tokens.access_token), None, false).await;
     let body = graphql_body(response).await;
     assert!(body["errors"].is_null(), "{body}");
-    let role = &body["data"]["organization"]["roles"]["create"];
+    let role = &body["data"]["organization"]["roles"]["create"]["node"];
     assert_eq!(role["name"], "API reader");
     let role_id = role["id"].as_str().unwrap().to_owned();
     let stored = db
@@ -3540,11 +3540,11 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
     assert!(!stored.org_owner);
 
     let response = graphql_operation(&router,
-        "mutation($input:GroupCreateInput!){organization{groups{create(input:$input){id name roleIds}}}}",
+        "mutation($input:GroupCreateInput!){organization{groups{create(input:$input){node{id name roleIds}}}}}",
         serde_json::json!({"input":{"name":"API readers", "description":"", "roleIds":[role_id]}}), Some(&tokens.access_token), None, false).await;
     let body = graphql_body(response).await;
     assert!(body["errors"].is_null(), "{body}");
-    let group = &body["data"]["organization"]["groups"]["create"];
+    let group = &body["data"]["organization"]["groups"]["create"]["node"];
     assert_eq!(group["roleIds"], serde_json::json!([role_id]));
     let group_id = group["id"].as_str().unwrap().to_owned();
     let stored = db
@@ -3556,21 +3556,24 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
     assert_eq!(stored.roles[0].id.to_string(), role_id);
 
     let response = graphql_operation(&router,
-        "query($role:ID!, $group:ID!, $foreign:ID!){organization{roles{list{id} get(id:$role){id} foreign:get(id:$foreign){id}} groups{list{id} get(id:$group){id}}}}",
+        "query($role:ID!, $group:ID!, $foreign:ID!){organization{roles{list{edges{node{id}}} get(id:$role){node{id}} foreign:get(id:$foreign){node{id}}} groups{list{edges{node{id}}} get(id:$group){node{id}}}}}",
         serde_json::json!({"role":role_id,"group":group_id,"foreign":foreign_role.id.to_string()}), Some(&tokens.access_token), None, false).await;
     let body = graphql_body(response).await;
     assert!(body["errors"].is_null(), "{body}");
     assert_eq!(
-        body["data"]["organization"]["roles"]["list"],
-        serde_json::json!([{"id":role_id}])
+        body["data"]["organization"]["roles"]["list"]["edges"],
+        serde_json::json!([{"node":{"id":role_id}}])
     );
     assert_eq!(
-        body["data"]["organization"]["groups"]["list"],
-        serde_json::json!([{"id":group_id}])
+        body["data"]["organization"]["groups"]["list"]["edges"],
+        serde_json::json!([{"node":{"id":group_id}}])
     );
-    assert_eq!(body["data"]["organization"]["roles"]["get"]["id"], role_id);
     assert_eq!(
-        body["data"]["organization"]["groups"]["get"]["id"],
+        body["data"]["organization"]["roles"]["get"]["node"]["id"],
+        role_id
+    );
+    assert_eq!(
+        body["data"]["organization"]["groups"]["get"]["node"]["id"],
         group_id
     );
     assert!(body["data"]["organization"]["roles"]["foreign"].is_null());
@@ -3606,7 +3609,7 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
             serde_json::json!({"name":"Denied role", "description":"", "cedarSource":""}),
         ),
         (
-            "mutation($input:GroupCreateInput!){organization{groups{create(input:$input){id}}}}",
+            "mutation($input:GroupCreateInput!){organization{groups{create(input:$input){node{id}}}}}",
             serde_json::json!({"name":"Denied group", "description":"", "roleIds":[]}),
         ),
     ] {
@@ -3622,7 +3625,7 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
         assert_graphql_denial(response, 403).await;
     }
     let response = graphql_operation(&router,
-        "mutation($input:GroupCreateInput!){organization{groups{create(input:$input){id}}}}",
+        "mutation($input:GroupCreateInput!){organization{groups{create(input:$input){node{id}}}}}",
         serde_json::json!({"input":{"name":"Foreign assignment", "description":"", "roleIds":[foreign_role.id.to_string()]}}), Some(&tokens.access_token), None, false).await;
     assert_graphql_denial(response, 404).await;
     assert_eq!(

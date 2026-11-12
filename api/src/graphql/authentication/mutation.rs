@@ -3,7 +3,7 @@ use super::{
     input::{CredentialDelivery, EmailCodeInput, EmailInput},
 };
 use crate::{
-    graphql::error::Error,
+    graphql::{base_type::Payload, error::Error},
     http::authentication::{AuthenticationContext, CookieDelivery, UserContext},
 };
 use compallm_core::authentication::AuthService;
@@ -11,7 +11,7 @@ use validify::Validify;
 
 pub struct Mutation;
 
-#[juniper::graphql_object(name = "AuthenticationMutation", context = crate::graphql::GraphqlContext)]
+#[juniper::graphql_object(name = "AuthenticationMutation", context = crate::graphql::GraphqlContext, scalar = juniper::DefaultScalarValue)]
 impl Mutation {
     /// Request signup email admission. Reject existing accounts before sending or issuing a challenge.
     pub(crate) async fn signup_email_request(
@@ -19,7 +19,7 @@ impl Mutation {
         #[graphql(context)] auth: &AuthService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
-    ) -> Result<EmailChallenge, Error> {
+    ) -> Result<Payload<EmailChallenge>, Error> {
         let mut input = input;
         input.validify()?;
         let mode = input.delivery.unwrap_or_default();
@@ -32,6 +32,7 @@ impl Mutation {
             cookies,
         )
             .try_into()
+            .map(|node: EmailChallenge| node.into())
     }
 
     /// Request signin email admission for an existing active account.
@@ -40,7 +41,7 @@ impl Mutation {
         #[graphql(context)] auth: &AuthService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
-    ) -> Result<EmailChallenge, Error> {
+    ) -> Result<Payload<EmailChallenge>, Error> {
         let mut input = input;
         input.validify()?;
         let mode = input.delivery.unwrap_or_default();
@@ -53,6 +54,7 @@ impl Mutation {
             cookies,
         )
             .try_into()
+            .map(|node: EmailChallenge| node.into())
     }
 
     /// Confirm the middleware-verified OTP challenge and atomically create the account and session.
@@ -61,7 +63,7 @@ impl Mutation {
         #[graphql(context)] auth: &AuthService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
-    ) -> Result<SessionCredentials, Error> {
+    ) -> Result<Payload<SessionCredentials>, Error> {
         let mut input = input;
         input.validify()?;
         let mode = input.delivery.unwrap_or_default();
@@ -76,6 +78,7 @@ impl Mutation {
             cookies,
         )
             .try_into()
+            .map(|node: SessionCredentials| node.into())
     }
 
     /// Confirm an existing user's middleware-verified OTP challenge and create a scoped session.
@@ -84,7 +87,7 @@ impl Mutation {
         #[graphql(context)] auth: &AuthService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
-    ) -> Result<SessionCredentials, Error> {
+    ) -> Result<Payload<SessionCredentials>, Error> {
         input.validify()?;
         let mode = input.delivery.unwrap_or_default();
         if mode == CredentialDelivery::Cookie {
@@ -98,6 +101,7 @@ impl Mutation {
             cookies,
         )
             .try_into()
+            .map(|node: SessionCredentials| node.into())
     }
 
     /// Explicit refresh Bearer only. Rebuild current authority; never set browser cookies.
@@ -105,7 +109,7 @@ impl Mutation {
         #[graphql(context)] auth: &AuthService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
-    ) -> Result<SessionCredentials, Error> {
+    ) -> Result<Payload<SessionCredentials>, Error> {
         (
             identity
                 .execute(auth.refresh(identity.refresh().await?))
@@ -114,6 +118,7 @@ impl Mutation {
             cookies,
         )
             .try_into()
+            .map(|node: SessionCredentials| node.into())
     }
 
     /// Revoke this verified login only. Clear cookie credentials after successful revocation.
@@ -122,11 +127,11 @@ impl Mutation {
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] cookies: &CookieDelivery,
-    ) -> Result<bool, Error> {
+    ) -> Result<Payload<bool>, Error> {
         identity
             .execute(auth.signout(user.require().await?.access()))
             .await?;
         cookies.clear()?;
-        Ok(true)
+        Ok(true.into())
     }
 }

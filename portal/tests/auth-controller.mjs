@@ -56,10 +56,12 @@ test('confirmed signup retries only identity loading after a temporary failure',
     const { query } = JSON.parse(init.body)
     assert.equal(init.credentials, 'same-origin')
     if (query.includes('signupEmailRequest'))
-      return reply({ authentication: { signupEmailRequest: { lifetime: { expiresInSeconds: '600', throttleSeconds: '30' } } } })
+      return reply({
+        authentication: { signupEmailRequest: { node: { lifetime: { expiresInSeconds: '600', throttleSeconds: '30' } } } },
+      })
     if (query.includes('signupEmailConfirm')) {
       confirmations++
-      return reply({ authentication: { signupEmailConfirm: { accessLifetime: { expiresInSeconds: '60' } } } })
+      return reply({ authentication: { signupEmailConfirm: { node: { accessLifetime: { expiresInSeconds: '60' } } } } })
     }
     identities++
     return identities === 1
@@ -67,7 +69,7 @@ test('confirmed signup retries only identity loading after a temporary failure',
           { errors: [{ message: 'Temporarily unavailable', extensions: { code: 'SERVICE_UNAVAILABLE', status: 503 } }] },
           { status: 200 },
         )
-      : reply({ authentication: { session: user } })
+      : reply({ authentication: { session: { node: user } } })
   }
   try {
     controller.start('signup')
@@ -95,7 +97,7 @@ test('signout cancels deduplicated identity checks and ignores their late result
   let queries = 0
   globalThis.fetch = async (_input, init) => {
     const { query } = JSON.parse(init.body)
-    if (query.includes('sessionRevoke')) return reply({ authentication: { sessionRevoke: true } })
+    if (query.includes('sessionRevoke')) return reply({ authentication: { sessionRevoke: { node: true } } })
     queries++
     return new Promise((resolve) => {
       resolveIdentity = resolve
@@ -106,7 +108,7 @@ test('signout cancels deduplicated identity checks and ignores their late result
     const second = controller.ensureCurrentUser().catch((error) => error)
     assert.equal(queries, 1)
     await controller.signOut()
-    resolveIdentity(reply({ authentication: { session: user } }))
+    resolveIdentity(reply({ authentication: { session: { node: user } } }))
     await Promise.all([first, second])
     assert.equal(controller.store.getState().currentUser, null)
     assert.equal(controller.store.getState().status, 'anonymous')

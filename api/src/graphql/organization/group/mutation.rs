@@ -1,17 +1,18 @@
 use super::{CreatedGroup, input::GroupCreateInput};
+use crate::graphql::base_type::Payload;
 use compallm_core::authorization::{condition::CheckPermission, policy::Action};
 use juniper::ID;
 use validify::Validify;
 
 pub struct Mutation;
 
-#[juniper::graphql_object(name = "GroupMutation", context = crate::graphql::GraphqlContext)]
+#[juniper::graphql_object(name = "GroupMutation", context = crate::graphql::GraphqlContext, scalar = juniper::DefaultScalarValue)]
 impl Mutation {
     pub(crate) async fn create(
         mut input: GroupCreateInput,
         #[graphql(context)] service: &compallm_core::authorization::rbac::RbacService,
         #[graphql(context)] authority: &crate::http::authorization::AuthorizationContext,
-    ) -> Result<CreatedGroup, crate::graphql::error::Error> {
+    ) -> Result<Payload<CreatedGroup>, crate::graphql::error::Error> {
         input.validify()?;
         let role_ids = input
             .role_ids
@@ -35,6 +36,7 @@ impl Mutation {
                 .iter()
                 .map(|role| ID::new(role.id.to_string()))
                 .collect(),
-        })
+        }
+        .into())
     }
 }

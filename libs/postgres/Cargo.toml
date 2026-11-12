@@ -19,6 +19,8 @@ path = "src/main.rs"
 required-features = ["cli"]
 
 [dependencies]
+compallm-query.workspace = true
+thiserror = { workspace = true, features = ["std"] }
 cedar-policy.workspace = true
 anyhow = { workspace = true, features = ["std"] }
 async-trait.workspace = true
@@ -33,7 +35,7 @@ compallm-utils.workspace = true
 axum.workspace = true
 hero = { workspace = true, features = ["distributed-id"] }
 loco-rs = { workspace = true, features = ["with-db"] }
-sea-orm = { workspace = true, features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono"] }
+sea-orm = { workspace = true, features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "postgres-array"] }
 sea-query-sqlx = { version = "0.9.1", features = ["sqlx-postgres"] }
 sea-orm-migration = { workspace = true, features = ["sqlx-postgres", "runtime-tokio-rustls"] }
 sea-orm-cli = { workspace = true, optional = true, features = ["codegen", "sqlx-postgres", "runtime-tokio-rustls"] }

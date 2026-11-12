@@ -2,7 +2,7 @@ use super::{
     GraphqlContext, authentication,
     base_type::{Collection, Payload},
     error::Error,
-    organization,
+    organization, policy,
 };
 use crate::http::{
     authentication::{AuthenticationContext, CookieDelivery, UserContext},
@@ -23,6 +23,13 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
+    /// Return the system-owned organization policy action catalog.
+    async fn organization_policy_actions(
+        #[graphql(context)] user: &UserContext,
+    ) -> Result<Collection<policy::PolicyAction>, Error> {
+        policy::query::list(user).await
+    }
+
     /// Return the verified current session identity.
     async fn session(
         #[graphql(context)] user: &UserContext,
@@ -143,6 +150,15 @@ impl Mutation {
         organization::role::mutation::create(input, service, authority).await
     }
 
+    async fn role_update(
+        id: ID,
+        input: organization::role::input::RoleUpdateInput,
+        #[graphql(context)] service: &RbacService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<organization::role::Role>, Error> {
+        organization::role::mutation::update(id, input, service, authority).await
+    }
+
     /// Create a group and its initial role assignments in the verified active organization.
     async fn group_create(
         input: organization::group::input::GroupCreateInput,
@@ -229,6 +245,7 @@ impl GraphQLValueAsync for RegisteredQuery {
 #[allow(dead_code)]
 struct Inputs {
     role_create: super::organization::role::input::RoleCreateInput,
+    role_update: super::organization::role::input::RoleUpdateInput,
     group_create: super::organization::group::input::GroupCreateInput,
     email: super::authentication::input::EmailInput,
     code: super::authentication::input::EmailCodeInput,

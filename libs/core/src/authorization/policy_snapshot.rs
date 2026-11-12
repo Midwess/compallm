@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use cedar_policy::PolicySet;
-use cedar_policy_formatter::lexer::get_token_stream;
 use serde::{Deserialize, Serialize};
 
+use super::policy::compact_policy_source;
 use crate::organization::OrganizationMember;
 
 /// Effective Cedar authority for one session's organization membership.
@@ -25,15 +25,36 @@ pub struct PolicySnapshot {
 
 impl PolicySnapshot {
     /// Pack effective role sources and relationships from an already validated membership.
-    pub fn new(member: &OrganizationMember) -> Self {
+    pub fn new(member: &OrganizationMember) -> anyhow::Result<Self> {
         let sources = member
             .effective_roles()
-            .map(|role| (role.id, role.cedar_source.as_str()))
-            .collect::<BTreeSet<_>>();
+            .map(|role| ((role.id, role.cedar_source.as_str()), role))
+            .collect::<BTreeMap<_, _>>();
         let cedar_source = sources
-            .into_iter()
-            .map(|(_, source)| Self::compact(source))
-            .collect::<Vec<_>>()
+            .into_values()
+            .map(|role| {
+                anyhow::ensure!(
+                    role.organization_id == member.organization_id,
+                    "foreign role in membership"
+                );
+                let policies = PolicySet::try_from(role)?;
+                let mut statements = policies
+                    .policies()
+                    .map(|policy| {
+                        (
+                            policy.id().to_string(),
+                            compact_policy_source(&policy.to_string()),
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                statements.sort();
+                Ok(statements
+                    .into_iter()
+                    .map(|(_, source)| source)
+                    .collect::<Vec<_>>()
+                    .join("\n"))
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?
             .join("\n");
         let role_ids = member
             .roles
@@ -53,41 +74,11 @@ impl PolicySnapshot {
             .into_iter()
             .map(|(id, roles)| (id, roles.into_iter().collect()))
             .collect();
-        Self {
+        Ok(Self {
             cedar_source,
             role_ids,
             group_roles,
-        }
-    }
-
-    /// Remove comments and unnecessary whitespace without altering Cedar tokens.
-    fn compact(source: &str) -> String {
-        let Some((tokens, _)) = get_token_stream(source) else {
-            return source.to_owned();
-        };
-        if tokens.is_empty() {
-            return String::new();
-        }
-        let mut result = String::with_capacity(source.len());
-        for (index, token) in tokens.iter().enumerate() {
-            if index > 0 {
-                let previous = &tokens[index - 1];
-                let left = &source[previous.span.clone()];
-                let right = &source[token.span.clone()];
-                let pair = format!("{left}{right}");
-                let unchanged = get_token_stream(&pair).is_some_and(|(pair_tokens, _)| {
-                    pair_tokens.len() == 2
-                        && pair_tokens[0].token == previous.token
-                        && pair_tokens[1].token == token.token
-                        && pair_tokens[0].span.end == left.len()
-                });
-                if !unchanged {
-                    result.push(' ');
-                }
-            }
-            result.push_str(&source[token.span.clone()]);
-        }
-        result
+        })
     }
 }
 
@@ -101,8 +92,10 @@ impl TryFrom<&PolicySnapshot> for PolicySet {
     }
 }
 
-impl From<&OrganizationMember> for PolicySnapshot {
-    fn from(member: &OrganizationMember) -> Self {
+impl TryFrom<&OrganizationMember> for PolicySnapshot {
+    type Error = anyhow::Error;
+
+    fn try_from(member: &OrganizationMember) -> Result<Self, Self::Error> {
         Self::new(member)
     }
 }

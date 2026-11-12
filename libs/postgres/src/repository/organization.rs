@@ -17,7 +17,7 @@ use compallm_core::{
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, JoinType, ModelTrait, QueryFilter, QueryOrder,
     QuerySelect, QueryTrait, Set,
-    sea_query::{Expr, LockType, UnionType},
+    sea_query::{Alias, Expr, Func, LockType, UnionType},
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -165,6 +165,39 @@ impl CoreRepository for OrganizationRepository {
     fn supports_role_policy(&self, source: &str) -> bool {
         crate::rls::validate_policy_source(source).is_ok()
     }
+    async fn update_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+        name: Option<String>,
+        description: Option<String>,
+        cedar_source: Option<String>,
+    ) -> Result<(), OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let mut update = Roles::update_many()
+            .filter(RoleColumn::OrganizationId.eq(Self::database_id(organization_id)?))
+            .filter(RoleColumn::Id.eq(Self::database_id(role_id)?));
+        if let Some(name) = name {
+            update = update.col_expr(RoleColumn::Name, Expr::value(name));
+        }
+        if let Some(description) = description {
+            update = update.col_expr(RoleColumn::Description, Expr::value(description));
+        }
+        if let Some(source) = cedar_source {
+            update = update.col_expr(RoleColumn::CedarSource, Expr::value(source));
+        }
+        if update
+            .exec(db)
+            .await
+            .map_err(Self::creation_error)?
+            .rows_affected
+            == 0
+        {
+            return Err(OrganizationRepositoryError::NotFound);
+        }
+        Ok(())
+    }
     async fn lock_role(
         &self,
         organization_id: u64,
@@ -181,7 +214,17 @@ impl CoreRepository for OrganizationRepository {
             Self::database_id(organization_id)?,
             Self::database_id(role_id)?,
         ))
+        .select_only()
+        .columns([
+            RoleColumn::OrganizationId,
+            RoleColumn::Id,
+            RoleColumn::Name,
+            RoleColumn::Description,
+            RoleColumn::OrgOwner,
+        ])
+        .expr_as(Expr::value(String::new()), "cedar_source")
         .lock_exclusive()
+        .into_model::<OrganizationRoleSchema>()
         .one(db)
         .await
         .map_err(OrganizationRepositoryError::database)?
@@ -403,6 +446,33 @@ impl CoreRepository for OrganizationRepository {
     ) -> Result<Option<Role>, OrganizationRepositoryError> {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
+        if db.rls().is_some() {
+            return Roles::find_by_id((
+                Self::database_id(organization_id)?,
+                Self::database_id(role_id)?,
+            ))
+            .select_only()
+            .columns([
+                RoleColumn::OrganizationId,
+                RoleColumn::Id,
+                RoleColumn::Name,
+                RoleColumn::Description,
+                RoleColumn::OrgOwner,
+            ])
+            .expr_as(
+                Func::cust(Alias::new("compallm_rls.role_policy"))
+                    .arg(Expr::col(RoleColumn::OrganizationId))
+                    .arg(Expr::col(RoleColumn::Id)),
+                "cedar_source",
+            )
+            .into_model::<OrganizationRoleSchema>()
+            .one(db)
+            .await
+            .map_err(OrganizationRepositoryError::database)?
+            .map(Role::try_from)
+            .transpose()
+            .map_err(OrganizationRepositoryError::database);
+        }
         Roles::find_by_id((
             Self::database_id(organization_id)?,
             Self::database_id(role_id)?,

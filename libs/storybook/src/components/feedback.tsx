@@ -1,4 +1,4 @@
-import { animated, overlay } from './motion'
+import { animated, LoadingMotion, overlay } from './motion'
 import { cloneElement, useEffect, useId, useRef, useState, type HTMLAttributes, type ReactElement, type ReactNode } from 'react'
 import { cx } from './shared'
 import { RichMessage } from './rich-message'
@@ -8,22 +8,29 @@ import { InfoIcon } from '@phosphor-icons/react/dist/csr/Info'
 import { WarningCircleIcon } from '@phosphor-icons/react/dist/csr/WarningCircle'
 import { WarningIcon } from '@phosphor-icons/react/dist/csr/Warning'
 import { XIcon } from '@phosphor-icons/react/dist/csr/X'
+import { CheckCircleIcon } from '@phosphor-icons/react/dist/csr/CheckCircle'
+import { SpinnerGapIcon } from '@phosphor-icons/react/dist/csr/SpinnerGap'
 
 export interface ToastProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
   message: string
-  tone?: 'info' | 'error' | 'warning'
+  tone?: 'info' | 'error' | 'warning' | 'success' | 'loading'
+  action?: { label: string; onClick: () => void }
   onDismiss: () => void
   dismissLabel?: string
 }
 
 const toastTones = {
-  info: { Icon: InfoIcon, color: 'text-focus', label: 'Info' },
+  info: { Icon: InfoIcon, color: 'text-primary', label: 'Info' },
   error: { Icon: WarningCircleIcon, color: 'text-error', label: 'Error' },
   warning: { Icon: WarningIcon, color: 'text-warning', label: 'Warning' },
+  success: { Icon: CheckCircleIcon, color: 'text-success', label: 'Success' },
+  loading: { Icon: SpinnerGapIcon, color: 'text-primary', label: 'Loading' },
 }
 
 export function Toast({
   message,
+  title,
+  action,
   tone = 'info',
   onDismiss,
   dismissLabel = 'Dismiss notification',
@@ -31,22 +38,54 @@ export function Toast({
   ...props
 }: ToastProps) {
   const { Icon, color, label } = toastTones[tone]
+  const icon = <Icon size={20} weight="regular" aria-hidden="true" />
   return (
     <div
       {...props}
       data-ui="toast"
       data-tone={tone}
       className={cx(
-        'flex min-h-18 w-90 max-w-full items-center gap-2 rounded-[10px]',
-        'border-[0.5px] border-border bg-elevated p-4 font-sans text-xsm leading-5 text-text',
+        'flex w-100 max-w-full items-start gap-2.5 rounded-xl',
+        'border border-border bg-elevated p-3 font-sans text-xsm leading-5 text-text shadow-lg',
         className,
       )}
     >
-      <Icon size={16} className={cx('shrink-0', color)} aria-hidden="true" />
-      <p className="min-w-0 flex-1 wrap-anywhere" role={tone === 'error' ? 'alert' : 'status'} aria-atomic="true">
-        <span className="sr-only">{label}: </span>
-        <RichMessage message={message} />
-      </p>
+      <span className={cx('mt-0.5 inline-flex shrink-0', color)}>
+        {tone === 'loading' ? <LoadingMotion>{icon}</LoadingMotion> : icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="wrap-anywhere" role={tone === 'error' ? 'alert' : 'status'} aria-atomic="true">
+          <span className="sr-only">{label}: </span>
+          {title ? <p className="text-sm leading-5.5 font-semibold">{title}</p> : null}
+          <div className={cx(title ? 'mt-0.5 text-muted' : 'text-text')}>
+            <RichMessage message={message} />
+          </div>
+        </div>
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <animated.button
+            type="button"
+            onClick={onDismiss}
+            className={cx(
+              'min-h-6 cursor-pointer rounded text-muted hover:text-text',
+              'focus-visible:outline-2 focus-visible:outline-focus',
+            )}
+          >
+            Dismiss
+          </animated.button>
+          {action ? (
+            <animated.button
+              type="button"
+              onClick={action.onClick}
+              className={cx(
+                'min-h-6 cursor-pointer rounded text-primary hover:text-focus',
+                'focus-visible:outline-2 focus-visible:outline-focus',
+              )}
+            >
+              {action.label}
+            </animated.button>
+          ) : null}
+        </div>
+      </div>
       <animated.button
         type="button"
         onClick={onDismiss}
@@ -56,7 +95,7 @@ export function Toast({
           'hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
         )}
       >
-        <XIcon size={12} aria-hidden="true" />
+        <XIcon size={16} weight="regular" aria-hidden="true" />
       </animated.button>
     </div>
   )

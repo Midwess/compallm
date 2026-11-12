@@ -5,14 +5,14 @@ export { policyActions } from './policy-catalog'
 export function actionSource(action: string) {
   const condition = action === 'usage.read.own' ? ' when { resource.owner == principal }' : ''
   return (
-    `permit(\n  principal,\n  action == Compallm::Action::${JSON.stringify(action)},\n` +
-    `  resource in Compallm::Organization::"org-7"\n)${condition};`
+    `permit(\n  principal in ?principal,\n  action == Compallm::Action::${JSON.stringify(action)},\n` +
+    `  resource in ?resource\n)${condition};`
   )
 }
 export const modelOperatorSource = `${actionSource('model.use')}\n\n${actionSource('usage.read.own')}`
 export const advancedSource =
   '// Restrict model use to the production environment.\n' +
-  modelOperatorSource.replace('org-7"\n);', 'org-7"\n) when { context.environment == "production" };')
+  modelOperatorSource.replace('?resource\n);', '?resource\n) when { context.environment == "production" };')
 
 export const initialSettings: Partial<SettingsState> = {
   codeExamples: {

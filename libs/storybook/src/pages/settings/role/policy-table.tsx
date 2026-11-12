@@ -80,26 +80,55 @@ function PermissionRow({
   disabled: boolean
 }) {
   const c = useRoleController()
-  const advanced = statements.some((p) => !p.editable || p.advanced)
+  const disabledPolicies = useRole((state) => state.disabledPolicies?.[action.id])
+  const permits = statements.filter((p) => p.effect !== 'forbid')
+  const advanced = permits.some((p) => !p.editable)
+  const denied = statements.some((p) => p.effect === 'forbid')
+  const reason = permits.find((p) => !p.editable)?.reason ?? (advanced ? 'Edit this action in Cedar.' : undefined)
   return (
     <Table.Row id={id} className="[&>td]:border-b [&>td]:border-divider">
       <Table.Cell className="py-1.5 pl-6 pr-4">
         <span className="block truncate text-xsm leading-4.5 font-medium" title={action.description}>
           {action.label}
         </span>
-        <span className="block truncate text-[11px] leading-4 text-muted">{action.id}</span>
+        <span className="block truncate text-[11px] leading-4 text-muted">
+          {action.id}
+          {denied ? ' · Deny rule' : null}
+          {statements.some((p) => p.resourceRestricted) ? ' · Advanced scope' : null}
+        </span>
+        {reason ? <span className="block text-xs text-muted">{reason}</span> : null}
+        {reason ? (
+          <Button variant="ghost" className="h-6 px-0 text-xs" onClick={() => c.setPolicyMode('cedar')}>
+            Edit in Cedar
+          </Button>
+        ) : null}
+        {!permits.length && disabledPolicies?.length ? (
+          <details className="mt-1 text-xs text-muted">
+            <summary className="cursor-pointer">Re-enabling restores these rules</summary>
+            <p>Retained until you leave this role or edit the Cedar source.</p>
+            {disabledPolicies.map((source) => (
+              <pre key={source} className="mt-1 whitespace-pre-wrap wrap-break-word">
+                {source}
+              </pre>
+            ))}
+          </details>
+        ) : null}
+        {statements.length ? (
+          <details className="mt-1 text-xs text-muted">
+            <summary className="cursor-pointer">Scope and rules</summary>
+            {[...new Set(statements.map((entry) => entry.source))].map((source) => (
+              <pre key={source} className="mt-1 whitespace-pre-wrap wrap-break-word">
+                {source}
+              </pre>
+            ))}
+          </details>
+        ) : null}
       </Table.Cell>
-      <Table.Cell className="px-1 py-0 text-xs text-muted">
-        {statements.some((p) => p.resourceRestricted)
-          ? 'Advanced scope'
-          : action.scope.trim().toLowerCase() === 'this organization'
-            ? null
-            : action.scope}
-      </Table.Cell>
+      <Table.Cell className="px-1 py-0 text-xs text-muted">{action.description}</Table.Cell>
       <Table.Cell className="px-2 py-0">
         <Switch
           aria-label={action.label}
-          checked={statements.length > 0}
+          checked={permits.length > 0}
           disabled={disabled || advanced}
           onChange={() => c.togglePolicyAction(action.id)}
         />
@@ -114,7 +143,6 @@ export function PolicyTable() {
     draft = useRole((s) => s.draft),
     query = useRole((s) => s.query),
     filters = useRole((s) => s.filters),
-    readonly = useSettings((s) => s.readonly),
     busy = useRole((s) => s.busy)
   const [disclosure, setDisclosure] = useState<Record<string, boolean>>({})
   const id = useId()
@@ -128,7 +156,7 @@ export function PolicyTable() {
   const categories = [...new Set(actions.map((a) => a.category))]
   const normalized = query.trim().toLocaleLowerCase()
   const filtered = actions.filter((a) => {
-    const selected = projection.has(a.id)
+    const selected = (projection.get(a.id) ?? []).some((entry) => entry.effect !== 'forbid')
     return (
       (!normalized || `${a.label} ${a.id} ${a.description} ${a.category}`.toLocaleLowerCase().includes(normalized)) &&
       (!filters['policy-resource'] || filters['policy-resource'] === 'all' || filters['policy-resource'] === a.category) &&
@@ -137,8 +165,8 @@ export function PolicyTable() {
     )
   })
   const filtering = Boolean(normalized) || Object.values(filters).some((v) => v && v !== 'all')
-  const disabled = readonly || draft.builtin || busy || draft.parsing || draft.diagnostics.length > 0
-  const selectedCount = actions.filter((a) => projection.has(a.id)).length
+  const disabled = busy || draft.parsing || draft.diagnostics.length > 0
+  const selectedCount = actions.filter((a) => (projection.get(a.id) ?? []).some((entry) => entry.effect !== 'forbid')).length
   return (
     <SectionSurface className="flex min-w-0 flex-col overflow-hidden p-0">
       <div className="flex shrink-0 flex-wrap items-center gap-2 p-4">
@@ -159,6 +187,21 @@ export function PolicyTable() {
           ) : null,
         )}
       </div>
+      {draft.projection.some((entry) => !entry.action) ? (
+        <div className="px-4 pb-4 text-xs text-muted">
+          {[...new Map(draft.projection.filter((entry) => !entry.action).map((entry) => [entry.source, entry])).values()].map(
+            (entry) => (
+              <details key={entry.source} className="mt-2">
+                <summary className="cursor-pointer">{entry.reason ?? 'Advanced Cedar statement'}</summary>
+                <pre className="mt-1 whitespace-pre-wrap wrap-break-word">{entry.source}</pre>
+                <Button variant="ghost" className="h-6 px-0 text-xs" onClick={() => c.setPolicyMode('cedar')}>
+                  Edit in Cedar
+                </Button>
+              </details>
+            ),
+          )}
+        </div>
+      ) : null}
       <div
         tabIndex={0}
         role="region"
@@ -175,7 +218,7 @@ export function PolicyTable() {
             <Table.Header className="sticky top-0 z-20 bg-inset">
               <Table.Row>
                 <Table.Head className="px-2 py-0">Policy</Table.Head>
-                <Table.Head className="px-1 py-0">Resource scope</Table.Head>
+                <Table.Head className="px-1 py-0">Description</Table.Head>
                 <Table.Head className="px-2 py-0">Allow</Table.Head>
               </Table.Row>
             </Table.Header>
@@ -183,9 +226,12 @@ export function PolicyTable() {
               const matched = filtered.filter((a) => a.category === category)
               if (!matched.length) return null
               const all = actions.filter((a) => a.category === category)
-              const selected = all.filter((a) => projection.has(a.id)).length
-              const editable = matched.filter((a) => !(projection.get(a.id) ?? []).some((p) => !p.editable))
-              const allEditableSelected = editable.length > 0 && editable.every((a) => projection.has(a.id))
+              const selected = all.filter((a) => (projection.get(a.id) ?? []).some((p) => p.effect !== 'forbid')).length
+              const editable = matched.filter(
+                (a) => !(projection.get(a.id) ?? []).some((p) => p.effect !== 'forbid' && !p.editable),
+              )
+              const allEditableSelected =
+                editable.length > 0 && editable.every((a) => (projection.get(a.id) ?? []).some((p) => p.effect !== 'forbid'))
               const open = disclosure[category] ?? (filtering || defaultExpanded.includes(category))
               return (
                 <Table.Category

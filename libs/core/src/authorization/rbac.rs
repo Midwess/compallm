@@ -11,7 +11,6 @@ use super::{
 };
 use crate::organization::Role;
 
-#[expect(dead_code, reason = "RBAC administration endpoints remain pending")]
 pub struct RbacService {
     auth_service: &'static AuthService,
     organizations: &'static Box<dyn OrganizationRepository>,
@@ -92,11 +91,104 @@ impl RbacService {
             cedar_script,
         )
         .await?;
-        if !self.organizations.supports_role_policy(&role.cedar_source) {
+        if !self
+            .organizations
+            .supports_role_policy(&cedar_policy::PolicySet::try_from(&role)?.to_string())
+        {
             return Err(AuthorizationError::UnsupportedPolicy);
         }
         self.organizations.create_roles(vec![role.clone()]).await?;
         Ok(role)
+    }
+
+    pub async fn update_role(
+        &self,
+        permission: &MemberPermission,
+        id: u64,
+        name: Option<String>,
+        description: Option<String>,
+        cedar_source: Option<String>,
+    ) -> Result<Role, AuthorizationError> {
+        let mut cedar_source =
+            cedar_source.map(|source| super::policy::compact_policy_source(&source));
+        let organization_id = permission.organization_id();
+        let role = self
+            .organizations
+            .find_roles_for_assignment(organization_id, &[id])
+            .await?
+            .into_iter()
+            .next()
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        if role.org_owner() {
+            return Err(super::MemberPermissionError::Denied.into());
+        }
+        if name.is_some() || description.is_some() {
+            role.for_action(Action::RoleMetadataUpdate)
+                .check_permission(permission)?;
+        }
+        if let Some(source) = cedar_source.as_mut() {
+            role.for_action(Action::RolePolicyUpdate)
+                .check_permission(permission)?;
+            *source = Role::prepare_policy_source(source, organization_id, id)
+                .map_err(crate::organization::role::RoleCreationError::InvalidPolicy)?;
+            if !self.organizations.supports_role_policy(
+                &super::policy::role_policy_set(source, organization_id, id)?.to_string(),
+            ) {
+                return Err(AuthorizationError::UnsupportedPolicy);
+            }
+        }
+        let name = name
+            .map(|value| {
+                Role::normalize_name(&value)
+                    .map_err(crate::organization::role::RoleCreationError::InvalidName)
+            })
+            .transpose()?;
+        if let Some(description) = description.as_ref() {
+            Role::validate_description(description)
+                .map_err(crate::organization::role::RoleCreationError::InvalidDescription)?;
+        }
+        if name.is_some() || description.is_some() || cedar_source.is_some() {
+            if DbContext::current()?.postgres().is_transaction() {
+                return Err(
+                    crate::persistent::ConnectionError::database(anyhow::anyhow!(
+                        "role update cannot replace an active transaction"
+                    ))
+                    .into(),
+                );
+            }
+            let root = DbContext::root()?;
+            root.independent_scope(async {
+                crate::transaction!(root, {
+                    let current = self.organizations.lock_role(organization_id, id).await?;
+                    if current.org_owner() {
+                        return Err(AuthorizationError::from(
+                            super::MemberPermissionError::Denied,
+                        ));
+                    }
+                    self.organizations
+                        .lock_role_groups(organization_id, id)
+                        .await?;
+                    self.organizations
+                        .update_role(organization_id, id, name, description, cedar_source)
+                        .await?;
+                    let users = self
+                        .organizations
+                        .role_assignees(organization_id, id)
+                        .await?;
+                    self.auth_service
+                        .invalidate_permissions(organization_id, &users)
+                        .await?;
+                    Ok::<(), AuthorizationError>(())
+                })
+            })
+            .await??;
+        }
+        self.organizations
+            .find_roles_for_assignment(organization_id, &[id])
+            .await?
+            .into_iter()
+            .next()
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound.into())
     }
 
     async fn delete_role(
@@ -107,8 +199,10 @@ impl RbacService {
         let organization_id = permission.organization_id();
         let role = self
             .organizations
-            .find_role(organization_id, role_id)
+            .find_roles_for_assignment(organization_id, &[role_id])
             .await?
+            .into_iter()
+            .next()
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
         role.for_action(Action::RoleDelete)
             .check_permission(permission)?;
@@ -184,8 +278,10 @@ impl RbacService {
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
         let role = self
             .organizations
-            .find_role(organization_id, role_id)
+            .find_roles_for_assignment(organization_id, &[role_id])
             .await?
+            .into_iter()
+            .next()
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
         (&member, &role)
             .for_action(Action::MemberRoleAssign)
@@ -220,8 +316,10 @@ impl RbacService {
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
         let role = self
             .organizations
-            .find_role(organization_id, role_id)
+            .find_roles_for_assignment(organization_id, &[role_id])
             .await?
+            .into_iter()
+            .next()
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
         (&member, &role)
             .for_action(Action::MemberRoleUnassign)

@@ -167,6 +167,16 @@ impl OrganizationRepository for OrganizationRepositoryStub {
     fn supports_role_policy(&self, _: &str) -> bool {
         true
     }
+    async fn update_role(
+        &self,
+        _: u64,
+        _: u64,
+        _: Option<String>,
+        _: Option<String>,
+        _: Option<String>,
+    ) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
     async fn lock_role(&self, _: u64, _: u64) -> Result<Role, OrganizationRepositoryError> {
         unimplemented!()
     }
@@ -188,10 +198,20 @@ impl OrganizationRepository for OrganizationRepositoryStub {
     }
     async fn find_roles_for_assignment(
         &self,
-        _: u64,
-        _: &[u64],
+        organization_id: u64,
+        role_ids: &[u64],
     ) -> Result<Vec<Role>, OrganizationRepositoryError> {
-        unimplemented!()
+        Ok(self
+            .0
+            .lock()
+            .unwrap()
+            .memberships
+            .iter()
+            .filter(|member| member.organization_id == organization_id)
+            .flat_map(|member| &member.roles)
+            .filter(|role| role_ids.contains(&role.id))
+            .cloned()
+            .collect())
     }
     async fn create_group(
         &self,
@@ -2302,7 +2322,7 @@ async fn snapshot_creation_uses_only_loaded_membership_without_session_or_contex
         roles: fixture_roles_0.clone(),
         groups: vec![],
     };
-    let snapshot = compallm_core::authorization::PolicySnapshot::new(&membership);
+    let snapshot = compallm_core::authorization::PolicySnapshot::new(&membership).unwrap();
     assert_eq!(snapshot.role_ids, vec![1, 2, 3]);
     assert!(!snapshot.cedar_source.is_empty());
     assert!(DbContext::current().is_err());
@@ -2433,7 +2453,7 @@ async fn access_issuance_includes_direct_and_group_authority_and_refresh_rebuild
         .unwrap();
     let access =
         UserAccessToken::try_from(decode_token(&issued.access_token, SECRET).unwrap()).unwrap();
-    let expected = PolicySnapshot::new(&fixture.repo.0.lock().unwrap().memberships[0]);
+    let expected = PolicySnapshot::new(&fixture.repo.0.lock().unwrap().memberships[0]).unwrap();
     assert_eq!(access.policy_snapshot, expected);
     assert_eq!(access.policy_snapshot.role_ids, vec![1]);
     assert_eq!(access.policy_snapshot.group_roles[&9], vec![3]);
@@ -2548,6 +2568,140 @@ async fn graphql_request(
         .oneshot(request.body(Body::from(body.to_string())).unwrap())
         .await
         .unwrap()
+}
+
+#[tokio::test]
+async fn invalid_authorization_clears_cookies_without_revoking_session() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let session = fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    let invalid = token_pair::new(
+        &session,
+        PolicySnapshot {
+            cedar_source:
+                "permit(principal, action == Compallm::Action::\"retired.action\", resource);"
+                    .into(),
+            role_ids: Vec::new(),
+            group_roles: Default::default(),
+        },
+        SECRET,
+        Duration::from_secs(60),
+        REFRESH_LIFETIME,
+    )
+    .unwrap();
+    let cookies = format!(
+        "compallm-access={}; compallm-refresh={}",
+        invalid.access_token, tokens.refresh_token
+    );
+    let response = graphql_operation(
+        &fixture.graphql(),
+        "{ roles { edges { node { id } } } }",
+        serde_json::json!({}),
+        None,
+        Some(&cookies),
+        true,
+    )
+    .await;
+    let headers: Vec<_> = response
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .map(|value| value.to_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(headers.len(), 2);
+    assert!(headers.iter().all(|value| value.contains("Max-Age=0")));
+    assert_eq!(
+        graphql_body(response).await["errors"][0]["extensions"]["code"],
+        "INVALID_AUTHORIZATION_STATE"
+    );
+    assert!(
+        fixture
+            .repo
+            .0
+            .lock()
+            .unwrap()
+            .sessions
+            .get(&session.id)
+            .unwrap()
+            .revoked_at
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn policy_catalog_requires_a_current_user_without_a_role_grant() {
+    use compallm_core::authorization::policy::Action;
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let session = fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    let query = "{ organizationPolicyActions { edges { node { name entityType resourceType } } pageInfo { hasNextPage hasPreviousPage } } }";
+    let snapshot = |source: &str| PolicySnapshot {
+        cedar_source: source.into(),
+        role_ids: Vec::new(),
+        group_roles: Default::default(),
+    };
+    let authorized = token_pair::new(
+        &session,
+        snapshot(""),
+        SECRET,
+        Duration::from_secs(60),
+        REFRESH_LIFETIME,
+    )
+    .unwrap();
+    let router = fixture.graphql();
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            query,
+            serde_json::json!({}),
+            Some(&authorized.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(body["errors"].is_null(), "{body}");
+    let edges = body["data"]["organizationPolicyActions"]["edges"]
+        .as_array()
+        .unwrap();
+    assert_eq!(edges.len(), Action::ALL.len());
+    assert!(edges.iter().any(|edge| edge["node"] == serde_json::json!({"name":"role.create", "entityType":"Role", "resourceType":"Organization"})));
+    assert_eq!(
+        body["data"]["organizationPolicyActions"]["pageInfo"]["hasNextPage"],
+        false
+    );
+    let body = graphql_body(
+        graphql_operation(&router, query, serde_json::json!({}), None, None, false).await,
+    )
+    .await;
+    assert_eq!(body["errors"][0]["extensions"]["code"], "UNAUTHENTICATED");
 }
 
 #[tokio::test]
@@ -3399,7 +3553,7 @@ async fn restricted_query_errors_and_cancellation_discard_dirty_connections() {
     };
     let access = UserAccessToken::new(
         stored_session(1, 1, 84, "RLS fixture"),
-        compallm_core::authorization::PolicySnapshot::new(&member),
+        compallm_core::authorization::PolicySnapshot::new(&member).unwrap(),
         Duration::from_secs(60),
     )
     .unwrap();
@@ -3547,7 +3701,17 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(stored.cedar_source, policy);
+    let stored_policy: cedar_policy::PolicySet = stored.cedar_source.parse().unwrap();
+    let submitted_policy: cedar_policy::PolicySet = policy.parse().unwrap();
+    assert_eq!(
+        stored_policy.policies().next().unwrap().to_json().unwrap(),
+        submitted_policy
+            .policies()
+            .next()
+            .unwrap()
+            .to_json()
+            .unwrap()
+    );
     assert!(!stored.org_owner);
 
     let response = graphql_operation(

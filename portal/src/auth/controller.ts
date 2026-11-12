@@ -176,6 +176,19 @@ export class AuthController implements SignupController, SigninController {
     await this.signingOut
   }
 
+  invalidAuthorization = () => {
+    this.sessionGeneration += 1
+    this.sessionRequest?.abort()
+    this.sessionPending = undefined
+    this.stop()
+    this.confirmed = false
+    this.lastCode = undefined
+    this.failedOperation = null
+    this.destination = undefined
+    this.store.setState({ ...initialFormState, currentUser: null, status: 'anonymous' })
+    this.navigate('/login')
+  }
+
   private async performSignOut() {
     try {
       const selection = { sessionRevoke: { node: true } } satisfies MutationGenqlSelection

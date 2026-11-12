@@ -65,9 +65,11 @@ export interface SettingsApiKey extends SettingsCredential {
 }
 export interface PolicyProjection {
   action: string
+  effect?: 'permit' | 'forbid'
   source: string
   advanced: boolean
   editable: boolean
+  reason?: string
   resourceRestricted?: boolean
 }
 export interface SettingsPolicyAction {
@@ -76,7 +78,7 @@ export interface SettingsPolicyAction {
   scope: string
   category: string
   description: string
-  access: 'Read' | 'Use' | 'Write' | 'Admin' | 'Sensitive'
+  access?: 'Read' | 'Use' | 'Write' | 'Admin' | 'Sensitive'
 }
 export interface RoleDraft {
   id: string | null
@@ -200,6 +202,7 @@ export interface SettingsController {
 }
 
 export interface SettingsPageControllers {
+  role: RoleController
   search: { setQuery(value: string): void; setFilter(key: string, value: string): void }
   preferences: { setPreference(key: string, value: string | boolean): void }
   profile: ProfileController

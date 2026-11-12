@@ -40,7 +40,7 @@ impl Fixture {
                 authorization_version: 1,
                 revoked_at: None,
             },
-            PolicySnapshot::new(&membership),
+            PolicySnapshot::new(&membership).unwrap(),
             Duration::from_secs(60),
         )
         .unwrap();

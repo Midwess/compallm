@@ -9,6 +9,7 @@ pub mod authentication;
 pub mod base_type;
 pub mod endpoint;
 pub mod organization;
+pub mod policy;
 pub mod provider;
 pub mod user;
 

@@ -6,6 +6,9 @@
     "role_create": {
       "$ref": "#/$defs/RoleCreateInput"
     },
+    "role_update": {
+      "$ref": "#/$defs/RoleUpdateInput"
+    },
     "group_create": {
       "$ref": "#/$defs/GroupCreateInput"
     },
@@ -27,6 +30,7 @@
   },
   "required": [
     "role_create",
+    "role_update",
     "group_create",
     "email",
     "code",
@@ -45,10 +49,14 @@
           "maxLength": 64
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 128
         },
         "cedarSource": {
-          "type": "string"
+          "description": "Comments and unnecessary whitespace are removed before the length limit is checked.",
+          "type": "string",
+          "x-compallm-cedar-compact": true,
+          "maxLength": 10192
         }
       },
       "additionalProperties": false,
@@ -57,6 +65,38 @@
         "description",
         "cedarSource"
       ],
+      "x-compallm-input": true
+    },
+    "RoleUpdateInput": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-trim": true,
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 128
+        },
+        "cedarSource": {
+          "description": "Comments and unnecessary whitespace are removed before the length limit is checked.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-cedar-compact": true,
+          "maxLength": 10192
+        }
+      },
+      "additionalProperties": false,
       "x-compallm-input": true
     },
     "GroupCreateInput": {

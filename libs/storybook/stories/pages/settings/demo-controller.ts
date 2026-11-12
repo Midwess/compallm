@@ -16,6 +16,7 @@ import { DemoOrganizationController } from './organization/demo-controller'
 export class DemoSettingsController implements SettingsController {
   store = createSettingsStore(structuredClone(initialSettings))
   pages: SettingsController['pages'] = {
+    role: null!,
     search: { setQuery: (value) => this.setQuery(value), setFilter: (key, value) => this.setFilter(key, value) },
     preferences: { setPreference: (key, value) => this.setPreference(key, value) },
     profile: new DemoProfileController(this.store, (file) => this.avatarUrl(file)),
@@ -42,6 +43,7 @@ export class DemoSettingsController implements SettingsController {
     const { roleDraft, groupDraft, ...shared } = initial
     this.store.setState(structuredClone(shared))
     this.role = new DemoRoleController(this, failWrites)
+    this.pages.role = this.role
     this.group = new DemoGroupController(this, failWrites)
     const location = this.store.getState().location
     this.navigate(location.page, location.id)

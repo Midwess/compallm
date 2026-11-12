@@ -14,15 +14,19 @@ export const Reference: Story = {
     </div>
   ),
 }
-function Editable() {
-  const [value, setValue] = useState(modelOperatorSource)
+function Editable({ initial = modelOperatorSource }: { initial?: string }) {
+  const [value, setValue] = useState(initial)
   return (
-    <div className="flex h-80 max-w-208">
+    <div className="max-w-208">
       <CodeEditor label="Editable Cedar" language="cedar" value={value} onValueChange={setValue} />
     </div>
   )
 }
 export const EditableCedar: Story = { render: () => <Editable /> }
+export const ShortCedar: Story = { render: () => <Editable initial={'permit(principal, action, resource);'} /> }
+export const LongCedar: Story = {
+  render: () => <Editable initial={Array.from({ length: 8 }, () => modelOperatorSource).join('\n\n')} />,
+}
 export const Light: Story = {
   render: () => (
     <div className="max-w-156">

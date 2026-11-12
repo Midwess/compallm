@@ -137,6 +137,7 @@ type Mutation {
   Create a role in the verified active organization.
   """
   roleCreate(input: RoleCreateInput!): RolePayload!
+  roleUpdate(id: ID!, input: RoleUpdateInput!): RolePayload!
 
   """
   Refresh using explicit refresh Bearer authority; leave browser cookies unchanged.
@@ -163,6 +164,24 @@ type PageInfo {
   hasNextPage: Boolean!
   hasPreviousPage: Boolean!
   startCursor: String
+}
+
+type PolicyAction {
+  description: String!
+  displayName: String!
+  entityType: String!
+  name: String!
+  resourceType: String!
+}
+
+type PolicyActionConnection {
+  edges: [PolicyActionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PolicyActionEdge {
+  cursor: String!
+  node: PolicyAction!
 }
 
 """
@@ -348,6 +367,11 @@ type Query {
   organization: OrganizationPayload!
 
   """
+  Return the system-owned organization policy action catalog.
+  """
+  organizationPolicyActions: PolicyActionConnection!
+
+  """
   Find visible role metadata in the active organization.
   """
   role(id: ID!): RolePayload
@@ -364,6 +388,11 @@ type Query {
 }
 
 type Role {
+  """
+  Native Cedar source; template slots bind to this role and its organization.
+  """
+  cedarSource: String
+  color: String!
   description: String!
   id: ID!
   name: String!
@@ -375,6 +404,9 @@ type RoleConnection {
 }
 
 input RoleCreateInput {
+  """
+  Comments and unnecessary whitespace are removed before the length limit is checked.
+  """
   cedarSource: String!
   description: String!
   name: String!
@@ -387,6 +419,15 @@ type RoleEdge {
 
 type RolePayload {
   node: Role!
+}
+
+input RoleUpdateInput {
+  """
+  Comments and unnecessary whitespace are removed before the length limit is checked.
+  """
+  cedarSource: String
+  description: String
+  name: String
 }
 
 type Session {

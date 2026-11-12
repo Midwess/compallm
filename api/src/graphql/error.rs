@@ -137,9 +137,9 @@ impl From<crate::http::authorization::AuthorizationError> for Error {
         match error {
             crate::http::authorization::AuthorizationError::Authentication(error) => error.into(),
             crate::http::authorization::AuthorizationError::InvalidAuthority => Self {
-                code: "SERVICE_UNAVAILABLE",
-                status: 503,
-                message: "Authorization state is temporarily unavailable",
+                code: "INVALID_AUTHORIZATION_STATE",
+                status: 401,
+                message: "Authorization state is invalid. Please sign in again.",
             },
         }
     }

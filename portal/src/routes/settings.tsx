@@ -9,19 +9,30 @@ import { useOrganizationController } from '../organization/use-organization-cont
 import { SettingsController, settingsPages } from '../settings/controller'
 
 export function loader({ params }: LoaderFunctionArgs) {
+  if (params.page === 'role' && params.id) return { page: 'role' as const, id: params.id }
   const page = settingsPages.find((page) => page === params.page)
-  if (!page) return redirect(`/${encodeURIComponent(params.organizationName!)}/settings/general`)
-  return page
+  if (!page || params.id) return redirect(`/${encodeURIComponent(params.organizationName!)}/settings/general`)
+  return { page }
 }
 
 export function Component() {
-  const page = useLoaderData() as SettingsDestination
+  const { page, id } = useLoaderData() as { page: SettingsDestination; id?: string }
   const url = useUrlController()
   const auth = useAuthController()
   const organization = useOrganizationController().getCurrentOrganization()!
   const [controller] = useState(() => new SettingsController(organization.name, url, auth, page))
-  useEffect(() => controller.start(), [controller])
-  useEffect(() => controller.setPage(page), [controller, page])
+  useEffect(() => {
+    let disposed = false
+    let stop: (() => void) | undefined
+    queueMicrotask(() => {
+      if (!disposed) stop = controller.start()
+    })
+    return () => {
+      disposed = true
+      stop?.()
+    }
+  }, [controller])
+  useEffect(() => controller.setPage(page, id), [controller, page, id])
   return (
     <SettingsControllerContext value={controller}>
       <SettingsPage />

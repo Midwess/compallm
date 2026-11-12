@@ -4,12 +4,36 @@ import { useEffect, useRef, useState, type ComponentPropsWithRef, type TextareaH
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGlass'
 import { cx } from './shared'
 
-export type TextFieldProps = ComponentPropsWithRef<'input'>
+export type TextFieldProps = ComponentPropsWithRef<'input'> & { onCommit?: (value: string) => void }
 
-export function TextField({ className, ...props }: TextFieldProps) {
+export function TextField({ className, onCommit, onFocus, onBlur, onKeyDown, ...props }: TextFieldProps) {
+  const committed = useRef<string | undefined>(undefined)
   return (
     <animated.input
       {...props}
+      onFocus={(event) => {
+        committed.current = undefined
+        onFocus?.(event)
+      }}
+      onBlur={(event) => {
+        const value = event.currentTarget.value
+        if (onCommit && committed.current !== value) {
+          committed.current = value
+          onCommit(value)
+        }
+        onBlur?.(event)
+      }}
+      onKeyDown={(event) => {
+        onKeyDown?.(event)
+        if (event.key === 'Enter' && !event.defaultPrevented && !event.nativeEvent.isComposing && onCommit) {
+          event.preventDefault()
+          const value = event.currentTarget.value
+          if (committed.current !== value) {
+            committed.current = value
+            onCommit(value)
+          }
+        }
+      }}
       className={cx(
         `
   block h-8 w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5

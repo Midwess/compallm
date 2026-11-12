@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useState } from 'react'
+import { StrictMode, useState } from 'react'
 import { Button } from '../../src/components/buttons'
 import * as Selection from '../../src/components/selection'
 import { Preview, Row, Sample } from './Preview'
@@ -123,3 +123,31 @@ function SelectionTransitions() {
 }
 
 export const TransitionsAndReset: Story = { render: () => <SelectionTransitions /> }
+
+function RestoredSelections() {
+  const [checked, setChecked] = useState(true)
+  return (
+    <Preview>
+      <Sample label="Loaded selection state in Strict Mode" wide>
+        <label className="flex items-center gap-2 text-xsm">
+          <Selection.Switch checked={checked} onChange={(event) => setChecked(event.currentTarget.checked)} />
+          Saved permission: {checked ? 'enabled' : 'disabled'}
+        </label>
+        <Row>
+          <Selection.Checkbox aria-label="Saved checked value" defaultChecked />
+          <Selection.Checkbox aria-label="Saved mixed value" indeterminate />
+          <Selection.Radio aria-label="Saved radio value" defaultChecked />
+        </Row>
+        <Button onClick={() => setChecked(true)}>Restore enabled permission</Button>
+      </Sample>
+    </Preview>
+  )
+}
+
+export const RestoredInStrictMode: Story = {
+  render: () => (
+    <StrictMode>
+      <RestoredSelections />
+    </StrictMode>
+  ),
+}

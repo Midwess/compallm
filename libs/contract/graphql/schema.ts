@@ -80,6 +80,7 @@ export interface Mutation {
   groupCreate: CreatedGroupPayload
   /** Create a role in the verified active organization. */
   roleCreate: RolePayload
+  roleUpdate: RolePayload
   /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
   sessionRefresh: SessionCredentialsPayload
   /** Revoke the verified session and clear its browser cookies after success. */
@@ -104,6 +105,27 @@ export interface PageInfo {
   hasPreviousPage: Scalars['Boolean']
   startCursor: Scalars['String'] | null
   __typename: 'PageInfo'
+}
+
+export interface PolicyAction {
+  description: Scalars['String']
+  displayName: Scalars['String']
+  entityType: Scalars['String']
+  name: Scalars['String']
+  resourceType: Scalars['String']
+  __typename: 'PolicyAction'
+}
+
+export interface PolicyActionConnection {
+  edges: PolicyActionEdge[]
+  pageInfo: PageInfo
+  __typename: 'PolicyActionConnection'
+}
+
+export interface PolicyActionEdge {
+  cursor: Scalars['String']
+  node: PolicyAction
+  __typename: 'PolicyActionEdge'
 }
 
 /** Catalog connection family hint; each configured model selects its own operation. */
@@ -143,6 +165,8 @@ export interface Query {
   groups: GroupConnection
   /** Return the active organization from verified user authority. */
   organization: OrganizationPayload
+  /** Return the system-owned organization policy action catalog. */
+  organizationPolicyActions: PolicyActionConnection
   /** Find visible role metadata in the active organization. */
   role: RolePayload | null
   /** Return the complete visible role metadata collection, ordered by ID. */
@@ -153,6 +177,9 @@ export interface Query {
 }
 
 export interface Role {
+  /** Native Cedar source; template slots bind to this role and its organization. */
+  cedarSource: Scalars['String'] | null
+  color: Scalars['String']
   description: Scalars['String']
   id: Scalars['ID']
   name: Scalars['String']
@@ -327,6 +354,7 @@ export interface MutationGenqlSelection {
   groupCreate?: CreatedGroupPayloadGenqlSelection & { __args: { input: GroupCreateInput } }
   /** Create a role in the verified active organization. */
   roleCreate?: RolePayloadGenqlSelection & { __args: { input: RoleCreateInput } }
+  roleUpdate?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; input: RoleUpdateInput } }
   /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
   sessionRefresh?: SessionCredentialsPayloadGenqlSelection
   /** Revoke the verified session and clear its browser cookies after success. */
@@ -353,6 +381,30 @@ export interface PageInfoGenqlSelection {
   hasNextPage?: boolean | number
   hasPreviousPage?: boolean | number
   startCursor?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PolicyActionGenqlSelection {
+  description?: boolean | number
+  displayName?: boolean | number
+  entityType?: boolean | number
+  name?: boolean | number
+  resourceType?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PolicyActionConnectionGenqlSelection {
+  edges?: PolicyActionEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PolicyActionEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: PolicyActionGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -462,6 +514,8 @@ export interface QueryGenqlSelection {
   groups?: GroupConnectionGenqlSelection
   /** Return the active organization from verified user authority. */
   organization?: OrganizationPayloadGenqlSelection
+  /** Return the system-owned organization policy action catalog. */
+  organizationPolicyActions?: PolicyActionConnectionGenqlSelection
   /** Find visible role metadata in the active organization. */
   role?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Return the complete visible role metadata collection, ordered by ID. */
@@ -473,6 +527,9 @@ export interface QueryGenqlSelection {
 }
 
 export interface RoleGenqlSelection {
+  /** Native Cedar source; template slots bind to this role and its organization. */
+  cedarSource?: boolean | number
+  color?: boolean | number
   description?: boolean | number
   id?: boolean | number
   name?: boolean | number
@@ -488,6 +545,7 @@ export interface RoleConnectionGenqlSelection {
 }
 
 export interface RoleCreateInput {
+  /** Comments and unnecessary whitespace are removed before the length limit is checked. */
   cedarSource: Scalars['String']
   description: Scalars['String']
   name: Scalars['String']
@@ -504,6 +562,13 @@ export interface RolePayloadGenqlSelection {
   node?: RoleGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
+}
+
+export interface RoleUpdateInput {
+  /** Comments and unnecessary whitespace are removed before the length limit is checked. */
+  cedarSource?: Scalars['String'] | null
+  description?: Scalars['String'] | null
+  name?: Scalars['String'] | null
 }
 
 export interface SessionGenqlSelection {
@@ -627,6 +692,24 @@ const PageInfo_possibleTypes: string[] = ['PageInfo']
 export const isPageInfo = (obj?: { __typename?: any } | null): obj is PageInfo => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isPageInfo"')
   return PageInfo_possibleTypes.includes(obj.__typename)
+}
+
+const PolicyAction_possibleTypes: string[] = ['PolicyAction']
+export const isPolicyAction = (obj?: { __typename?: any } | null): obj is PolicyAction => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPolicyAction"')
+  return PolicyAction_possibleTypes.includes(obj.__typename)
+}
+
+const PolicyActionConnection_possibleTypes: string[] = ['PolicyActionConnection']
+export const isPolicyActionConnection = (obj?: { __typename?: any } | null): obj is PolicyActionConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPolicyActionConnection"')
+  return PolicyActionConnection_possibleTypes.includes(obj.__typename)
+}
+
+const PolicyActionEdge_possibleTypes: string[] = ['PolicyActionEdge']
+export const isPolicyActionEdge = (obj?: { __typename?: any } | null): obj is PolicyActionEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPolicyActionEdge"')
+  return PolicyActionEdge_possibleTypes.includes(obj.__typename)
 }
 
 const ProviderTemplate_possibleTypes: string[] = ['ProviderTemplate']

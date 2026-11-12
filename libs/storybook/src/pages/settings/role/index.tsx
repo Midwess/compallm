@@ -53,25 +53,26 @@ function CedarEditor({ locked }: { locked: boolean }) {
   if (!draft) return null
   const invalid = draft.parsing || draft.diagnostics.length > 0
   return (
-    <SectionSurface className="flex min-h-64 min-w-0 w-full flex-1 flex-col p-2">
+    <SectionSurface className="flex min-w-0 w-full flex-col p-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 px-2 pb-2 text-xs">
+        <Button variant="ghost" className="h-6 px-2 text-xs" disabled={invalid || locked} onClick={() => c.formatPolicy()}>
+          Format
+        </Button>
+        <Button variant="ghost" className="h-6 px-2 text-xs" onClick={() => shared.pages.dialogs.copy(draft.source)}>
+          Copy
+        </Button>
+        <span className="rounded-lg bg-elevated px-2.5 py-1 font-sans text-xs leading-4 text-text">Cedar</span>
+      </div>
       <CodeEditor
         {...appearance}
         label="Cedar policy source"
         language="cedar"
-        actions={
-          <>
-            <Button variant="ghost" className="h-6 px-2 text-xs" disabled={invalid || locked} onClick={() => c.formatPolicy()}>
-              Format
-            </Button>
-            <Button variant="ghost" className="h-6 px-2 text-xs" onClick={() => shared.pages.dialogs.copy(draft.source)}>
-              Copy
-            </Button>
-          </>
-        }
+        showToolbar={false}
         invalid={draft.diagnostics.length > 0}
         readOnly={locked}
         value={draft.source}
         onValueChange={(value) => c.setPolicySource(value)}
+        onCommit={() => c.commitPolicySource?.()}
       />
     </SectionSurface>
   )
@@ -83,7 +84,10 @@ export function RoleEditorSettings() {
     shared = useSettingsController(),
     draft = useRole((s) => s.draft),
     readonly = useSettings((s) => s.readonly),
+    loading = useRole((s) => s.loading),
+    policySaveFailed = useRole((s) => s.policySaveFailed),
     busy = useRole((s) => s.busy)
+  if (loading) return <SettingsContent aria-busy="true" aria-label="Loading role" />
   if (!draft)
     return (
       <SettingsContent>
@@ -91,8 +95,7 @@ export function RoleEditorSettings() {
       </SettingsContent>
     )
   const locked = readonly || draft.builtin,
-    invalid = draft.parsing || draft.diagnostics.length > 0,
-    advanced = draft.projection.some((p) => p.advanced || !p.editable || !p.action)
+    invalid = draft.parsing || draft.diagnostics.length > 0
   return (
     <SettingsContent className="flex flex-col pt-14 pb-6">
       <Heading className="mb-8 shrink-0">{draft.id ? draft.name : 'New role'}</Heading>
@@ -105,8 +108,9 @@ export function RoleEditorSettings() {
                 className="w-xl max-w-full border-border max-lg:w-sm"
                 placeholder="Role name…"
                 value={draft.name}
-                disabled={locked || busy}
+                disabled={busy}
                 onChange={(event) => c.updateRole({ name: event.target.value })}
+                onCommit={() => c.commitRoleField?.('name')}
               />
             </Row>
             <Row label={<label htmlFor="role-description">Description</label>} last>
@@ -115,8 +119,9 @@ export function RoleEditorSettings() {
                 className="w-xl max-w-full border-border max-lg:w-sm"
                 placeholder="Describe this role…"
                 value={draft.description}
-                disabled={locked || busy}
+                disabled={busy}
                 onChange={(event) => c.updateRole({ description: event.target.value })}
+                onCommit={() => c.commitRoleField?.('description')}
               />
             </Row>
           </Rows>
@@ -128,7 +133,7 @@ export function RoleEditorSettings() {
             </SettingsSectionTitle>
             <EditingMode />
           </div>
-          <div className="grid min-w-0 w-full">
+          <div className="relative grid min-w-0 w-full">
             <motion.div
               initial={false}
               transition={timing}
@@ -141,15 +146,12 @@ export function RoleEditorSettings() {
                 transitionEnd: { display: draft.mode === 'visual' ? 'block' : 'none' },
               }}
               style={{
+                position: draft.mode === 'visual' ? 'relative' : 'absolute',
                 pointerEvents: draft.mode === 'visual' ? 'auto' : 'none',
               }}
               className="col-start-1 row-start-1 min-w-0 w-full"
             >
-              {draft.builtin ? (
-                <Empty title="System-owned role">Built-in grants follow the accepted organization policy.</Empty>
-              ) : (
-                <PolicyTable />
-              )}
+              <PolicyTable />
             </motion.div>
             <motion.div
               initial={false}
@@ -163,21 +165,14 @@ export function RoleEditorSettings() {
                 transitionEnd: { display: draft.mode === 'cedar' ? 'block' : 'none' },
               }}
               style={{
+                position: draft.mode === 'cedar' ? 'relative' : 'absolute',
                 pointerEvents: draft.mode === 'cedar' ? 'auto' : 'none',
               }}
               className="col-start-1 row-start-1 min-w-0 w-full"
             >
-              <CedarEditor locked={locked || busy} />
+              <CedarEditor locked={busy} />
             </motion.div>
           </div>
-          {draft.mode === 'visual' && advanced ? (
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 text-xs text-muted">
-              <span>Advanced Cedar retained. Review its source to edit conditions or resource restrictions.</span>
-              <Button variant="ghost" className="h-7 px-0 text-xs" onClick={() => c.setPolicyMode('cedar')}>
-                Review Cedar
-              </Button>
-            </div>
-          ) : null}
           <div aria-live="polite" className="mt-2 shrink-0 px-4 text-xs leading-4.5 text-muted">
             {draft.parsing ? (
               'Checking policy…'
@@ -191,6 +186,14 @@ export function RoleEditorSettings() {
               ''
             )}
           </div>
+          {policySaveFailed ? (
+            <div className="px-4 text-xs text-error">
+              Policy changes were not saved.{' '}
+              <Button variant="ghost" className="h-7 px-1 text-xs" onClick={() => c.commitPolicySource?.()}>
+                Retry save
+              </Button>
+            </div>
+          ) : null}
         </section>
         {!locked && !draft.id ? (
           <div className="flex shrink-0 flex-wrap justify-end gap-2">

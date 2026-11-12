@@ -10,7 +10,7 @@ pub fn generate() -> Result<(), Box<dyn Error>> {
     fs::write(contract.join("schema.graphql"), schema.as_sdl())?;
     fs::write(
         contract.join("validation.schema.json"),
-        serde_json::to_string_pretty(&crate::graphql::validation::schema())? + "\n",
+        serde_json::to_string_pretty(&crate::graphql::validation_schema())? + "\n",
     )?;
     let status = Command::new("node")
         .arg(contract.join("generate.mjs"))

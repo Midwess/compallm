@@ -14,13 +14,10 @@ pub mod user;
 
 mod context;
 mod error;
-mod operation;
-mod query;
-mod registration;
-mod schema;
+#[path = "graphql.rs"]
+mod runtime;
 
 pub use context::GraphqlContext;
-pub use query::Query;
-pub use schema::{ApplicationSchema, build_schema};
+pub use runtime::{ApplicationSchema, Query, build_schema};
 
-pub(crate) mod validation;
+pub(crate) use runtime::validation_schema;

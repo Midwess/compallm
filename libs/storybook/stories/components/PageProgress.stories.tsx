@@ -6,11 +6,18 @@ import { Preview } from './Preview'
 
 function RequestDemo() {
   const [pending, setPending] = useState(0)
+  const [result, setResult] = useState('')
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
-  function request(duration: number) {
+  function request(duration: number, failed = false) {
     setPending((count) => count + 1)
-    timers.current.push(setTimeout(() => setPending((count) => count - 1), duration))
+    setResult('')
+    timers.current.push(
+      setTimeout(() => {
+        setPending((count) => count - 1)
+        setResult(failed ? 'Request failed; loading finished.' : 'Request completed.')
+      }, duration),
+    )
   }
   return (
     <Preview>
@@ -27,6 +34,12 @@ function RequestDemo() {
           Start overlapping requests
         </Button>
         <Button onClick={() => request(50)}>Fast request</Button>
+        <Button onClick={() => request(50, true)}>Failed request</Button>
+        {result ? (
+          <p role="status" className="text-muted">
+            {result}
+          </p>
+        ) : null}
       </section>
     </Preview>
   )

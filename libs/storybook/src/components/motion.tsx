@@ -18,7 +18,6 @@ export const animation = {
   reorder: { duration: 0.18, ease: 'easeOut' },
   panel: { duration: 0.2, ease: 'easeOut' },
   loading: { duration: 1, ease: 'linear', repeat: Infinity },
-  progress: { minimumVisible: 0.5, ease: 'linear' },
   distance: 6,
   panelDistance: 12,
   overlayScale: 0.96,
@@ -54,72 +53,6 @@ export function LoadingMotion({ children }: { children: React.ReactNode }) {
       {children}
     </motion.span>
   )
-}
-
-export function usePageProgressMotion(active: boolean) {
-  const ref = useRef<HTMLDivElement>(null)
-  const visible = useRef(false)
-  const startedAt = useRef(0)
-  const reduced = useReducedMotion()
-  useLayoutEffect(() => {
-    const node = ref.current
-    if (!node) return
-    let cancelled = false
-    let controls: ReturnType<typeof animate> | undefined
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const start = () => {
-      if (!visible.current) {
-        node.style.transform = 'scaleX(0)'
-        startedAt.current = performance.now()
-      }
-      visible.current = true
-      node.hidden = false
-      node.style.opacity = '1'
-      controls = animate(
-        node,
-        { scaleX: reduced ? 0.35 : 0.9 },
-        {
-          duration: reduced
-            ? 0
-            : Math.max(0, animation.progress.minimumVisible - (performance.now() - startedAt.current) / 1000),
-          ease: animation.progress.ease,
-        },
-      )
-    }
-    const complete = () => {
-      const remaining = Math.max(0, animation.progress.minimumVisible - (performance.now() - startedAt.current) / 1000)
-      controls = animate(
-        node,
-        { scaleX: 1 },
-        {
-          duration: reduced ? 0 : Math.max(remaining, animation.enter.duration),
-          ease: animation.progress.ease,
-        },
-      )
-      void controls.then(async () => {
-        if (cancelled) return
-        controls = animate(node, { opacity: 0 }, reduced ? { duration: 0 } : animation.exit)
-        await controls
-        if (cancelled) return
-        visible.current = false
-        node.hidden = true
-        node.style.opacity = '0'
-        node.style.transform = 'scaleX(0)'
-      })
-    }
-    if (active) start()
-    else if (visible.current) {
-      const remaining = animation.progress.minimumVisible * 1000 - (performance.now() - startedAt.current)
-      if (reduced && remaining > 0) timer = setTimeout(complete, remaining)
-      else complete()
-    }
-    return () => {
-      cancelled = true
-      clearTimeout(timer)
-      controls?.stop()
-    }
-  }, [active, reduced])
-  return ref
 }
 
 const properties = ['backgroundColor', 'borderColor', 'color', 'opacity', 'filter'] as const

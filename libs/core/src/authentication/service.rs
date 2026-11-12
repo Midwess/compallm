@@ -1,4 +1,4 @@
-use modql::filter::ListOptions;
+use crate::repository::ListOptions;
 use std::time::Duration;
 
 use super::Session;

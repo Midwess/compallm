@@ -1,20 +1,17 @@
 use super::query::IntoQuery;
 use anyhow::Context;
+use compallm_core::repository::ListOptions;
 use compallm_core::{
     persistent::DbContext,
-    repository::user::{
-        UserListOptions, UserQuery, UserRepository as CoreUserRepository, UserRepositoryError,
-    },
+    repository::user::{UserQuery, UserRepository as CoreUserRepository, UserRepositoryError},
     user::{User, UserStatus},
 };
-use modql::filter::ListOptions;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, QueryFilter, QueryOrder,
     QueryTrait, RuntimeErr, Select, Set,
     prelude::ChronoUtc,
     sea_query::{Condition, Expr, ExprTrait, Func},
 };
-use validify::Validify;
 
 use crate::{UserSchema, postgres_connection::PostgresConnection, schema::UserStatusSchema};
 
@@ -28,16 +25,28 @@ pub struct UserRepository;
 impl UserRepository {
     pub async fn list<Q>(
         &self,
-        mut query: Q,
-        options: ListOptions,
+        query: Q,
+        mut options: ListOptions,
     ) -> Result<Vec<User>, UserRepositoryError>
     where
-        Q: IntoQuery<Table = Users> + Validify + Send,
+        Q: IntoQuery<Table = Users> + Send,
     {
-        query.validify()?;
-        let mut options = UserListOptions::from(options);
-        options.validify()?;
-        let options = ListOptions::from(options);
+        let limit = *options.limit.get_or_insert(100);
+        let invalid_ordering = options.order_bys.as_ref().is_some_and(|orders| {
+            orders.into_iter().any(|order| {
+                let (compallm_core::repository::OrderBy::Asc(column)
+                | compallm_core::repository::OrderBy::Desc(column)) = order;
+                column != "id"
+            })
+        });
+        if !(0..=1000).contains(&limit)
+            || options.offset.is_some_and(|offset| offset < 0)
+            || invalid_ordering
+        {
+            return Err(UserRepositoryError::database(anyhow::anyhow!(
+                "unsupported user list options"
+            )));
+        }
         let mut query = query.into_query();
         options.apply_to_sea_query(QueryTrait::query(&mut query));
         query = query.order_by_asc(<Users as EntityTrait>::Column::Id);
@@ -58,7 +67,7 @@ impl UserRepository {
         options: ListOptions,
     ) -> Result<Option<User>, UserRepositoryError>
     where
-        Q: IntoQuery<Table = Users> + Validify + Send,
+        Q: IntoQuery<Table = Users> + Send,
     {
         let users = self.list(query, options.with_limit(1)).await?;
         Ok(users.into_iter().next())
@@ -93,8 +102,18 @@ impl IntoQuery for UserQuery {
             Condition::all()
                 .add_option(self.id.map(|id| Column::Id.eq(id)))
                 .add_option(self.ids.map(|ids| Column::Id.is_in(ids)))
-                .add_option(self.email.map(|email| email_column().eq(email)))
-                .add_option(self.emails.map(|emails| email_column().is_in(emails))),
+                .add_option(
+                    self.email.map(|email| {
+                        email_column().eq(compallm_utils::email::normalize_email(&email))
+                    }),
+                )
+                .add_option(self.emails.map(|emails| {
+                    email_column().is_in(
+                        emails
+                            .into_iter()
+                            .map(|email| compallm_utils::email::normalize_email(&email)),
+                    )
+                })),
         )
     }
 }

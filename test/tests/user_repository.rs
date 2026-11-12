@@ -1,3 +1,4 @@
+use compallm_core::repository::ListOptions;
 use compallm_core::{
     persistent::DbContext,
     repository::user::{UserQuery, UserRepository as CoreUserRepository, UserRepositoryError},
@@ -7,7 +8,6 @@ use compallm_postgres::{
     UserSchema, postgres_connection::PostgresConnection, repository::user::UserRepository,
     schema::UserStatusSchema,
 };
-use modql::filter::ListOptions;
 use sea_orm::{ActiveEnum, DbBackend, DbErr, IntoMockRow, MockDatabase, RuntimeErr};
 use std::{borrow::Cow, collections::BTreeMap, error::Error, fmt, sync::Arc};
 
@@ -271,7 +271,7 @@ async fn list_returns_multiple_users_with_their_statuses() {
         .await;
 }
 
-#[derive(Default, validify::Validify)]
+#[derive(Default)]
 struct IdQuery {
     id: Option<i64>,
 }

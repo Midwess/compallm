@@ -84,12 +84,12 @@ conventions:
     core:
       owns: connection lifecycle trait, domain invariants
       never: depend on SeaORM or Postgres; contain database models or connection types
-      repository-filters: define ordinary Rust query structs under core/repository with Validify; repositories call validify before IntoQuery conversion and execution; implement IntoQuery in PostgreSQL to build SeaORM selects
+      repository-filters: define plain Rust query structs under core/repository without Validify; implement IntoQuery in PostgreSQL to build SeaORM selects and normalize query values; use project-owned ListOptions and ordering types copied from modql 0.7.0 with MIT attribution; do not depend on modql
     postgres:
       depends-on: Core
       owns: SeaORM connections, transactions, models, queries, persistence conversions, concurrency guards
       implements: Core connection lifecycle trait
-      repository-reads: define generic list and one as inherent PostgreSQL repository methods accepting IntoQuery plus Validify; keep narrow Core methods for trait-object injection when needed; keep scoped SeaORM execution and domain mapping in PostgreSQL; build query-specific joins and indexed expressions in IntoQuery; do not add shared Repository, Queryable, or QueryDefinition traits or forwarding macros
+      repository-reads: define generic list and one as inherent PostgreSQL repository methods accepting IntoQuery; keep narrow Core methods for trait-object injection when needed; keep scoped SeaORM execution and domain mapping in PostgreSQL; build query-specific joins and indexed expressions in IntoQuery; do not add shared Repository, Queryable, or QueryDefinition traits or forwarding macros
     avoid: strict Clean Architecture layers, generic network traits, custom units of work
     except: concrete requirement
     connection-contexts: scoped
@@ -119,7 +119,7 @@ conventions:
 
   validation:
     source: Rust
-    library: Validify for HTTP normalization and shared domain validation
+    library: Validify for HTTP normalization and existing shared domain validation; repository query and list-option types do not use Validify
     rules: define in Rust; export to shared contract for Portal and Storybook
     field-errors: share codes, parameters, and messages through the same path when implemented
     detailed-error-message-generation: deferred

@@ -10,7 +10,6 @@ publish = false
 workspace = true
 
 [dev-dependencies]
-modql.workspace = true
 compallm-api = { path = "../api" }
 axum = { workspace = true, features = ["http1", "json", "tokio"] }
 tower = { workspace = true, features = ["util"] }

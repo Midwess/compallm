@@ -370,9 +370,17 @@ impl UserRepository for Repository {
     async fn list(
         &self,
         mut query: compallm_core::repository::user::UserQuery,
-        options: modql::filter::ListOptions,
+        options: compallm_core::repository::ListOptions,
     ) -> Result<Vec<User>, UserRepositoryError> {
-        validify::Validify::validify(&mut query)?;
+        query.email = query
+            .email
+            .map(|email| compallm_utils::email::normalize_email(&email));
+        query.emails = query.emails.map(|emails| {
+            emails
+                .into_iter()
+                .map(|email| compallm_utils::email::normalize_email(&email))
+                .collect()
+        });
         let mut state = self.0.lock().unwrap();
         state
             .contexts

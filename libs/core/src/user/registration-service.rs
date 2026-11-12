@@ -1,8 +1,8 @@
 use crate::organization::CreationService;
 use crate::persistent::DbContext;
+use crate::repository::ListOptions;
 use crate::repository::user::{UserQuery, UserRepository, UserRepositoryError};
 use crate::transaction;
-use modql::filter::ListOptions;
 
 use super::{RegistrationError, User};
 

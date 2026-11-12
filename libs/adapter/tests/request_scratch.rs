@@ -14,7 +14,7 @@ use adapter::{
     t2t::{
         Text2TextRequestTranslator,
         anthropic::request::AnthropicRequestEncoder,
-        copenai::{CompatibleOpenAIRequestDecoder, CompatibleOpenAIRequestEncoder},
+        copenai::request::{CompatibleOpenAIRequestDecoder, CompatibleOpenAIRequestEncoder},
         openai::request::{
             OpenAICompletionRequestDecoder, OpenAICompletionRequestEncoder,
             OpenAIResponseRequestDecoder, OpenAIResponseRequestEncoder,

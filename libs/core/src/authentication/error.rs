@@ -41,7 +41,7 @@ pub enum AuthError {
     #[error("display name must not be empty")]
     InvalidDisplayName,
     #[error(transparent)]
-    Persistence(#[from] crate::repository::user::UserRepositoryError),
+    Persistence(#[from] crate::persistent::user::UserRepositoryError),
     #[error(transparent)]
     Connection(#[from] crate::persistent::connection::ConnectionError),
     #[error("ID generation failed")]

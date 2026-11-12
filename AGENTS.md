@@ -84,12 +84,12 @@ conventions:
     core:
       owns: connection lifecycle trait, domain invariants
       never: depend on SeaORM or Postgres; contain database models or connection types
-      repository-filters: define plain Rust query structs under core/repository without Validify; implement IntoQuery in PostgreSQL to build SeaORM selects and normalize query values; use project-owned ListOptions and ordering types copied from modql 0.7.0 with MIT attribution; do not depend on modql
+      repository-options: define ListOptions and ordering types in core/repository/list_option.rs, copied from modql 0.7.0 with MIT attribution; do not depend on modql; keep domain repository contracts under core/persistent
     postgres:
       depends-on: Core
       owns: SeaORM connections, transactions, models, queries, persistence conversions, concurrency guards
       implements: Core connection lifecycle trait
-      repository-reads: define generic list and one as inherent PostgreSQL repository methods accepting IntoQuery; keep narrow Core methods for trait-object injection when needed; keep scoped SeaORM execution and domain mapping in PostgreSQL; build query-specific joins and indexed expressions in IntoQuery; do not add shared Repository, Queryable, or QueryDefinition traits or forwarding macros
+      repository-reads: preserve explicit domain persistence methods such as find_by_email and find_by_id; define IntoQuery only in the API crate for future query conversion; keep scoped SeaORM execution and domain mapping in PostgreSQL; do not add shared Repository, Queryable, or QueryDefinition traits or forwarding macros
     avoid: strict Clean Architecture layers, generic network traits, custom units of work
     except: concrete requirement
     connection-contexts: scoped

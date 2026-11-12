@@ -11,7 +11,7 @@ pub enum RegistrationError {
     #[error("invalid email address")]
     InvalidEmail,
     #[error(transparent)]
-    Persistence(#[from] crate::repository::user::UserRepositoryError),
+    Persistence(#[from] crate::persistent::user::UserRepositoryError),
     #[error("ID generation failed")]
     IdGeneration(#[from] hero::distributed_id::generator::DistributedIdError),
 }

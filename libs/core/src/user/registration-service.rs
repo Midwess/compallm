@@ -1,7 +1,6 @@
 use crate::organization::CreationService;
 use crate::persistent::DbContext;
-use crate::repository::ListOptions;
-use crate::repository::user::{UserQuery, UserRepository, UserRepositoryError};
+use crate::persistent::user::{UserRepository, UserRepositoryError};
 use crate::transaction;
 
 use super::{RegistrationError, User};
@@ -27,18 +26,7 @@ impl RegistrationService {
     /// Joins an existing transaction when invoked by another service.
     pub async fn register(&self, email: &str) -> Result<User, RegistrationError> {
         let user = User::from_email(email).await?;
-        if self
-            .users
-            .one(
-                UserQuery {
-                    email: Some(user.email.clone()),
-                    ..Default::default()
-                },
-                ListOptions::default(),
-            )
-            .await?
-            .is_some()
-        {
+        if self.users.find_by_email(&user.email).await?.is_some() {
             return Err(UserRepositoryError::EmailAlreadyExists.into());
         }
 

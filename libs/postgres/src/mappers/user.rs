@@ -1,6 +1,6 @@
 use anyhow::Context;
 use compallm_core::{
-    repository::user::UserRepositoryError,
+    persistent::user::UserRepositoryError,
     user::{User, UserStatus},
 };
 

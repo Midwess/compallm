@@ -3,7 +3,7 @@ use compallm_core::{
     authentication::AuthError,
     authorization::{MemberPermissionError, error::AuthorizationError as E},
     mail::EmailError,
-    repository::user::UserRepositoryError,
+    persistent::user::UserRepositoryError,
 };
 use juniper::{FieldError, IntoFieldError, ScalarValue, graphql_value};
 

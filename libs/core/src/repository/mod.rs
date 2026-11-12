@@ -1,4 +1,3 @@
-pub mod list_options;
-pub mod user;
+pub mod list_option;
 
-pub use list_options::{ListOptions, OrderBy, OrderBys};
+pub use list_option::{ListOptions, OrderBy, OrderBys};

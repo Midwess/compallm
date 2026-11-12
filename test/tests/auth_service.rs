@@ -27,8 +27,8 @@ use compallm_core::{
         DbContext,
         organization::{OrganizationRepository, OrganizationRepositoryError},
         session::{SessionRepository, SessionRepositoryError},
+        user::{UserRepository, UserRepositoryError},
     },
-    repository::user::{UserRepository, UserRepositoryError},
     user::{RegistrationService, User, UserStatus},
 };
 use sea_orm::{DatabaseConnection, DbBackend, DbErr, MockDatabase, Statement, Transaction};
@@ -367,48 +367,20 @@ impl OrganizationRepository for OrganizationRepositoryStub {
 
 #[async_trait::async_trait]
 impl UserRepository for Repository {
-    async fn list(
-        &self,
-        mut query: compallm_core::repository::user::UserQuery,
-        options: compallm_core::repository::ListOptions,
-    ) -> Result<Vec<User>, UserRepositoryError> {
-        query.email = query
-            .email
-            .map(|email| compallm_utils::email::normalize_email(&email));
-        query.emails = query.emails.map(|emails| {
-            emails
-                .into_iter()
-                .map(|email| compallm_utils::email::normalize_email(&email))
-                .collect()
-        });
+    async fn find_by_email(&self, email: &str) -> Result<Option<User>, UserRepositoryError> {
         let mut state = self.0.lock().unwrap();
         state
             .contexts
             .push(PostgresConnection::from_context(&DbContext::current()?)? as *const _ as usize);
-        Ok(state
-            .user
-            .clone()
-            .filter(|user| {
-                query
-                    .id
-                    .is_none_or(|id| u64::try_from(id).ok() == Some(user.id))
-                    && query.ids.as_ref().is_none_or(|ids| {
-                        ids.iter()
-                            .any(|id| u64::try_from(*id).ok() == Some(user.id))
-                    })
-                    && query
-                        .email
-                        .as_ref()
-                        .is_none_or(|email| *email == user.email)
-                    && query
-                        .emails
-                        .as_ref()
-                        .is_none_or(|emails| emails.contains(&user.email))
-            })
-            .into_iter()
-            .skip(options.offset.unwrap_or(0) as usize)
-            .take(options.limit.unwrap_or(100) as usize)
-            .collect())
+        Ok(state.user.clone().filter(|u| u.email == email))
+    }
+
+    async fn find_by_id(&self, id: u64) -> Result<Option<User>, UserRepositoryError> {
+        let mut state = self.0.lock().unwrap();
+        state
+            .contexts
+            .push(PostgresConnection::from_context(&DbContext::current()?)? as *const _ as usize);
+        Ok(state.user.clone().filter(|u| u.id == id))
     }
 
     async fn create(&self, user: User) -> Result<User, UserRepositoryError> {

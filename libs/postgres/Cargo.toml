@@ -28,7 +28,7 @@ serde = { workspace = true, features = ["std", "derive"] }
 serde_json = { workspace = true, features = ["std"] }
 validify.workspace = true
 clap = { workspace = true, optional = true, features = ["std", "derive", "env", "help", "usage", "error-context"] }
-compallm-core = { workspace = true, features = ["with-sea-query"] }
+compallm-core.workspace = true
 compallm-utils.workspace = true
 axum.workspace = true
 hero = { workspace = true, features = ["distributed-id"] }

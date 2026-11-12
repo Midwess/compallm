@@ -1,15 +1,6 @@
-use super::ListOptions;
-use crate::persistent::ConnectionError;
+use super::connection::ConnectionError;
 use crate::user::User;
 use async_trait::async_trait;
-
-#[derive(Clone, Debug, Default)]
-pub struct UserQuery {
-    pub id: Option<i64>,
-    pub ids: Option<Vec<i64>>,
-    pub email: Option<String>,
-    pub emails: Option<Vec<String>>,
-}
 
 #[derive(Debug, thiserror::Error)]
 pub enum UserRepositoryError {
@@ -35,20 +26,10 @@ impl From<ConnectionError> for UserRepositoryError {
 /// in these operations.
 #[async_trait]
 pub trait UserRepository: Send + Sync {
-    async fn list(
-        &self,
-        query: UserQuery,
-        options: ListOptions,
-    ) -> Result<Vec<User>, UserRepositoryError>;
+    /// Email must already be canonical (trimmed and ASCII-lowercased).
+    async fn find_by_email(&self, email: &str) -> Result<Option<User>, UserRepositoryError>;
 
-    async fn one(
-        &self,
-        query: UserQuery,
-        options: ListOptions,
-    ) -> Result<Option<User>, UserRepositoryError> {
-        let users = self.list(query, options.with_limit(1)).await?;
-        Ok(users.into_iter().next())
-    }
+    async fn find_by_id(&self, user_id: u64) -> Result<Option<User>, UserRepositoryError>;
 
     /// Enforce email uniqueness atomically; translate conflicts into
     /// EmailAlreadyExists. Set verification and creation timestamps on insert;

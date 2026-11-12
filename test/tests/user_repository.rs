@@ -1,7 +1,8 @@
-use compallm_core::repository::ListOptions;
 use compallm_core::{
-    persistent::DbContext,
-    repository::user::{UserQuery, UserRepository as CoreUserRepository, UserRepositoryError},
+    persistent::{
+        DbContext,
+        user::{UserRepository as _, UserRepositoryError},
+    },
     user::{User, UserStatus},
 };
 use compallm_postgres::{
@@ -61,15 +62,8 @@ async fn lookup_uses_the_callers_scoped_transaction() {
     let context = Fixture::context(db.clone());
     context
         .transaction(async {
-            let repository: &dyn CoreUserRepository = &UserRepository;
-            let user = repository
-                .one(
-                    UserQuery {
-                        email: Some("  JAMES@MIDWESS.COM  ".into()),
-                        ..Default::default()
-                    },
-                    ListOptions::default(),
-                )
+            let user = UserRepository
+                .find_by_email("james@midwess.com")
                 .await?
                 .unwrap();
             assert_eq!(user.id, 42);
@@ -121,34 +115,19 @@ async fn find_by_id_maps_disabled_users_and_missing_rows() {
     ));
     context
         .scope(async {
-            let repository: &dyn CoreUserRepository = &UserRepository;
-            let user = repository
-                .one(
-                    UserQuery {
-                        id: Some(42_i64),
-                        ..Default::default()
-                    },
-                    ListOptions::default(),
-                )
-                .await
-                .unwrap()
-                .unwrap();
+            let user = UserRepository.find_by_id(42).await.unwrap().unwrap();
             assert_eq!(user.status, UserStatus::Disabled);
-            assert!(
-                repository
-                    .one(
-                        UserQuery {
-                            id: Some(43_i64),
-                            ..Default::default()
-                        },
-                        ListOptions::default()
-                    )
-                    .await
-                    .unwrap()
-                    .is_none()
-            );
+            assert!(UserRepository.find_by_id(43).await.unwrap().is_none());
         })
         .await;
+}
+
+#[tokio::test]
+async fn invalid_ids_are_database_errors() {
+    assert!(matches!(
+        UserRepository.find_by_id(u64::MAX).await,
+        Err(UserRepositoryError::Database(_))
+    ));
 }
 
 #[tokio::test]
@@ -163,15 +142,7 @@ async fn invalid_database_ids_are_rejected() {
     context
         .scope(async {
             assert!(matches!(
-                UserRepository
-                    .one(
-                        UserQuery {
-                            id: Some(42_i64),
-                            ..Default::default()
-                        },
-                        ListOptions::default()
-                    )
-                    .await,
+                UserRepository.find_by_id(42).await,
                 Err(UserRepositoryError::Database(_))
             ));
         })
@@ -234,81 +205,4 @@ async fn only_email_unique_conflicts_become_email_already_exists() {
             assert!(matches!(error, UserRepositoryError::Database(_)));
         }
     }
-}
-
-#[tokio::test]
-async fn list_returns_multiple_users_with_their_statuses() {
-    let first = Fixture::row();
-    let mut second = Fixture::row();
-    second.id = 43;
-    second.email = "other@midwess.com".into();
-    second.status = UserStatusSchema::Disabled;
-    let context = Fixture::context(Arc::new(
-        MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([vec![Fixture::mock_row(first), Fixture::mock_row(second)]])
-            .into_connection(),
-    ));
-    context
-        .scope(async {
-            let repository: &dyn CoreUserRepository = &UserRepository;
-            let users = repository
-                .list(
-                    UserQuery {
-                        ids: Some(vec![42, 43]),
-                        ..Default::default()
-                    },
-                    ListOptions::from_limit(20),
-                )
-                .await
-                .unwrap();
-            assert_eq!(
-                users.iter().map(|user| user.id).collect::<Vec<_>>(),
-                vec![42, 43]
-            );
-            assert_eq!(users[0].status, UserStatus::Active);
-            assert_eq!(users[1].status, UserStatus::Disabled);
-        })
-        .await;
-}
-
-#[derive(Default)]
-struct IdQuery {
-    id: Option<i64>,
-}
-
-impl compallm_postgres::repository::query::IntoQuery for IdQuery {
-    type Table = <UserSchema as sea_orm::ModelTrait>::Entity;
-
-    fn into_query(self) -> sea_orm::Select<Self::Table> {
-        use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
-        type Column = <<UserSchema as sea_orm::ModelTrait>::Entity as EntityTrait>::Column;
-        Self::Table::find()
-            .filter(sea_orm::Condition::all().add_option(self.id.map(|id| Column::Id.eq(id))))
-    }
-}
-
-#[tokio::test]
-async fn repository_accepts_another_native_query_without_repository_impls() {
-    let context = Fixture::context(Arc::new(
-        MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([vec![Fixture::mock_row(Fixture::row())], vec![]])
-            .into_connection(),
-    ));
-    context
-        .scope(async {
-            let users = UserRepository
-                .list(IdQuery { id: Some(42) }, ListOptions::from_limit(20))
-                .await
-                .unwrap();
-            assert_eq!(users.len(), 1);
-            assert_eq!(users[0].id, 42);
-            assert!(
-                UserRepository
-                    .one(IdQuery { id: Some(43) }, ListOptions::default())
-                    .await
-                    .unwrap()
-                    .is_none()
-            );
-        })
-        .await;
 }

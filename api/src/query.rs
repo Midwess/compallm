@@ -1,4 +1,4 @@
-use sea_orm::{EntityTrait, Select};
+use compallm_postgres::sea_orm::{EntityTrait, Select};
 
 pub trait IntoQuery {
     type Table: EntityTrait;

@@ -1,6 +1,6 @@
 use crate::organization::CreationService;
 use crate::persistent::DbContext;
-use crate::repository::user::{UserFilter, UserRepository, UserRepositoryError};
+use crate::repository::user::{UserQuery, UserRepository, UserRepositoryError};
 use crate::transaction;
 use modql::filter::ListOptions;
 
@@ -30,7 +30,7 @@ impl RegistrationService {
         if self
             .users
             .one(
-                UserFilter {
+                UserQuery {
                     email: Some(user.email.clone()),
                     ..Default::default()
                 },

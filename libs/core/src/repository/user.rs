@@ -3,11 +3,10 @@ use crate::user::User;
 use async_trait::async_trait;
 use modql::filter::{ListOptions, OrderBy, OrderBys};
 
-use super::Queryable;
 use validify::{ValidationError, Validify};
 
 #[derive(Clone, Debug, Default, Validify)]
-pub struct UserFilter {
+pub struct UserQuery {
     pub id: Option<i64>,
     pub ids: Option<Vec<i64>>,
     #[modify(trim, custom(str::make_ascii_lowercase))]
@@ -88,9 +87,22 @@ impl From<ConnectionError> for UserRepositoryError {
 /// Use the active `DbContext`. Never open or commit a separate transaction
 /// in these operations.
 #[async_trait]
-pub trait UserRepository:
-    Queryable<UserFilter, Entity = User, Error = UserRepositoryError>
-{
+pub trait UserRepository: Send + Sync {
+    async fn list(
+        &self,
+        query: UserQuery,
+        options: ListOptions,
+    ) -> Result<Vec<User>, UserRepositoryError>;
+
+    async fn one(
+        &self,
+        query: UserQuery,
+        options: ListOptions,
+    ) -> Result<Option<User>, UserRepositoryError> {
+        let users = self.list(query, options.with_limit(1)).await?;
+        Ok(users.into_iter().next())
+    }
+
     /// Enforce email uniqueness atomically; translate conflicts into
     /// EmailAlreadyExists. Set verification and creation timestamps on insert;
     /// the signup workflow verifies email ownership before calling this method.

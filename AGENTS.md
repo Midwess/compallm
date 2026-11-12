@@ -84,12 +84,12 @@ conventions:
     core:
       owns: connection lifecycle trait, domain invariants
       never: depend on SeaORM or Postgres; contain database models or connection types
-      repository-filters: define ordinary Rust query structs under core/repository with Validify; the shared PostgreSQL executor calls validify before IntoSelect conversion or execution; implement IntoSelect in PostgreSQL to build SeaORM Select values; a derive macro for this conversion is future work
+      repository-filters: define ordinary Rust query structs under core/repository with Validify; repositories call validify before IntoQuery conversion or execution; implement IntoQuery in PostgreSQL to build SeaORM Select values; a derive macro for this conversion is future work
     postgres:
       depends-on: Core
       owns: SeaORM connections, transactions, models, queries, persistence conversions, concurrency guards
       implements: Core connection lifecycle trait
-      repository-reads: declare QueryDefinition bindings and use impl_queryable for shared Validify, IntoSelect, scoped SeaORM execution, stable primary-key ordering, and domain conversion; query-specific joins and indexed expressions belong in IntoSelect
+      repository-reads: define list and one directly on each domain repository contract; keep scoped SeaORM execution and domain mapping in PostgreSQL; query-specific joins and indexed expressions belong in IntoQuery; do not add shared Repository, Queryable, or QueryDefinition traits or forwarding macros
     avoid: strict Clean Architecture layers, generic network traits, custom units of work
     except: concrete requirement
     connection-contexts: scoped

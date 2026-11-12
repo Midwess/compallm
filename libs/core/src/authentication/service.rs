@@ -18,7 +18,7 @@ use crate::persistent::session::SessionRepository;
 use crate::user::{RegistrationService, UserStatus};
 use crate::{
     persistent::{DbContext, organization::OrganizationRepository},
-    repository::user::{UserFilter, UserRepository},
+    repository::user::{UserQuery, UserRepository},
 };
 use compallm_utils::time::unix_timestamp;
 
@@ -119,7 +119,7 @@ impl AuthService {
         if self
             .users
             .one(
-                UserFilter {
+                UserQuery {
                     email: Some(email.clone()),
                     ..Default::default()
                 },
@@ -140,7 +140,7 @@ impl AuthService {
         let user = self
             .users
             .one(
-                UserFilter {
+                UserQuery {
                     email: Some(email.clone()),
                     ..Default::default()
                 },
@@ -190,7 +190,7 @@ impl AuthService {
         let user = self
             .users
             .one(
-                UserFilter {
+                UserQuery {
                     email: Some(claims.email.clone()),
                     ..Default::default()
                 },
@@ -280,7 +280,7 @@ impl AuthService {
         let user = self
             .users
             .one(
-                UserFilter {
+                UserQuery {
                     id: Some(
                         i64::try_from(claims.session.user_id)
                             .map_err(crate::repository::user::UserRepositoryError::database)?,

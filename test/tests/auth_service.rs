@@ -366,15 +366,10 @@ impl OrganizationRepository for OrganizationRepositoryStub {
 }
 
 #[async_trait::async_trait]
-impl compallm_core::repository::Queryable<compallm_core::repository::user::UserFilter>
-    for Repository
-{
-    type Entity = User;
-    type Error = UserRepositoryError;
-
+impl UserRepository for Repository {
     async fn list(
         &self,
-        mut query: compallm_core::repository::user::UserFilter,
+        mut query: compallm_core::repository::user::UserQuery,
         options: modql::filter::ListOptions,
     ) -> Result<Vec<User>, UserRepositoryError> {
         validify::Validify::validify(&mut query)?;
@@ -407,10 +402,7 @@ impl compallm_core::repository::Queryable<compallm_core::repository::user::UserF
             .take(options.limit.unwrap_or(100) as usize)
             .collect())
     }
-}
 
-#[async_trait::async_trait]
-impl UserRepository for Repository {
     async fn create(&self, user: User) -> Result<User, UserRepositoryError> {
         let mut state = self.0.lock().unwrap();
         state

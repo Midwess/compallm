@@ -1,17 +1,20 @@
+use super::query::IntoQuery;
 use anyhow::Context;
 use compallm_core::{
     persistent::DbContext,
     repository::user::{
-        UserFilter, UserListOptions, UserRepository as CoreUserRepository, UserRepositoryError,
+        UserListOptions, UserQuery, UserRepository as CoreUserRepository, UserRepositoryError,
     },
     user::{User, UserStatus},
 };
+use modql::filter::ListOptions;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, QueryFilter, RuntimeErr, Select,
-    Set,
+    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, QueryFilter, QueryOrder,
+    QueryTrait, RuntimeErr, Select, Set,
     prelude::ChronoUtc,
     sea_query::{Condition, Expr, ExprTrait, Func},
 };
+use validify::Validify;
 
 use crate::{UserSchema, postgres_connection::PostgresConnection, schema::UserStatusSchema};
 
@@ -42,18 +45,10 @@ impl UserRepository {
     }
 }
 
-crate::impl_queryable!(UserRepository, UserFilter);
-
-impl super::queryable::QueryDefinition<UserFilter> for UserRepository {
-    type Entity = User;
-    type Error = UserRepositoryError;
-    type Options = UserListOptions;
-}
-
-impl super::queryable::IntoSelect for UserFilter {
+impl super::query::IntoQuery for UserQuery {
     type Table = Users;
 
-    fn into_select(self) -> Select<Users> {
+    fn into_query(self) -> Select<Users> {
         type Column = <Users as EntityTrait>::Column;
         let email_column = || Func::lower(Expr::col((Users::default(), Column::Email)));
         Users::find().filter(
@@ -68,6 +63,29 @@ impl super::queryable::IntoSelect for UserFilter {
 
 #[async_trait::async_trait]
 impl CoreUserRepository for UserRepository {
+    async fn list(
+        &self,
+        mut query: UserQuery,
+        options: ListOptions,
+    ) -> Result<Vec<User>, UserRepositoryError> {
+        query.validify()?;
+        let mut options = UserListOptions::from(options);
+        options.validify()?;
+        let options = ListOptions::from(options);
+        let mut query = query.into_query();
+        options.apply_to_sea_query(QueryTrait::query(&mut query));
+        query = query.order_by_asc(<Users as EntityTrait>::Column::Id);
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        query
+            .all(db)
+            .await
+            .map_err(UserRepositoryError::database)?
+            .into_iter()
+            .map(User::try_from)
+            .collect()
+    }
+
     async fn create(&self, user: User) -> Result<User, UserRepositoryError> {
         let id = Self::database_id(user.id)?;
         let context = DbContext::current()?;

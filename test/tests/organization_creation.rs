@@ -208,10 +208,15 @@ async fn default_organization_and_owner_are_inserted_in_one_transaction() {
     assert_eq!(identities.len(), 3);
     for role in roles {
         assert_eq!(role.organization_id, organization.id);
-        assert!(
-            role.cedar_source
-                .contains(&format!("{}:{}", organization.id, role.id))
-        );
+        let policies = cedar_policy::PolicySet::try_from(role).unwrap();
+        let expected: cedar_policy::EntityUid =
+            format!("Compallm::Role::\"{}:{}\"", organization.id, role.id)
+                .parse()
+                .unwrap();
+        assert!(policies.policies().all(|policy| matches!(
+            policy.principal_constraint(),
+            cedar_policy::PrincipalConstraint::In(uid) if uid == expected
+        )));
     }
     let member = state.member.as_ref().unwrap();
     assert_eq!(member.roles, vec![roles[0].clone()]);

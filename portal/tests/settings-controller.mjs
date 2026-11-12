@@ -142,12 +142,12 @@ test('role add creates an empty policy once and opens the persisted role', async
   )
   globalThis.fetch = async (_input, init) => {
     const { query, variables } = JSON.parse(init.body)
-    if (query.includes('rolePolicySource'))
-      return Response.json({
-        data: { role: { node: { id: '42', name: 'New role', description: '' } }, rolePolicySource: { node: { source: '' } } },
-      })
+    if (query.includes('organizationPolicyActions'))
+      return Response.json({ data: { organizationPolicyActions: { edges: [] } } })
     if (query.includes('role('))
-      return Response.json({ data: { role: { node: { id: '42', name: 'New role', description: '' } } } })
+      return Response.json({
+        data: { role: { node: { id: '42', name: 'New role', description: '', color: '#c06040', cedarSource: '' } } },
+      })
     if (!query.includes('roleCreate')) return Response.json({ data: { roles: { edges: [] }, groups: { edges: [] } } })
     writes++
     const input = Object.values(variables).find((value) => value && typeof value === 'object' && 'cedarSource' in value)
@@ -177,15 +177,22 @@ test('selecting a role reads its detail and saved policy', async () => {
   const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
   globalThis.fetch = async (_input, init) => {
     const { query } = JSON.parse(init.body)
-    if (query.includes('rolePolicySource'))
+    if (query.includes('organizationPolicyActions'))
+      return Response.json({ data: { organizationPolicyActions: { edges: [] } } })
+    if (query.includes('role('))
       return Response.json({
         data: {
-          role: { node: { id: '9', name: 'Editor', description: 'Example' } },
-          rolePolicySource: { node: { source: 'permit(principal, action, resource);' } },
+          role: {
+            node: {
+              id: '9',
+              name: 'Editor',
+              description: 'Example',
+              color: '#c06040',
+              cedarSource: 'permit(principal, action, resource);',
+            },
+          },
         },
       })
-    if (query.includes('role('))
-      return Response.json({ data: { role: { node: { id: '9', name: 'Editor', description: 'Example' } } } })
     return Response.json({ data: { roles: { edges: [] }, groups: { edges: [] } } })
   }
   try {
@@ -199,23 +206,26 @@ test('selecting a role reads its detail and saved policy', async () => {
   }
 })
 
-test('shows selected role metadata when policy access is denied', async () => {
+test('reports policy access denial without presenting partial role data', async () => {
   const original = globalThis.fetch
   const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
   globalThis.fetch = async (_input, init) => {
     const { query } = JSON.parse(init.body)
-    if (query.includes('rolePolicySource'))
-      return Response.json({ errors: [{ message: 'Denied', extensions: { code: 'FORBIDDEN', status: 403 } }] })
+    if (query.includes('organizationPolicyActions'))
+      return Response.json({ data: { organizationPolicyActions: { edges: [] } } })
     if (query.includes('role('))
-      return Response.json({ data: { role: { node: { id: '9', name: 'Editor', description: 'Example' } } } })
+      return Response.json({
+        data: { role: { node: { id: '9', name: 'Editor', description: 'Example', color: '#c06040', cedarSource: null } } },
+        errors: [{ message: 'Policy access denied', extensions: { code: 'FORBIDDEN', status: 403 } }],
+      })
     return Response.json({ data: { roles: { edges: [] }, groups: { edges: [] } } })
   }
   try {
     const stop = controller.start()
     controller.setPage('role', '9')
-    await until(controller.role.store, (state) => state.draft?.id === '9')
-    assert.equal(controller.role.store.getState().draft.name, 'Editor')
-    assert.notEqual(controller.role.store.getState().draft.diagnostics.length, 0)
+    await until(controller.role.store, (state) => !state.loading)
+    assert.equal(controller.role.store.getState().draft, null)
+    assert.ok(toast.getToasts().some((entry) => entry.id === 'error:Policy access denied'))
     stop()
   } finally {
     globalThis.fetch = original

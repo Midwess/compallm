@@ -588,7 +588,8 @@ impl Fixture {
                 "Compallm::Action:: Compallm::Role:: organization_id user_id policy_snapshot cedar_source",
             ).unwrap(), newer: None,
       }), Some(email));
-        let schema = build_schema(16, 256, 15_000);
+        let limits = GraphqlSettings::default();
+        let schema = build_schema(limits.max_depth, limits.max_fields, limits.max_tokens);
         let di = Box::leak(Box::new(
             Di::new(
                 db_context.clone(),
@@ -3001,7 +3002,7 @@ async fn graphql_rejects_multiple_root_writes() {
 }
 
 async fn graphql_body(response: axum::response::Response) -> serde_json::Value {
-    let bytes = axum::body::to_bytes(response.into_body(), 16384)
+    let bytes = axum::body::to_bytes(response.into_body(), 1_048_576)
         .await
         .unwrap();
     serde_json::from_slice(&bytes).unwrap()
@@ -3660,4 +3661,22 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
             .await
             .unwrap();
     }
+}
+
+#[tokio::test]
+async fn graphql_full_schema_introspection_is_available_without_credentials() {
+    let router = Fixture::new(None).graphql();
+    let response = graphql_operation(
+        &router,
+        include_str!("fixtures/graphql-introspection.graphql"),
+        serde_json::json!({}),
+        None,
+        None,
+        false,
+    )
+    .await;
+    assert_eq!(response.status(), axum::http::StatusCode::OK);
+    let body = graphql_body(response).await;
+    assert!(body["errors"].is_null(), "{body}");
+    assert!(body["data"]["__schema"]["types"].as_array().unwrap().len() > 10);
 }

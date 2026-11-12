@@ -6,7 +6,7 @@ pub fn generate() -> Result<(), Box<dyn Error>> {
         .parent()
         .expect("workspace root");
     let contract = root.join("libs/contract");
-    let schema = crate::graphql::build_schema(16, 256, 15_000);
+    let schema = crate::graphql::build_schema(24, 512, 15_000);
     fs::write(contract.join("schema.graphql"), schema.as_sdl())?;
     fs::write(
         contract.join("validation.schema.json"),

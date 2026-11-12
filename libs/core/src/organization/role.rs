@@ -26,6 +26,8 @@ pub struct Role {
 pub enum RoleCreationError {
     #[error("role name must contain 1 to 64 characters")]
     InvalidName(#[source] validify::ValidationErrors),
+    #[error("invalid role description")]
+    InvalidDescription(#[source] validify::ValidationErrors),
     #[error("invalid Cedar policy")]
     InvalidPolicy(#[source] anyhow::Error),
     #[error("ID generation failed")]
@@ -63,6 +65,11 @@ impl Role {
 
     /// Validate Cedar syntax and the application schema without authorizing publication.
     pub fn validate_policy(source: &str) -> anyhow::Result<()> {
+        use validify::Validify;
+        let mut input = RolePolicySource {
+            value: source.to_owned(),
+        };
+        input.validify()?;
         let policies: PolicySet = source.parse()?;
         anyhow::ensure!(
             policies.templates().next().is_none(),
@@ -86,6 +93,14 @@ impl Role {
         let mut name = RoleName { value: name.into() };
         name.validify()?;
         Ok(name.value)
+    }
+
+    pub fn validate_description(description: &str) -> Result<(), validify::ValidationErrors> {
+        use validify::Validify;
+        RoleDescription {
+            value: description.to_owned(),
+        }
+        .validify()
     }
 
     const OWNER_POLICY: &str = r###"// Application-owned initial Owner policy; organization/role IDs are trusted numeric values.
@@ -190,13 +205,15 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
         cedar_source: impl Into<String>,
     ) -> Result<Self, RoleCreationError> {
         let name = Self::normalize_name(&name.into()).map_err(RoleCreationError::InvalidName)?;
+        let description = description.into();
+        Self::validate_description(&description).map_err(RoleCreationError::InvalidDescription)?;
         let cedar_source = cedar_source.into();
         Self::validate_policy(&cedar_source).map_err(RoleCreationError::InvalidPolicy)?;
         Ok(Self {
             id: try_gen_id().await?,
             organization_id,
             name,
-            description: description.into(),
+            description,
             cedar_source,
             org_owner: false,
         })
@@ -207,6 +224,18 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
 struct RoleName {
     #[modify(trim)]
     #[validate(length(min = 1, max = 64))]
+    value: String,
+}
+
+#[derive(validify::Validify)]
+struct RoleDescription {
+    #[validate(length(max = 128))]
+    value: String,
+}
+
+#[derive(validify::Validify)]
+struct RolePolicySource {
+    #[validate(length(max = 5096))]
     value: String,
 }
 

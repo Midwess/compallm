@@ -133,6 +133,10 @@ impl RbacService {
                     .map_err(crate::organization::role::RoleCreationError::InvalidName)
             })
             .transpose()?;
+        if let Some(description) = description.as_ref() {
+            Role::validate_description(description)
+                .map_err(crate::organization::role::RoleCreationError::InvalidDescription)?;
+        }
         if name.is_some() || description.is_some() || cedar_source.is_some() {
             if DbContext::current()?.postgres().is_transaction() {
                 return Err(

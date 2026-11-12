@@ -362,24 +362,40 @@ export const ProvidersCreateInput = z
   .describe('Atomic batch of new provider connections for the verified organization.')
 export type ProvidersCreateInputFormInput = z.input<typeof ProvidersCreateInput>
 export type ProvidersCreateInputFormOutput = z.output<typeof ProvidersCreateInput>
-export const RoleCreateInputConstraints = { name: { minLength: 1, maxLength: 64, trim: true } } as const
-export const RoleCreateInputInput = { name: stringInput(RoleCreateInputConstraints['name']) }
+export const RoleCreateInputConstraints = {
+  name: { minLength: 1, maxLength: 64, trim: true },
+  description: { maxLength: 128 },
+  cedarSource: { maxLength: 5096 },
+} as const
+export const RoleCreateInputInput = {
+  name: stringInput(RoleCreateInputConstraints['name']),
+  description: stringInput(RoleCreateInputConstraints['description']),
+  cedarSource: stringInput(RoleCreateInputConstraints['cedarSource']),
+}
 export const RoleCreateInput = z
   .object({
     name: inputString({ minLength: 1, maxLength: 64, trim: true }),
-    description: inputString({}),
-    cedarSource: inputString({}),
+    description: inputString({ maxLength: 128 }),
+    cedarSource: inputString({ maxLength: 5096 }),
   })
   .strict()
 export type RoleCreateInputFormInput = z.input<typeof RoleCreateInput>
 export type RoleCreateInputFormOutput = z.output<typeof RoleCreateInput>
-export const RoleUpdateInputConstraints = { name: { minLength: 1, maxLength: 64, trim: true } } as const
-export const RoleUpdateInputInput = { name: stringInput(RoleUpdateInputConstraints['name']) }
+export const RoleUpdateInputConstraints = {
+  name: { minLength: 1, maxLength: 64, trim: true },
+  description: { maxLength: 128 },
+  cedarSource: { maxLength: 5096 },
+} as const
+export const RoleUpdateInputInput = {
+  name: stringInput(RoleUpdateInputConstraints['name']),
+  description: stringInput(RoleUpdateInputConstraints['description']),
+  cedarSource: stringInput(RoleUpdateInputConstraints['cedarSource']),
+}
 export const RoleUpdateInput = z
   .object({
     name: inputString({ minLength: 1, maxLength: 64, trim: true }).nullable().optional(),
-    description: inputString({}).nullable().optional(),
-    cedarSource: inputString({}).nullable().optional(),
+    description: inputString({ maxLength: 128 }).nullable().optional(),
+    cedarSource: inputString({ maxLength: 5096 }).nullable().optional(),
   })
   .strict()
 export type RoleUpdateInputFormInput = z.input<typeof RoleUpdateInput>

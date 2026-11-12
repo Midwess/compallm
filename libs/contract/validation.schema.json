@@ -49,10 +49,12 @@
           "maxLength": 64
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 128
         },
         "cedarSource": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 5096
         }
       },
       "additionalProperties": false,
@@ -79,13 +81,15 @@
           "type": [
             "string",
             "null"
-          ]
+          ],
+          "maxLength": 128
         },
         "cedarSource": {
           "type": [
             "string",
             "null"
-          ]
+          ],
+          "maxLength": 5096
         }
       },
       "additionalProperties": false,

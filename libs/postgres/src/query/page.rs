@@ -22,12 +22,14 @@ impl<Table: EntityTrait> PagePlan<Table> {
     pub(super) fn new(
         query: Query,
         select: Select<Table>,
+        pagination: Pagination,
+        ordering: Vec<OrderBy>,
         max_rows: u32,
         scope: &str,
     ) -> Result<Self, QueryCompileError> {
-        let size = query.pagination.page_size(max_rows)?;
+        let size = pagination.page_size(max_rows)?;
         let mut order = Vec::new();
-        let mut fields = query.order_by.clone();
+        let mut fields = ordering.clone();
         for entry in &fields {
             let col = column::<Table>(&entry.field)?;
             if order
@@ -68,11 +70,10 @@ impl<Table: EntityTrait> PagePlan<Table> {
         ))
         .map_err(|_| compallm_query::CursorError::Invalid)?;
         let context = format!("{:x}", Sha256::digest(binding));
-        let boundary = query
-            .pagination
+        let boundary = pagination
             .after
             .as_ref()
-            .or(query.pagination.before.as_ref())
+            .or(pagination.before.as_ref())
             .map(|cursor| cursor.decode(&context))
             .transpose()?;
         if boundary
@@ -89,7 +90,7 @@ impl<Table: EntityTrait> PagePlan<Table> {
         Ok(Self {
             base,
             order,
-            pagination: query.pagination,
+            pagination,
             size,
             context,
             boundary,

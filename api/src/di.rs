@@ -38,8 +38,8 @@ impl Default for GraphqlSettings {
             cookie_secure: true,
             public_origin: String::new(),
             max_body_bytes: 65_536,
-            max_depth: 16,
-            max_fields: 256,
+            max_depth: 24,
+            max_fields: 512,
             max_tokens: 15_000,
         }
     }
@@ -309,5 +309,11 @@ impl juniper::FromContext<Di> for AuthService {
 impl juniper::FromContext<Di> for RbacService {
     fn from(di: &Di) -> &Self {
         di.rbac.get().expect("RBAC service must be initialized")
+    }
+}
+
+impl juniper::FromContext<Di> for Box<dyn OrganizationRepository> {
+    fn from(di: &Di) -> &Self {
+        &di.organizations
     }
 }

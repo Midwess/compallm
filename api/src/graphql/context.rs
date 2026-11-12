@@ -74,3 +74,11 @@ impl FromContext<GraphqlContext> for CookieDelivery {
         &context.delivery
     }
 }
+
+impl FromContext<GraphqlContext>
+    for Box<dyn compallm_core::persistent::organization::OrganizationRepository>
+{
+    fn from(context: &GraphqlContext) -> &Self {
+        <Self as FromContext<Di>>::from(context.di)
+    }
+}

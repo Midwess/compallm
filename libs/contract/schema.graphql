@@ -167,23 +167,8 @@ input RoleCreateInput {
 "Positive u32 context size, encoded as an exact JSON number (1–4294967295)."
 scalar ContextTokens
 
-type AuthenticationMutation {
-  "Request signup email admission. Reject existing accounts before sending or issuing a challenge."
-  signupEmailRequest(input: EmailInput!): EmailChallenge!
-  "Request signin email admission for an existing active account."
-  signinEmailRequest(input: EmailInput!): EmailChallenge!
-  "Confirm the middleware-verified OTP challenge and atomically create the account and session."
-  signupEmailConfirm(input: EmailCodeInput!): SessionCredentials!
-  "Confirm an existing user's middleware-verified OTP challenge and create a scoped session."
-  signinEmailConfirm(input: EmailCodeInput!): SessionCredentials!
-  "Explicit refresh Bearer only. Rebuild current authority; never set browser cookies."
-  sessionRefresh: SessionCredentials!
-  "Revoke this verified login only. Clear cookie credentials after successful revocation."
-  sessionRevoke: Boolean!
-}
-
-type AuthenticationQuery {
-  session: Session!
+type BooleanPayload {
+  node: Boolean!
 }
 
 type CreatedGroup {
@@ -193,10 +178,18 @@ type CreatedGroup {
   roleIds: [ID!]!
 }
 
+type CreatedGroupPayload {
+  node: CreatedGroup!
+}
+
 "Email admission succeeded; cookie delivery never exposes the OTP credential."
 type EmailChallenge {
   lifetime: TokenLifetime!
   token: String
+}
+
+type EmailChallengePayload {
+  node: EmailChallenge!
 }
 
 type Group {
@@ -205,18 +198,37 @@ type Group {
   description: String!
 }
 
-type GroupMutation {
-  create(input: GroupCreateInput!): CreatedGroup!
+type GroupConnection {
+  edges: [GroupEdge!]!
+  pageInfo: PageInfo!
 }
 
-type GroupQuery {
-  get(id: ID!): Group
-  list: [Group!]!
+type GroupEdge {
+  cursor: String!
+  node: Group!
+}
+
+type GroupPayload {
+  node: Group!
 }
 
 type Mutation {
-  authentication: AuthenticationMutation!
-  organization: OrganizationMutation!
+  "Request a signup email challenge; reject existing accounts before sending."
+  emailSignupRequest(input: EmailInput!): EmailChallengePayload!
+  "Confirm the verified signup challenge and create the account and session."
+  emailSignupConfirm(input: EmailCodeInput!): SessionCredentialsPayload!
+  "Request a signin email challenge for an existing active account."
+  emailSigninRequest(input: EmailInput!): EmailChallengePayload!
+  "Confirm the verified signin challenge and create a scoped session."
+  emailSigninConfirm(input: EmailCodeInput!): SessionCredentialsPayload!
+  "Refresh using explicit refresh Bearer authority; leave browser cookies unchanged."
+  sessionRefresh: SessionCredentialsPayload!
+  "Revoke the verified session and clear its browser cookies after success."
+  sessionRevoke: BooleanPayload!
+  "Create a role in the verified active organization."
+  roleCreate(input: RoleCreateInput!): RolePayload!
+  "Create a group and its initial role assignments in the verified active organization."
+  groupCreate(input: GroupCreateInput!): CreatedGroupPayload!
 }
 
 type Organization {
@@ -224,15 +236,15 @@ type Organization {
   name: String!
 }
 
-type OrganizationMutation {
-  roles: RoleMutation!
-  groups: GroupMutation!
+type OrganizationPayload {
+  node: Organization!
 }
 
-type OrganizationQuery {
-  get: Organization!
-  roles: RoleQuery!
-  groups: GroupQuery!
+type PageInfo {
+  startCursor: String
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
 }
 
 "Public catalog defaults; selecting a template creates no configured provider."
@@ -247,8 +259,18 @@ type ProviderTemplate {
 }
 
 type Query {
-  organization: OrganizationQuery!
-  authentication: AuthenticationQuery!
+  "Return the verified current session identity."
+  session: SessionPayload!
+  "Return the active organization from verified user authority."
+  organization: OrganizationPayload!
+  "Find visible role metadata in the active organization."
+  role(id: ID!): RolePayload
+  "Return the complete visible role metadata collection, ordered by ID."
+  roles: RoleConnection!
+  "Find visible group metadata in the active organization."
+  group(id: ID!): GroupPayload
+  "Return the complete visible group metadata collection, ordered by ID."
+  groups: GroupConnection!
 }
 
 type Role {
@@ -257,13 +279,18 @@ type Role {
   description: String!
 }
 
-type RoleMutation {
-  create(input: RoleCreateInput!): Role!
+type RoleConnection {
+  edges: [RoleEdge!]!
+  pageInfo: PageInfo!
 }
 
-type RoleQuery {
-  get(id: ID!): Role
-  list: [Role!]!
+type RoleEdge {
+  cursor: String!
+  node: Role!
+}
+
+type RolePayload {
+  node: Role!
 }
 
 type Session {
@@ -283,6 +310,14 @@ type SessionCredentials {
   refreshLifetime: TokenLifetime!
   accessToken: String
   refreshToken: String
+}
+
+type SessionCredentialsPayload {
+  node: SessionCredentials!
+}
+
+type SessionPayload {
+  node: Session!
 }
 
 "Exact Unix-second validity and client throttle values encoded as decimal strings."

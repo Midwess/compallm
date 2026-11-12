@@ -1,0 +1,243 @@
+use super::{
+    GraphqlContext, authentication,
+    base_type::{Collection, Payload},
+    error::Error,
+    organization,
+};
+use crate::http::{
+    authentication::{AuthenticationContext, CookieDelivery, UserContext},
+    authorization::AuthorizationContext,
+};
+use compallm_core::{
+    authentication::AuthService, authorization::rbac::RbacService,
+    persistent::organization::OrganizationRepository,
+};
+use juniper::{
+    Arguments, DefaultScalarValue, EmptySubscription, ExecutionResult, Executor, GraphQLType,
+    GraphQLValue, GraphQLValueAsync, ID, Registry, RootNode, graphql_object,
+};
+use schemars::JsonSchema;
+use std::sync::Arc;
+
+pub struct Query;
+
+#[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
+impl Query {
+    /// Return the verified current session identity.
+    async fn session(
+        #[graphql(context)] user: &UserContext,
+    ) -> Result<Payload<authentication::Session>, Error> {
+        authentication::query::session(user).await
+    }
+
+    /// Return the active organization from verified user authority.
+    async fn organization(
+        #[graphql(context)] user: &UserContext,
+    ) -> Result<Payload<organization::Organization>, Error> {
+        organization::query::get(user).await
+    }
+
+    /// Find visible role metadata in the active organization.
+    async fn role(
+        id: ID,
+        #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Option<Payload<organization::role::Role>>, Error> {
+        organization::role::query::get(id, repository, authority).await
+    }
+
+    /// Return the complete visible role metadata collection, ordered by ID.
+    async fn roles(
+        #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Collection<organization::role::Role>, Error> {
+        organization::role::query::list(repository, authority).await
+    }
+
+    /// Find visible group metadata in the active organization.
+    async fn group(
+        id: ID,
+        #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Option<Payload<organization::group::Group>>, Error> {
+        organization::group::query::get(id, repository, authority).await
+    }
+
+    /// Return the complete visible group metadata collection, ordered by ID.
+    async fn groups(
+        #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Collection<organization::group::Group>, Error> {
+        organization::group::query::list(repository, authority).await
+    }
+}
+
+pub struct Mutation;
+
+#[graphql_object(context = GraphqlContext, scalar = DefaultScalarValue)]
+impl Mutation {
+    /// Request a signup email challenge; reject existing accounts before sending.
+    async fn email_signup_request(
+        input: authentication::input::EmailInput,
+        #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] identity: &AuthenticationContext,
+        #[graphql(context)] cookies: &CookieDelivery,
+    ) -> Result<Payload<authentication::EmailChallenge>, Error> {
+        authentication::mutation::signup_email_request(input, auth, identity, cookies).await
+    }
+
+    /// Confirm the verified signup challenge and create the account and session.
+    async fn email_signup_confirm(
+        input: authentication::input::EmailCodeInput,
+        #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] identity: &AuthenticationContext,
+        #[graphql(context)] cookies: &CookieDelivery,
+    ) -> Result<Payload<authentication::SessionCredentials>, Error> {
+        authentication::mutation::signup_email_confirm(input, auth, identity, cookies).await
+    }
+
+    /// Request a signin email challenge for an existing active account.
+    async fn email_signin_request(
+        input: authentication::input::EmailInput,
+        #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] identity: &AuthenticationContext,
+        #[graphql(context)] cookies: &CookieDelivery,
+    ) -> Result<Payload<authentication::EmailChallenge>, Error> {
+        authentication::mutation::signin_email_request(input, auth, identity, cookies).await
+    }
+
+    /// Confirm the verified signin challenge and create a scoped session.
+    async fn email_signin_confirm(
+        input: authentication::input::EmailCodeInput,
+        #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] identity: &AuthenticationContext,
+        #[graphql(context)] cookies: &CookieDelivery,
+    ) -> Result<Payload<authentication::SessionCredentials>, Error> {
+        authentication::mutation::signin_email_confirm(input, auth, identity, cookies).await
+    }
+
+    /// Refresh using explicit refresh Bearer authority; leave browser cookies unchanged.
+    async fn session_refresh(
+        #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] identity: &AuthenticationContext,
+        #[graphql(context)] cookies: &CookieDelivery,
+    ) -> Result<Payload<authentication::SessionCredentials>, Error> {
+        authentication::mutation::session_refresh(auth, identity, cookies).await
+    }
+    /// Revoke the verified session and clear its browser cookies after success.
+    async fn session_revoke(
+        #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] identity: &AuthenticationContext,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] cookies: &CookieDelivery,
+    ) -> Result<Payload<bool>, Error> {
+        authentication::mutation::session_revoke(auth, identity, user, cookies).await
+    }
+
+    /// Create a role in the verified active organization.
+    async fn role_create(
+        input: organization::role::input::RoleCreateInput,
+        #[graphql(context)] service: &RbacService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<organization::role::Role>, Error> {
+        organization::role::mutation::create(input, service, authority).await
+    }
+
+    /// Create a group and its initial role assignments in the verified active organization.
+    async fn group_create(
+        input: organization::group::input::GroupCreateInput,
+        #[graphql(context)] service: &RbacService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<organization::group::CreatedGroup>, Error> {
+        organization::group::mutation::create(input, service, authority).await
+    }
+}
+
+pub type ApplicationSchema =
+    Arc<RootNode<RegisteredQuery, Mutation, EmptySubscription<GraphqlContext>>>;
+
+/// Construct the shared schema without storing any caller or service state.
+pub fn build_schema(max_depth: usize, max_fields: usize, max_tokens: usize) -> ApplicationSchema {
+    Arc::new(
+        RootNode::new(RegisteredQuery, Mutation, EmptySubscription::new())
+            .limit_depth(max_depth)
+            .limit_fields(max_fields)
+            .limit_tokens(max_tokens),
+    )
+}
+
+pub struct RegisteredQuery;
+
+// Juniper discovers types through root fields. Register reusable contracts in
+// that same schema without inventing executable operations to make them reachable.
+impl GraphQLType for RegisteredQuery {
+    fn name(info: &()) -> Option<juniper::ArcStr> {
+        Query::name(info)
+    }
+
+    fn meta(info: &(), registry: &mut Registry) -> juniper::meta::MetaType {
+        use super::{
+            authentication,
+            provider::{catalog, input},
+        };
+        registry.get_type::<authentication::input::EmailInput>(&());
+        registry.get_type::<authentication::input::EmailCodeInput>(&());
+        registry.get_type::<input::ProvidersCreateInput>(&());
+        registry.get_type::<input::ProviderReplaceInput>(&());
+        registry.get_type::<input::ProviderPatchInput>(&());
+        registry.get_type::<catalog::ProviderTemplate>(&());
+        Query::meta(info, registry)
+    }
+}
+
+impl GraphQLValue for RegisteredQuery {
+    type Context = GraphqlContext;
+    type TypeInfo = ();
+
+    fn type_name(&self, info: &()) -> Option<juniper::ArcStr> {
+        Query.type_name(info)
+    }
+
+    fn concrete_type_name(&self, context: &Self::Context, info: &()) -> String {
+        Query.concrete_type_name(context, info)
+    }
+
+    fn resolve_field(
+        &self,
+        info: &(),
+        field_name: &str,
+        arguments: &Arguments,
+        executor: &Executor<Self::Context>,
+    ) -> ExecutionResult {
+        Query.resolve_field(info, field_name, arguments, executor)
+    }
+}
+
+impl GraphQLValueAsync for RegisteredQuery {
+    fn resolve_field_async<'a>(
+        &'a self,
+        info: &'a (),
+        field_name: &'a str,
+        arguments: &'a Arguments,
+        executor: &'a Executor<Self::Context>,
+    ) -> juniper::BoxFuture<'a, ExecutionResult> {
+        Query.resolve_field_async(info, field_name, arguments, executor)
+    }
+}
+
+#[derive(JsonSchema)]
+#[allow(dead_code)]
+struct Inputs {
+    role_create: super::organization::role::input::RoleCreateInput,
+    group_create: super::organization::group::input::GroupCreateInput,
+    email: super::authentication::input::EmailInput,
+    code: super::authentication::input::EmailCodeInput,
+    provider_create: super::provider::input::ProvidersCreateInput,
+    provider_replace: super::provider::input::ProviderReplaceInput,
+    provider_patch: super::provider::input::ProviderPatchInput,
+}
+
+pub(crate) fn validation_schema() -> serde_json::Value {
+    serde_json::to_value(schemars::schema_for!(Inputs))
+        .expect("serializable GraphQL validation schema")
+}

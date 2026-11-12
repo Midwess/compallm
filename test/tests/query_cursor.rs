@@ -22,15 +22,24 @@ mod records {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
-fn query(direction: OrderByDirection, pagination: Pagination) -> Query {
-    Query {
-        order_by: vec![OrderBy {
+fn plan(
+    direction: OrderByDirection,
+    pagination: Pagination,
+    scope: &str,
+) -> Result<
+    compallm_postgres::query::PagePlan<records::Entity>,
+    compallm_postgres::query::QueryCompileError,
+> {
+    Box::new(Query::new()).plan_page(
+        scoped(),
+        pagination,
+        vec![OrderBy {
             field: "label".into(),
             direction,
         }],
-        pagination,
-        ..Default::default()
-    }
+        30,
+        scope,
+    )
 }
 
 async fn fixture() -> DatabaseConnection {
@@ -100,15 +109,15 @@ async fn postgres_cursor_traversal_preserves_scope_null_order_and_unique_ties() 
         let mut after = None;
         let mut cursors = Vec::new();
         loop {
-            let page = Box::new(query(
+            let page = plan(
                 direction,
                 Pagination {
                     first: Some(2),
                     after,
                     ..Default::default()
                 },
-            ))
-            .plan_page(scoped(), 30, "organization:1")
+                "organization:1",
+            )
             .unwrap()
             .fetch(&db)
             .await
@@ -125,15 +134,15 @@ async fn postgres_cursor_traversal_preserves_scope_null_order_and_unique_ties() 
         let mut backward = Vec::new();
         let mut before = None;
         loop {
-            let page = Box::new(query(
+            let page = plan(
                 direction,
                 Pagination {
                     last: Some(2),
                     before,
                     ..Default::default()
                 },
-            ))
-            .plan_page(scoped(), 30, "organization:1")
+                "organization:1",
+            )
             .unwrap()
             .fetch(&db)
             .await
@@ -149,15 +158,15 @@ async fn postgres_cursor_traversal_preserves_scope_null_order_and_unique_ties() 
         }
         assert_eq!(backward, expected);
         let end = cursors.last().unwrap();
-        let empty = Box::new(query(
+        let empty = plan(
             direction,
             Pagination {
                 first: Some(2),
                 after: Some(end.as_str().into()),
                 ..Default::default()
             },
-        ))
-        .plan_page(scoped(), 30, "organization:1")
+            "organization:1",
+        )
         .unwrap()
         .fetch(&db)
         .await
@@ -166,15 +175,15 @@ async fn postgres_cursor_traversal_preserves_scope_null_order_and_unique_ties() 
         assert!(empty.page_info.has_previous_page);
         assert!(!empty.page_info.has_next_page);
 
-        let zero = Box::new(query(
+        let zero = plan(
             direction,
             Pagination {
                 first: Some(0),
                 after: Some(cursors[1].as_str().into()),
                 ..Default::default()
             },
-        ))
-        .plan_page(scoped(), 30, "organization:1")
+            "organization:1",
+        )
         .unwrap()
         .fetch(&db)
         .await
@@ -182,7 +191,7 @@ async fn postgres_cursor_traversal_preserves_scope_null_order_and_unique_ties() 
         assert!(zero.edges.is_empty());
         assert!(zero.page_info.has_previous_page && zero.page_info.has_next_page);
 
-        let offset = Box::new(query(
+        let offset = plan(
             direction,
             Pagination {
                 first: Some(1),
@@ -190,8 +199,8 @@ async fn postgres_cursor_traversal_preserves_scope_null_order_and_unique_ties() 
                 offset: Some(2),
                 ..Default::default()
             },
-        ))
-        .plan_page(scoped(), 30, "organization:1")
+            "organization:1",
+        )
         .unwrap()
         .fetch(&db)
         .await
@@ -200,15 +209,15 @@ async fn postgres_cursor_traversal_preserves_scope_null_order_and_unique_ties() 
         assert!(offset.page_info.has_previous_page && offset.page_info.has_next_page);
 
         assert!(
-            Box::new(query(
+            plan(
                 direction,
                 Pagination {
                     first: Some(2),
                     after: Some(cursors[0].as_str().into()),
                     ..Default::default()
-                }
-            ))
-            .plan_page(scoped(), 30, "organization:2")
+                },
+                "organization:2"
+            )
             .is_err()
         );
     }
@@ -236,29 +245,31 @@ async fn postgres_cursor_traversal_preserves_scope_null_order_and_unique_ties() 
     let mut after = None;
     let mut seen = Vec::new();
     loop {
-        let page = Box::new(Query {
-            order_by: vec![
-                OrderBy {
-                    field: "label".into(),
-                    direction: OrderByDirection::AscNullsLast,
+        let page = Box::new(Query::new())
+            .plan_page(
+                composite::Entity::find(),
+                Pagination {
+                    first: Some(1),
+                    after,
+                    ..Default::default()
                 },
-                OrderBy {
-                    field: "rank".into(),
-                    direction: OrderByDirection::DescNullsLast,
-                },
-            ],
-            pagination: Pagination {
-                first: Some(1),
-                after,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .plan_page(composite::Entity::find(), 30, "composite")
-        .unwrap()
-        .fetch(&db)
-        .await
-        .unwrap();
+                vec![
+                    OrderBy {
+                        field: "label".into(),
+                        direction: OrderByDirection::AscNullsLast,
+                    },
+                    OrderBy {
+                        field: "rank".into(),
+                        direction: OrderByDirection::DescNullsLast,
+                    },
+                ],
+                30,
+                "composite",
+            )
+            .unwrap()
+            .fetch(&db)
+            .await
+            .unwrap();
         seen.extend(page.edges.iter().map(|e| (e.node.tenant, e.node.sequence)));
         after = page.page_info.end_cursor.map(Cursor::from);
         if !page.page_info.has_next_page {
@@ -287,14 +298,14 @@ async fn cursor_keeps_large_order_values_and_paging_direction_is_interchangeable
     let db = MockDatabase::new(DbBackend::Postgres)
         .append_query_results([vec![model(3), model(2), model(1)]])
         .into_connection();
-    let page = Box::new(query(
+    let page = plan(
         OrderByDirection::AscNullsLast,
         Pagination {
             last: Some(2),
             ..Default::default()
         },
-    ))
-    .plan_page(scoped(), 30, "organization:1")
+        "organization:1",
+    )
     .unwrap()
     .fetch(&db)
     .await
@@ -308,14 +319,14 @@ async fn cursor_keeps_large_order_values_and_paging_direction_is_interchangeable
     );
     assert!(page.page_info.has_previous_page);
     assert!(!page.page_info.has_next_page);
-    let next = Box::new(query(
+    let next = plan(
         OrderByDirection::AscNullsLast,
         Pagination {
             first: Some(2),
             after: page.page_info.end_cursor.map(Cursor::from),
             ..Default::default()
         },
-    ))
-    .plan_page(scoped(), 30, "organization:1");
+        "organization:1",
+    );
     assert!(next.is_ok());
 }

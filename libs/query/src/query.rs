@@ -1,8 +1,5 @@
-use crate::{
-    OrderBy, Pagination, operation::Operation, order::OrderByError, pagination::PaginationError,
-};
+use crate::operation::Operation;
 use serde::{Deserialize, Serialize};
-use std::convert::Infallible;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Predicate {
@@ -18,12 +15,10 @@ impl Default for Predicate {
     }
 }
 
-/// A read description. Authority and database connections are supplied separately.
+/// Filtering predicates. Pagination, ordering, authority, and connections are supplied separately.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Query {
     pub predicate: Predicate,
-    pub order_by: Vec<OrderBy>,
-    pub pagination: Pagination,
 }
 
 impl Query {
@@ -48,44 +43,25 @@ impl Query {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
-pub enum QueryError {
-    #[error("nested filters cannot carry ordering or pagination")]
-    NestedQueryOptions,
-    #[error(transparent)]
-    OrderBy(#[from] OrderByError),
-    #[error(transparent)]
-    Pagination(#[from] PaginationError),
-}
-
-impl From<Infallible> for QueryError {
-    fn from(value: Infallible) -> Self {
-        match value {}
-    }
-}
-
 impl Query {
-    pub fn into_predicate(self) -> Result<Predicate, QueryError> {
-        if !self.order_by.is_empty() || self.pagination != Pagination::default() {
-            return Err(QueryError::NestedQueryOptions);
-        }
-        Ok(self.predicate)
+    pub fn into_predicate(self) -> Predicate {
+        self.predicate
     }
 }
 
-/// Consumes a typed request into a database-independent read description.
+/// Consumes a typed filter into database-independent predicates.
 pub trait IntoQuery: Send {
-    fn into_query(self: Box<Self>) -> Result<Query, QueryError>;
+    fn into_query(self: Box<Self>) -> Query;
 }
 
 impl IntoQuery for Query {
-    fn into_query(self: Box<Self>) -> Result<Query, QueryError> {
-        Ok(*self)
+    fn into_query(self: Box<Self>) -> Query {
+        *self
     }
 }
 
 impl<Q: IntoQuery + ?Sized> IntoQuery for Box<Q> {
-    fn into_query(self: Box<Self>) -> Result<Query, QueryError> {
+    fn into_query(self: Box<Self>) -> Query {
         (*self).into_query()
     }
 }

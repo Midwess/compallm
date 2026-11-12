@@ -1,6 +1,6 @@
 use compallm_query as query_runtime;
 use compallm_query::{
-    IntoQuery, OrderBy, OrderByDirection, Pagination, Predicate,
+    IntoQuery, Predicate,
     filter::{FilterIs, IntFilter, StringFilter, StringListFilter},
     operation::{Comparison, ListOperation, Operation, StringOperation},
 };
@@ -43,8 +43,7 @@ fn derived_filter_preserves_each_operation_and_nested_boolean_group() {
         })),
         ..Default::default()
     })
-    .into_query()
-    .unwrap();
+    .into_query();
     let Predicate::And(predicates) = query.predicate else {
         panic!("expected and")
     };
@@ -74,28 +73,15 @@ struct RenamedFilter<'a, T> {
     search: T,
     #[query(skip)]
     _metadata: &'a str,
-    #[query(order_by)]
-    order: Vec<OrderBy>,
-    #[query(pagination)]
-    page: Pagination,
 }
 
 #[test]
-fn explicit_mapping_accepts_operations_and_keeps_ordering_and_pagination() {
+fn explicit_mapping_accepts_operations_and_keeps_metadata_outside_the_query() {
     let query = Box::new(RenamedFilter {
         search: StringOperation::Is(FilterIs::NotNull),
         _metadata: "metadata stays outside the query",
-        order: vec![OrderBy {
-            field: "name".into(),
-            direction: OrderByDirection::DescNullsLast,
-        }],
-        page: Pagination {
-            first: Some(20),
-            ..Default::default()
-        },
     })
-    .into_query()
-    .unwrap();
+    .into_query();
     assert_eq!(
         query.predicate,
         Predicate::And(vec![Predicate::Field {
@@ -103,6 +89,4 @@ fn explicit_mapping_accepts_operations_and_keeps_ordering_and_pagination() {
             operation: Operation::String(StringOperation::Is(FilterIs::NotNull))
         }])
     );
-    assert_eq!(query.order_by[0].direction, OrderByDirection::DescNullsLast);
-    assert_eq!(query.pagination.first, Some(20));
 }

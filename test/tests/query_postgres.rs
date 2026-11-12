@@ -30,7 +30,9 @@ fn derived_inputs_compile_to_bound_predicates_and_stable_ordering() {
         }),
         ..Default::default()
     };
-    let mut actual = Box::new(input).into_sea_query::<Users>().unwrap();
+    let mut actual = Box::new(input)
+        .into_sea_query::<Users>(Pagination::default(), vec![])
+        .unwrap();
     let mut expected = Users::find()
         .filter(
             Condition::all().add(
@@ -57,17 +59,19 @@ fn ordering_and_offset_preserve_user_order_and_append_the_primary_key() {
             field: "id".into(),
             operation: Operation::Int(Comparison::Gte(10)),
         },
-        order_by: vec![OrderBy {
-            field: "display_name".into(),
-            direction: OrderByDirection::DescNullsFirst,
-        }],
-        pagination: Pagination {
-            first: Some(20),
-            offset: Some(40),
-            ..Default::default()
-        },
     };
-    let mut actual = Box::new(query).into_sea_query::<Users>().unwrap();
+    let ordering = vec![OrderBy {
+        field: "display_name".into(),
+        direction: OrderByDirection::DescNullsFirst,
+    }];
+    let pagination = Pagination {
+        first: Some(20),
+        offset: Some(40),
+        ..Default::default()
+    };
+    let mut actual = Box::new(query)
+        .into_sea_query::<Users>(pagination, ordering)
+        .unwrap();
     let mut expected = Users::find()
         .filter(Condition::all().add(Expr::col((Users::default(), Column::Id)).gte(10)))
         .order_by_with_nulls(
@@ -92,9 +96,8 @@ fn ordering_and_offset_preserve_user_order_and_append_the_primary_key() {
 fn explicit_empty_or_is_false_and_negation_is_preserved() {
     let mut actual = Box::new(Query {
         predicate: Predicate::Not(Box::new(Predicate::Or(vec![]))),
-        ..Default::default()
     })
-    .into_sea_query::<Users>()
+    .into_sea_query::<Users>(Pagination::default(), vec![])
     .unwrap();
     let mut expected = Users::find()
         .filter(Condition::any().add(Expr::Constant(false.into())).not())
@@ -123,10 +126,14 @@ fn trusted_base_selection_remains_outside_client_or_conditions() {
                 operation: Operation::String(StringOperation::Eq("b@example.com".into())),
             },
         ]),
-        ..Default::default()
     };
     let mut actual = Box::new(query)
-        .apply_to_sea_query(Users::find().filter(Column::Id.eq(42_i64)), 30)
+        .apply_to_sea_query(
+            Users::find().filter(Column::Id.eq(42_i64)),
+            Pagination::default(),
+            vec![],
+            30,
+        )
         .unwrap();
     let mut expected = Users::find()
         .filter(Column::Id.eq(42_i64))
@@ -175,7 +182,7 @@ fn array_membership_preserves_array_type_and_bound_values() {
         "tags",
         Operation::StringList(ListOperation::Contains(vec!["visible".into()])),
     ))
-    .into_sea_query::<records::Entity>()
+    .into_sea_query::<records::Entity>(Pagination::default(), vec![])
     .unwrap();
     let values = Value::Array(
         ArrayType::String,
@@ -207,7 +214,7 @@ fn ilike_keeps_patterns_as_bound_values() {
         "email",
         Operation::String(StringOperation::ILike(pattern.into())),
     ))
-    .into_sea_query::<Users>()
+    .into_sea_query::<Users>(Pagination::default(), vec![])
     .unwrap();
     let mut expected = Users::find()
         .filter(
@@ -237,16 +244,26 @@ struct RecordFilter {
 
 #[async_trait::async_trait]
 trait RecordRepository: Send + Sync {
-    async fn list(&self, query: Box<dyn IntoQuery>) -> anyhow::Result<Vec<records::Model>>;
+    async fn list(
+        &self,
+        query: Box<dyn IntoQuery>,
+        pagination: Pagination,
+        ordering: Vec<OrderBy>,
+    ) -> anyhow::Result<Vec<records::Model>>;
 }
 
 struct PgRecords(sea_orm::DatabaseConnection);
 
 #[async_trait::async_trait]
 impl RecordRepository for PgRecords {
-    async fn list(&self, query: Box<dyn IntoQuery>) -> anyhow::Result<Vec<records::Model>> {
+    async fn list(
+        &self,
+        query: Box<dyn IntoQuery>,
+        pagination: Pagination,
+        ordering: Vec<OrderBy>,
+    ) -> anyhow::Result<Vec<records::Model>> {
         Ok(query
-            .into_sea_query::<records::Entity>()?
+            .into_sea_query::<records::Entity>(pagination, ordering)?
             .all(&self.0)
             .await?)
     }
@@ -267,7 +284,10 @@ async fn repository_trait_object_accepts_a_derived_query_trait_object() {
             ..Default::default()
         }),
     });
-    let records = repository.list(input).await.unwrap();
+    let records = repository
+        .list(input, Pagination::default(), vec![])
+        .await
+        .unwrap();
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].id, 42);
     assert_eq!(records[0].tags, vec!["visible"]);

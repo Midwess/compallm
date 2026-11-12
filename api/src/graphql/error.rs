@@ -157,3 +157,13 @@ impl From<compallm_core::authorization::error::AuthorizationError> for Error {
         }
     }
 }
+
+impl Error {
+    pub(super) fn internal() -> Self {
+        Self {
+            code: "INTERNAL_SERVER_ERROR",
+            status: 500,
+            message: "Request failed",
+        }
+    }
+}

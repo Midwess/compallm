@@ -10,25 +10,9 @@ export type Scalars = {
   String: string
 }
 
-export interface AuthenticationMutation {
-  /** Explicit refresh Bearer only. Rebuild current authority; never set browser cookies. */
-  sessionRefresh: SessionCredentials
-  /** Revoke this verified login only. Clear cookie credentials after successful revocation. */
-  sessionRevoke: Scalars['Boolean']
-  /** Confirm an existing user's middleware-verified OTP challenge and create a scoped session. */
-  signinEmailConfirm: SessionCredentials
-  /** Request signin email admission for an existing active account. */
-  signinEmailRequest: EmailChallenge
-  /** Confirm the middleware-verified OTP challenge and atomically create the account and session. */
-  signupEmailConfirm: SessionCredentials
-  /** Request signup email admission. Reject existing accounts before sending or issuing a challenge. */
-  signupEmailRequest: EmailChallenge
-  __typename: 'AuthenticationMutation'
-}
-
-export interface AuthenticationQuery {
-  session: Session
-  __typename: 'AuthenticationQuery'
+export interface BooleanPayload {
+  node: Scalars['Boolean']
+  __typename: 'BooleanPayload'
 }
 
 export interface CreatedGroup {
@@ -37,6 +21,11 @@ export interface CreatedGroup {
   name: Scalars['String']
   roleIds: Scalars['ID'][]
   __typename: 'CreatedGroup'
+}
+
+export interface CreatedGroupPayload {
+  node: CreatedGroup
+  __typename: 'CreatedGroupPayload'
 }
 
 /** How the request delivers credentials; this is never stored in signed claims. */
@@ -49,6 +38,11 @@ export interface EmailChallenge {
   __typename: 'EmailChallenge'
 }
 
+export interface EmailChallengePayload {
+  node: EmailChallenge
+  __typename: 'EmailChallengePayload'
+}
+
 export interface Group {
   description: Scalars['String']
   id: Scalars['ID']
@@ -56,20 +50,40 @@ export interface Group {
   __typename: 'Group'
 }
 
-export interface GroupMutation {
-  create: CreatedGroup
-  __typename: 'GroupMutation'
+export interface GroupConnection {
+  edges: GroupEdge[]
+  pageInfo: PageInfo
+  __typename: 'GroupConnection'
 }
 
-export interface GroupQuery {
-  get: Group | null
-  list: Group[]
-  __typename: 'GroupQuery'
+export interface GroupEdge {
+  cursor: Scalars['String']
+  node: Group
+  __typename: 'GroupEdge'
+}
+
+export interface GroupPayload {
+  node: Group
+  __typename: 'GroupPayload'
 }
 
 export interface Mutation {
-  authentication: AuthenticationMutation
-  organization: OrganizationMutation
+  /** Confirm the verified signin challenge and create a scoped session. */
+  emailSigninConfirm: SessionCredentialsPayload
+  /** Request a signin email challenge for an existing active account. */
+  emailSigninRequest: EmailChallengePayload
+  /** Confirm the verified signup challenge and create the account and session. */
+  emailSignupConfirm: SessionCredentialsPayload
+  /** Request a signup email challenge; reject existing accounts before sending. */
+  emailSignupRequest: EmailChallengePayload
+  /** Create a group and its initial role assignments in the verified active organization. */
+  groupCreate: CreatedGroupPayload
+  /** Create a role in the verified active organization. */
+  roleCreate: RolePayload
+  /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
+  sessionRefresh: SessionCredentialsPayload
+  /** Revoke the verified session and clear its browser cookies after success. */
+  sessionRevoke: BooleanPayload
   __typename: 'Mutation'
 }
 
@@ -79,17 +93,17 @@ export interface Organization {
   __typename: 'Organization'
 }
 
-export interface OrganizationMutation {
-  groups: GroupMutation
-  roles: RoleMutation
-  __typename: 'OrganizationMutation'
+export interface OrganizationPayload {
+  node: Organization
+  __typename: 'OrganizationPayload'
 }
 
-export interface OrganizationQuery {
-  get: Organization
-  groups: GroupQuery
-  roles: RoleQuery
-  __typename: 'OrganizationQuery'
+export interface PageInfo {
+  endCursor: Scalars['String'] | null
+  hasNextPage: Scalars['Boolean']
+  hasPreviousPage: Scalars['Boolean']
+  startCursor: Scalars['String'] | null
+  __typename: 'PageInfo'
 }
 
 /** Catalog connection family hint; each configured model selects its own operation. */
@@ -123,8 +137,18 @@ export interface ProviderTemplate {
 }
 
 export interface Query {
-  authentication: AuthenticationQuery
-  organization: OrganizationQuery
+  /** Find visible group metadata in the active organization. */
+  group: GroupPayload | null
+  /** Return the complete visible group metadata collection, ordered by ID. */
+  groups: GroupConnection
+  /** Return the active organization from verified user authority. */
+  organization: OrganizationPayload
+  /** Find visible role metadata in the active organization. */
+  role: RolePayload | null
+  /** Return the complete visible role metadata collection, ordered by ID. */
+  roles: RoleConnection
+  /** Return the verified current session identity. */
+  session: SessionPayload
   __typename: 'Query'
 }
 
@@ -135,15 +159,21 @@ export interface Role {
   __typename: 'Role'
 }
 
-export interface RoleMutation {
-  create: Role
-  __typename: 'RoleMutation'
+export interface RoleConnection {
+  edges: RoleEdge[]
+  pageInfo: PageInfo
+  __typename: 'RoleConnection'
 }
 
-export interface RoleQuery {
-  get: Role | null
-  list: Role[]
-  __typename: 'RoleQuery'
+export interface RoleEdge {
+  cursor: Scalars['String']
+  node: Role
+  __typename: 'RoleEdge'
+}
+
+export interface RolePayload {
+  node: Role
+  __typename: 'RolePayload'
 }
 
 export interface Session {
@@ -167,6 +197,16 @@ export interface SessionCredentials {
   __typename: 'SessionCredentials'
 }
 
+export interface SessionCredentialsPayload {
+  node: SessionCredentials
+  __typename: 'SessionCredentialsPayload'
+}
+
+export interface SessionPayload {
+  node: Session
+  __typename: 'SessionPayload'
+}
+
 /** Text operation determining the upstream request and response format. */
 export type TextModelProtocol = 'ANTHROPIC_MESSAGES' | 'OPENAI_CHAT_COMPLETIONS' | 'OPENAI_RESPONSES'
 
@@ -179,25 +219,8 @@ export interface TokenLifetime {
   __typename: 'TokenLifetime'
 }
 
-export interface AuthenticationMutationGenqlSelection {
-  /** Explicit refresh Bearer only. Rebuild current authority; never set browser cookies. */
-  sessionRefresh?: SessionCredentialsGenqlSelection
-  /** Revoke this verified login only. Clear cookie credentials after successful revocation. */
-  sessionRevoke?: boolean | number
-  /** Confirm an existing user's middleware-verified OTP challenge and create a scoped session. */
-  signinEmailConfirm?: SessionCredentialsGenqlSelection & { __args: { input: EmailCodeInput } }
-  /** Request signin email admission for an existing active account. */
-  signinEmailRequest?: EmailChallengeGenqlSelection & { __args: { input: EmailInput } }
-  /** Confirm the middleware-verified OTP challenge and atomically create the account and session. */
-  signupEmailConfirm?: SessionCredentialsGenqlSelection & { __args: { input: EmailCodeInput } }
-  /** Request signup email admission. Reject existing accounts before sending or issuing a challenge. */
-  signupEmailRequest?: EmailChallengeGenqlSelection & { __args: { input: EmailInput } }
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface AuthenticationQueryGenqlSelection {
-  session?: SessionGenqlSelection
+export interface BooleanPayloadGenqlSelection {
+  node?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -211,10 +234,22 @@ export interface CreatedGroupGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface CreatedGroupPayloadGenqlSelection {
+  node?: CreatedGroupGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 /** Email admission succeeded; cookie delivery never exposes the OTP credential. */
 export interface EmailChallengeGenqlSelection {
   lifetime?: TokenLifetimeGenqlSelection
   token?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface EmailChallengePayloadGenqlSelection {
+  node?: EmailChallengeGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -253,28 +288,49 @@ export interface GroupGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface GroupConnectionGenqlSelection {
+  edges?: GroupEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface GroupCreateInput {
   description: Scalars['String']
   name: Scalars['String']
   roleIds: Scalars['String'][]
 }
 
-export interface GroupMutationGenqlSelection {
-  create?: CreatedGroupGenqlSelection & { __args: { input: GroupCreateInput } }
+export interface GroupEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: GroupGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
 
-export interface GroupQueryGenqlSelection {
-  get?: GroupGenqlSelection & { __args: { id: Scalars['ID'] } }
-  list?: GroupGenqlSelection
+export interface GroupPayloadGenqlSelection {
+  node?: GroupGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
 
 export interface MutationGenqlSelection {
-  authentication?: AuthenticationMutationGenqlSelection
-  organization?: OrganizationMutationGenqlSelection
+  /** Confirm the verified signin challenge and create a scoped session. */
+  emailSigninConfirm?: SessionCredentialsPayloadGenqlSelection & { __args: { input: EmailCodeInput } }
+  /** Request a signin email challenge for an existing active account. */
+  emailSigninRequest?: EmailChallengePayloadGenqlSelection & { __args: { input: EmailInput } }
+  /** Confirm the verified signup challenge and create the account and session. */
+  emailSignupConfirm?: SessionCredentialsPayloadGenqlSelection & { __args: { input: EmailCodeInput } }
+  /** Request a signup email challenge; reject existing accounts before sending. */
+  emailSignupRequest?: EmailChallengePayloadGenqlSelection & { __args: { input: EmailInput } }
+  /** Create a group and its initial role assignments in the verified active organization. */
+  groupCreate?: CreatedGroupPayloadGenqlSelection & { __args: { input: GroupCreateInput } }
+  /** Create a role in the verified active organization. */
+  roleCreate?: RolePayloadGenqlSelection & { __args: { input: RoleCreateInput } }
+  /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
+  sessionRefresh?: SessionCredentialsPayloadGenqlSelection
+  /** Revoke the verified session and clear its browser cookies after success. */
+  sessionRevoke?: BooleanPayloadGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -286,17 +342,17 @@ export interface OrganizationGenqlSelection {
   __scalar?: boolean | number
 }
 
-export interface OrganizationMutationGenqlSelection {
-  groups?: GroupMutationGenqlSelection
-  roles?: RoleMutationGenqlSelection
+export interface OrganizationPayloadGenqlSelection {
+  node?: OrganizationGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
 
-export interface OrganizationQueryGenqlSelection {
-  get?: OrganizationGenqlSelection
-  groups?: GroupQueryGenqlSelection
-  roles?: RoleQueryGenqlSelection
+export interface PageInfoGenqlSelection {
+  endCursor?: boolean | number
+  hasNextPage?: boolean | number
+  hasPreviousPage?: boolean | number
+  startCursor?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -400,8 +456,18 @@ export interface ProvidersCreateInput {
 }
 
 export interface QueryGenqlSelection {
-  authentication?: AuthenticationQueryGenqlSelection
-  organization?: OrganizationQueryGenqlSelection
+  /** Find visible group metadata in the active organization. */
+  group?: GroupPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  /** Return the complete visible group metadata collection, ordered by ID. */
+  groups?: GroupConnectionGenqlSelection
+  /** Return the active organization from verified user authority. */
+  organization?: OrganizationPayloadGenqlSelection
+  /** Find visible role metadata in the active organization. */
+  role?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  /** Return the complete visible role metadata collection, ordered by ID. */
+  roles?: RoleConnectionGenqlSelection
+  /** Return the verified current session identity. */
+  session?: SessionPayloadGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -414,21 +480,28 @@ export interface RoleGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface RoleConnectionGenqlSelection {
+  edges?: RoleEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface RoleCreateInput {
   cedarSource: Scalars['String']
   description: Scalars['String']
   name: Scalars['String']
 }
 
-export interface RoleMutationGenqlSelection {
-  create?: RoleGenqlSelection & { __args: { input: RoleCreateInput } }
+export interface RoleEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: RoleGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
 
-export interface RoleQueryGenqlSelection {
-  get?: RoleGenqlSelection & { __args: { id: Scalars['ID'] } }
-  list?: RoleGenqlSelection
+export interface RolePayloadGenqlSelection {
+  node?: RoleGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -456,6 +529,18 @@ export interface SessionCredentialsGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface SessionCredentialsPayloadGenqlSelection {
+  node?: SessionCredentialsGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface SessionPayloadGenqlSelection {
+  node?: SessionGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 /** Exact Unix-second validity and client throttle values encoded as decimal strings. */
 export interface TokenLifetimeGenqlSelection {
   expiresAt?: boolean | number
@@ -466,16 +551,10 @@ export interface TokenLifetimeGenqlSelection {
   __scalar?: boolean | number
 }
 
-const AuthenticationMutation_possibleTypes: string[] = ['AuthenticationMutation']
-export const isAuthenticationMutation = (obj?: { __typename?: any } | null): obj is AuthenticationMutation => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isAuthenticationMutation"')
-  return AuthenticationMutation_possibleTypes.includes(obj.__typename)
-}
-
-const AuthenticationQuery_possibleTypes: string[] = ['AuthenticationQuery']
-export const isAuthenticationQuery = (obj?: { __typename?: any } | null): obj is AuthenticationQuery => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isAuthenticationQuery"')
-  return AuthenticationQuery_possibleTypes.includes(obj.__typename)
+const BooleanPayload_possibleTypes: string[] = ['BooleanPayload']
+export const isBooleanPayload = (obj?: { __typename?: any } | null): obj is BooleanPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isBooleanPayload"')
+  return BooleanPayload_possibleTypes.includes(obj.__typename)
 }
 
 const CreatedGroup_possibleTypes: string[] = ['CreatedGroup']
@@ -484,10 +563,22 @@ export const isCreatedGroup = (obj?: { __typename?: any } | null): obj is Create
   return CreatedGroup_possibleTypes.includes(obj.__typename)
 }
 
+const CreatedGroupPayload_possibleTypes: string[] = ['CreatedGroupPayload']
+export const isCreatedGroupPayload = (obj?: { __typename?: any } | null): obj is CreatedGroupPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isCreatedGroupPayload"')
+  return CreatedGroupPayload_possibleTypes.includes(obj.__typename)
+}
+
 const EmailChallenge_possibleTypes: string[] = ['EmailChallenge']
 export const isEmailChallenge = (obj?: { __typename?: any } | null): obj is EmailChallenge => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isEmailChallenge"')
   return EmailChallenge_possibleTypes.includes(obj.__typename)
+}
+
+const EmailChallengePayload_possibleTypes: string[] = ['EmailChallengePayload']
+export const isEmailChallengePayload = (obj?: { __typename?: any } | null): obj is EmailChallengePayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isEmailChallengePayload"')
+  return EmailChallengePayload_possibleTypes.includes(obj.__typename)
 }
 
 const Group_possibleTypes: string[] = ['Group']
@@ -496,16 +587,22 @@ export const isGroup = (obj?: { __typename?: any } | null): obj is Group => {
   return Group_possibleTypes.includes(obj.__typename)
 }
 
-const GroupMutation_possibleTypes: string[] = ['GroupMutation']
-export const isGroupMutation = (obj?: { __typename?: any } | null): obj is GroupMutation => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isGroupMutation"')
-  return GroupMutation_possibleTypes.includes(obj.__typename)
+const GroupConnection_possibleTypes: string[] = ['GroupConnection']
+export const isGroupConnection = (obj?: { __typename?: any } | null): obj is GroupConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isGroupConnection"')
+  return GroupConnection_possibleTypes.includes(obj.__typename)
 }
 
-const GroupQuery_possibleTypes: string[] = ['GroupQuery']
-export const isGroupQuery = (obj?: { __typename?: any } | null): obj is GroupQuery => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isGroupQuery"')
-  return GroupQuery_possibleTypes.includes(obj.__typename)
+const GroupEdge_possibleTypes: string[] = ['GroupEdge']
+export const isGroupEdge = (obj?: { __typename?: any } | null): obj is GroupEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isGroupEdge"')
+  return GroupEdge_possibleTypes.includes(obj.__typename)
+}
+
+const GroupPayload_possibleTypes: string[] = ['GroupPayload']
+export const isGroupPayload = (obj?: { __typename?: any } | null): obj is GroupPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isGroupPayload"')
+  return GroupPayload_possibleTypes.includes(obj.__typename)
 }
 
 const Mutation_possibleTypes: string[] = ['Mutation']
@@ -520,16 +617,16 @@ export const isOrganization = (obj?: { __typename?: any } | null): obj is Organi
   return Organization_possibleTypes.includes(obj.__typename)
 }
 
-const OrganizationMutation_possibleTypes: string[] = ['OrganizationMutation']
-export const isOrganizationMutation = (obj?: { __typename?: any } | null): obj is OrganizationMutation => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isOrganizationMutation"')
-  return OrganizationMutation_possibleTypes.includes(obj.__typename)
+const OrganizationPayload_possibleTypes: string[] = ['OrganizationPayload']
+export const isOrganizationPayload = (obj?: { __typename?: any } | null): obj is OrganizationPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isOrganizationPayload"')
+  return OrganizationPayload_possibleTypes.includes(obj.__typename)
 }
 
-const OrganizationQuery_possibleTypes: string[] = ['OrganizationQuery']
-export const isOrganizationQuery = (obj?: { __typename?: any } | null): obj is OrganizationQuery => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isOrganizationQuery"')
-  return OrganizationQuery_possibleTypes.includes(obj.__typename)
+const PageInfo_possibleTypes: string[] = ['PageInfo']
+export const isPageInfo = (obj?: { __typename?: any } | null): obj is PageInfo => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPageInfo"')
+  return PageInfo_possibleTypes.includes(obj.__typename)
 }
 
 const ProviderTemplate_possibleTypes: string[] = ['ProviderTemplate']
@@ -550,16 +647,22 @@ export const isRole = (obj?: { __typename?: any } | null): obj is Role => {
   return Role_possibleTypes.includes(obj.__typename)
 }
 
-const RoleMutation_possibleTypes: string[] = ['RoleMutation']
-export const isRoleMutation = (obj?: { __typename?: any } | null): obj is RoleMutation => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isRoleMutation"')
-  return RoleMutation_possibleTypes.includes(obj.__typename)
+const RoleConnection_possibleTypes: string[] = ['RoleConnection']
+export const isRoleConnection = (obj?: { __typename?: any } | null): obj is RoleConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isRoleConnection"')
+  return RoleConnection_possibleTypes.includes(obj.__typename)
 }
 
-const RoleQuery_possibleTypes: string[] = ['RoleQuery']
-export const isRoleQuery = (obj?: { __typename?: any } | null): obj is RoleQuery => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isRoleQuery"')
-  return RoleQuery_possibleTypes.includes(obj.__typename)
+const RoleEdge_possibleTypes: string[] = ['RoleEdge']
+export const isRoleEdge = (obj?: { __typename?: any } | null): obj is RoleEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isRoleEdge"')
+  return RoleEdge_possibleTypes.includes(obj.__typename)
+}
+
+const RolePayload_possibleTypes: string[] = ['RolePayload']
+export const isRolePayload = (obj?: { __typename?: any } | null): obj is RolePayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isRolePayload"')
+  return RolePayload_possibleTypes.includes(obj.__typename)
 }
 
 const Session_possibleTypes: string[] = ['Session']
@@ -572,6 +675,18 @@ const SessionCredentials_possibleTypes: string[] = ['SessionCredentials']
 export const isSessionCredentials = (obj?: { __typename?: any } | null): obj is SessionCredentials => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isSessionCredentials"')
   return SessionCredentials_possibleTypes.includes(obj.__typename)
+}
+
+const SessionCredentialsPayload_possibleTypes: string[] = ['SessionCredentialsPayload']
+export const isSessionCredentialsPayload = (obj?: { __typename?: any } | null): obj is SessionCredentialsPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isSessionCredentialsPayload"')
+  return SessionCredentialsPayload_possibleTypes.includes(obj.__typename)
+}
+
+const SessionPayload_possibleTypes: string[] = ['SessionPayload']
+export const isSessionPayload = (obj?: { __typename?: any } | null): obj is SessionPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isSessionPayload"')
+  return SessionPayload_possibleTypes.includes(obj.__typename)
 }
 
 const TokenLifetime_possibleTypes: string[] = ['TokenLifetime']

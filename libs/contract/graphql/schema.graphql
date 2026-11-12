@@ -1,37 +1,5 @@
-type AuthenticationMutation {
-  """
-  Explicit refresh Bearer only. Rebuild current authority; never set browser cookies.
-  """
-  sessionRefresh: SessionCredentials!
-
-  """
-  Revoke this verified login only. Clear cookie credentials after successful revocation.
-  """
-  sessionRevoke: Boolean!
-
-  """
-  Confirm an existing user's middleware-verified OTP challenge and create a scoped session.
-  """
-  signinEmailConfirm(input: EmailCodeInput!): SessionCredentials!
-
-  """
-  Request signin email admission for an existing active account.
-  """
-  signinEmailRequest(input: EmailInput!): EmailChallenge!
-
-  """
-  Confirm the middleware-verified OTP challenge and atomically create the account and session.
-  """
-  signupEmailConfirm(input: EmailCodeInput!): SessionCredentials!
-
-  """
-  Request signup email admission. Reject existing accounts before sending or issuing a challenge.
-  """
-  signupEmailRequest(input: EmailInput!): EmailChallenge!
-}
-
-type AuthenticationQuery {
-  session: Session!
+type BooleanPayload {
+  node: Boolean!
 }
 
 """
@@ -44,6 +12,10 @@ type CreatedGroup {
   id: ID!
   name: String!
   roleIds: [ID!]!
+}
+
+type CreatedGroupPayload {
+  node: CreatedGroup!
 }
 
 """
@@ -67,6 +39,10 @@ Email admission succeeded; cookie delivery never exposes the OTP credential.
 type EmailChallenge {
   lifetime: TokenLifetime!
   token: String
+}
+
+type EmailChallengePayload {
+  node: EmailChallenge!
 }
 
 """
@@ -111,24 +87,66 @@ type Group {
   name: String!
 }
 
+type GroupConnection {
+  edges: [GroupEdge!]!
+  pageInfo: PageInfo!
+}
+
 input GroupCreateInput {
   description: String!
   name: String!
   roleIds: [String!]!
 }
 
-type GroupMutation {
-  create(input: GroupCreateInput!): CreatedGroup!
+type GroupEdge {
+  cursor: String!
+  node: Group!
 }
 
-type GroupQuery {
-  get(id: ID!): Group
-  list: [Group!]!
+type GroupPayload {
+  node: Group!
 }
 
 type Mutation {
-  authentication: AuthenticationMutation!
-  organization: OrganizationMutation!
+  """
+  Confirm the verified signin challenge and create a scoped session.
+  """
+  emailSigninConfirm(input: EmailCodeInput!): SessionCredentialsPayload!
+
+  """
+  Request a signin email challenge for an existing active account.
+  """
+  emailSigninRequest(input: EmailInput!): EmailChallengePayload!
+
+  """
+  Confirm the verified signup challenge and create the account and session.
+  """
+  emailSignupConfirm(input: EmailCodeInput!): SessionCredentialsPayload!
+
+  """
+  Request a signup email challenge; reject existing accounts before sending.
+  """
+  emailSignupRequest(input: EmailInput!): EmailChallengePayload!
+
+  """
+  Create a group and its initial role assignments in the verified active organization.
+  """
+  groupCreate(input: GroupCreateInput!): CreatedGroupPayload!
+
+  """
+  Create a role in the verified active organization.
+  """
+  roleCreate(input: RoleCreateInput!): RolePayload!
+
+  """
+  Refresh using explicit refresh Bearer authority; leave browser cookies unchanged.
+  """
+  sessionRefresh: SessionCredentialsPayload!
+
+  """
+  Revoke the verified session and clear its browser cookies after success.
+  """
+  sessionRevoke: BooleanPayload!
 }
 
 type Organization {
@@ -136,15 +154,15 @@ type Organization {
   name: String!
 }
 
-type OrganizationMutation {
-  groups: GroupMutation!
-  roles: RoleMutation!
+type OrganizationPayload {
+  node: Organization!
 }
 
-type OrganizationQuery {
-  get: Organization!
-  groups: GroupQuery!
-  roles: RoleQuery!
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
 }
 
 """
@@ -314,8 +332,35 @@ input ProvidersCreateInput {
 }
 
 type Query {
-  authentication: AuthenticationQuery!
-  organization: OrganizationQuery!
+  """
+  Find visible group metadata in the active organization.
+  """
+  group(id: ID!): GroupPayload
+
+  """
+  Return the complete visible group metadata collection, ordered by ID.
+  """
+  groups: GroupConnection!
+
+  """
+  Return the active organization from verified user authority.
+  """
+  organization: OrganizationPayload!
+
+  """
+  Find visible role metadata in the active organization.
+  """
+  role(id: ID!): RolePayload
+
+  """
+  Return the complete visible role metadata collection, ordered by ID.
+  """
+  roles: RoleConnection!
+
+  """
+  Return the verified current session identity.
+  """
+  session: SessionPayload!
 }
 
 type Role {
@@ -324,19 +369,24 @@ type Role {
   name: String!
 }
 
+type RoleConnection {
+  edges: [RoleEdge!]!
+  pageInfo: PageInfo!
+}
+
 input RoleCreateInput {
   cedarSource: String!
   description: String!
   name: String!
 }
 
-type RoleMutation {
-  create(input: RoleCreateInput!): Role!
+type RoleEdge {
+  cursor: String!
+  node: Role!
 }
 
-type RoleQuery {
-  get(id: ID!): Role
-  list: [Role!]!
+type RolePayload {
+  node: Role!
 }
 
 type Session {
@@ -369,6 +419,14 @@ type SessionCredentials {
   accessToken: String
   refreshLifetime: TokenLifetime!
   refreshToken: String
+}
+
+type SessionCredentialsPayload {
+  node: SessionCredentials!
+}
+
+type SessionPayload {
+  node: Session!
 }
 
 """

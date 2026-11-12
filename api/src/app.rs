@@ -45,13 +45,13 @@ impl App {
             .ok_or_else(|| {
                 loco_rs::Error::Message("API starting port must be between 1 and 50100".into())
             })?;
-        let connection = hero::tcp::listener::find_tcp_listener(Some(start))
+        let listener = compallm_api::http::listener::bind_tcp_listener(start)
             .await
             .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
-        let address = connection.listener.local_addr()?;
+        let address = listener.local_addr()?;
         tracing::info!(requested_port=start,port=address.port(),binding=%address.ip(),
             url=%format!("http://127.0.0.1:{}",address.port()),"API server listening");
-        Ok(connection.listener)
+        Ok(listener)
     }
 }
 
@@ -158,7 +158,7 @@ impl Hooks for App {
         }
     }
 
-    async fn before_routes(_ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
+    async fn before_routes(ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
         use axum::{
             Extension, Json,
             extract::{DefaultBodyLimit, State, rejection::JsonRejection},
@@ -189,7 +189,7 @@ impl Hooks for App {
         }
 
         let di = Di::instance();
-        Ok(AxumRouter::new().route(
+        let mut router = AxumRouter::new().route(
             "/api/graphql",
             post(graphql_handler)
                 .with_state(di.graphql_schema().clone())
@@ -200,7 +200,11 @@ impl Hooks for App {
                     AuthenticationMiddleware::handle,
                 ))
                 .layer(DefaultBodyLimit::max(di.max_request_body_bytes())),
-        ))
+        );
+        if ctx.environment == Environment::Development {
+            router = router.route("/api/graphiql", axum::routing::get(endpoint::graphiql));
+        }
+        Ok(router)
     }
 
     async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {

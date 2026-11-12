@@ -65,27 +65,3 @@ impl Pagination {
             .min(max_rows))
     }
 }
-
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CollectionArguments<Filter, Order> {
-    pub first: Option<i32>,
-    pub last: Option<i32>,
-    pub before: Option<Cursor>,
-    pub after: Option<Cursor>,
-    pub offset: Option<i32>,
-    pub filter: Option<Filter>,
-    pub order_by: Option<Vec<Order>>,
-}
-
-impl<Filter, Order> CollectionArguments<Filter, Order> {
-    pub fn pagination(&self) -> Pagination {
-        Pagination {
-            first: self.first,
-            last: self.last,
-            before: self.before.clone(),
-            after: self.after.clone(),
-            offset: self.offset,
-        }
-    }
-}

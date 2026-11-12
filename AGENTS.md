@@ -100,6 +100,11 @@ conventions:
     except: concrete requirement
     connection-contexts: scoped
 
+  http-listener:
+    owns: API dual-stack binding under api/src/http/listener.rs
+    restart: enable address reuse on Unix so recently closed connections do not move the API to another port; never enable port reuse between live listeners
+    fallback: scan upward only for AddrInUse; propagate other socket errors; keep Vite on strict internal port 41868
+
   integrations:
     use: concrete clients, reused pools, bounded timeouts
     never: hold database transactions across email or HTTP calls

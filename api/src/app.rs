@@ -45,13 +45,13 @@ impl App {
             .ok_or_else(|| {
                 loco_rs::Error::Message("API starting port must be between 1 and 50100".into())
             })?;
-        let connection = hero::tcp::listener::find_tcp_listener(Some(start))
+        let listener = compallm_api::http::listener::bind_tcp_listener(start)
             .await
             .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
-        let address = connection.listener.local_addr()?;
+        let address = listener.local_addr()?;
         tracing::info!(requested_port=start,port=address.port(),binding=%address.ip(),
             url=%format!("http://127.0.0.1:{}",address.port()),"API server listening");
-        Ok(connection.listener)
+        Ok(listener)
     }
 }
 

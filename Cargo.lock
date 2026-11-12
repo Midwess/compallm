@@ -1296,9 +1296,20 @@ dependencies = [
 name = "compallm-query"
 version = "0.1.0"
 dependencies = [
+ "compallm-query-derive",
  "juniper",
  "serde",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "compallm-query-derive"
+version = "0.1.0"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
 ]
 
 [[package]]

@@ -91,7 +91,7 @@ conventions:
       depends-on: Core
       owns: SeaORM connections, transactions, models, queries, persistence conversions, concurrency guards
       implements: Core connection lifecycle trait
-      repository-reads: preserve explicit domain persistence methods such as find_by_email and find_by_id; use libs/query IntoQuery for database-independent read descriptions; API derives and PostgreSQL translation remain separate follow-up work; keep scoped SeaORM execution and domain mapping in PostgreSQL; do not add shared Repository, Queryable, or QueryDefinition traits or forwarding macros
+      repository-reads: preserve explicit domain persistence methods such as find_by_email and find_by_id; use libs/query IntoQuery for database-independent read descriptions; derive input conversion with compallm-query-derive under libs/query-derive, re-exported by the query crate derive feature; PostgreSQL translation remains follow-up work; keep scoped SeaORM execution and domain mapping in PostgreSQL; do not add shared Repository, Queryable, or QueryDefinition traits or forwarding macros
     avoid: strict Clean Architecture layers, generic network traits, custom units of work
     except: concrete requirement
     connection-contexts: scoped

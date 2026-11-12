@@ -22,7 +22,7 @@ axum = { workspace = true, features = ["http1", "json", "tokio"] }
 axum-frontend = { workspace = true, features = ["dev"] }
 compallm-postgres.workspace = true
 compallm-core.workspace = true
-compallm-query = { workspace = true, features = ["graphql"] }
+compallm-query = { workspace = true, features = ["graphql", "derive"] }
 hero = { workspace = true, features = ["tcp"] }
 compallm-mailing.workspace = true
 anyhow = { workspace = true, features = ["std"] }

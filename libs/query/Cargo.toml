@@ -11,13 +11,19 @@ workspace = true
 
 [features]
 default = []
+derive = ["dep:compallm-query-derive"]
 graphql = ["dep:juniper"]
 
 [dependencies]
+compallm-query-derive = { workspace = true, optional = true }
 juniper = { workspace = true, optional = true }
 serde = { workspace = true, features = ["std", "derive"] }
 thiserror = { workspace = true, features = ["std"] }
 
 [[example]]
 name = "schema"
-required-features = ["graphql"]
+required-features = ["graphql", "derive"]
+
+[[example]]
+name = "native_query"
+required-features = ["derive"]

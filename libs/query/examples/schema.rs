@@ -1,10 +1,16 @@
 use compallm_query::{
-    Cursor, OrderByDirection, PageInfo, Pagination,
+    Cursor, IntoQuery, OrderByDirection, PageInfo, Pagination, QueryTarget,
     filter::{IDFilter, IntFilter, StringFilter, StringListFilter},
 };
 use juniper::{EmptyMutation, EmptySubscription, GraphQLInputObject, GraphQLObject, RootNode};
 
-#[derive(Clone, Debug, Default, GraphQLInputObject)]
+struct BlogTarget;
+impl QueryTarget for BlogTarget {
+    type Field = BlogField;
+}
+
+#[derive(Clone, Debug, Default, GraphQLInputObject, IntoQuery)]
+#[query(target = BlogTarget, fields = BlogField)]
 struct BlogFilter {
     node_id: Option<IDFilter>,
     id: Option<IntFilter>,
@@ -22,8 +28,10 @@ struct BlogOrderBy {
 }
 
 enum BlogField {
+    NodeId,
     Id,
     Name,
+    Tags,
 }
 
 impl TryFrom<BlogOrderBy> for compallm_query::OrderBy<BlogField> {
@@ -120,7 +128,10 @@ impl Query {
         pagination
             .validate()
             .map_err(|error| juniper::FieldError::new(error.to_string(), juniper::Value::null()))?;
-        let _filter = filter;
+        let mut _query = filter
+            .unwrap_or_default()
+            .into_query()
+            .map_err(|error| juniper::FieldError::new(error.to_string(), juniper::Value::null()))?;
         let _ordering: Vec<compallm_query::OrderBy<BlogField>> = order_by
             .unwrap_or_default()
             .into_iter()
@@ -129,6 +140,8 @@ impl Query {
             .map_err(|error: compallm_query::order::OrderByError| {
                 juniper::FieldError::new(error.to_string(), juniper::Value::null())
             })?;
+        _query.order_by = _ordering;
+        _query.pagination = pagination;
         Ok(BlogConnection {
             edges: vec![],
             page_info: PageInfo::default(),

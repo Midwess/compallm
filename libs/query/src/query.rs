@@ -1,4 +1,6 @@
-use crate::{OrderBy, Pagination, operation::Operation};
+use crate::{
+    OrderBy, Pagination, operation::Operation, order::OrderByError, pagination::PaginationError,
+};
 use std::convert::Infallible;
 
 /// Identifies a resource and its allowlisted fields without database metadata.
@@ -56,6 +58,31 @@ impl<Target: QueryTarget> Query<Target> {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum QueryError {
+    #[error("nested filters cannot carry ordering or pagination")]
+    NestedQueryOptions,
+    #[error(transparent)]
+    OrderBy(#[from] OrderByError),
+    #[error(transparent)]
+    Pagination(#[from] PaginationError),
+}
+
+impl From<Infallible> for QueryError {
+    fn from(value: Infallible) -> Self {
+        match value {}
+    }
+}
+
+impl<Target: QueryTarget> Query<Target> {
+    pub fn into_predicate(self) -> Result<Predicate<Target::Field>, QueryError> {
+        if !self.order_by.is_empty() || self.pagination != Pagination::default() {
+            return Err(QueryError::NestedQueryOptions);
+        }
+        Ok(self.predicate)
+    }
+}
+
 /// Converts typed inputs into a resource-bound read description, never into SQL.
 pub trait IntoQuery {
     type Target: QueryTarget;
@@ -70,5 +97,14 @@ impl<Target: QueryTarget> IntoQuery for Query<Target> {
 
     fn into_query(self) -> Result<Self, Self::Error> {
         Ok(self)
+    }
+}
+
+impl<Q: IntoQuery> IntoQuery for Box<Q> {
+    type Target = Q::Target;
+    type Error = Q::Error;
+
+    fn into_query(self) -> Result<Query<Self::Target>, Self::Error> {
+        (*self).into_query()
     }
 }

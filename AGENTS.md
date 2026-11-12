@@ -86,12 +86,12 @@ conventions:
     core:
       owns: connection lifecycle trait, domain invariants
       never: depend on SeaORM or Postgres; contain database models or connection types
-      query-schema: define shared filter operations, scalar representations, ordering, pagination, and connection types in libs/query; use the agreed filter/orderBy and first/last/before/after/offset schema; keep GraphQL derives behind the graphql feature; Core owns no query-schema types or dependencies; keep domain repository contracts under core/persistent
+      query-schema: define shared filter operations, scalar representations, ordering, pagination, and connection types in libs/query; use the agreed filter/orderBy and first/last/before/after/offset schema; keep GraphQL derives behind the graphql feature; libs/query also owns database-independent IntoQuery, QueryTarget, Query, predicates, and operation enums; Core may consume that contract without GraphQL or database dependencies; keep domain repository contracts under core/persistent
     postgres:
       depends-on: Core
       owns: SeaORM connections, transactions, models, queries, persistence conversions, concurrency guards
       implements: Core connection lifecycle trait
-      repository-reads: preserve explicit domain persistence methods such as find_by_email and find_by_id; define IntoQuery only in the API crate for future query conversion; keep scoped SeaORM execution and domain mapping in PostgreSQL; do not add shared Repository, Queryable, or QueryDefinition traits or forwarding macros
+      repository-reads: preserve explicit domain persistence methods such as find_by_email and find_by_id; use libs/query IntoQuery for database-independent read descriptions; API derives and PostgreSQL translation remain separate follow-up work; keep scoped SeaORM execution and domain mapping in PostgreSQL; do not add shared Repository, Queryable, or QueryDefinition traits or forwarding macros
     avoid: strict Clean Architecture layers, generic network traits, custom units of work
     except: concrete requirement
     connection-contexts: scoped

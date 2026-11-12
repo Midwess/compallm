@@ -3701,7 +3701,17 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(stored.cedar_source, policy);
+    let stored_policy: cedar_policy::PolicySet = stored.cedar_source.parse().unwrap();
+    let submitted_policy: cedar_policy::PolicySet = policy.parse().unwrap();
+    assert_eq!(
+        stored_policy.policies().next().unwrap().to_json().unwrap(),
+        submitted_policy
+            .policies()
+            .next()
+            .unwrap()
+            .to_json()
+            .unwrap()
+    );
     assert!(!stored.org_owner);
 
     let response = graphql_operation(

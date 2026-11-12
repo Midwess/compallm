@@ -26,6 +26,44 @@ type UserActiveModel = <Users as EntityTrait>::ActiveModel;
 pub struct UserRepository;
 
 impl UserRepository {
+    pub async fn list<Q>(
+        &self,
+        mut query: Q,
+        options: ListOptions,
+    ) -> Result<Vec<User>, UserRepositoryError>
+    where
+        Q: IntoQuery<Table = Users> + Validify + Send,
+    {
+        query.validify()?;
+        let mut options = UserListOptions::from(options);
+        options.validify()?;
+        let options = ListOptions::from(options);
+        let mut query = query.into_query();
+        options.apply_to_sea_query(QueryTrait::query(&mut query));
+        query = query.order_by_asc(<Users as EntityTrait>::Column::Id);
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        query
+            .all(db)
+            .await
+            .map_err(UserRepositoryError::database)?
+            .into_iter()
+            .map(User::try_from)
+            .collect()
+    }
+
+    pub async fn one<Q>(
+        &self,
+        query: Q,
+        options: ListOptions,
+    ) -> Result<Option<User>, UserRepositoryError>
+    where
+        Q: IntoQuery<Table = Users> + Validify + Send,
+    {
+        let users = self.list(query, options.with_limit(1)).await?;
+        Ok(users.into_iter().next())
+    }
+
     fn database_id(id: u64) -> Result<i64, UserRepositoryError> {
         crate::to_bigint(id)
             .context("user ID exceeds PostgreSQL BIGINT")
@@ -45,7 +83,7 @@ impl UserRepository {
     }
 }
 
-impl super::query::IntoQuery for UserQuery {
+impl IntoQuery for UserQuery {
     type Table = Users;
 
     fn into_query(self) -> Select<Users> {
@@ -65,25 +103,10 @@ impl super::query::IntoQuery for UserQuery {
 impl CoreUserRepository for UserRepository {
     async fn list(
         &self,
-        mut query: UserQuery,
+        query: UserQuery,
         options: ListOptions,
     ) -> Result<Vec<User>, UserRepositoryError> {
-        query.validify()?;
-        let mut options = UserListOptions::from(options);
-        options.validify()?;
-        let options = ListOptions::from(options);
-        let mut query = query.into_query();
-        options.apply_to_sea_query(QueryTrait::query(&mut query));
-        query = query.order_by_asc(<Users as EntityTrait>::Column::Id);
-        let context = DbContext::current()?;
-        let db = PostgresConnection::from_context(&context)?;
-        query
-            .all(db)
-            .await
-            .map_err(UserRepositoryError::database)?
-            .into_iter()
-            .map(User::try_from)
-            .collect()
+        UserRepository::list(self, query, options).await
     }
 
     async fn create(&self, user: User) -> Result<User, UserRepositoryError> {

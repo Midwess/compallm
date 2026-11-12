@@ -270,3 +270,45 @@ async fn list_returns_multiple_users_with_their_statuses() {
         })
         .await;
 }
+
+#[derive(Default, validify::Validify)]
+struct IdQuery {
+    id: Option<i64>,
+}
+
+impl compallm_postgres::repository::query::IntoQuery for IdQuery {
+    type Table = <UserSchema as sea_orm::ModelTrait>::Entity;
+
+    fn into_query(self) -> sea_orm::Select<Self::Table> {
+        use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+        type Column = <<UserSchema as sea_orm::ModelTrait>::Entity as EntityTrait>::Column;
+        Self::Table::find()
+            .filter(sea_orm::Condition::all().add_option(self.id.map(|id| Column::Id.eq(id))))
+    }
+}
+
+#[tokio::test]
+async fn repository_accepts_another_native_query_without_repository_impls() {
+    let context = Fixture::context(Arc::new(
+        MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([vec![Fixture::mock_row(Fixture::row())], vec![]])
+            .into_connection(),
+    ));
+    context
+        .scope(async {
+            let users = UserRepository
+                .list(IdQuery { id: Some(42) }, ListOptions::from_limit(20))
+                .await
+                .unwrap();
+            assert_eq!(users.len(), 1);
+            assert_eq!(users[0].id, 42);
+            assert!(
+                UserRepository
+                    .one(IdQuery { id: Some(43) }, ListOptions::default())
+                    .await
+                    .unwrap()
+                    .is_none()
+            );
+        })
+        .await;
+}

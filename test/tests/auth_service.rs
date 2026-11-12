@@ -2622,6 +2622,69 @@ async fn invalid_authorization_clears_cookies_without_revoking_session() {
 }
 
 #[tokio::test]
+async fn policy_catalog_requires_a_current_user_without_a_role_grant() {
+    use compallm_core::authorization::policy::Action;
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let session = fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    let query = "{ organizationPolicyActions { edges { node { name entityType resourceType } } pageInfo { hasNextPage hasPreviousPage } } }";
+    let snapshot = |source: &str| PolicySnapshot {
+        cedar_source: source.into(),
+        role_ids: Vec::new(),
+        group_roles: Default::default(),
+    };
+    let authorized = token_pair::new(
+        &session,
+        snapshot(""),
+        SECRET,
+        Duration::from_secs(60),
+        REFRESH_LIFETIME,
+    )
+    .unwrap();
+    let router = fixture.graphql();
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            query,
+            serde_json::json!({}),
+            Some(&authorized.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(body["errors"].is_null(), "{body}");
+    let edges = body["data"]["organizationPolicyActions"]["edges"]
+        .as_array()
+        .unwrap();
+    assert_eq!(edges.len(), Action::ALL.len());
+    assert!(edges.iter().any(|edge| edge["node"] == serde_json::json!({"name":"role.create", "entityType":"Role", "resourceType":"Organization"})));
+    assert_eq!(
+        body["data"]["organizationPolicyActions"]["pageInfo"]["hasNextPage"],
+        false
+    );
+    let body = graphql_body(
+        graphql_operation(&router, query, serde_json::json!({}), None, None, false).await,
+    )
+    .await;
+    assert_eq!(body["errors"][0]["extensions"]["code"], "UNAUTHENTICATED");
+}
+
+#[tokio::test]
 async fn graphql_identity_uses_one_freshness_read_and_rejects_non_access_or_revoked_credentials() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let challenge = test_challenge("james@midwess.com", SECRET).unwrap();

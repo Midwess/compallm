@@ -25,29 +25,49 @@ function until(store, predicate) {
   })
 }
 
-test('loads scoped role and group summaries independently and reports denied reads', async () => {
+test('loads role and group summaries in one request', async () => {
   const original = globalThis.fetch
+  let requests = 0
   const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
   globalThis.fetch = async (_input, init) => {
     assert.equal(init.credentials, 'same-origin')
     const { query } = JSON.parse(init.body)
-    return query.includes('roles')
-      ? Response.json({
-          data: { roles: { edges: [{ node: { id: '1', name: 'Editor', description: 'Edit', color: '#c06040' } }] } },
-        })
-      : Response.json({ errors: [{ message: 'Denied', extensions: { code: 'FORBIDDEN', status: 403 } }] })
+    requests++
+    assert.ok(query.includes('roles') && query.includes('groups'))
+    return Response.json({
+      data: {
+        roles: { edges: [{ node: { id: '1', name: 'Editor', description: 'Edit', color: '#c06040' } }] },
+        groups: { edges: [{ node: { id: '2', name: 'Design', description: '' } }] },
+      },
+    })
   }
   try {
     const stop = controller.start()
-    await until(controller.store, (state) => state.roles.length === 1)
-    await new Promise((resolve) => setTimeout(resolve, 0))
+    await until(controller.store, (state) => state.roles.length === 1 && state.groups.length === 1)
     assert.deepEqual(
       controller.store.getState().roles.map((role) => role.name),
       ['Editor'],
     )
-    assert.deepEqual(controller.store.getState().groups, [])
+    assert.equal(controller.store.getState().groups[0].name, 'Design')
+    assert.equal(requests, 1)
     assert.equal(controller.store.getState().roles[0].color, '#c06040')
     assert.equal(controller.store.getState().error, null)
+    stop()
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+test('reports denied combined reads without presenting partial results', async () => {
+  const original = globalThis.fetch
+  const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
+  globalThis.fetch = async () =>
+    Response.json({ errors: [{ message: 'Denied', extensions: { code: 'FORBIDDEN', status: 403 } }] })
+  try {
+    const stop = controller.start()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    assert.deepEqual(controller.store.getState().roles, [])
+    assert.deepEqual(controller.store.getState().groups, [])
     assert.ok(toast.getToasts().some((entry) => entry.id === 'error:Denied'))
     stop()
   } finally {
@@ -65,12 +85,19 @@ test('ignores responses from settings after leaving or restarting', async () => 
     const stop = controller.start()
     stop()
     const stopNext = controller.start()
-    assert.ok(pending.slice(0, 2).every(({ signal }) => signal.aborted))
+    assert.equal(pending.length, 2)
+    assert.ok(pending[0].signal.aborted)
     for (const [index, request] of pending.entries()) {
-      const field = request.query.includes('roles') ? 'roles' : 'groups'
       request.resolve(
         Response.json({
-          data: { [field]: { edges: [{ node: { id: String(index), name: index < 2 ? 'Old' : 'Current', description: '' } }] } },
+          data: {
+            roles: {
+              edges: [
+                { node: { id: String(index), name: index === 0 ? 'Old' : 'Current', description: '', color: '#c06040' } },
+              ],
+            },
+            groups: { edges: [{ node: { id: String(index), name: index === 0 ? 'Old' : 'Current', description: '' } }] },
+          },
         }),
       )
     }

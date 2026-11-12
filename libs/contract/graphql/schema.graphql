@@ -165,6 +165,22 @@ type PageInfo {
   startCursor: String
 }
 
+type PolicyAction {
+  entityType: String!
+  name: String!
+  resourceType: String!
+}
+
+type PolicyActionConnection {
+  edges: [PolicyActionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PolicyActionEdge {
+  cursor: String!
+  node: PolicyAction!
+}
+
 """
 Catalog connection family hint; each configured model selects its own operation.
 """
@@ -346,6 +362,11 @@ type Query {
   Return the active organization from verified user authority.
   """
   organization: OrganizationPayload!
+
+  """
+  Return the system-owned organization policy action catalog.
+  """
+  organizationPolicyActions: PolicyActionConnection!
 
   """
   Find visible role metadata in the active organization.

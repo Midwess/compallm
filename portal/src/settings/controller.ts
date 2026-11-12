@@ -57,28 +57,19 @@ export class SettingsController implements Controller {
   }
 
   private async loadPermissions(signal: AbortSignal, generation: number) {
-    const readRoles = async () => {
+    try {
       const selection = {
         roles: { edges: { node: { id: true, name: true, description: true, color: true } } },
-      } satisfies QueryGenqlSelection
-      const { roles } = await graphql(signal).query(selection)
-      return roles.edges.map(({ node: role }) => ({ ...role, source: '' }))
-    }
-    const readGroups = async () => {
-      const selection = {
         groups: { edges: { node: { id: true, name: true, description: true } } },
       } satisfies QueryGenqlSelection
-      const { groups } = await graphql(signal).query(selection)
-      return groups.edges.map(({ node: group }) => ({ ...group, roleIds: [], memberIds: [], color: '' }))
-    }
-    const [roles, groups] = await Promise.allSettled([readRoles(), readGroups()])
-    if (signal.aborted || generation !== this.generation) return
-    this.store.setState({
-      ...(roles.status === 'fulfilled' ? { roles: roles.value } : { roles: [] }),
-      ...(groups.status === 'fulfilled' ? { groups: groups.value } : { groups: [] }),
-    })
-    for (const result of [roles, groups]) {
-      if (result.status === 'rejected') notify.error(result.reason)
+      const { roles, groups } = await graphql(signal).query(selection)
+      if (signal.aborted || generation !== this.generation) return
+      this.store.setState({
+        roles: roles.edges.map(({ node: role }) => ({ ...role, source: '' })),
+        groups: groups.edges.map(({ node: group }) => ({ ...group, roleIds: [], memberIds: [], color: '' })),
+      })
+    } catch (error) {
+      if (!signal.aborted && generation === this.generation) notify.error(error)
     }
   }
 

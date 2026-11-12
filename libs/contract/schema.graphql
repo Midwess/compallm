@@ -247,6 +247,22 @@ type PageInfo {
   hasPreviousPage: Boolean!
 }
 
+type PolicyAction {
+  name: String!
+  entityType: String!
+  resourceType: String!
+}
+
+type PolicyActionConnection {
+  edges: [PolicyActionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PolicyActionEdge {
+  cursor: String!
+  node: PolicyAction!
+}
+
 "Public catalog defaults; selecting a template creates no configured provider."
 type ProviderTemplate {
   "Global opaque catalog identity, independent of organization resource IDs."
@@ -259,6 +275,8 @@ type ProviderTemplate {
 }
 
 type Query {
+  "Return the system-owned organization policy action catalog."
+  organizationPolicyActions: PolicyActionConnection!
   "Return the verified current session identity."
   session: SessionPayload!
   "Return the active organization from verified user authority."

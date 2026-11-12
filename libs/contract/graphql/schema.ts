@@ -106,6 +106,25 @@ export interface PageInfo {
   __typename: 'PageInfo'
 }
 
+export interface PolicyAction {
+  entityType: Scalars['String']
+  name: Scalars['String']
+  resourceType: Scalars['String']
+  __typename: 'PolicyAction'
+}
+
+export interface PolicyActionConnection {
+  edges: PolicyActionEdge[]
+  pageInfo: PageInfo
+  __typename: 'PolicyActionConnection'
+}
+
+export interface PolicyActionEdge {
+  cursor: Scalars['String']
+  node: PolicyAction
+  __typename: 'PolicyActionEdge'
+}
+
 /** Catalog connection family hint; each configured model selects its own operation. */
 export type ProviderApiProtocol = 'ANTHROPIC' | 'OPENAI_COMPATIBLE' | 'PROVIDER_SPECIFIC'
 
@@ -143,6 +162,8 @@ export interface Query {
   groups: GroupConnection
   /** Return the active organization from verified user authority. */
   organization: OrganizationPayload
+  /** Return the system-owned organization policy action catalog. */
+  organizationPolicyActions: PolicyActionConnection
   /** Find visible role metadata in the active organization. */
   role: RolePayload | null
   /** Return the complete visible role metadata collection, ordered by ID. */
@@ -358,6 +379,28 @@ export interface PageInfoGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface PolicyActionGenqlSelection {
+  entityType?: boolean | number
+  name?: boolean | number
+  resourceType?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PolicyActionConnectionGenqlSelection {
+  edges?: PolicyActionEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PolicyActionEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: PolicyActionGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 /** Opaque registry identity, independent of an edited upstream model name. */
 export interface ProviderCatalogRef {
   model: Scalars['String']
@@ -463,6 +506,8 @@ export interface QueryGenqlSelection {
   groups?: GroupConnectionGenqlSelection
   /** Return the active organization from verified user authority. */
   organization?: OrganizationPayloadGenqlSelection
+  /** Return the system-owned organization policy action catalog. */
+  organizationPolicyActions?: PolicyActionConnectionGenqlSelection
   /** Find visible role metadata in the active organization. */
   role?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Return the complete visible role metadata collection, ordered by ID. */
@@ -629,6 +674,24 @@ const PageInfo_possibleTypes: string[] = ['PageInfo']
 export const isPageInfo = (obj?: { __typename?: any } | null): obj is PageInfo => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isPageInfo"')
   return PageInfo_possibleTypes.includes(obj.__typename)
+}
+
+const PolicyAction_possibleTypes: string[] = ['PolicyAction']
+export const isPolicyAction = (obj?: { __typename?: any } | null): obj is PolicyAction => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPolicyAction"')
+  return PolicyAction_possibleTypes.includes(obj.__typename)
+}
+
+const PolicyActionConnection_possibleTypes: string[] = ['PolicyActionConnection']
+export const isPolicyActionConnection = (obj?: { __typename?: any } | null): obj is PolicyActionConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPolicyActionConnection"')
+  return PolicyActionConnection_possibleTypes.includes(obj.__typename)
+}
+
+const PolicyActionEdge_possibleTypes: string[] = ['PolicyActionEdge']
+export const isPolicyActionEdge = (obj?: { __typename?: any } | null): obj is PolicyActionEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPolicyActionEdge"')
+  return PolicyActionEdge_possibleTypes.includes(obj.__typename)
 }
 
 const ProviderTemplate_possibleTypes: string[] = ['ProviderTemplate']

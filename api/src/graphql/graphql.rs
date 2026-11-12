@@ -2,7 +2,7 @@ use super::{
     GraphqlContext, authentication,
     base_type::{Collection, Payload},
     error::Error,
-    organization,
+    organization, policy,
 };
 use crate::http::{
     authentication::{AuthenticationContext, CookieDelivery, UserContext},
@@ -23,6 +23,13 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
+    /// Return the system-owned organization policy action catalog.
+    async fn organization_policy_actions(
+        #[graphql(context)] user: &UserContext,
+    ) -> Result<Collection<policy::PolicyAction>, Error> {
+        policy::query::list(user).await
+    }
+
     /// Return the verified current session identity.
     async fn session(
         #[graphql(context)] user: &UserContext,

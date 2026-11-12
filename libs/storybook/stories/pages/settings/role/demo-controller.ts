@@ -94,8 +94,7 @@ export class DemoRoleController implements RoleController {
   setPolicyActions = (actions: string[], enabled: boolean) => {
     const state = this.settings.store.getState(),
       draft = this.store.getState().draft
-    if (!draft || draft.parsing || draft.diagnostics.length || draft.builtin || state.readonly || this.store.getState().busy)
-      return
+    if (!draft || draft.parsing || draft.diagnostics.length || this.store.getState().busy) return
     const allowed = new Set(state.policyActions.map((a) => a.id))
     let source = draft.source
     for (const action of new Set(actions)) {

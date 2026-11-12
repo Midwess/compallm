@@ -44,14 +44,22 @@ function Language({
   language,
   onChange,
   actions,
+  header = false,
 }: {
   language: string
   onChange?: (language: string) => void
   actions?: ReactNode
+  header?: boolean
 }) {
   const name = labels[language.toLowerCase()] ?? language
   return (
-    <div className="absolute top-2 right-5 z-10 flex items-center gap-2 text-xs">
+    <div
+      className={
+        header
+          ? 'flex min-h-10 shrink-0 flex-wrap items-center justify-end gap-2 px-4 py-2 text-xs'
+          : 'absolute top-2 right-5 z-10 flex items-center gap-2 text-xs'
+      }
+    >
       {actions}
       {onChange ? (
         <Select
@@ -135,12 +143,12 @@ export function CodePreview({
               >
                 <span
                   aria-hidden="true"
-                  className="sticky left-0 w-11 shrink-0 select-none pr-0.5 text-right"
+                  className="sticky left-0 w-7 shrink-0 select-none pr-0.5 text-right"
                   style={{ color: change === 'added' ? '#588b5d' : change === 'removed' ? '#975f63' : '#5c5d5f' }}
                 >
                   {value}
                 </span>
-                <span className="block flex-1 whitespace-pre px-4">
+                <span className="block flex-1 whitespace-pre pl-2 pr-4">
                   <Tokens tokens={tokens} />
                   {'\n'}
                 </span>
@@ -165,6 +173,7 @@ export interface CodeEditorProps {
   readOnly?: boolean
   invalid?: boolean
   actions?: ReactNode
+  showToolbar?: boolean
   className?: string
 }
 
@@ -180,6 +189,7 @@ export function CodeEditor({
   readOnly,
   invalid,
   actions,
+  showToolbar = true,
   className,
 }: CodeEditorProps) {
   const tokens = useTokens(value, language, theme)
@@ -189,54 +199,59 @@ export function CodeEditor({
   return (
     <div
       data-slot="code-editor"
-      className={cx('relative min-h-32 min-w-0 flex-1 overflow-hidden rounded-md', className)}
+      className={cx('flex min-w-0 w-full flex-col overflow-hidden rounded-md', className)}
       style={{ backgroundColor: background[theme], color: foreground[theme] }}
     >
-      <Language language={language} actions={actions} />
+      {showToolbar ? <Language language={language} actions={actions} header /> : null}
       <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 overflow-hidden font-mono [font-variant-ligatures:none]"
-        style={style}
+        className="relative min-h-32 w-full"
+        style={{ height: Math.max(128, ((value.split('\n').length + 1) * (fontSize * 5)) / 3 + 16) }}
       >
-        <pre ref={content} className="absolute top-0 left-15.5 m-0 w-max min-w-full font-mono" style={style}>
-          <code>
-            {tokens.map((line, i) => (
-              <span key={i} className="block whitespace-pre">
-                <Tokens tokens={line} />
-                {'\n'}
-              </span>
-            ))}
-          </code>
-        </pre>
-        <div className="absolute inset-y-0 left-0 w-11 overflow-hidden" style={{ backgroundColor: background[theme] }}>
-          <div ref={gutter} className="pr-0.5 text-right" style={{ color: '#5c5d5f' }}>
-            {tokens.map((_, i) => (
-              <div key={i}>{i + 1}</div>
-            ))}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 overflow-hidden font-mono [font-variant-ligatures:none]"
+          style={style}
+        >
+          <pre ref={content} className="absolute top-2 left-9 m-0 w-max min-w-full font-mono" style={style}>
+            <code>
+              {tokens.map((line, i) => (
+                <span key={i} className="block whitespace-pre">
+                  <Tokens tokens={line} />
+                  {'\n'}
+                </span>
+              ))}
+            </code>
+          </pre>
+          <div className="absolute inset-y-0 left-0 w-7 overflow-hidden" style={{ backgroundColor: background[theme] }}>
+            <div ref={gutter} className="pt-2 pr-0.5 text-right" style={{ color: '#5c5d5f' }}>
+              {tokens.map((_, i) => (
+                <div key={i}>{i + 1}</div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-      <MultilineField
-        aria-label={label}
-        aria-invalid={invalid}
-        value={value}
-        readOnly={readOnly}
-        spellCheck={false}
-        autoCapitalize="off"
-        autoCorrect="off"
-        wrap="off"
-        className="absolute inset-0 h-full min-h-0 w-full resize-none rounded-none border-0 bg-transparent p-0
-pl-15.5 pr-4 font-mono text-transparent caret-text selection:bg-focus/25
+        <MultilineField
+          aria-label={label}
+          aria-invalid={invalid}
+          value={value}
+          readOnly={readOnly}
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+          wrap="off"
+          className="absolute inset-0 h-full min-h-0 w-full resize-none rounded-none border-0 bg-transparent py-2
+pl-9 pr-4 font-mono text-transparent caret-text selection:bg-focus/25
 [font-variant-ligatures:none] [-webkit-text-fill-color:transparent]"
-        style={{ ...style, caretColor: foreground[theme] }}
-        onChange={(event) => onValueChange(event.target.value)}
-        onBlur={onCommit}
-        onScroll={(event) => {
-          const { scrollTop, scrollLeft } = event.currentTarget
-          if (content.current) content.current.style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`
-          if (gutter.current) gutter.current.style.transform = `translateY(${-scrollTop}px)`
-        }}
-      />
+          style={{ ...style, caretColor: foreground[theme] }}
+          onChange={(event) => onValueChange(event.target.value)}
+          onBlur={onCommit}
+          onScroll={(event) => {
+            const { scrollTop, scrollLeft } = event.currentTarget
+            if (content.current) content.current.style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`
+            if (gutter.current) gutter.current.style.transform = `translateY(${-scrollTop}px)`
+          }}
+        />
+      </div>
     </div>
   )
 }

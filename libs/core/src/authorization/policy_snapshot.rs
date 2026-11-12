@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use cedar_policy::PolicySet;
-use cedar_policy_formatter::lexer::get_token_stream;
 use serde::{Deserialize, Serialize};
 
+use super::policy_source::compact_policy_source;
 use crate::organization::OrganizationMember;
 
 /// Effective Cedar authority for one session's organization membership.
@@ -32,7 +32,7 @@ impl PolicySnapshot {
             .collect::<BTreeSet<_>>();
         let cedar_source = sources
             .into_iter()
-            .map(|(_, source)| Self::compact(source))
+            .map(|(_, source)| compact_policy_source(source))
             .collect::<Vec<_>>()
             .join("\n");
         let role_ids = member
@@ -58,36 +58,6 @@ impl PolicySnapshot {
             role_ids,
             group_roles,
         }
-    }
-
-    /// Remove comments and unnecessary whitespace without altering Cedar tokens.
-    fn compact(source: &str) -> String {
-        let Some((tokens, _)) = get_token_stream(source) else {
-            return source.to_owned();
-        };
-        if tokens.is_empty() {
-            return String::new();
-        }
-        let mut result = String::with_capacity(source.len());
-        for (index, token) in tokens.iter().enumerate() {
-            if index > 0 {
-                let previous = &tokens[index - 1];
-                let left = &source[previous.span.clone()];
-                let right = &source[token.span.clone()];
-                let pair = format!("{left}{right}");
-                let unchanged = get_token_stream(&pair).is_some_and(|(pair_tokens, _)| {
-                    pair_tokens.len() == 2
-                        && pair_tokens[0].token == previous.token
-                        && pair_tokens[1].token == token.token
-                        && pair_tokens[0].span.end == left.len()
-                });
-                if !unchanged {
-                    result.push(' ');
-                }
-            }
-            result.push_str(&source[token.span.clone()]);
-        }
-        result
     }
 }
 

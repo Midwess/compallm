@@ -65,9 +65,11 @@ export interface SettingsApiKey extends SettingsCredential {
 }
 export interface PolicyProjection {
   action: string
+  effect?: 'permit' | 'forbid'
   source: string
   advanced: boolean
   editable: boolean
+  reason?: string
   resourceRestricted?: boolean
 }
 export interface SettingsPolicyAction {

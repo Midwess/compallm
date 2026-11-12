@@ -70,6 +70,25 @@ impl Role {
             value: source.to_owned(),
         };
         input.validify()?;
+        Self::validate_policy_schema(&input.value)
+    }
+
+    pub fn prepare_policy_source(
+        source: &str,
+        organization_id: u64,
+        role_id: u64,
+    ) -> anyhow::Result<String> {
+        Self::validate_policy(source)?;
+        let source = crate::authorization::policy_source::bind_current_policy_source(
+            source,
+            organization_id,
+            role_id,
+        )?;
+        Self::validate_policy_schema(&source)?;
+        Ok(source)
+    }
+
+    fn validate_policy_schema(source: &str) -> anyhow::Result<()> {
         let policies: PolicySet = source.parse()?;
         anyhow::ensure!(
             policies.templates().next().is_none(),
@@ -188,11 +207,12 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
                 .iter_mut()
                 .zip([Self::OWNER_POLICY, Self::ADMIN_POLICY, Self::MEMBER_POLICY])
         {
-            role.cedar_source = source
+            let source = source
                 .replace("__ORG__", &organization_id.to_string())
                 .replace("__OWNER__", &owner_id.to_string())
                 .replace("__ADMIN__", &admin_id.to_string())
                 .replace("__MEMBER__", &member_id.to_string());
+            role.cedar_source = crate::authorization::policy_source::compact_policy_source(&source);
             Self::validate_policy(&role.cedar_source).map_err(RoleCreationError::InvalidPolicy)?;
         }
         Ok(roles)
@@ -207,10 +227,14 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
         let name = Self::normalize_name(&name.into()).map_err(RoleCreationError::InvalidName)?;
         let description = description.into();
         Self::validate_description(&description).map_err(RoleCreationError::InvalidDescription)?;
-        let cedar_source = cedar_source.into();
+        let cedar_source =
+            crate::authorization::policy_source::compact_policy_source(&cedar_source.into());
         Self::validate_policy(&cedar_source).map_err(RoleCreationError::InvalidPolicy)?;
+        let id = try_gen_id().await?;
+        let cedar_source = Self::prepare_policy_source(&cedar_source, organization_id, id)
+            .map_err(RoleCreationError::InvalidPolicy)?;
         Ok(Self {
-            id: try_gen_id().await?,
+            id,
             organization_id,
             name,
             description,
@@ -235,7 +259,8 @@ struct RoleDescription {
 
 #[derive(validify::Validify)]
 struct RolePolicySource {
-    #[validate(length(max = 5096))]
+    #[modify(custom(crate::authorization::policy_source::compact_policy_input))]
+    #[validate(length(max = 10192))]
     value: String,
 }
 

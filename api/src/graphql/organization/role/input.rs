@@ -8,7 +8,9 @@ pub struct RoleCreateInput {
     pub name: String,
     #[validate(length(max = 128))]
     pub description: String,
-    #[validate(length(max = 5096))]
+    /// Comments and unnecessary whitespace are removed before the length limit is checked.
+    #[modify(custom(compallm_core::authorization::policy_source::compact_policy_input))]
+    #[validate(length(max = 10192))]
     pub cedar_source: String,
 }
 
@@ -22,6 +24,8 @@ pub struct RoleUpdateInput {
     pub name: Option<String>,
     #[validate(length(max = 128))]
     pub description: Option<String>,
-    #[validate(length(max = 5096))]
+    /// Comments and unnecessary whitespace are removed before the length limit is checked.
+    #[modify(custom(compallm_core::authorization::policy_source::compact_policy_input))]
+    #[validate(length(max = 10192))]
     pub cedar_source: Option<String>,
 }

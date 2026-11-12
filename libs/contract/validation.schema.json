@@ -53,8 +53,10 @@
           "maxLength": 128
         },
         "cedarSource": {
+          "description": "Comments and unnecessary whitespace are removed before the length limit is checked.",
           "type": "string",
-          "maxLength": 5096
+          "x-compallm-cedar-compact": true,
+          "maxLength": 10192
         }
       },
       "additionalProperties": false,
@@ -85,11 +87,13 @@
           "maxLength": 128
         },
         "cedarSource": {
+          "description": "Comments and unnecessary whitespace are removed before the length limit is checked.",
           "type": [
             "string",
             "null"
           ],
-          "maxLength": 5096
+          "x-compallm-cedar-compact": true,
+          "maxLength": 10192
         }
       },
       "additionalProperties": false,

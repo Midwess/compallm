@@ -8,6 +8,7 @@ import { UrlControllerContext, AuthControllerContext } from '@compallm/storybook
 import { urlController } from './url/controller'
 import { authController } from './auth/controller'
 import { onInvalidAuthorization } from './graphql-client'
+import { RequestProgress } from './request-progress'
 
 onInvalidAuthorization(authController.invalidAuthorization)
 
@@ -16,6 +17,7 @@ createRoot(document.getElementById('root')!).render(
     <UrlControllerContext value={urlController}>
       <AuthControllerContext value={authController}>
         <RouterProvider router={router} />
+        <RequestProgress />
         <Toaster position="top-right" theme="dark" />
       </AuthControllerContext>
     </UrlControllerContext>

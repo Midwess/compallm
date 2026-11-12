@@ -26,6 +26,7 @@ const families = [
   'forms',
   'navigation',
   'page-header',
+  'page-progress',
   'sidebar',
   'selection',
   'surfaces',

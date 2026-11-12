@@ -4969,6 +4969,7 @@ dependencies = [
 name = "router"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "compallm-core",
  "httparse",
  "sec",

@@ -8,9 +8,8 @@ export interface RoleState {
   filters: Record<string, string>
   draft: RoleDraft | null
   busy: boolean
-  policyEditable?: boolean
-  cedarEditable?: boolean
   policySaveFailed?: boolean
+  disabledPolicies?: Record<string, string[]>
   error: string | null
 }
 export interface RoleController {

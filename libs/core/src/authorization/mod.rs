@@ -5,6 +5,7 @@ pub mod error;
 mod member_permission;
 pub mod policy;
 pub mod policy_snapshot;
+pub mod policy_source;
 pub mod rbac;
 pub use member_permission::{MemberPermission, MemberPermissionError};
 pub use policy_snapshot::PolicySnapshot;

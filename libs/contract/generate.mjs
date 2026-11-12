@@ -136,6 +136,7 @@ const supported = new Set([
   'x-compallm-non-null',
   'x-compallm-format',
   'x-compallm-trim',
+  'x-compallm-cedar-compact',
   'x-compallm-ascii-lowercase',
   'x-compallm-email-policy',
   'x-compallm-input-pattern',
@@ -184,6 +185,7 @@ function constraints(original) {
     ['x-compallm-input-pattern', 'inputPattern'],
     ['x-compallm-format', 'format'],
     ['x-compallm-trim', 'trim'],
+    ['x-compallm-cedar-compact', 'cedarCompact'],
     ['x-compallm-ascii-lowercase', 'asciiLowercase'],
     ['x-compallm-email-policy', 'emailPolicy'],
   ])

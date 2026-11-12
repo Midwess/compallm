@@ -17,7 +17,10 @@ function Demo({
   initial?: Partial<SettingsState> & { roleDraft?: RoleDraft | null; groupDraft?: GroupDraft | null }
   failure?: boolean | 'conflict'
 }) {
-  const [controller] = useState(() => new DemoSettingsController({ location: { page, id }, ...initial }, failure))
+  const [controller] = useState(() => {
+    const controller = new DemoSettingsController({ location: { page, id }, ...initial }, failure)
+    return controller
+  })
   useEffect(() => {
     controller.start()
     return controller.stop

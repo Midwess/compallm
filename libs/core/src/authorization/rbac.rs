@@ -106,6 +106,8 @@ impl RbacService {
         description: Option<String>,
         cedar_source: Option<String>,
     ) -> Result<Role, AuthorizationError> {
+        let mut cedar_source =
+            cedar_source.map(|source| super::policy_source::compact_policy_source(&source));
         let organization_id = permission.organization_id();
         let role = self
             .organizations
@@ -114,14 +116,17 @@ impl RbacService {
             .into_iter()
             .next()
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        if role.org_owner() {
+            return Err(super::MemberPermissionError::Denied.into());
+        }
         if name.is_some() || description.is_some() {
             role.for_action(Action::RoleMetadataUpdate)
                 .check_permission(permission)?;
         }
-        if let Some(source) = cedar_source.as_ref() {
+        if let Some(source) = cedar_source.as_mut() {
             role.for_action(Action::RolePolicyUpdate)
                 .check_permission(permission)?;
-            Role::validate_policy(source)
+            *source = Role::prepare_policy_source(source, organization_id, id)
                 .map_err(crate::organization::role::RoleCreationError::InvalidPolicy)?;
             if !self.organizations.supports_role_policy(source) {
                 return Err(AuthorizationError::UnsupportedPolicy);
@@ -149,7 +154,12 @@ impl RbacService {
             let root = DbContext::root()?;
             root.independent_scope(async {
                 crate::transaction!(root, {
-                    self.organizations.lock_role(organization_id, id).await?;
+                    let current = self.organizations.lock_role(organization_id, id).await?;
+                    if current.org_owner() {
+                        return Err(AuthorizationError::from(
+                            super::MemberPermissionError::Denied,
+                        ));
+                    }
                     self.organizations
                         .lock_role_groups(organization_id, id)
                         .await?;

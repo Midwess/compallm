@@ -365,7 +365,7 @@ export type ProvidersCreateInputFormOutput = z.output<typeof ProvidersCreateInpu
 export const RoleCreateInputConstraints = {
   name: { minLength: 1, maxLength: 64, trim: true },
   description: { maxLength: 128 },
-  cedarSource: { maxLength: 5096 },
+  cedarSource: { maxLength: 10192, cedarCompact: true },
 } as const
 export const RoleCreateInputInput = {
   name: stringInput(RoleCreateInputConstraints['name']),
@@ -376,7 +376,9 @@ export const RoleCreateInput = z
   .object({
     name: inputString({ minLength: 1, maxLength: 64, trim: true }),
     description: inputString({ maxLength: 128 }),
-    cedarSource: inputString({ maxLength: 5096 }),
+    cedarSource: inputString({ maxLength: 10192, cedarCompact: true }).describe(
+      'Comments and unnecessary whitespace are removed before the length limit is checked.',
+    ),
   })
   .strict()
 export type RoleCreateInputFormInput = z.input<typeof RoleCreateInput>
@@ -384,7 +386,7 @@ export type RoleCreateInputFormOutput = z.output<typeof RoleCreateInput>
 export const RoleUpdateInputConstraints = {
   name: { minLength: 1, maxLength: 64, trim: true },
   description: { maxLength: 128 },
-  cedarSource: { maxLength: 5096 },
+  cedarSource: { maxLength: 10192, cedarCompact: true },
 } as const
 export const RoleUpdateInputInput = {
   name: stringInput(RoleUpdateInputConstraints['name']),
@@ -395,7 +397,10 @@ export const RoleUpdateInput = z
   .object({
     name: inputString({ minLength: 1, maxLength: 64, trim: true }).nullable().optional(),
     description: inputString({ maxLength: 128 }).nullable().optional(),
-    cedarSource: inputString({ maxLength: 5096 }).nullable().optional(),
+    cedarSource: inputString({ maxLength: 10192, cedarCompact: true })
+      .nullable()
+      .describe('Comments and unnecessary whitespace are removed before the length limit is checked.')
+      .optional(),
   })
   .strict()
 export type RoleUpdateInputFormInput = z.input<typeof RoleUpdateInput>

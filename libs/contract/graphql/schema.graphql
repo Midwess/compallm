@@ -388,6 +388,9 @@ type Query {
 }
 
 type Role {
+  """
+  Cedar authoring source; this role and its organization use the "current" alias.
+  """
   cedarSource: String
   color: String!
   description: String!
@@ -401,6 +404,9 @@ type RoleConnection {
 }
 
 input RoleCreateInput {
+  """
+  Comments and unnecessary whitespace are removed before the length limit is checked.
+  """
   cedarSource: String!
   description: String!
   name: String!
@@ -416,6 +422,9 @@ type RolePayload {
 }
 
 input RoleUpdateInput {
+  """
+  Comments and unnecessary whitespace are removed before the length limit is checked.
+  """
   cedarSource: String
   description: String
   name: String

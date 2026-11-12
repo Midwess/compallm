@@ -177,6 +177,7 @@ export interface Query {
 }
 
 export interface Role {
+  /** Cedar authoring source; this role and its organization use the "current" alias. */
   cedarSource: Scalars['String'] | null
   color: Scalars['String']
   description: Scalars['String']
@@ -526,6 +527,7 @@ export interface QueryGenqlSelection {
 }
 
 export interface RoleGenqlSelection {
+  /** Cedar authoring source; this role and its organization use the "current" alias. */
   cedarSource?: boolean | number
   color?: boolean | number
   description?: boolean | number
@@ -543,6 +545,7 @@ export interface RoleConnectionGenqlSelection {
 }
 
 export interface RoleCreateInput {
+  /** Comments and unnecessary whitespace are removed before the length limit is checked. */
   cedarSource: Scalars['String']
   description: Scalars['String']
   name: Scalars['String']
@@ -562,6 +565,7 @@ export interface RolePayloadGenqlSelection {
 }
 
 export interface RoleUpdateInput {
+  /** Comments and unnecessary whitespace are removed before the length limit is checked. */
   cedarSource?: Scalars['String'] | null
   description?: Scalars['String'] | null
   name?: Scalars['String'] | null

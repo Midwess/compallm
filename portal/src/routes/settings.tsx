@@ -20,7 +20,7 @@ export function Component() {
   const url = useUrlController()
   const auth = useAuthController()
   const organization = useOrganizationController().getCurrentOrganization()!
-  const [controller] = useState(() => new SettingsController(organization.name, url, auth, page, organization.id))
+  const [controller] = useState(() => new SettingsController(organization.name, url, auth, page))
   useEffect(() => {
     let disposed = false
     let stop: (() => void) | undefined

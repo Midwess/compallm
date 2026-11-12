@@ -88,9 +88,8 @@ export class SettingsController implements Controller {
     url: Pick<UrlController, 'navigate'>,
     auth: Pick<AuthController, 'signOut'>,
     page: SettingsDestination,
-    organizationId?: string,
   ) {
-    this.pages = createSettingsPages(this.store, organizationId)
+    this.pages = createSettingsPages(this.store)
     this.role = this.pages.role
     this.url = url
     this.auth = auth

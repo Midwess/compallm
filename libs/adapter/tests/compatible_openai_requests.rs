@@ -325,11 +325,16 @@ fn encoders_reject_bad_events_and_standard_encoder_cannot_silently_drop_tools() 
     assert!(encoder.advance(&mut &b""[..], &mut [0]).is_err());
     let mut encoder = OpenAICompletionRequestEncoder::new("m", Default::default()).unwrap();
     drain(&mut encoder, &mut &b""[..], &mut out, 1).unwrap();
+    encoder
+        .accept(RequestEvent::Structure(S::ObjectStarted))
+        .unwrap();
+    drain(&mut encoder, &mut &b""[..], &mut out, 1).unwrap();
     assert!(
         encoder
-            .accept(RequestEvent::Structure(S::ObjectStarted))
+            .accept(RequestEvent::Structure(S::Field(F::Tools)))
             .is_err()
     );
+    assert!(encoder.advance(&mut &b""[..], &mut [0]).is_err());
 }
 
 #[test]

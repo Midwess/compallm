@@ -42,18 +42,18 @@ macro_rules! request_decoder {
 request_decoder!(
     OpenAICompletionRequestDecoder,
     Format::Chat,
-    "Chat Completions string-content request decoder with bounded deferral."
+    "Chat Completions text request decoder with bounded string deferral."
 );
 request_decoder!(
     OpenAIResponseRequestDecoder,
     Format::Responses,
-    "Responses string/message-array request decoder with bounded deferral."
+    "Responses text request decoder with input/output text blocks and bounded string deferral."
 );
 
 macro_rules! request_encoder {
-    ($name:ident, $format:expr, $description:literal) => {
+    ($name:ident, $format:expr, $driver:ident, $description:literal) => {
         #[doc = $description]
-        pub struct $name<'model>(encoder::Encoder<'model>);
+        pub struct $name<'model>(encoder::$driver<'model>);
         impl<'model> $name<'model> {
             /// Select the target model and fallback generation configuration.
             /// The model is borrowed for the encoder lifetime, limited to 1024 bytes.
@@ -64,7 +64,7 @@ macro_rules! request_encoder {
                 model: &'model str,
                 configuration: Text2TextTranslatorConfiguration,
             ) -> Result<Self, CodecError> {
-                Ok(Self(encoder::Encoder::new($format, model, configuration)?))
+                Ok(Self(encoder::$driver::new($format, model, configuration)?))
             }
         }
         impl RequestEncoder for $name<'_> {
@@ -87,10 +87,20 @@ macro_rules! request_encoder {
 request_encoder!(
     OpenAICompletionRequestEncoder,
     Format::Chat,
-    "Canonical Chat Completions role/string-content request encoder."
+    ProfileEncoder,
+    "Chat Completions encoder accepting native messages and supported structured text events."
 );
 request_encoder!(
     OpenAIResponseRequestEncoder,
     Format::Responses,
+    Encoder,
     "Canonical Responses message-array request encoder."
 );
+
+impl OpenAIResponseRequestEncoder<'_> {
+    /// Preserve opaque reasoning only after the caller verifies source/target compatibility.
+    pub fn with_compatible_reasoning(mut self, compatible: bool) -> Self {
+        self.0 = self.0.with_compatible_reasoning(compatible);
+        self
+    }
+}

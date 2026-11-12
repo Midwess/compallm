@@ -6,10 +6,10 @@ use crate::t2t::request::{
     json::Number,
 };
 
-pub(super) fn invalid() -> CodecError {
+pub(crate) fn invalid() -> CodecError {
     CodecError::InvalidInput("invalid compatible Chat request")
 }
-pub(super) fn unsupported() -> CodecError {
+pub(crate) fn unsupported() -> CodecError {
     CodecError::Unsupported("field or shape outside compatible Chat subset")
 }
 
@@ -118,7 +118,7 @@ fn fields(list: &[F]) -> u64 {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum Kind {
+pub(crate) enum Kind {
     Root,
     Message,
     Messages,
@@ -248,7 +248,7 @@ struct Scalar {
     integer: u32,
 }
 
-pub(super) struct Machine {
+pub(crate) struct Machine {
     frames: [Frame; 64],
     depth: usize,
     scalar: Option<Scalar>,

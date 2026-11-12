@@ -14,6 +14,12 @@ use crate::{
 };
 
 pub(crate) struct Decoder {
+    text_blocks: Option<super::text_blocks::TextBlocks>,
+    reasoning: Option<super::reasoning::Reasoning>,
+    item_id: [u8; 256],
+    item_id_len: usize,
+    previous_role: Option<Role>,
+    needs_assistant: bool,
     pub(super) format: Format,
     pub(super) phase: Phase,
     pub(super) field: Field,
@@ -58,6 +64,12 @@ pub(crate) struct Decoder {
 impl Decoder {
     pub fn new(format: Format) -> Self {
         Self {
+            text_blocks: None,
+            reasoning: None,
+            item_id: [0; 256],
+            item_id_len: 0,
+            previous_role: None,
+            needs_assistant: false,
             format,
             phase: Phase::Root,
             field: Field::Model,
@@ -150,6 +162,21 @@ impl Decoder {
             });
         }
         let message = self.message.as_mut()?;
+        if message.content_array {
+            if !message.started {
+                message.started = true;
+                return Some(RequestEvent::MessageStarted {
+                    role: message.role.expect("content-array role checked"),
+                });
+            }
+            if message.closed {
+                self.message = None;
+                scratch.reset();
+                self.has_message = true;
+                return Some(RequestEvent::MessageEnded);
+            }
+            return None;
+        }
         if message.content_started
             && let Some(role) = message.role
         {
@@ -202,9 +229,18 @@ impl Decoder {
 
     fn finish_string(&mut self, purpose: Purpose) -> Result<(), CodecError> {
         match purpose {
+            Purpose::Include => {
+                if &self.small[..self.small_len] != b"reasoning.encrypted_content" {
+                    return Err(Self::unsupported());
+                }
+                self.phase = Phase::IncludeAfter;
+                self.pending_stop = Some(RequestEvent::ResponsesEncryptedReasoning(true));
+            }
             Purpose::RootKey => {
                 let (field, bit) = match &self.small[..self.small_len] {
                     b"model" => (Field::Model, 1),
+                    b"store" if self.format == Format::Responses => (Field::Store, 512),
+                    b"include" if self.format == Format::Responses => (Field::Include, 1024),
                     b"stream" => (Field::Stream, 2),
                     b"top_p" if self.format != Format::Anthropic => (Field::TopP, 64),
                     b"response_format" if self.format == Format::Chat => (Field::OutputFormat, 256),
@@ -231,6 +267,12 @@ impl Decoder {
                         }
                         (Field::System, 16)
                     }
+                    b"instructions" if self.format == Format::Responses => {
+                        if self.root_seen & 4 != 0 {
+                            return Err(CodecError::Unsupported("instructions must precede input"));
+                        }
+                        (Field::System, 16)
+                    }
                     _ => return Err(Self::unsupported()),
                 };
                 if self.root_seen & bit != 0 {
@@ -245,6 +287,8 @@ impl Decoder {
                     b"role" => (Field::Role, 1),
                     b"content" => (Field::Content, 2),
                     b"type" if self.format == Format::Responses => (Field::Type, 4),
+                    b"id" if self.format == Format::Responses => (Field::ItemId, 8),
+                    b"status" if self.format == Format::Responses => (Field::ItemStatus, 16),
                     _ => return Err(Self::unsupported()),
                 };
                 let message = self.message.as_mut().expect("message grammar");
@@ -264,7 +308,8 @@ impl Decoder {
             Purpose::Role => {
                 self.message.as_mut().expect("message grammar").role =
                     Some(match &self.small[..self.small_len] {
-                        b"system" if self.format != Format::Anthropic => Role::System,
+                        b"system" => Role::System,
+                        b"developer" if self.format != Format::Anthropic => Role::Developer,
                         b"user" => Role::User,
                         b"assistant" => Role::Assistant,
                         _ => return Err(Self::unsupported()),
@@ -272,8 +317,40 @@ impl Decoder {
                 self.phase = Phase::MessageAfter;
             }
             Purpose::Type => {
+                if self.format == Format::Responses && &self.small[..self.small_len] == b"reasoning"
+                {
+                    if self
+                        .message
+                        .as_ref()
+                        .is_none_or(|message| message.seen & !8 != 4)
+                    {
+                        return Err(CodecError::Unsupported(
+                            "reasoning type must precede reasoning payload fields",
+                        ));
+                    }
+                    self.message = None;
+                    self.reasoning = Some(super::reasoning::Reasoning::new(
+                        &self.item_id[..self.item_id_len],
+                    )?);
+                    return Ok(());
+                }
                 if &self.small[..self.small_len] != b"message" {
                     return Err(Self::unsupported());
+                }
+                self.phase = Phase::MessageAfter;
+            }
+            Purpose::ItemId => {
+                if self.item_id_len == 0 {
+                    return Err(Self::invalid());
+                }
+                self.phase = Phase::MessageAfter;
+            }
+            Purpose::ItemStatus => {
+                if !matches!(
+                    &self.small[..self.small_len],
+                    b"completed" | b"in_progress" | b"incomplete"
+                ) {
+                    return Err(Self::invalid());
                 }
                 self.phase = Phase::MessageAfter;
             }
@@ -322,6 +399,15 @@ impl Decoder {
         scratch: &mut RequestScratch,
     ) -> Result<(), CodecError> {
         match purpose {
+            Purpose::ItemId => {
+                if self.item_id_len == self.item_id.len() {
+                    return Err(CodecError::LimitExceeded(
+                        "reasoning ID exceeds control capacity",
+                    ));
+                }
+                self.item_id[self.item_id_len] = byte;
+                self.item_id_len += 1;
+            }
             Purpose::Stop => {
                 if self.stop_bytes == STOP_BYTES {
                     return Err(CodecError::LimitExceeded("stop text exceeds 4096 bytes"));
@@ -365,6 +451,17 @@ impl Decoder {
         let message = self.message.as_mut().expect("message grammar");
         if message.seen & 3 != 3 || message.role.is_none() || !message.content_done {
             return Err(Self::invalid());
+        }
+        if self.format == Format::Anthropic {
+            let role = message.role.expect("checked role");
+            if self.needs_assistant && role != Role::Assistant {
+                return Err(Self::unsupported());
+            }
+            if role == Role::System && self.previous_role != Some(Role::User) {
+                return Err(Self::unsupported());
+            }
+            self.needs_assistant = role == Role::System;
+            self.previous_role = Some(role);
         }
         message.closed = true;
         self.phase = Phase::ArrayAfter;
@@ -429,7 +526,10 @@ impl Decoder {
             }
             if position + 1 == literal.len() {
                 self.literal = None;
-                if matches!(self.field, Field::Stream) {
+                if matches!(self.field, Field::Store) {
+                    self.pending_stop = Some(RequestEvent::ResponsesStore(value));
+                    self.phase = Phase::RootAfter;
+                } else if matches!(self.field, Field::Stream) {
                     self.stream = value;
                     self.phase = Phase::RootAfter;
                 } else {
@@ -507,6 +607,9 @@ impl Decoder {
                 }
                 Field::Stream if byte == b'f' => self.literal = Some((b"false", 1, false)),
                 Field::Stream if byte == b't' => self.literal = Some((b"true", 1, true)),
+                Field::Store if byte == b'f' => self.literal = Some((b"false", 1, false)),
+                Field::Store if byte == b't' => self.literal = Some((b"true", 1, true)),
+                Field::Include if byte == b'[' => self.phase = Phase::IncludeFirst,
                 Field::TopP if byte.is_ascii_digit() || byte == b'-' => {
                     let mut number = Number::Start;
                     number.push(byte)?;
@@ -550,6 +653,12 @@ impl Decoder {
                     });
                     self.start_string(Purpose::Content);
                 }
+                Field::System if byte == b'n' && self.format == Format::Responses => {
+                    self.null_literal = Some(1);
+                }
+                Field::System if byte == b'[' && self.format == Format::Anthropic => {
+                    self.text_blocks = Some(super::text_blocks::TextBlocks::new());
+                }
                 Field::System => return Err(Self::unsupported()),
                 Field::Body if byte == b'[' => self.phase = Phase::ArrayFirst,
                 Field::Body if byte == b'"' && self.format == Format::Responses => {
@@ -566,6 +675,7 @@ impl Decoder {
             },
             (Phase::RootAfter, b',') => self.phase = Phase::RootKey(false),
             (Phase::ArrayFirst | Phase::ArrayNext, b'{') => {
+                self.item_id_len = 0;
                 self.message = Some(Message::default());
                 self.phase = Phase::MessageKey(true);
             }
@@ -575,6 +685,8 @@ impl Decoder {
             (Phase::MessageValue, b'"') => match self.field {
                 Field::Role => self.start_string(Purpose::Role),
                 Field::Type => self.start_string(Purpose::Type),
+                Field::ItemId => self.start_string(Purpose::ItemId),
+                Field::ItemStatus => self.start_string(Purpose::ItemStatus),
                 Field::Content => {
                     self.message
                         .as_mut()
@@ -585,6 +697,17 @@ impl Decoder {
                 _ => return Err(Self::invalid()),
             },
             (Phase::MessageValue, _) if matches!(self.field, Field::Content) => {
+                if byte == b'[' {
+                    let message = self.message.as_mut().expect("message grammar");
+                    let role = message.role.ok_or(CodecError::Unsupported(
+                        "text arrays require role before content",
+                    ))?;
+                    message.content_started = true;
+                    message.content_array = true;
+                    self.text_blocks =
+                        Some(super::text_blocks::TextBlocks::content(self.format, role));
+                    return Ok(());
+                }
                 return Err(Self::unsupported());
             }
             (Phase::MessageAfter, b',') => self.phase = Phase::MessageKey(false),
@@ -602,6 +725,8 @@ impl Decoder {
                 self.stop_list_end_pending = true;
             }
             (Phase::StopAfter, b',') => self.phase = Phase::StopNext,
+            (Phase::IncludeFirst, b'"') => self.start_string(Purpose::Include),
+            (Phase::IncludeFirst | Phase::IncludeAfter, b']') => self.phase = Phase::RootAfter,
             _ => return Err(Self::invalid()),
         }
         Ok(())
@@ -645,6 +770,54 @@ impl Decoder {
         }
         let mut consumed = 0;
         while consumed < WORK_BYTES {
+            if let Some(decoder) = &mut self.reasoning {
+                let available = (WORK_BYTES - consumed).min(input.len());
+                let mut window = &input[..available];
+                let result =
+                    decoder.advance(&mut window, eof && available == input.len(), scratch)?;
+                let used = available - window.len();
+                *input = &input[used..];
+                consumed += used;
+                if matches!(result, DecodeStep::Finished) {
+                    self.reasoning = None;
+                    self.phase = Phase::ArrayAfter;
+                    continue;
+                }
+                return Ok(
+                    if matches!(result, DecodeStep::NeedInput) && !input.is_empty() {
+                        DecodeStep::Progress
+                    } else {
+                        result
+                    },
+                );
+            }
+            if let Some(decoder) = &mut self.text_blocks {
+                let available = (WORK_BYTES - consumed).min(input.len());
+                let mut window = &input[..available];
+                let result =
+                    decoder.advance(&mut window, eof && available == input.len(), scratch)?;
+                let used = available - window.len();
+                *input = &input[used..];
+                consumed += used;
+                if matches!(result, DecodeStep::Finished) {
+                    self.text_blocks = None;
+                    if let Some(message) = &mut self.message {
+                        message.content_done = true;
+                        message.text_ended = true;
+                        self.phase = Phase::MessageAfter;
+                    } else {
+                        self.phase = Phase::RootAfter;
+                    }
+                    continue;
+                }
+                return Ok(
+                    if matches!(result, DecodeStep::NeedInput) && !input.is_empty() {
+                        DecodeStep::Progress
+                    } else {
+                        result
+                    },
+                );
+            }
             if let Some(decoder) = &mut self.output_format {
                 let available = (WORK_BYTES - consumed).min(input.len());
                 let final_window = eof && available == input.len();
@@ -689,6 +862,8 @@ impl Decoder {
                 || !matches!(self.phase, Phase::Done)
                 || self.message.is_some()
                 || self.output_format.is_some()
+                || self.text_blocks.is_some()
+                || self.reasoning.is_some()
             {
                 return Err(Self::invalid());
             }

@@ -26,6 +26,7 @@ pub enum OutputFormatEvent {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Role {
     System,
+    Developer,
     User,
     Assistant,
 }
@@ -35,6 +36,13 @@ pub enum Role {
 /// Codecs must bound fragment sizes and handle UTF-8 split across fragments.
 #[derive(Clone, Debug, PartialEq)]
 pub enum RequestEvent<T = usize> {
+    ResponsesStore(bool),
+    ResponsesEncryptedReasoning(bool),
+    /// Opens a Responses item with the fixed {"type":"reasoning" prefix.
+    ResponsesReasoningStarted,
+    /// Raw JSON suffix bytes through the item's closing brace, in text scratch.
+    ResponsesReasoningFragment(T),
+    ResponsesReasoningEnded,
     OutputFormat(OutputFormatEvent),
     SchemaFragment(T),
     /// Typed structured values. String/key/number payloads use TextFragment.
@@ -54,6 +62,9 @@ pub enum RequestEvent<T = usize> {
     MessageStarted {
         role: Role,
     },
+    /// A message content array; each text block retains its own text boundaries.
+    TextPartsStarted,
+    TextPartsEnded,
     TextStarted,
     /// Production decoders return a length into caller-owned decoded scratch.
     TextFragment(T),
@@ -64,6 +75,15 @@ pub enum RequestEvent<T = usize> {
 impl<T> RequestEvent<T> {
     pub fn map_text<U>(self, map: impl FnOnce(T) -> U) -> RequestEvent<U> {
         match self {
+            Self::ResponsesStore(value) => RequestEvent::ResponsesStore(value),
+            Self::ResponsesEncryptedReasoning(value) => {
+                RequestEvent::ResponsesEncryptedReasoning(value)
+            }
+            Self::ResponsesReasoningStarted => RequestEvent::ResponsesReasoningStarted,
+            Self::ResponsesReasoningFragment(bytes) => {
+                RequestEvent::ResponsesReasoningFragment(map(bytes))
+            }
+            Self::ResponsesReasoningEnded => RequestEvent::ResponsesReasoningEnded,
             Self::OutputFormat(event) => RequestEvent::OutputFormat(event),
             Self::SchemaFragment(bytes) => RequestEvent::SchemaFragment(map(bytes)),
             Self::Structure(value) => RequestEvent::Structure(value),
@@ -81,6 +101,8 @@ impl<T> RequestEvent<T> {
                 include_usage,
             },
             Self::MessageStarted { role } => RequestEvent::MessageStarted { role },
+            Self::TextPartsStarted => RequestEvent::TextPartsStarted,
+            Self::TextPartsEnded => RequestEvent::TextPartsEnded,
             Self::TextStarted => RequestEvent::TextStarted,
             Self::TextFragment(text) => RequestEvent::TextFragment(map(text)),
             Self::TextEnded => RequestEvent::TextEnded,

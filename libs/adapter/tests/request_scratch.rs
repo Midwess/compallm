@@ -124,12 +124,19 @@ fn production_translation_allocates_no_payloads_and_reuses_scratch_across_attemp
         serde_json::to_string(&text).unwrap()
     );
     let role_late = r#"{"model":"source","messages":[{"content":"hi","role":"user"}]}"#;
+    let blocks = source.replace(
+        &format!(r#""content":{}"#, serde_json::to_string(&text).unwrap()),
+        &format!(
+            r#""content":[{{"type":"text","text":{}}}]"#,
+            serde_json::to_string(&text).unwrap()
+        ),
+    );
     let output = PausingWriter::default();
     output.0.borrow_mut().bytes = Vec::with_capacity(source.len() * 2);
     output.0.borrow_mut().max_write = Some(usize::MAX);
     let observations = Rc::new(Observations::default());
     let mut translator = Text2TextRequestTranslator::new(3, 7);
-    for source in [source.as_str(), role_late, source.as_str()] {
+    for source in [source.as_str(), role_late, blocks.as_str(), source.as_str()] {
         output.0.borrow_mut().bytes.clear();
         translator
             .set_source_stream(Cursor::new(source.as_bytes()))
@@ -227,6 +234,83 @@ fn compatible_tools_and_reasoning_allocate_no_payloads_during_translation() {
         serde_json::from_slice::<Value>(&writer.0.borrow().bytes).unwrap(),
         expected
     );
+}
+
+#[test]
+fn instruction_and_encrypted_reasoning_translation_allocate_no_payloads() {
+    let large = "instruction 雪 and opaque bytes".repeat(4096);
+    let body = format!(
+        r#"{{"model":"source","instructions":{},"input":[{{"role":"user","content":"u"}},{{"id":"rs_id","type":"reasoning","summary":[],"encrypted_content":{}}},{{"role":"assistant","content":"a"}}]}}"#,
+        serde_json::to_string(&large).unwrap(),
+        serde_json::to_string(&large).unwrap()
+    );
+    let compatible = format!(
+        r#"{{"model":"source","messages":[{{"role":"developer","content":{}}},{{"role":"user","content":"u"}},{{"role":"assistant","reasoning_content":{},"content":"a"}}]}}"#,
+        serde_json::to_string(&large).unwrap(),
+        serde_json::to_string(&large).unwrap()
+    );
+    for (source, decoder, encoder) in [
+        (
+            body.as_str(),
+            Box::new(OpenAIResponseRequestDecoder::new()) as Box<dyn RequestDecoder>,
+            Box::new(
+                OpenAIResponseRequestEncoder::new("target", Default::default())
+                    .unwrap()
+                    .with_compatible_reasoning(true),
+            ) as Box<dyn RequestEncoder>,
+        ),
+        (
+            compatible.as_str(),
+            Box::new(CompatibleOpenAIRequestDecoder::new()) as Box<dyn RequestDecoder>,
+            Box::new(AnthropicRequestEncoder::new("target", Default::default()).unwrap())
+                as Box<dyn RequestEncoder>,
+        ),
+        (
+            compatible.as_str(),
+            Box::new(CompatibleOpenAIRequestDecoder::new()) as Box<dyn RequestDecoder>,
+            Box::new(OpenAICompletionRequestEncoder::new("target", Default::default()).unwrap())
+                as Box<dyn RequestEncoder>,
+        ),
+    ] {
+        let writer = PausingWriter::default();
+        writer.0.borrow_mut().bytes = Vec::with_capacity(source.len() * 2);
+        writer.0.borrow_mut().max_write = Some(usize::MAX);
+        let mut translator = Text2TextRequestTranslator::new(7, 64);
+        translator
+            .set_source_stream(Cursor::new(source.as_bytes()))
+            .unwrap()
+            .set_target_stream(writer.clone())
+            .unwrap()
+            .set_decoder(decoder)
+            .unwrap()
+            .set_encoder(encoder)
+            .unwrap();
+        ALLOCATIONS.with(|count| count.set(0));
+        COUNT_ALLOCATIONS.with(|count| count.set(true));
+        loop {
+            match translator.translate().unwrap() {
+                TranslateStep::NeedInput => {
+                    run(translator.next()).unwrap();
+                }
+                TranslateStep::OutputReady(_) => run(translator.flush()).unwrap(),
+                TranslateStep::Progress => {}
+                TranslateStep::Finished => {
+                    run(translator.flush()).unwrap();
+                    break;
+                }
+            }
+        }
+        COUNT_ALLOCATIONS.with(|count| count.set(false));
+        assert_eq!(ALLOCATIONS.with(Cell::get), 0);
+        let output: Value = serde_json::from_slice(&writer.0.borrow().bytes).unwrap();
+        if let Some(input) = output.get("input") {
+            assert_eq!(input[2]["encrypted_content"], large);
+        } else if output.get("system").is_some() {
+            assert_eq!(output["system"][0]["text"], large);
+        } else {
+            assert_eq!(output["messages"][0]["content"], large);
+        }
+    }
 }
 
 #[test]

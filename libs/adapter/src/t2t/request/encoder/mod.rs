@@ -1,10 +1,13 @@
 mod output_format;
+mod profile;
 mod stop;
+mod structured;
 mod writer;
 
 use crate::{codec::EncodeStep, error::CodecError, t2t::request::event::RequestEvent};
 
 pub(crate) use output_format::FormatWriter;
+pub(crate) use profile::ProfileEncoder;
 pub(crate) use stop::{StopWriter, Stops};
 pub(crate) use writer::Encoder;
 

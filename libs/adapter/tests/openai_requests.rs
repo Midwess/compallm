@@ -97,6 +97,14 @@ fn messages(events: &[RequestEvent<Bytes>]) -> Vec<(Role, Vec<u8>)> {
                 panic!("format events require the format test helper")
             }
             RequestEvent::Structure(_) => panic!("standard codecs emit message events"),
+            RequestEvent::TextPartsStarted | RequestEvent::TextPartsEnded => {
+                panic!("content arrays require the block test helper")
+            }
+            RequestEvent::ResponsesReasoningStarted
+            | RequestEvent::ResponsesReasoningFragment(_)
+            | RequestEvent::ResponsesReasoningEnded => {
+                panic!("reasoning requires dedicated test helper")
+            }
             RequestEvent::StopSequencesStarted
             | RequestEvent::StopSequenceStarted
             | RequestEvent::StopSequenceEnded
@@ -104,6 +112,9 @@ fn messages(events: &[RequestEvent<Bytes>]) -> Vec<(Role, Vec<u8>)> {
             | RequestEvent::Configuration(_)
             | RequestEvent::Streaming { .. }
             | RequestEvent::TopP(_) => {
+                assert!(!message && !text)
+            }
+            RequestEvent::ResponsesStore(_) | RequestEvent::ResponsesEncryptedReasoning(_) => {
                 assert!(!message && !text)
             }
             RequestEvent::MessageStarted { role } => {
@@ -366,10 +377,8 @@ fn json_syntax_duplicates_unknown_fields_and_unsupported_semantics_are_rejected(
         r#"{"model":"m","mo\u0064el":"n","messages":[{"role":"user","content":"x"}]}"#,
         r#"{"model":"m","messages":[{"role":"user","role":"user","content":"x"}]}"#,
         r#"{"model":"m","messages":[{"role":"user","content":"x","content":"y"}]}"#,
-        r#"{"model":"m","messages":[{"role":"developer","content":"x"}]}"#,
         r#"{"model":"m","messages":[{"role":"tool","content":"x"}]}"#,
         r#"{"model":"m","messages":[{"role":"user","content":null}]}"#,
-        r#"{"model":"m","messages":[{"role":"user","content":[{"type":"text","text":"x"}]}]}"#,
         r#"{"model":"m","messages":[{"role":"user","content":"x","name":"n"}]}"#,
         r#"{"model":"m","messages":[{"role":"user","content":"x"},]}"#,
         r#"{"model":"m","messages":[{"role":"user","content":"x",}]}"#,

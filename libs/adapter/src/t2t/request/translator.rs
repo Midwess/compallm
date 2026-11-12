@@ -117,7 +117,9 @@ impl<D: RequestDecoder, E: RequestEncoder> Codecs for RequestCodecs<D, E> {
     }
     fn accept(&mut self, event: RequestEvent) -> Result<(), CodecError> {
         self.text_len = match event {
-            RequestEvent::TextFragment(len) | RequestEvent::SchemaFragment(len) => len,
+            RequestEvent::TextFragment(len)
+            | RequestEvent::SchemaFragment(len)
+            | RequestEvent::ResponsesReasoningFragment(len) => len,
             _ => 0,
         };
         self.text_consumed = 0;

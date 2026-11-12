@@ -104,7 +104,7 @@ fn encode(
 
 fn expected() -> Value {
     json!({"model":"target\"\\", "max_tokens":123, "stream":false,"stop_sequences":["END","\nUser:","😀"],
-        "system":"guide\n\u{1f600}", "messages":[
+        "system":[{"type":"text","text":"guide\n\u{1f600}"}], "messages":[
             {"role":"user","content":"hi \"there\""},
             {"role":"assistant","content":""}]})
 }
@@ -165,6 +165,15 @@ fn optional_system_empty_text_and_root_field_order() {
             let events = decode(body.as_bytes().chunks(1), 1, 4).unwrap();
             let mut encoder = AnthropicRequestEncoder::new("m", configuration(u32::MAX)).unwrap();
             source["stream"] = json!(false);
+            if let Some(system) = system {
+                source["system"] = if system.is_empty() {
+                    json!("")
+                } else {
+                    json!([{"type":"text","text":system}])
+                };
+            } else {
+                source["system"] = json!("");
+            }
             assert_eq!(encode(&mut encoder, events, 1).unwrap(), source);
         }
     }
@@ -242,7 +251,7 @@ async fn translates_openai_to_anthropic_through_driver() {
     assert_eq!(
         serde_json::from_slice::<Value>(output.get_ref()).unwrap(),
         json!({
-        "model":"claude-target","max_tokens":789,"stream":false,"system":"guide",
+        "model":"claude-target","max_tokens":789,"stream":false,"system":[{"type":"text","text":"guide"}],
         "messages":[{"role":"user","content":"hi"}]})
     );
 }
@@ -286,7 +295,6 @@ fn rejects_invalid_or_unsupported_requests_at_single_byte_boundaries() {
         ("stream", json!(null)),
         ("tools", json!([])),
         ("temperature", json!(1)),
-        ("system", json!([])),
     ] {
         let mut body = valid.clone();
         body[key] = value;
@@ -351,12 +359,6 @@ fn rejects_misordered_events_and_invalid_utf8() {
         vec![],
         message(Role::System),
         [message(Role::User), message(Role::System)].concat(),
-        [
-            message(Role::System),
-            message(Role::System),
-            message(Role::User),
-        ]
-        .concat(),
         vec![RequestEvent::TextStarted],
         vec![
             RequestEvent::MessageStarted { role: Role::User },

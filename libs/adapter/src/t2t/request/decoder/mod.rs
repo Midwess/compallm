@@ -1,7 +1,9 @@
 mod output_format;
 mod parser;
+pub(crate) mod reasoning;
 mod schema_value;
 pub(crate) mod stop;
+mod text_blocks;
 
 use super::{Format, RequestScratch, json::JsonString};
 use crate::{
@@ -18,7 +20,7 @@ pub(crate) use parser::Decoder;
 pub(crate) use schema_value::SchemaValue;
 
 const WORK_BYTES: usize = 4096;
-pub(super) const CONTROL_BYTES: usize = 24;
+pub(super) const CONTROL_BYTES: usize = 32;
 
 pub trait RequestDecoder {
     fn advance(
@@ -55,6 +57,10 @@ enum Field {
     TopP,
     Stop,
     OutputFormat,
+    Store,
+    Include,
+    ItemId,
+    ItemStatus,
 }
 
 #[derive(Clone, Copy)]
@@ -79,6 +85,8 @@ enum Phase {
     StopFirst,
     StopNext,
     StopAfter,
+    IncludeFirst,
+    IncludeAfter,
 }
 
 #[derive(Clone, Copy)]
@@ -91,6 +99,9 @@ enum Purpose {
     Content,
     OptionKey,
     Stop,
+    Include,
+    ItemId,
+    ItemStatus,
 }
 
 struct Token {
@@ -100,6 +111,7 @@ struct Token {
 
 #[derive(Default)]
 struct Message {
+    content_array: bool,
     role: Option<Role>,
     seen: u8,
     content_started: bool,

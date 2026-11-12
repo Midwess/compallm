@@ -1,4 +1,4 @@
-use super::schema::{Kind, Machine, invalid};
+use crate::t2t::request::structure::{Kind, Machine, invalid};
 use crate::t2t::request::{
     RequestScratch,
     decoder::RequestDecoder,
@@ -105,7 +105,7 @@ impl CompatibleOpenAIRequestDecoder {
                 self.piece_pos += 1;
                 if self.string_kind == StringKind::Field && !self.number {
                     if self.key_len == self.key.len() {
-                        return Err(super::schema::unsupported());
+                        return Err(crate::t2t::request::structure::unsupported());
                     }
                     self.key[self.key_len] = byte;
                     self.key_len += 1;

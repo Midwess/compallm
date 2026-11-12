@@ -22,6 +22,7 @@ enum TextSource {
 }
 
 enum Segment {
+    Raw(usize),
     Literal(&'static [u8], usize),
     Number(JsonFloat, usize),
     Stops(StopWriter),
@@ -48,6 +49,7 @@ impl Segment {
     }
     fn done(&self) -> bool {
         match self {
+            Self::Raw(remaining) => *remaining == 0,
             Self::Literal(bytes, offset) => *offset == bytes.len(),
             Self::Number(bytes, offset) => *offset == bytes.as_ref().len(),
             Self::Stops(writer) => writer.done(),
@@ -70,6 +72,13 @@ impl Segment {
         utf8: &mut Utf8,
     ) -> Result<usize, CodecError> {
         match self {
+            Self::Raw(remaining) => {
+                let len = output.len().min(*remaining).min(text.len());
+                output[..len].copy_from_slice(&text[..len]);
+                *text = &text[len..];
+                *remaining -= len;
+                Ok(len)
+            }
             Self::Stops(writer) => Ok(writer.write(output, stops)),
             Self::Number(bytes, offset) => {
                 let bytes = bytes.as_ref();
@@ -148,7 +157,7 @@ impl Segment {
 /// A fixed number of syntax/data segments; never an event queue or
 /// a serialized body buffer. Text segments retain only source/offset metadata.
 struct Output {
-    segments: [Option<Segment>; 8],
+    segments: [Option<Segment>; 12],
     head: usize,
     len: usize,
 }
@@ -209,6 +218,8 @@ enum Phase {
     AfterText,
     StopList,
     StopText,
+    Parts,
+    AfterPart,
 }
 
 pub(crate) struct Encoder<'model> {
@@ -220,6 +231,17 @@ pub(crate) struct Encoder<'model> {
     output_format: FormatWriter,
     has_system: bool,
     system: bool,
+    system_open: bool,
+    system_text: bool,
+    system_closed: bool,
+    mid_conversation_system: bool,
+    previous_role: Option<Role>,
+    needs_assistant: bool,
+    preserve_reasoning: bool,
+    reasoning: Option<crate::t2t::request::decoder::reasoning::ReasoningValue>,
+    reasoning_remaining: usize,
+    responses_store: Option<bool>,
+    include_reasoning: Option<bool>,
     utf8: Utf8,
     finished: bool,
     failed: bool,
@@ -236,6 +258,9 @@ pub(crate) struct Encoder<'model> {
     number: [u8; 10],
     number_start: usize,
     text_remaining: usize,
+    parts: bool,
+    has_part: bool,
+    part_text: bool,
 }
 
 impl<'model> Encoder<'model> {
@@ -270,6 +295,17 @@ impl<'model> Encoder<'model> {
             output_format: FormatWriter::new(format),
             has_system: false,
             system: false,
+            system_open: false,
+            system_text: false,
+            system_closed: false,
+            mid_conversation_system: false,
+            previous_role: None,
+            needs_assistant: false,
+            preserve_reasoning: false,
+            reasoning: None,
+            reasoning_remaining: 0,
+            responses_store: None,
+            include_reasoning: None,
             utf8: Utf8::default(),
             finished: false,
             failed: false,
@@ -286,6 +322,9 @@ impl<'model> Encoder<'model> {
             number: [0; 10],
             number_start: 10,
             text_remaining: 0,
+            parts: false,
+            has_part: false,
+            part_text: false,
         })
     }
 
@@ -300,6 +339,16 @@ impl<'model> Encoder<'model> {
         result
     }
 
+    pub fn with_mid_conversation_system(mut self, supported: bool) -> Self {
+        self.mid_conversation_system = supported;
+        self
+    }
+
+    pub fn with_compatible_reasoning(mut self, compatible: bool) -> Self {
+        self.preserve_reasoning = compatible;
+        self
+    }
+
     fn event(&mut self, event: RequestEvent) -> Result<(), CodecError> {
         if self.finished || !self.output.empty() || !self.ready {
             return Err(CodecError::Contract(
@@ -307,6 +356,23 @@ impl<'model> Encoder<'model> {
             ));
         }
         self.ready = false;
+        if let Some(validator) = &self.reasoning {
+            match event {
+                RequestEvent::ResponsesReasoningFragment(len) => {
+                    self.reasoning_remaining = len;
+                    self.text_remaining = len;
+                    if self.preserve_reasoning && self.format == Format::Responses && len > 0 {
+                        self.output.push(Segment::Raw(len));
+                    }
+                    return Ok(());
+                }
+                RequestEvent::ResponsesReasoningEnded if validator.done => {
+                    self.reasoning = None;
+                    return Ok(());
+                }
+                _ => return Err(CodecError::InvalidInput("invalid reasoning event ordering")),
+            }
+        }
         if matches!(
             event,
             RequestEvent::OutputFormat(OutputFormatEvent::Started)
@@ -315,6 +381,15 @@ impl<'model> Encoder<'model> {
                 return Err(CodecError::InvalidInput("output format inside message"));
             }
             let close = self.has_message && !self.messages_closed;
+            if self.system_open {
+                self.output.literal(if self.has_system {
+                    b"]"
+                } else {
+                    b",\"system\":\"\""
+                });
+                self.system_open = false;
+                self.system_closed = true;
+            }
             self.output_format.start(close)?;
             return Ok(());
         }
@@ -322,6 +397,33 @@ impl<'model> Encoder<'model> {
             return self.output_format.accept(event);
         }
         match (self.phase, event) {
+            (Phase::Outside, RequestEvent::ResponsesStore(value)) => {
+                if self.responses_store.replace(value).is_some() {
+                    return Err(CodecError::InvalidInput("duplicate store setting"));
+                }
+            }
+            (Phase::Outside, RequestEvent::ResponsesEncryptedReasoning(value)) => {
+                if self.include_reasoning.replace(value).is_some() {
+                    return Err(CodecError::InvalidInput("duplicate include setting"));
+                }
+            }
+            (Phase::Outside, RequestEvent::ResponsesReasoningStarted) => {
+                let validator = crate::t2t::request::decoder::reasoning::ReasoningValue::new()?;
+                let prefix = crate::t2t::request::decoder::reasoning::REASONING_PREFIX;
+                self.reasoning = Some(validator);
+                if self.preserve_reasoning && self.format == Format::Responses {
+                    if self.messages_closed {
+                        return Err(CodecError::Unsupported("reasoning after closed input"));
+                    }
+                    self.output.literal(if self.has_message {
+                        b","
+                    } else {
+                        b",\"input\":["
+                    });
+                    self.output.literal(prefix);
+                    self.has_message = true;
+                }
+            }
             (Phase::Outside, RequestEvent::StopSequencesStarted) => {
                 if self.has_stops {
                     return Err(CodecError::InvalidInput("duplicate stop sequences"));
@@ -401,22 +503,64 @@ impl<'model> Encoder<'model> {
                 self.has_configuration = true;
             }
             (Phase::Outside, RequestEvent::MessageStarted { role }) => {
+                self.parts = false;
+                self.has_part = false;
                 if self.messages_closed {
                     return Err(CodecError::Unsupported(
                         "output format cannot split the target conversation",
                     ));
                 }
-                self.system = self.format == Format::Anthropic && role == Role::System;
-                if self.system {
-                    if self.has_message || self.has_system {
+                let instruction = matches!(role, Role::System | Role::Developer);
+                let role = if self.format == Format::Anthropic && instruction {
+                    Role::System
+                } else {
+                    role
+                };
+                if self.format == Format::Anthropic {
+                    if self.needs_assistant && role != Role::Assistant {
                         return Err(CodecError::Unsupported(
-                            "system must be a single leading message",
+                            "system instruction must precede assistant or end history",
                         ));
                     }
-                    self.output.literal(b",\"system\":");
+                    if instruction && self.has_message {
+                        if !self.mid_conversation_system || self.previous_role != Some(Role::User) {
+                            return Err(CodecError::Unsupported(
+                                "target does not support this system instruction placement",
+                            ));
+                        }
+                        self.needs_assistant = true;
+                    } else {
+                        self.needs_assistant = false;
+                    }
+                }
+                self.system = self.format == Format::Anthropic && instruction && !self.has_message;
+                if self.system {
+                    if self.system_closed {
+                        return Err(CodecError::Unsupported(
+                            "instruction group is already closed",
+                        ));
+                    }
+                    if !self.system_open {
+                        self.system_open = true;
+                    }
+                    self.system_text = false;
                     self.phase = Phase::Message;
                     return Ok(());
                 }
+                if self.system_open {
+                    self.output.literal(if self.has_system {
+                        b"]"
+                    } else {
+                        b",\"system\":\"\""
+                    });
+                    self.system_open = false;
+                    self.system_closed = true;
+                }
+                if self.format == Format::Anthropic && !self.system_closed {
+                    self.output.literal(b",\"system\":\"\"");
+                    self.system_closed = true;
+                }
+                self.previous_role = Some(role);
                 if !self.has_message {
                     self.output.literal(if self.format == Format::Responses {
                         b",\"input\":["
@@ -434,33 +578,95 @@ impl<'model> Encoder<'model> {
                 });
                 self.output.literal(match role {
                     Role::System => b"system",
+                    Role::Developer => b"developer",
                     Role::User => b"user",
                     Role::Assistant => b"assistant",
                 });
                 self.output.literal(b"\",\"content\":");
                 self.phase = Phase::Message;
             }
+            (Phase::Message, RequestEvent::TextPartsStarted) => {
+                self.parts = true;
+                if !self.system {
+                    self.output.literal(b"[");
+                }
+                self.phase = Phase::Parts;
+            }
+            (Phase::Parts | Phase::AfterPart, RequestEvent::TextStarted) => {
+                self.part_text = false;
+                self.utf8 = Utf8::default();
+                if self.system {
+                    self.system_text = false;
+                } else {
+                    if self.has_part {
+                        self.output.literal(b",");
+                    }
+                    self.output.literal(match self.format {
+                        Format::Responses => b"{\"type\":\"input_text\",\"text\":\"",
+                        _ => b"{\"type\":\"text\",\"text\":\"",
+                    });
+                }
+                self.has_part = true;
+                self.phase = Phase::Text;
+            }
+            (Phase::AfterPart, RequestEvent::TextPartsEnded) => {
+                if !self.system {
+                    self.output.literal(b"]");
+                }
+                self.phase = Phase::AfterText;
+            }
             (Phase::Message, RequestEvent::TextStarted) => {
                 self.utf8 = Utf8::default();
-                self.output.literal(b"\"");
+                if !self.system {
+                    self.output.literal(b"\"");
+                }
                 self.phase = Phase::Text;
             }
             (Phase::Text, RequestEvent::TextFragment(len)) => {
+                self.part_text |= len > 0;
                 self.text_remaining = len;
                 if len > 0 {
+                    if self.system && !self.system_text {
+                        if self.has_system {
+                            self.output.literal(b",");
+                        } else {
+                            self.output.literal(b",\"system\":[");
+                        }
+                        self.output.literal(b"{\"type\":\"text\",\"text\":\"");
+                        self.system_text = true;
+                    }
                     self.output.push(Segment::text(TextSource::Fragment, len));
                 }
             }
             (Phase::Text, RequestEvent::TextEnded) => {
+                if self.parts && self.format == Format::Anthropic && !self.system && !self.part_text
+                {
+                    return Err(CodecError::InvalidInput("empty Anthropic text block"));
+                }
                 if !self.utf8.complete() {
                     return Err(CodecError::InvalidInput("incomplete UTF-8 text"));
                 }
-                self.output.literal(b"\"");
-                self.phase = Phase::AfterText;
+                if !self.system || self.system_text {
+                    self.output.literal(b"\"");
+                }
+                if self.parts {
+                    if !self.system || self.system_text {
+                        self.output.literal(b"}");
+                        if self.system {
+                            self.has_system = true;
+                        }
+                    }
+                    self.phase = Phase::AfterPart;
+                } else {
+                    self.phase = Phase::AfterText;
+                }
             }
             (Phase::AfterText, RequestEvent::MessageEnded) => {
                 if self.system {
-                    self.has_system = true;
+                    if self.system_text && !self.parts {
+                        self.output.literal(b"}");
+                        self.has_system = true;
+                    }
                 } else {
                     self.output.literal(b"}");
                     self.has_message = true;
@@ -495,7 +701,7 @@ impl<'model> Encoder<'model> {
                 "encoder output slice must not be empty",
             ));
         }
-        if self.output_format.processing() {
+        if self.output_format.processing() && self.output.empty() {
             let result = self.output_format.advance(text, output);
             if result.is_err() {
                 self.failed = true;
@@ -511,6 +717,30 @@ impl<'model> Encoder<'model> {
             return Err(CodecError::Contract(
                 "pending text length does not match event progress",
             ));
+        }
+        if self.reasoning_remaining > 0
+            && (!self.preserve_reasoning || self.format != Format::Responses)
+        {
+            let validator = self
+                .reasoning
+                .as_mut()
+                .ok_or(CodecError::Contract("missing reasoning validator"))?;
+            let len = text.len().min(4096);
+            if let Err(error) = text[..len]
+                .iter()
+                .try_for_each(|&byte| validator.push(byte))
+            {
+                self.failed = true;
+                return Err(error);
+            }
+            *text = &text[len..];
+            self.reasoning_remaining -= len;
+            self.text_remaining -= len;
+            if !text.is_empty() {
+                output[0] = b' ';
+                self.ready = false;
+                return Ok(EncodeStep::Wrote(1));
+            }
         }
         if matches!(self.phase, Phase::StopText) {
             let result = (|| {
@@ -528,6 +758,7 @@ impl<'model> Encoder<'model> {
         }
         let len = output.len().min(4096);
         let before = text.len();
+        let pending = *text;
         let written = match self.output.write(
             text,
             self.model.as_bytes(),
@@ -542,6 +773,21 @@ impl<'model> Encoder<'model> {
                 return Err(error);
             }
         };
+        if self.reasoning_remaining > 0 {
+            let consumed = before - text.len();
+            let validator = self
+                .reasoning
+                .as_mut()
+                .ok_or(CodecError::Contract("missing reasoning validator"))?;
+            if let Err(error) = pending[..consumed]
+                .iter()
+                .try_for_each(|&byte| validator.push(byte))
+            {
+                self.failed = true;
+                return Err(error);
+            }
+            self.reasoning_remaining -= consumed;
+        }
         self.text_remaining -= before - text.len();
         if written > 0 {
             self.ready = false;
@@ -568,6 +814,7 @@ impl<'model> Encoder<'model> {
         if !matches!(self.phase, Phase::Outside)
             || !self.has_message
             || self.output_format.processing()
+            || self.reasoning.is_some()
         {
             self.failed = true;
             return Err(CodecError::InvalidInput(
@@ -576,6 +823,19 @@ impl<'model> Encoder<'model> {
         }
         if !self.messages_closed {
             self.output.literal(b"]");
+        }
+        if self.format == Format::Responses {
+            if let Some(value) = self.responses_store {
+                self.output.literal(if value {
+                    b",\"store\":true"
+                } else {
+                    b",\"store\":false"
+                });
+            }
+            if self.include_reasoning == Some(true) {
+                self.output
+                    .literal(b",\"include\":[\"reasoning.encrypted_content\"]");
+            }
         }
         self.output.literal(match self.format {
             Format::Chat => b",\"max_completion_tokens\":",

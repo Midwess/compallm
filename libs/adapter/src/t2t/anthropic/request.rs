@@ -1,5 +1,5 @@
-//! Incremental Anthropic Messages requests for the string-content text subset.
-//! Tools, media, content-block arrays, and SSE response codecs are unsupported.
+//! Incremental Anthropic Messages requests with string or text-block content.
+//! System text blocks are supported; tools, media, and SSE response codecs are unsupported.
 
 use crate::{
     codec::{DecodeStep, EncodeStep},
@@ -41,17 +41,22 @@ impl RequestDecoder for AnthropicRequestDecoder {
     }
 }
 
-/// Canonical Messages encoder with an optional single leading system message.
-pub struct AnthropicRequestEncoder<'model>(encoder::Encoder<'model>);
+/// Messages encoder with leading instruction blocks and optional mid-conversation system support.
+pub struct AnthropicRequestEncoder<'model>(encoder::ProfileEncoder<'model>);
 
 impl<'model> AnthropicRequestEncoder<'model> {
+    /// Caller confirms the selected endpoint/model accepts mid-conversation system messages.
+    pub fn with_mid_conversation_system(mut self, supported: bool) -> Self {
+        self.0 = self.0.with_mid_conversation_system(supported);
+        self
+    }
     /// Select target model and fallback settings. Explicit source limits replace
     /// the fallback. Require a positive budget and model <= 1024 bytes.
     pub fn new(
         model: &'model str,
         configuration: Text2TextTranslatorConfiguration,
     ) -> Result<Self, CodecError> {
-        Ok(Self(encoder::Encoder::new(
+        Ok(Self(encoder::ProfileEncoder::new(
             Format::Anthropic,
             model,
             configuration,

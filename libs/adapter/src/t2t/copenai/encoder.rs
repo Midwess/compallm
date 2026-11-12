@@ -1,4 +1,4 @@
-use super::schema::{Kind, Machine, invalid};
+use crate::t2t::request::structure::{Kind, Machine, invalid};
 use crate::t2t::request::{
     Format,
     encoder::{Encoder, RequestEncoder},

@@ -3,6 +3,7 @@ pub mod encoder;
 pub mod event;
 pub(crate) mod json;
 mod scratch;
+pub(crate) mod structure;
 pub mod translator;
 
 pub use scratch::RequestScratch;

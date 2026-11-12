@@ -72,6 +72,7 @@ function CedarEditor({ locked }: { locked: boolean }) {
         readOnly={locked}
         value={draft.source}
         onValueChange={(value) => c.setPolicySource(value)}
+        onCommit={() => c.commitPolicySource?.()}
       />
     </SectionSurface>
   )
@@ -83,6 +84,8 @@ export function RoleEditorSettings() {
     shared = useSettingsController(),
     draft = useRole((s) => s.draft),
     readonly = useSettings((s) => s.readonly),
+    cedarEditable = useRole((s) => s.cedarEditable),
+    policySaveFailed = useRole((s) => s.policySaveFailed),
     busy = useRole((s) => s.busy)
   if (!draft)
     return (
@@ -91,6 +94,7 @@ export function RoleEditorSettings() {
       </SettingsContent>
     )
   const locked = readonly || draft.builtin,
+    policyLocked = (readonly && !cedarEditable) || draft.builtin,
     invalid = draft.parsing || draft.diagnostics.length > 0,
     advanced = draft.projection.some((p) => p.advanced || !p.editable || !p.action)
   return (
@@ -105,8 +109,9 @@ export function RoleEditorSettings() {
                 className="w-xl max-w-full border-border max-lg:w-sm"
                 placeholder="Role name…"
                 value={draft.name}
-                disabled={locked || busy}
+                disabled={busy}
                 onChange={(event) => c.updateRole({ name: event.target.value })}
+                onCommit={() => c.commitRoleField?.('name')}
               />
             </Row>
             <Row label={<label htmlFor="role-description">Description</label>} last>
@@ -115,8 +120,9 @@ export function RoleEditorSettings() {
                 className="w-xl max-w-full border-border max-lg:w-sm"
                 placeholder="Describe this role…"
                 value={draft.description}
-                disabled={locked || busy}
+                disabled={busy}
                 onChange={(event) => c.updateRole({ description: event.target.value })}
+                onCommit={() => c.commitRoleField?.('description')}
               />
             </Row>
           </Rows>
@@ -167,7 +173,7 @@ export function RoleEditorSettings() {
               }}
               className="col-start-1 row-start-1 min-w-0 w-full"
             >
-              <CedarEditor locked={locked || busy} />
+              <CedarEditor locked={policyLocked || busy} />
             </motion.div>
           </div>
           {draft.mode === 'visual' && advanced ? (
@@ -191,6 +197,14 @@ export function RoleEditorSettings() {
               ''
             )}
           </div>
+          {policySaveFailed ? (
+            <div className="px-4 text-xs text-error">
+              Policy changes were not saved.{' '}
+              <Button variant="ghost" className="h-7 px-1 text-xs" onClick={() => c.commitPolicySource?.()}>
+                Retry save
+              </Button>
+            </div>
+          ) : null}
         </section>
         {!locked && !draft.id ? (
           <div className="flex shrink-0 flex-wrap justify-end gap-2">

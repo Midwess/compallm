@@ -138,12 +138,14 @@ pub enum AttributeType {
 // Each row maps a typed action identifier to its owning entity, resource and context.
 // SystemPolicy domain fragments use these definitions as their schema source.
 macro_rules! actions {
-    ($( $variant:ident => ($name:literal, $owner:expr, $resource:expr, $context:expr), )*) => {
+    ($( $variant:ident => ($name:literal, $label:literal, $description:literal, $owner:expr, $resource:expr, $context:expr), )*) => {
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         pub enum Action { $( $variant, )* }
         impl Action {
             pub const ALL: &'static [Self] = &[$(Self::$variant,)*];
             pub const fn name(self) -> &'static str { match self { $(Self::$variant => $name,)* } }
+            pub const fn display_name(self) -> &'static str { match self { $(Self::$variant => $label,)* } }
+            pub const fn description(self) -> &'static str { match self { $(Self::$variant => $description,)* } }
             pub const fn owner(self) -> EntityType { match self { $(Self::$variant => $owner,)* } }
             pub const fn principal(self) -> EntityType { EntityType::User }
             pub const fn resource(self) -> EntityType { match self { $(Self::$variant => $resource,)* } }
@@ -153,49 +155,49 @@ macro_rules! actions {
 }
 
 actions! {
-    MemberRead => ("member.read", EntityType::Member, EntityType::Organization, None),
-    MemberInvite => ("member.invite", EntityType::Member, EntityType::Organization, None),
-    MemberRemove => ("member.remove", EntityType::Member, EntityType::Member, None),
-    MemberRoleAssign => ("member.role.assign", EntityType::Member, EntityType::Member, Some(Attribute::entity(AttributeName::Role, EntityType::Role))),
-    MemberRoleUnassign => ("member.role.unassign", EntityType::Member, EntityType::Member, Some(Attribute::entity(AttributeName::Role, EntityType::Role))),
-    RoleRead => ("role.read", EntityType::Role, EntityType::Organization, None),
-    RoleCreate => ("role.create", EntityType::Role, EntityType::Organization, None),
-    RoleMetadataUpdate => ("role.metadata.update", EntityType::Role, EntityType::Role, None),
-    RolePolicyRead => ("role.policy.read", EntityType::Role, EntityType::Role, None),
-    RolePolicyUpdate => ("role.policy.update", EntityType::Role, EntityType::Role, None),
-    RoleDelete => ("role.delete", EntityType::Role, EntityType::Role, None),
-    RoleAssign => ("role.assign", EntityType::Role, EntityType::Role, None),
-    RoleUnassign => ("role.unassign", EntityType::Role, EntityType::Role, None),
-    OrganizationSettingsRead => ("organization.settings.read", EntityType::Organization, EntityType::Organization, None),
-    OrganizationSettingsUpdate => ("organization.settings.update", EntityType::Organization, EntityType::Organization, None),
-    OrganizationDelete => ("organization.delete", EntityType::Organization, EntityType::Organization, None),
-    GroupRead => ("group.read", EntityType::Group, EntityType::Organization, None),
-    GroupCreate => ("group.create", EntityType::Group, EntityType::Organization, None),
-    GroupMetadataUpdate => ("group.metadata.update", EntityType::Group, EntityType::Group, None),
-    GroupMemberAdd => ("group.member.add", EntityType::Group, EntityType::Group, Some(Attribute::entity(AttributeName::Member, EntityType::Member))),
-    GroupMemberRemove => ("group.member.remove", EntityType::Group, EntityType::Group, Some(Attribute::entity(AttributeName::Member, EntityType::Member))),
-    GroupRoleAssign => ("group.role.assign", EntityType::Group, EntityType::Group, Some(Attribute::entity(AttributeName::Role, EntityType::Role))),
-    GroupRoleUnassign => ("group.role.unassign", EntityType::Group, EntityType::Group, Some(Attribute::entity(AttributeName::Role, EntityType::Role))),
-    GroupDelete => ("group.delete", EntityType::Group, EntityType::Group, None),
-    ProviderRead => ("provider.read", EntityType::Provider, EntityType::Organization, None),
-    ProviderCreate => ("provider.create", EntityType::Provider, EntityType::Organization, None),
-    ProviderConfigurationUpdate => ("provider.configuration.update", EntityType::Provider, EntityType::Provider, None),
-    ProviderDelete => ("provider.delete", EntityType::Provider, EntityType::Provider, None),
-    ProviderCredentialReplace => ("provider.credential.replace", EntityType::Provider, EntityType::Provider, None),
-    ProviderModelRead => ("provider.model.read", EntityType::ProviderModel, EntityType::Organization, None),
-    ProviderModelCreate => ("provider.model.create", EntityType::ProviderModel, EntityType::Provider, None),
-    ProviderModelConfigurationUpdate => ("provider.model.configuration.update", EntityType::ProviderModel, EntityType::ProviderModel, None),
-    ProviderModelPricingUpdate => ("provider.model.pricing.update", EntityType::ProviderModel, EntityType::ProviderModel, None),
-    ProviderModelDelete => ("provider.model.delete", EntityType::ProviderModel, EntityType::ProviderModel, None),
-    ModelRead => ("model.read", EntityType::Model, EntityType::Organization, None),
-    ModelCreate => ("model.create", EntityType::Model, EntityType::Organization, None),
-    ModelConfigurationUpdate => ("model.configuration.update", EntityType::Model, EntityType::Model, None),
-    ModelDelete => ("model.delete", EntityType::Model, EntityType::Model, None),
-    ModelUse => ("model.use", EntityType::Model, EntityType::Model, None),
-    ModelRouteAdd => ("model.route.add", EntityType::Model, EntityType::Model, Some(Attribute::entity(AttributeName::ProviderModel, EntityType::ProviderModel))),
-    ModelRouteUpdate => ("model.route.update", EntityType::Model, EntityType::Model, Some(Attribute::entity(AttributeName::ProviderModel, EntityType::ProviderModel))),
-    ModelRouteRemove => ("model.route.remove", EntityType::Model, EntityType::Model, Some(Attribute::entity(AttributeName::ProviderModel, EntityType::ProviderModel))),
-    ModelPricingUpdate => ("model.pricing.update", EntityType::Model, EntityType::Model, None),
+    MemberRead => ("member.read", "View members", "View organization member details.", EntityType::Member, EntityType::Organization, None),
+    MemberInvite => ("member.invite", "Invite members", "Invite people to the organization.", EntityType::Member, EntityType::Organization, None),
+    MemberRemove => ("member.remove", "Remove members", "Remove members from the organization.", EntityType::Member, EntityType::Member, None),
+    MemberRoleAssign => ("member.role.assign", "Assign member roles", "Assign roles directly to members.", EntityType::Member, EntityType::Member, Some(Attribute::entity(AttributeName::Role, EntityType::Role))),
+    MemberRoleUnassign => ("member.role.unassign", "Remove member roles", "Remove roles assigned directly to members.", EntityType::Member, EntityType::Member, Some(Attribute::entity(AttributeName::Role, EntityType::Role))),
+    RoleRead => ("role.read", "View roles", "View organization role details.", EntityType::Role, EntityType::Organization, None),
+    RoleCreate => ("role.create", "Create roles", "Create organization roles and their policies.", EntityType::Role, EntityType::Organization, None),
+    RoleMetadataUpdate => ("role.metadata.update", "Edit role details", "Change a role name or description.", EntityType::Role, EntityType::Role, None),
+    RolePolicyRead => ("role.policy.read", "View role policies", "View the Cedar policy assigned to a role.", EntityType::Role, EntityType::Role, None),
+    RolePolicyUpdate => ("role.policy.update", "Edit role policies", "Change the Cedar policy assigned to a role.", EntityType::Role, EntityType::Role, None),
+    RoleDelete => ("role.delete", "Delete roles", "Delete organization roles.", EntityType::Role, EntityType::Role, None),
+    RoleAssign => ("role.assign", "Assign roles", "Assign a role to a member or group.", EntityType::Role, EntityType::Role, None),
+    RoleUnassign => ("role.unassign", "Remove role assignments", "Remove a role from a member or group.", EntityType::Role, EntityType::Role, None),
+    OrganizationSettingsRead => ("organization.settings.read", "View organization settings", "View organization configuration.", EntityType::Organization, EntityType::Organization, None),
+    OrganizationSettingsUpdate => ("organization.settings.update", "Edit organization settings", "Change organization configuration.", EntityType::Organization, EntityType::Organization, None),
+    OrganizationDelete => ("organization.delete", "Delete organization", "Delete the organization.", EntityType::Organization, EntityType::Organization, None),
+    GroupRead => ("group.read", "View groups", "View organization group details.", EntityType::Group, EntityType::Organization, None),
+    GroupCreate => ("group.create", "Create groups", "Create groups in the organization.", EntityType::Group, EntityType::Organization, None),
+    GroupMetadataUpdate => ("group.metadata.update", "Edit group details", "Change a group name or description.", EntityType::Group, EntityType::Group, None),
+    GroupMemberAdd => ("group.member.add", "Add group members", "Add members to a group.", EntityType::Group, EntityType::Group, Some(Attribute::entity(AttributeName::Member, EntityType::Member))),
+    GroupMemberRemove => ("group.member.remove", "Remove group members", "Remove members from a group.", EntityType::Group, EntityType::Group, Some(Attribute::entity(AttributeName::Member, EntityType::Member))),
+    GroupRoleAssign => ("group.role.assign", "Assign group roles", "Assign roles to a group.", EntityType::Group, EntityType::Group, Some(Attribute::entity(AttributeName::Role, EntityType::Role))),
+    GroupRoleUnassign => ("group.role.unassign", "Remove group roles", "Remove roles assigned to a group.", EntityType::Group, EntityType::Group, Some(Attribute::entity(AttributeName::Role, EntityType::Role))),
+    GroupDelete => ("group.delete", "Delete groups", "Delete organization groups.", EntityType::Group, EntityType::Group, None),
+    ProviderRead => ("provider.read", "View providers", "View providers and their credentials.", EntityType::Provider, EntityType::Organization, None),
+    ProviderCreate => ("provider.create", "Create providers", "Create providers in the organization.", EntityType::Provider, EntityType::Organization, None),
+    ProviderConfigurationUpdate => ("provider.configuration.update", "Edit provider settings", "Change a provider configuration.", EntityType::Provider, EntityType::Provider, None),
+    ProviderDelete => ("provider.delete", "Delete providers", "Delete organization providers.", EntityType::Provider, EntityType::Provider, None),
+    ProviderCredentialReplace => ("provider.credential.replace", "Replace provider credentials", "Replace credentials used by a provider.", EntityType::Provider, EntityType::Provider, None),
+    ProviderModelRead => ("provider.model.read", "View provider models", "View models configured for providers.", EntityType::ProviderModel, EntityType::Organization, None),
+    ProviderModelCreate => ("provider.model.create", "Create provider models", "Add models to a provider.", EntityType::ProviderModel, EntityType::Provider, None),
+    ProviderModelConfigurationUpdate => ("provider.model.configuration.update", "Edit provider model settings", "Change a provider model configuration.", EntityType::ProviderModel, EntityType::ProviderModel, None),
+    ProviderModelPricingUpdate => ("provider.model.pricing.update", "Edit provider model prices", "Change provider model pricing.", EntityType::ProviderModel, EntityType::ProviderModel, None),
+    ProviderModelDelete => ("provider.model.delete", "Delete provider models", "Remove models from a provider.", EntityType::ProviderModel, EntityType::ProviderModel, None),
+    ModelRead => ("model.read", "View models", "View organization model details.", EntityType::Model, EntityType::Organization, None),
+    ModelCreate => ("model.create", "Create models", "Create models in the organization.", EntityType::Model, EntityType::Organization, None),
+    ModelConfigurationUpdate => ("model.configuration.update", "Edit model settings", "Change a model configuration.", EntityType::Model, EntityType::Model, None),
+    ModelDelete => ("model.delete", "Delete models", "Delete organization models.", EntityType::Model, EntityType::Model, None),
+    ModelUse => ("model.use", "Use models", "Use an enabled model.", EntityType::Model, EntityType::Model, None),
+    ModelRouteAdd => ("model.route.add", "Add model routes", "Add provider models to a model route.", EntityType::Model, EntityType::Model, Some(Attribute::entity(AttributeName::ProviderModel, EntityType::ProviderModel))),
+    ModelRouteUpdate => ("model.route.update", "Edit model routes", "Change a model route.", EntityType::Model, EntityType::Model, Some(Attribute::entity(AttributeName::ProviderModel, EntityType::ProviderModel))),
+    ModelRouteRemove => ("model.route.remove", "Remove model routes", "Remove provider models from a model route.", EntityType::Model, EntityType::Model, Some(Attribute::entity(AttributeName::ProviderModel, EntityType::ProviderModel))),
+    ModelPricingUpdate => ("model.pricing.update", "Edit model prices", "Change model pricing.", EntityType::Model, EntityType::Model, None),
 }
 
 impl From<Action> for EntityUid {

@@ -167,6 +167,16 @@ impl OrganizationRepository for OrganizationRepositoryStub {
     fn supports_role_policy(&self, _: &str) -> bool {
         true
     }
+    async fn update_role(
+        &self,
+        _: u64,
+        _: u64,
+        _: Option<String>,
+        _: Option<String>,
+        _: Option<String>,
+    ) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
     async fn lock_role(&self, _: u64, _: u64) -> Result<Role, OrganizationRepositoryError> {
         unimplemented!()
     }
@@ -188,10 +198,20 @@ impl OrganizationRepository for OrganizationRepositoryStub {
     }
     async fn find_roles_for_assignment(
         &self,
-        _: u64,
-        _: &[u64],
+        organization_id: u64,
+        role_ids: &[u64],
     ) -> Result<Vec<Role>, OrganizationRepositoryError> {
-        unimplemented!()
+        Ok(self
+            .0
+            .lock()
+            .unwrap()
+            .memberships
+            .iter()
+            .filter(|member| member.organization_id == organization_id)
+            .flat_map(|member| &member.roles)
+            .filter(|role| role_ids.contains(&role.id))
+            .cloned()
+            .collect())
     }
     async fn create_group(
         &self,

@@ -164,6 +164,12 @@ input RoleCreateInput {
   cedarSource: String!
 }
 
+input RoleUpdateInput {
+  name: String
+  description: String
+  cedarSource: String
+}
+
 "Positive u32 context size, encoded as an exact JSON number (1–4294967295)."
 scalar ContextTokens
 
@@ -227,6 +233,7 @@ type Mutation {
   sessionRevoke: BooleanPayload!
   "Create a role in the verified active organization."
   roleCreate(input: RoleCreateInput!): RolePayload!
+  roleUpdate(id: ID!, input: RoleUpdateInput!): RolePayload!
   "Create a group and its initial role assignments in the verified active organization."
   groupCreate(input: GroupCreateInput!): CreatedGroupPayload!
 }
@@ -249,6 +256,8 @@ type PageInfo {
 
 type PolicyAction {
   name: String!
+  displayName: String!
+  description: String!
   entityType: String!
   resourceType: String!
 }
@@ -292,6 +301,7 @@ type Query {
 }
 
 type Role {
+  cedarSource: String
   id: ID!
   name: String!
   description: String!

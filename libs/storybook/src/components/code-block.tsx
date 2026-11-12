@@ -156,6 +156,7 @@ export function CodePreview({
 export interface CodeEditorProps {
   value: string
   onValueChange: (value: string) => void
+  onCommit?: () => void
   language: string
   label: string
   theme?: CodeTheme
@@ -170,6 +171,7 @@ export interface CodeEditorProps {
 export function CodeEditor({
   value,
   onValueChange,
+  onCommit,
   language,
   label,
   theme = 'dark',
@@ -228,6 +230,7 @@ pl-15.5 pr-4 font-mono text-transparent caret-text selection:bg-focus/25
 [font-variant-ligatures:none] [-webkit-text-fill-color:transparent]"
         style={{ ...style, caretColor: foreground[theme] }}
         onChange={(event) => onValueChange(event.target.value)}
+        onBlur={onCommit}
         onScroll={(event) => {
           const { scrollTop, scrollLeft } = event.currentTarget
           if (content.current) content.current.style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`

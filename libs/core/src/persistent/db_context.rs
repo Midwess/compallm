@@ -207,6 +207,17 @@ impl DbContext {
         Ok(context)
     }
 
+    /// Create an unrestricted context from the configured application connection.
+    /// Callers must authorize and scope operations using this context.
+    pub fn root() -> Result<Self, ConnectionError> {
+        let postgres = DEFAULT_CONNECTION
+            .get()
+            .cloned()
+            .context("default database connection is not initialized")?;
+        postgres.ensure_open()?;
+        Ok(Self::new(postgres))
+    }
+
     pub fn postgres(&self) -> &dyn Connection {
         self.postgres.as_ref()
     }

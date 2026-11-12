@@ -137,6 +137,7 @@ type Mutation {
   Create a role in the verified active organization.
   """
   roleCreate(input: RoleCreateInput!): RolePayload!
+  roleUpdate(id: ID!, input: RoleUpdateInput!): RolePayload!
 
   """
   Refresh using explicit refresh Bearer authority; leave browser cookies unchanged.
@@ -166,6 +167,8 @@ type PageInfo {
 }
 
 type PolicyAction {
+  description: String!
+  displayName: String!
   entityType: String!
   name: String!
   resourceType: String!
@@ -385,6 +388,7 @@ type Query {
 }
 
 type Role {
+  cedarSource: String
   color: String!
   description: String!
   id: ID!
@@ -409,6 +413,12 @@ type RoleEdge {
 
 type RolePayload {
   node: Role!
+}
+
+input RoleUpdateInput {
+  cedarSource: String
+  description: String
+  name: String
 }
 
 type Session {

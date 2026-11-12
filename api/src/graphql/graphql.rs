@@ -150,6 +150,15 @@ impl Mutation {
         organization::role::mutation::create(input, service, authority).await
     }
 
+    async fn role_update(
+        id: ID,
+        input: organization::role::input::RoleUpdateInput,
+        #[graphql(context)] service: &RbacService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<organization::role::Role>, Error> {
+        organization::role::mutation::update(id, input, service, authority).await
+    }
+
     /// Create a group and its initial role assignments in the verified active organization.
     async fn group_create(
         input: organization::group::input::GroupCreateInput,
@@ -236,6 +245,7 @@ impl GraphQLValueAsync for RegisteredQuery {
 #[allow(dead_code)]
 struct Inputs {
     role_create: super::organization::role::input::RoleCreateInput,
+    role_update: super::organization::role::input::RoleUpdateInput,
     group_create: super::organization::group::input::GroupCreateInput,
     email: super::authentication::input::EmailInput,
     code: super::authentication::input::EmailCodeInput,

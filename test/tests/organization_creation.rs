@@ -30,6 +30,16 @@ impl OrganizationRepository for Repository {
     fn supports_role_policy(&self, _: &str) -> bool {
         true
     }
+    async fn update_role(
+        &self,
+        _: u64,
+        _: u64,
+        _: Option<String>,
+        _: Option<String>,
+        _: Option<String>,
+    ) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
     async fn lock_role(&self, _: u64, _: u64) -> Result<Role, OrganizationRepositoryError> {
         unimplemented!()
     }

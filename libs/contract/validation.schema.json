@@ -6,6 +6,9 @@
     "role_create": {
       "$ref": "#/$defs/RoleCreateInput"
     },
+    "role_update": {
+      "$ref": "#/$defs/RoleUpdateInput"
+    },
     "group_create": {
       "$ref": "#/$defs/GroupCreateInput"
     },
@@ -27,6 +30,7 @@
   },
   "required": [
     "role_create",
+    "role_update",
     "group_create",
     "email",
     "code",
@@ -57,6 +61,34 @@
         "description",
         "cedarSource"
       ],
+      "x-compallm-input": true
+    },
+    "RoleUpdateInput": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-trim": true,
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cedarSource": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
       "x-compallm-input": true
     },
     "GroupCreateInput": {

@@ -80,6 +80,7 @@ export interface Mutation {
   groupCreate: CreatedGroupPayload
   /** Create a role in the verified active organization. */
   roleCreate: RolePayload
+  roleUpdate: RolePayload
   /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
   sessionRefresh: SessionCredentialsPayload
   /** Revoke the verified session and clear its browser cookies after success. */
@@ -107,6 +108,8 @@ export interface PageInfo {
 }
 
 export interface PolicyAction {
+  description: Scalars['String']
+  displayName: Scalars['String']
   entityType: Scalars['String']
   name: Scalars['String']
   resourceType: Scalars['String']
@@ -174,6 +177,7 @@ export interface Query {
 }
 
 export interface Role {
+  cedarSource: Scalars['String'] | null
   color: Scalars['String']
   description: Scalars['String']
   id: Scalars['ID']
@@ -349,6 +353,7 @@ export interface MutationGenqlSelection {
   groupCreate?: CreatedGroupPayloadGenqlSelection & { __args: { input: GroupCreateInput } }
   /** Create a role in the verified active organization. */
   roleCreate?: RolePayloadGenqlSelection & { __args: { input: RoleCreateInput } }
+  roleUpdate?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; input: RoleUpdateInput } }
   /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
   sessionRefresh?: SessionCredentialsPayloadGenqlSelection
   /** Revoke the verified session and clear its browser cookies after success. */
@@ -380,6 +385,8 @@ export interface PageInfoGenqlSelection {
 }
 
 export interface PolicyActionGenqlSelection {
+  description?: boolean | number
+  displayName?: boolean | number
   entityType?: boolean | number
   name?: boolean | number
   resourceType?: boolean | number
@@ -519,6 +526,7 @@ export interface QueryGenqlSelection {
 }
 
 export interface RoleGenqlSelection {
+  cedarSource?: boolean | number
   color?: boolean | number
   description?: boolean | number
   id?: boolean | number
@@ -551,6 +559,12 @@ export interface RolePayloadGenqlSelection {
   node?: RoleGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
+}
+
+export interface RoleUpdateInput {
+  cedarSource?: Scalars['String'] | null
+  description?: Scalars['String'] | null
+  name?: Scalars['String'] | null
 }
 
 export interface SessionGenqlSelection {

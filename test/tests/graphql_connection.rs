@@ -1,11 +1,20 @@
 use compallm_api::graphql::{
     base_type::{Collection, Connection, Edge, PageInfo, Payload},
-    organization::{group::Group, role::Role},
+    organization::group::Group,
 };
 use juniper::{DefaultScalarValue, EmptyMutation, EmptySubscription, RootNode, Variables};
 use serde_json::json;
 
 struct RoleName(String);
+
+#[derive(juniper::GraphQLObject)]
+#[graphql(name = "Role")]
+struct Role {
+    id: juniper::ID,
+    name: String,
+    description: String,
+    color: String,
+}
 
 impl From<RoleName> for Role {
     fn from(value: RoleName) -> Self {

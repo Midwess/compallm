@@ -87,15 +87,12 @@ function PermissionRow({
         <span className="block truncate text-xsm leading-4.5 font-medium" title={action.description}>
           {action.label}
         </span>
-        <span className="block truncate text-[11px] leading-4 text-muted">{action.id}</span>
+        <span className="block truncate text-[11px] leading-4 text-muted">
+          {action.id}
+          {statements.some((p) => p.resourceRestricted) ? ' · Advanced scope' : null}
+        </span>
       </Table.Cell>
-      <Table.Cell className="px-1 py-0 text-xs text-muted">
-        {statements.some((p) => p.resourceRestricted)
-          ? 'Advanced scope'
-          : action.scope.trim().toLowerCase() === 'this organization'
-            ? null
-            : action.scope}
-      </Table.Cell>
+      <Table.Cell className="px-1 py-0 text-xs text-muted">{action.description}</Table.Cell>
       <Table.Cell className="px-2 py-0">
         <Switch
           aria-label={action.label}
@@ -115,6 +112,7 @@ export function PolicyTable() {
     query = useRole((s) => s.query),
     filters = useRole((s) => s.filters),
     readonly = useSettings((s) => s.readonly),
+    policyEditable = useRole((s) => s.policyEditable),
     busy = useRole((s) => s.busy)
   const [disclosure, setDisclosure] = useState<Record<string, boolean>>({})
   const id = useId()
@@ -137,7 +135,7 @@ export function PolicyTable() {
     )
   })
   const filtering = Boolean(normalized) || Object.values(filters).some((v) => v && v !== 'all')
-  const disabled = readonly || draft.builtin || busy || draft.parsing || draft.diagnostics.length > 0
+  const disabled = (readonly && !policyEditable) || draft.builtin || busy || draft.parsing || draft.diagnostics.length > 0
   const selectedCount = actions.filter((a) => projection.has(a.id)).length
   return (
     <SectionSurface className="flex min-w-0 flex-col overflow-hidden p-0">
@@ -175,7 +173,7 @@ export function PolicyTable() {
             <Table.Header className="sticky top-0 z-20 bg-inset">
               <Table.Row>
                 <Table.Head className="px-2 py-0">Policy</Table.Head>
-                <Table.Head className="px-1 py-0">Resource scope</Table.Head>
+                <Table.Head className="px-1 py-0">Description</Table.Head>
                 <Table.Head className="px-2 py-0">Allow</Table.Head>
               </Table.Row>
             </Table.Header>

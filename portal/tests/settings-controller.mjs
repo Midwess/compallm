@@ -28,15 +28,17 @@ function until(store, predicate) {
 test('loads role and group summaries in one request', async () => {
   const original = globalThis.fetch
   let requests = 0
+  let selection = ''
   const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
   globalThis.fetch = async (_input, init) => {
     assert.equal(init.credentials, 'same-origin')
     const { query } = JSON.parse(init.body)
     requests++
     assert.ok(query.includes('roles') && query.includes('groups'))
+    selection = query
     return Response.json({
       data: {
-        roles: { edges: [{ node: { id: '1', name: 'Editor', description: 'Edit', color: '#c06040' } }] },
+        roles: { edges: [{ node: { id: '1', name: 'Editor', color: '#c06040' } }] },
         groups: { edges: [{ node: { id: '2', name: 'Design', description: '' } }] },
       },
     })
@@ -50,6 +52,7 @@ test('loads role and group summaries in one request', async () => {
     )
     assert.equal(controller.store.getState().groups[0].name, 'Design')
     assert.equal(requests, 1)
+    assert.match(selection, /roles\s*\{\s*edges\s*\{\s*node\s*\{\s*id[\s,]+name[\s,]+color\s*\}/)
     assert.equal(controller.store.getState().roles[0].color, '#c06040')
     assert.equal(controller.store.getState().error, null)
     stop()
@@ -110,7 +113,7 @@ test('ignores responses from settings after leaving or restarting', async () => 
   }
 })
 
-test('role and group add actions navigate to their creation screens', () => {
+test('group add action navigates to its creation screen', () => {
   const paths = []
   const url = { navigate: (path) => paths.push(path) }
   const controller = new SettingsController('Research team', url, { signOut() {} }, 'general')
@@ -125,15 +128,130 @@ test('role and group add actions navigate to their creation screens', () => {
     memberIds: [],
     roleIds: [],
   })
-  controller.navigate('new-role')
-  controller.setPage('new-role')
-  assert.equal(paths.at(-1), '/Research%20team/settings/new-role')
-  assert.equal(controller.store.getState().location.page, 'new-role')
-  assert.equal(controller.role.store.getState().draft?.id, null)
 })
 
-test('direct visits initialize the requested creation screen', () => {
-  for (const page of ['new-group', 'new-role']) {
+test('role add creates an empty policy once and opens the persisted role', async () => {
+  const original = globalThis.fetch
+  const paths = []
+  let writes = 0
+  const controller = new SettingsController(
+    'Research team',
+    { navigate: (path) => paths.push(path) },
+    { signOut() {} },
+    'general',
+  )
+  globalThis.fetch = async (_input, init) => {
+    const { query, variables } = JSON.parse(init.body)
+    if (query.includes('rolePolicySource'))
+      return Response.json({
+        data: { role: { node: { id: '42', name: 'New role', description: '' } }, rolePolicySource: { node: { source: '' } } },
+      })
+    if (query.includes('role('))
+      return Response.json({ data: { role: { node: { id: '42', name: 'New role', description: '' } } } })
+    if (!query.includes('roleCreate')) return Response.json({ data: { roles: { edges: [] }, groups: { edges: [] } } })
+    writes++
+    const input = Object.values(variables).find((value) => value && typeof value === 'object' && 'cedarSource' in value)
+    assert.match(input.name, /^New role at \d\d:\d\d:\d\d\.\d{3}$/)
+    assert.equal(input.cedarSource, '')
+    return Response.json({ data: { roleCreate: { node: { id: '42', name: input.name, description: '', color: '#c06040' } } } })
+  }
+  try {
+    const stop = controller.start()
+    controller.navigate('new-role')
+    controller.navigate('new-role')
+    await until(controller.store, (state) => state.roles.some((role) => role.id === '42'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.equal(writes, 1)
+    assert.equal(controller.store.getState().roles[0].id, '42')
+    assert.equal(paths.at(-1), '/Research%20team/settings/role/42')
+    controller.setPage('role', '42')
+    await until(controller.role.store, (state) => state.draft?.id === '42')
+    stop()
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+test('selecting a role reads its detail and saved policy', async () => {
+  const original = globalThis.fetch
+  const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
+  globalThis.fetch = async (_input, init) => {
+    const { query } = JSON.parse(init.body)
+    if (query.includes('rolePolicySource'))
+      return Response.json({
+        data: {
+          role: { node: { id: '9', name: 'Editor', description: 'Example' } },
+          rolePolicySource: { node: { source: 'permit(principal, action, resource);' } },
+        },
+      })
+    if (query.includes('role('))
+      return Response.json({ data: { role: { node: { id: '9', name: 'Editor', description: 'Example' } } } })
+    return Response.json({ data: { roles: { edges: [] }, groups: { edges: [] } } })
+  }
+  try {
+    const stop = controller.start()
+    controller.setPage('role', '9')
+    await until(controller.role.store, (state) => state.draft?.id === '9')
+    assert.equal(controller.role.store.getState().draft.source, 'permit(principal, action, resource);')
+    stop()
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+test('shows selected role metadata when policy access is denied', async () => {
+  const original = globalThis.fetch
+  const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
+  globalThis.fetch = async (_input, init) => {
+    const { query } = JSON.parse(init.body)
+    if (query.includes('rolePolicySource'))
+      return Response.json({ errors: [{ message: 'Denied', extensions: { code: 'FORBIDDEN', status: 403 } }] })
+    if (query.includes('role('))
+      return Response.json({ data: { role: { node: { id: '9', name: 'Editor', description: 'Example' } } } })
+    return Response.json({ data: { roles: { edges: [] }, groups: { edges: [] } } })
+  }
+  try {
+    const stop = controller.start()
+    controller.setPage('role', '9')
+    await until(controller.role.store, (state) => state.draft?.id === '9')
+    assert.equal(controller.role.store.getState().draft.name, 'Editor')
+    assert.notEqual(controller.role.store.getState().draft.diagnostics.length, 0)
+    stop()
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+test('failed role creation keeps the current page and does not add a role', async () => {
+  const original = globalThis.fetch
+  const paths = []
+  const controller = new SettingsController(
+    'Research team',
+    { navigate: (path) => paths.push(path) },
+    { signOut() {} },
+    'general',
+  )
+  globalThis.fetch = async (_input, init) => {
+    const { query } = JSON.parse(init.body)
+    return query.includes('roleCreate')
+      ? Response.json({ errors: [{ message: 'Name already exists', extensions: { code: 'CONFLICT', status: 409 } }] })
+      : Response.json({ data: { roles: { edges: [] }, groups: { edges: [] } } })
+  }
+  try {
+    const stop = controller.start()
+    controller.navigate('new-role')
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    assert.deepEqual(paths, [])
+    assert.deepEqual(controller.store.getState().roles, [])
+    assert.ok(toast.getToasts().some((entry) => entry.id === 'error:Name already exists'))
+    stop()
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+test('direct visits initialize the group creation screen', () => {
+  for (const page of ['new-group']) {
     const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, page)
     const state = controller.store.getState()
     assert.equal(state.location.page, page)
@@ -142,7 +260,8 @@ test('direct visits initialize the requested creation screen', () => {
 })
 
 test('role and group drafts remain independent when navigating between pages', () => {
-  const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'new-role')
+  const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
+  controller.role.open()
   controller.role.store.setState((state) => ({ draft: { ...state.draft, name: 'Editor' } }))
   controller.setPage('new-group')
   controller.group.store.setState((state) => ({ draft: { ...state.draft, name: 'Design' } }))

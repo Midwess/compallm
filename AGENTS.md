@@ -18,8 +18,9 @@ flows:
   coding-implement-refactoring:
     steps: inspect → code → verify
     conventions: apply engineering conventions below
+    during-code:
+      unit-test: false
     after-code:
-      after-code: false
       unit-test: false
     testing:
       scope: core business logic; important main flows and critical edge cases

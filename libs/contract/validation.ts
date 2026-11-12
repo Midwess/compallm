@@ -373,3 +373,14 @@ export const RoleCreateInput = z
   .strict()
 export type RoleCreateInputFormInput = z.input<typeof RoleCreateInput>
 export type RoleCreateInputFormOutput = z.output<typeof RoleCreateInput>
+export const RoleUpdateInputConstraints = { name: { minLength: 1, maxLength: 64, trim: true } } as const
+export const RoleUpdateInputInput = { name: stringInput(RoleUpdateInputConstraints['name']) }
+export const RoleUpdateInput = z
+  .object({
+    name: inputString({ minLength: 1, maxLength: 64, trim: true }).nullable().optional(),
+    description: inputString({}).nullable().optional(),
+    cedarSource: inputString({}).nullable().optional(),
+  })
+  .strict()
+export type RoleUpdateInputFormInput = z.input<typeof RoleUpdateInput>
+export type RoleUpdateInputFormOutput = z.output<typeof RoleUpdateInput>

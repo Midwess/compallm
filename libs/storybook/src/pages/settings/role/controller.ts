@@ -8,6 +8,9 @@ export interface RoleState {
   filters: Record<string, string>
   draft: RoleDraft | null
   busy: boolean
+  policyEditable?: boolean
+  cedarEditable?: boolean
+  policySaveFailed?: boolean
   error: string | null
 }
 export interface RoleController {
@@ -15,8 +18,10 @@ export interface RoleController {
   setFilter(key: string, value: string): void
   store: StoreApi<RoleState>
   updateRole(value: Partial<Pick<RoleDraft, 'name' | 'description'>>): void
+  commitRoleField?(field: 'name' | 'description'): void
   setPolicyMode(mode: RoleDraft['mode']): void
   setPolicySource(source: string): void
+  commitPolicySource?(): void
   togglePolicyAction(action: string): void
   setPolicyActions(actions: string[], enabled: boolean): void
   formatPolicy(): void
@@ -24,7 +29,7 @@ export interface RoleController {
   resetRole(): void
 }
 export function useRoleController() {
-  return useSettingsController().role
+  return useSettingsController().pages.role
 }
 export function useRole<T>(selector: (state: RoleState) => T) {
   return useStore(useRoleController().store, selector)

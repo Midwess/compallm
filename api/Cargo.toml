@@ -10,6 +10,7 @@ publish = false
 workspace = true
 
 [dependencies]
+socket2 = { version = "0.6", default-features = false }
 schemars.workspace = true
 compallm-validation-derive.workspace = true
 juniper.workspace = true
@@ -22,7 +23,7 @@ axum = { workspace = true, features = ["http1", "json", "tokio"] }
 axum-frontend = { workspace = true, features = ["dev"] }
 compallm-postgres.workspace = true
 compallm-core.workspace = true
-hero = { workspace = true, features = ["tcp"] }
+compallm-query = { workspace = true, features = ["graphql", "derive"] }
 compallm-mailing.workspace = true
 anyhow = { workspace = true, features = ["std"] }
 loco-rs = { workspace = true, features = ["cli", "with-db", "cache_inmem", "worker"] }

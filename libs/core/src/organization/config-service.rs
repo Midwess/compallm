@@ -1,3 +1,4 @@
+use crate::authorization::{MemberPermission, condition::CheckPermission, policy::Action};
 use crate::persistent::organization::OrganizationRepository;
 
 use super::{Organization, OrganizationConfigError};
@@ -11,18 +12,19 @@ impl ConfigService {
         Self { organizations }
     }
 
-    /// The caller must authorize configuration access before invoking this service.
+    /// Rename the member's active organization after checking settings authority.
     pub async fn update_name(
         &self,
-        organization_id: u64,
+        permission: &MemberPermission,
         name: &str,
     ) -> Result<Organization, OrganizationConfigError> {
+        Action::OrganizationSettingsUpdate.check_permission(permission)?;
         let name =
             Organization::normalize_name(name).map_err(|_| OrganizationConfigError::InvalidName)?;
 
         Ok(self
             .organizations
-            .update_name(organization_id, &name)
+            .update_name(permission.organization_id(), &name)
             .await?)
     }
 }

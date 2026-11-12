@@ -179,7 +179,7 @@ export function ProviderModels() {
           >
             Add generate text model
           </Popup.Trigger>
-          <Popup.Content aria-label="Add generate text model" className="w-64">
+          <Popup.Content aria-label="Add generate text model" className="w-3xs">
             {textModelOptions.map((option) => (
               <Popup.Item key={option.value} className="gap-2" onClick={() => controller.onAddModel(option.value)}>
                 <ProviderIcon provider={option.brand} />

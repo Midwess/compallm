@@ -20,6 +20,7 @@ export function Component() {
   const auth = useAuthController()
   const organization = useOrganizationController().getCurrentOrganization()!
   const [controller] = useState(() => new SettingsController(organization.name, url, auth, page))
+  useEffect(() => controller.start(), [controller])
   useEffect(() => controller.setPage(page), [controller, page])
   return (
     <SettingsControllerContext value={controller}>

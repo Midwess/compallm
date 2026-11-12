@@ -6,6 +6,7 @@
 //! Axum delivery constructs a typed Juniper context with verified access and the existing DI.
 
 pub mod authentication;
+pub mod base_type;
 pub mod endpoint;
 pub mod organization;
 pub mod provider;
@@ -13,10 +14,10 @@ pub mod user;
 
 mod context;
 mod error;
-mod operation;
-mod schema;
+#[path = "graphql.rs"]
+mod runtime;
 
 pub use context::GraphqlContext;
-pub use schema::{ApplicationSchema, Query, build_schema};
+pub use runtime::{ApplicationSchema, Query, build_schema};
 
-pub(crate) mod validation;
+pub(crate) use runtime::validation_schema;

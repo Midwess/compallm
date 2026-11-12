@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { SettingsControllerContext } from '../../../src/context'
 import { SettingsPage } from '../../../src/pages/settings'
-import type { SettingsState, SettingsDestination } from '../../../src/pages/settings'
+import type { SettingsState, SettingsDestination, RoleDraft, GroupDraft } from '../../../src/pages/settings'
 import { DemoSettingsController } from './demo-controller'
 import { advancedSource, modelOperatorSource } from './fixtures'
 
@@ -14,7 +14,7 @@ function Demo({
 }: {
   page?: SettingsDestination
   id?: string
-  initial?: Partial<SettingsState>
+  initial?: Partial<SettingsState> & { roleDraft?: RoleDraft | null; groupDraft?: GroupDraft | null }
   failure?: boolean | 'conflict'
 }) {
   const [controller] = useState(() => new DemoSettingsController({ location: { page, id }, ...initial }, failure))
@@ -44,6 +44,20 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const General: Story = { render: () => <Demo /> }
+export const GeneralNarrow: Story = {
+  render: () => <Demo />,
+  parameters: {
+    viewport: { options: { settingsNarrow: { name: 'Narrow', styles: { width: '625px', height: '900px' } } } },
+  },
+  globals: { viewport: { value: 'settingsNarrow', isRotated: false } },
+}
+export const GeneralCompactDesktop: Story = {
+  render: () => <Demo />,
+  parameters: {
+    viewport: { options: { settingsCompact: { name: 'Compact desktop', styles: { width: '900px', height: '900px' } } } },
+  },
+  globals: { viewport: { value: 'settingsCompact', isRotated: false } },
+}
 export const Appearance: Story = { render: () => <Demo page="appearance" /> }
 export const SidebarPreferences: Story = {
   render: () => <Demo page="appearance" initial={{ dialog: { kind: 'customize-sidebar', name: '', value: '', phrase: '' } }} />,
@@ -51,6 +65,26 @@ export const SidebarPreferences: Story = {
 export const Messaging: Story = { render: () => <Demo page="messaging" /> }
 export const CodeAppearance: Story = { render: () => <Demo page="code" /> }
 export const Profile: Story = { render: () => <Demo page="profile" /> }
+export const ProfileWithPhoto: Story = {
+  render: () => (
+    <Demo
+      page="profile"
+      initial={{
+        profile: {
+          name: 'Alex Morgan',
+          username: 'alex',
+          email: 'alex@example.com',
+          avatar: [
+            'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"%3E',
+            '%3Crect width="40" height="40" fill="%236b879c"/%3E',
+            '%3Ccircle cx="20" cy="15" r="8" fill="%23e8d6c8"/%3E',
+            '%3Cpath d="M5 40c0-10 6-16 15-16s15 6 15 16" fill="%233c5065"/%3E%3C/svg%3E',
+          ].join(''),
+        },
+      }}
+    />
+  ),
+}
 export const SecurityAndAccess: Story = { render: () => <Demo page="security" /> }
 export const SecurityPopulated: Story = {
   render: () => (
@@ -103,6 +137,9 @@ export const GroupRoleSearch: Story = {
 }
 export const GroupSearchEmpty: Story = {
   render: () => <Demo page="group" id="research" initial={{ filters: { 'group-members-query': 'no member matches' } }} />,
+}
+export const GroupRolesEmpty: Story = {
+  render: () => <Demo page="new-group" initial={{ roles: [] }} />,
 }
 export const GroupReadOnly: Story = {
   render: () => <Demo page="group" id="research" initial={{ readonly: true }} />,

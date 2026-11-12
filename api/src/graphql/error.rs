@@ -1,6 +1,9 @@
 use crate::http::authentication::RequestError;
 use compallm_core::{
-    authentication::AuthError, mail::EmailError, persistent::user::UserRepositoryError,
+    authentication::AuthError,
+    authorization::{MemberPermissionError, error::AuthorizationError as E},
+    mail::EmailError,
+    persistent::user::UserRepositoryError,
 };
 use juniper::{FieldError, IntoFieldError, ScalarValue, graphql_value};
 
@@ -116,5 +119,51 @@ impl<S: ScalarValue> IntoFieldError<S> for Error {
             self.message,
             graphql_value!({"code": self.code, "status": self.status}),
         )
+    }
+}
+
+impl Error {
+    pub(crate) fn invalid_input() -> Self {
+        Self {
+            code: "BAD_USER_INPUT",
+            status: 400,
+            message: "Invalid request fields",
+        }
+    }
+}
+
+impl From<crate::http::authorization::AuthorizationError> for Error {
+    fn from(error: crate::http::authorization::AuthorizationError) -> Self {
+        match error {
+            crate::http::authorization::AuthorizationError::Authentication(error) => error.into(),
+            crate::http::authorization::AuthorizationError::InvalidAuthority => Self {
+                code: "SERVICE_UNAVAILABLE",
+                status: 503,
+                message: "Authorization state is temporarily unavailable",
+            },
+        }
+    }
+}
+
+impl From<compallm_core::authorization::error::AuthorizationError> for Error {
+    fn from(error: compallm_core::authorization::error::AuthorizationError) -> Self {
+        match error {
+            E::Permission(MemberPermissionError::Denied) => Self { code: "FORBIDDEN", status: 403, message: "Permission denied" },
+            E::Group(compallm_core::organization::group::GroupCreationError::IdGeneration(_)) | E::Role(compallm_core::organization::role::RoleCreationError::IdGeneration(_)) => Self { code: "SERVICE_UNAVAILABLE", status: 503, message: "Authorization operation is temporarily unavailable" },
+            E::Group(_) | E::Role(_) | E::UnsupportedPolicy => Self::invalid_input(),
+            E::Persistence(compallm_core::persistent::organization::OrganizationRepositoryError::NameAlreadyExists) => Self { code: "CONFLICT", status: 409, message: "Name already exists in this organization" },
+            E::Persistence(compallm_core::persistent::organization::OrganizationRepositoryError::NotFound) => Self { code: "NOT_FOUND", status: 404, message: "Resource not found" },
+            _ => Self { code: "SERVICE_UNAVAILABLE", status: 503, message: "Authorization operation is temporarily unavailable" },
+        }
+    }
+}
+
+impl Error {
+    pub(super) fn internal() -> Self {
+        Self {
+            code: "INTERNAL_SERVER_ERROR",
+            status: 500,
+            message: "Request failed",
+        }
     }
 }

@@ -1215,16 +1215,17 @@ dependencies = [
  "compallm-core",
  "compallm-mailing",
  "compallm-postgres",
+ "compallm-query",
  "compallm-utils",
  "compallm-validation-derive",
  "cookie",
  "juniper",
  "juniper_axum",
  "loco-rs",
- "midwess-hero",
  "schemars 1.2.1",
  "serde",
  "serde_json",
+ "socket2",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -1290,6 +1291,7 @@ dependencies = [
  "cedar-policy",
  "clap",
  "compallm-core",
+ "compallm-query",
  "compallm-utils",
  "elsa",
  "heck 0.5.0",
@@ -1302,9 +1304,32 @@ dependencies = [
  "sea-query-sqlx",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "syn 2.0.119",
+ "thiserror 2.0.21",
  "tokio",
  "validify",
+]
+
+[[package]]
+name = "compallm-query"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "compallm-query-derive",
+ "juniper",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "compallm-query-derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -1321,9 +1346,11 @@ dependencies = [
  "compallm-core",
  "compallm-mailing",
  "compallm-postgres",
+ "compallm-query",
  "compallm-utils",
  "coset",
  "hmac 0.12.1",
+ "juniper",
  "midwess-hero",
  "rayon",
  "router",
@@ -3784,11 +3811,9 @@ dependencies = [
  "futures-timer",
  "getrandom 0.3.4",
  "jsonwebtoken",
- "log",
  "n0-future",
  "rand 0.9.5",
  "serde",
- "socket2",
  "thiserror 2.0.21",
  "tokio",
 ]

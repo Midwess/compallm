@@ -1,7 +1,9 @@
 use super::Session;
-use crate::http::authentication::VerifiedAccess;
+use crate::{
+    graphql::{base_type::Payload, error::Error},
+    http::authentication::UserContext,
+};
 
-/// Project the already-verified login without hydration or another freshness lookup.
-pub(crate) fn session(access: &VerifiedAccess) -> Session {
-    access.access().session.clone().into()
+pub(crate) async fn session(user: &UserContext) -> Result<Payload<Session>, Error> {
+    Ok(Session::from(user.require().await?.access().session.clone()).into())
 }

@@ -67,6 +67,12 @@ input EmailInput {
   delivery: CredentialDelivery = COOKIE
 }
 
+input GroupCreateInput {
+  name: String!
+  description: String!
+  roleIds: [String!]!
+}
+
 "Opaque registry identity, independent of an edited upstream model name."
 input ProviderCatalogRef {
   provider: String!
@@ -152,8 +158,29 @@ input ProvidersCreateInput {
   providers: [ProviderCreateInput!]!
 }
 
+input RoleCreateInput {
+  name: String!
+  description: String!
+  cedarSource: String!
+}
+
 "Positive u32 context size, encoded as an exact JSON number (1–4294967295)."
 scalar ContextTokens
+
+type BooleanPayload {
+  node: Boolean!
+}
+
+type CreatedGroup {
+  id: ID!
+  name: String!
+  description: String!
+  roleIds: [ID!]!
+}
+
+type CreatedGroupPayload {
+  node: CreatedGroup!
+}
 
 "Email admission succeeded; cookie delivery never exposes the OTP credential."
 type EmailChallenge {
@@ -161,19 +188,63 @@ type EmailChallenge {
   token: String
 }
 
+type EmailChallengePayload {
+  node: EmailChallenge!
+}
+
+type Group {
+  id: ID!
+  name: String!
+  description: String!
+}
+
+type GroupConnection {
+  edges: [GroupEdge!]!
+  pageInfo: PageInfo!
+}
+
+type GroupEdge {
+  cursor: String!
+  node: Group!
+}
+
+type GroupPayload {
+  node: Group!
+}
+
 type Mutation {
-  "Request signup email admission. Reject existing accounts before sending or issuing a challenge."
-  signupEmailRequest(input: EmailInput!): EmailChallenge!
-  "Request signin email admission for an existing active account."
-  signinEmailRequest(input: EmailInput!): EmailChallenge!
-  "Confirm the middleware-verified OTP challenge and atomically create the account and session."
-  signupEmailConfirm(input: EmailCodeInput!): SessionCredentials!
-  "Confirm an existing user's middleware-verified OTP challenge and create a scoped session."
-  signinEmailConfirm(input: EmailCodeInput!): SessionCredentials!
-  "Explicit refresh Bearer only. Rebuild current authority; never set browser cookies."
-  sessionRefresh: SessionCredentials!
-  "Revoke this verified login only. Clear cookie credentials after successful revocation."
-  sessionRevoke: Boolean!
+  "Request a signup email challenge; reject existing accounts before sending."
+  emailSignupRequest(input: EmailInput!): EmailChallengePayload!
+  "Confirm the verified signup challenge and create the account and session."
+  emailSignupConfirm(input: EmailCodeInput!): SessionCredentialsPayload!
+  "Request a signin email challenge for an existing active account."
+  emailSigninRequest(input: EmailInput!): EmailChallengePayload!
+  "Confirm the verified signin challenge and create a scoped session."
+  emailSigninConfirm(input: EmailCodeInput!): SessionCredentialsPayload!
+  "Refresh using explicit refresh Bearer authority; leave browser cookies unchanged."
+  sessionRefresh: SessionCredentialsPayload!
+  "Revoke the verified session and clear its browser cookies after success."
+  sessionRevoke: BooleanPayload!
+  "Create a role in the verified active organization."
+  roleCreate(input: RoleCreateInput!): RolePayload!
+  "Create a group and its initial role assignments in the verified active organization."
+  groupCreate(input: GroupCreateInput!): CreatedGroupPayload!
+}
+
+type Organization {
+  id: ID!
+  name: String!
+}
+
+type OrganizationPayload {
+  node: Organization!
+}
+
+type PageInfo {
+  startCursor: String
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
 }
 
 "Public catalog defaults; selecting a template creates no configured provider."
@@ -188,13 +259,38 @@ type ProviderTemplate {
 }
 
 type Query {
-  """
-  Read the selected login's verified identity and organization-name snapshot.
+  "Return the verified current session identity."
+  session: SessionPayload!
+  "Return the active organization from verified user authority."
+  organization: OrganizationPayload!
+  "Find visible role metadata in the active organization."
+  role(id: ID!): RolePayload
+  "Return the complete visible role metadata collection, ordered by ID."
+  roles: RoleConnection!
+  "Find visible group metadata in the active organization."
+  group(id: ID!): GroupPayload
+  "Return the complete visible group metadata collection, ordered by ID."
+  groups: GroupConnection!
+}
 
-  Requires active, current user access. No credentials, policy source, or
-  freshness internals are exposed; no user/organization hydration is performed.
-  """
-  session: Session!
+type Role {
+  id: ID!
+  name: String!
+  description: String!
+}
+
+type RoleConnection {
+  edges: [RoleEdge!]!
+  pageInfo: PageInfo!
+}
+
+type RoleEdge {
+  cursor: String!
+  node: Role!
+}
+
+type RolePayload {
+  node: Role!
 }
 
 type Session {
@@ -214,6 +310,14 @@ type SessionCredentials {
   refreshLifetime: TokenLifetime!
   accessToken: String
   refreshToken: String
+}
+
+type SessionCredentialsPayload {
+  node: SessionCredentials!
+}
+
+type SessionPayload {
+  node: Session!
 }
 
 "Exact Unix-second validity and client throttle values encoded as decimal strings."

@@ -27,6 +27,9 @@ struct Repository {
 }
 #[async_trait::async_trait]
 impl OrganizationRepository for Repository {
+    fn supports_role_policy(&self, _: &str) -> bool {
+        true
+    }
     async fn lock_role(&self, _: u64, _: u64) -> Result<Role, OrganizationRepositoryError> {
         unimplemented!()
     }
@@ -46,7 +49,7 @@ impl OrganizationRepository for Repository {
     async fn delete_role(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
         unimplemented!()
     }
-    async fn find_roles(
+    async fn find_roles_for_assignment(
         &self,
         _: u64,
         _: &[u64],
@@ -60,6 +63,24 @@ impl OrganizationRepository for Repository {
         unimplemented!()
     }
     async fn find_role(&self, _: u64, _: u64) -> Result<Option<Role>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn list_role_info(&self, _: u64) -> Result<Vec<Role>, OrganizationRepositoryError> {
+        unimplemented!()
+    }
+    async fn list_group_info(
+        &self,
+        _: u64,
+    ) -> Result<Vec<compallm_core::organization::group::GroupInfo>, OrganizationRepositoryError>
+    {
+        unimplemented!()
+    }
+    async fn find_group_info(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Option<compallm_core::organization::group::GroupInfo>, OrganizationRepositoryError>
+    {
         unimplemented!()
     }
     async fn find_group(

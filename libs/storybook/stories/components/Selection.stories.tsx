@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { useState } from 'react'
+import { Button } from '../../src/components/buttons'
 import * as Selection from '../../src/components/selection'
 import { Preview, Row, Sample } from './Preview'
 
@@ -37,12 +39,12 @@ export const Radio: Story = {
     <Preview>
       <Sample label="Radio group">
         <fieldset className="flex max-w-full flex-wrap items-center gap-2">
-          <legend className="text-[12px] leading-[18px] text-muted">Default response</legend>
-          <label className="inline-flex min-h-[24px] cursor-pointer items-center gap-0.5 text-[13px]">
+          <legend className="text-[12px] leading-4.5 text-muted">Default response</legend>
+          <label className="inline-flex min-h-6 cursor-pointer items-center gap-0.5 text-xsm">
             <Selection.Radio name="response" value="concise" defaultChecked />
             Concise
           </label>
-          <label className="inline-flex min-h-[24px] cursor-pointer items-center gap-0.5 text-[13px]">
+          <label className="inline-flex min-h-6 cursor-pointer items-center gap-0.5 text-xsm">
             <Selection.Radio name="response" value="detailed" />
             Detailed
           </label>
@@ -92,3 +94,32 @@ export const CompactCheckbox: Story = {
     </Preview>
   ),
 }
+
+function SelectionTransitions() {
+  const [checked, setChecked] = useState(false)
+  return (
+    <Preview>
+      <Sample label="Controlled and native selection transitions" wide>
+        <form className="grid gap-4">
+          <label className="flex items-center gap-2 text-xsm">
+            <Selection.Switch checked={checked} onChange={(event) => setChecked(event.currentTarget.checked)} />
+            Controlled switch
+          </label>
+          <Button onClick={() => setChecked((value) => !value)}>Toggle controlled value</Button>
+          <Selection.CheckboxOption defaultChecked>Resettable checkbox</Selection.CheckboxOption>
+          <Row>
+            <label className="flex items-center gap-2 text-xsm">
+              <Selection.Radio name="motion-choice" defaultChecked /> First
+            </label>
+            <label className="flex items-center gap-2 text-xsm">
+              <Selection.Radio name="motion-choice" /> Second
+            </label>
+          </Row>
+          <Button type="reset">Reset native selections</Button>
+        </form>
+      </Sample>
+    </Preview>
+  )
+}
+
+export const TransitionsAndReset: Story = { render: () => <SelectionTransitions /> }

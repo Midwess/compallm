@@ -47,7 +47,7 @@ function AuthContent({ mode }: { mode: Mode }) {
   if (step === 'complete') return <Completion mode={mode} />
   return (
     <div data-route={pagePaths[mode]} className="flex flex-col gap-6">
-      <h1 className="m-0 text-[28px] leading-[40px] font-medium tracking-[-0.5px]">
+      <h1 className="m-0 text-[28px] leading-10 font-medium tracking-[-0.5px]">
         {step === 'email'
           ? mode === 'signup'
             ? 'Create your account.'
@@ -65,10 +65,10 @@ function Completion({ mode }: { mode: Mode }) {
   return (
     <div className="grid gap-4" role="status">
       <CheckCircleIcon size={40} className="text-success" aria-hidden="true" />
-      <h1 className="m-0 text-[28px] leading-[40px] font-medium tracking-[-0.5px]">
+      <h1 className="m-0 text-[28px] leading-10 font-medium tracking-[-0.5px]">
         {mode === 'signup' ? 'Your account is ready.' : 'You’re signed in.'}
       </h1>
-      <p className="m-0 text-[15px] leading-[24px] text-muted">You can now continue to your workspace.</p>
+      <p className="m-0 text-[15px] leading-6 text-muted">You can now continue to your workspace.</p>
     </div>
   )
 }
@@ -152,10 +152,10 @@ function AccountLink({ mode }: { mode: Mode }) {
   const target = mode === 'signup' ? 'signin' : 'signup'
   return (
     <AccountPrompt
-      className="mt-2 min-h-[44px]"
+      className="mt-2 min-h-11"
       action={
         <TextLink
-          className="inline-flex min-h-[44px] items-center"
+          className="inline-flex min-h-11 items-center"
           href={controller.links?.[target] ?? pagePaths[target]}
           onClick={(event) => {
             if (
@@ -257,7 +257,7 @@ export function ResendControl() {
   const remaining = useAuthState((state) => state.remaining)
   const pending = useAuthState((state) => state.pending)
   return (
-    <div className="flex flex-wrap items-center gap-1 text-[13px] text-muted">
+    <div className="flex flex-wrap items-center gap-1 text-xsm text-muted">
       <span>Didn’t receive a code?</span>
       <Button
         className="h-6"

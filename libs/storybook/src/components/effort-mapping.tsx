@@ -1,3 +1,4 @@
+import { animated } from './motion'
 import { ProviderInputRules, ProviderInputRulesInput, ProviderInputRulesConstraints } from '@compallm/contract/provider'
 import { useId, useRef, useState } from 'react'
 import { CaretLeftIcon } from '@phosphor-icons/react/dist/csr/CaretLeft'
@@ -86,7 +87,7 @@ export function EffortMapping({
                   autoFocus={defaultFocused === level}
                   size={Math.max(4, mapped.length || 4)}
                   className={cx(
-                    'h-6 w-auto min-w-10 max-w-full text-center text-xs leading-4 [field-sizing:content]',
+                    'h-6 w-auto min-w-10 max-w-full text-center text-xs leading-4 field-sizing-content',
                     !editing && !current && 'border-transparent bg-transparent text-center placeholder:text-transparent',
                     (editing || current) && 'border border-muted/80 bg-inset focus:border focus:border-muted/80',
                   )}
@@ -127,7 +128,7 @@ export function EffortMapping({
           })}
         </div>
         <div className="absolute inset-x-0 top-7 flex items-center gap-1">
-          <button
+          <animated.button
             type="button"
             disabled={disabled || index === 0}
             aria-label="Previous effort level"
@@ -138,7 +139,7 @@ disabled:opacity-30
             onClick={() => choose(index - 1, true)}
           >
             <CaretLeftIcon weight="fill" className="size-4" aria-hidden="true" />
-          </button>
+          </animated.button>
           <svg ref={rail} viewBox="0 0 560 14" preserveAspectRatio="none" className="h-3.5 min-w-0 flex-1" aria-hidden="true">
             <defs>
               <linearGradient id={`${id}-gradient`} x1="0" x2="1">
@@ -152,7 +153,7 @@ disabled:opacity-30
               fill={`url(#${id}-gradient)`}
             />
           </svg>
-          <button
+          <animated.button
             type="button"
             disabled={disabled || index === lastAvailable}
             aria-label="Next effort level"
@@ -163,7 +164,7 @@ disabled:opacity-30
             onClick={() => choose(index + 1, true)}
           >
             <CaretRightIcon weight="fill" className="size-4" aria-hidden="true" />
-          </button>
+          </animated.button>
         </div>
         <div
           role="slider"

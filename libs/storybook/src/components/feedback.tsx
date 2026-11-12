@@ -1,5 +1,6 @@
+import { animated, overlay } from './motion'
 import { cloneElement, useEffect, useId, useRef, useState, type HTMLAttributes, type ReactElement, type ReactNode } from 'react'
-import { cx, popupMotion } from './shared'
+import { cx } from './shared'
 import { RichMessage } from './rich-message'
 import { Button } from './buttons'
 import { QuestionIcon } from '@phosphor-icons/react/dist/csr/Question'
@@ -36,8 +37,8 @@ export function Toast({
       data-ui="toast"
       data-tone={tone}
       className={cx(
-        'flex min-h-[72px] w-[360px] max-w-full items-center gap-2 rounded-[10px]',
-        'border-[0.5px] border-border bg-elevated p-4 font-sans text-[13px] leading-5 text-text',
+        'flex min-h-18 w-90 max-w-full items-center gap-2 rounded-[10px]',
+        'border-[0.5px] border-border bg-elevated p-4 font-sans text-xsm leading-5 text-text',
         className,
       )}
     >
@@ -46,7 +47,7 @@ export function Toast({
         <span className="sr-only">{label}: </span>
         <RichMessage message={message} />
       </p>
-      <button
+      <animated.button
         type="button"
         onClick={onDismiss}
         aria-label={dismissLabel}
@@ -56,16 +57,16 @@ export function Toast({
         )}
       >
         <XIcon size={12} aria-hidden="true" />
-      </button>
+      </animated.button>
     </div>
   )
 }
 
 export function HelperText({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p {...props} className={cx('text-[12px] leading-[18px] text-muted', className)} />
+  return <p {...props} className={cx('text-[12px] leading-4.5 text-muted', className)} />
 }
 export function InlineError({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p role="alert" {...props} className={cx('text-[13px] leading-[20px] text-error', className)} />
+  return <p role="alert" {...props} className={cx('text-xsm leading-5 text-error', className)} />
 }
 export function CodeError(props: HTMLAttributes<HTMLParagraphElement>) {
   return <InlineError {...props}>{props.children ?? 'Incorrect code. Try again.'}</InlineError>
@@ -77,7 +78,7 @@ export function KeyboardKey({ children }: { children: ReactNode }) {
   return (
     <kbd
       className={`
-  inline-flex h-[28px] min-w-[28px] items-center justify-center rounded-[6px] bg-elevated p-0.5
+  inline-flex h-7 min-w-7 items-center justify-center rounded-md bg-elevated p-0.5
   font-sans text-[14px]
 `}
     >
@@ -94,28 +95,40 @@ export function Tooltip({
 }) {
   const id = useId()
   const [dismissed, setDismissed] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
   return (
     <span
       className="group/tooltip relative inline-flex"
-      onPointerEnter={() => setDismissed(false)}
-      onFocus={() => setDismissed(false)}
+      onPointerEnter={() => {
+        setDismissed(false)
+        setHovered(true)
+      }}
+      onPointerLeave={() => setHovered(false)}
+      onFocus={() => {
+        setDismissed(false)
+        setFocused(true)
+      }}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false)
+      }}
       onKeyDown={(event) => {
         if (event.key === 'Escape') setDismissed(true)
       }}
     >
       {cloneElement(children, { 'aria-describedby': [children.props['aria-describedby'], id].filter(Boolean).join(' ') })}
-      <span
-        id={id}
-        role="tooltip"
-        hidden={dismissed}
-        className={`
-  invisible absolute bottom-[calc(100%+--spacing(1))] left-1/2 z-30 -translate-x-1/2
-  rounded-[6px] bg-menu p-1 text-[12px] whitespace-nowrap text-text group-hover/tooltip:visible
-  group-focus-within/tooltip:visible
+      {!dismissed && (hovered || focused) ? (
+        <overlay.span
+          id={id}
+          role="tooltip"
+          className={`
+  absolute bottom-[calc(100%+(--spacing(1)))] left-1/2 z-30 -translate-x-1/2
+  rounded-md bg-menu p-1 text-[12px] whitespace-nowrap text-text
 `}
-      >
-        {content}
-      </span>
+        >
+          {content}
+        </overlay.span>
+      ) : null}
     </span>
   )
 }
@@ -157,7 +170,7 @@ export function FieldHelp({ label, children }: { label: string; children: ReactN
       }}
       onBlur={hide}
     >
-      <button
+      <animated.button
         ref={trigger}
         type="button"
         aria-label={label}
@@ -170,19 +183,19 @@ focus-visible:text-text focus-visible:outline-1 focus-visible:outline-muted
         onClick={show}
       >
         <QuestionIcon className="size-4" aria-hidden="true" />
-      </button>
-      <span
+      </animated.button>
+      <overlay.span
         ref={tooltip}
         id={id}
         role="tooltip"
         popover="manual"
-        className={`${popupMotion}
-fixed m-0 w-72 max-w-[calc(100vw-1rem)] overflow-visible border-0 bg-transparent pt-1 text-left
+        className={`
+fixed m-0 w-2xs max-w-[calc(100vw-1rem)] overflow-visible border-0 bg-transparent pt-1 text-left
 text-xs leading-4 font-normal text-text
 `}
       >
         <span className="block rounded-lg border border-border bg-elevated p-3">{children}</span>
-      </span>
+      </overlay.span>
     </span>
   )
 }
@@ -195,7 +208,7 @@ export function EmptyState({ title, children, action }: { title: ReactNode; chil
 `}
     >
       <h3>{title}</h3>
-      <div className="text-[13px] leading-5 text-muted">{children}</div>
+      <div className="text-xsm leading-5 text-muted">{children}</div>
       {action}
     </div>
   )
@@ -231,17 +244,17 @@ export function Popover({ label, children }: { label: string; children: ReactNod
   return (
     <span className="inline">
       <Button popoverTarget={id}>{label}</Button>
-      <div
+      <overlay.div
         id={id}
         popover="auto"
-        className={`${popupMotion}
+        className={`
   w-12 max-w-[calc(100vw-32px)] rounded-xl border-[0.5px] border-input-border bg-menu p-2
   text-text [&:popover-open]:absolute [&:popover-open]:m-1 [&:popover-open]:[position-area:bottom_span-right]
   [&:popover-open]:[position-try-fallbacks:flip-block,flip-inline] [&>*+*]:mt-1.5
 `}
       >
         {children}
-      </div>
+      </overlay.div>
     </span>
   )
 }

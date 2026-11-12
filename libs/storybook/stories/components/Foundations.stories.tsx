@@ -42,15 +42,15 @@ export const Mapping: Story = {
     <div className="grid gap-6 p-6">
       <div className="grid gap-2">
         <SettingsPageTitle>Design foundations</SettingsPageTitle>
-        <p className="text-[13px] leading-5 text-muted">
+        <p className="text-xsm leading-5 text-muted">
           Penpot foundation families map to shared components and their existing Storybook previews.
         </p>
       </div>
       <Table>
-        <Table.Content className="min-w-192 text-[13px]" aria-label="Penpot to Storybook foundation mapping">
+        <Table.Content className="min-w-3xl text-xsm" aria-label="Penpot to Storybook foundation mapping">
           <Table.Header>
             <Table.Row>
-              <Table.Head className="w-64">Penpot family</Table.Head>
+              <Table.Head className="w-3xs">Penpot family</Table.Head>
               <Table.Head>Library source</Table.Head>
               <Table.Head className="w-32">Preview</Table.Head>
             </Table.Row>
@@ -63,7 +63,7 @@ export const Mapping: Story = {
                     {family.name}
                   </a>
                 </Table.Cell>
-                <Table.Cell className="break-words text-muted">{family.source}</Table.Cell>
+                <Table.Cell className="wrap-break-word text-muted">{family.source}</Table.Cell>
                 <Table.Cell>
                   <a href={`/?path=/story/${family.story}`} target="_top" className={linkClassName}>
                     Open story
@@ -86,7 +86,7 @@ export const Colors: Story = {
         {colors.map(([name, background, hex]) => (
           <figure key={name} className="grid gap-2">
             <div className={`${background} h-16 rounded-lg border-[0.5px] border-input-border`} />
-            <figcaption className="text-[13px]">
+            <figcaption className="text-xsm">
               {name} <span className="block text-xs text-muted">{hex}</span>
             </figcaption>
           </figure>
@@ -102,7 +102,7 @@ export const Typography: Story = {
       <SettingsPageTitle>Page title · 24 / 32 · Medium</SettingsPageTitle>
       <SettingsSectionTitle>Section title · 15 / 23 · Medium</SettingsSectionTitle>
       <FormFieldLabel>Field label · 14 / 21 · Medium</FormFieldLabel>
-      <p className="text-[13px] leading-5">Body text · 13 / 20 · Regular</p>
+      <p className="text-xsm leading-5">Body text · 13 / 20 · Regular</p>
       <HelperText>Helper text · 12 / 18 · Regular</HelperText>
     </div>
   ),
@@ -113,6 +113,7 @@ const spaces = [
   ['4', 'w-1'],
   ['6', 'w-1.5'],
   ['8', 'w-2'],
+  ['10', 'w-2.5'],
   ['12', 'w-3'],
   ['16', 'w-4'],
   ['24', 'w-6'],
@@ -125,7 +126,7 @@ export const Spacing: Story = {
   render: () => (
     <div className="grid max-w-xl gap-4 p-6">
       <SettingsPageTitle>Resolved spacing</SettingsPageTitle>
-      <HelperText>Use Tailwind’s standard spacing utilities for the resolved design dimensions.</HelperText>
+      <HelperText>Use half steps on Tailwind’s default scale, starting at 2 px, and preserve justified exceptions.</HelperText>
       {spaces.map(([pixels, width]) => (
         <div key={pixels} className="flex items-center gap-4 text-xs">
           <span className="w-12 text-muted">{pixels} px</span>

@@ -14,6 +14,8 @@ pub enum OrganizationCreationError {
 
 #[derive(Debug, thiserror::Error)]
 pub enum OrganizationConfigError {
+    #[error(transparent)]
+    Permission(#[from] crate::authorization::MemberPermissionError),
     #[error("organization name must contain 1 to 63 ASCII letters, digits, or hyphens")]
     InvalidName,
     #[error(transparent)]

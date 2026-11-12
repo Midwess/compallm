@@ -1,3 +1,4 @@
+import { animated } from './motion'
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react'
 import { ArrowLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowLeft'
 import { CaretRightIcon } from '@phosphor-icons/react/dist/csr/CaretRight'
@@ -15,7 +16,7 @@ export function BreadcrumbTrail({ items, label = 'Breadcrumb' }: { items: Breadc
     <nav aria-label={label}>
       <ol
         className={`
-  flex list-none items-center gap-1.5 p-0 text-[13px] [&>li]:flex [&>li]:min-w-0 [&>li]:items-center
+  flex list-none items-center gap-1.5 p-0 text-xsm [&>li]:flex [&>li]:min-w-0 [&>li]:items-center
   [&>li]:gap-1.5 [&_a]:text-muted [&_a]:focus-visible:outline-2 [&_a]:focus-visible:outline-offset-2
   [&_a]:focus-visible:outline-focus
 `}
@@ -24,9 +25,9 @@ export function BreadcrumbTrail({ items, label = 'Breadcrumb' }: { items: Breadc
           <li key={`${item.label}-${index}`}>
             {index > 0 ? <CaretRightIcon size={12} aria-hidden="true" /> : null}
             {item.href ? (
-              <a href={item.href} aria-current={index === items.length - 1 ? 'page' : undefined}>
+              <animated.a href={item.href} aria-current={index === items.length - 1 ? 'page' : undefined}>
                 {item.label}
-              </a>
+              </animated.a>
             ) : (
               <span aria-current={index === items.length - 1 ? 'page' : undefined}>{item.label}</span>
             )}
@@ -38,20 +39,20 @@ export function BreadcrumbTrail({ items, label = 'Breadcrumb' }: { items: Breadc
 }
 export function BackBreadcrumb({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <a
+    <animated.a
       className={`
-  inline-flex min-h-[28px] items-center gap-1 text-[13px] focus-visible:outline-2
+  inline-flex min-h-7 items-center gap-1 text-xsm focus-visible:outline-2
   focus-visible:outline-offset-2 focus-visible:outline-focus
 `}
       href={href}
     >
       <ArrowLeftIcon size={14} aria-hidden="true" />
       {children}
-    </a>
+    </animated.a>
   )
 }
 export function ViewPill({ className, ...props }: ButtonProps) {
-  return <Button {...props} className={cx('h-[28px] bg-menu text-[12px] shadow-none', className)} />
+  return <Button {...props} className={cx('h-7 bg-menu text-[12px] shadow-none', className)} />
 }
 export function AgentDock({ children = 'Agent', ...props }: ButtonProps) {
   return (
@@ -67,13 +68,13 @@ export function NavigationTab({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { selected?: boolean }) {
   return (
-    <button
+    <animated.button
       type="button"
       {...props}
       aria-pressed={selected}
       className={cx(
         `
-  min-h-[28px] cursor-pointer rounded-full bg-transparent px-2 py-0 text-[12px] text-muted
+  min-h-7 cursor-pointer rounded-full bg-transparent px-2 py-0 text-[12px] text-muted
   aria-pressed:bg-inset aria-pressed:text-text focus-visible:outline-2 focus-visible:outline-offset-2
   focus-visible:outline-focus
 `,
@@ -89,14 +90,14 @@ export function ToolbarAction({
   ...props
 }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> & { label: string }) {
   return (
-    <button
+    <animated.button
       type="button"
       {...props}
       aria-label={label}
       title={label}
       className={cx(
         `
-  inline-flex size-[28px] flex-none cursor-pointer items-center justify-center rounded-full bg-transparent
+  inline-flex size-7 flex-none cursor-pointer items-center justify-center rounded-full bg-transparent
   text-muted hover:bg-elevated hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2
   focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50
 `,
@@ -104,7 +105,7 @@ export function ToolbarAction({
       )}
     >
       {children}
-    </button>
+    </animated.button>
   )
 }
 export function DragHandle({
@@ -113,11 +114,7 @@ export function DragHandle({
   ...props
 }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> & { label: string }) {
   return (
-    <ToolbarAction
-      {...props}
-      label={label}
-      className={cx('w-[24px] cursor-grab rounded-[6px] active:cursor-grabbing', className)}
-    >
+    <ToolbarAction {...props} label={label} className={cx('w-6 cursor-grab rounded-md active:cursor-grabbing', className)}>
       <DotsSixVerticalIcon size={14} aria-hidden="true" />
     </ToolbarAction>
   )

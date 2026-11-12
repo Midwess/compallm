@@ -1,3 +1,5 @@
+import { motion } from 'motion/react'
+import { useTransition } from '../../components/motion'
 import { Button } from '../../components/buttons'
 import { Dialog } from '../../components/dialog'
 import { TextField, MultilineField } from '../../components/fields'
@@ -32,51 +34,50 @@ const badgeOptions = [
 const visibilityOptions = ['Always show', 'Show when badged', "Don't show"].map((value) => ({ label: value, value }))
 
 function CustomizeSidebar() {
+  const timing = useTransition('reorder')
   const controller = useSettingsController()
   const preferences = useSettings((state) => state.preferences)
   const order = String(preferences.sidebarOrder).split(',')
   const { rowNodes, drag, preview, announcement, id, keyboardMove, startDrag, pointerMove, endDrag } = useReorder(
     order,
-    (items) => controller.setPreference('sidebarOrder', items.join(',')),
+    (items) => controller.pages.preferences.setPreference('sidebarOrder', items.join(',')),
     false,
     'Sidebar item',
   )
   return (
-    <Dialog onClose={controller.closeDialog}>
+    <Dialog onClose={controller.pages.dialogs.closeDialog}>
       <Dialog.Content className="w-120 rounded-xl bg-inset">
         <Dialog.Header className="h-14 px-6">
           <Dialog.Title className="text-[15px]">Customize sidebar</Dialog.Title>
           <Dialog.Close />
         </Dialog.Header>
         <Dialog.Body className="gap-6 px-6 pt-4 pb-6">
-          <div className="flex h-11 items-center justify-between rounded-lg bg-elevated px-3 text-[13px]">
+          <div className="flex h-11 items-center justify-between rounded-lg bg-elevated px-3 text-xsm">
             <span>Default badge style</span>
             <Select
               aria-label="Default badge style"
               className="w-26"
               value={String(preferences.sidebarBadgeStyle)}
               options={badgeOptions}
-              onValueChange={(value) => controller.setPreference('sidebarBadgeStyle', value)}
+              onValueChange={(value) => controller.pages.preferences.setPreference('sidebarBadgeStyle', value)}
             />
           </div>
           <div className="grid gap-2.5">
-            <h3 className="text-[13px] font-medium">Workspace</h3>
+            <h3 className="text-xsm font-medium">Workspace</h3>
             <div className="rounded-lg bg-elevated py-0.5">
               {order.map((name, index) => {
                 const Icon = sidebarIcons[name as keyof typeof sidebarIcons]
                 return (
-                  <div
+                  <motion.div
                     key={name}
+                    initial={false}
+                    animate={{ y: preview?.offsets[name] ?? 0 }}
+                    transition={timing}
                     ref={(node) => {
                       if (node) rowNodes.current.set(name, node)
                       else rowNodes.current.delete(name)
                     }}
-                    style={preview ? { transform: `translateY(${preview.offsets[name] ?? 0}px)` } : undefined}
-                    className={cx(
-                      'relative flex h-9 items-center px-2',
-                      !!preview && 'motion-safe:transition-transform motion-safe:duration-150',
-                      preview?.key === name && 'opacity-0',
-                    )}
+                    className={cx('relative flex h-9 items-center px-2', preview?.key === name && 'opacity-0')}
                   >
                     <button
                       type="button"
@@ -108,15 +109,15 @@ active:cursor-grabbing focus-visible:outline-focus
                       <DotsSixVerticalIcon aria-hidden="true" className="size-3" />
                     </button>
                     {Icon ? <Icon aria-hidden="true" className="mr-2 size-4 shrink-0 text-muted" /> : null}
-                    <span className="min-w-0 flex-1 text-[13px]">{name}</span>
+                    <span className="min-w-0 flex-1 text-xsm">{name}</span>
                     <Select
                       aria-label={`${name} visibility`}
                       className="w-35"
                       value={String(preferences[`sidebar${name}`])}
                       options={visibilityOptions}
-                      onValueChange={(value) => controller.setPreference(`sidebar${name}`, value)}
+                      onValueChange={(value) => controller.pages.preferences.setPreference(`sidebar${name}`, value)}
                     />
-                  </div>
+                  </motion.div>
                 )
               })}
             </div>
@@ -233,12 +234,12 @@ export function SettingsDialogs() {
                     : 'Save changes'
   const disabled = busy || Boolean(phrase && d.phrase !== phrase) || (named.includes(d.kind) && !d.name.trim())
   return (
-    <Dialog onClose={() => c.closeDialog()}>
+    <Dialog onClose={() => c.pages.dialogs.closeDialog()}>
       <Dialog.Content className="w-110 rounded-xl bg-elevated">
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            c.confirmDialog()
+            c.pages.dialogs.confirmDialog()
           }}
         >
           <Dialog.Header className="border-0 px-6 pt-6">
@@ -247,11 +248,11 @@ export function SettingsDialogs() {
           </Dialog.Header>
           <Dialog.Body className="gap-4 px-6 pt-4 pb-6">
             {descriptions[d.kind] ? (
-              <Dialog.Description className="text-[13px] leading-[22px]">{descriptions[d.kind]}</Dialog.Description>
+              <Dialog.Description className="text-xsm leading-5.5">{descriptions[d.kind]}</Dialog.Description>
             ) : null}
             {phrase ? (
               <>
-                <code className="text-[13px] break-words">{phrase}</code>
+                <code className="text-xsm wrap-break-word">{phrase}</code>
                 <label className="sr-only" htmlFor="confirmation-phrase">
                   Confirmation phrase
                 </label>
@@ -260,25 +261,30 @@ export function SettingsDialogs() {
                   id="confirmation-phrase"
                   placeholder="Enter confirmation phrase"
                   value={d.phrase}
-                  onChange={(e) => c.updateDialog({ phrase: e.target.value })}
+                  onChange={(e) => c.pages.dialogs.updateDialog({ phrase: e.target.value })}
                 />
               </>
             ) : null}
             {named.includes(d.kind) ? (
               <label className="grid gap-2 text-xs text-muted">
                 {d.kind === 'add-passkey' ? 'Passkey name' : 'Name'}
-                <TextField autoFocus value={d.name} required onChange={(e) => c.updateDialog({ name: e.target.value })} />
+                <TextField
+                  autoFocus
+                  value={d.name}
+                  required
+                  onChange={(e) => c.pages.dialogs.updateDialog({ name: e.target.value })}
+                />
               </label>
             ) : null}
             {d.kind === 'verify-passkey' ? (
-              <p role="status" className="text-[13px]">
+              <p role="status" className="text-xsm">
                 Waiting for your device…
               </p>
             ) : null}
             {d.kind === 'reveal-key' ? (
               <div className="flex gap-2">
                 <TextField aria-label="Generated API key" readOnly value={d.revealedKey ?? ''} />
-                <Button onClick={() => c.copy(d.revealedKey ?? '')}>Copy</Button>
+                <Button onClick={() => c.pages.dialogs.copy(d.revealedKey ?? '')}>Copy</Button>
               </div>
             ) : null}
             {limit ? (
@@ -291,7 +297,7 @@ export function SettingsDialogs() {
                   step="0.01"
                   placeholder="No limit set"
                   value={d.value}
-                  onChange={(e) => c.updateDialog({ value: e.target.value })}
+                  onChange={(e) => c.pages.dialogs.updateDialog({ value: e.target.value })}
                 />
                 <span>Leave empty to use {d.targetId ? 'the organization default' : 'no limit'}.</span>
               </label>
@@ -314,7 +320,7 @@ export function SettingsDialogs() {
                     value={d.value}
                     className="w-full"
                     options={['Workspace timezone', 'UTC', 'Asia/Ho_Chi_Minh'].map((label) => ({ label, value: label }))}
-                    onValueChange={(value) => c.updateDialog({ value })}
+                    onValueChange={(value) => c.pages.dialogs.updateDialog({ value })}
                   />
                 </label>
               </>
@@ -324,7 +330,7 @@ export function SettingsDialogs() {
                 aria-label={titles[d.kind]}
                 className="min-h-32"
                 value={d.value}
-                onChange={(e) => c.updateDialog({ value: e.target.value })}
+                onChange={(e) => c.pages.dialogs.updateDialog({ value: e.target.value })}
               />
             ) : null}
           </Dialog.Body>

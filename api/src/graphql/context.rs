@@ -1,4 +1,4 @@
-use compallm_core::authentication::AuthService;
+use compallm_core::{authentication::AuthService, authorization::rbac::RbacService};
 use juniper::FromContext;
 use std::sync::Arc;
 
@@ -45,6 +45,12 @@ impl FromContext<GraphqlContext> for AuthorizationContext {
     }
 }
 
+impl FromContext<GraphqlContext> for RbacService {
+    fn from(context: &GraphqlContext) -> &Self {
+        <Self as FromContext<Di>>::from(context.di)
+    }
+}
+
 impl FromContext<GraphqlContext> for AuthService {
     fn from(context: &GraphqlContext) -> &Self {
         <Self as FromContext<Di>>::from(context.di)
@@ -66,5 +72,13 @@ impl FromContext<GraphqlContext> for AuthenticationContext {
 impl FromContext<GraphqlContext> for CookieDelivery {
     fn from(context: &GraphqlContext) -> &Self {
         &context.delivery
+    }
+}
+
+impl FromContext<GraphqlContext>
+    for Box<dyn compallm_core::persistent::organization::OrganizationRepository>
+{
+    fn from(context: &GraphqlContext) -> &Self {
+        <Self as FromContext<Di>>::from(context.di)
     }
 }

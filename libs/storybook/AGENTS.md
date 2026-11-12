@@ -15,10 +15,16 @@ authoritative and can be edited directly.
   `src/pages/`.
 - Main design: dark neutral surfaces, violet primary actions, Inter typography, and Phosphor Regular SVG icons. Reuse the shared
   Tailwind v4 theme in `src/styles/theme.css`.
+- Always consider transition consistency when designing or changing components and pages. Reuse the shared Motion presets and
+  helpers in `src/components/motion.tsx` for interaction feedback, entrances, exits, disclosure, and reordering. Keep equivalent
+  interactions consistent in timing, easing, and movement. Adjust shared presets centrally; do not introduce component-specific
+  timing, CSS animations, CSS transitions, or direct browser animation calls. Respect reduced motion and preserve keyboard,
+  focus, and native control behavior, including during interrupted transitions.
 - Add meaningful variants for loading, empty, disabled, and error states where relevant. Keep semantic HTML, keyboard focus, and
   responsive behavior.
-- Use Tailwind’s default spacing scale with standard utilities such as `p-4`, `gap-2`, and `mr-8`. Do not add custom spacing
-  tokens or override `--spacing`.
+- Use Tailwind’s default spacing scale in half steps for dimensions, spacing, gaps, and offsets: `0.5` is 2px at the default
+  root size. Preserve existing design dimensions where possible and review any rounding. Keep functional and visual exceptions
+  narrowly scoped with a reason beside the lint suppression. Do not add custom spacing tokens or override `--spacing`.
 - Use Tailwind utilities directly in components, pages, and previews. Do not add custom CSS selectors, component stylesheets, or
   `@apply` wrappers. CSS files are limited to Tailwind entry points, theme configuration, and font imports.
 - `npm run build` builds the optimized UI package. `npm run build:storybook` builds the separate preview site. Exclude stories

@@ -4,43 +4,114 @@ use crate::{
     persistent::DbContext,
 };
 
+use super::{
+    MemberPermission,
+    condition::{CheckPermission, ForAction},
+    policy::Action,
+};
 use crate::organization::Role;
 
-#[expect(
-    dead_code,
-    reason = "RBAC service is not wired until authorization is enforced"
-)]
+#[expect(dead_code, reason = "RBAC administration endpoints remain pending")]
 pub struct RbacService {
-    auth_service: AuthService,
-    organizations: Box<dyn OrganizationRepository>,
+    auth_service: &'static AuthService,
+    organizations: &'static Box<dyn OrganizationRepository>,
 }
 
-#[expect(
-    dead_code,
-    reason = "RBAC operations remain private until authorization is enforced"
-)]
+#[expect(dead_code, reason = "RBAC administration endpoints remain pending")]
 impl RbacService {
-    async fn new_role(
+    pub fn new(
+        auth_service: &'static AuthService,
+        organizations: &'static Box<dyn OrganizationRepository>,
+    ) -> Self {
+        Self {
+            auth_service,
+            organizations,
+        }
+    }
+
+    pub async fn list_roles(
         &self,
-        organization_id: u64,
+        permission: &MemberPermission,
+    ) -> Result<Vec<Role>, AuthorizationError> {
+        Action::RoleRead.check_permission(permission)?;
+        Ok(self
+            .organizations
+            .list_role_info(permission.organization_id())
+            .await?)
+    }
+
+    pub async fn list_groups(
+        &self,
+        permission: &MemberPermission,
+    ) -> Result<Vec<crate::organization::group::GroupInfo>, AuthorizationError> {
+        Action::GroupRead.check_permission(permission)?;
+        Ok(self
+            .organizations
+            .list_group_info(permission.organization_id())
+            .await?)
+    }
+
+    pub async fn get_role(
+        &self,
+        permission: &MemberPermission,
+        id: u64,
+    ) -> Result<Option<Role>, AuthorizationError> {
+        Action::RoleRead.check_permission(permission)?;
+        Ok(self
+            .organizations
+            .find_roles_for_assignment(permission.organization_id(), &[id])
+            .await?
+            .into_iter()
+            .next())
+    }
+
+    pub async fn get_group(
+        &self,
+        permission: &MemberPermission,
+        id: u64,
+    ) -> Result<Option<crate::organization::group::GroupInfo>, AuthorizationError> {
+        Action::GroupRead.check_permission(permission)?;
+        Ok(self
+            .organizations
+            .find_group_info(permission.organization_id(), id)
+            .await?)
+    }
+
+    pub async fn new_role(
+        &self,
+        permission: &MemberPermission,
         name: &str,
+        description: &str,
         cedar_script: String,
     ) -> Result<Role, AuthorizationError> {
-        let role = Role::new(organization_id, name, "", cedar_script).await?;
+        Action::RoleCreate.check_permission(permission)?;
+        let role = Role::new(
+            permission.organization_id(),
+            name,
+            description,
+            cedar_script,
+        )
+        .await?;
+        if !self.organizations.supports_role_policy(&role.cedar_source) {
+            return Err(AuthorizationError::UnsupportedPolicy);
+        }
         self.organizations.create_roles(vec![role.clone()]).await?;
         Ok(role)
     }
 
     async fn delete_role(
         &self,
-        organization_id: u64,
+        permission: &MemberPermission,
         role_id: u64,
     ) -> Result<Role, AuthorizationError> {
+        let organization_id = permission.organization_id();
         let role = self
             .organizations
             .find_role(organization_id, role_id)
             .await?
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        role.for_action(Action::RoleDelete)
+            .check_permission(permission)?;
         role.ensure_deletable()?;
         crate::transaction!(DbContext::current()?, {
             let role = self
@@ -65,12 +136,15 @@ impl RbacService {
         })
     }
 
-    async fn create_group(
+    pub async fn create_group(
         &self,
-        organization_id: u64,
+        permission: &MemberPermission,
         name: &str,
+        description: &str,
         roles: Vec<u64>,
     ) -> Result<Group, AuthorizationError> {
+        Action::GroupCreate.check_permission(permission)?;
+        let organization_id = permission.organization_id();
         if roles.len() > Group::MAX_ROLES {
             return Err(crate::organization::group::GroupCreationError::TooManyRoles.into());
         }
@@ -79,36 +153,47 @@ impl RbacService {
         }
         let assigned = self
             .organizations
-            .find_roles(organization_id, &roles)
+            .find_roles_for_assignment(organization_id, &roles)
             .await?;
         if assigned.len() != roles.len() {
             return Err(
                 crate::persistent::organization::OrganizationRepositoryError::NotFound.into(),
             );
         }
-        let group = Group::new(organization_id, name, "", assigned).await?;
+        let group = Group::new(organization_id, name, description, assigned).await?;
+        for role in &group.roles {
+            (&group, role)
+                .for_action(Action::GroupRoleAssign)
+                .and(role.for_action(Action::RoleAssign))
+                .check_permission(permission)?;
+        }
         Ok(self.organizations.create_group(group).await?)
     }
 
     async fn assign_role(
         &self,
-        organization_id: u64,
+        permission: &MemberPermission,
         role_id: u64,
         user_id: u64,
     ) -> Result<(), AuthorizationError> {
+        let organization_id = permission.organization_id();
         let (mut member, _) = self
             .organizations
             .find_membership(organization_id, user_id)
             .await?
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
-        if member.roles.iter().any(|role| role.id == role_id) {
-            return Ok(());
-        }
         let role = self
             .organizations
             .find_role(organization_id, role_id)
             .await?
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        (&member, &role)
+            .for_action(Action::MemberRoleAssign)
+            .and(role.for_action(Action::RoleAssign))
+            .check_permission(permission)?;
+        if member.roles.iter().any(|role| role.id == role_id) {
+            return Ok(());
+        }
         let previous = member.clone();
         member.assign_role(role)?;
         crate::transaction!(DbContext::current()?, {
@@ -123,15 +208,25 @@ impl RbacService {
 
     async fn unassign_role(
         &self,
-        organization_id: u64,
+        permission: &MemberPermission,
         role_id: u64,
         user_id: u64,
     ) -> Result<(), AuthorizationError> {
+        let organization_id = permission.organization_id();
         let (mut member, _) = self
             .organizations
             .find_membership(organization_id, user_id)
             .await?
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        let role = self
+            .organizations
+            .find_role(organization_id, role_id)
+            .await?
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        (&member, &role)
+            .for_action(Action::MemberRoleUnassign)
+            .and(role.for_action(Action::RoleUnassign))
+            .check_permission(permission)?;
         if !member.roles.iter().any(|role| role.id == role_id) {
             return Ok(());
         }
@@ -148,23 +243,27 @@ impl RbacService {
 
     async fn assign_group(
         &self,
-        organization_id: u64,
+        permission: &MemberPermission,
         group_id: u64,
         user_id: u64,
     ) -> Result<(), AuthorizationError> {
+        let organization_id = permission.organization_id();
         let (mut member, _) = self
             .organizations
             .find_membership(organization_id, user_id)
             .await?
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
-        if member.groups.iter().any(|group| group.id == group_id) {
-            return Ok(());
-        }
         let group = self
             .organizations
             .find_group(organization_id, group_id)
             .await?
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        (&group, &member)
+            .for_action(Action::GroupMemberAdd)
+            .check_permission(permission)?;
+        if member.groups.iter().any(|group| group.id == group_id) {
+            return Ok(());
+        }
         let previous = member.clone();
         member.assign_group(group)?;
         crate::transaction!(DbContext::current()?, {
@@ -181,15 +280,24 @@ impl RbacService {
 
     async fn unassign_group(
         &self,
-        organization_id: u64,
+        permission: &MemberPermission,
         group_id: u64,
         user_id: u64,
     ) -> Result<(), AuthorizationError> {
+        let organization_id = permission.organization_id();
         let (mut member, _) = self
             .organizations
             .find_membership(organization_id, user_id)
             .await?
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        let group = self
+            .organizations
+            .find_group(organization_id, group_id)
+            .await?
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        (&group, &member)
+            .for_action(Action::GroupMemberRemove)
+            .check_permission(permission)?;
         if !member.groups.iter().any(|group| group.id == group_id) {
             return Ok(());
         }

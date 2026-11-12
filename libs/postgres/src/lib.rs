@@ -5,6 +5,7 @@ pub mod id;
 pub mod mappers;
 pub mod migration;
 pub mod postgres_connection;
+pub mod query;
 pub mod repository;
 pub mod rls;
 /// Generated models are exposed through custom schema names.

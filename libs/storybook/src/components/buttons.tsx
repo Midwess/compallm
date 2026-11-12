@@ -1,3 +1,4 @@
+import { animated, LoadingMotion } from './motion'
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react'
 import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
 import { cx } from './shared'
@@ -12,14 +13,14 @@ const variants = {
   primary: 'bg-primary text-on-primary shadow-action enabled:hover:bg-primary-hover',
   neutral: 'bg-elevated text-text shadow-control enabled:hover:brightness-110',
   ghost: 'bg-transparent text-text shadow-none enabled:hover:brightness-110',
-  destructive: 'bg-elevated text-error shadow-control enabled:hover:brightness-110',
+  destructive: 'bg-error text-background shadow-action enabled:hover:brightness-110',
   link: 'bg-transparent p-0 text-focus shadow-none enabled:hover:brightness-110 !px-0',
 }
 const sizes = {
-  compact: 'h-[32px]',
-  standard: 'h-[40px]',
-  authentication: 'h-[48px] w-[352px] text-[15px]',
-  content: 'h-[28px]',
+  compact: 'h-8',
+  standard: 'h-10',
+  authentication: 'h-12 w-88 text-[15px]',
+  content: 'h-7',
 }
 
 export function Button({
@@ -33,29 +34,33 @@ export function Button({
   ...props
 }: ButtonProps) {
   return (
-    <button
+    <animated.button
       {...props}
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cx(
         'inline-flex max-w-full shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full',
-        'border-[0.5px] border-transparent px-1.5 py-0 text-[13px] leading-[20px] font-medium no-underline',
+        'border-[0.5px] border-transparent px-1.5 py-0 text-xsm leading-5 font-medium no-underline',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
         'disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:border-transparent [&_svg]:shrink-0',
         sizes[size],
         variants[variant],
-        size === 'compact' && variant === 'neutral' && 'h-[26px]',
+        size === 'compact' && variant === 'neutral' && 'h-6.5',
         className,
       )}
     >
-      {loading ? <CircleNotchIcon className="animate-spin motion-reduce:animate-none" size={14} aria-hidden="true" /> : null}
+      {loading ? (
+        <LoadingMotion>
+          <CircleNotchIcon size={14} aria-hidden="true" />
+        </LoadingMotion>
+      ) : null}
       {children}
-    </button>
+    </animated.button>
   )
 }
 export function ContentButton({ className, ...props }: ButtonProps) {
-  return <Button size="content" {...props} className={cx('min-w-[166px]', className)} />
+  return <Button size="content" {...props} className={cx('min-w-41.5', className)} />
 }
 
 export interface TextLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
@@ -64,7 +69,7 @@ export interface TextLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
 }
 export function TextLink({ tone = 'secondary', disabled = false, className, href, ...props }: TextLinkProps) {
   return (
-    <a
+    <animated.a
       {...props}
       href={disabled ? undefined : href}
       aria-disabled={disabled || undefined}
@@ -90,7 +95,7 @@ export function AccountPrompt({
   ...props
 }: HTMLAttributes<HTMLParagraphElement> & { action: ReactNode }) {
   return (
-    <p {...props} className={cx('flex flex-wrap items-center gap-1 text-[13px] text-muted', className)}>
+    <p {...props} className={cx('flex flex-wrap items-center gap-1 text-xsm text-muted', className)}>
       <span>{children}</span>
       {action}
     </p>
@@ -109,12 +114,12 @@ export function ResendPrompt({ remaining = 0, onResend }: { remaining?: number; 
 
 export function IconButton({ className, type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button
+    <animated.button
       {...props}
       type={type}
       className={cx(
         'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border/60',
-        'bg-inset text-muted transition-colors hover:border-input-border hover:text-text focus-visible:outline-1',
+        'bg-inset text-muted hover:border-input-border hover:text-text focus-visible:outline-1',
         `
 focus-visible:outline-offset-2 focus-visible:outline-muted disabled:cursor-not-allowed disabled:opacity-40
 [&_svg]:size-3.5

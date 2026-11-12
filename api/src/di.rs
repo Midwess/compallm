@@ -4,6 +4,7 @@ use crate::{
 };
 use compallm_core::{
     authentication::{AuthError, AuthService, TokenLifetimes},
+    authorization::rbac::RbacService,
     mail::EmailService,
     organization::{ConfigService, CreationService},
     persistent::dictionary::DictionaryRepository,
@@ -37,8 +38,8 @@ impl Default for GraphqlSettings {
             cookie_secure: true,
             public_origin: String::new(),
             max_body_bytes: 65_536,
-            max_depth: 16,
-            max_fields: 256,
+            max_depth: 24,
+            max_fields: 512,
             max_tokens: 15_000,
         }
     }
@@ -80,6 +81,7 @@ pub struct Di {
     registration: OnceLock<Box<RegistrationService>>,
     organization_creation: OnceLock<Box<CreationService>>,
     organization_config: OnceLock<Box<ConfigService>>,
+    rbac: OnceLock<Box<RbacService>>,
 }
 
 impl Di {
@@ -145,6 +147,7 @@ impl Di {
             registration: OnceLock::new(),
             organization_creation: OnceLock::new(),
             organization_config: OnceLock::new(),
+            rbac: OnceLock::new(),
         }
     }
 
@@ -159,6 +162,7 @@ impl Di {
         self.mailing_worker();
         self.organization_config_service();
         if self.auth.get().is_some() {
+            self.rbac_service();
             self.initialize_http()?;
             return Ok(());
         }
@@ -178,6 +182,7 @@ impl Di {
         // Concurrent initialization may build a second candidate, but only one
         // box is retained; all callers subsequently borrow that same service.
         let _ = self.auth.set(service);
+        self.rbac_service();
         self.initialize_http()?;
         Ok(())
     }
@@ -279,6 +284,15 @@ impl Di {
             .get_or_init(|| Box::new(CreationService::new(self.organization_repository())))
     }
 
+    pub fn rbac_service(&'static self) -> &'static RbacService {
+        self.rbac.get_or_init(|| {
+            Box::new(RbacService::new(
+                self.auth_service(),
+                self.organization_repository(),
+            ))
+        })
+    }
+
     pub fn organization_config_service(&'static self) -> &'static ConfigService {
         self.organization_config
             .get_or_init(|| Box::new(ConfigService::new(self.organization_repository())))
@@ -289,5 +303,17 @@ impl Di {
 impl juniper::FromContext<Di> for AuthService {
     fn from(di: &Di) -> &Self {
         di.auth_service()
+    }
+}
+
+impl juniper::FromContext<Di> for RbacService {
+    fn from(di: &Di) -> &Self {
+        di.rbac.get().expect("RBAC service must be initialized")
+    }
+}
+
+impl juniper::FromContext<Di> for Box<dyn OrganizationRepository> {
+    fn from(di: &Di) -> &Self {
+        &di.organizations
     }
 }

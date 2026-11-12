@@ -1,7 +1,22 @@
+type BooleanPayload {
+  node: Boolean!
+}
+
 """
 Positive u32 context size, encoded as an exact JSON number (1–4294967295).
 """
 scalar ContextTokens
+
+type CreatedGroup {
+  description: String!
+  id: ID!
+  name: String!
+  roleIds: [ID!]!
+}
+
+type CreatedGroupPayload {
+  node: CreatedGroup!
+}
 
 """
 How the request delivers credentials; this is never stored in signed claims.
@@ -24,6 +39,10 @@ Email admission succeeded; cookie delivery never exposes the OTP credential.
 type EmailChallenge {
   lifetime: TokenLifetime!
   token: String
+}
+
+type EmailChallengePayload {
+  node: EmailChallenge!
 }
 
 """
@@ -62,36 +81,88 @@ input EmailInput {
   email: String!
 }
 
+type Group {
+  description: String!
+  id: ID!
+  name: String!
+}
+
+type GroupConnection {
+  edges: [GroupEdge!]!
+  pageInfo: PageInfo!
+}
+
+input GroupCreateInput {
+  description: String!
+  name: String!
+  roleIds: [String!]!
+}
+
+type GroupEdge {
+  cursor: String!
+  node: Group!
+}
+
+type GroupPayload {
+  node: Group!
+}
+
 type Mutation {
   """
-  Explicit refresh Bearer only. Rebuild current authority; never set browser cookies.
+  Confirm the verified signin challenge and create a scoped session.
   """
-  sessionRefresh: SessionCredentials!
+  emailSigninConfirm(input: EmailCodeInput!): SessionCredentialsPayload!
 
   """
-  Revoke this verified login only. Clear cookie credentials after successful revocation.
+  Request a signin email challenge for an existing active account.
   """
-  sessionRevoke: Boolean!
+  emailSigninRequest(input: EmailInput!): EmailChallengePayload!
 
   """
-  Confirm an existing user's middleware-verified OTP challenge and create a scoped session.
+  Confirm the verified signup challenge and create the account and session.
   """
-  signinEmailConfirm(input: EmailCodeInput!): SessionCredentials!
+  emailSignupConfirm(input: EmailCodeInput!): SessionCredentialsPayload!
 
   """
-  Request signin email admission for an existing active account.
+  Request a signup email challenge; reject existing accounts before sending.
   """
-  signinEmailRequest(input: EmailInput!): EmailChallenge!
+  emailSignupRequest(input: EmailInput!): EmailChallengePayload!
 
   """
-  Confirm the middleware-verified OTP challenge and atomically create the account and session.
+  Create a group and its initial role assignments in the verified active organization.
   """
-  signupEmailConfirm(input: EmailCodeInput!): SessionCredentials!
+  groupCreate(input: GroupCreateInput!): CreatedGroupPayload!
 
   """
-  Request signup email admission. Reject existing accounts before sending or issuing a challenge.
+  Create a role in the verified active organization.
   """
-  signupEmailRequest(input: EmailInput!): EmailChallenge!
+  roleCreate(input: RoleCreateInput!): RolePayload!
+
+  """
+  Refresh using explicit refresh Bearer authority; leave browser cookies unchanged.
+  """
+  sessionRefresh: SessionCredentialsPayload!
+
+  """
+  Revoke the verified session and clear its browser cookies after success.
+  """
+  sessionRevoke: BooleanPayload!
+}
+
+type Organization {
+  id: ID!
+  name: String!
+}
+
+type OrganizationPayload {
+  node: Organization!
+}
+
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
 }
 
 """
@@ -262,12 +333,60 @@ input ProvidersCreateInput {
 
 type Query {
   """
-  Read the selected login's verified identity and organization-name snapshot.
-
-  Requires active, current user access. No credentials, policy source, or
-  freshness internals are exposed; no user/organization hydration is performed.
+  Find visible group metadata in the active organization.
   """
-  session: Session!
+  group(id: ID!): GroupPayload
+
+  """
+  Return the complete visible group metadata collection, ordered by ID.
+  """
+  groups: GroupConnection!
+
+  """
+  Return the active organization from verified user authority.
+  """
+  organization: OrganizationPayload!
+
+  """
+  Find visible role metadata in the active organization.
+  """
+  role(id: ID!): RolePayload
+
+  """
+  Return the complete visible role metadata collection, ordered by ID.
+  """
+  roles: RoleConnection!
+
+  """
+  Return the verified current session identity.
+  """
+  session: SessionPayload!
+}
+
+type Role {
+  description: String!
+  id: ID!
+  name: String!
+}
+
+type RoleConnection {
+  edges: [RoleEdge!]!
+  pageInfo: PageInfo!
+}
+
+input RoleCreateInput {
+  cedarSource: String!
+  description: String!
+  name: String!
+}
+
+type RoleEdge {
+  cursor: String!
+  node: Role!
+}
+
+type RolePayload {
+  node: Role!
 }
 
 type Session {
@@ -300,6 +419,14 @@ type SessionCredentials {
   accessToken: String
   refreshLifetime: TokenLifetime!
   refreshToken: String
+}
+
+type SessionCredentialsPayload {
+  node: SessionCredentials!
+}
+
+type SessionPayload {
+  node: Session!
 }
 
 """

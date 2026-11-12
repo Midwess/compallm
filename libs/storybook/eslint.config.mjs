@@ -2,6 +2,7 @@ import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import tseslint from 'typescript-eslint'
+import spacingRule from './scripts/spacing-rule.mjs'
 
 export default tseslint.config(
   { ignores: ['dist/**', 'storybook-static/**', 'node_modules/**', 'test-results/**', 'playwright-report/**'] },
@@ -15,6 +16,11 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       'max-len': ['error', { code: 128, tabWidth: 2 }],
     },
+  },
+  {
+    files: ['src/components/**/*.{ts,tsx}', 'src/pages/**/*.{ts,tsx}'],
+    plugins: { design: { rules: { spacing: spacingRule } } },
+    rules: { 'design/spacing': 'error' },
   },
   {
     files: ['src/components/**/*.{ts,tsx}', 'src/pages/**/*.{ts,tsx}', 'stories/components/**/*.{ts,tsx}'],

@@ -1,3 +1,4 @@
+import { animated, overlay } from './motion'
 import {
   createContext,
   useCallback,
@@ -15,7 +16,7 @@ import type { NavigationRequest } from '../url'
 import { createPortal } from 'react-dom'
 import { Button, type ButtonProps } from './buttons'
 import { XIcon } from '@phosphor-icons/react/dist/csr/X'
-import { cx, popupMotion } from './shared'
+import { cx } from './shared'
 
 interface DialogScope {
   titleId: string
@@ -63,7 +64,7 @@ function Content({ className, role = 'dialog', ...props }: DialogHTMLAttributes<
     }
   }, [])
   return (
-    <dialog
+    <overlay.dialog
       {...props}
       ref={ref}
       role={role}
@@ -76,7 +77,7 @@ function Content({ className, role = 'dialog', ...props }: DialogHTMLAttributes<
       }}
       aria-describedby={props['aria-describedby'] ?? undefined}
       className={cx(
-        `${popupMotion} fixed inset-0 m-auto max-h-11/12 w-160 max-w-11/12 overflow-y-auto
+        `fixed inset-0 m-auto max-h-11/12 w-160 max-w-11/12 overflow-y-auto
       rounded-xl border border-border bg-inset p-0 text-text backdrop:bg-background/70`,
         className,
       )}
@@ -85,7 +86,7 @@ function Content({ className, role = 'dialog', ...props }: DialogHTMLAttributes<
 }
 function AlertContent(props: DialogHTMLAttributes<HTMLDialogElement>) {
   const { descriptionId } = useDialog()
-  return <Content {...props} role="alertdialog" aria-describedby={descriptionId} className={cx('w-96', props.className)} />
+  return <Content {...props} role="alertdialog" aria-describedby={descriptionId} className={cx('w-sm', props.className)} />
 }
 function Header({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
@@ -112,7 +113,7 @@ function Footer({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 function Close({ children, className, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
   const { onClose } = useDialog()
   return (
-    <button
+    <animated.button
       type="button"
       aria-label="Close dialog"
       {...props}
@@ -123,7 +124,7 @@ function Close({ children, className, ...props }: ButtonHTMLAttributes<HTMLButto
       }}
     >
       {children ?? <XIcon aria-hidden="true" className="size-4" />}
-    </button>
+    </animated.button>
   )
 }
 function Cancel({ children = 'Cancel', ...props }: ButtonProps) {

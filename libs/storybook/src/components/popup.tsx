@@ -1,3 +1,4 @@
+import { animated, overlay } from './motion'
 import {
   createContext,
   useContext,
@@ -12,7 +13,7 @@ import {
   type CSSProperties,
 } from 'react'
 import { CaretRightIcon } from '@phosphor-icons/react/dist/csr/CaretRight'
-import { cx, popupMotion } from './shared'
+import { cx } from './shared'
 import { Checkbox, type CheckboxProps } from './selection'
 interface Scope {
   id: string
@@ -37,7 +38,7 @@ function Root({ children }: { children: ReactNode }) {
 function Trigger({ className, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
   const { id, anchor, trigger, content } = usePopup()
   return (
-    <button
+    <animated.button
       type="button"
       {...props}
       ref={trigger}
@@ -62,7 +63,7 @@ focus-visible:outline-focus`,
 function Content({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   const { id, anchor, trigger, content } = usePopup()
   return (
-    <div
+    <overlay.div
       {...props}
       id={id}
       ref={content}
@@ -95,7 +96,7 @@ function Content({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
         }
       }}
       className={cx(
-        `${popupMotion} fixed inset-auto top-[anchor(bottom)] right-[anchor(right)] z-30 mt-1 w-48 overflow-visible
+        `fixed inset-auto top-[anchor(bottom)] right-[anchor(right)] z-30 mt-1 w-48 overflow-visible
     rounded-lg border border-border bg-menu p-1 text-text shadow-menu`,
         className,
       )}
@@ -105,7 +106,7 @@ function Content({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 function Item({ className, onClick, role = 'menuitem', ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
   const { trigger, content } = usePopup()
   return (
-    <button
+    <animated.button
       type="button"
       {...props}
       role={role}
@@ -136,14 +137,17 @@ function IconTrigger(props: ButtonHTMLAttributes<HTMLButtonElement>) {
   )
 }
 function Separator() {
+  // eslint-disable-next-line design/spacing -- The separator is a 1px hairline.
   return <div role="separator" className="my-1 h-px bg-border/60" />
 }
 function CheckboxItem({ children, className, ...props }: CheckboxProps & { children: ReactNode }) {
   return (
-    <label className={cx('flex min-h-9 cursor-pointer items-center gap-3 rounded px-2 text-[13px] hover:bg-border', className)}>
+    <animated.label
+      className={cx('flex min-h-9 cursor-pointer items-center gap-3 rounded px-2 text-xsm hover:bg-border', className)}
+    >
       <Checkbox {...props} role="menuitemcheckbox" />
       {children}
-    </label>
+    </animated.label>
   )
 }
 function Submenu({ label, children }: { label: ReactNode; children: ReactNode }) {
@@ -166,7 +170,7 @@ function Submenu({ label, children }: { label: ReactNode; children: ReactNode })
   }
   return (
     <div className="relative" onPointerEnter={show} onPointerLeave={() => setOpen(false)}>
-      <button
+      <animated.button
         ref={trigger}
         type="button"
         role="menuitem"
@@ -192,9 +196,9 @@ focus-visible:outline-muted
       >
         {label}
         <CaretRightIcon className="size-3" aria-hidden="true" />
-      </button>
+      </animated.button>
       {open ? (
-        <div
+        <overlay.div
           id={id}
           ref={content}
           role="menu"
@@ -202,7 +206,7 @@ focus-visible:outline-muted
           style={{ top }}
           className={cx(
             `
-motion-safe:animate-popup-in absolute z-40 max-h-[calc(100dvh-1rem)] w-48 overflow-y-auto
+absolute z-40 max-h-[calc(100dvh-1rem)] w-48 overflow-y-auto
 rounded-lg border border-border bg-menu p-1 text-text
 shadow-menu
 `,
@@ -232,7 +236,7 @@ shadow-menu
           }}
         >
           {children}
-        </div>
+        </overlay.div>
       ) : null}
     </div>
   )

@@ -23,7 +23,7 @@ export function UsageLimitSettings() {
         <Section title="Reset schedule" description="Review the active accounting period.">
           <Rows>
             <Row label="Reset schedule" description={`${frequency} · ${timezone}`} last>
-              <Button variant="ghost" onClick={() => c.openDialog('reset-schedule')}>
+              <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('reset-schedule')}>
                 Edit
               </Button>
             </Row>
@@ -32,7 +32,7 @@ export function UsageLimitSettings() {
         <Section title="Organization limit" description="Review the spending limit for this organization.">
           <Rows>
             <Row label="Default limit" description={amount(org)}>
-              <Button variant="ghost" onClick={() => c.openDialog('organization-limit')}>
+              <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('organization-limit')}>
                 Set limit
               </Button>
             </Row>
@@ -44,7 +44,7 @@ export function UsageLimitSettings() {
         <Section title="Member limits" description="Set defaults and review individual overrides.">
           <Rows>
             <Row label="Per-member limit" description={amount(member)}>
-              <Button variant="ghost" onClick={() => c.openDialog('member-limit')}>
+              <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('member-limit')}>
                 Set limit
               </Button>
             </Row>
@@ -83,7 +83,7 @@ export function MemberLimitSettings() {
           aria-label="Search member limits"
           placeholder="Search by name…"
           value={query}
-          onChange={(e) => c.setQuery(e.target.value)}
+          onChange={(e) => c.pages.search.setQuery(e.target.value)}
           className="w-75 max-w-full"
         />
         <Popup>
@@ -121,13 +121,13 @@ export function MemberLimitSettings() {
             {visible.map((m) => (
               <Table.Row key={m.id}>
                 <Table.Cell>
-                  <span className="block text-[13px] font-medium">{m.name}</span>
+                  <span className="block text-xsm font-medium">{m.name}</span>
                   <span className="text-muted">{m.email}</span>
                 </Table.Cell>
                 {columns.includes('previous') ? <Table.Cell>{money(m.previousUsageUsd)}</Table.Cell> : null}
                 {columns.includes('current') ? <Table.Cell>{money(m.currentUsageUsd)}</Table.Cell> : null}
                 <Table.Cell>
-                  <Button variant="ghost" onClick={() => c.openDialog('member-limit', m.id)}>
+                  <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('member-limit', m.id)}>
                     {m.limitUsd === null
                       ? defaultLimit === null
                         ? 'Organization default'
@@ -159,7 +159,7 @@ function ReportFilter({ name, options }: { name: string; options: string[] }) {
       className="min-w-36 flex-1"
       value={value}
       options={[{ value: 'all', label: `All ${name.toLowerCase()}` }, ...options.map((label) => ({ value: label, label }))]}
-      onValueChange={(v) => c.setFilter(name, v)}
+      onValueChange={(v) => c.pages.search.setFilter(name, v)}
     />
   )
 }
@@ -240,8 +240,8 @@ export function AuditSettings() {
           aria-label="Search events"
           placeholder="Search events…"
           value={query}
-          onChange={(e) => c.setQuery(e.target.value)}
-          className="w-80 max-w-full"
+          onChange={(e) => c.pages.search.setQuery(e.target.value)}
+          className="w-xs max-w-full"
         />
         <ReportFilter name="Actors" options={actors.map((m) => m.name)} />
         <ReportFilter name="Actions" options={[...new Set(data.map((e) => e.action))]} />

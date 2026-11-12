@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { SidebarDemo } from './sidebar-demo'
+import { useState } from 'react'
+import { Sidebar, SidebarSection, SidebarFolder, SidebarItem } from '../../src/components/sidebar'
+import { CubeIcon } from '@phosphor-icons/react/dist/csr/Cube'
 
 const meta = { title: 'Components/Navigation controls/Sidebar', parameters: { layout: 'fullscreen' } } satisfies Meta
 export default meta
@@ -34,3 +37,31 @@ export const LongWorkspaceName: Story = {
     </div>
   ),
 }
+
+function NestedDisclosure() {
+  const [items, setItems] = useState(['First model'])
+  return (
+    <div className="h-svh bg-background font-sans text-text">
+      <Sidebar>
+        <SidebarSection label="Workspace">
+          <SidebarFolder
+            label="Models"
+            icon={<CubeIcon />}
+            defaultOpen={false}
+            onAdd={() => setItems((current) => [...current, `Model ${current.length + 1}`])}
+            addLabel="Add sample model"
+          >
+            {items.map((label) => (
+              <SidebarItem key={label} label={label} href="#" icon={<CubeIcon />} />
+            ))}
+          </SidebarFolder>
+        </SidebarSection>
+        <SidebarSection label="Following category">
+          <SidebarItem label="Sample destination" href="#" icon={<CubeIcon />} />
+        </SidebarSection>
+      </Sidebar>
+    </div>
+  )
+}
+
+export const NestedDisclosureAndAdding: Story = { render: () => <NestedDisclosure /> }

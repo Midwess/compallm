@@ -1,5 +1,5 @@
 [workspace]
-members = ["libs/validation-derive", "api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "libs/adapter", "test", "router", "sec"]
+members = ["libs/query-derive", "libs/query", "libs/validation-derive", "api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "libs/adapter", "test", "router", "sec"]
 resolver = "3"
 
 [workspace.package]
@@ -16,6 +16,8 @@ futures-core = { version = "0.3", default-features = false }
 futures-io = { version = "0.3", default-features = false }
 reqwest = { version = "0.12", default-features = false }
 tokio-util = { version = "0.7", default-features = false }
+compallm-query-derive = { path = "libs/query-derive" }
+compallm-query = { path = "libs/query", default-features = false }
 schemars = { version = "=1.2.1", default-features = false, features = ["derive", "std"] }
 compallm-validation-derive = { path = "libs/validation-derive" }
 juniper = { version = "0.18.0", default-features = false, features = ["schema-language"] }

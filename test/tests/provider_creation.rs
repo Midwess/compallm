@@ -1,3 +1,11 @@
+#[path = "support/permission.rs"]
+mod permission_fixture;
+use compallm_core::authorization::policy::Action;
+
+fn permission() -> compallm_core::authorization::MemberPermission {
+    permission_fixture::permission(84, &[Action::ProviderCreate, Action::ProviderModelCreate])
+}
+
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex},
@@ -102,9 +110,13 @@ async fn stored_name_conflict_rolls_back_the_batch_and_keeps_the_domain_error() 
     compallm_postgres::init_id_generator("provider-creation-tests").unwrap();
     let (db, context) = context();
     let repository = RecordingRepository(Mutex::new(Vec::new()), Some(1));
+    let permission = permission();
     let service = CreationService::new(&repository);
     let result = context
-        .scope(service.create_many(vec![provider("First"), provider("Conflicting")]))
+        .scope(service.create_many(
+            &permission,
+            vec![provider("First"), provider("Conflicting")],
+        ))
         .await;
     assert!(matches!(
         result,
@@ -120,6 +132,7 @@ async fn creates_batch_in_order_with_fresh_ids_and_parent_ownership() {
     compallm_postgres::init_id_generator("provider-creation-tests").unwrap();
     let (db, context) = context();
     let repository = RecordingRepository::default();
+    let permission = permission();
     let service = CreationService::new(&repository);
     let mut first = provider(" Primary ");
     let mut disabled = first.models[0].clone();
@@ -128,7 +141,7 @@ async fn creates_batch_in_order_with_fresh_ids_and_parent_ownership() {
     first.models.push(disabled);
     let expected_model = first.models[0].clone();
     let created = context
-        .scope(service.create_many(vec![first, provider("primary")]))
+        .scope(service.create_many(&permission, vec![first, provider("primary")]))
         .await
         .unwrap();
     assert_eq!(
@@ -166,14 +179,17 @@ async fn creates_batch_in_order_with_fresh_ids_and_parent_ownership() {
 async fn rejects_invalid_batch_before_any_writes_or_transaction() {
     let (db, context) = context();
     let repository = RecordingRepository::default();
+    let permission = permission();
     let service = CreationService::new(&repository);
     assert!(matches!(
-        context.scope(service.create_many(vec![])).await,
+        context
+            .scope(service.create_many(&permission, vec![]))
+            .await,
         Err(ProviderCreationError::InvalidInput(_))
     ));
     assert!(matches!(
         context
-            .scope(service.create_many(vec![provider("Same"), provider(" Same "),]))
+            .scope(service.create_many(&permission, vec![provider("Same"), provider(" Same "),]))
             .await,
         Err(ProviderCreationError::NameAlreadyExists)
     ));
@@ -181,7 +197,7 @@ async fn rejects_invalid_batch_before_any_writes_or_transaction() {
     other.organization_id = 999;
     assert!(matches!(
         context
-            .scope(service.create_many(vec![provider("First"), other,]))
+            .scope(service.create_many(&permission, vec![provider("First"), other,]))
             .await,
         Err(ProviderCreationError::InvalidInput(_))
     ));
@@ -189,7 +205,7 @@ async fn rejects_invalid_batch_before_any_writes_or_transaction() {
     invalid.models.clear();
     assert!(matches!(
         context
-            .scope(service.create_many(vec![provider("First"), invalid,]))
+            .scope(service.create_many(&permission, vec![provider("First"), invalid,]))
             .await,
         Err(ProviderCreationError::InvalidInput(_))
     ));
@@ -201,6 +217,7 @@ async fn rejects_invalid_batch_before_any_writes_or_transaction() {
 async fn rejects_invalid_entities_without_exposing_submitted_values() {
     let (db, context) = context();
     let repository = RecordingRepository::default();
+    let permission = permission();
     let service = CreationService::new(&repository);
     let mutations: Vec<fn(&mut Provider)> = vec![
         |p| p.organization_id = 0,
@@ -255,7 +272,10 @@ async fn rejects_invalid_entities_without_exposing_submitted_values() {
     for (index, mutate) in mutations.iter().enumerate() {
         let mut input = provider("Primary");
         mutate(&mut input);
-        let error = context.scope(service.create(input)).await.unwrap_err();
+        let error = context
+            .scope(service.create(&permission, input))
+            .await
+            .unwrap_err();
         assert!(
             matches!(error, ProviderCreationError::InvalidInput(_)),
             "case {index}: {error}"
@@ -296,10 +316,14 @@ async fn persists_models_with_the_connection_and_returns_typed_configuration() {
     );
     let context = DbContext::new(Arc::new(PostgresConnection::new(db.clone())));
     let repository = compallm_postgres::repository::provider::ProviderRepository;
+    let permission = permission();
     let service = CreationService::new(&repository);
     let input = provider("Primary");
     let pricing = input.models[0].pricing.clone();
-    let created = context.scope(service.create(input)).await.unwrap();
+    let created = context
+        .scope(service.create(&permission, input))
+        .await
+        .unwrap();
     assert_eq!(created.models.len(), 1);
     assert_eq!(created.models[0].pricing, pricing);
     assert_eq!(
@@ -326,9 +350,10 @@ async fn later_model_failure_rolls_back_every_provider_in_the_batch() {
     );
     let context = DbContext::new(Arc::new(PostgresConnection::new(db.clone())));
     let repository = compallm_postgres::repository::provider::ProviderRepository;
+    let permission = permission();
     let service = CreationService::new(&repository);
     let result = context
-        .scope(service.create_many(vec![provider("Primary"), provider("Other")]))
+        .scope(service.create_many(&permission, vec![provider("Primary"), provider("Other")]))
         .await;
     assert!(matches!(result, Err(ProviderCreationError::Persistence(_))));
     let transactions = db.as_ref().clone().into_transaction_log();
@@ -340,9 +365,10 @@ async fn create_many_with_one_provider_uses_a_scope_without_starting_a_transacti
     compallm_postgres::init_id_generator("provider-creation-tests").unwrap();
     let (db, context) = context();
     let repository = RecordingRepository::default();
+    let permission = permission();
     let service = CreationService::new(&repository);
     let created = context
-        .scope(service.create_many(vec![provider("Single")]))
+        .scope(service.create_many(&permission, vec![provider("Single")]))
         .await
         .unwrap();
     assert_eq!(created.len(), 1);
@@ -360,7 +386,35 @@ async fn single_provider_insert_failure_rejects_creation() {
     );
     let context = DbContext::new(Arc::new(PostgresConnection::new(db.clone())));
     let repository = compallm_postgres::repository::provider::ProviderRepository;
+    let permission = permission();
     let service = CreationService::new(&repository);
-    let result = context.scope(service.create(provider("Single"))).await;
+    let result = context
+        .scope(service.create(&permission, provider("Single")))
+        .await;
     assert!(matches!(result, Err(ProviderCreationError::Persistence(_))));
+}
+
+#[tokio::test]
+async fn permission_denials_reject_the_entire_batch_before_any_persistence() {
+    use compallm_core::authorization::MemberPermissionError;
+    compallm_postgres::init_id_generator("provider-permission-tests").unwrap();
+    for permission in [
+        permission_fixture::permission(84, &[]),
+        permission_fixture::permission(84, &[Action::ProviderCreate]),
+        permission_fixture::permission(85, &[Action::ProviderCreate, Action::ProviderModelCreate]),
+    ] {
+        let (_, context) = context();
+        let repository = RecordingRepository::default();
+        let service = CreationService::new(&repository);
+        let result = context
+            .scope(service.create_many(&permission, vec![provider("First"), provider("Second")]))
+            .await;
+        assert!(matches!(
+            result,
+            Err(ProviderCreationError::Permission(
+                MemberPermissionError::Denied
+            ))
+        ));
+        assert!(repository.0.lock().unwrap().is_empty());
+    }
 }

@@ -6,6 +6,7 @@ import { defineConfig } from 'vite'
 const source = (path: string) => fileURLToPath(new URL(`./src/${path}`, import.meta.url))
 const families = [
   'buttons',
+  'choice-picker',
   'provider-icons',
   'provider-avatar',
   'key-value-editor',
@@ -58,7 +59,17 @@ export default defineConfig({
     },
     rolldownOptions: {
       treeshake: true,
-      external: (id) => /^(@compallm\/contract|react|react-dom|@phosphor-icons\/react|tailwind-merge|zustand)(\/|$)/.test(id),
+      external: (id) =>
+        [
+          '@compallm/contract',
+          'react',
+          'react-dom',
+          '@base-ui/react',
+          '@phosphor-icons/react',
+          'tailwind-merge',
+          'zustand',
+          'motion',
+        ].some((name) => id === name || id.startsWith(`${name}/`)),
       output: { minify: true },
     },
   },

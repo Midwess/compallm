@@ -10,6 +10,16 @@ pub use juniper::http::GraphQLRequest;
 use juniper::{Definition, OperationType, Selection, http::GraphQLBatchResponse};
 use juniper_axum::response::JuniperResponse;
 
+pub async fn graphiql() -> impl IntoResponse {
+    (
+        [(axum::http::header::CACHE_CONTROL, "no-store")],
+        axum::response::Html(juniper::http::graphiql::graphiql_source(
+            "/api/graphql",
+            None,
+        )),
+    )
+}
+
 pub async fn handle(
     schema: ApplicationSchema,
     context: GraphqlContext,

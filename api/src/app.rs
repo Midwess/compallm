@@ -158,7 +158,7 @@ impl Hooks for App {
         }
     }
 
-    async fn before_routes(_ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
+    async fn before_routes(ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
         use axum::{
             Extension, Json,
             extract::{DefaultBodyLimit, State, rejection::JsonRejection},
@@ -189,7 +189,7 @@ impl Hooks for App {
         }
 
         let di = Di::instance();
-        Ok(AxumRouter::new().route(
+        let mut router = AxumRouter::new().route(
             "/api/graphql",
             post(graphql_handler)
                 .with_state(di.graphql_schema().clone())
@@ -200,7 +200,11 @@ impl Hooks for App {
                     AuthenticationMiddleware::handle,
                 ))
                 .layer(DefaultBodyLimit::max(di.max_request_body_bytes())),
-        ))
+        );
+        if ctx.environment == Environment::Development {
+            router = router.route("/api/graphiql", axum::routing::get(endpoint::graphiql));
+        }
+        Ok(router)
     }
 
     async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {

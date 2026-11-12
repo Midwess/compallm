@@ -1,4 +1,6 @@
 pub mod connection;
+pub mod cursor;
+pub use cursor::CursorError;
 mod conversion;
 pub mod filter;
 pub mod operation;

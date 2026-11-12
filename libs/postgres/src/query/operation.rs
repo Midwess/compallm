@@ -99,8 +99,11 @@ fn type_name(column: &ColumnType) -> Result<&'static str, QueryCompileError> {
     }
 }
 
-fn cast(value: String, column: &ColumnType) -> Result<Expr, QueryCompileError> {
+pub(super) fn cast(value: String, column: &ColumnType) -> Result<Expr, QueryCompileError> {
     Ok(match column {
+        ColumnType::Char(Some(length)) => {
+            Expr::val(value).cast_as(Alias::new(format!("character({length})")))
+        }
         ColumnType::Enum { name, .. } | ColumnType::Custom(name) => {
             Func::cast_as_quoted(Expr::val(value), name.clone()).into()
         }

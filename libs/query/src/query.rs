@@ -1,9 +1,10 @@
 use crate::{
     OrderBy, Pagination, operation::Operation, order::OrderByError, pagination::PaginationError,
 };
+use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Predicate {
     And(Vec<Self>),
     Or(Vec<Self>),
@@ -18,7 +19,7 @@ impl Default for Predicate {
 }
 
 /// A read description. Authority and database connections are supplied separately.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Query {
     pub predicate: Predicate,
     pub order_by: Vec<OrderBy>,

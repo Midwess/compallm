@@ -1,4 +1,6 @@
 mod operation;
+mod page;
+pub use page::PagePlan;
 
 use compallm_query::{IntoQuery, OrderByDirection, Pagination, Predicate, Query};
 use sea_orm::{
@@ -11,6 +13,14 @@ use sea_orm::{
 pub enum QueryCompileError {
     #[error(transparent)]
     Input(#[from] compallm_query::QueryError),
+    #[error(transparent)]
+    Cursor(#[from] compallm_query::CursorError),
+    #[error(transparent)]
+    Database(#[from] sea_orm::DbErr),
+    #[error("pagination requires a primary key and unique base-entity rows")]
+    MissingPrimaryKey,
+    #[error("duplicate ordering field")]
+    DuplicateOrder,
     #[error("query field does not match a column of this table")]
     UnknownField,
     #[error(transparent)]
@@ -24,6 +34,17 @@ pub enum QueryCompileError {
 }
 
 pub trait IntoSeaQuery: IntoQuery {
+    /// Builds a connection page from a unique, unpaginated entity selection.
+    /// Scope must identify verified authority and all trusted collection constraints.
+    fn plan_page<Table: EntityTrait>(
+        self: Box<Self>,
+        select: Select<Table>,
+        max_rows: u32,
+        scope: &str,
+    ) -> Result<PagePlan<Table>, QueryCompileError> {
+        PagePlan::new(self.into_query()?, select, max_rows, scope)
+    }
+
     fn into_sea_query<Table: EntityTrait>(
         self: Box<Self>,
     ) -> Result<Select<Table>, QueryCompileError> {

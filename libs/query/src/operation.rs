@@ -2,8 +2,9 @@ use crate::{
     filter::FilterIs,
     scalar::{BigFloat, BigInt, Date, Datetime, Opaque, Time, UUID},
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Comparison<T> {
     Eq(T),
     Neq(T),
@@ -15,7 +16,7 @@ pub enum Comparison<T> {
     Is(FilterIs),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Equality<T> {
     Eq(T),
     Neq(T),
@@ -23,7 +24,7 @@ pub enum Equality<T> {
     Is(FilterIs),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum StringOperation {
     Eq(String),
     Neq(String),
@@ -40,13 +41,13 @@ pub enum StringOperation {
     IRegex(String),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum BooleanOperation {
     Eq(bool),
     Is(FilterIs),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ListOperation<T> {
     Contains(Vec<T>),
     ContainedBy(Vec<T>),
@@ -55,14 +56,14 @@ pub enum ListOperation<T> {
     Is(FilterIs),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum OpaqueOperation {
     Eq(Opaque),
     Is(FilterIs),
 }
 
 /// Database-independent operands; values never contain SQL expressions.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Operation {
     Id(String),
     Int(Comparison<i32>),

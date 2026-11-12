@@ -1199,6 +1199,7 @@ dependencies = [
  "compallm-core",
  "compallm-mailing",
  "compallm-postgres",
+ "compallm-query",
  "compallm-utils",
  "compallm-validation-derive",
  "cookie",
@@ -1274,6 +1275,7 @@ dependencies = [
  "cedar-policy",
  "clap",
  "compallm-core",
+ "compallm-query",
  "compallm-utils",
  "elsa",
  "heck 0.5.0",
@@ -1286,9 +1288,32 @@ dependencies = [
  "sea-query-sqlx",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "syn 2.0.119",
+ "thiserror 2.0.21",
  "tokio",
  "validify",
+]
+
+[[package]]
+name = "compallm-query"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "compallm-query-derive",
+ "juniper",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "compallm-query-derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -1305,6 +1330,7 @@ dependencies = [
  "compallm-core",
  "compallm-mailing",
  "compallm-postgres",
+ "compallm-query",
  "compallm-utils",
  "coset",
  "hmac 0.12.1",

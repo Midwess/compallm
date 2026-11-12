@@ -1199,6 +1199,7 @@ dependencies = [
  "compallm-core",
  "compallm-mailing",
  "compallm-postgres",
+ "compallm-query",
  "compallm-utils",
  "compallm-validation-derive",
  "cookie",
@@ -1236,7 +1237,6 @@ dependencies = [
  "midwess-hero",
  "rand 0.9.5",
  "rust_decimal",
- "sea-query",
  "serde",
  "serde_bytes",
  "serde_json",
@@ -1293,6 +1293,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "compallm-query"
+version = "0.1.0"
+dependencies = [
+ "juniper",
+ "serde",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "compallm-test"
 version = "0.1.0"
 dependencies = [
@@ -1306,6 +1315,7 @@ dependencies = [
  "compallm-core",
  "compallm-mailing",
  "compallm-postgres",
+ "compallm-query",
  "compallm-utils",
  "coset",
  "hmac 0.12.1",

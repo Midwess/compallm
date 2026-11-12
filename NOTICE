@@ -12,6 +12,3 @@ Licensed under the MIT License; see libs/postgres/LICENSE-provider-templates.
 
 Cedar syntax grammar: Copyright Cedar Contributors. Licensed under Apache-2.0;
 see libs/storybook/src/assets/cedar/LICENSE, NOTICE, and source.json.
-
-Repository list and ordering options: adapted from modql 0.7.0,
-Copyright (c) 2024 Jeremy Chone. Licensed under MIT; see libs/core/LICENSE-modql.

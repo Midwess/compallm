@@ -1,0 +1,23 @@
+[package]
+name = "compallm-query"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Shared typed GraphQL filters, ordering, and connection pagination"
+publish = false
+
+[lints]
+workspace = true
+
+[features]
+default = []
+graphql = ["dep:juniper"]
+
+[dependencies]
+juniper = { workspace = true, optional = true }
+serde = { workspace = true, features = ["std", "derive"] }
+thiserror = { workspace = true, features = ["std"] }
+
+[[example]]
+name = "schema"
+required-features = ["graphql"]

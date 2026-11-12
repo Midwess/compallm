@@ -21,7 +21,8 @@ async-trait.workspace = true
 axum = { workspace = true, features = ["http1", "json", "tokio"] }
 axum-frontend = { workspace = true, features = ["dev"] }
 compallm-postgres.workspace = true
-compallm-core = { workspace = true, features = ["with-sea-query"] }
+compallm-core.workspace = true
+compallm-query = { workspace = true, features = ["graphql"] }
 hero = { workspace = true, features = ["tcp"] }
 compallm-mailing.workspace = true
 anyhow = { workspace = true, features = ["std"] }

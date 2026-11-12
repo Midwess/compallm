@@ -1,5 +1,5 @@
 [workspace]
-members = ["libs/validation-derive", "api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "test", "router", "sec"]
+members = ["libs/query", "libs/validation-derive", "api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "test", "router", "sec"]
 resolver = "3"
 
 [workspace.package]
@@ -11,7 +11,7 @@ license = "Elastic-2.0"
 borrowed_box = "allow"
 
 [workspace.dependencies]
-sea-query = { version = "1.0.2", default-features = false }
+compallm-query = { path = "libs/query", default-features = false }
 schemars = { version = "=1.2.1", default-features = false, features = ["derive", "std"] }
 compallm-validation-derive = { path = "libs/validation-derive" }
 juniper = { version = "0.18.0", default-features = false, features = ["schema-language"] }

@@ -19,6 +19,16 @@ export async function formatPolicySource(source: string) {
   return result.formatted_policy
 }
 
+function statementJson(parser: Awaited<ReturnType<typeof cedar>>, source: string) {
+  const policy = parser.policyToJson(source)
+  return policy.type === 'success' ? policy : parser.templateToJson(source)
+}
+
+function statementText(parser: Awaited<ReturnType<typeof cedar>>, policy: PolicyJson) {
+  const rendered = parser.policyToText(policy)
+  return rendered.type === 'success' ? rendered : parser.templateToText(policy)
+}
+
 function entity(value: EntityUidJson) {
   return '__entity' in value ? value.__entity : value
 }
@@ -109,8 +119,8 @@ export async function normalizePolicySource(source: string) {
     throw new Error('Unable to locate policy statements')
   const groups = new Map<string, { policy: PolicyJson; actions: Map<string, EntityUidJson>; spans: typeof statements }>()
   for (const span of statements) {
-    if (span.hasComment || !parsed.policies.includes(span.text)) continue
-    const result = parser.policyToJson(span.text)
+    if (span.hasComment || ![...parsed.policies, ...parsed.policy_templates].includes(span.text)) continue
+    const result = statementJson(parser, span.text)
     if (result.type === 'failure' || result.json.action.op === 'All') continue
     const actions = actionEntities(result.json)
     if (!actions.length) continue
@@ -128,9 +138,9 @@ export async function normalizePolicySource(source: string) {
       ...group.policy,
       action: group.policy.action.op === '==' ? { op: '==', entity: actions[0] } : { op: 'in', entities: actions },
     }
-    const rendered = parser.policyToText(canonical)
+    const rendered = statementText(parser, canonical)
     if (rendered.type === 'failure') throw new Error('Unable to normalize policy')
-    const checked = parser.policyToJson(rendered.text)
+    const checked = statementJson(parser, rendered.text)
     if (
       checked.type === 'failure' ||
       policyGroup(checked.json) !== policyGroup(group.policy) ||
@@ -148,8 +158,8 @@ export async function normalizePolicySource(source: string) {
 }
 
 export function actionStatement(action: string, resourceType: string) {
-  const organization = 'Compallm::Organization::"current"'
-  const principal = 'Compallm::Role::"current"'
+  const organization = '?resource'
+  const principal = '?principal'
   const resource =
     resourceType === 'Organization' ? `resource == ${organization}` : `resource is Compallm::${resourceType} in ${organization}`
   return `permit(principal in ${principal}, action == Compallm::Action::${JSON.stringify(action)}, ${resource});`
@@ -164,8 +174,8 @@ export async function projectPolicy(source: string, actionsByName: ReadonlyMap<s
       diagnostics: parsed.errors.map((error) => error.message),
     }
   const projection: PolicyProjection[] = []
-  for (const statement of parsed.policies) {
-    const result = parser.policyToJson(statement)
+  for (const statement of [...parsed.policies, ...parsed.policy_templates]) {
+    const result = statementJson(parser, statement)
     if (result.type === 'failure') {
       projection.push({ action: '', source: statement, advanced: true, editable: false })
       continue
@@ -210,15 +220,6 @@ export async function projectPolicy(source: string, actionsByName: ReadonlyMap<s
       })
     }
   }
-  for (const statement of parsed.policy_templates) {
-    projection.push({
-      action: '',
-      source: statement,
-      advanced: true,
-      editable: false,
-      reason: 'This is a policy template. Edit it in Cedar.',
-    })
-  }
   return { projection, diagnostics: [] as string[] }
 }
 
@@ -227,8 +228,8 @@ export async function actionPolicies(source: string, action: string) {
   const parsed = parser.policySetTextToParts(source)
   if (parsed.type === 'failure') throw new Error('Invalid policy')
   const policies: string[] = []
-  for (const statement of parsed.policies) {
-    const result = parser.policyToJson(statement)
+  for (const statement of [...parsed.policies, ...parsed.policy_templates]) {
+    const result = statementJson(parser, statement)
     if (result.type === 'failure' || result.json.effect !== 'permit') continue
     const matching = actionEntities(result.json).filter(
       (value) => entity(value).type === 'Compallm::Action' && entity(value).id === action,
@@ -238,7 +239,7 @@ export async function actionPolicies(source: string, action: string) {
       ...result.json,
       action: result.json.action.op === '==' ? { op: '==', entity: matching[0] } : { op: 'in', entities: matching },
     }
-    const rendered = parser.policyToText(policy)
+    const rendered = statementText(parser, policy)
     if (rendered.type === 'failure') throw new Error('Unable to retain action policy')
     policies.push(rendered.text)
   }
@@ -250,8 +251,8 @@ export async function removePolicyAction(source: string, action: string) {
   const parsed = parser.policySetTextToParts(source)
   if (parsed.type === 'failure') throw new Error('Invalid policy')
   for (const span of sourceStatements(source).reverse()) {
-    if (!parsed.policies.includes(span.text)) continue
-    const result = parser.policyToJson(span.text)
+    if (![...parsed.policies, ...parsed.policy_templates].includes(span.text)) continue
+    const result = statementJson(parser, span.text)
     if (result.type === 'failure' || result.json.effect !== 'permit') continue
     const values = actionEntities(result.json)
     const remaining = values.filter((value) => entity(value).type !== 'Compallm::Action' || entity(value).id !== action)
@@ -259,9 +260,9 @@ export async function removePolicyAction(source: string, action: string) {
     let replacement = ''
     if (remaining.length) {
       const policy: PolicyJson = { ...result.json, action: { op: 'in', entities: remaining } }
-      const rendered = parser.policyToText(policy)
+      const rendered = statementText(parser, policy)
       if (rendered.type === 'failure') throw new Error('Unable to update action list')
-      const checked = parser.policyToJson(rendered.text)
+      const checked = statementJson(parser, rendered.text)
       if (
         checked.type === 'failure' ||
         policyGroup(checked.json) !== policyGroup(policy) ||

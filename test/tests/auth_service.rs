@@ -2322,7 +2322,7 @@ async fn snapshot_creation_uses_only_loaded_membership_without_session_or_contex
         roles: fixture_roles_0.clone(),
         groups: vec![],
     };
-    let snapshot = compallm_core::authorization::PolicySnapshot::new(&membership);
+    let snapshot = compallm_core::authorization::PolicySnapshot::new(&membership).unwrap();
     assert_eq!(snapshot.role_ids, vec![1, 2, 3]);
     assert!(!snapshot.cedar_source.is_empty());
     assert!(DbContext::current().is_err());
@@ -2453,7 +2453,7 @@ async fn access_issuance_includes_direct_and_group_authority_and_refresh_rebuild
         .unwrap();
     let access =
         UserAccessToken::try_from(decode_token(&issued.access_token, SECRET).unwrap()).unwrap();
-    let expected = PolicySnapshot::new(&fixture.repo.0.lock().unwrap().memberships[0]);
+    let expected = PolicySnapshot::new(&fixture.repo.0.lock().unwrap().memberships[0]).unwrap();
     assert_eq!(access.policy_snapshot, expected);
     assert_eq!(access.policy_snapshot.role_ids, vec![1]);
     assert_eq!(access.policy_snapshot.group_roles[&9], vec![3]);
@@ -3553,7 +3553,7 @@ async fn restricted_query_errors_and_cancellation_discard_dirty_connections() {
     };
     let access = UserAccessToken::new(
         stored_session(1, 1, 84, "RLS fixture"),
-        compallm_core::authorization::PolicySnapshot::new(&member),
+        compallm_core::authorization::PolicySnapshot::new(&member).unwrap(),
         Duration::from_secs(60),
     )
     .unwrap();

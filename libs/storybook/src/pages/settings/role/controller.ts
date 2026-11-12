@@ -7,6 +7,7 @@ export interface RoleState {
   query: string
   filters: Record<string, string>
   draft: RoleDraft | null
+  loading?: boolean
   busy: boolean
   policySaveFailed?: boolean
   disabledPolicies?: Record<string, string[]>

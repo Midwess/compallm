@@ -19,7 +19,7 @@ fn access(organization_id: u64, member: &OrganizationMember) -> UserAccessToken 
             authorization_version: 1,
             revoked_at: None,
         },
-        PolicySnapshot::new(member),
+        PolicySnapshot::new(member).unwrap(),
         Duration::from_secs(60),
     )
     .unwrap()

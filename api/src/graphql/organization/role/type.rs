@@ -19,7 +19,7 @@ impl From<compallm_core::organization::Role> for Role {
 
 #[juniper::graphql_object(context = crate::graphql::GraphqlContext)]
 impl Role {
-    /// Cedar authoring source; this role and its organization use the "current" alias.
+    /// Native Cedar source; template slots bind to this role and its organization.
     async fn cedar_source(
         &self,
         #[graphql(context)] repository: &Box<
@@ -53,7 +53,7 @@ impl Role {
             .await
             .map_err(AuthorizationError::from)?
             .map(|role| {
-                compallm_core::authorization::policy_source::authoring_policy_source(
+                compallm_core::authorization::policy::role_authoring_source(
                     &role.cedar_source,
                     permission.organization_id(),
                     id,

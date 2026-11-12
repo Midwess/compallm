@@ -130,7 +130,7 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                         let content;
                         syn::parenthesized!(content in modifier.input);
                         let function: syn::Path = content.parse()?;
-                        if quote!(#function).to_string() == "compallm_core :: authorization :: policy_source :: compact_policy_input" {
+                        if quote!(#function).to_string() == "compallm_core :: authorization :: policy :: compact_policy_input" {
                             updates_for_field.push(quote! { property["x-compallm-cedar-compact"] = ::serde_json::json!(true); });
                             return Ok(());
                         }

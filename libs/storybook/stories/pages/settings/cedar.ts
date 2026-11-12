@@ -26,8 +26,8 @@ export async function project(source: string): Promise<{ projection: PolicyProje
     parsed = c.policySetTextToParts(source)
   if (parsed.type === 'failure') return { projection: [], diagnostics: parsed.errors.map((e) => e.message) }
   const projection: PolicyProjection[] = []
-  for (const statement of parsed.policies) {
-    const p = c.policyToJson(statement)
+  for (const statement of [...parsed.policies, ...parsed.policy_templates]) {
+    const p = parsed.policy_templates.includes(statement) ? c.templateToJson(statement) : c.policyToJson(statement)
     if (p.type === 'failure') {
       projection.push({ action: '', source: statement, advanced: true, editable: false })
       continue
@@ -36,11 +36,12 @@ export async function project(source: string): Promise<{ projection: PolicyProje
       action = actionId(json)
     const recognized =
       json.effect === 'permit' &&
-      json.principal.op === 'All' &&
+      (json.principal.op === 'All' || ('slot' in json.principal && json.principal.slot === '?principal')) &&
       json.resource.op === 'in' &&
-      'entity' in json.resource &&
-      entity(json.resource.entity).type === 'Compallm::Organization' &&
-      entity(json.resource.entity).id === 'org-7' &&
+      (('slot' in json.resource && json.resource.slot === '?resource') ||
+        ('entity' in json.resource &&
+          entity(json.resource.entity).type === 'Compallm::Organization' &&
+          entity(json.resource.entity).id === 'org-7')) &&
       json.action.op === '==' &&
       'entity' in json.action &&
       entity(json.action.entity).type === 'Compallm::Action' &&
@@ -66,7 +67,5 @@ export async function project(source: string): Promise<{ projection: PolicyProje
       editable,
     })
   }
-  for (const template of parsed.policy_templates)
-    projection.push({ action: '', source: template, advanced: true, editable: false })
   return { projection, diagnostics: [] }
 }

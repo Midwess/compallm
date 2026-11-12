@@ -86,6 +86,10 @@ pub(super) fn prepare(member: &MemberPermission) -> anyhow::Result<RlsSettings> 
 
 pub(super) fn validate_source(source: &str) -> anyhow::Result<()> {
     let policies: cedar_policy::PolicySet = source.parse()?;
+    anyhow::ensure!(
+        policies.templates().next().is_none(),
+        "link templates before PostgreSQL preparation"
+    );
     for policy in policies.policies() {
         scope(policy.resource_constraint())?;
         let json = policy.to_json()?;

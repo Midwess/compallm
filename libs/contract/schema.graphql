@@ -303,7 +303,7 @@ type Query {
 }
 
 type Role {
-  "Cedar authoring source; this role and its organization use the \"current\" alias."
+  "Native Cedar source; template slots bind to this role and its organization."
   cedarSource: String
   id: ID!
   name: String!

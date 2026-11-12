@@ -24,7 +24,7 @@ export class RoleController implements Contract {
     this.settings = settings
   }
   cancel = () => {
-    this.store.setState({ disabledPolicies: {} })
+    this.store.setState({ disabledPolicies: {}, loading: false })
     this.parseRevision += 1
     clearTimeout(this.parseTimer)
     this.request?.abort()
@@ -34,7 +34,7 @@ export class RoleController implements Contract {
     this.cancel()
     const request = new AbortController()
     this.request = request
-    this.store.setState({ draft: null, busy: false, policySaveFailed: false })
+    this.store.setState({ draft: null, loading: true, busy: false, policySaveFailed: false })
     this.settings.setState({ policyActions: [] })
     try {
       const roleSelection = {
@@ -52,10 +52,6 @@ export class RoleController implements Contract {
       if (request.signal.aborted || this.request !== request) return
       if (metadata.status === 'rejected') throw metadata.reason
       if (!metadata.value.role) return
-      this.openRole({
-        ...metadata.value.role.node,
-        source: metadata.value.role.node.cedarSource,
-      })
       if (catalog.status === 'fulfilled') {
         this.settings.setState({
           policyActions: catalog.value.organizationPolicyActions.edges.map(({ node }) => ({
@@ -67,54 +63,50 @@ export class RoleController implements Contract {
           })),
         })
       } else notify.error(catalog.reason)
-      const draft = this.store.getState().draft
-      if (draft?.source && catalog.status === 'fulfilled') {
-        this.store.setState({ draft: { ...draft, parsing: true } })
+      const role = metadata.value.role.node
+      let projection: RoleDraft['projection'] = []
+      let diagnostics =
+        role.cedarSource === null
+          ? ['Policy source is unavailable.']
+          : catalog.status === 'rejected'
+            ? ['Policy catalog is unavailable.']
+            : []
+      if (role.cedarSource && catalog.status === 'fulfilled') {
         try {
           const { projectPolicy } = await import('./cedar')
           const result = await projectPolicy(
-            draft.source,
+            role.cedarSource,
             new Map(catalog.value.organizationPolicyActions.edges.map(({ node }) => [node.name, node.resourceType])),
           )
-          if (request.signal.aborted || this.request !== request) return
-          this.store.setState((state) => ({
-            draft:
-              state.draft?.id === id && state.draft.source === draft.source
-                ? {
-                    ...state.draft,
-                    parsing: false,
-                    projection: result.projection,
-                    diagnostics: result.diagnostics,
-                    mode: result.diagnostics.length ? 'cedar' : 'visual',
-                  }
-                : state.draft,
-          }))
+          projection = result.projection
+          diagnostics = result.diagnostics
         } catch {
-          if (!request.signal.aborted && this.request === request)
-            this.store.setState((state) => ({
-              draft:
-                state.draft?.id === id
-                  ? { ...state.draft, parsing: false, diagnostics: ['Policy parser is unavailable.'] }
-                  : state.draft,
-            }))
+          diagnostics = ['Policy parser is unavailable.']
         }
       }
+      if (request.signal.aborted || this.request !== request) return
+      this.openRole({ ...role, source: role.cedarSource }, { projection, diagnostics })
     } catch (error) {
       if (!request.signal.aborted) notify.error(error)
+    } finally {
+      if (this.request === request) this.store.setState({ loading: false })
     }
   }
   setQuery = (query: string) => this.store.setState({ query })
   setFilter = (key: string, value: string) => this.store.setState((s) => ({ filters: { ...s.filters, [key]: value } }))
-  openRole = (role: { id: string; name: string; description: string; source: string | null }) => {
+  openRole = (
+    role: { id: string; name: string; description: string; source: string | null },
+    policy?: Pick<RoleDraft, 'projection' | 'diagnostics'>,
+  ) => {
     this.savedMetadata = { id: role.id, name: role.name, description: role.description }
     this.savedPolicy = role.source === null ? undefined : { id: role.id, source: compactCedarSource(role.source) }
     this.store.setState({
       draft: {
         ...role,
         source: role.source ?? '',
-        mode: role.source === '' ? 'visual' : 'cedar',
-        projection: [],
-        diagnostics: role.source === null ? ['Policy source is unavailable.'] : [],
+        mode: policy ? (policy.diagnostics.length ? 'cedar' : 'visual') : role.source === '' ? 'visual' : 'cedar',
+        projection: policy?.projection ?? [],
+        diagnostics: policy?.diagnostics ?? (role.source === null ? ['Policy source is unavailable.'] : []),
         parsing: false,
         builtin: false,
       },

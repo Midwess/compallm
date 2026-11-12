@@ -24,7 +24,7 @@ async fn default_sources_preserve_authorization() -> anyhow::Result<()> {
     for role in fixture_roles_0.clone() {
         let original = role.cedar_source.clone();
         let member = member(vec![role.clone()]);
-        let snapshot = PolicySnapshot::from(&member);
+        let snapshot = PolicySnapshot::try_from(&member).unwrap();
         assert_eq!(member.roles[0].cedar_source, original);
         let before = PolicySet::try_from(&role)?;
         let after = PolicySet::try_from(&snapshot)?;
@@ -75,12 +75,12 @@ async fn assignments_are_deterministic_and_sources_are_not_duplicated() -> anyho
         description: String::new(),
         roles: vec![roles[2].clone()],
     }];
-    let snapshot = PolicySnapshot::from(&member);
+    let snapshot = PolicySnapshot::try_from(&member).unwrap();
     assert_eq!(snapshot.role_ids, vec![1, 3]);
     assert_eq!(snapshot.group_roles[&8], vec![3]);
     assert_eq!(PolicySet::try_from(&snapshot)?.policies().count(), 7);
     member.roles.reverse();
-    assert_eq!(snapshot, PolicySnapshot::from(&member));
+    assert_eq!(snapshot, PolicySnapshot::try_from(&member).unwrap());
     let encoded = serde_json::to_string(&snapshot)?;
     assert_eq!(snapshot, serde_json::from_str(&encoded)?);
     assert!(!encoded.contains("authorization_version"));
@@ -101,7 +101,7 @@ async fn quoted_content_annotations_and_forbids_survive() -> anyhow::Result<()> 
 permit(principal in Compallm::Role::"7:1", action == Compallm::Action::"model.read", resource == Compallm::Organization::"7");
 forbid(principal in Compallm::Role::"7:1", action == Compallm::Action::"model.read", resource == Compallm::Organization::"7") when { "a // b" == "a // b" };
 "#.into();
-    let snapshot = PolicySnapshot::from(&member(vec![role.clone()]));
+    let snapshot = PolicySnapshot::try_from(&member(vec![role.clone()])).unwrap();
     assert!(
         snapshot
             .cedar_source
@@ -132,12 +132,12 @@ async fn parallel_constructor_preserves_deterministic_authority() -> anyhow::Res
     let fixture_roles_0 = default_roles(7, [1, 2, 3]).await;
 
     let member = member(fixture_roles_0.clone());
-    let expected = PolicySnapshot::from(&member);
+    let expected = PolicySnapshot::try_from(&member).unwrap();
     for workers in [1, 2, 4] {
         let pool = rayon::ThreadPoolBuilder::new()
             .num_threads(workers)
             .build()?;
-        let actual = pool.install(|| PolicySnapshot::new(&member));
+        let actual = pool.install(|| PolicySnapshot::new(&member).unwrap());
         assert_eq!(serde_json::to_vec(&actual)?, serde_json::to_vec(&expected)?);
         assert_eq!(
             PolicySet::try_from(&actual)?.policies().count(),
@@ -172,7 +172,7 @@ fn merged_roles_preserve_inherited_forbid_over_direct_permit() -> anyhow::Result
         description: String::new(),
         roles: vec![inherited],
     }];
-    let snapshot = PolicySnapshot::new(&member);
+    let snapshot = PolicySnapshot::new(&member).unwrap();
     let policies: PolicySet = snapshot.cedar_source.parse()?;
     assert_eq!(policies.policies().count(), 3);
     assert_eq!(snapshot.role_ids, vec![10]);
@@ -192,7 +192,7 @@ fn merged_roles_preserve_inherited_forbid_over_direct_permit() -> anyhow::Result
         Decision::Deny
     );
     member.groups.clear();
-    let without_forbid = PolicySet::try_from(&PolicySnapshot::new(&member))?;
+    let without_forbid = PolicySet::try_from(&PolicySnapshot::new(&member).unwrap())?;
     assert_eq!(
         Authorizer::new()
             .is_authorized(&request, &without_forbid, &Entities::try_from(&member)?)

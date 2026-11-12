@@ -372,6 +372,9 @@ export function useSelectionMotion(
       changeTarget.removeEventListener('change', change)
       node.form?.removeEventListener('reset', reset)
       for (const control of controls.current) control.stop()
+      controls.current = []
+      initialized.current = false
+      previous.current = ''
     }
   }, [inputRef, kind, update])
 }

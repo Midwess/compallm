@@ -84,8 +84,10 @@ export function RoleEditorSettings() {
     shared = useSettingsController(),
     draft = useRole((s) => s.draft),
     readonly = useSettings((s) => s.readonly),
+    loading = useRole((s) => s.loading),
     policySaveFailed = useRole((s) => s.policySaveFailed),
     busy = useRole((s) => s.busy)
+  if (loading) return <SettingsContent aria-busy="true" aria-label="Loading role" />
   if (!draft)
     return (
       <SettingsContent>
@@ -93,8 +95,7 @@ export function RoleEditorSettings() {
       </SettingsContent>
     )
   const locked = readonly || draft.builtin,
-    invalid = draft.parsing || draft.diagnostics.length > 0,
-    advanced = draft.projection.some((p) => p.advanced || !p.editable || !p.action)
+    invalid = draft.parsing || draft.diagnostics.length > 0
   return (
     <SettingsContent className="flex flex-col pt-14 pb-6">
       <Heading className="mb-8 shrink-0">{draft.id ? draft.name : 'New role'}</Heading>
@@ -132,7 +133,7 @@ export function RoleEditorSettings() {
             </SettingsSectionTitle>
             <EditingMode />
           </div>
-          <div className="grid min-w-0 w-full">
+          <div className="relative grid min-w-0 w-full">
             <motion.div
               initial={false}
               transition={timing}
@@ -145,6 +146,7 @@ export function RoleEditorSettings() {
                 transitionEnd: { display: draft.mode === 'visual' ? 'block' : 'none' },
               }}
               style={{
+                position: draft.mode === 'visual' ? 'relative' : 'absolute',
                 pointerEvents: draft.mode === 'visual' ? 'auto' : 'none',
               }}
               className="col-start-1 row-start-1 min-w-0 w-full"
@@ -163,6 +165,7 @@ export function RoleEditorSettings() {
                 transitionEnd: { display: draft.mode === 'cedar' ? 'block' : 'none' },
               }}
               style={{
+                position: draft.mode === 'cedar' ? 'relative' : 'absolute',
                 pointerEvents: draft.mode === 'cedar' ? 'auto' : 'none',
               }}
               className="col-start-1 row-start-1 min-w-0 w-full"

@@ -91,7 +91,10 @@ impl RbacService {
             cedar_script,
         )
         .await?;
-        if !self.organizations.supports_role_policy(&role.cedar_source) {
+        if !self
+            .organizations
+            .supports_role_policy(&cedar_policy::PolicySet::try_from(&role)?.to_string())
+        {
             return Err(AuthorizationError::UnsupportedPolicy);
         }
         self.organizations.create_roles(vec![role.clone()]).await?;
@@ -107,7 +110,7 @@ impl RbacService {
         cedar_source: Option<String>,
     ) -> Result<Role, AuthorizationError> {
         let mut cedar_source =
-            cedar_source.map(|source| super::policy_source::compact_policy_source(&source));
+            cedar_source.map(|source| super::policy::compact_policy_source(&source));
         let organization_id = permission.organization_id();
         let role = self
             .organizations
@@ -128,7 +131,9 @@ impl RbacService {
                 .check_permission(permission)?;
             *source = Role::prepare_policy_source(source, organization_id, id)
                 .map_err(crate::organization::role::RoleCreationError::InvalidPolicy)?;
-            if !self.organizations.supports_role_policy(source) {
+            if !self.organizations.supports_role_policy(
+                &super::policy::role_policy_set(source, organization_id, id)?.to_string(),
+            ) {
                 return Err(AuthorizationError::UnsupportedPolicy);
             }
         }

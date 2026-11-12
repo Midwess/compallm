@@ -177,7 +177,7 @@ export interface Query {
 }
 
 export interface Role {
-  /** Cedar authoring source; this role and its organization use the "current" alias. */
+  /** Native Cedar source; template slots bind to this role and its organization. */
   cedarSource: Scalars['String'] | null
   color: Scalars['String']
   description: Scalars['String']
@@ -527,7 +527,7 @@ export interface QueryGenqlSelection {
 }
 
 export interface RoleGenqlSelection {
-  /** Cedar authoring source; this role and its organization use the "current" alias. */
+  /** Native Cedar source; template slots bind to this role and its organization. */
   cedarSource?: boolean | number
   color?: boolean | number
   description?: boolean | number

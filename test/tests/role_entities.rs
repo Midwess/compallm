@@ -96,7 +96,7 @@ fn decision(
     response.decision()
 }
 #[tokio::test]
-async fn all_defaults_have_explicit_valid_cedar_source() {
+async fn all_defaults_have_valid_native_templates() {
     let fixture_roles_0 = default_roles(42, [901, 502, 73]).await;
 
     let validator = Validator::new(all_policies().clone());
@@ -110,10 +110,8 @@ async fn all_defaults_have_explicit_valid_cedar_source() {
             role.name,
             result.validation_errors().collect::<Vec<_>>()
         );
-        assert!(
-            role.cedar_source
-                .contains(&format!("Compallm::Role::\"42:{}\"", role.id))
-        );
+        assert!(role.cedar_source.contains("?principal"));
+        assert!(set.templates().next().is_none());
     }
 }
 #[tokio::test]
@@ -261,6 +259,6 @@ async fn default_permissions_and_owner_restrictions_use_generated_record_ids() {
     );
     for role in roles {
         assert!(!role.cedar_source.contains("__"));
-        assert!(role.cedar_source.contains(&format!("42:{}", role.id)));
+        assert!(role.cedar_source.contains("?principal"));
     }
 }

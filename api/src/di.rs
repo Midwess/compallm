@@ -59,11 +59,15 @@ struct Settings {
     graphql: GraphqlSettings,
     #[serde(default)]
     smtp: Option<compallm_mailing::SmtpSettings>,
+    #[serde(default)]
+    s3: Option<compallm_storage::S3Settings>,
 }
 
 /// Own all application dependencies in one permanent container.
 pub struct Di {
     db: Box<DbContext>,
+    storage: Option<Box<dyn compallm_core::persistent::storage::user_space::UserStorageSpace>>,
+    s3: Option<std::sync::Arc<compallm_storage::S3Storage>>,
     users: Box<dyn UserRepository>,
     user_preferences:
         Box<dyn compallm_core::persistent::preference::user::UserPreferenceRepository>,
@@ -85,6 +89,7 @@ pub struct Di {
     organization_creation: OnceLock<Box<CreationService>>,
     organization_config: OnceLock<Box<ConfigService>>,
     rbac: OnceLock<Box<RbacService>>,
+    profile: OnceLock<Box<compallm_core::user::ProfileService>>,
 }
 
 impl Di {
@@ -111,6 +116,13 @@ impl Di {
                     .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
                 let mut di = Self::new(db, settings.auth, settings.graphql, None);
                 di.mailing = mailing.map(Box::new);
+                if let Some(settings) = settings.s3.filter(|settings| settings.enabled) {
+                    let s3 = std::sync::Arc::new(
+                        compallm_storage::S3Storage::new(settings)
+                            .map_err(|error| loco_rs::Error::Message(error.to_string()))?,
+                    );
+                    di = di.with_s3_storage(s3);
+                }
                 DbContext::initialize_default(di.db.postgres().scoped())
                     .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
                 Ok::<_, loco_rs::Error>(di)
@@ -132,6 +144,8 @@ impl Di {
                 .expect("application dictionary connection must be committed");
         Self {
             db: Box::new(db),
+            storage: None,
+            s3: None,
             users: Box::new(compallm_postgres::repository::user::UserRepository),
             user_preferences: Box::new(
                 compallm_postgres::repository::preference::user::UserPreferenceRepository,
@@ -155,6 +169,7 @@ impl Di {
             organization_creation: OnceLock::new(),
             organization_config: OnceLock::new(),
             rbac: OnceLock::new(),
+            profile: OnceLock::new(),
         }
     }
 
@@ -166,6 +181,7 @@ impl Di {
     }
 
     pub fn initialize_services(&'static self) -> Result<(), AuthError> {
+        self.profile_service();
         self.mailing_worker();
         self.user_preference_service();
         self.organization_config_service();
@@ -246,6 +262,35 @@ impl Di {
         &self.users
     }
 
+    pub fn with_user_repository(mut self, users: Box<dyn UserRepository>) -> Self {
+        self.users = users;
+        self
+    }
+
+    pub fn with_user_storage_space(
+        mut self,
+        storage: Box<dyn compallm_core::persistent::storage::user_space::UserStorageSpace>,
+    ) -> Self {
+        self.storage = Some(storage);
+        self
+    }
+
+    pub fn user_space_storage(
+        &self,
+    ) -> Option<&dyn compallm_core::persistent::storage::user_space::UserStorageSpace> {
+        self.storage.as_deref()
+    }
+
+    pub fn s3_storage(&self) -> Option<&std::sync::Arc<compallm_storage::S3Storage>> {
+        self.s3.as_ref()
+    }
+
+    pub fn with_s3_storage(mut self, s3: std::sync::Arc<compallm_storage::S3Storage>) -> Self {
+        self.storage = Some(Box::new(compallm_storage::S3UserSpace::new(s3.clone())));
+        self.s3 = Some(s3);
+        self
+    }
+
     pub fn session_repository(&'static self) -> &'static Box<dyn SessionRepository> {
         &self.sessions
     }
@@ -303,6 +348,15 @@ impl Di {
             .get_or_init(|| Box::new(CreationService::new(self.organization_repository())))
     }
 
+    pub fn profile_service(&'static self) -> &'static compallm_core::user::ProfileService {
+        self.profile.get_or_init(|| {
+            Box::new(compallm_core::user::ProfileService::new(
+                self.users.as_ref(),
+                self.storage.as_deref(),
+            ))
+        })
+    }
+
     pub fn rbac_service(&'static self) -> &'static RbacService {
         self.rbac.get_or_init(|| {
             Box::new(RbacService::new(
@@ -355,5 +409,22 @@ impl juniper::FromContext<Di>
 impl juniper::FromContext<Di> for DbContext {
     fn from(di: &Di) -> &Self {
         &di.db
+    }
+}
+
+impl juniper::FromContext<Di> for Option<std::sync::Arc<compallm_storage::S3Storage>> {
+    fn from(di: &Di) -> &Self {
+        &di.s3
+    }
+}
+
+impl juniper::FromContext<Di> for compallm_core::user::ProfileService {
+    fn from(di: &Di) -> &Self {
+        di.profile.get().expect("profile service initialized")
+    }
+}
+impl juniper::FromContext<Di> for Box<dyn UserRepository> {
+    fn from(di: &Di) -> &Self {
+        &di.users
     }
 }

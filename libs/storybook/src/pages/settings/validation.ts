@@ -1,5 +1,5 @@
 import {
-  ProfileUpdateInput,
+  UserProfileUpdateInput,
   OrganizationSettingsUpdateInput,
   ImageUploadInput,
   CredentialCreateInput,
@@ -22,14 +22,29 @@ export function parseSettings(values: Partial<SettingsState>, names: string[]) {
     const patch = Object.fromEntries(
       keys.map((key) => [key, root === 'organization' && key === 'home' ? toWire(draft[key]) : draft[key]]),
     )
-    const schema = root === 'profile' ? ProfileUpdateInput : OrganizationSettingsUpdateInput
-    const result = schema.safeParse(patch)
-    if (!result.success) issues.push(...result.error.issues.map((issue) => ({ ...issue, path: [root, ...issue.path] })))
+    const result =
+      root === 'profile'
+        ? UserProfileUpdateInput.safeParse({
+            ...(keys.includes('name') ? { displayName: draft.name } : {}),
+            ...(keys.includes('username') ? { username: draft.username } : {}),
+          })
+        : OrganizationSettingsUpdateInput.safeParse(patch)
+    if (!result.success)
+      issues.push(
+        ...result.error.issues.map((issue) => ({
+          ...issue,
+          path: [root, ...issue.path.map((part) => (root === 'profile' && part === 'displayName' ? 'name' : part))],
+        })),
+      )
     else
       Object.assign(next, {
         [root]: {
           ...draft,
-          ...Object.fromEntries(Object.entries(result.data).map(([key, value]) => [key, fromWire(value, draft[key])])),
+          ...Object.fromEntries(
+            Object.entries(result.data)
+              .filter(([key]) => root !== 'profile' || key === 'displayName' || key === 'username')
+              .map(([key, value]) => [root === 'profile' && key === 'displayName' ? 'name' : key, fromWire(value, draft[key])]),
+          ),
         },
       })
   }

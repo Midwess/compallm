@@ -11,10 +11,10 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variants = {
   primary: 'bg-primary text-primary-foreground shadow-action enabled:hover:bg-primary-hover',
-  neutral: 'bg-elevated text-foreground shadow-control enabled:hover:brightness-110',
-  ghost: 'bg-transparent text-foreground shadow-none enabled:hover:brightness-110',
-  destructive: 'bg-destructive text-background shadow-action enabled:hover:brightness-110',
-  link: 'bg-transparent p-0 text-ring shadow-none enabled:hover:brightness-110 !px-0',
+  neutral: 'bg-elevated text-foreground shadow-control enabled:hover:bg-elevated-hover',
+  ghost: 'bg-transparent text-foreground shadow-none enabled:hover:bg-hover',
+  destructive: 'bg-destructive text-destructive-foreground shadow-action enabled:hover:bg-destructive-hover',
+  link: 'bg-transparent p-0 text-ring shadow-none enabled:hover:text-foreground !px-0',
 }
 const sizes = {
   compact: 'h-8',

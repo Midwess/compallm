@@ -19,6 +19,8 @@ impl TryFrom<UserSchema> for User {
             id,
             email: model.email,
             display_name: model.display_name,
+            username: model.username,
+            avatar_path: model.avatar_path,
             status,
         })
     }

@@ -52,7 +52,11 @@ impl CreationService {
         &self,
         user: &User,
     ) -> Result<Organization, OrganizationCreationError> {
-        let base = &user.display_name;
+        let base = if user.display_name.is_empty() {
+            &user.username
+        } else {
+            &user.display_name
+        };
         let base = if base.is_empty() {
             format!("user-{}", user.id)
         } else {

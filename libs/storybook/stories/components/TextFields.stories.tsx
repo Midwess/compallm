@@ -29,6 +29,9 @@ export const TextField: Story = {
       <Sample label="Disabled">
         <Fields.TextField aria-label="Disabled text" disabled placeholder="Enter a value…" />
       </Sample>
+      <Sample label="Constant">
+        <Fields.TextField variant="constant" aria-label="Account email" value="alex@example.com" />
+      </Sample>
     </Preview>
   ),
 }

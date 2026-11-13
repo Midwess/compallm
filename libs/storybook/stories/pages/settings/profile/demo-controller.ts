@@ -5,7 +5,11 @@ export class DemoProfileController implements ProfileController {
     private readonly store: SettingsController['store'],
     private readonly avatarUrl: (file: File | null) => string | null,
   ) {}
-  updateProfile = (value: Parameters<ProfileController['updateProfile']>[0]) =>
-    this.store.setState((state) => ({ profile: { ...state.profile, ...value } }))
-  setAvatar = (file: File | null) => this.updateProfile({ avatar: this.avatarUrl(file) })
+  saveProfile = (value: Parameters<ProfileController['saveProfile']>[0], file: File | null) => {
+    const profile = { ...this.store.getState().profile, ...value }
+    if (file) profile.avatar = this.avatarUrl(file)
+    this.store.form.set('profile.avatar', profile.avatar)
+    this.store.form.accept({ profile: { ...this.store.form.baseline.profile!, avatar: profile.avatar } })
+    return profile
+  }
 }

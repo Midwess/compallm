@@ -4,7 +4,7 @@ impl From<crate::user::RegistrationError> for AuthError {
         match error {
             RegistrationError::Connection(error) => Self::Connection(error),
             RegistrationError::Organization(error) => Self::Organization(error),
-            RegistrationError::InvalidDisplayName => Self::InvalidDisplayName,
+            RegistrationError::InvalidUsername => Self::InvalidUsername,
             RegistrationError::InvalidEmail => Self::InvalidEmail,
             RegistrationError::Persistence(error) => Self::Persistence(error),
             RegistrationError::IdGeneration(error) => Self::IdGeneration(error),
@@ -40,8 +40,8 @@ pub enum AuthError {
     UserNotFound,
     #[error("user is disabled")]
     UserDisabled,
-    #[error("display name must not be empty")]
-    InvalidDisplayName,
+    #[error("invalid username")]
+    InvalidUsername,
     #[error(transparent)]
     Persistence(#[from] crate::persistent::user::UserRepositoryError),
     #[error(transparent)]

@@ -5,13 +5,18 @@ import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGl
 import { cx, composeRefs } from './shared'
 import { useFormField, useNativeFormField } from './form'
 
-export type TextFieldProps = ComponentPropsWithRef<'input'>
-export function TextField({ className, onChange, onBlur, onKeyDown, value, ...props }: TextFieldProps) {
-  const field = useNativeFormField(props.name)
+export type TextFieldProps = ComponentPropsWithRef<'input'> & { variant?: 'default' | 'constant' }
+export function TextField({ variant = 'default', className, onChange, onBlur, onKeyDown, value, ...props }: TextFieldProps) {
+  const constant = variant === 'constant'
+  const field = useNativeFormField(constant ? undefined : props.name)
   return (
     <animated.input
       {...props}
       {...field?.registration}
+      disabled={constant || props.disabled}
+      readOnly={constant || props.readOnly}
+      tabIndex={constant ? -1 : props.tabIndex}
+      data-variant={variant}
       ref={composeRefs(field?.registration.ref, props.ref)}
       value={field ? undefined : value}
       defaultValue={field ? field.defaultValue : props.defaultValue}
@@ -43,6 +48,9 @@ py-1 text-left text-sm leading-5.5 text-foreground placeholder:text-muted-foregr
 focus:border-muted-foreground/60 focus:outline-none aria-invalid:border-destructive disabled:cursor-not-allowed
 disabled:opacity-50`,
         className,
+        constant &&
+          `pointer-events-none cursor-default bg-elevated caret-transparent select-none
+disabled:cursor-default disabled:opacity-100`,
       )}
     />
   )

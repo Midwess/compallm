@@ -17,6 +17,8 @@ export const animation = {
   disclosure: { duration: 0.18, ease: 'easeOut' },
   reorder: { duration: 0.18, ease: 'easeOut' },
   panel: { duration: 0.2, ease: 'easeOut' },
+  scroll: { duration: 0.1, ease: [0.16, 1, 0.3, 1] },
+  scrollResponse: 0.8,
   loading: { duration: 1, ease: 'linear', repeat: Infinity },
   cubeGrid: { duration: 1.3, ease: 'easeInOut', repeat: Infinity, times: [0, 0.35, 0.7, 1] },
   distance: 6,

@@ -407,6 +407,12 @@ input UserPreferencesPatchInput {
   codeAppearance: CodeAppearancePatchInput
 }
 
+input UserProfileUpdateInput {
+  displayName: String
+  username: String
+  avatarUploaded: Boolean = false
+}
+
 "Positive u32 context size, encoded as an exact JSON number (1–4294967295)."
 scalar ContextTokens
 
@@ -414,6 +420,17 @@ type AccessibilityPreferences {
   underlineLinks: Boolean!
   reduceMotion: Boolean!
   pointerCursors: Boolean!
+}
+
+type AvatarUpload {
+  url: String!
+  fields: [UploadFormField!]!
+  "Expiration as Unix seconds, encoded as a string."
+  expiresAt: String!
+}
+
+type AvatarUploadPayload {
+  node: AvatarUpload!
 }
 
 type BooleanPayload {
@@ -485,6 +502,10 @@ type MessageCompositionPreferences {
 }
 
 type Mutation {
+  "Update the current user's display name and confirm an uploaded avatar."
+  userProfileUpdate(input: UserProfileUpdateInput!): UserPayload!
+  "Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes."
+  generateUrlAvatarUrl(input: ImageUploadInput!): AvatarUploadPayload!
   "Atomically patch the signed-in user's preferences, preserving omitted fields."
   userPreferencesUpdate(input: UserPreferencesPatchInput!): UserPreferencesPayload!
   "Restore selected preference groups, or ALL alone, to Core defaults."
@@ -564,6 +585,8 @@ type ProviderTemplate {
 }
 
 type Query {
+  "Public profile for an active user. Email and account state are excluded."
+  userProfile(id: ID!): UserPayload
   "Return the signed-in user's personal preferences; missing rows use Core defaults without a write."
   userPreferences: UserPreferencesPayload!
   "Return the system-owned organization policy action catalog."
@@ -607,6 +630,8 @@ type RolePayload {
 }
 
 type Session {
+  "Public avatar for this user; clients show a fallback while absent or loading."
+  avatarUrl: String
   "Login session identity, serialized as a string without numeric precision loss."
   id: ID!
   "User owning this verified session."
@@ -665,6 +690,27 @@ type TokenLifetime {
 type TypographyPreferences {
   family: PreferenceFontFamily!
   size: PreferenceRelativeFontSize!
+}
+
+type UploadFormField {
+  name: String!
+  value: String!
+}
+
+type User {
+  "Public avatar URL; the object may not exist yet and clients must show a fallback."
+  avatarUrl: String
+  "Stable user identity, serialized as a string."
+  id: ID!
+  username: String!
+  "Email is readable only by the verified account owner and cannot be updated here."
+  email: String!
+  "Display name; this field does not establish identity or uniqueness."
+  displayName: String!
+}
+
+type UserPayload {
+  node: User!
 }
 
 type UserPreferences {

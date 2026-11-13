@@ -1,4 +1,23 @@
 settings:
+  s3:
+    enabled: <%= get_env(name="S3_ENABLED", default="true") %>
+    region: |-
+      <%= get_env(name="S3_REGION", default="us-east-1") | indent(width=6) %>
+    endpoint: |-
+      <%= get_env(name="S3_ENDPOINT", default="http://127.0.0.1:9000") | indent(width=6) %>
+    upload_endpoint: |-
+      <%= get_env(name="S3_UPLOAD_ENDPOINT", default="http://127.0.0.1:9000") | indent(width=6) %>
+    access_key: |-
+      <%= get_env(name="S3_ACCESS_KEY", default="admin") | indent(width=6) %>
+    secret_key: |-
+      <%= get_env(name="S3_SECRET_KEY", default="shhshhshh") | indent(width=6) %>
+    bucket: |-
+      <%= get_env(name="S3_BUCKET", default="compallm") | indent(width=6) %>
+    public_base_url: |-
+      <%= get_env(name="S3_PUBLIC_BASE_URL", default="http://127.0.0.1:9000/compallm") | indent(width=6) %>
+    force_path_style: <%= get_env(name="S3_FORCE_PATH_STYLE", default="true") %>
+    timeout_seconds: <%= get_env(name="S3_TIMEOUT_SECONDS", default="30") %>
+    allowed_origins: ["*"]
   smtp:
     concurrency: <%= get_env(name="SMTP_CONCURRENCY", default="10") %>
     queue_capacity: <%= get_env(name="SMTP_QUEUE_CAPACITY", default="1024") %>

@@ -57,7 +57,7 @@ export function Toast({
       data-tone={tone}
       className={cx(
         'flex w-fit min-w-0 max-w-100 items-start gap-2.5 rounded-xl',
-        'border border-border bg-elevated p-2 font-sans text-xsm leading-5 text-foreground shadow-lg',
+        'border border-border bg-elevated p-2 font-sans text-xsm leading-5 text-foreground shadow-floating',
         className,
       )}
     >
@@ -142,7 +142,7 @@ function TooltipPopup({ content }: { content: ReactNode }) {
       <BaseTooltip.Positioner sideOffset={6} className="z-50">
         <BaseTooltip.Popup
           className="max-w-xs rounded-full border border-border bg-elevated px-3 py-1.5 text-center text-xs leading-4
-text-foreground shadow-lg"
+text-foreground shadow-floating"
         >
           <BaseTooltip.Arrow
             className="absolute flex data-[side=top]:-bottom-1 data-[side=bottom]:-top-1
@@ -330,7 +330,8 @@ export function FieldErrorIndicator({
             aria-label="Show validation error"
             aria-describedby={id}
             className="fixed z-50 inline-flex size-5 cursor-help items-center justify-center rounded-full
-bg-destructive text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-destructive"
+bg-error-background text-error-foreground focus-visible:outline-2
+focus-visible:outline-offset-2 focus-visible:outline-destructive"
             onPointerEnter={() => setDismissedVersion(undefined)}
             onFocus={() => setDismissedVersion(undefined)}
           >
@@ -340,8 +341,9 @@ bg-destructive text-primary-foreground focus-visible:outline-2 focus-visible:out
             <BaseTooltip.Positioner side="right" align="center" sideOffset={-20} collisionPadding={8} className="z-40">
               <BaseTooltip.Popup
                 render={<FieldErrorMotion />}
-                className="min-h-5 max-w-xs origin-left rounded-full bg-destructive py-1 pr-1 pl-6
-text-xs leading-3 text-primary-foreground shadow-lg data-[side=left]:origin-right data-[side=left]:pr-6 data-[side=left]:pl-1"
+                className="min-h-5 max-w-xs origin-left rounded-full bg-error-background py-1 pr-1 pl-6
+text-xs leading-3 text-error-foreground shadow-floating
+data-[side=left]:origin-right data-[side=left]:pr-6 data-[side=left]:pl-1"
               >
                 {message}
               </BaseTooltip.Popup>

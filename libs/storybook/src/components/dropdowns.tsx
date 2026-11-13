@@ -89,7 +89,7 @@ function SelectContent({ className, children, ...props }: Omit<BaseSelect.Popup.
         >
           <BaseSelect.List
             className="max-h-[min(--spacing(80),var(--available-height))] overflow-y-auto
-            overscroll-contain p-1"
+            overscroll-none p-1"
           >
             {children}
           </BaseSelect.List>

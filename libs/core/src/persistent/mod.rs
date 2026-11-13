@@ -13,3 +13,5 @@ pub use connection::{Connection, ConnectionError};
 pub use db_context::{DbContext, PermissionError, PermissionLoader};
 
 pub mod preference;
+
+pub mod storage;

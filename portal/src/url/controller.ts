@@ -68,6 +68,9 @@ export class UrlController implements Contract {
       if (this.guard === guard) this.guard = undefined
     }
   }
+  retryFailedRoute = async () => {
+    if (this.router?.state.errors) await this.router.revalidate()
+  }
   navigate = (href: string, options: { replace?: boolean } = {}) => {
     if (!this.router) throw new Error('URL controller is not connected.')
     const target = new URL(href, this.intended ?? window.location.href)

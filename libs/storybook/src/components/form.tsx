@@ -12,7 +12,7 @@ import {
 } from 'react'
 import { useController } from 'react-hook-form'
 import { useSyncExternalStoreWithSelector } from 'use-sync-external-store/shim/with-selector'
-import cloneDeep from 'lodash-es/cloneDeep.js'
+import { cloneFormValue as cloneDeep } from './form-model'
 import isEqual from 'lodash-es/isEqual.js'
 import { FormContext } from '../context'
 import { Button } from './buttons'

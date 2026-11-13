@@ -5,6 +5,7 @@ import { MINIMAL_VIEWPORTS } from 'storybook/viewport'
 import './tailwind.css'
 import { PreferenceDarkPalette, PreferenceLightPalette } from '@compallm/contract/validation'
 import { preferenceLabel } from '../src/pages/settings/preferences/user/values'
+import { ScrollMotion } from '../src/components/scroll'
 
 const preview: Preview = {
   decorators: [
@@ -26,7 +27,12 @@ const preview: Preview = {
           root.classList.toggle('dark', dark)
         }
       }, [theme])
-      return createElement('div', { className: 'min-h-dvh bg-background font-sans text-foreground' }, createElement(Story))
+      return createElement(
+        'div',
+        { className: 'min-h-dvh bg-background font-sans text-foreground' },
+        createElement(ScrollMotion),
+        createElement(Story),
+      )
     },
   ],
   parameters: {

@@ -122,6 +122,10 @@ export const Messaging: Story = { render: () => <Demo page="messaging" /> }
 export const CodeAppearance: Story = { render: () => <Demo page="code" /> }
 export const PreferenceSaveFailure: Story = { render: () => <Demo page="general" failure /> }
 export const Profile: Story = { render: () => <Demo page="profile" /> }
+export const ProfileLoading: Story = { render: () => <Demo page="profile" initial={{ profileStatus: 'loading' }} /> }
+export const ProfileMissing: Story = { render: () => <Demo page="profile" initial={{ profileStatus: 'missing' }} /> }
+export const ProfileDenied: Story = { render: () => <Demo page="profile" initial={{ profileStatus: 'denied' }} /> }
+export const ProfileLoadFailure: Story = { render: () => <Demo page="profile" initial={{ profileStatus: 'error' }} /> }
 export const ProfileWithPhoto: Story = {
   render: () => (
     <Demo

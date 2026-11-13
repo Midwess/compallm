@@ -7,7 +7,7 @@ pub enum RegistrationError {
     #[error(
         "user name must contain 1 to 256 email local-part characters; dots cannot be first, last, or repeated"
     )]
-    InvalidDisplayName,
+    InvalidUsername,
     #[error("invalid email address")]
     InvalidEmail,
     #[error(transparent)]

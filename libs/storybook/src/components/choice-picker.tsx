@@ -96,7 +96,7 @@ rounded-control border border-border bg-menu font-sans text-foreground shadow-me
                 {emptyAction}
               </div>
             </Combobox.Empty>
-            <Combobox.List className="min-h-0 max-h-64 flex-1 overflow-y-auto overscroll-contain p-1">
+            <Combobox.List className="min-h-0 max-h-64 flex-1 overflow-y-auto overscroll-none p-1">
               {(option: ChoicePickerOption) => (
                 <Combobox.Item
                   key={option.id}

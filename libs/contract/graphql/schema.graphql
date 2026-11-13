@@ -10,6 +10,19 @@ type AccessibilityPreferences {
   underlineLinks: Boolean!
 }
 
+type AvatarUpload {
+  """
+  Expiration as Unix seconds, encoded as a string.
+  """
+  expiresAt: String!
+  fields: [UploadFormField!]!
+  url: String!
+}
+
+type AvatarUploadPayload {
+  node: AvatarUpload!
+}
+
 type BooleanPayload {
   node: Boolean!
 }
@@ -213,6 +226,11 @@ type Mutation {
   emailSignupRequest(input: EmailInput!): EmailChallengePayload!
 
   """
+  Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes.
+  """
+  generateUrlAvatarUrl(input: ImageUploadInput!): AvatarUploadPayload!
+
+  """
   Create a group and its initial role assignments in the verified active organization.
   """
   groupCreate(input: GroupCreateInput!): CreatedGroupPayload!
@@ -245,6 +263,11 @@ type Mutation {
   userPreferencesUpdate(
     input: UserPreferencesPatchInput!
   ): UserPreferencesPayload!
+
+  """
+  Update the current user's display name and confirm an uploaded avatar.
+  """
+  userProfileUpdate(input: UserProfileUpdateInput!): UserPayload!
 }
 
 input NavigationPatchInput {
@@ -614,6 +637,11 @@ type Query {
   Return the signed-in user's personal preferences; missing rows use Core defaults without a write.
   """
   userPreferences: UserPreferencesPayload!
+
+  """
+  Public profile for an active user. Email and account state are excluded.
+  """
+  userProfile(id: ID!): UserPayload
 }
 
 input ReportingScheduleInput {
@@ -665,6 +693,11 @@ input RoleUpdateInput {
 }
 
 type Session {
+  """
+  Public avatar for this user; clients show a fallback while absent or loading.
+  """
+  avatarUrl: String
+
   """
   Login session identity, serialized as a string without numeric precision loss.
   """
@@ -783,6 +816,38 @@ type TypographyPreferences {
   size: PreferenceRelativeFontSize!
 }
 
+type UploadFormField {
+  name: String!
+  value: String!
+}
+
+type User {
+  """
+  Public avatar URL; the object may not exist yet and clients must show a fallback.
+  """
+  avatarUrl: String
+
+  """
+  Display name; this field does not establish identity or uniqueness.
+  """
+  displayName: String!
+
+  """
+  Email is readable only by the verified account owner and cannot be updated here.
+  """
+  email: String!
+
+  """
+  Stable user identity, serialized as a string.
+  """
+  id: ID!
+  username: String!
+}
+
+type UserPayload {
+  node: User!
+}
+
 enum UserPreferenceGroup {
   ACCESSIBILITY
   ALL
@@ -825,4 +890,10 @@ input UserPreferencesPatchInput {
 
 type UserPreferencesPayload {
   node: UserPreferences!
+}
+
+input UserProfileUpdateInput {
+  avatarUploaded: Boolean = false
+  displayName: String
+  username: String
 }

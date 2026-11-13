@@ -37,9 +37,10 @@ export class SettingsController implements Controller {
   readonly role: ReturnType<typeof createSettingsPages>['role']
   readonly group = new GroupController()
   private readonly url: Pick<UrlController, 'navigate'>
-  private readonly auth: Pick<AuthController, 'signOut'>
+  private readonly auth: Pick<AuthController, 'signOut'> & Partial<Pick<AuthController, 'store'>>
   private readonly base: string
   private request?: AbortController
+  private stopProfile?: () => void
   private generation = 0
   private creatingRole = false
   private navigationGeneration = 0
@@ -47,6 +48,8 @@ export class SettingsController implements Controller {
   private readonly deletedRoles = new Set<string>()
 
   start = () => {
+    this.stopProfile?.()
+    this.stopProfile = undefined
     const controller = new AbortController()
     this.request?.abort()
     this.request = controller
@@ -54,8 +57,11 @@ export class SettingsController implements Controller {
     this.store.setState({ roles: [], groups: [] })
     void this.loadPermissions(controller.signal, generation)
     const location = this.store.getState().location
+    if (location.page === 'profile') this.stopProfile = this.pages.profile.start()
     if (location.page === 'role' && location.id) void this.role.load(location.id)
     return () => {
+      this.stopProfile?.()
+      this.stopProfile = undefined
       controller.abort()
       this.role.cancel()
       if (this.request === controller) this.request = undefined
@@ -94,7 +100,7 @@ export class SettingsController implements Controller {
   constructor(
     organizationName: string,
     url: Pick<UrlController, 'navigate'>,
-    auth: Pick<AuthController, 'signOut'>,
+    auth: Pick<AuthController, 'signOut'> & Partial<Pick<AuthController, 'store'>>,
     page: SettingsDestination,
     preferences: UserPreferenceController,
   ) {
@@ -108,6 +114,7 @@ export class SettingsController implements Controller {
         if (location.page === 'role' && location.id === id) this.navigate('blank')
       },
       preferences,
+      auth,
     )
     this.role = this.pages.role
     this.url = url
@@ -117,9 +124,14 @@ export class SettingsController implements Controller {
   }
 
   setPage = (page: SettingsDestination, id?: string) => {
+    if (page !== 'profile') {
+      this.stopProfile?.()
+      this.stopProfile = undefined
+    }
     this.navigationGeneration += 1
     this.role.cancel()
     this.store.setState({ location: { page, id } })
+    if (page === 'profile' && this.request && !this.stopProfile) this.stopProfile = this.pages.profile.start()
     if (page === 'role' && id && this.request) void this.role.load(id)
     if (page === 'new-group') this.group.open()
   }

@@ -38,7 +38,7 @@ impl From<AuthError> for Error {
             | AuthError::TokenEncoding(_)
             | AuthError::TokenPayload(_)
             | AuthError::TokenCrypto(_) => ("UNAUTHENTICATED", 401, "Authentication required"),
-            AuthError::InvalidEmail | AuthError::InvalidDisplayName => {
+            AuthError::InvalidEmail | AuthError::InvalidUsername => {
                 ("BAD_USER_INPUT", 400, "Invalid request fields")
             }
             AuthError::Email(EmailError::Throttled) => (
@@ -183,6 +183,39 @@ impl From<compallm_core::preference::UserPreferenceError> for Error {
                 code: "SERVICE_UNAVAILABLE",
                 status: 503,
                 message: "Preference state is temporarily unavailable",
+            },
+        }
+    }
+}
+
+impl From<compallm_core::user::ProfileError> for Error {
+    fn from(error: compallm_core::user::ProfileError) -> Self {
+        use compallm_core::persistent::storage::user_space::StorageError;
+        use compallm_core::user::ProfileError;
+        match error {
+            ProfileError::Authentication(error) => error.into(),
+            ProfileError::Invalid(_) | ProfileError::InvalidOperation => Self::invalid_input(),
+            ProfileError::Persistence(UserRepositoryError::UsernameAlreadyExists) => Self {
+                code: "USERNAME_TAKEN",
+                status: 409,
+                message: "Username is already in use",
+            },
+            ProfileError::Denied | ProfileError::Persistence(UserRepositoryError::NotFound) => {
+                Self {
+                    code: "FORBIDDEN",
+                    status: 403,
+                    message: "Profile operation denied",
+                }
+            }
+            ProfileError::Storage(StorageError::NotFound) => Self {
+                code: "AVATAR_NOT_UPLOADED",
+                status: 409,
+                message: "Upload the avatar before saving the profile",
+            },
+            _ => Self {
+                code: "SERVICE_UNAVAILABLE",
+                status: 503,
+                message: "Profile operation is temporarily unavailable",
             },
         }
     }

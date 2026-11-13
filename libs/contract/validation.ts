@@ -667,3 +667,32 @@ export const UserPreferencesPatchInput = z
   .describe('Partial personal preferences. Omitted fields are preserved; explicit null is rejected.')
 export type UserPreferencesPatchInputFormInput = z.input<typeof UserPreferencesPatchInput>
 export type UserPreferencesPatchInputFormOutput = z.output<typeof UserPreferencesPatchInput>
+export const UserProfileUpdateInputConstraints = {
+  displayName: { minLength: 0, maxLength: 256, trim: true },
+  username: {
+    minLength: 1,
+    maxLength: 256,
+    pattern: "^(?!\\.)(?!.*\\.\\.)(?!.*\\.$)[A-Za-z0-9.!#$%&'*+/=?^_`{|}~\\-]+$",
+    trim: true,
+    asciiLowercase: true,
+  },
+} as const
+export const UserProfileUpdateInputInput = {
+  displayName: stringInput(UserProfileUpdateInputConstraints['displayName']),
+  username: stringInput(UserProfileUpdateInputConstraints['username']),
+}
+export const UserProfileUpdateInput = z
+  .object({
+    displayName: inputString({ minLength: 0, maxLength: 256, trim: true }).optional(),
+    username: inputString({
+      minLength: 1,
+      maxLength: 256,
+      pattern: "^(?!\\.)(?!.*\\.\\.)(?!.*\\.$)[A-Za-z0-9.!#$%&'*+/=?^_`{|}~\\-]+$",
+      trim: true,
+      asciiLowercase: true,
+    }).optional(),
+    avatarUploaded: z.boolean().default(false),
+  })
+  .strict()
+export type UserProfileUpdateInputFormInput = z.input<typeof UserProfileUpdateInput>
+export type UserProfileUpdateInputFormOutput = z.output<typeof UserProfileUpdateInput>

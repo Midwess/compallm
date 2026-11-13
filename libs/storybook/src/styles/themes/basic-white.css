@@ -46,5 +46,17 @@
   --text-selection-foreground: var(--primary-foreground);
   --control: var(--primary);
   --control-foreground: var(--primary-foreground);
+  --shadow-action-opacity: 14%;
+  --shadow-control-opacity: 14%;
+  --shadow-menu-opacity: 7%;
+  --shadow-floating-opacity: 10%;
+  --shadow-highlight-opacity: 14.3%;
+  --elevated-hover: oklch(0.933168 0.004 286);
+  --destructive-hover: oklch(0.525566 0.18 23.6794);
+  --error-background: oklch(0.553183 0.18 23.6794);
+  --error-foreground: oklch(1 0 0);
+  --effort-low: #7762d8;
+  --effort-medium: #9470d1;
+  --effort-high: #ee9b58;
   color-scheme: light;
 }

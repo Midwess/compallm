@@ -1,4 +1,4 @@
-import { parseSettings } from './validation'
+import { configureSettingsForm } from './form'
 import { Form } from '../../components/form'
 import { useEffect, useState } from 'react'
 import { ListIcon } from '@phosphor-icons/react/dist/csr/List'
@@ -72,37 +72,7 @@ function SharedSettingsForm() {
   const page = useSettings((s) => s.location.page)
   const form = c.store.form
   useEffect(() => {
-    form.accept(form.values)
-    form.configure({
-      mode: 'change',
-      parse: parseSettings,
-      error: (error, retry) => c.apiError(error, retry),
-      fields: { 'dialog.name': { mode: 'button' }, 'dialog.value': { mode: 'button' }, 'dialog.phrase': { mode: 'button' } },
-      submit: async (values, _patch, _signal, names) => {
-        for (const name of names) {
-          const [root, key] = name.split('.')
-          if (root === 'preferences' && key) {
-            if (c.pages.preferences.setPreference(key, values.preferences![key]) === false) return false
-          } else if (root === 'profile' && key) {
-            if ((await c.pages.profile.updateProfile({ [key]: values.profile![key as keyof typeof values.profile] })) === false)
-              return false
-          } else if (root === 'organization' && key) {
-            if (
-              (await c.pages.organization.updateOrganization({
-                [key]: values.organization![key as keyof typeof values.organization],
-              })) === false
-            )
-              return false
-          } else if (root === 'profileUpload') {
-            if ((await c.pages.profile.setAvatar(values.profileUpload ?? null)) === false) return false
-          } else if (root === 'organizationUpload') {
-            if ((await c.pages.organization.setAvatar(values.organizationUpload ?? null)) === false) return false
-          }
-        }
-        return values
-      },
-    })
-    return form.stop
+    return configureSettingsForm(c)
   }, [c, form, page])
   if (['role', 'new-role', 'group', 'new-group'].includes(page)) return <SettingsScreen />
   return (
@@ -213,3 +183,5 @@ export type { RoleController, RoleState } from './role/controller'
 export type { GroupController, GroupState } from './group/controller'
 export type { ProfileController } from './profile/controller'
 export type { OrganizationController } from './organization/controller'
+
+export { parsePreferencePatch, confirmedPreferenceDraft, preferenceSelection } from './preference-values'

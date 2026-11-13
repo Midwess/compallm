@@ -18,7 +18,13 @@ export class DemoSettingsController implements SettingsController {
   pages: SettingsController['pages'] = {
     role: null!,
     search: { setQuery: (value) => this.setQuery(value), setFilter: (key, value) => this.setFilter(key, value) },
-    preferences: { setPreference: (key, value) => this.setPreference(key, value) },
+    preferences: {
+      updatePreferences: async (patch, signal) => {
+        if (this.store.getState().readonly || signal.aborted) return false
+        if (this.failWrites) throw new Error('Could not save preferences. Your draft is retained.')
+        return patch
+      },
+    },
     profile: new DemoProfileController(this.store, (file) => this.avatarUrl(file)),
     organization: new DemoOrganizationController(this.store, (file) => this.avatarUrl(file)),
     members: { setMemberRoles: (member, roles) => this.setMemberRoles(member, roles) },
@@ -105,8 +111,6 @@ export class DemoSettingsController implements SettingsController {
   setQuery = (query: string) => this.store.setState({ query })
   setNavigationQuery = (navigationQuery: string) => this.store.setState({ navigationQuery })
   setFilter = (key: string, value: string) => this.store.setState((s) => ({ filters: { ...s.filters, [key]: value } }))
-  setPreference = (key: string, value: string | boolean) =>
-    this.store.setState((s) => ({ preferences: { ...s.preferences, [key]: value } }))
   private avatarUrl = (file: File | null) => {
     const url = file ? URL.createObjectURL(file) : null
     if (url) this.urls.push(url)

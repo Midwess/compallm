@@ -12,7 +12,8 @@ export class DialogsController {
     this.roleDeleted = roleDeleted
   }
   openDialog = (kind: SettingsDialogKind, targetId?: string) => {
-    if (kind === 'delete-role') this.store.setState({ dialog: { kind, targetId, name: '', value: '', phrase: '' } })
+    if (kind === 'delete-role' || kind === 'customize-sidebar')
+      this.store.setState({ dialog: { kind, targetId, name: '', value: '', phrase: '' } })
   }
   closeDialog = () => {
     if (!this.store.getState().busy) this.store.setState({ dialog: null })

@@ -210,7 +210,9 @@ export interface SettingsController {
 export interface SettingsPageControllers {
   role: RoleController
   search: { setQuery(value: string): void; setFilter(key: string, value: string): void }
-  preferences: { setPreference(key: string, value: string | boolean): void | false }
+  preferences: {
+    updatePreferences(patch: SettingsState['preferences'], signal: AbortSignal): Promise<SettingsState['preferences'] | false>
+  }
   profile: ProfileController
   organization: OrganizationController
   members: { setMemberRoles(memberId: string, roleIds: string[]): void | false | Promise<void | false> }

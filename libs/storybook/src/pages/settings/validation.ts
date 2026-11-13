@@ -1,6 +1,5 @@
 import {
   ProfileUpdateInput,
-  PreferencesUpdateInput,
   OrganizationSettingsUpdateInput,
   ImageUploadInput,
   CredentialCreateInput,
@@ -9,27 +8,9 @@ import {
 } from '@compallm/contract/validation'
 import { contractResult } from '../../components/form'
 import type { SettingsState } from './types'
+import { parsePreferencePatch } from './preference-values'
 
-const aliases: Record<string, string> = {
-  'Full name': 'FULL_NAME',
-  'System preference': 'SYSTEM_PREFERENCE',
-  'Pure Light': 'PURE_LIGHT',
-  'Magic Blue': 'MAGIC_BLUE',
-  'Classic Dark': 'CLASSIC_DARK',
-  '⌘ + Enter': 'MODIFIER_ENTER',
-  'Linear Dark': 'LINEAR_DARK',
-  'Linear Light': 'LINEAR_LIGHT',
-  'Follow interface': 'FOLLOW_INTERFACE',
-  '12px': 'PX12',
-  '13px': 'PX13',
-  '14px': 'PX14',
-  '16px': 'PX16',
-  'Always show': 'ALWAYS_SHOW',
-  'Only when badged': 'ONLY_WHEN_BADGED',
-  'Show when badged': 'ONLY_WHEN_BADGED',
-  "Don't show": 'HIDDEN',
-}
-const toWire = (value: unknown) => (typeof value === 'string' ? (aliases[value] ?? value.toUpperCase()) : value)
+const toWire = (value: unknown) => (typeof value === 'string' ? value.toUpperCase() : value)
 const fromWire = (value: unknown, draft: unknown) => (typeof draft === 'string' && toWire(draft) === value ? draft : value)
 
 export function parseSettings(values: Partial<SettingsState>, names: string[]) {
@@ -39,24 +20,17 @@ export function parseSettings(values: Partial<SettingsState>, names: string[]) {
     const keys = names.filter((name) => name.startsWith(root + '.')).map((name) => name.slice(root.length + 1))
     if (!keys.length) continue
     const draft = values[root] as Record<string, unknown>
+    if (root === 'preferences') {
+      const result = parsePreferencePatch(
+        Object.fromEntries(keys.map((key) => [key, draft[key]])) as SettingsState['preferences'],
+      )
+      issues.push(...result.issues)
+      continue
+    }
     const patch = Object.fromEntries(
-      keys.map((key) => [
-        key,
-        root === 'preferences' && key !== 'sidebarOrder'
-          ? toWire(draft[key])
-          : root === 'organization' && key === 'home'
-            ? toWire(draft[key])
-            : draft[key],
-      ]),
+      keys.map((key) => [key, root === 'organization' && key === 'home' ? toWire(draft[key]) : draft[key]]),
     )
-    // Preview syntax language is transient rather than an API preference.
-    if (root === 'preferences') delete patch.codeLanguage
-    const schema =
-      root === 'profile'
-        ? ProfileUpdateInput
-        : root === 'organization'
-          ? OrganizationSettingsUpdateInput
-          : PreferencesUpdateInput
+    const schema = root === 'profile' ? ProfileUpdateInput : OrganizationSettingsUpdateInput
     const result = schema.safeParse(patch)
     if (!result.success) issues.push(...result.error.issues.map((issue) => ({ ...issue, path: [root, ...issue.path] })))
     else

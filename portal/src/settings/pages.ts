@@ -12,7 +12,7 @@ export function createSettingsPages(store: StoreApi<SettingsState>, roleDeleted:
   return {
     role: new RoleController(store),
     search: new SearchController(store),
-    preferences: new PreferencesController(store),
+    preferences: new PreferencesController(),
     profile: new ProfileController(),
     organization: new OrganizationController(),
     members: new MembersController(),

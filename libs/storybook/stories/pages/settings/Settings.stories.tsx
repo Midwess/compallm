@@ -80,6 +80,7 @@ export const SidebarPreferences: Story = {
 }
 export const Messaging: Story = { render: () => <Demo page="messaging" /> }
 export const CodeAppearance: Story = { render: () => <Demo page="code" /> }
+export const PreferenceSaveFailure: Story = { render: () => <Demo page="appearance" failure /> }
 export const Profile: Story = { render: () => <Demo page="profile" /> }
 export const ProfileWithPhoto: Story = {
   render: () => (

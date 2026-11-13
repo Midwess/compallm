@@ -1,18 +1,25 @@
-import type { SettingsPageControllers, SettingsState } from '@compallm/storybook/pages/settings'
-import type { StoreApi } from 'zustand/vanilla'
-import { notify } from '../../notifications/toast'
+import {
+  confirmedPreferenceDraft,
+  parsePreferencePatch,
+  preferenceSelection,
+  type SettingsPageControllers,
+  type SettingsState,
+} from '@compallm/storybook/pages/settings'
+import type { MutationGenqlSelection } from '@compallm/contract/graphql'
+import { graphql } from '../../graphql-client'
 
 type Contract = SettingsPageControllers['preferences']
 export class PreferencesController implements Contract {
-  private readonly store: StoreApi<SettingsState>
-  constructor(store: StoreApi<SettingsState>) {
-    this.store = store
-  }
-  setPreference = (key: string, value: string | boolean) => {
-    if (!['codeTheme', 'codeFont', 'codeFontSize', 'codeLanguage'].includes(key)) {
-      notify.info('Settings changes are not available yet.')
-      return false as const
-    }
-    this.store.setState((state) => ({ preferences: { ...state.preferences, [key]: value } }))
+  updatePreferences = async (patch: SettingsState['preferences'], signal: AbortSignal) => {
+    const parsed = parsePreferencePatch(patch)
+    if (!parsed.input) throw new Error('Invalid preference patch')
+    if (!Object.keys(parsed.input).length) return patch
+    const selection = {
+      userPreferencesUpdate: { __args: { input: parsed.input }, node: preferenceSelection },
+    } satisfies MutationGenqlSelection
+    const {
+      userPreferencesUpdate: { node },
+    } = await graphql(signal).mutation(selection)
+    return confirmedPreferenceDraft(node, patch)
   }
 }

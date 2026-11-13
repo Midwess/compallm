@@ -73,8 +73,8 @@ export const userPreferenceDefaults = {
   theme: {
     mode: 'SYSTEM',
     palettes: {
-      light: 'LIGHT',
-      dark: 'DARK',
+      light: 'BASIC_WHITE',
+      dark: 'BASIC_DARK',
     },
   },
   typography: {

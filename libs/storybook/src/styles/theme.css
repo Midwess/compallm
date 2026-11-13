@@ -1,53 +1,29 @@
-/* Mirrors Penpot Design foundations: Compallm Colors.
-   Import after Tailwind. Changes are translated explicitly from Penpot. */
+@import './themes/basic-dark.css';
+@import './themes/basic-white.css';
+@import './themes/blueberry-dark.css';
+@import './themes/blueberry-white.css';
+@import './themes/marshmallow-dark.css';
+@import './themes/marshmallow-white.css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: oklch(0.140274 0.002225 286.1094);
-  --card: oklch(0.182638 0.002016 286.1984);
-  --inset: oklch(0.2182 0.001928 286.2389);
-  --composer: oklch(0.234364 0.002443 247.9303);
-  --elevated: oklch(0.256955 0.003706 286.136);
-  --popover: oklch(0.280696 0.003927 264.5029);
-  --divider: oklch(0.251719 0.004038 264.4947);
-  --border: oklch(0.313718 0.007234 274.742);
-  --input: oklch(0.405894 0.006771 274.8258);
-  --foreground: oklch(0.921706 0.002909 264.5414);
-  --muted-foreground: oklch(0.683053 0.004516 271.3474);
-  --disabled: oklch(0.49947 0.003394 264.5295);
-  --primary: oklch(0.567376 0.158526 275.2058);
-  --primary-hover: oklch(0.606913 0.14058 276.2809);
-  --ring: oklch(0.744017 0.131403 271.8789);
-  --primary-foreground: oklch(1 0 0);
-  --success: oklch(0.699068 0.176311 146.4523);
-  --warning: oklch(0.759691 0.141662 59.5105);
-  --destructive: oklch(0.653372 0.183481 23.6794);
-  --flow-canvas: oklch(0.158572 0.012684 292.5325);
-  --flow-node: oklch(0.208417 0.023668 291.8512);
-  --shadow-color: oklch(0 0 0);
-  --shadow-highlight: oklch(1 0 0);
-  --overlay: oklch(0 0 0);
-  --on-overlay: oklch(1 0 0);
-  --brand-mark: oklch(0.702233 0.20044 45.096);
-  --brand-mark-foreground: oklch(1 0 0);
   --code-background: oklch(0.248568 0.003737 286.1247);
-  --code-foreground: var(--foreground);
+  --code-foreground: oklch(0.921706 0.002909 264.5414);
   --code-added: oklch(0.283491 0.020832 159.1478);
   --code-removed: oklch(0.288391 0.024422 10.3667);
   --code-added-indicator: oklch(0.587961 0.088643 146.676);
   --code-removed-indicator: oklch(0.548028 0.073417 15.106);
   --code-gutter: oklch(0.478132 0.003431 264.5282);
-  --card-foreground: var(--foreground);
-  --popover-foreground: var(--foreground);
-  --secondary: var(--elevated);
-  --secondary-foreground: var(--foreground);
-  --muted: var(--inset);
-  --accent: var(--elevated);
-  --accent-foreground: var(--foreground);
-  --destructive-foreground: var(--background);
   --font-ui: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-code: 'JetBrains Mono', ui-monospace, monospace;
   --border-hairline: 0.5px;
-  color-scheme: dark;
   --ui-font-scale: 1;
+  --content-link-decoration: none;
+}
+
+:root[data-underline-links='true'] {
+  --content-link-decoration: underline;
 }
 
 :root[data-text-size='smaller'] {
@@ -70,7 +46,20 @@
   --ui-font-scale: 1.25;
 }
 
+[data-code-theme='dark'] {
+  --code-background: oklch(0.248568 0.003737 286.1247);
+  --code-foreground: oklch(0.921706 0.002909 264.5414);
+  --code-added: oklch(0.283491 0.020832 159.1478);
+  --code-removed: oklch(0.288391 0.024422 10.3667);
+  --code-added-indicator: oklch(0.587961 0.088643 146.676);
+  --code-removed-indicator: oklch(0.548028 0.073417 15.106);
+  --code-gutter: oklch(0.478132 0.003431 264.5282);
+}
+
 [data-code-theme='light'] {
+  --code-gutter: oklch(0.48 0 0);
+  --code-added-indicator: oklch(0.48 0.12 146);
+  --code-removed-indicator: oklch(0.48 0.16 20);
   --code-background: oklch(0.970432 0.001325 286.3753);
   --code-foreground: oklch(0.269208 0.007525 274.6762);
   --code-added: oklch(0.95388 0.016954 145.4408);
@@ -80,6 +69,16 @@
 @theme inline {
   --color-*: initial;
   --color-background: var(--background);
+  --color-sidebar: var(--sidebar);
+  --color-toolbar: var(--toolbar);
+  --color-hover: var(--hover);
+  --color-selection: var(--selection);
+  --color-selection-foreground: var(--selection-foreground);
+  --color-menu-selection: var(--menu-selection);
+  --color-menu-hover: var(--menu-hover);
+  --color-tab-selection: var(--tab-selection);
+  --color-text-selection: var(--text-selection);
+  --color-text-selection-foreground: var(--text-selection-foreground);
   --color-surface: var(--card);
   --color-inset: var(--inset);
   --color-composer: var(--composer);
@@ -92,6 +91,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-disabled: var(--disabled);
   --color-primary: var(--primary);
+  --color-control: var(--control);
+  --color-control-foreground: var(--control-foreground);
   --color-primary-hover: var(--primary-hover);
   --color-ring: var(--ring);
   --color-primary-foreground: var(--primary-foreground);
@@ -161,4 +162,10 @@
     0 3px 8px color-mix(in oklab, var(--shadow-color) 12.5%, transparent),
     0 2px 5px color-mix(in oklab, var(--shadow-color) 12.5%, transparent),
     0 1px 1px color-mix(in oklab, var(--shadow-color) 12.5%, transparent);
+}
+
+:root[data-theme^='blueberry-'] ::selection,
+:root[data-theme^='marshmallow-'] ::selection {
+  background-color: var(--text-selection);
+  color: var(--text-selection-foreground);
 }

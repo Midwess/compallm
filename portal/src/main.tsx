@@ -17,10 +17,12 @@ import { userPreferenceController } from './preference/user/controller'
 import { RequestProgress } from './request-progress'
 import { appController } from './app/controller'
 import { AppLoading } from './app-loading'
+import { appearanceController } from './appearance/controller'
 
 onInvalidAuthorization(authController.invalidAuthorization)
 
 function App() {
+  useEffect(() => appearanceController.start(), [])
   useEffect(() => userPreferenceController.start(authController), [])
   return (
     <UrlControllerContext value={urlController}>

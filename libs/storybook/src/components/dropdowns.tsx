@@ -105,7 +105,7 @@ function SelectEntry({ className, children, ...props }: Omit<BaseSelect.Item.Pro
       {...props}
       className={cx(
         `flex min-h-8 w-full cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-xsm outline-none
-        data-highlighted:bg-border data-disabled:cursor-not-allowed data-disabled:opacity-50`,
+        data-highlighted:bg-menu-hover data-disabled:cursor-not-allowed data-disabled:opacity-50`,
         className,
       )}
     >

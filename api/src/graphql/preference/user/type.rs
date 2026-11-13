@@ -17,9 +17,9 @@ impl From<core::values::Weekday> for PreferenceWeekday {
 impl From<core::values::DarkPalette> for PreferenceDarkPalette {
     fn from(value: core::values::DarkPalette) -> Self {
         match value {
-            core::values::DarkPalette::Dark => Self::Dark,
-            core::values::DarkPalette::MagicBlue => Self::MagicBlue,
-            core::values::DarkPalette::ClassicDark => Self::ClassicDark,
+            core::values::DarkPalette::BasicDark => Self::BasicDark,
+            core::values::DarkPalette::BlueberryDark => Self::BlueberryDark,
+            core::values::DarkPalette::MarshmallowDark => Self::MarshmallowDark,
         }
     }
 }
@@ -122,8 +122,9 @@ impl From<core::values::PixelFontSize> for PreferencePixelFontSize {
 impl From<core::values::LightPalette> for PreferenceLightPalette {
     fn from(value: core::values::LightPalette) -> Self {
         match value {
-            core::values::LightPalette::Light => Self::Light,
-            core::values::LightPalette::PureLight => Self::PureLight,
+            core::values::LightPalette::BasicWhite => Self::BasicWhite,
+            core::values::LightPalette::BlueberryWhite => Self::BlueberryWhite,
+            core::values::LightPalette::MarshmallowWhite => Self::MarshmallowWhite,
         }
     }
 }

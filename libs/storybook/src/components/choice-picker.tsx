@@ -103,7 +103,7 @@ rounded-control border border-border bg-menu font-sans text-foreground shadow-me
                   value={option}
                   disabled={option.disabled}
                   className="flex min-h-9 cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xsm
-outline-none data-highlighted:bg-elevated data-disabled:cursor-not-allowed data-disabled:opacity-50"
+outline-none data-highlighted:bg-hover data-disabled:cursor-not-allowed data-disabled:opacity-50"
                 >
                   {option.color ? (
                     <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: option.color }} />

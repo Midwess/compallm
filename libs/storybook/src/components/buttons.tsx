@@ -75,7 +75,8 @@ export function TextLink({ tone = 'secondary', disabled = false, className, href
       aria-disabled={disabled || undefined}
       tabIndex={disabled ? -1 : props.tabIndex}
       className={cx(
-        'text-ui-14 underline-offset-[3px] hover:underline focus-visible:outline-2',
+        'text-ui-14 [text-decoration-line:var(--content-link-decoration)] underline-offset-[3px]',
+        'hover:underline focus-visible:outline-2',
         'focus-visible:outline-offset-2 focus-visible:outline-ring',
         'aria-disabled:cursor-not-allowed aria-disabled:text-disabled',
         tone === 'muted' ? 'text-muted-foreground' : 'text-ring',

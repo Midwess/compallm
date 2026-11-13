@@ -30,16 +30,16 @@ impl From<PreferenceWeekday> for compallm_core::preference::values::Weekday {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, GraphQLEnum, schemars::JsonSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PreferenceDarkPalette {
-    Dark,
-    MagicBlue,
-    ClassicDark,
+    BasicDark,
+    BlueberryDark,
+    MarshmallowDark,
 }
 impl From<PreferenceDarkPalette> for compallm_core::preference::values::DarkPalette {
     fn from(value: PreferenceDarkPalette) -> Self {
         match value {
-            PreferenceDarkPalette::Dark => Self::Dark,
-            PreferenceDarkPalette::MagicBlue => Self::MagicBlue,
-            PreferenceDarkPalette::ClassicDark => Self::ClassicDark,
+            PreferenceDarkPalette::BasicDark => Self::BasicDark,
+            PreferenceDarkPalette::BlueberryDark => Self::BlueberryDark,
+            PreferenceDarkPalette::MarshmallowDark => Self::MarshmallowDark,
         }
     }
 }
@@ -218,14 +218,16 @@ impl From<PreferencePixelFontSize> for compallm_core::preference::values::PixelF
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, GraphQLEnum, schemars::JsonSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PreferenceLightPalette {
-    Light,
-    PureLight,
+    BasicWhite,
+    BlueberryWhite,
+    MarshmallowWhite,
 }
 impl From<PreferenceLightPalette> for compallm_core::preference::values::LightPalette {
     fn from(value: PreferenceLightPalette) -> Self {
         match value {
-            PreferenceLightPalette::Light => Self::Light,
-            PreferenceLightPalette::PureLight => Self::PureLight,
+            PreferenceLightPalette::BasicWhite => Self::BasicWhite,
+            PreferenceLightPalette::BlueberryWhite => Self::BlueberryWhite,
+            PreferenceLightPalette::MarshmallowWhite => Self::MarshmallowWhite,
         }
     }
 }

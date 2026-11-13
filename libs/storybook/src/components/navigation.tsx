@@ -75,7 +75,7 @@ export function NavigationTab({
       className={cx(
         `
   min-h-7 cursor-pointer rounded-full bg-transparent px-2 py-0 text-ui-12 text-muted-foreground
-  aria-pressed:bg-inset aria-pressed:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2
+  aria-pressed:bg-tab-selection aria-pressed:text-selection-foreground focus-visible:outline-2 focus-visible:outline-offset-2
   focus-visible:outline-ring
 `,
         className,
@@ -98,7 +98,7 @@ export function ToolbarAction({
       className={cx(
         `
   inline-flex size-7 flex-none cursor-pointer items-center justify-center rounded-full bg-transparent
-  text-muted-foreground hover:bg-elevated hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2
+  text-muted-foreground hover:bg-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2
   focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50
 `,
         className,

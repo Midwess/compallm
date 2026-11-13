@@ -26,7 +26,8 @@ export function RichMessage({
     <span
       {...props}
       className={cx(
-        `wrap-anywhere [&_a]:text-ring [&_a]:underline [&_a]:underline-offset-2
+        `wrap-anywhere [&_a]:text-ring [&_a]:[text-decoration-line:var(--content-link-decoration)]
+    [&_a]:hover:underline [&_a]:underline-offset-2
     [&_a]:focus-visible:outline-2 [&_a]:focus-visible:outline-ring`,
         className,
       )}

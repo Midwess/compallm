@@ -132,7 +132,7 @@ test('loads authoritative user preferences into its own store and form without s
   const node = merge({}, userPreferenceDefaults, {
     navigation: { home: 'MODELS' },
     calendar: { firstDay: 'FRIDAY' },
-    theme: { mode: 'DARK', palettes: { dark: 'MAGIC_BLUE' } },
+    theme: { mode: 'DARK', palettes: { dark: 'BLUEBERRY_DARK' } },
     codeAppearance: { font: { size: 'PX16' } },
     sidebar: { entries: userPreferenceDefaults.sidebar.entries.map((entry) => ({ ...entry, visibility: 'HIDDEN' })) },
   })
@@ -153,7 +153,7 @@ test('loads authoritative user preferences into its own store and form without s
     const draft = user.store.form.values.draft
     assert.equal(draft.home, 'MODELS')
     assert.equal(draft.firstDay, 'FRIDAY')
-    assert.equal(draft.darkTheme, 'MAGIC_BLUE')
+    assert.equal(draft.darkTheme, 'BLUEBERRY_DARK')
     assert.equal(draft.codeFontSize, 'PX16')
     assert.equal(draft.sidebarMODELS, 'HIDDEN')
     assert.equal(user.store.form.dirty, false)
@@ -234,8 +234,8 @@ test('preference edits use grouped wire values and preserve omitted siblings', (
     firstDay: 'FRIDAY',
     fontSize: 'LARGER',
     theme: 'SYSTEM',
-    lightTheme: 'PURE_LIGHT',
-    darkTheme: 'MAGIC_BLUE',
+    lightTheme: 'MARSHMALLOW_WHITE',
+    darkTheme: 'BLUEBERRY_DARK',
     underlineLinks: true,
     reduceMotion: false,
     pointerCursors: true,
@@ -255,7 +255,7 @@ test('preference edits use grouped wire values and preserve omitted siblings', (
     memberDisplay: { nameFormat: 'USERNAME' },
     calendar: { firstDay: 'FRIDAY' },
     typography: { size: 'LARGER' },
-    theme: { mode: 'SYSTEM', palettes: { light: 'PURE_LIGHT', dark: 'MAGIC_BLUE' } },
+    theme: { mode: 'SYSTEM', palettes: { light: 'MARSHMALLOW_WHITE', dark: 'BLUEBERRY_DARK' } },
     accessibility: { underlineLinks: true, reduceMotion: false, pointerCursors: true },
     messageComposition: { convertEmoticons: false, sendShortcut: 'MODIFIER_ENTER' },
     codeAppearance: { theme: 'SYSTEM', font: { family: 'MONOSPACE', size: 'PX14' } },

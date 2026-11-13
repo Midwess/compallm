@@ -63,7 +63,7 @@ border-(length:--border-hairline) border-input bg-disabled"
       <span
         data-selection-indicator
         aria-hidden="true"
-        className={cx('pointer-events-none absolute size-3.5 rounded-full bg-primary-foreground', switchIndicatorPosition)}
+        className={cx('pointer-events-none absolute size-3.5 rounded-full bg-control-foreground', switchIndicatorPosition)}
       />
     </span>
   )
@@ -136,12 +136,12 @@ export function Checkbox({
         {indeterminate ? (
           <MinusIcon
             aria-hidden="true"
-            className={cx('pointer-events-none relative text-primary-foreground', size === 'compact' ? 'size-2.5' : 'size-3.5')}
+            className={cx('pointer-events-none relative text-control-foreground', size === 'compact' ? 'size-2.5' : 'size-3.5')}
           />
         ) : (
           <CheckIcon
             aria-hidden="true"
-            className={cx('pointer-events-none relative text-primary-foreground', size === 'compact' ? 'size-2.5' : 'size-3.5')}
+            className={cx('pointer-events-none relative text-control-foreground', size === 'compact' ? 'size-2.5' : 'size-3.5')}
           />
         )}
       </span>
@@ -184,7 +184,7 @@ export function Radio({ className, checked, onChange, onBlur, ...props }: Omit<C
       <span
         data-selection-indicator
         aria-hidden="true"
-        className="pointer-events-none relative size-1.5 rounded-full bg-primary-foreground"
+        className="pointer-events-none relative size-1.5 rounded-full bg-control-foreground"
       />
     </span>
   )
@@ -200,8 +200,8 @@ export function ChoiceCard({
       className={cx(
         `
   flex min-h-15.5 w-75 max-w-full cursor-pointer items-center gap-1.5 rounded-lg border
-  border-border bg-inset px-1.5 py-1.5 has-checked:border-primary
-  has-checked:bg-[color-mix(in_srgb,var(--primary)_14%,var(--inset))]
+  border-border bg-inset px-1.5 py-1.5 has-checked:border-control
+  has-checked:bg-[color-mix(in_srgb,var(--control)_14%,var(--inset))]
   has-disabled:cursor-not-allowed has-disabled:opacity-50 [&_strong]:text-xsm [&_strong]:font-medium
   [&>span>span]:block
 `,

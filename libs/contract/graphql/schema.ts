@@ -190,7 +190,7 @@ export type PreferenceBadgeStyle = 'COUNT' | 'DOT'
 
 export type PreferenceCodeTheme = 'FOLLOW_INTERFACE' | 'LINEAR_DARK' | 'LINEAR_LIGHT' | 'SYSTEM'
 
-export type PreferenceDarkPalette = 'CLASSIC_DARK' | 'DARK' | 'MAGIC_BLUE'
+export type PreferenceDarkPalette = 'BASIC_DARK' | 'BLUEBERRY_DARK' | 'MARSHMALLOW_DARK'
 
 export type PreferenceDestination =
   'API_KEYS' | 'CHAT' | 'CONVERSATIONS' | 'MEMBERS' | 'MODELS' | 'NOTEBOOKS' | 'PLUGINS' | 'PROVIDERS' | 'STATS'
@@ -199,7 +199,7 @@ export type PreferenceFontFamily = 'DEFAULT' | 'MONOSPACE'
 
 export type PreferenceKeyCombination = 'ENTER' | 'MODIFIER_ENTER'
 
-export type PreferenceLightPalette = 'LIGHT' | 'PURE_LIGHT'
+export type PreferenceLightPalette = 'BASIC_WHITE' | 'BLUEBERRY_WHITE' | 'MARSHMALLOW_WHITE'
 
 export type PreferenceNamingFormat = 'FULL_NAME' | 'USERNAME'
 
@@ -1288,9 +1288,9 @@ export const enumPreferenceCodeTheme = {
 }
 
 export const enumPreferenceDarkPalette = {
-  CLASSIC_DARK: 'CLASSIC_DARK' as const,
-  DARK: 'DARK' as const,
-  MAGIC_BLUE: 'MAGIC_BLUE' as const,
+  BASIC_DARK: 'BASIC_DARK' as const,
+  BLUEBERRY_DARK: 'BLUEBERRY_DARK' as const,
+  MARSHMALLOW_DARK: 'MARSHMALLOW_DARK' as const,
 }
 
 export const enumPreferenceDestination = {
@@ -1316,8 +1316,9 @@ export const enumPreferenceKeyCombination = {
 }
 
 export const enumPreferenceLightPalette = {
-  LIGHT: 'LIGHT' as const,
-  PURE_LIGHT: 'PURE_LIGHT' as const,
+  BASIC_WHITE: 'BASIC_WHITE' as const,
+  BLUEBERRY_WHITE: 'BLUEBERRY_WHITE' as const,
+  MARSHMALLOW_WHITE: 'MARSHMALLOW_WHITE' as const,
 }
 
 export const enumPreferenceNamingFormat = {

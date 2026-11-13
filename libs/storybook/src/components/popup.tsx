@@ -8,7 +8,7 @@ import { cx } from './shared'
 import { FloatingContainerContext } from '../context'
 
 const itemClass = `flex h-8 w-full cursor-pointer items-center rounded-md px-2 text-xs outline-none
-data-highlighted:bg-border focus-visible:outline-ring data-disabled:cursor-not-allowed data-disabled:opacity-50`
+data-highlighted:bg-menu-hover focus-visible:outline-ring data-disabled:cursor-not-allowed data-disabled:opacity-50`
 const surfaceClass = `max-h-(--available-height) w-48 max-w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain
 rounded-control border border-border bg-menu p-1 font-sans text-foreground shadow-menu outline-none origin-(--transform-origin)`
 
@@ -22,7 +22,7 @@ function Trigger({ className, ...props }: ButtonHTMLAttributes<HTMLButtonElement
       {...props}
       render={<animated.button type="button" />}
       className={cx(
-        `flex size-7 cursor-pointer items-center justify-center rounded-xl text-muted-foreground hover:bg-elevated
+        `flex size-7 cursor-pointer items-center justify-center rounded-xl text-muted-foreground hover:bg-hover
 focus-visible:outline-ring`,
         className,
       )}

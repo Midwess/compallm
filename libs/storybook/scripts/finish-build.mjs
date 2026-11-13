@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { cp, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 
 // Font assets remain cacheable files instead of bloating the compiled stylesheet.
 const output = new URL('../dist/', import.meta.url)
@@ -17,6 +17,9 @@ for (const [url, format, encoded] of fonts) {
 await writeFile(cssPath, css)
 
 await copyFile(new URL('../src/styles/theme.css', import.meta.url), new URL('../dist/theme.css', import.meta.url))
+await cp(new URL('../src/styles/themes/', import.meta.url), new URL('../dist/themes/', import.meta.url), {
+  recursive: true,
+})
 await mkdir(new URL('../dist/licenses/', import.meta.url), { recursive: true })
 await copyFile(
   new URL('../node_modules/@fontsource/inter/LICENSE', import.meta.url),

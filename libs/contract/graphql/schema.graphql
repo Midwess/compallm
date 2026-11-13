@@ -327,9 +327,9 @@ enum PreferenceCodeTheme {
 }
 
 enum PreferenceDarkPalette {
-  CLASSIC_DARK
-  DARK
-  MAGIC_BLUE
+  BASIC_DARK
+  BLUEBERRY_DARK
+  MARSHMALLOW_DARK
 }
 
 enum PreferenceDestination {
@@ -355,8 +355,9 @@ enum PreferenceKeyCombination {
 }
 
 enum PreferenceLightPalette {
-  LIGHT
-  PURE_LIGHT
+  BASIC_WHITE
+  BLUEBERRY_WHITE
+  MARSHMALLOW_WHITE
 }
 
 enum PreferenceNamingFormat {

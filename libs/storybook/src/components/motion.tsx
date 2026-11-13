@@ -299,22 +299,18 @@ export function useSelectionMotion(
     initialized.current = true
     const track = node.parentElement?.querySelector<HTMLElement>('[data-selection-track]')
     const indicator = node.parentElement?.querySelector<HTMLElement>('[data-selection-indicator]')
-    const colors = getComputedStyle(node)
-    const primary = colors.getPropertyValue('--primary').trim()
-    const disabled = colors.getPropertyValue('--disabled').trim()
-    const border = colors.getPropertyValue('--input').trim()
     controls.current = []
-    if (track)
-      controls.current.push(
-        animate(
-          track,
-          {
-            backgroundColor: selected ? primary : kind === 'switch' ? disabled : 'rgba(0,0,0,0)',
-            borderColor: selected ? primary : border,
-          },
-          timing,
-        ),
-      )
+    if (track) {
+      const backgroundColor = selected ? 'var(--control)' : kind === 'switch' ? 'var(--disabled)' : 'transparent'
+      const borderColor = selected ? 'var(--control)' : 'var(--input)'
+      const control = animate(track, { backgroundColor, borderColor }, timing)
+      controls.current.push(control)
+      void control.then(() => {
+        if (!controls.current.includes(control)) return
+        track.style.backgroundColor = backgroundColor
+        track.style.borderColor = borderColor
+      })
+    }
     if (indicator)
       controls.current.push(
         animate(

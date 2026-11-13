@@ -235,10 +235,10 @@ export const OrganizationSettingsUpdateInput = z
   .strict()
 export type OrganizationSettingsUpdateInputFormInput = z.input<typeof OrganizationSettingsUpdateInput>
 export type OrganizationSettingsUpdateInputFormOutput = z.output<typeof OrganizationSettingsUpdateInput>
-export const PreferenceLightPalette = z.enum(['LIGHT', 'PURE_LIGHT'])
+export const PreferenceLightPalette = z.enum(['BASIC_WHITE', 'BLUEBERRY_WHITE', 'MARSHMALLOW_WHITE'])
 export type PreferenceLightPaletteFormInput = z.input<typeof PreferenceLightPalette>
 export type PreferenceLightPaletteFormOutput = z.output<typeof PreferenceLightPalette>
-export const PreferenceDarkPalette = z.enum(['DARK', 'MAGIC_BLUE', 'CLASSIC_DARK'])
+export const PreferenceDarkPalette = z.enum(['BASIC_DARK', 'BLUEBERRY_DARK', 'MARSHMALLOW_DARK'])
 export type PreferenceDarkPaletteFormInput = z.input<typeof PreferenceDarkPalette>
 export type PreferenceDarkPaletteFormOutput = z.output<typeof PreferenceDarkPalette>
 export const PalettePatchInputConstraints = {} as const

@@ -18,7 +18,7 @@ export function Sidebar({
   return (
     <aside
       {...props}
-      className={cx('flex h-full min-h-0 w-61 shrink-0 flex-col overflow-x-hidden bg-background px-3 py-1', className)}
+      className={cx('flex h-full min-h-0 w-61 shrink-0 flex-col overflow-x-hidden bg-sidebar px-3 py-1', className)}
     >
       <nav
         aria-label={navigationLabel}
@@ -80,7 +80,11 @@ export function SidebarHeader({
             {organizations.length ? (
               <Popup.RadioGroup value={selectedOrganizationId} onValueChange={(id: string) => onOrganizationChange?.(id)}>
                 {organizations.map((organization) => (
-                  <Popup.RadioItem key={organization.id} value={organization.id} className="aria-checked:bg-border">
+                  <Popup.RadioItem
+                    key={organization.id}
+                    value={organization.id}
+                    className="aria-checked:bg-menu-selection aria-checked:text-selection-foreground"
+                  >
                     <span className="min-w-0 flex-1 truncate">{organization.name}</span>
                   </Popup.RadioItem>
                 ))}
@@ -187,7 +191,7 @@ export function SidebarFolder({
             `
 flex h-7 cursor-pointer list-none items-center gap-1.5 rounded-xl border-y border-transparent bg-clip-padding
 px-2 pr-7 text-xsm font-normal leading-4 text-muted-foreground
-hover:bg-elevated marker:hidden [&::-webkit-details-marker]:hidden
+hover:bg-hover marker:hidden [&::-webkit-details-marker]:hidden
 `,
             focus,
           )}
@@ -248,8 +252,8 @@ export function SidebarItem({
       className={cx(
         `
 flex h-7 min-w-0 items-center gap-1.5 rounded-xl border-y border-transparent bg-clip-padding px-2
-text-xsm font-medium leading-4.25 text-muted-foreground hover:bg-elevated hover:text-foreground
-aria-[current=page]:bg-elevated aria-[current=page]:text-foreground
+text-xsm font-medium leading-4.25 text-muted-foreground hover:bg-hover hover:text-foreground
+aria-[current=page]:bg-selection aria-[current=page]:text-selection-foreground
 `,
         focus,
         className,

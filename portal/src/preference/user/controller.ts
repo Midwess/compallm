@@ -10,6 +10,7 @@ import {
 } from '@compallm/storybook/pages/settings'
 import { appController } from '../../app/controller'
 import { appearanceController } from '../../appearance/controller'
+import { userPreferenceDefaults } from '@compallm/contract/preference'
 import type { AppController, AppLoadingTask } from '@compallm/storybook'
 import type { OrganizationController } from '../../organization/controller'
 import type { UrlController } from '@compallm/storybook'
@@ -48,6 +49,8 @@ export class UserPreferenceController implements Contract {
     this.applyHomeView()
     this.applySidebarOrder()
     appearanceController.setTextSize(saved.typography.size)
+    appearanceController.setUnderlineLinks(saved.accessibility.underlineLinks)
+    appearanceController.setTheme(saved.theme)
   }
 
   private applyHomeView = () => {
@@ -73,6 +76,8 @@ export class UserPreferenceController implements Contract {
       this.store.form.reset({ draft: initialPreferenceDraft() })
       this.store.setState({ saved: null, status: 'idle' })
       appearanceController.setTextSize('DEFAULT')
+      appearanceController.setUnderlineLinks(false)
+      appearanceController.setTheme(userPreferenceDefaults.theme)
       if (next) void this.load()
     }
     const unsubscribe = auth.store.subscribe(synchronize)
@@ -157,6 +162,8 @@ export class UserPreferenceController implements Contract {
     if (categories.includes('navigation')) this.applyHomeView()
     if (categories.includes('sidebar')) this.applySidebarOrder()
     if (categories.includes('typography')) appearanceController.setTextSize(confirmed.typography.size)
+    if (categories.includes('accessibility')) appearanceController.setUnderlineLinks(confirmed.accessibility.underlineLinks)
+    if (categories.includes('theme')) appearanceController.setTheme(confirmed.theme)
     return confirmedPreferenceDraft(confirmed, patch)
   }
 }

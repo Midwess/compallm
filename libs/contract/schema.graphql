@@ -310,6 +310,7 @@ type Role {
   name: String!
   description: String!
   color: String!
+  owner: Boolean!
 }
 
 type RoleConnection {

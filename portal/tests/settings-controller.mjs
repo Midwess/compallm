@@ -360,3 +360,41 @@ test('assigned role deletion retains the dialog and role', async () => {
     globalThis.fetch = original
   }
 })
+
+test('owner role metadata is read-only', async () => {
+  const original = globalThis.fetch
+  const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
+  let writes = 0
+  globalThis.fetch = async (_input, init) => {
+    const { query } = JSON.parse(init.body)
+    if (query.includes('roleUpdate')) {
+      writes++
+      return Response.json({ data: { roleUpdate: { node: { id: '9' } } } })
+    }
+    if (query.includes('organizationPolicyActions'))
+      return Response.json({ data: { organizationPolicyActions: { edges: [] } } })
+    if (query.includes('role('))
+      return Response.json({
+        data: {
+          role: { node: { id: '9', name: 'Owner', description: 'Owner role', color: '#c06040', cedarSource: '', owner: true } },
+        },
+      })
+    return Response.json({ data: { roles: { edges: [] }, groups: { edges: [] } } })
+  }
+  try {
+    const stop = controller.start()
+    controller.setPage('role', '9')
+    await until(controller.role.store, (state) => state.draft?.id === '9')
+    assert.equal(controller.role.store.getState().draft.builtin, true)
+    controller.role.updateRole({ name: 'Changed', description: 'Changed' })
+    controller.role.commitRoleField('name')
+    controller.role.setPolicySource('permit(principal, action, resource);')
+    controller.role.setPolicyActions(['role.read'], true)
+    assert.equal(controller.role.store.getState().draft.name, 'Owner')
+    assert.equal(controller.role.store.getState().draft.source, '')
+    assert.equal(writes, 0)
+    stop()
+  } finally {
+    globalThis.fetch = original
+  }
+})

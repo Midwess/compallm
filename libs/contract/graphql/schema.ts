@@ -184,6 +184,7 @@ export interface Role {
   description: Scalars['String']
   id: Scalars['ID']
   name: Scalars['String']
+  owner: Scalars['Boolean']
   __typename: 'Role'
 }
 
@@ -535,6 +536,7 @@ export interface RoleGenqlSelection {
   description?: boolean | number
   id?: boolean | number
   name?: boolean | number
+  owner?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }

@@ -3906,6 +3906,34 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
             .is_none()
     );
 
+    let mut owner = Role::new(organization.id, "Owner", "", "").await.unwrap();
+    owner.org_owner = true;
+    db.scope(repository.create_roles(vec![owner.clone()]))
+        .await
+        .unwrap();
+    let owner_detail = graphql_operation(
+        &router,
+        "query($id:ID!){role(id:$id){node{id owner}}}",
+        serde_json::json!({"id": owner.id.to_string()}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    let body = graphql_body(owner_detail).await;
+    assert!(body["errors"].is_null(), "{body}");
+    assert_eq!(body["data"]["role"]["node"]["owner"], true);
+    let denied = graphql_operation(
+        &router,
+        delete_role,
+        serde_json::json!({"id": owner.id.to_string()}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    assert_graphql_denial(denied, 403).await;
+
     type Organizations = <OrganizationSchema as sea_orm::ModelTrait>::Entity;
     for org in [organization, foreign] {
         Organizations::delete_by_id(i64::try_from(org.id).unwrap())

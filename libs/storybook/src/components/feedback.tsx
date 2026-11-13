@@ -1,5 +1,6 @@
 import { animated, LoadingMotion, overlay } from './motion'
-import { cloneElement, useEffect, useId, useRef, useState, type HTMLAttributes, type ReactElement, type ReactNode } from 'react'
+import { useId, type HTMLAttributes, type ReactElement, type ReactNode } from 'react'
+import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cx } from './shared'
 import { RichMessage } from './rich-message'
 import { Button } from './buttons'
@@ -125,117 +126,78 @@ export function KeyboardKey({ children }: { children: ReactNode }) {
     </kbd>
   )
 }
-export function Tooltip({
-  children,
-  content,
-}: {
-  children: ReactElement<{ 'aria-describedby'?: string }>
-  content: ReactNode
-}) {
-  const id = useId()
-  const [dismissed, setDismissed] = useState(false)
-  const [hovered, setHovered] = useState(false)
-  const [focused, setFocused] = useState(false)
+function TooltipPopup({ content }: { content: ReactNode }) {
   return (
-    <span
-      className="group/tooltip relative inline-flex"
-      onPointerEnter={() => {
-        setDismissed(false)
-        setHovered(true)
-      }}
-      onPointerLeave={() => setHovered(false)}
-      onFocus={() => {
-        setDismissed(false)
-        setFocused(true)
-      }}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false)
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') setDismissed(true)
-      }}
-    >
-      {cloneElement(children, { 'aria-describedby': [children.props['aria-describedby'], id].filter(Boolean).join(' ') })}
-      {!dismissed && (hovered || focused) ? (
-        <overlay.span
-          id={id}
-          role="tooltip"
-          className={`
-  absolute bottom-[calc(100%+(--spacing(1)))] left-1/2 z-30 -translate-x-1/2
-  rounded-md bg-menu p-1 text-[12px] whitespace-nowrap text-text
-`}
+    <BaseTooltip.Portal>
+      <BaseTooltip.Positioner sideOffset={6} className="z-50">
+        <BaseTooltip.Popup
+          className="max-w-xs rounded-full bg-[#000] px-3 py-1.5 text-center text-xs leading-4
+text-on-primary shadow-lg"
         >
+          <BaseTooltip.Arrow
+            className="absolute flex data-[side=top]:-bottom-1 data-[side=bottom]:-top-1
+ data-[side=left]:-right-1 data-[side=right]:-left-1"
+          >
+            <span className="block size-2 rotate-45 bg-[#000]" />
+          </BaseTooltip.Arrow>
           {content}
-        </overlay.span>
-      ) : null}
-    </span>
+        </BaseTooltip.Popup>
+      </BaseTooltip.Positioner>
+    </BaseTooltip.Portal>
+  )
+}
+
+export function Tooltip({ children, content }: { children: ReactElement; content: ReactNode }) {
+  return (
+    <BaseTooltip.Provider>
+      <BaseTooltip.Root>
+        <BaseTooltip.Trigger render={children} />
+        <TooltipPopup content={content} />
+      </BaseTooltip.Root>
+    </BaseTooltip.Provider>
+  )
+}
+
+export function DisabledTooltip({
+  disabled,
+  reason,
+  allowInteraction = false,
+  children,
+}: {
+  disabled: boolean
+  reason: string
+  allowInteraction?: boolean
+  children: ReactNode
+}) {
+  if (!disabled) return children
+  return (
+    <BaseTooltip.Provider>
+      <BaseTooltip.Root>
+        <BaseTooltip.Trigger
+          render={<span tabIndex={0} aria-label={reason} />}
+          className={allowInteraction ? 'inline-flex w-full max-w-full' : 'inline-flex max-w-full **:pointer-events-none'}
+        >
+          {children}
+        </BaseTooltip.Trigger>
+        <TooltipPopup content={reason} />
+      </BaseTooltip.Root>
+    </BaseTooltip.Provider>
   )
 }
 export function FieldHelp({ label, children }: { label: string; children: ReactNode }) {
-  const id = useId()
-  const trigger = useRef<HTMLButtonElement>(null)
-  const tooltip = useRef<HTMLSpanElement>(null)
-  useEffect(() => {
-    const dismiss = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || !tooltip.current?.matches(':popover-open')) return
-      event.preventDefault()
-      event.stopPropagation()
-      tooltip.current.hidePopover()
-    }
-    document.addEventListener('keydown', dismiss, true)
-    return () => document.removeEventListener('keydown', dismiss, true)
-  }, [])
-  function show() {
-    const element = tooltip.current
-    const button = trigger.current
-    if (!element || !button || element.matches(':popover-open')) return
-    element.showPopover()
-    const bounds = button.getBoundingClientRect()
-    const width = element.offsetWidth
-    const height = element.offsetHeight
-    element.style.left = `${Math.max(8, Math.min(bounds.left, window.innerWidth - width - 8))}px`
-    const top = bounds.bottom + height <= window.innerHeight - 8 ? bounds.bottom : Math.max(8, bounds.top - height)
-    element.style.top = `${top}px`
-  }
-  function hide() {
-    tooltip.current?.hidePopover()
-  }
   return (
-    <span
-      className="inline-flex align-middle"
-      onPointerEnter={show}
-      onPointerLeave={() => {
-        if (document.activeElement !== trigger.current) hide()
-      }}
-      onBlur={hide}
-    >
+    <Tooltip content={children}>
       <animated.button
-        ref={trigger}
         type="button"
         aria-label={label}
-        aria-describedby={id}
         className={`
 inline-flex size-5 shrink-0 cursor-help items-center justify-center rounded text-muted hover:text-text
 focus-visible:text-text focus-visible:outline-1 focus-visible:outline-muted
 `}
-        onFocus={show}
-        onClick={show}
       >
         <QuestionIcon className="size-4" aria-hidden="true" />
       </animated.button>
-      <overlay.span
-        ref={tooltip}
-        id={id}
-        role="tooltip"
-        popover="manual"
-        className={`
-fixed m-0 w-2xs max-w-[calc(100vw-1rem)] overflow-visible border-0 bg-transparent pt-1 text-left
-text-xs leading-4 font-normal text-text
-`}
-      >
-        <span className="block rounded-lg border border-border bg-elevated p-3">{children}</span>
-      </overlay.span>
-    </span>
+    </Tooltip>
   )
 }
 export function EmptyState({ title, children, action }: { title: ReactNode; children?: ReactNode; action?: ReactNode }) {

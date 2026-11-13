@@ -9,6 +9,9 @@ import { SectionSurface } from '../../../components/surfaces'
 import { Table } from '../../../components/table'
 import { useSettings } from '../controller'
 import { useRole, useRoleController } from './controller'
+import { DisabledTooltip } from '../../../components/feedback'
+
+const ownerExplanation = 'The Owner role cannot be edited or deleted.'
 import type { PolicyProjection, SettingsPolicyAction } from '../types'
 
 const defaultExpanded = ['Models', 'Providers', 'Usage & limits']
@@ -73,11 +76,13 @@ function PermissionRow({
   action,
   statements,
   disabled,
+  owner,
 }: {
   id: string
   action: SettingsPolicyAction
   statements: PolicyProjection[]
   disabled: boolean
+  owner: boolean
 }) {
   const c = useRoleController()
   const disabledPolicies = useRole((state) => state.disabledPolicies?.[action.id])
@@ -116,12 +121,14 @@ function PermissionRow({
       </Table.Cell>
       <Table.Cell className="px-1 py-0 text-xs text-muted">{action.description}</Table.Cell>
       <Table.Cell className="px-2 py-0">
-        <Switch
-          aria-label={action.label}
-          checked={permits.length > 0}
-          disabled={disabled || advanced}
-          onChange={() => c.togglePolicyAction(action.id)}
-        />
+        <DisabledTooltip disabled={owner} reason={ownerExplanation}>
+          <Switch
+            aria-label={action.label}
+            checked={permits.length > 0}
+            disabled={disabled || advanced}
+            onChange={() => c.togglePolicyAction(action.id)}
+          />
+        </DisabledTooltip>
       </Table.Cell>
     </Table.Row>
   )
@@ -155,7 +162,7 @@ export function PolicyTable() {
     )
   })
   const filtering = Boolean(normalized) || Object.values(filters).some((v) => v && v !== 'all')
-  const disabled = busy || draft.parsing || draft.diagnostics.length > 0
+  const disabled = draft.builtin || busy || draft.parsing || draft.diagnostics.length > 0
   const selectedCount = actions.filter((a) => (projection.get(a.id) ?? []).some((entry) => entry.effect !== 'forbid')).length
   return (
     <SectionSurface className="flex min-w-0 flex-col overflow-hidden p-0">
@@ -231,17 +238,19 @@ export function PolicyTable() {
                   open={open}
                   onOpenChange={(next) => setDisclosure((current) => ({ ...current, [category]: next }))}
                   action={
-                    <Switch
-                      aria-label={'Allow ' + category + ' policies'}
-                      checked={allEditableSelected}
-                      disabled={disabled || editable.length === 0}
-                      onChange={() =>
-                        c.setPolicyActions(
-                          editable.map((a) => a.id),
-                          !allEditableSelected,
-                        )
-                      }
-                    />
+                    <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
+                      <Switch
+                        aria-label={'Allow ' + category + ' policies'}
+                        checked={allEditableSelected}
+                        disabled={disabled || editable.length === 0}
+                        onChange={() =>
+                          c.setPolicyActions(
+                            editable.map((a) => a.id),
+                            !allEditableSelected,
+                          )
+                        }
+                      />
+                    </DisabledTooltip>
                   }
                 >
                   {matched.map((action) => (
@@ -251,6 +260,7 @@ export function PolicyTable() {
                       action={action}
                       statements={projection.get(action.id) ?? []}
                       disabled={disabled}
+                      owner={draft.builtin}
                     />
                   ))}
                 </Table.Category>

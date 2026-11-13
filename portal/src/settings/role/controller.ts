@@ -38,7 +38,10 @@ export class RoleController implements Contract {
     this.settings.setState({ policyActions: [] })
     try {
       const roleSelection = {
-        role: { __args: { id }, node: { id: true, name: true, description: true, color: true, cedarSource: true } },
+        role: {
+          __args: { id },
+          node: { id: true, name: true, description: true, color: true, cedarSource: true, owner: true },
+        },
       } satisfies QueryGenqlSelection
       const catalogSelection = {
         organizationPolicyActions: {
@@ -104,7 +107,7 @@ export class RoleController implements Contract {
   setQuery = (query: string) => this.store.setState({ query })
   setFilter = (key: string, value: string) => this.store.setState((s) => ({ filters: { ...s.filters, [key]: value } }))
   openRole = (
-    role: { id: string; name: string; description: string; source: string | null },
+    role: { id: string; name: string; description: string; source: string | null; owner?: boolean },
     policy?: Pick<RoleDraft, 'projection' | 'diagnostics'>,
   ) => {
     this.savedMetadata = { id: role.id, name: role.name, description: role.description }
@@ -117,7 +120,7 @@ export class RoleController implements Contract {
         projection: policy?.projection ?? [],
         diagnostics: policy?.diagnostics ?? (role.source === null ? ['Policy source is unavailable.'] : []),
         parsing: false,
-        builtin: false,
+        builtin: role.owner ?? false,
       },
     })
   }
@@ -151,12 +154,14 @@ export class RoleController implements Contract {
     throw new ApiError(message, 400, 'BAD_USER_INPUT')
   }
   updateRole = (value: Partial<Pick<RoleDraft, 'name' | 'description'>>) => {
-    this.store.setState((state) => ({ draft: state.draft ? { ...state.draft, ...value } : null }))
+    this.store.setState((state) => ({
+      draft: state.draft && !state.draft.builtin ? { ...state.draft, ...value } : state.draft,
+    }))
   }
   commitRoleField = (field: 'name' | 'description') => {
     const draft = this.store.getState().draft
     const request = this.request
-    if (!draft?.id || !request || !this.savedMetadata || this.savedMetadata.id !== draft.id) return
+    if (!draft?.id || draft.builtin || !request || !this.savedMetadata || this.savedMetadata.id !== draft.id) return
     const id = draft.id
     const value = draft[field]
     this.writes = this.writes.then(async () => {
@@ -234,7 +239,7 @@ export class RoleController implements Contract {
   }
   setPolicySource = (source: string) => {
     const draft = this.store.getState().draft
-    if (!draft?.id) return
+    if (!draft?.id || draft.builtin) return
     const id = draft.id
     const revision = ++this.parseRevision
     clearTimeout(this.parseTimer)
@@ -249,7 +254,7 @@ export class RoleController implements Contract {
   commitPolicySource = () => {
     const draft = this.store.getState().draft
     const request = this.request
-    if (!draft?.id || !request || this.savedPolicy?.id !== draft.id) return
+    if (!draft?.id || draft.builtin || !request || this.savedPolicy?.id !== draft.id) return
     const id = draft.id
     const source = draft.source
     clearTimeout(this.parseTimer)
@@ -284,7 +289,7 @@ export class RoleController implements Contract {
   }
   setPolicyActions = (actions: string[], enabled: boolean) => {
     const { draft, busy } = this.store.getState()
-    if (!draft?.id || !this.request || busy || draft.parsing || draft.diagnostics.length) return
+    if (!draft?.id || draft.builtin || !this.request || busy || draft.parsing || draft.diagnostics.length) return
     const id = draft.id
     const original = draft.source
     const request = this.request
@@ -348,7 +353,7 @@ export class RoleController implements Contract {
   }
   formatPolicy = () => {
     const draft = this.store.getState().draft
-    if (!draft || draft.parsing || draft.diagnostics.length) return
+    if (!draft || draft.builtin || draft.parsing || draft.diagnostics.length) return
     void import('./cedar')
       .then(({ formatPolicySource }) => formatPolicySource(draft.source))
       .then((source) => {

@@ -20,6 +20,8 @@ authoritative and can be edited directly.
   interactions consistent in timing, easing, and movement. Adjust shared presets centrally; do not introduce component-specific
   timing, CSS animations, CSS transitions, or direct browser animation calls. Respect reduced motion and preserve keyboard,
   focus, and native control behavior, including during interrupted transitions.
+- Disabled controls must remain hoverable and expose a tooltip explaining why they are disabled; provide a keyboard-accessible
+  explanation.
 - Add meaningful variants for loading, empty, disabled, and error states where relevant. Keep semantic HTML, keyboard focus, and
   responsive behavior.
 - Use Tailwind’s default spacing scale in half steps for dimensions, spacing, gaps, and offsets: `0.5` is 2px at the default

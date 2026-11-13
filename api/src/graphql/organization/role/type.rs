@@ -3,16 +3,19 @@ pub struct Role {
     pub name: String,
     pub description: String,
     pub color: String,
+    pub owner: bool,
 }
 
 impl From<compallm_core::organization::Role> for Role {
     fn from(role: compallm_core::organization::Role) -> Self {
         let color = role.color();
+        let owner = role.org_owner();
         Self {
             id: juniper::ID::new(role.id.to_string()),
             name: role.name,
             description: role.description,
             color,
+            owner,
         }
     }
 }
@@ -43,7 +46,7 @@ impl Role {
             name: self.name.clone(),
             description: self.description.clone(),
             cedar_source: String::new(),
-            org_owner: false,
+            org_owner: self.owner,
         };
         role.for_action(Action::RolePolicyRead)
             .check_permission(&permission)
@@ -73,5 +76,8 @@ impl Role {
     }
     fn color(&self) -> &str {
         &self.color
+    }
+    fn owner(&self) -> bool {
+        self.owner
     }
 }

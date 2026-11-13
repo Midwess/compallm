@@ -8,6 +8,9 @@ import { SettingsSectionTitle } from '../../../components/settings'
 import { useSettings, useSettingsController, useCodeAppearance } from '../controller'
 import { useRole, useRoleController } from './controller'
 import { PolicyTable } from './policy-table'
+import { DisabledTooltip } from '../../../components/feedback'
+
+const ownerExplanation = 'The Owner role cannot be edited or deleted.'
 import { SettingsContent, Heading, Section, Rows, Row, Empty } from '../shared'
 
 function EditingMode() {
@@ -45,7 +48,7 @@ rounded-full bg-elevated shadow-control"
   )
 }
 
-function CedarEditor({ locked }: { locked: boolean }) {
+function CedarEditor({ locked, owner }: { locked: boolean; owner: boolean }) {
   const c = useRoleController(),
     shared = useSettingsController(),
     draft = useRole((s) => s.draft)
@@ -55,25 +58,29 @@ function CedarEditor({ locked }: { locked: boolean }) {
   return (
     <SectionSurface className="flex min-w-0 w-full flex-col p-2">
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 px-2 pb-2 text-xs">
-        <Button variant="ghost" className="h-6 px-2 text-xs" disabled={invalid || locked} onClick={() => c.formatPolicy()}>
-          Format
-        </Button>
+        <DisabledTooltip disabled={owner} reason={ownerExplanation}>
+          <Button variant="ghost" className="h-6 px-2 text-xs" disabled={invalid || locked} onClick={() => c.formatPolicy()}>
+            Format
+          </Button>
+        </DisabledTooltip>
         <Button variant="ghost" className="h-6 px-2 text-xs" onClick={() => shared.pages.dialogs.copy(draft.source)}>
           Copy
         </Button>
         <span className="rounded-lg bg-elevated px-2.5 py-1 font-sans text-xs leading-4 text-text">Cedar</span>
       </div>
-      <CodeEditor
-        {...appearance}
-        label="Cedar policy source"
-        language="cedar"
-        showToolbar={false}
-        invalid={draft.diagnostics.length > 0}
-        readOnly={locked}
-        value={draft.source}
-        onValueChange={(value) => c.setPolicySource(value)}
-        onCommit={() => c.commitPolicySource?.()}
-      />
+      <DisabledTooltip disabled={owner} reason={ownerExplanation} allowInteraction>
+        <CodeEditor
+          {...appearance}
+          label="Cedar policy source"
+          language="cedar"
+          showToolbar={false}
+          invalid={draft.diagnostics.length > 0}
+          readOnly={locked}
+          value={draft.source}
+          onValueChange={(value) => c.setPolicySource(value)}
+          onCommit={() => c.commitPolicySource?.()}
+        />
+      </DisabledTooltip>
     </SectionSurface>
   )
 }
@@ -102,26 +109,30 @@ export function RoleEditorSettings() {
         <Section title="Role details" className="shrink-0">
           <Rows className="**:[[role=separator]]:bg-border">
             <Row label={<label htmlFor="role-name">Name</label>}>
-              <TextField
-                id="role-name"
-                className="w-xl max-w-full border-border max-lg:w-sm"
-                placeholder="Role name…"
-                value={draft.name}
-                disabled={busy}
-                onChange={(event) => c.updateRole({ name: event.target.value })}
-                onCommit={() => c.commitRoleField?.('name')}
-              />
+              <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
+                <TextField
+                  id="role-name"
+                  className="w-xl max-w-full border-border max-lg:w-sm"
+                  placeholder="Role name…"
+                  value={draft.name}
+                  disabled={busy || draft.builtin}
+                  onChange={(event) => c.updateRole({ name: event.target.value })}
+                  onCommit={() => c.commitRoleField?.('name')}
+                />
+              </DisabledTooltip>
             </Row>
             <Row label={<label htmlFor="role-description">Description</label>} last>
-              <TextField
-                id="role-description"
-                className="w-xl max-w-full border-border max-lg:w-sm"
-                placeholder="Describe this role…"
-                value={draft.description}
-                disabled={busy}
-                onChange={(event) => c.updateRole({ description: event.target.value })}
-                onCommit={() => c.commitRoleField?.('description')}
-              />
+              <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
+                <TextField
+                  id="role-description"
+                  className="w-xl max-w-full border-border max-lg:w-sm"
+                  placeholder="Describe this role…"
+                  value={draft.description}
+                  disabled={busy || draft.builtin}
+                  onChange={(event) => c.updateRole({ description: event.target.value })}
+                  onCommit={() => c.commitRoleField?.('description')}
+                />
+              </DisabledTooltip>
             </Row>
           </Rows>
         </Section>
@@ -169,7 +180,7 @@ export function RoleEditorSettings() {
               }}
               className="col-start-1 row-start-1 min-w-0 w-full"
             >
-              <CedarEditor locked={busy} />
+              <CedarEditor locked={busy || draft.builtin} owner={draft.builtin} />
             </motion.div>
           </div>
           <div aria-live="polite" className="mt-2 shrink-0 px-4 text-xs leading-4.5 text-muted">
@@ -199,18 +210,20 @@ export function RoleEditorSettings() {
             </Button>
           </div>
         ) : null}
-        {!draft.builtin && draft.id ? (
+        {draft.id ? (
           <Section title="Danger" className="shrink-0">
             <Rows>
               <Row label="Delete role" last>
-                <Button
-                  variant="ghost"
-                  className="text-error"
-                  disabled={busy}
-                  onClick={() => shared.pages.dialogs.openDialog('delete-role', draft.id!)}
-                >
-                  Delete role
-                </Button>
+                <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
+                  <Button
+                    variant="ghost"
+                    className="text-error"
+                    disabled={busy || draft.builtin}
+                    onClick={() => shared.pages.dialogs.openDialog('delete-role', draft.id!)}
+                  >
+                    Delete role
+                  </Button>
+                </DisabledTooltip>
               </Row>
             </Rows>
           </Section>

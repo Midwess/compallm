@@ -24,7 +24,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::api_keys::Entity",
         from = "(Column::OrganizationId, Column::UserId, Column::ApiKeyId)",
-        to = "(super::api_keys::Column::OrganizationId, super::api_keys::Column::UserId, super::api_keys::Column::Id, super::api_keys::Column::UserId, super::api_keys::Column::OrganizationId, super::api_keys::Column::Id, super::api_keys::Column::UserId, super::api_keys::Column::OrganizationId)",
+        to = "(super::api_keys::Column::Id, super::api_keys::Column::OrganizationId, super::api_keys::Column::UserId, super::api_keys::Column::Id, super::api_keys::Column::OrganizationId, super::api_keys::Column::UserId, super::api_keys::Column::Id, super::api_keys::Column::OrganizationId, super::api_keys::Column::UserId)",
         on_update = "NoAction",
         on_delete = "Restrict"
     )]
@@ -32,7 +32,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::api_keys::Entity",
         from = "(Column::OrganizationId, Column::ApiKeyId)",
-        to = "(super::api_keys::Column::OrganizationId, super::api_keys::Column::Id, super::api_keys::Column::OrganizationId)",
+        to = "(super::api_keys::Column::Id, super::api_keys::Column::OrganizationId, super::api_keys::Column::Id, super::api_keys::Column::OrganizationId)",
         on_update = "NoAction",
         on_delete = "Restrict"
     )]
@@ -40,7 +40,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::models::Entity",
         from = "(Column::OrganizationId, Column::ModelId)",
-        to = "(super::models::Column::OrganizationId, super::models::Column::Id, super::models::Column::OrganizationId, super::models::Column::Id)",
+        to = "(super::models::Column::Id, super::models::Column::OrganizationId, super::models::Column::Id, super::models::Column::OrganizationId)",
         on_update = "NoAction",
         on_delete = "Restrict"
     )]
@@ -61,12 +61,12 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Organizations,
-    #[sea_orm(has_many = "super::provider_token_usage::Entity")]
-    ProviderTokenUsage,
-    #[sea_orm(has_many = "super::provider_image_usage::Entity")]
-    ProviderImageUsage,
     #[sea_orm(has_many = "super::provider_audio_usage::Entity")]
     ProviderAudioUsage,
+    #[sea_orm(has_many = "super::provider_image_usage::Entity")]
+    ProviderImageUsage,
+    #[sea_orm(has_many = "super::provider_token_usage::Entity")]
+    ProviderTokenUsage,
     #[sea_orm(has_many = "super::provider_video_usage::Entity")]
     ProviderVideoUsage,
     #[sea_orm(
@@ -97,21 +97,24 @@ impl Related<super::organizations::Entity> for Entity {
     }
 }
 
-impl Related<super::provider_token_usage::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ProviderTokenUsage.def()
-    }
-}
-impl Related<super::provider_image_usage::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ProviderImageUsage.def()
-    }
-}
 impl Related<super::provider_audio_usage::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ProviderAudioUsage.def()
     }
 }
+
+impl Related<super::provider_image_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderImageUsage.def()
+    }
+}
+
+impl Related<super::provider_token_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderTokenUsage.def()
+    }
+}
+
 impl Related<super::provider_video_usage::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ProviderVideoUsage.def()

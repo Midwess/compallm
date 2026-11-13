@@ -23,3 +23,5 @@ pub use context::GraphqlContext;
 pub use runtime::{ApplicationSchema, Query, build_schema};
 
 pub(crate) use runtime::validation_schema;
+
+pub mod preference;

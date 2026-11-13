@@ -20,7 +20,6 @@ pub struct Model {
         unique_key = "provider_models_org_provider_name_service_protocol_unique"
     )]
     pub name: String,
-    pub enabled: bool,
     #[sea_orm(
         column_type = "Text",
         unique_key = "provider_models_org_provider_name_service_protocol_unique"
@@ -31,6 +30,7 @@ pub struct Model {
         unique_key = "provider_models_org_provider_name_service_protocol_unique"
     )]
     pub protocol: String,
+    pub enabled: bool,
     #[sea_orm(column_type = "JsonBinary")]
     pub connection: Json,
     #[sea_orm(column_type = "JsonBinary")]
@@ -49,18 +49,18 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::model_router::Entity")]
     ModelRouter,
-    #[sea_orm(has_many = "super::provider_token_usage::Entity")]
-    ProviderTokenUsage,
-    #[sea_orm(has_many = "super::provider_image_usage::Entity")]
-    ProviderImageUsage,
     #[sea_orm(has_many = "super::provider_audio_usage::Entity")]
     ProviderAudioUsage,
+    #[sea_orm(has_many = "super::provider_image_usage::Entity")]
+    ProviderImageUsage,
+    #[sea_orm(has_many = "super::provider_token_usage::Entity")]
+    ProviderTokenUsage,
     #[sea_orm(has_many = "super::provider_video_usage::Entity")]
     ProviderVideoUsage,
     #[sea_orm(
         belongs_to = "super::providers::Entity",
         from = "(Column::OrganizationId, Column::ProviderId)",
-        to = "(super::providers::Column::OrganizationId, super::providers::Column::Id)",
+        to = "(super::providers::Column::Id, super::providers::Column::OrganizationId, super::providers::Column::Id, super::providers::Column::OrganizationId)",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
@@ -73,21 +73,24 @@ impl Related<super::model_router::Entity> for Entity {
     }
 }
 
-impl Related<super::provider_token_usage::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ProviderTokenUsage.def()
-    }
-}
-impl Related<super::provider_image_usage::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ProviderImageUsage.def()
-    }
-}
 impl Related<super::provider_audio_usage::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ProviderAudioUsage.def()
     }
 }
+
+impl Related<super::provider_image_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderImageUsage.def()
+    }
+}
+
+impl Related<super::provider_token_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderTokenUsage.def()
+    }
+}
+
 impl Related<super::provider_video_usage::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ProviderVideoUsage.def()

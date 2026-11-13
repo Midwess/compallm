@@ -30,6 +30,7 @@ pub struct AuthService {
     sessions: &'static Box<dyn SessionRepository>,
     dictionaries: &'static Box<dyn DictionaryRepository>,
     registration: &'static RegistrationService,
+    preferences: &'static crate::preference::UserPreferenceService,
     jwt_secret: String,
     lifetimes: TokenLifetimes,
     email: Option<&'static Box<dyn EmailService>>,
@@ -92,6 +93,7 @@ impl AuthService {
         sessions: &'static Box<dyn SessionRepository>,
         dictionaries: &'static Box<dyn DictionaryRepository>,
         registration: &'static RegistrationService,
+        preferences: &'static crate::preference::UserPreferenceService,
         jwt_secret: String,
         lifetimes: TokenLifetimes,
         email: Option<&'static Box<dyn EmailService>>,
@@ -103,6 +105,7 @@ impl AuthService {
             sessions,
             dictionaries,
             registration,
+            preferences,
             jwt_secret,
             lifetimes,
             email,
@@ -193,6 +196,7 @@ impl AuthService {
         let dictionary = self.latest_dictionary().await?;
         crate::transaction!(DbContext::current()?, {
             let user = self.registration.register(&claims.email).await?;
+            self.preferences.create_defaults(user.id).await?;
             if user.status != UserStatus::Active {
                 return Err(AuthError::UserDisabled);
             }

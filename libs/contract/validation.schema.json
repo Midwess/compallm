@@ -3,6 +3,9 @@
   "title": "Inputs",
   "type": "object",
   "properties": {
+    "user_preferences_patch": {
+      "$ref": "#/$defs/UserPreferencesPatchInput"
+    },
     "credential_create": {
       "$ref": "#/$defs/CredentialCreateInput"
     },
@@ -53,6 +56,7 @@
     }
   },
   "required": [
+    "user_preferences_patch",
     "credential_create",
     "spending_limit",
     "reporting_schedule",
@@ -71,6 +75,530 @@
     "provider_patch"
   ],
   "$defs": {
+    "UserPreferencesPatchInput": {
+      "description": "Partial personal preferences. Omitted fields are preserved; explicit null is rejected.",
+      "type": "object",
+      "properties": {
+        "navigation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NavigationPatchInput"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        },
+        "sidebar": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SidebarPatchInput"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        },
+        "memberDisplay": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MemberDisplayPatchInput"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        },
+        "calendar": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CalendarPatchInput"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        },
+        "theme": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ThemePatchInput"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        },
+        "typography": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TypographyPatchInput"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        },
+        "accessibility": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AccessibilityPatchInput"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        },
+        "messageComposition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MessageCompositionPatchInput"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        },
+        "codeAppearance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CodeAppearancePatchInput"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true
+    },
+    "NavigationPatchInput": {
+      "type": "object",
+      "properties": {
+        "home": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PreferenceDestination"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true
+    },
+    "PreferenceDestination": {
+      "type": "string",
+      "enum": [
+        "CHAT",
+        "MODELS",
+        "PROVIDERS",
+        "NOTEBOOKS",
+        "PLUGINS"
+      ]
+    },
+    "SidebarPatchInput": {
+      "description": "Order replaces ordering while preserving visibility; visibility patches are keyed by destination.",
+      "type": "object",
+      "properties": {
+        "order": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/PreferenceDestination"
+          },
+          "x-compallm-non-null": true
+        },
+        "visibility": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/SidebarVisibilityPatchInput"
+          },
+          "x-compallm-non-null": true
+        },
+        "badgeStyle": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PreferenceBadgeStyle"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true
+    },
+    "SidebarVisibilityPatchInput": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/$defs/PreferenceDestination"
+        },
+        "visibility": {
+          "$ref": "#/$defs/PreferenceSidebarVisibility"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "item",
+        "visibility"
+      ],
+      "x-compallm-input": true
+    },
+    "PreferenceSidebarVisibility": {
+      "type": "string",
+      "enum": [
+        "ALWAYS",
+        "WHEN_BADGED",
+        "HIDDEN"
+      ]
+    },
+    "PreferenceBadgeStyle": {
+      "type": "string",
+      "enum": [
+        "DOT",
+        "COUNT"
+      ]
+    },
+    "MemberDisplayPatchInput": {
+      "type": "object",
+      "properties": {
+        "nameFormat": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PreferenceNamingFormat"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true
+    },
+    "PreferenceNamingFormat": {
+      "type": "string",
+      "enum": [
+        "FULL_NAME",
+        "USERNAME"
+      ]
+    },
+    "CalendarPatchInput": {
+      "type": "object",
+      "properties": {
+        "firstDay": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PreferenceWeekday"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true
+    },
+    "PreferenceWeekday": {
+      "type": "string",
+      "enum": [
+        "MONDAY",
+        "SUNDAY",
+        "TUESDAY",
+        "WEDNESDAY",
+        "THURSDAY",
+        "FRIDAY",
+        "SATURDAY"
+      ]
+    },
+    "ThemePatchInput": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PreferenceAppearanceMode"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        },
+        "palettes": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PalettePatchInput"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true
+    },
+    "PreferenceAppearanceMode": {
+      "type": "string",
+      "enum": [
+        "SYSTEM",
+        "LIGHT",
+        "DARK"
+      ]
+    },
+    "PalettePatchInput": {
+      "type": "object",
+      "properties": {
+        "light": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PreferenceLightPalette"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        },
+        "dark": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PreferenceDarkPalette"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true
+    },
+    "PreferenceLightPalette": {
+      "type": "string",
+      "enum": [
+        "LIGHT",
+        "PURE_LIGHT"
+      ]
+    },
+    "PreferenceDarkPalette": {
+      "type": "string",
+      "enum": [
+        "DARK",
+        "MAGIC_BLUE",
+        "CLASSIC_DARK"
+      ]
+    },
+    "TypographyPatchInput": {
+      "type": "object",
+      "properties": {
+        "family": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PreferenceFontFamily"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        },
+        "size": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PreferenceRelativeFontSize"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true
+    },
+    "PreferenceFontFamily": {
+      "type": "string",
+      "enum": [
+        "DEFAULT",
+        "MONOSPACE"
+      ]
+    },
+    "PreferenceRelativeFontSize": {
+      "type": "string",
+      "enum": [
+        "SMALLER",
+        "SMALL",
+        "DEFAULT",
+        "LARGE",
+        "LARGER"
+      ]
+    },
+    "AccessibilityPatchInput": {
+      "type": "object",
+      "properties": {
+        "underlineLinks": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-compallm-non-null": true
+        },
+        "reduceMotion": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-compallm-non-null": true
+        },
+        "pointerCursors": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-compallm-non-null": true
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true
+    },
+    "MessageCompositionPatchInput": {
+      "type": "object",
+      "properties": {
+        "convertEmoticons": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-compallm-non-null": true
+        },
+        "sendShortcut": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PreferenceKeyCombination"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true
+    },
+    "PreferenceKeyCombination": {
+      "type": "string",
+      "enum": [
+        "ENTER",
+        "MODIFIER_ENTER"
+      ]
+    },
+    "CodeAppearancePatchInput": {
+      "type": "object",
+      "properties": {
+        "theme": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PreferenceCodeTheme"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        },
+        "font": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CodeFontPatchInput"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true
+    },
+    "PreferenceCodeTheme": {
+      "type": "string",
+      "enum": [
+        "FOLLOW_INTERFACE",
+        "SYSTEM",
+        "LINEAR_LIGHT",
+        "LINEAR_DARK"
+      ]
+    },
+    "CodeFontPatchInput": {
+      "type": "object",
+      "properties": {
+        "family": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PreferenceFontFamily"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        },
+        "size": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PreferencePixelFontSize"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-compallm-non-null": true
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true
+    },
+    "PreferencePixelFontSize": {
+      "type": "string",
+      "enum": [
+        "PX12",
+        "PX13",
+        "PX14",
+        "PX16"
+      ]
+    },
     "CredentialCreateInput": {
       "type": "object",
       "properties": {

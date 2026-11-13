@@ -32,6 +32,10 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Models,
+    #[sea_orm(has_many = "super::provider_audio_usage::Entity")]
+    ProviderAudioUsage,
+    #[sea_orm(has_many = "super::provider_image_usage::Entity")]
+    ProviderImageUsage,
     #[sea_orm(
         belongs_to = "super::provider_models::Entity",
         from = "(Column::OrganizationId, Column::ProviderModelId)",
@@ -42,10 +46,6 @@ pub enum Relation {
     ProviderModels,
     #[sea_orm(has_many = "super::provider_token_usage::Entity")]
     ProviderTokenUsage,
-    #[sea_orm(has_many = "super::provider_image_usage::Entity")]
-    ProviderImageUsage,
-    #[sea_orm(has_many = "super::provider_audio_usage::Entity")]
-    ProviderAudioUsage,
     #[sea_orm(has_many = "super::provider_video_usage::Entity")]
     ProviderVideoUsage,
 }
@@ -53,6 +53,18 @@ pub enum Relation {
 impl Related<super::models::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Models.def()
+    }
+}
+
+impl Related<super::provider_audio_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderAudioUsage.def()
+    }
+}
+
+impl Related<super::provider_image_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderImageUsage.def()
     }
 }
 
@@ -67,16 +79,7 @@ impl Related<super::provider_token_usage::Entity> for Entity {
         Relation::ProviderTokenUsage.def()
     }
 }
-impl Related<super::provider_image_usage::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ProviderImageUsage.def()
-    }
-}
-impl Related<super::provider_audio_usage::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ProviderAudioUsage.def()
-    }
-}
+
 impl Related<super::provider_video_usage::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ProviderVideoUsage.def()

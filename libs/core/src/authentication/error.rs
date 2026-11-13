@@ -14,6 +14,8 @@ impl From<crate::user::RegistrationError> for AuthError {
 
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {
+    #[error(transparent)]
+    Preferences(#[from] crate::persistent::preference::user::UserPreferenceRepositoryError),
     #[error("compression dictionary is unavailable")]
     DictionaryUnavailable,
     #[error("encoded token uses {size} bytes; maximum is {limit}")]

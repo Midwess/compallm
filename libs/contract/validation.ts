@@ -13,9 +13,28 @@ import {
   createProvidersObject,
   providerPatchObject,
 } from './runtime.ts'
+export const AccessibilityPatchInputConstraints = {} as const
+export const AccessibilityPatchInputInput = {}
+export const AccessibilityPatchInput = z
+  .object({
+    underlineLinks: z.boolean().optional(),
+    reduceMotion: z.boolean().optional(),
+    pointerCursors: z.boolean().optional(),
+  })
+  .strict()
+export type AccessibilityPatchInputFormInput = z.input<typeof AccessibilityPatchInput>
+export type AccessibilityPatchInputFormOutput = z.output<typeof AccessibilityPatchInput>
 export const AppearanceMode = z.enum(['SYSTEM_PREFERENCE', 'LIGHT', 'DARK'])
 export type AppearanceModeFormInput = z.input<typeof AppearanceMode>
 export type AppearanceModeFormOutput = z.output<typeof AppearanceMode>
+export const PreferenceWeekday = z.enum(['MONDAY', 'SUNDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'])
+export type PreferenceWeekdayFormInput = z.input<typeof PreferenceWeekday>
+export type PreferenceWeekdayFormOutput = z.output<typeof PreferenceWeekday>
+export const CalendarPatchInputConstraints = {} as const
+export const CalendarPatchInputInput = {}
+export const CalendarPatchInput = z.object({ firstDay: PreferenceWeekday.optional() }).strict()
+export type CalendarPatchInputFormInput = z.input<typeof CalendarPatchInput>
+export type CalendarPatchInputFormOutput = z.output<typeof CalendarPatchInput>
 export const ChatCreateInputConstraints = {
   message: { minLength: 1, format: 'nonblank' },
   modelId: { minLength: 1 },
@@ -29,6 +48,29 @@ export const ChatCreateInput = z
   .strict()
 export type ChatCreateInputFormInput = z.input<typeof ChatCreateInput>
 export type ChatCreateInputFormOutput = z.output<typeof ChatCreateInput>
+export const PreferenceCodeTheme = z.enum(['FOLLOW_INTERFACE', 'SYSTEM', 'LINEAR_LIGHT', 'LINEAR_DARK'])
+export type PreferenceCodeThemeFormInput = z.input<typeof PreferenceCodeTheme>
+export type PreferenceCodeThemeFormOutput = z.output<typeof PreferenceCodeTheme>
+export const PreferenceFontFamily = z.enum(['DEFAULT', 'MONOSPACE'])
+export type PreferenceFontFamilyFormInput = z.input<typeof PreferenceFontFamily>
+export type PreferenceFontFamilyFormOutput = z.output<typeof PreferenceFontFamily>
+export const PreferencePixelFontSize = z.enum(['PX12', 'PX13', 'PX14', 'PX16'])
+export type PreferencePixelFontSizeFormInput = z.input<typeof PreferencePixelFontSize>
+export type PreferencePixelFontSizeFormOutput = z.output<typeof PreferencePixelFontSize>
+export const CodeFontPatchInputConstraints = {} as const
+export const CodeFontPatchInputInput = {}
+export const CodeFontPatchInput = z
+  .object({ family: PreferenceFontFamily.optional(), size: PreferencePixelFontSize.optional() })
+  .strict()
+export type CodeFontPatchInputFormInput = z.input<typeof CodeFontPatchInput>
+export type CodeFontPatchInputFormOutput = z.output<typeof CodeFontPatchInput>
+export const CodeAppearancePatchInputConstraints = {} as const
+export const CodeAppearancePatchInputInput = {}
+export const CodeAppearancePatchInput = z
+  .object({ theme: PreferenceCodeTheme.optional(), font: CodeFontPatchInput.optional() })
+  .strict()
+export type CodeAppearancePatchInputFormInput = z.input<typeof CodeAppearancePatchInput>
+export type CodeAppearancePatchInputFormOutput = z.output<typeof CodeAppearancePatchInput>
 export const CodeFont = z.enum(['DEFAULT', 'MONOSPACE'])
 export type CodeFontFormInput = z.input<typeof CodeFont>
 export type CodeFontFormOutput = z.output<typeof CodeFont>
@@ -165,6 +207,32 @@ export type LightPaletteFormOutput = z.output<typeof LightPalette>
 export const MemberDisplay = z.enum(['FULL_NAME', 'USERNAME'])
 export type MemberDisplayFormInput = z.input<typeof MemberDisplay>
 export type MemberDisplayFormOutput = z.output<typeof MemberDisplay>
+export const PreferenceNamingFormat = z.enum(['FULL_NAME', 'USERNAME'])
+export type PreferenceNamingFormatFormInput = z.input<typeof PreferenceNamingFormat>
+export type PreferenceNamingFormatFormOutput = z.output<typeof PreferenceNamingFormat>
+export const MemberDisplayPatchInputConstraints = {} as const
+export const MemberDisplayPatchInputInput = {}
+export const MemberDisplayPatchInput = z.object({ nameFormat: PreferenceNamingFormat.optional() }).strict()
+export type MemberDisplayPatchInputFormInput = z.input<typeof MemberDisplayPatchInput>
+export type MemberDisplayPatchInputFormOutput = z.output<typeof MemberDisplayPatchInput>
+export const PreferenceKeyCombination = z.enum(['ENTER', 'MODIFIER_ENTER'])
+export type PreferenceKeyCombinationFormInput = z.input<typeof PreferenceKeyCombination>
+export type PreferenceKeyCombinationFormOutput = z.output<typeof PreferenceKeyCombination>
+export const MessageCompositionPatchInputConstraints = {} as const
+export const MessageCompositionPatchInputInput = {}
+export const MessageCompositionPatchInput = z
+  .object({ convertEmoticons: z.boolean().optional(), sendShortcut: PreferenceKeyCombination.optional() })
+  .strict()
+export type MessageCompositionPatchInputFormInput = z.input<typeof MessageCompositionPatchInput>
+export type MessageCompositionPatchInputFormOutput = z.output<typeof MessageCompositionPatchInput>
+export const PreferenceDestination = z.enum(['CHAT', 'MODELS', 'PROVIDERS', 'NOTEBOOKS', 'PLUGINS'])
+export type PreferenceDestinationFormInput = z.input<typeof PreferenceDestination>
+export type PreferenceDestinationFormOutput = z.output<typeof PreferenceDestination>
+export const NavigationPatchInputConstraints = {} as const
+export const NavigationPatchInputInput = {}
+export const NavigationPatchInput = z.object({ home: PreferenceDestination.optional() }).strict()
+export type NavigationPatchInputFormInput = z.input<typeof NavigationPatchInput>
+export type NavigationPatchInputFormOutput = z.output<typeof NavigationPatchInput>
 export const OrganizationSettingsUpdateInputConstraints = { name: { minLength: 1, trim: true } } as const
 export const OrganizationSettingsUpdateInputInput = {
   name: stringInput(OrganizationSettingsUpdateInputConstraints['name']),
@@ -181,6 +249,31 @@ export const OrganizationSettingsUpdateInput = z
   .strict()
 export type OrganizationSettingsUpdateInputFormInput = z.input<typeof OrganizationSettingsUpdateInput>
 export type OrganizationSettingsUpdateInputFormOutput = z.output<typeof OrganizationSettingsUpdateInput>
+export const PreferenceLightPalette = z.enum(['LIGHT', 'PURE_LIGHT'])
+export type PreferenceLightPaletteFormInput = z.input<typeof PreferenceLightPalette>
+export type PreferenceLightPaletteFormOutput = z.output<typeof PreferenceLightPalette>
+export const PreferenceDarkPalette = z.enum(['DARK', 'MAGIC_BLUE', 'CLASSIC_DARK'])
+export type PreferenceDarkPaletteFormInput = z.input<typeof PreferenceDarkPalette>
+export type PreferenceDarkPaletteFormOutput = z.output<typeof PreferenceDarkPalette>
+export const PalettePatchInputConstraints = {} as const
+export const PalettePatchInputInput = {}
+export const PalettePatchInput = z
+  .object({ light: PreferenceLightPalette.optional(), dark: PreferenceDarkPalette.optional() })
+  .strict()
+export type PalettePatchInputFormInput = z.input<typeof PalettePatchInput>
+export type PalettePatchInputFormOutput = z.output<typeof PalettePatchInput>
+export const PreferenceAppearanceMode = z.enum(['SYSTEM', 'LIGHT', 'DARK'])
+export type PreferenceAppearanceModeFormInput = z.input<typeof PreferenceAppearanceMode>
+export type PreferenceAppearanceModeFormOutput = z.output<typeof PreferenceAppearanceMode>
+export const PreferenceBadgeStyle = z.enum(['DOT', 'COUNT'])
+export type PreferenceBadgeStyleFormInput = z.input<typeof PreferenceBadgeStyle>
+export type PreferenceBadgeStyleFormOutput = z.output<typeof PreferenceBadgeStyle>
+export const PreferenceRelativeFontSize = z.enum(['SMALLER', 'SMALL', 'DEFAULT', 'LARGE', 'LARGER'])
+export type PreferenceRelativeFontSizeFormInput = z.input<typeof PreferenceRelativeFontSize>
+export type PreferenceRelativeFontSizeFormOutput = z.output<typeof PreferenceRelativeFontSize>
+export const PreferenceSidebarVisibility = z.enum(['ALWAYS', 'WHEN_BADGED', 'HIDDEN'])
+export type PreferenceSidebarVisibilityFormInput = z.input<typeof PreferenceSidebarVisibility>
+export type PreferenceSidebarVisibilityFormOutput = z.output<typeof PreferenceSidebarVisibility>
 export const Weekday = z.enum(['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'])
 export type WeekdayFormInput = z.input<typeof Weekday>
 export type WeekdayFormOutput = z.output<typeof Weekday>
@@ -558,6 +651,26 @@ export const RoleUpdateInput = z
   .strict()
 export type RoleUpdateInputFormInput = z.input<typeof RoleUpdateInput>
 export type RoleUpdateInputFormOutput = z.output<typeof RoleUpdateInput>
+export const SidebarVisibilityPatchInputConstraints = {} as const
+export const SidebarVisibilityPatchInputInput = {}
+export const SidebarVisibilityPatchInput = z
+  .object({ item: PreferenceDestination, visibility: PreferenceSidebarVisibility })
+  .strict()
+export type SidebarVisibilityPatchInputFormInput = z.input<typeof SidebarVisibilityPatchInput>
+export type SidebarVisibilityPatchInputFormOutput = z.output<typeof SidebarVisibilityPatchInput>
+export const SidebarPatchInputConstraints = {} as const
+export const SidebarPatchInputInput = {}
+/** Order replaces ordering while preserving visibility; visibility patches are keyed by destination. */
+export const SidebarPatchInput = z
+  .object({
+    order: z.array(PreferenceDestination).optional(),
+    visibility: z.array(SidebarVisibilityPatchInput).optional(),
+    badgeStyle: PreferenceBadgeStyle.optional(),
+  })
+  .strict()
+  .describe('Order replaces ordering while preserving visibility; visibility patches are keyed by destination.')
+export type SidebarPatchInputFormInput = z.input<typeof SidebarPatchInput>
+export type SidebarPatchInputFormOutput = z.output<typeof SidebarPatchInput>
 export const SpendingLimitInputConstraints = { amount: { pattern: '^[0-9]+(?:\\.[0-9]+)?$' } } as const
 export const SpendingLimitInputInput = { amount: stringInput(SpendingLimitInputConstraints['amount']) }
 export const SpendingLimitInput = z
@@ -565,3 +678,36 @@ export const SpendingLimitInput = z
   .strict()
 export type SpendingLimitInputFormInput = z.input<typeof SpendingLimitInput>
 export type SpendingLimitInputFormOutput = z.output<typeof SpendingLimitInput>
+export const ThemePatchInputConstraints = {} as const
+export const ThemePatchInputInput = {}
+export const ThemePatchInput = z
+  .object({ mode: PreferenceAppearanceMode.optional(), palettes: PalettePatchInput.optional() })
+  .strict()
+export type ThemePatchInputFormInput = z.input<typeof ThemePatchInput>
+export type ThemePatchInputFormOutput = z.output<typeof ThemePatchInput>
+export const TypographyPatchInputConstraints = {} as const
+export const TypographyPatchInputInput = {}
+export const TypographyPatchInput = z
+  .object({ family: PreferenceFontFamily.optional(), size: PreferenceRelativeFontSize.optional() })
+  .strict()
+export type TypographyPatchInputFormInput = z.input<typeof TypographyPatchInput>
+export type TypographyPatchInputFormOutput = z.output<typeof TypographyPatchInput>
+export const UserPreferencesPatchInputConstraints = {} as const
+export const UserPreferencesPatchInputInput = {}
+/** Partial personal preferences. Omitted fields are preserved; explicit null is rejected. */
+export const UserPreferencesPatchInput = z
+  .object({
+    navigation: NavigationPatchInput.optional(),
+    sidebar: SidebarPatchInput.optional(),
+    memberDisplay: MemberDisplayPatchInput.optional(),
+    calendar: CalendarPatchInput.optional(),
+    theme: ThemePatchInput.optional(),
+    typography: TypographyPatchInput.optional(),
+    accessibility: AccessibilityPatchInput.optional(),
+    messageComposition: MessageCompositionPatchInput.optional(),
+    codeAppearance: CodeAppearancePatchInput.optional(),
+  })
+  .strict()
+  .describe('Partial personal preferences. Omitted fields are preserved; explicit null is rejected.')
+export type UserPreferencesPatchInputFormInput = z.input<typeof UserPreferencesPatchInput>
+export type UserPreferencesPatchInputFormOutput = z.output<typeof UserPreferencesPatchInput>

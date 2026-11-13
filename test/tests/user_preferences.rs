@@ -1,5 +1,6 @@
 use compallm_core::preference::{
     UserPreferences,
+    patch::{SidebarPatch, UserPreferencesPatch},
     sidebar::{SidebarEntry, SidebarPreferences},
     values::{BadgeStyle, CodeTheme, Destination, SidebarVisibility},
 };
@@ -41,6 +42,31 @@ fn missing_sidebar_items_follow_saved_order_and_keep_choices() {
                 visibility: SidebarVisibility::Always
             },
         ]
+    );
+}
+
+#[test]
+fn partial_sidebar_reorder_preserves_other_items_visibility() {
+    let mut preferences = UserPreferences::default();
+    preferences.sidebar.entries[0].visibility = SidebarVisibility::Hidden;
+    preferences.sidebar.entries[2].visibility = SidebarVisibility::WhenBadged;
+    UserPreferencesPatch {
+        sidebar: Some(SidebarPatch {
+            order: Some(vec![Destination::Plugins]),
+            ..Default::default()
+        }),
+        ..Default::default()
+    }
+    .apply(&mut preferences)
+    .unwrap();
+    assert_eq!(preferences.sidebar.entries[0].item, Destination::Plugins);
+    assert_eq!(
+        preferences.sidebar.entries[1].visibility,
+        SidebarVisibility::Hidden
+    );
+    assert_eq!(
+        preferences.sidebar.entries[3].visibility,
+        SidebarVisibility::WhenBadged
     );
 }
 

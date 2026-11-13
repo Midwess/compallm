@@ -19,8 +19,12 @@ pub enum Relation {
     ModelUsage,
     #[sea_orm(has_many = "super::models::Entity")]
     Models,
+    #[sea_orm(has_many = "super::organization_groups::Entity")]
+    OrganizationGroups,
     #[sea_orm(has_many = "super::organization_members::Entity")]
     OrganizationMembers,
+    #[sea_orm(has_many = "super::organization_roles::Entity")]
+    OrganizationRoles,
     #[sea_orm(has_many = "super::providers::Entity")]
     Providers,
     #[sea_orm(has_many = "super::user_sessions::Entity")]
@@ -39,9 +43,21 @@ impl Related<super::models::Entity> for Entity {
     }
 }
 
+impl Related<super::organization_groups::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::OrganizationGroups.def()
+    }
+}
+
 impl Related<super::organization_members::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OrganizationMembers.def()
+    }
+}
+
+impl Related<super::organization_roles::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::OrganizationRoles.def()
     }
 }
 

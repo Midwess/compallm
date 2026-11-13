@@ -13,3 +13,8 @@ pub mod user;
 pub mod values;
 
 pub use user::UserPreferences;
+
+pub mod patch;
+#[path = "user-service.rs"]
+pub mod user_service;
+pub use user_service::{UserPreferenceError, UserPreferenceService};

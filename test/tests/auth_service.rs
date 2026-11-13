@@ -136,10 +136,12 @@ fn test_challenge(email: &str, secret: &str) -> Result<EmailOtpChallenge, AuthEr
 #[derive(Default)]
 struct State {
     user: Option<User>,
+    preferences: std::collections::BTreeMap<u64, compallm_core::preference::UserPreferences>,
     contexts: Vec<usize>,
     created: Option<(String, String)>,
     fail_create: bool,
     fail_session: bool,
+    fail_preferences: bool,
     change_after_authority_read: bool,
     full_default_policies: bool,
     fail_authority_read: bool,
@@ -159,6 +161,55 @@ struct State {
 
 #[derive(Clone)]
 struct Repository(Arc<Mutex<State>>, DbContext);
+
+#[async_trait::async_trait]
+impl compallm_core::persistent::preference::user::UserPreferenceRepository for Repository {
+    async fn find(
+        &self,
+        user_id: u64,
+    ) -> Result<
+        Option<compallm_core::preference::UserPreferences>,
+        compallm_core::persistent::preference::user::UserPreferenceRepositoryError,
+    > {
+        Ok(self.0.lock().unwrap().preferences.get(&user_id).cloned())
+    }
+    async fn create_defaults(
+        &self,
+        user_id: u64,
+    ) -> Result<(), compallm_core::persistent::preference::user::UserPreferenceRepositoryError>
+    {
+        let mut state = self.0.lock().unwrap();
+        if state.fail_preferences {
+            return Err(
+                compallm_core::persistent::preference::user::UserPreferenceRepositoryError(
+                    anyhow::anyhow!("unavailable"),
+                ),
+            );
+        }
+        state.preferences.entry(user_id).or_default();
+        Ok(())
+    }
+    async fn update(
+        &self,
+        _: u64,
+        _: &compallm_core::preference::patch::UserPreferencesPatch,
+    ) -> Result<
+        compallm_core::preference::UserPreferences,
+        compallm_core::persistent::preference::user::UserPreferenceRepositoryError,
+    > {
+        unreachable!()
+    }
+    async fn reset(
+        &self,
+        _: u64,
+        _: &[compallm_core::preference::patch::UserPreferenceGroup],
+    ) -> Result<
+        compallm_core::preference::UserPreferences,
+        compallm_core::persistent::preference::user::UserPreferenceRepositoryError,
+    > {
+        unreachable!()
+    }
+}
 
 struct OrganizationRepositoryStub(Arc<Mutex<State>>);
 
@@ -746,6 +797,12 @@ impl Fixture {
             )),
             dictionaries,
             registration,
+            Box::leak(Box::new(
+                compallm_core::preference::UserPreferenceService::new(Box::leak(Box::new(
+                    Box::new(self.repo.clone())
+                        as Box<dyn compallm_core::persistent::preference::user::UserPreferenceRepository>,
+                ))),
+            )),
             SECRET.into(),
             TokenLifetimes {
                 user: Duration::from_secs(60),
@@ -1263,6 +1320,7 @@ async fn signup_requires_verified_email_and_uses_one_caller_transaction() {
         );
         assert_eq!(state.contexts.len(), 3);
         assert_eq!(state.logins.len(), 1);
+        assert_eq!(state.preferences.len(), 1);
         let organization = state.organization.as_ref().unwrap();
         let owner = state.owner.as_ref().unwrap();
         assert_eq!(organization.name, "james's organization");
@@ -3959,4 +4017,132 @@ async fn graphql_full_schema_introspection_is_available_without_credentials() {
     let body = graphql_body(response).await;
     assert!(body["errors"].is_null(), "{body}");
     assert!(body["data"]["__schema"]["types"].as_array().unwrap().len() > 10);
+}
+
+#[tokio::test]
+async fn preference_creation_failure_rolls_back_signup() {
+    let fixture = Fixture::new(None);
+    fixture.repo.0.lock().unwrap().fail_preferences = true;
+    let challenge = test_challenge("preferences@example.com", SECRET).unwrap();
+    assert!(matches!(
+        fixture
+            .signup_in_transaction(&Fixture::otp(&challenge), &challenge.code)
+            .await,
+        Err(AuthError::Preferences(_))
+    ));
+    assert!(fixture.repo.0.lock().unwrap().logins.is_empty());
+    fixture.assert_transaction("ROLLBACK");
+}
+
+#[tokio::test]
+async fn preference_graphql_reads_defaults_and_rejects_null_before_writes() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let database = MockDatabase::new(DbBackend::Postgres)
+        .append_query_results([Vec::<compallm_postgres::schema::UserPreferenceSchema>::new()])
+        .into_connection();
+    let context = DbContext::new(Arc::new(PostgresConnection::new(Arc::new(database))));
+    let router = fixture.graphql_with_database(context);
+    let result = graphql_body(
+        graphql_operation(
+            &router,
+            "query { userPreferences { node { navigation { home } codeAppearance { theme } } } }",
+            serde_json::json!({}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(
+        result["data"]["userPreferences"]["node"]["navigation"]["home"],
+        "CHAT"
+    );
+    assert_eq!(
+        result["data"]["userPreferences"]["node"]["codeAppearance"]["theme"],
+        "FOLLOW_INTERFACE"
+    );
+    let denied = graphql_body(graphql_operation(&router, "mutation { userPreferencesUpdate(input: {accessibility: {pointerCursors: true}}) { node { accessibility { pointerCursors } } } }", serde_json::json!({}), None, None, false).await).await;
+    assert_eq!(denied["errors"][0]["extensions"]["code"], "UNAUTHENTICATED");
+    for input in [
+        serde_json::json!({"theme":null}),
+        serde_json::json!({"theme":{"palettes":{"dark":null}}}),
+        serde_json::json!({"sidebar":{"order":["CHAT"]}}),
+    ] {
+        let invalid = graphql_body(graphql_operation(&router, "mutation($input: UserPreferencesPatchInput!) { userPreferencesUpdate(input: $input) { node { navigation { home } } } }", serde_json::json!({"input":input}), Some(&tokens.access_token), None, false).await).await;
+        assert_eq!(invalid["errors"][0]["extensions"]["code"], "BAD_USER_INPUT");
+    }
+}
+
+#[tokio::test]
+#[ignore = "requires COMPALLM_TEST_DATABASE_URL; creates and removes a disposable database"]
+async fn preference_graphql_persists_grouped_updates_and_resets_for_current_user()
+-> anyhow::Result<()> {
+    use sea_orm::{ConnectionTrait, Database, EntityTrait, ModelTrait, Set};
+    use sea_orm_migration::{MigratorTrait, SchemaManager};
+    let url = std::env::var("COMPALLM_TEST_DATABASE_URL")?;
+    let name = format!(
+        "preference_http_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_nanos()
+    );
+    let admin = Database::connect(&url).await?;
+    admin
+        .execute_unprepared(&format!("CREATE DATABASE {name}"))
+        .await?;
+    let result = async {
+        let (base, parameters) = url.split_once('?').unwrap_or((&url, ""));
+        let (server, _) = base.rsplit_once('/').ok_or_else(|| anyhow::anyhow!("database URL"))?;
+        let pool = Arc::new(Database::connect(format!("{server}/{name}?{parameters}")).await?);
+        for migration in compallm_postgres::Migrator::migrations().iter().filter(|migration| migration.name().ends_with("create_users") || migration.name().ends_with("create_user_preferences")) {
+            migration.up(&SchemaManager::new(pool.as_ref())).await?;
+        }
+        type Users = <compallm_postgres::UserSchema as ModelTrait>::Entity;
+        type ActiveUser = <Users as EntityTrait>::ActiveModel;
+        Users::insert(ActiveUser { id: Set(1), email: Set("james@midwess.com".into()), display_name: Set("James".into()), status: Set(compallm_postgres::schema::UserStatusSchema::Active), email_verified_at: Set(sea_orm::prelude::ChronoUtc::now().fixed_offset()), ..Default::default() }).exec(pool.as_ref()).await?;
+        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+        let challenge = test_challenge("james@midwess.com", SECRET)?;
+        let tokens = fixture.signin(&Fixture::otp(&challenge), &challenge.code).await?;
+        let context = DbContext::new(Arc::new(PostgresConnection::new(pool.clone())));
+        let router = fixture.graphql_with_database(context.clone());
+        let update = "mutation($input: UserPreferencesPatchInput!) { userPreferencesUpdate(input: $input) { node { navigation { home } theme { palettes { dark } } codeAppearance { font { family size } } sidebar { entries { item visibility } } } } }";
+        let response = graphql_body(graphql_operation(&router, update, serde_json::json!({"input": {
+            "navigation":{"home":"MODELS"}, "calendar":{"firstDay":"SUNDAY"},
+            "theme":{"palettes":{"dark":"MAGIC_BLUE"}},
+            "codeAppearance":{"font":{"family":"MONOSPACE","size":"PX16"}},
+            "sidebar":{"order":["PLUGINS","PROVIDERS"],"visibility":[{"item":"PLUGINS","visibility":"HIDDEN"}]}
+        }}), Some(&tokens.access_token), None, false).await).await;
+        assert!(response.get("errors").is_none(), "{response}");
+        assert_eq!(response["data"]["userPreferencesUpdate"]["node"]["navigation"]["home"], "MODELS");
+        let read = "query { userPreferences { node { calendar { firstDay } theme { mode palettes { light dark } } codeAppearance { font { family size } } sidebar { entries { item visibility } } } } }";
+        let saved = graphql_body(graphql_operation(&router, read, serde_json::json!({}), Some(&tokens.access_token), None, false).await).await;
+        assert_eq!(saved["data"]["userPreferences"]["node"]["theme"]["palettes"]["dark"], "MAGIC_BLUE");
+        assert_eq!(saved["data"]["userPreferences"]["node"]["theme"]["palettes"]["light"], "LIGHT");
+        assert_eq!(saved["data"]["userPreferences"]["node"]["sidebar"]["entries"][0]["visibility"], "HIDDEN");
+        for groups in [serde_json::json!([]), serde_json::json!(["ALL","THEME"])] {
+            let invalid = graphql_body(graphql_operation(&router, "mutation($groups: [UserPreferenceGroup!]!) { userPreferencesReset(groups: $groups) { node { calendar { firstDay } } } }", serde_json::json!({"groups":groups}), Some(&tokens.access_token), None, false).await).await;
+            assert_eq!(invalid["errors"][0]["extensions"]["code"], "BAD_USER_INPUT");
+        }
+        let reset = graphql_body(graphql_operation(&router, "mutation { userPreferencesReset(groups: [THEME]) { node { theme { palettes { dark } } calendar { firstDay } } } }", serde_json::json!({}), Some(&tokens.access_token), None, false).await).await;
+        assert_eq!(reset["data"]["userPreferencesReset"]["node"]["theme"]["palettes"]["dark"], "DARK");
+        assert_eq!(reset["data"]["userPreferencesReset"]["node"]["calendar"]["firstDay"], "SUNDAY");
+        let defaults = graphql_body(graphql_operation(&router, "mutation { userPreferencesReset(groups: [ALL]) { node { calendar { firstDay } } } }", serde_json::json!({}), Some(&tokens.access_token), None, false).await).await;
+        assert_eq!(defaults["data"]["userPreferencesReset"]["node"]["calendar"]["firstDay"], "MONDAY");
+        let preferences = compallm_core::persistent::preference::user::UserPreferenceRepository::find(&compallm_postgres::repository::preference::user::UserPreferenceRepository,1);
+        assert_eq!(context.scope(preferences).await?.unwrap(), compallm_core::preference::UserPreferences::default());
+        Ok::<_,anyhow::Error>(())
+    }.await;
+    let cleanup = admin
+        .execute_unprepared(&format!("DROP DATABASE {name} WITH (FORCE)"))
+        .await;
+    result?;
+    cleanup?;
+    Ok(())
 }

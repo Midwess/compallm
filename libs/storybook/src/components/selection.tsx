@@ -1,9 +1,9 @@
 import { useFormField } from './form'
 import { animated, useSelectionMotion } from './motion'
-import { useEffect, useRef, type InputHTMLAttributes, type ReactNode } from 'react'
+import { useEffect, useRef, type InputHTMLAttributes, type ComponentPropsWithRef, type ReactNode } from 'react'
 import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
 import { MinusIcon } from '@phosphor-icons/react/dist/csr/Minus'
-import { cx } from './shared'
+import { cx, composeRefs } from './shared'
 
 // The 3px inset centers the thumb and standard checkbox track.
 // eslint-disable-next-line design/spacing -- Preserve the current switch alignment.
@@ -17,14 +17,16 @@ export function Switch({
   onChange,
   onBlur,
   ...props
-}: Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'role'>) {
+}: Omit<ComponentPropsWithRef<'input'>, 'type' | 'role'>) {
   const input = useRef<HTMLInputElement>(null)
   const field = useFormField<boolean | string[]>(props.name)
   useSelectionMotion(input, 'switch')
   return (
-    <span className="relative inline-flex h-8 w-10.5 flex-none has-disabled:opacity-50">
+    <span className="relative inline-flex h-8 w-10.5 flex-none align-middle has-disabled:opacity-50">
       <animated.input
         {...props}
+        aria-invalid={field?.invalid || props['aria-invalid']}
+        aria-describedby={props['aria-describedby'] ?? (field ? `${props.name}-error` : undefined)}
         checked={
           field ? (Array.isArray(field.value) ? field.value.includes(String(props.value)) : Boolean(field.value)) : checked
         }
@@ -43,7 +45,7 @@ export function Switch({
           field?.blur()
           onBlur?.(event)
         }}
-        ref={input}
+        ref={composeRefs(input, props.ref)}
         type="checkbox"
         role="switch"
         className={cx(
@@ -66,7 +68,7 @@ border-[0.5px] border-input-border bg-disabled"
     </span>
   )
 }
-export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size'> {
+export interface CheckboxProps extends Omit<ComponentPropsWithRef<'input'>, 'type' | 'size'> {
   indeterminate?: boolean
   size?: 'standard' | 'compact'
 }
@@ -94,6 +96,8 @@ export function Checkbox({
     >
       <animated.input
         {...props}
+        aria-invalid={field?.invalid || props['aria-invalid']}
+        aria-describedby={props['aria-describedby'] ?? (field ? `${props.name}-error` : undefined)}
         checked={
           field ? (Array.isArray(field.value) ? field.value.includes(String(props.value)) : Boolean(field.value)) : checked
         }
@@ -112,7 +116,7 @@ export function Checkbox({
           field?.blur()
           onBlur?.(event)
         }}
-        ref={input}
+        ref={composeRefs(input, props.ref)}
         type="checkbox"
         className={cx(
           `peer absolute inset-0 size-full cursor-pointer appearance-none rounded bg-transparent
@@ -145,7 +149,7 @@ export function Checkbox({
   )
 }
 
-export function Radio({ className, checked, onChange, onBlur, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+export function Radio({ className, checked, onChange, onBlur, ...props }: Omit<ComponentPropsWithRef<'input'>, 'type'>) {
   const input = useRef<HTMLInputElement>(null)
   const field = useFormField<string>(props.name)
   useSelectionMotion(input, 'radio')
@@ -153,6 +157,8 @@ export function Radio({ className, checked, onChange, onBlur, ...props }: Omit<I
     <span className="relative inline-flex size-4 shrink-0 items-center justify-center has-disabled:opacity-50">
       <animated.input
         {...props}
+        aria-invalid={field?.invalid || props['aria-invalid']}
+        aria-describedby={props['aria-describedby'] ?? (field ? `${props.name}-error` : undefined)}
         checked={field ? field.value === String(props.value) : checked}
         onChange={(event) => {
           if (field) field.change(String(props.value))
@@ -162,7 +168,7 @@ export function Radio({ className, checked, onChange, onBlur, ...props }: Omit<I
           field?.blur()
           onBlur?.(event)
         }}
-        ref={input}
+        ref={composeRefs(input, props.ref)}
         type="radio"
         className={cx(
           'absolute inset-0 size-full cursor-pointer appearance-none rounded-full',

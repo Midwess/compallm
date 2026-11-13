@@ -224,11 +224,19 @@ export class RoleController implements Contract {
     const request = this.request
     if (!draft?.id || draft.builtin || !request || this.savedPolicy?.id !== draft.id) return false
     const id = draft.id
-    clearTimeout(this.parseTimer)
-    const revision = ++this.parseRevision
-    this.store.setState({ draft: { ...draft, parsing: true } })
-    if (!(await this.projectSource(id, source, revision))) return false
-    if (request.signal.aborted || this.request !== request || revision !== this.parseRevision) return false
+    if (compactCedarSource(draft.source) === compactCedarSource(source)) {
+      clearTimeout(this.parseTimer)
+      const revision = ++this.parseRevision
+      this.store.setState({ draft: { ...draft, parsing: true } })
+      if (!(await this.projectSource(id, draft.source, revision))) return false
+      if (revision !== this.parseRevision) return false
+    } else {
+      const { projectPolicy } = await import('./cedar')
+      const catalog = this.settings.getState().policyActions
+      const parsed = await projectPolicy(source, new Map(catalog.map((item) => [item.id, item.scope])))
+      if (parsed.diagnostics.length) return false
+    }
+    if (request.signal.aborted || this.request !== request) return false
     if (this.savedPolicy?.source === compactCedarSource(source)) return true
     const input = this.policyInput(source)
     const selection = { roleUpdate: { __args: { id, input }, node: { id: true } } } satisfies MutationGenqlSelection

@@ -142,6 +142,7 @@ const supported = new Set([
   'x-compallm-input-pattern',
   'x-compallm-object-rule',
   'x-compallm-array-rule',
+  'x-compallm-messages',
 ])
 function validate(schema) {
   if (!schema || typeof schema !== 'object' || Array.isArray(schema)) throw new Error('Unsupported input schema')
@@ -153,6 +154,16 @@ function validate(schema) {
     throw new Error('Unknown object rule')
   if (schema['x-compallm-array-rule'] && !arrayRules[schema['x-compallm-array-rule']])
     throw new Error('Unknown array rule')
+  if (schema['x-compallm-messages'] !== undefined) {
+    const messages = schema['x-compallm-messages']
+    if (
+      !messages ||
+      typeof messages !== 'object' ||
+      Array.isArray(messages) ||
+      Object.values(messages).some((message) => typeof message !== 'string')
+    )
+      throw new Error('Validation messages must map constraint names to strings')
+  }
   if (schema.properties) Object.values(schema.properties).forEach(validate)
   if (schema.items) validate(schema.items)
   if (schema.anyOf) schema.anyOf.forEach(validate)
@@ -182,6 +193,7 @@ function constraints(original) {
   const output = {}
   for (const key of ['minLength', 'maxLength', 'pattern']) if (schema[key] !== undefined) output[key] = schema[key]
   for (const [source, target] of [
+    ['x-compallm-messages', 'messages'],
     ['x-compallm-input-pattern', 'inputPattern'],
     ['x-compallm-format', 'format'],
     ['x-compallm-trim', 'trim'],
@@ -219,14 +231,16 @@ function render(schema) {
       ['minimum', 'min'],
       ['maximum', 'max'],
     ])
-      if (value[key] !== undefined) result += `.${method}(${JSON.stringify(value[key])})`
+      if (value[key] !== undefined)
+        result += `.${method}(${JSON.stringify(value[key])}${value['x-compallm-messages']?.[key] ? `, {message: ${JSON.stringify(value['x-compallm-messages'][key])}}` : ''})`
   } else if (value.type === 'array') {
     result = `z.array(${render(value.items)})`
     for (const [key, method] of [
       ['minItems', 'min'],
       ['maxItems', 'max'],
     ])
-      if (value[key] !== undefined) result += `.${method}(${value[key]})`
+      if (value[key] !== undefined)
+        result += `.${method}(${value[key]}${value['x-compallm-messages']?.[key] ? `, {message: ${JSON.stringify(value['x-compallm-messages'][key])}}` : ''})`
   } else if (value.type === 'object') {
     if (value.additionalProperties !== false) throw new Error('Input objects must explicitly reject unknown fields')
     const fields = Object.entries(value.properties ?? {}).map(([name, property]) => {
@@ -238,9 +252,9 @@ function render(schema) {
   } else throw new Error(`Unsupported input shape: ${JSON.stringify(value)}`)
   if (nullable(schema) && !schema['x-compallm-non-null']) result += '.nullable()'
   if (schema['x-compallm-array-rule'])
-    result += `.refine(${arrayRules[schema['x-compallm-array-rule']]}, {message: 'Invalid input'})`
+    result += `.refine(${arrayRules[schema['x-compallm-array-rule']]}, {message: ${JSON.stringify(schema['x-compallm-messages']?.['x-compallm-array-rule'] ?? 'Invalid input')}})`
   if (schema['x-compallm-object-rule'])
-    result += `.refine(${objectRules[schema['x-compallm-object-rule']]}, {message: 'Invalid input'})`
+    result += `.refine(${objectRules[schema['x-compallm-object-rule']]}, {message: ${JSON.stringify(schema['x-compallm-messages']?.['x-compallm-object-rule'] ?? 'Invalid input')}})`
   if (schema.default !== undefined && !(schema['x-compallm-non-null'] && schema.default === null))
     result += `.default(${JSON.stringify(schema.default)})`
   if (schema.description) result += `.describe(${JSON.stringify(schema.description)})`

@@ -1,4 +1,6 @@
-import { useFormField } from './form'
+import { useFormField, FormError, type FormScope } from './form'
+import { useFieldArray } from 'react-hook-form'
+import { FormContext } from '../context'
 import { motion } from 'motion/react'
 import { animated, useDisclosure, useTransition } from './motion'
 import { createContext, useContext, useRef, type ReactNode } from 'react'
@@ -15,6 +17,7 @@ export interface KeyValueEntry {
   value: string
 }
 interface Scope {
+  name?: string
   entries: KeyValueEntry[]
   change(entries: KeyValueEntry[]): void
   disabled: boolean
@@ -27,16 +30,7 @@ function useEditor() {
   if (!scope) throw new Error('KeyValueEditor parts require KeyValueEditor.')
   return scope
 }
-function Root({
-  name,
-  value: suppliedValue,
-  onValueChange: suppliedChange,
-  disabled = false,
-  children,
-  className,
-  acceptEntry,
-  keyMaxLength,
-}: {
+type EditorProps = {
   name?: string
   value?: KeyValueEntry[]
   onValueChange?(entries: KeyValueEntry[]): void
@@ -45,7 +39,49 @@ function Root({
   className?: string
   keyMaxLength?: number
   acceptEntry?(entry: KeyValueEntry): boolean
-}) {
+}
+function Root(props: EditorProps) {
+  const form = useContext(FormContext)
+  return props.name && form?.has(props.name) ? (
+    <BoundRoot {...props} name={props.name} form={form} />
+  ) : (
+    <UnboundRoot {...props} />
+  )
+}
+function BoundRoot({
+  name,
+  form,
+  children,
+  className,
+  disabled = false,
+  acceptEntry,
+  keyMaxLength,
+}: EditorProps & { name: string; form: FormScope }) {
+  const { fields } = useFieldArray({ control: form.api.control, name, keyName: 'formKey' })
+  const entries = fields.map((_, index) => form.get(`${name}.${index}`) as KeyValueEntry)
+  return (
+    <EditorContext value={{ name, entries, change: (next) => form.change(name, next), disabled, acceptEntry, keyMaxLength }}>
+      <div
+        className={cx('w-full min-w-0 max-w-full', className)}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) form.blur(name)
+        }}
+      >
+        {children}
+      </div>
+    </EditorContext>
+  )
+}
+function UnboundRoot({
+  name,
+  value: suppliedValue,
+  onValueChange: suppliedChange,
+  disabled = false,
+  children,
+  className,
+  acceptEntry,
+  keyMaxLength,
+}: EditorProps) {
   const field = useFormField<KeyValueEntry[]>(name)
   const value = field ? (field.value ?? []) : (suppliedValue ?? [])
   const onValueChange = (value: KeyValueEntry[]) => {
@@ -87,7 +123,7 @@ function Disclosure({ children = 'Headers', defaultOpen = false }: { children?: 
 }
 function Content() {
   const timing = useTransition('reorder')
-  const { entries, change, disabled, acceptEntry, keyMaxLength } = useEditor()
+  const { name, entries, change, disabled, acceptEntry, keyMaxLength } = useEditor()
   const pendingFocus = useRef<string | null>(null)
   const { rowNodes, drag, preview, announcement, id, keyboardMove, startDrag, pointerMove, endDrag } = useReorder(
     entries.map((entry) => entry.id),
@@ -172,6 +208,7 @@ p-1
             <span role="cell" className="min-w-0">
               <TextField
                 aria-label={`Header ${index + 1} key`}
+                name={name ? `${name}.${index}.key` : undefined}
                 maxLength={keyMaxLength}
                 value={entry.key}
                 placeholder="Enter key"
@@ -186,16 +223,19 @@ p-1
                 className="h-8 border-transparent text-xs"
                 onChange={(event) => update(index, { key: event.target.value })}
               />
+              {name ? <FormError name={`${name}.${index}.key`} /> : null}
             </span>
             <span role="cell" className="min-w-0">
               <TextField
                 aria-label={`Header ${index + 1} value`}
+                name={name ? `${name}.${index}.value` : undefined}
                 value={entry.value}
                 placeholder="Enter value"
                 disabled={disabled}
                 className="h-8 border-transparent text-xs"
                 onChange={(event) => update(index, { value: event.target.value })}
               />
+              {name ? <FormError name={`${name}.${index}.value`} /> : null}
             </span>
             <span role="cell">
               <animated.button

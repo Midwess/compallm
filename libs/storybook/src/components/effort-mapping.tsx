@@ -59,6 +59,8 @@ export function EffortMapping({
   }
   return (
     <fieldset
+      aria-invalid={field?.invalid || undefined}
+      aria-describedby={field ? `${name}-error` : undefined}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) field?.blur()
       }}

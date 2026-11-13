@@ -1,3 +1,4 @@
+import { FormError } from '../../components/form'
 import { useId } from 'react'
 import { Button } from '../../components/buttons'
 import { Select } from '../../components/dropdowns'
@@ -80,6 +81,7 @@ function PreferenceControl({ item, last = false }: { item: Preference; last?: bo
       ) : (
         <Switch id={id} name={`preferences.${item.key}`} />
       )}
+      <FormError name={`preferences.${item.key}`} />
     </Row>
   )
 }
@@ -150,9 +152,9 @@ export function MessagingSettings() {
 }
 function CodeAppearanceSection() {
   const c = useSettingsController(),
-    fontSize = useSettings((s) => s.preferences.codeFontSize),
-    font = useSettings((s) => s.preferences.codeFont),
-    language = useSettings((s) => String(s.preferences.codeLanguage ?? 'typescript')),
+    fontSize = useSettings((s) => s.preferences.codeFontSize, ['preferences.codeFontSize']),
+    font = useSettings((s) => s.preferences.codeFont, ['preferences.codeFont']),
+    language = useSettings((s) => String(s.preferences.codeLanguage ?? 'typescript'), ['preferences.codeLanguage']),
     examples = useSettings((s) => s.codeExamples)
   const example = examples[language] ?? { code: '' }
   const appearance = useCodeAppearance()

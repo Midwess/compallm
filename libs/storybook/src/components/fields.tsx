@@ -2,23 +2,27 @@ import { animated } from './motion'
 import { otpLength, otpPattern, otpCharacters } from '@compallm/contract/auth'
 import { useEffect, useRef, useState, type ComponentPropsWithRef, type TextareaHTMLAttributes } from 'react'
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGlass'
-import { cx } from './shared'
-import { useFormField } from './form'
+import { cx, composeRefs } from './shared'
+import { useFormField, useNativeFormField } from './form'
 
 export type TextFieldProps = ComponentPropsWithRef<'input'>
 export function TextField({ className, onChange, onBlur, onKeyDown, value, ...props }: TextFieldProps) {
-  const field = useFormField<string>(props.name)
+  const field = useNativeFormField(props.name)
   return (
     <animated.input
       {...props}
-      value={field ? (field.value ?? '') : value}
-      aria-invalid={field?.invalid || props['aria-invalid']}
+      {...field?.registration}
+      ref={composeRefs(field?.registration.ref, props.ref)}
+      value={field ? undefined : value}
+      defaultValue={field ? field.defaultValue : props.defaultValue}
+      aria-describedby={props['aria-describedby'] ?? (field ? `${props.name}-error` : undefined)}
+      aria-invalid={props['aria-invalid']}
       onChange={(event) => {
-        if (field) field.change(event.currentTarget.value)
+        if (field) void field.registration.onChange(event)
         else onChange?.(event)
       }}
       onBlur={(event) => {
-        field?.blur()
+        if (field) void field.registration.onBlur(event)
         onBlur?.(event)
       }}
       onKeyDown={(event) => {
@@ -42,26 +46,23 @@ focus:border-muted/60 focus:outline-none aria-invalid:border-error disabled:curs
     />
   )
 }
-export function MultilineField({
-  className,
-  value,
-  onChange,
-  onBlur,
-  onKeyDown,
-  ...props
-}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  const field = useFormField<string>(props.name)
+export function MultilineField({ className, value, onChange, onBlur, onKeyDown, ...props }: ComponentPropsWithRef<'textarea'>) {
+  const field = useNativeFormField(props.name)
   return (
     <animated.textarea
       {...props}
-      value={field ? (field.value ?? '') : value}
-      aria-invalid={field?.invalid || props['aria-invalid']}
+      {...field?.registration}
+      ref={composeRefs(field?.registration.ref, props.ref)}
+      value={field ? undefined : value}
+      defaultValue={field ? field.defaultValue : props.defaultValue}
+      aria-describedby={props['aria-describedby'] ?? (field ? `${props.name}-error` : undefined)}
+      aria-invalid={props['aria-invalid']}
       onChange={(event) => {
-        if (field) field.change(event.currentTarget.value)
+        if (field) void field.registration.onChange(event)
         else onChange?.(event)
       }}
       onBlur={(event) => {
-        field?.blur()
+        if (field) void field.registration.onBlur(event)
         onBlur?.(event)
       }}
       onKeyDown={(event) => {
@@ -188,6 +189,8 @@ export function CodeEntry({
         <CodeField
           key={index}
           {...a11y}
+          aria-invalid={field?.invalid || a11y['aria-invalid']}
+          aria-describedby={a11y['aria-describedby'] ?? (field ? `${name}-error` : undefined)}
           ref={(element) => {
             inputs.current[index] = element
           }}

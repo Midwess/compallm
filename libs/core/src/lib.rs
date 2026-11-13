@@ -10,5 +10,6 @@ pub mod mail;
 pub mod model;
 pub mod organization;
 pub mod persistent;
+pub mod preference;
 pub mod provider;
 pub mod user;

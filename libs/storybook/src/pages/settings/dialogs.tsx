@@ -1,3 +1,5 @@
+import { parseSettingsDialog } from './validation'
+import { FormError } from '../../components/form'
 import { useState } from 'react'
 import { Form } from '../../components/form'
 import { motion } from 'motion/react'
@@ -38,7 +40,7 @@ const visibilityOptions = ['Always show', 'Show when badged', "Don't show"].map(
 function CustomizeSidebar() {
   const timing = useTransition('reorder')
   const controller = useSettingsController()
-  const preferences = useSettings((state) => state.preferences)
+  const preferences = useSettings((state) => state.preferences, ['preferences'])
   const order = String(preferences.sidebarOrder).split(',')
   const { rowNodes, drag, preview, announcement, id, keyboardMove, startDrag, pointerMove, endDrag } = useReorder(
     order,
@@ -63,6 +65,7 @@ function CustomizeSidebar() {
                 name="preferences.sidebarBadgeStyle"
                 options={badgeOptions}
               />
+              <FormError name="preferences.sidebarBadgeStyle" />
             </div>
             <div className="grid gap-2.5">
               <h3 className="text-xsm font-medium">Workspace</h3>
@@ -118,6 +121,7 @@ active:cursor-grabbing focus-visible:outline-focus
                         name={`preferences.sidebar${name}`}
                         options={visibilityOptions}
                       />
+                      <FormError name={`preferences.sidebar${name}`} />
                     </motion.div>
                   )
                 })}
@@ -138,12 +142,14 @@ active:cursor-grabbing focus-visible:outline-focus
 
 function SettingsDialogContent() {
   const c = useSettingsController(),
-    d = useSettings((s) => s.dialog),
+    d = useSettings((s) => s.dialog, ['dialog']),
     busy = useSettings((s) => s.busy)
   const [dialogForm] = useState(() =>
     c.store.form.scope(['dialog'], {
       mode: 'button',
       command: true,
+      validationNames: () => ['dialog'],
+      parse: parseSettingsDialog,
       error: (error, retry) => c.apiError(error, retry),
       submit: (values) => {
         if (values.dialog) c.pages.dialogs.confirmDialog(values.dialog)
@@ -151,8 +157,8 @@ function SettingsDialogContent() {
       },
     }),
   )
-  const profile = useSettings((s) => s.profile),
-    organization = useSettings((s) => s.organization)
+  const profile = useSettings((s) => s.profile, ['profile']),
+    organization = useSettings((s) => s.organization, ['organization'])
   const members = useSettings((s) => s.members),
     roles = useSettings((s) => s.roles),
     groups = useSettings((s) => s.groups)
@@ -245,7 +251,7 @@ function SettingsDialogContent() {
                   : d.kind === 'revoke-key'
                     ? 'Revoke key'
                     : 'Save changes'
-  const disabled = busy || Boolean(phrase && d.phrase !== phrase) || (named.includes(d.kind) && !d.name.trim())
+  const disabled = busy || Boolean(phrase && d.phrase !== phrase)
   return (
     <Dialog onClose={() => c.pages.dialogs.closeDialog()}>
       <Dialog.Content className="w-110 rounded-xl bg-elevated">
@@ -265,12 +271,14 @@ function SettingsDialogContent() {
                   Confirmation phrase
                 </label>
                 <TextField autoFocus id="confirmation-phrase" placeholder="Enter confirmation phrase" name="dialog.phrase" />
+                <FormError name="dialog.phrase" />
               </>
             ) : null}
             {named.includes(d.kind) ? (
               <label className="grid gap-2 text-xs text-muted">
                 {d.kind === 'add-passkey' ? 'Passkey name' : 'Name'}
                 <TextField autoFocus name="dialog.name" required />
+                <FormError name="dialog.name" />
               </label>
             ) : null}
             {d.kind === 'verify-passkey' ? (
@@ -295,6 +303,7 @@ function SettingsDialogContent() {
                   placeholder="No limit set"
                   name="dialog.value"
                 />
+                <FormError name="dialog.value" />
                 <span>Leave empty to use {d.targetId ? 'the organization default' : 'no limit'}.</span>
               </label>
             ) : null}
@@ -317,10 +326,16 @@ function SettingsDialogContent() {
                     className="w-full"
                     options={['Workspace timezone', 'UTC', 'Asia/Ho_Chi_Minh'].map((label) => ({ label, value: label }))}
                   />
+                  <FormError name="dialog.value" />
                 </label>
               </>
             ) : null}
-            {text ? <MultilineField aria-label={titles[d.kind]} className="min-h-32" name="dialog.value" /> : null}
+            {text ? (
+              <>
+                <MultilineField aria-label={titles[d.kind]} className="min-h-32" name="dialog.value" />
+                <FormError name="dialog.value" />
+              </>
+            ) : null}
           </Dialog.Body>
           <Dialog.Footer className="border-0 px-6 pb-6">
             {d.kind !== 'reveal-key' ? <Dialog.Cancel variant="ghost">Cancel</Dialog.Cancel> : null}
@@ -337,7 +352,7 @@ function SettingsDialogContent() {
 }
 
 export function SettingsDialogs() {
-  const dialog = useSettings((state) => state.dialog)
+  const dialog = useSettings((state) => state.dialog, ['dialog'])
   if (!dialog) return null
   return <SettingsDialogContent key={`${dialog.kind}:${dialog.targetId ?? ''}`} />
 }

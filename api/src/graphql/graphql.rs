@@ -210,6 +210,14 @@ impl GraphQLType for RegisteredQuery {
         registry.get_type::<input::ProviderReplaceInput>(&());
         registry.get_type::<input::ProviderPatchInput>(&());
         registry.get_type::<catalog::ProviderTemplate>(&());
+        registry.get_type::<super::user::input::ProfileUpdateInput>(&());
+        registry.get_type::<super::user::input::PreferencesUpdateInput>(&());
+        registry.get_type::<super::user::input::ImageUploadInput>(&());
+        registry.get_type::<super::organization::input::OrganizationSettingsUpdateInput>(&());
+        registry.get_type::<super::chat::input::ChatCreateInput>(&());
+        registry.get_type::<super::user::input::CredentialCreateInput>(&());
+        registry.get_type::<super::organization::input::SpendingLimitInput>(&());
+        registry.get_type::<super::organization::input::ReportingScheduleInput>(&());
         Query::meta(info, registry)
     }
 }
@@ -252,6 +260,15 @@ impl GraphQLValueAsync for RegisteredQuery {
 #[derive(JsonSchema)]
 #[allow(dead_code)]
 struct Inputs {
+    credential_create: super::user::input::CredentialCreateInput,
+    spending_limit: super::organization::input::SpendingLimitInput,
+    reporting_schedule: super::organization::input::ReportingScheduleInput,
+    form_0: super::user::input::ProfileUpdateInput,
+    form_1: super::user::input::PreferencesUpdateInput,
+    form_2: super::user::input::ImageUploadInput,
+    form_3: super::organization::input::OrganizationSettingsUpdateInput,
+    form_4: super::chat::input::ChatCreateInput,
+
     role_create: super::organization::role::input::RoleCreateInput,
     role_update: super::organization::role::input::RoleUpdateInput,
     group_create: super::organization::group::input::GroupCreateInput,

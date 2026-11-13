@@ -1,7 +1,11 @@
-import { useContext, useEffect, useState, useSyncExternalStore, type ComponentProps, type ReactNode } from 'react'
+import { useContext, useEffect, useState, useSyncExternalStore, useCallback, type ComponentProps, type ReactNode } from 'react'
+import { useController } from 'react-hook-form'
+import { useSyncExternalStoreWithSelector } from 'use-sync-external-store/shim/with-selector'
+import cloneDeep from 'lodash-es/cloneDeep.js'
+import isEqual from 'lodash-es/isEqual.js'
 import { FormContext } from '../context'
 import { Button } from './buttons'
-import type { FormModel, FormScope, FormOptions } from './form-model'
+import type { FormModel, FormScope, FormOptions, FormStore } from './form-model'
 export { createForm, createFormStore, FormModel } from './form-model'
 export type { CommitMode, FormOptions, FormRule, FormScope, FormStore } from './form-model'
 
@@ -9,33 +13,104 @@ const emptySubscribe = () => () => {}
 export function useFormField<T = unknown>(name?: string) {
   const scope = useContext(FormContext)
   const form = name && scope?.has(name) ? scope : null
-  const value = useSyncExternalStore(
-    form?.subscribe ?? emptySubscribe,
-    () => form?.get(name!) as T,
-    () => form?.get(name!) as T,
-  )
-  const invalid = useSyncExternalStore(
-    form?.subscribe ?? emptySubscribe,
-    () => form?.invalid(name!) ?? false,
-    () => form?.invalid(name!) ?? false,
-  )
+  const [standalone] = useState(() => new Model({ value: undefined }))
+  const { field, fieldState } = useController({ name: form ? name! : 'value', control: (form ?? standalone).api.control })
   return form
     ? {
-        value,
-        invalid,
+        value: field.value as T,
+        invalid: fieldState.invalid,
         change: (next: T) => form.change(name!, next),
-        blur: () => form.blur(name!),
+        blur: () => {
+          field.onBlur()
+          form.blur(name!)
+        },
         enter: () => form.enter(name!),
         escape: () => form.escape(name!),
       }
     : null
 }
 export function useFormValue<T>(form: FormScope, name: string): T {
-  return useSyncExternalStore(
-    form.subscribe,
-    () => form.get(name) as T,
-    () => form.get(name) as T,
+  return useSyncExternalStoreWithSelector(
+    useCallback((notify) => form.subscribe(notify, name), [form, name]),
+    () => form.editVersion,
+    () => form.editVersion,
+    () => cloneDeep(form.get(name)) as T,
+    isEqual,
   )
+}
+
+export function useNativeFormField(name?: string) {
+  const scope = useContext(FormContext)
+  const form = name && scope?.has(name) ? scope : null
+  return form
+    ? {
+        registration: form.native(name!),
+        defaultValue: String(form.get(name!) ?? ''),
+        enter: () => form.enter(name!),
+        escape: () => form.escape(name!),
+      }
+    : null
+}
+export function useFormInvalid(name?: string) {
+  const form = useContext(FormContext)
+  return useSyncExternalStore(
+    useCallback((notify) => (form && name ? form.subscribe(notify, name) : emptySubscribe()), [form, name]),
+    () => (name ? (form?.invalid(name) ?? false) : false),
+    () => (name ? (form?.invalid(name) ?? false) : false),
+  )
+}
+export function FormError({ name, ...props }: ComponentProps<'p'> & { name: string }) {
+  const form = useContext(FormContext)
+  const message = useSyncExternalStore(
+    useCallback((notify) => (form ? form.subscribe(notify, name) : emptySubscribe()), [form, name]),
+    () => form?.message(name),
+    () => form?.message(name),
+  )
+  return message ? (
+    <p {...props} id={props.id ?? `${name}-error`} role="alert" className={props.className ?? 'text-xs text-error'}>
+      {message}
+    </p>
+  ) : null
+}
+export function useFormStore<T extends object, V>(
+  store: FormStore<T>,
+  selector: (state: T) => V,
+  names: readonly string[] = [],
+): V {
+  const key = names.join('|')
+  const subscribe = useCallback(
+    (notify: () => void) => {
+      const stopWorkflow = store.subscribe(notify)
+      const stops = key ? key.split('|').map((name) => store.form.subscribe(notify, name)) : []
+      return () => {
+        stopWorkflow()
+        stops.forEach((stop) => stop())
+      }
+    },
+    [store, key],
+  )
+  return useSyncExternalStoreWithSelector(
+    subscribe,
+    store.getState,
+    store.getInitialState,
+    (state) => cloneDeep(selector(state)),
+    isEqual,
+  )
+}
+
+export function contractResult<T>(
+  result: { success: boolean; data?: unknown; error?: { issues: { path: PropertyKey[]; message: string }[] } },
+  values: T,
+  prefix = '',
+) {
+  return result.success
+    ? { values }
+    : {
+        issues: result.error!.issues.map((issue) => ({
+          ...issue,
+          path: [...(prefix ? prefix.split('.') : []), ...issue.path],
+        })),
+      }
 }
 export function useManagedForm<T extends object>(initial: T, options: FormOptions<T>) {
   const [form] = useState(() => new Model(initial, options))
@@ -51,9 +126,8 @@ function Root<T extends object>({
   onSubmit,
   onKeyDown,
   onReset,
-  buttonOnly,
   ...props
-}: Omit<ComponentProps<'form'>, 'onChange'> & { model: FormModel<T>; children?: ReactNode; buttonOnly?: boolean }) {
+}: Omit<ComponentProps<'form'>, 'onChange'> & { model: FormModel<T>; children?: ReactNode }) {
   useEffect(() => model.mount(), [model])
   return (
     <FormContext value={model}>
@@ -77,7 +151,7 @@ function Root<T extends object>({
             !event.defaultPrevented &&
             !event.nativeEvent.isComposing &&
             event.key === 'Enter' &&
-            (buttonOnly ?? model.buttonOnly()) &&
+            model.buttonOnly() &&
             target.tagName !== 'TEXTAREA' &&
             target.tagName !== 'BUTTON'
           )
@@ -118,4 +192,4 @@ function Status() {
     </span>
   )
 }
-export const Form = Object.assign(Root, { Submit, Reset, Status })
+export const Form = Object.assign(Root, { Submit, Reset, Status, Error: FormError })

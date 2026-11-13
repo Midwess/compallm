@@ -3,12 +3,73 @@ schema {
   mutation: Mutation
 }
 
+enum AppearanceMode {
+  SYSTEM_PREFERENCE
+  LIGHT
+  DARK
+}
+
+enum CodeFont {
+  DEFAULT
+  MONOSPACE
+}
+
+enum CodeFontSize {
+  PX12
+  PX13
+  PX14
+  PX16
+}
+
+enum CodeTheme {
+  LINEAR_DARK
+  LINEAR_LIGHT
+  SYSTEM_PREFERENCE
+  FOLLOW_INTERFACE
+}
+
 "How the request delivers credentials; this is never stored in signed claims."
 enum CredentialDelivery {
   "Set HttpOnly cookies and return metadata without credential values."
   COOKIE
   "Return credentials explicitly without setting browser cookies."
   TOKEN
+}
+
+enum DarkPalette {
+  DARK
+  MAGIC_BLUE
+  CLASSIC_DARK
+}
+
+enum HomeDestination {
+  CHAT
+  MODELS
+  PROVIDERS
+}
+
+enum ImageMediaType {
+  JPEG
+  PNG
+  WEBP
+}
+
+enum InterfaceFontSize {
+  SMALLER
+  SMALL
+  DEFAULT
+  LARGE
+  LARGER
+}
+
+enum LightPalette {
+  LIGHT
+  PURE_LIGHT
+}
+
+enum MemberDisplay {
+  FULL_NAME
+  USERNAME
 }
 
 "Catalog connection family hint; each configured model selects its own operation."
@@ -34,11 +95,46 @@ enum ProviderModelCapability {
   STRUCTURED_OUTPUT
 }
 
+enum SendShortcut {
+  MODIFIER_ENTER
+  ENTER
+}
+
+enum SidebarBadgeStyle {
+  DOT
+  COUNT
+}
+
+enum SidebarVisibility {
+  ALWAYS_SHOW
+  ONLY_WHEN_BADGED
+  HIDDEN
+}
+
 "Text operation determining the upstream request and response format."
 enum TextModelProtocol {
   OPENAI_CHAT_COMPLETIONS
   OPENAI_RESPONSES
   ANTHROPIC_MESSAGES
+}
+
+enum Weekday {
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
+input ChatCreateInput {
+  message: String!
+  modelId: String!
+}
+
+input CredentialCreateInput {
+  name: String!
 }
 
 """
@@ -71,6 +167,49 @@ input GroupCreateInput {
   name: String!
   description: String!
   roleIds: [String!]!
+}
+
+input ImageUploadInput {
+  mediaType: ImageMediaType!
+  size: Int!
+}
+
+input OrganizationSettingsUpdateInput {
+  name: String
+  slug: String
+  fiscalMonth: String
+  welcome: String
+  announcements: String
+  home: HomeDestination
+}
+
+input PreferencesUpdateInput {
+  home: HomeDestination
+  displayNames: MemberDisplay
+  firstDay: Weekday
+  fontSize: InterfaceFontSize
+  underlineLinks: Boolean
+  reduceMotion: Boolean
+  pointerCursors: Boolean
+  theme: AppearanceMode
+  lightTheme: LightPalette
+  darkTheme: DarkPalette
+  emoticons: Boolean
+  sendShortcut: SendShortcut
+  codeTheme: CodeTheme
+  codeFont: CodeFont
+  codeFontSize: CodeFontSize
+  sidebarOrder: String
+  sidebarBadgeStyle: SidebarBadgeStyle
+  sidebarProviders: SidebarVisibility
+  sidebarModels: SidebarVisibility
+  sidebarNotebooks: SidebarVisibility
+  sidebarPlugins: SidebarVisibility
+}
+
+input ProfileUpdateInput {
+  name: String
+  username: String
 }
 
 "Opaque registry identity, independent of an edited upstream model name."
@@ -158,6 +297,10 @@ input ProvidersCreateInput {
   providers: [ProviderCreateInput!]!
 }
 
+input ReportingScheduleInput {
+  timezone: String!
+}
+
 input RoleCreateInput {
   name: String!
   description: String!
@@ -170,6 +313,10 @@ input RoleUpdateInput {
   description: String
   "Comments and unnecessary whitespace are removed before the length limit is checked."
   cedarSource: String
+}
+
+input SpendingLimitInput {
+  amount: String
 }
 
 "Positive u32 context size, encoded as an exact JSON number (1–4294967295)."

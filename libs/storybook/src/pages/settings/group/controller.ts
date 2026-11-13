@@ -1,4 +1,4 @@
-import { useStore } from 'zustand'
+import { useFormStore } from '../../../components/form'
 import type { FormStore } from '../../../components/form'
 import { useSettingsController } from '../controller'
 import type { GroupDraft } from '../types'
@@ -19,6 +19,6 @@ export interface GroupController {
 export function useGroupController() {
   return useSettingsController().group
 }
-export function useGroup<T>(selector: (state: GroupState) => T) {
-  return useStore(useGroupController().store, selector)
+export function useGroup<T>(selector: (state: GroupState) => T, names: readonly string[] = []) {
+  return useFormStore(useGroupController().store, selector, names)
 }

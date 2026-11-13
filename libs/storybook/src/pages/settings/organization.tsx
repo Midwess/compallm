@@ -1,3 +1,4 @@
+import { FormError } from '../../components/form'
 import { Button } from '../../components/buttons'
 import { TextField, FileField } from '../../components/fields'
 import { Select } from '../../components/dropdowns'
@@ -21,7 +22,7 @@ const months = [
 ]
 export function OrganizationSettings() {
   const c = useSettingsController(),
-    org = useSettings((s) => s.organization)
+    org = useSettings((s) => s.organization, ['organization'])
   return (
     <SettingsContent>
       <Heading>Organization</Heading>
@@ -35,18 +36,21 @@ export function OrganizationSettings() {
                   Upload
                   <FileField
                     name="organizationUpload"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     className="sr-only"
                     aria-label="Upload organization logo"
                   />
+                  <FormError name="organizationUpload" />
                 </label>
               </div>
             </Row>
             <Row label={<label htmlFor="organization-name">Name</label>}>
               <TextField id="organization-name" className="w-70 max-w-full" name="organization.name" />
+              <FormError name="organization.name" />
             </Row>
             <Row label={<label htmlFor="organization-url">URL</label>} last>
               <TextField id="organization-url" className="w-70 max-w-full" name="organization.slug" />
+              <FormError name="organization.slug" />
             </Row>
           </Rows>
         </Section>
@@ -59,6 +63,7 @@ export function OrganizationSettings() {
                 name="organization.fiscalMonth"
                 options={months.map((label) => ({ label, value: label }))}
               />
+              <FormError name="organization.fiscalMonth" />
             </Row>
             <Row label="Region" description="Deployment region for this organization." last>
               <span className="text-xs text-muted">{org.region}</span>
@@ -84,6 +89,7 @@ export function OrganizationSettings() {
                 name="organization.home"
                 options={['Chat', 'Models', 'Providers'].map((label) => ({ label, value: label }))}
               />
+              <FormError name="organization.home" />
             </Row>
           </Rows>
         </Section>

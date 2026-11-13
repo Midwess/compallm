@@ -9,7 +9,7 @@ import { contextTokensFromText } from '@compallm/contract/provider'
 import { modelPath, modelProtocol } from './model-options'
 import type { CreateProviderState, ProviderModel } from './types'
 
-function modelConfiguration(model: ProviderModel): ProviderModelConfiguration {
+export function modelConfiguration(model: ProviderModel): ProviderModelConfiguration {
   return {
     name: model.name,
     protocol: TextModelProtocol.parse(modelProtocol(model).toUpperCase()),

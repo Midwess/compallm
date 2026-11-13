@@ -52,6 +52,7 @@ test('returned values never commit or overwrite newer unsubmitted typing', async
   form.change('name', 'First')
   const pending = form.commit(['name'])
   form.change('name', 'Newer draft')
+  await Promise.resolve()
   finish({ name: 'Normalized first' })
   await pending
   assert.equal(form.values.name, 'Newer draft')

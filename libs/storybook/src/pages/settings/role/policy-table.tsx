@@ -132,7 +132,18 @@ function PermissionRow({
 export function PolicyTable() {
   const c = useRoleController(),
     actions = useSettings((s) => s.policyActions),
-    draft = useRole((s) => s.draft),
+    draft = useRole(
+      (s) =>
+        s.draft
+          ? {
+              builtin: s.draft.builtin,
+              parsing: s.draft.parsing,
+              diagnostics: s.draft.diagnostics,
+              projection: s.draft.projection,
+            }
+          : null,
+      ['draft.builtin', 'draft.parsing', 'draft.diagnostics', 'draft.projection'],
+    ),
     query = useRole((s) => s.query),
     filters = useRole((s) => s.filters),
     busy = useRole((s) => s.busy)

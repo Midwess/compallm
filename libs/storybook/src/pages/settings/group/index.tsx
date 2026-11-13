@@ -1,5 +1,7 @@
+import { GroupCreateInput } from '@compallm/contract/validation'
+import { FormError } from '../../../components/form'
 import { useEffect } from 'react'
-import { Form } from '../../../components/form'
+import { Form, contractResult } from '../../../components/form'
 import { Button } from '../../../components/buttons'
 import { XIcon } from '@phosphor-icons/react/dist/csr/X'
 import { ChoicePicker } from '../../../components/choice-picker'
@@ -14,7 +16,7 @@ import { SettingsContent, Heading, Section, Rows, Row, Indicator, Empty } from '
 
 function GroupMembers() {
   const group = useGroupController(),
-    draft = useGroup((s) => s.draft),
+    draft = useGroup((s) => (s.draft ? { memberIds: s.draft.memberIds } : null), ['draft.memberIds']),
     members = useSettings((s) => s.members),
     query = useGroup((s) => s.query),
     readonly = useSettings((s) => s.readonly),
@@ -93,6 +95,7 @@ function GroupMembers() {
             </Table.Content>
           </Table>
         </div>
+        <FormError name="draft.memberIds" />
       </SectionSurface>
     </section>
   )
@@ -101,7 +104,7 @@ function GroupMembers() {
 function GroupRoles() {
   const c = useSettingsController(),
     group = useGroupController(),
-    draft = useGroup((s) => s.draft),
+    draft = useGroup((s) => (s.draft ? { roleIds: s.draft.roleIds } : null), ['draft.roleIds']),
     roles = useSettings((s) => s.roles),
     readonly = useSettings((s) => s.readonly),
     busy = useGroup((s) => s.busy)
@@ -128,6 +131,7 @@ function GroupRoles() {
           options={roles.map((role) => ({ id: role.id, label: role.name, description: role.description, color: role.color }))}
           name="draft.roleIds"
         />
+        <FormError name="draft.roleIds" />
       </div>
       <SectionSurface className="p-0">
         {draft.roleIds.length ? (
@@ -169,9 +173,14 @@ function GroupRoles() {
   )
 }
 
+function GroupHeading() {
+  const id = useGroup((s) => s.draft?.id, ['draft.id'])
+  const name = useGroup((s) => s.draft?.name, ['draft.name'])
+  return id ? name : 'New group'
+}
 function GroupEditorContent() {
   const c = useSettingsController(),
-    draft = useGroup((s) => s.draft),
+    draft = useGroup((s) => (s.draft ? { id: s.draft.id } : null), ['draft.id']),
     readonly = useSettings((s) => s.readonly),
     busy = useGroup((s) => s.busy)
   if (!draft)
@@ -182,7 +191,9 @@ function GroupEditorContent() {
     )
   return (
     <SettingsContent className="flex flex-col pt-14 pb-6">
-      <Heading className="mb-8 shrink-0">{draft.id ? draft.name : 'New group'}</Heading>
+      <Heading className="mb-8 shrink-0">
+        <GroupHeading />
+      </Heading>
       <div className="flex min-w-0 flex-col gap-6">
         <Section title="Group details" className="shrink-0">
           <Rows className="**:[[role=separator]]:bg-border">
@@ -194,6 +205,7 @@ function GroupEditorContent() {
                 placeholder="Group name…"
                 disabled={readonly || busy}
               />
+              <FormError name="draft.name" />
             </Row>
             <Row label={<label htmlFor="group-description">Description</label>} last>
               <TextField
@@ -203,6 +215,7 @@ function GroupEditorContent() {
                 placeholder="Describe this group…"
                 disabled={readonly || busy}
               />
+              <FormError name="draft.description" />
             </Row>
           </Rows>
         </Section>
@@ -210,7 +223,7 @@ function GroupEditorContent() {
         <GroupMembers />
         {!readonly && !draft.id ? (
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
-            <Button variant="primary" className="w-32 rounded-xl" loading={busy} disabled={!draft.name.trim()} type="submit">
+            <Button variant="primary" className="w-32 rounded-xl" loading={busy} type="submit">
               Create group
             </Button>
           </div>
@@ -238,7 +251,7 @@ function GroupEditorContent() {
 
 export function GroupEditorSettings() {
   const group = useGroupController()
-  const id = useGroup((state) => state.draft?.id)
+  const id = useGroup((state) => state.draft?.id, ['draft.id'])
   const form = group.store.form
   const settings = useSettingsController()
   useEffect(() => {
@@ -246,8 +259,19 @@ export function GroupEditorSettings() {
     form.configure({
       mode: 'button',
       command: true,
+      validationNames: () => ['draft'],
       error: (error, retry) => settings.apiError(error, retry),
-      validate: (values) => Boolean(values.draft?.name.trim()),
+      parse: (values) => {
+        const draft = values.draft
+        const result = GroupCreateInput.safeParse(
+          draft ? { name: draft.name, description: draft.description, roleIds: draft.roleIds } : {},
+        )
+        return contractResult(
+          result,
+          result.success && draft ? { ...values, draft: { ...draft, ...result.data } } : values,
+          'draft',
+        )
+      },
       submit: async (values) => {
         if (!values.draft) return false
         const result = await group.saveGroup(values.draft)

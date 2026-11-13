@@ -85,22 +85,43 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                         if length && !matches!(field_type, syn::Type::Path(p) if p.path.is_ident("String")) {
                             return Err(rule.error("length export currently supports String fields only"));
                         }
+                        let mut message = None;
+                        let mut keys = Vec::new();
                         rule.parse_nested_meta(|bound| {
+                            if bound.path.is_ident("message") {
+                                message = Some(bound.value()?.parse::<syn::LitStr>()?);
+                                return Ok(());
+                            }
                             let key = if bound.path.is_ident("min") { if length { "minLength" } else { "minimum" } }
                                 else if bound.path.is_ident("max") { if length { "maxLength" } else { "maximum" } }
                                 else if bound.path.is_ident("equal") && length { "equal" }
                                 else { return Err(bound.error("unsupported contract bound")); };
                             let value: syn::Expr = bound.value()?.parse()?;
                             if key == "equal" {
+                                keys.extend(["minLength", "maxLength"]);
                                 updates_for_field.push(quote! { property["minLength"] = ::serde_json::json!(#value); property["maxLength"] = ::serde_json::json!(#value); });
                             } else {
+                                keys.push(key);
                                 updates_for_field.push(quote! { property[#key] = ::serde_json::json!(#value); });
                             }
                             Ok(())
-                        })
+                        })?;
+                        if let Some(message) = message {
+                            for key in keys {
+                                updates_for_field.push(quote! {
+                                    property["x-compallm-messages"][#key] = ::serde_json::json!(#message);
+                                });
+                            }
+                        }
+                        Ok(())
                     } else if rule.path.is_ident("custom") {
                         let mut function = None;
+                        let mut message = None;
                         rule.parse_nested_meta(|arg| {
+                            if arg.path.is_ident("message") {
+                                message = Some(arg.value()?.parse::<syn::LitStr>()?);
+                                return Ok(());
+                            }
                             if !arg.path.is_ident("function") { return Err(arg.error("custom contract validators require function = path")); }
                             function = Some(arg.value()?.parse::<syn::Path>()?);
                             Ok(())
@@ -108,7 +129,16 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                         let mut function = function.ok_or_else(|| rule.error("missing custom function"))?;
                         let last = function.segments.last_mut().unwrap();
                         last.ident = format_ident!("{}_contract", last.ident);
-                        updates_for_field.push(quote! { ::compallm_utils::contract::merge_constraints(property, #function()); });
+                        let messages = message.map(|message| quote! {
+                            for key in constraints.as_object().expect("custom contract must be an object").keys() {
+                                property["x-compallm-messages"][key] = ::serde_json::json!(#message);
+                            }
+                        });
+                        updates_for_field.push(quote! {
+                            let constraints = #function();
+                            ::compallm_utils::contract::merge_constraints(property, constraints.clone());
+                            #messages
+                        });
                         Ok(())
                     } else {
                         Err(rule.error("unsupported validation rule: add an explicit contract mapping"))

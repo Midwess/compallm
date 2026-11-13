@@ -14,7 +14,7 @@ function price(value: string) {
 }
 export function ProviderModels() {
   const controller = useController()
-  const models = useProvider((state) => state.models)
+  const models = useProvider((state) => state.models, ['models'])
   const query = useProvider((state) => state.modelQuery)
   const status = useProvider((state) => state.modelStatusFilter)
   const protocol = useProvider((state) => state.modelProtocolFilter)

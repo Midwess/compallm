@@ -1,5 +1,23 @@
-import { FormApi, getBy, setBy } from '@tanstack/react-form'
-import type { AnyFormApi } from '@tanstack/react-form'
+import { createFormControl, type FieldValues, type UseFormReturn, type Resolver } from 'react-hook-form'
+import getBy from 'lodash-es/get.js'
+import cloneDeep from 'lodash-es/cloneDeep.js'
+import isEqual from 'lodash-es/isEqual.js'
+import set from 'lodash-es/set.js'
+
+function setBy<V>(source: V, path: string, value: unknown): V {
+  const keys = path.replace(/\[(\d+)\]/g, '.$1').split('.')
+  const result = { ...source }
+  let cursor = result as Record<string, unknown>
+  let original = source as Record<string, unknown>
+  for (const key of keys.slice(0, -1)) {
+    const child = original?.[key]
+    cursor[key] = Array.isArray(child) ? [...child] : { ...(child as object) }
+    cursor = cursor[key] as Record<string, unknown>
+    original = child as Record<string, unknown>
+  }
+  set(cursor, keys.at(-1)!, value)
+  return result
+}
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
 export type CommitMode = 'change' | 'blur' | 'debounce' | 'complete' | 'button'
@@ -13,9 +31,12 @@ export interface FormRule {
 export interface FormOptions<T extends object> {
   mode?: CommitMode
   command?: boolean
+  resolver?: Resolver<T>
   names?: string[]
+  validationNames?(names: string[]): string[]
   fields?: Record<string, FormRule>
   validate?(values: T, names: string[]): boolean | Promise<boolean>
+  parse?(values: T, names: string[]): { values?: T; issues?: { path: PropertyKey[]; message: string }[] }
   submit?(
     values: T,
     patch: Partial<T>,
@@ -33,41 +54,59 @@ export interface FormScope {
   blur(name: string): void
   enter(name: string): void
   escape(name: string): void
-  subscribe(listener: () => void): () => void
+  readonly api: Omit<UseFormReturn<FieldValues>, 'formState'>
+  readonly editVersion: number
+  subscribe(listener: () => void, name?: string): () => void
+  message(name: string): string | undefined
+  native(name: string): ReturnType<Omit<UseFormReturn<FieldValues>, 'formState'>['register']>
   invalid(name: string): boolean
   buttonOnly(): boolean
 }
 
 export class FormModel<T extends object> implements FormScope {
-  readonly api: AnyFormApi
+  readonly api: Omit<UseFormReturn<FieldValues>, 'formState'>
   private initial: T
   private confirmed: T
   private options: FormOptions<T>
   private listeners = new Set<() => void>()
+  private elements = new Map<string, HTMLElement>()
+  private fieldListeners = new Map<string, Set<() => void>>()
   private versions = new Map<string, number>()
   private queued = new Map<string, Pending>()
   private active = new Map<string, Pending>()
   private timers = new Map<string, ReturnType<typeof setTimeout>>()
+  private dirtyNames = new Set<string>()
   private invalidFields = new Set<string>()
   private request?: AbortController
   private generation = 0
   private paused = false
   private revision = 0
+  private edits = { version: 0 }
+  get editVersion() {
+    return this.edits.version
+  }
   private failedNames: string[] = []
   private failure: unknown = null
   private shared = false
   private mounted = 0
-  private unmountApi?: () => void
-  private unsubscribeApi?: { unsubscribe(): void }
 
-  constructor(values: T, options: FormOptions<T> = {}, api?: AnyFormApi, versions?: Map<string, number>) {
+  constructor(
+    values: T,
+    options: FormOptions<T> = {},
+    api?: Omit<UseFormReturn<FieldValues>, 'formState'>,
+    versions?: Map<string, number>,
+    fieldListeners?: Map<string, Set<() => void>>,
+    edits?: { version: number },
+  ) {
+    if (edits) this.edits = edits
     if (versions) this.versions = versions
-    this.initial = values
-    this.confirmed = values
+    if (fieldListeners) this.fieldListeners = fieldListeners
+    this.initial = cloneDeep(values)
+    this.confirmed = cloneDeep(values)
     this.options = options
     this.shared = Boolean(api)
-    this.api = api ?? new FormApi({ defaultValues: values })
-    if (!this.shared) this.unsubscribeApi = this.api.store.subscribe(() => this.emit())
+    this.api = api ?? createFormControl<FieldValues>({ defaultValues: values, mode: 'onBlur', reValidateMode: 'onChange' })
+    if (!api) this.api.subscribe({ formState: {}, callback: () => {} })
   }
   scope = (names: string[], options: FormOptions<T> = {}) =>
     new FormModel(
@@ -83,6 +122,8 @@ export class FormModel<T extends object> implements FormScope {
       },
       this.api,
       this.versions,
+      this.fieldListeners,
+      this.edits,
     )
   configure = (options: FormOptions<T>) => {
     if ((options.mode ?? 'button') === 'button' && !this.buttonOnly()) {
@@ -93,7 +134,7 @@ export class FormModel<T extends object> implements FormScope {
     this.options = options
   }
   get values(): T {
-    return this.api.state.values as T
+    return this.api.getValues() as T
   }
   get baseline(): T {
     return this.confirmed
@@ -105,24 +146,70 @@ export class FormModel<T extends object> implements FormScope {
     return this.request !== undefined
   }
   get dirty(): boolean {
-    return (this.options.names ?? Object.keys(this.values)).some((key) => !Object.is(this.get(key), getBy(this.confirmed, key)))
+    return this.dirtyNames.size > 0
   }
   get version(): number {
     return this.revision
   }
   submitted = (name: string) => this.active.get(name)?.value
   waiting = (name: string) => this.queued.has(name)
-  invalid = (name: string) => this.invalidFields.has(name)
+  message = (name: string): string | undefined => {
+    const messages = new Set<string>()
+    const collect = (error: unknown) => {
+      if (!error || typeof error !== 'object') return
+      if ('message' in error && typeof error.message === 'string') messages.add(error.message)
+      else for (const [key, child] of Object.entries(error)) if (key !== 'ref') collect(child)
+    }
+    collect(this.api.getFieldState(name).error)
+    return [...messages].join(' ') || undefined
+  }
+  invalid = (name: string) => this.invalidFields.has(name) || Boolean(this.message(name))
+  native = (name: string) => {
+    const registration = this.api.register(name)
+    return {
+      ...registration,
+      ref: (element: HTMLInputElement | null) => {
+        registration.ref(element)
+        if (element) this.elements.set(name, element)
+        else this.elements.delete(name)
+      },
+      onChange: async (event: { target: unknown; type?: string }) => {
+        const target = event.target as HTMLInputElement
+        this.change(name, target.type === 'checkbox' ? target.checked : target.value)
+        if (target.type !== 'checkbox' && target.value !== String(this.get(name) ?? ''))
+          target.value = String(this.get(name) ?? '')
+      },
+      onBlur: async () => this.blur(name),
+    }
+  }
   has = (name: string) =>
     (!this.options.names ||
       this.options.names.some((root) => name === root || name.startsWith(root + '.') || name.startsWith(root + '['))) &&
-    Object.hasOwn(this.values, name.split(/[.[\]]/)[0])
-  get = (name: string): unknown => getBy(this.values, name)
+    Object.hasOwn(this.initial, name.split(/[.[\]]/)[0])
+  get = (name: string): unknown => this.api.getValues(name)
   buttonOnly = () => (this.options.mode ?? 'button') === 'button'
-  subscribe = (listener: () => void) => {
-    this.listeners.add(listener)
+  subscribe = (listener: () => void, name?: string) => {
+    const listeners = name ? (this.fieldListeners.get(name) ?? new Set<() => void>()) : this.listeners
+    if (name) this.fieldListeners.set(name, listeners)
+    listeners.add(listener)
     return () => {
-      this.listeners.delete(listener)
+      listeners.delete(listener)
+      if (name && !listeners.size) this.fieldListeners.delete(name)
+    }
+  }
+  private notify(name: string) {
+    const element = this.elements.get(name)
+    if (element) element.setAttribute('aria-invalid', String(this.invalid(name)))
+    const paths = name.replace(/\[(\d+)\]/g, '.$1').split('.')
+    while (paths.length) {
+      this.fieldListeners.get(paths.join('.'))?.forEach((listener) => listener())
+      paths.pop()
+    }
+    if (this.get(name) && typeof this.get(name) === 'object') {
+      for (const [path, element] of this.elements)
+        if (path.startsWith(name + '.')) element.setAttribute('aria-invalid', String(this.invalid(path)))
+      for (const [path, listeners] of this.fieldListeners)
+        if (path.startsWith(name + '.') || path.startsWith(name + '[')) listeners.forEach((listener) => listener())
     }
   }
   private emit() {
@@ -139,14 +226,23 @@ export class FormModel<T extends object> implements FormScope {
   set = (name: string, value: unknown) => {
     if (Object.is(this.get(name), value)) return
     this.versions.set(name, (this.versions.get(name) ?? 0) + 1)
-    for (const key of this.versions.keys()) {
-      if (
-        (key.startsWith(name + '.') && !Object.is(this.get(key), getBy(value, key.slice(name.length + 1)))) ||
-        (key !== name && (name.startsWith(key + '.') || name.startsWith(key + '[')))
-      )
-        this.versions.set(key, (this.versions.get(key) ?? 0) + 1)
+    const ancestors = name.replace(/\[(\d+)\]/g, '.$1').split('.')
+    ancestors.pop()
+    while (ancestors.length) {
+      const key = ancestors.join('.')
+      this.versions.set(key, (this.versions.get(key) ?? 0) + 1)
+      ancestors.pop()
     }
-    this.api.setFieldValue(name, value, { dontRunListeners: true })
+    if (value && typeof value === 'object')
+      for (const key of this.versions.keys())
+        if (key.startsWith(name + '.') || key.startsWith(name + '[')) this.versions.set(key, (this.versions.get(key) ?? 0) + 1)
+    this.api.setValue(name, value, { shouldDirty: true })
+    this.edits.version++
+    this.notify(name)
+    const wasDirty = this.dirty
+    if (isEqual(this.get(name), getBy(this.confirmed, name))) this.dirtyNames.delete(name)
+    else this.dirtyNames.add(name)
+    if (wasDirty !== this.dirty) this.emit()
   }
   change = (name: string, value: unknown) => {
     const rule = this.rule(name)
@@ -154,7 +250,7 @@ export class FormModel<T extends object> implements FormScope {
     const different = !Object.is(this.get(name), value)
     this.set(name, value)
     if (different && rule.mode === 'complete') this.paused = false
-    this.invalidFields.delete(name)
+    if (this.invalid(name)) void this.validate([name])
     this.options.changed?.(name, value)
     this.clear(name)
     if (this.buttonOnly() || this.paused) return
@@ -170,6 +266,7 @@ export class FormModel<T extends object> implements FormScope {
   }
   blur = (name: string) => {
     const mode = this.rule(name).mode
+    if (this.buttonOnly() || (mode !== 'blur' && mode !== 'debounce')) void this.validate([name])
     if (!this.buttonOnly() && (mode === 'blur' || mode === 'debounce')) {
       this.clear(name)
       void this.commit([name])
@@ -202,18 +299,25 @@ export class FormModel<T extends object> implements FormScope {
   }
   reset = (values: T = this.initial) => {
     this.stop()
-    this.initial = values
-    this.confirmed = values
+    this.initial = cloneDeep(values)
+    this.confirmed = cloneDeep(values)
     if (this.shared && this.options.names) {
       for (const name of this.options.names) this.set(name, getBy(values, name))
-    } else this.api.reset(values)
+    } else {
+      this.api.reset(values, { keepFieldsRef: true })
+      this.edits.version++
+    }
     this.failure = null
     this.paused = false
+    this.dirtyNames.clear()
     this.invalidFields.clear()
+    this.api.clearErrors()
+    for (const name of this.fieldListeners.keys()) this.notify(name)
     this.emit()
   }
   accept = (patch: Partial<T>) => {
-    this.confirmed = { ...this.confirmed, ...patch }
+    this.confirmed = cloneDeep({ ...this.confirmed, ...patch })
+    for (const name of this.dirtyNames) if (isEqual(this.get(name), getBy(this.confirmed, name))) this.dirtyNames.delete(name)
     this.emit()
   }
   retry = () => {
@@ -233,10 +337,63 @@ export class FormModel<T extends object> implements FormScope {
       const value = this.get(name),
         version = this.versions.get(name) ?? 0
       const active = this.active.get(name)
-      if (active && Object.is(active.value, value) && active.version === version) continue
-      this.queued.set(name, { value, version })
+      if (active && isEqual(active.value, value) && active.version === version) continue
+      this.queued.set(name, { value: cloneDeep(value), version })
     }
     await this.flush(explicit)
+  }
+  private async validate(names: string[], values = this.values): Promise<T | false> {
+    const boundary = this.options.validationNames?.(names) ?? names
+    const validationGeneration = this.generation
+    const versions = names.map((name) => this.versions.get(name) ?? 0)
+    const current = () =>
+      validationGeneration === this.generation &&
+      names.every((name, index) => (this.versions.get(name) ?? 0) === versions[index])
+    const resolved = this.options.resolver
+      ? await this.options.resolver(values, undefined, { fields: {}, shouldUseNativeValidation: false })
+      : undefined
+    const parsed = this.options.parse?.(values, names)
+    if (!current())
+      return parsed?.issues?.length || (resolved && Object.keys(resolved.errors).length)
+        ? false
+        : (parsed?.values ?? (resolved?.values as T | undefined) ?? values)
+    for (const name of boundary) {
+      this.api.clearErrors(name)
+      for (const invalid of this.invalidFields)
+        if (invalid === name || invalid.startsWith(name + '.')) this.invalidFields.delete(invalid)
+    }
+    if (resolved && Object.keys(resolved.errors).length) {
+      const apply = (errors: object, prefix = '') => {
+        for (const [key, error] of Object.entries(errors)) {
+          if (!error) continue
+          const path = prefix ? `${prefix}.${key}` : key
+          if (error.message) {
+            this.api.setError(path, error)
+            this.notify(path)
+          } else apply(error, path)
+        }
+      }
+      apply(resolved.errors)
+      return false
+    }
+    if (parsed?.issues?.length) {
+      for (const issue of parsed.issues) {
+        const name = issue.path.join('.') || names[0]
+        this.api.setError(name, { type: 'contract', message: issue.message })
+        this.invalidFields.add(name)
+        this.notify(name)
+      }
+      return false
+    }
+    if (this.options.validate && !(await this.options.validate(values, names))) {
+      names.forEach((name) => {
+        this.invalidFields.add(name)
+        this.notify(name)
+      })
+      return false
+    }
+    boundary.forEach((name) => this.notify(name))
+    return parsed?.values ?? (resolved?.values as T | undefined) ?? values
   }
   private async flush(explicit = false): Promise<void> {
     if (this.request || this.paused || !this.options.submit) return
@@ -247,7 +404,7 @@ export class FormModel<T extends object> implements FormScope {
     for (const [name] of selected) this.queued.delete(name)
     const changes = new Map(
       selected.filter(
-        ([name, entry]) => (explicit && this.options.command) || !Object.is(entry.value, getBy(this.confirmed, name)),
+        ([name, entry]) => (explicit && this.options.command) || !isEqual(entry.value, getBy(this.confirmed, name)),
       ),
     )
     if (!changes.size) {
@@ -255,7 +412,7 @@ export class FormModel<T extends object> implements FormScope {
       if (this.queued.size) await this.flush(explicit)
       return
     }
-    let snapshot = { ...this.values }
+    let snapshot = cloneDeep(this.values)
     let patch: Record<string, unknown> = {}
     for (const [name, entry] of changes) snapshot = setBy(snapshot, name, entry.value)
     for (const [name, entry] of changes) patch = setBy(patch, name, entry.value)
@@ -265,10 +422,10 @@ export class FormModel<T extends object> implements FormScope {
     this.active = changes
     this.emit()
     try {
-      if (this.options.validate && !(await this.options.validate(snapshot, [...changes.keys()]))) {
-        this.invalidFields = new Set(changes.keys())
-        return
-      }
+      const parsed = await this.validate([...changes.keys()], snapshot)
+      if (!parsed) return
+      snapshot = parsed
+      for (const name of changes.keys()) patch = setBy(patch, name, getBy(snapshot, name))
       if (generation !== this.generation) return
       const result = await this.options.submit(snapshot, patch as Partial<T>, request.signal, [...changes.keys()])
       if (generation !== this.generation || request.signal.aborted) return
@@ -283,6 +440,7 @@ export class FormModel<T extends object> implements FormScope {
         this.confirmed = setBy(this.confirmed, name, getBy(accepted, name))
         if ((this.versions.get(name) ?? 0) === entry.version) this.set(name, getBy(this.confirmed, name))
       }
+      for (const name of this.dirtyNames) if (isEqual(this.get(name), getBy(this.confirmed, name))) this.dirtyNames.delete(name)
       this.failedNames = []
       this.failure = null
     } catch (error) {
@@ -315,16 +473,10 @@ export class FormModel<T extends object> implements FormScope {
     this.emit()
   }
   mount = () => {
-    this.unsubscribeApi ??= this.api.store.subscribe(() => this.emit())
-    if (this.mounted++ === 0 && !this.shared) this.unmountApi = this.api.mount()
+    this.mounted++
     return () => {
       if (--this.mounted === 0) {
         this.stop()
-        this.unmountApi?.()
-        if (this.shared) {
-          this.unsubscribeApi?.unsubscribe()
-          this.unsubscribeApi = undefined
-        }
       }
     }
   }
@@ -342,6 +494,17 @@ export function createFormStore<T extends object>(initial: T, editable: (keyof T
   const store = createStore<T>(() => workflow)
   const form = createForm(values)
   let snapshot = { ...workflow, ...form.values } as T
+  let workflowVersion = 0
+  let readVersion = -1
+  let editVersion = -1
+  const read = () => {
+    if (readVersion !== workflowVersion || editVersion !== form.editVersion) {
+      snapshot = { ...store.getState(), ...form.values } as T
+      readVersion = workflowVersion
+      editVersion = form.editVersion
+    }
+    return snapshot
+  }
   const listeners = new Set<(state: T, previous: T) => void>()
   const publish = () => {
     const previous = snapshot
@@ -350,22 +513,25 @@ export function createFormStore<T extends object>(initial: T, editable: (keyof T
       listeners.forEach((listener) => listener(snapshot, previous))
     else snapshot = previous
   }
-  store.subscribe(publish)
-  form.subscribe(publish)
+  store.subscribe(() => {
+    workflowVersion++
+    publish()
+  })
   const setState: StoreApi<T>['setState'] = (update) => {
-    const patch = typeof update === 'function' ? update(snapshot) : update
+    const patch = typeof update === 'function' ? update(read()) : update
     const rest = { ...patch }
     for (const key of editable)
       if (Object.hasOwn(patch, key)) {
         form.set(String(key), patch[key])
         delete rest[key]
       }
-    store.setState(rest)
+    if (Object.keys(rest).some((key) => !Object.is(rest[key as keyof T], store.getState()[key as keyof T])))
+      store.setState(rest)
   }
   return {
     form,
     setState,
-    getState: () => snapshot,
+    getState: read,
     getInitialState: () => initial,
     subscribe: (listener) => {
       listeners.add(listener)

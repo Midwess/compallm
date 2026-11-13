@@ -1,4 +1,4 @@
-import { useStore } from 'zustand'
+import { useFormStore } from '../../../components/form'
 import type { FormStore } from '../../../components/form'
 import { useSettingsController } from '../controller'
 import type { RoleDraft } from '../types'
@@ -32,6 +32,6 @@ export interface RoleController {
 export function useRoleController() {
   return useSettingsController().pages.role
 }
-export function useRole<T>(selector: (state: RoleState) => T) {
-  return useStore(useRoleController().store, selector)
+export function useRole<T>(selector: (state: RoleState) => T, names: readonly string[] = []) {
+  return useFormStore(useRoleController().store, selector, names)
 }

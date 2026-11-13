@@ -1,6 +1,8 @@
+import { ProviderPatchInput } from '@compallm/contract/validation'
+import { contractResult } from '../../../components/form'
+import { FormError } from '../../../components/form'
 import { Form } from '../../../components/form'
 import {
-  ProviderFields,
   ProviderFieldsInput,
   ProviderFieldsConstraints,
   ProviderHeaderConstraints,
@@ -18,37 +20,30 @@ import { LinkSimpleIcon } from '@phosphor-icons/react/dist/csr/LinkSimple'
 import { Button } from '../../../components/buttons'
 import { KeyValueEditor } from '../../../components/key-value-editor'
 import { ProviderAvatar } from '../../../components/provider-avatar'
-import { FieldHelp, Tooltip } from '../../../components/feedback'
+import { FieldHelp, Tooltip, Toast } from '../../../components/feedback'
 
 import { useController, useProvider } from './controller'
 import { ProviderModels } from './model-table'
-import { canCreateProvider, canSaveProvider } from './validation'
-import { acceptsHeaderInput, headersAreValid, isValidBaseUrl } from './validation'
+import { parseProvider } from './validation'
+import { acceptsHeaderInput } from './validation'
 function ConnectionFields() {
   const [keyVisible, setKeyVisible] = useState(false)
   const controller = useController()
-  const name = useProvider((state) => state.name)
-  const baseUrl = useProvider((state) => state.baseUrl)
-  const apiKey = useProvider((state) => state.apiKey)
   const editing = useProvider((state) => state.intent === 'edit')
   const busy = useProvider((state) => state.submitting)
   const selected = useProvider((state) => state.selectedProviderId)
-  const avatarUrl = useProvider((state) => state.avatarUrl)
-  const headers = useProvider((state) => state.headers)
+  const avatarUrl = useProvider((state) => state.avatarUrl, ['avatarUrl'])
   return (
     <SectionSurface className="grid min-w-0 gap-4">
       <fieldset disabled={busy} className="grid min-w-0 gap-4">
         <div className="flex min-w-0 items-end gap-3">
           <FormField className="flex-1">
             <FormField.Label>Connection name</FormField.Label>
-            <FormField.Input
-              name="name"
-              required
-              aria-invalid={(name !== '' && !ProviderFields.shape.name.safeParse(name).success) || undefined}
-              placeholder="Enter connection name"
-            />
+            <FormField.Input name="name" required placeholder="Enter connection name" />
+            <FormError name="name" />
           </FormField>
           <ProviderAvatar name="avatarFile" provider={selected} src={avatarUrl} disabled={busy} />
+          <FormError name="avatarFile" />
         </div>
         <FormField>
           <FormField.Label>Base URL</FormField.Label>
@@ -58,15 +53,9 @@ function ConnectionFields() {
             required
             autoCapitalize="none"
             spellCheck={false}
-            aria-invalid={(baseUrl !== '' && !isValidBaseUrl(baseUrl)) || undefined}
             placeholder="https://api.example.com/v1"
           />
-          {baseUrl !== '' && !isValidBaseUrl(baseUrl) ? (
-            <FormField.Hint>
-              Enter an HTTP or HTTPS URL up to {ProviderFieldsConstraints.baseUrl.maxLength} characters, without spaces,
-              credentials, a query, or a fragment.
-            </FormField.Hint>
-          ) : null}
+          <FormError name="baseUrl" />
         </FormField>
         <FormField>
           <div className="flex items-center gap-1">
@@ -86,10 +75,10 @@ function ConnectionFields() {
               required={!editing}
               autoCapitalize="none"
               spellCheck={false}
-              aria-invalid={(apiKey !== '' && !ProviderFields.shape.apiKey.safeParse(apiKey).success) || undefined}
               name="apiKey"
               placeholder={editing ? 'Leave empty to keep current key' : 'Enter your API key'}
             />
+            <FormError name="apiKey" />
             <button
               type="button"
               aria-label={keyVisible ? 'Hide API key' : 'Show API key'}
@@ -117,11 +106,8 @@ hover:text-text focus-visible:outline-muted
       >
         <KeyValueEditor.Disclosure>Headers</KeyValueEditor.Disclosure>
       </KeyValueEditor>
-      {!headersAreValid(headers) ? (
-        <p role="alert" className="text-xs text-error">
-          Use unique HTTP header names and valid values. Authorization requires a valid scheme and credentials.
-        </p>
-      ) : null}
+      <FormError name="headers" />
+      <FormError name="models" />
     </SectionSurface>
   )
 }
@@ -130,7 +116,6 @@ function TestConnection() {
   const result = useProvider((state) => state.test)
   const endpoint = useProvider((state) => state.endpointUrl)
   const busy = useProvider((state) => state.submitting)
-  const ready = useProvider(canCreateProvider)
   return (
     <SectionSurface className="grid gap-2">
       <p className="flex min-w-0 items-center gap-2 text-xs text-focus">
@@ -140,7 +125,7 @@ function TestConnection() {
       <div className="flex flex-wrap items-center gap-3">
         <Button
           className="h-7 px-3 text-xs"
-          disabled={!ready || busy}
+          disabled={busy}
           loading={result.status === 'testing'}
           onClick={() => void controller.onTestConnection()}
         >
@@ -171,7 +156,6 @@ function TestConnection() {
 export function ProviderConfiguration() {
   const controller = useController()
   const intent = useProvider((state) => state.intent)
-  const ready = useProvider((state) => (state.intent === 'edit' ? canSaveProvider(state) : canCreateProvider(state)))
   const busy = useProvider((state) => state.submitting)
   const error = useProvider((state) => state.error)
   const form = controller.store.form
@@ -196,7 +180,8 @@ export function ProviderConfiguration() {
             controller.onConnectionChanged(field, String(value))
           if (field === 'models' || field.startsWith('models[')) controller.onModelsChanged(controller.store.getState().models)
           if (field === 'avatarFile') controller.onAvatarChanged?.(value as File | null)
-          if (field === 'headers') controller.onHeadersChanged?.(value as import('./types').HeaderEntry[])
+          if (field === 'headers' || field.startsWith('headers.'))
+            controller.onHeadersChanged?.(controller.store.getState().headers)
           if (field === 'modelDraft.path') controller.onModelDraftChanged({ path: '/' + String(value).replace(/^\/+/, '') })
           else if (field.startsWith('modelDraft.'))
             controller.onModelDraftChanged({
@@ -206,9 +191,20 @@ export function ProviderConfiguration() {
                 : {}),
             })
         },
-        validate: () => {
-          const state = controller.store.getState()
-          return state.intent === 'edit' ? canSaveProvider(state) : canCreateProvider(state)
+        parse: (values, names) => {
+          if (names.length === 1 && ['name', 'baseUrl', 'apiKey'].includes(names[0])) {
+            const name = names[0] as 'name' | 'baseUrl' | 'apiKey'
+            const patch =
+              name === 'apiKey' && !values.apiKey && controller.store.getState().intent === 'edit'
+                ? {}
+                : { [name]: values[name] }
+            if (!Object.keys(patch).length) return { values }
+            const result = ProviderPatchInput.safeParse(patch)
+            return contractResult(result, result.success ? { ...values, [name]: result.data[name] } : values)
+          }
+          const state = { ...controller.store.getState(), ...values }
+          const result = parseProvider(state)
+          return result.issues ? result : { values: { ...values, ...result.values } }
         },
         submit: async (values) => {
           const result =
@@ -238,9 +234,9 @@ export function ProviderConfiguration() {
         <TestConnection />
       </FormSection>
       {error ? (
-        <p role="alert" className="pl-7 text-sm text-error">
-          {error}
-        </p>
+        <div className="fixed right-6 bottom-6 z-50">
+          <Toast tone="error" message={error} onDismiss={() => controller.store.setState({ error: null })} />
+        </div>
       ) : null}
       <div className="flex justify-end gap-2">
         {intent !== 'create' ? (
@@ -248,7 +244,7 @@ export function ProviderConfiguration() {
             Cancel
           </Button>
         ) : null}
-        <Button type="submit" variant="primary" className="h-7 w-32 text-xs" disabled={!ready} loading={busy}>
+        <Button type="submit" variant="primary" className="h-7 w-32 text-xs" disabled={busy} loading={busy}>
           {intent === 'edit' ? 'Save changes' : intent === 'clone' ? 'Create provider' : 'Add provider'}
         </Button>
       </div>

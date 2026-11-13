@@ -46,7 +46,7 @@ export function ControllerSubscriptions() {
         </Profiler>
         <Form model={controller.store.form}>
           <Profiler id="code" onRender={committed}>
-            <CodeInput errorId="subscription-error" />
+            <CodeInput />
           </Profiler>
         </Form>
         <Profiler id="resend" onRender={committed}>

@@ -1,3 +1,4 @@
+import { FormError } from '../../components/form'
 import { motion } from 'motion/react'
 import { useTransition } from '../../components/motion'
 import { Button } from '../../components/buttons'
@@ -10,7 +11,7 @@ import { useSettings, useSettingsController } from './controller'
 export function ProfileSettings() {
   const timing = useTransition('interaction')
   const c = useSettingsController(),
-    profile = useSettings((s) => s.profile),
+    profile = useSettings((s) => s.profile, ['profile']),
     busy = useSettings((s) => s.busy)
   return (
     <SettingsContent>
@@ -38,20 +39,23 @@ focus-within:outline-2 focus-within:outline-focus"
               <FileField
                 name="profileUpload"
                 className="sr-only"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 aria-label="Upload profile photo"
                 disabled={busy}
               />
+              <FormError name="profileUpload" />
             </motion.label>
           </Row>
           <Row label={<label htmlFor="settings-full-name">Full name</label>} description="Your name as it appears in Compallm">
             <TextField id="settings-full-name" className="w-70 max-w-full" name="profile.name" />
+            <FormError name="profile.name" />
           </Row>
           <Row label={<label htmlFor="settings-username">Username</label>} description="Your preferred display name">
             <TextField id="settings-username" className="w-70 max-w-full" name="profile.username" />
+            <FormError name="profile.username" />
           </Row>
           <Row label={<label htmlFor="settings-email">Email</label>} description="The email address for this account" last>
-            <TextField id="settings-email" type="email" className="w-70 max-w-full" name="profile.email" />
+            <TextField id="settings-email" type="email" className="w-70 max-w-full" value={profile.email} readOnly />
           </Row>
         </Rows>
         <Section title="Account access" description="Manage sign-in methods and connected applications.">
@@ -173,7 +177,7 @@ export function SecuritySettings() {
 export function ApiKeySettings() {
   const c = useSettingsController(),
     keys = useSettings((s) => s.apiKeys),
-    organization = useSettings((s) => s.organization.name)
+    organization = useSettings((s) => s.organization.name, ['organization.name'])
   return (
     <SettingsContent>
       <Heading description={`Manage API access for your membership in ${organization}.`}>API keys</Heading>

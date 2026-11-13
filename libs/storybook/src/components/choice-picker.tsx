@@ -64,7 +64,11 @@ export function ChoicePicker({
         onValueChange([...value.filter((id) => !known.has(id)), ...next.map((option) => option.id)])
       }}
     >
-      <Combobox.Trigger render={<Button variant="neutral" className="h-6 rounded-full px-2 text-xs" />}>
+      <Combobox.Trigger
+        aria-invalid={field?.invalid || undefined}
+        aria-describedby={field ? `${name}-error` : undefined}
+        render={<Button variant="neutral" className="h-6 rounded-full px-2 text-xs" />}
+      >
         {label}
       </Combobox.Trigger>
       <Combobox.Portal container={container}>

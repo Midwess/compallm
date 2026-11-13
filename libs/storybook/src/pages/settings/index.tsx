@@ -1,3 +1,4 @@
+import { parseSettings } from './validation'
 import { Form } from '../../components/form'
 import { useEffect, useState } from 'react'
 import { ListIcon } from '@phosphor-icons/react/dist/csr/List'
@@ -74,6 +75,7 @@ function SharedSettingsForm() {
     form.accept(form.values)
     form.configure({
       mode: 'change',
+      parse: parseSettings,
       error: (error, retry) => c.apiError(error, retry),
       fields: { 'dialog.name': { mode: 'button' }, 'dialog.value': { mode: 'button' }, 'dialog.phrase': { mode: 'button' } },
       submit: async (values, _patch, _signal, names) => {

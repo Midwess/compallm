@@ -59,6 +59,7 @@ export function EffortMapping({
   }
   return (
     <fieldset
+      data-form-field={name}
       aria-invalid={field?.invalid || undefined}
       aria-describedby={field ? `${name}-error` : undefined}
       onBlur={(event) => {

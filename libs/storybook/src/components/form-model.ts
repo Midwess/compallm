@@ -58,6 +58,7 @@ export interface FormScope {
   readonly editVersion: number
   subscribe(listener: () => void, name?: string): () => void
   message(name: string): string | undefined
+  validationVersion(name: string): number
   native(name: string): ReturnType<Omit<UseFormReturn<FieldValues>, 'formState'>['register']>
   invalid(name: string): boolean
   buttonOnly(): boolean
@@ -76,6 +77,7 @@ export class FormModel<T extends object> implements FormScope {
   private active = new Map<string, Pending>()
   private timers = new Map<string, ReturnType<typeof setTimeout>>()
   private dirtyNames = new Set<string>()
+  private validationRevisions = new Map<string, number>()
   private invalidFields = new Set<string>()
   private request?: AbortController
   private generation = 0
@@ -97,7 +99,9 @@ export class FormModel<T extends object> implements FormScope {
     versions?: Map<string, number>,
     fieldListeners?: Map<string, Set<() => void>>,
     edits?: { version: number },
+    validationRevisions?: Map<string, number>,
   ) {
+    if (validationRevisions) this.validationRevisions = validationRevisions
     if (edits) this.edits = edits
     if (versions) this.versions = versions
     if (fieldListeners) this.fieldListeners = fieldListeners
@@ -124,6 +128,7 @@ export class FormModel<T extends object> implements FormScope {
       this.versions,
       this.fieldListeners,
       this.edits,
+      this.validationRevisions,
     )
   configure = (options: FormOptions<T>) => {
     if ((options.mode ?? 'button') === 'button' && !this.buttonOnly()) {
@@ -162,6 +167,15 @@ export class FormModel<T extends object> implements FormScope {
     }
     collect(this.api.getFieldState(name).error)
     return [...messages].join(' ') || undefined
+  }
+  validationVersion = (name: string) => this.validationRevisions.get(name) ?? 0
+  private markValidation(name: string) {
+    const path = name.split('.')
+    while (path.length) {
+      const key = path.join('.')
+      this.validationRevisions.set(key, this.validationVersion(key) + 1)
+      path.pop()
+    }
   }
   invalid = (name: string) => this.invalidFields.has(name) || Boolean(this.message(name))
   native = (name: string) => {
@@ -369,6 +383,7 @@ export class FormModel<T extends object> implements FormScope {
           const path = prefix ? `${prefix}.${key}` : key
           if (error.message) {
             this.api.setError(path, error)
+            this.markValidation(path)
             this.notify(path)
           } else apply(error, path)
         }
@@ -380,6 +395,7 @@ export class FormModel<T extends object> implements FormScope {
       for (const issue of parsed.issues) {
         const name = issue.path.join('.') || names[0]
         this.api.setError(name, { type: 'contract', message: issue.message })
+        this.markValidation(name)
         this.invalidFields.add(name)
         this.notify(name)
       }

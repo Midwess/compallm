@@ -202,6 +202,7 @@ export function CodeEditor({
   return (
     <div
       data-slot="code-editor"
+      data-form-field={name}
       className={cx('flex min-w-0 w-full flex-col overflow-hidden rounded-md', className)}
       style={{ backgroundColor: background[theme], color: foreground[theme] }}
     >

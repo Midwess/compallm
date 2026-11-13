@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { RoleUpdateInput } from '@compallm/contract/validation'
+import { useState, useEffect } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { Form, createForm, useFormValue, type CommitMode } from '../../src/components/form'
+import { Form, createForm, useFormValue, contractResult, type CommitMode } from '../../src/components/form'
 import { TextField } from '../../src/components/fields'
 import { Switch } from '../../src/components/selection'
 import { Button } from '../../src/components/buttons'
@@ -58,3 +59,35 @@ export const CommitOnBlur: Story = { args: { mode: 'blur' } }
 export const CommitOnChange: Story = { args: { mode: 'change' } }
 export const Debounced: Story = { args: { mode: 'debounce' } }
 export const Rejected: Story = { args: { mode: 'blur', reject: true } }
+
+function ValidationExample({ edge = false }: { edge?: boolean }) {
+  const [form] = useState(() =>
+    createForm(
+      { name: '' },
+      {
+        mode: 'button',
+        command: true,
+        parse: (values) => contractResult(RoleUpdateInput.safeParse(values), values),
+        submit: (_values, patch) => patch,
+      },
+    ),
+  )
+  useEffect(() => {
+    void form.submit()
+  }, [form])
+  return (
+    <div className={edge ? 'flex min-h-48 justify-end p-2' : 'min-h-48 p-6'}>
+      <Form model={form} className="grid w-72 content-start gap-3">
+        <label className="grid gap-2 text-sm">
+          Role name
+          <TextField name="name" />
+        </label>
+        <Form.Error name="name" />
+        <p className="text-xs text-muted">The message opens for five seconds. Hover or focus the warning to reopen it.</p>
+        <Form.Submit>Validate</Form.Submit>
+      </Form>
+    </div>
+  )
+}
+export const ValidationFeedback: Story = { render: () => <ValidationExample /> }
+export const ValidationAtRightEdge: Story = { render: () => <ValidationExample edge /> }

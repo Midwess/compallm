@@ -62,6 +62,7 @@ function BoundRoot({
   return (
     <EditorContext value={{ name, entries, change: (next) => form.change(name, next), disabled, acceptEntry, keyMaxLength }}>
       <div
+        data-form-field={name}
         className={cx('w-full min-w-0 max-w-full', className)}
         onBlur={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget)) form.blur(name)
@@ -94,6 +95,7 @@ function UnboundRoot({
         onBlur={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget)) field?.blur()
         }}
+        data-form-field={name}
         className={cx('w-full min-w-0 max-w-full', className)}
       >
         {children}

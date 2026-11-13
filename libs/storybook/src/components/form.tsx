@@ -1,4 +1,15 @@
-import { useContext, useEffect, useState, useSyncExternalStore, useCallback, type ComponentProps, type ReactNode } from 'react'
+import { FieldErrorIndicator } from './feedback'
+import {
+  useContext,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  useCallback,
+  useRef,
+  useLayoutEffect,
+  type ComponentProps,
+  type ReactNode,
+} from 'react'
 import { useController } from 'react-hook-form'
 import { useSyncExternalStoreWithSelector } from 'use-sync-external-store/shim/with-selector'
 import cloneDeep from 'lodash-es/cloneDeep.js'
@@ -59,18 +70,46 @@ export function useFormInvalid(name?: string) {
     () => (name ? (form?.invalid(name) ?? false) : false),
   )
 }
-export function FormError({ name, ...props }: ComponentProps<'p'> & { name: string }) {
+export function FormError({ name, id }: { name: string; id?: string }) {
   const form = useContext(FormContext)
   const message = useSyncExternalStore(
     useCallback((notify) => (form ? form.subscribe(notify, name) : emptySubscribe()), [form, name]),
     () => form?.message(name),
     () => form?.message(name),
   )
-  return message ? (
-    <p {...props} id={props.id ?? `${name}-error`} role="alert" className={props.className ?? 'text-xs text-error'}>
-      {message}
-    </p>
-  ) : null
+  const validationVersion = useSyncExternalStore(
+    useCallback((notify) => (form ? form.subscribe(notify, name) : emptySubscribe()), [form, name]),
+    () => form?.validationVersion(name) ?? 0,
+    () => form?.validationVersion(name) ?? 0,
+  )
+  const marker = useRef<HTMLSpanElement>(null)
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  useLayoutEffect(() => {
+    if (!message || !marker.current) return
+    const root = marker.current.closest('form') ?? marker.current.parentElement
+    const escaped = CSS.escape(name)
+    const named = root?.querySelector<HTMLElement>(`[data-form-field="${escaped}"], [name="${escaped}"]`)
+    const dropdown = named?.closest<HTMLElement>('[data-ui="dropdown"]')
+    const target = dropdown?.querySelector<HTMLElement>('button') ?? named
+    setAnchor(
+      target?.matches('input[type=file]')
+        ? (target.closest<HTMLElement>('label') ?? target)
+        : (target ?? marker.current.parentElement),
+    )
+  }, [message, name])
+  return (
+    <>
+      <span ref={marker} hidden />
+      {message && anchor ? (
+        <FieldErrorIndicator
+          anchor={anchor}
+          message={message}
+          validationVersion={validationVersion}
+          id={id ?? `${name}-error`}
+        />
+      ) : null}
+    </>
+  )
 }
 export function useFormStore<T extends object, V>(
   store: FormStore<T>,

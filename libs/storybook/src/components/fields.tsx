@@ -182,6 +182,7 @@ export function CodeEntry({
         if (!event.currentTarget.contains(event.relatedTarget)) field?.blur()
       }}
       data-ui="code-entry"
+      data-form-field={name}
       role="group"
       aria-label={label}
     >

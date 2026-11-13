@@ -65,6 +65,7 @@ export function ChoicePicker({
       }}
     >
       <Combobox.Trigger
+        data-form-field={name}
         aria-invalid={field?.invalid || undefined}
         aria-describedby={field ? `${name}-error` : undefined}
         render={<Button variant="neutral" className="h-6 rounded-full px-2 text-xs" />}

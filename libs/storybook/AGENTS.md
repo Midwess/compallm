@@ -20,6 +20,13 @@ authoritative and can be edited directly.
   interactions consistent in timing, easing, and movement. Adjust shared presets centrally; do not introduce component-specific
   timing, CSS animations, CSS transitions, or direct browser animation calls. Respect reduced motion and preserve keyboard,
   focus, and native control behavior, including during interrupted transitions.
+- Compose menus and filters from the shared `Popup` parts. `Popup.Item` performs an action and closes, `Popup.RadioItem` selects
+  one value and closes, and `Popup.CheckboxItem` stays open for multiple choices. Select fields compose `Select.Root`,
+  `Select.Trigger`, `Select.Value`, `Select.Content`, and `Select.Item`; searchable multiple selections use `ChoicePicker`.
+  These base components own dismissal, positioning, keyboard navigation, focus, and animation. Pages supply values and domain
+  callbacks; never duplicate menu event handling, timers, popovers, or library primitives in page compositions.
+- Keep the compact hover-background inset scoped to sidebar navigation items and folders. Workspace header buttons and dropdown
+  items retain their full hover area.
 - Disabled controls must remain hoverable and expose a tooltip explaining why they are disabled; provide a keyboard-accessible
   explanation.
 - Add meaningful variants for loading, empty, disabled, and error states where relevant. Keep semantic HTML, keyboard focus, and

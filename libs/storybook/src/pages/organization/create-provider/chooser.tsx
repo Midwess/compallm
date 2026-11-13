@@ -2,6 +2,7 @@ import { Table } from '../../../components/table'
 import { Searchbox } from '../../../components/fields'
 import { ArrowRightIcon } from '@phosphor-icons/react/dist/csr/ArrowRight'
 import { Button } from '../../../components/buttons'
+import { ToolbarAction } from '../../../components/navigation'
 
 import { useController, useProvider } from './controller'
 import { ProviderIcon } from '../../../components/provider-icons'
@@ -78,18 +79,16 @@ export function ProviderChooser() {
                 </Table.Cell>
                 <Table.Cell className="truncate px-4 text-muted">{provider.baseUrl ?? 'Configure endpoint'}</Table.Cell>
                 <Table.Cell className="text-center">
-                  <button
-                    type="button"
-                    aria-label={`Choose ${provider.name}`}
-                    className={`inline-flex size-6 cursor-pointer items-center justify-center rounded text-muted
-hover:bg-elevated hover:text-text focus-visible:outline-focus`}
+                  <ToolbarAction
+                    label={`Choose ${provider.name}`}
+                    className="size-6"
                     onClick={(event) => {
                       event.stopPropagation()
                       controller.onSelectProvider(provider.id)
                     }}
                   >
                     <ArrowRightIcon aria-hidden="true" className="size-4" />
-                  </button>
+                  </ToolbarAction>
                 </Table.Cell>
               </Table.Row>
             ))}

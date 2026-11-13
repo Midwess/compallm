@@ -17,6 +17,7 @@ import { createPortal } from 'react-dom'
 import { Button, type ButtonProps } from './buttons'
 import { XIcon } from '@phosphor-icons/react/dist/csr/X'
 import { cx } from './shared'
+import { FloatingContainerContext } from '../context'
 
 interface DialogScope {
   titleId: string
@@ -51,7 +52,7 @@ function Root({ children, onClose }: { children: ReactNode; onClose(): void }) {
     </DialogContext>
   )
 }
-function Content({ className, role = 'dialog', ...props }: DialogHTMLAttributes<HTMLDialogElement>) {
+function Content({ className, role = 'dialog', children, ...props }: DialogHTMLAttributes<HTMLDialogElement>) {
   const { titleId, onClose } = useDialog()
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
@@ -81,7 +82,9 @@ function Content({ className, role = 'dialog', ...props }: DialogHTMLAttributes<
       rounded-xl border border-border bg-inset p-0 text-text backdrop:bg-background/70`,
         className,
       )}
-    />
+    >
+      <FloatingContainerContext value={ref}>{children}</FloatingContainerContext>
+    </overlay.dialog>
   )
 }
 function AlertContent(props: DialogHTMLAttributes<HTMLDialogElement>) {

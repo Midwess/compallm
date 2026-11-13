@@ -213,7 +213,7 @@ export function GroupEditorSettings() {
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
             <Button
               variant="primary"
-              className="w-32 rounded-md"
+              className="w-32 rounded-xl"
               loading={busy}
               disabled={!draft.name.trim()}
               onClick={() => group.saveGroup()}

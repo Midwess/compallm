@@ -71,7 +71,7 @@ impl AuthenticationContext {
         &self,
         operation: impl Future<Output = Result<T, AuthError>>,
     ) -> Result<T, AuthError> {
-        self.trusted.independent_scope(operation).await?
+        self.trusted.scope(operation).await
     }
 
     async fn selected(&self) -> Result<&SelectedToken, RequestError> {

@@ -8,7 +8,7 @@ import {
   type Ref,
 } from 'react'
 import { animate, type Transition } from 'motion'
-import { motion, useReducedMotion } from 'motion/react'
+import { motion, useReducedMotion, type HTMLMotionProps } from 'motion/react'
 
 export const animation = {
   interaction: { duration: 0.12, ease: 'easeOut' },
@@ -238,6 +238,20 @@ function overlayElement<Tag extends 'div' | 'span' | 'dialog'>(tag: Tag) {
 }
 
 export const overlay = { div: overlayElement('div'), span: overlayElement('span'), dialog: overlayElement('dialog') }
+
+export function FloatingMotion({ ref, ...props }: HTMLMotionProps<'div'>) {
+  const timing = useTransition('enter')
+  const reduced = useReducedMotion()
+  return (
+    <motion.div
+      {...props}
+      ref={ref}
+      initial={reduced ? false : { opacity: 0, scale: animation.overlayScale }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={timing}
+    />
+  )
+}
 
 export function useSelectionMotion(
   inputRef: RefObject<HTMLInputElement | null>,

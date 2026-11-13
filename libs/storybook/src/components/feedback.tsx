@@ -131,14 +131,14 @@ function TooltipPopup({ content }: { content: ReactNode }) {
     <BaseTooltip.Portal>
       <BaseTooltip.Positioner sideOffset={6} className="z-50">
         <BaseTooltip.Popup
-          className="max-w-xs rounded-full bg-[#000] px-3 py-1.5 text-center text-xs leading-4
-text-on-primary shadow-lg"
+          className="max-w-xs rounded-full border border-border bg-elevated px-3 py-1.5 text-center text-xs leading-4
+text-text shadow-lg"
         >
           <BaseTooltip.Arrow
             className="absolute flex data-[side=top]:-bottom-1 data-[side=bottom]:-top-1
  data-[side=left]:-right-1 data-[side=right]:-left-1"
           >
-            <span className="block size-2 rotate-45 bg-[#000]" />
+            <span className="block size-2 rotate-45 bg-elevated" />
           </BaseTooltip.Arrow>
           {content}
         </BaseTooltip.Popup>

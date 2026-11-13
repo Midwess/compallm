@@ -1,5 +1,4 @@
 import { useId, useState } from 'react'
-import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
 import { FunnelIcon } from '@phosphor-icons/react/dist/csr/Funnel'
 import { Button } from '../../../components/buttons'
 import { SearchField } from '../../../components/fields'
@@ -20,19 +19,15 @@ const accessLevels = ['Read', 'Use', 'Write', 'Admin', 'Sensitive']
 function PolicyFilters({ categories }: { categories: string[] }) {
   const c = useRoleController(),
     filters = useRole((s) => s.filters)
-  const options = (key: string, values: { value: string; label: string }[]) =>
-    values.map(({ value, label }) => (
-      <Popup.Item
-        key={value}
-        role="menuitemradio"
-        aria-checked={(filters[key] || 'all') === value}
-        className="justify-between gap-4"
-        onClick={() => c.setFilter(key, value)}
-      >
-        {label}
-        {(filters[key] || 'all') === value ? <CheckIcon aria-hidden="true" className="size-3" /> : null}
-      </Popup.Item>
-    ))
+  const options = (key: string, values: { value: string; label: string }[]) => (
+    <Popup.RadioGroup value={filters[key] || 'all'} onValueChange={(value: string) => c.setFilter(key, value)}>
+      {values.map(({ value, label }) => (
+        <Popup.RadioItem key={value} value={value}>
+          {label}
+        </Popup.RadioItem>
+      ))}
+    </Popup.RadioGroup>
+  )
   return (
     <Popup>
       <Popup.IconTrigger aria-label="Filter policies" title="Filter policies" className="size-8 shrink-0 rounded-full">

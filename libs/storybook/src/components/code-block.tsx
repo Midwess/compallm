@@ -4,6 +4,7 @@ import { useFormField } from './form'
 import { MultilineField } from './fields'
 import { Select } from './dropdowns'
 import { cx } from './shared'
+import { useSavedCodeAppearance } from './code-appearance'
 
 type CodeTheme = 'dark' | 'light'
 type Change = 'added' | 'removed'
@@ -104,13 +105,17 @@ export interface CodePreviewProps {
 export function CodePreview({
   code,
   language = 'text',
-  theme = 'dark',
-  fontSize = 12,
-  fontFamily,
+  theme: suppliedTheme,
+  fontSize: suppliedFontSize,
+  fontFamily: suppliedFontFamily,
   lineChanges = {},
   onLanguageChange,
   className,
 }: CodePreviewProps) {
+  const saved = useSavedCodeAppearance()
+  const theme = suppliedTheme ?? saved.theme
+  const fontSize = suppliedFontSize ?? saved.fontSize
+  const fontFamily = suppliedFontFamily ?? saved.fontFamily
   const lines = useTokens(code, language, theme)
   let number = 0
   return (
@@ -180,15 +185,19 @@ export function CodeEditor({
   onValueChange,
   language,
   label,
-  theme = 'dark',
-  fontSize = 12,
-  fontFamily,
+  theme: suppliedTheme,
+  fontSize: suppliedFontSize,
+  fontFamily: suppliedFontFamily,
   readOnly,
   invalid,
   actions,
   showToolbar = true,
   className,
 }: CodeEditorProps) {
+  const saved = useSavedCodeAppearance()
+  const theme = suppliedTheme ?? saved.theme
+  const fontSize = suppliedFontSize ?? saved.fontSize
+  const fontFamily = suppliedFontFamily ?? saved.fontFamily
   const field = useFormField<string>(name)
   const value = field ? (field.value ?? '') : suppliedValue
   const tokens = useTokens(value, language, theme)

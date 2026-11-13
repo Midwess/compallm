@@ -14,6 +14,8 @@ const server = await createServer({
 after(() => server.close())
 const { SettingsController } = await server.ssrLoadModule('/src/settings/controller.ts')
 const { UserPreferenceController } = await server.ssrLoadModule('/src/preference/user/controller.ts')
+const { resolveCodeAppearance } = await server.ssrLoadModule('../libs/storybook/src/components/code-appearance.ts')
+
 function createSettingsController(...args) {
   return new SettingsController(...args, new UserPreferenceController())
 }
@@ -44,6 +46,19 @@ async function settled(form) {
   for (let i = 0; i < 100 && form.pending; i++) await new Promise((resolve) => setTimeout(resolve, 1))
   assert.equal(form.pending, false)
 }
+
+test('code appearance distinguishes interface and system modes and applies font preferences', () => {
+  assert.deepEqual(resolveCodeAppearance('FOLLOW_INTERFACE', 'LIGHT', 'MONOSPACE', 'PX16', false), {
+    theme: 'light',
+    fontSize: 16,
+    fontFamily: 'monospace',
+  })
+  assert.equal(resolveCodeAppearance('FOLLOW_INTERFACE', 'SYSTEM', 'DEFAULT', 'PX12', true).theme, 'light')
+  assert.equal(resolveCodeAppearance('SYSTEM', 'LIGHT', 'DEFAULT', 'PX12', false).theme, 'dark')
+  assert.equal(resolveCodeAppearance('LINEAR_DARK', 'LIGHT', 'DEFAULT', 'PX12', true).theme, 'dark')
+  assert.equal(resolveCodeAppearance('LINEAR_LIGHT', 'DARK', 'DEFAULT', 'PX12', false).theme, 'light')
+  assert.equal(resolveCodeAppearance('SYSTEM', 'LIGHT', 'DEFAULT', 'PX12', true).fontFamily, 'var(--font-code)')
+})
 
 test('app controller waits for explicit completions and the one-second minimum', async (t) => {
   const { AppController } = await server.ssrLoadModule('/src/app/controller.ts')

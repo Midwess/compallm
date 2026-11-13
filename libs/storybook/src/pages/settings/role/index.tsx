@@ -9,7 +9,7 @@ import { TextField } from '../../../components/fields'
 import { CodeEditor } from '../../../components/code-block'
 import { SectionSurface } from '../../../components/surfaces'
 import { SettingsSectionTitle } from '../../../components/settings'
-import { useSettings, useSettingsController, useCodeAppearance } from '../controller'
+import { useSettings, useSettingsController } from '../controller'
 import { useRole, useRoleController } from './controller'
 import { PolicyTable } from './policy-table'
 import { DisabledTooltip } from '../../../components/feedback'
@@ -62,7 +62,6 @@ function CedarEditor({ locked, owner }: { locked: boolean; owner: boolean }) {
       (s) => (s.draft ? { parsing: s.draft.parsing, diagnostics: s.draft.diagnostics } : null),
       ['draft.parsing', 'draft.diagnostics'],
     )
-  const appearance = useCodeAppearance()
   if (!draft) return null
   const invalid = draft.parsing || draft.diagnostics.length > 0
   return (
@@ -84,7 +83,6 @@ function CedarEditor({ locked, owner }: { locked: boolean; owner: boolean }) {
       </div>
       <DisabledTooltip disabled={owner} reason={ownerExplanation} allowInteraction>
         <CodeEditor
-          {...appearance}
           label="Cedar policy source"
           language="cedar"
           showToolbar={false}

@@ -18,7 +18,7 @@ import type { SettingsDestination } from './types'
 const personal = [
   { page: 'general', label: 'General', Icon: GearIcon },
   { page: 'messaging', label: 'Messaging', Icon: ChatTextIcon },
-  { page: 'code', label: 'Code appearance', Icon: CodeIcon },
+  { page: 'code', label: 'Coding', Icon: CodeIcon },
 ] as const
 const account = [
   { page: 'profile', label: 'Profile', Icon: UserIcon },

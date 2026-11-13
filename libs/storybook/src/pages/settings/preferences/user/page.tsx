@@ -115,7 +115,6 @@ export function GeneralSettings() {
         <Section title="Interface theme" description="Follow your system or choose a theme.">
           <PreferenceRows items={themes} />
         </Section>
-        <CodeAppearanceSection />
       </div>
     </SettingsContent>
   )
@@ -198,7 +197,7 @@ function CodeAppearanceSection() {
 export function CodeSettings() {
   return (
     <SettingsContent>
-      <Heading>Code appearance</Heading>
+      <Heading>Coding</Heading>
       <CodeAppearanceSection />
     </SettingsContent>
   )

@@ -1,5 +1,5 @@
 pub trait RequestDecoder<E> {
-    fn flush(&mut self, input: &mut &[u8]) -> Result<RequestDecoderStatus, RequestDecoderError>;
+    fn next(&mut self, input: &mut &[u8]) -> Result<RequestDecoderStatus, RequestDecoderError>;
 
     fn get_component(&self) -> Option<E>;
 

@@ -8,7 +8,6 @@ import {
 } from '@compallm/contract/validation'
 import { contractResult } from '../../components/form'
 import type { SettingsState } from './types'
-import { parsePreferencePatch } from './preference-values'
 
 const toWire = (value: unknown) => (typeof value === 'string' ? value.toUpperCase() : value)
 const fromWire = (value: unknown, draft: unknown) => (typeof draft === 'string' && toWire(draft) === value ? draft : value)
@@ -16,17 +15,10 @@ const fromWire = (value: unknown, draft: unknown) => (typeof draft === 'string' 
 export function parseSettings(values: Partial<SettingsState>, names: string[]) {
   const next = { ...values }
   const issues: { path: PropertyKey[]; message: string }[] = []
-  for (const root of ['profile', 'organization', 'preferences'] as const) {
+  for (const root of ['profile', 'organization'] as const) {
     const keys = names.filter((name) => name.startsWith(root + '.')).map((name) => name.slice(root.length + 1))
     if (!keys.length) continue
-    const draft = values[root] as Record<string, unknown>
-    if (root === 'preferences') {
-      const result = parsePreferencePatch(
-        Object.fromEntries(keys.map((key) => [key, draft[key]])) as SettingsState['preferences'],
-      )
-      issues.push(...result.issues)
-      continue
-    }
+    const draft = Object.fromEntries(Object.entries(values[root] ?? {}))
     const patch = Object.fromEntries(
       keys.map((key) => [key, root === 'organization' && key === 'home' ? toWire(draft[key]) : draft[key]]),
     )

@@ -6,7 +6,8 @@ import { Button } from '../../components/buttons'
 import { Toast } from '../../components/feedback'
 import { SettingsNavigation } from './sidebar'
 import { SettingsDialogs } from './dialogs'
-import { GeneralSettings, AppearanceSettings, MessagingSettings, CodeSettings } from './preferences'
+import { GeneralSettings, AppearanceSettings, MessagingSettings, CodeSettings } from './preferences/user/page'
+import { UserPreferencePage } from './preferences/user'
 import { ProfileSettings, SecuritySettings, ApiKeySettings, DangerSettings } from './account'
 import { OrganizationSettings } from './organization'
 import { MembersSettings } from './members'
@@ -74,6 +75,12 @@ function SharedSettingsForm() {
   useEffect(() => {
     return configureSettingsForm(c)
   }, [c, form, page])
+  if (['general', 'appearance', 'messaging', 'code'].includes(page))
+    return (
+      <UserPreferencePage>
+        <SettingsScreen />
+      </UserPreferencePage>
+    )
   if (['role', 'new-role', 'group', 'new-group'].includes(page)) return <SettingsScreen />
   return (
     <Form model={form}>
@@ -184,4 +191,10 @@ export type { GroupController, GroupState } from './group/controller'
 export type { ProfileController } from './profile/controller'
 export type { OrganizationController } from './organization/controller'
 
-export { parsePreferencePatch, confirmedPreferenceDraft, preferenceSelection } from './preference-values'
+export { parsePreferencePatch, confirmedPreferenceDraft, preferenceSelection } from './preferences/user/values'
+
+export { createUserPreferenceStore } from './preferences/user/store'
+export { configureUserPreferenceForm } from './preferences/user/form'
+export { loadedPreferenceDraft, initialPreferenceDraft } from './preferences/user/values'
+export type { PreferenceDraft, UserPreferenceValues } from './preferences/user/values'
+export type { UserPreferenceController, UserPreferenceState } from './preferences/user/controller'

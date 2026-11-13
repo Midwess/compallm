@@ -33,14 +33,14 @@ export const preferenceSelection = {
   memberDisplay: { nameFormat: true },
   calendar: { firstDay: true },
   theme: { mode: true, palettes: { light: true, dark: true } },
-  typography: { size: true },
+  typography: { family: true, size: true },
   accessibility: { underlineLinks: true, reduceMotion: true, pointerCursors: true },
   messageComposition: { convertEmoticons: true, sendShortcut: true },
   codeAppearance: { theme: true, font: { family: true, size: true } },
   sidebar: { badgeStyle: true, entries: { item: true, visibility: true } },
 } satisfies UserPreferencesGenqlSelection
 
-type ConfirmedPreferences = FieldsSelection<UserPreferences, typeof preferenceSelection>
+export type UserPreferenceValues = FieldsSelection<UserPreferences, typeof preferenceSelection>
 const paths = {
   home: 'navigation.home',
   displayNames: 'memberDisplay.nameFormat',
@@ -141,13 +141,13 @@ export function parsePreferencePatch(draft: Partial<PreferenceDraft>): {
   return {
     issues: result.error.issues.map((issue) => ({
       ...issue,
-      path: ['preferences', [...fields].find(([path]) => issue.path.join('.').startsWith(path))?.[1] ?? Object.keys(draft)[0]],
+      path: ['draft', [...fields].find(([path]) => issue.path.join('.').startsWith(path))?.[1] ?? Object.keys(draft)[0]],
     })),
   }
 }
 
 export function confirmedPreferenceDraft(
-  node: ConfirmedPreferences,
+  node: UserPreferenceValues,
   submitted: Partial<PreferenceDraft>,
 ): Partial<PreferenceDraft> {
   return Object.fromEntries(
@@ -162,4 +162,8 @@ export function confirmedPreferenceDraft(
       return [key, value]
     }),
   )
+}
+
+export function loadedPreferenceDraft(node: UserPreferenceValues, language = 'typescript'): PreferenceDraft {
+  return { ...initialPreferenceDraft(), ...confirmedPreferenceDraft(node, initialPreferenceDraft()), codeLanguage: language }
 }

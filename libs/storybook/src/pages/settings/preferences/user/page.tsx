@@ -1,15 +1,16 @@
-import { preferenceOptions, preferenceLabel } from './preference-values'
-import { FormError } from '../../components/form'
+import { preferenceOptions, preferenceLabel } from './values'
+import { FormError } from '../../../../components/form'
 import { useId } from 'react'
-import { Button } from '../../components/buttons'
-import { Select } from '../../components/dropdowns'
-import { Switch } from '../../components/selection'
-import { CodePreview } from '../../components/content'
-import { Popup } from '../../components/popup'
+import { Button } from '../../../../components/buttons'
+import { Select } from '../../../../components/dropdowns'
+import { Switch } from '../../../../components/selection'
+import { CodePreview } from '../../../../components/content'
+import { Popup } from '../../../../components/popup'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
-import { SettingsRow } from '../../components/content'
-import { SettingsContent, Heading, Section, Rows, Row } from './shared'
-import { useSettings, useSettingsController, useCodeAppearance } from './controller'
+import { SettingsRow } from '../../../../components/content'
+import { SettingsContent, Heading, Section, Rows, Row } from '../../shared'
+import { useSettings, useSettingsController } from '../../controller'
+import { useUserPreference, useUserPreferenceController, useCodeAppearance } from './controller'
 
 type Preference = { key: string; label: string; description: string; options?: { value: string; label: string }[] }
 const general: Preference[] = [
@@ -73,11 +74,11 @@ function PreferenceControl({ item, last = false }: { item: Preference; last?: bo
       last={last}
     >
       {item.options ? (
-        <Select aria-label={item.label} name={`preferences.${item.key}`} className="w-44" options={item.options} />
+        <Select aria-label={item.label} name={`draft.${item.key}`} className="w-44" options={item.options} />
       ) : (
-        <Switch id={id} name={`preferences.${item.key}`} />
+        <Switch id={id} name={`draft.${item.key}`} />
       )}
-      <FormError name={`preferences.${item.key}`} />
+      <FormError name={`draft.${item.key}`} />
     </Row>
   )
 }
@@ -147,10 +148,10 @@ export function MessagingSettings() {
   )
 }
 function CodeAppearanceSection() {
-  const c = useSettingsController(),
-    fontSize = useSettings((s) => s.preferences.codeFontSize, ['preferences.codeFontSize']),
-    font = useSettings((s) => s.preferences.codeFont, ['preferences.codeFont']),
-    language = useSettings((s) => String(s.preferences.codeLanguage ?? 'typescript'), ['preferences.codeLanguage']),
+  const c = useUserPreferenceController(),
+    fontSize = useUserPreference((s) => s.draft.codeFontSize, ['draft.codeFontSize']),
+    font = useUserPreference((s) => s.draft.codeFont, ['draft.codeFont']),
+    language = useUserPreference((s) => s.draft.codeLanguage, ['draft.codeLanguage']),
     examples = useSettings((s) => s.codeExamples)
   const example = examples[language] ?? { code: '' }
   const appearance = useCodeAppearance()
@@ -173,14 +174,14 @@ function CodeAppearanceSection() {
           <Popup.Content aria-label="Code font settings">
             <Popup.Submenu label="Font size">
               {preferenceOptions.codeFontSize.map(({ value, label }) => (
-                <Popup.Item key={value} onClick={() => c.store.form.change('preferences.codeFontSize', value)}>
+                <Popup.Item key={value} onClick={() => c.store.form.change('draft.codeFontSize', value)}>
                   {label}
                 </Popup.Item>
               ))}
             </Popup.Submenu>
             <Popup.Submenu label="Font">
               {preferenceOptions.codeFont.map(({ value, label }) => (
-                <Popup.Item key={value} onClick={() => c.store.form.change('preferences.' + 'codeFont', value)}>
+                <Popup.Item key={value} onClick={() => c.store.form.change('draft.' + 'codeFont', value)}>
                   {label}
                 </Popup.Item>
               ))}
@@ -194,7 +195,7 @@ function CodeAppearanceSection() {
           code={example.code}
           lineChanges={example.lineChanges}
           language={language}
-          onLanguageChange={(value) => c.store.form.change('preferences.' + 'codeLanguage', value)}
+          onLanguageChange={(value) => c.store.form.change('draft.' + 'codeLanguage', value)}
         />
       </div>
     </Rows>

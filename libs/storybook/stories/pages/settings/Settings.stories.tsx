@@ -1,8 +1,17 @@
 import { useEffect, useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { SettingsControllerContext } from '../../../src/context'
+import { SettingsControllerContext, UserPreferenceControllerContext } from '../../../src/context'
+import { userPreferenceDefaults } from '@compallm/contract/preference'
+import { loadedPreferenceDraft } from '../../../src/pages/settings'
 import { SettingsPage } from '../../../src/pages/settings'
-import type { SettingsState, SettingsDestination, RoleDraft, GroupDraft } from '../../../src/pages/settings'
+import type {
+  SettingsState,
+  SettingsDestination,
+  RoleDraft,
+  GroupDraft,
+  UserPreferenceState,
+  UserPreferenceValues,
+} from '../../../src/pages/settings'
 import { DemoSettingsController } from './demo-controller'
 import { advancedSource, modelOperatorSource } from './fixtures'
 
@@ -12,15 +21,25 @@ function Demo({
   initial = {},
   failure = false,
   roleLoadingMs = 0,
+  preferenceStatus,
+  savedPreferences,
 }: {
   page?: SettingsDestination
   id?: string
   initial?: Partial<SettingsState> & { roleDraft?: RoleDraft | null; groupDraft?: GroupDraft | null }
   failure?: boolean | 'conflict'
   roleLoadingMs?: number
+  preferenceStatus?: UserPreferenceState['status']
+  savedPreferences?: UserPreferenceValues
 }) {
   const [controller] = useState(() => {
     const controller = new DemoSettingsController({ location: { page, id }, ...initial }, failure)
+    const user = controller.pages.preferences.user
+    if (savedPreferences) {
+      user.store.setState({ saved: savedPreferences })
+      user.store.form.reset({ draft: loadedPreferenceDraft(savedPreferences) })
+    }
+    if (preferenceStatus) user.store.setState({ status: preferenceStatus })
     return controller
   })
   useEffect(() => {
@@ -39,7 +58,9 @@ function Demo({
   }, [controller, roleLoadingMs])
   return (
     <SettingsControllerContext value={controller}>
-      <SettingsPage />
+      <UserPreferenceControllerContext value={controller.pages.preferences.user}>
+        <SettingsPage />
+      </UserPreferenceControllerContext>
     </SettingsControllerContext>
   )
 }
@@ -60,6 +81,22 @@ type Story = StoryObj<typeof meta>
 
 export const Blank: Story = { render: () => <Demo page="blank" /> }
 export const General: Story = { render: () => <Demo /> }
+export const PreferencesLoading: Story = { render: () => <Demo preferenceStatus="loading" /> }
+export const PreferencesLoadFailure: Story = { render: () => <Demo preferenceStatus="error" /> }
+export const PreferencesDenied: Story = { render: () => <Demo preferenceStatus="denied" /> }
+export const SavedPreferences: Story = {
+  render: () => (
+    <Demo
+      savedPreferences={{
+        ...userPreferenceDefaults,
+        navigation: { home: 'MODELS' },
+        memberDisplay: { nameFormat: 'USERNAME' },
+        calendar: { firstDay: 'SUNDAY' },
+        sidebar: { ...userPreferenceDefaults.sidebar, entries: [...userPreferenceDefaults.sidebar.entries] },
+      }}
+    />
+  ),
+}
 export const GeneralNarrow: Story = {
   render: () => <Demo />,
   parameters: {

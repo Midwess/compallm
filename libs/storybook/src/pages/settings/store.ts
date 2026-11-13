@@ -1,6 +1,5 @@
 import { createFormStore } from '../../components/form'
 import type { SettingsState } from './types'
-import { initialPreferenceDraft } from './preference-values'
 
 export function createSettingsStore(initial: Partial<SettingsState> = {}) {
   return createFormStore<SettingsState>(
@@ -12,7 +11,6 @@ export function createSettingsStore(initial: Partial<SettingsState> = {}) {
       navigationQuery: '',
       query: '',
       filters: {},
-      preferences: initialPreferenceDraft(),
       profile: { name: '', username: '', email: '', avatar: null },
       organization: {
         name: '',
@@ -48,6 +46,6 @@ export function createSettingsStore(initial: Partial<SettingsState> = {}) {
       status: 'ready',
       ...initial,
     },
-    ['profile', 'organization', 'preferences', 'dialog', 'profileUpload', 'organizationUpload'],
+    ['profile', 'organization', 'dialog', 'profileUpload', 'organizationUpload'],
   )
 }

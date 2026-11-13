@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { redirect, type LoaderFunctionArgs } from 'react-router'
 import { useLoaderData } from 'react-router'
-import { SettingsControllerContext } from '@compallm/storybook/context'
+import { SettingsControllerContext, UserPreferenceControllerContext } from '@compallm/storybook/context'
 import { SettingsPage, type SettingsDestination } from '@compallm/storybook/pages/settings'
 import { useUrlController } from '../url/use-url-controller'
 import { useAuthController } from '../auth/use-auth-controller'
@@ -25,7 +25,15 @@ export function Component() {
     let disposed = false
     let stop: (() => void) | undefined
     queueMicrotask(() => {
-      if (!disposed) stop = controller.start()
+      if (!disposed) {
+        const stopSettings = controller.start()
+        const user = controller.pages.preferences.user
+        void user.load()
+        stop = () => {
+          user.cancel()
+          stopSettings()
+        }
+      }
     })
     return () => {
       disposed = true
@@ -35,7 +43,9 @@ export function Component() {
   useEffect(() => controller.setPage(page, id), [controller, page, id])
   return (
     <SettingsControllerContext value={controller}>
-      <SettingsPage />
+      <UserPreferenceControllerContext value={controller.pages.preferences.user}>
+        <SettingsPage />
+      </UserPreferenceControllerContext>
     </SettingsControllerContext>
   )
 }

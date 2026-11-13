@@ -12,21 +12,11 @@ export function configureSettingsForm(c: SettingsController) {
         if (active) retry()
       }),
     fields: {
-      ...Object.fromEntries(
-        Object.keys(form.values.preferences ?? {}).map((key) => [
-          `preferences.${key}`,
-          { group: key === 'codeLanguage' ? 'preview' : 'preferences' },
-        ]),
-      ),
       'dialog.name': { mode: 'button' },
       'dialog.value': { mode: 'button' },
       'dialog.phrase': { mode: 'button' },
     },
-    submit: async (values, patch, signal, names) => {
-      if (patch.preferences) {
-        const confirmed = await c.pages.preferences.updatePreferences(patch.preferences, signal)
-        return confirmed === false ? false : { preferences: { ...values.preferences!, ...confirmed } }
-      }
+    submit: async (values, _patch, _signal, names) => {
       for (const name of names) {
         const [root, key] = name.split('.')
         if (root === 'profile' && key) {

@@ -1,4 +1,5 @@
-import { preferenceOptions, preferenceLabel } from './preference-values'
+import { preferenceOptions, preferenceLabel } from './preferences/user/values'
+import { useUserPreference, useUserPreferenceController } from './preferences/user/controller'
 import { parseSettingsDialog } from './validation'
 import { FormError } from '../../components/form'
 import { useState } from 'react'
@@ -36,18 +37,19 @@ const visibilityOptions = preferenceOptions.sidebarVisibility
 function CustomizeSidebar() {
   const timing = useTransition('reorder')
   const controller = useSettingsController()
-  const preferences = useSettings((state) => state.preferences, ['preferences'])
+  const user = useUserPreferenceController()
+  const preferences = useUserPreference((state) => state.draft, ['draft'])
   const order = preferences.sidebarOrder
   const { rowNodes, drag, preview, announcement, id, keyboardMove, startDrag, pointerMove, endDrag } = useReorder(
     order,
-    (items) => controller.store.form.change('preferences.' + 'sidebarOrder', items),
+    (items) => user.store.form.change('draft.' + 'sidebarOrder', items),
     false,
     'Sidebar item',
   )
   return (
     <Dialog onClose={controller.pages.dialogs.closeDialog}>
       <Dialog.Content className="w-120 rounded-xl bg-inset">
-        <Form model={controller.store.form}>
+        <Form model={user.store.form}>
           <Dialog.Header className="h-14 px-6">
             <Dialog.Title className="text-[15px]">Customize sidebar</Dialog.Title>
             <Dialog.Close />
@@ -55,13 +57,8 @@ function CustomizeSidebar() {
           <Dialog.Body className="gap-6 px-6 pt-4 pb-6">
             <div className="flex h-11 items-center justify-between rounded-lg bg-elevated px-3 text-xsm">
               <span>Default badge style</span>
-              <Select
-                aria-label="Default badge style"
-                className="w-26"
-                name="preferences.sidebarBadgeStyle"
-                options={badgeOptions}
-              />
-              <FormError name="preferences.sidebarBadgeStyle" />
+              <Select aria-label="Default badge style" className="w-26" name="draft.sidebarBadgeStyle" options={badgeOptions} />
+              <FormError name="draft.sidebarBadgeStyle" />
             </div>
             <div className="grid gap-2.5">
               <h3 className="text-xsm font-medium">Workspace</h3>
@@ -114,10 +111,10 @@ active:cursor-grabbing focus-visible:outline-focus
                       <Select
                         aria-label={`${preferenceLabel(name)} visibility`}
                         className="w-35"
-                        name={`preferences.sidebar${name}`}
+                        name={`draft.sidebar${name}`}
                         options={visibilityOptions}
                       />
-                      <FormError name={`preferences.sidebar${name}`} />
+                      <FormError name={`draft.sidebar${name}`} />
                     </motion.div>
                   )
                 })}

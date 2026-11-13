@@ -65,6 +65,9 @@ struct Settings {
 pub struct Di {
     db: Box<DbContext>,
     users: Box<dyn UserRepository>,
+    user_preferences:
+        Box<dyn compallm_core::persistent::preference::user::UserPreferenceRepository>,
+    user_preference_service: OnceLock<Box<compallm_core::preference::UserPreferenceService>>,
     organizations: Box<dyn OrganizationRepository>,
     sessions: Box<dyn SessionRepository>,
     dictionaries: Box<dyn DictionaryRepository>,
@@ -130,6 +133,10 @@ impl Di {
         Self {
             db: Box::new(db),
             users: Box::new(compallm_postgres::repository::user::UserRepository),
+            user_preferences: Box::new(
+                compallm_postgres::repository::preference::user::UserPreferenceRepository,
+            ),
+            user_preference_service: OnceLock::new(),
             organizations: Box::new(
                 compallm_postgres::repository::organization::OrganizationRepository,
             ),
@@ -160,6 +167,7 @@ impl Di {
 
     pub fn initialize_services(&'static self) -> Result<(), AuthError> {
         self.mailing_worker();
+        self.user_preference_service();
         self.organization_config_service();
         if self.auth.get().is_some() {
             self.rbac_service();
@@ -172,6 +180,7 @@ impl Di {
             self.session_repository(),
             &self.dictionaries,
             self.registration_service(),
+            self.user_preference_service(),
             self.settings.jwt_secret.clone(),
             TokenLifetimes {
                 user: Duration::from_secs(self.settings.user_token_ttl_seconds),
@@ -266,6 +275,16 @@ impl Di {
         self.auth.get().expect("Di services must be initialized")
     }
 
+    pub fn user_preference_service(
+        &'static self,
+    ) -> &'static compallm_core::preference::UserPreferenceService {
+        self.user_preference_service.get_or_init(|| {
+            Box::new(compallm_core::preference::UserPreferenceService::new(
+                &self.user_preferences,
+            ))
+        })
+    }
+
     pub fn registration_service(&'static self) -> &'static RegistrationService {
         self.registration.get_or_init(|| {
             Box::new(RegistrationService::new(
@@ -315,5 +334,26 @@ impl juniper::FromContext<Di> for RbacService {
 impl juniper::FromContext<Di> for Box<dyn OrganizationRepository> {
     fn from(di: &Di) -> &Self {
         &di.organizations
+    }
+}
+
+impl juniper::FromContext<Di> for compallm_core::preference::UserPreferenceService {
+    fn from(di: &Di) -> &Self {
+        di.user_preference_service
+            .get()
+            .expect("preference service must be initialized")
+    }
+}
+impl juniper::FromContext<Di>
+    for Box<dyn compallm_core::persistent::preference::user::UserPreferenceRepository>
+{
+    fn from(di: &Di) -> &Self {
+        &di.user_preferences
+    }
+}
+
+impl juniper::FromContext<Di> for DbContext {
+    fn from(di: &Di) -> &Self {
+        &di.db
     }
 }

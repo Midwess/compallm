@@ -48,3 +48,82 @@ owns lifecycle setup and cleanup.
 
 Define all public React contexts once in `src/context.ts` and export them through `@compallm/storybook/context`. Do not add
 provider wrapper components or per-page context definition files.
+
+## Fields and form ownership
+
+Follow [Form ownership](https://github.com/Midwess/compallm/wiki/Portal-form) and
+[shared validation](https://github.com/Midwess/compallm/wiki/Portal-validation) when developing editable controls.
+
+- Use the shared React Hook Form integration. Form owns editable values, validation, commit policy, submitted snapshots, queues,
+  and response reconciliation. Zustand owns workflow state and shared confirmed entities; never duplicate drafts there.
+- Named fields bind to their nearest Form and report changes, blur, and commit intent. Form decides when to call the controller.
+  Outside Form, callers retain ordinary value and listener ownership. Fields never call GraphQL themselves.
+- Register native text inputs through refs and events without subscribing to their values. Use `useController` for composite
+  controls, `useFieldArray` for collection structure, and stable row identities. Compose caller and registration refs.
+- Subscribe to named paths and the metadata a component actually displays. Avoid global `watch()`, whole-form subscriptions, and
+  rebuilding combined controller snapshots on each keystroke. Keep preview and status observers separate from input trees.
+- Preserve server rendering and initial field values without browser globals. Set up browser observers, timers, and listeners
+  during lifecycle effects; clean them up on unmount. Programmatic reconciliation and local reset must update native inputs.
+
+## Commit behavior and GraphQL
+
+- Default to explicit button submission. Button-only forms suppress blur, debounce, completion, and implicit Enter commits;
+  keyboard activation of the submit button remains available. Other flows explicitly choose change, blur/Enter, debounce, or
+  completion behavior. Preserve multiline Enter and IME composition.
+- Controllers accept explicit validated snapshots, perform domain/API operations, and return confirmed values. Request the
+  changed values in the mutation response so Form can reconcile canonical server state. Follow the root GraphQL conventions and
+  freshly fetched Wiki guidelines before changing operations; use typed Genql selections checked with `satisfies`.
+- Partial updates submit only the triggered changed fields or commit group. Preserve omission and permit null only where the
+  contract allows clearing. Keep independent operations in separate commit groups; one failed group cannot undo another's
+  confirmed baseline. Keep one root mutation per request.
+- Queue triggered snapshots only. An older response must never overwrite newer typing or submit uncommitted edits. Apply
+  returned values to the confirmed baseline and replace visible values only when their edit versions still match.
+- Failed operations retain drafts and allow explicit retry with the latest intended values. Never automatically replay
+  authentication or uncertain writes. Cancel unsent work on record changes/unmount; never flush because a component unmounts.
+- Keep unavailable production operations unavailable. Offline stories consume generated contracts and mock controller results;
+  importing contracts does not authorize live requests, database access, migrations, or implementation of missing APIs.
+
+## Contract validation and messages
+
+- Rust API inputs under `api/src/graphql` own validation, normalization, defaults, and messages through Validify and
+  `ExportValidation`. Import generated validators, constraints, input guards, and inferred values from `@compallm/contract`.
+  Never duplicate business rules, API interfaces, or validation wording in components and stories.
+- Supply useful Validify `message = "..."` literals in Rust. ExportValidation carries supported messages through
+  `x-compallm-messages` into generated validators. Use separate minimum/maximum rules when their wording differs. Extend the
+  exporter/runtime for unsupported rules rather than silently weakening validation or adding a frontend-only fallback.
+- Use the official Zod resolver for complete form boundaries. Parse partial patches against generated update schemas and send
+  parsed output. Keep cross-field refinements within their complete group; triggering one field does not scope a full resolver.
+- Local draft adapters may preserve incomplete numeric text and display labels, then convert to generated wire types. Keep
+  normalized submission values separate from newer visible drafts. Parser state must settle even when wire formatting differs.
+- Validate on blur or submission; after failure, revalidate the relevant boundary on change. Map issue paths to the correct
+  field/group, including collection entries. Each failed revalidation must reopen its error message even if wording is
+  unchanged.
+- Regenerate contracts with `cargo run -p compallm-api -- generate` after Rust input changes; never edit generated artifacts.
+  Register actual missing input types without placeholder operations. Leave unresolved business rules explicit.
+
+## Field error presentation
+
+- Compose `Form.Error` or `FormField.Error` explicitly for each editable field/group. Reuse the shared implementation so page
+  code does not add its own positioning, timers, tooltips, or animations. API operation errors use toasts; Cedar parser
+  diagnostics remain beside their editor.
+- Invalid fields have a red border and a red circular badge containing Phosphor's filled white `WarningIcon`. Keep the icon 12px
+  (`size-3`), with 4px padding (`p-1`). Inset the badge from the field border; preserve field dimensions, alignment, and room
+  for entered text. Error feedback must not move rows or vertically shift switches.
+- The badge itself expands into one red capsule with white text. Reveal outward from the icon to the right; flip left near the
+  viewport edge. Show for five seconds on first failure and each failed revalidation, then collapse to the badge. Hover or
+  keyboard focus reopens it; Escape dismisses it. Remove the indicator when the field becomes valid.
+- Preserve labels, `aria-invalid`, accessible error descriptions, keyboard access, and dialog boundaries. Error feedback must
+  not steal focus. Use shared Motion presets and respect reduced motion.
+
+## Practice and verification
+
+- Keep one consolidated Form Practice page for learning commit modes, partial updates, returned values, normalization, delayed
+  responses, retained drafts, retry, scoped dialogs, standalone fields, validation, and large-form behavior.
+- Reuse offline controller mocks and generated contracts. Preserve the current UI unless a visual change is explicitly asked
+  for. Include focused component previews for first display, collapsed/hover/focus errors, and viewport-edge expansion.
+- Validate Storybook changes with lint, type checks, builds, and manual inspection. Do not add Storybook unit tests, automated
+  browser/interaction suites, play-test runners, or `libs/storybook/tests`. Keep meaningful consumer business-flow tests in
+  their application's `tests/` directory, subject to the root testing policy.
+- For subscription changes, inspect a large form: native typing must not rerender the form root or unrelated fields, broadcast
+  through workflow stores, or validate unrelated boundaries. Describe measured behavior accurately; RHF can still check its
+  internal observers. Verify reset, SSR, stale responses, failure recovery, and repeated field commits when affected.

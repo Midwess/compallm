@@ -52,7 +52,8 @@ impl From<AuthError> for Error {
                 422,
                 "Authentication credential exceeds the supported size limit",
             ),
-            AuthError::SessionPersistence(_)
+            AuthError::Preferences(_)
+            | AuthError::SessionPersistence(_)
             | AuthError::OrganizationRepository(_)
             | AuthError::Connection(_)
             | AuthError::DictionaryUnavailable
@@ -166,6 +167,23 @@ impl Error {
             code: "INTERNAL_SERVER_ERROR",
             status: 500,
             message: "Request failed",
+        }
+    }
+}
+
+impl From<compallm_core::preference::UserPreferenceError> for Error {
+    fn from(error: compallm_core::preference::UserPreferenceError) -> Self {
+        use compallm_core::preference::UserPreferenceError;
+        match error {
+            UserPreferenceError::Invalid(_) | UserPreferenceError::InvalidReset => {
+                Self::invalid_input()
+            }
+            UserPreferenceError::Authentication(error) => error.into(),
+            UserPreferenceError::Persistence(_) => Self {
+                code: "SERVICE_UNAVAILABLE",
+                status: 503,
+                message: "Preference state is temporarily unavailable",
+            },
         }
     }
 }

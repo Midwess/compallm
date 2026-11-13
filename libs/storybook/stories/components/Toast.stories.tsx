@@ -9,7 +9,7 @@ function ToastDemo({ action, onDismiss, ...props }: ToastProps) {
   const [result, setResult] = useState('')
   return (
     <Preview>
-      <section className="grid w-100 min-w-0 max-w-full grid-cols-1 gap-2">
+      <section className="grid w-fit min-w-0 max-w-full grid-cols-1 justify-items-start gap-2">
         <Button
           onClick={() => {
             setVisible(true)

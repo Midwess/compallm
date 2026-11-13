@@ -9,8 +9,8 @@ pub struct Model {
     pub id: i64,
     pub user_id: i64,
     pub organization_id: i64,
-    pub authorization_version: i64,
     pub revoked_at: Option<DateTimeWithTimeZone>,
+    pub authorization_version: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

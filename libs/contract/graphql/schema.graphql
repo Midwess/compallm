@@ -1,3 +1,15 @@
+input AccessibilityPatchInput {
+  pointerCursors: Boolean
+  reduceMotion: Boolean
+  underlineLinks: Boolean
+}
+
+type AccessibilityPreferences {
+  pointerCursors: Boolean!
+  reduceMotion: Boolean!
+  underlineLinks: Boolean!
+}
+
 enum AppearanceMode {
   DARK
   LIGHT
@@ -8,14 +20,42 @@ type BooleanPayload {
   node: Boolean!
 }
 
+input CalendarPatchInput {
+  firstDay: PreferenceWeekday
+}
+
+type CalendarPreferences {
+  firstDay: PreferenceWeekday!
+}
+
 input ChatCreateInput {
   message: String!
   modelId: String!
 }
 
+input CodeAppearancePatchInput {
+  font: CodeFontPatchInput
+  theme: PreferenceCodeTheme
+}
+
+type CodeAppearancePreferences {
+  font: CodeFontPreferences!
+  theme: PreferenceCodeTheme!
+}
+
 enum CodeFont {
   DEFAULT
   MONOSPACE
+}
+
+input CodeFontPatchInput {
+  family: PreferenceFontFamily
+  size: PreferencePixelFontSize
+}
+
+type CodeFontPreferences {
+  family: PreferenceFontFamily!
+  size: PreferencePixelFontSize!
 }
 
 enum CodeFontSize {
@@ -182,6 +222,24 @@ enum MemberDisplay {
   USERNAME
 }
 
+input MemberDisplayPatchInput {
+  nameFormat: PreferenceNamingFormat
+}
+
+type MemberDisplayPreferences {
+  nameFormat: PreferenceNamingFormat!
+}
+
+input MessageCompositionPatchInput {
+  convertEmoticons: Boolean
+  sendShortcut: PreferenceKeyCombination
+}
+
+type MessageCompositionPreferences {
+  convertEmoticons: Boolean!
+  sendShortcut: PreferenceKeyCombination!
+}
+
 type Mutation {
   """
   Confirm the verified signin challenge and create a scoped session.
@@ -224,6 +282,26 @@ type Mutation {
   Revoke the verified session and clear its browser cookies after success.
   """
   sessionRevoke: BooleanPayload!
+
+  """
+  Restore selected preference groups, or ALL alone, to Core defaults.
+  """
+  userPreferencesReset(groups: [UserPreferenceGroup!]!): UserPreferencesPayload!
+
+  """
+  Atomically patch the signed-in user's preferences, preserving omitted fields.
+  """
+  userPreferencesUpdate(
+    input: UserPreferencesPatchInput!
+  ): UserPreferencesPayload!
+}
+
+input NavigationPatchInput {
+  home: PreferenceDestination
+}
+
+type NavigationPreferences {
+  home: PreferenceDestination!
 }
 
 type Organization {
@@ -251,6 +329,16 @@ type PageInfo {
   startCursor: String
 }
 
+input PalettePatchInput {
+  dark: PreferenceDarkPalette
+  light: PreferenceLightPalette
+}
+
+type PalettePreferences {
+  dark: PreferenceDarkPalette!
+  light: PreferenceLightPalette!
+}
+
 type PolicyAction {
   description: String!
   displayName: String!
@@ -267,6 +355,89 @@ type PolicyActionConnection {
 type PolicyActionEdge {
   cursor: String!
   node: PolicyAction!
+}
+
+enum PreferenceAppearanceMode {
+  DARK
+  LIGHT
+  SYSTEM
+}
+
+enum PreferenceBadgeStyle {
+  COUNT
+  DOT
+}
+
+enum PreferenceCodeTheme {
+  FOLLOW_INTERFACE
+  LINEAR_DARK
+  LINEAR_LIGHT
+  SYSTEM
+}
+
+enum PreferenceDarkPalette {
+  CLASSIC_DARK
+  DARK
+  MAGIC_BLUE
+}
+
+enum PreferenceDestination {
+  CHAT
+  MODELS
+  NOTEBOOKS
+  PLUGINS
+  PROVIDERS
+}
+
+enum PreferenceFontFamily {
+  DEFAULT
+  MONOSPACE
+}
+
+enum PreferenceKeyCombination {
+  ENTER
+  MODIFIER_ENTER
+}
+
+enum PreferenceLightPalette {
+  LIGHT
+  PURE_LIGHT
+}
+
+enum PreferenceNamingFormat {
+  FULL_NAME
+  USERNAME
+}
+
+enum PreferencePixelFontSize {
+  PX12
+  PX13
+  PX14
+  PX16
+}
+
+enum PreferenceRelativeFontSize {
+  DEFAULT
+  LARGE
+  LARGER
+  SMALL
+  SMALLER
+}
+
+enum PreferenceSidebarVisibility {
+  ALWAYS
+  HIDDEN
+  WHEN_BADGED
+}
+
+enum PreferenceWeekday {
+  FRIDAY
+  MONDAY
+  SATURDAY
+  SUNDAY
+  THURSDAY
+  TUESDAY
+  WEDNESDAY
 }
 
 input PreferencesUpdateInput {
@@ -499,6 +670,11 @@ type Query {
   Return the verified current session identity.
   """
   session: SessionPayload!
+
+  """
+  Return the signed-in user's personal preferences; missing rows use Core defaults without a write.
+  """
+  userPreferences: UserPreferencesPayload!
 }
 
 input ReportingScheduleInput {
@@ -599,10 +775,34 @@ enum SidebarBadgeStyle {
   DOT
 }
 
+type SidebarEntry {
+  item: PreferenceDestination!
+  visibility: PreferenceSidebarVisibility!
+}
+
+"""
+Order replaces ordering while preserving visibility; visibility patches are keyed by destination.
+"""
+input SidebarPatchInput {
+  badgeStyle: PreferenceBadgeStyle
+  order: [PreferenceDestination!]
+  visibility: [SidebarVisibilityPatchInput!]
+}
+
+type SidebarPreferences {
+  badgeStyle: PreferenceBadgeStyle!
+  entries: [SidebarEntry!]!
+}
+
 enum SidebarVisibility {
   ALWAYS_SHOW
   HIDDEN
   ONLY_WHEN_BADGED
+}
+
+input SidebarVisibilityPatchInput {
+  item: PreferenceDestination!
+  visibility: PreferenceSidebarVisibility!
 }
 
 input SpendingLimitInput {
@@ -618,6 +818,16 @@ enum TextModelProtocol {
   OPENAI_RESPONSES
 }
 
+input ThemePatchInput {
+  mode: PreferenceAppearanceMode
+  palettes: PalettePatchInput
+}
+
+type ThemePreferences {
+  mode: PreferenceAppearanceMode!
+  palettes: PalettePreferences!
+}
+
 """
 Exact Unix-second validity and client throttle values encoded as decimal strings.
 """
@@ -626,6 +836,60 @@ type TokenLifetime {
   expiresInSeconds: String!
   issuedAt: String!
   throttleSeconds: String!
+}
+
+input TypographyPatchInput {
+  family: PreferenceFontFamily
+  size: PreferenceRelativeFontSize
+}
+
+type TypographyPreferences {
+  family: PreferenceFontFamily!
+  size: PreferenceRelativeFontSize!
+}
+
+enum UserPreferenceGroup {
+  ACCESSIBILITY
+  ALL
+  CALENDAR
+  CODE_APPEARANCE
+  MEMBER_DISPLAY
+  MESSAGE_COMPOSITION
+  NAVIGATION
+  SIDEBAR
+  THEME
+  TYPOGRAPHY
+}
+
+type UserPreferences {
+  accessibility: AccessibilityPreferences!
+  calendar: CalendarPreferences!
+  codeAppearance: CodeAppearancePreferences!
+  memberDisplay: MemberDisplayPreferences!
+  messageComposition: MessageCompositionPreferences!
+  navigation: NavigationPreferences!
+  sidebar: SidebarPreferences!
+  theme: ThemePreferences!
+  typography: TypographyPreferences!
+}
+
+"""
+Partial personal preferences. Omitted fields are preserved; explicit null is rejected.
+"""
+input UserPreferencesPatchInput {
+  accessibility: AccessibilityPatchInput
+  calendar: CalendarPatchInput
+  codeAppearance: CodeAppearancePatchInput
+  memberDisplay: MemberDisplayPatchInput
+  messageComposition: MessageCompositionPatchInput
+  navigation: NavigationPatchInput
+  sidebar: SidebarPatchInput
+  theme: ThemePatchInput
+  typography: TypographyPatchInput
+}
+
+type UserPreferencesPayload {
+  node: UserPreferences!
 }
 
 enum Weekday {

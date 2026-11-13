@@ -82,3 +82,23 @@ impl FromContext<GraphqlContext>
         <Self as FromContext<Di>>::from(context.di)
     }
 }
+
+impl FromContext<GraphqlContext> for compallm_core::preference::UserPreferenceService {
+    fn from(context: &GraphqlContext) -> &Self {
+        <Self as FromContext<Di>>::from(context.di)
+    }
+}
+
+impl FromContext<GraphqlContext>
+    for Box<dyn compallm_core::persistent::preference::user::UserPreferenceRepository>
+{
+    fn from(context: &GraphqlContext) -> &Self {
+        <Self as FromContext<Di>>::from(context.di)
+    }
+}
+
+impl FromContext<GraphqlContext> for compallm_core::persistent::DbContext {
+    fn from(context: &GraphqlContext) -> &Self {
+        <Self as FromContext<Di>>::from(context.di)
+    }
+}

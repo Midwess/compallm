@@ -11,7 +11,7 @@ pub struct Model {
         unique_key = "models_organization_id_id_unique"
     )]
     pub id: i64,
-    #[sea_orm(unique_key = "models_organization_id_id_unique")]
+    #[sea_orm(unique_key = "models_organization_id_name_unique")]
     pub organization_id: i64,
     #[sea_orm(
         column_type = "Text",

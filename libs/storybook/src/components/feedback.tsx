@@ -56,7 +56,7 @@ export function Toast({
       data-ui="toast"
       data-tone={tone}
       className={cx(
-        'flex w-100 max-w-full items-start gap-2.5 rounded-xl',
+        'flex w-fit min-w-0 max-w-100 items-start gap-2.5 rounded-xl',
         'border border-border bg-elevated p-2 font-sans text-xsm leading-5 text-text shadow-lg',
         className,
       )}
@@ -72,7 +72,7 @@ export function Toast({
             <RichMessage message={message} />
           </div>
         </div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div className="mt-1 flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
           <animated.button
             type="button"
             onClick={onDismiss}

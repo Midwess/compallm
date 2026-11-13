@@ -43,6 +43,9 @@ mod m20261108_000023_seed_access_token_dictionary;
 mod m20261108_000027_add_organization_owner_role;
 
 mod m20261110_000028_restricted_reads;
+mod m20261113_000029_create_user_preferences;
+
+mod m20261113_000030_seed_user_preferences;
 
 pub struct Migrator;
 
@@ -80,6 +83,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20261108_000023_seed_access_token_dictionary::Migration),
             Box::new(m20261108_000027_add_organization_owner_role::Migration),
             Box::new(m20261110_000028_restricted_reads::Migration),
+            Box::new(m20261113_000029_create_user_preferences::Migration),
+            Box::new(m20261113_000030_seed_user_preferences::Migration),
             // inject-above (do not remove this comment)
         ]
     }

@@ -9,7 +9,8 @@ async fn creates_application_schema_with_scoped_usage_and_global_templates() {
         .append_exec_results((0..100).map(|_| MockExecResult::default()))
         .into_connection();
     for migration in migrations.iter().filter(|m| {
-        !m.name().ends_with("seed_provider_templates")
+        !m.name().ends_with("seed_user_preferences")
+            && !m.name().ends_with("seed_provider_templates")
             && !m.name().ends_with("seed_access_token_dictionary")
             && !m.name().ends_with("replace_membership_role_enum")
             && !m.name().ends_with("remove_reserved_role_ids")
@@ -168,7 +169,8 @@ async fn drops_children_before_parents_and_owned_enums_after_their_tables() {
         .append_exec_results((0..40).map(|_| MockExecResult::default()))
         .into_connection();
     for migration in Migrator::migrations().into_iter().rev().filter(|m| {
-        !m.name().ends_with("seed_provider_templates")
+        !m.name().ends_with("seed_user_preferences")
+            && !m.name().ends_with("seed_provider_templates")
             && !m.name().ends_with("seed_access_token_dictionary")
             && !m.name().ends_with("replace_membership_role_enum")
             && !m.name().ends_with("remove_reserved_role_ids")

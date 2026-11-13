@@ -23,6 +23,17 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
+    /// Return the signed-in user's personal preferences; missing rows use Core defaults without a write.
+    async fn user_preferences(
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::preference::user::UserPreferenceRepository,
+        >,
+        #[graphql(context)] database: &compallm_core::persistent::DbContext,
+    ) -> Result<Payload<super::preference::user::UserPreferences>, Error> {
+        super::preference::user::query::get(user, repository.as_ref(), database).await
+    }
+
     /// Return the system-owned organization policy action catalog.
     async fn organization_policy_actions(
         #[graphql(context)] user: &UserContext,
@@ -83,6 +94,25 @@ pub struct Mutation;
 
 #[graphql_object(context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Mutation {
+    /// Atomically patch the signed-in user's preferences, preserving omitted fields.
+    async fn user_preferences_update(
+        input: super::preference::user::input::UserPreferencesPatchInput,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::preference::UserPreferenceService,
+        #[graphql(context)] database: &compallm_core::persistent::DbContext,
+    ) -> Result<Payload<super::preference::user::UserPreferences>, Error> {
+        super::preference::user::mutation::update(input, user, service, database).await
+    }
+    /// Restore selected preference groups, or ALL alone, to Core defaults.
+    async fn user_preferences_reset(
+        groups: Vec<super::preference::user::input::UserPreferenceGroup>,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::preference::UserPreferenceService,
+        #[graphql(context)] database: &compallm_core::persistent::DbContext,
+    ) -> Result<Payload<super::preference::user::UserPreferences>, Error> {
+        super::preference::user::mutation::reset(groups, user, service, database).await
+    }
+
     /// Request a signup email challenge; reject existing accounts before sending.
     async fn email_signup_request(
         input: authentication::input::EmailInput,
@@ -260,6 +290,7 @@ impl GraphQLValueAsync for RegisteredQuery {
 #[derive(JsonSchema)]
 #[allow(dead_code)]
 struct Inputs {
+    user_preferences_patch: super::preference::user::input::UserPreferencesPatchInput,
     credential_create: super::user::input::CredentialCreateInput,
     spending_limit: super::organization::input::SpendingLimitInput,
     reporting_schedule: super::organization::input::ReportingScheduleInput,

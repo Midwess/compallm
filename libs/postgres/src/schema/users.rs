@@ -23,6 +23,8 @@ pub enum Relation {
     ModelUsage,
     #[sea_orm(has_many = "super::organization_members::Entity")]
     OrganizationMembers,
+    #[sea_orm(has_one = "super::user_preferences::Entity")]
+    UserPreferences,
     #[sea_orm(has_many = "super::user_sessions::Entity")]
     UserSessions,
 }
@@ -36,6 +38,12 @@ impl Related<super::model_usage::Entity> for Entity {
 impl Related<super::organization_members::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OrganizationMembers.def()
+    }
+}
+
+impl Related<super::user_preferences::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::UserPreferences.def()
     }
 }
 

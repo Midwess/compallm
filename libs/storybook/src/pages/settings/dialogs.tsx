@@ -1,137 +1,14 @@
-import { preferenceOptions, preferenceLabel } from './preferences/user/values'
-import { useUserPreference, useUserPreferenceController } from './preferences/user/controller'
+import { CustomizeSidebar } from './preferences/user/sidebar-layout'
 import { parseSettingsDialog } from './validation'
 import { FormError } from '../../components/form'
 import { useState } from 'react'
 import { Form } from '../../components/form'
-import { motion } from 'motion/react'
-import { useTransition } from '../../components/motion'
 import { Button } from '../../components/buttons'
 import { Dialog } from '../../components/dialog'
 import { TextField, MultilineField } from '../../components/fields'
 import { Select } from '../../components/dropdowns'
-import { useReorder } from '../../components/use-reorder'
-import { cx } from '../../components/shared'
-import { DotsSixVerticalIcon } from '@phosphor-icons/react/dist/csr/DotsSixVertical'
-import { HardDrivesIcon } from '@phosphor-icons/react/dist/csr/HardDrives'
-import { CubeIcon } from '@phosphor-icons/react/dist/csr/Cube'
-import { NotebookIcon } from '@phosphor-icons/react/dist/csr/Notebook'
-import { PlugsIcon } from '@phosphor-icons/react/dist/csr/Plugs'
 import { useSettings, useSettingsController } from './controller'
 import type { SettingsDialogKind } from './types'
-
-const sidebarIcons = { PROVIDERS: HardDrivesIcon, MODELS: CubeIcon, NOTEBOOKS: NotebookIcon, PLUGINS: PlugsIcon }
-const badgeOptions = preferenceOptions.sidebarBadgeStyle.map((option) => ({
-  ...option,
-  icon:
-    option.value === 'DOT' ? (
-      <span aria-hidden="true" className="mx-1 size-1.5 shrink-0 rounded-full bg-muted" />
-    ) : (
-      <span aria-hidden="true" className="flex size-3.5 shrink-0 items-center justify-center text-xs text-muted">
-        1
-      </span>
-    ),
-}))
-const visibilityOptions = preferenceOptions.sidebarVisibility
-
-function CustomizeSidebar() {
-  const timing = useTransition('reorder')
-  const controller = useSettingsController()
-  const user = useUserPreferenceController()
-  const preferences = useUserPreference((state) => state.draft, ['draft'])
-  const order = preferences.sidebarOrder
-  const { rowNodes, drag, preview, announcement, id, keyboardMove, startDrag, pointerMove, endDrag } = useReorder(
-    order,
-    (items) => user.store.form.change('draft.' + 'sidebarOrder', items),
-    false,
-    'Sidebar item',
-  )
-  return (
-    <Dialog onClose={controller.pages.dialogs.closeDialog}>
-      <Dialog.Content className="w-120 rounded-xl bg-inset">
-        <Form model={user.store.form}>
-          <Dialog.Header className="h-14 px-6">
-            <Dialog.Title className="text-[15px]">Customize sidebar</Dialog.Title>
-            <Dialog.Close />
-          </Dialog.Header>
-          <Dialog.Body className="gap-6 px-6 pt-4 pb-6">
-            <div className="flex h-11 items-center justify-between rounded-lg bg-elevated px-3 text-xsm">
-              <span>Default badge style</span>
-              <Select aria-label="Default badge style" className="w-26" name="draft.sidebarBadgeStyle" options={badgeOptions} />
-              <FormError name="draft.sidebarBadgeStyle" />
-            </div>
-            <div className="grid gap-2.5">
-              <h3 className="text-xsm font-medium">Workspace</h3>
-              <div className="rounded-lg bg-elevated py-0.5">
-                {order.map((name, index) => {
-                  const Icon = sidebarIcons[name as keyof typeof sidebarIcons]
-                  return (
-                    <motion.div
-                      key={name}
-                      initial={false}
-                      animate={{ y: preview?.offsets[name] ?? 0 }}
-                      transition={timing}
-                      ref={(node) => {
-                        if (node) rowNodes.current.set(name, node)
-                        else rowNodes.current.delete(name)
-                      }}
-                      className={cx('relative flex h-9 items-center px-2', preview?.key === name && 'opacity-0')}
-                    >
-                      <button
-                        type="button"
-                        aria-label={`Reorder ${preferenceLabel(name)}`}
-                        aria-describedby={`${id}-reorder`}
-                        className={`
-flex size-6 shrink-0 touch-none cursor-grab items-center justify-center text-muted hover:text-text
-active:cursor-grabbing focus-visible:outline-focus
-`}
-                        onPointerDown={(event) => startDrag(name, event)}
-                        onPointerMove={pointerMove}
-                        onPointerUp={(event) => {
-                          if (drag.current?.pointerId === event.pointerId) {
-                            endDrag(true)
-                            event.currentTarget.releasePointerCapture(event.pointerId)
-                          }
-                        }}
-                        onPointerCancel={() => endDrag(false)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Escape' && drag.current) {
-                            event.preventDefault()
-                            endDrag(false)
-                          } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-                            event.preventDefault()
-                            keyboardMove(index, index + (event.key === 'ArrowUp' ? -1 : 1))
-                          }
-                        }}
-                      >
-                        <DotsSixVerticalIcon aria-hidden="true" className="size-3" />
-                      </button>
-                      {Icon ? <Icon aria-hidden="true" className="mr-2 size-4 shrink-0 text-muted" /> : null}
-                      <span className="min-w-0 flex-1 text-xsm">{preferenceLabel(name)}</span>
-                      <Select
-                        aria-label={`${preferenceLabel(name)} visibility`}
-                        className="w-35"
-                        name={`draft.sidebar${name}`}
-                        options={visibilityOptions}
-                      />
-                      <FormError name={`draft.sidebar${name}`} />
-                    </motion.div>
-                  )
-                })}
-              </div>
-              <p id={`${id}-reorder`} className="sr-only">
-                Drag to reorder, or focus the grip and use Up and Down arrow keys.
-              </p>
-              <span role="status" className="sr-only">
-                {announcement}
-              </span>
-            </div>
-          </Dialog.Body>
-        </Form>
-      </Dialog.Content>
-    </Dialog>
-  )
-}
 
 function SettingsDialogContent() {
   const c = useSettingsController(),
@@ -268,7 +145,7 @@ function SettingsDialogContent() {
               </>
             ) : null}
             {named.includes(d.kind) ? (
-              <label className="grid gap-2 text-xs text-muted">
+              <label className="grid gap-2 text-xs text-muted-foreground">
                 {d.kind === 'add-passkey' ? 'Passkey name' : 'Name'}
                 <TextField autoFocus name="dialog.name" required />
                 <FormError name="dialog.name" />
@@ -286,7 +163,7 @@ function SettingsDialogContent() {
               </div>
             ) : null}
             {limit ? (
-              <label className="grid gap-2 text-xs text-muted">
+              <label className="grid gap-2 text-xs text-muted-foreground">
                 Monthly limit · USD
                 <TextField
                   aria-label="Monthly limit in USD"
@@ -302,7 +179,7 @@ function SettingsDialogContent() {
             ) : null}
             {d.kind === 'reset-schedule' ? (
               <>
-                <label className="grid gap-2 text-xs text-muted">
+                <label className="grid gap-2 text-xs text-muted-foreground">
                   Reset frequency
                   <Select
                     aria-label="Reset frequency"
@@ -311,7 +188,7 @@ function SettingsDialogContent() {
                     options={[{ label: 'Monthly', value: 'Monthly' }]}
                   />
                 </label>
-                <label className="grid gap-2 text-xs text-muted">
+                <label className="grid gap-2 text-xs text-muted-foreground">
                   Timezone
                   <Select
                     aria-label="Timezone"

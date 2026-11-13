@@ -8,9 +8,9 @@ import { cx } from './shared'
 import { FloatingContainerContext } from '../context'
 
 const itemClass = `flex h-8 w-full cursor-pointer items-center rounded-md px-2 text-xs outline-none
-data-highlighted:bg-border focus-visible:outline-focus data-disabled:cursor-not-allowed data-disabled:opacity-50`
+data-highlighted:bg-menu-hover focus-visible:outline-ring data-disabled:cursor-not-allowed data-disabled:opacity-50`
 const surfaceClass = `max-h-(--available-height) w-48 max-w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain
-rounded-[10px] border border-border bg-menu p-1 font-sans text-text shadow-menu outline-none origin-(--transform-origin)`
+rounded-control border border-border bg-menu p-1 font-sans text-foreground shadow-menu outline-none origin-(--transform-origin)`
 
 function Root({ children }: { children: ReactNode }) {
   return <Menu.Root modal={false}>{children}</Menu.Root>
@@ -22,8 +22,8 @@ function Trigger({ className, ...props }: ButtonHTMLAttributes<HTMLButtonElement
       {...props}
       render={<animated.button type="button" />}
       className={cx(
-        `flex size-7 cursor-pointer items-center justify-center rounded-xl text-muted hover:bg-elevated
-focus-visible:outline-focus`,
+        `flex size-7 cursor-pointer items-center justify-center rounded-xl text-muted-foreground hover:bg-hover
+focus-visible:outline-ring`,
         className,
       )}
     />
@@ -35,7 +35,7 @@ function IconTrigger(props: ButtonHTMLAttributes<HTMLButtonElement>) {
     <Trigger
       {...props}
       className={cx(
-        'size-7 rounded-full border border-border/60 bg-inset text-muted hover:border-input-border hover:text-text',
+        'size-7 rounded-full border border-border/60 bg-inset text-muted-foreground hover:border-input hover:text-foreground',
         props.className,
       )}
     />
@@ -104,10 +104,7 @@ function CheckboxItem({
       }}
       className={cx(itemClass, 'min-h-9 gap-3 text-xsm', className)}
     >
-      <span
-        aria-hidden="true"
-        className="flex size-4 shrink-0 items-center justify-center rounded-sm border border-input-border"
-      >
+      <span aria-hidden="true" className="flex size-4 shrink-0 items-center justify-center rounded-sm border border-input">
         <Menu.CheckboxItemIndicator>
           <CheckIcon className="size-3" />
         </Menu.CheckboxItemIndicator>

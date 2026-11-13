@@ -28,6 +28,7 @@ const families = [
   'navigation',
   'page-header',
   'page-progress',
+  'app-loading-overlay',
   'sidebar',
   'selection',
   'surfaces',

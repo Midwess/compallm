@@ -5,6 +5,7 @@ import { OrganizationControllerContext } from '@compallm/storybook/context'
 import { OrganizationPage } from '@compallm/storybook/pages/organization'
 import { useUrlController } from '../url/use-url-controller'
 import { useAuthController } from '../auth/use-auth-controller'
+import { userPreferenceController } from '../preference/user/controller'
 import { OrganizationController } from '../organization/controller'
 import type { AuthUser } from '@compallm/storybook'
 
@@ -21,6 +22,7 @@ function Workspace({ user }: { user: AuthUser }) {
   const url = useUrlController()
   const [controller] = useState(() => new OrganizationController(user, url, auth))
   useEffect(() => controller.setCurrentUser(user), [controller, user])
+  useEffect(() => userPreferenceController.connectOrganization(controller, url), [controller, url])
   return (
     <OrganizationControllerContext value={controller}>
       {settings ? (

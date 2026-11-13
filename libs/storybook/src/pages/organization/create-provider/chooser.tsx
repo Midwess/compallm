@@ -45,7 +45,7 @@ export function ProviderChooser() {
             <col />
             <col className="w-20" />
           </colgroup>
-          <Table.Header className="h-9 text-muted [&>tr]:h-9">
+          <Table.Header className="h-9 text-muted-foreground [&>tr]:h-9">
             <Table.Row className="border-b border-divider">
               <Table.Head className="px-4 font-normal">Provider</Table.Head>
               <Table.Head className="px-4 font-normal">Base URL</Table.Head>
@@ -62,7 +62,7 @@ export function ProviderChooser() {
                 <Table.Cell className="px-4">
                   <button
                     type="button"
-                    className="block w-full cursor-pointer text-left focus-visible:outline-focus"
+                    className="block w-full cursor-pointer text-left focus-visible:outline-ring"
                     onClick={(event) => {
                       event.stopPropagation()
                       controller.onSelectProvider(provider.id)
@@ -72,12 +72,14 @@ export function ProviderChooser() {
                       <ProviderIcon provider={provider.id} className="size-5" />
                       <span>
                         <span className="block text-sm font-medium">{provider.name}</span>
-                        <span className="mt-1 block text-xs text-muted">{provider.id}</span>
+                        <span className="mt-1 block text-xs text-muted-foreground">{provider.id}</span>
                       </span>
                     </span>
                   </button>
                 </Table.Cell>
-                <Table.Cell className="truncate px-4 text-muted">{provider.baseUrl ?? 'Configure endpoint'}</Table.Cell>
+                <Table.Cell className="truncate px-4 text-muted-foreground">
+                  {provider.baseUrl ?? 'Configure endpoint'}
+                </Table.Cell>
                 <Table.Cell className="text-center">
                   <ToolbarAction
                     label={`Choose ${provider.name}`}
@@ -94,7 +96,7 @@ export function ProviderChooser() {
             ))}
           </Table.Body>
         </Table.Content>
-        {!filtered.length ? <p className="py-12 text-center text-sm text-muted">No providers found</p> : null}
+        {!filtered.length ? <p className="py-12 text-center text-sm text-muted-foreground">No providers found</p> : null}
       </Table>
       <div className="flex items-center justify-between gap-4">
         <Button className="h-8 px-4 text-xs" onClick={controller.onUseCustomProvider}>

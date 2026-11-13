@@ -38,9 +38,10 @@ export function TextField({ className, onChange, onBlur, onKeyDown, value, ...pr
         }
       }}
       className={cx(
-        `block h-8 w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
-py-1 text-left text-sm leading-5.5 text-text placeholder:text-muted placeholder:opacity-100
-focus:border-muted/60 focus:outline-none aria-invalid:border-error disabled:cursor-not-allowed disabled:opacity-50`,
+        `block h-8 w-full min-w-0 rounded-lg border-(length:--border-hairline) border-input bg-inset px-1.5
+py-1 text-left text-sm leading-5.5 text-foreground placeholder:text-muted-foreground placeholder:opacity-100
+focus:border-muted-foreground/60 focus:outline-none aria-invalid:border-destructive disabled:cursor-not-allowed
+disabled:opacity-50`,
         className,
       )}
     />
@@ -78,9 +79,10 @@ export function MultilineField({ className, value, onChange, onBlur, onKeyDown, 
         }
       }}
       className={cx(
-        `block w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
-py-1 text-left text-sm leading-5.5 text-text placeholder:text-muted placeholder:opacity-100
-focus:border-muted/60 focus:outline-none aria-invalid:border-error disabled:cursor-not-allowed disabled:opacity-50
+        `block w-full min-w-0 rounded-lg border-(length:--border-hairline) border-input bg-inset px-1.5
+py-1 text-left text-sm leading-5.5 text-foreground placeholder:text-muted-foreground placeholder:opacity-100
+focus:border-muted-foreground/60 focus:outline-none aria-invalid:border-destructive disabled:cursor-not-allowed
+disabled:opacity-50
 h-auto min-h-16 resize-y`,
         className,
       )}
@@ -93,7 +95,7 @@ function SearchboxRoot({ className, children, ...props }: import('react').HTMLAt
     <div {...props} className={cx('relative min-w-0', className)}>
       <MagnifyingGlassIcon
         aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 left-1.5 size-3.5 -translate-y-1/2 text-muted"
+        className="pointer-events-none absolute top-1/2 left-1.5 size-3.5 -translate-y-1/2 text-muted-foreground"
       />
       {children}
     </div>
@@ -112,7 +114,7 @@ export function SearchField({ className, ...props }: TextFieldProps) {
 }
 
 export function EmailField({ className, ...props }: TextFieldProps) {
-  return <TextField type="email" autoComplete="email" {...props} className={cx('h-12 p-1.5 text-[15px]', className)} />
+  return <TextField type="email" autoComplete="email" {...props} className={cx('h-12 p-1.5 text-ui-15', className)} />
 }
 
 export function CodeField({ className, ...props }: TextFieldProps) {
@@ -122,7 +124,7 @@ export function CodeField({ className, ...props }: TextFieldProps) {
       pattern={otpPattern}
       maxLength={1}
       {...props}
-      className={cx('h-14 w-13 p-0 text-center text-[20px]', className)}
+      className={cx('h-14 w-13 p-0 text-center text-ui-20', className)}
     />
   )
 }
@@ -238,7 +240,7 @@ export function InlineTitleEditor({ className, ...props }: TextFieldProps) {
   return (
     <TextField
       {...props}
-      className={cx('border-transparent bg-transparent p-0 h-8 text-[24px] leading-8 font-medium', className)}
+      className={cx('border-transparent bg-transparent p-0 h-8 text-ui-24 leading-8 font-medium', className)}
     />
   )
 }
@@ -255,7 +257,7 @@ export function DocumentBodyEditor({ className, ...props }: TextareaHTMLAttribut
   return (
     <MultilineField
       {...props}
-      className={cx('border-transparent bg-transparent p-0 min-h-24 text-[15px] leading-6', className)}
+      className={cx('border-transparent bg-transparent p-0 min-h-24 text-ui-15 leading-6', className)}
     />
   )
 }

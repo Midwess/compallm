@@ -41,10 +41,10 @@ function Demo({ mode = 'button', reject = false }: { mode?: CommitMode; reject?:
           Retry latest draft
         </Button>
       </Form>
-      <p className="text-xs text-muted">
+      <p className="text-xs text-muted-foreground">
         Draft: {name}. Confirmed: {saved.name}, {saved.enabled ? 'enabled' : 'disabled'}.
       </p>
-      <p className="text-xs text-muted">
+      <p className="text-xs text-muted-foreground">
         Button mode suppresses blur and Enter. Other modes commit only at their configured trigger.
       </p>
       <TextField aria-label="Standalone input" placeholder="Outside the form" />
@@ -83,7 +83,9 @@ function ValidationExample({ edge = false }: { edge?: boolean }) {
           <TextField name="name" />
         </label>
         <Form.Error name="name" />
-        <p className="text-xs text-muted">The message opens for five seconds. Hover or focus the warning to reopen it.</p>
+        <p className="text-xs text-muted-foreground">
+          The message opens for five seconds. Hover or focus the warning to reopen it.
+        </p>
         <Form.Submit>Validate</Form.Submit>
       </Form>
     </div>

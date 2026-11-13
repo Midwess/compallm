@@ -91,19 +91,19 @@ function PermissionRow({
         <span className="block truncate text-xsm leading-4.5 font-medium" title={action.description}>
           {action.label}
         </span>
-        <span className="block truncate text-[11px] leading-4 text-muted">
+        <span className="block truncate text-ui-11 leading-4 text-muted-foreground">
           {action.id}
           {denied ? ' · Deny rule' : null}
           {statements.some((p) => p.resourceRestricted) ? ' · Advanced scope' : null}
         </span>
-        {reason ? <span className="block text-xs text-muted">{reason}</span> : null}
+        {reason ? <span className="block text-xs text-muted-foreground">{reason}</span> : null}
         {reason ? (
           <Button variant="ghost" className="h-6 px-0 text-xs" onClick={() => c.setPolicyMode('cedar')}>
             Edit in Cedar
           </Button>
         ) : null}
         {!permits.length && disabledPolicies?.length ? (
-          <details className="mt-1 text-xs text-muted">
+          <details className="mt-1 text-xs text-muted-foreground">
             <summary className="cursor-pointer">Re-enabling restores these rules</summary>
             <p>Retained until you leave this role or edit the Cedar source.</p>
             {disabledPolicies.map((source) => (
@@ -114,7 +114,7 @@ function PermissionRow({
           </details>
         ) : null}
       </Table.Cell>
-      <Table.Cell className="px-1 py-0 text-xs text-muted">{action.description}</Table.Cell>
+      <Table.Cell className="px-1 py-0 text-xs text-muted-foreground">{action.description}</Table.Cell>
       <Table.Cell className="px-2 py-0">
         <DisabledTooltip disabled={owner} reason={ownerExplanation}>
           <Switch
@@ -191,7 +191,7 @@ export function PolicyTable() {
         )}
       </div>
       {draft.projection.some((entry) => !entry.action) ? (
-        <div className="px-4 pb-4 text-xs text-muted">
+        <div className="px-4 pb-4 text-xs text-muted-foreground">
           {[...new Map(draft.projection.filter((entry) => !entry.action).map((entry) => [entry.source, entry])).values()].map(
             (entry) => (
               <details key={entry.source} className="mt-2">
@@ -209,7 +209,7 @@ export function PolicyTable() {
         tabIndex={0}
         role="region"
         aria-label="Permission catalog"
-        className="mx-2 min-w-0 overflow-x-auto outline-offset-2 focus-visible:outline-2 focus-visible:outline-focus"
+        className="mx-2 min-w-0 overflow-x-auto outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
       >
         <Table className="overflow-visible">
           <Table.Content aria-label="Permission policies" className="min-w-md border-separate border-spacing-0">
@@ -279,7 +279,7 @@ export function PolicyTable() {
             {!filtered.length ? (
               <Table.Body>
                 <Table.Row>
-                  <Table.Cell colSpan={3} className="py-8 text-center text-muted">
+                  <Table.Cell colSpan={3} className="py-8 text-center text-muted-foreground">
                     No policies match your search or filters.
                   </Table.Cell>
                 </Table.Row>
@@ -288,7 +288,7 @@ export function PolicyTable() {
           </Table.Content>
         </Table>
       </div>
-      <p className="shrink-0 px-4 py-4 text-xs leading-4.5 text-muted" aria-live="polite">
+      <p className="shrink-0 px-4 py-4 text-xs leading-4.5 text-muted-foreground" aria-live="polite">
         {selectedCount} selected · {filtered.length} policies
       </p>
     </SectionSurface>

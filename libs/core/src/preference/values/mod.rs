@@ -33,3 +33,6 @@ pub use relative_font_size::RelativeFontSize;
 pub use sidebar_visibility::SidebarVisibility;
 pub use visual::Visual;
 pub use weekday::Weekday;
+
+pub mod sidebar_category;
+pub use sidebar_category::SidebarCategory;

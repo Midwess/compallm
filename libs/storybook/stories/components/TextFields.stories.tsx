@@ -20,9 +20,9 @@ export const TextField: Story = {
           aria-label="Invalid text"
           aria-invalid="true"
           defaultValue="Invalid value"
-          aria-describedby="text-error"
+          aria-describedby="text-destructive"
         />
-        <p id="text-error" className="text-xsm leading-5 text-error">
+        <p id="text-destructive" className="text-xsm leading-5 text-destructive">
           Check this value.
         </p>
       </Sample>

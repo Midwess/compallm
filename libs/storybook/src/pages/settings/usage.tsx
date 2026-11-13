@@ -120,7 +120,7 @@ export function MemberLimitSettings() {
               <Table.Row key={m.id}>
                 <Table.Cell>
                   <span className="block text-xsm font-medium">{m.name}</span>
-                  <span className="text-muted">{m.email}</span>
+                  <span className="text-muted-foreground">{m.email}</span>
                 </Table.Cell>
                 {columns.includes('previous') ? <Table.Cell>{money(m.previousUsageUsd)}</Table.Cell> : null}
                 {columns.includes('current') ? <Table.Cell>{money(m.currentUsageUsd)}</Table.Cell> : null}
@@ -177,8 +177,8 @@ export function UsageExplorerSettings() {
       </div>
       <div className="mb-12 grid grid-cols-2 gap-4 px-4 lg:grid-cols-4">
         {['Client requests', 'Input tokens', 'Output tokens', 'Provider cost estimate'].map((label) => (
-          <div key={label} className="rounded-[10px] bg-inset p-4">
-            <p className="text-xs text-muted">{label}</p>
+          <div key={label} className="rounded-control bg-inset p-4">
+            <p className="text-xs text-muted-foreground">{label}</p>
             <p className="mt-5 text-2xl">—</p>
           </div>
         ))}
@@ -212,7 +212,7 @@ export function UsageExplorerSettings() {
           <Table.Empty>No usage to display. Usage measurements will appear when records are available.</Table.Empty>
         ) : null}
       </Section>
-      <p className="mt-6 px-4 text-xs leading-5 text-muted">
+      <p className="mt-6 px-4 text-xs leading-5 text-muted-foreground">
         Unknown measurements are shown as —. Provider cost is an estimate from saved rates.
       </p>
     </SettingsContent>

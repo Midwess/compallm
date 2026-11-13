@@ -70,7 +70,7 @@ function ChatInput() {
   )
   return (
     <Form model={form} aria-label="Create chat" className="w-full max-w-205.5">
-      <div className="rounded-lg border-[0.5px] border-border bg-composer p-3 focus-within:border-input-border">
+      <div className="rounded-lg border-(length:--border-hairline) border-border bg-composer p-3 focus-within:border-input">
         <MultilineField
           name="draft"
           aria-label="Message"
@@ -78,7 +78,7 @@ function ChatInput() {
           placeholder="Start a conversation…"
           className={`
   block field-sizing-content min-h-18 max-h-64 w-full resize-none overflow-y-auto bg-transparent px-1.5 text-xs leading-6
-  placeholder:text-muted focus:outline-none disabled:opacity-50
+  placeholder:text-muted-foreground focus:outline-none disabled:opacity-50
 `}
         />
         <FormError name="draft" />

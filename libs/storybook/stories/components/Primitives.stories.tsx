@@ -226,7 +226,7 @@ function FilterDemo({ edge = false }: { edge?: boolean }) {
           </Popup.Item>
         </Popup.Content>
       </Popup>
-      <p className="text-xs text-muted" aria-live="polite">
+      <p className="text-xs text-muted-foreground" aria-live="polite">
         Selection: {status} · Model type: {modelType} · Capabilities: {capabilities.join(', ') || 'all'}
       </p>
       <Button onClick={() => setOutsideClicks((count) => count + 1)}>Outside action · {outsideClicks}</Button>

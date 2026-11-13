@@ -75,7 +75,7 @@ export function ProviderModels() {
             <col className="w-20" />
             <col className="w-8" />
           </colgroup>
-          <Table.Header className="h-8 text-muted">
+          <Table.Header className="h-8 text-muted-foreground">
             <Table.Row className="border-b border-divider">
               <Table.Head className="p-0 text-left">
                 <Checkbox
@@ -112,7 +112,7 @@ export function ProviderModels() {
                   <span title={model.name} className="block max-w-44 truncate font-medium">
                     {Array.from(model.name).length > 50 ? `${Array.from(model.name).slice(0, 50).join('')}…` : model.name}
                   </span>
-                  <span className="mt-1 block text-xs text-muted">
+                  <span className="mt-1 block text-xs text-muted-foreground">
                     {modelTypeLabels(model).join(' · ') || model.description || 'Not declared'}
                   </span>
                 </Table.Cell>
@@ -122,20 +122,20 @@ export function ProviderModels() {
                       capabilityOptions
                         .filter((option) => model.capabilities?.includes(option.value))
                         .map((option) => (
-                          <span key={option.value} className="rounded bg-elevated px-1 py-0.5 text-muted">
+                          <span key={option.value} className="rounded bg-elevated px-1 py-0.5 text-muted-foreground">
                             {option.label}
                           </span>
                         ))
                     ) : (
-                      <span className="text-muted">Not declared</span>
+                      <span className="text-muted-foreground">Not declared</span>
                     )}
                   </div>
                 </Table.Cell>
-                <Table.Cell className="whitespace-nowrap px-1 text-left text-muted">
+                <Table.Cell className="whitespace-nowrap px-1 text-left text-muted-foreground">
                   {model.maxContextTokens ? Number(model.maxContextTokens).toLocaleString('en-US') : 'Not set'}
                 </Table.Cell>
                 {[model.inputPrice, model.outputPrice, model.cachedPrice].map((value, index) => (
-                  <Table.Cell key={index} className="whitespace-nowrap px-1 text-left text-muted">
+                  <Table.Cell key={index} className="whitespace-nowrap px-1 text-left text-muted-foreground">
                     {price(value)}
                   </Table.Cell>
                 ))}
@@ -145,7 +145,9 @@ export function ProviderModels() {
                       type="button"
                       aria-label={`Edit ${model.name}`}
                       disabled={busy}
-                      className="cursor-pointer text-muted hover:text-text focus-visible:outline-muted disabled:opacity-50"
+                      className="cursor-pointer text-muted-foreground hover:text-foreground
+focus-visible:outline-muted-foreground
+disabled:opacity-50"
                       onClick={() => controller.onEditModel(model.id)}
                     >
                       Edit
@@ -167,13 +169,13 @@ export function ProviderModels() {
         ) : null}
       </Table>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted-foreground">
           {enabled} {enabled === 1 ? 'model' : 'models'} enabled
         </p>
         <Popup>
           <Popup.Trigger
             disabled={busy}
-            className="h-8 w-auto rounded-full bg-elevated px-4 text-xs text-text hover:brightness-110"
+            className="h-8 w-auto rounded-full bg-elevated px-4 text-xs text-foreground hover:brightness-110"
           >
             Add generate text model
           </Popup.Trigger>

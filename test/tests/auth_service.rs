@@ -4115,7 +4115,7 @@ async fn preference_graphql_persists_grouped_updates_and_resets_for_current_user
         let update = "mutation($input: UserPreferencesPatchInput!) { userPreferencesUpdate(input: $input) { node { navigation { home } theme { palettes { dark } } codeAppearance { font { family size } } sidebar { entries { item visibility } } } } }";
         let response = graphql_body(graphql_operation(&router, update, serde_json::json!({"input": {
             "navigation":{"home":"MODELS"}, "calendar":{"firstDay":"SUNDAY"},
-            "theme":{"palettes":{"dark":"MAGIC_BLUE"}},
+            "theme":{"palettes":{"dark":"BLUEBERRY_DARK"}},
             "codeAppearance":{"font":{"family":"MONOSPACE","size":"PX16"}},
             "sidebar":{"order":["PLUGINS","PROVIDERS"],"visibility":[{"item":"PLUGINS","visibility":"HIDDEN"}]}
         }}), Some(&tokens.access_token), None, false).await).await;
@@ -4123,15 +4123,15 @@ async fn preference_graphql_persists_grouped_updates_and_resets_for_current_user
         assert_eq!(response["data"]["userPreferencesUpdate"]["node"]["navigation"]["home"], "MODELS");
         let read = "query { userPreferences { node { calendar { firstDay } theme { mode palettes { light dark } } codeAppearance { font { family size } } sidebar { entries { item visibility } } } } }";
         let saved = graphql_body(graphql_operation(&router, read, serde_json::json!({}), Some(&tokens.access_token), None, false).await).await;
-        assert_eq!(saved["data"]["userPreferences"]["node"]["theme"]["palettes"]["dark"], "MAGIC_BLUE");
-        assert_eq!(saved["data"]["userPreferences"]["node"]["theme"]["palettes"]["light"], "LIGHT");
+        assert_eq!(saved["data"]["userPreferences"]["node"]["theme"]["palettes"]["dark"], "BLUEBERRY_DARK");
+        assert_eq!(saved["data"]["userPreferences"]["node"]["theme"]["palettes"]["light"], "BASIC_WHITE");
         assert_eq!(saved["data"]["userPreferences"]["node"]["sidebar"]["entries"][0]["visibility"], "HIDDEN");
         for groups in [serde_json::json!([]), serde_json::json!(["ALL","THEME"])] {
             let invalid = graphql_body(graphql_operation(&router, "mutation($groups: [UserPreferenceGroup!]!) { userPreferencesReset(groups: $groups) { node { calendar { firstDay } } } }", serde_json::json!({"groups":groups}), Some(&tokens.access_token), None, false).await).await;
             assert_eq!(invalid["errors"][0]["extensions"]["code"], "BAD_USER_INPUT");
         }
         let reset = graphql_body(graphql_operation(&router, "mutation { userPreferencesReset(groups: [THEME]) { node { theme { palettes { dark } } calendar { firstDay } } } }", serde_json::json!({}), Some(&tokens.access_token), None, false).await).await;
-        assert_eq!(reset["data"]["userPreferencesReset"]["node"]["theme"]["palettes"]["dark"], "DARK");
+        assert_eq!(reset["data"]["userPreferencesReset"]["node"]["theme"]["palettes"]["dark"], "BASIC_DARK");
         assert_eq!(reset["data"]["userPreferencesReset"]["node"]["calendar"]["firstDay"], "SUNDAY");
         let defaults = graphql_body(graphql_operation(&router, "mutation { userPreferencesReset(groups: [ALL]) { node { calendar { firstDay } } } }", serde_json::json!({}), Some(&tokens.access_token), None, false).await).await;
         assert_eq!(defaults["data"]["userPreferencesReset"]["node"]["calendar"]["firstDay"], "MONDAY");

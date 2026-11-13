@@ -107,7 +107,8 @@ export function EffortMapping({
                   className={cx(
                     'h-6 w-auto min-w-10 max-w-full text-center text-xs leading-4 field-sizing-content',
                     !editing && !current && 'border-transparent bg-transparent text-center placeholder:text-transparent',
-                    (editing || current) && 'border border-muted/80 bg-inset focus:border focus:border-muted/80',
+                    (editing || current) &&
+                      'border border-muted-foreground/80 bg-inset focus:border focus:border-muted-foreground/80',
                   )}
                   onFocus={() => {
                     focus(level)
@@ -151,7 +152,7 @@ export function EffortMapping({
             disabled={disabled || index === 0}
             aria-label="Previous effort level"
             className={`
-flex size-6 shrink-0 cursor-pointer items-center justify-center text-text focus-visible:outline-muted
+flex size-6 shrink-0 cursor-pointer items-center justify-center text-foreground focus-visible:outline-muted-foreground
 disabled:opacity-30
 `}
             onClick={() => choose(index - 1, true)}
@@ -176,7 +177,7 @@ disabled:opacity-30
             disabled={disabled || index === lastAvailable}
             aria-label="Next effort level"
             className={`
-flex size-6 shrink-0 cursor-pointer items-center justify-center text-text focus-visible:outline-muted
+flex size-6 shrink-0 cursor-pointer items-center justify-center text-foreground focus-visible:outline-muted-foreground
 disabled:opacity-30
 `}
             onClick={() => choose(index + 1, true)}
@@ -195,7 +196,7 @@ disabled:opacity-30
           aria-disabled={disabled || undefined}
           className={`
 absolute inset-x-7 top-7 h-6 touch-none cursor-ew-resize rounded focus-visible:outline-1
-focus-visible:outline-muted
+focus-visible:outline-muted-foreground
 `}
           onPointerDown={(event) => {
             if (disabled) return

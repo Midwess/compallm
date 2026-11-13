@@ -20,6 +20,7 @@ export function useReorder(keys: string[], onChange: (order: string[]) => void, 
   const drag = useRef<DragState | null>(null)
   const ghost = useRef<HTMLElement | null>(null)
   const [announcement, announce] = useState('')
+  const [committedDrop, setCommittedDrop] = useState(false)
   const [preview, setPreview] = useState<{ key: string; offsets: Record<string, number> } | null>(null)
   const id = useId()
   useEffect(() => () => ghost.current?.remove(), [])
@@ -39,6 +40,7 @@ export function useReorder(keys: string[], onChange: (order: string[]) => void, 
   }, [keys])
   function keyboardMove(from: number, to: number) {
     if (disabled || from === to || to < 0 || to >= keys.length) return
+    setCommittedDrop(false)
     beforeMove.current = new Map(Array.from(rowNodes.current, ([key, node]) => [key, node.offsetTop]))
     const next = [...keys]
     const [entry] = next.splice(from, 1)
@@ -48,6 +50,7 @@ export function useReorder(keys: string[], onChange: (order: string[]) => void, 
   }
   function endDrag(commit: boolean) {
     const current = drag.current
+    setCommittedDrop(Boolean(current?.moved && commit))
     if (current?.moved && commit) {
       onChange(current.order)
       announce(`${label} placed at position ${current.order.indexOf(current.key) + 1} of ${keys.length}`)
@@ -61,6 +64,7 @@ export function useReorder(keys: string[], onChange: (order: string[]) => void, 
     if (disabled || event.button !== 0) return
     const row = rowNodes.current.get(key)
     if (!row) return
+    setCommittedDrop(false)
     const rect = row.getBoundingClientRect()
     drag.current = {
       pointerId: event.pointerId,
@@ -125,5 +129,5 @@ export function useReorder(keys: string[], onChange: (order: string[]) => void, 
     const offsets = Object.fromEntries(order.map((key, index) => [key, current.slots[index].offset - positions[key]]))
     setPreview({ key: current.key, offsets })
   }
-  return { rowNodes, beforeMove, drag, preview, announcement, id, keyboardMove, startDrag, pointerMove, endDrag }
+  return { rowNodes, beforeMove, drag, preview, committedDrop, announcement, id, keyboardMove, startDrag, pointerMove, endDrag }
 }

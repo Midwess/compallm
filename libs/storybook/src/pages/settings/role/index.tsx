@@ -9,7 +9,7 @@ import { TextField } from '../../../components/fields'
 import { CodeEditor } from '../../../components/code-block'
 import { SectionSurface } from '../../../components/surfaces'
 import { SettingsSectionTitle } from '../../../components/settings'
-import { useSettings, useSettingsController, useCodeAppearance } from '../controller'
+import { useSettings, useSettingsController } from '../controller'
 import { useRole, useRoleController } from './controller'
 import { PolicyTable } from './policy-table'
 import { DisabledTooltip } from '../../../components/feedback'
@@ -62,7 +62,6 @@ function CedarEditor({ locked, owner }: { locked: boolean; owner: boolean }) {
       (s) => (s.draft ? { parsing: s.draft.parsing, diagnostics: s.draft.diagnostics } : null),
       ['draft.parsing', 'draft.diagnostics'],
     )
-  const appearance = useCodeAppearance()
   if (!draft) return null
   const invalid = draft.parsing || draft.diagnostics.length > 0
   return (
@@ -80,11 +79,10 @@ function CedarEditor({ locked, owner }: { locked: boolean; owner: boolean }) {
         >
           Copy
         </Button>
-        <span className="rounded-lg bg-elevated px-2.5 py-1 font-sans text-xs leading-4 text-text">Cedar</span>
+        <span className="rounded-lg bg-elevated px-2.5 py-1 font-sans text-xs leading-4 text-foreground">Cedar</span>
       </div>
       <DisabledTooltip disabled={owner} reason={ownerExplanation} allowInteraction>
         <CodeEditor
-          {...appearance}
           label="Cedar policy source"
           language="cedar"
           showToolbar={false}
@@ -216,11 +214,11 @@ function RoleEditorContent() {
               <CedarEditor locked={busy || draft.builtin} owner={draft.builtin} />
             </motion.div>
           </div>
-          <div aria-live="polite" className="mt-2 shrink-0 px-4 text-xs leading-4.5 text-muted">
+          <div aria-live="polite" className="mt-2 shrink-0 px-4 text-xs leading-4.5 text-muted-foreground">
             {draft.parsing ? (
               'Checking policy…'
             ) : draft.diagnostics.length ? (
-              <div role="alert" className="whitespace-pre-wrap text-error">
+              <div role="alert" className="whitespace-pre-wrap text-destructive">
                 {draft.diagnostics.join('\n')}
               </div>
             ) : draft.mode === 'cedar' ? (
@@ -244,7 +242,7 @@ function RoleEditorContent() {
                 <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
                   <Button
                     variant="ghost"
-                    className="text-error"
+                    className="text-destructive"
                     disabled={busy || draft.builtin}
                     onClick={() => shared.pages.dialogs.openDialog('delete-role', draft.id!)}
                   >

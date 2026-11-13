@@ -24,14 +24,15 @@ export function ProfileSettings() {
               whileHover="active"
               whileFocus="active"
               className="group relative inline-flex size-10 cursor-pointer rounded-full
-focus-within:outline-2 focus-within:outline-focus"
+focus-within:outline-2 focus-within:outline-ring"
             >
               <Avatar name={profile.name} src={profile.avatar ?? undefined} />
               <motion.span
                 variants={{ rest: { opacity: 0 }, active: { opacity: 1 } }}
                 transition={timing}
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 grid place-items-center rounded-full bg-black/50 text-white
+                className="pointer-events-none absolute inset-0 grid place-items-center rounded-full bg-overlay/50
+text-on-overlay
 [@media(hover:none)]:opacity-100!"
               >
                 <PlusIcon className="size-5" weight="bold" />
@@ -84,7 +85,7 @@ export function DangerSettings() {
       <Section title="Delete account" description="Permanently delete your personal account.">
         <Rows>
           <Row label="Delete account" description="Manage the deletion of your Compallm account." last>
-            <Button variant="ghost" className="text-error" onClick={() => c.pages.dialogs.openDialog('delete-account')}>
+            <Button variant="ghost" className="text-destructive" onClick={() => c.pages.dialogs.openDialog('delete-account')}>
               Delete account
             </Button>
           </Row>
@@ -205,7 +206,7 @@ export function ApiKeySettings() {
           </Empty>
         )}
       </Section>
-      <p className="mt-4 px-4 text-xsm leading-5.5 text-muted">
+      <p className="mt-4 px-4 text-xsm leading-5.5 text-muted-foreground">
         Keep API keys private. Revoke a key when it is no longer needed.
       </p>
     </SettingsContent>

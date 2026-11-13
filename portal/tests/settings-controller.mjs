@@ -11,6 +11,11 @@ const server = await createServer({
 })
 after(() => server.close())
 const { SettingsController } = await server.ssrLoadModule('/src/settings/controller.ts')
+const { UserPreferenceController } = await server.ssrLoadModule('/src/preference/user/controller.ts')
+function createSettingsController(...args) {
+  return new SettingsController(...args, new UserPreferenceController())
+}
+
 const { toast } = await import('sonner')
 
 function until(store, predicate) {
@@ -29,7 +34,7 @@ test('loads role and group summaries in one request', async () => {
   const original = globalThis.fetch
   let requests = 0
   let selection = ''
-  const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
+  const controller = createSettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
   globalThis.fetch = async (_input, init) => {
     assert.equal(init.credentials, 'same-origin')
     const { query } = JSON.parse(init.body)
@@ -63,7 +68,7 @@ test('loads role and group summaries in one request', async () => {
 
 test('reports denied combined reads without presenting partial results', async () => {
   const original = globalThis.fetch
-  const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
+  const controller = createSettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
   globalThis.fetch = async () =>
     Response.json({ errors: [{ message: 'Denied', extensions: { code: 'FORBIDDEN', status: 403 } }] })
   try {
@@ -81,7 +86,7 @@ test('reports denied combined reads without presenting partial results', async (
 test('ignores responses from settings after leaving or restarting', async () => {
   const original = globalThis.fetch
   const pending = []
-  const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
+  const controller = createSettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
   globalThis.fetch = (_input, init) =>
     new Promise((resolve) => pending.push({ resolve, query: JSON.parse(init.body).query, signal: init.signal }))
   try {
@@ -116,7 +121,7 @@ test('ignores responses from settings after leaving or restarting', async () => 
 test('group add action navigates to its creation screen', () => {
   const paths = []
   const url = { navigate: (path) => paths.push(path) }
-  const controller = new SettingsController('Research team', url, { signOut() {} }, 'general')
+  const controller = createSettingsController('Research team', url, { signOut() {} }, 'general')
   controller.navigate('new-group')
   controller.setPage('new-group')
   assert.equal(paths.at(-1), '/Research%20team/settings/new-group')
@@ -134,7 +139,7 @@ test('role add creates an empty policy once and opens the persisted role', async
   const original = globalThis.fetch
   const paths = []
   let writes = 0
-  const controller = new SettingsController(
+  const controller = createSettingsController(
     'Research team',
     { navigate: (path) => paths.push(path) },
     { signOut() {} },
@@ -174,7 +179,7 @@ test('role add creates an empty policy once and opens the persisted role', async
 
 test('selecting a role reads its detail and saved policy', async () => {
   const original = globalThis.fetch
-  const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
+  const controller = createSettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
   globalThis.fetch = async (_input, init) => {
     const { query } = JSON.parse(init.body)
     if (query.includes('organizationPolicyActions'))
@@ -208,7 +213,7 @@ test('selecting a role reads its detail and saved policy', async () => {
 
 test('reports policy access denial without presenting partial role data', async () => {
   const original = globalThis.fetch
-  const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
+  const controller = createSettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
   globalThis.fetch = async (_input, init) => {
     const { query } = JSON.parse(init.body)
     if (query.includes('organizationPolicyActions'))
@@ -235,7 +240,7 @@ test('reports policy access denial without presenting partial role data', async 
 test('failed role creation keeps the current page and does not add a role', async () => {
   const original = globalThis.fetch
   const paths = []
-  const controller = new SettingsController(
+  const controller = createSettingsController(
     'Research team',
     { navigate: (path) => paths.push(path) },
     { signOut() {} },
@@ -262,7 +267,7 @@ test('failed role creation keeps the current page and does not add a role', asyn
 
 test('direct visits initialize the group creation screen', () => {
   for (const page of ['new-group']) {
-    const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, page)
+    const controller = createSettingsController('Research team', { navigate() {} }, { signOut() {} }, page)
     const state = controller.store.getState()
     assert.equal(state.location.page, page)
     assert.ok(page === 'new-group' ? controller.group.store.getState().draft : controller.role.store.getState().draft)
@@ -270,7 +275,7 @@ test('direct visits initialize the group creation screen', () => {
 })
 
 test('role and group drafts remain independent when navigating between pages', () => {
-  const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
+  const controller = createSettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
   controller.role.open()
   controller.role.store.setState((state) => ({ draft: { ...state.draft, name: 'Editor' } }))
   controller.setPage('new-group')
@@ -283,7 +288,7 @@ test('role deletion navigates to blank settings after confirmation', async () =>
   const original = globalThis.fetch
   const paths = []
   let deletes = 0
-  const controller = new SettingsController(
+  const controller = createSettingsController(
     'Research team',
     { navigate: (path) => paths.push(path) },
     { signOut() {} },
@@ -310,8 +315,8 @@ test('role deletion navigates to blank settings after confirmation', async () =>
     controller.setPage('role', '9')
     await until(controller.role.store, (state) => state.draft?.id === '9')
     controller.pages.dialogs.openDialog('delete-role', '9')
-    controller.pages.dialogs.confirmDialog(controller.store.getState().dialog)
-    controller.pages.dialogs.confirmDialog(controller.store.getState().dialog)
+    controller.pages.dialogs.confirmDialog(structuredClone(controller.store.getState().dialog))
+    controller.pages.dialogs.confirmDialog(structuredClone(controller.store.getState().dialog))
     await until(controller.store, (state) => !state.busy)
     assert.equal(deletes, 1)
     assert.equal(controller.store.getState().dialog, null)
@@ -329,7 +334,7 @@ test('role deletion navigates to blank settings after confirmation', async () =>
 test('assigned role deletion retains the dialog and role', async () => {
   const original = globalThis.fetch
   const paths = []
-  const controller = new SettingsController(
+  const controller = createSettingsController(
     'Research team',
     { navigate: (path) => paths.push(path) },
     { signOut() {} },
@@ -349,7 +354,7 @@ test('assigned role deletion retains the dialog and role', async () => {
     const stop = controller.start()
     await until(controller.store, (state) => state.roles.length === 1)
     controller.pages.dialogs.openDialog('delete-role', '9')
-    controller.pages.dialogs.confirmDialog(controller.store.getState().dialog)
+    controller.pages.dialogs.confirmDialog(structuredClone(controller.store.getState().dialog))
     await until(controller.store, (state) => !state.busy)
     assert.equal(controller.store.getState().dialog?.kind, 'delete-role')
     assert.equal(controller.store.getState().roles[0].id, '9')
@@ -363,7 +368,7 @@ test('assigned role deletion retains the dialog and role', async () => {
 
 test('owner role metadata is read-only', async () => {
   const original = globalThis.fetch
-  const controller = new SettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
+  const controller = createSettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
   let writes = 0
   globalThis.fetch = async (_input, init) => {
     const { query } = JSON.parse(init.body)

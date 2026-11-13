@@ -92,7 +92,11 @@ export const SavedPreferences: Story = {
         navigation: { home: 'MODELS' },
         memberDisplay: { nameFormat: 'USERNAME' },
         calendar: { firstDay: 'SUNDAY' },
-        sidebar: { ...userPreferenceDefaults.sidebar, entries: [...userPreferenceDefaults.sidebar.entries] },
+        sidebar: {
+          ...userPreferenceDefaults.sidebar,
+          layout: userPreferenceDefaults.sidebar.layout.map((section) => ({ ...section, items: [...section.items] })),
+          entries: [...userPreferenceDefaults.sidebar.entries],
+        },
       }}
     />
   ),
@@ -111,13 +115,12 @@ export const GeneralCompactDesktop: Story = {
   },
   globals: { viewport: { value: 'settingsCompact', isRotated: false } },
 }
-export const Appearance: Story = { render: () => <Demo page="appearance" /> }
 export const SidebarPreferences: Story = {
-  render: () => <Demo page="appearance" initial={{ dialog: { kind: 'customize-sidebar', name: '', value: '', phrase: '' } }} />,
+  render: () => <Demo page="general" initial={{ dialog: { kind: 'customize-sidebar', name: '', value: '', phrase: '' } }} />,
 }
 export const Messaging: Story = { render: () => <Demo page="messaging" /> }
 export const CodeAppearance: Story = { render: () => <Demo page="code" /> }
-export const PreferenceSaveFailure: Story = { render: () => <Demo page="appearance" failure /> }
+export const PreferenceSaveFailure: Story = { render: () => <Demo page="general" failure /> }
 export const Profile: Story = { render: () => <Demo page="profile" /> }
 export const ProfileWithPhoto: Story = {
   render: () => (

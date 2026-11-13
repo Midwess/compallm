@@ -2,6 +2,7 @@ import {
   createSettingsStore,
   type SettingsController as Controller,
   type SettingsDestination,
+  type UserPreferenceController,
 } from '@compallm/storybook/pages/settings'
 import type { UrlController, AuthController } from '@compallm/storybook'
 import { notify } from '../notifications/toast'
@@ -15,7 +16,6 @@ import { createSettingsPages } from './pages'
 export const settingsPages = [
   'blank',
   'general',
-  'appearance',
   'messaging',
   'code',
   'profile',
@@ -96,14 +96,19 @@ export class SettingsController implements Controller {
     url: Pick<UrlController, 'navigate'>,
     auth: Pick<AuthController, 'signOut'>,
     page: SettingsDestination,
+    preferences: UserPreferenceController,
   ) {
-    this.pages = createSettingsPages(this.store, (id) => {
-      this.knownEmptyRoles.delete(id)
-      this.deletedRoles.add(id)
-      this.store.setState((state) => ({ roles: state.roles.filter((role) => role.id !== id) }))
-      const location = this.store.getState().location
-      if (location.page === 'role' && location.id === id) this.navigate('blank')
-    })
+    this.pages = createSettingsPages(
+      this.store,
+      (id) => {
+        this.knownEmptyRoles.delete(id)
+        this.deletedRoles.add(id)
+        this.store.setState((state) => ({ roles: state.roles.filter((role) => role.id !== id) }))
+        const location = this.store.getState().location
+        if (location.page === 'role' && location.id === id) this.navigate('blank')
+      },
+      preferences,
+    )
     this.role = this.pages.role
     this.url = url
     this.auth = auth

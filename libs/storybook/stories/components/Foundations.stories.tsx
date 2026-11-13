@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Table } from '../../src/components/table'
 import { FormFieldLabel } from '../../src/components/forms'
@@ -12,8 +13,8 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-const linkClassName = `text-focus underline-offset-4 hover:underline
-focus-visible:outline-2 focus-visible:outline-focus`
+const linkClassName = `text-ring underline-offset-4 hover:underline
+focus-visible:outline-2 focus-visible:outline-ring`
 
 const colors = [
   ['Background', 'bg-background', '#09090A'],
@@ -24,17 +25,17 @@ const colors = [
   ['Menu', 'bg-menu', '#28292B'],
   ['Divider', 'bg-divider', '#212224'],
   ['Border', 'bg-border', '#303135'],
-  ['Input border', 'bg-input-border', '#48494D'],
-  ['Text', 'bg-text', '#E4E5E7'],
-  ['Muted', 'bg-muted', '#98999C'],
+  ['Input border', 'bg-input', '#48494D'],
+  ['Text', 'bg-foreground', '#E4E5E7'],
+  ['Muted', 'bg-muted-foreground', '#98999C'],
   ['Disabled', 'bg-disabled', '#626365'],
   ['Primary', 'bg-primary', '#5E6AD2'],
   ['Primary hover', 'bg-primary-hover', '#6D78D5'],
-  ['Focus', 'bg-focus', '#8FA6FF'],
-  ['On primary', 'bg-on-primary', '#FFFFFF'],
+  ['Focus', 'bg-ring', '#8FA6FF'],
+  ['On primary', 'bg-primary-foreground', '#FFFFFF'],
   ['Success', 'bg-success', '#41BA56'],
   ['Warning', 'bg-warning', '#F2994A'],
-  ['Error', 'bg-error', '#EB5757'],
+  ['Error', 'bg-destructive', '#EB5757'],
 ] as const
 
 export const Mapping: Story = {
@@ -42,7 +43,7 @@ export const Mapping: Story = {
     <div className="grid gap-6 p-6">
       <div className="grid gap-2">
         <SettingsPageTitle>Design foundations</SettingsPageTitle>
-        <p className="text-xsm leading-5 text-muted">
+        <p className="text-xsm leading-5 text-muted-foreground">
           Penpot foundation families map to shared components and their existing Storybook previews.
         </p>
       </div>
@@ -63,7 +64,7 @@ export const Mapping: Story = {
                     {family.name}
                   </a>
                 </Table.Cell>
-                <Table.Cell className="wrap-break-word text-muted">{family.source}</Table.Cell>
+                <Table.Cell className="wrap-break-word text-muted-foreground">{family.source}</Table.Cell>
                 <Table.Cell>
                   <a href={`/?path=/story/${family.story}`} target="_top" className={linkClassName}>
                     Open story
@@ -85,9 +86,9 @@ export const Colors: Story = {
       <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-4">
         {colors.map(([name, background, hex]) => (
           <figure key={name} className="grid gap-2">
-            <div className={`${background} h-16 rounded-lg border-[0.5px] border-input-border`} />
+            <div className={`${background} h-16 rounded-lg border-(length:--border-hairline) border-input`} />
             <figcaption className="text-xsm">
-              {name} <span className="block text-xs text-muted">{hex}</span>
+              {name} <span className="block text-xs text-muted-foreground">{hex}</span>
             </figcaption>
           </figure>
         ))}
@@ -129,10 +130,57 @@ export const Spacing: Story = {
       <HelperText>Use half steps on Tailwind’s default scale, starting at 2 px, and preserve justified exceptions.</HelperText>
       {spaces.map(([pixels, width]) => (
         <div key={pixels} className="flex items-center gap-4 text-xs">
-          <span className="w-12 text-muted">{pixels} px</span>
+          <span className="w-12 text-muted-foreground">{pixels} px</span>
           <span className={`${width} h-4 shrink-0 rounded-sm bg-primary`} aria-hidden="true" />
         </div>
       ))}
+    </div>
+  ),
+}
+
+export const RuntimeTokens: Story = {
+  render: () => (
+    <div className="grid gap-6 p-6 sm:grid-cols-2">
+      {[
+        { name: 'Default', style: {} },
+        {
+          name: 'Scoped color and larger text',
+          style: {
+            '--background': 'oklch(0.32 0.04 250)',
+            '--foreground': 'oklch(0.96 0.01 250)',
+            '--primary': 'oklch(0.72 0.15 160)',
+            '--ui-font-scale': '1.25',
+          } as CSSProperties,
+        },
+      ].map(({ name, style }) => (
+        <section key={name} style={style} className="grid gap-4 rounded-lg bg-background p-6 text-foreground">
+          <h2 className="text-ui-20 font-medium">{name}</h2>
+          <p className="text-xsm">Semantic colors and type scale apply at runtime.</p>
+          <span className="w-fit rounded bg-primary px-3 py-2 text-xs text-primary-foreground">Primary action</span>
+        </section>
+      ))}
+    </div>
+  ),
+}
+
+export const InteractionColors: Story = {
+  render: () => (
+    <div className="grid gap-6 p-6 sm:grid-cols-2">
+      <section className="grid gap-3 rounded-xl bg-sidebar p-4">
+        <h2 className="text-sm font-medium">Sidebar</h2>
+        <span className="rounded-lg px-3 py-2 text-xsm text-muted-foreground">Default destination</span>
+        <span className="rounded-lg bg-hover px-3 py-2 text-xsm">Hovered destination</span>
+        <span className="rounded-lg bg-selection px-3 py-2 text-xsm text-selection-foreground">Selected destination</span>
+      </section>
+      <section className="overflow-hidden rounded-xl border border-border bg-surface">
+        <h2 className="border-b border-divider bg-toolbar px-4 py-3 text-sm font-medium">Workspace toolbar</h2>
+        <div className="grid gap-3 p-4 text-xsm">
+          <p>Content surface</p>
+          <span className="rounded-lg bg-inset px-3 py-2 text-muted-foreground">Inset surface</span>
+          <span className="rounded-lg bg-elevated px-3 py-2">Elevated control</span>
+          <span className="w-fit rounded-lg bg-primary px-3 py-2 text-primary-foreground">Primary action</span>
+        </div>
+      </section>
     </div>
   ),
 }

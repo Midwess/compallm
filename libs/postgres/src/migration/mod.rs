@@ -46,6 +46,7 @@ mod m20261110_000028_restricted_reads;
 mod m20261113_000029_create_user_preferences;
 
 mod m20261113_000030_seed_user_preferences;
+mod m20261113_000031_rename_theme_palettes;
 
 pub struct Migrator;
 
@@ -85,6 +86,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261110_000028_restricted_reads::Migration),
             Box::new(m20261113_000029_create_user_preferences::Migration),
             Box::new(m20261113_000030_seed_user_preferences::Migration),
+            Box::new(m20261113_000031_rename_theme_palettes::Migration),
             // inject-above (do not remove this comment)
         ]
     }

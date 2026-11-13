@@ -37,7 +37,7 @@ export const preferenceSelection = {
   accessibility: { underlineLinks: true, reduceMotion: true, pointerCursors: true },
   messageComposition: { convertEmoticons: true, sendShortcut: true },
   codeAppearance: { theme: true, font: { family: true, size: true } },
-  sidebar: { badgeStyle: true, entries: { item: true, visibility: true } },
+  sidebar: { badgeStyle: true, entries: { item: true, visibility: true }, layout: { category: true, items: true } },
 } satisfies UserPreferencesGenqlSelection
 
 export type UserPreferenceValues = FieldsSelection<UserPreferences, typeof preferenceSelection>
@@ -69,6 +69,11 @@ type ValueAt<T, P extends string> = P extends `${infer K}.${infer Rest}`
     : never
 export type PreferenceDraft = { [K in keyof typeof paths]: ValueAt<UserPreferences, (typeof paths)[K]> } & {
   sidebarOrder: PreferenceDestination[]
+  sidebarLayout: UserPreferencesPatchInputFormOutput['sidebar'] extends infer S
+    ? S extends { layout?: infer L }
+      ? NonNullable<L>
+      : never
+    : never
   codeLanguage: string
 } & {
   [
@@ -84,6 +89,7 @@ export const preferenceLabel = (value: string): string => {
     WHEN_BADGED: 'Show when badged',
     HIDDEN: "Don't show",
     FULL_NAME: 'Full name',
+    API_KEYS: 'API keys',
   }
   if (labels[value]) return labels[value]
   if (/^PX[0-9]+$/.test(value)) return `${value.slice(2)}px`
@@ -113,6 +119,7 @@ export function initialPreferenceDraft(): PreferenceDraft {
   return {
     ...Object.fromEntries(Object.entries(paths).map(([key, path]) => [key, get(userPreferenceDefaults, path)])),
     sidebarOrder: [...userPreferenceSidebarDestinations],
+    sidebarLayout: userPreferenceDefaults.sidebar.layout.map((section) => ({ ...section, items: [...section.items] })),
     codeLanguage: 'typescript',
     ...Object.fromEntries(userPreferenceDefaults.sidebar.entries.map(({ item, visibility }) => [`sidebar${item}`, visibility])),
   } as PreferenceDraft
@@ -129,9 +136,11 @@ export function parsePreferencePatch(draft: Partial<PreferenceDraft>): {
     const item = userPreferenceSidebarDestinations.find((item) => key === `sidebar${item}`)
     const path = item
       ? `sidebar.visibility.${(get(patch, 'sidebar.visibility') as unknown[] | undefined)?.length ?? 0}`
-      : key === 'sidebarOrder'
-        ? 'sidebar.order'
-        : paths[key as keyof typeof paths]
+      : key === 'sidebarLayout'
+        ? 'sidebar.layout'
+        : key === 'sidebarOrder'
+          ? 'sidebar.order'
+          : paths[key as keyof typeof paths]
     if (!path) throw new Error(`Unknown preference: ${key}`)
     fields.set(path, key)
     set(patch, path, item ? { item, visibility: value } : value)
@@ -153,6 +162,7 @@ export function confirmedPreferenceDraft(
   return Object.fromEntries(
     Object.entries(submitted).map(([key, draft]) => {
       if (key === 'codeLanguage') return [key, draft]
+      if (key === 'sidebarLayout') return [key, node.sidebar.layout]
       if (key === 'sidebarOrder') return [key, node.sidebar.entries.map(({ item }) => item)]
       const item = userPreferenceSidebarDestinations.find((item) => key === `sidebar${item}`)
       const value = item

@@ -50,7 +50,7 @@ export function Switch({
         role="switch"
         className={cx(
           'peer absolute inset-0 size-full cursor-pointer appearance-none rounded-lg',
-          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed',
           className,
         )}
       />
@@ -58,12 +58,12 @@ export function Switch({
         data-selection-track
         aria-hidden="true"
         className="pointer-events-none absolute top-1.5 left-1.5 h-5 w-7.5 rounded-full
-border-[0.5px] border-input-border bg-disabled"
+border-(length:--border-hairline) border-input bg-disabled"
       />
       <span
         data-selection-indicator
         aria-hidden="true"
-        className={cx('pointer-events-none absolute size-3.5 rounded-full bg-on-primary', switchIndicatorPosition)}
+        className={cx('pointer-events-none absolute size-3.5 rounded-full bg-control-foreground', switchIndicatorPosition)}
       />
     </span>
   )
@@ -120,7 +120,7 @@ export function Checkbox({
         type="checkbox"
         className={cx(
           `peer absolute inset-0 size-full cursor-pointer appearance-none rounded bg-transparent
-    focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed`,
+    focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed`,
           className,
         )}
       />
@@ -128,7 +128,7 @@ export function Checkbox({
         data-selection-track
         aria-hidden="true"
         className={cx(
-          'pointer-events-none absolute rounded-sm border border-input-border',
+          'pointer-events-none absolute rounded-sm border border-input',
           size === 'compact' ? 'inset-1' : checkboxTrackInset,
         )}
       />
@@ -136,12 +136,12 @@ export function Checkbox({
         {indeterminate ? (
           <MinusIcon
             aria-hidden="true"
-            className={cx('pointer-events-none relative text-on-primary', size === 'compact' ? 'size-2.5' : 'size-3.5')}
+            className={cx('pointer-events-none relative text-control-foreground', size === 'compact' ? 'size-2.5' : 'size-3.5')}
           />
         ) : (
           <CheckIcon
             aria-hidden="true"
-            className={cx('pointer-events-none relative text-on-primary', size === 'compact' ? 'size-2.5' : 'size-3.5')}
+            className={cx('pointer-events-none relative text-control-foreground', size === 'compact' ? 'size-2.5' : 'size-3.5')}
           />
         )}
       </span>
@@ -172,19 +172,19 @@ export function Radio({ className, checked, onChange, onBlur, ...props }: Omit<C
         type="radio"
         className={cx(
           'absolute inset-0 size-full cursor-pointer appearance-none rounded-full',
-          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed',
           className,
         )}
       />
       <span
         data-selection-track
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 rounded-full border border-input-border"
+        className="pointer-events-none absolute inset-0 rounded-full border border-input"
       />
       <span
         data-selection-indicator
         aria-hidden="true"
-        className="pointer-events-none relative size-1.5 rounded-full bg-on-primary"
+        className="pointer-events-none relative size-1.5 rounded-full bg-control-foreground"
       />
     </span>
   )
@@ -200,8 +200,8 @@ export function ChoiceCard({
       className={cx(
         `
   flex min-h-15.5 w-75 max-w-full cursor-pointer items-center gap-1.5 rounded-lg border
-  border-border bg-inset px-1.5 py-1.5 has-checked:border-primary
-  has-checked:bg-[color-mix(in_srgb,var(--color-primary)_14%,var(--color-inset))]
+  border-border bg-inset px-1.5 py-1.5 has-checked:border-control
+  has-checked:bg-[color-mix(in_srgb,var(--control)_14%,var(--inset))]
   has-disabled:cursor-not-allowed has-disabled:opacity-50 [&_strong]:text-xsm [&_strong]:font-medium
   [&>span>span]:block
 `,
@@ -211,7 +211,7 @@ export function ChoiceCard({
       <Radio {...props} />
       <span>
         <strong>{children}</strong>
-        {description ? <span className="text-[12px] leading-4.5 text-muted">{description}</span> : null}
+        {description ? <span className="text-ui-12 leading-4.5 text-muted-foreground">{description}</span> : null}
       </span>
     </animated.label>
   )

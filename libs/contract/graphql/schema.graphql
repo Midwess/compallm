@@ -327,17 +327,21 @@ enum PreferenceCodeTheme {
 }
 
 enum PreferenceDarkPalette {
-  CLASSIC_DARK
-  DARK
-  MAGIC_BLUE
+  BASIC_DARK
+  BLUEBERRY_DARK
+  MARSHMALLOW_DARK
 }
 
 enum PreferenceDestination {
+  API_KEYS
   CHAT
+  CONVERSATIONS
+  MEMBERS
   MODELS
   NOTEBOOKS
   PLUGINS
   PROVIDERS
+  STATS
 }
 
 enum PreferenceFontFamily {
@@ -351,8 +355,9 @@ enum PreferenceKeyCombination {
 }
 
 enum PreferenceLightPalette {
-  LIGHT
-  PURE_LIGHT
+  BASIC_WHITE
+  BLUEBERRY_WHITE
+  MARSHMALLOW_WHITE
 }
 
 enum PreferenceNamingFormat {
@@ -373,6 +378,13 @@ enum PreferenceRelativeFontSize {
   LARGER
   SMALL
   SMALLER
+}
+
+enum PreferenceSidebarCategory {
+  CONVERSATIONS
+  ORGANIZATION
+  ROUTERS
+  WORKSPACE
 }
 
 enum PreferenceSidebarVisibility {
@@ -697,11 +709,22 @@ type SidebarEntry {
   visibility: PreferenceSidebarVisibility!
 }
 
+type SidebarLayoutSection {
+  category: PreferenceSidebarCategory!
+  items: [PreferenceDestination!]!
+}
+
+input SidebarLayoutSectionInput {
+  category: PreferenceSidebarCategory!
+  items: [PreferenceDestination!]!
+}
+
 """
 Order replaces ordering while preserving visibility; visibility patches are keyed by destination.
 """
 input SidebarPatchInput {
   badgeStyle: PreferenceBadgeStyle
+  layout: [SidebarLayoutSectionInput!]
   order: [PreferenceDestination!]
   visibility: [SidebarVisibilityPatchInput!]
 }
@@ -709,6 +732,7 @@ input SidebarPatchInput {
 type SidebarPreferences {
   badgeStyle: PreferenceBadgeStyle!
   entries: [SidebarEntry!]!
+  layout: [SidebarLayoutSection!]!
 }
 
 input SidebarVisibilityPatchInput {

@@ -36,7 +36,7 @@ function MemberRoles({ member }: { member: SettingsMember }) {
         <Popup.Trigger
           aria-label={`Roles for ${member.name}`}
           disabled={readonly}
-          className="h-6 w-32 justify-between gap-2 px-1.5 text-xs text-text"
+          className="h-6 w-32 justify-between gap-2 px-1.5 text-xs text-foreground"
         >
           <span>
             {first?.name ?? 'No roles'}
@@ -64,11 +64,11 @@ function MemberRoles({ member }: { member: SettingsMember }) {
                 selectionValue={r.id}
               >
                 <span className="flex-1 text-left">{r.name}</span>
-                {inherited.has(r.id) ? <span className="text-[11px] text-muted">Group</span> : null}
+                {inherited.has(r.id) ? <span className="text-ui-11 text-muted-foreground">Group</span> : null}
               </Popup.CheckboxItem>
             ))}
           <Popup.Separator />
-          <p className="px-1 py-2 text-[11px] text-muted">Group roles are managed in Groups.</p>
+          <p className="px-1 py-2 text-ui-11 text-muted-foreground">Group roles are managed in Groups.</p>
         </Popup.Content>
       </Popup>
     </Form>
@@ -83,7 +83,7 @@ function MemberActions({ member }: { member: SettingsMember }) {
         <DotsThreeIcon className="size-4" aria-hidden="true" />
       </Popup.Trigger>
       <Popup.Content aria-label={`Actions for ${member.name}`} className="bg-elevated">
-        <Popup.Item className="h-10 text-error" onClick={() => c.pages.dialogs.openDialog('remove-member', member.id)}>
+        <Popup.Item className="h-10 text-destructive" onClick={() => c.pages.dialogs.openDialog('remove-member', member.id)}>
           Remove member
         </Popup.Item>
       </Popup.Content>
@@ -122,7 +122,7 @@ export function MembersSettings() {
           onValueChange={(v) => c.pages.search.setFilter('memberRole', v)}
           options={[{ value: 'all', label: 'All' }, ...roles.map((r) => ({ value: r.id, label: r.name }))]}
         />
-        <span className="ml-auto text-xs text-muted">{visible.length} members</span>
+        <span className="ml-auto text-xs text-muted-foreground">{visible.length} members</span>
       </div>
       <Table className="lg:-mx-12 lg:w-[calc(100%+6rem)]">
         <Table.Content className="min-w-200 border-separate border-spacing-0" aria-label="Organization members">
@@ -144,7 +144,7 @@ export function MembersSettings() {
           </Table.Header>
           <Table.Body>
             <Table.Row className="h-8 border-0">
-              <Table.Cell colSpan={4} className="rounded-lg bg-inset/50 px-4 text-muted lg:px-13">
+              <Table.Cell colSpan={4} className="rounded-lg bg-inset/50 px-4 text-muted-foreground lg:px-13">
                 Active <span className="ml-2">{visible.length}</span>
               </Table.Cell>
             </Table.Row>
@@ -156,7 +156,7 @@ export function MembersSettings() {
                     <span className="text-xsm font-medium">{m.name}</span>
                   </div>
                 </Table.Cell>
-                <Table.Cell className="px-4 text-muted">{m.email}</Table.Cell>
+                <Table.Cell className="px-4 text-muted-foreground">{m.email}</Table.Cell>
                 <Table.Cell>
                   <MemberRoles member={m} />
                 </Table.Cell>

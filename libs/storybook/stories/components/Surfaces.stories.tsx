@@ -11,7 +11,7 @@ export const SectionSurface: Story = {
       <Sample label="Neutral section · 10 px corners" wide>
         <Surface>
           <p>Composable section content</p>
-          <p className="text-[12px] leading-4.5 text-muted">Shared neutral background and token-based padding.</p>
+          <p className="text-[12px] leading-4.5 text-muted-foreground">Shared neutral background and token-based padding.</p>
         </Surface>
       </Sample>
     </Preview>

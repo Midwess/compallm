@@ -52,7 +52,7 @@ function Content({ className, ...props }: TableHTMLAttributes<HTMLTableElement>)
   return <table data-slot="table" {...props} className={cx('w-full table-fixed text-left text-xs', className)} />
 }
 function Header({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <thead data-slot="table-header" {...props} className={cx('h-8 text-muted [&>tr]:h-8', className)} />
+  return <thead data-slot="table-header" {...props} className={cx('h-8 text-muted-foreground [&>tr]:h-8', className)} />
 }
 function Body(props: HTMLAttributes<HTMLTableSectionElement>) {
   return <tbody data-slot="table-body" {...props} />
@@ -70,7 +70,7 @@ function Empty({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       {...props}
-      className={cx('flex min-h-20 items-center justify-center py-4 text-center text-xs text-muted', className)}
+      className={cx('flex min-h-20 items-center justify-center py-4 text-center text-xs text-muted-foreground', className)}
     />
   )
 }
@@ -142,7 +142,7 @@ translate-y-(--category-offset,0px)`,
             aria-expanded={expanded}
             aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label}`}
             className="flex min-h-10 w-full cursor-pointer items-center gap-2 px-2 text-left
-focus-visible:outline-2 focus-visible:outline-focus"
+focus-visible:outline-2 focus-visible:outline-ring"
             onClick={() => {
               const next = !expanded
               if (open === undefined) setLocalOpen(next)
@@ -158,7 +158,7 @@ focus-visible:outline-2 focus-visible:outline-focus"
               <CaretDownIcon weight="fill" aria-hidden="true" className="size-2" />
             </motion.span>
             <span className="min-w-0 text-xsm font-medium">{label}</span>
-            {count !== undefined ? <span className="text-xs font-normal text-muted">{count}</span> : null}
+            {count !== undefined ? <span className="text-xs font-normal text-muted-foreground">{count}</span> : null}
           </animated.button>
         </td>
         {action ? (

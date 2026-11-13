@@ -1,7 +1,7 @@
 /* Native scrollbars share one treatment across the consumer application. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--color-muted, #98999c) 55%, transparent) transparent;
+  scrollbar-color: color-mix(in srgb, var(--muted-foreground-foreground, #98999c) 55%, transparent) transparent;
 }
 
 /* Safari and Blink need the standard properties left at auto so the WebKit
@@ -29,13 +29,13 @@
     min-height: 24px;
     border: 1px solid transparent;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--color-muted, #98999c) 55%, transparent);
+    background: color-mix(in srgb, var(--muted-foreground-foreground, #98999c) 55%, transparent);
     background-clip: padding-box;
   }
 
   ::-webkit-scrollbar-thumb:hover,
   ::-webkit-scrollbar-thumb:active {
-    background-color: var(--color-muted, #98999c);
+    background-color: var(--muted-foreground-foreground, #98999c);
   }
 
   ::-webkit-scrollbar-button {

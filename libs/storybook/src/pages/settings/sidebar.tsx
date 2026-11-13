@@ -1,6 +1,5 @@
 import { ArrowLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowLeft'
 import { GearIcon } from '@phosphor-icons/react/dist/csr/Gear'
-import { PaletteIcon } from '@phosphor-icons/react/dist/csr/Palette'
 import { ChatTextIcon } from '@phosphor-icons/react/dist/csr/ChatText'
 import { CodeIcon } from '@phosphor-icons/react/dist/csr/Code'
 import { UserIcon } from '@phosphor-icons/react/dist/csr/User'
@@ -18,9 +17,8 @@ import type { SettingsDestination } from './types'
 
 const personal = [
   { page: 'general', label: 'General', Icon: GearIcon },
-  { page: 'appearance', label: 'Appearance', Icon: PaletteIcon },
   { page: 'messaging', label: 'Messaging', Icon: ChatTextIcon },
-  { page: 'code', label: 'Code appearance', Icon: CodeIcon },
+  { page: 'code', label: 'Coding', Icon: CodeIcon },
 ] as const
 const account = [
   { page: 'profile', label: 'Profile', Icon: UserIcon },
@@ -65,7 +63,7 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
       <button
         type="button"
         onClick={() => c.leaveSettings()}
-        className="flex h-7 items-center gap-2 px-2 text-left text-xsm text-muted hover:text-text"
+        className="flex h-7 items-center gap-2 px-2 text-left text-xsm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeftIcon className="size-3" aria-hidden="true" />
         Back to app

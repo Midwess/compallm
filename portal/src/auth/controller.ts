@@ -7,9 +7,11 @@ import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/cont
 import type { AuthUser } from '@compallm/storybook'
 import { graphql, ApiError } from '../graphql-client'
 import { urlController } from '../url/controller'
+import { appController } from '../app/controller'
+import type { AppController, AppLoadingTask } from '@compallm/storybook'
 import type { UrlController } from '@compallm/storybook'
 import { notify, apiErrorMessage } from '../notifications/toast'
-import { organizationHome } from '../organization/paths'
+import { organizationRoot } from '../organization/paths'
 
 type Operation = NonNullable<SignupState['pending']>
 
@@ -26,6 +28,8 @@ export class AuthController implements SignupController, SigninController {
   private sessionPending: Promise<AuthUser | null> | undefined
   private sessionRequest: AbortController | undefined
   private sessionGeneration = 0
+  private sessionLoading?: AppLoadingTask
+  private readonly app?: Pick<AppController, 'beginLoading'>
   private signingOut: Promise<void> | undefined
   readonly links = { signup: '/', signin: '/login' }
   private generation = 0
@@ -59,8 +63,9 @@ export class AuthController implements SignupController, SigninController {
   }
 
   private readonly url: Pick<UrlController, 'navigate' | 'store'>
-  constructor(url: Pick<UrlController, 'navigate' | 'store'>) {
+  constructor(url: Pick<UrlController, 'navigate' | 'store'>, app?: Pick<AppController, 'beginLoading'>) {
     this.url = url
+    this.app = app
   }
   navigate = (href: string) => this.url.navigate(href, { replace: href === '/login' })
 
@@ -168,6 +173,7 @@ export class AuthController implements SignupController, SigninController {
     // Stop older identity checks from restoring the session during signout.
     this.sessionGeneration += 1
     this.sessionRequest?.abort()
+    this.sessionLoading?.cancel()
     this.sessionPending = undefined
     this.stop()
     this.signingOut = this.performSignOut()
@@ -177,6 +183,7 @@ export class AuthController implements SignupController, SigninController {
   invalidAuthorization = () => {
     this.sessionGeneration += 1
     this.sessionRequest?.abort()
+    this.sessionLoading?.cancel()
     this.sessionPending = undefined
     this.stop()
     this.confirmed = false
@@ -194,6 +201,7 @@ export class AuthController implements SignupController, SigninController {
       if (!result.sessionRevoke.node) throw new Error('Session could not be revoked')
       this.sessionGeneration += 1
       this.sessionRequest?.abort()
+      this.sessionLoading?.cancel()
       this.sessionPending = undefined
       this.confirmed = false
       this.lastCode = undefined
@@ -216,12 +224,23 @@ export class AuthController implements SignupController, SigninController {
 
   refreshCurrentUser = async (signal?: AbortSignal, redirectAnonymous = true) => {
     this.sessionRequest?.abort()
+    this.sessionLoading?.cancel()
     this.sessionRequest = new AbortController()
     const generation = ++this.sessionGeneration
     const requestSignal = signal ? AbortSignal.any([signal, this.sessionRequest.signal]) : this.sessionRequest.signal
     this.store.setState({ status: 'checking' })
+    const loading = this.app?.beginLoading('session')
+    this.sessionLoading = loading
     this.sessionPending = this.fetchCurrentUser(requestSignal, generation, redirectAnonymous)
-    return await this.sessionPending
+    try {
+      const user = await this.sessionPending
+      loading?.complete()
+      return user
+    } catch (error) {
+      if (requestSignal.aborted || generation !== this.sessionGeneration) loading?.cancel()
+      else loading?.fail(error, () => this.refreshCurrentUser(undefined, false))
+      throw error
+    }
   }
 
   private async fetchCurrentUser(requestSignal: AbortSignal, generation: number, redirectAnonymous: boolean) {
@@ -329,7 +348,7 @@ export class AuthController implements SignupController, SigninController {
         }
         const user = await this.refreshCurrentUser(signal)
         if (!user) throw new Error('Session could not be confirmed')
-        this.destination = organizationHome(user)
+        this.destination = organizationRoot(user)
       },
       () => {
         this.setResendDeadline(0)
@@ -361,4 +380,4 @@ export class AuthController implements SignupController, SigninController {
   }
 }
 
-export const authController = new AuthController(urlController)
+export const authController = new AuthController(urlController, appController)

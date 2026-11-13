@@ -70,7 +70,9 @@ function Session() {
   return (
     <main className="mx-auto grid max-w-7xl gap-6 p-4 sm:p-8">
       <h1 className="text-2xl font-semibold">Form practice</h1>
-      <p className="text-sm text-muted">Fields find their nearest Form. Form owns React Hook Form values and commit policy.</p>
+      <p className="text-sm text-muted-foreground">
+        Fields find their nearest Form. Form owns React Hook Form values and commit policy.
+      </p>
       <div className="flex flex-wrap items-center gap-4 rounded-lg bg-inset p-4">
         <label className="flex items-center gap-2 text-xs">
           <Switch checked={buttonOnly} onChange={(event) => configure(event.currentTarget.checked)} />
@@ -104,7 +106,7 @@ function Session() {
             <MultilineField name="description" />
             <Form.Error name="description" />
           </label>
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted-foreground">
             Name commits on blur/Enter; description after a pause or blur. Button-only suppresses every automatic trigger.
             Escape restores a field.
           </p>
@@ -150,7 +152,7 @@ function Session() {
           value={scratch}
           onChange={(event) => setScratch(event.target.value)}
         />
-        <p className="text-xs text-muted">Caller manages value and listeners: {scratch}. No mutation is sent.</p>
+        <p className="text-xs text-muted-foreground">Caller manages value and listeners: {scratch}. No mutation is sent.</p>
       </section>
       {failure ? (
         <div className="fixed right-6 bottom-6 z-50">
@@ -203,7 +205,7 @@ function CompletionPractice() {
       <h2 className="text-sm font-medium">Completion commit</h2>
       <CodeEntry name="code" aria-label="Practice verification code" />
       <Form.Error name="code" />
-      <p className="text-xs text-muted">Mock verified code: {verified || '—'}</p>
+      <p className="text-xs text-muted-foreground">Mock verified code: {verified || '—'}</p>
     </Form>
   )
 }

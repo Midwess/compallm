@@ -29,11 +29,11 @@ function Input(props: TextFieldProps) {
     <TextField
       {...props}
       id={id}
-      className={cx('h-8 rounded-lg px-1.5 py-1 text-sm leading-5 focus:outline-input-border', props.className)}
+      className={cx('h-8 rounded-lg px-1.5 py-1 text-sm leading-5 focus:outline-input', props.className)}
     />
   )
 }
 function Hint(props: HTMLAttributes<HTMLParagraphElement>) {
-  return <p {...props} className={cx('text-xs text-muted', props.className)} />
+  return <p {...props} className={cx('text-xs text-muted-foreground', props.className)} />
 }
 export const FormField = Object.assign(Root, { Label, Input, Hint, Error: FormError })

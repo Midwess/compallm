@@ -1,34 +1,180 @@
-/* Mirrors Penpot Design foundations: Compallm Colors.
-   Import after Tailwind. Changes are translated explicitly from Penpot. */
-@theme static {
-  --color-*: initial;
-  --color-background: #09090a;
-  --color-surface: #121213;
-  --color-inset: #1a1a1b;
-  --color-composer: #1d1e1f;
-  --color-elevated: #232325;
-  --color-menu: #28292b;
-  --color-divider: #212224;
-  --color-border: #303135;
-  --color-input-border: #48494d;
-  --color-text: #e4e5e7;
-  --color-muted: #98999c;
-  --color-disabled: #626365;
-  --color-primary: #5e6ad2;
-  --color-primary-hover: #6d78d5;
-  --color-focus: #8fa6ff;
-  --color-on-primary: #ffffff;
-  --color-success: #41ba56;
-  --color-warning: #f2994a;
-  --color-error: #eb5757;
-  --color-transparent: transparent;
-  --color-flow-canvas: #0d0c12;
-  --color-flow-node: #181622;
+@import './themes/basic-dark.css';
+@import './themes/basic-white.css';
+@import './themes/blueberry-dark.css';
+@import './themes/blueberry-white.css';
+@import './themes/marshmallow-dark.css';
+@import './themes/marshmallow-white.css';
 
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-  --text-xsm: 13px;
-  --shadow-action: 0 0.5px 1px 1px rgb(0 0 0 / 30%);
-  --shadow-control: 0 0 0 0.5px rgb(255 255 255 / 14.3%), 0 0.5px 1px 1px rgb(0 0 0 / 30%);
-  --shadow-menu: 0 3px 8px rgb(0 0 0 / 12.5%), 0 2px 5px rgb(0 0 0 / 12.5%), 0 1px 1px rgb(0 0 0 / 12.5%);
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --shadow-action-opacity: 30%;
+  --shadow-control-opacity: 30%;
+  --shadow-menu-opacity: 12.5%;
+  --code-background: oklch(0.248568 0.003737 286.1247);
+  --code-foreground: oklch(0.921706 0.002909 264.5414);
+  --code-added: oklch(0.283491 0.020832 159.1478);
+  --code-removed: oklch(0.288391 0.024422 10.3667);
+  --code-added-indicator: oklch(0.587961 0.088643 146.676);
+  --code-removed-indicator: oklch(0.548028 0.073417 15.106);
+  --code-gutter: oklch(0.478132 0.003431 264.5282);
+  --font-ui: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-code: 'JetBrains Mono', ui-monospace, monospace;
+  --border-hairline: 0.5px;
+  --ui-font-scale: 1;
+  --content-link-decoration: none;
+}
+
+:root[data-appearance='light'] {
+  --shadow-action-opacity: 14%;
+  --shadow-control-opacity: 14%;
+  --shadow-menu-opacity: 7%;
+}
+
+:root[data-underline-links='true'] {
+  --content-link-decoration: underline;
+}
+
+:root[data-text-size='smaller'] {
+  --ui-font-scale: 0.84;
+}
+
+:root[data-text-size='small'] {
+  --ui-font-scale: 0.92;
+}
+
+:root[data-text-size='default'] {
+  --ui-font-scale: 1;
+}
+
+:root[data-text-size='large'] {
+  --ui-font-scale: 1.125;
+}
+
+:root[data-text-size='larger'] {
+  --ui-font-scale: 1.25;
+}
+
+[data-code-theme='dark'] {
+  --code-background: oklch(0.248568 0.003737 286.1247);
+  --code-foreground: oklch(0.921706 0.002909 264.5414);
+  --code-added: oklch(0.283491 0.020832 159.1478);
+  --code-removed: oklch(0.288391 0.024422 10.3667);
+  --code-added-indicator: oklch(0.587961 0.088643 146.676);
+  --code-removed-indicator: oklch(0.548028 0.073417 15.106);
+  --code-gutter: oklch(0.478132 0.003431 264.5282);
+}
+
+[data-code-theme='light'] {
+  --code-gutter: oklch(0.48 0 0);
+  --code-added-indicator: oklch(0.48 0.12 146);
+  --code-removed-indicator: oklch(0.48 0.16 20);
+  --code-background: oklch(0.970432 0.001325 286.3753);
+  --code-foreground: oklch(0.269208 0.007525 274.6762);
+  --code-added: oklch(0.95388 0.016954 145.4408);
+  --code-removed: oklch(0.945092 0.015236 17.4265);
+}
+
+@theme inline {
+  --color-*: initial;
+  --color-background: var(--background);
+  --color-sidebar: var(--sidebar);
+  --color-toolbar: var(--toolbar);
+  --color-hover: var(--hover);
+  --color-selection: var(--selection);
+  --color-selection-foreground: var(--selection-foreground);
+  --color-menu-selection: var(--menu-selection);
+  --color-menu-hover: var(--menu-hover);
+  --color-tab-selection: var(--tab-selection);
+  --color-text-selection: var(--text-selection);
+  --color-text-selection-foreground: var(--text-selection-foreground);
+  --color-surface: var(--card);
+  --color-inset: var(--inset);
+  --color-composer: var(--composer);
+  --color-elevated: var(--elevated);
+  --color-menu: var(--popover);
+  --color-divider: var(--divider);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-disabled: var(--disabled);
+  --color-primary: var(--primary);
+  --color-control: var(--control);
+  --color-control-foreground: var(--control-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-ring: var(--ring);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  --color-transparent: transparent;
+  --color-flow-canvas: var(--flow-canvas);
+  --color-flow-node: var(--flow-node);
+  --color-overlay: var(--overlay);
+  --color-on-overlay: var(--on-overlay);
+  --color-brand-mark: var(--brand-mark);
+  --color-brand-mark-foreground: var(--brand-mark-foreground);
+  --color-code-background: var(--code-background);
+  --color-code-foreground: var(--code-foreground);
+  --color-code-added: var(--code-added);
+  --color-code-removed: var(--code-removed);
+  --color-code-added-indicator: var(--code-added-indicator);
+  --color-code-removed-indicator: var(--code-removed-indicator);
+  --color-code-gutter: var(--code-gutter);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --radius-control: 0.625rem;
+  --radius-hairline: 0.0625rem;
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
+  --text-xs: calc(0.75rem * var(--ui-font-scale, 1));
+  --text-xs--line-height: calc(1rem * var(--ui-font-scale, 1));
+  --text-xsm: calc(0.8125rem * var(--ui-font-scale, 1));
+  --text-sm: calc(0.875rem * var(--ui-font-scale, 1));
+  --text-sm--line-height: calc(1.25rem * var(--ui-font-scale, 1));
+  --text-base: calc(1rem * var(--ui-font-scale, 1));
+  --text-base--line-height: calc(1.5rem * var(--ui-font-scale, 1));
+  --text-lg: calc(1.125rem * var(--ui-font-scale, 1));
+  --text-lg--line-height: calc(1.75rem * var(--ui-font-scale, 1));
+  --text-xl: calc(1.25rem * var(--ui-font-scale, 1));
+  --text-xl--line-height: calc(1.75rem * var(--ui-font-scale, 1));
+  --text-2xl: calc(1.5rem * var(--ui-font-scale, 1));
+  --text-2xl--line-height: calc(2rem * var(--ui-font-scale, 1));
+  --text-3xl: calc(1.875rem * var(--ui-font-scale, 1));
+  --text-3xl--line-height: calc(2.25rem * var(--ui-font-scale, 1));
+  --text-hero-title: calc(clamp(2rem, 3.34vw, 3rem) * var(--ui-font-scale, 1));
+  --text-hero-body: calc(clamp(1rem, 1.4vw, 1.25rem) * var(--ui-font-scale, 1));
+  --text-ui-11: calc(0.6875rem * var(--ui-font-scale, 1));
+  --text-ui-12: calc(0.75rem * var(--ui-font-scale, 1));
+  --text-ui-14: calc(0.875rem * var(--ui-font-scale, 1));
+  --text-ui-15: calc(0.9375rem * var(--ui-font-scale, 1));
+  --text-ui-16: calc(1rem * var(--ui-font-scale, 1));
+  --text-ui-20: calc(1.25rem * var(--ui-font-scale, 1));
+  --text-ui-22: calc(1.375rem * var(--ui-font-scale, 1));
+  --text-ui-24: calc(1.5rem * var(--ui-font-scale, 1));
+  --text-ui-28: calc(1.75rem * var(--ui-font-scale, 1));
+  --shadow-action: 0 0.5px 1px 1px color-mix(in oklab, var(--shadow-color) var(--shadow-action-opacity), transparent);
+  --shadow-control:
+    0 0 0 0.5px color-mix(in oklab, var(--shadow-highlight) 14.3%, transparent),
+    0 0.5px 1px 1px color-mix(in oklab, var(--shadow-color) var(--shadow-control-opacity), transparent);
+  --shadow-menu:
+    0 3px 8px color-mix(in oklab, var(--shadow-color) var(--shadow-menu-opacity), transparent),
+    0 2px 5px color-mix(in oklab, var(--shadow-color) var(--shadow-menu-opacity), transparent),
+    0 1px 1px color-mix(in oklab, var(--shadow-color) var(--shadow-menu-opacity), transparent);
+}
+
+:root[data-theme^='blueberry-'] ::selection,
+:root[data-theme^='marshmallow-'] ::selection {
+  background-color: var(--text-selection);
+  color: var(--text-selection-foreground);
 }

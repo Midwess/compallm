@@ -45,7 +45,8 @@ export function ProviderAvatar({
           title="Change provider avatar"
           disabled={disabled || !change}
           className={cx(
-            'size-8 shrink-0 overflow-hidden rounded-lg bg-elevated text-muted disabled:cursor-not-allowed disabled:opacity-50',
+            `size-8 shrink-0 overflow-hidden rounded-lg bg-elevated text-muted-foreground
+disabled:cursor-not-allowed disabled:opacity-50`,
             className,
           )}
         >

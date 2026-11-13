@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { parseSettings } from './validation'
+import { Form } from '../../components/form'
+import { useEffect, useState } from 'react'
 import { ListIcon } from '@phosphor-icons/react/dist/csr/List'
 import { Button } from '../../components/buttons'
-import { InlineError } from '../../components/feedback'
+import { Toast } from '../../components/feedback'
 import { SettingsNavigation } from './sidebar'
 import { SettingsDialogs } from './dialogs'
 import { GeneralSettings, AppearanceSettings, MessagingSettings, CodeSettings } from './preferences'
@@ -14,8 +16,6 @@ import { UsageLimitSettings, MemberLimitSettings, UsageExplorerSettings, AuditSe
 import { useSettings, useSettingsController } from './controller'
 import { cx } from '../../components/shared'
 import { Empty, SettingsContent } from './shared'
-import { useRole } from './role/controller'
-import { useGroup } from './group/controller'
 
 function SettingsScreen() {
   const page = useSettings((s) => s.location.page),
@@ -67,17 +67,80 @@ function SettingsScreen() {
       return <AuditSettings />
   }
 }
+function SharedSettingsForm() {
+  const c = useSettingsController()
+  const page = useSettings((s) => s.location.page)
+  const form = c.store.form
+  useEffect(() => {
+    form.accept(form.values)
+    form.configure({
+      mode: 'change',
+      parse: parseSettings,
+      error: (error, retry) => c.apiError(error, retry),
+      fields: { 'dialog.name': { mode: 'button' }, 'dialog.value': { mode: 'button' }, 'dialog.phrase': { mode: 'button' } },
+      submit: async (values, _patch, _signal, names) => {
+        for (const name of names) {
+          const [root, key] = name.split('.')
+          if (root === 'preferences' && key) {
+            if (c.pages.preferences.setPreference(key, values.preferences![key]) === false) return false
+          } else if (root === 'profile' && key) {
+            if ((await c.pages.profile.updateProfile({ [key]: values.profile![key as keyof typeof values.profile] })) === false)
+              return false
+          } else if (root === 'organization' && key) {
+            if (
+              (await c.pages.organization.updateOrganization({
+                [key]: values.organization![key as keyof typeof values.organization],
+              })) === false
+            )
+              return false
+          } else if (root === 'profileUpload') {
+            if ((await c.pages.profile.setAvatar(values.profileUpload ?? null)) === false) return false
+          } else if (root === 'organizationUpload') {
+            if ((await c.pages.organization.setAvatar(values.organizationUpload ?? null)) === false) return false
+          }
+        }
+        return values
+      },
+    })
+    return form.stop
+  }, [c, form, page])
+  if (['role', 'new-role', 'group', 'new-group'].includes(page)) return <SettingsScreen />
+  return (
+    <Form model={form}>
+      <SettingsScreen />
+    </Form>
+  )
+}
 export function SettingsPage() {
   const [open, setOpen] = useState(false),
     c = useSettingsController()
-  const notice = useSettings((s) => s.notice),
-    sharedError = useSettings((s) => s.error),
-    page = useSettings((s) => s.location.page),
-    roleError = useRole((s) => s.error),
-    groupError = useGroup((s) => s.error)
-  const error =
-    (page === 'role' || page === 'new-role' ? roleError : page === 'group' || page === 'new-group' ? groupError : null) ??
-    sharedError
+  const notice = useSettings((s) => s.notice)
+  const errorToast = useSettings((s) => s.errorToast)
+  useEffect(() => {
+    const sources = [
+      { store: c.store, clear: () => c.store.setState({ error: null }) },
+      { store: c.role.store, clear: () => c.role.store.setState({ error: null }) },
+      { store: c.group.store, clear: () => c.group.store.setState({ error: null }) },
+    ]
+    const subscriptions = sources.map(({ store, clear }) => {
+      const report = () => {
+        const error = store.getState().error
+        if (!error) return
+        clear()
+        c.apiError(
+          { info: { message: error } },
+          store === c.store
+            ? undefined
+            : () => {
+                void store.form.retry()
+              },
+        )
+      }
+      report()
+      return store.subscribe(report)
+    })
+    return () => subscriptions.forEach((unsubscribe) => unsubscribe())
+  }, [c])
   return (
     <div className="relative flex h-dvh min-h-0 overflow-hidden bg-background font-sans text-text">
       {open ? (
@@ -103,8 +166,7 @@ rounded-xl border-[0.5px] border-divider bg-surface pr-2 scrollbar-gutter-stable
         >
           <ListIcon className="size-4" />
         </button>
-        {error ? <InlineError className="mx-auto mt-4 max-w-160 px-4">{error}</InlineError> : null}
-        <SettingsScreen />
+        <SharedSettingsForm />
       </main>
       {notice ? (
         <div
@@ -116,6 +178,26 @@ rounded-lg border border-border bg-elevated px-4 py-3 text-xsm shadow-menu"
           <Button variant="ghost" className="h-6 p-0" onClick={() => c.dismissNotice()}>
             Dismiss
           </Button>
+        </div>
+      ) : null}
+      {errorToast ? (
+        <div className="fixed right-6 bottom-6 z-50 max-w-[calc(100vw-3rem)]">
+          <Toast
+            tone="error"
+            message={errorToast.message}
+            onDismiss={c.dismissErrorToast}
+            action={
+              errorToast.retry
+                ? {
+                    label: 'Retry',
+                    onClick: () => {
+                      c.dismissErrorToast()
+                      errorToast.retry?.()
+                    },
+                  }
+                : undefined
+            }
+          />
         </div>
       ) : null}
       <SettingsDialogs />

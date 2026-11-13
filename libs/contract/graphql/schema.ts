@@ -7,13 +7,22 @@ export type Scalars = {
   Boolean: boolean
   ContextTokens: number
   ID: string
+  Int: number
   String: string
 }
+
+export type AppearanceMode = 'DARK' | 'LIGHT' | 'SYSTEM_PREFERENCE'
 
 export interface BooleanPayload {
   node: Scalars['Boolean']
   __typename: 'BooleanPayload'
 }
+
+export type CodeFont = 'DEFAULT' | 'MONOSPACE'
+
+export type CodeFontSize = 'PX12' | 'PX13' | 'PX14' | 'PX16'
+
+export type CodeTheme = 'FOLLOW_INTERFACE' | 'LINEAR_DARK' | 'LINEAR_LIGHT' | 'SYSTEM_PREFERENCE'
 
 export interface CreatedGroup {
   description: Scalars['String']
@@ -30,6 +39,8 @@ export interface CreatedGroupPayload {
 
 /** How the request delivers credentials; this is never stored in signed claims. */
 export type CredentialDelivery = 'COOKIE' | 'TOKEN'
+
+export type DarkPalette = 'CLASSIC_DARK' | 'DARK' | 'MAGIC_BLUE'
 
 /** Email admission succeeded; cookie delivery never exposes the OTP credential. */
 export interface EmailChallenge {
@@ -66,6 +77,16 @@ export interface GroupPayload {
   node: Group
   __typename: 'GroupPayload'
 }
+
+export type HomeDestination = 'CHAT' | 'MODELS' | 'PROVIDERS'
+
+export type ImageMediaType = 'JPEG' | 'PNG' | 'WEBP'
+
+export type InterfaceFontSize = 'DEFAULT' | 'LARGE' | 'LARGER' | 'SMALL' | 'SMALLER'
+
+export type LightPalette = 'LIGHT' | 'PURE_LIGHT'
+
+export type MemberDisplay = 'FULL_NAME' | 'USERNAME'
 
 export interface Mutation {
   /** Confirm the verified signin challenge and create a scoped session. */
@@ -205,6 +226,8 @@ export interface RolePayload {
   __typename: 'RolePayload'
 }
 
+export type SendShortcut = 'ENTER' | 'MODIFIER_ENTER'
+
 export interface Session {
   /** Login session identity, serialized as a string without numeric precision loss. */
   id: Scalars['ID']
@@ -236,6 +259,10 @@ export interface SessionPayload {
   __typename: 'SessionPayload'
 }
 
+export type SidebarBadgeStyle = 'COUNT' | 'DOT'
+
+export type SidebarVisibility = 'ALWAYS_SHOW' | 'HIDDEN' | 'ONLY_WHEN_BADGED'
+
 /** Text operation determining the upstream request and response format. */
 export type TextModelProtocol = 'ANTHROPIC_MESSAGES' | 'OPENAI_CHAT_COMPLETIONS' | 'OPENAI_RESPONSES'
 
@@ -248,10 +275,17 @@ export interface TokenLifetime {
   __typename: 'TokenLifetime'
 }
 
+export type Weekday = 'FRIDAY' | 'MONDAY' | 'SATURDAY' | 'SUNDAY' | 'THURSDAY' | 'TUESDAY' | 'WEDNESDAY'
+
 export interface BooleanPayloadGenqlSelection {
   node?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
+}
+
+export interface ChatCreateInput {
+  message: Scalars['String']
+  modelId: Scalars['String']
 }
 
 export interface CreatedGroupGenqlSelection {
@@ -267,6 +301,10 @@ export interface CreatedGroupPayloadGenqlSelection {
   node?: CreatedGroupGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
+}
+
+export interface CredentialCreateInput {
+  name: Scalars['String']
 }
 
 /** Email admission succeeded; cookie delivery never exposes the OTP credential. */
@@ -343,6 +381,11 @@ export interface GroupPayloadGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface ImageUploadInput {
+  mediaType: ImageMediaType
+  size: Scalars['Int']
+}
+
 export interface MutationGenqlSelection {
   /** Confirm the verified signin challenge and create a scoped session. */
   emailSigninConfirm?: SessionCredentialsPayloadGenqlSelection & { __args: { input: EmailCodeInput } }
@@ -379,6 +422,15 @@ export interface OrganizationPayloadGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface OrganizationSettingsUpdateInput {
+  announcements?: Scalars['String'] | null
+  fiscalMonth?: Scalars['String'] | null
+  home?: HomeDestination | null
+  name?: Scalars['String'] | null
+  slug?: Scalars['String'] | null
+  welcome?: Scalars['String'] | null
+}
+
 export interface PageInfoGenqlSelection {
   endCursor?: boolean | number
   hasNextPage?: boolean | number
@@ -410,6 +462,35 @@ export interface PolicyActionEdgeGenqlSelection {
   node?: PolicyActionGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
+}
+
+export interface PreferencesUpdateInput {
+  codeFont?: CodeFont | null
+  codeFontSize?: CodeFontSize | null
+  codeTheme?: CodeTheme | null
+  darkTheme?: DarkPalette | null
+  displayNames?: MemberDisplay | null
+  emoticons?: Scalars['Boolean'] | null
+  firstDay?: Weekday | null
+  fontSize?: InterfaceFontSize | null
+  home?: HomeDestination | null
+  lightTheme?: LightPalette | null
+  pointerCursors?: Scalars['Boolean'] | null
+  reduceMotion?: Scalars['Boolean'] | null
+  sendShortcut?: SendShortcut | null
+  sidebarBadgeStyle?: SidebarBadgeStyle | null
+  sidebarModels?: SidebarVisibility | null
+  sidebarNotebooks?: SidebarVisibility | null
+  sidebarOrder?: Scalars['String'] | null
+  sidebarPlugins?: SidebarVisibility | null
+  sidebarProviders?: SidebarVisibility | null
+  theme?: AppearanceMode | null
+  underlineLinks?: Scalars['Boolean'] | null
+}
+
+export interface ProfileUpdateInput {
+  name?: Scalars['String'] | null
+  username?: Scalars['String'] | null
 }
 
 /** Opaque registry identity, independent of an edited upstream model name. */
@@ -529,6 +610,10 @@ export interface QueryGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface ReportingScheduleInput {
+  timezone: Scalars['String']
+}
+
 export interface RoleGenqlSelection {
   /** Native Cedar source; template slots bind to this role and its organization. */
   cedarSource?: boolean | number
@@ -608,6 +693,10 @@ export interface SessionPayloadGenqlSelection {
   node?: SessionGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
+}
+
+export interface SpendingLimitInput {
+  amount?: Scalars['String'] | null
 }
 
 /** Exact Unix-second validity and client throttle values encoded as decimal strings. */
@@ -782,9 +871,70 @@ export const isTokenLifetime = (obj?: { __typename?: any } | null): obj is Token
   return TokenLifetime_possibleTypes.includes(obj.__typename)
 }
 
+export const enumAppearanceMode = {
+  DARK: 'DARK' as const,
+  LIGHT: 'LIGHT' as const,
+  SYSTEM_PREFERENCE: 'SYSTEM_PREFERENCE' as const,
+}
+
+export const enumCodeFont = {
+  DEFAULT: 'DEFAULT' as const,
+  MONOSPACE: 'MONOSPACE' as const,
+}
+
+export const enumCodeFontSize = {
+  PX12: 'PX12' as const,
+  PX13: 'PX13' as const,
+  PX14: 'PX14' as const,
+  PX16: 'PX16' as const,
+}
+
+export const enumCodeTheme = {
+  FOLLOW_INTERFACE: 'FOLLOW_INTERFACE' as const,
+  LINEAR_DARK: 'LINEAR_DARK' as const,
+  LINEAR_LIGHT: 'LINEAR_LIGHT' as const,
+  SYSTEM_PREFERENCE: 'SYSTEM_PREFERENCE' as const,
+}
+
 export const enumCredentialDelivery = {
   COOKIE: 'COOKIE' as const,
   TOKEN: 'TOKEN' as const,
+}
+
+export const enumDarkPalette = {
+  CLASSIC_DARK: 'CLASSIC_DARK' as const,
+  DARK: 'DARK' as const,
+  MAGIC_BLUE: 'MAGIC_BLUE' as const,
+}
+
+export const enumHomeDestination = {
+  CHAT: 'CHAT' as const,
+  MODELS: 'MODELS' as const,
+  PROVIDERS: 'PROVIDERS' as const,
+}
+
+export const enumImageMediaType = {
+  JPEG: 'JPEG' as const,
+  PNG: 'PNG' as const,
+  WEBP: 'WEBP' as const,
+}
+
+export const enumInterfaceFontSize = {
+  DEFAULT: 'DEFAULT' as const,
+  LARGE: 'LARGE' as const,
+  LARGER: 'LARGER' as const,
+  SMALL: 'SMALL' as const,
+  SMALLER: 'SMALLER' as const,
+}
+
+export const enumLightPalette = {
+  LIGHT: 'LIGHT' as const,
+  PURE_LIGHT: 'PURE_LIGHT' as const,
+}
+
+export const enumMemberDisplay = {
+  FULL_NAME: 'FULL_NAME' as const,
+  USERNAME: 'USERNAME' as const,
 }
 
 export const enumProviderApiProtocol = {
@@ -808,8 +958,34 @@ export const enumProviderModelCapability = {
   VISION: 'VISION' as const,
 }
 
+export const enumSendShortcut = {
+  ENTER: 'ENTER' as const,
+  MODIFIER_ENTER: 'MODIFIER_ENTER' as const,
+}
+
+export const enumSidebarBadgeStyle = {
+  COUNT: 'COUNT' as const,
+  DOT: 'DOT' as const,
+}
+
+export const enumSidebarVisibility = {
+  ALWAYS_SHOW: 'ALWAYS_SHOW' as const,
+  HIDDEN: 'HIDDEN' as const,
+  ONLY_WHEN_BADGED: 'ONLY_WHEN_BADGED' as const,
+}
+
 export const enumTextModelProtocol = {
   ANTHROPIC_MESSAGES: 'ANTHROPIC_MESSAGES' as const,
   OPENAI_CHAT_COMPLETIONS: 'OPENAI_CHAT_COMPLETIONS' as const,
   OPENAI_RESPONSES: 'OPENAI_RESPONSES' as const,
+}
+
+export const enumWeekday = {
+  FRIDAY: 'FRIDAY' as const,
+  MONDAY: 'MONDAY' as const,
+  SATURDAY: 'SATURDAY' as const,
+  SUNDAY: 'SUNDAY' as const,
+  THURSDAY: 'THURSDAY' as const,
+  TUESDAY: 'TUESDAY' as const,
+  WEDNESDAY: 'WEDNESDAY' as const,
 }

@@ -5,6 +5,9 @@ import type { OrganizationController } from './pages/organization/types'
 import type { ChatController } from './pages/organization/chat/types'
 import type { CreateProviderController } from './pages/organization/create-provider/types'
 import type { SettingsController } from './pages/settings/types'
+import type { FormScope } from './components/form-model'
+
+export const FormContext = createContext<FormScope | null>(null)
 
 export const AuthControllerContext = createContext<AuthController | null>(null)
 export const OrganizationControllerContext = createContext<OrganizationController | null>(null)

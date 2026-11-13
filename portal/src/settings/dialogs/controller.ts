@@ -14,13 +14,11 @@ export class DialogsController {
   openDialog = (kind: SettingsDialogKind, targetId?: string) => {
     if (kind === 'delete-role') this.store.setState({ dialog: { kind, targetId, name: '', value: '', phrase: '' } })
   }
-  updateDialog = (value: Partial<SettingsDialog>) =>
-    this.store.setState((state) => ({ dialog: state.dialog ? { ...state.dialog, ...value } : null }))
   closeDialog = () => {
     if (!this.store.getState().busy) this.store.setState({ dialog: null })
   }
-  confirmDialog = () => {
-    const { dialog, busy } = this.store.getState()
+  confirmDialog = (dialog: SettingsDialog) => {
+    const { busy } = this.store.getState()
     if (busy || dialog?.kind !== 'delete-role' || !dialog.targetId) return
     const id = dialog.targetId
     this.store.setState({ busy: true })
@@ -33,7 +31,7 @@ export class DialogsController {
         this.roleDeleted(id)
       } catch (error) {
         notify.apiError(error, () => {
-          if (this.store.getState().dialog === dialog) this.confirmDialog()
+          if (this.store.getState().dialog === dialog) this.confirmDialog(dialog)
         })
       } finally {
         this.store.setState({ busy: false })

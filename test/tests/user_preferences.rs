@@ -1,6 +1,7 @@
-use compallm_core::user::preferences::{
-    BadgeStyle, CodeTheme, SidebarEntry, SidebarItem, SidebarPreferences, SidebarVisibility,
+use compallm_core::preference::{
     UserPreferences,
+    sidebar::{SidebarEntry, SidebarPreferences},
+    values::{BadgeStyle, CodeTheme, Destination, SidebarVisibility},
 };
 
 #[test]
@@ -9,11 +10,11 @@ fn missing_sidebar_items_follow_saved_order_and_keep_choices() {
         badge_style: BadgeStyle::Count,
         entries: vec![
             SidebarEntry {
-                item: SidebarItem::Plugins,
+                item: Destination::Plugins,
                 visibility: SidebarVisibility::Hidden,
             },
             SidebarEntry {
-                item: SidebarItem::Providers,
+                item: Destination::Providers,
                 visibility: SidebarVisibility::WhenBadged,
             },
         ],
@@ -24,19 +25,19 @@ fn missing_sidebar_items_follow_saved_order_and_keep_choices() {
         preferences.entries,
         vec![
             SidebarEntry {
-                item: SidebarItem::Plugins,
+                item: Destination::Plugins,
                 visibility: SidebarVisibility::Hidden
             },
             SidebarEntry {
-                item: SidebarItem::Providers,
+                item: Destination::Providers,
                 visibility: SidebarVisibility::WhenBadged
             },
             SidebarEntry {
-                item: SidebarItem::Models,
+                item: Destination::Models,
                 visibility: SidebarVisibility::Always
             },
             SidebarEntry {
-                item: SidebarItem::Notebooks,
+                item: Destination::Notebooks,
                 visibility: SidebarVisibility::Always
             },
         ]

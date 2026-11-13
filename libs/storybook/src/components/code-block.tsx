@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { ThemedToken } from 'shiki/core'
+import { useFormField } from './form'
 import { MultilineField } from './fields'
 import { Select } from './dropdowns'
 import { cx } from './shared'
@@ -162,9 +163,9 @@ export function CodePreview({
 }
 
 export interface CodeEditorProps {
-  value: string
-  onValueChange: (value: string) => void
-  onCommit?: () => void
+  name?: string
+  value?: string
+  onValueChange?: (value: string) => void
   language: string
   label: string
   theme?: CodeTheme
@@ -178,9 +179,9 @@ export interface CodeEditorProps {
 }
 
 export function CodeEditor({
-  value,
+  name,
+  value: suppliedValue = '',
   onValueChange,
-  onCommit,
   language,
   label,
   theme = 'dark',
@@ -192,6 +193,8 @@ export function CodeEditor({
   showToolbar = true,
   className,
 }: CodeEditorProps) {
+  const field = useFormField<string>(name)
+  const value = field ? (field.value ?? '') : suppliedValue
   const tokens = useTokens(value, language, theme)
   const content = useRef<HTMLPreElement>(null),
     gutter = useRef<HTMLDivElement>(null)
@@ -199,6 +202,7 @@ export function CodeEditor({
   return (
     <div
       data-slot="code-editor"
+      data-form-field={name}
       className={cx('flex min-w-0 w-full flex-col overflow-hidden rounded-md', className)}
       style={{ backgroundColor: background[theme], color: foreground[theme] }}
     >
@@ -231,6 +235,7 @@ export function CodeEditor({
           </div>
         </div>
         <MultilineField
+          name={name}
           aria-label={label}
           aria-invalid={invalid}
           value={value}
@@ -243,8 +248,7 @@ export function CodeEditor({
 pl-9 pr-4 font-mono text-transparent caret-text selection:bg-focus/25
 [font-variant-ligatures:none] [-webkit-text-fill-color:transparent]"
           style={{ ...style, caretColor: foreground[theme] }}
-          onChange={(event) => onValueChange(event.target.value)}
-          onBlur={onCommit}
+          onChange={(event) => onValueChange?.(event.target.value)}
           onScroll={(event) => {
             const { scrollTop, scrollLeft } = event.currentTarget
             if (content.current) content.current.style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`

@@ -1,3 +1,4 @@
+import { useFormField } from './form'
 import { animated } from './motion'
 import { useRef } from 'react'
 import { ProviderIcon } from './provider-icons'
@@ -5,18 +6,22 @@ import { Popup } from './popup'
 import { cx } from './shared'
 
 export function ProviderAvatar({
+  name,
   provider,
   src,
   onFileChange,
   disabled = false,
   className,
 }: {
+  name?: string
   provider?: string | null
   src?: string | null
   onFileChange?: (file: File | null) => void
   disabled?: boolean
   className?: string
 }) {
+  const field = useFormField<File | null>(name)
+  const change = field ? field.change : onFileChange
   const input = useRef<HTMLInputElement>(null)
   return (
     <>
@@ -27,10 +32,10 @@ export function ProviderAvatar({
         className="sr-only"
         tabIndex={-1}
         aria-label="Provider avatar image"
-        disabled={disabled || !onFileChange}
+        disabled={disabled || !change}
         onChange={(event) => {
           const file = event.target.files?.[0]
-          if (file) onFileChange?.(file)
+          if (file) change?.(file)
           event.target.value = ''
         }}
       />
@@ -38,7 +43,7 @@ export function ProviderAvatar({
         <Popup.Trigger
           aria-label="Change provider avatar"
           title="Change provider avatar"
-          disabled={disabled || !onFileChange}
+          disabled={disabled || !change}
           className={cx(
             'size-8 shrink-0 overflow-hidden rounded-lg bg-elevated text-muted disabled:cursor-not-allowed disabled:opacity-50',
             className,
@@ -52,8 +57,8 @@ export function ProviderAvatar({
         </Popup.Trigger>
         <Popup.Content aria-label="Change provider avatar">
           <Popup.Item onClick={() => input.current?.click()}>Upload image</Popup.Item>
-          <Popup.Item onClick={() => onFileChange?.(null)}>Use provider logo</Popup.Item>
-          {src ? <Popup.Item onClick={() => onFileChange?.(null)}>Remove image</Popup.Item> : null}
+          <Popup.Item onClick={() => change?.(null)}>Use provider logo</Popup.Item>
+          {src ? <Popup.Item onClick={() => change?.(null)}>Remove image</Popup.Item> : null}
         </Popup.Content>
       </Popup>
     </>

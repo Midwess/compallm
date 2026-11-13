@@ -121,7 +121,7 @@ function PermissionRow({
             aria-label={action.label}
             checked={permits.length > 0}
             disabled={disabled || advanced}
-            onChange={() => c.togglePolicyAction(action.id)}
+            onChange={() => void c.store.form.perform(() => c.togglePolicyAction(action.id), ['draft.source'])}
           />
         </DisabledTooltip>
       </Table.Cell>
@@ -132,7 +132,18 @@ function PermissionRow({
 export function PolicyTable() {
   const c = useRoleController(),
     actions = useSettings((s) => s.policyActions),
-    draft = useRole((s) => s.draft),
+    draft = useRole(
+      (s) =>
+        s.draft
+          ? {
+              builtin: s.draft.builtin,
+              parsing: s.draft.parsing,
+              diagnostics: s.draft.diagnostics,
+              projection: s.draft.projection,
+            }
+          : null,
+      ['draft.builtin', 'draft.parsing', 'draft.diagnostics', 'draft.projection'],
+    ),
     query = useRole((s) => s.query),
     filters = useRole((s) => s.filters),
     busy = useRole((s) => s.busy)
@@ -239,9 +250,13 @@ export function PolicyTable() {
                         checked={allEditableSelected}
                         disabled={disabled || editable.length === 0}
                         onChange={() =>
-                          c.setPolicyActions(
-                            editable.map((a) => a.id),
-                            !allEditableSelected,
+                          void c.store.form.perform(
+                            () =>
+                              c.setPolicyActions(
+                                editable.map((a) => a.id),
+                                !allEditableSelected,
+                              ),
+                            ['draft.source'],
                           )
                         }
                       />

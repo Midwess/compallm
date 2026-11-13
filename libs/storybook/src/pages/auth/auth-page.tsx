@@ -1,17 +1,18 @@
-import { useContext, useId, useRef, type FormEvent, type RefObject } from 'react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { FormError } from '../../components/form'
+import { useEffect, useContext, useId, useRef, type RefObject } from 'react'
 import { CheckCircleIcon } from '@phosphor-icons/react/dist/csr/CheckCircle'
 import { Button, AccountPrompt, TextLink } from '../../components/buttons'
 import { EmailField, CodeEntry } from '../../components/fields'
 import { FormFieldLabel } from '../../components/forms'
-import { RichMessage } from '../../components/rich-message'
-import { InlineError, FeedbackSlot } from '../../components/feedback'
+import { Toast, FeedbackSlot } from '../../components/feedback'
 import { pagePaths } from '../paths'
 import { AuthLayout } from './layout'
-import { useStore } from 'zustand'
+import { useFormStore } from '../../components/form'
 import { AuthControllerContext } from '../../context'
 import type { AuthState } from './types'
-import { emailRequestSchema } from '@compallm/contract/auth'
-import type { EmailInput as EmailRequestInput } from '@compallm/contract/graphql'
+import { Form, useManagedForm, contractResult } from '../../components/form'
+import { emailRequestSchema, otpRequestSchema } from '@compallm/contract/auth'
 
 type Mode = 'signup' | 'signin'
 
@@ -21,8 +22,8 @@ function useAuthController() {
   return controller
 }
 
-function useAuthState<T>(selector: (state: AuthState) => T): T {
-  return useStore(useAuthController().store, selector)
+function useAuthState<T>(selector: (state: AuthState) => T, names: readonly string[] = []): T {
+  return useFormStore(useAuthController().store, selector, names)
 }
 
 const errors = {
@@ -77,46 +78,41 @@ function EmailForm({ mode }: { mode: Mode }) {
   const controller = useAuthController()
   const input = useRef<HTMLInputElement>(null)
   const id = useId()
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!emailRequestSchema(mode).safeParse({ email: controller.store.getState().email } satisfies EmailRequestInput).success) {
-      controller.onInvalidEmail()
-      input.current?.focus()
-      return
-    }
-    void controller.requestCode()
-  }
+  const model = useManagedForm(
+    { email: controller.store.getState().email },
+    {
+      mode: 'button',
+      command: true,
+      changed: () => controller.clearError(),
+      resolver: zodResolver(emailRequestSchema(mode)),
+      submit: async (values) => {
+        await controller.requestCode(values.email)
+        return controller.store.getState().step === 'code' ? { email: controller.store.getState().email } : false
+      },
+    },
+  )
   return (
-    <form
+    <Form
+      model={model}
       className="flex flex-col gap-4"
-      onSubmit={submit}
       noValidate
       aria-label={mode === 'signup' ? 'Create account' : 'Sign in'}
     >
       <div className="grid gap-1">
         <FormFieldLabel htmlFor={`${id}-email`}>Email address</FormFieldLabel>
         <EmailInput id={`${id}-email`} errorId={`${id}-error`} inputRef={input} />
+        <FormError name="email" />
       </div>
       <ContinueButton />
       <FeedbackSlot className="h-12 shrink-0">
-        <ErrorMessage id={`${id}-error`} />
+        <ErrorMessage />
       </FeedbackSlot>
       <AccountLink mode={mode} />
-    </form>
+    </Form>
   )
 }
 
-export function EmailInput({
-  id,
-  errorId,
-  inputRef,
-}: {
-  id: string
-  errorId: string
-  inputRef: RefObject<HTMLInputElement | null>
-}) {
-  const controller = useAuthController()
-  const email = useAuthState((state) => state.email)
+export function EmailInput({ id, inputRef }: { id: string; errorId: string; inputRef: RefObject<HTMLInputElement | null> }) {
   const disabled = useAuthState((state) => state.pending !== null)
   const invalid = useAuthState((state) => state.error !== null || state.serverError !== null)
   return (
@@ -128,11 +124,9 @@ export function EmailInput({
       name="email"
       required
       placeholder="you@example.com"
-      value={email}
-      onChange={(event) => controller.onEmailChanged(event.target.value)}
       disabled={disabled}
       aria-invalid={invalid || undefined}
-      aria-describedby={invalid ? errorId : undefined}
+      aria-describedby="email-error"
     />
   )
 }
@@ -182,29 +176,47 @@ function AccountLink({ mode }: { mode: Mode }) {
   )
 }
 
-function ErrorMessage({ id }: { id: string }) {
+function ErrorMessage() {
   const controller = useAuthController()
   const error = useAuthState((state) => state.error)
   const serverError = useAuthState((state) => state.serverError)
   return serverError || error ? (
-    <InlineError id={id}>
-      <RichMessage message={serverError ?? errors[error!]} navigate={controller.navigate} />
-    </InlineError>
+    <div className="fixed right-6 bottom-6 z-50 max-w-[calc(100vw-3rem)]">
+      <Toast tone="error" message={serverError ?? errors[error!]} onDismiss={controller.clearError} />
+    </div>
   ) : null
 }
 
 function VerificationForm() {
-  const id = useId()
+  const controller = useAuthController()
+  const model = controller.store.form
+  useEffect(
+    () =>
+      model.configure({
+        mode: 'complete',
+        command: true,
+        changed: () => controller.clearError(),
+        parse: (values) => contractResult(otpRequestSchema('signin').safeParse({ code: values.code }), values),
+        fields: {
+          code: { mode: 'complete', complete: (value) => otpRequestSchema('signin').safeParse({ code: value }).success },
+        },
+        submit: async (values) => {
+          await controller.verifyCode(values.code ?? '')
+          return controller.store.getState().step === 'complete' ? {} : false
+        },
+      }),
+    [controller, model],
+  )
   return (
-    <div>
+    <Form model={model}>
       <Recipient />
-      <CodeInput errorId={`${id}-error`} />
-      <VerificationFeedback errorId={`${id}-error`} />
+      <CodeInput />
+      <VerificationFeedback />
       <div className="mt-6 flex w-full flex-col items-start gap-1">
         <ResendControl />
         <BackAction />
       </div>
-    </div>
+    </Form>
   )
 }
 
@@ -217,32 +229,32 @@ function Recipient() {
   )
 }
 
-export function CodeInput({ errorId }: { errorId: string }) {
-  const controller = useAuthController()
-  const code = useAuthState((state) => state.code)
+export function CodeInput() {
   const disabled = useAuthState((state) => state.pending !== null)
   const invalid = useAuthState((state) => state.error !== null || state.serverError !== null)
   return (
-    <CodeEntry
-      aria-label="Email code"
-      value={code}
-      onValueChange={(code) => controller.onCodeChanged(code)}
-      autoFocus
-      disabled={disabled}
-      aria-invalid={invalid || undefined}
-      aria-describedby={invalid ? errorId : undefined}
-    />
+    <>
+      <CodeEntry
+        aria-label="Email code"
+        name="code"
+        autoFocus
+        disabled={disabled}
+        aria-invalid={invalid || undefined}
+        aria-describedby="code-error"
+      />
+      <FormError name="code" />
+    </>
   )
 }
 
-function VerificationFeedback({ errorId }: { errorId: string }) {
+function VerificationFeedback() {
   const controller = useAuthController()
   const checking = useAuthState((state) => state.pending === 'verify')
   const retryable = useAuthState((state) => state.error === 'unavailable' || state.serverError !== null)
   return (
     <FeedbackSlot className="mt-2 h-20 text-sm leading-5" aria-live="polite">
       {checking ? <p role="status">Checking code…</p> : null}
-      <ErrorMessage id={errorId} />
+      <ErrorMessage />
       {retryable ? (
         <Button variant="link" onClick={() => void controller.retry()}>
           Try again

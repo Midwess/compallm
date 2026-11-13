@@ -7,6 +7,7 @@
 
 pub mod authentication;
 pub mod base_type;
+pub mod chat;
 pub mod endpoint;
 pub mod organization;
 pub mod policy;

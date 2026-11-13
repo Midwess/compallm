@@ -13,8 +13,6 @@ class DemoChatController implements ChatController {
     ],
   })
   constructor(private readonly report: (value: string) => void) {}
-  onDraftChanged = (draft: string) => this.store.setState({ draft })
-  onModelChanged = (modelId: string) => this.store.setState({ modelId })
   onCreateChat = () => this.report('Create chat requested')
   onAttach = () => this.report('Attach file')
 }

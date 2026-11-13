@@ -380,3 +380,17 @@ export function useDisclosure(defaultOpen: boolean) {
     expand: () => change(true),
   }
 }
+
+export function FieldErrorMotion({ children, ...props }: HTMLMotionProps<'div'> & { 'data-side'?: string }) {
+  const timing = useTransition('disclosure')
+  return (
+    <motion.div
+      {...props}
+      initial={{ opacity: 0, clipPath: props['data-side'] === 'left' ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)' }}
+      animate={{ opacity: 1, clipPath: 'inset(0 0 0 0)' }}
+      transition={timing}
+    >
+      {children}
+    </motion.div>
+  )
+}

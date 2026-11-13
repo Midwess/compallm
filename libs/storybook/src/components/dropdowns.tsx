@@ -3,6 +3,7 @@ import { Select as BaseSelect } from '@base-ui/react/select'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
 import { animated, FloatingMotion } from './motion'
+import { useFormField, useFormInvalid } from './form'
 import { cx } from './shared'
 import { FloatingContainerContext } from '../context'
 
@@ -17,7 +18,22 @@ export interface SelectProps extends Omit<DropdownProps, 'label'> {
 }
 
 function SelectRoot(props: Omit<BaseSelect.Root.Props<string, false>, 'modal' | 'multiple'>) {
-  return <BaseSelect.Root {...props} modal={false} />
+  const field = useFormField<string>(props.name)
+  return (
+    <BaseSelect.Root
+      {...props}
+      value={field ? field.value : props.value}
+      onValueChange={(value, details) => {
+        if (field && value !== null) field.change(value)
+        else props.onValueChange?.(value, details)
+      }}
+      onOpenChange={(open, details) => {
+        if (!open) field?.blur()
+        props.onOpenChange?.(open, details)
+      }}
+      modal={false}
+    />
+  )
 }
 
 function SelectTrigger({
@@ -113,6 +129,7 @@ export const Select = Object.assign(SelectControl, {
 })
 
 export interface DropdownProps {
+  name?: string
   options: SelectItem[]
   value?: string
   defaultValue?: string
@@ -124,6 +141,7 @@ export interface DropdownProps {
 }
 
 export function Dropdown({
+  name,
   options,
   value,
   defaultValue,
@@ -133,9 +151,11 @@ export function Dropdown({
   defaultOpen = false,
   className,
 }: DropdownProps) {
+  const invalid = useFormInvalid(name)
   return (
     <div data-ui="dropdown" className={cx('relative inline-block w-60 max-w-full', className)}>
       <Select.Root
+        name={name}
         items={options}
         value={value}
         defaultValue={defaultValue ?? options.find((item) => !item.disabled)?.value ?? ''}
@@ -145,7 +165,11 @@ export function Dropdown({
         disabled={disabled}
         defaultOpen={defaultOpen}
       >
-        <Select.Trigger aria-label={label}>
+        <Select.Trigger
+          aria-label={label}
+          aria-invalid={invalid || undefined}
+          aria-describedby={name ? `${name}-error` : undefined}
+        >
           <Select.Value placeholder={label}>
             {(selected: string | null) => {
               const item = options.find((option) => option.value === selected)

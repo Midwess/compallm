@@ -72,3 +72,5 @@ export * from './components/provider-icons'
 export * from './components/key-value-editor'
 export * from './components/effort-mapping'
 export * from './components/provider-avatar'
+
+export * from './components/form'

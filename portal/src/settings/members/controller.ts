@@ -1,3 +1,3 @@
 export class MembersController {
-  toggleMemberRole = () => {}
+  setMemberRoles = () => false as const
 }

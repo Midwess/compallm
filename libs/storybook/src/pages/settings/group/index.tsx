@@ -1,3 +1,7 @@
+import { GroupCreateInput } from '@compallm/contract/validation'
+import { FormError } from '../../../components/form'
+import { useEffect } from 'react'
+import { Form, contractResult } from '../../../components/form'
 import { Button } from '../../../components/buttons'
 import { XIcon } from '@phosphor-icons/react/dist/csr/X'
 import { ChoicePicker } from '../../../components/choice-picker'
@@ -12,7 +16,7 @@ import { SettingsContent, Heading, Section, Rows, Row, Indicator, Empty } from '
 
 function GroupMembers() {
   const group = useGroupController(),
-    draft = useGroup((s) => s.draft),
+    draft = useGroup((s) => (s.draft ? { memberIds: s.draft.memberIds } : null), ['draft.memberIds']),
     members = useSettings((s) => s.members),
     query = useGroup((s) => s.query),
     readonly = useSettings((s) => s.readonly),
@@ -73,9 +77,9 @@ function GroupMembers() {
                     <Table.Cell className="px-0">
                       <Switch
                         aria-label={`Include ${entry.name}`}
-                        checked={selected.includes(entry.id)}
+                        name="draft.memberIds"
+                        value={entry.id}
                         disabled={readonly || busy}
-                        onChange={() => group.toggleGroupMember(entry.id)}
                       />
                     </Table.Cell>
                   </Table.Row>
@@ -91,6 +95,7 @@ function GroupMembers() {
             </Table.Content>
           </Table>
         </div>
+        <FormError name="draft.memberIds" />
       </SectionSurface>
     </section>
   )
@@ -99,7 +104,7 @@ function GroupMembers() {
 function GroupRoles() {
   const c = useSettingsController(),
     group = useGroupController(),
-    draft = useGroup((s) => s.draft),
+    draft = useGroup((s) => (s.draft ? { roleIds: s.draft.roleIds } : null), ['draft.roleIds']),
     roles = useSettings((s) => s.roles),
     readonly = useSettings((s) => s.readonly),
     busy = useGroup((s) => s.busy)
@@ -124,13 +129,9 @@ function GroupRoles() {
           }
           disabled={readonly || busy}
           options={roles.map((role) => ({ id: role.id, label: role.name, description: role.description, color: role.color }))}
-          value={draft.roleIds}
-          onValueChange={(next) => {
-            for (const id of new Set([...draft.roleIds, ...next])) {
-              if (draft.roleIds.includes(id) !== next.includes(id)) group.toggleGroupRole(id)
-            }
-          }}
+          name="draft.roleIds"
         />
+        <FormError name="draft.roleIds" />
       </div>
       <SectionSurface className="p-0">
         {draft.roleIds.length ? (
@@ -152,7 +153,12 @@ function GroupRoles() {
                   aria-label={`Remove ${role.name} from group`}
                   className="size-8 shrink-0 rounded-full p-0"
                   disabled={readonly || busy}
-                  onClick={() => group.toggleGroupRole(role.id)}
+                  onClick={() =>
+                    group.store.form.change(
+                      'draft.roleIds',
+                      draft.roleIds.filter((id) => id !== role.id),
+                    )
+                  }
                 >
                   <XIcon size={14} aria-hidden="true" />
                 </Button>
@@ -167,10 +173,14 @@ function GroupRoles() {
   )
 }
 
-export function GroupEditorSettings() {
+function GroupHeading() {
+  const id = useGroup((s) => s.draft?.id, ['draft.id'])
+  const name = useGroup((s) => s.draft?.name, ['draft.name'])
+  return id ? name : 'New group'
+}
+function GroupEditorContent() {
   const c = useSettingsController(),
-    group = useGroupController(),
-    draft = useGroup((s) => s.draft),
+    draft = useGroup((s) => (s.draft ? { id: s.draft.id } : null), ['draft.id']),
     readonly = useSettings((s) => s.readonly),
     busy = useGroup((s) => s.busy)
   if (!draft)
@@ -181,7 +191,9 @@ export function GroupEditorSettings() {
     )
   return (
     <SettingsContent className="flex flex-col pt-14 pb-6">
-      <Heading className="mb-8 shrink-0">{draft.id ? draft.name : 'New group'}</Heading>
+      <Heading className="mb-8 shrink-0">
+        <GroupHeading />
+      </Heading>
       <div className="flex min-w-0 flex-col gap-6">
         <Section title="Group details" className="shrink-0">
           <Rows className="**:[[role=separator]]:bg-border">
@@ -189,21 +201,21 @@ export function GroupEditorSettings() {
               <TextField
                 id="group-name"
                 className="w-xl max-w-full border-border max-lg:w-sm"
-                value={draft.name}
+                name="draft.name"
                 placeholder="Group name…"
                 disabled={readonly || busy}
-                onChange={(event) => group.updateGroup({ name: event.target.value })}
               />
+              <FormError name="draft.name" />
             </Row>
             <Row label={<label htmlFor="group-description">Description</label>} last>
               <TextField
                 id="group-description"
                 className="w-xl max-w-full border-border max-lg:w-sm"
-                value={draft.description}
+                name="draft.description"
                 placeholder="Describe this group…"
                 disabled={readonly || busy}
-                onChange={(event) => group.updateGroup({ description: event.target.value })}
               />
+              <FormError name="draft.description" />
             </Row>
           </Rows>
         </Section>
@@ -211,13 +223,7 @@ export function GroupEditorSettings() {
         <GroupMembers />
         {!readonly && !draft.id ? (
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
-            <Button
-              variant="primary"
-              className="w-32 rounded-xl"
-              loading={busy}
-              disabled={!draft.name.trim()}
-              onClick={() => group.saveGroup()}
-            >
+            <Button variant="primary" className="w-32 rounded-xl" loading={busy} type="submit">
               Create group
             </Button>
           </div>
@@ -240,5 +246,42 @@ export function GroupEditorSettings() {
         ) : null}
       </div>
     </SettingsContent>
+  )
+}
+
+export function GroupEditorSettings() {
+  const group = useGroupController()
+  const id = useGroup((state) => state.draft?.id, ['draft.id'])
+  const form = group.store.form
+  const settings = useSettingsController()
+  useEffect(() => {
+    form.reset(form.values)
+    form.configure({
+      mode: 'button',
+      command: true,
+      validationNames: () => ['draft'],
+      error: (error, retry) => settings.apiError(error, retry),
+      parse: (values) => {
+        const draft = values.draft
+        const result = GroupCreateInput.safeParse(
+          draft ? { name: draft.name, description: draft.description, roleIds: draft.roleIds } : {},
+        )
+        return contractResult(
+          result,
+          result.success && draft ? { ...values, draft: { ...draft, ...result.data } } : values,
+          'draft',
+        )
+      },
+      submit: async (values) => {
+        if (!values.draft) return false
+        const result = await group.saveGroup(values.draft)
+        return result && typeof result === 'object' ? { draft: result } : false
+      },
+    })
+  }, [group, form, id, settings])
+  return (
+    <Form model={form}>
+      <GroupEditorContent />
+    </Form>
   )
 }

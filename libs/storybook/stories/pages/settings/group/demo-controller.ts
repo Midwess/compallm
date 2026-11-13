@@ -35,8 +35,6 @@ export class DemoGroupController implements GroupController {
       error: null,
     })
   }
-  updateGroup = (value: Partial<Pick<GroupDraft, 'name' | 'description'>>) =>
-    this.store.setState((s) => ({ draft: s.draft ? { ...s.draft, ...value } : null }))
   private toggle = (field: 'memberIds' | 'roleIds', id: string) => {
     if (this.settings.store.getState().readonly || this.store.getState().busy) return
     this.store.setState((s) => ({
@@ -49,38 +47,44 @@ export class DemoGroupController implements GroupController {
     }))
   }
   toggleGroupMember = (id: string) => this.toggle('memberIds', id)
-  toggleGroupRole = (id: string) => this.toggle('roleIds', id)
-  saveGroup = () => {
-    const draft = this.store.getState().draft
-    if (!draft?.name.trim() || this.store.getState().busy || this.settings.store.getState().readonly) return
+  saveGroup = (draft: GroupDraft): Promise<GroupDraft | false> => {
+    if (!draft?.name.trim() || this.store.getState().busy || this.settings.store.getState().readonly)
+      return Promise.resolve(false)
     this.store.setState({ busy: true, error: null })
-    this.saveTimer = setTimeout(() => {
-      if (this.closed) return
-      if (this.failWrites) {
-        this.store.setState({
-          busy: false,
-          error:
-            this.failWrites === 'conflict'
-              ? 'This group changed elsewhere. Your draft is retained.'
-              : 'Could not save changes. Your draft is retained.',
+    return new Promise((resolve) => {
+      this.saveTimer = setTimeout(() => {
+        if (this.closed) {
+          resolve(false)
+          return
+        }
+        if (this.failWrites) {
+          this.store.setState({
+            busy: false,
+            error:
+              this.failWrites === 'conflict'
+                ? 'This group changed elsewhere. Your draft is retained.'
+                : 'Could not save changes. Your draft is retained.',
+          })
+          resolve(false)
+          return
+        }
+        const id = draft.id ?? crypto.randomUUID(),
+          groups = this.settings.store.getState().groups
+        const group = {
+          ...draft,
+          id,
+          name: draft.name.trim(),
+          color: groups.find((g) => g.id === id)?.color ?? colors[groups.length % colors.length],
+        }
+        this.settings.store.setState({
+          groups: groups.some((g) => g.id === id) ? groups.map((g) => (g.id === id ? group : g)) : [...groups, group],
+          location: { page: 'group', id },
         })
-        return
-      }
-      const id = draft.id ?? crypto.randomUUID(),
-        groups = this.settings.store.getState().groups
-      const group = {
-        ...draft,
-        id,
-        name: draft.name.trim(),
-        color: groups.find((g) => g.id === id)?.color ?? colors[groups.length % colors.length],
-      }
-      this.settings.store.setState({
-        groups: groups.some((g) => g.id === id) ? groups.map((g) => (g.id === id ? group : g)) : [...groups, group],
-        location: { page: 'group', id },
-      })
-      this.store.setState({ draft: { ...draft, id }, busy: false })
-      this.settings.report(draft.id ? 'Group saved' : 'Group created')
-    }, 240)
+        this.store.setState({ draft: { ...draft, id }, busy: false })
+        this.settings.report(draft.id ? 'Group saved' : 'Group created')
+        resolve({ ...draft, id, name: group.name })
+      }, 240)
+    })
   }
   resetGroup = () => {
     const draft = this.store.getState().draft

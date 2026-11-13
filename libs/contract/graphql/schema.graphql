@@ -1,5 +1,35 @@
+enum AppearanceMode {
+  DARK
+  LIGHT
+  SYSTEM_PREFERENCE
+}
+
 type BooleanPayload {
   node: Boolean!
+}
+
+input ChatCreateInput {
+  message: String!
+  modelId: String!
+}
+
+enum CodeFont {
+  DEFAULT
+  MONOSPACE
+}
+
+enum CodeFontSize {
+  PX12
+  PX13
+  PX14
+  PX16
+}
+
+enum CodeTheme {
+  FOLLOW_INTERFACE
+  LINEAR_DARK
+  LINEAR_LIGHT
+  SYSTEM_PREFERENCE
 }
 
 """
@@ -18,6 +48,10 @@ type CreatedGroupPayload {
   node: CreatedGroup!
 }
 
+input CredentialCreateInput {
+  name: String!
+}
+
 """
 How the request delivers credentials; this is never stored in signed claims.
 """
@@ -31,6 +65,12 @@ enum CredentialDelivery {
   Return credentials explicitly without setting browser cookies.
   """
   TOKEN
+}
+
+enum DarkPalette {
+  CLASSIC_DARK
+  DARK
+  MAGIC_BLUE
 }
 
 """
@@ -107,6 +147,41 @@ type GroupPayload {
   node: Group!
 }
 
+enum HomeDestination {
+  CHAT
+  MODELS
+  PROVIDERS
+}
+
+enum ImageMediaType {
+  JPEG
+  PNG
+  WEBP
+}
+
+input ImageUploadInput {
+  mediaType: ImageMediaType!
+  size: Int!
+}
+
+enum InterfaceFontSize {
+  DEFAULT
+  LARGE
+  LARGER
+  SMALL
+  SMALLER
+}
+
+enum LightPalette {
+  LIGHT
+  PURE_LIGHT
+}
+
+enum MemberDisplay {
+  FULL_NAME
+  USERNAME
+}
+
 type Mutation {
   """
   Confirm the verified signin challenge and create a scoped session.
@@ -160,6 +235,15 @@ type OrganizationPayload {
   node: Organization!
 }
 
+input OrganizationSettingsUpdateInput {
+  announcements: String
+  fiscalMonth: String
+  home: HomeDestination
+  name: String
+  slug: String
+  welcome: String
+}
+
 type PageInfo {
   endCursor: String
   hasNextPage: Boolean!
@@ -183,6 +267,35 @@ type PolicyActionConnection {
 type PolicyActionEdge {
   cursor: String!
   node: PolicyAction!
+}
+
+input PreferencesUpdateInput {
+  codeFont: CodeFont
+  codeFontSize: CodeFontSize
+  codeTheme: CodeTheme
+  darkTheme: DarkPalette
+  displayNames: MemberDisplay
+  emoticons: Boolean
+  firstDay: Weekday
+  fontSize: InterfaceFontSize
+  home: HomeDestination
+  lightTheme: LightPalette
+  pointerCursors: Boolean
+  reduceMotion: Boolean
+  sendShortcut: SendShortcut
+  sidebarBadgeStyle: SidebarBadgeStyle
+  sidebarModels: SidebarVisibility
+  sidebarNotebooks: SidebarVisibility
+  sidebarOrder: String
+  sidebarPlugins: SidebarVisibility
+  sidebarProviders: SidebarVisibility
+  theme: AppearanceMode
+  underlineLinks: Boolean
+}
+
+input ProfileUpdateInput {
+  name: String
+  username: String
 }
 
 """
@@ -388,6 +501,10 @@ type Query {
   session: SessionPayload!
 }
 
+input ReportingScheduleInput {
+  timezone: String!
+}
+
 type Role {
   """
   Native Cedar source; template slots bind to this role and its organization.
@@ -432,6 +549,11 @@ input RoleUpdateInput {
   name: String
 }
 
+enum SendShortcut {
+  ENTER
+  MODIFIER_ENTER
+}
+
 type Session {
   """
   Login session identity, serialized as a string without numeric precision loss.
@@ -472,6 +594,21 @@ type SessionPayload {
   node: Session!
 }
 
+enum SidebarBadgeStyle {
+  COUNT
+  DOT
+}
+
+enum SidebarVisibility {
+  ALWAYS_SHOW
+  HIDDEN
+  ONLY_WHEN_BADGED
+}
+
+input SpendingLimitInput {
+  amount: String
+}
+
 """
 Text operation determining the upstream request and response format.
 """
@@ -489,4 +626,14 @@ type TokenLifetime {
   expiresInSeconds: String!
   issuedAt: String!
   throttleSeconds: String!
+}
+
+enum Weekday {
+  FRIDAY
+  MONDAY
+  SATURDAY
+  SUNDAY
+  THURSDAY
+  TUESDAY
+  WEDNESDAY
 }

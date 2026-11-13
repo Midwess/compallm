@@ -1,5 +1,15 @@
-import { animated, LoadingMotion, overlay } from './motion'
-import { useId, type HTMLAttributes, type ReactElement, type ReactNode } from 'react'
+import { animated, LoadingMotion, overlay, FieldErrorMotion } from './motion'
+import {
+  useId,
+  useEffect,
+  useState,
+  useRef,
+  useLayoutEffect,
+  type HTMLAttributes,
+  type ReactElement,
+  type ReactNode,
+} from 'react'
+import { createPortal } from 'react-dom'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cx } from './shared'
 import { RichMessage } from './rich-message'
@@ -265,4 +275,129 @@ export function DropInsertionIndicator({ className, ...props }: HTMLAttributes<H
 
 export function FeedbackSlot({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return <div {...props} className={cx('h-fit py-1 overflow-y-auto', className)} />
+}
+
+export function FieldErrorIndicator({
+  anchor,
+  message,
+  id,
+  validationVersion = 0,
+}: {
+  anchor: HTMLElement
+  message: string
+  id: string
+  validationVersion?: number
+}) {
+  const triggerId = useId()
+  const badge = useRef<HTMLButtonElement>(null)
+  const [expiredVersion, setExpiredVersion] = useState<number>()
+  const [interacting, setInteracting] = useState(false)
+  const [dismissedVersion, setDismissedVersion] = useState<number>()
+  const [visible, setVisible] = useState(true)
+  const container = anchor.closest('dialog') ?? anchor.ownerDocument.body
+  useEffect(() => {
+    const timer = setTimeout(() => setExpiredVersion(validationVersion), 5000)
+    return () => clearTimeout(timer)
+  }, [validationVersion])
+  useLayoutEffect(() => attachFieldError(anchor, id, () => badge.current, setVisible), [anchor, id])
+
+  return createPortal(
+    <>
+      <span id={id} className="sr-only" role="alert">
+        {message}
+      </span>
+      <BaseTooltip.Provider>
+        <BaseTooltip.Root
+          open={visible && dismissedVersion !== validationVersion && (expiredVersion !== validationVersion || interacting)}
+          triggerId={triggerId}
+          onOpenChange={(open, details) => {
+            if (details.reason === 'escape-key' || details.reason === 'trigger-press') {
+              setExpiredVersion(validationVersion)
+              setInteracting(false)
+              setDismissedVersion(validationVersion)
+            } else {
+              setInteracting(open)
+              if (open) setDismissedVersion(undefined)
+            }
+          }}
+        >
+          <BaseTooltip.Trigger
+            id={triggerId}
+            ref={badge}
+            delay={0}
+            closeDelay={100}
+            closeOnClick={false}
+            aria-label="Show validation error"
+            aria-describedby={id}
+            className="fixed z-50 inline-flex size-5 cursor-help items-center justify-center rounded-full
+bg-error text-on-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
+            onPointerEnter={() => setDismissedVersion(undefined)}
+            onFocus={() => setDismissedVersion(undefined)}
+          >
+            <WarningIcon weight="fill" aria-hidden="true" className="size-3" />
+          </BaseTooltip.Trigger>
+          <BaseTooltip.Portal container={container}>
+            <BaseTooltip.Positioner side="right" align="center" sideOffset={-20} collisionPadding={8} className="z-40">
+              <BaseTooltip.Popup
+                render={<FieldErrorMotion />}
+                className="min-h-5 max-w-xs origin-left rounded-full bg-error py-1 pr-1 pl-6
+text-xs leading-3 text-on-primary shadow-lg data-[side=left]:origin-right data-[side=left]:pr-6 data-[side=left]:pl-1"
+              >
+                {message}
+              </BaseTooltip.Popup>
+            </BaseTooltip.Positioner>
+          </BaseTooltip.Portal>
+        </BaseTooltip.Root>
+      </BaseTooltip.Provider>
+    </>,
+    container,
+  )
+}
+
+function attachFieldError(
+  anchor: HTMLElement,
+  id: string,
+  getBadge: () => HTMLButtonElement | null,
+  setVisible: (visible: boolean) => void,
+) {
+  const originalPadding = anchor.style.paddingRight
+  const originalBorder = anchor.style.borderColor
+  const originalDescription = anchor.getAttribute('aria-describedby')
+  anchor.setAttribute('aria-invalid', 'true')
+  anchor.setAttribute('aria-describedby', [...new Set([...(originalDescription?.split(' ') ?? []), id])].join(' '))
+  anchor.style.borderColor = 'var(--color-error)'
+  const textControl = anchor.matches('input:not([type=file]), textarea')
+  const padding = parseFloat(getComputedStyle(anchor).paddingRight)
+  if (textControl) anchor.style.paddingRight = `${Math.max(padding, 32)}px`
+  const update = () => {
+    const node = getBadge()
+    if (!node) return
+    const rect = anchor.getBoundingClientRect()
+    node.style.top = `${rect.top + Math.min(6, Math.max(0, (rect.height - 20) / 2))}px`
+    node.style.left = `${rect.right - 26}px`
+    node.style.visibility = rect.width && rect.height && rect.bottom > 0 && rect.top < window.innerHeight ? 'visible' : 'hidden'
+  }
+  update()
+  const observer = new ResizeObserver(update)
+  observer.observe(anchor)
+  if (anchor.parentElement) observer.observe(anchor.parentElement)
+  const intersection = new IntersectionObserver(([entry]) => {
+    setVisible(entry.isIntersecting)
+    const node = getBadge()
+    if (node) node.style.visibility = entry.isIntersecting ? 'visible' : 'hidden'
+  })
+  intersection.observe(anchor)
+  window.addEventListener('resize', update)
+  window.addEventListener('scroll', update, true)
+  return () => {
+    observer.disconnect()
+    intersection.disconnect()
+    window.removeEventListener('resize', update)
+    window.removeEventListener('scroll', update, true)
+    anchor.style.paddingRight = originalPadding
+    anchor.style.borderColor = originalBorder
+    anchor.removeAttribute('aria-invalid')
+    if (originalDescription === null) anchor.removeAttribute('aria-describedby')
+    else anchor.setAttribute('aria-describedby', originalDescription)
+  }
 }

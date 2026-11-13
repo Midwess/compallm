@@ -1,3 +1,4 @@
+import { FormError } from './form'
 import { animated } from './motion'
 import { createContext, useContext, useId, type ReactNode, type HTMLAttributes, type LabelHTMLAttributes } from 'react'
 import { TextField, type TextFieldProps } from './fields'
@@ -35,4 +36,4 @@ function Input(props: TextFieldProps) {
 function Hint(props: HTMLAttributes<HTMLParagraphElement>) {
   return <p {...props} className={cx('text-xs text-muted', props.className)} />
 }
-export const FormField = Object.assign(Root, { Label, Input, Hint })
+export const FormField = Object.assign(Root, { Label, Input, Hint, Error: FormError })

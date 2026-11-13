@@ -171,5 +171,10 @@ export class SettingsController implements Controller {
     void this.auth.signOut()
   }
   leaveSettings = () => this.url.navigate(`${this.base}/chat`)
+  apiError = (error: unknown, retry?: () => void) => {
+    if (retry) notify.apiError(error, retry)
+    else notify.error(error)
+  }
+  dismissErrorToast = () => this.store.setState({ errorToast: null })
   dismissNotice = () => this.store.setState({ notice: null })
 }

@@ -1,6 +1,5 @@
 import {
   createCreateProviderStore,
-  hasValidModelPrices,
   isValidModelDraft,
   providerSnapshot,
   type CreateProviderController as Controller,
@@ -94,7 +93,7 @@ export class CreateProviderController implements Controller {
     this.unsubscribe?.()
     this.unblock?.()
     window.removeEventListener('beforeunload', this.beforeUnload)
-    this.store.setState({ apiKey: '', headers: [], avatarUrl: null })
+    this.store.setState({ apiKey: '', headers: [], avatarUrl: null, avatarFile: null })
     if (this.avatarObjectUrl) URL.revokeObjectURL(this.avatarObjectUrl)
   }
   private beforeUnload = (event: BeforeUnloadEvent) => {
@@ -224,11 +223,10 @@ export class CreateProviderController implements Controller {
     this.store.setState({ modelQuery })
     this.persist()
   }
-  onModelEnabledChanged = (id: string, enabled: boolean) => {
+  onModelsChanged = (models: ProviderModel[]) => {
     this.invalidateTest()
-    this.store.setState((state) => ({
-      models: state.models.map((model) => (model.id === id && hasValidModelPrices(model) ? { ...model, enabled } : model)),
-    }))
+    this.store.setState({ models })
+    this.endpoint()
     this.persist()
   }
   onAddModel = (protocol: TextModelProtocol = 'openai_chat_completions') => {
@@ -249,8 +247,8 @@ export class CreateProviderController implements Controller {
     this.store.setState({ modelDraft: null, editingModelId: null })
     this.persist(true, true)
   }
-  onSaveModel = () => {
-    const { modelDraft: draft, models, editingModelId } = this.store.getState()
+  onSaveModel = (draft: ModelDraft) => {
+    const { models, editingModelId } = this.store.getState()
     if (
       !draft ||
       !isValidModelDraft(draft) ||
@@ -309,21 +307,12 @@ export class CreateProviderController implements Controller {
     this.store.setState({ modelStatusFilter: 'all', modelProtocolFilter: 'all', modelCapabilityFilter: [] })
     this.persist()
   }
-  onModelsEnabledChanged = (ids: string[], enabled: boolean) => {
-    this.invalidateTest()
-    this.store.setState((state) => ({
-      models: state.models.map((model) =>
-        ids.includes(model.id) && hasValidModelPrices(model) ? { ...model, enabled } : model,
-      ),
-    }))
-    this.endpoint()
-    this.persist()
-  }
   onTestConnection = () => {
     notify.info('Connection testing is not available yet.')
   }
   onSaveProvider = () => {
     notify.info('Saving provider changes is not available yet.')
+    return false as const
   }
   onCancelProvider = () => {
     const saved = this.store.getState().savedProvider
@@ -351,5 +340,6 @@ export class CreateProviderController implements Controller {
   }
   onCreateProvider = () => {
     notify.info('Provider creation is not available yet. Your configuration has not been saved.')
+    return false as const
   }
 }

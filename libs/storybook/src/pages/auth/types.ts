@@ -1,5 +1,5 @@
 import type { Session } from '@compallm/contract/graphql'
-import type { StoreApi } from 'zustand/vanilla'
+import type { FormStore } from '../../components/form'
 
 export type AuthFailureReason = 'email-registered' | 'incorrect-code' | 'expired-code' | 'throttled' | 'unavailable'
 
@@ -28,7 +28,7 @@ export interface AuthState {
   resendRevealed: boolean
 }
 
-export type AuthStore = Pick<StoreApi<AuthState>, 'getState' | 'getInitialState' | 'subscribe'>
+export type AuthStore = FormStore<AuthState>
 
 export interface AuthController {
   readonly store: AuthStore
@@ -39,10 +39,10 @@ export interface AuthController {
   signOut(): Promise<void>
   ensureCurrentUser(): Promise<AuthUser | null>
   refreshCurrentUser(signal?: AbortSignal, redirectAnonymous?: boolean): Promise<AuthUser | null>
-  onEmailChanged(email: string): void
-  onCodeChanged(code: string): void
+  verifyCode(code: string): Promise<void>
+  clearError(): void
   onInvalidEmail(): void
-  requestCode(): Promise<void>
+  requestCode(email: string): Promise<void>
   resendCode(): Promise<void>
   retry(): Promise<void>
   showResend(): void

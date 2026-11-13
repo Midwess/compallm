@@ -83,10 +83,9 @@ test('confirmed signup retries only identity loading after a temporary failure',
   }
   try {
     controller.start('signup')
-    controller.onEmailChanged('reader@example.com')
-    await controller.requestCode()
+    await controller.requestCode('reader@example.com')
     assert.ok(controller.store.getState().remaining > 0)
-    controller.onCodeChanged('123456')
+    await controller.verifyCode('123456')
     await until(controller.store, (state) => state.pending === null && state.status === 'error')
     assert.equal(confirmations, 1)
     await controller.retry()

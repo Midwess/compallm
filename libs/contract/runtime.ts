@@ -61,6 +61,7 @@ const formats: Record<string, (value: string, constraints: StringConstraints) =>
 }
 
 export interface StringConstraints {
+  messages?: Record<string, string>
   minLength?: number
   maxLength?: number
   pattern?: string
@@ -141,14 +142,22 @@ export function inputString(constraints: StringConstraints) {
     })
     .superRefine((value, context) => {
       const length = [...value].length
-      if (
-        invalidUnicode.test(value) ||
-        (constraints.minLength !== undefined && length < constraints.minLength) ||
-        (constraints.maxLength !== undefined && length > constraints.maxLength) ||
-        (pattern && !pattern.test(value)) ||
-        (format && !format(value, constraints))
-      )
-        context.addIssue({ code: 'custom', message: 'Invalid input' })
+      const failure = invalidUnicode.test(value)
+        ? 'unicode'
+        : constraints.minLength !== undefined && length < constraints.minLength
+          ? 'minLength'
+          : constraints.maxLength !== undefined && length > constraints.maxLength
+            ? 'maxLength'
+            : pattern && !pattern.test(value)
+              ? 'pattern'
+              : format && !format(value, constraints)
+                ? 'x-compallm-format'
+                : undefined
+      if (failure)
+        context.addIssue({
+          code: 'custom',
+          message: constraints.messages?.[failure] ?? 'Invalid input',
+        })
     })
 }
 

@@ -1,3 +1,4 @@
+import { useFormField } from './form'
 import { useContext, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from 'react'
 import { Menu } from '@base-ui/react/menu'
 import { CaretRightIcon } from '@phosphor-icons/react/dist/csr/CaretRight'
@@ -72,9 +73,37 @@ function Separator() {
   return <Menu.Separator className="my-1 h-px bg-border/60" />
 }
 
-function CheckboxItem({ className, children, ...props }: Omit<Menu.CheckboxItem.Props, 'className'> & { className?: string }) {
+function CheckboxItem({
+  className,
+  children,
+  name,
+  selectionValue,
+  ...props
+}: Omit<Menu.CheckboxItem.Props, 'className'> & { className?: string; name?: string; selectionValue?: string }) {
+  const field = useFormField<boolean | string[]>(name)
+  const checked = field
+    ? Array.isArray(field.value)
+      ? field.value.includes(selectionValue ?? '')
+      : Boolean(field.value)
+    : props.checked
+
   return (
-    <Menu.CheckboxItem {...props} className={cx(itemClass, 'min-h-9 gap-3 text-xsm', className)}>
+    <Menu.CheckboxItem
+      {...props}
+      checked={checked}
+      onCheckedChange={(next, details) => {
+        if (field)
+          field.change(
+            Array.isArray(field.value)
+              ? next
+                ? [...field.value, selectionValue ?? '']
+                : field.value.filter((id) => id !== selectionValue)
+              : next,
+          )
+        else props.onCheckedChange?.(next, details)
+      }}
+      className={cx(itemClass, 'min-h-9 gap-3 text-xsm', className)}
+    >
       <span
         aria-hidden="true"
         className="flex size-4 shrink-0 items-center justify-center rounded-sm border border-input-border"

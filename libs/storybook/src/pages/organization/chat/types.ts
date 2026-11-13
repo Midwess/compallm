@@ -1,4 +1,4 @@
-import type { StoreApi } from 'zustand/vanilla'
+import type { FormStore } from '../../../components/form'
 
 export interface ChatState {
   draft: string
@@ -8,9 +8,7 @@ export interface ChatState {
 }
 
 export interface ChatController {
-  readonly store: Pick<StoreApi<ChatState>, 'getState' | 'getInitialState' | 'subscribe'>
-  onDraftChanged(value: string): void
-  onModelChanged(id: string): void
-  onCreateChat(): void
+  readonly store: FormStore<ChatState>
+  onCreateChat(values: Pick<ChatState, 'draft' | 'modelId'>): void | false | Promise<void | false>
   onAttach(): void
 }

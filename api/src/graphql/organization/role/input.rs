@@ -4,7 +4,10 @@
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RoleCreateInput {
     #[modify(trim)]
-    #[validate(length(min = 1, max = 64))]
+    #[validate(
+        length(min = 1, message = "Name is required."),
+        length(max = 64, message = "Name must be 64 characters or fewer.")
+    )]
     pub name: String,
     #[validate(length(max = 128))]
     pub description: String,
@@ -20,7 +23,10 @@ pub struct RoleCreateInput {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RoleUpdateInput {
     #[modify(trim)]
-    #[validate(length(min = 1, max = 64))]
+    #[validate(
+        length(min = 1, message = "Name is required."),
+        length(max = 64, message = "Name must be 64 characters or fewer.")
+    )]
     pub name: Option<String>,
     #[validate(length(max = 128))]
     pub description: Option<String>,

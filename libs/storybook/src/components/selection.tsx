@@ -1,8 +1,9 @@
+import { useFormField } from './form'
 import { animated, useSelectionMotion } from './motion'
-import { useEffect, useRef, type InputHTMLAttributes, type ReactNode } from 'react'
+import { useEffect, useRef, type InputHTMLAttributes, type ComponentPropsWithRef, type ReactNode } from 'react'
 import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
 import { MinusIcon } from '@phosphor-icons/react/dist/csr/Minus'
-import { cx } from './shared'
+import { cx, composeRefs } from './shared'
 
 // The 3px inset centers the thumb and standard checkbox track.
 // eslint-disable-next-line design/spacing -- Preserve the current switch alignment.
@@ -10,14 +11,41 @@ const switchIndicatorPosition = 'top-2.25 left-2.25'
 // eslint-disable-next-line design/spacing -- Preserve the standard checkbox track size.
 const checkboxTrackInset = 'inset-0.75'
 
-export function Switch({ className, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'role'>) {
+export function Switch({
+  className,
+  checked,
+  onChange,
+  onBlur,
+  ...props
+}: Omit<ComponentPropsWithRef<'input'>, 'type' | 'role'>) {
   const input = useRef<HTMLInputElement>(null)
+  const field = useFormField<boolean | string[]>(props.name)
   useSelectionMotion(input, 'switch')
   return (
-    <span className="relative inline-flex h-8 w-10.5 flex-none has-disabled:opacity-50">
+    <span className="relative inline-flex h-8 w-10.5 flex-none align-middle has-disabled:opacity-50">
       <animated.input
         {...props}
-        ref={input}
+        aria-invalid={field?.invalid || props['aria-invalid']}
+        aria-describedby={props['aria-describedby'] ?? (field ? `${props.name}-error` : undefined)}
+        checked={
+          field ? (Array.isArray(field.value) ? field.value.includes(String(props.value)) : Boolean(field.value)) : checked
+        }
+        onChange={(event) => {
+          if (field)
+            field.change(
+              Array.isArray(field.value)
+                ? event.currentTarget.checked
+                  ? [...field.value, String(props.value)]
+                  : field.value.filter((value) => value !== String(props.value))
+                : event.currentTarget.checked,
+            )
+          else onChange?.(event)
+        }}
+        onBlur={(event) => {
+          field?.blur()
+          onBlur?.(event)
+        }}
+        ref={composeRefs(input, props.ref)}
         type="checkbox"
         role="switch"
         className={cx(
@@ -40,12 +68,21 @@ border-[0.5px] border-input-border bg-disabled"
     </span>
   )
 }
-export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size'> {
+export interface CheckboxProps extends Omit<ComponentPropsWithRef<'input'>, 'type' | 'size'> {
   indeterminate?: boolean
   size?: 'standard' | 'compact'
 }
-export function Checkbox({ indeterminate = false, size = 'standard', className, ...props }: CheckboxProps) {
+export function Checkbox({
+  indeterminate = false,
+  size = 'standard',
+  className,
+  checked,
+  onChange,
+  onBlur,
+  ...props
+}: CheckboxProps) {
   const input = useRef<HTMLInputElement>(null)
+  const field = useFormField<boolean | string[]>(props.name)
   useSelectionMotion(input, 'checkbox', indeterminate)
   useEffect(() => {
     if (input.current) input.current.indeterminate = indeterminate
@@ -59,7 +96,27 @@ export function Checkbox({ indeterminate = false, size = 'standard', className, 
     >
       <animated.input
         {...props}
-        ref={input}
+        aria-invalid={field?.invalid || props['aria-invalid']}
+        aria-describedby={props['aria-describedby'] ?? (field ? `${props.name}-error` : undefined)}
+        checked={
+          field ? (Array.isArray(field.value) ? field.value.includes(String(props.value)) : Boolean(field.value)) : checked
+        }
+        onChange={(event) => {
+          if (field)
+            field.change(
+              Array.isArray(field.value)
+                ? event.currentTarget.checked
+                  ? [...field.value, String(props.value)]
+                  : field.value.filter((value) => value !== String(props.value))
+                : event.currentTarget.checked,
+            )
+          else onChange?.(event)
+        }}
+        onBlur={(event) => {
+          field?.blur()
+          onBlur?.(event)
+        }}
+        ref={composeRefs(input, props.ref)}
         type="checkbox"
         className={cx(
           `peer absolute inset-0 size-full cursor-pointer appearance-none rounded bg-transparent
@@ -92,14 +149,26 @@ export function Checkbox({ indeterminate = false, size = 'standard', className, 
   )
 }
 
-export function Radio({ className, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+export function Radio({ className, checked, onChange, onBlur, ...props }: Omit<ComponentPropsWithRef<'input'>, 'type'>) {
   const input = useRef<HTMLInputElement>(null)
+  const field = useFormField<string>(props.name)
   useSelectionMotion(input, 'radio')
   return (
     <span className="relative inline-flex size-4 shrink-0 items-center justify-center has-disabled:opacity-50">
       <animated.input
         {...props}
-        ref={input}
+        aria-invalid={field?.invalid || props['aria-invalid']}
+        aria-describedby={props['aria-describedby'] ?? (field ? `${props.name}-error` : undefined)}
+        checked={field ? field.value === String(props.value) : checked}
+        onChange={(event) => {
+          if (field) field.change(String(props.value))
+          else onChange?.(event)
+        }}
+        onBlur={(event) => {
+          field?.blur()
+          onBlur?.(event)
+        }}
+        ref={composeRefs(input, props.ref)}
         type="radio"
         className={cx(
           'absolute inset-0 size-full cursor-pointer appearance-none rounded-full',

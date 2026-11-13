@@ -52,8 +52,16 @@ export class DemoRoleController implements RoleController {
     this.store.setState({ draft, error: null })
     if (draft.source) this.setPolicySource(draft.source)
   }
-  updateRole = (value: Partial<Pick<RoleDraft, 'name' | 'description'>>) =>
-    this.store.setState((s) => ({ draft: s.draft ? { ...s.draft, ...value } : null }))
+  updateMetadata = async (value: Partial<Pick<RoleDraft, 'name' | 'description'>>) => {
+    if (this.failWrites) throw new Error('Could not save changes. Your draft is retained.')
+    const draft = this.store.getState().draft
+    if (!draft || draft.builtin) throw new Error('Role is not editable')
+    const accepted = { name: (value.name ?? draft.name).trim(), description: value.description ?? draft.description }
+    this.settings.store.setState((state) => ({
+      roles: state.roles.map((role) => (role.id === draft.id ? { ...role, ...accepted } : role)),
+    }))
+    return accepted
+  }
   setPolicyMode = (mode: RoleDraft['mode']) =>
     this.store.setState((s) => ({
       draft:
@@ -116,6 +124,17 @@ export class DemoRoleController implements RoleController {
       const result = c.formatPolicies({ policyText: source, lineWidth: 80, indentWidth: 2 })
       if (result.type === 'success') this.setPolicySource(result.formatted_policy)
     })
+  }
+  commitPolicySource = async (source: string) => {
+    const draft = this.store.getState().draft
+    if (!draft || draft.builtin) return false
+    if (this.failWrites) throw new Error('Could not save policy. Your draft is retained.')
+    const parsed = await project(source)
+    if (parsed.diagnostics.length) return false
+    this.settings.store.setState((state) => ({
+      roles: state.roles.map((role) => (role.id === draft.id ? { ...role, source } : role)),
+    }))
+    return true
   }
   saveRole = () => {
     const draft = this.store.getState().draft

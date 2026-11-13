@@ -21,12 +21,11 @@ export class DemoSettingsController implements SettingsController {
     preferences: { setPreference: (key, value) => this.setPreference(key, value) },
     profile: new DemoProfileController(this.store, (file) => this.avatarUrl(file)),
     organization: new DemoOrganizationController(this.store, (file) => this.avatarUrl(file)),
-    members: { toggleMemberRole: (member, role) => this.toggleMemberRole(member, role) },
+    members: { setMemberRoles: (member, roles) => this.setMemberRoles(member, roles) },
     dialogs: {
       openDialog: (kind, id) => this.openDialog(kind, id),
-      updateDialog: (value) => this.updateDialog(value),
       closeDialog: () => this.closeDialog(),
-      confirmDialog: () => this.confirmDialog(),
+      confirmDialog: (dialog) => this.confirmDialog(dialog),
       copy: (value) => this.copy(value),
     },
   }
@@ -131,8 +130,6 @@ export class DemoSettingsController implements SettingsController {
                 : ''
     this.store.setState({ dialog: { kind, targetId, name: '', value: value ?? '', phrase: '' }, error: null })
   }
-  updateDialog = (value: Partial<SettingsDialog>) =>
-    this.store.setState((s) => ({ dialog: s.dialog ? { ...s.dialog, ...value } : null }))
   closeDialog = () => {
     if (this.store.getState().busy) return
     if (this.verificationTimer) {
@@ -142,9 +139,8 @@ export class DemoSettingsController implements SettingsController {
     }
     this.store.setState({ dialog: null })
   }
-  confirmDialog = () => {
-    const s = this.store.getState(),
-      d = s.dialog
+  confirmDialog = (d: SettingsDialog) => {
+    const s = this.store.getState()
     if (!d) return
     if (
       d.kind === 'delete-role' &&
@@ -227,14 +223,10 @@ export class DemoSettingsController implements SettingsController {
       this.report(destructive ? 'Deletion requested' : 'Changes applied')
     })
   }
-  toggleMemberRole = (memberId: string, roleId: string) => {
+  setMemberRoles = (memberId: string, roleIds: string[]) => {
     if (this.store.getState().readonly) return
     this.store.setState((s) => ({
-      members: s.members.map((m) =>
-        m.id !== memberId
-          ? m
-          : { ...m, roleIds: m.roleIds.includes(roleId) ? m.roleIds.filter((id) => id !== roleId) : [...m.roleIds, roleId] },
-      ),
+      members: s.members.map((m) => (m.id !== memberId ? m : { ...m, roleIds })),
     }))
   }
   copy = (value: string) => {
@@ -245,5 +237,22 @@ export class DemoSettingsController implements SettingsController {
   }
   signOut = () => this.report('Sign out requested')
   leaveSettings = () => this.report('Back to app requested')
+  apiError = (error: unknown, retry?: () => void) => {
+    const payload = error as { info?: { message?: unknown }; message?: unknown }
+    const message =
+      typeof payload?.info?.message === 'string'
+        ? payload.info.message
+        : typeof payload?.message === 'string'
+          ? payload.message
+          : 'Something went wrong. Please try again.'
+    const notification = { message, retry }
+    this.store.setState({ errorToast: notification })
+    const timer = setTimeout(() => {
+      this.timers.delete(timer)
+      if (this.store.getState().errorToast === notification) this.dismissErrorToast()
+    }, 15000)
+    this.timers.add(timer)
+  }
+  dismissErrorToast = () => this.store.setState({ errorToast: null })
   dismissNotice = () => this.store.setState({ notice: null })
 }

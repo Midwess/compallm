@@ -1,5 +1,5 @@
 import { useContext, useSyncExternalStore } from 'react'
-import { useStore } from 'zustand'
+import { useFormStore } from '../../components/form'
 import { SettingsControllerContext } from '../../context'
 import type { SettingsState } from './types'
 
@@ -8,8 +8,8 @@ export function useSettingsController() {
   if (!controller) throw new Error('SettingsPage requires SettingsControllerContext.')
   return controller
 }
-export function useSettings<T>(selector: (state: SettingsState) => T) {
-  return useStore(useSettingsController().store, selector)
+export function useSettings<T>(selector: (state: SettingsState) => T, names: readonly string[] = []) {
+  return useFormStore(useSettingsController().store, selector, names)
 }
 
 const systemTheme = '(prefers-color-scheme: light)'
@@ -19,10 +19,10 @@ const subscribeTheme = (notify: () => void) => {
   return () => query.removeEventListener('change', notify)
 }
 export function useCodeAppearance() {
-  const selected = useSettings((s) => s.preferences.codeTheme),
-    appTheme = useSettings((s) => s.preferences.theme),
-    font = useSettings((s) => s.preferences.codeFont),
-    size = useSettings((s) => s.preferences.codeFontSize),
+  const selected = useSettings((s) => s.preferences.codeTheme, ['preferences.codeTheme']),
+    appTheme = useSettings((s) => s.preferences.theme, ['preferences.theme']),
+    font = useSettings((s) => s.preferences.codeFont, ['preferences.codeFont']),
+    size = useSettings((s) => s.preferences.codeFontSize, ['preferences.codeFontSize']),
     light = useSyncExternalStore(
       subscribeTheme,
       () => window.matchMedia(systemTheme).matches,

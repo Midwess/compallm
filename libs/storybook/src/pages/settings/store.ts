@@ -1,5 +1,6 @@
 import { createFormStore } from '../../components/form'
 import type { SettingsState } from './types'
+import { initialPreferenceDraft } from './preference-values'
 
 export function createSettingsStore(initial: Partial<SettingsState> = {}) {
   return createFormStore<SettingsState>(
@@ -11,30 +12,7 @@ export function createSettingsStore(initial: Partial<SettingsState> = {}) {
       navigationQuery: '',
       query: '',
       filters: {},
-      preferences: {
-        home: 'Chat',
-        displayNames: 'Full name',
-        firstDay: 'Monday',
-        sidebarOrder: 'Providers,Models,Notebooks,Plugins',
-        sidebarBadgeStyle: 'Dot',
-        sidebarProviders: 'Always show',
-        sidebarModels: 'Always show',
-        sidebarNotebooks: 'Always show',
-        sidebarPlugins: 'Always show',
-        fontSize: 'Default',
-        underlineLinks: false,
-        reduceMotion: true,
-        pointerCursors: false,
-        theme: 'System preference',
-        lightTheme: 'Light',
-        darkTheme: 'Dark',
-        emoticons: true,
-        sendShortcut: '⌘ + Enter',
-        codeTheme: 'Follow interface',
-        codeLanguage: 'typescript',
-        codeFont: 'Default',
-        codeFontSize: '12px',
-      },
+      preferences: initialPreferenceDraft(),
       profile: { name: '', username: '', email: '', avatar: null },
       organization: {
         name: '',

@@ -27,28 +27,41 @@ async function settled(form) {
   assert.equal(form.pending, false)
 }
 
+test('initial form values come from Core defaults and round-trip through the write contract', async () => {
+  const { userPreferenceDefaults } = await import('@compallm/contract/preference')
+  const controller = setup()
+  const { input } = parsePreferencePatch(controller.store.form.values.preferences)
+  const { sidebar, typography, ...groups } = userPreferenceDefaults
+  assert.deepEqual(input, {
+    ...groups,
+    typography: { size: typography.size },
+    sidebar: { badgeStyle: sidebar.badgeStyle, order: sidebar.entries.map(({ item }) => item), visibility: sidebar.entries },
+  })
+  controller.store.form.stop()
+})
+
 test('preference edits use grouped wire values and preserve omitted siblings', () => {
   const { input } = parsePreferencePatch({
-    home: 'Models',
-    displayNames: 'Username',
-    firstDay: 'Friday',
-    fontSize: 'Larger',
-    theme: 'System preference',
-    lightTheme: 'Pure Light',
-    darkTheme: 'Magic Blue',
+    home: 'MODELS',
+    displayNames: 'USERNAME',
+    firstDay: 'FRIDAY',
+    fontSize: 'LARGER',
+    theme: 'SYSTEM',
+    lightTheme: 'PURE_LIGHT',
+    darkTheme: 'MAGIC_BLUE',
     underlineLinks: true,
     reduceMotion: false,
     pointerCursors: true,
     emoticons: false,
-    sendShortcut: '⌘ + Enter',
-    codeTheme: 'System preference',
-    codeFont: 'Monospace',
-    codeFontSize: '14px',
+    sendShortcut: 'MODIFIER_ENTER',
+    codeTheme: 'SYSTEM',
+    codeFont: 'MONOSPACE',
+    codeFontSize: 'PX14',
     codeLanguage: 'rust',
-    sidebarOrder: 'Models,Providers,Plugins,Notebooks',
-    sidebarBadgeStyle: 'Count',
-    sidebarModels: "Don't show",
-    sidebarPlugins: 'Show when badged',
+    sidebarOrder: ['MODELS', 'PROVIDERS', 'PLUGINS', 'NOTEBOOKS'],
+    sidebarBadgeStyle: 'COUNT',
+    sidebarMODELS: 'HIDDEN',
+    sidebarPLUGINS: 'WHEN_BADGED',
   })
   assert.deepEqual(input, {
     navigation: { home: 'MODELS' },
@@ -68,8 +81,8 @@ test('preference edits use grouped wire values and preserve omitted siblings', (
       ],
     },
   })
-  assert.deepEqual(parsePreferencePatch({ codeFontSize: '16px' }).input, { codeAppearance: { font: { size: 'PX16' } } })
-  assert.deepEqual(parsePreferencePatch({ sidebarModels: 'Always show' }).input, {
+  assert.deepEqual(parsePreferencePatch({ codeFontSize: 'PX16' }).input, { codeAppearance: { font: { size: 'PX16' } } })
+  assert.deepEqual(parsePreferencePatch({ sidebarMODELS: 'ALWAYS' }).input, {
     sidebar: { visibility: [{ item: 'MODELS', visibility: 'ALWAYS' }] },
   })
 })
@@ -86,13 +99,13 @@ test('save reconciles only submitted preferences, queues changes, and keeps prev
     return new Promise((resolve) => pending.push(resolve))
   }
   try {
-    form.change('preferences.home', 'Models')
+    form.change('preferences.home', 'MODELS')
     await new Promise((resolve) => setTimeout(resolve, 0))
-    form.change('preferences.home', 'Providers')
+    form.change('preferences.home', 'PROVIDERS')
     form.change('preferences.underlineLinks', true)
     pending[0](response({ navigation: { home: 'MODELS' }, accessibility: { underlineLinks: false } }))
     for (let i = 0; i < 100 && pending.length < 2; i++) await new Promise((resolve) => setTimeout(resolve, 1))
-    assert.equal(form.values.preferences.home, 'Providers')
+    assert.equal(form.values.preferences.home, 'PROVIDERS')
     assert.equal(form.values.preferences.underlineLinks, true)
     pending[1](response({ navigation: { home: 'PROVIDERS' }, accessibility: { underlineLinks: true } }))
     await settled(form)
@@ -100,7 +113,7 @@ test('save reconciles only submitted preferences, queues changes, and keeps prev
       { navigation: { home: 'MODELS' } },
       { navigation: { home: 'PROVIDERS' }, accessibility: { underlineLinks: true } },
     ])
-    assert.equal(form.baseline.preferences.home, 'Providers')
+    assert.equal(form.baseline.preferences.home, 'PROVIDERS')
     form.change('preferences.codeLanguage', 'rust')
     await settled(form)
     assert.equal(writes.length, 2)
@@ -130,25 +143,25 @@ test('failed saves retain drafts, explicitly retry latest values, and ignore can
     })
   }
   try {
-    form.change('preferences.home', 'Models')
+    form.change('preferences.home', 'MODELS')
     await settled(form)
-    assert.equal(form.values.preferences.home, 'Models')
-    assert.equal(form.baseline.preferences.home, 'Chat')
-    form.change('preferences.home', 'Providers')
+    assert.equal(form.values.preferences.home, 'MODELS')
+    assert.equal(form.baseline.preferences.home, 'CHAT')
+    form.change('preferences.home', 'PROVIDERS')
     assert.equal(writes.length, 1)
     assert.equal(typeof retry, 'function')
     retry()
     await settled(form)
     assert.deepEqual(writes[1], { navigation: { home: 'PROVIDERS' } })
-    assert.equal(form.baseline.preferences.home, 'Providers')
-    form.change('preferences.home', 'Models')
+    assert.equal(form.baseline.preferences.home, 'PROVIDERS')
+    form.change('preferences.home', 'MODELS')
     await new Promise((resolve) => setTimeout(resolve, 0))
     stop()
     configureSettingsForm(controller)
     finish(response({ navigation: { home: 'MODELS' } }))
     await new Promise((resolve) => setTimeout(resolve, 0))
-    assert.equal(form.baseline.preferences.home, 'Providers')
-    assert.equal(form.values.preferences.home, 'Models')
+    assert.equal(form.baseline.preferences.home, 'PROVIDERS')
+    assert.equal(form.values.preferences.home, 'MODELS')
     retry()
     await new Promise((resolve) => setTimeout(resolve, 0))
     assert.equal(writes.length, 3)

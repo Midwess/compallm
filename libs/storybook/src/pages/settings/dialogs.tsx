@@ -1,3 +1,4 @@
+import { preferenceOptions, preferenceLabel } from './preference-values'
 import { parseSettingsDialog } from './validation'
 import { FormError } from '../../components/form'
 import { useState } from 'react'
@@ -18,33 +19,28 @@ import { PlugsIcon } from '@phosphor-icons/react/dist/csr/Plugs'
 import { useSettings, useSettingsController } from './controller'
 import type { SettingsDialogKind } from './types'
 
-const sidebarIcons = { Providers: HardDrivesIcon, Models: CubeIcon, Notebooks: NotebookIcon, Plugins: PlugsIcon }
-const badgeOptions = [
-  {
-    value: 'Dot',
-    label: 'Dot',
-    icon: <span aria-hidden="true" className="mx-1 size-1.5 shrink-0 rounded-full bg-muted" />,
-  },
-  {
-    value: 'Count',
-    label: 'Count',
-    icon: (
+const sidebarIcons = { PROVIDERS: HardDrivesIcon, MODELS: CubeIcon, NOTEBOOKS: NotebookIcon, PLUGINS: PlugsIcon }
+const badgeOptions = preferenceOptions.sidebarBadgeStyle.map((option) => ({
+  ...option,
+  icon:
+    option.value === 'DOT' ? (
+      <span aria-hidden="true" className="mx-1 size-1.5 shrink-0 rounded-full bg-muted" />
+    ) : (
       <span aria-hidden="true" className="flex size-3.5 shrink-0 items-center justify-center text-xs text-muted">
         1
       </span>
     ),
-  },
-]
-const visibilityOptions = ['Always show', 'Show when badged', "Don't show"].map((value) => ({ label: value, value }))
+}))
+const visibilityOptions = preferenceOptions.sidebarVisibility
 
 function CustomizeSidebar() {
   const timing = useTransition('reorder')
   const controller = useSettingsController()
   const preferences = useSettings((state) => state.preferences, ['preferences'])
-  const order = String(preferences.sidebarOrder).split(',')
+  const order = preferences.sidebarOrder
   const { rowNodes, drag, preview, announcement, id, keyboardMove, startDrag, pointerMove, endDrag } = useReorder(
     order,
-    (items) => controller.store.form.change('preferences.' + 'sidebarOrder', items.join(',')),
+    (items) => controller.store.form.change('preferences.' + 'sidebarOrder', items),
     false,
     'Sidebar item',
   )
@@ -86,7 +82,7 @@ function CustomizeSidebar() {
                     >
                       <button
                         type="button"
-                        aria-label={`Reorder ${name}`}
+                        aria-label={`Reorder ${preferenceLabel(name)}`}
                         aria-describedby={`${id}-reorder`}
                         className={`
 flex size-6 shrink-0 touch-none cursor-grab items-center justify-center text-muted hover:text-text
@@ -114,9 +110,9 @@ active:cursor-grabbing focus-visible:outline-focus
                         <DotsSixVerticalIcon aria-hidden="true" className="size-3" />
                       </button>
                       {Icon ? <Icon aria-hidden="true" className="mr-2 size-4 shrink-0 text-muted" /> : null}
-                      <span className="min-w-0 flex-1 text-xsm">{name}</span>
+                      <span className="min-w-0 flex-1 text-xsm">{preferenceLabel(name)}</span>
                       <Select
-                        aria-label={`${name} visibility`}
+                        aria-label={`${preferenceLabel(name)} visibility`}
                         className="w-35"
                         name={`preferences.sidebar${name}`}
                         options={visibilityOptions}

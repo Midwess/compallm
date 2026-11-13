@@ -25,7 +25,7 @@ export function configureSettingsForm(c: SettingsController) {
     submit: async (values, patch, signal, names) => {
       if (patch.preferences) {
         const confirmed = await c.pages.preferences.updatePreferences(patch.preferences, signal)
-        return confirmed === false ? false : { preferences: confirmed }
+        return confirmed === false ? false : { preferences: { ...values.preferences!, ...confirmed } }
       }
       for (const name of names) {
         const [root, key] = name.split('.')

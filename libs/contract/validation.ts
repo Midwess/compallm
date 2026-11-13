@@ -24,9 +24,6 @@ export const AccessibilityPatchInput = z
   .strict()
 export type AccessibilityPatchInputFormInput = z.input<typeof AccessibilityPatchInput>
 export type AccessibilityPatchInputFormOutput = z.output<typeof AccessibilityPatchInput>
-export const AppearanceMode = z.enum(['SYSTEM_PREFERENCE', 'LIGHT', 'DARK'])
-export type AppearanceModeFormInput = z.input<typeof AppearanceMode>
-export type AppearanceModeFormOutput = z.output<typeof AppearanceMode>
 export const PreferenceWeekday = z.enum(['MONDAY', 'SUNDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'])
 export type PreferenceWeekdayFormInput = z.input<typeof PreferenceWeekday>
 export type PreferenceWeekdayFormOutput = z.output<typeof PreferenceWeekday>
@@ -71,15 +68,6 @@ export const CodeAppearancePatchInput = z
   .strict()
 export type CodeAppearancePatchInputFormInput = z.input<typeof CodeAppearancePatchInput>
 export type CodeAppearancePatchInputFormOutput = z.output<typeof CodeAppearancePatchInput>
-export const CodeFont = z.enum(['DEFAULT', 'MONOSPACE'])
-export type CodeFontFormInput = z.input<typeof CodeFont>
-export type CodeFontFormOutput = z.output<typeof CodeFont>
-export const CodeFontSize = z.enum(['PX12', 'PX13', 'PX14', 'PX16'])
-export type CodeFontSizeFormInput = z.input<typeof CodeFontSize>
-export type CodeFontSizeFormOutput = z.output<typeof CodeFontSize>
-export const CodeTheme = z.enum(['LINEAR_DARK', 'LINEAR_LIGHT', 'SYSTEM_PREFERENCE', 'FOLLOW_INTERFACE'])
-export type CodeThemeFormInput = z.input<typeof CodeTheme>
-export type CodeThemeFormOutput = z.output<typeof CodeTheme>
 /** Positive u32 context size, encoded as an exact JSON number (1–4294967295). */
 export const ContextTokens = z
   .int()
@@ -99,9 +87,6 @@ export const CredentialDelivery = z
   .describe('How the request delivers credentials; this is never stored in signed claims.')
 export type CredentialDeliveryFormInput = z.input<typeof CredentialDelivery>
 export type CredentialDeliveryFormOutput = z.output<typeof CredentialDelivery>
-export const DarkPalette = z.enum(['DARK', 'MAGIC_BLUE', 'CLASSIC_DARK'])
-export type DarkPaletteFormInput = z.input<typeof DarkPalette>
-export type DarkPaletteFormOutput = z.output<typeof DarkPalette>
 export const EmailCodeInputConstraints = {
   code: { minLength: 6, maxLength: 6, pattern: '^[0-9]*$', trim: true },
 } as const
@@ -198,15 +183,6 @@ export const ImageUploadInputInput = { size: integerInput({ minimum: 1, maximum:
 export const ImageUploadInput = z.object({ mediaType: ImageMediaType, size: z.int().min(1).max(5242880) }).strict()
 export type ImageUploadInputFormInput = z.input<typeof ImageUploadInput>
 export type ImageUploadInputFormOutput = z.output<typeof ImageUploadInput>
-export const InterfaceFontSize = z.enum(['SMALLER', 'SMALL', 'DEFAULT', 'LARGE', 'LARGER'])
-export type InterfaceFontSizeFormInput = z.input<typeof InterfaceFontSize>
-export type InterfaceFontSizeFormOutput = z.output<typeof InterfaceFontSize>
-export const LightPalette = z.enum(['LIGHT', 'PURE_LIGHT'])
-export type LightPaletteFormInput = z.input<typeof LightPalette>
-export type LightPaletteFormOutput = z.output<typeof LightPalette>
-export const MemberDisplay = z.enum(['FULL_NAME', 'USERNAME'])
-export type MemberDisplayFormInput = z.input<typeof MemberDisplay>
-export type MemberDisplayFormOutput = z.output<typeof MemberDisplay>
 export const PreferenceNamingFormat = z.enum(['FULL_NAME', 'USERNAME'])
 export type PreferenceNamingFormatFormInput = z.input<typeof PreferenceNamingFormat>
 export type PreferenceNamingFormatFormOutput = z.output<typeof PreferenceNamingFormat>
@@ -274,47 +250,6 @@ export type PreferenceRelativeFontSizeFormOutput = z.output<typeof PreferenceRel
 export const PreferenceSidebarVisibility = z.enum(['ALWAYS', 'WHEN_BADGED', 'HIDDEN'])
 export type PreferenceSidebarVisibilityFormInput = z.input<typeof PreferenceSidebarVisibility>
 export type PreferenceSidebarVisibilityFormOutput = z.output<typeof PreferenceSidebarVisibility>
-export const Weekday = z.enum(['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'])
-export type WeekdayFormInput = z.input<typeof Weekday>
-export type WeekdayFormOutput = z.output<typeof Weekday>
-export const SendShortcut = z.enum(['MODIFIER_ENTER', 'ENTER'])
-export type SendShortcutFormInput = z.input<typeof SendShortcut>
-export type SendShortcutFormOutput = z.output<typeof SendShortcut>
-export const SidebarBadgeStyle = z.enum(['DOT', 'COUNT'])
-export type SidebarBadgeStyleFormInput = z.input<typeof SidebarBadgeStyle>
-export type SidebarBadgeStyleFormOutput = z.output<typeof SidebarBadgeStyle>
-export const SidebarVisibility = z.enum(['ALWAYS_SHOW', 'ONLY_WHEN_BADGED', 'HIDDEN'])
-export type SidebarVisibilityFormInput = z.input<typeof SidebarVisibility>
-export type SidebarVisibilityFormOutput = z.output<typeof SidebarVisibility>
-export const PreferencesUpdateInputConstraints = {} as const
-export const PreferencesUpdateInputInput = {}
-export const PreferencesUpdateInput = z
-  .object({
-    home: HomeDestination.optional(),
-    displayNames: MemberDisplay.optional(),
-    firstDay: Weekday.optional(),
-    fontSize: InterfaceFontSize.optional(),
-    underlineLinks: z.boolean().optional(),
-    reduceMotion: z.boolean().optional(),
-    pointerCursors: z.boolean().optional(),
-    theme: AppearanceMode.optional(),
-    lightTheme: LightPalette.optional(),
-    darkTheme: DarkPalette.optional(),
-    emoticons: z.boolean().optional(),
-    sendShortcut: SendShortcut.optional(),
-    codeTheme: CodeTheme.optional(),
-    codeFont: CodeFont.optional(),
-    codeFontSize: CodeFontSize.optional(),
-    sidebarOrder: inputString({}).optional(),
-    sidebarBadgeStyle: SidebarBadgeStyle.optional(),
-    sidebarProviders: SidebarVisibility.optional(),
-    sidebarModels: SidebarVisibility.optional(),
-    sidebarNotebooks: SidebarVisibility.optional(),
-    sidebarPlugins: SidebarVisibility.optional(),
-  })
-  .strict()
-export type PreferencesUpdateInputFormInput = z.input<typeof PreferencesUpdateInput>
-export type PreferencesUpdateInputFormOutput = z.output<typeof PreferencesUpdateInput>
 export const ProfileUpdateInputConstraints = {
   name: { minLength: 1, trim: true },
   username: { minLength: 1, trim: true },

@@ -1,5 +1,30 @@
-import type { FieldsSelection, UserPreferences, UserPreferencesGenqlSelection } from '@compallm/contract/graphql'
-import { UserPreferencesPatchInput, type UserPreferencesPatchInputFormOutput } from '@compallm/contract/validation'
+import {
+  userPreferenceDefaults,
+  userPreferenceHomeDestinations,
+  userPreferenceSidebarDestinations,
+} from '@compallm/contract/preference'
+import type {
+  FieldsSelection,
+  UserPreferences,
+  UserPreferencesGenqlSelection,
+  PreferenceDestination,
+} from '@compallm/contract/graphql'
+import {
+  UserPreferencesPatchInput,
+  type UserPreferencesPatchInputFormOutput,
+  PreferenceNamingFormat,
+  PreferenceWeekday,
+  PreferenceRelativeFontSize,
+  PreferenceAppearanceMode,
+  PreferenceLightPalette,
+  PreferenceDarkPalette,
+  PreferenceKeyCombination,
+  PreferenceCodeTheme,
+  PreferenceFontFamily,
+  PreferencePixelFontSize,
+  PreferenceBadgeStyle,
+  PreferenceSidebarVisibility,
+} from '@compallm/contract/validation'
 import get from 'lodash-es/get.js'
 import set from 'lodash-es/set.js'
 
@@ -16,8 +41,7 @@ export const preferenceSelection = {
 } satisfies UserPreferencesGenqlSelection
 
 type ConfirmedPreferences = FieldsSelection<UserPreferences, typeof preferenceSelection>
-export type PreferenceDraft = Record<string, string | boolean>
-const paths: Record<string, string> = {
+const paths = {
   home: 'navigation.home',
   displayNames: 'memberDisplay.nameFormat',
   firstDay: 'calendar.firstDay',
@@ -34,30 +58,67 @@ const paths: Record<string, string> = {
   codeFont: 'codeAppearance.font.family',
   codeFontSize: 'codeAppearance.font.size',
   sidebarBadgeStyle: 'sidebar.badgeStyle',
-  sidebarOrder: 'sidebar.order',
-}
-const aliases: Record<string, string> = {
-  'Full name': 'FULL_NAME',
-  'System preference': 'SYSTEM',
-  'Pure Light': 'PURE_LIGHT',
-  'Magic Blue': 'MAGIC_BLUE',
-  'Classic Dark': 'CLASSIC_DARK',
-  '⌘ + Enter': 'MODIFIER_ENTER',
-  'Linear Dark': 'LINEAR_DARK',
-  'Linear Light': 'LINEAR_LIGHT',
-  'Follow interface': 'FOLLOW_INTERFACE',
-  '12px': 'PX12',
-  '13px': 'PX13',
-  '14px': 'PX14',
-  '16px': 'PX16',
-  'Always show': 'ALWAYS',
-  'Show when badged': 'WHEN_BADGED',
-  "Don't show": 'HIDDEN',
-}
-const wire = (value: string | boolean) => (typeof value === 'string' ? (aliases[value] ?? value.toUpperCase()) : value)
-const sidebarItems = ['Providers', 'Models', 'Notebooks', 'Plugins']
+} as const
 
-export function parsePreferencePatch(draft: PreferenceDraft): {
+type ValueAt<T, P extends string> = P extends `${infer K}.${infer Rest}`
+  ? K extends keyof T
+    ? ValueAt<T[K], Rest>
+    : never
+  : P extends keyof T
+    ? T[P]
+    : never
+export type PreferenceDraft = { [K in keyof typeof paths]: ValueAt<UserPreferences, (typeof paths)[K]> } & {
+  sidebarOrder: PreferenceDestination[]
+  codeLanguage: string
+} & {
+  [
+    K in (typeof userPreferenceSidebarDestinations)[number] as `sidebar${K}`
+  ]: UserPreferences['sidebar']['entries'][number]['visibility']
+}
+
+export const preferenceLabel = (value: string): string => {
+  const labels: Record<string, string> = {
+    SYSTEM: 'System preference',
+    MODIFIER_ENTER: '⌘ + Enter',
+    ALWAYS: 'Always show',
+    WHEN_BADGED: 'Show when badged',
+    HIDDEN: "Don't show",
+    FULL_NAME: 'Full name',
+  }
+  if (labels[value]) return labels[value]
+  if (/^PX[0-9]+$/.test(value)) return `${value.slice(2)}px`
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(' ')
+}
+const options = <T extends string>(values: readonly T[]) => values.map((value) => ({ value, label: preferenceLabel(value) }))
+export const preferenceOptions = {
+  home: options(userPreferenceHomeDestinations),
+  displayNames: options(PreferenceNamingFormat.options),
+  firstDay: options(PreferenceWeekday.options),
+  fontSize: options(PreferenceRelativeFontSize.options),
+  theme: options(PreferenceAppearanceMode.options),
+  lightTheme: options(PreferenceLightPalette.options),
+  darkTheme: options(PreferenceDarkPalette.options),
+  sendShortcut: options(PreferenceKeyCombination.options),
+  codeTheme: options(PreferenceCodeTheme.options),
+  codeFont: options(PreferenceFontFamily.options),
+  codeFontSize: options(PreferencePixelFontSize.options),
+  sidebarBadgeStyle: options(PreferenceBadgeStyle.options),
+  sidebarVisibility: options(PreferenceSidebarVisibility.options),
+}
+export function initialPreferenceDraft(): PreferenceDraft {
+  return {
+    ...Object.fromEntries(Object.entries(paths).map(([key, path]) => [key, get(userPreferenceDefaults, path)])),
+    sidebarOrder: [...userPreferenceSidebarDestinations],
+    codeLanguage: 'typescript',
+    ...Object.fromEntries(userPreferenceDefaults.sidebar.entries.map(({ item, visibility }) => [`sidebar${item}`, visibility])),
+  } as PreferenceDraft
+}
+
+export function parsePreferencePatch(draft: Partial<PreferenceDraft>): {
   input?: UserPreferencesPatchInputFormOutput
   issues: { path: PropertyKey[]; message: string }[]
 } {
@@ -65,23 +126,15 @@ export function parsePreferencePatch(draft: PreferenceDraft): {
   const fields = new Map<string, string>()
   for (const [key, value] of Object.entries(draft)) {
     if (key === 'codeLanguage') continue
-    const item = sidebarItems.find((item) => key === `sidebar${item}`)
+    const item = userPreferenceSidebarDestinations.find((item) => key === `sidebar${item}`)
     const path = item
       ? `sidebar.visibility.${(get(patch, 'sidebar.visibility') as unknown[] | undefined)?.length ?? 0}`
-      : paths[key]
+      : key === 'sidebarOrder'
+        ? 'sidebar.order'
+        : paths[key as keyof typeof paths]
     if (!path) throw new Error(`Unknown preference: ${key}`)
     fields.set(path, key)
-    set(
-      patch,
-      path,
-      item
-        ? { item: item.toUpperCase(), visibility: wire(value) }
-        : key === 'sidebarOrder'
-          ? String(value)
-              .split(',')
-              .map((item) => item.toUpperCase())
-          : wire(value),
-    )
+    set(patch, path, item ? { item, visibility: value } : value)
   }
   const result = UserPreferencesPatchInput.safeParse(patch)
   if (result.success) return { input: result.data, issues: [] }
@@ -93,29 +146,20 @@ export function parsePreferencePatch(draft: PreferenceDraft): {
   }
 }
 
-export function confirmedPreferenceDraft(node: ConfirmedPreferences, submitted: PreferenceDraft): PreferenceDraft {
+export function confirmedPreferenceDraft(
+  node: ConfirmedPreferences,
+  submitted: Partial<PreferenceDraft>,
+): Partial<PreferenceDraft> {
   return Object.fromEntries(
     Object.entries(submitted).map(([key, draft]) => {
       if (key === 'codeLanguage') return [key, draft]
-      if (key === 'sidebarOrder')
-        return [
-          key,
-          node.sidebar.entries
-            .map(({ item }) => sidebarItems.find((label) => label.toUpperCase() === item))
-            .filter(Boolean)
-            .join(','),
-        ]
-      const item = sidebarItems.find((item) => key === `sidebar${item}`)
+      if (key === 'sidebarOrder') return [key, node.sidebar.entries.map(({ item }) => item)]
+      const item = userPreferenceSidebarDestinations.find((item) => key === `sidebar${item}`)
       const value = item
-        ? node.sidebar.entries.find((entry) => entry.item === item.toUpperCase())?.visibility
-        : get(node, paths[key])
+        ? node.sidebar.entries.find((entry) => entry.item === item)?.visibility
+        : get(node, paths[key as keyof typeof paths])
       if (value === undefined) throw new Error(`Preference save did not return ${key}`)
-      if (wire(draft) === value) return [key, draft]
-      const label = Object.entries(aliases).find(([, wire]) => wire === value)?.[0]
-      return [
-        key,
-        typeof value === 'boolean' ? value : (label ?? String(value).slice(0, 1) + String(value).slice(1).toLowerCase()),
-      ]
+      return [key, value]
     }),
   )
 }

@@ -28,11 +28,10 @@ export function useCodeAppearance() {
       () => window.matchMedia(systemTheme).matches,
       () => false,
     )
-  const effective = selected === 'Follow interface' ? appTheme : selected
+  const effective = selected === 'FOLLOW_INTERFACE' ? appTheme : selected
   return {
-    theme: (String(effective).includes('Light') || (effective === 'System preference' && light) ? 'light' : 'dark') as
-      'light' | 'dark',
-    fontSize: Number.parseInt(String(size)) || 12,
-    fontFamily: font === 'Monospace' ? 'monospace' : undefined,
+    theme: (String(effective).includes('LIGHT') || (effective === 'SYSTEM' && light) ? 'light' : 'dark') as 'light' | 'dark',
+    fontSize: Number(size.slice(2)),
+    fontFamily: font === 'MONOSPACE' ? 'monospace' : undefined,
   }
 }

@@ -10,7 +10,7 @@ import { graphql } from '../../graphql-client'
 
 type Contract = SettingsPageControllers['preferences']
 export class PreferencesController implements Contract {
-  updatePreferences = async (patch: SettingsState['preferences'], signal: AbortSignal) => {
+  updatePreferences = async (patch: Partial<SettingsState['preferences']>, signal: AbortSignal) => {
     const parsed = parsePreferencePatch(patch)
     if (!parsed.input) throw new Error('Invalid preference patch')
     if (!Object.keys(parsed.input).length) return patch

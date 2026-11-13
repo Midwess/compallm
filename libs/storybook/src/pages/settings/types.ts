@@ -1,3 +1,4 @@
+import type { PreferenceDraft } from './preference-values'
 import type { FormStore } from '../../components/form'
 import type { RoleController } from './role/controller'
 import type { GroupController } from './group/controller'
@@ -167,7 +168,7 @@ export interface SettingsState {
   navigationQuery: string
   query: string
   filters: Record<string, string>
-  preferences: Record<string, string | boolean>
+  preferences: PreferenceDraft
   profile: SettingsProfile
   organization: SettingsOrganization
   roles: SettingsRole[]
@@ -211,7 +212,7 @@ export interface SettingsPageControllers {
   role: RoleController
   search: { setQuery(value: string): void; setFilter(key: string, value: string): void }
   preferences: {
-    updatePreferences(patch: SettingsState['preferences'], signal: AbortSignal): Promise<SettingsState['preferences'] | false>
+    updatePreferences(patch: Partial<PreferenceDraft>, signal: AbortSignal): Promise<Partial<PreferenceDraft> | false>
   }
   profile: ProfileController
   organization: OrganizationController

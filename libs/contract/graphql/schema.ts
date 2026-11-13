@@ -18,8 +18,6 @@ export interface AccessibilityPreferences {
   __typename: 'AccessibilityPreferences'
 }
 
-export type AppearanceMode = 'DARK' | 'LIGHT' | 'SYSTEM_PREFERENCE'
-
 export interface BooleanPayload {
   node: Scalars['Boolean']
   __typename: 'BooleanPayload'
@@ -36,17 +34,11 @@ export interface CodeAppearancePreferences {
   __typename: 'CodeAppearancePreferences'
 }
 
-export type CodeFont = 'DEFAULT' | 'MONOSPACE'
-
 export interface CodeFontPreferences {
   family: PreferenceFontFamily
   size: PreferencePixelFontSize
   __typename: 'CodeFontPreferences'
 }
-
-export type CodeFontSize = 'PX12' | 'PX13' | 'PX14' | 'PX16'
-
-export type CodeTheme = 'FOLLOW_INTERFACE' | 'LINEAR_DARK' | 'LINEAR_LIGHT' | 'SYSTEM_PREFERENCE'
 
 export interface CreatedGroup {
   description: Scalars['String']
@@ -63,8 +55,6 @@ export interface CreatedGroupPayload {
 
 /** How the request delivers credentials; this is never stored in signed claims. */
 export type CredentialDelivery = 'COOKIE' | 'TOKEN'
-
-export type DarkPalette = 'CLASSIC_DARK' | 'DARK' | 'MAGIC_BLUE'
 
 /** Email admission succeeded; cookie delivery never exposes the OTP credential. */
 export interface EmailChallenge {
@@ -105,12 +95,6 @@ export interface GroupPayload {
 export type HomeDestination = 'CHAT' | 'MODELS' | 'PROVIDERS'
 
 export type ImageMediaType = 'JPEG' | 'PNG' | 'WEBP'
-
-export type InterfaceFontSize = 'DEFAULT' | 'LARGE' | 'LARGER' | 'SMALL' | 'SMALLER'
-
-export type LightPalette = 'LIGHT' | 'PURE_LIGHT'
-
-export type MemberDisplay = 'FULL_NAME' | 'USERNAME'
 
 export interface MemberDisplayPreferences {
   nameFormat: PreferenceNamingFormat
@@ -304,8 +288,6 @@ export interface RolePayload {
   __typename: 'RolePayload'
 }
 
-export type SendShortcut = 'ENTER' | 'MODIFIER_ENTER'
-
 export interface Session {
   /** Login session identity, serialized as a string without numeric precision loss. */
   id: Scalars['ID']
@@ -337,8 +319,6 @@ export interface SessionPayload {
   __typename: 'SessionPayload'
 }
 
-export type SidebarBadgeStyle = 'COUNT' | 'DOT'
-
 export interface SidebarEntry {
   item: PreferenceDestination
   visibility: PreferenceSidebarVisibility
@@ -350,8 +330,6 @@ export interface SidebarPreferences {
   entries: SidebarEntry[]
   __typename: 'SidebarPreferences'
 }
-
-export type SidebarVisibility = 'ALWAYS_SHOW' | 'HIDDEN' | 'ONLY_WHEN_BADGED'
 
 /** Text operation determining the upstream request and response format. */
 export type TextModelProtocol = 'ANTHROPIC_MESSAGES' | 'OPENAI_CHAT_COMPLETIONS' | 'OPENAI_RESPONSES'
@@ -406,8 +384,6 @@ export interface UserPreferencesPayload {
   node: UserPreferences
   __typename: 'UserPreferencesPayload'
 }
-
-export type Weekday = 'FRIDAY' | 'MONDAY' | 'SATURDAY' | 'SUNDAY' | 'THURSDAY' | 'TUESDAY' | 'WEDNESDAY'
 
 export interface AccessibilityPatchInput {
   pointerCursors?: Scalars['Boolean'] | null
@@ -690,30 +666,6 @@ export interface PolicyActionEdgeGenqlSelection {
   node?: PolicyActionGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
-}
-
-export interface PreferencesUpdateInput {
-  codeFont?: CodeFont | null
-  codeFontSize?: CodeFontSize | null
-  codeTheme?: CodeTheme | null
-  darkTheme?: DarkPalette | null
-  displayNames?: MemberDisplay | null
-  emoticons?: Scalars['Boolean'] | null
-  firstDay?: Weekday | null
-  fontSize?: InterfaceFontSize | null
-  home?: HomeDestination | null
-  lightTheme?: LightPalette | null
-  pointerCursors?: Scalars['Boolean'] | null
-  reduceMotion?: Scalars['Boolean'] | null
-  sendShortcut?: SendShortcut | null
-  sidebarBadgeStyle?: SidebarBadgeStyle | null
-  sidebarModels?: SidebarVisibility | null
-  sidebarNotebooks?: SidebarVisibility | null
-  sidebarOrder?: Scalars['String'] | null
-  sidebarPlugins?: SidebarVisibility | null
-  sidebarProviders?: SidebarVisibility | null
-  theme?: AppearanceMode | null
-  underlineLinks?: Scalars['Boolean'] | null
 }
 
 export interface ProfileUpdateInput {
@@ -1270,40 +1222,9 @@ export const isUserPreferencesPayload = (obj?: { __typename?: any } | null): obj
   return UserPreferencesPayload_possibleTypes.includes(obj.__typename)
 }
 
-export const enumAppearanceMode = {
-  DARK: 'DARK' as const,
-  LIGHT: 'LIGHT' as const,
-  SYSTEM_PREFERENCE: 'SYSTEM_PREFERENCE' as const,
-}
-
-export const enumCodeFont = {
-  DEFAULT: 'DEFAULT' as const,
-  MONOSPACE: 'MONOSPACE' as const,
-}
-
-export const enumCodeFontSize = {
-  PX12: 'PX12' as const,
-  PX13: 'PX13' as const,
-  PX14: 'PX14' as const,
-  PX16: 'PX16' as const,
-}
-
-export const enumCodeTheme = {
-  FOLLOW_INTERFACE: 'FOLLOW_INTERFACE' as const,
-  LINEAR_DARK: 'LINEAR_DARK' as const,
-  LINEAR_LIGHT: 'LINEAR_LIGHT' as const,
-  SYSTEM_PREFERENCE: 'SYSTEM_PREFERENCE' as const,
-}
-
 export const enumCredentialDelivery = {
   COOKIE: 'COOKIE' as const,
   TOKEN: 'TOKEN' as const,
-}
-
-export const enumDarkPalette = {
-  CLASSIC_DARK: 'CLASSIC_DARK' as const,
-  DARK: 'DARK' as const,
-  MAGIC_BLUE: 'MAGIC_BLUE' as const,
 }
 
 export const enumHomeDestination = {
@@ -1316,24 +1237,6 @@ export const enumImageMediaType = {
   JPEG: 'JPEG' as const,
   PNG: 'PNG' as const,
   WEBP: 'WEBP' as const,
-}
-
-export const enumInterfaceFontSize = {
-  DEFAULT: 'DEFAULT' as const,
-  LARGE: 'LARGE' as const,
-  LARGER: 'LARGER' as const,
-  SMALL: 'SMALL' as const,
-  SMALLER: 'SMALLER' as const,
-}
-
-export const enumLightPalette = {
-  LIGHT: 'LIGHT' as const,
-  PURE_LIGHT: 'PURE_LIGHT' as const,
-}
-
-export const enumMemberDisplay = {
-  FULL_NAME: 'FULL_NAME' as const,
-  USERNAME: 'USERNAME' as const,
 }
 
 export const enumPreferenceAppearanceMode = {
@@ -1440,22 +1343,6 @@ export const enumProviderModelCapability = {
   VISION: 'VISION' as const,
 }
 
-export const enumSendShortcut = {
-  ENTER: 'ENTER' as const,
-  MODIFIER_ENTER: 'MODIFIER_ENTER' as const,
-}
-
-export const enumSidebarBadgeStyle = {
-  COUNT: 'COUNT' as const,
-  DOT: 'DOT' as const,
-}
-
-export const enumSidebarVisibility = {
-  ALWAYS_SHOW: 'ALWAYS_SHOW' as const,
-  HIDDEN: 'HIDDEN' as const,
-  ONLY_WHEN_BADGED: 'ONLY_WHEN_BADGED' as const,
-}
-
 export const enumTextModelProtocol = {
   ANTHROPIC_MESSAGES: 'ANTHROPIC_MESSAGES' as const,
   OPENAI_CHAT_COMPLETIONS: 'OPENAI_CHAT_COMPLETIONS' as const,
@@ -1473,14 +1360,4 @@ export const enumUserPreferenceGroup = {
   SIDEBAR: 'SIDEBAR' as const,
   THEME: 'THEME' as const,
   TYPOGRAPHY: 'TYPOGRAPHY' as const,
-}
-
-export const enumWeekday = {
-  FRIDAY: 'FRIDAY' as const,
-  MONDAY: 'MONDAY' as const,
-  SATURDAY: 'SATURDAY' as const,
-  SUNDAY: 'SUNDAY' as const,
-  THURSDAY: 'THURSDAY' as const,
-  TUESDAY: 'TUESDAY' as const,
-  WEDNESDAY: 'WEDNESDAY' as const,
 }

@@ -7,13 +7,17 @@ import './tailwind.css'
 const preview: Preview = {
   decorators: [
     (Story) =>
-      createElement('div', { className: 'min-h-dvh bg-background font-sans text-text scheme-dark' }, createElement(Story)),
+      createElement(
+        'div',
+        { className: 'min-h-dvh bg-background font-sans text-foreground scheme-dark' },
+        createElement(Story),
+      ),
   ],
   parameters: {
     layout: 'padded',
     docs: { theme: themes.dark },
     viewport: { options: MINIMAL_VIEWPORTS },
-    backgrounds: { options: { canvas: { name: 'Canvas', value: 'var(--color-background)' } } },
+    backgrounds: { options: { canvas: { name: 'Canvas', value: 'var(--background)' } } },
     controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
   },
   initialGlobals: { backgrounds: { value: 'canvas' } },

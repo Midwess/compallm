@@ -15,8 +15,8 @@ export function SectionHeading({
   return (
     <div {...props} className={cx('flex min-w-0 items-center justify-between gap-1.5', className)}>
       <div className="min-w-0">
-        <h2 className="text-[15px] leading-5.75 font-medium">{children}</h2>
-        {description ? <p className="mt-0.5 text-xsm leading-5 text-muted">{description}</p> : null}
+        <h2 className="text-ui-15 leading-5.75 font-medium">{children}</h2>
+        {description ? <p className="mt-0.5 text-xsm leading-5 text-muted-foreground">{description}</p> : null}
       </div>
       {action}
     </div>
@@ -46,7 +46,7 @@ export function SettingsRow({
     >
       <div>
         <strong className="block leading-4">{label}</strong>
-        {description ? <p className="mt-0.5 text-[12px] leading-3.75 text-muted">{description}</p> : null}
+        {description ? <p className="mt-0.5 text-ui-12 leading-3.75 text-muted-foreground">{description}</p> : null}
       </div>
       {children}
     </div>
@@ -82,8 +82,8 @@ export function Badge({ tone = 'neutral', className, ...props }: HTMLAttributes<
       className={cx(
         `
   inline-flex min-h-6 items-center justify-center gap-1 rounded-md bg-elevated px-1
-  py-0 text-[12px] font-medium data-[tone=success]:text-success data-[tone=warning]:text-warning
-  data-[tone=error]:text-error
+  py-0 text-ui-12 font-medium data-[tone=success]:text-success data-[tone=warning]:text-warning
+  data-[tone=error]:text-destructive
 `,
         className,
       )}
@@ -104,12 +104,12 @@ export function DiffLine({
   return (
     <div
       className={`
-  flex min-h-5 gap-1 overflow-x-auto text-[12px] whitespace-pre
-  data-[change=added]:bg-success/12 data-[change=removed]:bg-error/12
+  flex min-h-5 gap-1 overflow-x-auto text-ui-12 whitespace-pre
+  data-[change=added]:bg-success/12 data-[change=removed]:bg-destructive/12
 `}
       data-change={change}
     >
-      <span className="min-w-8 text-right text-muted" aria-label={lineNumber ? `Line ${lineNumber}` : undefined}>
+      <span className="min-w-8 text-right text-muted-foreground" aria-label={lineNumber ? `Line ${lineNumber}` : undefined}>
         {lineNumber}
       </span>
       <span aria-label={change === 'context' ? undefined : change}>
@@ -140,7 +140,7 @@ export function MemberRow({
       <Avatar name={name} />
       <div className="min-w-0 flex-1">
         <strong>{name}</strong>
-        {email ? <p className="text-[12px] leading-4.5 text-muted">{email}</p> : null}
+        {email ? <p className="text-ui-12 leading-4.5 text-muted-foreground">{email}</p> : null}
       </div>
       <Badge>{role}</Badge>
       {children}
@@ -149,7 +149,7 @@ export function MemberRow({
 }
 export function EditTimestamp({ dateTime, children }: { dateTime: string; children: ReactNode }) {
   return (
-    <span className="text-[12px] leading-4.5 text-muted">
+    <span className="text-ui-12 leading-4.5 text-muted-foreground">
       Last edited <time dateTime={dateTime}>{children}</time>
     </span>
   )
@@ -158,8 +158,8 @@ export function ChangedFile({ path, added = 0, removed = 0 }: { path: string; ad
   return (
     <span
       className={`
-  inline-flex items-center gap-1 rounded-md bg-inset px-1 py-0.5 text-[11px]
-  [&>code]:wrap-anywhere *:data-[tone=success]:text-success *:data-[tone=error]:text-error
+  inline-flex items-center gap-1 rounded-md bg-inset px-1 py-0.5 text-ui-11
+  [&>code]:wrap-anywhere *:data-[tone=success]:text-success *:data-[tone=error]:text-destructive
 `}
     >
       <FileTextIcon size={14} aria-hidden="true" />

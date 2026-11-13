@@ -13,24 +13,117 @@ const server = await createServer({
 })
 after(() => server.close())
 const { SettingsController } = await server.ssrLoadModule('/src/settings/controller.ts')
+const { UserPreferenceController } = await server.ssrLoadModule('/src/preference/user/controller.ts')
+function createSettingsController(...args) {
+  return new SettingsController(...args, new UserPreferenceController())
+}
+
 const { configureUserPreferenceForm } = await server.ssrLoadModule(
   '../libs/storybook/src/pages/settings/preferences/user/form.ts',
 )
 const { parsePreferencePatch } = await server.ssrLoadModule('../libs/storybook/src/pages/settings/preferences/user/values.ts')
 
 function setup() {
-  const controller = new SettingsController('Research', { navigate() {} }, { signOut() {} }, 'general')
-  controller.pages.preferences.user.store.setState({ status: 'ready' })
+  const controller = createSettingsController('Research', { navigate() {} }, { signOut() {} }, 'general')
+  controller.pages.preferences.user.store.setState({ status: 'ready', saved: structuredClone(userPreferenceDefaults) })
   configureUserPreferenceForm(controller.pages.preferences.user, (error, retry) => controller.apiError(error, retry))
   return controller
 }
 function response(node) {
-  return Response.json({ data: { userPreferencesUpdate: { node: merge({}, userPreferenceDefaults, node) } } })
+  return Response.json({
+    data: {
+      userPreferencesUpdate: {
+        node: Object.fromEntries(
+          Object.entries(node).map(([category, values]) => [category, merge({}, userPreferenceDefaults[category], values)]),
+        ),
+      },
+    },
+  })
 }
 async function settled(form) {
   for (let i = 0; i < 100 && form.pending; i++) await new Promise((resolve) => setTimeout(resolve, 1))
   assert.equal(form.pending, false)
 }
+
+test('app controller waits for explicit completions and the one-second minimum', async (t) => {
+  const { AppController } = await server.ssrLoadModule('/src/app/controller.ts')
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 10000 })
+  const app = new AppController()
+  const session = app.beginLoading('session')
+  const preferences = app.beginLoading('preferences')
+  session.complete()
+  t.mock.timers.tick(500)
+  assert.equal(app.store.getState().loading, true)
+  preferences.complete()
+  t.mock.timers.tick(499)
+  assert.equal(app.store.getState().loading, true)
+  t.mock.timers.tick(1)
+  assert.equal(app.store.getState().loading, false)
+  const slow = app.beginLoading('slow')
+  t.mock.timers.tick(3000)
+  assert.equal(app.store.getState().loading, true)
+  slow.complete()
+  assert.equal(app.store.getState().loading, false)
+})
+
+test('app controller retains failed loads for retry and ignores obsolete completions', async (t) => {
+  const { AppController } = await server.ssrLoadModule('/src/app/controller.ts')
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 10000 })
+  const app = new AppController()
+  const old = app.beginLoading('preferences')
+  let current = app.beginLoading('preferences')
+  old.complete()
+  current.fail({ info: { message: 'Unavailable' } }, async () => {
+    current = app.beginLoading('preferences')
+    current.complete()
+  })
+  t.mock.timers.tick(3000)
+  assert.equal(app.store.getState().loading, true)
+  assert.notEqual(app.store.getState().error, null)
+  await app.retry()
+  assert.equal(app.store.getState().loading, false)
+  const cancelled = app.beginLoading('cancelled')
+  cancelled.cancel()
+  t.mock.timers.tick(1000)
+  assert.equal(app.store.getState().loading, false)
+})
+
+test('app preference ownership survives settings navigation and clears when the user leaves', async () => {
+  const { createStore } = await import('zustand/vanilla')
+  const original = globalThis.fetch
+  const user = new UserPreferenceController()
+  const auth = { store: createStore(() => ({ status: 'anonymous', currentUser: null })) }
+  const pending = []
+  globalThis.fetch = (_url, init) => new Promise((resolve) => pending.push({ resolve, signal: init.signal }))
+  const stop = user.start(auth)
+  try {
+    assert.equal(pending.length, 0)
+    auth.store.setState({ status: 'authenticated', currentUser: { userId: '1', organizationId: '2' } })
+    assert.equal(pending.length, 1)
+    pending[0].resolve(Response.json({ data: { userPreferences: { node: userPreferenceDefaults } } }))
+    for (let i = 0; i < 100 && user.store.getState().status !== 'ready'; i++)
+      await new Promise((resolve) => setTimeout(resolve, 1))
+    assert.equal(user.store.getState().status, 'ready')
+    const settings = new SettingsController('Research', { navigate() {} }, { signOut() {} }, 'general', user)
+    assert.equal(settings.pages.preferences.user, user)
+    settings.setPage('profile')
+    auth.store.setState({ currentUser: { userId: '1', organizationId: '3' } })
+    assert.equal(pending.length, 1)
+    assert.notEqual(user.store.getState().saved, null)
+    auth.store.setState({ status: 'authenticated', currentUser: { userId: '4', organizationId: '5' } })
+    assert.equal(user.store.getState().saved, null)
+    assert.equal(pending.length, 2)
+    auth.store.setState({ status: 'anonymous', currentUser: null })
+    assert.equal(pending[1].signal.aborted, true)
+    pending[1].resolve(Response.json({ data: { userPreferences: { node: userPreferenceDefaults } } }))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.equal(user.store.getState().saved, null)
+    assert.equal(user.store.getState().status, 'idle')
+  } finally {
+    stop()
+    globalThis.fetch = original
+  }
+})
 
 test('loads authoritative user preferences into its own store and form without saving', async () => {
   const original = globalThis.fetch
@@ -124,7 +217,12 @@ test('initial form values come from Core defaults and round-trip through the wri
   assert.deepEqual(input, {
     ...groups,
     typography: { size: typography.size },
-    sidebar: { badgeStyle: sidebar.badgeStyle, order: sidebar.entries.map(({ item }) => item), visibility: sidebar.entries },
+    sidebar: {
+      layout: sidebar.layout,
+      badgeStyle: sidebar.badgeStyle,
+      order: sidebar.entries.map(({ item }) => item),
+      visibility: sidebar.entries,
+    },
   })
   controller.pages.preferences.user.store.form.stop()
 })
@@ -176,15 +274,123 @@ test('preference edits use grouped wire values and preserve omitted siblings', (
   })
 })
 
+test('loaded home preferences delegate navigation to the organization controller and preserve direct links', async () => {
+  const { createStore } = await import('zustand/vanilla')
+  const { OrganizationController } = await server.ssrLoadModule('/src/organization/controller.ts')
+  const original = globalThis.fetch
+  try {
+    for (const home of ['CHAT', 'MODELS', 'PROVIDERS']) {
+      const paths = []
+      const url = {
+        store: createStore(() => ({ pathname: '/Research%20team', search: '', hash: '' })),
+        navigate: (path, options) => paths.push({ path, options }),
+      }
+      const organization = new OrganizationController(
+        { userId: '1', id: '2', organizationId: '3', organizationName: 'Research team' },
+        url,
+        { signOut() {} },
+      )
+      const user = new UserPreferenceController()
+      const disconnect = user.connectOrganization(organization, url)
+      globalThis.fetch = async () =>
+        Response.json({
+          data: {
+            userPreferences: { node: merge({}, userPreferenceDefaults, { navigation: { home } }) },
+          },
+        })
+      await user.load()
+      assert.deepEqual(paths, [{ path: `/Research%20team/${home.toLowerCase()}`, options: { replace: true } }])
+      url.store.setState({ pathname: '/Research%20team/settings/general' })
+      await user.load()
+      assert.equal(paths.length, 1)
+      url.store.setState({ pathname: '/Research%20team/providers/new/choose-provider' })
+      assert.equal(paths.length, 1)
+      url.store.setState({ pathname: '/Research%20team/' })
+      assert.equal(paths.length, 2)
+      disconnect()
+      url.store.setState({ pathname: '/Research%20team' })
+      assert.equal(paths.length, 2)
+      user.cancel()
+    }
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+test('sidebar layout applies categories and cross-category moves after confirmed saves only', async () => {
+  const { createStore } = await import('zustand/vanilla')
+  const { OrganizationController } = await server.ssrLoadModule('/src/organization/controller.ts')
+  const original = globalThis.fetch
+  const url = { store: createStore(() => ({ pathname: '/Research/settings/general' })), navigate() {} }
+  const organization = new OrganizationController(
+    { userId: '1', id: '2', organizationId: '3', organizationName: 'Research' },
+    url,
+    { signOut() {} },
+  )
+  const user = new UserPreferenceController()
+  const disconnect = user.connectOrganization(organization, url)
+  let saved = structuredClone(userPreferenceDefaults)
+  const layout = saved.sidebar.layout
+  const plugin = layout[0].items.pop()
+  layout[2].items.unshift(plugin)
+  layout.reverse()
+  saved.sidebar.entries.sort(
+    (a, b) => layout.flatMap((s) => s.items).indexOf(a.item) - layout.flatMap((s) => s.items).indexOf(b.item),
+  )
+  let reject = false
+  globalThis.fetch = async (_url, init) => {
+    const { query, variables } = JSON.parse(init.body)
+    if (query.startsWith('query')) return Response.json({ data: { userPreferences: { node: saved } } })
+    if (reject) return Response.json({ errors: [{ message: 'Unavailable', extensions: { status: 503 } }] })
+    const patch = Object.values(variables)[0]
+    saved = {
+      ...saved,
+      sidebar: {
+        ...saved.sidebar,
+        layout: patch.sidebar.layout,
+        entries: patch.sidebar.layout
+          .flatMap((s) => s.items)
+          .map((item) => saved.sidebar.entries.find((entry) => entry.item === item)),
+      },
+    }
+    return Response.json({ data: { userPreferencesUpdate: { node: { sidebar: saved.sidebar } } } })
+  }
+  try {
+    await user.load()
+    assert.deepEqual(organization.store.getState().sidebarLayout, layout)
+    const next = [...layout].reverse()
+    await user.update({ sidebarLayout: next }, new AbortController().signal)
+    assert.deepEqual(organization.store.getState().sidebarLayout, next)
+    reject = true
+    await assert.rejects(user.update({ sidebarLayout: layout }, new AbortController().signal))
+    assert.deepEqual(organization.store.getState().sidebarLayout, next)
+    const remounted = new OrganizationController(
+      { userId: '1', id: '2', organizationId: '3', organizationName: 'Research' },
+      url,
+      { signOut() {} },
+    )
+    const stop = user.connectOrganization(remounted, url)
+    assert.deepEqual(remounted.store.getState().sidebarLayout, next)
+    stop()
+  } finally {
+    disconnect()
+    user.cancel()
+    globalThis.fetch = original
+  }
+})
+
 test('save reconciles only submitted preferences, queues changes, and keeps preview language local', async () => {
   const original = globalThis.fetch
   const controller = setup(),
     form = controller.pages.preferences.user.store.form
   const writes = [],
-    pending = []
+    pending = [],
+    selections = []
+  const originalTheme = controller.pages.preferences.user.store.getState().saved.theme
   globalThis.fetch = (_url, init) => {
     const body = JSON.parse(init.body)
     writes.push(Object.values(body.variables)[0])
+    selections.push(body.query)
     return new Promise((resolve) => pending.push(resolve))
   }
   try {
@@ -192,7 +398,7 @@ test('save reconciles only submitted preferences, queues changes, and keeps prev
     await new Promise((resolve) => setTimeout(resolve, 0))
     form.change('draft.home', 'PROVIDERS')
     form.change('draft.underlineLinks', true)
-    pending[0](response({ navigation: { home: 'MODELS' }, accessibility: { underlineLinks: false } }))
+    pending[0](response({ navigation: { home: 'MODELS' } }))
     for (let i = 0; i < 100 && pending.length < 2; i++) await new Promise((resolve) => setTimeout(resolve, 1))
     assert.equal(form.values.draft.home, 'PROVIDERS')
     assert.equal(form.values.draft.underlineLinks, true)
@@ -202,6 +408,11 @@ test('save reconciles only submitted preferences, queues changes, and keeps prev
       { navigation: { home: 'MODELS' } },
       { navigation: { home: 'PROVIDERS' }, accessibility: { underlineLinks: true } },
     ])
+    assert.match(selections[0], /node\s*\{\s*navigation\s*\{\s*home\s*\}\s*\}/)
+    assert.match(selections[1], /accessibility\s*\{/)
+    for (const query of selections)
+      assert.doesNotMatch(query, /\b(theme|sidebar|calendar|typography|codeAppearance|memberDisplay|messageComposition)\s*\{/)
+    assert.equal(controller.pages.preferences.user.store.getState().saved.theme, originalTheme)
     assert.equal(form.baseline.draft.home, 'PROVIDERS')
     assert.equal(controller.pages.preferences.user.store.getState().saved.navigation.home, 'PROVIDERS')
     assert.equal(controller.pages.preferences.user.store.getState().saved.accessibility.underlineLinks, true)

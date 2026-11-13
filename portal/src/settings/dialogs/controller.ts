@@ -19,8 +19,9 @@ export class DialogsController {
     if (!this.store.getState().busy) this.store.setState({ dialog: null })
   }
   confirmDialog = (dialog: SettingsDialog) => {
-    const { busy } = this.store.getState()
+    const { busy, dialog: activeDialog } = this.store.getState()
     if (busy || dialog?.kind !== 'delete-role' || !dialog.targetId) return
+    if (activeDialog?.kind !== dialog.kind || activeDialog.targetId !== dialog.targetId) return
     const id = dialog.targetId
     this.store.setState({ busy: true })
     void (async () => {
@@ -28,11 +29,11 @@ export class DialogsController {
         const selection = { roleDelete: { __args: { id }, node: true } } satisfies MutationGenqlSelection
         const result = await graphql().mutation(selection)
         if (!result.roleDelete.node) throw new Error('Role deletion was not confirmed')
-        this.store.setState((state) => ({ dialog: state.dialog === dialog ? null : state.dialog }))
+        this.store.setState((state) => ({ dialog: state.dialog === activeDialog ? null : state.dialog }))
         this.roleDeleted(id)
       } catch (error) {
         notify.apiError(error, () => {
-          if (this.store.getState().dialog === dialog) this.confirmDialog(dialog)
+          if (this.store.getState().dialog === activeDialog) this.confirmDialog(activeDialog)
         })
       } finally {
         this.store.setState({ busy: false })

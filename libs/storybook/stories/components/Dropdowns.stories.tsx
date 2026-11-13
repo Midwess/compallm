@@ -91,12 +91,16 @@ export const Select: Story = {
         <Menus.Select
           aria-label="Badge style"
           options={[
-            { value: 'dot', label: 'Dot', icon: <span aria-hidden="true" className="size-1.5 rounded-full bg-muted" /> },
+            {
+              value: 'dot',
+              label: 'Dot',
+              icon: <span aria-hidden="true" className="size-1.5 rounded-full bg-muted-foreground" />,
+            },
             {
               value: 'count',
               label: 'Count',
               icon: (
-                <span aria-hidden="true" className="text-muted">
+                <span aria-hidden="true" className="text-muted-foreground">
                   1
                 </span>
               ),

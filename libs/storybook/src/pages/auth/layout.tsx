@@ -6,13 +6,13 @@ export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <main
       className={`
-  grid min-h-svh grid-cols-[61.8%_38.2%] bg-background font-sans text-text max-[800px]:block
+  grid min-h-svh grid-cols-[61.8%_38.2%] bg-background font-sans text-foreground max-[800px]:block
 `}
     >
       <section
         className={`
   relative flex items-center justify-center bg-surface px-8 py-16 before:pointer-events-none
-  before:absolute before:inset-0 before:bg-[radial-gradient(var(--color-disabled)_0.5px,transparent_0.5px)]
+  before:absolute before:inset-0 before:bg-[radial-gradient(var(--disabled)_0.5px,transparent_0.5px)]
   before:bg-size-[80px_80px] before:opacity-30 before:content-[''] max-[800px]:hidden
 `}
         data-ui="auth-introduction"
@@ -20,8 +20,8 @@ export function AuthLayout({ children }: { children: ReactNode }) {
       >
         <div
           className={`
-  absolute top-8 left-8 flex items-center gap-4 text-[22px] leading-8 font-medium
-  [&>svg]:text-focus
+  absolute top-8 left-8 flex items-center gap-4 text-ui-22 leading-8 font-medium
+  [&>svg]:text-ring
 `}
         >
           <BookOpenIcon size={24} aria-hidden="true" />
@@ -29,12 +29,12 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         </div>
         <div
           className={`
-  z-1 w-full max-w-185 text-center [&>h2]:m-0 [&>h2]:text-[clamp(32px,3.34vw,48px)]
+  z-1 w-full max-w-185 text-center [&>h2]:m-0 [&>h2]:text-hero-title
   [&>h2]:leading-tight [&>h2]:font-medium [&>h2]:tracking-[-1.2px] [&>p]:mt-4
-  [&>p]:text-[clamp(16px,1.4vw,20px)] [&>p]:leading-8 [&>p]:text-muted
+  [&>p]:text-hero-body [&>p]:leading-8 [&>p]:text-muted-foreground
 `}
         >
-          <SparkleIcon className="mx-auto mb-8 block text-focus" size={49} aria-hidden="true" />
+          <SparkleIcon className="mx-auto mb-8 block text-ring" size={49} aria-hidden="true" />
           <h2>
             More room to think.
             <br />
@@ -56,8 +56,8 @@ export function AuthLayout({ children }: { children: ReactNode }) {
       >
         <div
           className={`
-  hidden items-center gap-4 text-[22px] leading-8 font-medium max-[800px]:absolute
-  max-[800px]:top-4 max-[800px]:left-4 max-[800px]:flex [&>svg]:text-focus
+  hidden items-center gap-4 text-ui-22 leading-8 font-medium max-[800px]:absolute
+  max-[800px]:top-4 max-[800px]:left-4 max-[800px]:flex [&>svg]:text-ring
 `}
         >
           <BookOpenIcon size={24} aria-hidden="true" />

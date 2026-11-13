@@ -31,7 +31,7 @@ function GroupMembers() {
     <section className="flex min-w-0 flex-col gap-4" aria-label={title}>
       <div className="flex shrink-0 items-center gap-2 px-4">
         <SettingsSectionTitle>{title}</SettingsSectionTitle>
-        <span className="text-xs text-muted">
+        <span className="text-xs text-muted-foreground">
           {selected.length} / {entries.length}
         </span>
       </div>
@@ -49,7 +49,7 @@ function GroupMembers() {
           role="region"
           aria-label={`${title} selection`}
           tabIndex={0}
-          className="mx-4 min-w-0 overflow-x-auto outline-offset-2 focus-visible:outline-2 focus-visible:outline-focus"
+          className="mx-4 min-w-0 overflow-x-auto outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
         >
           <Table className="overflow-visible">
             <Table.Content aria-label="Select group members" className="min-w-md">
@@ -71,7 +71,7 @@ function GroupMembers() {
                     <Table.Cell className="px-0 pr-3">
                       <span className="flex items-center gap-2 truncate text-xsm leading-4.5">{entry.name}</span>
                     </Table.Cell>
-                    <Table.Cell className="truncate px-0 pr-3 text-xs text-muted" title={entry.detail}>
+                    <Table.Cell className="truncate px-0 pr-3 text-xs text-muted-foreground" title={entry.detail}>
                       {entry.detail}
                     </Table.Cell>
                     <Table.Cell className="px-0">
@@ -86,7 +86,7 @@ function GroupMembers() {
                 ))}
                 {!visible.length ? (
                   <Table.Row>
-                    <Table.Cell colSpan={3} className="py-6 text-center text-muted">
+                    <Table.Cell colSpan={3} className="py-6 text-center text-muted-foreground">
                       No members match your search.
                     </Table.Cell>
                   </Table.Row>
@@ -137,7 +137,7 @@ function GroupRoles() {
         {draft.roleIds.length ? (
           <ul aria-label="Roles assigned to this group">
             {missing.map((id) => (
-              <li key={id} className="px-4 py-3 text-xs text-muted">
+              <li key={id} className="px-4 py-3 text-xs text-muted-foreground">
                 Role unavailable: {id}
               </li>
             ))}
@@ -146,7 +146,7 @@ function GroupRoles() {
                 <Indicator color={role.color} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-xsm">{role.name}</div>
-                  {role.description ? <div className="truncate text-xs text-muted">{role.description}</div> : null}
+                  {role.description ? <div className="truncate text-xs text-muted-foreground">{role.description}</div> : null}
                 </div>
                 <Button
                   variant="ghost"
@@ -166,7 +166,7 @@ function GroupRoles() {
             ))}
           </ul>
         ) : (
-          <p className="px-4 py-5 text-xs text-muted">No roles assigned.</p>
+          <p className="px-4 py-5 text-xs text-muted-foreground">No roles assigned.</p>
         )}
       </SectionSurface>
     </section>
@@ -234,7 +234,7 @@ function GroupEditorContent() {
               <Row label="Delete group" last>
                 <Button
                   variant="ghost"
-                  className="text-error"
+                  className="text-destructive"
                   disabled={busy}
                   onClick={() => c.pages.dialogs.openDialog('delete-group', draft.id!)}
                 >

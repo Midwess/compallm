@@ -67,7 +67,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "LICENSE-spinkit"
   ],
   "main": "./dist/index.js",
   "module": "./dist/index.js",

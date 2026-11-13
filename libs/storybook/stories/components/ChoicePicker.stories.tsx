@@ -11,7 +11,7 @@ const options = [
 function Example({ empty = false, disabled = false }: { empty?: boolean; disabled?: boolean }) {
   const [value, setValue] = useState<string[]>([])
   return (
-    <div className="flex min-h-72 flex-col items-start gap-4 bg-background p-6 text-text">
+    <div className="flex min-h-72 flex-col items-start gap-4 bg-background p-6 text-foreground">
       <ChoicePicker
         label="Add role"
         searchLabel="Search roles"
@@ -22,7 +22,7 @@ function Example({ empty = false, disabled = false }: { empty?: boolean; disable
         onValueChange={setValue}
         disabled={disabled}
       />
-      <p className="text-xs text-muted">{value.length} selected</p>
+      <p className="text-xs text-muted-foreground">{value.length} selected</p>
     </div>
   )
 }

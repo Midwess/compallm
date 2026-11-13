@@ -6,7 +6,7 @@ import { Button } from '../../components/buttons'
 import { Toast } from '../../components/feedback'
 import { SettingsNavigation } from './sidebar'
 import { SettingsDialogs } from './dialogs'
-import { GeneralSettings, AppearanceSettings, MessagingSettings, CodeSettings } from './preferences/user/page'
+import { GeneralSettings, MessagingSettings, CodeSettings } from './preferences/user/page'
 import { UserPreferencePage } from './preferences/user'
 import { ProfileSettings, SecuritySettings, ApiKeySettings, DangerSettings } from './account'
 import { OrganizationSettings } from './organization'
@@ -34,8 +34,6 @@ function SettingsScreen() {
       return null
     case 'general':
       return <GeneralSettings />
-    case 'appearance':
-      return <AppearanceSettings />
     case 'messaging':
       return <MessagingSettings />
     case 'code':
@@ -75,7 +73,7 @@ function SharedSettingsForm() {
   useEffect(() => {
     return configureSettingsForm(c)
   }, [c, form, page])
-  if (['general', 'appearance', 'messaging', 'code'].includes(page))
+  if (['general', 'messaging', 'code'].includes(page))
     return (
       <UserPreferencePage>
         <SettingsScreen />
@@ -119,7 +117,7 @@ export function SettingsPage() {
     return () => subscriptions.forEach((unsubscribe) => unsubscribe())
   }, [c])
   return (
-    <div className="relative flex h-dvh min-h-0 overflow-hidden bg-background font-sans text-text">
+    <div className="relative flex h-dvh min-h-0 overflow-hidden bg-background font-sans text-foreground">
       {open ? (
         <button
           aria-label="Close settings navigation"
@@ -132,14 +130,14 @@ export function SettingsPage() {
       </div>
       <main
         className="@container relative my-2 mr-2 ml-2 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-none
-rounded-xl border-[0.5px] border-divider bg-surface pr-2 scrollbar-gutter-stable md:ml-0"
+rounded-xl border-(length:--border-hairline) border-divider bg-surface pr-2 scrollbar-gutter-stable md:ml-0"
         aria-label="Settings content"
       >
         <button
           type="button"
           aria-label="Open settings navigation"
           onClick={() => setOpen(true)}
-          className="absolute top-4 left-4 z-10 rounded p-1 text-muted hover:text-text md:hidden"
+          className="absolute top-4 left-4 z-10 rounded p-1 text-muted-foreground hover:text-foreground md:hidden"
         >
           <ListIcon className="size-4" />
         </button>

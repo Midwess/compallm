@@ -8,11 +8,11 @@ export function FormIntroduction({ title, children }: { title: ReactNode; childr
   return (
     <header
       className={`
-  [&>h1]:text-[24px] [&>h1]:leading-8 [&>h1]:font-medium [&>div]:mt-1 [&>div]:text-xsm
+  [&>h1]:text-ui-24 [&>h1]:leading-8 [&>h1]:font-medium [&>div]:mt-1 [&>div]:text-xsm
 `}
     >
       <h1>{title}</h1>
-      <div className="text-muted">{children}</div>
+      <div className="text-muted-foreground">{children}</div>
     </header>
   )
 }
@@ -20,8 +20,8 @@ export function FormStepMarker({ children }: { children: ReactNode }) {
   return (
     <span
       className={`
-  inline-flex size-5 items-center justify-center rounded-full border-[0.5px] border-input-border
-  bg-elevated text-[12px] font-normal
+  inline-flex size-5 items-center justify-center rounded-full border-(length:--border-hairline) border-input
+  bg-elevated text-ui-12 font-normal
 `}
     >
       {children}
@@ -30,7 +30,7 @@ export function FormStepMarker({ children }: { children: ReactNode }) {
 }
 export function FormStepHeading({ step, children }: { step: number; children: ReactNode }) {
   return (
-    <h2 className="flex items-center gap-1.5 text-[16px] leading-6 font-medium">
+    <h2 className="flex items-center gap-1.5 text-ui-16 leading-6 font-medium">
       <FormStepMarker>{step}</FormStepMarker>
       {children}
     </h2>
@@ -40,7 +40,7 @@ export function FormStepConnector() {
   return <span className="block h-36 w-0.5 bg-border" aria-hidden="true" />
 }
 export function FormFieldLabel({ className, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
-  return <animated.label {...props} className={cx('block text-[14px] leading-5.25 font-medium', className)} />
+  return <animated.label {...props} className={cx('block text-ui-14 leading-5.25 font-medium', className)} />
 }
 export interface LabeledFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string

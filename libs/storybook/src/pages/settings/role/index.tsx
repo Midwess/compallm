@@ -80,7 +80,7 @@ function CedarEditor({ locked, owner }: { locked: boolean; owner: boolean }) {
         >
           Copy
         </Button>
-        <span className="rounded-lg bg-elevated px-2.5 py-1 font-sans text-xs leading-4 text-text">Cedar</span>
+        <span className="rounded-lg bg-elevated px-2.5 py-1 font-sans text-xs leading-4 text-foreground">Cedar</span>
       </div>
       <DisabledTooltip disabled={owner} reason={ownerExplanation} allowInteraction>
         <CodeEditor
@@ -216,11 +216,11 @@ function RoleEditorContent() {
               <CedarEditor locked={busy || draft.builtin} owner={draft.builtin} />
             </motion.div>
           </div>
-          <div aria-live="polite" className="mt-2 shrink-0 px-4 text-xs leading-4.5 text-muted">
+          <div aria-live="polite" className="mt-2 shrink-0 px-4 text-xs leading-4.5 text-muted-foreground">
             {draft.parsing ? (
               'Checking policy…'
             ) : draft.diagnostics.length ? (
-              <div role="alert" className="whitespace-pre-wrap text-error">
+              <div role="alert" className="whitespace-pre-wrap text-destructive">
                 {draft.diagnostics.join('\n')}
               </div>
             ) : draft.mode === 'cedar' ? (
@@ -244,7 +244,7 @@ function RoleEditorContent() {
                 <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
                   <Button
                     variant="ghost"
-                    className="text-error"
+                    className="text-destructive"
                     disabled={busy || draft.builtin}
                     onClick={() => shared.pages.dialogs.openDialog('delete-role', draft.id!)}
                   >

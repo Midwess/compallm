@@ -192,7 +192,8 @@ export type PreferenceCodeTheme = 'FOLLOW_INTERFACE' | 'LINEAR_DARK' | 'LINEAR_L
 
 export type PreferenceDarkPalette = 'CLASSIC_DARK' | 'DARK' | 'MAGIC_BLUE'
 
-export type PreferenceDestination = 'CHAT' | 'MODELS' | 'NOTEBOOKS' | 'PLUGINS' | 'PROVIDERS'
+export type PreferenceDestination =
+  'API_KEYS' | 'CHAT' | 'CONVERSATIONS' | 'MEMBERS' | 'MODELS' | 'NOTEBOOKS' | 'PLUGINS' | 'PROVIDERS' | 'STATS'
 
 export type PreferenceFontFamily = 'DEFAULT' | 'MONOSPACE'
 
@@ -205,6 +206,8 @@ export type PreferenceNamingFormat = 'FULL_NAME' | 'USERNAME'
 export type PreferencePixelFontSize = 'PX12' | 'PX13' | 'PX14' | 'PX16'
 
 export type PreferenceRelativeFontSize = 'DEFAULT' | 'LARGE' | 'LARGER' | 'SMALL' | 'SMALLER'
+
+export type PreferenceSidebarCategory = 'CONVERSATIONS' | 'ORGANIZATION' | 'ROUTERS' | 'WORKSPACE'
 
 export type PreferenceSidebarVisibility = 'ALWAYS' | 'HIDDEN' | 'WHEN_BADGED'
 
@@ -325,9 +328,16 @@ export interface SidebarEntry {
   __typename: 'SidebarEntry'
 }
 
+export interface SidebarLayoutSection {
+  category: PreferenceSidebarCategory
+  items: PreferenceDestination[]
+  __typename: 'SidebarLayoutSection'
+}
+
 export interface SidebarPreferences {
   badgeStyle: PreferenceBadgeStyle
   entries: SidebarEntry[]
+  layout: SidebarLayoutSection[]
   __typename: 'SidebarPreferences'
 }
 
@@ -884,9 +894,22 @@ export interface SidebarEntryGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface SidebarLayoutSectionGenqlSelection {
+  category?: boolean | number
+  items?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface SidebarLayoutSectionInput {
+  category: PreferenceSidebarCategory
+  items: PreferenceDestination[]
+}
+
 /** Order replaces ordering while preserving visibility; visibility patches are keyed by destination. */
 export interface SidebarPatchInput {
   badgeStyle?: PreferenceBadgeStyle | null
+  layout?: SidebarLayoutSectionInput[] | null
   order?: PreferenceDestination[] | null
   visibility?: SidebarVisibilityPatchInput[] | null
 }
@@ -894,6 +917,7 @@ export interface SidebarPatchInput {
 export interface SidebarPreferencesGenqlSelection {
   badgeStyle?: boolean | number
   entries?: SidebarEntryGenqlSelection
+  layout?: SidebarLayoutSectionGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -1186,6 +1210,12 @@ export const isSidebarEntry = (obj?: { __typename?: any } | null): obj is Sideba
   return SidebarEntry_possibleTypes.includes(obj.__typename)
 }
 
+const SidebarLayoutSection_possibleTypes: string[] = ['SidebarLayoutSection']
+export const isSidebarLayoutSection = (obj?: { __typename?: any } | null): obj is SidebarLayoutSection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isSidebarLayoutSection"')
+  return SidebarLayoutSection_possibleTypes.includes(obj.__typename)
+}
+
 const SidebarPreferences_possibleTypes: string[] = ['SidebarPreferences']
 export const isSidebarPreferences = (obj?: { __typename?: any } | null): obj is SidebarPreferences => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isSidebarPreferences"')
@@ -1264,11 +1294,15 @@ export const enumPreferenceDarkPalette = {
 }
 
 export const enumPreferenceDestination = {
+  API_KEYS: 'API_KEYS' as const,
   CHAT: 'CHAT' as const,
+  CONVERSATIONS: 'CONVERSATIONS' as const,
+  MEMBERS: 'MEMBERS' as const,
   MODELS: 'MODELS' as const,
   NOTEBOOKS: 'NOTEBOOKS' as const,
   PLUGINS: 'PLUGINS' as const,
   PROVIDERS: 'PROVIDERS' as const,
+  STATS: 'STATS' as const,
 }
 
 export const enumPreferenceFontFamily = {
@@ -1304,6 +1338,13 @@ export const enumPreferenceRelativeFontSize = {
   LARGER: 'LARGER' as const,
   SMALL: 'SMALL' as const,
   SMALLER: 'SMALLER' as const,
+}
+
+export const enumPreferenceSidebarCategory = {
+  CONVERSATIONS: 'CONVERSATIONS' as const,
+  ORGANIZATION: 'ORGANIZATION' as const,
+  ROUTERS: 'ROUTERS' as const,
+  WORKSPACE: 'WORKSPACE' as const,
 }
 
 export const enumPreferenceSidebarVisibility = {

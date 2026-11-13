@@ -64,6 +64,8 @@ export const router = createBrowserRouter([
             ],
           },
           { path: 'chat', lazy: () => import('./routes/chat') },
+          { path: 'models', lazy: () => import('./routes/models') },
+          { path: 'providers', lazy: () => import('./routes/providers') },
           {
             path: 'providers/new',
             lazy: () => import('./routes/create-provider'),

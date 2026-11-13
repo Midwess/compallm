@@ -83,7 +83,7 @@ export function ChoicePicker({
           <Combobox.Popup
             render={<FloatingMotion />}
             className="flex max-h-(--available-height) w-2xs max-w-[calc(100vw-1rem)] flex-col overflow-hidden
-rounded-[10px] border border-border bg-menu font-sans text-text shadow-menu"
+rounded-control border border-border bg-menu font-sans text-foreground shadow-menu"
           >
             <div className="p-2 pb-0">
               <Searchbox>
@@ -91,7 +91,7 @@ rounded-[10px] border border-border bg-menu font-sans text-text shadow-menu"
               </Searchbox>
             </div>
             <Combobox.Empty>
-              <div className="px-3 py-4 text-center text-xs text-muted">
+              <div className="px-3 py-4 text-center text-xs text-muted-foreground">
                 <div>{emptyMessage}</div>
                 {emptyAction}
               </div>
@@ -111,7 +111,7 @@ outline-none data-highlighted:bg-elevated data-disabled:cursor-not-allowed data-
                   <span className="min-w-0 flex-1">
                     <span className="block truncate">{option.label}</span>
                     {option.description ? (
-                      <span className="block truncate text-xs text-muted">{option.description}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{option.description}</span>
                     ) : null}
                   </span>
                   <Combobox.ItemIndicator className="shrink-0">

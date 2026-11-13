@@ -84,8 +84,8 @@ function ConnectionFields() {
               aria-label={keyVisible ? 'Hide API key' : 'Show API key'}
               aria-pressed={keyVisible}
               className={`
-absolute inset-y-0 right-0 flex w-8 items-center justify-center rounded-lg text-muted
-hover:text-text focus-visible:outline-muted
+absolute inset-y-0 right-0 flex w-8 items-center justify-center rounded-lg text-muted-foreground
+hover:text-foreground focus-visible:outline-muted-foreground
 `}
               onClick={() => setKeyVisible((visible) => !visible)}
             >
@@ -118,7 +118,7 @@ function TestConnection() {
   const busy = useProvider((state) => state.submitting)
   return (
     <SectionSurface className="grid gap-2">
-      <p className="flex min-w-0 items-center gap-2 text-xs text-focus">
+      <p className="flex min-w-0 items-center gap-2 text-xs text-ring">
         <LinkSimpleIcon aria-hidden="true" className="size-3.5 shrink-0" />
         <span className="truncate">{endpoint || 'Configure the connection endpoint'}</span>
       </p>
@@ -141,7 +141,7 @@ function TestConnection() {
             <Tooltip content={result.message}>
               <button
                 type="button"
-                className="flex cursor-help items-center gap-1.5 text-xs text-error focus-visible:outline-focus"
+                className="flex cursor-help items-center gap-1.5 text-xs text-destructive focus-visible:outline-ring"
               >
                 <XCircleIcon aria-hidden="true" className="size-3.5" />
                 Connection failed

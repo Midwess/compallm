@@ -14,8 +14,6 @@ const labels: Record<string, string> = {
   bash: 'Bash',
   cedar: 'Cedar',
 }
-const background = { dark: '#212123', light: '#f5f5f6' }
-const foreground = { dark: '#e4e5e7', light: '#25262a' }
 
 function useTokens(code: string, language: string, theme: CodeTheme) {
   const [result, setResult] = useState<{ code: string; language: string; theme: CodeTheme; tokens: ThemedToken[][] }>()
@@ -72,7 +70,7 @@ function Language({
 [&>button]:text-xs [&>button]:leading-none [&>button]:shadow-none"
         />
       ) : (
-        <span className="pointer-events-none rounded-lg bg-elevated px-2.5 py-1 font-sans text-xs leading-4 text-text">
+        <span className="pointer-events-none rounded-lg bg-elevated px-2.5 py-1 font-sans text-xs leading-4 text-foreground">
           {name}
         </span>
       )}
@@ -118,8 +116,8 @@ export function CodePreview({
   return (
     <figure
       data-slot="code-block"
-      className={cx('relative m-0 overflow-hidden rounded-md', className)}
-      style={{ backgroundColor: background[theme], color: foreground[theme] }}
+      data-code-theme={theme}
+      className={cx('relative m-0 overflow-hidden rounded-md bg-code-background text-code-foreground', className)}
     >
       <Language language={language} onChange={onLanguageChange} />
       <pre
@@ -130,22 +128,20 @@ export function CodePreview({
           {lines.map((tokens, i) => {
             const change = lineChanges[i + 1]
             const value = change === 'removed' ? '−' : String(++number)
-            const added = theme === 'dark' ? '#212d26' : '#e9f3e9',
-              removed = theme === 'dark' ? '#362628' : '#f7e9e9'
             return (
               <span
                 key={i}
                 data-change={change}
-                className="flex min-w-full border-l border-transparent"
-                style={{
-                  backgroundColor: change === 'added' ? added : change === 'removed' ? removed : undefined,
-                  borderLeftColor: change === 'added' ? '#588b5d' : change === 'removed' ? '#975f63' : undefined,
-                }}
+                className="flex min-w-full border-l border-transparent data-[change=added]:border-code-added-indicator
+ data-[change=added]:bg-code-added data-[change=removed]:border-code-removed-indicator data-[change=removed]:bg-code-removed"
               >
                 <span
                   aria-hidden="true"
-                  className="sticky left-0 w-7 shrink-0 select-none pr-0.5 text-right"
-                  style={{ color: change === 'added' ? '#588b5d' : change === 'removed' ? '#975f63' : '#5c5d5f' }}
+                  className={cx(
+                    'sticky left-0 w-7 shrink-0 select-none pr-0.5 text-right text-code-gutter',
+                    change === 'added' && 'text-code-added-indicator',
+                    change === 'removed' && 'text-code-removed-indicator',
+                  )}
                 >
                   {value}
                 </span>
@@ -203,8 +199,11 @@ export function CodeEditor({
     <div
       data-slot="code-editor"
       data-form-field={name}
-      className={cx('flex min-w-0 w-full flex-col overflow-hidden rounded-md', className)}
-      style={{ backgroundColor: background[theme], color: foreground[theme] }}
+      data-code-theme={theme}
+      className={cx(
+        'flex min-w-0 w-full flex-col overflow-hidden rounded-md bg-code-background text-code-foreground',
+        className,
+      )}
     >
       {showToolbar ? <Language language={language} actions={actions} header /> : null}
       <div
@@ -226,8 +225,8 @@ export function CodeEditor({
               ))}
             </code>
           </pre>
-          <div className="absolute inset-y-0 left-0 w-7 overflow-hidden" style={{ backgroundColor: background[theme] }}>
-            <div ref={gutter} className="pt-2 pr-0.5 text-right" style={{ color: '#5c5d5f' }}>
+          <div className="absolute inset-y-0 left-0 w-7 overflow-hidden bg-code-background">
+            <div ref={gutter} className="pt-2 pr-0.5 text-right text-code-gutter">
               {tokens.map((_, i) => (
                 <div key={i}>{i + 1}</div>
               ))}
@@ -245,9 +244,9 @@ export function CodeEditor({
           autoCorrect="off"
           wrap="off"
           className="absolute inset-0 h-full min-h-0 w-full resize-none rounded-none border-0 bg-transparent py-2
-pl-9 pr-4 font-mono text-transparent caret-text selection:bg-focus/25
+pl-9 pr-4 font-mono text-transparent caret-foreground selection:bg-ring/25
 [font-variant-ligatures:none] [-webkit-text-fill-color:transparent]"
-          style={{ ...style, caretColor: foreground[theme] }}
+          style={{ ...style, caretColor: 'var(--code-foreground)' }}
           onChange={(event) => onValueChange?.(event.target.value)}
           onScroll={(event) => {
             const { scrollTop, scrollLeft } = event.currentTarget

@@ -46,9 +46,10 @@ function SelectTrigger({
       {...props}
       render={<animated.button type="button" />}
       className={cx(
-        `flex h-7.5 w-full min-w-0 cursor-pointer items-center justify-between gap-1 rounded-xl border-[0.5px]
-        border-transparent bg-elevated px-1.5 py-0 text-xsm leading-5 text-text shadow-control
-        focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-focus
+        `flex h-7.5 w-full min-w-0 cursor-pointer items-center justify-between gap-1 rounded-xl
+border-(length:--border-hairline)
+        border-transparent bg-elevated px-1.5 py-0 text-xsm leading-5 text-foreground shadow-control
+        focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-ring
         disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`,
         className,
       )}
@@ -81,8 +82,8 @@ function SelectContent({ className, children, ...props }: Omit<BaseSelect.Popup.
           {...props}
           render={<FloatingMotion />}
           className={cx(
-            `w-(--anchor-width) max-w-[calc(100vw-1rem)] origin-(--transform-origin) rounded-[10px]
-            border-[0.5px] border-border bg-elevated font-sans text-text shadow-menu outline-none`,
+            `w-(--anchor-width) max-w-[calc(100vw-1rem)] origin-(--transform-origin) rounded-control
+            border-(length:--border-hairline) border-border bg-elevated font-sans text-foreground shadow-menu outline-none`,
             className,
           )}
         >
@@ -217,6 +218,6 @@ export function DiagramDropdown(props: Omit<DropdownProps, 'options' | 'label'>)
   return <Dropdown {...props} label="Diagram style" options={diagrams} />
 }
 export function MenuGroupHeading({ children }: { children: ReactNode }) {
-  return <div className="p-1.5 text-[12px] font-medium text-muted">{children}</div>
+  return <div className="p-1.5 text-ui-12 font-medium text-muted-foreground">{children}</div>
 }
 export const SelectOption = SelectEntry

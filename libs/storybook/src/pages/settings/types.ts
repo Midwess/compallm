@@ -8,7 +8,6 @@ import type { OrganizationController } from './organization/controller'
 export type SettingsDestination =
   | 'blank'
   | 'general'
-  | 'appearance'
   | 'messaging'
   | 'code'
   | 'profile'

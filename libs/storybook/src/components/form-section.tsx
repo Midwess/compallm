@@ -33,7 +33,7 @@ function Marker(props: HTMLAttributes<HTMLSpanElement>) {
       aria-hidden="true"
       className={cx(
         `absolute top-0.5 -left-3 flex size-5 items-center justify-center rounded-full
-border border-border bg-elevated text-xs text-muted`,
+border border-border bg-elevated text-xs text-muted-foreground`,
         props.className,
       )}
     />

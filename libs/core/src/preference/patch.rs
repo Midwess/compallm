@@ -93,6 +93,8 @@ pub struct SidebarPatch {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<Vec<Destination>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub layout: Option<Vec<super::sidebar::SidebarSection>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub visibility: Option<Vec<super::sidebar::SidebarEntry>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub badge_style: Option<BadgeStyle>,
@@ -156,6 +158,7 @@ impl UserPreferencesPatch {
             })
             && self.sidebar.as_ref().is_none_or(|p| {
                 p.order.is_none()
+                    && p.layout.is_none()
                     && p.badge_style.is_none()
                     && p.visibility.as_ref().is_none_or(Vec::is_empty)
             })
@@ -234,6 +237,7 @@ impl UserPreferencesPatch {
             }
         }
         if let Some(patch) = &self.sidebar {
+            preferences.sidebar.append_missing_defaults();
             if let Some(order) = &patch.order {
                 let mut seen = std::collections::HashSet::new();
                 if order
@@ -257,6 +261,21 @@ impl UserPreferencesPatch {
                     .sidebar
                     .entries
                     .extend(old.into_iter().filter(|entry| !seen.contains(&entry.item)));
+            }
+            if patch.order.is_some() {
+                let positions: std::collections::HashMap<_, _> = preferences
+                    .sidebar
+                    .entries
+                    .iter()
+                    .enumerate()
+                    .map(|(index, entry)| (entry.item, index))
+                    .collect();
+                for section in &mut preferences.sidebar.layout {
+                    section.items.sort_by_key(|item| positions[item]);
+                }
+            }
+            if let Some(layout) = &patch.layout {
+                preferences.sidebar.replace_layout(layout.clone())?;
             }
             if let Some(entries) = &patch.visibility {
                 let mut seen = std::collections::HashSet::new();

@@ -18,6 +18,7 @@ export const animation = {
   reorder: { duration: 0.18, ease: 'easeOut' },
   panel: { duration: 0.2, ease: 'easeOut' },
   loading: { duration: 1, ease: 'linear', repeat: Infinity },
+  cubeGrid: { duration: 1.3, ease: 'easeInOut', repeat: Infinity, times: [0, 0.35, 0.7, 1] },
   distance: 6,
   panelDistance: 12,
   overlayScale: 0.96,
@@ -26,6 +27,31 @@ export const animation = {
   switchTravel: 10,
   indicatorScale: 0.8,
 } as const
+
+export function CubeGridMotion({ stopped = false }: { stopped?: boolean }) {
+  const reduced = useReducedMotion()
+  return (
+    <span aria-hidden="true" className="grid size-8 grid-cols-3 grid-rows-3 text-muted-foreground/60">
+      {Array.from({ length: 9 }, (_, index) => (
+        <motion.span
+          key={index}
+          className="bg-current"
+          initial={false}
+          animate={{ scale: stopped || reduced ? 1 : [1, 0, 1, 1] }}
+          transition={
+            stopped || reduced
+              ? { duration: 0 }
+              : {
+                  ...animation.cubeGrid,
+                  times: [...animation.cubeGrid.times],
+                  delay: (2 - Math.floor(index / 3) + (index % 3)) * 0.1,
+                }
+          }
+        />
+      ))}
+    </span>
+  )
+}
 
 export function reducedMotion() {
   return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -274,9 +300,9 @@ export function useSelectionMotion(
     const track = node.parentElement?.querySelector<HTMLElement>('[data-selection-track]')
     const indicator = node.parentElement?.querySelector<HTMLElement>('[data-selection-indicator]')
     const colors = getComputedStyle(node)
-    const primary = colors.getPropertyValue('--color-primary').trim()
-    const disabled = colors.getPropertyValue('--color-disabled').trim()
-    const border = colors.getPropertyValue('--color-input-border').trim()
+    const primary = colors.getPropertyValue('--primary').trim()
+    const disabled = colors.getPropertyValue('--disabled').trim()
+    const border = colors.getPropertyValue('--input').trim()
     controls.current = []
     if (track)
       controls.current.push(

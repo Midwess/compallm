@@ -48,7 +48,7 @@ function AuthContent({ mode }: { mode: Mode }) {
   if (step === 'complete') return <Completion mode={mode} />
   return (
     <div data-route={pagePaths[mode]} className="flex flex-col gap-6">
-      <h1 className="m-0 text-[28px] leading-10 font-medium tracking-[-0.5px]">
+      <h1 className="m-0 text-ui-28 leading-10 font-medium tracking-[-0.5px]">
         {step === 'email'
           ? mode === 'signup'
             ? 'Create your account.'
@@ -66,10 +66,10 @@ function Completion({ mode }: { mode: Mode }) {
   return (
     <div className="grid gap-4" role="status">
       <CheckCircleIcon size={40} className="text-success" aria-hidden="true" />
-      <h1 className="m-0 text-[28px] leading-10 font-medium tracking-[-0.5px]">
+      <h1 className="m-0 text-ui-28 leading-10 font-medium tracking-[-0.5px]">
         {mode === 'signup' ? 'Your account is ready.' : 'You’re signed in.'}
       </h1>
-      <p className="m-0 text-[15px] leading-6 text-muted">You can now continue to your workspace.</p>
+      <p className="m-0 text-ui-15 leading-6 text-muted-foreground">You can now continue to your workspace.</p>
     </div>
   )
 }
@@ -223,8 +223,8 @@ function VerificationForm() {
 function Recipient() {
   const email = useAuthState((state) => state.email)
   return (
-    <p className="mb-2 text-sm text-muted">
-      Enter the code sent to <strong className="font-medium break-all text-text">{email}</strong>
+    <p className="mb-2 text-sm text-muted-foreground">
+      Enter the code sent to <strong className="font-medium break-all text-foreground">{email}</strong>
     </p>
   )
 }
@@ -269,7 +269,7 @@ export function ResendControl() {
   const remaining = useAuthState((state) => state.remaining)
   const pending = useAuthState((state) => state.pending)
   return (
-    <div className="flex flex-wrap items-center gap-1 text-xsm text-muted">
+    <div className="flex flex-wrap items-center gap-1 text-xsm text-muted-foreground">
       <span>Didn’t receive a code?</span>
       <Button
         className="h-6"
@@ -288,7 +288,12 @@ function BackAction() {
   const controller = useAuthController()
   const disabled = useAuthState((state) => state.pending !== null)
   return (
-    <Button className="h-6 text-muted" variant="link" onClick={() => controller.useDifferentEmail()} disabled={disabled}>
+    <Button
+      className="h-6 text-muted-foreground"
+      variant="link"
+      onClick={() => controller.useDifferentEmail()}
+      disabled={disabled}
+    >
       Use a different email
     </Button>
   )

@@ -28,6 +28,40 @@ export const userPreferenceDefaults = {
         item: 'PLUGINS',
         visibility: 'ALWAYS',
       },
+      {
+        item: 'STATS',
+        visibility: 'ALWAYS',
+      },
+      {
+        item: 'API_KEYS',
+        visibility: 'ALWAYS',
+      },
+      {
+        item: 'MEMBERS',
+        visibility: 'ALWAYS',
+      },
+      {
+        item: 'CONVERSATIONS',
+        visibility: 'ALWAYS',
+      },
+    ],
+    layout: [
+      {
+        category: 'WORKSPACE',
+        items: ['PROVIDERS', 'MODELS', 'NOTEBOOKS', 'PLUGINS'],
+      },
+      {
+        category: 'ROUTERS',
+        items: ['STATS', 'API_KEYS'],
+      },
+      {
+        category: 'ORGANIZATION',
+        items: ['MEMBERS'],
+      },
+      {
+        category: 'CONVERSATIONS',
+        items: ['CONVERSATIONS'],
+      },
     ],
   },
   memberDisplay: {
@@ -74,4 +108,8 @@ export const userPreferenceSidebarDestinations = [
   'MODELS',
   'NOTEBOOKS',
   'PLUGINS',
+  'STATS',
+  'API_KEYS',
+  'MEMBERS',
+  'CONVERSATIONS',
 ] as const satisfies readonly PreferenceDestination[]

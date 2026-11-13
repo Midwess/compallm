@@ -201,7 +201,17 @@ export const MessageCompositionPatchInput = z
   .strict()
 export type MessageCompositionPatchInputFormInput = z.input<typeof MessageCompositionPatchInput>
 export type MessageCompositionPatchInputFormOutput = z.output<typeof MessageCompositionPatchInput>
-export const PreferenceDestination = z.enum(['CHAT', 'MODELS', 'PROVIDERS', 'NOTEBOOKS', 'PLUGINS'])
+export const PreferenceDestination = z.enum([
+  'CHAT',
+  'MODELS',
+  'PROVIDERS',
+  'NOTEBOOKS',
+  'PLUGINS',
+  'STATS',
+  'API_KEYS',
+  'MEMBERS',
+  'CONVERSATIONS',
+])
 export type PreferenceDestinationFormInput = z.input<typeof PreferenceDestination>
 export type PreferenceDestinationFormOutput = z.output<typeof PreferenceDestination>
 export const NavigationPatchInputConstraints = {} as const
@@ -247,6 +257,9 @@ export type PreferenceBadgeStyleFormOutput = z.output<typeof PreferenceBadgeStyl
 export const PreferenceRelativeFontSize = z.enum(['SMALLER', 'SMALL', 'DEFAULT', 'LARGE', 'LARGER'])
 export type PreferenceRelativeFontSizeFormInput = z.input<typeof PreferenceRelativeFontSize>
 export type PreferenceRelativeFontSizeFormOutput = z.output<typeof PreferenceRelativeFontSize>
+export const PreferenceSidebarCategory = z.enum(['WORKSPACE', 'ROUTERS', 'ORGANIZATION', 'CONVERSATIONS'])
+export type PreferenceSidebarCategoryFormInput = z.input<typeof PreferenceSidebarCategory>
+export type PreferenceSidebarCategoryFormOutput = z.output<typeof PreferenceSidebarCategory>
 export const PreferenceSidebarVisibility = z.enum(['ALWAYS', 'WHEN_BADGED', 'HIDDEN'])
 export type PreferenceSidebarVisibilityFormInput = z.input<typeof PreferenceSidebarVisibility>
 export type PreferenceSidebarVisibilityFormOutput = z.output<typeof PreferenceSidebarVisibility>
@@ -586,6 +599,13 @@ export const RoleUpdateInput = z
   .strict()
 export type RoleUpdateInputFormInput = z.input<typeof RoleUpdateInput>
 export type RoleUpdateInputFormOutput = z.output<typeof RoleUpdateInput>
+export const SidebarLayoutSectionInputConstraints = {} as const
+export const SidebarLayoutSectionInputInput = {}
+export const SidebarLayoutSectionInput = z
+  .object({ category: PreferenceSidebarCategory, items: z.array(PreferenceDestination) })
+  .strict()
+export type SidebarLayoutSectionInputFormInput = z.input<typeof SidebarLayoutSectionInput>
+export type SidebarLayoutSectionInputFormOutput = z.output<typeof SidebarLayoutSectionInput>
 export const SidebarVisibilityPatchInputConstraints = {} as const
 export const SidebarVisibilityPatchInputInput = {}
 export const SidebarVisibilityPatchInput = z
@@ -598,6 +618,7 @@ export const SidebarPatchInputInput = {}
 /** Order replaces ordering while preserving visibility; visibility patches are keyed by destination. */
 export const SidebarPatchInput = z
   .object({
+    layout: z.array(SidebarLayoutSectionInput).optional(),
     order: z.array(PreferenceDestination).optional(),
     visibility: z.array(SidebarVisibilityPatchInput).optional(),
     badgeStyle: PreferenceBadgeStyle.optional(),

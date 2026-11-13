@@ -203,13 +203,27 @@
         "MODELS",
         "PROVIDERS",
         "NOTEBOOKS",
-        "PLUGINS"
+        "PLUGINS",
+        "STATS",
+        "API_KEYS",
+        "MEMBERS",
+        "CONVERSATIONS"
       ]
     },
     "SidebarPatchInput": {
       "description": "Order replaces ordering while preserving visibility; visibility patches are keyed by destination.",
       "type": "object",
       "properties": {
+        "layout": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/SidebarLayoutSectionInput"
+          },
+          "x-compallm-non-null": true
+        },
         "order": {
           "type": [
             "array",
@@ -244,6 +258,35 @@
       },
       "additionalProperties": false,
       "x-compallm-input": true
+    },
+    "SidebarLayoutSectionInput": {
+      "type": "object",
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/PreferenceSidebarCategory"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PreferenceDestination"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "items"
+      ],
+      "x-compallm-input": true
+    },
+    "PreferenceSidebarCategory": {
+      "type": "string",
+      "enum": [
+        "WORKSPACE",
+        "ROUTERS",
+        "ORGANIZATION",
+        "CONVERSATIONS"
+      ]
     },
     "SidebarVisibilityPatchInput": {
       "type": "object",

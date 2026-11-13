@@ -32,7 +32,7 @@ export function OrganizationSettings() {
             <Row label="Logo" description="Recommended size is 256×256px">
               <div className="flex items-center gap-3">
                 <Avatar name={org.name} src={org.logo ?? undefined} />
-                <label className="cursor-pointer rounded-lg border border-input-border px-3 py-1.5 text-xs">
+                <label className="cursor-pointer rounded-lg border border-input px-3 py-1.5 text-xs">
                   Upload
                   <FileField
                     name="organizationUpload"
@@ -66,7 +66,7 @@ export function OrganizationSettings() {
               <FormError name="organization.fiscalMonth" />
             </Row>
             <Row label="Region" description="Deployment region for this organization." last>
-              <span className="text-xs text-muted">{org.region}</span>
+              <span className="text-xs text-muted-foreground">{org.region}</span>
             </Row>
           </Rows>
         </Section>
@@ -96,7 +96,11 @@ export function OrganizationSettings() {
         <Section title="Danger zone" description="Manage deletion of this organization.">
           <Rows>
             <Row label="Delete organization" description="Manage deletion of this organization." last>
-              <Button variant="ghost" className="text-error" onClick={() => c.pages.dialogs.openDialog('delete-organization')}>
+              <Button
+                variant="ghost"
+                className="text-destructive"
+                onClick={() => c.pages.dialogs.openDialog('delete-organization')}
+              >
                 Delete organization
               </Button>
             </Row>

@@ -59,7 +59,7 @@ export function ModelFilters() {
         </Popup.Submenu>
         <Popup.Separator />
         <Popup.Item
-          className="text-muted"
+          className="text-muted-foreground"
           onClick={() => controller.onClearModelFilters?.()}
           disabled={!controller.onClearModelFilters}
         >
@@ -92,7 +92,7 @@ export function ProviderFilters() {
         </Popup.Submenu>
         <Popup.Separator />
         <Popup.Item
-          className="text-muted"
+          className="text-muted-foreground"
           disabled={!controller.onProviderFilterChanged}
           onClick={() => controller.onProviderFilterChanged?.('all')}
         >

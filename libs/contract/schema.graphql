@@ -53,6 +53,10 @@ enum PreferenceDestination {
   PROVIDERS
   NOTEBOOKS
   PLUGINS
+  STATS
+  API_KEYS
+  MEMBERS
+  CONVERSATIONS
 }
 
 enum PreferenceFontFamily {
@@ -88,6 +92,13 @@ enum PreferenceRelativeFontSize {
   DEFAULT
   LARGE
   LARGER
+}
+
+enum PreferenceSidebarCategory {
+  WORKSPACE
+  ROUTERS
+  ORGANIZATION
+  CONVERSATIONS
 }
 
 enum PreferenceSidebarVisibility {
@@ -350,8 +361,14 @@ input RoleUpdateInput {
   cedarSource: String
 }
 
+input SidebarLayoutSectionInput {
+  category: PreferenceSidebarCategory!
+  items: [PreferenceDestination!]!
+}
+
 "Order replaces ordering while preserving visibility; visibility patches are keyed by destination."
 input SidebarPatchInput {
+  layout: [SidebarLayoutSectionInput!]
   order: [PreferenceDestination!]
   visibility: [SidebarVisibilityPatchInput!]
   badgeStyle: PreferenceBadgeStyle
@@ -620,7 +637,13 @@ type SidebarEntry {
   visibility: PreferenceSidebarVisibility!
 }
 
+type SidebarLayoutSection {
+  category: PreferenceSidebarCategory!
+  items: [PreferenceDestination!]!
+}
+
 type SidebarPreferences {
+  layout: [SidebarLayoutSection!]!
   badgeStyle: PreferenceBadgeStyle!
   entries: [SidebarEntry!]!
 }

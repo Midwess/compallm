@@ -23,13 +23,13 @@ const general: Preference[] = [
   {
     key: 'displayNames',
     label: 'Display names',
-    description: 'Choose how member names appear.',
+    description: 'Choose how member names appear. Applying this preference is not available yet.',
     options: preferenceOptions.displayNames,
   },
   {
     key: 'firstDay',
     label: 'First day of the week',
-    description: 'Used in calendars and reporting periods.',
+    description: 'Used in calendars and reporting periods. Applying this preference is not available yet.',
     options: preferenceOptions.firstDay,
   },
 ]
@@ -92,21 +92,14 @@ function PreferenceRows({ items }: { items: Preference[] }) {
   )
 }
 export function GeneralSettings() {
-  return (
-    <SettingsContent>
-      <Heading>General</Heading>
-      <Section title="General" description="Choose how Compallm opens and displays information.">
-        <PreferenceRows items={general} />
-      </Section>
-    </SettingsContent>
-  )
-}
-export function AppearanceSettings() {
   const c = useSettingsController()
   return (
     <SettingsContent>
-      <Heading>Appearance</Heading>
+      <Heading>General</Heading>
       <div className="grid gap-12">
+        <Section title="General" description="Choose how Compallm opens.">
+          <PreferenceRows items={general} />
+        </Section>
         <Section title="Interface" description="Make the workspace comfortable for you.">
           <Rows>
             <Row label="App sidebar" description="Choose which items appear in your sidebar.">
@@ -167,7 +160,7 @@ function CodeAppearanceSection() {
       />
       <SettingsRow label="Font" className="min-h-15 bg-transparent px-4 py-3">
         <Popup>
-          <Popup.Trigger aria-label="Code font" className="h-8 w-auto gap-2 px-0 text-xs text-muted">
+          <Popup.Trigger aria-label="Code font" className="h-8 w-auto gap-2 px-0 text-xs text-muted-foreground">
             {preferenceLabel(fontSize)}, Regular, {preferenceLabel(font)}
             <CaretDownIcon aria-hidden="true" className="size-3" />
           </Popup.Trigger>

@@ -150,6 +150,52 @@ async fn preferences_backfill_concurrency_reset_and_owner_isolation() -> anyhow:
             saved.sidebar.entries[0].visibility,
             SidebarVisibility::Hidden
         );
+        let mut layout = saved.sidebar.layout.clone();
+        let from = layout
+            .iter()
+            .position(|section| section.items.contains(&Destination::Plugins))
+            .unwrap();
+        layout[from]
+            .items
+            .retain(|item| *item != Destination::Plugins);
+        layout[2].items.insert(0, Destination::Plugins);
+        layout.swap(0, 2);
+        let hierarchy = UserPreferencesPatch {
+            sidebar: Some(SidebarPatch {
+                layout: Some(layout.clone()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        context.scope(repository.update(1, &hierarchy)).await?;
+        let persisted = context.scope(repository.find(1)).await?.unwrap();
+        assert_eq!(persisted.sidebar.layout, layout);
+        assert_eq!(persisted.sidebar.entries[0].item, Destination::Plugins);
+        assert_eq!(
+            persisted.sidebar.entries[0].visibility,
+            SidebarVisibility::Hidden
+        );
+        let mut invalid = layout.clone();
+        invalid[1].items.push(Destination::Plugins);
+        assert!(
+            context
+                .scope(repository.update(
+                    1,
+                    &UserPreferencesPatch {
+                        sidebar: Some(SidebarPatch {
+                            layout: Some(invalid),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }
+                ))
+                .await
+                .is_err()
+        );
+        assert_eq!(
+            context.scope(repository.find(1)).await?.unwrap().sidebar,
+            persisted.sidebar
+        );
         let reset = context
             .scope(repository.reset(1, &[UserPreferenceGroup::Sidebar]))
             .await?;

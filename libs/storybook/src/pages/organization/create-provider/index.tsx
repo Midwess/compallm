@@ -45,11 +45,11 @@ function ProviderHeader() {
         <button
           type="button"
           onClick={controller.onChooseProvider}
-          className="cursor-pointer text-muted hover:text-text focus-visible:outline-focus"
+          className="cursor-pointer text-muted-foreground hover:text-foreground focus-visible:outline-ring"
         >
           Create provider
         </button>
-        <span aria-hidden="true" className="text-muted">
+        <span aria-hidden="true" className="text-muted-foreground">
           /
         </span>
         <span>{step === 'choose' ? 'Choose provider' : 'Configure'}</span>

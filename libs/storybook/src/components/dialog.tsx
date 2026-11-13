@@ -79,7 +79,7 @@ function Content({ className, role = 'dialog', children, ...props }: DialogHTMLA
       aria-describedby={props['aria-describedby'] ?? undefined}
       className={cx(
         `fixed inset-0 m-auto max-h-11/12 w-160 max-w-11/12 overflow-y-auto
-      rounded-xl border border-border bg-inset p-0 text-text backdrop:bg-background/70`,
+      rounded-xl border border-border bg-inset p-0 text-foreground backdrop:bg-background/70`,
         className,
       )}
     >
@@ -105,7 +105,7 @@ function Title({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
 }
 function Description({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
   const { descriptionId } = useDialog()
-  return <p {...props} id={descriptionId} className={cx('text-sm text-muted', className)} />
+  return <p {...props} id={descriptionId} className={cx('text-sm text-muted-foreground', className)} />
 }
 function Body({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return <div {...props} className={cx('grid gap-4 px-4 py-6', className)} />
@@ -120,7 +120,7 @@ function Close({ children, className, ...props }: ButtonHTMLAttributes<HTMLButto
       type="button"
       aria-label="Close dialog"
       {...props}
-      className={cx('cursor-pointer rounded text-muted hover:text-text focus-visible:outline-focus', className)}
+      className={cx('cursor-pointer rounded text-muted-foreground hover:text-foreground focus-visible:outline-ring', className)}
       onClick={(event) => {
         props.onClick?.(event)
         if (!event.defaultPrevented) onClose()

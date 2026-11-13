@@ -62,7 +62,7 @@ export function ModelDialog() {
                   ? 'Edit model'
                   : `Add ${textModelOptions.find((option) => option.value === modelProtocol(draft))!.label}`}
               </Dialog.Title>
-              <Dialog.Close aria-label="Close model popup" className="focus-visible:outline-muted" />
+              <Dialog.Close aria-label="Close model popup" className="focus-visible:outline-muted-foreground" />
             </Dialog.Header>
             <Dialog.Body className="py-4">
               <FormField>

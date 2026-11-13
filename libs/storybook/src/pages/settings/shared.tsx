@@ -34,7 +34,7 @@ export function Heading({
         <SettingsPageTitle>{children}</SettingsPageTitle>
         {action}
       </div>
-      {description ? <p className="mt-2 text-xsm leading-5.5 text-muted">{description}</p> : null}
+      {description ? <p className="mt-2 text-xsm leading-5.5 text-muted-foreground">{description}</p> : null}
     </div>
   )
 }
@@ -103,7 +103,7 @@ export function Empty({ title, children, action }: { title: string; children?: R
   return (
     <SectionSurface className="grid gap-3">
       <h3 className="text-xsm leading-5 font-medium">{title}</h3>
-      {children ? <p className="text-xs leading-4.5 text-muted">{children}</p> : null}
+      {children ? <p className="text-xs leading-4.5 text-muted-foreground">{children}</p> : null}
       {action ? <div>{action}</div> : null}
     </SectionSurface>
   )

@@ -40,6 +40,10 @@ impl From<core::values::Destination> for PreferenceDestination {
             core::values::Destination::Providers => Self::Providers,
             core::values::Destination::Notebooks => Self::Notebooks,
             core::values::Destination::Plugins => Self::Plugins,
+            core::values::Destination::Stats => Self::Stats,
+            core::values::Destination::ApiKeys => Self::ApiKeys,
+            core::values::Destination::Members => Self::Members,
+            core::values::Destination::Conversations => Self::Conversations,
         }
     }
 }
@@ -298,6 +302,31 @@ impl SidebarEntry {
         self.0.visibility.into()
     }
 }
+impl From<core::values::SidebarCategory> for PreferenceSidebarCategory {
+    fn from(value: core::values::SidebarCategory) -> Self {
+        match value {
+            core::values::SidebarCategory::Workspace => Self::Workspace,
+            core::values::SidebarCategory::Routers => Self::Routers,
+            core::values::SidebarCategory::Organization => Self::Organization,
+            core::values::SidebarCategory::Conversations => Self::Conversations,
+        }
+    }
+}
+pub struct SidebarLayoutSection(pub core::sidebar::SidebarSection);
+impl From<core::sidebar::SidebarSection> for SidebarLayoutSection {
+    fn from(value: core::sidebar::SidebarSection) -> Self {
+        Self(value)
+    }
+}
+#[graphql_object]
+impl SidebarLayoutSection {
+    fn category(&self) -> PreferenceSidebarCategory {
+        self.0.category.into()
+    }
+    fn items(&self) -> Vec<PreferenceDestination> {
+        self.0.items.iter().copied().map(Into::into).collect()
+    }
+}
 pub struct SidebarPreferences(pub core::sidebar::SidebarPreferences);
 impl From<core::sidebar::SidebarPreferences> for SidebarPreferences {
     fn from(value: core::sidebar::SidebarPreferences) -> Self {
@@ -306,6 +335,9 @@ impl From<core::sidebar::SidebarPreferences> for SidebarPreferences {
 }
 #[graphql_object]
 impl SidebarPreferences {
+    fn layout(&self) -> Vec<SidebarLayoutSection> {
+        self.0.layout.iter().cloned().map(Into::into).collect()
+    }
     fn badge_style(&self) -> PreferenceBadgeStyle {
         self.0.badge_style.into()
     }

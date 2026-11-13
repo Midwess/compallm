@@ -1,4 +1,4 @@
-import { useContext, useId, useRef, type FormEvent, type RefObject } from 'react'
+import { useEffect, useContext, useId, useRef, type RefObject } from 'react'
 import { CheckCircleIcon } from '@phosphor-icons/react/dist/csr/CheckCircle'
 import { Button, AccountPrompt, TextLink } from '../../components/buttons'
 import { EmailField, CodeEntry } from '../../components/fields'
@@ -10,8 +10,8 @@ import { AuthLayout } from './layout'
 import { useStore } from 'zustand'
 import { AuthControllerContext } from '../../context'
 import type { AuthState } from './types'
-import { emailRequestSchema } from '@compallm/contract/auth'
-import type { EmailInput as EmailRequestInput } from '@compallm/contract/graphql'
+import { Form, useManagedForm } from '../../components/form'
+import { emailRequestSchema, otpRequestSchema } from '@compallm/contract/auth'
 
 type Mode = 'signup' | 'signin'
 
@@ -77,19 +77,30 @@ function EmailForm({ mode }: { mode: Mode }) {
   const controller = useAuthController()
   const input = useRef<HTMLInputElement>(null)
   const id = useId()
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!emailRequestSchema(mode).safeParse({ email: controller.store.getState().email } satisfies EmailRequestInput).success) {
-      controller.onInvalidEmail()
-      input.current?.focus()
-      return
-    }
-    void controller.requestCode()
-  }
+  const model = useManagedForm(
+    { email: controller.store.getState().email },
+    {
+      mode: 'button',
+      command: true,
+      changed: () => controller.clearError(),
+      validate: (values) => {
+        const valid = emailRequestSchema(mode).safeParse(values).success
+        if (!valid) {
+          controller.onInvalidEmail()
+          input.current?.focus()
+        }
+        return valid
+      },
+      submit: async (values) => {
+        await controller.requestCode(values.email)
+        return controller.store.getState().step === 'code' ? { email: controller.store.getState().email } : false
+      },
+    },
+  )
   return (
-    <form
+    <Form
+      model={model}
       className="flex flex-col gap-4"
-      onSubmit={submit}
       noValidate
       aria-label={mode === 'signup' ? 'Create account' : 'Sign in'}
     >
@@ -102,7 +113,7 @@ function EmailForm({ mode }: { mode: Mode }) {
         <ErrorMessage id={`${id}-error`} />
       </FeedbackSlot>
       <AccountLink mode={mode} />
-    </form>
+    </Form>
   )
 }
 
@@ -115,8 +126,6 @@ export function EmailInput({
   errorId: string
   inputRef: RefObject<HTMLInputElement | null>
 }) {
-  const controller = useAuthController()
-  const email = useAuthState((state) => state.email)
   const disabled = useAuthState((state) => state.pending !== null)
   const invalid = useAuthState((state) => state.error !== null || state.serverError !== null)
   return (
@@ -128,8 +137,6 @@ export function EmailInput({
       name="email"
       required
       placeholder="you@example.com"
-      value={email}
-      onChange={(event) => controller.onEmailChanged(event.target.value)}
       disabled={disabled}
       aria-invalid={invalid || undefined}
       aria-describedby={invalid ? errorId : undefined}
@@ -195,8 +202,26 @@ function ErrorMessage({ id }: { id: string }) {
 
 function VerificationForm() {
   const id = useId()
+  const controller = useAuthController()
+  const model = controller.store.form
+  useEffect(
+    () =>
+      model.configure({
+        mode: 'complete',
+        command: true,
+        changed: () => controller.clearError(),
+        fields: {
+          code: { mode: 'complete', complete: (value) => otpRequestSchema('signin').safeParse({ code: value }).success },
+        },
+        submit: async (values) => {
+          await controller.verifyCode(values.code ?? '')
+          return controller.store.getState().step === 'complete' ? {} : false
+        },
+      }),
+    [controller, model],
+  )
   return (
-    <div>
+    <Form model={model}>
       <Recipient />
       <CodeInput errorId={`${id}-error`} />
       <VerificationFeedback errorId={`${id}-error`} />
@@ -204,7 +229,7 @@ function VerificationForm() {
         <ResendControl />
         <BackAction />
       </div>
-    </div>
+    </Form>
   )
 }
 
@@ -218,15 +243,12 @@ function Recipient() {
 }
 
 export function CodeInput({ errorId }: { errorId: string }) {
-  const controller = useAuthController()
-  const code = useAuthState((state) => state.code)
   const disabled = useAuthState((state) => state.pending !== null)
   const invalid = useAuthState((state) => state.error !== null || state.serverError !== null)
   return (
     <CodeEntry
       aria-label="Email code"
-      value={code}
-      onValueChange={(code) => controller.onCodeChanged(code)}
+      name="code"
       autoFocus
       disabled={disabled}
       aria-invalid={invalid || undefined}

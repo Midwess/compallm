@@ -1,10 +1,12 @@
+import { Form } from '../../../components/form'
 import {
   ProviderFields,
   ProviderFieldsInput,
   ProviderFieldsConstraints,
   ProviderHeaderConstraints,
+  ProviderModelFieldsInput,
 } from '@compallm/contract/provider'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { EyeIcon } from '@phosphor-icons/react/dist/csr/Eye'
 import { EyeSlashIcon } from '@phosphor-icons/react/dist/csr/EyeSlash'
 import { FormSection } from '../../../components/form-section'
@@ -40,30 +42,24 @@ function ConnectionFields() {
           <FormField className="flex-1">
             <FormField.Label>Connection name</FormField.Label>
             <FormField.Input
-              value={name}
+              name="name"
               required
               aria-invalid={(name !== '' && !ProviderFields.shape.name.safeParse(name).success) || undefined}
               placeholder="Enter connection name"
-              onChange={(event) => {
-                if (ProviderFieldsInput.name(event.target.value)) controller.onConnectionChanged('name', event.target.value)
-              }}
             />
           </FormField>
-          <ProviderAvatar provider={selected} src={avatarUrl} disabled={busy} onFileChange={controller.onAvatarChanged} />
+          <ProviderAvatar name="avatarFile" provider={selected} src={avatarUrl} disabled={busy} />
         </div>
         <FormField>
           <FormField.Label>Base URL</FormField.Label>
           <FormField.Input
-            value={baseUrl}
+            name="baseUrl"
             type="url"
             required
             autoCapitalize="none"
             spellCheck={false}
             aria-invalid={(baseUrl !== '' && !isValidBaseUrl(baseUrl)) || undefined}
             placeholder="https://api.example.com/v1"
-            onChange={(event) => {
-              if (ProviderFieldsInput.baseUrl(event.target.value)) controller.onConnectionChanged('baseUrl', event.target.value)
-            }}
           />
           {baseUrl !== '' && !isValidBaseUrl(baseUrl) ? (
             <FormField.Hint>
@@ -91,11 +87,8 @@ function ConnectionFields() {
               autoCapitalize="none"
               spellCheck={false}
               aria-invalid={(apiKey !== '' && !ProviderFields.shape.apiKey.safeParse(apiKey).success) || undefined}
-              value={apiKey}
+              name="apiKey"
               placeholder={editing ? 'Leave empty to keep current key' : 'Enter your API key'}
-              onChange={(event) => {
-                if (ProviderFieldsInput.apiKey(event.target.value)) controller.onConnectionChanged('apiKey', event.target.value)
-              }}
             />
             <button
               type="button"
@@ -117,11 +110,10 @@ hover:text-text focus-visible:outline-muted
         </FormField>
       </fieldset>
       <KeyValueEditor
-        value={headers}
+        name="headers"
         acceptEntry={acceptsHeaderInput}
         keyMaxLength={ProviderHeaderConstraints.key.maxLength}
         disabled={busy || !controller.onHeadersChanged}
-        onValueChange={(value) => controller.onHeadersChanged?.(value)}
       >
         <KeyValueEditor.Disclosure>Headers</KeyValueEditor.Disclosure>
       </KeyValueEditor>
@@ -182,17 +174,54 @@ export function ProviderConfiguration() {
   const ready = useProvider((state) => (state.intent === 'edit' ? canSaveProvider(state) : canCreateProvider(state)))
   const busy = useProvider((state) => state.submitting)
   const error = useProvider((state) => state.error)
+  const form = controller.store.form
+  useEffect(
+    () =>
+      form.configure({
+        mode: 'button',
+        command: true,
+        fields: {
+          name: { accepts: (value) => ProviderFieldsInput.name(String(value)) },
+          baseUrl: { accepts: (value) => ProviderFieldsInput.baseUrl(String(value)) },
+          apiKey: { accepts: (value) => ProviderFieldsInput.apiKey(String(value)) },
+          'modelDraft.path': { accepts: (value) => ProviderModelFieldsInput.path('/' + String(value).replace(/^\/+/, '')) },
+          'modelDraft.name': { accepts: (value) => ProviderModelFieldsInput.name(String(value)) },
+          'modelDraft.maxContextTokens': { accepts: (value) => ProviderModelFieldsInput.maxContextTokens(String(value)) },
+          'modelDraft.inputPrice': { accepts: (value) => ProviderModelFieldsInput.inputPrice(String(value)) },
+          'modelDraft.outputPrice': { accepts: (value) => ProviderModelFieldsInput.inputPrice(String(value)) },
+          'modelDraft.cachedPrice': { accepts: (value) => ProviderModelFieldsInput.inputPrice(String(value)) },
+        },
+        changed: (field, value) => {
+          if (field === 'name' || field === 'baseUrl' || field === 'apiKey')
+            controller.onConnectionChanged(field, String(value))
+          if (field === 'models' || field.startsWith('models[')) controller.onModelsChanged(controller.store.getState().models)
+          if (field === 'avatarFile') controller.onAvatarChanged?.(value as File | null)
+          if (field === 'headers') controller.onHeadersChanged?.(value as import('./types').HeaderEntry[])
+          if (field === 'modelDraft.path') controller.onModelDraftChanged({ path: '/' + String(value).replace(/^\/+/, '') })
+          else if (field.startsWith('modelDraft.'))
+            controller.onModelDraftChanged({
+              [field.slice(11)]: value,
+              ...(field === 'modelDraft.effortMapping'
+                ? { thinkingLevels: Object.keys(value as object) as import('./types').ThinkingLevel[] }
+                : {}),
+            })
+        },
+        validate: () => {
+          const state = controller.store.getState()
+          return state.intent === 'edit' ? canSaveProvider(state) : canCreateProvider(state)
+        },
+        submit: async (values) => {
+          const result =
+            controller.store.getState().intent === 'edit'
+              ? await controller.onSaveProvider(values)
+              : await controller.onCreateProvider(values)
+          return result && typeof result === 'object' ? result : false
+        },
+      }),
+    [controller, form],
+  )
   return (
-    <form
-      className="mx-auto grid min-w-0 w-full max-w-4xl gap-6 px-4 py-8"
-      onSubmit={(event) => {
-        event.preventDefault()
-        if (ready && !busy) {
-          if (intent === 'edit') void controller.onSaveProvider()
-          else void controller.onCreateProvider()
-        }
-      }}
-    >
+    <Form model={form} className="mx-auto grid min-w-0 w-full max-w-4xl gap-6 px-4 py-8">
       <FormSection>
         <FormSection.Marker>1</FormSection.Marker>
         <FormSection.Heading>Connection</FormSection.Heading>
@@ -223,6 +252,6 @@ export function ProviderConfiguration() {
           {intent === 'edit' ? 'Save changes' : intent === 'clone' ? 'Create provider' : 'Add provider'}
         </Button>
       </div>
-    </form>
+    </Form>
   )
 }

@@ -18,12 +18,12 @@ export class RoleController implements Contract {
   private parseRevision = 0
   private parseTimer?: ReturnType<typeof setTimeout>
   private savedPolicy?: { id: string; source: string }
-  private savedMetadata?: { id: string; name: string; description: string }
   private readonly settings: StoreApi<SettingsState>
   constructor(settings: StoreApi<SettingsState>) {
     this.settings = settings
   }
   cancel = () => {
+    this.store.form.stop()
     this.store.setState({ disabledPolicies: {}, loading: false })
     this.parseRevision += 1
     clearTimeout(this.parseTimer)
@@ -110,7 +110,6 @@ export class RoleController implements Contract {
     role: { id: string; name: string; description: string; source: string | null; owner?: boolean },
     policy?: Pick<RoleDraft, 'projection' | 'diagnostics'>,
   ) => {
-    this.savedMetadata = { id: role.id, name: role.name, description: role.description }
     this.savedPolicy = role.source === null ? undefined : { id: role.id, source: compactCedarSource(role.source) }
     this.store.setState({
       draft: {
@@ -153,52 +152,21 @@ export class RoleController implements Contract {
         : 'Policy changes could not be validated. Review the Cedar source before saving.'
     throw new ApiError(message, 400, 'BAD_USER_INPUT')
   }
-  updateRole = (value: Partial<Pick<RoleDraft, 'name' | 'description'>>) => {
-    this.store.setState((state) => ({
-      draft: state.draft && !state.draft.builtin ? { ...state.draft, ...value } : state.draft,
-    }))
-  }
-  commitRoleField = (field: 'name' | 'description') => {
+  updateMetadata = async (value: Partial<Pick<RoleDraft, 'name' | 'description'>>, signal?: AbortSignal) => {
     const draft = this.store.getState().draft
     const request = this.request
-    if (!draft?.id || draft.builtin || !request || !this.savedMetadata || this.savedMetadata.id !== draft.id) return
+    if (!draft?.id || draft.builtin || !request) throw new Error('Role is not editable')
     const id = draft.id
-    const value = draft[field]
-    this.writes = this.writes.then(async () => {
-      if (
-        request.signal.aborted ||
-        this.request !== request ||
-        this.savedMetadata?.id !== id ||
-        value === this.savedMetadata[field]
-      )
-        return
-      try {
-        const input = RoleUpdateInput.parse({ [field]: value })
-        const selection = {
-          roleUpdate: { __args: { id, input }, node: { id: true, name: true, description: true, color: true } },
-        } satisfies MutationGenqlSelection
-        const {
-          roleUpdate: { node },
-        } = await graphql(request.signal).mutation(selection)
-        if (request.signal.aborted || this.request !== request || this.savedMetadata?.id !== id) return
-        this.savedMetadata = { id, name: node.name, description: node.description }
-        this.settings.setState((state) => ({
-          roles: state.roles.map((role) =>
-            role.id === id ? { ...role, name: node.name, description: node.description, color: node.color } : role,
-          ),
-        }))
-        this.store.setState((state) => ({
-          draft:
-            state.draft?.id === id && state.draft[field] === value ? { ...state.draft, [field]: node[field] } : state.draft,
-        }))
-      } catch (error) {
-        if (!request.signal.aborted && this.request === request) {
-          notify.apiError(error, () => {
-            if (this.request === request && this.store.getState().draft?.id === id) this.commitRoleField(field)
-          })
-        }
-      }
-    })
+    const input = RoleUpdateInput.parse(value)
+    const selection = {
+      roleUpdate: { __args: { id, input }, node: { id: true, name: true, description: true, color: true } },
+    } satisfies MutationGenqlSelection
+    const {
+      roleUpdate: { node },
+    } = await graphql(signal ? AbortSignal.any([signal, request.signal]) : request.signal).mutation(selection)
+    if (request.signal.aborted || this.request !== request) throw new DOMException('Cancelled', 'AbortError')
+    this.settings.setState((state) => ({ roles: state.roles.map((role) => (role.id === id ? { ...role, ...node } : role)) }))
+    return node
   }
   setPolicyMode = (mode: RoleDraft['mode']) => {
     const draft = this.store.getState().draft
@@ -251,41 +219,31 @@ export class RoleController implements Contract {
       void this.projectSource(id, source, revision)
     }, 150)
   }
-  commitPolicySource = () => {
+  commitPolicySource = async (source: string) => {
     const draft = this.store.getState().draft
     const request = this.request
-    if (!draft?.id || draft.builtin || !request || this.savedPolicy?.id !== draft.id) return
+    if (!draft?.id || draft.builtin || !request || this.savedPolicy?.id !== draft.id) return false
     const id = draft.id
-    const source = draft.source
     clearTimeout(this.parseTimer)
     const revision = ++this.parseRevision
     this.store.setState({ draft: { ...draft, parsing: true } })
-    this.writes = this.writes.then(async () => {
-      if (request.signal.aborted || this.request !== request || revision !== this.parseRevision) return
-      if (this.savedPolicy?.id !== id) return
-      if (!(await this.projectSource(id, source, revision))) return
-      if (this.savedPolicy?.id === id && this.savedPolicy.source === compactCedarSource(source)) return
-      if (request.signal.aborted || this.request !== request || revision !== this.parseRevision) return
-      try {
-        const input = this.policyInput(source)
-        const selection = { roleUpdate: { __args: { id, input }, node: { id: true } } } satisfies MutationGenqlSelection
-        await graphql(request.signal).mutation(selection)
-        if (!request.signal.aborted && this.request === request) {
-          this.savedPolicy = { id, source: compactCedarSource(source) }
-        }
-      } catch (error) {
-        if (!request.signal.aborted) {
-          notify.apiError(error, () => {
-            if (this.request === request && this.store.getState().draft?.id === id) this.commitPolicySource()
-          })
-        }
-      }
-    })
+    if (!(await this.projectSource(id, source, revision))) return false
+    if (request.signal.aborted || this.request !== request || revision !== this.parseRevision) return false
+    if (this.savedPolicy?.source === compactCedarSource(source)) return true
+    const input = this.policyInput(source)
+    const selection = { roleUpdate: { __args: { id, input }, node: { id: true } } } satisfies MutationGenqlSelection
+    await graphql(request.signal).mutation(selection)
+    if (request.signal.aborted || this.request !== request) return false
+    this.savedPolicy = { id, source: compactCedarSource(source) }
+    return true
   }
   togglePolicyAction = (action: string) => {
     const draft = this.store.getState().draft
     if (draft)
-      this.setPolicyActions([action], !draft.projection.some((entry) => entry.action === action && entry.effect !== 'forbid'))
+      return this.setPolicyActions(
+        [action],
+        !draft.projection.some((entry) => entry.action === action && entry.effect !== 'forbid'),
+      )
   }
   setPolicyActions = (actions: string[], enabled: boolean) => {
     const { draft, busy } = this.store.getState()
@@ -333,23 +291,20 @@ export class RoleController implements Contract {
               ? { ...state.draft, source, projection: projected.projection, diagnostics: projected.diagnostics }
               : state.draft,
         }))
-        const input = this.policyInput(source)
-        const selection = { roleUpdate: { __args: { id, input }, node: { id: true } } } satisfies MutationGenqlSelection
-        await graphql(request.signal).mutation(selection)
-        if (request.signal.aborted || this.request !== request) return
-        this.savedPolicy = { id, source: compactCedarSource(source) }
       } catch (error) {
         if (!request.signal.aborted) {
           notify.apiError(error, () => {
             if (this.request !== request || this.store.getState().draft?.id !== id) return
-            if (this.store.getState().draft?.source === original) this.setPolicyActions(actions, enabled)
-            else this.commitPolicySource()
+            if (this.store.getState().draft?.source === original)
+              void this.store.form.perform(() => this.setPolicyActions(actions, enabled), ['draft.source'])
+            else void this.store.form.retry()
           })
         }
       } finally {
         if (this.request === request) this.store.setState({ busy: false })
       }
     })
+    return this.writes
   }
   formatPolicy = () => {
     const draft = this.store.getState().draft

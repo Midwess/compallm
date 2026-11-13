@@ -25,8 +25,9 @@ function Demo({
   })
   useEffect(() => {
     controller.start()
+    if (initial.error) controller.apiError({ info: { message: initial.error } })
     return controller.stop
-  }, [controller])
+  }, [controller, initial.error])
   useEffect(() => {
     if (!roleLoadingMs) return
     const draft = controller.pages.role.store.getState().draft
@@ -345,4 +346,8 @@ export const KeyCreated: Story = {
       }}
     />
   ),
+}
+
+export const ApiErrorToast: Story = {
+  render: () => <Demo page="role" id="model-operator" initial={{ error: 'Name already exists in this organization' }} />,
 }

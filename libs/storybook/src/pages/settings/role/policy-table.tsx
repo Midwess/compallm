@@ -121,7 +121,7 @@ function PermissionRow({
             aria-label={action.label}
             checked={permits.length > 0}
             disabled={disabled || advanced}
-            onChange={() => c.togglePolicyAction(action.id)}
+            onChange={() => void c.store.form.perform(() => c.togglePolicyAction(action.id), ['draft.source'])}
           />
         </DisabledTooltip>
       </Table.Cell>
@@ -239,9 +239,13 @@ export function PolicyTable() {
                         checked={allEditableSelected}
                         disabled={disabled || editable.length === 0}
                         onChange={() =>
-                          c.setPolicyActions(
-                            editable.map((a) => a.id),
-                            !allEditableSelected,
+                          void c.store.form.perform(
+                            () =>
+                              c.setPolicyActions(
+                                editable.map((a) => a.id),
+                                !allEditableSelected,
+                              ),
+                            ['draft.source'],
                           )
                         }
                       />

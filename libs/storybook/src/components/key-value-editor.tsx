@@ -1,3 +1,4 @@
+import { useFormField } from './form'
 import { motion } from 'motion/react'
 import { animated, useDisclosure, useTransition } from './motion'
 import { createContext, useContext, useRef, type ReactNode } from 'react'
@@ -27,25 +28,40 @@ function useEditor() {
   return scope
 }
 function Root({
-  value,
-  onValueChange,
+  name,
+  value: suppliedValue,
+  onValueChange: suppliedChange,
   disabled = false,
   children,
   className,
   acceptEntry,
   keyMaxLength,
 }: {
-  value: KeyValueEntry[]
-  onValueChange(entries: KeyValueEntry[]): void
+  name?: string
+  value?: KeyValueEntry[]
+  onValueChange?(entries: KeyValueEntry[]): void
   disabled?: boolean
   children: ReactNode
   className?: string
   keyMaxLength?: number
   acceptEntry?(entry: KeyValueEntry): boolean
 }) {
+  const field = useFormField<KeyValueEntry[]>(name)
+  const value = field ? (field.value ?? []) : (suppliedValue ?? [])
+  const onValueChange = (value: KeyValueEntry[]) => {
+    if (field) field.change(value)
+    else suppliedChange?.(value)
+  }
   return (
     <EditorContext value={{ entries: value, change: onValueChange, disabled, acceptEntry, keyMaxLength }}>
-      <div className={cx('w-full min-w-0 max-w-full', className)}>{children}</div>
+      <div
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) field?.blur()
+        }}
+        className={cx('w-full min-w-0 max-w-full', className)}
+      >
+        {children}
+      </div>
     </EditorContext>
   )
 }

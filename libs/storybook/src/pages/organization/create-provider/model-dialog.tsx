@@ -1,9 +1,6 @@
-import {
-  ProviderModelFields,
-  ProviderModelFieldsInput,
-  ProviderModelFieldsConstraints,
-  ProviderInputRules,
-} from '@compallm/contract/provider'
+import { useEffect, useState } from 'react'
+import { Form } from '../../../components/form'
+import { ProviderModelFields, ProviderModelFieldsConstraints, ProviderInputRules } from '@compallm/contract/provider'
 import { EffortMapping } from '../../../components/effort-mapping'
 import { modelPath, modelProtocol, isEndpointPath, textModelOptions, modelDraftFingerprint } from './model-options'
 import { FormField } from '../../../components/form-field'
@@ -20,6 +17,37 @@ export function ModelDialog() {
   const editing = useProvider((state) => state.editingModelId)
   const models = useProvider((state) => state.models)
   const navigationRequest = useProvider((state) => state.navigationRequest)
+  useEffect(() => {
+    const current = controller.store.getState().modelDraft
+    if (current && current.path === undefined) controller.store.form.set('modelDraft.path', modelPath(current))
+    if (current && !current.effortMapping)
+      controller.store.form.set(
+        'modelDraft.effortMapping',
+        Object.fromEntries(current.thinkingLevels.map((level) => [level, level])),
+      )
+  }, [controller, draft?.id])
+  const [modelForm] = useState(() =>
+    controller.store.form.scope(['modelDraft'], {
+      mode: 'button',
+      command: true,
+      validate: (values) =>
+        Boolean(
+          values.modelDraft &&
+          isValidModelDraft(values.modelDraft) &&
+          !controller.store
+            .getState()
+            .models.some(
+              (model) =>
+                model.id !== controller.store.getState().editingModelId && model.name.trim() === values.modelDraft!.name.trim(),
+            ),
+        ),
+      submit: async (values) => {
+        if (!values.modelDraft) return false
+        controller.onSaveModel(values.modelDraft)
+        return {}
+      },
+    }),
+  )
   const originalDraft = editing ? models.find((model) => model.id === editing) : null
   const changed =
     draft &&
@@ -43,12 +71,7 @@ export function ModelDialog() {
     <>
       <Dialog onClose={controller.onCancelModel}>
         <Dialog.Content>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault()
-              if (valid) controller.onSaveModel()
-            }}
-          >
+          <Form model={modelForm}>
             <Dialog.Header>
               <Dialog.Title>
                 {editing
@@ -61,15 +84,11 @@ export function ModelDialog() {
               <FormField>
                 <FormField.Label>Path</FormField.Label>
                 <FormField.Input
-                  value={modelPath(draft)}
+                  name="modelDraft.path"
                   required
                   autoFocus
                   maxLength={ProviderModelFieldsConstraints.path.maxLength}
                   aria-invalid={!isEndpointPath(modelPath(draft)) || undefined}
-                  onChange={(event) => {
-                    const path = `/${event.target.value.replace(/^\/+/, '')}`
-                    if (ProviderModelFieldsInput.path(path)) controller.onModelDraftChanged({ path })
-                  }}
                 />
                 {!isEndpointPath(modelPath(draft)) ? (
                   <FormField.Hint>
@@ -86,15 +105,11 @@ export function ModelDialog() {
                   </FieldHelp>
                 </div>
                 <FormField.Input
-                  value={draft.name}
+                  name="modelDraft.name"
                   required
                   placeholder="Enter model name"
                   maxLength={ProviderModelFieldsConstraints.name.maxLength}
                   aria-invalid={(!!draft.name && !ProviderModelFields.shape.name.safeParse(draft.name).success) || undefined}
-                  onChange={(event) => {
-                    if (ProviderModelFieldsInput.name(event.target.value))
-                      controller.onModelDraftChanged({ name: event.target.value })
-                  }}
                 />
               </FormField>
               <div>
@@ -104,32 +119,18 @@ export function ModelDialog() {
                     inputMode="numeric"
                     required
                     placeholder="250000"
-                    value={draft.maxContextTokens}
+                    name="modelDraft.maxContextTokens"
                     aria-invalid={
                       (draft.maxContextTokens !== '' &&
                         (!ProviderInputRules.shape.positiveInteger.safeParse(draft.maxContextTokens).success ||
                           !ProviderModelFields.shape.maxContextTokens.safeParse(Number(draft.maxContextTokens)).success)) ||
                       undefined
                     }
-                    onChange={(event) => {
-                      if (ProviderModelFieldsInput.maxContextTokens(event.target.value))
-                        controller.onModelDraftChanged({ maxContextTokens: event.target.value })
-                    }}
                   />
                   <FormField.Hint>Tokens</FormField.Hint>
                 </FormField>
               </div>
-              <EffortMapping
-                value={draft.effortMapping ?? Object.fromEntries(draft.thinkingLevels.map((level) => [level, level]))}
-                onValueChange={(effortMapping) =>
-                  controller.onModelDraftChanged({
-                    effortMapping,
-                    thinkingLevels: (Object.keys(effortMapping) as import('./types').ThinkingLevel[]).filter(
-                      (level) => !!effortMapping[level],
-                    ),
-                  })
-                }
-              />
+              <EffortMapping name="modelDraft.effortMapping" />
               <div className="flex items-center gap-1">
                 <h3 className="text-sm font-medium">Pricing · USD per 1M tokens</h3>
                 <FieldHelp label="About model pricing">
@@ -153,11 +154,7 @@ export function ModelDialog() {
                       aria-invalid={
                         (!!draft[key] && !ProviderModelFields.shape.inputPrice.safeParse(draft[key]).success) || undefined
                       }
-                      value={draft[key]}
-                      onChange={(event) => {
-                        if (ProviderModelFieldsInput.inputPrice(event.target.value))
-                          controller.onModelDraftChanged({ [key]: event.target.value })
-                      }}
+                      name={`modelDraft.${key}`}
                     />
                   </FormField>
                 ))}
@@ -174,7 +171,7 @@ export function ModelDialog() {
                 {editing ? 'Save model' : 'Add model'}
               </Button>
             </Dialog.Footer>
-          </form>
+          </Form>
         </Dialog.Content>
         {changed ? (
           <Dialog.Discard request={navigationRequest ?? undefined}>Your unsaved model changes will be lost.</Dialog.Discard>

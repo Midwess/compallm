@@ -1,3 +1,4 @@
+import { Form, createForm } from '../../src/components/form'
 import { Profiler, useRef, useState } from 'react'
 import { AuthControllerContext } from '../../src/context'
 import { EmailInput, ContinueButton, CodeInput, ResendControl } from '../../src/pages/auth/auth-page'
@@ -9,6 +10,7 @@ class SubscriptionDemoController extends DemoAuthController {
 
 export function ControllerSubscriptions() {
   const [controller] = useState(() => new SubscriptionDemoController('signup'))
+  const [emailForm] = useState(() => createForm({ email: '' }))
   const emailRef = useRef<HTMLInputElement>(null)
   const counters = useRef<Record<string, HTMLOutputElement | null>>({})
   function committed(id: string) {
@@ -34,15 +36,19 @@ export function ControllerSubscriptions() {
           </p>
         ))}
         <label htmlFor="subscription-email">Email address</label>
-        <Profiler id="email" onRender={committed}>
-          <EmailInput id="subscription-email" errorId="subscription-error" inputRef={emailRef} />
-        </Profiler>
+        <Form model={emailForm}>
+          <Profiler id="email" onRender={committed}>
+            <EmailInput id="subscription-email" errorId="subscription-error" inputRef={emailRef} />
+          </Profiler>
+        </Form>
         <Profiler id="continue" onRender={committed}>
           <ContinueButton />
         </Profiler>
-        <Profiler id="code" onRender={committed}>
-          <CodeInput errorId="subscription-error" />
-        </Profiler>
+        <Form model={controller.store.form}>
+          <Profiler id="code" onRender={committed}>
+            <CodeInput errorId="subscription-error" />
+          </Profiler>
+        </Form>
         <Profiler id="resend" onRender={committed}>
           <ResendControl />
         </Profiler>

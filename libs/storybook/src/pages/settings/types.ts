@@ -1,4 +1,4 @@
-import type { StoreApi } from 'zustand/vanilla'
+import type { FormStore } from '../../components/form'
 import type { RoleController } from './role/controller'
 import type { GroupController } from './group/controller'
 import type { ProfileController } from './profile/controller'
@@ -160,6 +160,8 @@ export interface SettingsDialog {
   revealedKey?: string
 }
 export interface SettingsState {
+  profileUpload: File | null
+  organizationUpload: File | null
   codeExamples: Record<string, { code: string; lineChanges?: Record<number, 'added' | 'removed'> }>
   location: SettingsLocation
   navigationQuery: string
@@ -186,12 +188,13 @@ export interface SettingsState {
   dialog: SettingsDialog | null
   busy: boolean
   error: string | null
+  errorToast: { message: string; retry?: () => void } | null
   notice: string | null
   readonly: boolean
   status: 'ready' | 'loading' | 'denied'
 }
 export interface SettingsController {
-  store: StoreApi<SettingsState>
+  store: FormStore<SettingsState>
   role: RoleController
   group: GroupController
   pages: SettingsPageControllers
@@ -199,21 +202,22 @@ export interface SettingsController {
   setNavigationQuery(value: string): void
   signOut(): void
   leaveSettings(): void
+  apiError(error: unknown, retry?: () => void): void
+  dismissErrorToast(): void
   dismissNotice(): void
 }
 
 export interface SettingsPageControllers {
   role: RoleController
   search: { setQuery(value: string): void; setFilter(key: string, value: string): void }
-  preferences: { setPreference(key: string, value: string | boolean): void }
+  preferences: { setPreference(key: string, value: string | boolean): void | false }
   profile: ProfileController
   organization: OrganizationController
-  members: { toggleMemberRole(memberId: string, roleId: string): void }
+  members: { setMemberRoles(memberId: string, roleIds: string[]): void | false | Promise<void | false> }
   dialogs: {
     openDialog(kind: SettingsDialogKind, targetId?: string): void
-    updateDialog(value: Partial<SettingsDialog>): void
     closeDialog(): void
-    confirmDialog(): void
+    confirmDialog(dialog: SettingsDialog): void
     copy(value: string): void
   }
 }

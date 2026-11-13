@@ -6,6 +6,7 @@ import { defineConfig } from 'vite'
 const source = (path: string) => fileURLToPath(new URL(`./src/${path}`, import.meta.url))
 const families = [
   'buttons',
+  'form',
   'choice-picker',
   'provider-icons',
   'provider-avatar',
@@ -70,6 +71,7 @@ export default defineConfig({
           '@phosphor-icons/react',
           'tailwind-merge',
           'zustand',
+          '@tanstack/react-form',
           'motion',
         ].some((name) => id === name || id.startsWith(`${name}/`)),
       output: { minify: true },

@@ -11,7 +11,7 @@ export class PreferencesController implements Contract {
   setPreference = (key: string, value: string | boolean) => {
     if (!['codeTheme', 'codeFont', 'codeFontSize', 'codeLanguage'].includes(key)) {
       notify.info('Settings changes are not available yet.')
-      return
+      return false as const
     }
     this.store.setState((state) => ({ preferences: { ...state.preferences, [key]: value } }))
   }

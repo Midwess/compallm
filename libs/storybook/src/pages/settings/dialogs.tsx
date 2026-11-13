@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { Form } from '../../components/form'
 import { motion } from 'motion/react'
 import { useTransition } from '../../components/motion'
 import { Button } from '../../components/buttons'
@@ -40,104 +42,115 @@ function CustomizeSidebar() {
   const order = String(preferences.sidebarOrder).split(',')
   const { rowNodes, drag, preview, announcement, id, keyboardMove, startDrag, pointerMove, endDrag } = useReorder(
     order,
-    (items) => controller.pages.preferences.setPreference('sidebarOrder', items.join(',')),
+    (items) => controller.store.form.change('preferences.' + 'sidebarOrder', items.join(',')),
     false,
     'Sidebar item',
   )
   return (
     <Dialog onClose={controller.pages.dialogs.closeDialog}>
       <Dialog.Content className="w-120 rounded-xl bg-inset">
-        <Dialog.Header className="h-14 px-6">
-          <Dialog.Title className="text-[15px]">Customize sidebar</Dialog.Title>
-          <Dialog.Close />
-        </Dialog.Header>
-        <Dialog.Body className="gap-6 px-6 pt-4 pb-6">
-          <div className="flex h-11 items-center justify-between rounded-lg bg-elevated px-3 text-xsm">
-            <span>Default badge style</span>
-            <Select
-              aria-label="Default badge style"
-              className="w-26"
-              value={String(preferences.sidebarBadgeStyle)}
-              options={badgeOptions}
-              onValueChange={(value) => controller.pages.preferences.setPreference('sidebarBadgeStyle', value)}
-            />
-          </div>
-          <div className="grid gap-2.5">
-            <h3 className="text-xsm font-medium">Workspace</h3>
-            <div className="rounded-lg bg-elevated py-0.5">
-              {order.map((name, index) => {
-                const Icon = sidebarIcons[name as keyof typeof sidebarIcons]
-                return (
-                  <motion.div
-                    key={name}
-                    initial={false}
-                    animate={{ y: preview?.offsets[name] ?? 0 }}
-                    transition={timing}
-                    ref={(node) => {
-                      if (node) rowNodes.current.set(name, node)
-                      else rowNodes.current.delete(name)
-                    }}
-                    className={cx('relative flex h-9 items-center px-2', preview?.key === name && 'opacity-0')}
-                  >
-                    <button
-                      type="button"
-                      aria-label={`Reorder ${name}`}
-                      aria-describedby={`${id}-reorder`}
-                      className={`
+        <Form model={controller.store.form}>
+          <Dialog.Header className="h-14 px-6">
+            <Dialog.Title className="text-[15px]">Customize sidebar</Dialog.Title>
+            <Dialog.Close />
+          </Dialog.Header>
+          <Dialog.Body className="gap-6 px-6 pt-4 pb-6">
+            <div className="flex h-11 items-center justify-between rounded-lg bg-elevated px-3 text-xsm">
+              <span>Default badge style</span>
+              <Select
+                aria-label="Default badge style"
+                className="w-26"
+                name="preferences.sidebarBadgeStyle"
+                options={badgeOptions}
+              />
+            </div>
+            <div className="grid gap-2.5">
+              <h3 className="text-xsm font-medium">Workspace</h3>
+              <div className="rounded-lg bg-elevated py-0.5">
+                {order.map((name, index) => {
+                  const Icon = sidebarIcons[name as keyof typeof sidebarIcons]
+                  return (
+                    <motion.div
+                      key={name}
+                      initial={false}
+                      animate={{ y: preview?.offsets[name] ?? 0 }}
+                      transition={timing}
+                      ref={(node) => {
+                        if (node) rowNodes.current.set(name, node)
+                        else rowNodes.current.delete(name)
+                      }}
+                      className={cx('relative flex h-9 items-center px-2', preview?.key === name && 'opacity-0')}
+                    >
+                      <button
+                        type="button"
+                        aria-label={`Reorder ${name}`}
+                        aria-describedby={`${id}-reorder`}
+                        className={`
 flex size-6 shrink-0 touch-none cursor-grab items-center justify-center text-muted hover:text-text
 active:cursor-grabbing focus-visible:outline-focus
 `}
-                      onPointerDown={(event) => startDrag(name, event)}
-                      onPointerMove={pointerMove}
-                      onPointerUp={(event) => {
-                        if (drag.current?.pointerId === event.pointerId) {
-                          endDrag(true)
-                          event.currentTarget.releasePointerCapture(event.pointerId)
-                        }
-                      }}
-                      onPointerCancel={() => endDrag(false)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Escape' && drag.current) {
-                          event.preventDefault()
-                          endDrag(false)
-                        } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-                          event.preventDefault()
-                          keyboardMove(index, index + (event.key === 'ArrowUp' ? -1 : 1))
-                        }
-                      }}
-                    >
-                      <DotsSixVerticalIcon aria-hidden="true" className="size-3" />
-                    </button>
-                    {Icon ? <Icon aria-hidden="true" className="mr-2 size-4 shrink-0 text-muted" /> : null}
-                    <span className="min-w-0 flex-1 text-xsm">{name}</span>
-                    <Select
-                      aria-label={`${name} visibility`}
-                      className="w-35"
-                      value={String(preferences[`sidebar${name}`])}
-                      options={visibilityOptions}
-                      onValueChange={(value) => controller.pages.preferences.setPreference(`sidebar${name}`, value)}
-                    />
-                  </motion.div>
-                )
-              })}
+                        onPointerDown={(event) => startDrag(name, event)}
+                        onPointerMove={pointerMove}
+                        onPointerUp={(event) => {
+                          if (drag.current?.pointerId === event.pointerId) {
+                            endDrag(true)
+                            event.currentTarget.releasePointerCapture(event.pointerId)
+                          }
+                        }}
+                        onPointerCancel={() => endDrag(false)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Escape' && drag.current) {
+                            event.preventDefault()
+                            endDrag(false)
+                          } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+                            event.preventDefault()
+                            keyboardMove(index, index + (event.key === 'ArrowUp' ? -1 : 1))
+                          }
+                        }}
+                      >
+                        <DotsSixVerticalIcon aria-hidden="true" className="size-3" />
+                      </button>
+                      {Icon ? <Icon aria-hidden="true" className="mr-2 size-4 shrink-0 text-muted" /> : null}
+                      <span className="min-w-0 flex-1 text-xsm">{name}</span>
+                      <Select
+                        aria-label={`${name} visibility`}
+                        className="w-35"
+                        name={`preferences.sidebar${name}`}
+                        options={visibilityOptions}
+                      />
+                    </motion.div>
+                  )
+                })}
+              </div>
+              <p id={`${id}-reorder`} className="sr-only">
+                Drag to reorder, or focus the grip and use Up and Down arrow keys.
+              </p>
+              <span role="status" className="sr-only">
+                {announcement}
+              </span>
             </div>
-            <p id={`${id}-reorder`} className="sr-only">
-              Drag to reorder, or focus the grip and use Up and Down arrow keys.
-            </p>
-            <span role="status" className="sr-only">
-              {announcement}
-            </span>
-          </div>
-        </Dialog.Body>
+          </Dialog.Body>
+        </Form>
       </Dialog.Content>
     </Dialog>
   )
 }
 
-export function SettingsDialogs() {
+function SettingsDialogContent() {
   const c = useSettingsController(),
     d = useSettings((s) => s.dialog),
     busy = useSettings((s) => s.busy)
+  const [dialogForm] = useState(() =>
+    c.store.form.scope(['dialog'], {
+      mode: 'button',
+      command: true,
+      error: (error, retry) => c.apiError(error, retry),
+      submit: (values) => {
+        if (values.dialog) c.pages.dialogs.confirmDialog(values.dialog)
+        return false
+      },
+    }),
+  )
   const profile = useSettings((s) => s.profile),
     organization = useSettings((s) => s.organization)
   const members = useSettings((s) => s.members),
@@ -236,12 +249,7 @@ export function SettingsDialogs() {
   return (
     <Dialog onClose={() => c.pages.dialogs.closeDialog()}>
       <Dialog.Content className="w-110 rounded-xl bg-elevated">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            c.pages.dialogs.confirmDialog()
-          }}
-        >
+        <Form model={dialogForm}>
           <Dialog.Header className="border-0 px-6 pt-6">
             <Dialog.Title className="text-xl leading-7">{titles[d.kind]}</Dialog.Title>
             <Dialog.Close />
@@ -256,24 +264,13 @@ export function SettingsDialogs() {
                 <label className="sr-only" htmlFor="confirmation-phrase">
                   Confirmation phrase
                 </label>
-                <TextField
-                  autoFocus
-                  id="confirmation-phrase"
-                  placeholder="Enter confirmation phrase"
-                  value={d.phrase}
-                  onChange={(e) => c.pages.dialogs.updateDialog({ phrase: e.target.value })}
-                />
+                <TextField autoFocus id="confirmation-phrase" placeholder="Enter confirmation phrase" name="dialog.phrase" />
               </>
             ) : null}
             {named.includes(d.kind) ? (
               <label className="grid gap-2 text-xs text-muted">
                 {d.kind === 'add-passkey' ? 'Passkey name' : 'Name'}
-                <TextField
-                  autoFocus
-                  value={d.name}
-                  required
-                  onChange={(e) => c.pages.dialogs.updateDialog({ name: e.target.value })}
-                />
+                <TextField autoFocus name="dialog.name" required />
               </label>
             ) : null}
             {d.kind === 'verify-passkey' ? (
@@ -296,8 +293,7 @@ export function SettingsDialogs() {
                   min="0"
                   step="0.01"
                   placeholder="No limit set"
-                  value={d.value}
-                  onChange={(e) => c.pages.dialogs.updateDialog({ value: e.target.value })}
+                  name="dialog.value"
                 />
                 <span>Leave empty to use {d.targetId ? 'the organization default' : 'no limit'}.</span>
               </label>
@@ -317,22 +313,14 @@ export function SettingsDialogs() {
                   Timezone
                   <Select
                     aria-label="Timezone"
-                    value={d.value}
+                    name="dialog.value"
                     className="w-full"
                     options={['Workspace timezone', 'UTC', 'Asia/Ho_Chi_Minh'].map((label) => ({ label, value: label }))}
-                    onValueChange={(value) => c.pages.dialogs.updateDialog({ value })}
                   />
                 </label>
               </>
             ) : null}
-            {text ? (
-              <MultilineField
-                aria-label={titles[d.kind]}
-                className="min-h-32"
-                value={d.value}
-                onChange={(e) => c.pages.dialogs.updateDialog({ value: e.target.value })}
-              />
-            ) : null}
+            {text ? <MultilineField aria-label={titles[d.kind]} className="min-h-32" name="dialog.value" /> : null}
           </Dialog.Body>
           <Dialog.Footer className="border-0 px-6 pb-6">
             {d.kind !== 'reveal-key' ? <Dialog.Cancel variant="ghost">Cancel</Dialog.Cancel> : null}
@@ -342,8 +330,14 @@ export function SettingsDialogs() {
               </Button>
             ) : null}
           </Dialog.Footer>
-        </form>
+        </Form>
       </Dialog.Content>
     </Dialog>
   )
+}
+
+export function SettingsDialogs() {
+  const dialog = useSettings((state) => state.dialog)
+  if (!dialog) return null
+  return <SettingsDialogContent key={`${dialog.kind}:${dialog.targetId ?? ''}`} />
 }

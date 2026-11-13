@@ -1,7 +1,7 @@
 import { motion } from 'motion/react'
 import { useTransition } from '../../components/motion'
 import { Button } from '../../components/buttons'
-import { TextField } from '../../components/fields'
+import { TextField, FileField } from '../../components/fields'
 import { Avatar } from '../../components/content'
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { SettingsContent, Heading, Section, Rows, Row, Empty } from './shared'
@@ -35,44 +35,23 @@ focus-within:outline-2 focus-within:outline-focus"
               >
                 <PlusIcon className="size-5" weight="bold" />
               </motion.span>
-              <input
+              <FileField
+                name="profileUpload"
                 className="sr-only"
-                type="file"
                 accept="image/*"
                 aria-label="Upload profile photo"
                 disabled={busy}
-                onChange={(event) => {
-                  const file = event.target.files?.[0]
-                  if (file) c.pages.profile.setAvatar(file)
-                  event.target.value = ''
-                }}
               />
             </motion.label>
           </Row>
           <Row label={<label htmlFor="settings-full-name">Full name</label>} description="Your name as it appears in Compallm">
-            <TextField
-              id="settings-full-name"
-              className="w-70 max-w-full"
-              value={profile.name}
-              onChange={(e) => c.pages.profile.updateProfile({ name: e.target.value })}
-            />
+            <TextField id="settings-full-name" className="w-70 max-w-full" name="profile.name" />
           </Row>
           <Row label={<label htmlFor="settings-username">Username</label>} description="Your preferred display name">
-            <TextField
-              id="settings-username"
-              className="w-70 max-w-full"
-              value={profile.username}
-              onChange={(e) => c.pages.profile.updateProfile({ username: e.target.value })}
-            />
+            <TextField id="settings-username" className="w-70 max-w-full" name="profile.username" />
           </Row>
           <Row label={<label htmlFor="settings-email">Email</label>} description="The email address for this account" last>
-            <TextField
-              id="settings-email"
-              type="email"
-              className="w-70 max-w-full"
-              value={profile.email}
-              onChange={(e) => c.pages.profile.updateProfile({ email: e.target.value })}
-            />
+            <TextField id="settings-email" type="email" className="w-70 max-w-full" name="profile.email" />
           </Row>
         </Rows>
         <Section title="Account access" description="Manage sign-in methods and connected applications.">

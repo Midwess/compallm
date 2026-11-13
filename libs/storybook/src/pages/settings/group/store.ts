@@ -1,6 +1,6 @@
-import { createStore } from 'zustand/vanilla'
+import { createFormStore } from '../../../components/form'
 import type { GroupState } from './controller'
 
 export function createGroupStore(initial: Partial<GroupState> = {}) {
-  return createStore<GroupState>()(() => ({ draft: null, busy: false, error: null, query: '', ...initial }))
+  return createFormStore<GroupState>({ draft: null, busy: false, error: null, query: '', ...initial }, ['draft'])
 }

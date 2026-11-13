@@ -1,3 +1,4 @@
+import { useFormField } from './form'
 import { useContext, type ReactNode } from 'react'
 import { Combobox } from '@base-ui/react/combobox'
 import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
@@ -15,34 +16,45 @@ export interface ChoicePickerOption {
 }
 
 export interface ChoicePickerProps {
+  name?: string
   label: string
   searchLabel: string
   placeholder: string
   emptyMessage: string
   emptyAction?: ReactNode
   options: ChoicePickerOption[]
-  value: string[]
-  onValueChange(value: string[]): void
+  value?: string[]
+  onValueChange?(value: string[]): void
   disabled?: boolean
 }
 
 export function ChoicePicker({
+  name,
   label,
   searchLabel,
   placeholder,
   emptyMessage,
   emptyAction,
   options,
-  value,
-  onValueChange,
+  value: suppliedValue,
+  onValueChange: suppliedChange,
   disabled,
 }: ChoicePickerProps) {
+  const field = useFormField<string[]>(name)
+  const value = field ? (field.value ?? []) : (suppliedValue ?? [])
+  const onValueChange = (value: string[]) => {
+    if (field) field.change(value)
+    else suppliedChange?.(value)
+  }
   const container = useContext(FloatingContainerContext)
   const selected = options.filter((option) => value.includes(option.id))
   return (
     <Combobox.Root
       items={options}
       multiple
+      onOpenChange={(open) => {
+        if (!open) field?.blur()
+      }}
       value={selected}
       disabled={disabled}
       itemToStringLabel={(option: ChoicePickerOption) => option.label}

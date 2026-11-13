@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { Form } from '../../../components/form'
 import { Button } from '../../../components/buttons'
 import { XIcon } from '@phosphor-icons/react/dist/csr/X'
 import { ChoicePicker } from '../../../components/choice-picker'
@@ -73,9 +75,9 @@ function GroupMembers() {
                     <Table.Cell className="px-0">
                       <Switch
                         aria-label={`Include ${entry.name}`}
-                        checked={selected.includes(entry.id)}
+                        name="draft.memberIds"
+                        value={entry.id}
                         disabled={readonly || busy}
-                        onChange={() => group.toggleGroupMember(entry.id)}
                       />
                     </Table.Cell>
                   </Table.Row>
@@ -124,12 +126,7 @@ function GroupRoles() {
           }
           disabled={readonly || busy}
           options={roles.map((role) => ({ id: role.id, label: role.name, description: role.description, color: role.color }))}
-          value={draft.roleIds}
-          onValueChange={(next) => {
-            for (const id of new Set([...draft.roleIds, ...next])) {
-              if (draft.roleIds.includes(id) !== next.includes(id)) group.toggleGroupRole(id)
-            }
-          }}
+          name="draft.roleIds"
         />
       </div>
       <SectionSurface className="p-0">
@@ -152,7 +149,12 @@ function GroupRoles() {
                   aria-label={`Remove ${role.name} from group`}
                   className="size-8 shrink-0 rounded-full p-0"
                   disabled={readonly || busy}
-                  onClick={() => group.toggleGroupRole(role.id)}
+                  onClick={() =>
+                    group.store.form.change(
+                      'draft.roleIds',
+                      draft.roleIds.filter((id) => id !== role.id),
+                    )
+                  }
                 >
                   <XIcon size={14} aria-hidden="true" />
                 </Button>
@@ -167,9 +169,8 @@ function GroupRoles() {
   )
 }
 
-export function GroupEditorSettings() {
+function GroupEditorContent() {
   const c = useSettingsController(),
-    group = useGroupController(),
     draft = useGroup((s) => s.draft),
     readonly = useSettings((s) => s.readonly),
     busy = useGroup((s) => s.busy)
@@ -189,20 +190,18 @@ export function GroupEditorSettings() {
               <TextField
                 id="group-name"
                 className="w-xl max-w-full border-border max-lg:w-sm"
-                value={draft.name}
+                name="draft.name"
                 placeholder="Group name…"
                 disabled={readonly || busy}
-                onChange={(event) => group.updateGroup({ name: event.target.value })}
               />
             </Row>
             <Row label={<label htmlFor="group-description">Description</label>} last>
               <TextField
                 id="group-description"
                 className="w-xl max-w-full border-border max-lg:w-sm"
-                value={draft.description}
+                name="draft.description"
                 placeholder="Describe this group…"
                 disabled={readonly || busy}
-                onChange={(event) => group.updateGroup({ description: event.target.value })}
               />
             </Row>
           </Rows>
@@ -211,13 +210,7 @@ export function GroupEditorSettings() {
         <GroupMembers />
         {!readonly && !draft.id ? (
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
-            <Button
-              variant="primary"
-              className="w-32 rounded-xl"
-              loading={busy}
-              disabled={!draft.name.trim()}
-              onClick={() => group.saveGroup()}
-            >
+            <Button variant="primary" className="w-32 rounded-xl" loading={busy} disabled={!draft.name.trim()} type="submit">
               Create group
             </Button>
           </div>
@@ -240,5 +233,31 @@ export function GroupEditorSettings() {
         ) : null}
       </div>
     </SettingsContent>
+  )
+}
+
+export function GroupEditorSettings() {
+  const group = useGroupController()
+  const id = useGroup((state) => state.draft?.id)
+  const form = group.store.form
+  const settings = useSettingsController()
+  useEffect(() => {
+    form.reset(form.values)
+    form.configure({
+      mode: 'button',
+      command: true,
+      error: (error, retry) => settings.apiError(error, retry),
+      validate: (values) => Boolean(values.draft?.name.trim()),
+      submit: async (values) => {
+        if (!values.draft) return false
+        const result = await group.saveGroup(values.draft)
+        return result && typeof result === 'object' ? { draft: result } : false
+      },
+    })
+  }, [group, form, id, settings])
+  return (
+    <Form model={form}>
+      <GroupEditorContent />
+    </Form>
   )
 }

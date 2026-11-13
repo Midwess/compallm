@@ -8,10 +8,11 @@ export class GroupController implements Contract {
     if (this.store.getState().draft) return
     this.store.setState({ draft: { id: null, name: '', description: '', memberIds: [], roleIds: [] } })
   }
-  private unavailable = () => notify.info('Settings changes are not available yet.')
-  updateGroup = this.unavailable
+  private unavailable = () => {
+    notify.info('Settings changes are not available yet.')
+    return false as const
+  }
   toggleGroupMember = this.unavailable
-  toggleGroupRole = this.unavailable
   saveGroup = this.unavailable
   resetGroup = this.unavailable
 }

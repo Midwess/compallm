@@ -1,5 +1,5 @@
 import { useStore } from 'zustand'
-import type { StoreApi } from 'zustand/vanilla'
+import type { FormStore } from '../../../components/form'
 import { useSettingsController } from '../controller'
 import type { GroupDraft } from '../types'
 
@@ -11,11 +11,9 @@ export interface GroupState {
 }
 export interface GroupController {
   setQuery(value: string): void
-  store: StoreApi<GroupState>
-  updateGroup(value: Partial<Pick<GroupDraft, 'name' | 'description'>>): void
+  store: FormStore<GroupState>
   toggleGroupMember(id: string): void
-  toggleGroupRole(id: string): void
-  saveGroup(): void
+  saveGroup(draft: GroupDraft): void | false | GroupDraft | Promise<void | false | GroupDraft>
   resetGroup(): void
 }
 export function useGroupController() {

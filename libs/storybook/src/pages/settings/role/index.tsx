@@ -1,3 +1,6 @@
+import { useEffect } from 'react'
+import { Form } from '../../../components/form'
+import { RoleUpdateInput } from '@compallm/contract/validation'
 import { motion } from 'motion/react'
 import { animation, useTransition } from '../../../components/motion'
 import { Button } from '../../../components/buttons'
@@ -76,19 +79,16 @@ function CedarEditor({ locked, owner }: { locked: boolean; owner: boolean }) {
           showToolbar={false}
           invalid={draft.diagnostics.length > 0}
           readOnly={locked}
-          value={draft.source}
-          onValueChange={(value) => c.setPolicySource(value)}
-          onCommit={() => c.commitPolicySource?.()}
+          name="draft.source"
         />
       </DisabledTooltip>
     </SectionSurface>
   )
 }
 
-export function RoleEditorSettings() {
+function RoleEditorContent() {
   const timing = useTransition('panel')
-  const c = useRoleController(),
-    shared = useSettingsController(),
+  const shared = useSettingsController(),
     draft = useRole((s) => s.draft),
     readonly = useSettings((s) => s.readonly),
     loading = useRole((s) => s.loading),
@@ -114,10 +114,8 @@ export function RoleEditorSettings() {
                   id="role-name"
                   className="w-xl max-w-full border-border max-lg:w-sm"
                   placeholder="Role name…"
-                  value={draft.name}
+                  name="draft.name"
                   disabled={busy || draft.builtin}
-                  onChange={(event) => c.updateRole({ name: event.target.value })}
-                  onCommit={() => c.commitRoleField?.('name')}
                 />
               </DisabledTooltip>
             </Row>
@@ -127,10 +125,8 @@ export function RoleEditorSettings() {
                   id="role-description"
                   className="w-xl max-w-full border-border max-lg:w-sm"
                   placeholder="Describe this role…"
-                  value={draft.description}
+                  name="draft.description"
                   disabled={busy || draft.builtin}
-                  onChange={(event) => c.updateRole({ description: event.target.value })}
-                  onCommit={() => c.commitRoleField?.('description')}
                 />
               </DisabledTooltip>
             </Row>
@@ -204,7 +200,7 @@ export function RoleEditorSettings() {
               className="w-32 rounded-xl"
               loading={busy}
               disabled={!draft.name.trim() || !draft.source.trim() || invalid}
-              onClick={() => c.saveRole()}
+              type="submit"
             >
               Create role
             </Button>
@@ -230,5 +226,59 @@ export function RoleEditorSettings() {
         ) : null}
       </div>
     </SettingsContent>
+  )
+}
+
+export function RoleEditorSettings() {
+  const c = useRoleController()
+  const id = useRole((state) => state.draft?.id)
+  const form = c.store.form
+  const settings = useSettingsController()
+  useEffect(() => {
+    form.reset(form.values)
+    form.configure({
+      mode: id ? 'blur' : 'button',
+      command: !id,
+      fields: {
+        'draft.name': { group: 'metadata' },
+        'draft.description': { group: 'metadata' },
+        'draft.source': { group: 'policy' },
+      },
+      changed: (name, value) => {
+        if (name === 'draft.source') c.setPolicySource(String(value))
+      },
+      validate: (values, names) => {
+        const draft = values.draft
+        if (!draft || draft.builtin) return false
+        return names.every((name) => name !== 'draft.name' || RoleUpdateInput.safeParse({ name: draft.name }).success)
+      },
+      submit: async (values, _patch, signal, names) => {
+        const draft = values.draft
+        if (!draft) return false
+        if (!draft.id) {
+          c.saveRole()
+          return false
+        }
+        let result = { ...draft }
+        const metadata: Partial<Pick<typeof draft, 'name' | 'description'>> = {}
+        if (names.includes('draft.name')) metadata.name = draft.name
+        if (names.includes('draft.description')) metadata.description = draft.description
+        if (Object.keys(metadata).length) {
+          if (!c.updateMetadata) return false
+          result = { ...result, ...(await c.updateMetadata(metadata, signal)) }
+        }
+        if (names.includes('draft.source')) {
+          if ((await c.commitPolicySource?.(draft.source)) === false) return false
+          if (c.store.getState().draft?.diagnostics.length) return false
+        }
+        return { draft: result }
+      },
+      error: (error, retry) => settings.apiError(error, retry),
+    })
+  }, [c, form, id, settings])
+  return (
+    <Form model={form} key={id ?? 'new'}>
+      <RoleEditorContent />
+    </Form>
   )
 }

@@ -1,4 +1,6 @@
-import { useContext } from 'react'
+import { Form } from '../../../components/form'
+import { MultilineField } from '../../../components/fields'
+import { useContext, useEffect } from 'react'
 import { useStore } from 'zustand'
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { ArrowUpIcon } from '@phosphor-icons/react/dist/csr/ArrowUp'
@@ -41,21 +43,28 @@ function ChatInput() {
   const models = useChat((state) => state.models)
   const modelId = useChat((state) => state.modelId)
   const canSend = draft.trim().length > 0 && models.some((model) => model.value === modelId) && !creating
+  const form = controller.store.form
+  useEffect(
+    () =>
+      form.configure({
+        mode: 'button',
+        command: true,
+        validate: (values) =>
+          Boolean(values.draft?.trim() && controller.store.getState().models.some((m) => m.value === values.modelId)),
+        submit: async (values) => {
+          await controller.onCreateChat({ draft: values.draft ?? '', modelId: values.modelId ?? '' })
+          return false as const
+        },
+      }),
+    [controller, form],
+  )
   return (
-    <form
-      aria-label="Create chat"
-      className="w-full max-w-205.5"
-      onSubmit={(event) => {
-        event.preventDefault()
-        if (canSend) controller.onCreateChat()
-      }}
-    >
+    <Form model={form} aria-label="Create chat" className="w-full max-w-205.5">
       <div className="rounded-lg border-[0.5px] border-border bg-composer p-3 focus-within:border-input-border">
-        <textarea
+        <MultilineField
+          name="draft"
           aria-label="Message"
-          value={draft}
           disabled={creating}
-          onChange={(event) => controller.onDraftChanged(event.target.value)}
           placeholder="Start a conversation…"
           className={`
   block field-sizing-content min-h-18 max-h-64 w-full resize-none overflow-y-auto bg-transparent px-1.5 text-xs leading-6
@@ -66,8 +75,7 @@ function ChatInput() {
           <Select
             aria-label="Chat model"
             options={models}
-            value={modelId}
-            onValueChange={controller.onModelChanged}
+            name="modelId"
             className="w-35 [&>button>span]:flex-1 [&>button>span]:text-center"
             disabled={creating || !models.length}
           />
@@ -86,6 +94,6 @@ function ChatInput() {
           </Button>
         </div>
       </div>
-    </form>
+    </Form>
   )
 }

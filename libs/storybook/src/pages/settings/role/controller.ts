@@ -1,5 +1,5 @@
 import { useStore } from 'zustand'
-import type { StoreApi } from 'zustand/vanilla'
+import type { FormStore } from '../../../components/form'
 import { useSettingsController } from '../controller'
 import type { RoleDraft } from '../types'
 
@@ -15,14 +15,16 @@ export interface RoleState {
 export interface RoleController {
   setQuery(value: string): void
   setFilter(key: string, value: string): void
-  store: StoreApi<RoleState>
-  updateRole(value: Partial<Pick<RoleDraft, 'name' | 'description'>>): void
-  commitRoleField?(field: 'name' | 'description'): void
+  store: FormStore<RoleState>
+  updateMetadata?(
+    value: Partial<Pick<RoleDraft, 'name' | 'description'>>,
+    signal?: AbortSignal,
+  ): Promise<Pick<RoleDraft, 'name' | 'description'>>
   setPolicyMode(mode: RoleDraft['mode']): void
   setPolicySource(source: string): void
-  commitPolicySource?(): void
-  togglePolicyAction(action: string): void
-  setPolicyActions(actions: string[], enabled: boolean): void
+  commitPolicySource?(source: string): boolean | Promise<boolean>
+  togglePolicyAction(action: string): void | Promise<void>
+  setPolicyActions(actions: string[], enabled: boolean): void | Promise<void>
   formatPolicy(): void
   saveRole(): void
   resetRole(): void

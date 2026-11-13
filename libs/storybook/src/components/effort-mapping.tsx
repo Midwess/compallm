@@ -1,3 +1,4 @@
+import { useFormField } from './form'
 import { animated } from './motion'
 import { ProviderInputRules, ProviderInputRulesInput, ProviderInputRulesConstraints } from '@compallm/contract/provider'
 import { useId, useRef, useState } from 'react'
@@ -11,19 +12,27 @@ export const effortLevels = ['low', 'medium', 'high', 'xhigh', 'max'] as const
 export type EffortLevel = (typeof effortLevels)[number]
 export type EffortValues = Partial<Record<EffortLevel, string>>
 export interface EffortMappingProps {
-  value: EffortValues
-  onValueChange(value: EffortValues): void
+  name?: string
+  value?: EffortValues
+  onValueChange?(value: EffortValues): void
   disabled?: boolean
   defaultSelected?: EffortLevel
   defaultFocused?: EffortLevel
 }
 export function EffortMapping({
-  value,
-  onValueChange,
+  name,
+  value: suppliedValue,
+  onValueChange: suppliedChange,
   disabled = false,
   defaultSelected = 'low',
   defaultFocused,
 }: EffortMappingProps) {
+  const field = useFormField<EffortValues>(name)
+  const value = field ? (field.value ?? {}) : (suppliedValue ?? {})
+  const onValueChange = (value: EffortValues) => {
+    if (field) field.change(value)
+    else suppliedChange?.(value)
+  }
   const firstEmpty = effortLevels.findIndex((level) => !value[level]?.trim())
   const lastAvailable = firstEmpty === -1 ? effortLevels.length - 1 : firstEmpty
   const [selection, select] = useState<EffortLevel>(defaultFocused ?? defaultSelected)
@@ -49,7 +58,13 @@ export function EffortMapping({
     choose(Math.round((((clientX - bounds.left) / bounds.width) * 560 - 32) / 124), true)
   }
   return (
-    <fieldset disabled={disabled} className="w-full min-w-0">
+    <fieldset
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) field?.blur()
+      }}
+      disabled={disabled}
+      className="w-full min-w-0"
+    >
       <legend className="mb-2 text-sm font-medium">
         <span className="inline-flex items-center gap-1">
           Thinking efforts

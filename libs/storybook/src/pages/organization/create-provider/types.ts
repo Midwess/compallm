@@ -6,7 +6,7 @@ import type {
   ProviderCatalogRef,
 } from '@compallm/contract/graphql'
 import type { NavigationRequest } from '../../../url'
-import type { StoreApi } from 'zustand/vanilla'
+import type { FormStore } from '../../../components/form'
 
 export type EndpointMode = 'chat_completions' | 'responses' | 'messages' | 'video' | 'realtime'
 export type ApiProtocol = Lowercase<ProviderTemplate['protocol']>
@@ -75,6 +75,7 @@ export interface CreateProviderState {
   modelQuery: string
   headers: HeaderEntry[]
   avatarUrl: string | null
+  avatarFile: File | null
   modelCapabilityFilter: ModelCapability[]
   modelStatusFilter: ModelStatusFilter
   modelProtocolFilter: TextModelProtocol | 'all'
@@ -86,7 +87,7 @@ export interface CreateProviderState {
   error: string | null
 }
 export interface CreateProviderController {
-  readonly store: Pick<StoreApi<CreateProviderState>, 'getState' | 'getInitialState' | 'subscribe'>
+  readonly store: FormStore<CreateProviderState>
   onProviderQueryChanged(query: string): void
   onSelectProvider(id: string): void
   onUseCustomProvider(): void
@@ -95,7 +96,7 @@ export interface CreateProviderController {
   onProtocolChanged(protocol: ApiProtocol): void
   onModeChanged(mode: EndpointMode): void
   onModelQueryChanged(query: string): void
-  onModelEnabledChanged(id: string, enabled: boolean): void
+  onModelsChanged(models: ProviderModel[]): void
   onAddModel(protocol?: TextModelProtocol): void
   onHeadersChanged?(headers: HeaderEntry[]): void
   onAvatarChanged?(file: File | null): void
@@ -105,15 +106,18 @@ export interface CreateProviderController {
     capabilities?: ModelCapability[]
   }): void
   onProviderFilterChanged?(protocol: TextModelProtocol | 'all'): void
-  onModelsEnabledChanged?(ids: string[], enabled: boolean): void
   onClearModelFilters?(): void
   onEditModel(id: string): void
   onModelDraftChanged(patch: Partial<ModelDraft>): void
-  onSaveModel(): void
+  onSaveModel(draft: ModelDraft): void
   onCancelModel(): void
   onTestConnection(): void | Promise<void>
-  onCreateProvider(): void | Promise<void>
-  onSaveProvider(): void | Promise<void>
+  onCreateProvider(
+    values: Partial<CreateProviderState>,
+  ): void | false | Partial<CreateProviderState> | Promise<void | false | Partial<CreateProviderState>>
+  onSaveProvider(
+    values: Partial<CreateProviderState>,
+  ): void | false | Partial<CreateProviderState> | Promise<void | false | Partial<CreateProviderState>>
   onCancelProvider(): void
   onCloneProvider(): void
 }

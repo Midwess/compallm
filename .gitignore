@@ -26,6 +26,9 @@
 # Local agent workspaces
 /.dev/
 
+# Local documentation site build output. Documentation lives in the Wiki.
+/docs/
+
 # Editors and operating systems
 /.codex/config.toml
 .idea

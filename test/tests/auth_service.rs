@@ -4684,7 +4684,7 @@ async fn preference_graphql_persists_grouped_updates_and_resets_for_current_user
         let (base, parameters) = url.split_once('?').unwrap_or((&url, ""));
         let (server, _) = base.rsplit_once('/').ok_or_else(|| anyhow::anyhow!("database URL"))?;
         let pool = Arc::new(Database::connect(format!("{server}/{name}?{parameters}")).await?);
-        for migration in compallm_postgres::Migrator::migrations().iter().filter(|migration| migration.name().ends_with("create_users") || migration.name().ends_with("create_user_preferences")) {
+        for migration in compallm_postgres::Migrator::migrations().iter().filter(|migration| migration.name().ends_with("create_users") || migration.name().ends_with("create_user_preferences") || migration.name().ends_with("add_user_avatar_path") || migration.name().ends_with("add_usernames")) {
             migration.up(&SchemaManager::new(pool.as_ref())).await?;
         }
         type Users = <compallm_postgres::UserSchema as ModelTrait>::Entity;

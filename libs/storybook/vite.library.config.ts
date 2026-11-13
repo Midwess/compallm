@@ -30,6 +30,7 @@ const families = [
   'page-progress',
   'app-loading-overlay',
   'sidebar',
+  'scroll',
   'selection',
   'surfaces',
   'settings',

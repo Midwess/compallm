@@ -20,7 +20,7 @@ export function Sidebar({
       {...props}
       className={cx(
         'flex h-full min-h-0 w-61 shrink-0 flex-col overflow-x-hidden bg-sidebar px-3 py-1 select-none',
-        '[&_input]:select-text [&_textarea]:select-text [&_[contenteditable=true]]:select-text',
+        '[&_input]:select-text [&_textarea]:select-text **:[[contenteditable=true]]:select-text',
         className,
       )}
     >

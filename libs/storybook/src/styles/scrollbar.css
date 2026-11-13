@@ -9,6 +9,12 @@ body {
   scrollbar-color: color-mix(in srgb, var(--muted-foreground) 55%, transparent) transparent;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    scroll-behavior: smooth;
+  }
+}
+
 /* Safari and Blink need the standard properties left at auto so the WebKit
    dimensions apply. The pseudo-elements also cover older Safari versions. */
 @supports selector(::-webkit-scrollbar) {

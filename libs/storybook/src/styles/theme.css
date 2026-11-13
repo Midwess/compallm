@@ -47,6 +47,27 @@
   --font-code: 'JetBrains Mono', ui-monospace, monospace;
   --border-hairline: 0.5px;
   color-scheme: dark;
+  --ui-font-scale: 1;
+}
+
+:root[data-text-size='smaller'] {
+  --ui-font-scale: 0.84;
+}
+
+:root[data-text-size='small'] {
+  --ui-font-scale: 0.92;
+}
+
+:root[data-text-size='default'] {
+  --ui-font-scale: 1;
+}
+
+:root[data-text-size='large'] {
+  --ui-font-scale: 1.125;
+}
+
+:root[data-text-size='larger'] {
+  --ui-font-scale: 1.25;
 }
 
 [data-code-theme='light'] {

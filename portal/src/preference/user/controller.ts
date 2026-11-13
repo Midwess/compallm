@@ -9,6 +9,7 @@ import {
   type PreferenceDraft,
 } from '@compallm/storybook/pages/settings'
 import { appController } from '../../app/controller'
+import { appearanceController } from '../../appearance/controller'
 import type { AppController, AppLoadingTask } from '@compallm/storybook'
 import type { OrganizationController } from '../../organization/controller'
 import type { UrlController } from '@compallm/storybook'
@@ -46,6 +47,7 @@ export class UserPreferenceController implements Contract {
     if (!saved || status !== 'ready') return
     this.applyHomeView()
     this.applySidebarOrder()
+    appearanceController.setTextSize(saved.typography.size)
   }
 
   private applyHomeView = () => {
@@ -70,6 +72,7 @@ export class UserPreferenceController implements Contract {
       this.cancel()
       this.store.form.reset({ draft: initialPreferenceDraft() })
       this.store.setState({ saved: null, status: 'idle' })
+      appearanceController.setTextSize('DEFAULT')
       if (next) void this.load()
     }
     const unsubscribe = auth.store.subscribe(synchronize)
@@ -153,6 +156,7 @@ export class UserPreferenceController implements Contract {
     this.store.setState({ saved: confirmed })
     if (categories.includes('navigation')) this.applyHomeView()
     if (categories.includes('sidebar')) this.applySidebarOrder()
+    if (categories.includes('typography')) appearanceController.setTextSize(confirmed.typography.size)
     return confirmedPreferenceDraft(confirmed, patch)
   }
 }

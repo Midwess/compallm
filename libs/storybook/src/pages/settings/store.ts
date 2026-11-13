@@ -4,6 +4,8 @@ import type { SettingsState } from './types'
 export function createSettingsStore(initial: Partial<SettingsState> = {}) {
   return createFormStore<SettingsState>(
     {
+      profileStatus: 'ready',
+      profileSaving: false,
       profileUpload: null,
       organizationUpload: null,
       codeExamples: {},

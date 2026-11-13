@@ -8,9 +8,6 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --shadow-action-opacity: 30%;
-  --shadow-control-opacity: 30%;
-  --shadow-menu-opacity: 12.5%;
   --code-background: oklch(0.248568 0.003737 286.1247);
   --code-foreground: oklch(0.921706 0.002909 264.5414);
   --code-added: oklch(0.283491 0.020832 159.1478);
@@ -23,12 +20,6 @@
   --border-hairline: 0.5px;
   --ui-font-scale: 1;
   --content-link-decoration: none;
-}
-
-:root[data-appearance='light'] {
-  --shadow-action-opacity: 14%;
-  --shadow-control-opacity: 14%;
-  --shadow-menu-opacity: 7%;
 }
 
 :root[data-underline-links='true'] {
@@ -92,6 +83,7 @@
   --color-inset: var(--inset);
   --color-composer: var(--composer);
   --color-elevated: var(--elevated);
+  --color-elevated-hover: var(--elevated-hover);
   --color-menu: var(--popover);
   --color-divider: var(--divider);
   --color-border: var(--border);
@@ -108,6 +100,9 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-error-background: var(--error-background);
+  --color-error-foreground: var(--error-foreground);
   --color-transparent: transparent;
   --color-flow-canvas: var(--flow-canvas);
   --color-flow-node: var(--flow-node);
@@ -132,6 +127,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-shadow: var(--shadow-color);
 
   --radius-control: 0.625rem;
   --radius-hairline: 0.0625rem;
@@ -165,12 +161,15 @@
   --text-ui-28: calc(1.75rem * var(--ui-font-scale, 1));
   --shadow-action: 0 0.5px 1px 1px color-mix(in oklab, var(--shadow-color) var(--shadow-action-opacity), transparent);
   --shadow-control:
-    0 0 0 0.5px color-mix(in oklab, var(--shadow-highlight) 14.3%, transparent),
+    0 0 0 0.5px color-mix(in oklab, var(--shadow-highlight) var(--shadow-highlight-opacity), transparent),
     0 0.5px 1px 1px color-mix(in oklab, var(--shadow-color) var(--shadow-control-opacity), transparent);
   --shadow-menu:
     0 3px 8px color-mix(in oklab, var(--shadow-color) var(--shadow-menu-opacity), transparent),
     0 2px 5px color-mix(in oklab, var(--shadow-color) var(--shadow-menu-opacity), transparent),
     0 1px 1px color-mix(in oklab, var(--shadow-color) var(--shadow-menu-opacity), transparent);
+  --shadow-floating:
+    0 10px 15px -3px color-mix(in oklab, var(--shadow-color) var(--shadow-floating-opacity), transparent),
+    0 4px 6px -4px color-mix(in oklab, var(--shadow-color) var(--shadow-floating-opacity), transparent);
 }
 
 :root[data-theme^='blueberry-'] ::selection,

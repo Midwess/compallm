@@ -48,6 +48,10 @@ mod m20261113_000029_create_user_preferences;
 mod m20261113_000030_seed_user_preferences;
 mod m20261113_000031_rename_theme_palettes;
 
+mod m20261113_000032_add_user_avatar_path;
+
+mod m20261114_000033_add_usernames;
+
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -87,6 +91,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20261113_000029_create_user_preferences::Migration),
             Box::new(m20261113_000030_seed_user_preferences::Migration),
             Box::new(m20261113_000031_rename_theme_palettes::Migration),
+            Box::new(m20261113_000032_add_user_avatar_path::Migration),
+            Box::new(m20261114_000033_add_usernames::Migration),
             // inject-above (do not remove this comment)
         ]
     }

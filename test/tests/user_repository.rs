@@ -32,6 +32,8 @@ impl Fixture {
             id: 42,
             email: "james@midwess.com".into(),
             display_name: "James".into(),
+            username: "james".into(),
+            avatar_path: None,
             status: UserStatusSchema::Active,
             email_verified_at: at,
             last_login_at: None,
@@ -47,6 +49,8 @@ impl Fixture {
             id: 42,
             email: "james@midwess.com".into(),
             display_name: "James".into(),
+            username: "james".into(),
+            avatar_path: None,
             status: UserStatus::Active,
         }
     }
@@ -123,6 +127,30 @@ async fn find_by_id_maps_disabled_users_and_missing_rows() {
 }
 
 #[tokio::test]
+async fn profile_update_returns_the_saved_relative_path_and_unchanged_email() {
+    let mut saved = Fixture::row();
+    saved.display_name = "New Name".into();
+    saved.avatar_path = Some("/avatars/42".into());
+    let context = Fixture::context(Arc::new(
+        MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([vec![Fixture::mock_row(saved)]])
+            .into_connection(),
+    ));
+    let user = context
+        .scope(UserRepository.update_profile(
+            42,
+            Some("New Name".into()),
+            None,
+            Some("/avatars/42".into()),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(user.display_name, "New Name");
+    assert_eq!(user.avatar_path.as_deref(), Some("/avatars/42"));
+    assert_eq!(user.email, "james@midwess.com");
+}
+
+#[tokio::test]
 async fn invalid_ids_are_database_errors() {
     assert!(matches!(
         UserRepository.find_by_id(u64::MAX).await,
@@ -185,8 +213,8 @@ impl sea_orm::sqlx::error::DatabaseError for UniqueViolation {
 }
 
 #[tokio::test]
-async fn only_email_unique_conflicts_become_email_already_exists() {
-    for constraint in ["users_email_unique", "users_pkey"] {
+async fn unique_conflicts_keep_their_domain_meaning() {
+    for constraint in ["users_email_unique", "users_username_unique", "users_pkey"] {
         let error = DbErr::Query(RuntimeErr::SqlxError(Arc::new(
             sea_orm::sqlx::Error::Database(Box::new(UniqueViolation(constraint))),
         )));
@@ -201,6 +229,8 @@ async fn only_email_unique_conflicts_become_email_already_exists() {
             .unwrap_err();
         if constraint == "users_email_unique" {
             assert!(matches!(error, UserRepositoryError::EmailAlreadyExists));
+        } else if constraint == "users_username_unique" {
+            assert!(matches!(error, UserRepositoryError::UsernameAlreadyExists));
         } else {
             assert!(matches!(error, UserRepositoryError::Database(_)));
         }

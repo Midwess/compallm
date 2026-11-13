@@ -1,4 +1,6 @@
-import { FormError } from '../../components/form'
+import { FormError, useFormValue } from '../../components/form'
+import { useEffect, useState } from 'react'
+import { ImageUploadInput } from '@compallm/contract/validation'
 import { motion } from 'motion/react'
 import { useTransition } from '../../components/motion'
 import { Button } from '../../components/buttons'
@@ -8,11 +10,57 @@ import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { SettingsContent, Heading, Section, Rows, Row, Empty } from './shared'
 import { useSettings, useSettingsController } from './controller'
 
+function ProfileAvatar({ name, saved }: { name: string; saved: string | null }) {
+  const file = useFormValue<File | null>(useSettingsController().store.form, 'profileUpload')
+  const [preview, setPreview] = useState<{ file: File; url: string } | null>(null)
+  useEffect(() => {
+    if (
+      !file ||
+      !ImageUploadInput.safeParse({
+        size: file.size,
+        mediaType: ({ 'image/jpeg': 'JPEG', 'image/png': 'PNG', 'image/webp': 'WEBP' } as Record<string, string>)[file.type],
+      }).success
+    )
+      return
+    const reader = new FileReader()
+    reader.onload = () => setPreview({ file, url: String(reader.result) })
+    reader.readAsDataURL(file)
+    return () => {
+      reader.onload = null
+      reader.abort()
+    }
+  }, [file])
+  return <Avatar name={name} src={file && preview?.file === file ? preview.url : (saved ?? undefined)} />
+}
+
 export function ProfileSettings() {
   const timing = useTransition('interaction')
   const c = useSettingsController(),
     profile = useSettings((s) => s.profile, ['profile']),
-    busy = useSettings((s) => s.busy)
+    busy = useSettings((s) => s.profileSaving),
+    status = useSettings((s) => s.profileStatus)
+  if (status !== 'ready')
+    return (
+      <SettingsContent>
+        <Heading>Profile</Heading>
+        <Empty
+          action={
+            status === 'error' && c.pages.profile.reload ? <Button onClick={c.pages.profile.reload}>Retry</Button> : undefined
+          }
+          title={
+            status === 'loading'
+              ? 'Loading profile…'
+              : status === 'denied'
+                ? 'Profile access denied'
+                : status === 'missing'
+                  ? 'Profile not found'
+                  : 'Couldn’t load profile'
+          }
+        >
+          {status === 'loading' ? 'Loading your saved profile.' : 'Your profile could not be loaded.'}
+        </Empty>
+      </SettingsContent>
+    )
   return (
     <SettingsContent>
       <Heading>Profile</Heading>
@@ -26,7 +74,7 @@ export function ProfileSettings() {
               className="group relative inline-flex size-10 cursor-pointer rounded-full
 focus-within:outline-2 focus-within:outline-ring"
             >
-              <Avatar name={profile.name} src={profile.avatar ?? undefined} />
+              <ProfileAvatar name={profile.name || profile.username} saved={profile.avatar} />
               <motion.span
                 variants={{ rest: { opacity: 0 }, active: { opacity: 1 } }}
                 transition={timing}
@@ -51,12 +99,19 @@ text-on-overlay
             <TextField id="settings-full-name" className="w-70 max-w-full" name="profile.name" />
             <FormError name="profile.name" />
           </Row>
-          <Row label={<label htmlFor="settings-username">Username</label>} description="Your preferred display name">
+          <Row label={<label htmlFor="settings-username">Username</label>} description="Your unique username">
             <TextField id="settings-username" className="w-70 max-w-full" name="profile.username" />
             <FormError name="profile.username" />
           </Row>
-          <Row label={<label htmlFor="settings-email">Email</label>} description="The email address for this account" last>
-            <TextField id="settings-email" type="email" className="w-70 max-w-full" value={profile.email} readOnly />
+          <Row label={<label htmlFor="settings-email">Email</label>} description="Email changes are not available yet." last>
+            <TextField
+              id="settings-email"
+              type="email"
+              variant="constant"
+              className="w-70 max-w-full"
+              value={profile.email}
+              placeholder="Not available"
+            />
           </Row>
         </Rows>
         <Section title="Account access" description="Manage sign-in methods and connected applications.">

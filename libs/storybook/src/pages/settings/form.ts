@@ -4,6 +4,34 @@ import type { SettingsController } from './types'
 export function configureSettingsForm(c: SettingsController) {
   const form = c.store.form
   let active = true
+  if (c.store.getState().location.page === 'profile') {
+    form.configure({
+      mode: 'blur',
+      names: ['profile.name', 'profile.username', 'profileUpload'],
+      fields: { profileUpload: { mode: 'change' } },
+      parse: parseSettings,
+      error: (error, retry) =>
+        c.apiError(error, () => {
+          if (active) retry()
+        }),
+      submit: async (values, _patch, signal, names) => {
+        const confirmed = await c.pages.profile.saveProfile(
+          {
+            ...(names.includes('profile.name') ? { name: values.profile!.name } : {}),
+            ...(names.includes('profile.username') ? { username: values.profile!.username } : {}),
+          },
+          names.includes('profileUpload') ? (values.profileUpload ?? null) : null,
+          signal,
+        )
+        if (confirmed === false) return false
+        return { profile: { ...values.profile!, ...confirmed }, profileUpload: null }
+      },
+    })
+    return () => {
+      active = false
+      form.stop()
+    }
+  }
   form.configure({
     mode: 'change',
     parse: parseSettings,
@@ -19,18 +47,13 @@ export function configureSettingsForm(c: SettingsController) {
     submit: async (values, _patch, _signal, names) => {
       for (const name of names) {
         const [root, key] = name.split('.')
-        if (root === 'profile' && key) {
-          if ((await c.pages.profile.updateProfile({ [key]: values.profile![key as keyof typeof values.profile] })) === false)
-            return false
-        } else if (root === 'organization' && key) {
+        if (root === 'organization' && key) {
           if (
             (await c.pages.organization.updateOrganization({
               [key]: values.organization![key as keyof typeof values.organization],
             })) === false
           )
             return false
-        } else if (root === 'profileUpload') {
-          if ((await c.pages.profile.setAvatar(values.profileUpload ?? null)) === false) return false
         } else if (root === 'organizationUpload') {
           if ((await c.pages.organization.setAvatar(values.organizationUpload ?? null)) === false) return false
         }

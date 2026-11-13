@@ -162,9 +162,9 @@ disabled:opacity-30
           <svg ref={rail} viewBox="0 0 560 14" preserveAspectRatio="none" className="h-3.5 min-w-0 flex-1" aria-hidden="true">
             <defs>
               <linearGradient id={`${id}-gradient`} x1="0" x2="1">
-                <stop stopColor="#7762d8" />
-                <stop offset="58%" stopColor="#9470d1" />
-                <stop offset="100%" stopColor="#ee9b58" />
+                <stop stopColor="var(--effort-low)" />
+                <stop offset="58%" stopColor="var(--effort-medium)" />
+                <stop offset="100%" stopColor="var(--effort-high)" />
               </linearGradient>
             </defs>
             <path

@@ -13,7 +13,8 @@ export type AuthInitialState =
 export type AuthOperation = 'request' | 'verify' | 'resend'
 export type AuthError = AuthFailureReason | 'invalid-email'
 
-export type AuthUser = Pick<Session, 'id' | 'userId' | 'organizationId' | 'organizationName'>
+export type AuthUser = Pick<Session, 'id' | 'userId' | 'organizationId' | 'organizationName'> &
+  Partial<Pick<Session, 'avatarUrl'>>
 
 export interface AuthState {
   currentUser: AuthUser | null

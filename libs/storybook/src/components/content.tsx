@@ -1,4 +1,5 @@
 import type { CSSProperties, HTMLAttributes, ReactNode } from 'react'
+import { useState } from 'react'
 import { FileTextIcon } from '@phosphor-icons/react/dist/csr/FileText'
 import { cx } from './shared'
 
@@ -63,15 +64,32 @@ export function Avatar({ name, src, size = 40 }: { name: string; src?: string; s
   return (
     <span
       className={`
-  inline-flex flex-none items-center justify-center overflow-hidden rounded-full bg-elevated text-xsm
+  relative inline-flex flex-none items-center justify-center overflow-hidden rounded-full bg-elevated text-xsm
   size-(--avatar-size) font-medium [&>img]:size-full [&>img]:object-cover
 `}
       style={{ '--avatar-size': `${size}px` } as CSSProperties}
-      role={src ? undefined : 'img'}
-      aria-label={src ? undefined : name}
+      role="img"
+      aria-label={name}
     >
-      {src ? <img src={src} alt={name} /> : initials}
+      <span aria-hidden="true">{initials}</span>
+      {src ? <AvatarImage key={src} src={src} /> : null}
     </span>
+  )
+}
+
+function AvatarImage({ src }: { src: string }) {
+  const [loaded, setLoaded] = useState(false)
+  return (
+    <img
+      src={src}
+      alt=""
+      className={cx('absolute inset-0', !loaded && 'opacity-0')}
+      ref={(image) => {
+        if (image?.complete && image.naturalWidth > 0) setLoaded(true)
+      }}
+      onLoad={() => setLoaded(true)}
+      onError={() => setLoaded(false)}
+    />
   )
 }
 export type BadgeTone = 'neutral' | 'success' | 'warning' | 'error'

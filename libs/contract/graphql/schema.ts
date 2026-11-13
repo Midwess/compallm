@@ -18,6 +18,19 @@ export interface AccessibilityPreferences {
   __typename: 'AccessibilityPreferences'
 }
 
+export interface AvatarUpload {
+  /** Expiration as Unix seconds, encoded as a string. */
+  expiresAt: Scalars['String']
+  fields: UploadFormField[]
+  url: Scalars['String']
+  __typename: 'AvatarUpload'
+}
+
+export interface AvatarUploadPayload {
+  node: AvatarUpload
+  __typename: 'AvatarUploadPayload'
+}
+
 export interface BooleanPayload {
   node: Scalars['Boolean']
   __typename: 'BooleanPayload'
@@ -116,6 +129,8 @@ export interface Mutation {
   emailSignupConfirm: SessionCredentialsPayload
   /** Request a signup email challenge; reject existing accounts before sending. */
   emailSignupRequest: EmailChallengePayload
+  /** Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes. */
+  generateUrlAvatarUrl: AvatarUploadPayload
   /** Create a group and its initial role assignments in the verified active organization. */
   groupCreate: CreatedGroupPayload
   /** Create a role in the verified active organization. */
@@ -130,6 +145,8 @@ export interface Mutation {
   userPreferencesReset: UserPreferencesPayload
   /** Atomically patch the signed-in user's preferences, preserving omitted fields. */
   userPreferencesUpdate: UserPreferencesPayload
+  /** Update the current user's display name and confirm an uploaded avatar. */
+  userProfileUpdate: UserPayload
   __typename: 'Mutation'
 }
 
@@ -260,6 +277,8 @@ export interface Query {
   session: SessionPayload
   /** Return the signed-in user's personal preferences; missing rows use Core defaults without a write. */
   userPreferences: UserPreferencesPayload
+  /** Public profile for an active user. Email and account state are excluded. */
+  userProfile: UserPayload | null
   __typename: 'Query'
 }
 
@@ -292,6 +311,8 @@ export interface RolePayload {
 }
 
 export interface Session {
+  /** Public avatar for this user; clients show a fallback while absent or loading. */
+  avatarUrl: Scalars['String'] | null
   /** Login session identity, serialized as a string without numeric precision loss. */
   id: Scalars['ID']
   /** Organization selected for this verified session. */
@@ -365,6 +386,30 @@ export interface TypographyPreferences {
   __typename: 'TypographyPreferences'
 }
 
+export interface UploadFormField {
+  name: Scalars['String']
+  value: Scalars['String']
+  __typename: 'UploadFormField'
+}
+
+export interface User {
+  /** Public avatar URL; the object may not exist yet and clients must show a fallback. */
+  avatarUrl: Scalars['String'] | null
+  /** Display name; this field does not establish identity or uniqueness. */
+  displayName: Scalars['String']
+  /** Email is readable only by the verified account owner and cannot be updated here. */
+  email: Scalars['String']
+  /** Stable user identity, serialized as a string. */
+  id: Scalars['ID']
+  username: Scalars['String']
+  __typename: 'User'
+}
+
+export interface UserPayload {
+  node: User
+  __typename: 'UserPayload'
+}
+
 export type UserPreferenceGroup =
   | 'ACCESSIBILITY'
   | 'ALL'
@@ -405,6 +450,21 @@ export interface AccessibilityPreferencesGenqlSelection {
   pointerCursors?: boolean | number
   reduceMotion?: boolean | number
   underlineLinks?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface AvatarUploadGenqlSelection {
+  /** Expiration as Unix seconds, encoded as a string. */
+  expiresAt?: boolean | number
+  fields?: UploadFormFieldGenqlSelection
+  url?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface AvatarUploadPayloadGenqlSelection {
+  node?: AvatarUploadGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -583,6 +643,8 @@ export interface MutationGenqlSelection {
   emailSignupConfirm?: SessionCredentialsPayloadGenqlSelection & { __args: { input: EmailCodeInput } }
   /** Request a signup email challenge; reject existing accounts before sending. */
   emailSignupRequest?: EmailChallengePayloadGenqlSelection & { __args: { input: EmailInput } }
+  /** Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes. */
+  generateUrlAvatarUrl?: AvatarUploadPayloadGenqlSelection & { __args: { input: ImageUploadInput } }
   /** Create a group and its initial role assignments in the verified active organization. */
   groupCreate?: CreatedGroupPayloadGenqlSelection & { __args: { input: GroupCreateInput } }
   /** Create a role in the verified active organization. */
@@ -597,6 +659,8 @@ export interface MutationGenqlSelection {
   userPreferencesReset?: UserPreferencesPayloadGenqlSelection & { __args: { groups: UserPreferenceGroup[] } }
   /** Atomically patch the signed-in user's preferences, preserving omitted fields. */
   userPreferencesUpdate?: UserPreferencesPayloadGenqlSelection & { __args: { input: UserPreferencesPatchInput } }
+  /** Update the current user's display name and confirm an uploaded avatar. */
+  userProfileUpdate?: UserPayloadGenqlSelection & { __args: { input: UserProfileUpdateInput } }
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -798,6 +862,8 @@ export interface QueryGenqlSelection {
   session?: SessionPayloadGenqlSelection
   /** Return the signed-in user's personal preferences; missing rows use Core defaults without a write. */
   userPreferences?: UserPreferencesPayloadGenqlSelection
+  /** Public profile for an active user. Email and account state are excluded. */
+  userProfile?: UserPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -853,6 +919,8 @@ export interface RoleUpdateInput {
 }
 
 export interface SessionGenqlSelection {
+  /** Public avatar for this user; clients show a fallback while absent or loading. */
+  avatarUrl?: boolean | number
   /** Login session identity, serialized as a string without numeric precision loss. */
   id?: boolean | number
   /** Organization selected for this verified session. */
@@ -965,6 +1033,33 @@ export interface TypographyPreferencesGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface UploadFormFieldGenqlSelection {
+  name?: boolean | number
+  value?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface UserGenqlSelection {
+  /** Public avatar URL; the object may not exist yet and clients must show a fallback. */
+  avatarUrl?: boolean | number
+  /** Display name; this field does not establish identity or uniqueness. */
+  displayName?: boolean | number
+  /** Email is readable only by the verified account owner and cannot be updated here. */
+  email?: boolean | number
+  /** Stable user identity, serialized as a string. */
+  id?: boolean | number
+  username?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface UserPayloadGenqlSelection {
+  node?: UserGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface UserPreferencesGenqlSelection {
   accessibility?: AccessibilityPreferencesGenqlSelection
   calendar?: CalendarPreferencesGenqlSelection
@@ -998,10 +1093,28 @@ export interface UserPreferencesPayloadGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface UserProfileUpdateInput {
+  avatarUploaded?: Scalars['Boolean'] | null
+  displayName?: Scalars['String'] | null
+  username?: Scalars['String'] | null
+}
+
 const AccessibilityPreferences_possibleTypes: string[] = ['AccessibilityPreferences']
 export const isAccessibilityPreferences = (obj?: { __typename?: any } | null): obj is AccessibilityPreferences => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isAccessibilityPreferences"')
   return AccessibilityPreferences_possibleTypes.includes(obj.__typename)
+}
+
+const AvatarUpload_possibleTypes: string[] = ['AvatarUpload']
+export const isAvatarUpload = (obj?: { __typename?: any } | null): obj is AvatarUpload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isAvatarUpload"')
+  return AvatarUpload_possibleTypes.includes(obj.__typename)
+}
+
+const AvatarUploadPayload_possibleTypes: string[] = ['AvatarUploadPayload']
+export const isAvatarUploadPayload = (obj?: { __typename?: any } | null): obj is AvatarUploadPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isAvatarUploadPayload"')
+  return AvatarUploadPayload_possibleTypes.includes(obj.__typename)
 }
 
 const BooleanPayload_possibleTypes: string[] = ['BooleanPayload']
@@ -1238,6 +1351,24 @@ const TypographyPreferences_possibleTypes: string[] = ['TypographyPreferences']
 export const isTypographyPreferences = (obj?: { __typename?: any } | null): obj is TypographyPreferences => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isTypographyPreferences"')
   return TypographyPreferences_possibleTypes.includes(obj.__typename)
+}
+
+const UploadFormField_possibleTypes: string[] = ['UploadFormField']
+export const isUploadFormField = (obj?: { __typename?: any } | null): obj is UploadFormField => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isUploadFormField"')
+  return UploadFormField_possibleTypes.includes(obj.__typename)
+}
+
+const User_possibleTypes: string[] = ['User']
+export const isUser = (obj?: { __typename?: any } | null): obj is User => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isUser"')
+  return User_possibleTypes.includes(obj.__typename)
+}
+
+const UserPayload_possibleTypes: string[] = ['UserPayload']
+export const isUserPayload = (obj?: { __typename?: any } | null): obj is UserPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isUserPayload"')
+  return UserPayload_possibleTypes.includes(obj.__typename)
 }
 
 const UserPreferences_possibleTypes: string[] = ['UserPreferences']

@@ -4,6 +4,10 @@ use async_trait::async_trait;
 
 #[derive(Debug, thiserror::Error)]
 pub enum UserRepositoryError {
+    #[error("user is missing or disabled")]
+    NotFound,
+    #[error("username is already in use")]
+    UsernameAlreadyExists,
     #[error("email is already registered")]
     EmailAlreadyExists,
     #[error("database operation failed")]
@@ -31,9 +35,17 @@ pub trait UserRepository: Send + Sync {
 
     async fn find_by_id(&self, user_id: u64) -> Result<Option<User>, UserRepositoryError>;
 
-    /// Enforce email uniqueness atomically; translate conflicts into
-    /// EmailAlreadyExists. Set verification and creation timestamps on insert;
+    /// Enforce email and username uniqueness atomically. Username conflicts must
+    /// leave the caller transaction usable so signup can retry a suffix. Set verification and creation timestamps on insert;
     /// the signup workflow verifies email ownership before calling this method.
     /// Persist a prepared domain User without normalizing or validating its fields again.
     async fn create(&self, user: User) -> Result<User, UserRepositoryError>;
+
+    async fn update_profile(
+        &self,
+        user_id: u64,
+        display_name: Option<String>,
+        username: Option<String>,
+        avatar_path: Option<String>,
+    ) -> Result<User, UserRepositoryError>;
 }

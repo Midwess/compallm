@@ -160,6 +160,8 @@ export interface SettingsDialog {
   revealedKey?: string
 }
 export interface SettingsState {
+  profileStatus: 'loading' | 'ready' | 'denied' | 'missing' | 'error'
+  profileSaving: boolean
   profileUpload: File | null
   organizationUpload: File | null
   codeExamples: Record<string, { code: string; lineChanges?: Record<number, 'added' | 'removed'> }>

@@ -135,6 +135,8 @@ fn test_challenge(email: &str, secret: &str) -> Result<EmailOtpChallenge, AuthEr
 
 #[derive(Default)]
 struct State {
+    taken_usernames: std::collections::BTreeSet<String>,
+    created_user: Option<User>,
     user: Option<User>,
     preferences: std::collections::BTreeMap<u64, compallm_core::preference::UserPreferences>,
     contexts: Vec<usize>,
@@ -454,6 +456,37 @@ impl UserRepository for Repository {
         Ok(state.user.clone().filter(|u| u.id == id))
     }
 
+    async fn update_profile(
+        &self,
+        user_id: u64,
+        display_name: Option<String>,
+        username: Option<String>,
+        avatar_path: Option<String>,
+    ) -> Result<User, UserRepositoryError> {
+        let mut state = self.0.lock().unwrap();
+        if username
+            .as_ref()
+            .is_some_and(|name| state.taken_usernames.contains(name))
+        {
+            return Err(UserRepositoryError::UsernameAlreadyExists);
+        }
+        let user = state
+            .user
+            .as_mut()
+            .filter(|user| user.id == user_id && user.status == UserStatus::Active)
+            .ok_or(UserRepositoryError::NotFound)?;
+        if let Some(name) = display_name {
+            user.display_name = name;
+        }
+        if let Some(username) = username {
+            user.username = username;
+        }
+        if let Some(path) = avatar_path {
+            user.avatar_path = Some(path);
+        }
+        Ok(user.clone())
+    }
+
     async fn create(&self, user: User) -> Result<User, UserRepositoryError> {
         let mut state = self.0.lock().unwrap();
         state
@@ -464,9 +497,200 @@ impl UserRepository for Repository {
                 "test storage failure".into(),
             )));
         }
-        state.created = Some((user.email.clone(), user.display_name.clone()));
+        if state.taken_usernames.contains(&user.username) {
+            return Err(UserRepositoryError::UsernameAlreadyExists);
+        }
+        state.created_user = Some(user.clone());
+        state.created = Some((user.email.clone(), user.username.clone()));
+        assert!(user.display_name.is_empty());
         Ok(user)
     }
+}
+
+struct ProfileStorage {
+    uploaded: std::sync::atomic::AtomicBool,
+    calls: Mutex<Vec<u64>>,
+}
+
+#[async_trait::async_trait]
+impl compallm_core::persistent::storage::user_space::UserStorageSpace for ProfileStorage {
+    fn avatar_path(&self, id: u64) -> String {
+        Self::get_avatar_path(id)
+    }
+    async fn avatar_uploaded(
+        &self,
+        user_id: u64,
+    ) -> Result<bool, compallm_core::persistent::storage::user_space::StorageError> {
+        assert!(!DbContext::current().unwrap().postgres().is_transaction());
+        self.calls.lock().unwrap().push(user_id);
+        Ok(self.uploaded.load(std::sync::atomic::Ordering::SeqCst))
+    }
+    async fn generate_avatar_upload(
+        &self,
+        user_id: u64,
+        constraints: &compallm_core::persistent::storage::user_space::AvatarUploadConstraints,
+    ) -> Result<
+        compallm_core::persistent::storage::user_space::AvatarUpload,
+        compallm_core::persistent::storage::user_space::StorageError,
+    > {
+        assert!(!DbContext::current().unwrap().postgres().is_transaction());
+        self.calls.lock().unwrap().push(user_id);
+        assert_eq!(
+            (constraints.min_bytes, constraints.max_bytes),
+            (1, 5 * 1024 * 1024)
+        );
+        assert_eq!(constraints.content_type, "image/png");
+        assert!(
+            constraints
+                .expires_at
+                .duration_since(std::time::SystemTime::now())
+                .unwrap()
+                <= Duration::from_secs(300)
+        );
+        Ok(
+            compallm_core::persistent::storage::user_space::AvatarUpload {
+                url: "https://storage.example.com/assets".into(),
+                fields: std::collections::BTreeMap::from([(
+                    "key".into(),
+                    Self::get_avatar_path(user_id),
+                )]),
+                expires_at: constraints.expires_at,
+            },
+        )
+    }
+}
+
+#[tokio::test]
+async fn profile_service_saves_confirmed_path_and_preserves_omitted_fields() {
+    use compallm_core::user::{ProfilePatch, ProfileService};
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let repository = Box::leak(Box::new(fixture.repo.clone()));
+    let storage = Box::leak(Box::new(ProfileStorage {
+        uploaded: true.into(),
+        calls: Mutex::new(Vec::new()),
+    }));
+    let service = ProfileService::new(repository, Some(storage));
+    let actor = fixture.access_for_session(stored_session(1, 10, 84, "Workspace"));
+    let saved = fixture
+        .repo
+        .1
+        .scope(service.update_profile(
+            &actor,
+            ProfilePatch {
+                display_name: Some("  New Name  ".into()),
+                username: None,
+                avatar_uploaded: true,
+            },
+        ))
+        .await
+        .unwrap();
+    assert_eq!(saved.avatar_path.as_deref(), Some("/avatars/1"));
+    assert_eq!(saved.display_name, "New Name");
+    assert_eq!(saved.email, "james@midwess.com");
+    let saved = fixture
+        .repo
+        .1
+        .scope(service.update_profile(
+            &actor,
+            ProfilePatch {
+                display_name: Some("Other Name".into()),
+                username: None,
+                avatar_uploaded: false,
+            },
+        ))
+        .await
+        .unwrap();
+    assert_eq!(saved.avatar_path.as_deref(), Some("/avatars/1"));
+    assert_eq!(*storage.calls.lock().unwrap(), vec![1]);
+}
+
+#[tokio::test]
+async fn profile_service_missing_avatar_and_denied_actor_do_not_write() {
+    use compallm_core::persistent::storage::user_space::StorageError;
+    use compallm_core::user::{ProfileError, ProfilePatch, ProfileService};
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let repository = Box::leak(Box::new(fixture.repo.clone()));
+    let storage = Box::leak(Box::new(ProfileStorage {
+        uploaded: false.into(),
+        calls: Mutex::new(Vec::new()),
+    }));
+    let service = ProfileService::new(repository, Some(storage));
+    let mut actor = fixture.access_for_session(stored_session(1, 10, 84, "Workspace"));
+    let patch = || ProfilePatch {
+        display_name: Some("Changed".into()),
+        username: None,
+        avatar_uploaded: true,
+    };
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(service.update_profile(&actor, patch()))
+            .await,
+        Err(ProfileError::Storage(StorageError::NotFound))
+    ));
+    assert_eq!(
+        fixture
+            .repo
+            .0
+            .lock()
+            .unwrap()
+            .user
+            .as_ref()
+            .unwrap()
+            .display_name,
+        "James"
+    );
+    actor.session.user_id = 2;
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(service.update_profile(&actor, patch()))
+            .await,
+        Err(ProfileError::Denied)
+    ));
+    actor.session.user_id = 1;
+    fixture.repo.0.lock().unwrap().user.as_mut().unwrap().status = UserStatus::Disabled;
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(service.update_profile(&actor, patch()))
+            .await,
+        Err(ProfileError::Denied)
+    ));
+    assert_eq!(*storage.calls.lock().unwrap(), vec![1]);
+}
+
+#[tokio::test]
+async fn profile_service_upload_authorization_uses_the_actor_and_core_limits() {
+    use compallm_core::user::{AvatarMediaType, ProfileError, ProfileService};
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let repository = Box::leak(Box::new(fixture.repo.clone()));
+    let storage = Box::leak(Box::new(ProfileStorage {
+        uploaded: false.into(),
+        calls: Mutex::new(Vec::new()),
+    }));
+    let service = ProfileService::new(repository, Some(storage));
+    let mut actor = fixture.access_for_session(stored_session(1, 10, 84, "Workspace"));
+    fixture
+        .repo
+        .1
+        .scope(service.generate_url_avatar_url(&actor, AvatarMediaType::Png, 1024))
+        .await
+        .unwrap();
+    actor.validity.issued_at = 0;
+    actor.validity.expires_at = 1;
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(service.generate_url_avatar_url(&actor, AvatarMediaType::Png, 1024))
+            .await,
+        Err(ProfileError::Authentication(_))
+    ));
+    assert_eq!(*storage.calls.lock().unwrap(), vec![1]);
 }
 
 #[async_trait::async_trait]
@@ -635,6 +859,25 @@ impl Fixture {
     }
 
     fn graphql_with_database(&self, db_context: DbContext) -> axum::Router {
+        self.graphql_with_storage(db_context, None)
+    }
+
+    fn graphql_with_storage(
+        &self,
+        db_context: DbContext,
+        storage: Option<Arc<compallm_storage::S3Storage>>,
+    ) -> axum::Router {
+        self.graphql_with_profile_storage(db_context, storage, None)
+    }
+
+    fn graphql_with_profile_storage(
+        &self,
+        db_context: DbContext,
+        storage: Option<Arc<compallm_storage::S3Storage>>,
+        profile_storage: Option<
+            Box<dyn compallm_core::persistent::storage::user_space::UserStorageSpace>,
+        >,
+    ) -> axum::Router {
         use axum::{
             Extension, Json, Router,
             extract::{DefaultBodyLimit, State, rejection::JsonRejection},
@@ -661,23 +904,29 @@ impl Fixture {
       }), Some(email));
         let limits = GraphqlSettings::default();
         let schema = build_schema(limits.max_depth, limits.max_fields, limits.max_tokens);
-        let di = Box::leak(Box::new(
-            Di::new(
-                db_context.clone(),
-                AuthSettings {
-                    jwt_secret: SECRET.into(),
-                    user_token_ttl_seconds: 1800,
-                    refresh_token_ttl_seconds: 2_592_000,
-                },
-                GraphqlSettings {
-                    cookie_secure: false,
-                    public_origin: "http://localhost".into(),
-                    ..GraphqlSettings::default()
-                },
-                None,
-            )
-            .with_auth_service(service),
-        ));
+        let mut di = Di::new(
+            db_context.clone(),
+            AuthSettings {
+                jwt_secret: SECRET.into(),
+                user_token_ttl_seconds: 1800,
+                refresh_token_ttl_seconds: 2_592_000,
+            },
+            GraphqlSettings {
+                cookie_secure: false,
+                public_origin: "http://localhost".into(),
+                ..GraphqlSettings::default()
+            },
+            None,
+        )
+        .with_auth_service(service)
+        .with_user_repository(Box::new(self.repo.clone()));
+        if let Some(storage) = storage {
+            di = di.with_s3_storage(storage);
+        }
+        if let Some(storage) = profile_storage {
+            di = di.with_user_storage_space(storage);
+        }
+        let di = Box::leak(Box::new(di));
         di.initialize_services().unwrap();
         let db = Box::leak(Box::new(db_context));
         let authentication = AuthenticationMiddleware::optional(
@@ -894,6 +1143,8 @@ impl Fixture {
             id: 1,
             email: "james@midwess.com".into(),
             display_name: "James".into(),
+            username: "james".into(),
+            avatar_path: None,
             status,
         }
     }
@@ -1458,6 +1709,7 @@ async fn signup_derives_user_name_and_default_organization_from_the_email() {
                 email.to_ascii_lowercase()
             );
             assert_eq!(state.created.as_ref().unwrap().1, name);
+            assert!(state.created_user.as_ref().unwrap().display_name.is_empty());
             let prefix: String = name
                 .chars()
                 .take(Organization::MAX_NAME_LENGTH - "'s organization".len())
@@ -1466,6 +1718,30 @@ async fn signup_derives_user_name_and_default_organization_from_the_email() {
             assert_eq!(organization.name, format!("{prefix}'s organization"));
             assert!(organization.name.chars().count() <= Organization::MAX_NAME_LENGTH);
         }
+        fixture.assert_transaction("COMMIT");
+    }
+}
+
+#[tokio::test]
+async fn signup_username_uses_domain_then_number_when_taken() {
+    for (taken, expected) in [
+        (vec!["alex"], "alex-midwess"),
+        (
+            vec!["alex", "alex-midwess", "alex-midwess-2"],
+            "alex-midwess-3",
+        ),
+    ] {
+        let fixture = Fixture::new(None);
+        fixture.repo.0.lock().unwrap().taken_usernames =
+            taken.into_iter().map(str::to_owned).collect();
+        let challenge = test_challenge("alex@midwess.com", SECRET).unwrap();
+        fixture
+            .signup_in_transaction(&Fixture::otp(&challenge), &challenge.code)
+            .await
+            .unwrap();
+        let user = fixture.repo.0.lock().unwrap().created_user.clone().unwrap();
+        assert_eq!(user.username, expected);
+        assert!(user.display_name.is_empty());
         fixture.assert_transaction("COMMIT");
     }
 }
@@ -2823,6 +3099,313 @@ async fn graphql_identity_uses_one_freshness_read_and_rejects_non_access_or_revo
 }
 
 #[tokio::test]
+async fn graphql_avatar_url_uses_shared_storage_without_storage_requests() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let storage = Arc::new(
+        compallm_storage::S3Storage::new(compallm_storage::S3Settings {
+            enabled: true,
+            region: "us-east-1".into(),
+            endpoint: "http://127.0.0.1:1".into(),
+            upload_endpoint: "http://127.0.0.1:1".into(),
+            access_key: "test".into(),
+            secret_key: "test-secret".into(),
+            force_path_style: true,
+            bucket: "assets".into(),
+            public_base_url: "https://cdn.example.com/assets".into(),
+            timeout_seconds: 1,
+            allowed_origins: vec![],
+        })
+        .unwrap(),
+    );
+    let router = fixture.graphql_with_storage(fixture.repo.1.clone(), Some(storage));
+    let response = graphql_operation(
+        &router,
+        "{ session { node { userId avatarUrl } } }",
+        serde_json::json!({}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    let body = graphql_body(response).await;
+    assert!(body["errors"].is_null());
+    let user = body["data"]["session"]["node"]["userId"].as_str().unwrap();
+    let url = body["data"]["session"]["node"]["avatarUrl"]
+        .as_str()
+        .unwrap();
+    assert!(url.starts_with(&format!("https://cdn.example.com/assets/avatars/{user}?v=")));
+}
+
+#[tokio::test]
+async fn graphql_profile_public_read_and_owner_updates_hide_private_data() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let storage = Arc::new(
+        compallm_storage::S3Storage::new(compallm_storage::S3Settings {
+            enabled: true,
+            region: "us-east-1".into(),
+            endpoint: "http://127.0.0.1:1".into(),
+            upload_endpoint: "http://127.0.0.1:1".into(),
+            access_key: "test".into(),
+            secret_key: "test-secret".into(),
+            force_path_style: true,
+            bucket: "assets".into(),
+            public_base_url: "https://cdn.example.com/assets".into(),
+            timeout_seconds: 1,
+            allowed_origins: vec![],
+        })
+        .unwrap(),
+    );
+    let router = fixture.graphql_with_profile_storage(
+        fixture.repo.1.clone(),
+        Some(storage),
+        Some(Box::new(ProfileStorage {
+            uploaded: true.into(),
+            calls: Mutex::new(Vec::new()),
+        })),
+    );
+    let query = "{ userProfile(id: \"1\") { node { id displayName username avatarUrl } } }";
+    let body = graphql_body(
+        graphql_operation(&router, query, serde_json::json!({}), None, None, false).await,
+    )
+    .await;
+    assert_eq!(body["data"]["userProfile"]["node"]["displayName"], "James");
+    assert!(body["data"]["userProfile"]["node"]["avatarUrl"].is_null());
+    assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, 0);
+    assert_eq!(body["data"]["userProfile"]["node"]["username"], "james");
+    let mutation = "mutation($input: UserProfileUpdateInput!) { userProfileUpdate(input: $input) { node { id displayName avatarUrl } } }";
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            mutation,
+            serde_json::json!({"input":{"displayName":"  New Name  ","avatarUploaded":true}}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(body["errors"].is_null(), "{body}");
+    assert_eq!(
+        body["data"]["userProfileUpdate"]["node"]["displayName"],
+        "New Name"
+    );
+    assert!(
+        body["data"]["userProfileUpdate"]["node"]["avatarUrl"]
+            .as_str()
+            .unwrap()
+            .starts_with("https://cdn.example.com/assets/avatars/1?v=")
+    );
+    assert_eq!(
+        fixture
+            .repo
+            .0
+            .lock()
+            .unwrap()
+            .user
+            .as_ref()
+            .unwrap()
+            .avatar_path
+            .as_deref(),
+        Some("/avatars/1")
+    );
+    let body = graphql_body(
+        graphql_operation(&router, query, serde_json::json!({}), None, None, false).await,
+    )
+    .await;
+    assert_eq!(
+        body["data"]["userProfile"]["node"]["displayName"],
+        "New Name"
+    );
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            mutation,
+            serde_json::json!({"input":{"displayName":"Name Only"}}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(body["errors"].is_null(), "{body}");
+    assert_eq!(
+        body["data"]["userProfileUpdate"]["node"]["displayName"],
+        "Name Only"
+    );
+    assert_eq!(
+        fixture
+            .repo
+            .0
+            .lock()
+            .unwrap()
+            .user
+            .as_ref()
+            .unwrap()
+            .avatar_path
+            .as_deref(),
+        Some("/avatars/1")
+    );
+    let denied = graphql_operation(
+        &router,
+        mutation,
+        serde_json::json!({"input":{"displayName":"Denied"}}),
+        None,
+        None,
+        false,
+    )
+    .await;
+    assert_graphql_denial(denied, 401).await;
+    let upload = "mutation { generateUrlAvatarUrl(input: {mediaType: PNG, size: 1024}) { node { url fields { name value } expiresAt } } }";
+    assert_graphql_denial(
+        graphql_operation(&router, upload, serde_json::json!({}), None, None, false).await,
+        401,
+    )
+    .await;
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            upload,
+            serde_json::json!({}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(body["errors"].is_null(), "{body}");
+    assert_eq!(
+        body["data"]["generateUrlAvatarUrl"]["node"]["fields"][0]["value"],
+        "/avatars/1"
+    );
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            "{ userProfile(id: \"1\") { node { email } } }",
+            serde_json::json!({}),
+            None,
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(body["errors"][0]["extensions"]["status"], 401);
+}
+
+#[tokio::test]
+async fn graphql_username_updates_and_owner_only_email_leave_full_name_independent() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let router = fixture.graphql();
+    let query = "{ userProfile(id: \"1\") { node { username displayName email } } }";
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            query,
+            serde_json::json!({}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(body["errors"].is_null());
+    assert_eq!(
+        body["data"]["userProfile"]["node"]["email"],
+        "james@midwess.com"
+    );
+    let mutation = "mutation($input: UserProfileUpdateInput!) { userProfileUpdate(input: $input) { node { username displayName email } } }";
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            mutation,
+            serde_json::json!({"input":{"username":"  New.User  ","displayName":""}}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(body["errors"].is_null(), "{body}");
+    assert_eq!(
+        body["data"]["userProfileUpdate"]["node"]["username"],
+        "new.user"
+    );
+    assert_eq!(body["data"]["userProfileUpdate"]["node"]["displayName"], "");
+    fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .taken_usernames
+        .insert("taken".into());
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            mutation,
+            serde_json::json!({"input":{"username":"taken","displayName":"Should not save"}}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(body["errors"][0]["extensions"]["code"], "USERNAME_TAKEN");
+    let user = fixture.repo.0.lock().unwrap().user.clone().unwrap();
+    assert_eq!(user.username, "new.user");
+    assert!(user.display_name.is_empty());
+    let response = graphql_operation(
+        &router,
+        mutation,
+        serde_json::json!({"input":{"email":"changed@example.com"}}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    assert_eq!(response.status(), 400);
+    assert_eq!(
+        fixture.repo.0.lock().unwrap().user.as_ref().unwrap().email,
+        "james@midwess.com"
+    );
+    fixture.repo.0.lock().unwrap().user.as_mut().unwrap().id = 2;
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            "{ userProfile(id: \"2\") { node { email } } }",
+            serde_json::json!({}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(body["data"]["userProfile"].is_null());
+    assert!(body["errors"].is_array());
+}
+
+#[tokio::test]
 async fn graphql_stale_cookie_rebuilds_current_authority_but_bearer_and_unavailable_state_fail_closed()
  {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
@@ -4106,7 +4689,7 @@ async fn preference_graphql_persists_grouped_updates_and_resets_for_current_user
         }
         type Users = <compallm_postgres::UserSchema as ModelTrait>::Entity;
         type ActiveUser = <Users as EntityTrait>::ActiveModel;
-        Users::insert(ActiveUser { id: Set(1), email: Set("james@midwess.com".into()), display_name: Set("James".into()), status: Set(compallm_postgres::schema::UserStatusSchema::Active), email_verified_at: Set(sea_orm::prelude::ChronoUtc::now().fixed_offset()), ..Default::default() }).exec(pool.as_ref()).await?;
+        Users::insert(ActiveUser { id: Set(1), email: Set("james@midwess.com".into()), display_name: Set("James".into()), username: Set("james".into()), status: Set(compallm_postgres::schema::UserStatusSchema::Active), email_verified_at: Set(sea_orm::prelude::ChronoUtc::now().fixed_offset()), ..Default::default() }).exec(pool.as_ref()).await?;
         let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
         let challenge = test_challenge("james@midwess.com", SECRET)?;
         let tokens = fixture.signin(&Fixture::otp(&challenge), &challenge.code).await?;

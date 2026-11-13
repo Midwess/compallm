@@ -78,7 +78,7 @@ function Content({ className, role = 'dialog', children, ...props }: DialogHTMLA
       }}
       aria-describedby={props['aria-describedby'] ?? undefined}
       className={cx(
-        `fixed inset-0 m-auto max-h-11/12 w-160 max-w-11/12 overflow-y-auto
+        `fixed inset-0 m-auto max-h-11/12 w-160 max-w-11/12 overflow-y-auto overscroll-none
       rounded-xl border border-border bg-inset p-0 text-foreground backdrop:bg-background/70`,
         className,
       )}

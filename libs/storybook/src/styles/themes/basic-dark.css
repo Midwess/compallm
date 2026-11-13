@@ -13,7 +13,7 @@
   --muted-foreground: oklch(0.683053 0.004516 271.3474);
   --disabled: oklch(0.49947 0.003394 264.5295);
   --primary: oklch(0.567376 0.158526 275.2058);
-  --primary-hover: oklch(0.606913 0.14058 276.2809);
+  --primary-hover: oklch(0.572853 0.14058 276.2809);
   --ring: oklch(0.744017 0.131403 271.8789);
   --primary-foreground: oklch(1 0 0);
   --success: oklch(0.699068 0.176311 146.4523);
@@ -47,5 +47,17 @@
   --text-selection-foreground: var(--primary-foreground);
   --control: var(--primary);
   --control-foreground: var(--primary-foreground);
+  --shadow-action-opacity: 30%;
+  --shadow-control-opacity: 30%;
+  --shadow-menu-opacity: 12.5%;
+  --shadow-floating-opacity: 10%;
+  --shadow-highlight-opacity: 14.3%;
+  --elevated-hover: oklch(0.27155 0.004 286);
+  --destructive-hover: oklch(0.669293 0.18 23.6794);
+  --error-background: oklch(0.553183 0.18 23.6794);
+  --error-foreground: oklch(1 0 0);
+  --effort-low: #7762d8;
+  --effort-medium: #9470d1;
+  --effort-high: #ee9b58;
   color-scheme: dark;
 }

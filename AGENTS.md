@@ -106,6 +106,12 @@ conventions:
     restart: enable address reuse on Unix so recently closed connections do not move the API to another port; never enable port reuse between live listeners
     fallback: scan upward only for AddrInUse; propagate other socket errors; keep Vite on strict internal port 41868
 
+  cancellation:
+    use: hero::cancellation::CancellationToken and FutureExtension::with_cancel for cancellation and timeouts
+    propagation: derive child tokens from the current scope; observe cancellation around asynchronous work; use Hero token timers for deadlines
+    futures: apply with_cancel directly to existing futures, including SDK send and stream reads; do not wrap them in async blocks solely to attach cancellation
+    never: custom bounded wrappers or tokio::time::timeout for cancellation
+
   integrations:
     use: concrete clients, reused pools, bounded timeouts
     never: hold database transactions across email or HTTP calls

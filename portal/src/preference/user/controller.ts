@@ -75,8 +75,8 @@ export class UserPreferenceController implements Contract {
       this.cancel()
       this.store.form.reset({ draft: initialPreferenceDraft() })
       this.store.setState({ saved: null, status: 'idle' })
-      appearanceController.setTextSize('DEFAULT')
-      appearanceController.setUnderlineLinks(false)
+      appearanceController.setTextSize(userPreferenceDefaults.typography.size)
+      appearanceController.setUnderlineLinks(userPreferenceDefaults.accessibility.underlineLinks)
       appearanceController.setTheme(userPreferenceDefaults.theme)
       if (next) void this.load()
     }

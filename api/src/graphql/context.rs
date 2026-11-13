@@ -21,6 +21,12 @@ pub struct GraphqlContext {
 
 impl juniper::Context for GraphqlContext {}
 
+impl FromContext<GraphqlContext> for Option<Arc<compallm_storage::S3Storage>> {
+    fn from(context: &GraphqlContext) -> &Self {
+        <Self as FromContext<Di>>::from(context.di)
+    }
+}
+
 impl GraphqlContext {
     pub fn new(
         di: &'static Di,
@@ -98,6 +104,17 @@ impl FromContext<GraphqlContext>
 }
 
 impl FromContext<GraphqlContext> for compallm_core::persistent::DbContext {
+    fn from(context: &GraphqlContext) -> &Self {
+        <Self as FromContext<Di>>::from(context.di)
+    }
+}
+
+impl FromContext<GraphqlContext> for compallm_core::user::ProfileService {
+    fn from(context: &GraphqlContext) -> &Self {
+        <Self as FromContext<Di>>::from(context.di)
+    }
+}
+impl FromContext<GraphqlContext> for Box<dyn compallm_core::persistent::user::UserRepository> {
     fn from(context: &GraphqlContext) -> &Self {
         <Self as FromContext<Di>>::from(context.di)
     }

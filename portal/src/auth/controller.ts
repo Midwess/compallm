@@ -63,9 +63,15 @@ export class AuthController implements SignupController, SigninController {
   }
 
   private readonly url: Pick<UrlController, 'navigate' | 'store'>
-  constructor(url: Pick<UrlController, 'navigate' | 'store'>, app?: Pick<AppController, 'beginLoading'>) {
+  private readonly retryFailedRoute?: () => Promise<void>
+  constructor(
+    url: Pick<UrlController, 'navigate' | 'store'>,
+    app?: Pick<AppController, 'beginLoading'>,
+    retryFailedRoute?: () => Promise<void>,
+  ) {
     this.url = url
     this.app = app
+    this.retryFailedRoute = retryFailedRoute
   }
   navigate = (href: string) => this.url.navigate(href, { replace: href === '/login' })
 
@@ -238,7 +244,11 @@ export class AuthController implements SignupController, SigninController {
       return user
     } catch (error) {
       if (requestSignal.aborted || generation !== this.sessionGeneration) loading?.cancel()
-      else loading?.fail(error, () => this.refreshCurrentUser(undefined, false))
+      else
+        loading?.fail(error, async () => {
+          await this.refreshCurrentUser(undefined, false)
+          await this.retryFailedRoute?.()
+        })
       throw error
     }
   }
@@ -246,7 +256,7 @@ export class AuthController implements SignupController, SigninController {
   private async fetchCurrentUser(requestSignal: AbortSignal, generation: number, redirectAnonymous: boolean) {
     try {
       const selection = {
-        session: { node: { id: true, userId: true, organizationId: true, organizationName: true } },
+        session: { node: { id: true, userId: true, organizationId: true, organizationName: true, avatarUrl: true } },
       } satisfies QueryGenqlSelection
       const {
         session: { node: user },
@@ -380,4 +390,4 @@ export class AuthController implements SignupController, SigninController {
   }
 }
 
-export const authController = new AuthController(urlController, appController)
+export const authController = new AuthController(urlController, appController, urlController.retryFailedRoute)

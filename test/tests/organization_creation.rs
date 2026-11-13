@@ -184,6 +184,8 @@ impl Fixture {
             id: 42,
             email: "james@midwess.com".into(),
             display_name: "James".into(),
+            username: "james".into(),
+            avatar_path: None,
             status: UserStatus::Active,
         }
     }

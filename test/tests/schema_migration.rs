@@ -6,7 +6,8 @@ use sea_orm_migration::{MigratorTrait, SchemaManager};
 async fn creates_application_schema_with_scoped_usage_and_global_templates() {
     let migrations = Migrator::migrations();
     let db = MockDatabase::new(DbBackend::Postgres)
-        .append_exec_results((0..100).map(|_| MockExecResult::default()))
+        .append_exec_results((0..migrations.len() * 8).map(|_| MockExecResult::default()))
+        .append_query_results([Vec::<std::collections::BTreeMap<String, sea_orm::Value>>::new()])
         .into_connection();
     for migration in migrations.iter().filter(|m| {
         !m.name().ends_with("seed_user_preferences")
@@ -165,10 +166,11 @@ async fn creates_application_schema_with_scoped_usage_and_global_templates() {
 
 #[tokio::test]
 async fn drops_children_before_parents_and_owned_enums_after_their_tables() {
+    let migrations = Migrator::migrations();
     let db = MockDatabase::new(DbBackend::Postgres)
-        .append_exec_results((0..40).map(|_| MockExecResult::default()))
+        .append_exec_results((0..migrations.len() * 8).map(|_| MockExecResult::default()))
         .into_connection();
-    for migration in Migrator::migrations().into_iter().rev().filter(|m| {
+    for migration in migrations.into_iter().rev().filter(|m| {
         !m.name().ends_with("seed_user_preferences")
             && !m.name().ends_with("seed_provider_templates")
             && !m.name().ends_with("seed_access_token_dictionary")

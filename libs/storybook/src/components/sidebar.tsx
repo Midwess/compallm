@@ -18,11 +18,15 @@ export function Sidebar({
   return (
     <aside
       {...props}
-      className={cx('flex h-full min-h-0 w-61 shrink-0 flex-col overflow-x-hidden bg-sidebar px-3 py-1', className)}
+      className={cx(
+        'flex h-full min-h-0 w-61 shrink-0 flex-col overflow-x-hidden bg-sidebar px-3 py-1 select-none',
+        '[&_input]:select-text [&_textarea]:select-text [&_[contenteditable=true]]:select-text',
+        className,
+      )}
     >
       <nav
         aria-label={navigationLabel}
-        className="flex min-h-0 min-w-0 flex-1 flex-col gap-2.5 overflow-x-hidden overflow-y-auto"
+        className="flex min-h-0 min-w-0 flex-1 flex-col gap-2.5 overflow-x-hidden overflow-y-auto overscroll-none"
       >
         {children}
       </nav>

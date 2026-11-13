@@ -16,5 +16,23 @@ services:
       - "1080:1080"
       - "1025:1025"
 
+  s3:
+    image: docker.io/rustfs/rustfs:1.0.5
+    environment:
+      RUSTFS_ACCESS_KEY: admin
+      RUSTFS_SECRET_KEY: shhshhshh
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports:
+      - "9000:9000"
+      - "9002:9001"
+    volumes:
+      - s3-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
 volumes:
   postgres-data:
+  s3-data:

@@ -23,6 +23,15 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
+    /// Public profile for an active user. Email and account state are excluded.
+    async fn user_profile(
+        id: ID,
+        #[graphql(context)] repository: &Box<dyn compallm_core::persistent::user::UserRepository>,
+        #[graphql(context)] database: &compallm_core::persistent::DbContext,
+    ) -> Result<Option<Payload<super::user::User>>, Error> {
+        super::user::query::profile(id, repository.as_ref(), database).await
+    }
+
     /// Return the signed-in user's personal preferences; missing rows use Core defaults without a write.
     async fn user_preferences(
         #[graphql(context)] user: &UserContext,
@@ -94,6 +103,25 @@ pub struct Mutation;
 
 #[graphql_object(context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Mutation {
+    /// Update the current user's display name and confirm an uploaded avatar.
+    async fn user_profile_update(
+        input: super::user::input::UserProfileUpdateInput,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::user::ProfileService,
+        #[graphql(context)] database: &compallm_core::persistent::DbContext,
+    ) -> Result<Payload<super::user::User>, Error> {
+        super::user::mutation::update(input, user, service, database).await
+    }
+    /// Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes.
+    async fn generate_url_avatar_url(
+        input: super::user::input::ImageUploadInput,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::user::ProfileService,
+        #[graphql(context)] database: &compallm_core::persistent::DbContext,
+    ) -> Result<Payload<super::user::AvatarUpload>, Error> {
+        super::user::mutation::generate_url_avatar_url(input, user, service, database).await
+    }
+
     /// Atomically patch the signed-in user's preferences, preserving omitted fields.
     async fn user_preferences_update(
         input: super::preference::user::input::UserPreferencesPatchInput,
@@ -293,6 +321,7 @@ struct Inputs {
     credential_create: super::user::input::CredentialCreateInput,
     spending_limit: super::organization::input::SpendingLimitInput,
     reporting_schedule: super::organization::input::ReportingScheduleInput,
+    user_profile_update: super::user::input::UserProfileUpdateInput,
     form_0: super::user::input::ProfileUpdateInput,
     form_2: super::user::input::ImageUploadInput,
     form_3: super::organization::input::OrganizationSettingsUpdateInput,

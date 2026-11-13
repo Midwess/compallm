@@ -30,6 +30,8 @@ async function writeTypescript(path, source) {
   )
 }
 
+await writeTypescript(new URL('./preference.ts', import.meta.url), await readFile(new URL('./preference.ts', import.meta.url), 'utf8'))
+
 const banner = '// Generated from Rust. Do not edit; run cargo run -p compallm-api -- generate.\n'
 const document = JSON.parse(await readFile(new URL('./validation.schema.json', import.meta.url), 'utf8'))
 const definitions = document.$defs

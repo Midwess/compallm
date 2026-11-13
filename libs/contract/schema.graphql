@@ -3,43 +3,12 @@ schema {
   mutation: Mutation
 }
 
-enum AppearanceMode {
-  SYSTEM_PREFERENCE
-  LIGHT
-  DARK
-}
-
-enum CodeFont {
-  DEFAULT
-  MONOSPACE
-}
-
-enum CodeFontSize {
-  PX12
-  PX13
-  PX14
-  PX16
-}
-
-enum CodeTheme {
-  LINEAR_DARK
-  LINEAR_LIGHT
-  SYSTEM_PREFERENCE
-  FOLLOW_INTERFACE
-}
-
 "How the request delivers credentials; this is never stored in signed claims."
 enum CredentialDelivery {
   "Set HttpOnly cookies and return metadata without credential values."
   COOKIE
   "Return credentials explicitly without setting browser cookies."
   TOKEN
-}
-
-enum DarkPalette {
-  DARK
-  MAGIC_BLUE
-  CLASSIC_DARK
 }
 
 enum HomeDestination {
@@ -52,24 +21,6 @@ enum ImageMediaType {
   JPEG
   PNG
   WEBP
-}
-
-enum InterfaceFontSize {
-  SMALLER
-  SMALL
-  DEFAULT
-  LARGE
-  LARGER
-}
-
-enum LightPalette {
-  LIGHT
-  PURE_LIGHT
-}
-
-enum MemberDisplay {
-  FULL_NAME
-  USERNAME
 }
 
 enum PreferenceAppearanceMode {
@@ -178,22 +129,6 @@ enum ProviderModelCapability {
   STRUCTURED_OUTPUT
 }
 
-enum SendShortcut {
-  MODIFIER_ENTER
-  ENTER
-}
-
-enum SidebarBadgeStyle {
-  DOT
-  COUNT
-}
-
-enum SidebarVisibility {
-  ALWAYS_SHOW
-  ONLY_WHEN_BADGED
-  HIDDEN
-}
-
 "Text operation determining the upstream request and response format."
 enum TextModelProtocol {
   OPENAI_CHAT_COMPLETIONS
@@ -212,16 +147,6 @@ enum UserPreferenceGroup {
   MESSAGE_COMPOSITION
   CODE_APPEARANCE
   ALL
-}
-
-enum Weekday {
-  SUNDAY
-  MONDAY
-  TUESDAY
-  WEDNESDAY
-  THURSDAY
-  FRIDAY
-  SATURDAY
 }
 
 input AccessibilityPatchInput {
@@ -315,30 +240,6 @@ input OrganizationSettingsUpdateInput {
 input PalettePatchInput {
   light: PreferenceLightPalette
   dark: PreferenceDarkPalette
-}
-
-input PreferencesUpdateInput {
-  home: HomeDestination
-  displayNames: MemberDisplay
-  firstDay: Weekday
-  fontSize: InterfaceFontSize
-  underlineLinks: Boolean
-  reduceMotion: Boolean
-  pointerCursors: Boolean
-  theme: AppearanceMode
-  lightTheme: LightPalette
-  darkTheme: DarkPalette
-  emoticons: Boolean
-  sendShortcut: SendShortcut
-  codeTheme: CodeTheme
-  codeFont: CodeFont
-  codeFontSize: CodeFontSize
-  sidebarOrder: String
-  sidebarBadgeStyle: SidebarBadgeStyle
-  sidebarProviders: SidebarVisibility
-  sidebarModels: SidebarVisibility
-  sidebarNotebooks: SidebarVisibility
-  sidebarPlugins: SidebarVisibility
 }
 
 input ProfileUpdateInput {

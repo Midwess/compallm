@@ -1,3 +1,4 @@
+import type { UserPreferenceController } from './preferences/user/controller'
 import type { FormStore } from '../../components/form'
 import type { RoleController } from './role/controller'
 import type { GroupController } from './group/controller'
@@ -167,7 +168,6 @@ export interface SettingsState {
   navigationQuery: string
   query: string
   filters: Record<string, string>
-  preferences: Record<string, string | boolean>
   profile: SettingsProfile
   organization: SettingsOrganization
   roles: SettingsRole[]
@@ -210,7 +210,7 @@ export interface SettingsController {
 export interface SettingsPageControllers {
   role: RoleController
   search: { setQuery(value: string): void; setFilter(key: string, value: string): void }
-  preferences: { setPreference(key: string, value: string | boolean): void | false }
+  preferences: { user: UserPreferenceController }
   profile: ProfileController
   organization: OrganizationController
   members: { setMemberRoles(memberId: string, roleIds: string[]): void | false | Promise<void | false> }

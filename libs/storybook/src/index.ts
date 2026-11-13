@@ -59,7 +59,7 @@ export { FormSection } from './components/form-section'
 
 export { SettingsPage, createSettingsStore } from './pages/settings'
 export type { SettingsController, SettingsState, SettingsDestination, SettingsLocation } from './pages/settings'
-export { SettingsControllerContext } from './context'
+export { SettingsControllerContext, UserPreferenceControllerContext } from './context'
 export { CodeEditor } from './components/code-block'
 export type { CodeEditorProps, CodePreviewProps } from './components/code-block'
 

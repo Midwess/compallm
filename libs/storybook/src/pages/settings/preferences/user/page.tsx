@@ -1,34 +1,36 @@
-import { FormError } from '../../components/form'
+import { preferenceOptions, preferenceLabel } from './values'
+import { FormError } from '../../../../components/form'
 import { useId } from 'react'
-import { Button } from '../../components/buttons'
-import { Select } from '../../components/dropdowns'
-import { Switch } from '../../components/selection'
-import { CodePreview } from '../../components/content'
-import { Popup } from '../../components/popup'
+import { Button } from '../../../../components/buttons'
+import { Select } from '../../../../components/dropdowns'
+import { Switch } from '../../../../components/selection'
+import { CodePreview } from '../../../../components/content'
+import { Popup } from '../../../../components/popup'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
-import { SettingsRow } from '../../components/content'
-import { SettingsContent, Heading, Section, Rows, Row } from './shared'
-import { useSettings, useSettingsController, useCodeAppearance } from './controller'
+import { SettingsRow } from '../../../../components/content'
+import { SettingsContent, Heading, Section, Rows, Row } from '../../shared'
+import { useSettings, useSettingsController } from '../../controller'
+import { useUserPreference, useUserPreferenceController, useCodeAppearance } from './controller'
 
-type Preference = { key: string; label: string; description: string; options?: string[] }
+type Preference = { key: string; label: string; description: string; options?: { value: string; label: string }[] }
 const general: Preference[] = [
   {
     key: 'home',
     label: 'Default home view',
     description: 'The first page you see when you open Compallm.',
-    options: ['Chat', 'Models', 'Providers'],
+    options: preferenceOptions.home,
   },
   {
     key: 'displayNames',
     label: 'Display names',
     description: 'Choose how member names appear.',
-    options: ['Full name', 'Username'],
+    options: preferenceOptions.displayNames,
   },
   {
     key: 'firstDay',
     label: 'First day of the week',
     description: 'Used in calendars and reporting periods.',
-    options: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    options: preferenceOptions.firstDay,
   },
 ]
 const appearance: Preference[] = [
@@ -36,7 +38,7 @@ const appearance: Preference[] = [
     key: 'fontSize',
     label: 'Font size',
     description: 'Adjust the size of interface text.',
-    options: ['Smaller', 'Small', 'Default', 'Large', 'Larger'],
+    options: preferenceOptions.fontSize,
   },
   { key: 'pointerCursors', label: 'Use pointer cursors', description: 'Use a pointer cursor on interactive elements.' },
   { key: 'underlineLinks', label: 'Underline links', description: 'Always underline links in message content.' },
@@ -47,19 +49,19 @@ const themes: Preference[] = [
     key: 'theme',
     label: 'Appearance',
     description: 'Choose your preferred color scheme.',
-    options: ['System preference', 'Light', 'Dark'],
+    options: preferenceOptions.theme,
   },
   {
     key: 'lightTheme',
     label: 'Light theme',
     description: 'Used when your system has a light appearance.',
-    options: ['Light', 'Pure Light'],
+    options: preferenceOptions.lightTheme,
   },
   {
     key: 'darkTheme',
     label: 'Dark theme',
     description: 'Used when your system has a dark appearance.',
-    options: ['Dark', 'Magic Blue', 'Classic Dark'],
+    options: preferenceOptions.darkTheme,
   },
 ]
 
@@ -72,16 +74,11 @@ function PreferenceControl({ item, last = false }: { item: Preference; last?: bo
       last={last}
     >
       {item.options ? (
-        <Select
-          aria-label={item.label}
-          name={`preferences.${item.key}`}
-          className="w-44"
-          options={item.options.map((label) => ({ label, value: label }))}
-        />
+        <Select aria-label={item.label} name={`draft.${item.key}`} className="w-44" options={item.options} />
       ) : (
-        <Switch id={id} name={`preferences.${item.key}`} />
+        <Switch id={id} name={`draft.${item.key}`} />
       )}
-      <FormError name={`preferences.${item.key}`} />
+      <FormError name={`draft.${item.key}`} />
     </Row>
   )
 }
@@ -142,7 +139,7 @@ export function MessagingSettings() {
               key: 'sendShortcut',
               label: 'Send messages on…',
               description: 'Choose the shortcut used to send messages.',
-              options: ['⌘ + Enter', 'Enter'],
+              options: preferenceOptions.sendShortcut,
             },
           ]}
         />
@@ -151,10 +148,10 @@ export function MessagingSettings() {
   )
 }
 function CodeAppearanceSection() {
-  const c = useSettingsController(),
-    fontSize = useSettings((s) => s.preferences.codeFontSize, ['preferences.codeFontSize']),
-    font = useSettings((s) => s.preferences.codeFont, ['preferences.codeFont']),
-    language = useSettings((s) => String(s.preferences.codeLanguage ?? 'typescript'), ['preferences.codeLanguage']),
+  const c = useUserPreferenceController(),
+    fontSize = useUserPreference((s) => s.draft.codeFontSize, ['draft.codeFontSize']),
+    font = useUserPreference((s) => s.draft.codeFont, ['draft.codeFont']),
+    language = useUserPreference((s) => s.draft.codeLanguage, ['draft.codeLanguage']),
     examples = useSettings((s) => s.codeExamples)
   const example = examples[language] ?? { code: '' }
   const appearance = useCodeAppearance()
@@ -165,27 +162,27 @@ function CodeAppearanceSection() {
           key: 'codeTheme',
           label: 'Code theme',
           description: 'Matches your interface theme unless overridden.',
-          options: ['Linear Dark', 'Linear Light', 'System preference', 'Follow interface'],
+          options: preferenceOptions.codeTheme,
         }}
       />
       <SettingsRow label="Font" className="min-h-15 bg-transparent px-4 py-3">
         <Popup>
           <Popup.Trigger aria-label="Code font" className="h-8 w-auto gap-2 px-0 text-xs text-muted">
-            {String(fontSize)}, Regular, {String(font)}
+            {preferenceLabel(fontSize)}, Regular, {preferenceLabel(font)}
             <CaretDownIcon aria-hidden="true" className="size-3" />
           </Popup.Trigger>
           <Popup.Content aria-label="Code font settings">
             <Popup.Submenu label="Font size">
-              {['12px', '13px', '14px', '16px'].map((size) => (
-                <Popup.Item key={size} onClick={() => c.store.form.change('preferences.' + 'codeFontSize', size)}>
-                  {size}
+              {preferenceOptions.codeFontSize.map(({ value, label }) => (
+                <Popup.Item key={value} onClick={() => c.store.form.change('draft.codeFontSize', value)}>
+                  {label}
                 </Popup.Item>
               ))}
             </Popup.Submenu>
             <Popup.Submenu label="Font">
-              {['Default', 'Monospace'].map((value) => (
-                <Popup.Item key={value} onClick={() => c.store.form.change('preferences.' + 'codeFont', value)}>
-                  {value}
+              {preferenceOptions.codeFont.map(({ value, label }) => (
+                <Popup.Item key={value} onClick={() => c.store.form.change('draft.' + 'codeFont', value)}>
+                  {label}
                 </Popup.Item>
               ))}
             </Popup.Submenu>
@@ -198,7 +195,7 @@ function CodeAppearanceSection() {
           code={example.code}
           lineChanges={example.lineChanges}
           language={language}
-          onLanguageChange={(value) => c.store.form.change('preferences.' + 'codeLanguage', value)}
+          onLanguageChange={(value) => c.store.form.change('draft.' + 'codeLanguage', value)}
         />
       </div>
     </Rows>

@@ -11,6 +11,7 @@ import { initialSettings } from './fixtures'
 import { DemoRoleController } from './role/demo-controller'
 import { DemoGroupController } from './group/demo-controller'
 import { DemoProfileController } from './profile/demo-controller'
+import { DemoUserPreferenceController } from './preferences/user/demo-controller'
 import { DemoOrganizationController } from './organization/demo-controller'
 
 export class DemoSettingsController implements SettingsController {
@@ -18,7 +19,7 @@ export class DemoSettingsController implements SettingsController {
   pages: SettingsController['pages'] = {
     role: null!,
     search: { setQuery: (value) => this.setQuery(value), setFilter: (key, value) => this.setFilter(key, value) },
-    preferences: { setPreference: (key, value) => this.setPreference(key, value) },
+    preferences: { user: null! },
     profile: new DemoProfileController(this.store, (file) => this.avatarUrl(file)),
     organization: new DemoOrganizationController(this.store, (file) => this.avatarUrl(file)),
     members: { setMemberRoles: (member, roles) => this.setMemberRoles(member, roles) },
@@ -41,6 +42,7 @@ export class DemoSettingsController implements SettingsController {
   ) {
     const { roleDraft, groupDraft, ...shared } = initial
     this.store.setState(structuredClone(shared))
+    this.pages.preferences.user = new DemoUserPreferenceController(failWrites)
     this.role = new DemoRoleController(this, failWrites)
     this.pages.role = this.role
     this.group = new DemoGroupController(this, failWrites)
@@ -66,6 +68,7 @@ export class DemoSettingsController implements SettingsController {
   }
   stop = () => {
     this.closed = true
+    this.pages.preferences.user.cancel()
     this.role.stop()
     this.group.stop()
     this.timers.forEach(clearTimeout)
@@ -105,8 +108,6 @@ export class DemoSettingsController implements SettingsController {
   setQuery = (query: string) => this.store.setState({ query })
   setNavigationQuery = (navigationQuery: string) => this.store.setState({ navigationQuery })
   setFilter = (key: string, value: string) => this.store.setState((s) => ({ filters: { ...s.filters, [key]: value } }))
-  setPreference = (key: string, value: string | boolean) =>
-    this.store.setState((s) => ({ preferences: { ...s.preferences, [key]: value } }))
   private avatarUrl = (file: File | null) => {
     const url = file ? URL.createObjectURL(file) : null
     if (url) this.urls.push(url)

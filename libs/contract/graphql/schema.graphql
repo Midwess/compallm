@@ -10,12 +10,6 @@ type AccessibilityPreferences {
   underlineLinks: Boolean!
 }
 
-enum AppearanceMode {
-  DARK
-  LIGHT
-  SYSTEM_PREFERENCE
-}
-
 type BooleanPayload {
   node: Boolean!
 }
@@ -43,11 +37,6 @@ type CodeAppearancePreferences {
   theme: PreferenceCodeTheme!
 }
 
-enum CodeFont {
-  DEFAULT
-  MONOSPACE
-}
-
 input CodeFontPatchInput {
   family: PreferenceFontFamily
   size: PreferencePixelFontSize
@@ -56,20 +45,6 @@ input CodeFontPatchInput {
 type CodeFontPreferences {
   family: PreferenceFontFamily!
   size: PreferencePixelFontSize!
-}
-
-enum CodeFontSize {
-  PX12
-  PX13
-  PX14
-  PX16
-}
-
-enum CodeTheme {
-  FOLLOW_INTERFACE
-  LINEAR_DARK
-  LINEAR_LIGHT
-  SYSTEM_PREFERENCE
 }
 
 """
@@ -105,12 +80,6 @@ enum CredentialDelivery {
   Return credentials explicitly without setting browser cookies.
   """
   TOKEN
-}
-
-enum DarkPalette {
-  CLASSIC_DARK
-  DARK
-  MAGIC_BLUE
 }
 
 """
@@ -202,24 +171,6 @@ enum ImageMediaType {
 input ImageUploadInput {
   mediaType: ImageMediaType!
   size: Int!
-}
-
-enum InterfaceFontSize {
-  DEFAULT
-  LARGE
-  LARGER
-  SMALL
-  SMALLER
-}
-
-enum LightPalette {
-  LIGHT
-  PURE_LIGHT
-}
-
-enum MemberDisplay {
-  FULL_NAME
-  USERNAME
 }
 
 input MemberDisplayPatchInput {
@@ -438,30 +389,6 @@ enum PreferenceWeekday {
   THURSDAY
   TUESDAY
   WEDNESDAY
-}
-
-input PreferencesUpdateInput {
-  codeFont: CodeFont
-  codeFontSize: CodeFontSize
-  codeTheme: CodeTheme
-  darkTheme: DarkPalette
-  displayNames: MemberDisplay
-  emoticons: Boolean
-  firstDay: Weekday
-  fontSize: InterfaceFontSize
-  home: HomeDestination
-  lightTheme: LightPalette
-  pointerCursors: Boolean
-  reduceMotion: Boolean
-  sendShortcut: SendShortcut
-  sidebarBadgeStyle: SidebarBadgeStyle
-  sidebarModels: SidebarVisibility
-  sidebarNotebooks: SidebarVisibility
-  sidebarOrder: String
-  sidebarPlugins: SidebarVisibility
-  sidebarProviders: SidebarVisibility
-  theme: AppearanceMode
-  underlineLinks: Boolean
 }
 
 input ProfileUpdateInput {
@@ -725,11 +652,6 @@ input RoleUpdateInput {
   name: String
 }
 
-enum SendShortcut {
-  ENTER
-  MODIFIER_ENTER
-}
-
 type Session {
   """
   Login session identity, serialized as a string without numeric precision loss.
@@ -770,11 +692,6 @@ type SessionPayload {
   node: Session!
 }
 
-enum SidebarBadgeStyle {
-  COUNT
-  DOT
-}
-
 type SidebarEntry {
   item: PreferenceDestination!
   visibility: PreferenceSidebarVisibility!
@@ -792,12 +709,6 @@ input SidebarPatchInput {
 type SidebarPreferences {
   badgeStyle: PreferenceBadgeStyle!
   entries: [SidebarEntry!]!
-}
-
-enum SidebarVisibility {
-  ALWAYS_SHOW
-  HIDDEN
-  ONLY_WHEN_BADGED
 }
 
 input SidebarVisibilityPatchInput {
@@ -890,14 +801,4 @@ input UserPreferencesPatchInput {
 
 type UserPreferencesPayload {
   node: UserPreferences!
-}
-
-enum Weekday {
-  FRIDAY
-  MONDAY
-  SATURDAY
-  SUNDAY
-  THURSDAY
-  TUESDAY
-  WEDNESDAY
 }

@@ -241,7 +241,6 @@ impl GraphQLType for RegisteredQuery {
         registry.get_type::<input::ProviderPatchInput>(&());
         registry.get_type::<catalog::ProviderTemplate>(&());
         registry.get_type::<super::user::input::ProfileUpdateInput>(&());
-        registry.get_type::<super::user::input::PreferencesUpdateInput>(&());
         registry.get_type::<super::user::input::ImageUploadInput>(&());
         registry.get_type::<super::organization::input::OrganizationSettingsUpdateInput>(&());
         registry.get_type::<super::chat::input::ChatCreateInput>(&());
@@ -295,7 +294,6 @@ struct Inputs {
     spending_limit: super::organization::input::SpendingLimitInput,
     reporting_schedule: super::organization::input::ReportingScheduleInput,
     form_0: super::user::input::ProfileUpdateInput,
-    form_1: super::user::input::PreferencesUpdateInput,
     form_2: super::user::input::ImageUploadInput,
     form_3: super::organization::input::OrganizationSettingsUpdateInput,
     form_4: super::chat::input::ChatCreateInput,

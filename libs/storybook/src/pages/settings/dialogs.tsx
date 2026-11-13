@@ -1,3 +1,5 @@
+import { preferenceOptions, preferenceLabel } from './preferences/user/values'
+import { useUserPreference, useUserPreferenceController } from './preferences/user/controller'
 import { parseSettingsDialog } from './validation'
 import { FormError } from '../../components/form'
 import { useState } from 'react'
@@ -18,40 +20,36 @@ import { PlugsIcon } from '@phosphor-icons/react/dist/csr/Plugs'
 import { useSettings, useSettingsController } from './controller'
 import type { SettingsDialogKind } from './types'
 
-const sidebarIcons = { Providers: HardDrivesIcon, Models: CubeIcon, Notebooks: NotebookIcon, Plugins: PlugsIcon }
-const badgeOptions = [
-  {
-    value: 'Dot',
-    label: 'Dot',
-    icon: <span aria-hidden="true" className="mx-1 size-1.5 shrink-0 rounded-full bg-muted" />,
-  },
-  {
-    value: 'Count',
-    label: 'Count',
-    icon: (
+const sidebarIcons = { PROVIDERS: HardDrivesIcon, MODELS: CubeIcon, NOTEBOOKS: NotebookIcon, PLUGINS: PlugsIcon }
+const badgeOptions = preferenceOptions.sidebarBadgeStyle.map((option) => ({
+  ...option,
+  icon:
+    option.value === 'DOT' ? (
+      <span aria-hidden="true" className="mx-1 size-1.5 shrink-0 rounded-full bg-muted" />
+    ) : (
       <span aria-hidden="true" className="flex size-3.5 shrink-0 items-center justify-center text-xs text-muted">
         1
       </span>
     ),
-  },
-]
-const visibilityOptions = ['Always show', 'Show when badged', "Don't show"].map((value) => ({ label: value, value }))
+}))
+const visibilityOptions = preferenceOptions.sidebarVisibility
 
 function CustomizeSidebar() {
   const timing = useTransition('reorder')
   const controller = useSettingsController()
-  const preferences = useSettings((state) => state.preferences, ['preferences'])
-  const order = String(preferences.sidebarOrder).split(',')
+  const user = useUserPreferenceController()
+  const preferences = useUserPreference((state) => state.draft, ['draft'])
+  const order = preferences.sidebarOrder
   const { rowNodes, drag, preview, announcement, id, keyboardMove, startDrag, pointerMove, endDrag } = useReorder(
     order,
-    (items) => controller.store.form.change('preferences.' + 'sidebarOrder', items.join(',')),
+    (items) => user.store.form.change('draft.' + 'sidebarOrder', items),
     false,
     'Sidebar item',
   )
   return (
     <Dialog onClose={controller.pages.dialogs.closeDialog}>
       <Dialog.Content className="w-120 rounded-xl bg-inset">
-        <Form model={controller.store.form}>
+        <Form model={user.store.form}>
           <Dialog.Header className="h-14 px-6">
             <Dialog.Title className="text-[15px]">Customize sidebar</Dialog.Title>
             <Dialog.Close />
@@ -59,13 +57,8 @@ function CustomizeSidebar() {
           <Dialog.Body className="gap-6 px-6 pt-4 pb-6">
             <div className="flex h-11 items-center justify-between rounded-lg bg-elevated px-3 text-xsm">
               <span>Default badge style</span>
-              <Select
-                aria-label="Default badge style"
-                className="w-26"
-                name="preferences.sidebarBadgeStyle"
-                options={badgeOptions}
-              />
-              <FormError name="preferences.sidebarBadgeStyle" />
+              <Select aria-label="Default badge style" className="w-26" name="draft.sidebarBadgeStyle" options={badgeOptions} />
+              <FormError name="draft.sidebarBadgeStyle" />
             </div>
             <div className="grid gap-2.5">
               <h3 className="text-xsm font-medium">Workspace</h3>
@@ -86,7 +79,7 @@ function CustomizeSidebar() {
                     >
                       <button
                         type="button"
-                        aria-label={`Reorder ${name}`}
+                        aria-label={`Reorder ${preferenceLabel(name)}`}
                         aria-describedby={`${id}-reorder`}
                         className={`
 flex size-6 shrink-0 touch-none cursor-grab items-center justify-center text-muted hover:text-text
@@ -114,14 +107,14 @@ active:cursor-grabbing focus-visible:outline-focus
                         <DotsSixVerticalIcon aria-hidden="true" className="size-3" />
                       </button>
                       {Icon ? <Icon aria-hidden="true" className="mr-2 size-4 shrink-0 text-muted" /> : null}
-                      <span className="min-w-0 flex-1 text-xsm">{name}</span>
+                      <span className="min-w-0 flex-1 text-xsm">{preferenceLabel(name)}</span>
                       <Select
-                        aria-label={`${name} visibility`}
+                        aria-label={`${preferenceLabel(name)} visibility`}
                         className="w-35"
-                        name={`preferences.sidebar${name}`}
+                        name={`draft.sidebar${name}`}
                         options={visibilityOptions}
                       />
-                      <FormError name={`preferences.sidebar${name}`} />
+                      <FormError name={`draft.sidebar${name}`} />
                     </motion.div>
                   )
                 })}

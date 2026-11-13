@@ -8,7 +8,7 @@ import { DialogsController } from './dialogs/controller'
 import { SearchController } from './search/controller'
 import { RoleController } from './role/controller'
 
-export function createSettingsPages(store: StoreApi<SettingsState>) {
+export function createSettingsPages(store: StoreApi<SettingsState>, roleDeleted: (id: string) => void) {
   return {
     role: new RoleController(store),
     search: new SearchController(store),
@@ -16,6 +16,6 @@ export function createSettingsPages(store: StoreApi<SettingsState>) {
     profile: new ProfileController(),
     organization: new OrganizationController(),
     members: new MembersController(),
-    dialogs: new DialogsController(store),
+    dialogs: new DialogsController(store, roleDeleted),
   } satisfies SettingsPageControllers
 }

@@ -63,7 +63,7 @@ pub trait OrganizationRepository: Send + Sync {
         &self,
         organization_id: u64,
         role_id: u64,
-    ) -> Result<(), OrganizationRepositoryError>;
+    ) -> Result<bool, OrganizationRepositoryError>;
     async fn lock_group(
         &self,
         organization_id: u64,

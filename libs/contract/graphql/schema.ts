@@ -80,6 +80,7 @@ export interface Mutation {
   groupCreate: CreatedGroupPayload
   /** Create a role in the verified active organization. */
   roleCreate: RolePayload
+  roleDelete: BooleanPayload
   roleUpdate: RolePayload
   /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
   sessionRefresh: SessionCredentialsPayload
@@ -183,6 +184,7 @@ export interface Role {
   description: Scalars['String']
   id: Scalars['ID']
   name: Scalars['String']
+  owner: Scalars['Boolean']
   __typename: 'Role'
 }
 
@@ -354,6 +356,7 @@ export interface MutationGenqlSelection {
   groupCreate?: CreatedGroupPayloadGenqlSelection & { __args: { input: GroupCreateInput } }
   /** Create a role in the verified active organization. */
   roleCreate?: RolePayloadGenqlSelection & { __args: { input: RoleCreateInput } }
+  roleDelete?: BooleanPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   roleUpdate?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; input: RoleUpdateInput } }
   /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
   sessionRefresh?: SessionCredentialsPayloadGenqlSelection
@@ -533,6 +536,7 @@ export interface RoleGenqlSelection {
   description?: boolean | number
   id?: boolean | number
   name?: boolean | number
+  owner?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }

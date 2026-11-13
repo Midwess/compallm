@@ -115,20 +115,6 @@ impl DbContext {
         Ok(Self::new(self.postgres.clone()))
     }
 
-    pub async fn independent_scope<F: Future>(
-        &self,
-        operation: F,
-    ) -> Result<F::Output, ConnectionError> {
-        self.postgres.ensure_open()?;
-        self.ensure_active()?;
-        if self.transaction.is_some() || self.member_permission.get().is_some() {
-            return Err(ConnectionError::database(anyhow::anyhow!(
-                "independent authentication scope requires an unrestricted context"
-            )));
-        }
-        Ok(CURRENT.scope(self.clone(), operation).await)
-    }
-
     /// Register a loader for the request's member authority once.
     pub fn restrict<F, E>(&self, loader: F) -> Result<Self, ConnectionError>
     where
@@ -222,25 +208,21 @@ impl DbContext {
         self.postgres.as_ref()
     }
 
-    /// Enter an application context without replacing an active transaction.
+    /// Activate this context for the operation, then restore the previous context.
     pub async fn scope<F: Future>(&self, operation: F) -> F::Output {
-        let context = CURRENT
-            .try_with(Clone::clone)
-            .unwrap_or_else(|_| self.clone());
-        CURRENT.scope(context, operation).await
+        CURRENT.scope(self.clone(), operation).await
     }
 
-    /// Nested calls join the current transaction without another BEGIN or savepoint.
+    /// Activate a transaction using this context's connection and authority.
+    /// A transaction context joins its existing transaction without another BEGIN.
     /// Only the outermost call commits or rolls back. A failed, panicked, or
-    /// cancelled nested operation marks the shared transaction for rollback.
+    /// cancelled participant marks the shared transaction for rollback.
     pub async fn transaction<F, T, E>(&self, operation: F) -> Result<T, E>
     where
         F: Future<Output = Result<T, E>>,
         E: From<ConnectionError> + std::fmt::Display,
     {
-        let source = CURRENT
-            .try_with(Clone::clone)
-            .unwrap_or_else(|_| self.clone());
+        let source = self;
         source.postgres.ensure_open()?;
         source.ensure_active()?;
         if let Some(state) = &source.transaction {

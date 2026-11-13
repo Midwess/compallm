@@ -13,6 +13,7 @@ import { RoleCreateInput } from '@compallm/contract/validation'
 import { createSettingsPages } from './pages'
 
 export const settingsPages = [
+  'blank',
   'general',
   'appearance',
   'messaging',
@@ -43,6 +44,7 @@ export class SettingsController implements Controller {
   private creatingRole = false
   private navigationGeneration = 0
   private readonly knownEmptyRoles = new Set<string>()
+  private readonly deletedRoles = new Set<string>()
 
   start = () => {
     const controller = new AbortController()
@@ -71,7 +73,9 @@ export class SettingsController implements Controller {
       if (signal.aborted || generation !== this.generation) return
       this.store.setState((state) => ({
         roles: [
-          ...roles.edges.map(({ node: role }) => ({ ...role, description: '', source: '' })),
+          ...roles.edges
+            .filter(({ node }) => !this.deletedRoles.has(node.id))
+            .map(({ node: role }) => ({ ...role, description: '', source: '' })),
           ...state.roles.filter(
             (role) => this.knownEmptyRoles.has(role.id) && !roles.edges.some(({ node }) => node.id === role.id),
           ),
@@ -79,7 +83,11 @@ export class SettingsController implements Controller {
         groups: groups.edges.map(({ node: group }) => ({ ...group, roleIds: [], memberIds: [], color: '' })),
       }))
     } catch (error) {
-      if (!signal.aborted && generation === this.generation) notify.error(error)
+      if (!signal.aborted && generation === this.generation) {
+        notify.apiError(error, () => {
+          if (!signal.aborted && generation === this.generation) void this.loadPermissions(signal, generation)
+        })
+      }
     }
   }
 
@@ -89,7 +97,13 @@ export class SettingsController implements Controller {
     auth: Pick<AuthController, 'signOut'>,
     page: SettingsDestination,
   ) {
-    this.pages = createSettingsPages(this.store)
+    this.pages = createSettingsPages(this.store, (id) => {
+      this.knownEmptyRoles.delete(id)
+      this.deletedRoles.add(id)
+      this.store.setState((state) => ({ roles: state.roles.filter((role) => role.id !== id) }))
+      const location = this.store.getState().location
+      if (location.page === 'role' && location.id === id) this.navigate('blank')
+    })
     this.role = this.pages.role
     this.url = url
     this.auth = auth

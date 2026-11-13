@@ -236,7 +236,7 @@ impl CoreRepository for OrganizationRepository {
         &self,
         organization_id: u64,
         role_id: u64,
-    ) -> Result<(), OrganizationRepositoryError> {
+    ) -> Result<bool, OrganizationRepositoryError> {
         let context = DbContext::current()?;
         if !context.postgres().is_transaction() {
             return Err(OrganizationRepositoryError::database(anyhow::anyhow!(
@@ -245,7 +245,7 @@ impl CoreRepository for OrganizationRepository {
         }
         let db = PostgresConnection::from_context(&context)?;
         let org = Self::database_id(organization_id)?;
-        Groups::find()
+        let groups = Groups::find()
             .filter(GroupColumn::OrganizationId.eq(org))
             .filter(
                 GroupColumn::Id.in_subquery(
@@ -262,7 +262,7 @@ impl CoreRepository for OrganizationRepository {
             .all(db)
             .await
             .map_err(OrganizationRepositoryError::database)?;
-        Ok(())
+        Ok(!groups.is_empty())
     }
 
     async fn lock_group(

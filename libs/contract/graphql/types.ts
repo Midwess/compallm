@@ -102,6 +102,12 @@ export default {
           input: [39, 'RoleCreateInput!'],
         },
       ],
+      roleDelete: [
+        1,
+        {
+          id: [15, 'ID!'],
+        },
+      ],
       roleUpdate: [
         41,
         {
@@ -252,6 +258,7 @@ export default {
       description: [47],
       id: [15],
       name: [47],
+      owner: [0],
       __typename: [47],
     },
     RoleConnection: {

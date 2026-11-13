@@ -13,17 +13,43 @@ use compallm_core::{
 use std::{collections::HashMap, str::FromStr};
 
 #[tokio::test]
-async fn role_color_is_stable_and_warm() {
+async fn role_color_is_stable_and_varied() {
     let mut role = default_roles(42, [901, 502, 73]).await.remove(0);
     let color = role.color();
     assert_eq!(color.len(), 7);
     assert!(color.starts_with('#'));
-    let rgb = u32::from_str_radix(&color[1..], 16).unwrap();
-    assert!(rgb >> 16 > (rgb >> 8) & 255);
-    assert!(rgb >> 16 > rgb & 255);
+    assert!(u32::from_str_radix(&color[1..], 16).is_ok());
     assert_eq!(role.color(), color);
     role.name = "Different role".into();
     assert_ne!(role.color(), color);
+}
+#[tokio::test]
+async fn role_names_produce_a_varied_palette() {
+    let mut role = default_roles(42, [901, 502, 73]).await.remove(0);
+    let colors = [
+        "Owner",
+        "Admin",
+        "Member",
+        "Editor",
+        "Viewer",
+        "Developer",
+        "Manager",
+        "Auditor",
+        "Support",
+        "Operator",
+        "Designer",
+    ]
+    .into_iter()
+    .map(|name| {
+        role.name = name.into();
+        role.color()
+    })
+    .collect::<std::collections::BTreeSet<_>>();
+    assert!(colors.len() >= 9);
+    assert!(colors.iter().any(|color| {
+        let rgb = u32::from_str_radix(&color[1..], 16).unwrap();
+        ((rgb >> 8) & 255) > (rgb >> 16)
+    }));
 }
 async fn member(index: usize) -> OrganizationMember {
     OrganizationMember {

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as Menus from '../../src/components/dropdowns'
 import { Preview, Sample } from './Preview'
+import { Button } from '../../src/components/buttons'
+import { Dialog } from '../../src/components/dialog'
 
 const options = [
   { value: 'typescript', label: 'TypeScript' },
@@ -21,6 +23,64 @@ function ControlledDropdown() {
     </>
   )
 }
+
+function ComposedSelect() {
+  const [value, setValue] = useState<string | null>('rust')
+  const [visible, setVisible] = useState(true)
+  return (
+    <Preview>
+      <Sample label="Shared select parts">
+        {visible ? (
+          <Menus.Select.Root items={options} value={value} onValueChange={setValue}>
+            <Menus.Select.Trigger aria-label="Composed language" className="w-60">
+              <Menus.Select.Value />
+            </Menus.Select.Trigger>
+            <Menus.Select.Content aria-label="Composed language">
+              {options.map((item) => (
+                <Menus.Select.Item key={item.value} value={item.value} disabled={item.disabled}>
+                  {item.label}
+                </Menus.Select.Item>
+              ))}
+            </Menus.Select.Content>
+          </Menus.Select.Root>
+        ) : null}
+        <output aria-label="Composed selection">{value}</output>
+        <button type="button" className="text-xs text-primary" onClick={() => setVisible((current) => !current)}>
+          {visible ? 'Remove select' : 'Restore select'}
+        </button>
+      </Sample>
+    </Preview>
+  )
+}
+
+export const SelectComposition: Story = { render: () => <ComposedSelect /> }
+
+function DialogSelect() {
+  const [open, setOpen] = useState(false)
+  return (
+    <Preview>
+      <Button onClick={() => setOpen(true)}>Open select dialog</Button>
+      {open ? (
+        <Dialog onClose={() => setOpen(false)}>
+          <Dialog.Content>
+            <Dialog.Header>
+              <Dialog.Title>Choose language</Dialog.Title>
+              <Dialog.Close />
+            </Dialog.Header>
+            <Dialog.Body>
+              <Menus.Select aria-label="Dialog language" options={options} defaultValue="rust" />
+            </Dialog.Body>
+            <Dialog.Footer>
+              <Dialog.Cancel />
+            </Dialog.Footer>
+          </Dialog.Content>
+        </Dialog>
+      ) : null}
+    </Preview>
+  )
+}
+
+export const SelectInDialog: Story = { render: () => <DialogSelect /> }
 export const Select: Story = {
   render: () => (
     <Preview>
@@ -105,8 +165,21 @@ export const SelectOption: Story = {
   render: () => (
     <Preview>
       <Sample label="Default and selected">
-        <Menus.SelectOption>Default option</Menus.SelectOption>
-        <Menus.SelectOption selected>Selected option</Menus.SelectOption>
+        <Menus.Select.Root
+          defaultValue="selected"
+          items={[
+            { value: 'default', label: 'Default option' },
+            { value: 'selected', label: 'Selected option' },
+          ]}
+        >
+          <Menus.Select.Trigger aria-label="Option selection" className="w-60">
+            <Menus.Select.Value />
+          </Menus.Select.Trigger>
+          <Menus.Select.Content aria-label="Option selection">
+            <Menus.SelectOption value="default">Default option</Menus.SelectOption>
+            <Menus.SelectOption value="selected">Selected option</Menus.SelectOption>
+          </Menus.Select.Content>
+        </Menus.Select.Root>
       </Sample>
     </Preview>
   ),

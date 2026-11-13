@@ -180,7 +180,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
     async fn lock_role(&self, _: u64, _: u64) -> Result<Role, OrganizationRepositoryError> {
         unimplemented!()
     }
-    async fn lock_role_groups(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
+    async fn lock_role_groups(&self, _: u64, _: u64) -> Result<bool, OrganizationRepositoryError> {
         unimplemented!()
     }
     async fn lock_group(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
@@ -3650,7 +3650,9 @@ async fn graphql_role_and_group_creation_enforces_scope_and_denies_without_write
         .await
         .unwrap();
     }
-    let db = DbContext::new(Arc::new(PostgresConnection::new(pool.clone())));
+    let connection = Arc::new(PostgresConnection::new(pool.clone()));
+    DbContext::initialize_default(connection.clone()).unwrap();
+    let db = DbContext::new(connection);
     let repository = compallm_postgres::repository::organization::OrganizationRepository;
     let foreign_role = Role::new(foreign.id, "Foreign role", "", "").await.unwrap();
     db.scope(repository.create_roles(vec![foreign_role.clone()]))
@@ -3666,7 +3668,7 @@ async fn graphql_role_and_group_creation_enforces_scope_and_denies_without_write
         .sessions
         .insert(session.id, session.clone());
     let source = format!(
-        r#"permit(principal, action in [Compallm::Action::"role.read", Compallm::Action::"role.create", Compallm::Action::"role.assign", Compallm::Action::"group.read", Compallm::Action::"group.create"], resource in Compallm::Organization::"{org}");
+        r#"permit(principal, action in [Compallm::Action::"role.read", Compallm::Action::"role.create", Compallm::Action::"role.assign", Compallm::Action::"role.delete", Compallm::Action::"group.read", Compallm::Action::"group.create"], resource in Compallm::Organization::"{org}");
 permit(principal, action == Compallm::Action::"group.role.assign", resource is Compallm::Group in Compallm::Organization::"{org}") when {{ context.role.organization == Compallm::Organization::"{org}" }};"#,
         org = organization.id
     );
@@ -3817,6 +3819,120 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
             .len(),
         1
     );
+
+    let delete_role = "mutation($id:ID!){roleDelete(id:$id){node}}";
+    let assigned = graphql_operation(
+        &router,
+        delete_role,
+        serde_json::json!({"id":role_id}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    assert_graphql_denial(assigned, 409).await;
+    assert!(
+        db.scope(repository.find_role(organization.id, role_id.parse().unwrap()))
+            .await
+            .unwrap()
+            .is_some()
+    );
+    type GroupRoles =
+        <compallm_postgres::OrganizationGroupRoleSchema as sea_orm::ModelTrait>::Entity;
+    GroupRoles::delete_by_id((
+        i64::try_from(organization.id).unwrap(),
+        group_id.parse::<i64>().unwrap(),
+        role_id.parse::<i64>().unwrap(),
+    ))
+    .exec(pool.as_ref())
+    .await
+    .unwrap();
+    let assignee = User::from_email(&format!("role-delete-{}@example.com", organization.id))
+        .await
+        .unwrap();
+    db.scope(compallm_postgres::repository::user::UserRepository.create(assignee.clone()))
+        .await
+        .unwrap();
+    let assigned_member = OrganizationMember {
+        organization_id: organization.id,
+        user_id: assignee.id,
+        roles: vec![
+            db.scope(repository.find_role(organization.id, role_id.parse().unwrap()))
+                .await
+                .unwrap()
+                .unwrap(),
+        ],
+        groups: vec![],
+    };
+    db.scope(repository.add_member(assigned_member))
+        .await
+        .unwrap();
+    let assigned = graphql_operation(
+        &router,
+        delete_role,
+        serde_json::json!({"id":role_id}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    assert_graphql_denial(assigned, 409).await;
+    type MemberRoles =
+        <compallm_postgres::OrganizationMemberRoleSchema as sea_orm::ModelTrait>::Entity;
+    MemberRoles::delete_by_id((
+        i64::try_from(organization.id).unwrap(),
+        i64::try_from(assignee.id).unwrap(),
+        role_id.parse::<i64>().unwrap(),
+    ))
+    .exec(pool.as_ref())
+    .await
+    .unwrap();
+    let deleted = graphql_operation(
+        &router,
+        delete_role,
+        serde_json::json!({"id":role_id}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    let body = graphql_body(deleted).await;
+    assert!(body["errors"].is_null(), "{body}");
+    assert_eq!(body["data"]["roleDelete"]["node"], true);
+    assert!(
+        db.scope(repository.find_role(organization.id, role_id.parse().unwrap()))
+            .await
+            .unwrap()
+            .is_none()
+    );
+
+    let mut owner = Role::new(organization.id, "Owner", "", "").await.unwrap();
+    owner.org_owner = true;
+    db.scope(repository.create_roles(vec![owner.clone()]))
+        .await
+        .unwrap();
+    let owner_detail = graphql_operation(
+        &router,
+        "query($id:ID!){role(id:$id){node{id owner}}}",
+        serde_json::json!({"id": owner.id.to_string()}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    let body = graphql_body(owner_detail).await;
+    assert!(body["errors"].is_null(), "{body}");
+    assert_eq!(body["data"]["role"]["node"]["owner"], true);
+    let denied = graphql_operation(
+        &router,
+        delete_role,
+        serde_json::json!({"id": owner.id.to_string()}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    assert_graphql_denial(denied, 403).await;
 
     type Organizations = <OrganizationSchema as sea_orm::ModelTrait>::Entity;
     for org in [organization, foreign] {

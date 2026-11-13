@@ -47,7 +47,7 @@ export class DemoRoleController implements RoleController {
       projection: [],
       diagnostics: [],
       parsing: false,
-      builtin: role?.builtin ?? false,
+      builtin: role?.id === 'owner',
     }
     this.store.setState({ draft, error: null })
     if (draft.source) this.setPolicySource(draft.source)

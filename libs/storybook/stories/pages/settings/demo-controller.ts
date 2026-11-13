@@ -146,6 +146,14 @@ export class DemoSettingsController implements SettingsController {
     const s = this.store.getState(),
       d = s.dialog
     if (!d) return
+    if (
+      d.kind === 'delete-role' &&
+      (s.members.some((member) => member.roleIds.includes(d.targetId ?? '')) ||
+        s.groups.some((group) => group.roleIds.includes(d.targetId ?? '')))
+    ) {
+      this.report('Remove all members and groups assigned to this role before deleting it')
+      return
+    }
     if (d.kind === 'delete-account' && d.phrase !== `I want to delete ${s.profile.email}`) return
     if (d.kind === 'delete-organization' && d.phrase !== `I want to delete ${s.organization.name}`) return
     if (['add-passkey', 'create-key'].includes(d.kind) && !d.name.trim()) return
@@ -194,14 +202,14 @@ export class DemoSettingsController implements SettingsController {
           roles: p.roles.filter((r) => r.id !== id),
           groups: p.groups.map((g) => ({ ...g, roleIds: g.roleIds.filter((role) => role !== id) })),
           members: p.members.map((m) => ({ ...m, roleIds: m.roleIds.filter((role) => role !== id) })),
-          location: { page: 'general' },
+          location: { page: 'blank' },
         }))
       }
       if (d.kind === 'delete-group') this.group.store.setState({ draft: null })
       if (d.kind === 'delete-group')
         this.store.setState((p) => ({
           groups: p.groups.filter((g) => g.id !== id),
-          location: { page: 'general' },
+          location: { page: 'blank' },
         }))
       if (d.kind === 'remove-group-member') this.group.toggleGroupMember(id!)
       if (d.kind === 'organization-limit') this.store.setState({ organizationLimitUsd: d.value || null })

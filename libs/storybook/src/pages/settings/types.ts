@@ -5,6 +5,7 @@ import type { ProfileController } from './profile/controller'
 import type { OrganizationController } from './organization/controller'
 
 export type SettingsDestination =
+  | 'blank'
   | 'general'
   | 'appearance'
   | 'messaging'

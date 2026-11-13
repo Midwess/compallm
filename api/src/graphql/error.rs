@@ -148,6 +148,8 @@ impl From<crate::http::authorization::AuthorizationError> for Error {
 impl From<compallm_core::authorization::error::AuthorizationError> for Error {
     fn from(error: compallm_core::authorization::error::AuthorizationError) -> Self {
         match error {
+            E::RoleDeletion(compallm_core::organization::role::RoleDeletionError::Assigned) => Self { code: "ROLE_ASSIGNED", status: 409, message: "Remove all members and groups assigned to this role before deleting it" },
+            E::RoleDeletion(compallm_core::organization::role::RoleDeletionError::OwnerRole) => Self { code: "FORBIDDEN", status: 403, message: "The owner role cannot be deleted" },
             E::Permission(MemberPermissionError::Denied) => Self { code: "FORBIDDEN", status: 403, message: "Permission denied" },
             E::Group(compallm_core::organization::group::GroupCreationError::IdGeneration(_)) | E::Role(compallm_core::organization::role::RoleCreationError::IdGeneration(_)) => Self { code: "SERVICE_UNAVAILABLE", status: 503, message: "Authorization operation is temporarily unavailable" },
             E::Group(_) | E::Role(_) | E::UnsupportedPolicy => Self::invalid_input(),

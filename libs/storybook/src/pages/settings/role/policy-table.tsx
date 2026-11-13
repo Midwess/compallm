@@ -1,5 +1,4 @@
 import { useId, useState } from 'react'
-import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
 import { FunnelIcon } from '@phosphor-icons/react/dist/csr/Funnel'
 import { Button } from '../../../components/buttons'
 import { SearchField } from '../../../components/fields'
@@ -9,6 +8,9 @@ import { SectionSurface } from '../../../components/surfaces'
 import { Table } from '../../../components/table'
 import { useSettings } from '../controller'
 import { useRole, useRoleController } from './controller'
+import { DisabledTooltip } from '../../../components/feedback'
+
+const ownerExplanation = 'The Owner role cannot be edited or deleted.'
 import type { PolicyProjection, SettingsPolicyAction } from '../types'
 
 const defaultExpanded = ['Models', 'Providers', 'Usage & limits']
@@ -17,19 +19,15 @@ const accessLevels = ['Read', 'Use', 'Write', 'Admin', 'Sensitive']
 function PolicyFilters({ categories }: { categories: string[] }) {
   const c = useRoleController(),
     filters = useRole((s) => s.filters)
-  const options = (key: string, values: { value: string; label: string }[]) =>
-    values.map(({ value, label }) => (
-      <Popup.Item
-        key={value}
-        role="menuitemradio"
-        aria-checked={(filters[key] || 'all') === value}
-        className="justify-between gap-4"
-        onClick={() => c.setFilter(key, value)}
-      >
-        {label}
-        {(filters[key] || 'all') === value ? <CheckIcon aria-hidden="true" className="size-3" /> : null}
-      </Popup.Item>
-    ))
+  const options = (key: string, values: { value: string; label: string }[]) => (
+    <Popup.RadioGroup value={filters[key] || 'all'} onValueChange={(value: string) => c.setFilter(key, value)}>
+      {values.map(({ value, label }) => (
+        <Popup.RadioItem key={value} value={value}>
+          {label}
+        </Popup.RadioItem>
+      ))}
+    </Popup.RadioGroup>
+  )
   return (
     <Popup>
       <Popup.IconTrigger aria-label="Filter policies" title="Filter policies" className="size-8 shrink-0 rounded-full">
@@ -73,11 +71,13 @@ function PermissionRow({
   action,
   statements,
   disabled,
+  owner,
 }: {
   id: string
   action: SettingsPolicyAction
   statements: PolicyProjection[]
   disabled: boolean
+  owner: boolean
 }) {
   const c = useRoleController()
   const disabledPolicies = useRole((state) => state.disabledPolicies?.[action.id])
@@ -113,25 +113,17 @@ function PermissionRow({
             ))}
           </details>
         ) : null}
-        {statements.length ? (
-          <details className="mt-1 text-xs text-muted">
-            <summary className="cursor-pointer">Scope and rules</summary>
-            {[...new Set(statements.map((entry) => entry.source))].map((source) => (
-              <pre key={source} className="mt-1 whitespace-pre-wrap wrap-break-word">
-                {source}
-              </pre>
-            ))}
-          </details>
-        ) : null}
       </Table.Cell>
       <Table.Cell className="px-1 py-0 text-xs text-muted">{action.description}</Table.Cell>
       <Table.Cell className="px-2 py-0">
-        <Switch
-          aria-label={action.label}
-          checked={permits.length > 0}
-          disabled={disabled || advanced}
-          onChange={() => c.togglePolicyAction(action.id)}
-        />
+        <DisabledTooltip disabled={owner} reason={ownerExplanation}>
+          <Switch
+            aria-label={action.label}
+            checked={permits.length > 0}
+            disabled={disabled || advanced}
+            onChange={() => c.togglePolicyAction(action.id)}
+          />
+        </DisabledTooltip>
       </Table.Cell>
     </Table.Row>
   )
@@ -165,7 +157,7 @@ export function PolicyTable() {
     )
   })
   const filtering = Boolean(normalized) || Object.values(filters).some((v) => v && v !== 'all')
-  const disabled = busy || draft.parsing || draft.diagnostics.length > 0
+  const disabled = draft.builtin || busy || draft.parsing || draft.diagnostics.length > 0
   const selectedCount = actions.filter((a) => (projection.get(a.id) ?? []).some((entry) => entry.effect !== 'forbid')).length
   return (
     <SectionSurface className="flex min-w-0 flex-col overflow-hidden p-0">
@@ -241,17 +233,19 @@ export function PolicyTable() {
                   open={open}
                   onOpenChange={(next) => setDisclosure((current) => ({ ...current, [category]: next }))}
                   action={
-                    <Switch
-                      aria-label={'Allow ' + category + ' policies'}
-                      checked={allEditableSelected}
-                      disabled={disabled || editable.length === 0}
-                      onChange={() =>
-                        c.setPolicyActions(
-                          editable.map((a) => a.id),
-                          !allEditableSelected,
-                        )
-                      }
-                    />
+                    <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
+                      <Switch
+                        aria-label={'Allow ' + category + ' policies'}
+                        checked={allEditableSelected}
+                        disabled={disabled || editable.length === 0}
+                        onChange={() =>
+                          c.setPolicyActions(
+                            editable.map((a) => a.id),
+                            !allEditableSelected,
+                          )
+                        }
+                      />
+                    </DisabledTooltip>
                   }
                 >
                   {matched.map((action) => (
@@ -261,6 +255,7 @@ export function PolicyTable() {
                       action={action}
                       statements={projection.get(action.id) ?? []}
                       disabled={disabled}
+                      owner={draft.builtin}
                     />
                   ))}
                 </Table.Category>

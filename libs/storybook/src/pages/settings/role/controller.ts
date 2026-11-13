@@ -9,7 +9,6 @@ export interface RoleState {
   draft: RoleDraft | null
   loading?: boolean
   busy: boolean
-  policySaveFailed?: boolean
   disabledPolicies?: Record<string, string[]>
   error: string | null
 }

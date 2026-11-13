@@ -48,7 +48,7 @@ function MemberRoles({ member }: { member: SettingsMember }) {
               aria-label={r.name}
               checked={ids.has(r.id)}
               disabled={inherited.has(r.id)}
-              onChange={() => c.pages.members.toggleMemberRole(member.id, r.id)}
+              onCheckedChange={() => c.pages.members.toggleMemberRole(member.id, r.id)}
             >
               <span className="flex-1 text-left">{r.name}</span>
               {inherited.has(r.id) ? <span className="text-[11px] text-muted">Group</span> : null}

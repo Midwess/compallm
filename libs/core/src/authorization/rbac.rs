@@ -28,6 +28,18 @@ impl RbacService {
         }
     }
 
+    fn root_write_context() -> Result<DbContext, AuthorizationError> {
+        if DbContext::current()?.postgres().is_transaction() {
+            return Err(
+                crate::persistent::ConnectionError::database(anyhow::anyhow!(
+                    "RBAC writes cannot replace an active transaction"
+                ))
+                .into(),
+            );
+        }
+        Ok(DbContext::root()?)
+    }
+
     pub async fn list_roles(
         &self,
         permission: &MemberPermission,
@@ -97,8 +109,12 @@ impl RbacService {
         {
             return Err(AuthorizationError::UnsupportedPolicy);
         }
-        self.organizations.create_roles(vec![role.clone()]).await?;
-        Ok(role)
+        let root = Self::root_write_context()?;
+        root.independent_scope(async {
+            self.organizations.create_roles(vec![role.clone()]).await?;
+            Ok::<Role, AuthorizationError>(role)
+        })
+        .await?
     }
 
     pub async fn update_role(
@@ -148,15 +164,7 @@ impl RbacService {
                 .map_err(crate::organization::role::RoleCreationError::InvalidDescription)?;
         }
         if name.is_some() || description.is_some() || cedar_source.is_some() {
-            if DbContext::current()?.postgres().is_transaction() {
-                return Err(
-                    crate::persistent::ConnectionError::database(anyhow::anyhow!(
-                        "role update cannot replace an active transaction"
-                    ))
-                    .into(),
-                );
-            }
-            let root = DbContext::root()?;
+            let root = Self::root_write_context()?;
             root.independent_scope(async {
                 crate::transaction!(root, {
                     let current = self.organizations.lock_role(organization_id, id).await?;
@@ -191,7 +199,7 @@ impl RbacService {
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound.into())
     }
 
-    async fn delete_role(
+    pub async fn delete_role(
         &self,
         permission: &MemberPermission,
         role_id: u64,
@@ -207,27 +215,32 @@ impl RbacService {
         role.for_action(Action::RoleDelete)
             .check_permission(permission)?;
         role.ensure_deletable()?;
-        crate::transaction!(DbContext::current()?, {
-            let role = self
-                .organizations
-                .lock_role(organization_id, role_id)
-                .await?;
-            role.ensure_deletable()?;
-            self.organizations
-                .lock_role_groups(organization_id, role_id)
-                .await?;
-            let users = self
-                .organizations
-                .role_assignees(organization_id, role_id)
-                .await?;
-            self.organizations
-                .delete_role(organization_id, role_id)
-                .await?;
-            self.auth_service
-                .invalidate_permissions(organization_id, &users)
-                .await?;
-            Ok(role)
+        let root = Self::root_write_context()?;
+        root.independent_scope(async {
+            crate::transaction!(root, {
+                let role = self
+                    .organizations
+                    .lock_role(organization_id, role_id)
+                    .await?;
+                role.ensure_deletable()?;
+                let has_groups = self
+                    .organizations
+                    .lock_role_groups(organization_id, role_id)
+                    .await?;
+                let users = self
+                    .organizations
+                    .role_assignees(organization_id, role_id)
+                    .await?;
+                if has_groups || !users.is_empty() {
+                    return Err(crate::organization::role::RoleDeletionError::Assigned.into());
+                }
+                self.organizations
+                    .delete_role(organization_id, role_id)
+                    .await?;
+                Ok::<Role, AuthorizationError>(role)
+            })
         })
+        .await?
     }
 
     pub async fn create_group(
@@ -261,7 +274,11 @@ impl RbacService {
                 .and(role.for_action(Action::RoleAssign))
                 .check_permission(permission)?;
         }
-        Ok(self.organizations.create_group(group).await?)
+        let root = Self::root_write_context()?;
+        root.independent_scope(async {
+            Ok::<Group, AuthorizationError>(self.organizations.create_group(group).await?)
+        })
+        .await?
     }
 
     async fn assign_role(
@@ -292,14 +309,18 @@ impl RbacService {
         }
         let previous = member.clone();
         member.assign_role(role)?;
-        crate::transaction!(DbContext::current()?, {
-            // Assignment foreign keys coordinate with the role-deletion lock.
-            self.organizations.save_member(&member, &previous).await?;
-            self.auth_service
-                .invalidate_permissions(organization_id, &[user_id])
-                .await?;
-            Ok(())
+        let root = Self::root_write_context()?;
+        root.independent_scope(async {
+            crate::transaction!(root, {
+                // Assignment foreign keys coordinate with the role-deletion lock.
+                self.organizations.save_member(&member, &previous).await?;
+                self.auth_service
+                    .invalidate_permissions(organization_id, &[user_id])
+                    .await?;
+                Ok::<(), AuthorizationError>(())
+            })
         })
+        .await?
     }
 
     async fn unassign_role(
@@ -330,13 +351,17 @@ impl RbacService {
         }
         let previous = member.clone();
         member.unassign_role(role_id)?;
-        crate::transaction!(DbContext::current()?, {
-            self.organizations.save_member(&member, &previous).await?;
-            self.auth_service
-                .invalidate_permissions(organization_id, &[user_id])
-                .await?;
-            Ok(())
+        let root = Self::root_write_context()?;
+        root.independent_scope(async {
+            crate::transaction!(root, {
+                self.organizations.save_member(&member, &previous).await?;
+                self.auth_service
+                    .invalidate_permissions(organization_id, &[user_id])
+                    .await?;
+                Ok::<(), AuthorizationError>(())
+            })
         })
+        .await?
     }
 
     async fn assign_group(
@@ -364,16 +389,20 @@ impl RbacService {
         }
         let previous = member.clone();
         member.assign_group(group)?;
-        crate::transaction!(DbContext::current()?, {
-            self.organizations
-                .lock_group(organization_id, group_id)
-                .await?;
-            self.organizations.save_member(&member, &previous).await?;
-            self.auth_service
-                .invalidate_permissions(organization_id, &[user_id])
-                .await?;
-            Ok(())
+        let root = Self::root_write_context()?;
+        root.independent_scope(async {
+            crate::transaction!(root, {
+                self.organizations
+                    .lock_group(organization_id, group_id)
+                    .await?;
+                self.organizations.save_member(&member, &previous).await?;
+                self.auth_service
+                    .invalidate_permissions(organization_id, &[user_id])
+                    .await?;
+                Ok::<(), AuthorizationError>(())
+            })
         })
+        .await?
     }
 
     async fn unassign_group(
@@ -401,12 +430,16 @@ impl RbacService {
         }
         let previous = member.clone();
         member.unassign_group(group_id)?;
-        crate::transaction!(DbContext::current()?, {
-            self.organizations.save_member(&member, &previous).await?;
-            self.auth_service
-                .invalidate_permissions(organization_id, &[user_id])
-                .await?;
-            Ok(())
+        let root = Self::root_write_context()?;
+        root.independent_scope(async {
+            crate::transaction!(root, {
+                self.organizations.save_member(&member, &previous).await?;
+                self.auth_service
+                    .invalidate_permissions(organization_id, &[user_id])
+                    .await?;
+                Ok::<(), AuthorizationError>(())
+            })
         })
+        .await?
     }
 }

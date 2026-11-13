@@ -46,7 +46,7 @@ export function Toast({
       data-tone={tone}
       className={cx(
         'flex w-100 max-w-full items-start gap-2.5 rounded-xl',
-        'border border-border bg-elevated p-3 font-sans text-xsm leading-5 text-text shadow-lg',
+        'border border-border bg-elevated p-2 font-sans text-xsm leading-5 text-text shadow-lg',
         className,
       )}
     >

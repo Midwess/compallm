@@ -356,8 +356,8 @@ export function SidebarFolder({
           aria-controls={id}
           className={cx(
             `
-flex h-7 cursor-pointer list-none items-center gap-1.5 rounded px-2 pr-7 text-xsm font-normal
-leading-4 text-muted hover:bg-elevated marker:hidden [&::-webkit-details-marker]:hidden
+flex h-7 cursor-pointer list-none items-center gap-1.5 rounded border-y border-transparent bg-clip-padding
+px-2 pr-7 text-xsm font-normal leading-4 text-muted hover:bg-elevated marker:hidden [&::-webkit-details-marker]:hidden
 `,
             focus,
           )}
@@ -417,8 +417,9 @@ export function SidebarItem({
       title={label}
       className={cx(
         `
-flex h-7 min-w-0 items-center gap-1.5 rounded-md px-2 text-xsm font-medium leading-4.25 text-muted
-hover:bg-elevated hover:text-text aria-[current=page]:bg-elevated aria-[current=page]:text-text
+flex h-7 min-w-0 items-center gap-1.5 rounded-md border-y border-transparent bg-clip-padding px-2
+text-xsm font-medium leading-4.25 text-muted hover:bg-elevated hover:text-text
+aria-[current=page]:bg-elevated aria-[current=page]:text-text
 `,
         focus,
         className,

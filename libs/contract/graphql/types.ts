@@ -102,6 +102,12 @@ export default {
           input: [39, 'RoleCreateInput!'],
         },
       ],
+      roleDelete: [
+        1,
+        {
+          id: [15, 'ID!'],
+        },
+      ],
       roleUpdate: [
         41,
         {

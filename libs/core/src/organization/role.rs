@@ -38,16 +38,35 @@ pub enum RoleCreationError {
 pub enum RoleDeletionError {
     #[error("the organization owner role cannot be deleted")]
     OwnerRole,
+    #[error("Remove all members and groups assigned to this role before deleting it")]
+    Assigned,
 }
 
 impl Role {
     pub fn color(&self) -> String {
         use sha2::{Digest, Sha256};
         let hash = Sha256::digest(self.name.as_bytes());
-        let red = 176 + u16::from(hash[0]) * 79 / 255;
-        let green = 48 + u16::from(hash[1]) * 112 / 255;
-        let blue = 32 + u16::from(hash[2]) * 96 / 255;
-        format!("#{red:02x}{green:02x}{blue:02x}")
+        let value = u16::from_be_bytes([hash[1], hash[2]]);
+        let hue = if hash[0] < 160 {
+            (300 + value % 140) % 360
+        } else {
+            value % 360
+        };
+        let saturation = 65 + u16::from(hash[3]) * 20 / 255;
+        let brightness = 200 + u16::from(hash[4]) * 45 / 255;
+        let chroma = brightness * saturation / 100;
+        let remainder = hue % 120;
+        let middle = chroma * (60 - remainder.abs_diff(60)) / 60;
+        let base = brightness - chroma;
+        let (red, green, blue) = match hue / 60 {
+            0 => (chroma, middle, 0),
+            1 => (middle, chroma, 0),
+            2 => (0, chroma, middle),
+            3 => (0, middle, chroma),
+            4 => (middle, 0, chroma),
+            _ => (chroma, 0, middle),
+        };
+        format!("#{:02x}{:02x}{:02x}", red + base, green + base, blue + base)
     }
 
     /// Whether this is the organization's designated Owner role.

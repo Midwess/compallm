@@ -85,7 +85,6 @@ export function RoleEditorSettings() {
     draft = useRole((s) => s.draft),
     readonly = useSettings((s) => s.readonly),
     loading = useRole((s) => s.loading),
-    policySaveFailed = useRole((s) => s.policySaveFailed),
     busy = useRole((s) => s.busy)
   if (loading) return <SettingsContent aria-busy="true" aria-label="Loading role" />
   if (!draft)
@@ -186,14 +185,6 @@ export function RoleEditorSettings() {
               ''
             )}
           </div>
-          {policySaveFailed ? (
-            <div className="px-4 text-xs text-error">
-              Policy changes were not saved.{' '}
-              <Button variant="ghost" className="h-7 px-1 text-xs" onClick={() => c.commitPolicySource?.()}>
-                Retry save
-              </Button>
-            </div>
-          ) : null}
         </section>
         {!locked && !draft.id ? (
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
@@ -208,7 +199,7 @@ export function RoleEditorSettings() {
             </Button>
           </div>
         ) : null}
-        {!locked && draft.id ? (
+        {!draft.builtin && draft.id ? (
           <Section title="Danger" className="shrink-0">
             <Rows>
               <Row label="Delete role" last>

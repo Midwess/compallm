@@ -137,6 +137,7 @@ type Mutation {
   Create a role in the verified active organization.
   """
   roleCreate(input: RoleCreateInput!): RolePayload!
+  roleDelete(id: ID!): BooleanPayload!
   roleUpdate(id: ID!, input: RoleUpdateInput!): RolePayload!
 
   """

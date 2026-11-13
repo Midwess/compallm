@@ -4,6 +4,7 @@ import get from 'lodash-es/get'
 import isObjectLike from 'lodash-es/isObjectLike'
 
 const fallbackMessage = 'Something went wrong. Please try again.'
+let actionToastSequence = 0
 
 export function apiErrorMessage(error: unknown): string {
   if (!isObjectLike(error)) return fallbackMessage
@@ -13,11 +14,31 @@ export function apiErrorMessage(error: unknown): string {
   return typeof message === 'string' && message.trim() ? message : fallbackMessage
 }
 
-function show(tone: NonNullable<ToastProps['tone']>, message: string) {
-  return toast.custom((id) => <Toast tone={tone} message={message} onDismiss={() => toast.dismiss(id)} />, {
-    id: `${tone}:${message}`,
-    duration: 15_000,
-  })
+function show(tone: NonNullable<ToastProps['tone']>, message: string, action?: ToastProps['action']) {
+  return toast.custom(
+    (id) => (
+      <Toast
+        tone={tone}
+        message={message}
+        action={
+          action
+            ? {
+                ...action,
+                onClick: () => {
+                  toast.dismiss(id)
+                  action.onClick()
+                },
+              }
+            : undefined
+        }
+        onDismiss={() => toast.dismiss(id)}
+      />
+    ),
+    {
+      id: action ? `${tone}:${message}:action:${++actionToastSequence}` : `${tone}:${message}`,
+      duration: 15_000,
+    },
+  )
 }
 
 export const notify = {
@@ -26,5 +47,9 @@ export const notify = {
   error: (error: unknown) => {
     if (isObjectLike(error) && get(error, 'name') === 'AbortError') return
     return show('error', apiErrorMessage(error))
+  },
+  apiError: (error: unknown, retry: () => void) => {
+    if (isObjectLike(error) && get(error, 'name') === 'AbortError') return
+    return show('error', apiErrorMessage(error), { label: 'Retry', onClick: retry })
   },
 }

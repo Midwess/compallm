@@ -71,7 +71,7 @@ test('reports denied combined reads without presenting partial results', async (
     await new Promise((resolve) => setTimeout(resolve, 20))
     assert.deepEqual(controller.store.getState().roles, [])
     assert.deepEqual(controller.store.getState().groups, [])
-    assert.ok(toast.getToasts().some((entry) => entry.id === 'error:Denied'))
+    assert.ok(toast.getToasts().some((entry) => String(entry.id).startsWith('error:Denied:action:')))
     stop()
   } finally {
     globalThis.fetch = original
@@ -225,7 +225,7 @@ test('reports policy access denial without presenting partial role data', async 
     controller.setPage('role', '9')
     await until(controller.role.store, (state) => !state.loading)
     assert.equal(controller.role.store.getState().draft, null)
-    assert.ok(toast.getToasts().some((entry) => entry.id === 'error:Policy access denied'))
+    assert.ok(toast.getToasts().some((entry) => String(entry.id).startsWith('error:Policy access denied:action:')))
     stop()
   } finally {
     globalThis.fetch = original
@@ -277,4 +277,86 @@ test('role and group drafts remain independent when navigating between pages', (
   controller.group.store.setState((state) => ({ draft: { ...state.draft, name: 'Design' } }))
   assert.equal(controller.role.store.getState().draft.name, 'Editor')
   assert.equal(controller.group.store.getState().draft.name, 'Design')
+})
+
+test('role deletion navigates to blank settings after confirmation', async () => {
+  const original = globalThis.fetch
+  const paths = []
+  let deletes = 0
+  const controller = new SettingsController(
+    'Research team',
+    { navigate: (path) => paths.push(path) },
+    { signOut() {} },
+    'general',
+  )
+  globalThis.fetch = async (_input, init) => {
+    const { query } = JSON.parse(init.body)
+    if (query.includes('roleDelete')) {
+      deletes++
+      return Response.json({ data: { roleDelete: { node: true } } })
+    }
+    if (query.includes('organizationPolicyActions'))
+      return Response.json({ data: { organizationPolicyActions: { edges: [] } } })
+    if (query.includes('role('))
+      return Response.json({
+        data: { role: { node: { id: '9', name: 'Editor', description: '', color: '#c06040', cedarSource: '' } } },
+      })
+    return Response.json({
+      data: { roles: { edges: [{ node: { id: '9', name: 'Editor', color: '#c06040' } }] }, groups: { edges: [] } },
+    })
+  }
+  try {
+    const stop = controller.start()
+    controller.setPage('role', '9')
+    await until(controller.role.store, (state) => state.draft?.id === '9')
+    controller.pages.dialogs.openDialog('delete-role', '9')
+    controller.pages.dialogs.confirmDialog()
+    controller.pages.dialogs.confirmDialog()
+    await until(controller.store, (state) => !state.busy)
+    assert.equal(deletes, 1)
+    assert.equal(controller.store.getState().dialog, null)
+    assert.equal(
+      controller.store.getState().roles.some((role) => role.id === '9'),
+      false,
+    )
+    assert.equal(paths.at(-1), '/Research%20team/settings/blank')
+    stop()
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+test('assigned role deletion retains the dialog and role', async () => {
+  const original = globalThis.fetch
+  const paths = []
+  const controller = new SettingsController(
+    'Research team',
+    { navigate: (path) => paths.push(path) },
+    { signOut() {} },
+    'general',
+  )
+  globalThis.fetch = async (_input, init) => {
+    const { query } = JSON.parse(init.body)
+    if (query.includes('roleDelete'))
+      return Response.json({
+        errors: [{ message: 'Role has assignments', extensions: { code: 'ROLE_ASSIGNED', status: 409 } }],
+      })
+    return Response.json({
+      data: { roles: { edges: [{ node: { id: '9', name: 'Editor', color: '#c06040' } }] }, groups: { edges: [] } },
+    })
+  }
+  try {
+    const stop = controller.start()
+    await until(controller.store, (state) => state.roles.length === 1)
+    controller.pages.dialogs.openDialog('delete-role', '9')
+    controller.pages.dialogs.confirmDialog()
+    await until(controller.store, (state) => !state.busy)
+    assert.equal(controller.store.getState().dialog?.kind, 'delete-role')
+    assert.equal(controller.store.getState().roles[0].id, '9')
+    assert.deepEqual(paths, [])
+    assert.ok(toast.getToasts().some((entry) => String(entry.id).startsWith('error:Role has assignments:action:')))
+    stop()
+  } finally {
+    globalThis.fetch = original
+  }
 })

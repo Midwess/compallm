@@ -198,7 +198,7 @@ export function SettingsDialogs() {
     'reveal-key': 'Copy and store this key securely. Keep your API key private.',
     'revoke-key': 'Requests using this API key will no longer be authorized. This cannot be undone.',
     'remove-member': 'This member will lose membership and access to the organization.',
-    'delete-role': 'Assignments will lose the grants from this role. Review the effect before deleting it.',
+    'delete-role': 'Remove all members and groups assigned to this role before deleting it. This cannot be undone.',
     'delete-group': 'Members will lose grants inherited from this group. Direct role assignments will remain.',
     'remove-group-member': 'This member will lose grants inherited through this group. Direct roles will remain.',
   }

@@ -57,6 +57,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+export const Blank: Story = { render: () => <Demo page="blank" /> }
 export const General: Story = { render: () => <Demo /> }
 export const GeneralNarrow: Story = {
   render: () => <Demo />,
@@ -161,6 +162,15 @@ export const GroupReadOnly: Story = {
 export const EditRole: Story = { render: () => <Demo page="role" id="model-operator" /> }
 export const RoleLoading: Story = {
   render: () => <Demo page="role" id="model-operator" roleLoadingMs={1200} />,
+}
+export const DeleteRole: Story = {
+  render: () => (
+    <Demo
+      page="role"
+      id="model-operator"
+      initial={{ dialog: { kind: 'delete-role', targetId: 'model-operator', name: '', value: '', phrase: '' } }}
+    />
+  ),
 }
 export const BuiltInRole: Story = { render: () => <Demo page="role" id="owner" /> }
 export const NewRole: Story = { render: () => <Demo page="new-role" /> }

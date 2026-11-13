@@ -80,6 +80,7 @@ export interface Mutation {
   groupCreate: CreatedGroupPayload
   /** Create a role in the verified active organization. */
   roleCreate: RolePayload
+  roleDelete: BooleanPayload
   roleUpdate: RolePayload
   /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
   sessionRefresh: SessionCredentialsPayload
@@ -354,6 +355,7 @@ export interface MutationGenqlSelection {
   groupCreate?: CreatedGroupPayloadGenqlSelection & { __args: { input: GroupCreateInput } }
   /** Create a role in the verified active organization. */
   roleCreate?: RolePayloadGenqlSelection & { __args: { input: RoleCreateInput } }
+  roleDelete?: BooleanPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   roleUpdate?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; input: RoleUpdateInput } }
   /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
   sessionRefresh?: SessionCredentialsPayloadGenqlSelection

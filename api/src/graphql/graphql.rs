@@ -150,6 +150,14 @@ impl Mutation {
         organization::role::mutation::create(input, service, authority).await
     }
 
+    async fn role_delete(
+        id: ID,
+        #[graphql(context)] service: &RbacService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<bool>, Error> {
+        organization::role::mutation::delete(id, service, authority).await
+    }
+
     async fn role_update(
         id: ID,
         input: organization::role::input::RoleUpdateInput,

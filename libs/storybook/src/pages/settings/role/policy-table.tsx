@@ -113,16 +113,6 @@ function PermissionRow({
             ))}
           </details>
         ) : null}
-        {statements.length ? (
-          <details className="mt-1 text-xs text-muted">
-            <summary className="cursor-pointer">Scope and rules</summary>
-            {[...new Set(statements.map((entry) => entry.source))].map((source) => (
-              <pre key={source} className="mt-1 whitespace-pre-wrap wrap-break-word">
-                {source}
-              </pre>
-            ))}
-          </details>
-        ) : null}
       </Table.Cell>
       <Table.Cell className="px-1 py-0 text-xs text-muted">{action.description}</Table.Cell>
       <Table.Cell className="px-2 py-0">

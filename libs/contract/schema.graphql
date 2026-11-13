@@ -235,6 +235,7 @@ type Mutation {
   sessionRevoke: BooleanPayload!
   "Create a role in the verified active organization."
   roleCreate(input: RoleCreateInput!): RolePayload!
+  roleDelete(id: ID!): BooleanPayload!
   roleUpdate(id: ID!, input: RoleUpdateInput!): RolePayload!
   "Create a group and its initial role assignments in the verified active organization."
   groupCreate(input: GroupCreateInput!): CreatedGroupPayload!

@@ -43,7 +43,7 @@ impl OrganizationRepository for Repository {
     async fn lock_role(&self, _: u64, _: u64) -> Result<Role, OrganizationRepositoryError> {
         unimplemented!()
     }
-    async fn lock_role_groups(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
+    async fn lock_role_groups(&self, _: u64, _: u64) -> Result<bool, OrganizationRepositoryError> {
         unimplemented!()
     }
     async fn lock_group(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {

@@ -30,6 +30,7 @@ pub struct AuthService {
     sessions: &'static Box<dyn SessionRepository>,
     dictionaries: &'static Box<dyn DictionaryRepository>,
     registration: &'static RegistrationService,
+    preferences: &'static crate::preference::UserPreferenceService,
     jwt_secret: String,
     lifetimes: TokenLifetimes,
     email: Option<&'static Box<dyn EmailService>>,
@@ -92,6 +93,7 @@ impl AuthService {
         sessions: &'static Box<dyn SessionRepository>,
         dictionaries: &'static Box<dyn DictionaryRepository>,
         registration: &'static RegistrationService,
+        preferences: &'static crate::preference::UserPreferenceService,
         jwt_secret: String,
         lifetimes: TokenLifetimes,
         email: Option<&'static Box<dyn EmailService>>,
@@ -103,6 +105,7 @@ impl AuthService {
             sessions,
             dictionaries,
             registration,
+            preferences,
             jwt_secret,
             lifetimes,
             email,
@@ -193,6 +196,7 @@ impl AuthService {
         let dictionary = self.latest_dictionary().await?;
         crate::transaction!(DbContext::current()?, {
             let user = self.registration.register(&claims.email).await?;
+            self.preferences.create_defaults(user.id).await?;
             if user.status != UserStatus::Active {
                 return Err(AuthError::UserDisabled);
             }
@@ -231,7 +235,7 @@ impl AuthService {
         {
             return Err(AuthError::InvalidSession);
         }
-        let snapshot = PolicySnapshot::new(&membership);
+        let snapshot = PolicySnapshot::new(&membership)?;
         let renewed = session.refresh(&claims, self.lifetimes.refresh)?;
         let dictionary = self.latest_dictionary().await?;
         self.issue_tokens(&renewed, snapshot, dictionary).await
@@ -271,7 +275,7 @@ impl AuthService {
         let dictionary = self.latest_dictionary().await?;
         let refresh = RefreshToken::from_session(&session, self.lifetimes.refresh)?;
         let tokens = self
-            .issue_tokens(&refresh, PolicySnapshot::new(&membership), dictionary)
+            .issue_tokens(&refresh, PolicySnapshot::new(&membership)?, dictionary)
             .await?;
 
         if !self.sessions.update(&session, &previous).await? {
@@ -291,7 +295,7 @@ impl AuthService {
         let session = Session::new(user_id, membership.organization_id, organization.name).await?;
         let refresh = RefreshToken::from_session(&session, self.lifetimes.refresh)?;
         let tokens = self
-            .issue_tokens(&refresh, PolicySnapshot::new(&membership), dictionary)
+            .issue_tokens(&refresh, PolicySnapshot::new(&membership)?, dictionary)
             .await?;
         self.sessions.create(session).await?;
         Ok(tokens)

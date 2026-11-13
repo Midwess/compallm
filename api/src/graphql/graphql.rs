@@ -2,7 +2,7 @@ use super::{
     GraphqlContext, authentication,
     base_type::{Collection, Payload},
     error::Error,
-    organization,
+    organization, policy,
 };
 use crate::http::{
     authentication::{AuthenticationContext, CookieDelivery, UserContext},
@@ -23,6 +23,24 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
+    /// Return the signed-in user's personal preferences; missing rows use Core defaults without a write.
+    async fn user_preferences(
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::preference::user::UserPreferenceRepository,
+        >,
+        #[graphql(context)] database: &compallm_core::persistent::DbContext,
+    ) -> Result<Payload<super::preference::user::UserPreferences>, Error> {
+        super::preference::user::query::get(user, repository.as_ref(), database).await
+    }
+
+    /// Return the system-owned organization policy action catalog.
+    async fn organization_policy_actions(
+        #[graphql(context)] user: &UserContext,
+    ) -> Result<Collection<policy::PolicyAction>, Error> {
+        policy::query::list(user).await
+    }
+
     /// Return the verified current session identity.
     async fn session(
         #[graphql(context)] user: &UserContext,
@@ -76,6 +94,25 @@ pub struct Mutation;
 
 #[graphql_object(context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Mutation {
+    /// Atomically patch the signed-in user's preferences, preserving omitted fields.
+    async fn user_preferences_update(
+        input: super::preference::user::input::UserPreferencesPatchInput,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::preference::UserPreferenceService,
+        #[graphql(context)] database: &compallm_core::persistent::DbContext,
+    ) -> Result<Payload<super::preference::user::UserPreferences>, Error> {
+        super::preference::user::mutation::update(input, user, service, database).await
+    }
+    /// Restore selected preference groups, or ALL alone, to Core defaults.
+    async fn user_preferences_reset(
+        groups: Vec<super::preference::user::input::UserPreferenceGroup>,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::preference::UserPreferenceService,
+        #[graphql(context)] database: &compallm_core::persistent::DbContext,
+    ) -> Result<Payload<super::preference::user::UserPreferences>, Error> {
+        super::preference::user::mutation::reset(groups, user, service, database).await
+    }
+
     /// Request a signup email challenge; reject existing accounts before sending.
     async fn email_signup_request(
         input: authentication::input::EmailInput,
@@ -143,6 +180,23 @@ impl Mutation {
         organization::role::mutation::create(input, service, authority).await
     }
 
+    async fn role_delete(
+        id: ID,
+        #[graphql(context)] service: &RbacService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<bool>, Error> {
+        organization::role::mutation::delete(id, service, authority).await
+    }
+
+    async fn role_update(
+        id: ID,
+        input: organization::role::input::RoleUpdateInput,
+        #[graphql(context)] service: &RbacService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<organization::role::Role>, Error> {
+        organization::role::mutation::update(id, input, service, authority).await
+    }
+
     /// Create a group and its initial role assignments in the verified active organization.
     async fn group_create(
         input: organization::group::input::GroupCreateInput,
@@ -186,6 +240,13 @@ impl GraphQLType for RegisteredQuery {
         registry.get_type::<input::ProviderReplaceInput>(&());
         registry.get_type::<input::ProviderPatchInput>(&());
         registry.get_type::<catalog::ProviderTemplate>(&());
+        registry.get_type::<super::user::input::ProfileUpdateInput>(&());
+        registry.get_type::<super::user::input::ImageUploadInput>(&());
+        registry.get_type::<super::organization::input::OrganizationSettingsUpdateInput>(&());
+        registry.get_type::<super::chat::input::ChatCreateInput>(&());
+        registry.get_type::<super::user::input::CredentialCreateInput>(&());
+        registry.get_type::<super::organization::input::SpendingLimitInput>(&());
+        registry.get_type::<super::organization::input::ReportingScheduleInput>(&());
         Query::meta(info, registry)
     }
 }
@@ -228,7 +289,17 @@ impl GraphQLValueAsync for RegisteredQuery {
 #[derive(JsonSchema)]
 #[allow(dead_code)]
 struct Inputs {
+    user_preferences_patch: super::preference::user::input::UserPreferencesPatchInput,
+    credential_create: super::user::input::CredentialCreateInput,
+    spending_limit: super::organization::input::SpendingLimitInput,
+    reporting_schedule: super::organization::input::ReportingScheduleInput,
+    form_0: super::user::input::ProfileUpdateInput,
+    form_2: super::user::input::ImageUploadInput,
+    form_3: super::organization::input::OrganizationSettingsUpdateInput,
+    form_4: super::chat::input::ChatCreateInput,
+
     role_create: super::organization::role::input::RoleCreateInput,
+    role_update: super::organization::role::input::RoleUpdateInput,
     group_create: super::organization::group::input::GroupCreateInput,
     email: super::authentication::input::EmailInput,
     code: super::authentication::input::EmailCodeInput,

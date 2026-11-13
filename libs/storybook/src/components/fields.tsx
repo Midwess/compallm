@@ -2,38 +2,86 @@ import { animated } from './motion'
 import { otpLength, otpPattern, otpCharacters } from '@compallm/contract/auth'
 import { useEffect, useRef, useState, type ComponentPropsWithRef, type TextareaHTMLAttributes } from 'react'
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGlass'
-import { cx } from './shared'
+import { cx, composeRefs } from './shared'
+import { useFormField, useNativeFormField } from './form'
 
 export type TextFieldProps = ComponentPropsWithRef<'input'>
-
-export function TextField({ className, ...props }: TextFieldProps) {
+export function TextField({ className, onChange, onBlur, onKeyDown, value, ...props }: TextFieldProps) {
+  const field = useNativeFormField(props.name)
   return (
     <animated.input
       {...props}
+      {...field?.registration}
+      ref={composeRefs(field?.registration.ref, props.ref)}
+      value={field ? undefined : value}
+      defaultValue={field ? field.defaultValue : props.defaultValue}
+      aria-describedby={props['aria-describedby'] ?? (field ? `${props.name}-error` : undefined)}
+      aria-invalid={props['aria-invalid']}
+      onChange={(event) => {
+        if (field) void field.registration.onChange(event)
+        else onChange?.(event)
+      }}
+      onBlur={(event) => {
+        if (field) void field.registration.onBlur(event)
+        onBlur?.(event)
+      }}
+      onKeyDown={(event) => {
+        onKeyDown?.(event)
+        if (event.defaultPrevented || event.nativeEvent.isComposing || !field) return
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          field.enter()
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          field.escape()
+        }
+      }}
       className={cx(
-        `
-  block h-8 w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
-  py-1 text-left text-sm leading-5.5 text-text placeholder:text-muted placeholder:opacity-100
-  focus:border-muted/60 focus:outline-none aria-invalid:border-error
-  disabled:cursor-not-allowed disabled:opacity-50
-`,
+        `block h-8 w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
+py-1 text-left text-sm leading-5.5 text-text placeholder:text-muted placeholder:opacity-100
+focus:border-muted/60 focus:outline-none aria-invalid:border-error disabled:cursor-not-allowed disabled:opacity-50`,
         className,
       )}
     />
   )
 }
-
-export function MultilineField({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function MultilineField({ className, value, onChange, onBlur, onKeyDown, ...props }: ComponentPropsWithRef<'textarea'>) {
+  const field = useNativeFormField(props.name)
   return (
     <animated.textarea
       {...props}
+      {...field?.registration}
+      ref={composeRefs(field?.registration.ref, props.ref)}
+      value={field ? undefined : value}
+      defaultValue={field ? field.defaultValue : props.defaultValue}
+      aria-describedby={props['aria-describedby'] ?? (field ? `${props.name}-error` : undefined)}
+      aria-invalid={props['aria-invalid']}
+      onChange={(event) => {
+        if (field) void field.registration.onChange(event)
+        else onChange?.(event)
+      }}
+      onBlur={(event) => {
+        if (field) void field.registration.onBlur(event)
+        onBlur?.(event)
+      }}
+      onKeyDown={(event) => {
+        onKeyDown?.(event)
+        if (event.defaultPrevented || event.nativeEvent.isComposing || !field) return
+        if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+          event.preventDefault()
+          field.enter()
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          field.escape()
+        }
+      }}
       className={cx(
-        `
-  block w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
-  py-1 text-left text-sm leading-5.5 text-text placeholder:text-muted placeholder:opacity-100
-  focus:border-muted/60 focus:outline-none aria-invalid:border-error
-  disabled:cursor-not-allowed disabled:opacity-50 h-auto min-h-16 resize-y
-`,
+        `block w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
+py-1 text-left text-sm leading-5.5 text-text placeholder:text-muted placeholder:opacity-100
+focus:border-muted/60 focus:outline-none aria-invalid:border-error disabled:cursor-not-allowed disabled:opacity-50
+h-auto min-h-16 resize-y`,
         className,
       )}
     />
@@ -80,6 +128,7 @@ export function CodeField({ className, ...props }: TextFieldProps) {
 }
 
 export interface CodeEntryProps {
+  name?: string
   value?: string
   defaultValue?: string
   onValueChange?: (value: string) => void
@@ -91,6 +140,7 @@ export interface CodeEntryProps {
 }
 
 export function CodeEntry({
+  name,
   value,
   defaultValue = '',
   onValueChange,
@@ -99,16 +149,20 @@ export function CodeEntry({
   'aria-label': label,
   ...a11y
 }: CodeEntryProps) {
+  const field = useFormField<string>(name)
   const [local, setLocal] = useState(defaultValue)
   const inputs = useRef<Array<HTMLInputElement | null>>([])
-  const current = (value ?? local).padEnd(otpLength, ' ').slice(0, otpLength)
+  const current = (field ? (field.value ?? '') : (value ?? local)).padEnd(otpLength, ' ').slice(0, otpLength)
   useEffect(() => {
     if (autoFocus && !disabled) (inputs.current.find((input) => input?.value === '') ?? inputs.current[0])?.focus()
   }, [autoFocus, disabled])
   function update(next: string[], focus: number) {
     const nextCode = next.join('').trimEnd()
-    setLocal(nextCode)
-    onValueChange?.(nextCode)
+    if (field) field.change(nextCode)
+    else {
+      setLocal(nextCode)
+      onValueChange?.(nextCode)
+    }
     inputs.current[Math.max(0, Math.min(otpLength - 1, focus))]?.focus()
   }
   function insert(text: string, index: number) {
@@ -124,7 +178,11 @@ export function CodeEntry({
       className={`
   flex w-88 max-w-full gap-1 [&>input]:min-w-0 [&>input]:max-w-13 [&>input]:flex-1
 `}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) field?.blur()
+      }}
       data-ui="code-entry"
+      data-form-field={name}
       role="group"
       aria-label={label}
     >
@@ -132,6 +190,8 @@ export function CodeEntry({
         <CodeField
           key={index}
           {...a11y}
+          aria-invalid={field?.invalid || a11y['aria-invalid']}
+          aria-describedby={a11y['aria-describedby'] ?? (field ? `${name}-error` : undefined)}
           ref={(element) => {
             inputs.current[index] = element
           }}
@@ -196,6 +256,22 @@ export function DocumentBodyEditor({ className, ...props }: TextareaHTMLAttribut
     <MultilineField
       {...props}
       className={cx('border-transparent bg-transparent p-0 min-h-24 text-[15px] leading-6', className)}
+    />
+  )
+}
+
+export function FileField({ name, onChange, ...props }: Omit<TextFieldProps, 'type' | 'value' | 'defaultValue'>) {
+  const field = useFormField<File | null>(name)
+  return (
+    <animated.input
+      {...props}
+      name={name}
+      type="file"
+      onChange={(event) => {
+        if (field) field.change(event.currentTarget.files?.[0] ?? null)
+        else onChange?.(event)
+        event.currentTarget.value = ''
+      }}
     />
   )
 }

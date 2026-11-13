@@ -11,7 +11,7 @@ pub struct Model {
         unique_key = "providers_organization_id_id_unique"
     )]
     pub id: i64,
-    #[sea_orm(unique_key = "providers_organization_id_id_unique")]
+    #[sea_orm(unique_key = "providers_organization_id_name_unique")]
     pub organization_id: i64,
     #[sea_orm(
         column_type = "Text",
@@ -36,14 +36,14 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Organizations,
+    #[sea_orm(has_many = "super::provider_audio_usage::Entity")]
+    ProviderAudioUsage,
+    #[sea_orm(has_many = "super::provider_image_usage::Entity")]
+    ProviderImageUsage,
     #[sea_orm(has_many = "super::provider_models::Entity")]
     ProviderModels,
     #[sea_orm(has_many = "super::provider_token_usage::Entity")]
     ProviderTokenUsage,
-    #[sea_orm(has_many = "super::provider_image_usage::Entity")]
-    ProviderImageUsage,
-    #[sea_orm(has_many = "super::provider_audio_usage::Entity")]
-    ProviderAudioUsage,
     #[sea_orm(has_many = "super::provider_video_usage::Entity")]
     ProviderVideoUsage,
 }
@@ -51,6 +51,18 @@ pub enum Relation {
 impl Related<super::organizations::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Organizations.def()
+    }
+}
+
+impl Related<super::provider_audio_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderAudioUsage.def()
+    }
+}
+
+impl Related<super::provider_image_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderImageUsage.def()
     }
 }
 
@@ -65,16 +77,7 @@ impl Related<super::provider_token_usage::Entity> for Entity {
         Relation::ProviderTokenUsage.def()
     }
 }
-impl Related<super::provider_image_usage::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ProviderImageUsage.def()
-    }
-}
-impl Related<super::provider_audio_usage::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ProviderAudioUsage.def()
-    }
-}
+
 impl Related<super::provider_video_usage::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ProviderVideoUsage.def()

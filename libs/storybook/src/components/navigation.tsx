@@ -114,7 +114,7 @@ export function DragHandle({
   ...props
 }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> & { label: string }) {
   return (
-    <ToolbarAction {...props} label={label} className={cx('w-6 cursor-grab rounded-md active:cursor-grabbing', className)}>
+    <ToolbarAction {...props} label={label} className={cx('w-6 cursor-grab rounded-full active:cursor-grabbing', className)}>
       <DotsSixVerticalIcon size={14} aria-hidden="true" />
     </ToolbarAction>
   )

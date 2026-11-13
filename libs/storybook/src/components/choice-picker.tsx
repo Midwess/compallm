@@ -1,9 +1,11 @@
-import type { ReactNode } from 'react'
+import { useFormField } from './form'
+import { useContext, type ReactNode } from 'react'
 import { Combobox } from '@base-ui/react/combobox'
 import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
 import { Button } from './buttons'
 import { Searchbox } from './fields'
-import { overlay } from './motion'
+import { FloatingMotion } from './motion'
+import { FloatingContainerContext } from '../context'
 
 export interface ChoicePickerOption {
   id: string
@@ -14,33 +16,45 @@ export interface ChoicePickerOption {
 }
 
 export interface ChoicePickerProps {
+  name?: string
   label: string
   searchLabel: string
   placeholder: string
   emptyMessage: string
   emptyAction?: ReactNode
   options: ChoicePickerOption[]
-  value: string[]
-  onValueChange(value: string[]): void
+  value?: string[]
+  onValueChange?(value: string[]): void
   disabled?: boolean
 }
 
 export function ChoicePicker({
+  name,
   label,
   searchLabel,
   placeholder,
   emptyMessage,
   emptyAction,
   options,
-  value,
-  onValueChange,
+  value: suppliedValue,
+  onValueChange: suppliedChange,
   disabled,
 }: ChoicePickerProps) {
+  const field = useFormField<string[]>(name)
+  const value = field ? (field.value ?? []) : (suppliedValue ?? [])
+  const onValueChange = (value: string[]) => {
+    if (field) field.change(value)
+    else suppliedChange?.(value)
+  }
+  const container = useContext(FloatingContainerContext)
   const selected = options.filter((option) => value.includes(option.id))
   return (
     <Combobox.Root
       items={options}
       multiple
+      onOpenChange={(open) => {
+        if (!open) field?.blur()
+      }}
       value={selected}
       disabled={disabled}
       itemToStringLabel={(option: ChoicePickerOption) => option.label}
@@ -50,15 +64,26 @@ export function ChoicePicker({
         onValueChange([...value.filter((id) => !known.has(id)), ...next.map((option) => option.id)])
       }}
     >
-      <Combobox.Trigger render={<Button variant="neutral" className="h-6 rounded-full px-2 text-xs" />}>
+      <Combobox.Trigger
+        data-form-field={name}
+        aria-invalid={field?.invalid || undefined}
+        aria-describedby={field ? `${name}-error` : undefined}
+        render={<Button variant="neutral" className="h-6 rounded-full px-2 text-xs" />}
+      >
         {label}
       </Combobox.Trigger>
-      <Combobox.Portal>
-        <Combobox.Positioner sideOffset={6} align="end" collisionPadding={8} className="z-50 outline-none">
+      <Combobox.Portal container={container}>
+        <Combobox.Positioner
+          sideOffset={6}
+          align="end"
+          positionMethod="fixed"
+          collisionPadding={8}
+          className="z-50 outline-none"
+        >
           <Combobox.Popup
-            render={<overlay.div />}
+            render={<FloatingMotion />}
             className="flex max-h-(--available-height) w-2xs max-w-[calc(100vw-1rem)] flex-col overflow-hidden
-rounded-lg border border-border bg-menu font-sans text-text shadow-menu"
+rounded-[10px] border border-border bg-menu font-sans text-text shadow-menu"
           >
             <div className="p-2 pb-0">
               <Searchbox>
@@ -77,7 +102,7 @@ rounded-lg border border-border bg-menu font-sans text-text shadow-menu"
                   key={option.id}
                   value={option}
                   disabled={option.disabled}
-                  className="flex min-h-9 cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left text-xsm
+                  className="flex min-h-9 cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xsm
 outline-none data-highlighted:bg-elevated data-disabled:cursor-not-allowed data-disabled:opacity-50"
                 >
                   {option.color ? (

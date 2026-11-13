@@ -40,7 +40,7 @@ impl Fixture {
                 authorization_version: 1,
                 revoked_at: None,
             },
-            PolicySnapshot::new(&membership),
+            PolicySnapshot::new(&membership).unwrap(),
             Duration::from_secs(60),
         )
         .unwrap();
@@ -205,7 +205,7 @@ async fn permission_loader_survives_waiter_cancellation_and_caches_failure() {
 }
 
 #[tokio::test]
-async fn scope_shares_context_and_restores_outer_after_transaction() {
+async fn scope_activates_its_context_and_restores_the_active_transaction() {
     let connection = Fixture::connection();
     assert!(matches!(
         DbContext::current(),
@@ -225,10 +225,26 @@ async fn scope_shares_context_and_restores_outer_after_transaction() {
                         .scope(async {
                             assert!(std::ptr::eq(
                                 DbContext::current().unwrap().postgres(),
-                                transaction.postgres()
+                                connection.postgres()
+                            ));
+                            transaction
+                                .scope(async {
+                                    assert!(std::ptr::eq(
+                                        DbContext::current().unwrap().postgres(),
+                                        transaction.postgres()
+                                    ));
+                                })
+                                .await;
+                            assert!(std::ptr::eq(
+                                DbContext::current().unwrap().postgres(),
+                                connection.postgres()
                             ));
                         })
                         .await;
+                    assert!(std::ptr::eq(
+                        DbContext::current()?.postgres(),
+                        transaction.postgres()
+                    ));
                     Ok::<_, ConnectionError>(())
                 })
                 .await
@@ -286,14 +302,15 @@ async fn concurrent_transactions_stay_isolated_on_the_same_thread() {
                 DbContext::current()?.postgres(),
                 transaction.postgres()
             ));
-            one.transaction(async {
-                assert!(std::ptr::eq(
-                    DbContext::current()?.postgres(),
-                    transaction.postgres()
-                ));
-                Ok::<_, ConnectionError>(())
-            })
-            .await
+            transaction
+                .transaction(async {
+                    assert!(std::ptr::eq(
+                        DbContext::current()?.postgres(),
+                        transaction.postgres()
+                    ));
+                    Ok::<_, ConnectionError>(())
+                })
+                .await
         }),
         two.transaction(async {
             let transaction = DbContext::current()?;
@@ -302,12 +319,13 @@ async fn concurrent_transactions_stay_isolated_on_the_same_thread() {
                 DbContext::current()?.postgres(),
                 transaction.postgres()
             ));
-            two.transaction(async {
-                Err::<(), _>(ConnectionError::database(anyhow::anyhow!(
-                    "independent transaction failed"
-                )))
-            })
-            .await
+            transaction
+                .transaction(async {
+                    Err::<(), _>(ConnectionError::database(anyhow::anyhow!(
+                        "independent transaction failed"
+                    )))
+                })
+                .await
         }),
     );
     assert!(first.is_ok());
@@ -332,6 +350,62 @@ async fn transaction_can_borrow_and_return_local_data_without_move() {
 }
 
 #[tokio::test]
+async fn transaction_uses_receiver_authority_and_restores_the_request_scope() {
+    let template = Fixture::connection();
+    let request = template.fresh().unwrap();
+    let trusted = template.fresh().unwrap();
+    request
+        .restrict(async { Ok::<_, Infallible>(Arc::new(Fixture::permission(1, 7))) })
+        .unwrap();
+    request
+        .request_scope(async {
+            let restricted = DbContext::current().unwrap();
+            trusted
+                .transaction(async {
+                    let transaction = DbContext::current()?;
+                    assert!(transaction.postgres().is_transaction());
+                    assert!(matches!(
+                        transaction.permission().await,
+                        Err(PermissionError::Missing)
+                    ));
+                    assert!(!std::ptr::eq(transaction.postgres(), restricted.postgres()));
+                    restricted
+                        .transaction(async {
+                            let current = DbContext::current()?;
+                            assert!(current.postgres().is_transaction());
+                            assert_eq!(current.permission().await.unwrap().user_id(), 1);
+                            assert!(!std::ptr::eq(current.postgres(), transaction.postgres()));
+                            Ok::<_, ConnectionError>(())
+                        })
+                        .await?;
+                    assert!(std::ptr::eq(
+                        DbContext::current()?.postgres(),
+                        transaction.postgres()
+                    ));
+                    Ok::<_, ConnectionError>(())
+                })
+                .await
+                .unwrap();
+            assert!(std::ptr::eq(
+                DbContext::current().unwrap().postgres(),
+                restricted.postgres()
+            ));
+            assert_eq!(
+                DbContext::current()
+                    .unwrap()
+                    .permission()
+                    .await
+                    .unwrap()
+                    .user_id(),
+                1
+            );
+        })
+        .await
+        .unwrap();
+    assert!(DbContext::current().is_err());
+}
+
+#[tokio::test]
 async fn completed_transaction_context_cannot_query_or_start_another_transaction() {
     let connection = Fixture::connection();
     let escaped = connection
@@ -346,7 +420,7 @@ async fn completed_transaction_context_cannot_query_or_start_another_transaction
                 Err(ConnectionError::Database(_))
             ));
             assert!(matches!(
-                connection
+                escaped
                     .transaction(async { Ok::<_, ConnectionError>(()) })
                     .await,
                 Err(ConnectionError::Database(_))
@@ -356,7 +430,7 @@ async fn completed_transaction_context_cannot_query_or_start_another_transaction
 }
 
 #[tokio::test]
-async fn explicit_trusted_scope_restores_and_cannot_remove_request_restrictions() {
+async fn scope_restores_request_authority_after_failure_and_cancellation() {
     let template = Fixture::connection();
     let request = template.fresh().unwrap();
     let trusted = template.fresh().unwrap();
@@ -364,12 +438,11 @@ async fn explicit_trusted_scope_restores_and_cannot_remove_request_restrictions(
         .restrict(async { Ok::<_, Infallible>(Arc::new(Fixture::permission(1, 7))) })
         .unwrap();
     assert!(request.fresh().is_err());
-    assert!(request.independent_scope(async {}).await.is_err());
     request
         .request_scope(async {
             let restricted = DbContext::current().unwrap();
             let result = trusted
-                .independent_scope(async {
+                .scope(async {
                     let current = DbContext::current().unwrap();
                     assert!(
                         PostgresConnection::from_context(&current)
@@ -377,18 +450,40 @@ async fn explicit_trusted_scope_restores_and_cannot_remove_request_restrictions(
                             .rls()
                             .is_none()
                     );
+                    restricted
+                        .scope(async {
+                            assert_eq!(
+                                DbContext::current()
+                                    .unwrap()
+                                    .permission()
+                                    .await
+                                    .unwrap()
+                                    .user_id(),
+                                1
+                            );
+                        })
+                        .await;
+                    assert!(std::ptr::eq(
+                        DbContext::current().unwrap().postgres(),
+                        trusted.postgres()
+                    ));
                     Err::<(), _>(ConnectionError::database(anyhow::anyhow!(
                         "trusted operation failed"
                     )))
                 })
-                .await
-                .unwrap();
+                .await;
             assert!(result.is_err());
             assert!(std::ptr::eq(
                 DbContext::current().unwrap().postgres(),
                 restricted.postgres()
             ));
-            let mut cancelled = Box::pin(trusted.independent_scope(std::future::pending::<()>()));
+            let mut cancelled = Box::pin(trusted.scope(async {
+                assert!(std::ptr::eq(
+                    DbContext::current().unwrap().postgres(),
+                    trusted.postgres()
+                ));
+                std::future::pending::<()>().await;
+            }));
             tokio::select! {
                 biased;
                 _ = &mut cancelled => unreachable!(),

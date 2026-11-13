@@ -1,8 +1,10 @@
+import type { ProviderModelConfiguration as ModelConfiguration } from '@compallm/contract/graphql'
+import { ProviderModelConfiguration, ProviderCreateInput } from '@compallm/contract/validation'
 import { ProviderFields, ProviderModelFields, ProviderInputRules } from '@compallm/contract/provider'
 import { headersAreValid, acceptsHeaderInput } from '@compallm/contract/provider'
 import { modelPath, modelDraftFingerprint } from './model-options'
 import type { CreateProviderState, ModelDraft, ProviderSnapshot } from './types'
-import { providerCreateRequest, providerReplaceRequest } from './contract'
+import { providerCreateRequest, providerReplaceRequest, modelConfiguration } from './contract'
 
 export { headersAreValid, acceptsHeaderInput }
 export const isValidBaseUrl = (value: string) => ProviderFields.shape.baseUrl.safeParse(value).success
@@ -65,4 +67,48 @@ export function hasProviderChanges(state: CreateProviderState): boolean {
 }
 export function canSaveProvider(state: CreateProviderState): boolean {
   return state.intent === 'edit' && hasProviderChanges(state) && canCreateProvider(state)
+}
+
+export function parseModelDraft(
+  draft: ModelDraft | null,
+  models: CreateProviderState['models'],
+  editing: string | null,
+): { data?: ModelConfiguration; issues?: { path: PropertyKey[]; message: string }[] } {
+  const configuration = draft ? modelConfiguration({ ...draft, enabled: true, modes: [] }) : {}
+  const result = ProviderModelConfiguration.safeParse(configuration)
+  if (!result.success)
+    return { issues: result.error.issues.map((issue) => ({ ...issue, path: ['modelDraft', ...issue.path] })) }
+  const entries = models.filter((model) => model.id !== editing).map((model) => ({ configuration: modelConfiguration(model) }))
+  entries.push({ configuration: result.data })
+  const collection = ProviderCreateInput.shape.models.safeParse(entries)
+  return collection.success
+    ? { data: result.data }
+    : { issues: collection.error.issues.map((issue) => ({ ...issue, path: ['modelDraft', 'name'] })) }
+}
+export function parseProvider(state: CreateProviderState): {
+  values?: Partial<CreateProviderState>
+  issues?: { path: PropertyKey[]; message: string }[]
+} {
+  const result = state.intent === 'edit' ? providerReplaceRequest(state) : providerCreateRequest(state)
+  if (result.success) {
+    const normalized = 'providers' in result.data ? result.data.providers[0] : result.data
+    return {
+      values: {
+        name: normalized.name,
+        baseUrl: normalized.baseUrl,
+        apiKey: state.apiKey,
+        models: state.models,
+        headers: state.headers,
+      },
+    }
+  }
+  return {
+    issues: result.error.issues.map((issue) => {
+      const path = [...issue.path]
+      if (path[0] === 'providers') path.splice(0, 2)
+      const configuration = path.indexOf('configuration')
+      if (configuration >= 0) path.splice(configuration, 1)
+      return { ...issue, path }
+    }),
+  }
 }

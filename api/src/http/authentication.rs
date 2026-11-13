@@ -71,7 +71,7 @@ impl AuthenticationContext {
         &self,
         operation: impl Future<Output = Result<T, AuthError>>,
     ) -> Result<T, AuthError> {
-        self.trusted.independent_scope(operation).await?
+        self.trusted.scope(operation).await
     }
 
     async fn selected(&self) -> Result<&SelectedToken, RequestError> {
@@ -211,6 +211,13 @@ impl AuthenticationContext {
 }
 
 impl UserContext {
+    pub(super) fn signout_invalid_authority(&self, cookies: &CookieDelivery) {
+        if self.0.headers.contains_key(AUTHORIZATION) {
+            return;
+        }
+        let _ = cookies.clear();
+    }
+
     pub async fn require(&self) -> Result<&VerifiedAccess, RequestError> {
         self.0
             .user

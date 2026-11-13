@@ -12,7 +12,6 @@ use crate::authorization::{
 };
 
 pub mod error;
-pub mod preferences;
 #[path = "registration-service.rs"]
 pub mod registration_service;
 

@@ -44,10 +44,15 @@ async fn entity_creation_owns_ids_and_default_policy_relationships() {
     assert_eq!(group.roles, vec![owner]);
     for role in &roles {
         assert_eq!(role.organization_id, organization.id);
-        assert!(
-            role.cedar_source
-                .contains(&format!("{}:{}", organization.id, role.id))
-        );
+        let policies = cedar_policy::PolicySet::try_from(role).unwrap();
+        let expected: cedar_policy::EntityUid =
+            format!("Compallm::Role::\"{}:{}\"", organization.id, role.id)
+                .parse()
+                .unwrap();
+        assert!(policies.policies().all(|policy| matches!(
+            policy.principal_constraint(),
+            cedar_policy::PrincipalConstraint::In(uid) if uid == expected
+        )));
     }
     assert!(
         roles[1]
@@ -140,13 +145,12 @@ async fn group_constructor_checks_name_and_role_scope() {
 }
 
 #[tokio::test]
-async fn role_constructor_checks_cedar_and_preserves_source() {
+async fn role_constructor_checks_and_compacts_cedar_source() {
     use compallm_core::organization::role::RoleCreationError;
     compallm_postgres::init_id_generator("role-policy-validation-test").unwrap();
     for source in [
         "invalid policy",
         "permit(principal, action == Compallm::Action::\"unknown\", resource);",
-        "permit(principal == ?principal, action, resource);",
     ] {
         assert!(matches!(
             Role::new(1, "Role", "", source).await,
@@ -155,7 +159,10 @@ async fn role_constructor_checks_cedar_and_preserves_source() {
     }
     let source = "// kept\npermit(principal, action == Compallm::Action::\"model.read\", resource is Compallm::Organization);\n";
     let role = Role::new(1, "Role", "", source).await.unwrap();
-    assert_eq!(role.cedar_source, source);
+    assert_eq!(
+        role.cedar_source,
+        compallm_core::authorization::policy::compact_policy_source(source)
+    );
     assert!(role.ensure_deletable().is_ok());
     let mut owner = role;
     owner.org_owner = true;

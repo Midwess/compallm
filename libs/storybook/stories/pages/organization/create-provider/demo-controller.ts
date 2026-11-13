@@ -13,7 +13,6 @@ import {
   canCreateProvider,
   canSaveProvider,
   providerSnapshot,
-  hasValidModelPrices,
   isValidModelDraft,
 } from '../../../../src/pages/organization/create-provider/validation'
 import {
@@ -213,17 +212,10 @@ export class DemoCreateProviderController implements CreateProviderController {
     this.endpoint()
   }
   onModelQueryChanged = (modelQuery: string) => this.store.setState({ modelQuery })
-  onModelEnabledChanged = (id: string, enabled: boolean) => {
+  onModelsChanged = (models: ProviderModel[]) => {
     this.invalidateTest()
-    this.store.setState((state) => ({
-      models: state.models.map((model) =>
-        model.id === id &&
-        (model.protocol || model.modes.some((mode) => ['chat_completions', 'responses', 'messages'].includes(mode))) &&
-        hasValidModelPrices(model)
-          ? { ...model, enabled }
-          : model,
-      ),
-    }))
+    this.store.setState({ models })
+    this.endpoint()
   }
   private emptyModel(id: string, protocol: TextModelProtocol = 'openai_chat_completions'): ModelDraft {
     return {
@@ -265,14 +257,6 @@ export class DemoCreateProviderController implements CreateProviderController {
     this.store.setState({ providerProtocolFilter })
   onClearModelFilters = () =>
     this.store.setState({ modelStatusFilter: 'all', modelProtocolFilter: 'all', modelCapabilityFilter: [] })
-  onModelsEnabledChanged = (ids: string[], enabled: boolean) => {
-    this.invalidateTest()
-    this.store.setState((state) => ({
-      models: state.models.map((model) =>
-        ids.includes(model.id) && hasValidModelPrices(model) ? { ...model, enabled } : model,
-      ),
-    }))
-  }
   onEditModel = (id: string) => {
     const model = this.store.getState().models.find((model) => model.id === id)
     if (model) this.store.setState({ editingModelId: id, modelDraft: { ...model, thinkingLevels: [...model.thinkingLevels] } })
@@ -280,8 +264,8 @@ export class DemoCreateProviderController implements CreateProviderController {
   onModelDraftChanged = (patch: Partial<ModelDraft>) =>
     this.store.setState((state) => ({ modelDraft: state.modelDraft ? { ...state.modelDraft, ...patch } : null }))
   onCancelModel = () => this.store.setState({ modelDraft: null, editingModelId: null })
-  onSaveModel = () => {
-    const { modelDraft: draft, models, editingModelId } = this.store.getState()
+  onSaveModel = (draft: ModelDraft) => {
+    const { models, editingModelId } = this.store.getState()
     if (
       !draft ||
       !isValidModelDraft(draft) ||
@@ -331,6 +315,7 @@ export class DemoCreateProviderController implements CreateProviderController {
     if (state.submitting || !canSaveProvider(state)) return
     this.store.setState({ savedProvider: providerSnapshot(state), apiKey: '' })
     this.report(`Save provider: ${state.name}`)
+    return this.store.form.values
   }
   onCancelProvider = () => {
     const saved = this.store.getState().savedProvider
@@ -360,5 +345,6 @@ export class DemoCreateProviderController implements CreateProviderController {
     const state = this.store.getState()
     if (state.submitting || !canCreateProvider(state)) return
     this.report(`Create provider: ${state.name} · ${state.models.filter((model) => model.enabled).length} models`)
+    return this.store.form.values
   }
 }

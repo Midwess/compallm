@@ -1,10 +1,14 @@
+import { ProviderPatchInput } from '@compallm/contract/validation'
+import { contractResult } from '../../../components/form'
+import { FormError } from '../../../components/form'
+import { Form } from '../../../components/form'
 import {
-  ProviderFields,
   ProviderFieldsInput,
   ProviderFieldsConstraints,
   ProviderHeaderConstraints,
+  ProviderModelFieldsInput,
 } from '@compallm/contract/provider'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { EyeIcon } from '@phosphor-icons/react/dist/csr/Eye'
 import { EyeSlashIcon } from '@phosphor-icons/react/dist/csr/EyeSlash'
 import { FormSection } from '../../../components/form-section'
@@ -16,61 +20,42 @@ import { LinkSimpleIcon } from '@phosphor-icons/react/dist/csr/LinkSimple'
 import { Button } from '../../../components/buttons'
 import { KeyValueEditor } from '../../../components/key-value-editor'
 import { ProviderAvatar } from '../../../components/provider-avatar'
-import { FieldHelp, Tooltip } from '../../../components/feedback'
+import { FieldHelp, Tooltip, Toast } from '../../../components/feedback'
 
 import { useController, useProvider } from './controller'
 import { ProviderModels } from './model-table'
-import { canCreateProvider, canSaveProvider } from './validation'
-import { acceptsHeaderInput, headersAreValid, isValidBaseUrl } from './validation'
+import { parseProvider } from './validation'
+import { acceptsHeaderInput } from './validation'
 function ConnectionFields() {
   const [keyVisible, setKeyVisible] = useState(false)
   const controller = useController()
-  const name = useProvider((state) => state.name)
-  const baseUrl = useProvider((state) => state.baseUrl)
-  const apiKey = useProvider((state) => state.apiKey)
   const editing = useProvider((state) => state.intent === 'edit')
   const busy = useProvider((state) => state.submitting)
   const selected = useProvider((state) => state.selectedProviderId)
-  const avatarUrl = useProvider((state) => state.avatarUrl)
-  const headers = useProvider((state) => state.headers)
+  const avatarUrl = useProvider((state) => state.avatarUrl, ['avatarUrl'])
   return (
     <SectionSurface className="grid min-w-0 gap-4">
       <fieldset disabled={busy} className="grid min-w-0 gap-4">
         <div className="flex min-w-0 items-end gap-3">
           <FormField className="flex-1">
             <FormField.Label>Connection name</FormField.Label>
-            <FormField.Input
-              value={name}
-              required
-              aria-invalid={(name !== '' && !ProviderFields.shape.name.safeParse(name).success) || undefined}
-              placeholder="Enter connection name"
-              onChange={(event) => {
-                if (ProviderFieldsInput.name(event.target.value)) controller.onConnectionChanged('name', event.target.value)
-              }}
-            />
+            <FormField.Input name="name" required placeholder="Enter connection name" />
+            <FormError name="name" />
           </FormField>
-          <ProviderAvatar provider={selected} src={avatarUrl} disabled={busy} onFileChange={controller.onAvatarChanged} />
+          <ProviderAvatar name="avatarFile" provider={selected} src={avatarUrl} disabled={busy} />
+          <FormError name="avatarFile" />
         </div>
         <FormField>
           <FormField.Label>Base URL</FormField.Label>
           <FormField.Input
-            value={baseUrl}
+            name="baseUrl"
             type="url"
             required
             autoCapitalize="none"
             spellCheck={false}
-            aria-invalid={(baseUrl !== '' && !isValidBaseUrl(baseUrl)) || undefined}
             placeholder="https://api.example.com/v1"
-            onChange={(event) => {
-              if (ProviderFieldsInput.baseUrl(event.target.value)) controller.onConnectionChanged('baseUrl', event.target.value)
-            }}
           />
-          {baseUrl !== '' && !isValidBaseUrl(baseUrl) ? (
-            <FormField.Hint>
-              Enter an HTTP or HTTPS URL up to {ProviderFieldsConstraints.baseUrl.maxLength} characters, without spaces,
-              credentials, a query, or a fragment.
-            </FormField.Hint>
-          ) : null}
+          <FormError name="baseUrl" />
         </FormField>
         <FormField>
           <div className="flex items-center gap-1">
@@ -90,13 +75,10 @@ function ConnectionFields() {
               required={!editing}
               autoCapitalize="none"
               spellCheck={false}
-              aria-invalid={(apiKey !== '' && !ProviderFields.shape.apiKey.safeParse(apiKey).success) || undefined}
-              value={apiKey}
+              name="apiKey"
               placeholder={editing ? 'Leave empty to keep current key' : 'Enter your API key'}
-              onChange={(event) => {
-                if (ProviderFieldsInput.apiKey(event.target.value)) controller.onConnectionChanged('apiKey', event.target.value)
-              }}
             />
+            <FormError name="apiKey" />
             <button
               type="button"
               aria-label={keyVisible ? 'Hide API key' : 'Show API key'}
@@ -117,19 +99,15 @@ hover:text-text focus-visible:outline-muted
         </FormField>
       </fieldset>
       <KeyValueEditor
-        value={headers}
+        name="headers"
         acceptEntry={acceptsHeaderInput}
         keyMaxLength={ProviderHeaderConstraints.key.maxLength}
         disabled={busy || !controller.onHeadersChanged}
-        onValueChange={(value) => controller.onHeadersChanged?.(value)}
       >
         <KeyValueEditor.Disclosure>Headers</KeyValueEditor.Disclosure>
       </KeyValueEditor>
-      {!headersAreValid(headers) ? (
-        <p role="alert" className="text-xs text-error">
-          Use unique HTTP header names and valid values. Authorization requires a valid scheme and credentials.
-        </p>
-      ) : null}
+      <FormError name="headers" />
+      <FormError name="models" />
     </SectionSurface>
   )
 }
@@ -138,7 +116,6 @@ function TestConnection() {
   const result = useProvider((state) => state.test)
   const endpoint = useProvider((state) => state.endpointUrl)
   const busy = useProvider((state) => state.submitting)
-  const ready = useProvider(canCreateProvider)
   return (
     <SectionSurface className="grid gap-2">
       <p className="flex min-w-0 items-center gap-2 text-xs text-focus">
@@ -148,7 +125,7 @@ function TestConnection() {
       <div className="flex flex-wrap items-center gap-3">
         <Button
           className="h-7 px-3 text-xs"
-          disabled={!ready || busy}
+          disabled={busy}
           loading={result.status === 'testing'}
           onClick={() => void controller.onTestConnection()}
         >
@@ -179,20 +156,68 @@ function TestConnection() {
 export function ProviderConfiguration() {
   const controller = useController()
   const intent = useProvider((state) => state.intent)
-  const ready = useProvider((state) => (state.intent === 'edit' ? canSaveProvider(state) : canCreateProvider(state)))
   const busy = useProvider((state) => state.submitting)
   const error = useProvider((state) => state.error)
+  const form = controller.store.form
+  useEffect(
+    () =>
+      form.configure({
+        mode: 'button',
+        command: true,
+        fields: {
+          name: { accepts: (value) => ProviderFieldsInput.name(String(value)) },
+          baseUrl: { accepts: (value) => ProviderFieldsInput.baseUrl(String(value)) },
+          apiKey: { accepts: (value) => ProviderFieldsInput.apiKey(String(value)) },
+          'modelDraft.path': { accepts: (value) => ProviderModelFieldsInput.path('/' + String(value).replace(/^\/+/, '')) },
+          'modelDraft.name': { accepts: (value) => ProviderModelFieldsInput.name(String(value)) },
+          'modelDraft.maxContextTokens': { accepts: (value) => ProviderModelFieldsInput.maxContextTokens(String(value)) },
+          'modelDraft.inputPrice': { accepts: (value) => ProviderModelFieldsInput.inputPrice(String(value)) },
+          'modelDraft.outputPrice': { accepts: (value) => ProviderModelFieldsInput.inputPrice(String(value)) },
+          'modelDraft.cachedPrice': { accepts: (value) => ProviderModelFieldsInput.inputPrice(String(value)) },
+        },
+        changed: (field, value) => {
+          if (field === 'name' || field === 'baseUrl' || field === 'apiKey')
+            controller.onConnectionChanged(field, String(value))
+          if (field === 'models' || field.startsWith('models[')) controller.onModelsChanged(controller.store.getState().models)
+          if (field === 'avatarFile') controller.onAvatarChanged?.(value as File | null)
+          if (field === 'headers' || field.startsWith('headers.'))
+            controller.onHeadersChanged?.(controller.store.getState().headers)
+          if (field === 'modelDraft.path') controller.onModelDraftChanged({ path: '/' + String(value).replace(/^\/+/, '') })
+          else if (field.startsWith('modelDraft.'))
+            controller.onModelDraftChanged({
+              [field.slice(11)]: value,
+              ...(field === 'modelDraft.effortMapping'
+                ? { thinkingLevels: Object.keys(value as object) as import('./types').ThinkingLevel[] }
+                : {}),
+            })
+        },
+        parse: (values, names) => {
+          if (names.length === 1 && ['name', 'baseUrl', 'apiKey'].includes(names[0])) {
+            const name = names[0] as 'name' | 'baseUrl' | 'apiKey'
+            const patch =
+              name === 'apiKey' && !values.apiKey && controller.store.getState().intent === 'edit'
+                ? {}
+                : { [name]: values[name] }
+            if (!Object.keys(patch).length) return { values }
+            const result = ProviderPatchInput.safeParse(patch)
+            return contractResult(result, result.success ? { ...values, [name]: result.data[name] } : values)
+          }
+          const state = { ...controller.store.getState(), ...values }
+          const result = parseProvider(state)
+          return result.issues ? result : { values: { ...values, ...result.values } }
+        },
+        submit: async (values) => {
+          const result =
+            controller.store.getState().intent === 'edit'
+              ? await controller.onSaveProvider(values)
+              : await controller.onCreateProvider(values)
+          return result && typeof result === 'object' ? result : false
+        },
+      }),
+    [controller, form],
+  )
   return (
-    <form
-      className="mx-auto grid min-w-0 w-full max-w-4xl gap-6 px-4 py-8"
-      onSubmit={(event) => {
-        event.preventDefault()
-        if (ready && !busy) {
-          if (intent === 'edit') void controller.onSaveProvider()
-          else void controller.onCreateProvider()
-        }
-      }}
-    >
+    <Form model={form} className="mx-auto grid min-w-0 w-full max-w-4xl gap-6 px-4 py-8">
       <FormSection>
         <FormSection.Marker>1</FormSection.Marker>
         <FormSection.Heading>Connection</FormSection.Heading>
@@ -209,9 +234,9 @@ export function ProviderConfiguration() {
         <TestConnection />
       </FormSection>
       {error ? (
-        <p role="alert" className="pl-7 text-sm text-error">
-          {error}
-        </p>
+        <div className="fixed right-6 bottom-6 z-50">
+          <Toast tone="error" message={error} onDismiss={() => controller.store.setState({ error: null })} />
+        </div>
       ) : null}
       <div className="flex justify-end gap-2">
         {intent !== 'create' ? (
@@ -219,10 +244,10 @@ export function ProviderConfiguration() {
             Cancel
           </Button>
         ) : null}
-        <Button type="submit" variant="primary" className="h-7 w-32 text-xs" disabled={!ready} loading={busy}>
+        <Button type="submit" variant="primary" className="h-7 w-32 text-xs" disabled={busy} loading={busy}>
           {intent === 'edit' ? 'Save changes' : intent === 'clone' ? 'Create provider' : 'Add provider'}
         </Button>
       </div>
-    </form>
+    </Form>
   )
 }

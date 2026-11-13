@@ -11,6 +11,101 @@ enum CredentialDelivery {
   TOKEN
 }
 
+enum HomeDestination {
+  CHAT
+  MODELS
+  PROVIDERS
+}
+
+enum ImageMediaType {
+  JPEG
+  PNG
+  WEBP
+}
+
+enum PreferenceAppearanceMode {
+  SYSTEM
+  LIGHT
+  DARK
+}
+
+enum PreferenceBadgeStyle {
+  DOT
+  COUNT
+}
+
+enum PreferenceCodeTheme {
+  FOLLOW_INTERFACE
+  SYSTEM
+  LINEAR_LIGHT
+  LINEAR_DARK
+}
+
+enum PreferenceDarkPalette {
+  DARK
+  MAGIC_BLUE
+  CLASSIC_DARK
+}
+
+enum PreferenceDestination {
+  CHAT
+  MODELS
+  PROVIDERS
+  NOTEBOOKS
+  PLUGINS
+}
+
+enum PreferenceFontFamily {
+  DEFAULT
+  MONOSPACE
+}
+
+enum PreferenceKeyCombination {
+  ENTER
+  MODIFIER_ENTER
+}
+
+enum PreferenceLightPalette {
+  LIGHT
+  PURE_LIGHT
+}
+
+enum PreferenceNamingFormat {
+  FULL_NAME
+  USERNAME
+}
+
+enum PreferencePixelFontSize {
+  PX12
+  PX13
+  PX14
+  PX16
+}
+
+enum PreferenceRelativeFontSize {
+  SMALLER
+  SMALL
+  DEFAULT
+  LARGE
+  LARGER
+}
+
+enum PreferenceSidebarVisibility {
+  ALWAYS
+  WHEN_BADGED
+  HIDDEN
+}
+
+enum PreferenceWeekday {
+  MONDAY
+  SUNDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
 "Catalog connection family hint; each configured model selects its own operation."
 enum ProviderApiProtocol {
   OPENAI_COMPATIBLE
@@ -39,6 +134,48 @@ enum TextModelProtocol {
   OPENAI_CHAT_COMPLETIONS
   OPENAI_RESPONSES
   ANTHROPIC_MESSAGES
+}
+
+enum UserPreferenceGroup {
+  NAVIGATION
+  SIDEBAR
+  MEMBER_DISPLAY
+  CALENDAR
+  THEME
+  TYPOGRAPHY
+  ACCESSIBILITY
+  MESSAGE_COMPOSITION
+  CODE_APPEARANCE
+  ALL
+}
+
+input AccessibilityPatchInput {
+  underlineLinks: Boolean
+  reduceMotion: Boolean
+  pointerCursors: Boolean
+}
+
+input CalendarPatchInput {
+  firstDay: PreferenceWeekday
+}
+
+input ChatCreateInput {
+  message: String!
+  modelId: String!
+}
+
+input CodeAppearancePatchInput {
+  theme: PreferenceCodeTheme
+  font: CodeFontPatchInput
+}
+
+input CodeFontPatchInput {
+  family: PreferenceFontFamily
+  size: PreferencePixelFontSize
+}
+
+input CredentialCreateInput {
+  name: String!
 }
 
 """
@@ -71,6 +208,43 @@ input GroupCreateInput {
   name: String!
   description: String!
   roleIds: [String!]!
+}
+
+input ImageUploadInput {
+  mediaType: ImageMediaType!
+  size: Int!
+}
+
+input MemberDisplayPatchInput {
+  nameFormat: PreferenceNamingFormat
+}
+
+input MessageCompositionPatchInput {
+  convertEmoticons: Boolean
+  sendShortcut: PreferenceKeyCombination
+}
+
+input NavigationPatchInput {
+  home: PreferenceDestination
+}
+
+input OrganizationSettingsUpdateInput {
+  name: String
+  slug: String
+  fiscalMonth: String
+  welcome: String
+  announcements: String
+  home: HomeDestination
+}
+
+input PalettePatchInput {
+  light: PreferenceLightPalette
+  dark: PreferenceDarkPalette
+}
+
+input ProfileUpdateInput {
+  name: String
+  username: String
 }
 
 "Opaque registry identity, independent of an edited upstream model name."
@@ -158,17 +332,88 @@ input ProvidersCreateInput {
   providers: [ProviderCreateInput!]!
 }
 
+input ReportingScheduleInput {
+  timezone: String!
+}
+
 input RoleCreateInput {
   name: String!
   description: String!
+  "Comments and unnecessary whitespace are removed before the length limit is checked."
   cedarSource: String!
+}
+
+input RoleUpdateInput {
+  name: String
+  description: String
+  "Comments and unnecessary whitespace are removed before the length limit is checked."
+  cedarSource: String
+}
+
+"Order replaces ordering while preserving visibility; visibility patches are keyed by destination."
+input SidebarPatchInput {
+  order: [PreferenceDestination!]
+  visibility: [SidebarVisibilityPatchInput!]
+  badgeStyle: PreferenceBadgeStyle
+}
+
+input SidebarVisibilityPatchInput {
+  item: PreferenceDestination!
+  visibility: PreferenceSidebarVisibility!
+}
+
+input SpendingLimitInput {
+  amount: String
+}
+
+input ThemePatchInput {
+  mode: PreferenceAppearanceMode
+  palettes: PalettePatchInput
+}
+
+input TypographyPatchInput {
+  family: PreferenceFontFamily
+  size: PreferenceRelativeFontSize
+}
+
+"Partial personal preferences. Omitted fields are preserved; explicit null is rejected."
+input UserPreferencesPatchInput {
+  navigation: NavigationPatchInput
+  sidebar: SidebarPatchInput
+  memberDisplay: MemberDisplayPatchInput
+  calendar: CalendarPatchInput
+  theme: ThemePatchInput
+  typography: TypographyPatchInput
+  accessibility: AccessibilityPatchInput
+  messageComposition: MessageCompositionPatchInput
+  codeAppearance: CodeAppearancePatchInput
 }
 
 "Positive u32 context size, encoded as an exact JSON number (1–4294967295)."
 scalar ContextTokens
 
+type AccessibilityPreferences {
+  underlineLinks: Boolean!
+  reduceMotion: Boolean!
+  pointerCursors: Boolean!
+}
+
 type BooleanPayload {
   node: Boolean!
+}
+
+type CalendarPreferences {
+  firstDay: PreferenceWeekday!
+}
+
+type CodeAppearancePreferences {
+  theme: PreferenceCodeTheme!
+  font: CodeFontPreferences!
+}
+
+type CodeFontPreferences {
+  family: PreferenceFontFamily!
+  size: PreferencePixelFontSize!
 }
 
 type CreatedGroup {
@@ -212,7 +457,20 @@ type GroupPayload {
   node: Group!
 }
 
+type MemberDisplayPreferences {
+  nameFormat: PreferenceNamingFormat!
+}
+
+type MessageCompositionPreferences {
+  convertEmoticons: Boolean!
+  sendShortcut: PreferenceKeyCombination!
+}
+
 type Mutation {
+  "Atomically patch the signed-in user's preferences, preserving omitted fields."
+  userPreferencesUpdate(input: UserPreferencesPatchInput!): UserPreferencesPayload!
+  "Restore selected preference groups, or ALL alone, to Core defaults."
+  userPreferencesReset(groups: [UserPreferenceGroup!]!): UserPreferencesPayload!
   "Request a signup email challenge; reject existing accounts before sending."
   emailSignupRequest(input: EmailInput!): EmailChallengePayload!
   "Confirm the verified signup challenge and create the account and session."
@@ -227,8 +485,14 @@ type Mutation {
   sessionRevoke: BooleanPayload!
   "Create a role in the verified active organization."
   roleCreate(input: RoleCreateInput!): RolePayload!
+  roleDelete(id: ID!): BooleanPayload!
+  roleUpdate(id: ID!, input: RoleUpdateInput!): RolePayload!
   "Create a group and its initial role assignments in the verified active organization."
   groupCreate(input: GroupCreateInput!): CreatedGroupPayload!
+}
+
+type NavigationPreferences {
+  home: PreferenceDestination!
 }
 
 type Organization {
@@ -247,6 +511,29 @@ type PageInfo {
   hasPreviousPage: Boolean!
 }
 
+type PalettePreferences {
+  light: PreferenceLightPalette!
+  dark: PreferenceDarkPalette!
+}
+
+type PolicyAction {
+  name: String!
+  displayName: String!
+  description: String!
+  entityType: String!
+  resourceType: String!
+}
+
+type PolicyActionConnection {
+  edges: [PolicyActionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PolicyActionEdge {
+  cursor: String!
+  node: PolicyAction!
+}
+
 "Public catalog defaults; selecting a template creates no configured provider."
 type ProviderTemplate {
   "Global opaque catalog identity, independent of organization resource IDs."
@@ -259,6 +546,10 @@ type ProviderTemplate {
 }
 
 type Query {
+  "Return the signed-in user's personal preferences; missing rows use Core defaults without a write."
+  userPreferences: UserPreferencesPayload!
+  "Return the system-owned organization policy action catalog."
+  organizationPolicyActions: PolicyActionConnection!
   "Return the verified current session identity."
   session: SessionPayload!
   "Return the active organization from verified user authority."
@@ -274,9 +565,13 @@ type Query {
 }
 
 type Role {
+  "Native Cedar source; template slots bind to this role and its organization."
+  cedarSource: String
   id: ID!
   name: String!
   description: String!
+  color: String!
+  owner: Boolean!
 }
 
 type RoleConnection {
@@ -320,10 +615,46 @@ type SessionPayload {
   node: Session!
 }
 
+type SidebarEntry {
+  item: PreferenceDestination!
+  visibility: PreferenceSidebarVisibility!
+}
+
+type SidebarPreferences {
+  badgeStyle: PreferenceBadgeStyle!
+  entries: [SidebarEntry!]!
+}
+
+type ThemePreferences {
+  mode: PreferenceAppearanceMode!
+  palettes: PalettePreferences!
+}
+
 "Exact Unix-second validity and client throttle values encoded as decimal strings."
 type TokenLifetime {
   issuedAt: String!
   expiresAt: String!
   expiresInSeconds: String!
   throttleSeconds: String!
+}
+
+type TypographyPreferences {
+  family: PreferenceFontFamily!
+  size: PreferenceRelativeFontSize!
+}
+
+type UserPreferences {
+  navigation: NavigationPreferences!
+  sidebar: SidebarPreferences!
+  memberDisplay: MemberDisplayPreferences!
+  calendar: CalendarPreferences!
+  theme: ThemePreferences!
+  typography: TypographyPreferences!
+  accessibility: AccessibilityPreferences!
+  messageComposition: MessageCompositionPreferences!
+  codeAppearance: CodeAppearancePreferences!
+}
+
+type UserPreferencesPayload {
+  node: UserPreferences!
 }

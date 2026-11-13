@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { emailAddress, type EmailPolicy } from './email.ts'
+import { compactCedarSource } from './cedar.ts'
 
 // Rust str::trim and char::is_whitespace use Unicode White_Space. JS trim/\s
 // additionally include FEFF and omit NEL; keep the Rust set explicit.
@@ -60,6 +61,7 @@ const formats: Record<string, (value: string, constraints: StringConstraints) =>
 }
 
 export interface StringConstraints {
+  messages?: Record<string, string>
   minLength?: number
   maxLength?: number
   pattern?: string
@@ -67,6 +69,7 @@ export interface StringConstraints {
   format?: string
   trim?: boolean
   asciiLowercase?: boolean
+  cedarCompact?: boolean
   emailPolicy?: EmailPolicy
 }
 
@@ -102,7 +105,8 @@ export function stringInput(constraints: StringConstraints) {
   return (value: string): boolean =>
     value === '' ||
     (!invalidUnicode.test(value) &&
-      (constraints.maxLength === undefined || [...value].length <= constraints.maxLength) &&
+      (constraints.maxLength === undefined ||
+        [...(constraints.cedarCompact ? compactCedarSource(value) : value)].length <= constraints.maxLength) &&
       (!pattern || pattern.test(value)) &&
       (!format || format(value)))
 }
@@ -132,19 +136,28 @@ export function inputString(constraints: StringConstraints) {
   return z
     .string()
     .transform((value) => {
-      const trimmed = constraints.trim ? trimInput(value) : value
+      const normalized = constraints.cedarCompact ? compactCedarSource(value) : value
+      const trimmed = constraints.trim ? trimInput(normalized) : normalized
       return constraints.asciiLowercase ? trimmed.replace(/[A-Z]/g, (letter) => letter.toLowerCase()) : trimmed
     })
     .superRefine((value, context) => {
       const length = [...value].length
-      if (
-        invalidUnicode.test(value) ||
-        (constraints.minLength !== undefined && length < constraints.minLength) ||
-        (constraints.maxLength !== undefined && length > constraints.maxLength) ||
-        (pattern && !pattern.test(value)) ||
-        (format && !format(value, constraints))
-      )
-        context.addIssue({ code: 'custom', message: 'Invalid input' })
+      const failure = invalidUnicode.test(value)
+        ? 'unicode'
+        : constraints.minLength !== undefined && length < constraints.minLength
+          ? 'minLength'
+          : constraints.maxLength !== undefined && length > constraints.maxLength
+            ? 'maxLength'
+            : pattern && !pattern.test(value)
+              ? 'pattern'
+              : format && !format(value, constraints)
+                ? 'x-compallm-format'
+                : undefined
+      if (failure)
+        context.addIssue({
+          code: 'custom',
+          message: constraints.messages?.[failure] ?? 'Invalid input',
+        })
     })
 }
 

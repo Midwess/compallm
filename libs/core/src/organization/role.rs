@@ -26,6 +26,8 @@ pub struct Role {
 pub enum RoleCreationError {
     #[error("role name must contain 1 to 64 characters")]
     InvalidName(#[source] validify::ValidationErrors),
+    #[error("invalid role description")]
+    InvalidDescription(#[source] validify::ValidationErrors),
     #[error("invalid Cedar policy")]
     InvalidPolicy(#[source] anyhow::Error),
     #[error("ID generation failed")]
@@ -36,9 +38,37 @@ pub enum RoleCreationError {
 pub enum RoleDeletionError {
     #[error("the organization owner role cannot be deleted")]
     OwnerRole,
+    #[error("Remove all members and groups assigned to this role before deleting it")]
+    Assigned,
 }
 
 impl Role {
+    pub fn color(&self) -> String {
+        use sha2::{Digest, Sha256};
+        let hash = Sha256::digest(self.name.as_bytes());
+        let value = u16::from_be_bytes([hash[1], hash[2]]);
+        let hue = if hash[0] < 160 {
+            (300 + value % 140) % 360
+        } else {
+            value % 360
+        };
+        let saturation = 65 + u16::from(hash[3]) * 20 / 255;
+        let brightness = 200 + u16::from(hash[4]) * 45 / 255;
+        let chroma = brightness * saturation / 100;
+        let remainder = hue % 120;
+        let middle = chroma * (60 - remainder.abs_diff(60)) / 60;
+        let base = brightness - chroma;
+        let (red, green, blue) = match hue / 60 {
+            0 => (chroma, middle, 0),
+            1 => (middle, chroma, 0),
+            2 => (0, chroma, middle),
+            3 => (0, middle, chroma),
+            4 => (middle, 0, chroma),
+            _ => (chroma, 0, middle),
+        };
+        format!("#{:02x}{:02x}{:02x}", red + base, green + base, blue + base)
+    }
+
     /// Whether this is the organization's designated Owner role.
     pub fn org_owner(&self) -> bool {
         self.org_owner
@@ -54,13 +84,33 @@ impl Role {
 
     /// Validate Cedar syntax and the application schema without authorizing publication.
     pub fn validate_policy(source: &str) -> anyhow::Result<()> {
-        let policies: PolicySet = source.parse()?;
-        anyhow::ensure!(
-            policies.templates().next().is_none(),
-            "unlinked role templates are unsupported"
-        );
+        use validify::Validify;
+        let mut input = RolePolicySource {
+            value: source.to_owned(),
+        };
+        input.validify()?;
+        Self::validate_policy_schema(&input.value)
+    }
+
+    pub fn prepare_policy_source(
+        source: &str,
+        organization_id: u64,
+        role_id: u64,
+    ) -> anyhow::Result<String> {
+        Self::validate_policy(source)?;
+        let policies =
+            crate::authorization::policy::role_policy_set(source, organization_id, role_id)?;
+        Self::validate_policy_set(&policies)?;
+        Ok(crate::authorization::policy::compact_policy_source(source))
+    }
+
+    fn validate_policy_schema(source: &str) -> anyhow::Result<()> {
+        Self::validate_policy_set(&source.parse()?)
+    }
+
+    fn validate_policy_set(policies: &PolicySet) -> anyhow::Result<()> {
         let result = Validator::new(crate::authorization::all_policies().clone())
-            .validate(&policies, ValidationMode::Strict);
+            .validate(policies, ValidationMode::Strict);
         anyhow::ensure!(
             result.validation_passed(),
             "Cedar schema validation failed: {:?}",
@@ -79,78 +129,86 @@ impl Role {
         Ok(name.value)
     }
 
-    const OWNER_POLICY: &str = r###"// Application-owned initial Owner policy; organization/role IDs are trusted numeric values.
+    pub fn validate_description(description: &str) -> Result<(), validify::ValidationErrors> {
+        use validify::Validify;
+        RoleDescription {
+            value: description.to_owned(),
+        }
+        .validify()
+    }
+
+    const OWNER_POLICY: &str = r###"// Application-owned initial Owner template.
 permit (
-    principal in Compallm::Role::"__ORG__:__OWNER__",
+    principal in ?principal,
     action in [Compallm::Action::"organization.settings.read", Compallm::Action::"organization.settings.update", Compallm::Action::"organization.delete", Compallm::Action::"member.read", Compallm::Action::"member.invite", Compallm::Action::"member.remove", Compallm::Action::"provider.read", Compallm::Action::"provider.create", Compallm::Action::"provider.configuration.update", Compallm::Action::"provider.delete", Compallm::Action::"provider.credential.replace", Compallm::Action::"provider.model.read", Compallm::Action::"provider.model.create", Compallm::Action::"provider.model.configuration.update", Compallm::Action::"provider.model.pricing.update", Compallm::Action::"provider.model.delete", Compallm::Action::"model.read", Compallm::Action::"model.create", Compallm::Action::"model.configuration.update", Compallm::Action::"model.delete", Compallm::Action::"model.use", Compallm::Action::"model.pricing.update", Compallm::Action::"role.read", Compallm::Action::"role.create", Compallm::Action::"role.metadata.update", Compallm::Action::"role.policy.read", Compallm::Action::"role.policy.update", Compallm::Action::"role.delete", Compallm::Action::"role.assign", Compallm::Action::"role.unassign", Compallm::Action::"group.read", Compallm::Action::"group.create", Compallm::Action::"group.metadata.update", Compallm::Action::"group.delete"],
-    resource in Compallm::Organization::"__ORG__"
+    resource in ?resource
 );
 
 permit (
-    principal in Compallm::Role::"__ORG__:__OWNER__",
+    principal in ?principal,
     action in [Compallm::Action::"member.role.assign", Compallm::Action::"member.role.unassign", Compallm::Action::"group.role.assign", Compallm::Action::"group.role.unassign"],
-    resource in Compallm::Organization::"__ORG__"
+    resource in ?resource
 ) when { context.role.organization == Compallm::Organization::"__ORG__" };
 
 permit (
-    principal in Compallm::Role::"__ORG__:__OWNER__",
+    principal in ?principal,
     action in [Compallm::Action::"group.member.add", Compallm::Action::"group.member.remove"],
-    resource in Compallm::Organization::"__ORG__"
+    resource in ?resource
 ) when { context.member.organization == Compallm::Organization::"__ORG__" };
 
 permit (
-    principal in Compallm::Role::"__ORG__:__OWNER__",
+    principal in ?principal,
     action in [Compallm::Action::"model.route.add", Compallm::Action::"model.route.update", Compallm::Action::"model.route.remove"],
-    resource in Compallm::Organization::"__ORG__"
+    resource in ?resource
 ) when { context.providerModel.organization == Compallm::Organization::"__ORG__" };
 
-forbid(principal in Compallm::Role::"__ORG__:__OWNER__", action == Compallm::Action::"model.use",
- resource is Compallm::Model in Compallm::Organization::"__ORG__") unless { resource.enabled };
+forbid(principal in ?principal, action == Compallm::Action::"model.use",
+ resource is Compallm::Model in ?resource) unless { resource.enabled };
 "###;
-    const ADMIN_POLICY: &str = r###"// Application-owned initial Admin policy; organization/role IDs are trusted numeric values.
+    const ADMIN_POLICY: &str = r###"// Application-owned initial Admin template.
 permit (
-    principal in Compallm::Role::"__ORG__:__ADMIN__",
+    principal in ?principal,
     action in [Compallm::Action::"organization.settings.read", Compallm::Action::"organization.settings.update", Compallm::Action::"member.read", Compallm::Action::"member.invite", Compallm::Action::"member.remove", Compallm::Action::"provider.read", Compallm::Action::"provider.create", Compallm::Action::"provider.configuration.update", Compallm::Action::"provider.delete", Compallm::Action::"provider.credential.replace", Compallm::Action::"provider.model.read", Compallm::Action::"provider.model.create", Compallm::Action::"provider.model.configuration.update", Compallm::Action::"provider.model.pricing.update", Compallm::Action::"provider.model.delete", Compallm::Action::"model.read", Compallm::Action::"model.create", Compallm::Action::"model.configuration.update", Compallm::Action::"model.delete", Compallm::Action::"model.use", Compallm::Action::"model.pricing.update", Compallm::Action::"role.read", Compallm::Action::"role.create", Compallm::Action::"role.metadata.update", Compallm::Action::"role.policy.read", Compallm::Action::"role.policy.update", Compallm::Action::"role.delete", Compallm::Action::"group.read", Compallm::Action::"group.create", Compallm::Action::"group.metadata.update", Compallm::Action::"group.delete"],
-    resource in Compallm::Organization::"__ORG__"
+    resource in ?resource
 );
 
 permit (
-    principal in Compallm::Role::"__ORG__:__ADMIN__",
+    principal in ?principal,
     action in [Compallm::Action::"member.role.assign", Compallm::Action::"member.role.unassign", Compallm::Action::"group.role.assign", Compallm::Action::"group.role.unassign"],
-    resource in Compallm::Organization::"__ORG__"
+    resource in ?resource
 ) when { context.role.organization == Compallm::Organization::"__ORG__" && context.role != Compallm::Role::"__ORG__:__OWNER__" };
 
 permit (
-    principal in Compallm::Role::"__ORG__:__ADMIN__",
+    principal in ?principal,
     action in [Compallm::Action::"group.member.add", Compallm::Action::"group.member.remove"],
-    resource in Compallm::Organization::"__ORG__"
+    resource in ?resource
 ) when { context.member.organization == Compallm::Organization::"__ORG__" }
 unless { resource in Compallm::Role::"__ORG__:__OWNER__" };
 
 permit (
-    principal in Compallm::Role::"__ORG__:__ADMIN__",
+    principal in ?principal,
     action in [Compallm::Action::"model.route.add", Compallm::Action::"model.route.update", Compallm::Action::"model.route.remove"],
-    resource in Compallm::Organization::"__ORG__"
+    resource in ?resource
 ) when { context.providerModel.organization == Compallm::Organization::"__ORG__" };
 
 permit (
- principal in Compallm::Role::"__ORG__:__ADMIN__",
+ principal in ?principal,
  action in [Compallm::Action::"role.assign", Compallm::Action::"role.unassign"],
- resource is Compallm::Role in Compallm::Organization::"__ORG__"
+ resource is Compallm::Role in ?resource
 ) unless { resource == Compallm::Role::"__ORG__:__OWNER__" };
 
-forbid(principal in Compallm::Role::"__ORG__:__ADMIN__", action == Compallm::Action::"model.use",
- resource is Compallm::Model in Compallm::Organization::"__ORG__") unless { resource.enabled };
+forbid(principal in ?principal, action == Compallm::Action::"model.use",
+ resource is Compallm::Model in ?resource) unless { resource.enabled };
 "###;
     const MEMBER_POLICY: &str = r###"// Default members discover models and invoke enabled logical models only.
-permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Action::"model.read",
- resource == Compallm::Organization::"__ORG__");
-permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Action::"model.use",
- resource is Compallm::Model in Compallm::Organization::"__ORG__") when { resource.enabled };
+permit(principal in ?principal, action == Compallm::Action::"model.read",
+ resource == ?resource);
+permit(principal in ?principal, action == Compallm::Action::"model.use",
+ resource is Compallm::Model in ?resource) when { resource.enabled };
 "###;
 
     /// Initial role records rendered with application-generated IDs, never reserved identities.
-    /// Labels do not establish authority; each stored Cedar source references the generated IDs.
+    /// Labels do not establish authority; slots bind to generated role and organization IDs.
     pub async fn defaults(organization_id: u64) -> Result<Vec<Self>, RoleCreationError> {
         let mut roles = vec![
             Self::new(organization_id, "Owner", "", "").await?,
@@ -158,18 +216,17 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
             Self::new(organization_id, "Member", "", "").await?,
         ];
         roles[0].org_owner = true;
-        let [owner_id, admin_id, member_id] = [roles[0].id, roles[1].id, roles[2].id];
+        let owner_id = roles[0].id;
         for (role, source) in
             roles
                 .iter_mut()
                 .zip([Self::OWNER_POLICY, Self::ADMIN_POLICY, Self::MEMBER_POLICY])
         {
-            role.cedar_source = source
+            let source = source
                 .replace("__ORG__", &organization_id.to_string())
-                .replace("__OWNER__", &owner_id.to_string())
-                .replace("__ADMIN__", &admin_id.to_string())
-                .replace("__MEMBER__", &member_id.to_string());
-            Self::validate_policy(&role.cedar_source).map_err(RoleCreationError::InvalidPolicy)?;
+                .replace("__OWNER__", &owner_id.to_string());
+            role.cedar_source = Self::prepare_policy_source(&source, organization_id, role.id)
+                .map_err(RoleCreationError::InvalidPolicy)?;
         }
         Ok(roles)
     }
@@ -181,13 +238,19 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
         cedar_source: impl Into<String>,
     ) -> Result<Self, RoleCreationError> {
         let name = Self::normalize_name(&name.into()).map_err(RoleCreationError::InvalidName)?;
-        let cedar_source = cedar_source.into();
+        let description = description.into();
+        Self::validate_description(&description).map_err(RoleCreationError::InvalidDescription)?;
+        let cedar_source =
+            crate::authorization::policy::compact_policy_source(&cedar_source.into());
         Self::validate_policy(&cedar_source).map_err(RoleCreationError::InvalidPolicy)?;
+        let id = try_gen_id().await?;
+        let cedar_source = Self::prepare_policy_source(&cedar_source, organization_id, id)
+            .map_err(RoleCreationError::InvalidPolicy)?;
         Ok(Self {
-            id: try_gen_id().await?,
+            id,
             organization_id,
             name,
-            description: description.into(),
+            description,
             cedar_source,
             org_owner: false,
         })
@@ -198,6 +261,19 @@ permit(principal in Compallm::Role::"__ORG__:__MEMBER__", action == Compallm::Ac
 struct RoleName {
     #[modify(trim)]
     #[validate(length(min = 1, max = 64))]
+    value: String,
+}
+
+#[derive(validify::Validify)]
+struct RoleDescription {
+    #[validate(length(max = 128))]
+    value: String,
+}
+
+#[derive(validify::Validify)]
+struct RolePolicySource {
+    #[modify(custom(crate::authorization::policy::compact_policy_input))]
+    #[validate(length(max = 10192))]
     value: String,
 }
 
@@ -222,11 +298,11 @@ impl TryFrom<&Role> for Entity {
 impl TryFrom<&Role> for PolicySet {
     type Error = anyhow::Error;
     fn try_from(role: &Role) -> Result<Self, Self::Error> {
-        let parsed: PolicySet = role.cedar_source.parse()?;
-        anyhow::ensure!(
-            parsed.templates().next().is_none(),
-            "unlinked role templates are unsupported"
-        );
+        let parsed = crate::authorization::policy::role_policy_set(
+            &role.cedar_source,
+            role.organization_id,
+            role.id,
+        )?;
         use sha2::{Digest, Sha256};
         let mut result = PolicySet::new();
         for policy in parsed.policies() {

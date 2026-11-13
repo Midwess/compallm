@@ -9,6 +9,14 @@
     "generate:graphql": "genql --schema schema.graphql --output graphql --sort --scalar ContextTokens:number"
   },
   "exports": {
+    "./preference": {
+      "types": "./dist/preference.d.ts",
+      "import": "./dist/preference.js"
+    },
+    "./cedar": {
+      "types": "./dist/cedar.d.ts",
+      "import": "./dist/cedar.js"
+    },
     "./auth": {
       "types": "./dist/auth.d.ts",
       "import": "./dist/auth.js"

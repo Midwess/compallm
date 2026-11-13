@@ -6,6 +6,7 @@ import { defineConfig } from 'vite'
 const source = (path: string) => fileURLToPath(new URL(`./src/${path}`, import.meta.url))
 const families = [
   'buttons',
+  'form',
   'choice-picker',
   'provider-icons',
   'provider-avatar',
@@ -26,6 +27,7 @@ const families = [
   'forms',
   'navigation',
   'page-header',
+  'page-progress',
   'sidebar',
   'selection',
   'surfaces',
@@ -62,12 +64,17 @@ export default defineConfig({
       external: (id) =>
         [
           '@compallm/contract',
+          '@bprogress/core',
           'react',
           'react-dom',
           '@base-ui/react',
           '@phosphor-icons/react',
           'tailwind-merge',
           'zustand',
+          'react-hook-form',
+          'use-sync-external-store',
+          '@hookform/resolvers',
+          'lodash-es',
           'motion',
         ].some((name) => id === name || id.startsWith(`${name}/`)),
       output: { minify: true },

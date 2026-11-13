@@ -8,7 +8,7 @@ import {
   type Ref,
 } from 'react'
 import { animate, type Transition } from 'motion'
-import { motion, useReducedMotion } from 'motion/react'
+import { motion, useReducedMotion, type HTMLMotionProps } from 'motion/react'
 
 export const animation = {
   interaction: { duration: 0.12, ease: 'easeOut' },
@@ -239,6 +239,20 @@ function overlayElement<Tag extends 'div' | 'span' | 'dialog'>(tag: Tag) {
 
 export const overlay = { div: overlayElement('div'), span: overlayElement('span'), dialog: overlayElement('dialog') }
 
+export function FloatingMotion({ ref, ...props }: HTMLMotionProps<'div'>) {
+  const timing = useTransition('enter')
+  const reduced = useReducedMotion()
+  return (
+    <motion.div
+      {...props}
+      ref={ref}
+      initial={reduced ? false : { opacity: 0, scale: animation.overlayScale }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={timing}
+    />
+  )
+}
+
 export function useSelectionMotion(
   inputRef: RefObject<HTMLInputElement | null>,
   kind: 'switch' | 'checkbox' | 'radio',
@@ -305,6 +319,9 @@ export function useSelectionMotion(
       changeTarget.removeEventListener('change', change)
       node.form?.removeEventListener('reset', reset)
       for (const control of controls.current) control.stop()
+      controls.current = []
+      initialized.current = false
+      previous.current = ''
     }
   }, [inputRef, kind, update])
 }
@@ -362,4 +379,18 @@ export function useDisclosure(defaultOpen: boolean) {
     toggle: () => change(!desired.current),
     expand: () => change(true),
   }
+}
+
+export function FieldErrorMotion({ children, ...props }: HTMLMotionProps<'div'> & { 'data-side'?: string }) {
+  const timing = useTransition('disclosure')
+  return (
+    <motion.div
+      {...props}
+      initial={{ opacity: 0, clipPath: props['data-side'] === 'left' ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)' }}
+      animate={{ opacity: 1, clipPath: 'inset(0 0 0 0)' }}
+      transition={timing}
+    >
+      {children}
+    </motion.div>
+  )
 }

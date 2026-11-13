@@ -10,6 +10,7 @@ sec.workspace = true
 httparse = "1"
 compallm-core.workspace = true
 tokio = { workspace = true, features = ["net", "rt", "io-util", "macros"] }
+bytes = "1.12.1"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }

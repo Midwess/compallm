@@ -1,18 +1,11 @@
-import { animated, overlay } from './motion'
-import {
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ButtonHTMLAttributes,
-  type KeyboardEvent,
-  type ReactNode,
-  type CSSProperties,
-} from 'react'
+import { useContext, type ReactNode } from 'react'
+import { Select as BaseSelect } from '@base-ui/react/select'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
+import { animated, FloatingMotion } from './motion'
+import { useFormField, useFormInvalid } from './form'
 import { cx } from './shared'
+import { FloatingContainerContext } from '../context'
 
 export interface SelectItem {
   value: string
@@ -23,11 +16,120 @@ export interface SelectItem {
 export interface SelectProps extends Omit<DropdownProps, 'label'> {
   'aria-label': string
 }
-export function Select({ 'aria-label': label, ...props }: SelectProps) {
+
+function SelectRoot(props: Omit<BaseSelect.Root.Props<string, false>, 'modal' | 'multiple'>) {
+  const field = useFormField<string>(props.name)
+  return (
+    <BaseSelect.Root
+      {...props}
+      value={field ? field.value : props.value}
+      onValueChange={(value, details) => {
+        if (field && value !== null) field.change(value)
+        else props.onValueChange?.(value, details)
+      }}
+      onOpenChange={(open, details) => {
+        if (!open) field?.blur()
+        props.onOpenChange?.(open, details)
+      }}
+      modal={false}
+    />
+  )
+}
+
+function SelectTrigger({
+  className,
+  children,
+  ...props
+}: Omit<BaseSelect.Trigger.Props, 'className'> & { className?: string }) {
+  return (
+    <BaseSelect.Trigger
+      {...props}
+      render={<animated.button type="button" />}
+      className={cx(
+        `flex h-7.5 w-full min-w-0 cursor-pointer items-center justify-between gap-1 rounded-xl border-[0.5px]
+        border-transparent bg-elevated px-1.5 py-0 text-xsm leading-5 text-text shadow-control
+        focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-focus
+        disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`,
+        className,
+      )}
+    >
+      {children}
+      <BaseSelect.Icon>
+        <CaretDownIcon size={10} aria-hidden="true" />
+      </BaseSelect.Icon>
+    </BaseSelect.Trigger>
+  )
+}
+
+function SelectValue({ className, ...props }: Omit<BaseSelect.Value.Props, 'className'> & { className?: string }) {
+  return <BaseSelect.Value {...props} className={cx('flex min-w-0 items-center gap-2 truncate', className)} />
+}
+
+function SelectContent({ className, children, ...props }: Omit<BaseSelect.Popup.Props, 'className'> & { className?: string }) {
+  const container = useContext(FloatingContainerContext)
+  return (
+    <BaseSelect.Portal container={container}>
+      <BaseSelect.Positioner
+        alignItemWithTrigger={false}
+        sideOffset={4}
+        align="start"
+        positionMethod="fixed"
+        collisionPadding={8}
+        className="z-50 outline-none"
+      >
+        <BaseSelect.Popup
+          {...props}
+          render={<FloatingMotion />}
+          className={cx(
+            `w-(--anchor-width) max-w-[calc(100vw-1rem)] origin-(--transform-origin) rounded-[10px]
+            border-[0.5px] border-border bg-elevated font-sans text-text shadow-menu outline-none`,
+            className,
+          )}
+        >
+          <BaseSelect.List
+            className="max-h-[min(--spacing(80),var(--available-height))] overflow-y-auto
+            overscroll-contain p-1"
+          >
+            {children}
+          </BaseSelect.List>
+        </BaseSelect.Popup>
+      </BaseSelect.Positioner>
+    </BaseSelect.Portal>
+  )
+}
+
+function SelectEntry({ className, children, ...props }: Omit<BaseSelect.Item.Props, 'className'> & { className?: string }) {
+  return (
+    <BaseSelect.Item
+      {...props}
+      className={cx(
+        `flex min-h-8 w-full cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-xsm outline-none
+        data-highlighted:bg-border data-disabled:cursor-not-allowed data-disabled:opacity-50`,
+        className,
+      )}
+    >
+      <BaseSelect.ItemText className="flex min-w-0 flex-1 items-center gap-1">{children}</BaseSelect.ItemText>
+      <BaseSelect.ItemIndicator>
+        <CheckIcon size={14} aria-hidden="true" />
+      </BaseSelect.ItemIndicator>
+    </BaseSelect.Item>
+  )
+}
+
+function SelectControl({ 'aria-label': label, ...props }: SelectProps) {
   return <Dropdown {...props} label={label} />
 }
 
+export const Select = Object.assign(SelectControl, {
+  Root: SelectRoot,
+  Trigger: SelectTrigger,
+  Value: SelectValue,
+  Content: SelectContent,
+  Item: SelectEntry,
+})
+
 export interface DropdownProps {
+  name?: string
   options: SelectItem[]
   value?: string
   defaultValue?: string
@@ -37,7 +139,9 @@ export interface DropdownProps {
   defaultOpen?: boolean
   className?: string
 }
+
 export function Dropdown({
+  name,
   options,
   value,
   defaultValue,
@@ -47,146 +151,46 @@ export function Dropdown({
   defaultOpen = false,
   className,
 }: DropdownProps) {
-  const [local, setLocal] = useState(defaultValue ?? options.find((item) => !item.disabled)?.value ?? '')
-  const [open, setOpen] = useState(defaultOpen)
-  const [active, setActive] = useState(0)
-  const selected = value ?? local
-  const selectedOption = options.find((item) => item.value === selected)
-  const root = useRef<HTMLDivElement>(null)
-  const trigger = useRef<HTMLButtonElement>(null)
-  const list = useRef<HTMLDivElement>(null)
-  const id = useId()
-  const anchor = `--dropdown-${id.replace(/[^a-zA-Z0-9-]/g, '')}`
-  const enabled = options.map((item, index) => (item.disabled ? -1 : index)).filter((index) => index >= 0)
-  function close() {
-    setOpen(false)
-    trigger.current?.focus()
-  }
-  useLayoutEffect(() => {
-    if (!open || disabled) return
-    list.current?.showPopover()
-    list.current?.focus({ preventScroll: true })
-  }, [open, disabled])
-  useEffect(() => {
-    if (!open) return
-    function dismiss(event: PointerEvent) {
-      if (event.target instanceof Node && !root.current?.contains(event.target)) setOpen(false)
-    }
-    document.addEventListener('pointerdown', dismiss)
-    return () => document.removeEventListener('pointerdown', dismiss)
-  }, [open])
-  function select(index: number) {
-    const item = options[index]
-    if (!item || item.disabled) return
-    setLocal(item.value)
-    onValueChange?.(item.value)
-    close()
-  }
-  function keydown(event: KeyboardEvent<HTMLDivElement>) {
-    const step = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0
-    if (step && enabled.length) {
-      event.preventDefault()
-      const position = enabled.indexOf(active)
-      setActive(enabled[(position + step + enabled.length) % enabled.length])
-    } else if (event.key === 'Home' || event.key === 'End') {
-      event.preventDefault()
-      setActive(enabled[event.key === 'Home' ? 0 : enabled.length - 1] ?? 0)
-    } else if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-      select(active)
-    } else if (event.key === 'Escape') {
-      event.preventDefault()
-      close()
-    } else if (event.key === 'Tab') {
-      trigger.current?.focus()
-      setOpen(false)
-    } else if (event.key.length === 1) {
-      const match = options.findIndex((item) => !item.disabled && item.label.toLowerCase().startsWith(event.key.toLowerCase()))
-      if (match >= 0) setActive(match)
-    }
-  }
+  const invalid = useFormInvalid(name)
   return (
-    <div ref={root} data-ui="dropdown" className={cx('relative inline-block w-60 max-w-full', className)}>
-      <animated.button
-        ref={trigger}
-        style={{ anchorName: anchor } as CSSProperties}
-        type="button"
-        className={`
-  h-7.5 w-full min-w-0 rounded-lg border-[0.5px] bg-elevated px-1.5
-  py-0 text-xsm leading-5 text-text focus:outline-1 focus:outline-offset-1 focus:outline-focus
-  disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none flex cursor-pointer items-center justify-between
-  gap-1 border-transparent shadow-control
-`}
-        aria-label={label}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={id}
+    <div data-ui="dropdown" className={cx('relative inline-block w-60 max-w-full', className)}>
+      <Select.Root
+        name={name}
+        items={options}
+        value={value}
+        defaultValue={defaultValue ?? options.find((item) => !item.disabled)?.value ?? ''}
+        onValueChange={(next) => {
+          if (next !== null) onValueChange?.(next)
+        }}
         disabled={disabled}
-        onClick={() => {
-          setActive(
-            Math.max(
-              0,
-              options.findIndex((item) => item.value === selected && !item.disabled),
-            ),
-          )
-          setOpen(!open)
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            event.preventDefault()
-            setOpen(true)
-            setActive(enabled[0] ?? 0)
-          }
-        }}
+        defaultOpen={defaultOpen}
       >
-        <span className="flex min-w-0 items-center gap-2">
-          {selectedOption?.icon}
-          <span className="truncate">{selectedOption?.label ?? label}</span>
-        </span>
-        <CaretDownIcon size={10} aria-hidden="true" />
-      </animated.button>
-      {open && !disabled ? (
-        <overlay.div
-          ref={list}
-          popover="manual"
-          style={{ positionAnchor: anchor } as CSSProperties}
-          id={id}
-          role="listbox"
+        <Select.Trigger
           aria-label={label}
-          tabIndex={-1}
-          className={`
-  fixed inset-auto top-[anchor(bottom)] left-[anchor(left)] z-20 my-1 mx-0
-  max-h-[min(320px,calc(100dvh-16px))] w-[anchor-size(width)] max-w-[calc(100vw-16px)] overflow-y-auto
-  rounded-lg border-[0.5px] border-border bg-elevated p-1 text-text shadow-menu
-  [position-try-fallbacks:flip-block,flip-inline]
-`}
-          aria-activedescendant={`${id}-${active}`}
-          onKeyDown={keydown}
+          aria-invalid={invalid || undefined}
+          aria-describedby={name ? `${name}-error` : undefined}
         >
-          {options.map((item, index) => (
-            <animated.div
-              key={item.value}
-              id={`${id}-${index}`}
-              role="option"
-              aria-selected={item.value === selected}
-              aria-disabled={item.disabled || undefined}
-              className={`
-  flex min-h-8 w-full cursor-pointer items-center gap-1 rounded-sm px-1.5 py-0.5
-  text-xsm data-active:bg-border aria-disabled:cursor-not-allowed aria-disabled:opacity-50
-`}
-              data-active={index === active || undefined}
-              onPointerMove={() => {
-                if (!item.disabled) setActive(index)
-              }}
-              onClick={() => select(index)}
-            >
+          <Select.Value placeholder={label}>
+            {(selected: string | null) => {
+              const item = options.find((option) => option.value === selected)
+              return (
+                <>
+                  {item?.icon}
+                  <span className="truncate">{item?.label ?? label}</span>
+                </>
+              )
+            }}
+          </Select.Value>
+        </Select.Trigger>
+        <Select.Content aria-label={label}>
+          {options.map((item) => (
+            <Select.Item key={item.value} value={item.value} label={item.label} disabled={item.disabled}>
               {item.icon}
-              <span className="min-w-0 flex-1">{item.label}</span>
-              {item.value === selected ? <CheckIcon size={14} aria-hidden="true" /> : null}
-            </animated.div>
+              {item.label}
+            </Select.Item>
           ))}
-        </overlay.div>
-      ) : null}
+        </Select.Content>
+      </Select.Root>
     </div>
   )
 }
@@ -215,28 +219,4 @@ export function DiagramDropdown(props: Omit<DropdownProps, 'options' | 'label'>)
 export function MenuGroupHeading({ children }: { children: ReactNode }) {
   return <div className="p-1.5 text-[12px] font-medium text-muted">{children}</div>
 }
-export function SelectOption({
-  selected = false,
-  children,
-  className,
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { selected?: boolean }) {
-  return (
-    <animated.button
-      type="button"
-      {...props}
-      aria-pressed={selected}
-      className={cx(
-        `
-  flex min-h-8 w-full cursor-pointer items-center justify-between gap-1 rounded-sm border-0
-  bg-transparent px-1.5 py-0.5 text-left text-xsm text-inherit hover:bg-border
-  aria-pressed:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus
-`,
-        className,
-      )}
-    >
-      {children}
-      {selected ? <CheckIcon size={14} aria-hidden="true" /> : null}
-    </animated.button>
-  )
-}
+export const SelectOption = SelectEntry

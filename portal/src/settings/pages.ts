@@ -2,18 +2,20 @@ import type { SettingsPageControllers, SettingsState } from '@compallm/storybook
 import type { StoreApi } from 'zustand/vanilla'
 import { ProfileController } from './profile/controller'
 import { OrganizationController } from './organization/controller'
-import { PreferencesController } from './preferences/controller'
+import { UserPreferenceController } from './preferences/user/controller'
 import { MembersController } from './members/controller'
 import { DialogsController } from './dialogs/controller'
 import { SearchController } from './search/controller'
+import { RoleController } from './role/controller'
 
-export function createSettingsPages(store: StoreApi<SettingsState>): SettingsPageControllers {
+export function createSettingsPages(store: StoreApi<SettingsState>, roleDeleted: (id: string) => void) {
   return {
+    role: new RoleController(store),
     search: new SearchController(store),
-    preferences: new PreferencesController(store),
+    preferences: { user: new UserPreferenceController() },
     profile: new ProfileController(),
     organization: new OrganizationController(),
     members: new MembersController(),
-    dialogs: new DialogsController(store),
-  }
+    dialogs: new DialogsController(store, roleDeleted),
+  } satisfies SettingsPageControllers
 }

@@ -11,7 +11,7 @@ async fn nested_transaction_reuses_outer_context_without_savepoints() {
     connection
         .transaction(async {
             let outer = DbContext::current()?;
-            connection
+            outer
                 .transaction(async {
                     assert!(std::ptr::eq(
                         DbContext::current()?.postgres(),
@@ -44,7 +44,7 @@ async fn caught_nested_error_still_rolls_back_the_outer_transaction() {
     let connection = DbContext::new(Arc::new(PostgresConnection::new(db.clone())));
     let result = connection
         .transaction(async {
-            let nested = connection
+            let nested = DbContext::current()?
                 .transaction(async {
                     Err::<(), _>(ConnectionError::database(anyhow::anyhow!(
                         "nested operation failed"
@@ -79,8 +79,9 @@ async fn cancelled_nested_operation_prevents_outer_commit() {
     let result = connection
         .transaction(async {
             {
+                let current = DbContext::current()?;
                 let nested =
-                    connection.transaction(std::future::pending::<Result<(), ConnectionError>>());
+                    current.transaction(std::future::pending::<Result<(), ConnectionError>>());
                 tokio::pin!(nested);
                 tokio::select! { biased;
                     _ = &mut nested => panic!("nested future must remain pending"),
@@ -108,9 +109,12 @@ async fn unfinished_nested_future_cannot_escape_a_successful_commit() {
     let mut unfinished = None;
     let result = connection
         .transaction(async {
-            let mut nested = Box::pin(
-                connection.transaction(std::future::pending::<Result<(), ConnectionError>>()),
-            );
+            let current = DbContext::current()?;
+            let mut nested = Box::pin(async move {
+                current
+                    .transaction(std::future::pending::<Result<(), ConnectionError>>())
+                    .await
+            });
             tokio::select! { biased;
                 _ = &mut nested => panic!("nested future must remain pending"),
                 _ = std::future::ready(()) => {}

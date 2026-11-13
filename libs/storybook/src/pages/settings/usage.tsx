@@ -5,7 +5,6 @@ import { Select } from '../../components/dropdowns'
 import { SearchField } from '../../components/fields'
 import { Table } from '../../components/table'
 import { Popup } from '../../components/popup'
-import { Checkbox } from '../../components/selection'
 import { SettingsContent, Heading, Section, Rows, Row } from './shared'
 import { useSettings, useSettingsController } from './controller'
 
@@ -92,16 +91,15 @@ export function MemberLimitSettings() {
           </Popup.Trigger>
           <Popup.Content aria-label="Display properties" className="w-60">
             {['previous', 'current', 'used'].map((key) => (
-              <label key={key} className="flex min-h-9 items-center gap-2 px-2 text-xs">
-                <Checkbox
-                  role="menuitemcheckbox"
-                  checked={columns.includes(key)}
-                  onChange={() =>
-                    setColumns((items) => (items.includes(key) ? items.filter((item) => item !== key) : [...items, key]))
-                  }
-                />
+              <Popup.CheckboxItem
+                key={key}
+                checked={columns.includes(key)}
+                onCheckedChange={() =>
+                  setColumns((items) => (items.includes(key) ? items.filter((item) => item !== key) : [...items, key]))
+                }
+              >
                 {{ previous: 'Last month', current: 'This month', used: 'Limit used' }[key]}
-              </label>
+              </Popup.CheckboxItem>
             ))}
           </Popup.Content>
         </Popup>

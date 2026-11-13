@@ -1,12 +1,15 @@
-import { createStore } from 'zustand/vanilla'
+import { createFormStore } from '../../../components/form'
 import type { ChatState } from './types'
 
 export function createChatStore(initial: Partial<ChatState> = {}) {
-  return createStore<ChatState>()(() => ({
-    draft: '',
-    modelId: '',
-    models: [],
-    creating: false,
-    ...initial,
-  }))
+  return createFormStore<ChatState>(
+    {
+      draft: '',
+      modelId: '',
+      models: [],
+      creating: false,
+      ...initial,
+    },
+    ['draft', 'modelId'],
+  )
 }

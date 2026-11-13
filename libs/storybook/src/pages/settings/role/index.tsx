@@ -1,3 +1,7 @@
+import { FormError } from '../../../components/form'
+import { useEffect, useSyncExternalStore } from 'react'
+import { Form } from '../../../components/form'
+import { RoleUpdateInput } from '@compallm/contract/validation'
 import { motion } from 'motion/react'
 import { animation, useTransition } from '../../../components/motion'
 import { Button } from '../../../components/buttons'
@@ -8,13 +12,19 @@ import { SettingsSectionTitle } from '../../../components/settings'
 import { useSettings, useSettingsController, useCodeAppearance } from '../controller'
 import { useRole, useRoleController } from './controller'
 import { PolicyTable } from './policy-table'
+import { DisabledTooltip } from '../../../components/feedback'
+
+const ownerExplanation = 'The Owner role cannot be edited or deleted.'
 import { SettingsContent, Heading, Section, Rows, Row, Empty } from '../shared'
 
 function EditingMode() {
   const timing = useTransition('panel')
   const c = useRoleController(),
-    mode = useRole((s) => s.draft?.mode),
-    invalid = useRole((s) => Boolean(s.draft?.parsing || s.draft?.diagnostics.length))
+    mode = useRole((s) => s.draft?.mode, ['draft.mode']),
+    invalid = useRole(
+      (s) => Boolean(s.draft?.parsing || s.draft?.diagnostics.length),
+      ['draft.parsing', 'draft.diagnostics.length'],
+    )
   return (
     <div
       role="group"
@@ -45,45 +55,78 @@ rounded-full bg-elevated shadow-control"
   )
 }
 
-function CedarEditor({ locked }: { locked: boolean }) {
+function CedarEditor({ locked, owner }: { locked: boolean; owner: boolean }) {
   const c = useRoleController(),
     shared = useSettingsController(),
-    draft = useRole((s) => s.draft)
+    draft = useRole(
+      (s) => (s.draft ? { parsing: s.draft.parsing, diagnostics: s.draft.diagnostics } : null),
+      ['draft.parsing', 'draft.diagnostics'],
+    )
   const appearance = useCodeAppearance()
   if (!draft) return null
   const invalid = draft.parsing || draft.diagnostics.length > 0
   return (
-    <SectionSurface className="flex min-h-64 min-w-0 w-full flex-1 flex-col p-2">
-      <CodeEditor
-        {...appearance}
-        label="Cedar policy source"
-        language="cedar"
-        actions={
-          <>
-            <Button variant="ghost" className="h-6 px-2 text-xs" disabled={invalid || locked} onClick={() => c.formatPolicy()}>
-              Format
-            </Button>
-            <Button variant="ghost" className="h-6 px-2 text-xs" onClick={() => shared.pages.dialogs.copy(draft.source)}>
-              Copy
-            </Button>
-          </>
-        }
-        invalid={draft.diagnostics.length > 0}
-        readOnly={locked}
-        value={draft.source}
-        onValueChange={(value) => c.setPolicySource(value)}
-      />
+    <SectionSurface className="flex min-w-0 w-full flex-col p-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 px-2 pb-2 text-xs">
+        <DisabledTooltip disabled={owner} reason={ownerExplanation}>
+          <Button variant="ghost" className="h-6 px-2 text-xs" disabled={invalid || locked} onClick={() => c.formatPolicy()}>
+            Format
+          </Button>
+        </DisabledTooltip>
+        <Button
+          variant="ghost"
+          className="h-6 px-2 text-xs"
+          onClick={() => shared.pages.dialogs.copy(c.store.form.get('draft.source') as string)}
+        >
+          Copy
+        </Button>
+        <span className="rounded-lg bg-elevated px-2.5 py-1 font-sans text-xs leading-4 text-text">Cedar</span>
+      </div>
+      <DisabledTooltip disabled={owner} reason={ownerExplanation} allowInteraction>
+        <CodeEditor
+          {...appearance}
+          label="Cedar policy source"
+          language="cedar"
+          showToolbar={false}
+          invalid={draft.diagnostics.length > 0}
+          readOnly={locked}
+          name="draft.source"
+        />
+        <FormError name="draft.source" />
+      </DisabledTooltip>
     </SectionSurface>
   )
 }
 
-export function RoleEditorSettings() {
+function RoleHeading() {
+  const form = useRoleController().store.form
+  return useSyncExternalStore(
+    form.subscribe,
+    () => (form.baseline.draft?.id ? form.baseline.draft.name : 'New role'),
+    () => form.baseline.draft?.name ?? 'New role',
+  )
+}
+
+function RoleEditorContent() {
   const timing = useTransition('panel')
-  const c = useRoleController(),
-    shared = useSettingsController(),
-    draft = useRole((s) => s.draft),
+  const shared = useSettingsController(),
+    draft = useRole(
+      (s) =>
+        s.draft
+          ? {
+              id: s.draft.id,
+              builtin: s.draft.builtin,
+              mode: s.draft.mode,
+              parsing: s.draft.parsing,
+              diagnostics: s.draft.diagnostics,
+            }
+          : null,
+      ['draft.id', 'draft.builtin', 'draft.mode', 'draft.parsing', 'draft.diagnostics'],
+    ),
     readonly = useSettings((s) => s.readonly),
+    loading = useRole((s) => s.loading),
     busy = useRole((s) => s.busy)
+  if (loading) return <SettingsContent aria-busy="true" aria-label="Loading role" />
   if (!draft)
     return (
       <SettingsContent>
@@ -91,33 +134,38 @@ export function RoleEditorSettings() {
       </SettingsContent>
     )
   const locked = readonly || draft.builtin,
-    invalid = draft.parsing || draft.diagnostics.length > 0,
-    advanced = draft.projection.some((p) => p.advanced || !p.editable || !p.action)
+    invalid = draft.parsing || draft.diagnostics.length > 0
   return (
     <SettingsContent className="flex flex-col pt-14 pb-6">
-      <Heading className="mb-8 shrink-0">{draft.id ? draft.name : 'New role'}</Heading>
+      <Heading className="mb-8 shrink-0">
+        <RoleHeading />
+      </Heading>
       <div className="flex min-w-0 flex-1 flex-col gap-6">
         <Section title="Role details" className="shrink-0">
           <Rows className="**:[[role=separator]]:bg-border">
             <Row label={<label htmlFor="role-name">Name</label>}>
-              <TextField
-                id="role-name"
-                className="w-xl max-w-full border-border max-lg:w-sm"
-                placeholder="Role name…"
-                value={draft.name}
-                disabled={locked || busy}
-                onChange={(event) => c.updateRole({ name: event.target.value })}
-              />
+              <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
+                <TextField
+                  id="role-name"
+                  className="w-xl max-w-full border-border max-lg:w-sm"
+                  placeholder="Role name…"
+                  name="draft.name"
+                  disabled={busy || draft.builtin}
+                />
+                <FormError name="draft.name" />
+              </DisabledTooltip>
             </Row>
             <Row label={<label htmlFor="role-description">Description</label>} last>
-              <TextField
-                id="role-description"
-                className="w-xl max-w-full border-border max-lg:w-sm"
-                placeholder="Describe this role…"
-                value={draft.description}
-                disabled={locked || busy}
-                onChange={(event) => c.updateRole({ description: event.target.value })}
-              />
+              <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
+                <TextField
+                  id="role-description"
+                  className="w-xl max-w-full border-border max-lg:w-sm"
+                  placeholder="Describe this role…"
+                  name="draft.description"
+                  disabled={busy || draft.builtin}
+                />
+                <FormError name="draft.description" />
+              </DisabledTooltip>
             </Row>
           </Rows>
         </Section>
@@ -128,7 +176,7 @@ export function RoleEditorSettings() {
             </SettingsSectionTitle>
             <EditingMode />
           </div>
-          <div className="grid min-w-0 w-full">
+          <div className="relative grid min-w-0 w-full">
             <motion.div
               initial={false}
               transition={timing}
@@ -141,15 +189,12 @@ export function RoleEditorSettings() {
                 transitionEnd: { display: draft.mode === 'visual' ? 'block' : 'none' },
               }}
               style={{
+                position: draft.mode === 'visual' ? 'relative' : 'absolute',
                 pointerEvents: draft.mode === 'visual' ? 'auto' : 'none',
               }}
               className="col-start-1 row-start-1 min-w-0 w-full"
             >
-              {draft.builtin ? (
-                <Empty title="System-owned role">Built-in grants follow the accepted organization policy.</Empty>
-              ) : (
-                <PolicyTable />
-              )}
+              <PolicyTable />
             </motion.div>
             <motion.div
               initial={false}
@@ -163,21 +208,14 @@ export function RoleEditorSettings() {
                 transitionEnd: { display: draft.mode === 'cedar' ? 'block' : 'none' },
               }}
               style={{
+                position: draft.mode === 'cedar' ? 'relative' : 'absolute',
                 pointerEvents: draft.mode === 'cedar' ? 'auto' : 'none',
               }}
               className="col-start-1 row-start-1 min-w-0 w-full"
             >
-              <CedarEditor locked={locked || busy} />
+              <CedarEditor locked={busy || draft.builtin} owner={draft.builtin} />
             </motion.div>
           </div>
-          {draft.mode === 'visual' && advanced ? (
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 text-xs text-muted">
-              <span>Advanced Cedar retained. Review its source to edit conditions or resource restrictions.</span>
-              <Button variant="ghost" className="h-7 px-0 text-xs" onClick={() => c.setPolicyMode('cedar')}>
-                Review Cedar
-              </Button>
-            </div>
-          ) : null}
           <div aria-live="polite" className="mt-2 shrink-0 px-4 text-xs leading-4.5 text-muted">
             {draft.parsing ? (
               'Checking policy…'
@@ -194,34 +232,109 @@ export function RoleEditorSettings() {
         </section>
         {!locked && !draft.id ? (
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
-            <Button
-              variant="primary"
-              className="w-32 rounded-md"
-              loading={busy}
-              disabled={!draft.name.trim() || !draft.source.trim() || invalid}
-              onClick={() => c.saveRole()}
-            >
+            <Button variant="primary" className="w-32 rounded-xl" loading={busy} disabled={invalid} type="submit">
               Create role
             </Button>
           </div>
         ) : null}
-        {!locked && draft.id ? (
+        {draft.id ? (
           <Section title="Danger" className="shrink-0">
             <Rows>
               <Row label="Delete role" last>
-                <Button
-                  variant="ghost"
-                  className="text-error"
-                  disabled={busy}
-                  onClick={() => shared.pages.dialogs.openDialog('delete-role', draft.id!)}
-                >
-                  Delete role
-                </Button>
+                <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
+                  <Button
+                    variant="ghost"
+                    className="text-error"
+                    disabled={busy || draft.builtin}
+                    onClick={() => shared.pages.dialogs.openDialog('delete-role', draft.id!)}
+                  >
+                    Delete role
+                  </Button>
+                </DisabledTooltip>
               </Row>
             </Rows>
           </Section>
         ) : null}
       </div>
     </SettingsContent>
+  )
+}
+
+export function RoleEditorSettings() {
+  const c = useRoleController()
+  const id = useRole((state) => state.draft?.id, ['draft.id'])
+  const form = c.store.form
+  const settings = useSettingsController()
+  useEffect(() => {
+    form.reset(form.values)
+    form.configure({
+      mode: id ? 'blur' : 'button',
+      names: ['draft.name', 'draft.description', 'draft.source'],
+      command: !id,
+      fields: {
+        'draft.name': { group: 'metadata' },
+        'draft.description': { group: 'metadata' },
+        'draft.source': { group: 'policy' },
+      },
+      changed: (name, value) => {
+        if (name === 'draft.source') c.setPolicySource(String(value))
+      },
+      parse: (values, names) => {
+        const draft = values.draft
+        if (!draft || draft.builtin) return { issues: [] }
+        const patch: Record<string, unknown> = {}
+        for (const name of names) {
+          if (name === 'draft.name') patch.name = draft.name
+          if (name === 'draft.description') patch.description = draft.description
+          if (name === 'draft.source') patch.cedarSource = draft.source
+        }
+        const result = RoleUpdateInput.safeParse(patch)
+        if (!result.success)
+          return {
+            issues: result.error.issues.map((issue) => ({
+              ...issue,
+              path: ['draft', issue.path[0] === 'cedarSource' ? 'source' : issue.path[0]],
+            })),
+          }
+        return {
+          values: {
+            ...values,
+            draft: {
+              ...draft,
+              ...('name' in result.data ? { name: result.data.name! } : {}),
+              ...('description' in result.data ? { description: result.data.description! } : {}),
+              ...('cedarSource' in result.data ? { source: result.data.cedarSource! } : {}),
+            },
+          },
+        }
+      },
+      submit: async (values, _patch, signal, names) => {
+        const draft = values.draft
+        if (!draft) return false
+        if (!draft.id) {
+          c.saveRole()
+          return false
+        }
+        let result = { ...draft }
+        const metadata: Partial<Pick<typeof draft, 'name' | 'description'>> = {}
+        if (names.includes('draft.name')) metadata.name = draft.name
+        if (names.includes('draft.description')) metadata.description = draft.description
+        if (Object.keys(metadata).length) {
+          if (!c.updateMetadata) return false
+          result = { ...result, ...(await c.updateMetadata(metadata, signal)) }
+        }
+        if (names.includes('draft.source')) {
+          if ((await c.commitPolicySource?.(draft.source)) === false) return false
+          if (c.store.getState().draft?.diagnostics.length) return false
+        }
+        return { draft: result }
+      },
+      error: (error, retry) => settings.apiError(error, retry),
+    })
+  }, [c, form, id, settings])
+  return (
+    <Form model={form} key={id ?? 'new'}>
+      <RoleEditorContent />
+    </Form>
   )
 }

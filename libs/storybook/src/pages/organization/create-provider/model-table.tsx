@@ -14,7 +14,7 @@ function price(value: string) {
 }
 export function ProviderModels() {
   const controller = useController()
-  const models = useProvider((state) => state.models)
+  const models = useProvider((state) => state.models, ['models'])
   const query = useProvider((state) => state.modelQuery)
   const status = useProvider((state) => state.modelStatusFilter)
   const protocol = useProvider((state) => state.modelProtocolFilter)
@@ -44,12 +44,11 @@ export function ProviderModels() {
   const all = selectable.length > 0 && selected === selectable.length
   const enabled = models.filter((model) => model.enabled).length
   function toggleAll(value: boolean) {
-    if (controller.onModelsEnabledChanged)
-      controller.onModelsEnabledChanged(
-        selectable.map((model) => model.id),
-        value,
-      )
-    else for (const model of selectable) controller.onModelEnabledChanged(model.id, value)
+    const ids = new Set(selectable.map((model) => model.id))
+    controller.store.form.change(
+      'models',
+      models.map((model) => (ids.has(model.id) ? { ...model, enabled: value } : model)),
+    )
   }
   return (
     <SectionSurface className="grid min-w-0 gap-4">
@@ -105,9 +104,8 @@ export function ProviderModels() {
                   <Checkbox
                     size="compact"
                     aria-label={`Enable ${model.name}`}
-                    checked={model.enabled}
+                    name={`models[${models.indexOf(model)}].enabled`}
                     disabled={busy || !supported(model) || !hasValidModelPrices(model)}
-                    onChange={(event) => controller.onModelEnabledChanged(model.id, event.target.checked)}
                   />
                 </Table.Cell>
                 <Table.Cell className="min-w-0 px-1 text-left">

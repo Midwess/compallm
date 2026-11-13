@@ -29,7 +29,7 @@ function ProviderHeader() {
   const controller = useController()
   const step = useProvider((state) => state.step)
   const intent = useProvider((state) => state.intent)
-  const name = useProvider((state) => (state.intent === 'edit' ? state.savedProvider?.name : state.name))
+  const name = useProvider((state) => (state.intent === 'edit' ? state.savedProvider?.name : state.name), ['name'])
   if (intent !== 'create')
     return (
       <PageHeader>
@@ -75,7 +75,7 @@ function ProviderContent() {
   return step === 'choose' ? <ProviderChooser /> : <ProviderConfiguration />
 }
 function ProviderDialog() {
-  const open = useProvider((state) => state.modelDraft !== null)
+  const open = useProvider((state) => state.modelDraft !== null, ['modelDraft'])
   return open ? <ModelDialog /> : null
 }
 export function CreateProviderPage() {

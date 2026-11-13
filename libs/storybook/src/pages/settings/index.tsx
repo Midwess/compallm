@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { configureSettingsForm } from './form'
+import { Form } from '../../components/form'
+import { useEffect, useState } from 'react'
 import { ListIcon } from '@phosphor-icons/react/dist/csr/List'
 import { Button } from '../../components/buttons'
-import { InlineError } from '../../components/feedback'
+import { Toast } from '../../components/feedback'
 import { SettingsNavigation } from './sidebar'
 import { SettingsDialogs } from './dialogs'
-import { GeneralSettings, AppearanceSettings, MessagingSettings, CodeSettings } from './preferences'
+import { GeneralSettings, AppearanceSettings, MessagingSettings, CodeSettings } from './preferences/user/page'
+import { UserPreferencePage } from './preferences/user'
 import { ProfileSettings, SecuritySettings, ApiKeySettings, DangerSettings } from './account'
 import { OrganizationSettings } from './organization'
 import { MembersSettings } from './members'
@@ -14,8 +17,6 @@ import { UsageLimitSettings, MemberLimitSettings, UsageExplorerSettings, AuditSe
 import { useSettings, useSettingsController } from './controller'
 import { cx } from '../../components/shared'
 import { Empty, SettingsContent } from './shared'
-import { useRole } from './role/controller'
-import { useGroup } from './group/controller'
 
 function SettingsScreen() {
   const page = useSettings((s) => s.location.page),
@@ -29,6 +30,8 @@ function SettingsScreen() {
       </SettingsContent>
     )
   switch (page) {
+    case 'blank':
+      return null
     case 'general':
       return <GeneralSettings />
     case 'appearance':
@@ -65,17 +68,56 @@ function SettingsScreen() {
       return <AuditSettings />
   }
 }
+function SharedSettingsForm() {
+  const c = useSettingsController()
+  const page = useSettings((s) => s.location.page)
+  const form = c.store.form
+  useEffect(() => {
+    return configureSettingsForm(c)
+  }, [c, form, page])
+  if (['general', 'appearance', 'messaging', 'code'].includes(page))
+    return (
+      <UserPreferencePage>
+        <SettingsScreen />
+      </UserPreferencePage>
+    )
+  if (['role', 'new-role', 'group', 'new-group'].includes(page)) return <SettingsScreen />
+  return (
+    <Form model={form}>
+      <SettingsScreen />
+    </Form>
+  )
+}
 export function SettingsPage() {
   const [open, setOpen] = useState(false),
     c = useSettingsController()
-  const notice = useSettings((s) => s.notice),
-    sharedError = useSettings((s) => s.error),
-    page = useSettings((s) => s.location.page),
-    roleError = useRole((s) => s.error),
-    groupError = useGroup((s) => s.error)
-  const error =
-    (page === 'role' || page === 'new-role' ? roleError : page === 'group' || page === 'new-group' ? groupError : null) ??
-    sharedError
+  const notice = useSettings((s) => s.notice)
+  const errorToast = useSettings((s) => s.errorToast)
+  useEffect(() => {
+    const sources = [
+      { store: c.store, clear: () => c.store.setState({ error: null }) },
+      { store: c.role.store, clear: () => c.role.store.setState({ error: null }) },
+      { store: c.group.store, clear: () => c.group.store.setState({ error: null }) },
+    ]
+    const subscriptions = sources.map(({ store, clear }) => {
+      const report = () => {
+        const error = store.getState().error
+        if (!error) return
+        clear()
+        c.apiError(
+          { info: { message: error } },
+          store === c.store
+            ? undefined
+            : () => {
+                void store.form.retry()
+              },
+        )
+      }
+      report()
+      return store.subscribe(report)
+    })
+    return () => subscriptions.forEach((unsubscribe) => unsubscribe())
+  }, [c])
   return (
     <div className="relative flex h-dvh min-h-0 overflow-hidden bg-background font-sans text-text">
       {open ? (
@@ -89,7 +131,7 @@ export function SettingsPage() {
         <SettingsNavigation onNavigate={() => setOpen(false)} />
       </div>
       <main
-        className="@container relative my-2 mr-2 ml-2 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto
+        className="@container relative my-2 mr-2 ml-2 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-none
 rounded-xl border-[0.5px] border-divider bg-surface pr-2 scrollbar-gutter-stable md:ml-0"
         aria-label="Settings content"
       >
@@ -101,8 +143,7 @@ rounded-xl border-[0.5px] border-divider bg-surface pr-2 scrollbar-gutter-stable
         >
           <ListIcon className="size-4" />
         </button>
-        {error ? <InlineError className="mx-auto mt-4 max-w-160 px-4">{error}</InlineError> : null}
-        <SettingsScreen />
+        <SharedSettingsForm />
       </main>
       {notice ? (
         <div
@@ -114,6 +155,26 @@ rounded-lg border border-border bg-elevated px-4 py-3 text-xsm shadow-menu"
           <Button variant="ghost" className="h-6 p-0" onClick={() => c.dismissNotice()}>
             Dismiss
           </Button>
+        </div>
+      ) : null}
+      {errorToast ? (
+        <div className="fixed right-6 bottom-6 z-50 max-w-[calc(100vw-3rem)]">
+          <Toast
+            tone="error"
+            message={errorToast.message}
+            onDismiss={c.dismissErrorToast}
+            action={
+              errorToast.retry
+                ? {
+                    label: 'Retry',
+                    onClick: () => {
+                      c.dismissErrorToast()
+                      errorToast.retry?.()
+                    },
+                  }
+                : undefined
+            }
+          />
         </div>
       ) : null}
       <SettingsDialogs />
@@ -129,3 +190,11 @@ export type { RoleController, RoleState } from './role/controller'
 export type { GroupController, GroupState } from './group/controller'
 export type { ProfileController } from './profile/controller'
 export type { OrganizationController } from './organization/controller'
+
+export { parsePreferencePatch, confirmedPreferenceDraft, preferenceSelection } from './preferences/user/values'
+
+export { createUserPreferenceStore } from './preferences/user/store'
+export { configureUserPreferenceForm } from './preferences/user/form'
+export { loadedPreferenceDraft, initialPreferenceDraft } from './preferences/user/values'
+export type { PreferenceDraft, UserPreferenceValues } from './preferences/user/values'
+export type { UserPreferenceController, UserPreferenceState } from './preferences/user/controller'

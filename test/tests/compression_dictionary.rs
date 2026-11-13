@@ -278,7 +278,7 @@ async fn initial_seed_compresses_complete_default_access_claims() -> anyhow::Res
         let session = Session::new(42, 84, "Research team").await?;
         let token = AccessToken::User(UserAccessToken::new(
             session,
-            PolicySnapshot::new(&member),
+            PolicySnapshot::new(&member).unwrap(),
             std::time::Duration::from_secs(60),
         )?);
         let mut source = Vec::new();

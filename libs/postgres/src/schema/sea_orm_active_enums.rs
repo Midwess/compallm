@@ -3,6 +3,12 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "lz4_dictionary_type")]
+pub enum Lz4DictionaryType {
+    #[sea_orm(string_value = "access_token")]
+    AccessToken,
+}
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "organization_status")]
 pub enum OrganizationStatus {
     #[sea_orm(string_value = "active")]
@@ -43,11 +49,4 @@ pub enum UserStatus {
     Active,
     #[sea_orm(string_value = "disabled")]
     Disabled,
-}
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "lz4_dictionary_type")]
-pub enum Lz4DictionaryType {
-    /// Shared LZ4 vocabulary for complete serialized user access tokens.
-    #[sea_orm(string_value = "access_token")]
-    AccessToken,
 }

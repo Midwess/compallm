@@ -1,3 +1,4 @@
+import { Form, useManagedForm } from '../../components/form'
 import { useState } from 'react'
 import { DotsThreeIcon } from '@phosphor-icons/react/dist/csr/DotsThree'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
@@ -19,45 +20,58 @@ function MemberRoles({ member }: { member: SettingsMember }) {
   const inherited = new Set(groups.filter((g) => g.memberIds.includes(member.id)).flatMap((g) => g.roleIds))
   const ids = new Set([...member.roleIds, ...inherited]),
     first = roles.find((r) => member.roleIds.includes(r.id))
+  const form = useManagedForm(
+    { roleIds: member.roleIds },
+    {
+      mode: 'change',
+      submit: async (values) => {
+        const result = await c.pages.members.setMemberRoles(member.id, values.roleIds)
+        return result === false ? false : values
+      },
+    },
+  )
   return (
-    <Popup>
-      <Popup.Trigger
-        aria-label={`Roles for ${member.name}`}
-        disabled={readonly}
-        className="h-6 w-32 justify-between gap-2 px-1.5 text-xs text-text"
-      >
-        <span>
-          {first?.name ?? 'No roles'}
-          {ids.size > 1 ? ` +${ids.size - 1}` : ''}
-        </span>
-        <CaretDownIcon className="size-2.5 shrink-0" aria-hidden="true" />
-      </Popup.Trigger>
-      <Popup.Content aria-label={`Roles for ${member.name}`} className="w-2xs bg-elevated p-2">
-        <SearchField
-          aria-label="Search roles"
-          placeholder="Search roles…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="mb-2"
-        />
-        {roles
-          .filter((r) => r.name.toLowerCase().includes(search.toLowerCase()))
-          .map((r) => (
-            <Popup.CheckboxItem
-              key={r.id}
-              aria-label={r.name}
-              checked={ids.has(r.id)}
-              disabled={inherited.has(r.id)}
-              onChange={() => c.pages.members.toggleMemberRole(member.id, r.id)}
-            >
-              <span className="flex-1 text-left">{r.name}</span>
-              {inherited.has(r.id) ? <span className="text-[11px] text-muted">Group</span> : null}
-            </Popup.CheckboxItem>
-          ))}
-        <Popup.Separator />
-        <p className="px-1 py-2 text-[11px] text-muted">Group roles are managed in Groups.</p>
-      </Popup.Content>
-    </Popup>
+    <Form model={form}>
+      <Popup>
+        <Popup.Trigger
+          aria-label={`Roles for ${member.name}`}
+          disabled={readonly}
+          className="h-6 w-32 justify-between gap-2 px-1.5 text-xs text-text"
+        >
+          <span>
+            {first?.name ?? 'No roles'}
+            {ids.size > 1 ? ` +${ids.size - 1}` : ''}
+          </span>
+          <CaretDownIcon className="size-2.5 shrink-0" aria-hidden="true" />
+        </Popup.Trigger>
+        <Popup.Content aria-label={`Roles for ${member.name}`} className="w-2xs bg-elevated p-2">
+          <SearchField
+            aria-label="Search roles"
+            placeholder="Search roles…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="mb-2"
+          />
+          {roles
+            .filter((r) => r.name.toLowerCase().includes(search.toLowerCase()))
+            .map((r) => (
+              <Popup.CheckboxItem
+                key={r.id}
+                aria-label={r.name}
+                checked={ids.has(r.id)}
+                disabled={inherited.has(r.id)}
+                name={inherited.has(r.id) ? undefined : 'roleIds'}
+                selectionValue={r.id}
+              >
+                <span className="flex-1 text-left">{r.name}</span>
+                {inherited.has(r.id) ? <span className="text-[11px] text-muted">Group</span> : null}
+              </Popup.CheckboxItem>
+            ))}
+          <Popup.Separator />
+          <p className="px-1 py-2 text-[11px] text-muted">Group roles are managed in Groups.</p>
+        </Popup.Content>
+      </Popup>
+    </Form>
   )
 }
 function MemberActions({ member }: { member: SettingsMember }) {

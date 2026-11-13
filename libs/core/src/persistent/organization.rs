@@ -31,6 +31,14 @@ impl From<ConnectionError> for OrganizationRepositoryError {
 #[async_trait]
 pub trait OrganizationRepository: Send + Sync {
     fn supports_role_policy(&self, source: &str) -> bool;
+    async fn update_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+        name: Option<String>,
+        description: Option<String>,
+        cedar_source: Option<String>,
+    ) -> Result<(), OrganizationRepositoryError>;
     /// Find a role using its organization-scoped identity.
     async fn find_role(
         &self,
@@ -55,7 +63,7 @@ pub trait OrganizationRepository: Send + Sync {
         &self,
         organization_id: u64,
         role_id: u64,
-    ) -> Result<(), OrganizationRepositoryError>;
+    ) -> Result<bool, OrganizationRepositoryError>;
     async fn lock_group(
         &self,
         organization_id: u64,

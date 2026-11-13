@@ -171,26 +171,68 @@ export const RichMessageContent: Story = {
   render: () => <RichMessage message={'Email already exists, <a href="/login">login here</a>'} />,
 }
 
-export const FilterSubmenus: Story = {
-  render: () => (
-    <Popup>
-      <Popup.IconTrigger aria-label="Filter example">
-        <FunnelIcon aria-hidden="true" className="size-3.5" />
-      </Popup.IconTrigger>
-      <Popup.Content aria-label="Filter example">
-        <Popup.Submenu label="Enabled">
-          <Popup.Item>All</Popup.Item>
-          <Popup.Item>Enabled</Popup.Item>
-          <Popup.Item>Disabled</Popup.Item>
-        </Popup.Submenu>
-        <Popup.Submenu label="Model type">
-          <Popup.Item>OpenAI Completion</Popup.Item>
-          <Popup.Item>OpenAI Response</Popup.Item>
-          <Popup.Item>Anthropic</Popup.Item>
-        </Popup.Submenu>
-        <Popup.Separator />
-        <Popup.Item>Clear all filters</Popup.Item>
-      </Popup.Content>
-    </Popup>
-  ),
+function FilterDemo({ edge = false }: { edge?: boolean }) {
+  const [status, setStatus] = useState('all')
+  const [modelType, setModelType] = useState('all')
+  const [capabilities, setCapabilities] = useState<string[]>([])
+  const [outsideClicks, setOutsideClicks] = useState(0)
+  return (
+    <div className={edge ? 'flex h-80 flex-col items-end justify-end gap-4 overflow-hidden' : 'grid gap-4'}>
+      <Popup>
+        <Popup.IconTrigger aria-label="Filter example">
+          <FunnelIcon aria-hidden="true" className="size-3.5" />
+        </Popup.IconTrigger>
+        <Popup.Content aria-label="Filter example">
+          <Popup.Submenu label="Selection">
+            <Popup.RadioGroup value={status} onValueChange={setStatus}>
+              {['all', 'enabled', 'disabled'].map((value) => (
+                <Popup.RadioItem key={value} value={value}>
+                  {value === 'all' ? 'All policies' : value === 'enabled' ? 'Enabled' : 'Disabled'}
+                </Popup.RadioItem>
+              ))}
+            </Popup.RadioGroup>
+          </Popup.Submenu>
+          <Popup.Submenu label="Model type">
+            <Popup.RadioGroup value={modelType} onValueChange={setModelType}>
+              {['all', 'OpenAI Completion', 'OpenAI Response', 'Anthropic'].map((value) => (
+                <Popup.RadioItem key={value} value={value}>
+                  {value === 'all' ? 'All model types' : value}
+                </Popup.RadioItem>
+              ))}
+            </Popup.RadioGroup>
+          </Popup.Submenu>
+          <Popup.Submenu label="Capabilities">
+            {['Vision', 'Tools', 'Reasoning'].map((value) => (
+              <Popup.CheckboxItem
+                key={value}
+                checked={capabilities.includes(value)}
+                onCheckedChange={(checked) =>
+                  setCapabilities((current) => (checked ? [...current, value] : current.filter((item) => item !== value)))
+                }
+              >
+                {value}
+              </Popup.CheckboxItem>
+            ))}
+          </Popup.Submenu>
+          <Popup.Separator />
+          <Popup.Item
+            onClick={() => {
+              setStatus('all')
+              setModelType('all')
+              setCapabilities([])
+            }}
+          >
+            Clear all filters
+          </Popup.Item>
+        </Popup.Content>
+      </Popup>
+      <p className="text-xs text-muted" aria-live="polite">
+        Selection: {status} · Model type: {modelType} · Capabilities: {capabilities.join(', ') || 'all'}
+      </p>
+      <Button onClick={() => setOutsideClicks((count) => count + 1)}>Outside action · {outsideClicks}</Button>
+    </div>
+  )
 }
+
+export const FilterSubmenus: Story = { render: () => <FilterDemo /> }
+export const FilterAtContainerEdge: Story = { render: () => <FilterDemo edge /> }

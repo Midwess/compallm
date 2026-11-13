@@ -7,12 +7,37 @@ export type Scalars = {
   Boolean: boolean
   ContextTokens: number
   ID: string
+  Int: number
   String: string
+}
+
+export interface AccessibilityPreferences {
+  pointerCursors: Scalars['Boolean']
+  reduceMotion: Scalars['Boolean']
+  underlineLinks: Scalars['Boolean']
+  __typename: 'AccessibilityPreferences'
 }
 
 export interface BooleanPayload {
   node: Scalars['Boolean']
   __typename: 'BooleanPayload'
+}
+
+export interface CalendarPreferences {
+  firstDay: PreferenceWeekday
+  __typename: 'CalendarPreferences'
+}
+
+export interface CodeAppearancePreferences {
+  font: CodeFontPreferences
+  theme: PreferenceCodeTheme
+  __typename: 'CodeAppearancePreferences'
+}
+
+export interface CodeFontPreferences {
+  family: PreferenceFontFamily
+  size: PreferencePixelFontSize
+  __typename: 'CodeFontPreferences'
 }
 
 export interface CreatedGroup {
@@ -67,6 +92,21 @@ export interface GroupPayload {
   __typename: 'GroupPayload'
 }
 
+export type HomeDestination = 'CHAT' | 'MODELS' | 'PROVIDERS'
+
+export type ImageMediaType = 'JPEG' | 'PNG' | 'WEBP'
+
+export interface MemberDisplayPreferences {
+  nameFormat: PreferenceNamingFormat
+  __typename: 'MemberDisplayPreferences'
+}
+
+export interface MessageCompositionPreferences {
+  convertEmoticons: Scalars['Boolean']
+  sendShortcut: PreferenceKeyCombination
+  __typename: 'MessageCompositionPreferences'
+}
+
 export interface Mutation {
   /** Confirm the verified signin challenge and create a scoped session. */
   emailSigninConfirm: SessionCredentialsPayload
@@ -80,11 +120,22 @@ export interface Mutation {
   groupCreate: CreatedGroupPayload
   /** Create a role in the verified active organization. */
   roleCreate: RolePayload
+  roleDelete: BooleanPayload
+  roleUpdate: RolePayload
   /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
   sessionRefresh: SessionCredentialsPayload
   /** Revoke the verified session and clear its browser cookies after success. */
   sessionRevoke: BooleanPayload
+  /** Restore selected preference groups, or ALL alone, to Core defaults. */
+  userPreferencesReset: UserPreferencesPayload
+  /** Atomically patch the signed-in user's preferences, preserving omitted fields. */
+  userPreferencesUpdate: UserPreferencesPayload
   __typename: 'Mutation'
+}
+
+export interface NavigationPreferences {
+  home: PreferenceDestination
+  __typename: 'NavigationPreferences'
 }
 
 export interface Organization {
@@ -105,6 +156,59 @@ export interface PageInfo {
   startCursor: Scalars['String'] | null
   __typename: 'PageInfo'
 }
+
+export interface PalettePreferences {
+  dark: PreferenceDarkPalette
+  light: PreferenceLightPalette
+  __typename: 'PalettePreferences'
+}
+
+export interface PolicyAction {
+  description: Scalars['String']
+  displayName: Scalars['String']
+  entityType: Scalars['String']
+  name: Scalars['String']
+  resourceType: Scalars['String']
+  __typename: 'PolicyAction'
+}
+
+export interface PolicyActionConnection {
+  edges: PolicyActionEdge[]
+  pageInfo: PageInfo
+  __typename: 'PolicyActionConnection'
+}
+
+export interface PolicyActionEdge {
+  cursor: Scalars['String']
+  node: PolicyAction
+  __typename: 'PolicyActionEdge'
+}
+
+export type PreferenceAppearanceMode = 'DARK' | 'LIGHT' | 'SYSTEM'
+
+export type PreferenceBadgeStyle = 'COUNT' | 'DOT'
+
+export type PreferenceCodeTheme = 'FOLLOW_INTERFACE' | 'LINEAR_DARK' | 'LINEAR_LIGHT' | 'SYSTEM'
+
+export type PreferenceDarkPalette = 'CLASSIC_DARK' | 'DARK' | 'MAGIC_BLUE'
+
+export type PreferenceDestination = 'CHAT' | 'MODELS' | 'NOTEBOOKS' | 'PLUGINS' | 'PROVIDERS'
+
+export type PreferenceFontFamily = 'DEFAULT' | 'MONOSPACE'
+
+export type PreferenceKeyCombination = 'ENTER' | 'MODIFIER_ENTER'
+
+export type PreferenceLightPalette = 'LIGHT' | 'PURE_LIGHT'
+
+export type PreferenceNamingFormat = 'FULL_NAME' | 'USERNAME'
+
+export type PreferencePixelFontSize = 'PX12' | 'PX13' | 'PX14' | 'PX16'
+
+export type PreferenceRelativeFontSize = 'DEFAULT' | 'LARGE' | 'LARGER' | 'SMALL' | 'SMALLER'
+
+export type PreferenceSidebarVisibility = 'ALWAYS' | 'HIDDEN' | 'WHEN_BADGED'
+
+export type PreferenceWeekday = 'FRIDAY' | 'MONDAY' | 'SATURDAY' | 'SUNDAY' | 'THURSDAY' | 'TUESDAY' | 'WEDNESDAY'
 
 /** Catalog connection family hint; each configured model selects its own operation. */
 export type ProviderApiProtocol = 'ANTHROPIC' | 'OPENAI_COMPATIBLE' | 'PROVIDER_SPECIFIC'
@@ -143,19 +247,27 @@ export interface Query {
   groups: GroupConnection
   /** Return the active organization from verified user authority. */
   organization: OrganizationPayload
+  /** Return the system-owned organization policy action catalog. */
+  organizationPolicyActions: PolicyActionConnection
   /** Find visible role metadata in the active organization. */
   role: RolePayload | null
   /** Return the complete visible role metadata collection, ordered by ID. */
   roles: RoleConnection
   /** Return the verified current session identity. */
   session: SessionPayload
+  /** Return the signed-in user's personal preferences; missing rows use Core defaults without a write. */
+  userPreferences: UserPreferencesPayload
   __typename: 'Query'
 }
 
 export interface Role {
+  /** Native Cedar source; template slots bind to this role and its organization. */
+  cedarSource: Scalars['String'] | null
+  color: Scalars['String']
   description: Scalars['String']
   id: Scalars['ID']
   name: Scalars['String']
+  owner: Scalars['Boolean']
   __typename: 'Role'
 }
 
@@ -207,8 +319,26 @@ export interface SessionPayload {
   __typename: 'SessionPayload'
 }
 
+export interface SidebarEntry {
+  item: PreferenceDestination
+  visibility: PreferenceSidebarVisibility
+  __typename: 'SidebarEntry'
+}
+
+export interface SidebarPreferences {
+  badgeStyle: PreferenceBadgeStyle
+  entries: SidebarEntry[]
+  __typename: 'SidebarPreferences'
+}
+
 /** Text operation determining the upstream request and response format. */
 export type TextModelProtocol = 'ANTHROPIC_MESSAGES' | 'OPENAI_CHAT_COMPLETIONS' | 'OPENAI_RESPONSES'
+
+export interface ThemePreferences {
+  mode: PreferenceAppearanceMode
+  palettes: PalettePreferences
+  __typename: 'ThemePreferences'
+}
 
 /** Exact Unix-second validity and client throttle values encoded as decimal strings. */
 export interface TokenLifetime {
@@ -219,8 +349,97 @@ export interface TokenLifetime {
   __typename: 'TokenLifetime'
 }
 
+export interface TypographyPreferences {
+  family: PreferenceFontFamily
+  size: PreferenceRelativeFontSize
+  __typename: 'TypographyPreferences'
+}
+
+export type UserPreferenceGroup =
+  | 'ACCESSIBILITY'
+  | 'ALL'
+  | 'CALENDAR'
+  | 'CODE_APPEARANCE'
+  | 'MEMBER_DISPLAY'
+  | 'MESSAGE_COMPOSITION'
+  | 'NAVIGATION'
+  | 'SIDEBAR'
+  | 'THEME'
+  | 'TYPOGRAPHY'
+
+export interface UserPreferences {
+  accessibility: AccessibilityPreferences
+  calendar: CalendarPreferences
+  codeAppearance: CodeAppearancePreferences
+  memberDisplay: MemberDisplayPreferences
+  messageComposition: MessageCompositionPreferences
+  navigation: NavigationPreferences
+  sidebar: SidebarPreferences
+  theme: ThemePreferences
+  typography: TypographyPreferences
+  __typename: 'UserPreferences'
+}
+
+export interface UserPreferencesPayload {
+  node: UserPreferences
+  __typename: 'UserPreferencesPayload'
+}
+
+export interface AccessibilityPatchInput {
+  pointerCursors?: Scalars['Boolean'] | null
+  reduceMotion?: Scalars['Boolean'] | null
+  underlineLinks?: Scalars['Boolean'] | null
+}
+
+export interface AccessibilityPreferencesGenqlSelection {
+  pointerCursors?: boolean | number
+  reduceMotion?: boolean | number
+  underlineLinks?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface BooleanPayloadGenqlSelection {
   node?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface CalendarPatchInput {
+  firstDay?: PreferenceWeekday | null
+}
+
+export interface CalendarPreferencesGenqlSelection {
+  firstDay?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ChatCreateInput {
+  message: Scalars['String']
+  modelId: Scalars['String']
+}
+
+export interface CodeAppearancePatchInput {
+  font?: CodeFontPatchInput | null
+  theme?: PreferenceCodeTheme | null
+}
+
+export interface CodeAppearancePreferencesGenqlSelection {
+  font?: CodeFontPreferencesGenqlSelection
+  theme?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface CodeFontPatchInput {
+  family?: PreferenceFontFamily | null
+  size?: PreferencePixelFontSize | null
+}
+
+export interface CodeFontPreferencesGenqlSelection {
+  family?: boolean | number
+  size?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -238,6 +457,10 @@ export interface CreatedGroupPayloadGenqlSelection {
   node?: CreatedGroupGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
+}
+
+export interface CredentialCreateInput {
+  name: Scalars['String']
 }
 
 /** Email admission succeeded; cookie delivery never exposes the OTP credential. */
@@ -314,6 +537,33 @@ export interface GroupPayloadGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface ImageUploadInput {
+  mediaType: ImageMediaType
+  size: Scalars['Int']
+}
+
+export interface MemberDisplayPatchInput {
+  nameFormat?: PreferenceNamingFormat | null
+}
+
+export interface MemberDisplayPreferencesGenqlSelection {
+  nameFormat?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface MessageCompositionPatchInput {
+  convertEmoticons?: Scalars['Boolean'] | null
+  sendShortcut?: PreferenceKeyCombination | null
+}
+
+export interface MessageCompositionPreferencesGenqlSelection {
+  convertEmoticons?: boolean | number
+  sendShortcut?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface MutationGenqlSelection {
   /** Confirm the verified signin challenge and create a scoped session. */
   emailSigninConfirm?: SessionCredentialsPayloadGenqlSelection & { __args: { input: EmailCodeInput } }
@@ -327,10 +577,26 @@ export interface MutationGenqlSelection {
   groupCreate?: CreatedGroupPayloadGenqlSelection & { __args: { input: GroupCreateInput } }
   /** Create a role in the verified active organization. */
   roleCreate?: RolePayloadGenqlSelection & { __args: { input: RoleCreateInput } }
+  roleDelete?: BooleanPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  roleUpdate?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; input: RoleUpdateInput } }
   /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
   sessionRefresh?: SessionCredentialsPayloadGenqlSelection
   /** Revoke the verified session and clear its browser cookies after success. */
   sessionRevoke?: BooleanPayloadGenqlSelection
+  /** Restore selected preference groups, or ALL alone, to Core defaults. */
+  userPreferencesReset?: UserPreferencesPayloadGenqlSelection & { __args: { groups: UserPreferenceGroup[] } }
+  /** Atomically patch the signed-in user's preferences, preserving omitted fields. */
+  userPreferencesUpdate?: UserPreferencesPayloadGenqlSelection & { __args: { input: UserPreferencesPatchInput } }
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface NavigationPatchInput {
+  home?: PreferenceDestination | null
+}
+
+export interface NavigationPreferencesGenqlSelection {
+  home?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -348,6 +614,15 @@ export interface OrganizationPayloadGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface OrganizationSettingsUpdateInput {
+  announcements?: Scalars['String'] | null
+  fiscalMonth?: Scalars['String'] | null
+  home?: HomeDestination | null
+  name?: Scalars['String'] | null
+  slug?: Scalars['String'] | null
+  welcome?: Scalars['String'] | null
+}
+
 export interface PageInfoGenqlSelection {
   endCursor?: boolean | number
   hasNextPage?: boolean | number
@@ -355,6 +630,47 @@ export interface PageInfoGenqlSelection {
   startCursor?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
+}
+
+export interface PalettePatchInput {
+  dark?: PreferenceDarkPalette | null
+  light?: PreferenceLightPalette | null
+}
+
+export interface PalettePreferencesGenqlSelection {
+  dark?: boolean | number
+  light?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PolicyActionGenqlSelection {
+  description?: boolean | number
+  displayName?: boolean | number
+  entityType?: boolean | number
+  name?: boolean | number
+  resourceType?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PolicyActionConnectionGenqlSelection {
+  edges?: PolicyActionEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PolicyActionEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: PolicyActionGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ProfileUpdateInput {
+  name?: Scalars['String'] | null
+  username?: Scalars['String'] | null
 }
 
 /** Opaque registry identity, independent of an edited upstream model name. */
@@ -462,20 +778,32 @@ export interface QueryGenqlSelection {
   groups?: GroupConnectionGenqlSelection
   /** Return the active organization from verified user authority. */
   organization?: OrganizationPayloadGenqlSelection
+  /** Return the system-owned organization policy action catalog. */
+  organizationPolicyActions?: PolicyActionConnectionGenqlSelection
   /** Find visible role metadata in the active organization. */
   role?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Return the complete visible role metadata collection, ordered by ID. */
   roles?: RoleConnectionGenqlSelection
   /** Return the verified current session identity. */
   session?: SessionPayloadGenqlSelection
+  /** Return the signed-in user's personal preferences; missing rows use Core defaults without a write. */
+  userPreferences?: UserPreferencesPayloadGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
 
+export interface ReportingScheduleInput {
+  timezone: Scalars['String']
+}
+
 export interface RoleGenqlSelection {
+  /** Native Cedar source; template slots bind to this role and its organization. */
+  cedarSource?: boolean | number
+  color?: boolean | number
   description?: boolean | number
   id?: boolean | number
   name?: boolean | number
+  owner?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -488,6 +816,7 @@ export interface RoleConnectionGenqlSelection {
 }
 
 export interface RoleCreateInput {
+  /** Comments and unnecessary whitespace are removed before the length limit is checked. */
   cedarSource: Scalars['String']
   description: Scalars['String']
   name: Scalars['String']
@@ -504,6 +833,13 @@ export interface RolePayloadGenqlSelection {
   node?: RoleGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
+}
+
+export interface RoleUpdateInput {
+  /** Comments and unnecessary whitespace are removed before the length limit is checked. */
+  cedarSource?: Scalars['String'] | null
+  description?: Scalars['String'] | null
+  name?: Scalars['String'] | null
 }
 
 export interface SessionGenqlSelection {
@@ -541,6 +877,48 @@ export interface SessionPayloadGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface SidebarEntryGenqlSelection {
+  item?: boolean | number
+  visibility?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+/** Order replaces ordering while preserving visibility; visibility patches are keyed by destination. */
+export interface SidebarPatchInput {
+  badgeStyle?: PreferenceBadgeStyle | null
+  order?: PreferenceDestination[] | null
+  visibility?: SidebarVisibilityPatchInput[] | null
+}
+
+export interface SidebarPreferencesGenqlSelection {
+  badgeStyle?: boolean | number
+  entries?: SidebarEntryGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface SidebarVisibilityPatchInput {
+  item: PreferenceDestination
+  visibility: PreferenceSidebarVisibility
+}
+
+export interface SpendingLimitInput {
+  amount?: Scalars['String'] | null
+}
+
+export interface ThemePatchInput {
+  mode?: PreferenceAppearanceMode | null
+  palettes?: PalettePatchInput | null
+}
+
+export interface ThemePreferencesGenqlSelection {
+  mode?: boolean | number
+  palettes?: PalettePreferencesGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 /** Exact Unix-second validity and client throttle values encoded as decimal strings. */
 export interface TokenLifetimeGenqlSelection {
   expiresAt?: boolean | number
@@ -551,10 +929,79 @@ export interface TokenLifetimeGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface TypographyPatchInput {
+  family?: PreferenceFontFamily | null
+  size?: PreferenceRelativeFontSize | null
+}
+
+export interface TypographyPreferencesGenqlSelection {
+  family?: boolean | number
+  size?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface UserPreferencesGenqlSelection {
+  accessibility?: AccessibilityPreferencesGenqlSelection
+  calendar?: CalendarPreferencesGenqlSelection
+  codeAppearance?: CodeAppearancePreferencesGenqlSelection
+  memberDisplay?: MemberDisplayPreferencesGenqlSelection
+  messageComposition?: MessageCompositionPreferencesGenqlSelection
+  navigation?: NavigationPreferencesGenqlSelection
+  sidebar?: SidebarPreferencesGenqlSelection
+  theme?: ThemePreferencesGenqlSelection
+  typography?: TypographyPreferencesGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+/** Partial personal preferences. Omitted fields are preserved; explicit null is rejected. */
+export interface UserPreferencesPatchInput {
+  accessibility?: AccessibilityPatchInput | null
+  calendar?: CalendarPatchInput | null
+  codeAppearance?: CodeAppearancePatchInput | null
+  memberDisplay?: MemberDisplayPatchInput | null
+  messageComposition?: MessageCompositionPatchInput | null
+  navigation?: NavigationPatchInput | null
+  sidebar?: SidebarPatchInput | null
+  theme?: ThemePatchInput | null
+  typography?: TypographyPatchInput | null
+}
+
+export interface UserPreferencesPayloadGenqlSelection {
+  node?: UserPreferencesGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+const AccessibilityPreferences_possibleTypes: string[] = ['AccessibilityPreferences']
+export const isAccessibilityPreferences = (obj?: { __typename?: any } | null): obj is AccessibilityPreferences => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isAccessibilityPreferences"')
+  return AccessibilityPreferences_possibleTypes.includes(obj.__typename)
+}
+
 const BooleanPayload_possibleTypes: string[] = ['BooleanPayload']
 export const isBooleanPayload = (obj?: { __typename?: any } | null): obj is BooleanPayload => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isBooleanPayload"')
   return BooleanPayload_possibleTypes.includes(obj.__typename)
+}
+
+const CalendarPreferences_possibleTypes: string[] = ['CalendarPreferences']
+export const isCalendarPreferences = (obj?: { __typename?: any } | null): obj is CalendarPreferences => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isCalendarPreferences"')
+  return CalendarPreferences_possibleTypes.includes(obj.__typename)
+}
+
+const CodeAppearancePreferences_possibleTypes: string[] = ['CodeAppearancePreferences']
+export const isCodeAppearancePreferences = (obj?: { __typename?: any } | null): obj is CodeAppearancePreferences => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isCodeAppearancePreferences"')
+  return CodeAppearancePreferences_possibleTypes.includes(obj.__typename)
+}
+
+const CodeFontPreferences_possibleTypes: string[] = ['CodeFontPreferences']
+export const isCodeFontPreferences = (obj?: { __typename?: any } | null): obj is CodeFontPreferences => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isCodeFontPreferences"')
+  return CodeFontPreferences_possibleTypes.includes(obj.__typename)
 }
 
 const CreatedGroup_possibleTypes: string[] = ['CreatedGroup']
@@ -605,10 +1052,30 @@ export const isGroupPayload = (obj?: { __typename?: any } | null): obj is GroupP
   return GroupPayload_possibleTypes.includes(obj.__typename)
 }
 
+const MemberDisplayPreferences_possibleTypes: string[] = ['MemberDisplayPreferences']
+export const isMemberDisplayPreferences = (obj?: { __typename?: any } | null): obj is MemberDisplayPreferences => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isMemberDisplayPreferences"')
+  return MemberDisplayPreferences_possibleTypes.includes(obj.__typename)
+}
+
+const MessageCompositionPreferences_possibleTypes: string[] = ['MessageCompositionPreferences']
+export const isMessageCompositionPreferences = (
+  obj?: { __typename?: any } | null,
+): obj is MessageCompositionPreferences => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isMessageCompositionPreferences"')
+  return MessageCompositionPreferences_possibleTypes.includes(obj.__typename)
+}
+
 const Mutation_possibleTypes: string[] = ['Mutation']
 export const isMutation = (obj?: { __typename?: any } | null): obj is Mutation => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isMutation"')
   return Mutation_possibleTypes.includes(obj.__typename)
+}
+
+const NavigationPreferences_possibleTypes: string[] = ['NavigationPreferences']
+export const isNavigationPreferences = (obj?: { __typename?: any } | null): obj is NavigationPreferences => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isNavigationPreferences"')
+  return NavigationPreferences_possibleTypes.includes(obj.__typename)
 }
 
 const Organization_possibleTypes: string[] = ['Organization']
@@ -627,6 +1094,30 @@ const PageInfo_possibleTypes: string[] = ['PageInfo']
 export const isPageInfo = (obj?: { __typename?: any } | null): obj is PageInfo => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isPageInfo"')
   return PageInfo_possibleTypes.includes(obj.__typename)
+}
+
+const PalettePreferences_possibleTypes: string[] = ['PalettePreferences']
+export const isPalettePreferences = (obj?: { __typename?: any } | null): obj is PalettePreferences => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPalettePreferences"')
+  return PalettePreferences_possibleTypes.includes(obj.__typename)
+}
+
+const PolicyAction_possibleTypes: string[] = ['PolicyAction']
+export const isPolicyAction = (obj?: { __typename?: any } | null): obj is PolicyAction => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPolicyAction"')
+  return PolicyAction_possibleTypes.includes(obj.__typename)
+}
+
+const PolicyActionConnection_possibleTypes: string[] = ['PolicyActionConnection']
+export const isPolicyActionConnection = (obj?: { __typename?: any } | null): obj is PolicyActionConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPolicyActionConnection"')
+  return PolicyActionConnection_possibleTypes.includes(obj.__typename)
+}
+
+const PolicyActionEdge_possibleTypes: string[] = ['PolicyActionEdge']
+export const isPolicyActionEdge = (obj?: { __typename?: any } | null): obj is PolicyActionEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPolicyActionEdge"')
+  return PolicyActionEdge_possibleTypes.includes(obj.__typename)
 }
 
 const ProviderTemplate_possibleTypes: string[] = ['ProviderTemplate']
@@ -689,15 +1180,146 @@ export const isSessionPayload = (obj?: { __typename?: any } | null): obj is Sess
   return SessionPayload_possibleTypes.includes(obj.__typename)
 }
 
+const SidebarEntry_possibleTypes: string[] = ['SidebarEntry']
+export const isSidebarEntry = (obj?: { __typename?: any } | null): obj is SidebarEntry => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isSidebarEntry"')
+  return SidebarEntry_possibleTypes.includes(obj.__typename)
+}
+
+const SidebarPreferences_possibleTypes: string[] = ['SidebarPreferences']
+export const isSidebarPreferences = (obj?: { __typename?: any } | null): obj is SidebarPreferences => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isSidebarPreferences"')
+  return SidebarPreferences_possibleTypes.includes(obj.__typename)
+}
+
+const ThemePreferences_possibleTypes: string[] = ['ThemePreferences']
+export const isThemePreferences = (obj?: { __typename?: any } | null): obj is ThemePreferences => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isThemePreferences"')
+  return ThemePreferences_possibleTypes.includes(obj.__typename)
+}
+
 const TokenLifetime_possibleTypes: string[] = ['TokenLifetime']
 export const isTokenLifetime = (obj?: { __typename?: any } | null): obj is TokenLifetime => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isTokenLifetime"')
   return TokenLifetime_possibleTypes.includes(obj.__typename)
 }
 
+const TypographyPreferences_possibleTypes: string[] = ['TypographyPreferences']
+export const isTypographyPreferences = (obj?: { __typename?: any } | null): obj is TypographyPreferences => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTypographyPreferences"')
+  return TypographyPreferences_possibleTypes.includes(obj.__typename)
+}
+
+const UserPreferences_possibleTypes: string[] = ['UserPreferences']
+export const isUserPreferences = (obj?: { __typename?: any } | null): obj is UserPreferences => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isUserPreferences"')
+  return UserPreferences_possibleTypes.includes(obj.__typename)
+}
+
+const UserPreferencesPayload_possibleTypes: string[] = ['UserPreferencesPayload']
+export const isUserPreferencesPayload = (obj?: { __typename?: any } | null): obj is UserPreferencesPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isUserPreferencesPayload"')
+  return UserPreferencesPayload_possibleTypes.includes(obj.__typename)
+}
+
 export const enumCredentialDelivery = {
   COOKIE: 'COOKIE' as const,
   TOKEN: 'TOKEN' as const,
+}
+
+export const enumHomeDestination = {
+  CHAT: 'CHAT' as const,
+  MODELS: 'MODELS' as const,
+  PROVIDERS: 'PROVIDERS' as const,
+}
+
+export const enumImageMediaType = {
+  JPEG: 'JPEG' as const,
+  PNG: 'PNG' as const,
+  WEBP: 'WEBP' as const,
+}
+
+export const enumPreferenceAppearanceMode = {
+  DARK: 'DARK' as const,
+  LIGHT: 'LIGHT' as const,
+  SYSTEM: 'SYSTEM' as const,
+}
+
+export const enumPreferenceBadgeStyle = {
+  COUNT: 'COUNT' as const,
+  DOT: 'DOT' as const,
+}
+
+export const enumPreferenceCodeTheme = {
+  FOLLOW_INTERFACE: 'FOLLOW_INTERFACE' as const,
+  LINEAR_DARK: 'LINEAR_DARK' as const,
+  LINEAR_LIGHT: 'LINEAR_LIGHT' as const,
+  SYSTEM: 'SYSTEM' as const,
+}
+
+export const enumPreferenceDarkPalette = {
+  CLASSIC_DARK: 'CLASSIC_DARK' as const,
+  DARK: 'DARK' as const,
+  MAGIC_BLUE: 'MAGIC_BLUE' as const,
+}
+
+export const enumPreferenceDestination = {
+  CHAT: 'CHAT' as const,
+  MODELS: 'MODELS' as const,
+  NOTEBOOKS: 'NOTEBOOKS' as const,
+  PLUGINS: 'PLUGINS' as const,
+  PROVIDERS: 'PROVIDERS' as const,
+}
+
+export const enumPreferenceFontFamily = {
+  DEFAULT: 'DEFAULT' as const,
+  MONOSPACE: 'MONOSPACE' as const,
+}
+
+export const enumPreferenceKeyCombination = {
+  ENTER: 'ENTER' as const,
+  MODIFIER_ENTER: 'MODIFIER_ENTER' as const,
+}
+
+export const enumPreferenceLightPalette = {
+  LIGHT: 'LIGHT' as const,
+  PURE_LIGHT: 'PURE_LIGHT' as const,
+}
+
+export const enumPreferenceNamingFormat = {
+  FULL_NAME: 'FULL_NAME' as const,
+  USERNAME: 'USERNAME' as const,
+}
+
+export const enumPreferencePixelFontSize = {
+  PX12: 'PX12' as const,
+  PX13: 'PX13' as const,
+  PX14: 'PX14' as const,
+  PX16: 'PX16' as const,
+}
+
+export const enumPreferenceRelativeFontSize = {
+  DEFAULT: 'DEFAULT' as const,
+  LARGE: 'LARGE' as const,
+  LARGER: 'LARGER' as const,
+  SMALL: 'SMALL' as const,
+  SMALLER: 'SMALLER' as const,
+}
+
+export const enumPreferenceSidebarVisibility = {
+  ALWAYS: 'ALWAYS' as const,
+  HIDDEN: 'HIDDEN' as const,
+  WHEN_BADGED: 'WHEN_BADGED' as const,
+}
+
+export const enumPreferenceWeekday = {
+  FRIDAY: 'FRIDAY' as const,
+  MONDAY: 'MONDAY' as const,
+  SATURDAY: 'SATURDAY' as const,
+  SUNDAY: 'SUNDAY' as const,
+  THURSDAY: 'THURSDAY' as const,
+  TUESDAY: 'TUESDAY' as const,
+  WEDNESDAY: 'WEDNESDAY' as const,
 }
 
 export const enumProviderApiProtocol = {
@@ -725,4 +1347,17 @@ export const enumTextModelProtocol = {
   ANTHROPIC_MESSAGES: 'ANTHROPIC_MESSAGES' as const,
   OPENAI_CHAT_COMPLETIONS: 'OPENAI_CHAT_COMPLETIONS' as const,
   OPENAI_RESPONSES: 'OPENAI_RESPONSES' as const,
+}
+
+export const enumUserPreferenceGroup = {
+  ACCESSIBILITY: 'ACCESSIBILITY' as const,
+  ALL: 'ALL' as const,
+  CALENDAR: 'CALENDAR' as const,
+  CODE_APPEARANCE: 'CODE_APPEARANCE' as const,
+  MEMBER_DISPLAY: 'MEMBER_DISPLAY' as const,
+  MESSAGE_COMPOSITION: 'MESSAGE_COMPOSITION' as const,
+  NAVIGATION: 'NAVIGATION' as const,
+  SIDEBAR: 'SIDEBAR' as const,
+  THEME: 'THEME' as const,
+  TYPOGRAPHY: 'TYPOGRAPHY' as const,
 }

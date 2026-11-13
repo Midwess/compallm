@@ -1,5 +1,16 @@
-import { animated, overlay } from './motion'
-import { cloneElement, useEffect, useId, useRef, useState, type HTMLAttributes, type ReactElement, type ReactNode } from 'react'
+import { animated, LoadingMotion, overlay, FieldErrorMotion } from './motion'
+import {
+  useId,
+  useEffect,
+  useState,
+  useRef,
+  useLayoutEffect,
+  type HTMLAttributes,
+  type ReactElement,
+  type ReactNode,
+} from 'react'
+import { createPortal } from 'react-dom'
+import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cx } from './shared'
 import { RichMessage } from './rich-message'
 import { Button } from './buttons'
@@ -8,22 +19,29 @@ import { InfoIcon } from '@phosphor-icons/react/dist/csr/Info'
 import { WarningCircleIcon } from '@phosphor-icons/react/dist/csr/WarningCircle'
 import { WarningIcon } from '@phosphor-icons/react/dist/csr/Warning'
 import { XIcon } from '@phosphor-icons/react/dist/csr/X'
+import { CheckCircleIcon } from '@phosphor-icons/react/dist/csr/CheckCircle'
+import { SpinnerGapIcon } from '@phosphor-icons/react/dist/csr/SpinnerGap'
 
 export interface ToastProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
   message: string
-  tone?: 'info' | 'error' | 'warning'
+  tone?: 'info' | 'error' | 'warning' | 'success' | 'loading'
+  action?: { label: string; onClick: () => void }
   onDismiss: () => void
   dismissLabel?: string
 }
 
 const toastTones = {
-  info: { Icon: InfoIcon, color: 'text-focus', label: 'Info' },
+  info: { Icon: InfoIcon, color: 'text-primary', label: 'Info' },
   error: { Icon: WarningCircleIcon, color: 'text-error', label: 'Error' },
   warning: { Icon: WarningIcon, color: 'text-warning', label: 'Warning' },
+  success: { Icon: CheckCircleIcon, color: 'text-success', label: 'Success' },
+  loading: { Icon: SpinnerGapIcon, color: 'text-primary', label: 'Loading' },
 }
 
 export function Toast({
   message,
+  title,
+  action,
   tone = 'info',
   onDismiss,
   dismissLabel = 'Dismiss notification',
@@ -31,22 +49,54 @@ export function Toast({
   ...props
 }: ToastProps) {
   const { Icon, color, label } = toastTones[tone]
+  const icon = <Icon size={20} weight="regular" aria-hidden="true" />
   return (
     <div
       {...props}
       data-ui="toast"
       data-tone={tone}
       className={cx(
-        'flex min-h-18 w-90 max-w-full items-center gap-2 rounded-[10px]',
-        'border-[0.5px] border-border bg-elevated p-4 font-sans text-xsm leading-5 text-text',
+        'flex w-fit min-w-0 max-w-100 items-start gap-2.5 rounded-xl',
+        'border border-border bg-elevated p-2 font-sans text-xsm leading-5 text-text shadow-lg',
         className,
       )}
     >
-      <Icon size={16} className={cx('shrink-0', color)} aria-hidden="true" />
-      <p className="min-w-0 flex-1 wrap-anywhere" role={tone === 'error' ? 'alert' : 'status'} aria-atomic="true">
-        <span className="sr-only">{label}: </span>
-        <RichMessage message={message} />
-      </p>
+      <span className={cx('mt-0.5 inline-flex shrink-0', color)}>
+        {tone === 'loading' ? <LoadingMotion>{icon}</LoadingMotion> : icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="wrap-anywhere" role={tone === 'error' ? 'alert' : 'status'} aria-atomic="true">
+          <span className="sr-only">{label}: </span>
+          {title ? <p className="text-sm leading-5.5 font-semibold">{title}</p> : null}
+          <div className={cx(title ? 'mt-0.5 text-muted' : 'text-text')}>
+            <RichMessage message={message} />
+          </div>
+        </div>
+        <div className="mt-1 flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+          <animated.button
+            type="button"
+            onClick={onDismiss}
+            className={cx(
+              'min-h-6 cursor-pointer rounded text-muted hover:text-text',
+              'focus-visible:outline-2 focus-visible:outline-focus',
+            )}
+          >
+            Dismiss
+          </animated.button>
+          {action ? (
+            <animated.button
+              type="button"
+              onClick={action.onClick}
+              className={cx(
+                'min-h-6 cursor-pointer rounded text-primary hover:text-focus',
+                'focus-visible:outline-2 focus-visible:outline-focus',
+              )}
+            >
+              {action.label}
+            </animated.button>
+          ) : null}
+        </div>
+      </div>
       <animated.button
         type="button"
         onClick={onDismiss}
@@ -56,7 +106,7 @@ export function Toast({
           'hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
         )}
       >
-        <XIcon size={12} aria-hidden="true" />
+        <XIcon size={16} weight="regular" aria-hidden="true" />
       </animated.button>
     </div>
   )
@@ -86,117 +136,78 @@ export function KeyboardKey({ children }: { children: ReactNode }) {
     </kbd>
   )
 }
-export function Tooltip({
-  children,
-  content,
-}: {
-  children: ReactElement<{ 'aria-describedby'?: string }>
-  content: ReactNode
-}) {
-  const id = useId()
-  const [dismissed, setDismissed] = useState(false)
-  const [hovered, setHovered] = useState(false)
-  const [focused, setFocused] = useState(false)
+function TooltipPopup({ content }: { content: ReactNode }) {
   return (
-    <span
-      className="group/tooltip relative inline-flex"
-      onPointerEnter={() => {
-        setDismissed(false)
-        setHovered(true)
-      }}
-      onPointerLeave={() => setHovered(false)}
-      onFocus={() => {
-        setDismissed(false)
-        setFocused(true)
-      }}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false)
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') setDismissed(true)
-      }}
-    >
-      {cloneElement(children, { 'aria-describedby': [children.props['aria-describedby'], id].filter(Boolean).join(' ') })}
-      {!dismissed && (hovered || focused) ? (
-        <overlay.span
-          id={id}
-          role="tooltip"
-          className={`
-  absolute bottom-[calc(100%+(--spacing(1)))] left-1/2 z-30 -translate-x-1/2
-  rounded-md bg-menu p-1 text-[12px] whitespace-nowrap text-text
-`}
+    <BaseTooltip.Portal>
+      <BaseTooltip.Positioner sideOffset={6} className="z-50">
+        <BaseTooltip.Popup
+          className="max-w-xs rounded-full border border-border bg-elevated px-3 py-1.5 text-center text-xs leading-4
+text-text shadow-lg"
         >
+          <BaseTooltip.Arrow
+            className="absolute flex data-[side=top]:-bottom-1 data-[side=bottom]:-top-1
+ data-[side=left]:-right-1 data-[side=right]:-left-1"
+          >
+            <span className="block size-2 rotate-45 bg-elevated" />
+          </BaseTooltip.Arrow>
           {content}
-        </overlay.span>
-      ) : null}
-    </span>
+        </BaseTooltip.Popup>
+      </BaseTooltip.Positioner>
+    </BaseTooltip.Portal>
+  )
+}
+
+export function Tooltip({ children, content }: { children: ReactElement; content: ReactNode }) {
+  return (
+    <BaseTooltip.Provider>
+      <BaseTooltip.Root>
+        <BaseTooltip.Trigger render={children} />
+        <TooltipPopup content={content} />
+      </BaseTooltip.Root>
+    </BaseTooltip.Provider>
+  )
+}
+
+export function DisabledTooltip({
+  disabled,
+  reason,
+  allowInteraction = false,
+  children,
+}: {
+  disabled: boolean
+  reason: string
+  allowInteraction?: boolean
+  children: ReactNode
+}) {
+  if (!disabled) return children
+  return (
+    <BaseTooltip.Provider>
+      <BaseTooltip.Root>
+        <BaseTooltip.Trigger
+          render={<span tabIndex={0} aria-label={reason} />}
+          className={allowInteraction ? 'inline-flex w-full max-w-full' : 'inline-flex max-w-full **:pointer-events-none'}
+        >
+          {children}
+        </BaseTooltip.Trigger>
+        <TooltipPopup content={reason} />
+      </BaseTooltip.Root>
+    </BaseTooltip.Provider>
   )
 }
 export function FieldHelp({ label, children }: { label: string; children: ReactNode }) {
-  const id = useId()
-  const trigger = useRef<HTMLButtonElement>(null)
-  const tooltip = useRef<HTMLSpanElement>(null)
-  useEffect(() => {
-    const dismiss = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || !tooltip.current?.matches(':popover-open')) return
-      event.preventDefault()
-      event.stopPropagation()
-      tooltip.current.hidePopover()
-    }
-    document.addEventListener('keydown', dismiss, true)
-    return () => document.removeEventListener('keydown', dismiss, true)
-  }, [])
-  function show() {
-    const element = tooltip.current
-    const button = trigger.current
-    if (!element || !button || element.matches(':popover-open')) return
-    element.showPopover()
-    const bounds = button.getBoundingClientRect()
-    const width = element.offsetWidth
-    const height = element.offsetHeight
-    element.style.left = `${Math.max(8, Math.min(bounds.left, window.innerWidth - width - 8))}px`
-    const top = bounds.bottom + height <= window.innerHeight - 8 ? bounds.bottom : Math.max(8, bounds.top - height)
-    element.style.top = `${top}px`
-  }
-  function hide() {
-    tooltip.current?.hidePopover()
-  }
   return (
-    <span
-      className="inline-flex align-middle"
-      onPointerEnter={show}
-      onPointerLeave={() => {
-        if (document.activeElement !== trigger.current) hide()
-      }}
-      onBlur={hide}
-    >
+    <Tooltip content={children}>
       <animated.button
-        ref={trigger}
         type="button"
         aria-label={label}
-        aria-describedby={id}
         className={`
 inline-flex size-5 shrink-0 cursor-help items-center justify-center rounded text-muted hover:text-text
 focus-visible:text-text focus-visible:outline-1 focus-visible:outline-muted
 `}
-        onFocus={show}
-        onClick={show}
       >
         <QuestionIcon className="size-4" aria-hidden="true" />
       </animated.button>
-      <overlay.span
-        ref={tooltip}
-        id={id}
-        role="tooltip"
-        popover="manual"
-        className={`
-fixed m-0 w-2xs max-w-[calc(100vw-1rem)] overflow-visible border-0 bg-transparent pt-1 text-left
-text-xs leading-4 font-normal text-text
-`}
-      >
-        <span className="block rounded-lg border border-border bg-elevated p-3">{children}</span>
-      </overlay.span>
-    </span>
+    </Tooltip>
   )
 }
 export function EmptyState({ title, children, action }: { title: ReactNode; children?: ReactNode; action?: ReactNode }) {
@@ -264,4 +275,129 @@ export function DropInsertionIndicator({ className, ...props }: HTMLAttributes<H
 
 export function FeedbackSlot({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return <div {...props} className={cx('h-fit py-1 overflow-y-auto', className)} />
+}
+
+export function FieldErrorIndicator({
+  anchor,
+  message,
+  id,
+  validationVersion = 0,
+}: {
+  anchor: HTMLElement
+  message: string
+  id: string
+  validationVersion?: number
+}) {
+  const triggerId = useId()
+  const badge = useRef<HTMLButtonElement>(null)
+  const [expiredVersion, setExpiredVersion] = useState<number>()
+  const [interacting, setInteracting] = useState(false)
+  const [dismissedVersion, setDismissedVersion] = useState<number>()
+  const [visible, setVisible] = useState(true)
+  const container = anchor.closest('dialog') ?? anchor.ownerDocument.body
+  useEffect(() => {
+    const timer = setTimeout(() => setExpiredVersion(validationVersion), 5000)
+    return () => clearTimeout(timer)
+  }, [validationVersion])
+  useLayoutEffect(() => attachFieldError(anchor, id, () => badge.current, setVisible), [anchor, id])
+
+  return createPortal(
+    <>
+      <span id={id} className="sr-only" role="alert">
+        {message}
+      </span>
+      <BaseTooltip.Provider>
+        <BaseTooltip.Root
+          open={visible && dismissedVersion !== validationVersion && (expiredVersion !== validationVersion || interacting)}
+          triggerId={triggerId}
+          onOpenChange={(open, details) => {
+            if (details.reason === 'escape-key' || details.reason === 'trigger-press') {
+              setExpiredVersion(validationVersion)
+              setInteracting(false)
+              setDismissedVersion(validationVersion)
+            } else {
+              setInteracting(open)
+              if (open) setDismissedVersion(undefined)
+            }
+          }}
+        >
+          <BaseTooltip.Trigger
+            id={triggerId}
+            ref={badge}
+            delay={0}
+            closeDelay={100}
+            closeOnClick={false}
+            aria-label="Show validation error"
+            aria-describedby={id}
+            className="fixed z-50 inline-flex size-5 cursor-help items-center justify-center rounded-full
+bg-error text-on-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
+            onPointerEnter={() => setDismissedVersion(undefined)}
+            onFocus={() => setDismissedVersion(undefined)}
+          >
+            <WarningIcon weight="fill" aria-hidden="true" className="size-3" />
+          </BaseTooltip.Trigger>
+          <BaseTooltip.Portal container={container}>
+            <BaseTooltip.Positioner side="right" align="center" sideOffset={-20} collisionPadding={8} className="z-40">
+              <BaseTooltip.Popup
+                render={<FieldErrorMotion />}
+                className="min-h-5 max-w-xs origin-left rounded-full bg-error py-1 pr-1 pl-6
+text-xs leading-3 text-on-primary shadow-lg data-[side=left]:origin-right data-[side=left]:pr-6 data-[side=left]:pl-1"
+              >
+                {message}
+              </BaseTooltip.Popup>
+            </BaseTooltip.Positioner>
+          </BaseTooltip.Portal>
+        </BaseTooltip.Root>
+      </BaseTooltip.Provider>
+    </>,
+    container,
+  )
+}
+
+function attachFieldError(
+  anchor: HTMLElement,
+  id: string,
+  getBadge: () => HTMLButtonElement | null,
+  setVisible: (visible: boolean) => void,
+) {
+  const originalPadding = anchor.style.paddingRight
+  const originalBorder = anchor.style.borderColor
+  const originalDescription = anchor.getAttribute('aria-describedby')
+  anchor.setAttribute('aria-invalid', 'true')
+  anchor.setAttribute('aria-describedby', [...new Set([...(originalDescription?.split(' ') ?? []), id])].join(' '))
+  anchor.style.borderColor = 'var(--color-error)'
+  const textControl = anchor.matches('input:not([type=file]), textarea')
+  const padding = parseFloat(getComputedStyle(anchor).paddingRight)
+  if (textControl) anchor.style.paddingRight = `${Math.max(padding, 32)}px`
+  const update = () => {
+    const node = getBadge()
+    if (!node) return
+    const rect = anchor.getBoundingClientRect()
+    node.style.top = `${rect.top + Math.min(6, Math.max(0, (rect.height - 20) / 2))}px`
+    node.style.left = `${rect.right - 26}px`
+    node.style.visibility = rect.width && rect.height && rect.bottom > 0 && rect.top < window.innerHeight ? 'visible' : 'hidden'
+  }
+  update()
+  const observer = new ResizeObserver(update)
+  observer.observe(anchor)
+  if (anchor.parentElement) observer.observe(anchor.parentElement)
+  const intersection = new IntersectionObserver(([entry]) => {
+    setVisible(entry.isIntersecting)
+    const node = getBadge()
+    if (node) node.style.visibility = entry.isIntersecting ? 'visible' : 'hidden'
+  })
+  intersection.observe(anchor)
+  window.addEventListener('resize', update)
+  window.addEventListener('scroll', update, true)
+  return () => {
+    observer.disconnect()
+    intersection.disconnect()
+    window.removeEventListener('resize', update)
+    window.removeEventListener('scroll', update, true)
+    anchor.style.paddingRight = originalPadding
+    anchor.style.borderColor = originalBorder
+    anchor.removeAttribute('aria-invalid')
+    if (originalDescription === null) anchor.removeAttribute('aria-describedby')
+    else anchor.setAttribute('aria-describedby', originalDescription)
+  }
 }

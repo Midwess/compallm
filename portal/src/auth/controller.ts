@@ -29,6 +29,7 @@ export class AuthController implements SignupController, SigninController {
   private signingOut: Promise<void> | undefined
   readonly links = { signup: '/', signin: '/login' }
   private generation = 0
+  private verificationCode = ''
   private lastCode: string | undefined
   private failedOperation: Operation | null = null
   private abort: AbortController | undefined
@@ -84,7 +85,8 @@ export class AuthController implements SignupController, SigninController {
     this.clearResendTimer()
     this.generation += 1
     this.abort?.abort()
-    this.store.setState({ pending: null })
+    this.verificationCode = ''
+    this.store.setState({ pending: null, code: '' })
   }
 
   private applyAuthUrl = () => {
@@ -130,16 +132,12 @@ export class AuthController implements SignupController, SigninController {
     return path + '?' + query.toString()
   }
 
-  onEmailChanged = (email: string) => {
-    if (!this.store.getState().pending) this.store.setState({ email, error: null, serverError: null })
-  }
+  clearError = () => this.store.setState({ error: null, serverError: null })
   onInvalidEmail = () => this.store.setState({ error: 'invalid-email', serverError: null })
   showResend = () => this.store.setState({ resendRevealed: true })
-  onCodeChanged = (code: string) => {
-    const state = this.store.getState()
-    if (state.pending || state.step !== 'code' || state.code === code) return
-    this.store.setState({ code, error: null, serverError: null })
-    void this.verify()
+  verifyCode = async (code: string) => {
+    this.verificationCode = code
+    await this.verify(false, code)
   }
   useDifferentEmail = () => {
     if (this.store.getState().pending) return
@@ -150,8 +148,8 @@ export class AuthController implements SignupController, SigninController {
     this.store.setState({ step: 'email', code: '', error: null, serverError: null })
     this.navigate(this.mode === 'signup' ? '/signup' : '/login')
   }
-  requestCode = async () => {
-    await this.request('request')
+  requestCode = async (email: string) => {
+    await this.request('request', email)
   }
   resendCode = async () => {
     await this.request('resend')
@@ -174,6 +172,19 @@ export class AuthController implements SignupController, SigninController {
     this.stop()
     this.signingOut = this.performSignOut()
     await this.signingOut
+  }
+
+  invalidAuthorization = () => {
+    this.sessionGeneration += 1
+    this.sessionRequest?.abort()
+    this.sessionPending = undefined
+    this.stop()
+    this.confirmed = false
+    this.lastCode = undefined
+    this.failedOperation = null
+    this.destination = undefined
+    this.store.setState({ ...initialFormState, currentUser: null, status: 'anonymous' })
+    this.navigate('/login')
   }
 
   private async performSignOut() {
@@ -242,12 +253,12 @@ export class AuthController implements SignupController, SigninController {
     }
   }
 
-  private async request(operation: 'request' | 'resend') {
+  private async request(operation: 'request' | 'resend', emailValue = this.store.getState().email) {
     const state = this.store.getState()
     this.updateResendCountdown()
     if (state.pending || this.store.getState().remaining > 0 || state.step !== (operation === 'request' ? 'email' : 'code'))
       return
-    const input = emailRequestSchema(this.mode).safeParse({ email: state.email, delivery: 'COOKIE' })
+    const input = emailRequestSchema(this.mode).safeParse({ email: emailValue, delivery: 'COOKIE' })
     if (!input.success) {
       this.onInvalidEmail()
       return
@@ -289,13 +300,13 @@ export class AuthController implements SignupController, SigninController {
     )
   }
 
-  private async verify(retry = false) {
+  private async verify(retry = false, code = this.verificationCode) {
     const state = this.store.getState()
     const schema = otpRequestSchema(this.mode)
-    const input = schema.safeParse({ code: state.code, delivery: 'COOKIE' })
+    const input = schema.safeParse({ code, delivery: 'COOKIE' })
     if (state.pending || state.step !== 'code' || !input.success) return
-    if (!retry && this.lastCode === state.code) return
-    this.lastCode = state.code
+    if (!retry && this.lastCode === code) return
+    this.lastCode = code
     await this.perform(
       'verify',
       async (signal) => {

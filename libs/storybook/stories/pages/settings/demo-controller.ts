@@ -11,21 +11,22 @@ import { initialSettings } from './fixtures'
 import { DemoRoleController } from './role/demo-controller'
 import { DemoGroupController } from './group/demo-controller'
 import { DemoProfileController } from './profile/demo-controller'
+import { DemoUserPreferenceController } from './preferences/user/demo-controller'
 import { DemoOrganizationController } from './organization/demo-controller'
 
 export class DemoSettingsController implements SettingsController {
   store = createSettingsStore(structuredClone(initialSettings))
   pages: SettingsController['pages'] = {
+    role: null!,
     search: { setQuery: (value) => this.setQuery(value), setFilter: (key, value) => this.setFilter(key, value) },
-    preferences: { setPreference: (key, value) => this.setPreference(key, value) },
+    preferences: { user: null! },
     profile: new DemoProfileController(this.store, (file) => this.avatarUrl(file)),
     organization: new DemoOrganizationController(this.store, (file) => this.avatarUrl(file)),
-    members: { toggleMemberRole: (member, role) => this.toggleMemberRole(member, role) },
+    members: { setMemberRoles: (member, roles) => this.setMemberRoles(member, roles) },
     dialogs: {
       openDialog: (kind, id) => this.openDialog(kind, id),
-      updateDialog: (value) => this.updateDialog(value),
       closeDialog: () => this.closeDialog(),
-      confirmDialog: () => this.confirmDialog(),
+      confirmDialog: (dialog) => this.confirmDialog(dialog),
       copy: (value) => this.copy(value),
     },
   }
@@ -41,7 +42,9 @@ export class DemoSettingsController implements SettingsController {
   ) {
     const { roleDraft, groupDraft, ...shared } = initial
     this.store.setState(structuredClone(shared))
+    this.pages.preferences.user = new DemoUserPreferenceController(failWrites)
     this.role = new DemoRoleController(this, failWrites)
+    this.pages.role = this.role
     this.group = new DemoGroupController(this, failWrites)
     const location = this.store.getState().location
     this.navigate(location.page, location.id)
@@ -65,6 +68,7 @@ export class DemoSettingsController implements SettingsController {
   }
   stop = () => {
     this.closed = true
+    this.pages.preferences.user.cancel()
     this.role.stop()
     this.group.stop()
     this.timers.forEach(clearTimeout)
@@ -104,8 +108,6 @@ export class DemoSettingsController implements SettingsController {
   setQuery = (query: string) => this.store.setState({ query })
   setNavigationQuery = (navigationQuery: string) => this.store.setState({ navigationQuery })
   setFilter = (key: string, value: string) => this.store.setState((s) => ({ filters: { ...s.filters, [key]: value } }))
-  setPreference = (key: string, value: string | boolean) =>
-    this.store.setState((s) => ({ preferences: { ...s.preferences, [key]: value } }))
   private avatarUrl = (file: File | null) => {
     const url = file ? URL.createObjectURL(file) : null
     if (url) this.urls.push(url)
@@ -129,8 +131,6 @@ export class DemoSettingsController implements SettingsController {
                 : ''
     this.store.setState({ dialog: { kind, targetId, name: '', value: value ?? '', phrase: '' }, error: null })
   }
-  updateDialog = (value: Partial<SettingsDialog>) =>
-    this.store.setState((s) => ({ dialog: s.dialog ? { ...s.dialog, ...value } : null }))
   closeDialog = () => {
     if (this.store.getState().busy) return
     if (this.verificationTimer) {
@@ -140,10 +140,17 @@ export class DemoSettingsController implements SettingsController {
     }
     this.store.setState({ dialog: null })
   }
-  confirmDialog = () => {
-    const s = this.store.getState(),
-      d = s.dialog
+  confirmDialog = (d: SettingsDialog) => {
+    const s = this.store.getState()
     if (!d) return
+    if (
+      d.kind === 'delete-role' &&
+      (s.members.some((member) => member.roleIds.includes(d.targetId ?? '')) ||
+        s.groups.some((group) => group.roleIds.includes(d.targetId ?? '')))
+    ) {
+      this.report('Remove all members and groups assigned to this role before deleting it')
+      return
+    }
     if (d.kind === 'delete-account' && d.phrase !== `I want to delete ${s.profile.email}`) return
     if (d.kind === 'delete-organization' && d.phrase !== `I want to delete ${s.organization.name}`) return
     if (['add-passkey', 'create-key'].includes(d.kind) && !d.name.trim()) return
@@ -192,14 +199,14 @@ export class DemoSettingsController implements SettingsController {
           roles: p.roles.filter((r) => r.id !== id),
           groups: p.groups.map((g) => ({ ...g, roleIds: g.roleIds.filter((role) => role !== id) })),
           members: p.members.map((m) => ({ ...m, roleIds: m.roleIds.filter((role) => role !== id) })),
-          location: { page: 'general' },
+          location: { page: 'blank' },
         }))
       }
       if (d.kind === 'delete-group') this.group.store.setState({ draft: null })
       if (d.kind === 'delete-group')
         this.store.setState((p) => ({
           groups: p.groups.filter((g) => g.id !== id),
-          location: { page: 'general' },
+          location: { page: 'blank' },
         }))
       if (d.kind === 'remove-group-member') this.group.toggleGroupMember(id!)
       if (d.kind === 'organization-limit') this.store.setState({ organizationLimitUsd: d.value || null })
@@ -217,14 +224,10 @@ export class DemoSettingsController implements SettingsController {
       this.report(destructive ? 'Deletion requested' : 'Changes applied')
     })
   }
-  toggleMemberRole = (memberId: string, roleId: string) => {
+  setMemberRoles = (memberId: string, roleIds: string[]) => {
     if (this.store.getState().readonly) return
     this.store.setState((s) => ({
-      members: s.members.map((m) =>
-        m.id !== memberId
-          ? m
-          : { ...m, roleIds: m.roleIds.includes(roleId) ? m.roleIds.filter((id) => id !== roleId) : [...m.roleIds, roleId] },
-      ),
+      members: s.members.map((m) => (m.id !== memberId ? m : { ...m, roleIds })),
     }))
   }
   copy = (value: string) => {
@@ -235,5 +238,22 @@ export class DemoSettingsController implements SettingsController {
   }
   signOut = () => this.report('Sign out requested')
   leaveSettings = () => this.report('Back to app requested')
+  apiError = (error: unknown, retry?: () => void) => {
+    const payload = error as { info?: { message?: unknown }; message?: unknown }
+    const message =
+      typeof payload?.info?.message === 'string'
+        ? payload.info.message
+        : typeof payload?.message === 'string'
+          ? payload.message
+          : 'Something went wrong. Please try again.'
+    const notification = { message, retry }
+    this.store.setState({ errorToast: notification })
+    const timer = setTimeout(() => {
+      this.timers.delete(timer)
+      if (this.store.getState().errorToast === notification) this.dismissErrorToast()
+    }, 15000)
+    this.timers.add(timer)
+  }
+  dismissErrorToast = () => this.store.setState({ errorToast: null })
   dismissNotice = () => this.store.setState({ notice: null })
 }

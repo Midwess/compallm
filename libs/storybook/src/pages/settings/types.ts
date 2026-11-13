@@ -1,10 +1,12 @@
-import type { StoreApi } from 'zustand/vanilla'
+import type { UserPreferenceController } from './preferences/user/controller'
+import type { FormStore } from '../../components/form'
 import type { RoleController } from './role/controller'
 import type { GroupController } from './group/controller'
 import type { ProfileController } from './profile/controller'
 import type { OrganizationController } from './organization/controller'
 
 export type SettingsDestination =
+  | 'blank'
   | 'general'
   | 'appearance'
   | 'messaging'
@@ -65,9 +67,11 @@ export interface SettingsApiKey extends SettingsCredential {
 }
 export interface PolicyProjection {
   action: string
+  effect?: 'permit' | 'forbid'
   source: string
   advanced: boolean
   editable: boolean
+  reason?: string
   resourceRestricted?: boolean
 }
 export interface SettingsPolicyAction {
@@ -76,7 +80,7 @@ export interface SettingsPolicyAction {
   scope: string
   category: string
   description: string
-  access: 'Read' | 'Use' | 'Write' | 'Admin' | 'Sensitive'
+  access?: 'Read' | 'Use' | 'Write' | 'Admin' | 'Sensitive'
 }
 export interface RoleDraft {
   id: string | null
@@ -157,12 +161,13 @@ export interface SettingsDialog {
   revealedKey?: string
 }
 export interface SettingsState {
+  profileUpload: File | null
+  organizationUpload: File | null
   codeExamples: Record<string, { code: string; lineChanges?: Record<number, 'added' | 'removed'> }>
   location: SettingsLocation
   navigationQuery: string
   query: string
   filters: Record<string, string>
-  preferences: Record<string, string | boolean>
   profile: SettingsProfile
   organization: SettingsOrganization
   roles: SettingsRole[]
@@ -183,12 +188,13 @@ export interface SettingsState {
   dialog: SettingsDialog | null
   busy: boolean
   error: string | null
+  errorToast: { message: string; retry?: () => void } | null
   notice: string | null
   readonly: boolean
   status: 'ready' | 'loading' | 'denied'
 }
 export interface SettingsController {
-  store: StoreApi<SettingsState>
+  store: FormStore<SettingsState>
   role: RoleController
   group: GroupController
   pages: SettingsPageControllers
@@ -196,20 +202,22 @@ export interface SettingsController {
   setNavigationQuery(value: string): void
   signOut(): void
   leaveSettings(): void
+  apiError(error: unknown, retry?: () => void): void
+  dismissErrorToast(): void
   dismissNotice(): void
 }
 
 export interface SettingsPageControllers {
+  role: RoleController
   search: { setQuery(value: string): void; setFilter(key: string, value: string): void }
-  preferences: { setPreference(key: string, value: string | boolean): void }
+  preferences: { user: UserPreferenceController }
   profile: ProfileController
   organization: OrganizationController
-  members: { toggleMemberRole(memberId: string, roleId: string): void }
+  members: { setMemberRoles(memberId: string, roleIds: string[]): void | false | Promise<void | false> }
   dialogs: {
     openDialog(kind: SettingsDialogKind, targetId?: string): void
-    updateDialog(value: Partial<SettingsDialog>): void
     closeDialog(): void
-    confirmDialog(): void
+    confirmDialog(dialog: SettingsDialog): void
     copy(value: string): void
   }
 }

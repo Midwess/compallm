@@ -15,10 +15,12 @@ export function SidebarDemo({
   defaultOpen = true,
   initialSelection = '',
   workspaceName = 'Compallm',
+  onSettings,
 }: {
   defaultOpen?: boolean
   initialSelection?: string
   workspaceName?: string
+  onSettings?: () => void
 }) {
   const [selected, setSelected] = useState(initialSelection)
   const [organization, setOrganization] = useState('compallm')
@@ -40,7 +42,10 @@ export function SidebarDemo({
           onOrganizationChange={setOrganization}
           onWorkspaceClick={() => setAction('Workspace switcher')}
           onSearch={() => setAction('Workspace search')}
-          onSettings={() => setAction('Settings')}
+          onSettings={() => {
+            setAction('Settings')
+            onSettings?.()
+          }}
           onSignOut={() => setAction('Sign out')}
         />
         <SidebarSection

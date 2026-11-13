@@ -1,8 +1,17 @@
 import { useEffect, useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { SettingsControllerContext } from '../../../src/context'
+import { SettingsControllerContext, UserPreferenceControllerContext } from '../../../src/context'
+import { userPreferenceDefaults } from '@compallm/contract/preference'
+import { loadedPreferenceDraft } from '../../../src/pages/settings'
 import { SettingsPage } from '../../../src/pages/settings'
-import type { SettingsState, SettingsDestination, RoleDraft, GroupDraft } from '../../../src/pages/settings'
+import type {
+  SettingsState,
+  SettingsDestination,
+  RoleDraft,
+  GroupDraft,
+  UserPreferenceState,
+  UserPreferenceValues,
+} from '../../../src/pages/settings'
 import { DemoSettingsController } from './demo-controller'
 import { advancedSource, modelOperatorSource } from './fixtures'
 
@@ -11,20 +20,47 @@ function Demo({
   id,
   initial = {},
   failure = false,
+  roleLoadingMs = 0,
+  preferenceStatus,
+  savedPreferences,
 }: {
   page?: SettingsDestination
   id?: string
   initial?: Partial<SettingsState> & { roleDraft?: RoleDraft | null; groupDraft?: GroupDraft | null }
   failure?: boolean | 'conflict'
+  roleLoadingMs?: number
+  preferenceStatus?: UserPreferenceState['status']
+  savedPreferences?: UserPreferenceValues
 }) {
-  const [controller] = useState(() => new DemoSettingsController({ location: { page, id }, ...initial }, failure))
+  const [controller] = useState(() => {
+    const controller = new DemoSettingsController({ location: { page, id }, ...initial }, failure)
+    const user = controller.pages.preferences.user
+    if (savedPreferences) {
+      user.store.setState({ saved: savedPreferences })
+      user.store.form.reset({ draft: loadedPreferenceDraft(savedPreferences) })
+    }
+    if (preferenceStatus) user.store.setState({ status: preferenceStatus })
+    return controller
+  })
   useEffect(() => {
     controller.start()
+    if (initial.error) controller.apiError({ info: { message: initial.error } })
     return controller.stop
-  }, [controller])
+  }, [controller, initial.error])
+  useEffect(() => {
+    if (!roleLoadingMs) return
+    const draft = controller.pages.role.store.getState().draft
+    controller.pages.role.store.setState({ loading: true, draft: null })
+    const timer = setTimeout(() => {
+      controller.pages.role.store.setState({ loading: false, draft })
+    }, roleLoadingMs)
+    return () => clearTimeout(timer)
+  }, [controller, roleLoadingMs])
   return (
     <SettingsControllerContext value={controller}>
-      <SettingsPage />
+      <UserPreferenceControllerContext value={controller.pages.preferences.user}>
+        <SettingsPage />
+      </UserPreferenceControllerContext>
     </SettingsControllerContext>
   )
 }
@@ -43,7 +79,24 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+export const Blank: Story = { render: () => <Demo page="blank" /> }
 export const General: Story = { render: () => <Demo /> }
+export const PreferencesLoading: Story = { render: () => <Demo preferenceStatus="loading" /> }
+export const PreferencesLoadFailure: Story = { render: () => <Demo preferenceStatus="error" /> }
+export const PreferencesDenied: Story = { render: () => <Demo preferenceStatus="denied" /> }
+export const SavedPreferences: Story = {
+  render: () => (
+    <Demo
+      savedPreferences={{
+        ...userPreferenceDefaults,
+        navigation: { home: 'MODELS' },
+        memberDisplay: { nameFormat: 'USERNAME' },
+        calendar: { firstDay: 'SUNDAY' },
+        sidebar: { ...userPreferenceDefaults.sidebar, entries: [...userPreferenceDefaults.sidebar.entries] },
+      }}
+    />
+  ),
+}
 export const GeneralNarrow: Story = {
   render: () => <Demo />,
   parameters: {
@@ -64,6 +117,7 @@ export const SidebarPreferences: Story = {
 }
 export const Messaging: Story = { render: () => <Demo page="messaging" /> }
 export const CodeAppearance: Story = { render: () => <Demo page="code" /> }
+export const PreferenceSaveFailure: Story = { render: () => <Demo page="appearance" failure /> }
 export const Profile: Story = { render: () => <Demo page="profile" /> }
 export const ProfileWithPhoto: Story = {
   render: () => (
@@ -145,6 +199,18 @@ export const GroupReadOnly: Story = {
   render: () => <Demo page="group" id="research" initial={{ readonly: true }} />,
 }
 export const EditRole: Story = { render: () => <Demo page="role" id="model-operator" /> }
+export const RoleLoading: Story = {
+  render: () => <Demo page="role" id="model-operator" roleLoadingMs={1200} />,
+}
+export const DeleteRole: Story = {
+  render: () => (
+    <Demo
+      page="role"
+      id="model-operator"
+      initial={{ dialog: { kind: 'delete-role', targetId: 'model-operator', name: '', value: '', phrase: '' } }}
+    />
+  ),
+}
 export const BuiltInRole: Story = { render: () => <Demo page="role" id="owner" /> }
 export const NewRole: Story = { render: () => <Demo page="new-role" /> }
 export const ConfiguredRole: Story = {
@@ -208,8 +274,8 @@ export const ScopedCedarRetained: Story = {
           name: 'Model operator',
           description: 'An imported resource-restricted policy.',
           source: modelOperatorSource.replace(
-            'org-7"\n);',
-            'org-7"\n) when { ["general-chat"].contains(resource.name) && context.environment == "production" };',
+            '?resource\n);',
+            '?resource\n) when { ["general-chat"].contains(resource.name) && context.environment == "production" };',
           ),
           mode: 'visual',
           projection: [],
@@ -318,4 +384,8 @@ export const KeyCreated: Story = {
       }}
     />
   ),
+}
+
+export const ApiErrorToast: Story = {
+  render: () => <Demo page="role" id="model-operator" initial={{ error: 'Name already exists in this organization' }} />,
 }

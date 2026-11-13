@@ -21,6 +21,7 @@ export class DemoAuthController implements SignupController, SigninController {
   private readonly mode: 'signup' | 'signin'
   private readonly scenario: AuthDemoScenario
   private generation = 0
+  private verificationCode = ''
   private lastAttempt: string | undefined
   private failedOperation: AuthOperation | null = null
   private attempts = 0
@@ -77,21 +78,13 @@ export class DemoAuthController implements SignupController, SigninController {
     this.scheduleCountdown()
   }
 
-  onEmailChanged = (email: string) => {
-    if (this.store.getState().pending) return
-    this.store.setState({ email, error: null })
-  }
-
+  clearError = () => this.store.setState({ error: null, serverError: null })
   onInvalidEmail = () => this.store.setState({ error: 'invalid-email' })
-
-  onCodeChanged = (code: string) => {
-    const state = this.store.getState()
-    if (state.pending || state.code === code || state.step !== 'code') return
-    this.store.setState({ code, error: null })
-    void this.verifyCode()
+  verifyCode = (code: string) => {
+    this.verificationCode = code
+    return this.verifyCodeValue(false, code)
   }
-
-  requestCode = () => this.request('request')
+  requestCode = (email: string) => this.request('request', email)
   resendCode = () => this.request('resend')
   showResend = () => this.store.setState({ resendRevealed: true })
 
@@ -106,15 +99,15 @@ export class DemoAuthController implements SignupController, SigninController {
   retry = async () => {
     if (this.store.getState().error !== 'unavailable') return
     if (this.failedOperation === 'resend') await this.resendCode()
-    else if (this.failedOperation === 'request') await this.requestCode()
-    else await this.verifyCode(true)
+    else if (this.failedOperation === 'request') await this.requestCode(this.store.getState().email)
+    else await this.verifyCodeValue(true)
   }
 
-  private async request(operation: 'request' | 'resend') {
+  private async request(operation: 'request' | 'resend', emailValue = this.store.getState().email) {
     const state = this.store.getState()
     if (state.pending || state.remaining > 0 || state.step === 'complete') return
     if ((operation === 'request' && state.step !== 'email') || (operation === 'resend' && state.step !== 'code')) return
-    const input = emailRequestSchema(this.mode).safeParse({ email: state.email } satisfies EmailInput)
+    const input = emailRequestSchema(this.mode).safeParse({ email: emailValue } satisfies EmailInput)
     if (!input.success) {
       this.onInvalidEmail()
       return
@@ -146,11 +139,11 @@ export class DemoAuthController implements SignupController, SigninController {
     }
   }
 
-  private async verifyCode(retry = false) {
+  private async verifyCodeValue(retry = false, code = this.verificationCode) {
     const state = this.store.getState()
-    if (state.pending || state.step !== 'code' || !otpRequestSchema(this.mode).safeParse({ code: state.code }).success) return
-    if (!retry && this.lastAttempt === state.code) return
-    this.lastAttempt = state.code
+    if (state.pending || state.step !== 'code' || !otpRequestSchema(this.mode).safeParse({ code }).success) return
+    if (!retry && this.lastAttempt === code) return
+    this.lastAttempt = code
     const generation = ++this.generation
     this.store.setState({ error: null, pending: 'verify' })
     try {
@@ -160,7 +153,7 @@ export class DemoAuthController implements SignupController, SigninController {
       if (this.scenario === 'network-error' && this.attempts++ === 0) {
         this.failedOperation = 'verify'
         this.store.setState({ error: 'unavailable' })
-      } else if (this.scenario !== 'expired' && state.code === '123456') {
+      } else if (this.scenario !== 'expired' && code === '123456') {
         this.failedOperation = null
         this.store.setState({ step: 'complete' })
       } else {

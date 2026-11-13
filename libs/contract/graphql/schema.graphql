@@ -1,5 +1,50 @@
+input AccessibilityPatchInput {
+  pointerCursors: Boolean
+  reduceMotion: Boolean
+  underlineLinks: Boolean
+}
+
+type AccessibilityPreferences {
+  pointerCursors: Boolean!
+  reduceMotion: Boolean!
+  underlineLinks: Boolean!
+}
+
 type BooleanPayload {
   node: Boolean!
+}
+
+input CalendarPatchInput {
+  firstDay: PreferenceWeekday
+}
+
+type CalendarPreferences {
+  firstDay: PreferenceWeekday!
+}
+
+input ChatCreateInput {
+  message: String!
+  modelId: String!
+}
+
+input CodeAppearancePatchInput {
+  font: CodeFontPatchInput
+  theme: PreferenceCodeTheme
+}
+
+type CodeAppearancePreferences {
+  font: CodeFontPreferences!
+  theme: PreferenceCodeTheme!
+}
+
+input CodeFontPatchInput {
+  family: PreferenceFontFamily
+  size: PreferencePixelFontSize
+}
+
+type CodeFontPreferences {
+  family: PreferenceFontFamily!
+  size: PreferencePixelFontSize!
 }
 
 """
@@ -16,6 +61,10 @@ type CreatedGroup {
 
 type CreatedGroupPayload {
   node: CreatedGroup!
+}
+
+input CredentialCreateInput {
+  name: String!
 }
 
 """
@@ -107,6 +156,41 @@ type GroupPayload {
   node: Group!
 }
 
+enum HomeDestination {
+  CHAT
+  MODELS
+  PROVIDERS
+}
+
+enum ImageMediaType {
+  JPEG
+  PNG
+  WEBP
+}
+
+input ImageUploadInput {
+  mediaType: ImageMediaType!
+  size: Int!
+}
+
+input MemberDisplayPatchInput {
+  nameFormat: PreferenceNamingFormat
+}
+
+type MemberDisplayPreferences {
+  nameFormat: PreferenceNamingFormat!
+}
+
+input MessageCompositionPatchInput {
+  convertEmoticons: Boolean
+  sendShortcut: PreferenceKeyCombination
+}
+
+type MessageCompositionPreferences {
+  convertEmoticons: Boolean!
+  sendShortcut: PreferenceKeyCombination!
+}
+
 type Mutation {
   """
   Confirm the verified signin challenge and create a scoped session.
@@ -137,6 +221,8 @@ type Mutation {
   Create a role in the verified active organization.
   """
   roleCreate(input: RoleCreateInput!): RolePayload!
+  roleDelete(id: ID!): BooleanPayload!
+  roleUpdate(id: ID!, input: RoleUpdateInput!): RolePayload!
 
   """
   Refresh using explicit refresh Bearer authority; leave browser cookies unchanged.
@@ -147,6 +233,26 @@ type Mutation {
   Revoke the verified session and clear its browser cookies after success.
   """
   sessionRevoke: BooleanPayload!
+
+  """
+  Restore selected preference groups, or ALL alone, to Core defaults.
+  """
+  userPreferencesReset(groups: [UserPreferenceGroup!]!): UserPreferencesPayload!
+
+  """
+  Atomically patch the signed-in user's preferences, preserving omitted fields.
+  """
+  userPreferencesUpdate(
+    input: UserPreferencesPatchInput!
+  ): UserPreferencesPayload!
+}
+
+input NavigationPatchInput {
+  home: PreferenceDestination
+}
+
+type NavigationPreferences {
+  home: PreferenceDestination!
 }
 
 type Organization {
@@ -158,11 +264,136 @@ type OrganizationPayload {
   node: Organization!
 }
 
+input OrganizationSettingsUpdateInput {
+  announcements: String
+  fiscalMonth: String
+  home: HomeDestination
+  name: String
+  slug: String
+  welcome: String
+}
+
 type PageInfo {
   endCursor: String
   hasNextPage: Boolean!
   hasPreviousPage: Boolean!
   startCursor: String
+}
+
+input PalettePatchInput {
+  dark: PreferenceDarkPalette
+  light: PreferenceLightPalette
+}
+
+type PalettePreferences {
+  dark: PreferenceDarkPalette!
+  light: PreferenceLightPalette!
+}
+
+type PolicyAction {
+  description: String!
+  displayName: String!
+  entityType: String!
+  name: String!
+  resourceType: String!
+}
+
+type PolicyActionConnection {
+  edges: [PolicyActionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PolicyActionEdge {
+  cursor: String!
+  node: PolicyAction!
+}
+
+enum PreferenceAppearanceMode {
+  DARK
+  LIGHT
+  SYSTEM
+}
+
+enum PreferenceBadgeStyle {
+  COUNT
+  DOT
+}
+
+enum PreferenceCodeTheme {
+  FOLLOW_INTERFACE
+  LINEAR_DARK
+  LINEAR_LIGHT
+  SYSTEM
+}
+
+enum PreferenceDarkPalette {
+  CLASSIC_DARK
+  DARK
+  MAGIC_BLUE
+}
+
+enum PreferenceDestination {
+  CHAT
+  MODELS
+  NOTEBOOKS
+  PLUGINS
+  PROVIDERS
+}
+
+enum PreferenceFontFamily {
+  DEFAULT
+  MONOSPACE
+}
+
+enum PreferenceKeyCombination {
+  ENTER
+  MODIFIER_ENTER
+}
+
+enum PreferenceLightPalette {
+  LIGHT
+  PURE_LIGHT
+}
+
+enum PreferenceNamingFormat {
+  FULL_NAME
+  USERNAME
+}
+
+enum PreferencePixelFontSize {
+  PX12
+  PX13
+  PX14
+  PX16
+}
+
+enum PreferenceRelativeFontSize {
+  DEFAULT
+  LARGE
+  LARGER
+  SMALL
+  SMALLER
+}
+
+enum PreferenceSidebarVisibility {
+  ALWAYS
+  HIDDEN
+  WHEN_BADGED
+}
+
+enum PreferenceWeekday {
+  FRIDAY
+  MONDAY
+  SATURDAY
+  SUNDAY
+  THURSDAY
+  TUESDAY
+  WEDNESDAY
+}
+
+input ProfileUpdateInput {
+  name: String
+  username: String
 }
 
 """
@@ -348,6 +579,11 @@ type Query {
   organization: OrganizationPayload!
 
   """
+  Return the system-owned organization policy action catalog.
+  """
+  organizationPolicyActions: PolicyActionConnection!
+
+  """
   Find visible role metadata in the active organization.
   """
   role(id: ID!): RolePayload
@@ -361,12 +597,27 @@ type Query {
   Return the verified current session identity.
   """
   session: SessionPayload!
+
+  """
+  Return the signed-in user's personal preferences; missing rows use Core defaults without a write.
+  """
+  userPreferences: UserPreferencesPayload!
+}
+
+input ReportingScheduleInput {
+  timezone: String!
 }
 
 type Role {
+  """
+  Native Cedar source; template slots bind to this role and its organization.
+  """
+  cedarSource: String
+  color: String!
   description: String!
   id: ID!
   name: String!
+  owner: Boolean!
 }
 
 type RoleConnection {
@@ -375,6 +626,9 @@ type RoleConnection {
 }
 
 input RoleCreateInput {
+  """
+  Comments and unnecessary whitespace are removed before the length limit is checked.
+  """
   cedarSource: String!
   description: String!
   name: String!
@@ -387,6 +641,15 @@ type RoleEdge {
 
 type RolePayload {
   node: Role!
+}
+
+input RoleUpdateInput {
+  """
+  Comments and unnecessary whitespace are removed before the length limit is checked.
+  """
+  cedarSource: String
+  description: String
+  name: String
 }
 
 type Session {
@@ -429,6 +692,34 @@ type SessionPayload {
   node: Session!
 }
 
+type SidebarEntry {
+  item: PreferenceDestination!
+  visibility: PreferenceSidebarVisibility!
+}
+
+"""
+Order replaces ordering while preserving visibility; visibility patches are keyed by destination.
+"""
+input SidebarPatchInput {
+  badgeStyle: PreferenceBadgeStyle
+  order: [PreferenceDestination!]
+  visibility: [SidebarVisibilityPatchInput!]
+}
+
+type SidebarPreferences {
+  badgeStyle: PreferenceBadgeStyle!
+  entries: [SidebarEntry!]!
+}
+
+input SidebarVisibilityPatchInput {
+  item: PreferenceDestination!
+  visibility: PreferenceSidebarVisibility!
+}
+
+input SpendingLimitInput {
+  amount: String
+}
+
 """
 Text operation determining the upstream request and response format.
 """
@@ -436,6 +727,16 @@ enum TextModelProtocol {
   ANTHROPIC_MESSAGES
   OPENAI_CHAT_COMPLETIONS
   OPENAI_RESPONSES
+}
+
+input ThemePatchInput {
+  mode: PreferenceAppearanceMode
+  palettes: PalettePatchInput
+}
+
+type ThemePreferences {
+  mode: PreferenceAppearanceMode!
+  palettes: PalettePreferences!
 }
 
 """
@@ -446,4 +747,58 @@ type TokenLifetime {
   expiresInSeconds: String!
   issuedAt: String!
   throttleSeconds: String!
+}
+
+input TypographyPatchInput {
+  family: PreferenceFontFamily
+  size: PreferenceRelativeFontSize
+}
+
+type TypographyPreferences {
+  family: PreferenceFontFamily!
+  size: PreferenceRelativeFontSize!
+}
+
+enum UserPreferenceGroup {
+  ACCESSIBILITY
+  ALL
+  CALENDAR
+  CODE_APPEARANCE
+  MEMBER_DISPLAY
+  MESSAGE_COMPOSITION
+  NAVIGATION
+  SIDEBAR
+  THEME
+  TYPOGRAPHY
+}
+
+type UserPreferences {
+  accessibility: AccessibilityPreferences!
+  calendar: CalendarPreferences!
+  codeAppearance: CodeAppearancePreferences!
+  memberDisplay: MemberDisplayPreferences!
+  messageComposition: MessageCompositionPreferences!
+  navigation: NavigationPreferences!
+  sidebar: SidebarPreferences!
+  theme: ThemePreferences!
+  typography: TypographyPreferences!
+}
+
+"""
+Partial personal preferences. Omitted fields are preserved; explicit null is rejected.
+"""
+input UserPreferencesPatchInput {
+  accessibility: AccessibilityPatchInput
+  calendar: CalendarPatchInput
+  codeAppearance: CodeAppearancePatchInput
+  memberDisplay: MemberDisplayPatchInput
+  messageComposition: MessageCompositionPatchInput
+  navigation: NavigationPatchInput
+  sidebar: SidebarPatchInput
+  theme: ThemePatchInput
+  typography: TypographyPatchInput
+}
+
+type UserPreferencesPayload {
+  node: UserPreferences!
 }

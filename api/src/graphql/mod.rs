@@ -7,8 +7,10 @@
 
 pub mod authentication;
 pub mod base_type;
+pub mod chat;
 pub mod endpoint;
 pub mod organization;
+pub mod policy;
 pub mod provider;
 pub mod user;
 
@@ -21,3 +23,5 @@ pub use context::GraphqlContext;
 pub use runtime::{ApplicationSchema, Query, build_schema};
 
 pub(crate) use runtime::validation_schema;
+
+pub mod preference;

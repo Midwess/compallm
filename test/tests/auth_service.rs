@@ -136,10 +136,12 @@ fn test_challenge(email: &str, secret: &str) -> Result<EmailOtpChallenge, AuthEr
 #[derive(Default)]
 struct State {
     user: Option<User>,
+    preferences: std::collections::BTreeMap<u64, compallm_core::preference::UserPreferences>,
     contexts: Vec<usize>,
     created: Option<(String, String)>,
     fail_create: bool,
     fail_session: bool,
+    fail_preferences: bool,
     change_after_authority_read: bool,
     full_default_policies: bool,
     fail_authority_read: bool,
@@ -160,6 +162,55 @@ struct State {
 #[derive(Clone)]
 struct Repository(Arc<Mutex<State>>, DbContext);
 
+#[async_trait::async_trait]
+impl compallm_core::persistent::preference::user::UserPreferenceRepository for Repository {
+    async fn find(
+        &self,
+        user_id: u64,
+    ) -> Result<
+        Option<compallm_core::preference::UserPreferences>,
+        compallm_core::persistent::preference::user::UserPreferenceRepositoryError,
+    > {
+        Ok(self.0.lock().unwrap().preferences.get(&user_id).cloned())
+    }
+    async fn create_defaults(
+        &self,
+        user_id: u64,
+    ) -> Result<(), compallm_core::persistent::preference::user::UserPreferenceRepositoryError>
+    {
+        let mut state = self.0.lock().unwrap();
+        if state.fail_preferences {
+            return Err(
+                compallm_core::persistent::preference::user::UserPreferenceRepositoryError(
+                    anyhow::anyhow!("unavailable"),
+                ),
+            );
+        }
+        state.preferences.entry(user_id).or_default();
+        Ok(())
+    }
+    async fn update(
+        &self,
+        _: u64,
+        _: &compallm_core::preference::patch::UserPreferencesPatch,
+    ) -> Result<
+        compallm_core::preference::UserPreferences,
+        compallm_core::persistent::preference::user::UserPreferenceRepositoryError,
+    > {
+        unreachable!()
+    }
+    async fn reset(
+        &self,
+        _: u64,
+        _: &[compallm_core::preference::patch::UserPreferenceGroup],
+    ) -> Result<
+        compallm_core::preference::UserPreferences,
+        compallm_core::persistent::preference::user::UserPreferenceRepositoryError,
+    > {
+        unreachable!()
+    }
+}
+
 struct OrganizationRepositoryStub(Arc<Mutex<State>>);
 
 #[async_trait::async_trait]
@@ -167,10 +218,20 @@ impl OrganizationRepository for OrganizationRepositoryStub {
     fn supports_role_policy(&self, _: &str) -> bool {
         true
     }
+    async fn update_role(
+        &self,
+        _: u64,
+        _: u64,
+        _: Option<String>,
+        _: Option<String>,
+        _: Option<String>,
+    ) -> Result<(), OrganizationRepositoryError> {
+        unimplemented!()
+    }
     async fn lock_role(&self, _: u64, _: u64) -> Result<Role, OrganizationRepositoryError> {
         unimplemented!()
     }
-    async fn lock_role_groups(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
+    async fn lock_role_groups(&self, _: u64, _: u64) -> Result<bool, OrganizationRepositoryError> {
         unimplemented!()
     }
     async fn lock_group(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
@@ -188,10 +249,20 @@ impl OrganizationRepository for OrganizationRepositoryStub {
     }
     async fn find_roles_for_assignment(
         &self,
-        _: u64,
-        _: &[u64],
+        organization_id: u64,
+        role_ids: &[u64],
     ) -> Result<Vec<Role>, OrganizationRepositoryError> {
-        unimplemented!()
+        Ok(self
+            .0
+            .lock()
+            .unwrap()
+            .memberships
+            .iter()
+            .filter(|member| member.organization_id == organization_id)
+            .flat_map(|member| &member.roles)
+            .filter(|role| role_ids.contains(&role.id))
+            .cloned()
+            .collect())
     }
     async fn create_group(
         &self,
@@ -726,6 +797,12 @@ impl Fixture {
             )),
             dictionaries,
             registration,
+            Box::leak(Box::new(
+                compallm_core::preference::UserPreferenceService::new(Box::leak(Box::new(
+                    Box::new(self.repo.clone())
+                        as Box<dyn compallm_core::persistent::preference::user::UserPreferenceRepository>,
+                ))),
+            )),
             SECRET.into(),
             TokenLifetimes {
                 user: Duration::from_secs(60),
@@ -1243,6 +1320,7 @@ async fn signup_requires_verified_email_and_uses_one_caller_transaction() {
         );
         assert_eq!(state.contexts.len(), 3);
         assert_eq!(state.logins.len(), 1);
+        assert_eq!(state.preferences.len(), 1);
         let organization = state.organization.as_ref().unwrap();
         let owner = state.owner.as_ref().unwrap();
         assert_eq!(organization.name, "james's organization");
@@ -2302,7 +2380,7 @@ async fn snapshot_creation_uses_only_loaded_membership_without_session_or_contex
         roles: fixture_roles_0.clone(),
         groups: vec![],
     };
-    let snapshot = compallm_core::authorization::PolicySnapshot::new(&membership);
+    let snapshot = compallm_core::authorization::PolicySnapshot::new(&membership).unwrap();
     assert_eq!(snapshot.role_ids, vec![1, 2, 3]);
     assert!(!snapshot.cedar_source.is_empty());
     assert!(DbContext::current().is_err());
@@ -2433,7 +2511,7 @@ async fn access_issuance_includes_direct_and_group_authority_and_refresh_rebuild
         .unwrap();
     let access =
         UserAccessToken::try_from(decode_token(&issued.access_token, SECRET).unwrap()).unwrap();
-    let expected = PolicySnapshot::new(&fixture.repo.0.lock().unwrap().memberships[0]);
+    let expected = PolicySnapshot::new(&fixture.repo.0.lock().unwrap().memberships[0]).unwrap();
     assert_eq!(access.policy_snapshot, expected);
     assert_eq!(access.policy_snapshot.role_ids, vec![1]);
     assert_eq!(access.policy_snapshot.group_roles[&9], vec![3]);
@@ -2548,6 +2626,140 @@ async fn graphql_request(
         .oneshot(request.body(Body::from(body.to_string())).unwrap())
         .await
         .unwrap()
+}
+
+#[tokio::test]
+async fn invalid_authorization_clears_cookies_without_revoking_session() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let session = fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    let invalid = token_pair::new(
+        &session,
+        PolicySnapshot {
+            cedar_source:
+                "permit(principal, action == Compallm::Action::\"retired.action\", resource);"
+                    .into(),
+            role_ids: Vec::new(),
+            group_roles: Default::default(),
+        },
+        SECRET,
+        Duration::from_secs(60),
+        REFRESH_LIFETIME,
+    )
+    .unwrap();
+    let cookies = format!(
+        "compallm-access={}; compallm-refresh={}",
+        invalid.access_token, tokens.refresh_token
+    );
+    let response = graphql_operation(
+        &fixture.graphql(),
+        "{ roles { edges { node { id } } } }",
+        serde_json::json!({}),
+        None,
+        Some(&cookies),
+        true,
+    )
+    .await;
+    let headers: Vec<_> = response
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .map(|value| value.to_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(headers.len(), 2);
+    assert!(headers.iter().all(|value| value.contains("Max-Age=0")));
+    assert_eq!(
+        graphql_body(response).await["errors"][0]["extensions"]["code"],
+        "INVALID_AUTHORIZATION_STATE"
+    );
+    assert!(
+        fixture
+            .repo
+            .0
+            .lock()
+            .unwrap()
+            .sessions
+            .get(&session.id)
+            .unwrap()
+            .revoked_at
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn policy_catalog_requires_a_current_user_without_a_role_grant() {
+    use compallm_core::authorization::policy::Action;
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let session = fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    let query = "{ organizationPolicyActions { edges { node { name entityType resourceType } } pageInfo { hasNextPage hasPreviousPage } } }";
+    let snapshot = |source: &str| PolicySnapshot {
+        cedar_source: source.into(),
+        role_ids: Vec::new(),
+        group_roles: Default::default(),
+    };
+    let authorized = token_pair::new(
+        &session,
+        snapshot(""),
+        SECRET,
+        Duration::from_secs(60),
+        REFRESH_LIFETIME,
+    )
+    .unwrap();
+    let router = fixture.graphql();
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            query,
+            serde_json::json!({}),
+            Some(&authorized.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(body["errors"].is_null(), "{body}");
+    let edges = body["data"]["organizationPolicyActions"]["edges"]
+        .as_array()
+        .unwrap();
+    assert_eq!(edges.len(), Action::ALL.len());
+    assert!(edges.iter().any(|edge| edge["node"] == serde_json::json!({"name":"role.create", "entityType":"Role", "resourceType":"Organization"})));
+    assert_eq!(
+        body["data"]["organizationPolicyActions"]["pageInfo"]["hasNextPage"],
+        false
+    );
+    let body = graphql_body(
+        graphql_operation(&router, query, serde_json::json!({}), None, None, false).await,
+    )
+    .await;
+    assert_eq!(body["errors"][0]["extensions"]["code"], "UNAUTHENTICATED");
 }
 
 #[tokio::test]
@@ -3399,7 +3611,7 @@ async fn restricted_query_errors_and_cancellation_discard_dirty_connections() {
     };
     let access = UserAccessToken::new(
         stored_session(1, 1, 84, "RLS fixture"),
-        compallm_core::authorization::PolicySnapshot::new(&member),
+        compallm_core::authorization::PolicySnapshot::new(&member).unwrap(),
         Duration::from_secs(60),
     )
     .unwrap();
@@ -3496,7 +3708,9 @@ async fn graphql_role_and_group_creation_enforces_scope_and_denies_without_write
         .await
         .unwrap();
     }
-    let db = DbContext::new(Arc::new(PostgresConnection::new(pool.clone())));
+    let connection = Arc::new(PostgresConnection::new(pool.clone()));
+    DbContext::initialize_default(connection.clone()).unwrap();
+    let db = DbContext::new(connection);
     let repository = compallm_postgres::repository::organization::OrganizationRepository;
     let foreign_role = Role::new(foreign.id, "Foreign role", "", "").await.unwrap();
     db.scope(repository.create_roles(vec![foreign_role.clone()]))
@@ -3512,7 +3726,7 @@ async fn graphql_role_and_group_creation_enforces_scope_and_denies_without_write
         .sessions
         .insert(session.id, session.clone());
     let source = format!(
-        r#"permit(principal, action in [Compallm::Action::"role.read", Compallm::Action::"role.create", Compallm::Action::"role.assign", Compallm::Action::"group.read", Compallm::Action::"group.create"], resource in Compallm::Organization::"{org}");
+        r#"permit(principal, action in [Compallm::Action::"role.read", Compallm::Action::"role.create", Compallm::Action::"role.assign", Compallm::Action::"role.delete", Compallm::Action::"group.read", Compallm::Action::"group.create"], resource in Compallm::Organization::"{org}");
 permit(principal, action == Compallm::Action::"group.role.assign", resource is Compallm::Group in Compallm::Organization::"{org}") when {{ context.role.organization == Compallm::Organization::"{org}" }};"#,
         org = organization.id
     );
@@ -3547,7 +3761,17 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(stored.cedar_source, policy);
+    let stored_policy: cedar_policy::PolicySet = stored.cedar_source.parse().unwrap();
+    let submitted_policy: cedar_policy::PolicySet = policy.parse().unwrap();
+    assert_eq!(
+        stored_policy.policies().next().unwrap().to_json().unwrap(),
+        submitted_policy
+            .policies()
+            .next()
+            .unwrap()
+            .to_json()
+            .unwrap()
+    );
     assert!(!stored.org_owner);
 
     let response = graphql_operation(
@@ -3654,6 +3878,120 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
         1
     );
 
+    let delete_role = "mutation($id:ID!){roleDelete(id:$id){node}}";
+    let assigned = graphql_operation(
+        &router,
+        delete_role,
+        serde_json::json!({"id":role_id}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    assert_graphql_denial(assigned, 409).await;
+    assert!(
+        db.scope(repository.find_role(organization.id, role_id.parse().unwrap()))
+            .await
+            .unwrap()
+            .is_some()
+    );
+    type GroupRoles =
+        <compallm_postgres::OrganizationGroupRoleSchema as sea_orm::ModelTrait>::Entity;
+    GroupRoles::delete_by_id((
+        i64::try_from(organization.id).unwrap(),
+        group_id.parse::<i64>().unwrap(),
+        role_id.parse::<i64>().unwrap(),
+    ))
+    .exec(pool.as_ref())
+    .await
+    .unwrap();
+    let assignee = User::from_email(&format!("role-delete-{}@example.com", organization.id))
+        .await
+        .unwrap();
+    db.scope(compallm_postgres::repository::user::UserRepository.create(assignee.clone()))
+        .await
+        .unwrap();
+    let assigned_member = OrganizationMember {
+        organization_id: organization.id,
+        user_id: assignee.id,
+        roles: vec![
+            db.scope(repository.find_role(organization.id, role_id.parse().unwrap()))
+                .await
+                .unwrap()
+                .unwrap(),
+        ],
+        groups: vec![],
+    };
+    db.scope(repository.add_member(assigned_member))
+        .await
+        .unwrap();
+    let assigned = graphql_operation(
+        &router,
+        delete_role,
+        serde_json::json!({"id":role_id}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    assert_graphql_denial(assigned, 409).await;
+    type MemberRoles =
+        <compallm_postgres::OrganizationMemberRoleSchema as sea_orm::ModelTrait>::Entity;
+    MemberRoles::delete_by_id((
+        i64::try_from(organization.id).unwrap(),
+        i64::try_from(assignee.id).unwrap(),
+        role_id.parse::<i64>().unwrap(),
+    ))
+    .exec(pool.as_ref())
+    .await
+    .unwrap();
+    let deleted = graphql_operation(
+        &router,
+        delete_role,
+        serde_json::json!({"id":role_id}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    let body = graphql_body(deleted).await;
+    assert!(body["errors"].is_null(), "{body}");
+    assert_eq!(body["data"]["roleDelete"]["node"], true);
+    assert!(
+        db.scope(repository.find_role(organization.id, role_id.parse().unwrap()))
+            .await
+            .unwrap()
+            .is_none()
+    );
+
+    let mut owner = Role::new(organization.id, "Owner", "", "").await.unwrap();
+    owner.org_owner = true;
+    db.scope(repository.create_roles(vec![owner.clone()]))
+        .await
+        .unwrap();
+    let owner_detail = graphql_operation(
+        &router,
+        "query($id:ID!){role(id:$id){node{id owner}}}",
+        serde_json::json!({"id": owner.id.to_string()}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    let body = graphql_body(owner_detail).await;
+    assert!(body["errors"].is_null(), "{body}");
+    assert_eq!(body["data"]["role"]["node"]["owner"], true);
+    let denied = graphql_operation(
+        &router,
+        delete_role,
+        serde_json::json!({"id": owner.id.to_string()}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    assert_graphql_denial(denied, 403).await;
+
     type Organizations = <OrganizationSchema as sea_orm::ModelTrait>::Entity;
     for org in [organization, foreign] {
         Organizations::delete_by_id(i64::try_from(org.id).unwrap())
@@ -3679,4 +4017,132 @@ async fn graphql_full_schema_introspection_is_available_without_credentials() {
     let body = graphql_body(response).await;
     assert!(body["errors"].is_null(), "{body}");
     assert!(body["data"]["__schema"]["types"].as_array().unwrap().len() > 10);
+}
+
+#[tokio::test]
+async fn preference_creation_failure_rolls_back_signup() {
+    let fixture = Fixture::new(None);
+    fixture.repo.0.lock().unwrap().fail_preferences = true;
+    let challenge = test_challenge("preferences@example.com", SECRET).unwrap();
+    assert!(matches!(
+        fixture
+            .signup_in_transaction(&Fixture::otp(&challenge), &challenge.code)
+            .await,
+        Err(AuthError::Preferences(_))
+    ));
+    assert!(fixture.repo.0.lock().unwrap().logins.is_empty());
+    fixture.assert_transaction("ROLLBACK");
+}
+
+#[tokio::test]
+async fn preference_graphql_reads_defaults_and_rejects_null_before_writes() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let database = MockDatabase::new(DbBackend::Postgres)
+        .append_query_results([Vec::<compallm_postgres::schema::UserPreferenceSchema>::new()])
+        .into_connection();
+    let context = DbContext::new(Arc::new(PostgresConnection::new(Arc::new(database))));
+    let router = fixture.graphql_with_database(context);
+    let result = graphql_body(
+        graphql_operation(
+            &router,
+            "query { userPreferences { node { navigation { home } codeAppearance { theme } } } }",
+            serde_json::json!({}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(
+        result["data"]["userPreferences"]["node"]["navigation"]["home"],
+        "CHAT"
+    );
+    assert_eq!(
+        result["data"]["userPreferences"]["node"]["codeAppearance"]["theme"],
+        "FOLLOW_INTERFACE"
+    );
+    let denied = graphql_body(graphql_operation(&router, "mutation { userPreferencesUpdate(input: {accessibility: {pointerCursors: true}}) { node { accessibility { pointerCursors } } } }", serde_json::json!({}), None, None, false).await).await;
+    assert_eq!(denied["errors"][0]["extensions"]["code"], "UNAUTHENTICATED");
+    for input in [
+        serde_json::json!({"theme":null}),
+        serde_json::json!({"theme":{"palettes":{"dark":null}}}),
+        serde_json::json!({"sidebar":{"order":["CHAT"]}}),
+    ] {
+        let invalid = graphql_body(graphql_operation(&router, "mutation($input: UserPreferencesPatchInput!) { userPreferencesUpdate(input: $input) { node { navigation { home } } } }", serde_json::json!({"input":input}), Some(&tokens.access_token), None, false).await).await;
+        assert_eq!(invalid["errors"][0]["extensions"]["code"], "BAD_USER_INPUT");
+    }
+}
+
+#[tokio::test]
+#[ignore = "requires COMPALLM_TEST_DATABASE_URL; creates and removes a disposable database"]
+async fn preference_graphql_persists_grouped_updates_and_resets_for_current_user()
+-> anyhow::Result<()> {
+    use sea_orm::{ConnectionTrait, Database, EntityTrait, ModelTrait, Set};
+    use sea_orm_migration::{MigratorTrait, SchemaManager};
+    let url = std::env::var("COMPALLM_TEST_DATABASE_URL")?;
+    let name = format!(
+        "preference_http_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_nanos()
+    );
+    let admin = Database::connect(&url).await?;
+    admin
+        .execute_unprepared(&format!("CREATE DATABASE {name}"))
+        .await?;
+    let result = async {
+        let (base, parameters) = url.split_once('?').unwrap_or((&url, ""));
+        let (server, _) = base.rsplit_once('/').ok_or_else(|| anyhow::anyhow!("database URL"))?;
+        let pool = Arc::new(Database::connect(format!("{server}/{name}?{parameters}")).await?);
+        for migration in compallm_postgres::Migrator::migrations().iter().filter(|migration| migration.name().ends_with("create_users") || migration.name().ends_with("create_user_preferences")) {
+            migration.up(&SchemaManager::new(pool.as_ref())).await?;
+        }
+        type Users = <compallm_postgres::UserSchema as ModelTrait>::Entity;
+        type ActiveUser = <Users as EntityTrait>::ActiveModel;
+        Users::insert(ActiveUser { id: Set(1), email: Set("james@midwess.com".into()), display_name: Set("James".into()), status: Set(compallm_postgres::schema::UserStatusSchema::Active), email_verified_at: Set(sea_orm::prelude::ChronoUtc::now().fixed_offset()), ..Default::default() }).exec(pool.as_ref()).await?;
+        let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+        let challenge = test_challenge("james@midwess.com", SECRET)?;
+        let tokens = fixture.signin(&Fixture::otp(&challenge), &challenge.code).await?;
+        let context = DbContext::new(Arc::new(PostgresConnection::new(pool.clone())));
+        let router = fixture.graphql_with_database(context.clone());
+        let update = "mutation($input: UserPreferencesPatchInput!) { userPreferencesUpdate(input: $input) { node { navigation { home } theme { palettes { dark } } codeAppearance { font { family size } } sidebar { entries { item visibility } } } } }";
+        let response = graphql_body(graphql_operation(&router, update, serde_json::json!({"input": {
+            "navigation":{"home":"MODELS"}, "calendar":{"firstDay":"SUNDAY"},
+            "theme":{"palettes":{"dark":"MAGIC_BLUE"}},
+            "codeAppearance":{"font":{"family":"MONOSPACE","size":"PX16"}},
+            "sidebar":{"order":["PLUGINS","PROVIDERS"],"visibility":[{"item":"PLUGINS","visibility":"HIDDEN"}]}
+        }}), Some(&tokens.access_token), None, false).await).await;
+        assert!(response.get("errors").is_none(), "{response}");
+        assert_eq!(response["data"]["userPreferencesUpdate"]["node"]["navigation"]["home"], "MODELS");
+        let read = "query { userPreferences { node { calendar { firstDay } theme { mode palettes { light dark } } codeAppearance { font { family size } } sidebar { entries { item visibility } } } } }";
+        let saved = graphql_body(graphql_operation(&router, read, serde_json::json!({}), Some(&tokens.access_token), None, false).await).await;
+        assert_eq!(saved["data"]["userPreferences"]["node"]["theme"]["palettes"]["dark"], "MAGIC_BLUE");
+        assert_eq!(saved["data"]["userPreferences"]["node"]["theme"]["palettes"]["light"], "LIGHT");
+        assert_eq!(saved["data"]["userPreferences"]["node"]["sidebar"]["entries"][0]["visibility"], "HIDDEN");
+        for groups in [serde_json::json!([]), serde_json::json!(["ALL","THEME"])] {
+            let invalid = graphql_body(graphql_operation(&router, "mutation($groups: [UserPreferenceGroup!]!) { userPreferencesReset(groups: $groups) { node { calendar { firstDay } } } }", serde_json::json!({"groups":groups}), Some(&tokens.access_token), None, false).await).await;
+            assert_eq!(invalid["errors"][0]["extensions"]["code"], "BAD_USER_INPUT");
+        }
+        let reset = graphql_body(graphql_operation(&router, "mutation { userPreferencesReset(groups: [THEME]) { node { theme { palettes { dark } } calendar { firstDay } } } }", serde_json::json!({}), Some(&tokens.access_token), None, false).await).await;
+        assert_eq!(reset["data"]["userPreferencesReset"]["node"]["theme"]["palettes"]["dark"], "DARK");
+        assert_eq!(reset["data"]["userPreferencesReset"]["node"]["calendar"]["firstDay"], "SUNDAY");
+        let defaults = graphql_body(graphql_operation(&router, "mutation { userPreferencesReset(groups: [ALL]) { node { calendar { firstDay } } } }", serde_json::json!({}), Some(&tokens.access_token), None, false).await).await;
+        assert_eq!(defaults["data"]["userPreferencesReset"]["node"]["calendar"]["firstDay"], "MONDAY");
+        let preferences = compallm_core::persistent::preference::user::UserPreferenceRepository::find(&compallm_postgres::repository::preference::user::UserPreferenceRepository,1);
+        assert_eq!(context.scope(preferences).await?.unwrap(), compallm_core::preference::UserPreferences::default());
+        Ok::<_,anyhow::Error>(())
+    }.await;
+    let cleanup = admin
+        .execute_unprepared(&format!("DROP DATABASE {name} WITH (FORCE)"))
+        .await;
+    result?;
+    cleanup?;
+    Ok(())
 }

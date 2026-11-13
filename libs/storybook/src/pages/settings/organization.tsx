@@ -1,5 +1,6 @@
+import { FormError } from '../../components/form'
 import { Button } from '../../components/buttons'
-import { TextField } from '../../components/fields'
+import { TextField, FileField } from '../../components/fields'
 import { Select } from '../../components/dropdowns'
 import { Avatar } from '../../components/content'
 import { SettingsContent, Heading, Section, Rows, Row } from './shared'
@@ -21,7 +22,7 @@ const months = [
 ]
 export function OrganizationSettings() {
   const c = useSettingsController(),
-    org = useSettings((s) => s.organization)
+    org = useSettings((s) => s.organization, ['organization'])
   return (
     <SettingsContent>
       <Heading>Organization</Heading>
@@ -33,31 +34,23 @@ export function OrganizationSettings() {
                 <Avatar name={org.name} src={org.logo ?? undefined} />
                 <label className="cursor-pointer rounded-lg border border-input-border px-3 py-1.5 text-xs">
                   Upload
-                  <input
-                    type="file"
-                    accept="image/*"
+                  <FileField
+                    name="organizationUpload"
+                    accept="image/jpeg,image/png,image/webp"
                     className="sr-only"
                     aria-label="Upload organization logo"
-                    onChange={(e) => c.pages.organization.setAvatar(e.target.files?.[0] ?? null)}
                   />
+                  <FormError name="organizationUpload" />
                 </label>
               </div>
             </Row>
             <Row label={<label htmlFor="organization-name">Name</label>}>
-              <TextField
-                id="organization-name"
-                className="w-70 max-w-full"
-                value={org.name}
-                onChange={(e) => c.pages.organization.updateOrganization({ name: e.target.value })}
-              />
+              <TextField id="organization-name" className="w-70 max-w-full" name="organization.name" />
+              <FormError name="organization.name" />
             </Row>
             <Row label={<label htmlFor="organization-url">URL</label>} last>
-              <TextField
-                id="organization-url"
-                className="w-70 max-w-full"
-                value={org.slug}
-                onChange={(e) => c.pages.organization.updateOrganization({ slug: e.target.value })}
-              />
+              <TextField id="organization-url" className="w-70 max-w-full" name="organization.slug" />
+              <FormError name="organization.slug" />
             </Row>
           </Rows>
         </Section>
@@ -67,10 +60,10 @@ export function OrganizationSettings() {
               <Select
                 aria-label="First month of the fiscal year"
                 className="w-44"
-                value={org.fiscalMonth}
+                name="organization.fiscalMonth"
                 options={months.map((label) => ({ label, value: label }))}
-                onValueChange={(fiscalMonth) => c.pages.organization.updateOrganization({ fiscalMonth })}
               />
+              <FormError name="organization.fiscalMonth" />
             </Row>
             <Row label="Region" description="Deployment region for this organization." last>
               <span className="text-xs text-muted">{org.region}</span>
@@ -93,10 +86,10 @@ export function OrganizationSettings() {
               <Select
                 aria-label="Organization default home view"
                 className="w-44"
-                value={org.home}
+                name="organization.home"
                 options={['Chat', 'Models', 'Providers'].map((label) => ({ label, value: label }))}
-                onValueChange={(home) => c.pages.organization.updateOrganization({ home })}
               />
+              <FormError name="organization.home" />
             </Row>
           </Rows>
         </Section>

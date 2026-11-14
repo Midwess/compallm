@@ -30,17 +30,15 @@ impl OrganizationRepository for Repository {
     async fn find_member_identity(
         &self,
         _: u64,
-        _: u64,
     ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
         unreachable!()
     }
     async fn list_members(
         &self,
-        _: u64,
-        _: u64,
         _: Box<dyn compallm_query::IntoQuery>,
         _: compallm_query::Pagination,
         _: Vec<compallm_query::OrderBy>,
+        _: &str,
     ) -> Result<
         compallm_query::Connection<compallm_core::organization::group::MemberInfo>,
         OrganizationRepositoryError,
@@ -131,19 +129,17 @@ impl OrganizationRepository for Repository {
     async fn find_role(&self, _: u64, _: u64) -> Result<Option<Role>, OrganizationRepositoryError> {
         unimplemented!()
     }
-    async fn list_role_info(&self, _: u64) -> Result<Vec<Role>, OrganizationRepositoryError> {
+    async fn list_role_info(&self) -> Result<Vec<Role>, OrganizationRepositoryError> {
         unimplemented!()
     }
     async fn list_group_info(
         &self,
-        _: u64,
     ) -> Result<Vec<compallm_core::organization::group::GroupInfo>, OrganizationRepositoryError>
     {
         unimplemented!()
     }
     async fn find_group_info(
         &self,
-        _: u64,
         _: u64,
     ) -> Result<Option<compallm_core::organization::group::GroupInfo>, OrganizationRepositoryError>
     {

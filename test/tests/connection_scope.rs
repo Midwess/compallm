@@ -2,7 +2,7 @@ use compallm_core::{
     authentication::{Session, UserAccessToken},
     authorization::{MemberPermission, PolicySnapshot},
     organization::OrganizationMember,
-    persistent::{ConnectionError, DbContext, PermissionError},
+    persistent::{ConnectionError, DbContext, PermissionError, db_context},
 };
 use compallm_postgres::postgres_connection::PostgresConnection;
 use sea_orm::{DbBackend, MockDatabase};
@@ -18,6 +18,23 @@ use std::{
 struct Fixture;
 
 impl Fixture {
+    #[db_context::root]
+    async fn root_context() -> Result<DbContext, ConnectionError> {
+        Ok(db.clone())
+    }
+
+    #[db_context::current]
+    async fn current_actor<'a, T>(label: &'a T, fail: bool) -> anyhow::Result<(&'a T, u64, bool)> {
+        if fail {
+            return Err(anyhow::anyhow!("operation failed"));
+        }
+        Ok((
+            label,
+            db.permission().await?.user_id(),
+            db.postgres().is_transaction(),
+        ))
+    }
+
     fn connection() -> DbContext {
         DbContext::new(Arc::new(PostgresConnection::new(Arc::new(
             MockDatabase::new(DbBackend::Postgres).into_connection(),
@@ -68,6 +85,11 @@ async fn default_contexts_share_connection_without_sharing_member_authority() {
     let reused = first.clone();
     first
         .request_scope(async {
+            let root = Fixture::root_context().await.unwrap();
+            assert!(matches!(
+                root.permission().await,
+                Err(PermissionError::Missing)
+            ));
             assert_eq!(
                 DbContext::current()
                     .unwrap()
@@ -204,67 +226,55 @@ async fn permission_loader_survives_waiter_cancellation_and_caches_failure() {
 }
 
 #[tokio::test]
-async fn scope_activates_its_context_and_restores_the_active_transaction() {
+async fn same_authority_scopes_reuse_the_active_transaction() {
     let connection = Fixture::connection();
-    assert!(matches!(
-        DbContext::current(),
-        Err(ConnectionError::Database(_))
-    ));
     connection
         .scope(async {
-            assert!(std::ptr::eq(
-                DbContext::current().unwrap().postgres(),
-                connection.postgres()
-            ));
             connection
                 .transaction(async {
                     let transaction = DbContext::current()?;
-                    assert!(!std::ptr::eq(transaction.postgres(), connection.postgres()));
+                    let from_attribute = Fixture::root_context().await?;
+                    assert!(std::ptr::eq(
+                        from_attribute.postgres(),
+                        transaction.postgres()
+                    ));
                     connection
                         .scope(async {
                             assert!(std::ptr::eq(
-                                DbContext::current().unwrap().postgres(),
-                                connection.postgres()
+                                DbContext::current()?.postgres(),
+                                transaction.postgres()
                             ));
-                            transaction
-                                .scope(async {
+                            connection
+                                .transaction(async {
                                     assert!(std::ptr::eq(
-                                        DbContext::current().unwrap().postgres(),
+                                        DbContext::current()?.postgres(),
                                         transaction.postgres()
                                     ));
+                                    Ok::<_, ConnectionError>(())
                                 })
-                                .await;
-                            assert!(std::ptr::eq(
-                                DbContext::current().unwrap().postgres(),
-                                connection.postgres()
-                            ));
+                                .await?;
+                            Ok::<_, ConnectionError>(())
                         })
-                        .await;
-                    assert!(std::ptr::eq(
-                        DbContext::current()?.postgres(),
-                        transaction.postgres()
-                    ));
+                        .await?;
                     Ok::<_, ConnectionError>(())
                 })
-                .await
-                .unwrap();
+                .await?;
             assert!(std::ptr::eq(
-                DbContext::current().unwrap().postgres(),
+                DbContext::current()?.postgres(),
                 connection.postgres()
             ));
+            Ok::<_, ConnectionError>(())
         })
-        .await;
-    assert!(matches!(
-        DbContext::current(),
-        Err(ConnectionError::Database(_))
-    ));
+        .await
+        .unwrap();
+    assert!(DbContext::current().is_err());
 }
 
 #[tokio::test]
 async fn concurrent_scopes_are_isolated_and_spawn_does_not_inherit() {
     let one = Fixture::connection();
     let two = Fixture::connection();
-    tokio::join!(
+    let (left, right) = tokio::join!(
         one.scope(async {
             tokio::task::yield_now().await;
             assert!(std::ptr::eq(
@@ -278,6 +288,8 @@ async fn concurrent_scopes_are_isolated_and_spawn_does_not_inherit() {
                 .await
                 .unwrap()
             );
+
+            Ok::<_, compallm_core::persistent::ConnectionError>(())
         }),
         two.scope(async {
             tokio::task::yield_now().await;
@@ -285,8 +297,12 @@ async fn concurrent_scopes_are_isolated_and_spawn_does_not_inherit() {
                 DbContext::current().unwrap().postgres(),
                 two.postgres()
             ));
+
+            Ok::<_, compallm_core::persistent::ConnectionError>(())
         })
     );
+    left.unwrap();
+    right.unwrap();
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -349,59 +365,84 @@ async fn transaction_can_borrow_and_return_local_data_without_move() {
 }
 
 #[tokio::test]
-async fn transaction_uses_receiver_authority_and_restores_the_request_scope() {
-    let template = Fixture::connection();
-    let request = template.fresh().unwrap();
-    let trusted = template.fresh().unwrap();
+async fn nested_transaction_retains_request_authority_and_borrowed_inputs() {
+    let request = Fixture::connection();
     request
         .restrict(async { Ok::<_, Infallible>(Arc::new(Fixture::permission(1, 7))) })
         .unwrap();
     request
-        .request_scope(async {
-            let restricted = DbContext::current().unwrap();
-            trusted
+        .scope(async {
+            request
                 .transaction(async {
                     let transaction = DbContext::current()?;
-                    assert!(transaction.postgres().is_transaction());
-                    assert!(matches!(
-                        transaction.permission().await,
-                        Err(PermissionError::Missing)
-                    ));
-                    assert!(!std::ptr::eq(transaction.postgres(), restricted.postgres()));
-                    restricted
+                    request
                         .transaction(async {
-                            let current = DbContext::current()?;
-                            assert!(current.postgres().is_transaction());
-                            assert_eq!(current.permission().await.unwrap().user_id(), 1);
-                            assert!(!std::ptr::eq(current.postgres(), transaction.postgres()));
+                            let label = String::from("member");
+                            let (borrowed, user_id, in_transaction) =
+                                Fixture::current_actor(&label, false).await.unwrap();
+                            assert!(std::ptr::eq(borrowed, &label));
+                            assert_eq!(user_id, 1);
+                            assert!(in_transaction);
+                            assert!(Fixture::current_actor(&label, true).await.is_err());
+                            assert!(std::ptr::eq(
+                                DbContext::current()?.postgres(),
+                                transaction.postgres()
+                            ));
                             Ok::<_, ConnectionError>(())
                         })
                         .await?;
-                    assert!(std::ptr::eq(
-                        DbContext::current()?.postgres(),
-                        transaction.postgres()
-                    ));
                     Ok::<_, ConnectionError>(())
                 })
-                .await
-                .unwrap();
+                .await?;
             assert!(std::ptr::eq(
-                DbContext::current().unwrap().postgres(),
-                restricted.postgres()
+                DbContext::current()?.postgres(),
+                request.postgres()
             ));
             assert_eq!(
-                DbContext::current()
-                    .unwrap()
-                    .permission()
-                    .await
-                    .unwrap()
-                    .user_id(),
+                DbContext::current()?.permission().await.unwrap().user_id(),
                 1
             );
+            Ok::<_, ConnectionError>(())
         })
         .await
         .unwrap();
     assert!(DbContext::current().is_err());
+}
+
+#[tokio::test]
+async fn cross_authority_scopes_and_transactions_are_rejected_before_effects() {
+    let root = Fixture::connection();
+    let first = Fixture::connection();
+    let second = Fixture::connection();
+    first
+        .restrict(async { Ok::<_, Infallible>(Arc::new(Fixture::permission(1, 7))) })
+        .unwrap();
+    second
+        .restrict(async { Ok::<_, Infallible>(Arc::new(Fixture::permission(2, 8))) })
+        .unwrap();
+    for (source, target) in [(&root, &first), (&first, &root), (&first, &second)] {
+        for nested_transaction in [false, true] {
+            let executed = std::cell::Cell::new(false);
+            let result = source
+                .transaction(async {
+                    let operation = async {
+                        executed.set(true);
+                        Ok::<_, ConnectionError>(())
+                    };
+                    let result = if nested_transaction {
+                        target.transaction(operation).await
+                    } else {
+                        target.scope(operation).await
+                    };
+                    assert!(result.is_err());
+                    Ok::<_, ConnectionError>(())
+                })
+                .await;
+            assert!(result.is_err());
+            assert!(!executed.get());
+            assert!(DbContext::current().is_err());
+        }
+    }
 }
 
 #[tokio::test]
@@ -412,20 +453,23 @@ async fn completed_transaction_context_cannot_query_or_start_another_transaction
         .await
         .unwrap();
     assert!(PostgresConnection::from_context(&escaped).is_err());
-    escaped
-        .scope(async {
-            assert!(matches!(
-                DbContext::current(),
-                Err(ConnectionError::Database(_))
-            ));
-            assert!(matches!(
-                escaped
-                    .transaction(async { Ok::<_, ConnectionError>(()) })
-                    .await,
-                Err(ConnectionError::Database(_))
-            ));
-        })
-        .await;
+    let executed = std::cell::Cell::new(false);
+    assert!(
+        escaped
+            .scope(async {
+                executed.set(true);
+                Ok::<_, ConnectionError>(())
+            })
+            .await
+            .is_err()
+    );
+    assert!(!executed.get());
+    assert!(
+        escaped
+            .transaction(async { Ok::<_, ConnectionError>(()) })
+            .await
+            .is_err()
+    );
 }
 
 #[tokio::test]
@@ -460,8 +504,11 @@ async fn scope_restores_request_authority_after_failure_and_cancellation() {
                                     .user_id(),
                                 1
                             );
+
+                            Ok::<_, compallm_core::persistent::ConnectionError>(())
                         })
-                        .await;
+                        .await
+                        .unwrap();
                     assert!(std::ptr::eq(
                         DbContext::current().unwrap().postgres(),
                         trusted.postgres()
@@ -482,6 +529,8 @@ async fn scope_restores_request_authority_after_failure_and_cancellation() {
                     trusted.postgres()
                 ));
                 std::future::pending::<()>().await;
+
+                Ok::<_, compallm_core::persistent::ConnectionError>(())
             }));
             tokio::select! {
                 biased;

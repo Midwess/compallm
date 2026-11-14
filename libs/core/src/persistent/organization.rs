@@ -32,19 +32,19 @@ impl From<ConnectionError> for OrganizationRepositoryError {
 /// Use the current DbContext and leave transaction ownership to the caller.
 #[async_trait]
 pub trait OrganizationRepository: Send + Sync {
+    /// Find a member in the current verified organization.
     async fn find_member_identity(
         &self,
-        organization_id: u64,
         user_id: u64,
     ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError>;
 
+    /// RLS filters rows; verified request scope binds pagination cursors.
     async fn list_members(
         &self,
-        organization_id: u64,
-        actor_id: u64,
         query: Box<dyn compallm_query::IntoQuery>,
         pagination: compallm_query::Pagination,
         ordering: Vec<compallm_query::OrderBy>,
+        cursor_scope: &str,
     ) -> Result<
         compallm_query::Connection<crate::organization::group::MemberInfo>,
         OrganizationRepositoryError,
@@ -131,17 +131,15 @@ pub trait OrganizationRepository: Send + Sync {
         organization_id: u64,
         role_id: u64,
     ) -> Result<(), OrganizationRepositoryError>;
-    async fn list_role_info(
-        &self,
-        organization_id: u64,
-    ) -> Result<Vec<Role>, OrganizationRepositoryError>;
+    /// List metadata through the current RLS connection.
+    async fn list_role_info(&self) -> Result<Vec<Role>, OrganizationRepositoryError>;
+    /// List metadata through the current RLS connection.
     async fn list_group_info(
         &self,
-        organization_id: u64,
     ) -> Result<Vec<crate::organization::group::GroupInfo>, OrganizationRepositoryError>;
+    /// Find metadata in the current verified organization.
     async fn find_group_info(
         &self,
-        organization_id: u64,
         group_id: u64,
     ) -> Result<Option<crate::organization::group::GroupInfo>, OrganizationRepositoryError>;
     /// Find a group and its assigned roles using its organization-scoped identity.

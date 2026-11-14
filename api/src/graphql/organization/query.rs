@@ -4,19 +4,17 @@ use crate::{
     http::authentication::UserContext,
 };
 use compallm_core::{
-    organization::OrganizationStatus,
-    persistent::{DbContext, organization::OrganizationRepository},
+    organization::OrganizationStatus, persistent::organization::OrganizationRepository,
 };
 
 pub(crate) async fn profile(
     id: juniper::ID,
     repository: &dyn OrganizationRepository,
-    database: &DbContext,
+    identity: &crate::http::authentication::AuthenticationContext,
 ) -> Result<Option<Payload<Organization>>, Error> {
     let id = id.parse().map_err(|_| Error::invalid_input())?;
-    let context = database.fresh().map_err(|_| Error::internal())?;
-    let organization = context
-        .scope(repository.find_by_id(id))
+    let organization = identity
+        .execute(repository.find_by_id(id))
         .await
         .map_err(compallm_core::organization::profile_service::ProfileError::from)?;
     Ok(organization
@@ -27,13 +25,13 @@ pub(crate) async fn profile(
 pub(crate) async fn get(
     user: &UserContext,
     repository: &dyn OrganizationRepository,
-    database: &DbContext,
+    identity: &crate::http::authentication::AuthenticationContext,
 ) -> Result<Payload<Organization>, Error> {
     let verified = user.require().await?;
     profile(
         juniper::ID::new(verified.access().session.organization_id.to_string()),
         repository,
-        database,
+        identity,
     )
     .await?
     .ok_or(Error::internal())

@@ -1,8 +1,6 @@
 use compallm_core::user::User as CoreUser;
 
-/// Public identity fields backed directly by the existing Core entity.
-///
-/// Email requires verified ownership; account status and authentication metadata stay private.
+/// User profile fields available to authenticated users.
 pub struct User(pub(super) CoreUser);
 
 impl From<CoreUser> for User {
@@ -32,15 +30,12 @@ impl User {
         &self.0.username
     }
 
-    /// Email is readable only by the verified account owner and cannot be updated here.
+    /// Email is readable by authenticated users and cannot be updated here.
     async fn email(
         &self,
         #[graphql(context)] user: &crate::http::authentication::UserContext,
     ) -> Result<&str, crate::graphql::error::Error> {
-        let actor = user.require().await?;
-        if actor.access().session.user_id != self.0.id {
-            return Err(compallm_core::user::ProfileError::Denied.into());
-        }
+        user.require().await?;
         Ok(&self.0.email)
     }
 

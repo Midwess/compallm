@@ -659,7 +659,7 @@ type ProviderTemplate {
 
 type Query {
   organizationProfile(id: ID!): OrganizationPayload
-  "Public profile for an active user. Email and account state are excluded."
+  "Read an active user profile using verified user identity."
   userProfile(id: ID!): UserPayload
   "Return the signed-in user's personal preferences; missing rows use Core defaults without a write."
   userPreferences: UserPreferencesPayload!
@@ -778,7 +778,7 @@ type User {
   "Stable user identity, serialized as a string."
   id: ID!
   username: String!
-  "Email is readable only by the verified account owner and cannot be updated here."
+  "Email is readable by authenticated users and cannot be updated here."
   email: String!
   "Display name; this field does not establish identity or uniqueness."
   displayName: String!

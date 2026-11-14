@@ -486,10 +486,7 @@ impl CoreRepository for OrganizationRepository {
         .map_err(OrganizationRepositoryError::database)
     }
 
-    async fn list_role_info(
-        &self,
-        organization_id: u64,
-    ) -> Result<Vec<Role>, OrganizationRepositoryError> {
+    async fn list_role_info(&self) -> Result<Vec<Role>, OrganizationRepositoryError> {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
         Roles::find()
@@ -501,7 +498,6 @@ impl CoreRepository for OrganizationRepository {
                 RoleColumn::Description,
                 RoleColumn::OrgOwner,
             ])
-            .filter(RoleColumn::OrganizationId.eq(Self::database_id(organization_id)?))
             .order_by_asc(RoleColumn::Id)
             .into_tuple::<(i64, i64, String, String, bool)>()
             .all(db)
@@ -524,13 +520,11 @@ impl CoreRepository for OrganizationRepository {
 
     async fn list_group_info(
         &self,
-        organization_id: u64,
     ) -> Result<Vec<compallm_core::organization::group::GroupInfo>, OrganizationRepositoryError>
     {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
         Groups::find()
-            .filter(GroupColumn::OrganizationId.eq(Self::database_id(organization_id)?))
             .order_by_asc(GroupColumn::Id)
             .all(db)
             .await
@@ -549,19 +543,16 @@ impl CoreRepository for OrganizationRepository {
 
     async fn find_group_info(
         &self,
-        organization_id: u64,
         group_id: u64,
     ) -> Result<Option<compallm_core::organization::group::GroupInfo>, OrganizationRepositoryError>
     {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
-        let group = Groups::find_by_id((
-            Self::database_id(organization_id)?,
-            Self::database_id(group_id)?,
-        ))
-        .one(db)
-        .await
-        .map_err(OrganizationRepositoryError::database)?;
+        let group = Groups::find()
+            .filter(GroupColumn::Id.eq(Self::database_id(group_id)?))
+            .one(db)
+            .await
+            .map_err(OrganizationRepositoryError::database)?;
         group
             .map(|group| {
                 Ok(compallm_core::organization::group::GroupInfo {
@@ -734,26 +725,22 @@ impl CoreRepository for OrganizationRepository {
 
     async fn find_member_identity(
         &self,
-        organization_id: u64,
         user_id: u64,
     ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
         let context = DbContext::current()?;
-        let row = Members::find_by_id((
-            Self::database_id(organization_id)?,
-            Self::database_id(user_id)?,
-        ))
-        .one(PostgresConnection::from_context(&context)?)
-        .await
-        .map_err(OrganizationRepositoryError::database)?;
+        let row = Members::find()
+            .filter(MemberColumn::UserId.eq(Self::database_id(user_id)?))
+            .one(PostgresConnection::from_context(&context)?)
+            .await
+            .map_err(OrganizationRepositoryError::database)?;
         row.map(OrganizationMember::try_from).transpose()
     }
     async fn list_members(
         &self,
-        organization_id: u64,
-        actor_id: u64,
         query: Box<dyn compallm_query::IntoQuery>,
         pagination: compallm_query::Pagination,
         ordering: Vec<compallm_query::OrderBy>,
+        cursor_scope: &str,
     ) -> Result<
         compallm_query::Connection<compallm_core::organization::group::MemberInfo>,
         OrganizationRepositoryError,
@@ -762,19 +749,16 @@ impl CoreRepository for OrganizationRepository {
 
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
-        let org = Self::database_id(organization_id)?;
         let base = member_read::Entity::find().filter(
             member_read::Column::Id.in_subquery(
                 Members::find()
                     .select_only()
                     .column(MemberColumn::UserId)
-                    .filter(MemberColumn::OrganizationId.eq(org))
                     .into_query(),
             ),
         );
-        let scope = format!("members:{organization_id}:{actor_id}");
         let page = query
-            .plan_page(base, pagination, ordering, 100, &scope)
+            .plan_page(base, pagination, ordering, 100, cursor_scope)
             .map_err(|_| OrganizationRepositoryError::InvalidQuery)?
             .fetch(db)
             .await
@@ -786,7 +770,6 @@ impl CoreRepository for OrganizationRepository {
             Members::find()
                 .select_only()
                 .column(MemberColumn::UserId)
-                .filter(MemberColumn::OrganizationId.eq(org))
                 .filter(MemberColumn::UserId.is_in(ids.clone()))
                 .filter(MemberColumn::Status.eq(UserStatusSchema::Active))
                 .into_tuple::<i64>()

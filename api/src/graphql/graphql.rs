@@ -26,18 +26,18 @@ impl Query {
     async fn organization_profile(
         id: ID,
         #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
-        #[graphql(context)] database: &compallm_core::persistent::DbContext,
+        #[graphql(context)] identity: &AuthenticationContext,
     ) -> Result<Option<Payload<organization::Organization>>, Error> {
-        organization::query::profile(id, repository.as_ref(), database).await
+        organization::query::profile(id, repository.as_ref(), identity).await
     }
 
-    /// Public profile for an active user. Email and account state are excluded.
+    /// Read an active user profile using verified user identity.
     async fn user_profile(
         id: ID,
+        #[graphql(context)] user: &UserContext,
         #[graphql(context)] repository: &Box<dyn compallm_core::persistent::user::UserRepository>,
-        #[graphql(context)] database: &compallm_core::persistent::DbContext,
     ) -> Result<Option<Payload<super::user::User>>, Error> {
-        super::user::query::profile(id, repository.as_ref(), database).await
+        super::user::query::profile(id, user, repository.as_ref()).await
     }
 
     /// Return the signed-in user's personal preferences; missing rows use Core defaults without a write.
@@ -46,9 +46,8 @@ impl Query {
         #[graphql(context)] repository: &Box<
             dyn compallm_core::persistent::preference::user::UserPreferenceRepository,
         >,
-        #[graphql(context)] database: &compallm_core::persistent::DbContext,
     ) -> Result<Payload<super::preference::user::UserPreferences>, Error> {
-        super::preference::user::query::get(user, repository.as_ref(), database).await
+        super::preference::user::query::get(user, repository.as_ref()).await
     }
 
     /// Return the system-owned organization policy action catalog.
@@ -62,18 +61,18 @@ impl Query {
     async fn session(
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
-        #[graphql(context)] database: &compallm_core::persistent::DbContext,
+        #[graphql(context)] identity: &AuthenticationContext,
     ) -> Result<Payload<authentication::Session>, Error> {
-        authentication::query::session(user, repository.as_ref(), database).await
+        authentication::query::session(user, repository.as_ref(), identity).await
     }
 
     /// Return the active organization from verified user authority.
     async fn organization(
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
-        #[graphql(context)] database: &compallm_core::persistent::DbContext,
+        #[graphql(context)] identity: &AuthenticationContext,
     ) -> Result<Payload<organization::Organization>, Error> {
-        organization::query::get(user, repository.as_ref(), database).await
+        organization::query::get(user, repository.as_ref(), identity).await
     }
 
     async fn members(
@@ -154,17 +153,15 @@ impl Mutation {
         input: organization::input::OrganizationProfileUpdateInput,
         #[graphql(context)] authority: &AuthorizationContext,
         #[graphql(context)] service: &compallm_core::organization::profile_service::ProfileService,
-        #[graphql(context)] database: &compallm_core::persistent::DbContext,
     ) -> Result<Payload<organization::Organization>, Error> {
-        organization::mutation::update(input, authority, service, database).await
+        organization::mutation::update(input, authority, service).await
     }
     async fn generate_org_avatar_url(
         input: super::user::input::ImageUploadInput,
         #[graphql(context)] authority: &AuthorizationContext,
         #[graphql(context)] service: &compallm_core::organization::profile_service::ProfileService,
-        #[graphql(context)] database: &compallm_core::persistent::DbContext,
     ) -> Result<Payload<super::user::AvatarUpload>, Error> {
-        organization::mutation::generate(input, authority, service, database).await
+        organization::mutation::generate(input, authority, service).await
     }
 
     async fn group_update(
@@ -188,18 +185,16 @@ impl Mutation {
         input: super::user::input::UserProfileUpdateInput,
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] service: &compallm_core::user::ProfileService,
-        #[graphql(context)] database: &compallm_core::persistent::DbContext,
     ) -> Result<Payload<super::user::User>, Error> {
-        super::user::mutation::update(input, user, service, database).await
+        super::user::mutation::update(input, user, service).await
     }
     /// Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes.
     async fn generate_url_avatar_url(
         input: super::user::input::ImageUploadInput,
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] service: &compallm_core::user::ProfileService,
-        #[graphql(context)] database: &compallm_core::persistent::DbContext,
     ) -> Result<Payload<super::user::AvatarUpload>, Error> {
-        super::user::mutation::generate_url_avatar_url(input, user, service, database).await
+        super::user::mutation::generate_url_avatar_url(input, user, service).await
     }
 
     /// Atomically patch the signed-in user's preferences, preserving omitted fields.
@@ -207,18 +202,16 @@ impl Mutation {
         input: super::preference::user::input::UserPreferencesPatchInput,
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] service: &compallm_core::preference::UserPreferenceService,
-        #[graphql(context)] database: &compallm_core::persistent::DbContext,
     ) -> Result<Payload<super::preference::user::UserPreferences>, Error> {
-        super::preference::user::mutation::update(input, user, service, database).await
+        super::preference::user::mutation::update(input, user, service).await
     }
     /// Restore selected preference groups, or ALL alone, to Core defaults.
     async fn user_preferences_reset(
         groups: Vec<super::preference::user::input::UserPreferenceGroup>,
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] service: &compallm_core::preference::UserPreferenceService,
-        #[graphql(context)] database: &compallm_core::persistent::DbContext,
     ) -> Result<Payload<super::preference::user::UserPreferences>, Error> {
-        super::preference::user::mutation::reset(groups, user, service, database).await
+        super::preference::user::mutation::reset(groups, user, service).await
     }
 
     /// Request a signup email challenge; reject existing accounts before sending.

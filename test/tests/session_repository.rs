@@ -254,8 +254,11 @@ async fn owned_session_lookup_works_with_the_application_context() {
                     .unwrap()
                     .is_none()
             );
+
+            Ok::<_, compallm_core::persistent::ConnectionError>(())
         })
-        .await;
+        .await
+        .unwrap();
 }
 
 #[test]

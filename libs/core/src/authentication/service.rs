@@ -11,10 +11,10 @@ use super::{
 use crate::authorization::PolicySnapshot;
 use crate::compression::{DCompression, DictionaryType};
 use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode};
-use crate::organization::{Organization, OrganizationMember};
+use crate::organization::OrganizationMember;
 use crate::persistent::dictionary::DictionaryRepository;
 use crate::persistent::session::SessionRepository;
-use crate::persistent::{DbContext, organization::OrganizationRepository, user::UserRepository};
+use crate::persistent::{db_context, organization::OrganizationRepository, user::UserRepository};
 use crate::user::{RegistrationService, UserStatus};
 use compallm_utils::time::unix_timestamp;
 
@@ -38,6 +38,7 @@ pub struct AuthService {
 
 impl AuthService {
     /// Return true for current access, false for stale access; reject missing/revoked/ahead state.
+    #[db_context::root]
     pub async fn validate_access(&self, claims: &UserAccessToken) -> Result<bool, AuthError> {
         claims.validate(unix_timestamp())?;
         let version = self
@@ -54,6 +55,7 @@ impl AuthService {
     /// Invalidate selected members' session snapshots in one organization.
     /// The caller determines affected users and owns the transaction containing
     /// authority changes. This increments versions without revoking or renewing.
+    #[db_context::current]
     pub async fn invalidate_permissions(
         &self,
         organization_id: u64,
@@ -66,6 +68,7 @@ impl AuthService {
     }
 
     /// Revoke only the persisted session identified by the verified access credential.
+    #[db_context::root]
     pub async fn signout(&self, claims: &UserAccessToken) -> Result<(), AuthError> {
         claims.validate(unix_timestamp())?;
         let mut session = self
@@ -113,6 +116,7 @@ impl AuthService {
     }
 
     /// Reject existing accounts before requesting OTP delivery for signup.
+    #[db_context::root]
     pub async fn signup_email(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
         let email = compallm_utils::email::normalize_email(email);
         if self.users.find_by_email(&email).await?.is_some() {
@@ -122,6 +126,7 @@ impl AuthService {
     }
 
     /// Require an existing active account before admitting signin email.
+    #[db_context::root]
     pub async fn signin_email(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
         let email = compallm_utils::email::normalize_email(email);
         compallm_utils::email::validate_email(&email).map_err(|_| AuthError::InvalidEmail)?;
@@ -163,6 +168,7 @@ impl AuthService {
         })
     }
 
+    #[db_context::root]
     pub async fn signin(
         &self,
         claims: &EmailOtpAccessToken,
@@ -177,16 +183,16 @@ impl AuthService {
         if user.status != UserStatus::Active {
             return Err(AuthError::UserDisabled);
         }
-        let (membership, organization) = self
+        let (membership, _) = self
             .organizations
             .find_first_membership(user.id)
             .await?
             .ok_or(AuthError::OrganizationAccessDenied)?;
         let dictionary = self.latest_dictionary().await?;
-        self.start_session(user.id, membership, organization, dictionary)
-            .await
+        self.start_session(user.id, membership, dictionary).await
     }
 
+    #[db_context::root]
     pub async fn signup(
         &self,
         claims: &EmailOtpAccessToken,
@@ -194,23 +200,23 @@ impl AuthService {
     ) -> Result<UserTokens, AuthError> {
         claims.verify_code(code, unix_timestamp())?;
         let dictionary = self.latest_dictionary().await?;
-        crate::transaction!(DbContext::current()?, {
+        crate::transaction!(db, {
             let user = self.registration.register(&claims.email).await?;
             self.preferences.create_defaults(user.id).await?;
             if user.status != UserStatus::Active {
                 return Err(AuthError::UserDisabled);
             }
-            let (membership, organization) = self
+            let (membership, _) = self
                 .organizations
                 .find_first_membership(user.id)
                 .await?
                 .ok_or(AuthError::OrganizationAccessDenied)?;
-            self.start_session(user.id, membership, organization, dictionary)
-                .await
+            self.start_session(user.id, membership, dictionary).await
         })
     }
 
     /// Verify the envelope and inner claims, preserving the concrete token variant.
+    #[db_context::root]
     pub async fn authenticate_token(&self, token: &str) -> Result<AccessToken, AuthError> {
         AccessToken::decode(token, &self.jwt_secret, self.dictionaries.as_ref()).await
     }
@@ -221,6 +227,7 @@ impl AuthService {
     }
 
     /// Read-only renewal: validates CWT/session state and never consumes the credential.
+    #[db_context::root]
     pub async fn refresh(&self, refresh_token: &str) -> Result<UserTokens, AuthError> {
         let claims = RefreshToken::try_from(self.authenticate_token(refresh_token).await?)?;
         let (session, membership) = self
@@ -241,6 +248,7 @@ impl AuthService {
         self.issue_tokens(&renewed, snapshot, dictionary).await
     }
 
+    #[db_context::root]
     pub async fn switch_organization(
         &self,
         refresh_token: &str,
@@ -263,7 +271,7 @@ impl AuthService {
             return Err(AuthError::UserDisabled);
         }
 
-        let (membership, _organization) = self
+        let (membership, _) = self
             .organizations
             .find_membership(organization_id, user.id)
             .await?
@@ -289,7 +297,6 @@ impl AuthService {
         &self,
         user_id: u64,
         membership: OrganizationMember,
-        _organization: Organization,
         dictionary: &DCompression,
     ) -> Result<UserTokens, AuthError> {
         let session = Session::new(user_id, membership.organization_id).await?;

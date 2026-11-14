@@ -123,9 +123,14 @@ function SettingsDialogContent() {
                     : 'Save changes'
   const disabled = busy || Boolean(phrase && d.phrase !== phrase)
   return (
-    <Dialog onClose={() => c.pages.dialogs.closeDialog()}>
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open) c.pages.dialogs.closeDialog()
+      }}
+    >
       <Dialog.Content className="w-110 rounded-xl bg-elevated">
-        <Form model={dialogForm}>
+        <Form.Root model={dialogForm}>
           <Dialog.Header className="border-0 px-6 pt-6">
             <Dialog.Title className="text-xl leading-7">{titles[d.kind]}</Dialog.Title>
             <Dialog.Close />
@@ -181,7 +186,7 @@ function SettingsDialogContent() {
               <>
                 <label className="grid gap-2 text-xs text-muted-foreground">
                   Reset frequency
-                  <Select
+                  <Select.Control
                     aria-label="Reset frequency"
                     value="Monthly"
                     className="w-full"
@@ -190,7 +195,7 @@ function SettingsDialogContent() {
                 </label>
                 <label className="grid gap-2 text-xs text-muted-foreground">
                   Timezone
-                  <Select
+                  <Select.Control
                     aria-label="Timezone"
                     name="dialog.value"
                     className="w-full"
@@ -215,9 +220,9 @@ function SettingsDialogContent() {
               </Button>
             ) : null}
           </Dialog.Footer>
-        </Form>
+        </Form.Root>
       </Dialog.Content>
-    </Dialog>
+    </Dialog.Root>
   )
 }
 

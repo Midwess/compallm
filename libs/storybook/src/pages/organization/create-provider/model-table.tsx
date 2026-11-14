@@ -53,17 +53,17 @@ export function ProviderModels() {
   return (
     <SectionSurface className="grid min-w-0 gap-4">
       <div className="flex items-center gap-3">
-        <Searchbox className="flex-1">
+        <Searchbox.Root className="flex-1">
           <Searchbox.Input
             aria-label="Search models"
             placeholder="Search models…"
             value={query}
             onChange={(event) => controller.onModelQueryChanged(event.target.value)}
           />
-        </Searchbox>
+        </Searchbox.Root>
         <ModelFilters />
       </div>
-      <Table tabIndex={0} role="region" aria-label="Scrollable provider model table" className="min-w-0">
+      <Table.Root tabIndex={0} role="region" aria-label="Scrollable provider model table" className="min-w-0">
         <Table.Content className="w-full min-w-3xl table-fixed text-xs" aria-label="Provider models">
           <colgroup>
             <col className="w-6" />
@@ -167,12 +167,12 @@ disabled:opacity-50"
             </p>
           </Table.Empty>
         ) : null}
-      </Table>
+      </Table.Root>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
           {enabled} {enabled === 1 ? 'model' : 'models'} enabled
         </p>
-        <Popup>
+        <Popup.Root>
           <Popup.Trigger
             disabled={busy}
             className="h-8 w-auto rounded-full bg-elevated px-4 text-xs text-foreground hover:brightness-110"
@@ -181,13 +181,13 @@ disabled:opacity-50"
           </Popup.Trigger>
           <Popup.Content aria-label="Add generate text model" className="w-3xs">
             {textModelOptions.map((option) => (
-              <Popup.Item key={option.value} className="gap-2" onClick={() => controller.onAddModel(option.value)}>
+              <Popup.Item key={option.value} className="gap-2" onSelect={() => controller.onAddModel(option.value)}>
                 <ProviderIcon provider={option.brand} />
                 {option.label}
               </Popup.Item>
             ))}
           </Popup.Content>
-        </Popup>
+        </Popup.Root>
       </div>
     </SectionSurface>
   )

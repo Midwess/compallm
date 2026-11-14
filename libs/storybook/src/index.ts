@@ -78,3 +78,7 @@ export * from './components/form'
 export * from './components/app-loading-overlay'
 export { ScrollMotion } from './components/scroll'
 export type { AppController, AppState, AppLoadingTask } from './app'
+
+export type { CompositionProps, OpenStateProps } from './components/composition'
+export type { DialogRootProps } from './components/dialog'
+export type { PopupRootProps, PopupTriggerProps, PopupItemProps, PopupCheckboxItemProps } from './components/popup'

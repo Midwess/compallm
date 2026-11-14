@@ -3,6 +3,7 @@ import {
   useCallback,
   useLayoutEffect,
   useRef,
+  useState,
   type RefObject,
   type ComponentPropsWithRef,
   type Ref,
@@ -350,11 +351,12 @@ export function useSelectionMotion(
   }, [inputRef, kind, update])
 }
 
-export function useDisclosure(defaultOpen: boolean) {
+export function useDisclosure(defaultOpen: boolean, controlledOpen?: boolean, onOpenChange?: (open: boolean) => void) {
   const details = useRef<HTMLDetailsElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const caret = useRef<SVGSVGElement>(null)
-  const desired = useRef(defaultOpen)
+  const [initialOpen] = useState(controlledOpen ?? defaultOpen)
+  const desired = useRef(initialOpen)
   const running = useRef<ReturnType<typeof animate>[]>([])
   const change = useCallback((open: boolean) => {
     const root = details.current,
@@ -363,6 +365,7 @@ export function useDisclosure(defaultOpen: boolean) {
     if (!root || !body || !icon) return
     desired.current = open
     root.querySelector('summary')?.setAttribute('aria-expanded', String(open))
+    root.dataset.state = open ? 'open' : 'closed'
     const height = root.open ? body.getBoundingClientRect().height : 0
     for (const control of running.current) control.stop()
     root.open = true
@@ -389,6 +392,8 @@ export function useDisclosure(defaultOpen: boolean) {
       icon = caret.current
     if (!root || !body || !icon) return
     root.open = desired.current
+    root.dataset.state = desired.current ? 'open' : 'closed'
+    root.querySelector('summary')?.setAttribute('aria-expanded', String(desired.current))
     body.inert = !desired.current
     body.setAttribute('aria-hidden', String(!desired.current))
     icon.style.transform = `rotate(${desired.current ? 0 : animation.collapsedRotation}deg)`
@@ -396,12 +401,21 @@ export function useDisclosure(defaultOpen: boolean) {
       for (const control of running.current) control.stop()
     }
   }, [])
+  useLayoutEffect(() => {
+    if (controlledOpen !== undefined && controlledOpen !== desired.current) change(controlledOpen)
+  }, [controlledOpen, change])
+  const request = (open: boolean) => {
+    if (open === desired.current) return
+    if (controlledOpen === undefined) change(open)
+    onOpenChange?.(open)
+  }
   return {
+    initialOpen,
     detailsRef: details,
     contentRef: content,
     caretRef: caret,
-    toggle: () => change(!desired.current),
-    expand: () => change(true),
+    toggle: () => request(!desired.current),
+    expand: () => request(true),
   }
 }
 

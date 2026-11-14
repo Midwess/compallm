@@ -62,7 +62,7 @@ function Language({
     >
       {actions}
       {onChange ? (
-        <Select
+        <Select.Control
           aria-label="Code language"
           value={language.toLowerCase()}
           onValueChange={onChange}

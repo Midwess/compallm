@@ -28,17 +28,17 @@ export function ProviderChooser() {
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-4 px-4 py-6">
       <div className="flex items-center gap-3">
-        <Searchbox className="flex-1">
+        <Searchbox.Root className="flex-1">
           <Searchbox.Input
             aria-label="Search providers…"
             placeholder="Search providers…"
             value={query}
             onChange={(event) => controller.onProviderQueryChanged(event.target.value)}
           />
-        </Searchbox>
+        </Searchbox.Root>
         <ProviderFilters />
       </div>
-      <Table>
+      <Table.Root>
         <Table.Content className="w-full min-w-3xl table-fixed text-left text-xs" aria-label="Providers">
           <colgroup>
             <col className="w-1/4" />
@@ -97,7 +97,7 @@ export function ProviderChooser() {
           </Table.Body>
         </Table.Content>
         {!filtered.length ? <p className="py-12 text-center text-sm text-muted-foreground">No providers found</p> : null}
-      </Table>
+      </Table.Root>
       <div className="flex items-center justify-between gap-4">
         <Button className="h-8 px-4 text-xs" onClick={controller.onUseCustomProvider}>
           Use custom provider

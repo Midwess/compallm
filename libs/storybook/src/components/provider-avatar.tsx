@@ -39,7 +39,7 @@ export function ProviderAvatar({
           event.target.value = ''
         }}
       />
-      <Popup>
+      <Popup.Root>
         <Popup.Trigger
           aria-label="Change provider avatar"
           title="Change provider avatar"
@@ -57,11 +57,11 @@ disabled:cursor-not-allowed disabled:opacity-50`,
           )}
         </Popup.Trigger>
         <Popup.Content aria-label="Change provider avatar">
-          <Popup.Item onClick={() => input.current?.click()}>Upload image</Popup.Item>
-          <Popup.Item onClick={() => change?.(null)}>Use provider logo</Popup.Item>
-          {src ? <Popup.Item onClick={() => change?.(null)}>Remove image</Popup.Item> : null}
+          <Popup.Item onSelect={() => input.current?.click()}>Upload image</Popup.Item>
+          <Popup.Item onSelect={() => change?.(null)}>Use provider logo</Popup.Item>
+          {src ? <Popup.Item onSelect={() => change?.(null)}>Remove image</Popup.Item> : null}
         </Popup.Content>
-      </Popup>
+      </Popup.Root>
     </>
   )
 }

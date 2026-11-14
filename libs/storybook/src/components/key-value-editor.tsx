@@ -10,6 +10,7 @@ import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { TextField } from './fields'
 import { cx } from './shared'
+import { useControllableState, type OpenStateProps } from './composition'
 
 export interface KeyValueEntry {
   id: string
@@ -32,6 +33,7 @@ function useEditor() {
 }
 type EditorProps = {
   name?: string
+  defaultValue?: KeyValueEntry[]
   value?: KeyValueEntry[]
   onValueChange?(entries: KeyValueEntry[]): void
   disabled?: boolean
@@ -76,6 +78,7 @@ function BoundRoot({
 function UnboundRoot({
   name,
   value: suppliedValue,
+  defaultValue = [],
   onValueChange: suppliedChange,
   disabled = false,
   children,
@@ -84,10 +87,11 @@ function UnboundRoot({
   keyMaxLength,
 }: EditorProps) {
   const field = useFormField<KeyValueEntry[]>(name)
-  const value = field ? (field.value ?? []) : (suppliedValue ?? [])
+  const [localValue, change] = useControllableState(suppliedValue, defaultValue, suppliedChange)
+  const value = field ? (field.value ?? []) : localValue
   const onValueChange = (value: KeyValueEntry[]) => {
     if (field) field.change(value)
-    else suppliedChange?.(value)
+    else change(value)
   }
   return (
     <EditorContext value={{ entries: value, change: onValueChange, disabled, acceptEntry, keyMaxLength }}>
@@ -103,10 +107,15 @@ function UnboundRoot({
     </EditorContext>
   )
 }
-function Disclosure({ children = 'Headers', defaultOpen = false }: { children?: ReactNode; defaultOpen?: boolean }) {
-  const { detailsRef, contentRef, caretRef, toggle } = useDisclosure(defaultOpen)
+function Disclosure({
+  children = 'Headers',
+  defaultOpen = false,
+  open,
+  onOpenChange,
+}: OpenStateProps & { children?: ReactNode }) {
+  const { initialOpen, detailsRef, contentRef, caretRef, toggle } = useDisclosure(defaultOpen, open, onOpenChange)
   return (
-    <details ref={detailsRef} className="group/headers w-full min-w-0 max-w-full" open={defaultOpen || undefined}>
+    <details ref={detailsRef} className="group/headers w-full min-w-0 max-w-full" open={initialOpen || undefined}>
       <summary
         onClick={(event) => {
           event.preventDefault()
@@ -288,4 +297,4 @@ disabled:opacity-40
     </div>
   )
 }
-export const KeyValueEditor = Object.assign(Root, { Disclosure, Content })
+export const KeyValueEditor = { Root, Disclosure, Content }

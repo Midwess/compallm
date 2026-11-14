@@ -31,8 +31,8 @@ function MemberRoles({ member }: { member: SettingsMember }) {
     },
   )
   return (
-    <Form model={form}>
-      <Popup>
+    <Form.Root model={form}>
+      <Popup.Root>
         <Popup.Trigger
           aria-label={`Roles for ${member.name}`}
           disabled={readonly}
@@ -70,24 +70,24 @@ function MemberRoles({ member }: { member: SettingsMember }) {
           <Popup.Separator />
           <p className="px-1 py-2 text-ui-11 text-muted-foreground">Group roles are managed in Groups.</p>
         </Popup.Content>
-      </Popup>
-    </Form>
+      </Popup.Root>
+    </Form.Root>
   )
 }
 function MemberActions({ member }: { member: SettingsMember }) {
   const c = useSettingsController(),
     readonly = useSettings((s) => s.readonly)
   return (
-    <Popup>
+    <Popup.Root>
       <Popup.Trigger aria-label={`Actions for ${member.name}`} disabled={readonly} className="size-8">
         <DotsThreeIcon className="size-4" aria-hidden="true" />
       </Popup.Trigger>
       <Popup.Content aria-label={`Actions for ${member.name}`} className="bg-elevated">
-        <Popup.Item className="h-10 text-destructive" onClick={() => c.pages.dialogs.openDialog('remove-member', member.id)}>
+        <Popup.Item className="h-10 text-destructive" onSelect={() => c.pages.dialogs.openDialog('remove-member', member.id)}>
           Remove member
         </Popup.Item>
       </Popup.Content>
-    </Popup>
+    </Popup.Root>
   )
 }
 export function MembersSettings() {
@@ -115,7 +115,7 @@ export function MembersSettings() {
           onChange={(e) => c.pages.search.setQuery(e.target.value)}
           className="w-75 max-w-full"
         />
-        <Select
+        <Select.Control
           aria-label="Filter members by role"
           value={roleFilter}
           className={roleFilter === 'all' ? 'w-16' : 'w-48'}
@@ -124,7 +124,7 @@ export function MembersSettings() {
         />
         <span className="ml-auto text-xs text-muted-foreground">{visible.length} members</span>
       </div>
-      <Table className="lg:-mx-12 lg:w-[calc(100%+6rem)]">
+      <Table.Root className="lg:-mx-12 lg:w-[calc(100%+6rem)]">
         <Table.Content className="min-w-200 border-separate border-spacing-0" aria-label="Organization members">
           <colgroup>
             <col className="w-[40%]" />
@@ -167,7 +167,7 @@ export function MembersSettings() {
             ))}
           </Table.Body>
         </Table.Content>
-      </Table>
+      </Table.Root>
       {!visible.length ? <Table.Empty>No members match your search.</Table.Empty> : null}
     </SettingsContent>
   )

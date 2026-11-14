@@ -8,7 +8,8 @@ import {
   useId,
   useRef,
   type ReactNode,
-  type HTMLAttributes,
+  type Ref,
+  type ComponentPropsWithRef,
   type DialogHTMLAttributes,
   type ButtonHTMLAttributes,
 } from 'react'
@@ -16,10 +17,13 @@ import type { NavigationRequest } from '../url'
 import { createPortal } from 'react-dom'
 import { Button, type ButtonProps } from './buttons'
 import { XIcon } from '@phosphor-icons/react/dist/csr/X'
-import { cx } from './shared'
+import { cx, composeRefs } from './shared'
+import { Slot, useControllableState, type OpenStateProps, type CompositionProps } from './composition'
 import { FloatingContainerContext } from '../context'
 
 interface DialogScope {
+  open: boolean
+  setOpen(open: boolean): void
   titleId: string
   descriptionId: string
   onClose(): void
@@ -32,7 +36,13 @@ function useDialog() {
   if (!scope) throw new Error('Dialog parts require Dialog or AlertDialog.')
   return scope
 }
-function Root({ children, onClose }: { children: ReactNode; onClose(): void }) {
+export interface DialogRootProps extends OpenStateProps {
+  children: ReactNode
+}
+
+function Root({ children, open: controlledOpen, defaultOpen = false, onOpenChange }: DialogRootProps) {
+  const [open, setOpen] = useControllableState(controlledOpen, defaultOpen, onOpenChange)
+  const onClose = () => setOpen(false)
   const titleId = useId(),
     descriptionId = useId()
   const guard = useRef<(() => void) | null>(null)
@@ -47,12 +57,20 @@ function Root({ children, onClose }: { children: ReactNode; onClose(): void }) {
     else onClose()
   }
   return (
-    <DialogContext value={{ titleId, descriptionId, onClose: requestClose, completeClose: onClose, registerDiscard }}>
+    <DialogContext
+      value={{ open, setOpen, titleId, descriptionId, onClose: requestClose, completeClose: onClose, registerDiscard }}
+    >
       {children}
     </DialogContext>
   )
 }
-function Content({ className, role = 'dialog', children, ...props }: DialogHTMLAttributes<HTMLDialogElement>) {
+function MountedContent({
+  className,
+  ref: forwardedRef,
+  role = 'dialog',
+  children,
+  ...props
+}: DialogHTMLAttributes<HTMLDialogElement> & { ref?: Ref<HTMLDialogElement> }) {
   const { titleId, onClose } = useDialog()
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
@@ -67,7 +85,8 @@ function Content({ className, role = 'dialog', children, ...props }: DialogHTMLA
   return (
     <overlay.dialog
       {...props}
-      ref={ref}
+      ref={composeRefs(ref, forwardedRef)}
+      data-state="open"
       role={role}
       aria-labelledby={titleId}
       onCancel={(event) => {
@@ -87,11 +106,31 @@ function Content({ className, role = 'dialog', children, ...props }: DialogHTMLA
     </overlay.dialog>
   )
 }
-function AlertContent(props: DialogHTMLAttributes<HTMLDialogElement>) {
+function Content(props: DialogHTMLAttributes<HTMLDialogElement> & { ref?: Ref<HTMLDialogElement> }) {
+  const { open } = useDialog()
+  return open ? <MountedContent {...props} /> : null
+}
+function Trigger({ asChild = false, ...props }: ButtonProps) {
+  const { open, setOpen } = useDialog()
+  return (
+    <Button
+      {...props}
+      asChild={asChild}
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      data-state={open ? 'open' : 'closed'}
+      onClick={(event) => {
+        props.onClick?.(event)
+        if (!event.defaultPrevented && !props.disabled) setOpen(true)
+      }}
+    />
+  )
+}
+function AlertContent(props: ComponentPropsWithRef<'dialog'>) {
   const { descriptionId } = useDialog()
   return <Content {...props} role="alertdialog" aria-describedby={descriptionId} className={cx('w-sm', props.className)} />
 }
-function Header({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+function Header({ className, ...props }: ComponentPropsWithRef<'div'>) {
   return (
     <div
       {...props}
@@ -99,35 +138,45 @@ function Header({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
     />
   )
 }
-function Title({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
+function Title({ className, ...props }: ComponentPropsWithRef<'h2'>) {
   const { titleId } = useDialog()
   return <h2 {...props} id={titleId} className={cx('text-sm font-medium', className)} />
 }
-function Description({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
+function Description({ className, ...props }: ComponentPropsWithRef<'p'>) {
   const { descriptionId } = useDialog()
   return <p {...props} id={descriptionId} className={cx('text-sm text-muted-foreground', className)} />
 }
-function Body({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+function Body({ className, ...props }: ComponentPropsWithRef<'div'>) {
   return <div {...props} className={cx('grid gap-4 px-4 py-6', className)} />
 }
-function Footer({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+function Footer({ className, ...props }: ComponentPropsWithRef<'div'>) {
   return <div {...props} className={cx('flex justify-end gap-2 border-t border-divider px-4 py-3.5', className)} />
 }
-function Close({ children, className, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+function Close({
+  children,
+  className,
+  asChild = false,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & CompositionProps & { ref?: Ref<HTMLButtonElement> }) {
   const { onClose } = useDialog()
+  const Component = asChild ? Slot : animated.button
   return (
-    <animated.button
+    <Component
       type="button"
-      aria-label="Close dialog"
+      aria-label={asChild ? undefined : 'Close dialog'}
       {...props}
-      className={cx('cursor-pointer rounded text-muted-foreground hover:text-foreground focus-visible:outline-ring', className)}
+      className={
+        asChild
+          ? className
+          : cx('cursor-pointer rounded text-muted-foreground hover:text-foreground focus-visible:outline-ring', className)
+      }
       onClick={(event) => {
-        props.onClick?.(event)
-        if (!event.defaultPrevented) onClose()
+        props.onClick?.(event as React.MouseEvent<HTMLButtonElement>)
+        if (!event.defaultPrevented && !props.disabled) onClose()
       }}
     >
       {children ?? <XIcon aria-hidden="true" className="size-4" />}
-    </animated.button>
+    </Component>
   )
 }
 function Cancel({ children = 'Cancel', ...props }: ButtonProps) {
@@ -136,8 +185,8 @@ function Cancel({ children = 'Cancel', ...props }: ButtonProps) {
     <Button
       {...props}
       onClick={(event) => {
-        props.onClick?.(event)
-        if (!event.defaultPrevented) onClose()
+        props.onClick?.(event as React.MouseEvent<HTMLButtonElement>)
+        if (!event.defaultPrevented && !props.disabled) onClose()
       }}
     >
       {children}
@@ -160,7 +209,12 @@ function Discard({
     request?.keep()
   }
   return createPortal(
-    <AlertDialog onClose={keep}>
+    <AlertDialog.Root
+      open
+      onOpenChange={(next) => {
+        if (!next) keep()
+      }}
+    >
       <AlertDialog.Content>
         <AlertDialog.Header>
           <AlertDialog.Title>Discard changes?</AlertDialog.Title>
@@ -177,12 +231,23 @@ function Discard({
           </Button>
         </AlertDialog.Footer>
       </AlertDialog.Content>
-    </AlertDialog>,
+    </AlertDialog.Root>,
     document.body,
   )
 }
-export const Dialog = Object.assign(Root, { Content, Header, Title, Description, Body, Footer, Close, Cancel, Discard })
+export const Dialog = { Root, Trigger, Content, Header, Title, Description, Body, Footer, Close, Cancel, Discard }
 function AlertRoot(props: Parameters<typeof Root>[0]) {
   return <Root {...props} />
 }
-export const AlertDialog = Object.assign(AlertRoot, { Content: AlertContent, Header, Title, Description, Body, Footer })
+export const AlertDialog = {
+  Root: AlertRoot,
+  Trigger,
+  Content: AlertContent,
+  Header,
+  Title,
+  Description,
+  Body,
+  Footer,
+  Close,
+  Cancel,
+}

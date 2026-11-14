@@ -57,7 +57,7 @@ export function SidebarHeader({
 }) {
   return (
     <div className="mt-3 flex h-10 w-full min-w-0 shrink-0 items-center justify-between gap-2 pl-2 pr-1">
-      <Popup>
+      <Popup.Root>
         <Popup.Trigger
           aria-label={`Switch workspace: ${workspace}`}
           onClick={onWorkspaceClick}
@@ -79,31 +79,34 @@ export function SidebarHeader({
           <CaretDownIcon size={10} className="ml-0.5 shrink-0 text-muted-foreground" aria-hidden="true" />
         </Popup.Trigger>
         <Popup.Content aria-label="Workspace options" align="start" sideOffset={8} className="w-55">
-          <Popup.Item onClick={onSettings}>Settings</Popup.Item>
-          <Popup.Submenu label="Switch organization">
-            {organizations.length ? (
-              <Popup.RadioGroup value={selectedOrganizationId} onValueChange={(id: string) => onOrganizationChange?.(id)}>
-                {organizations.map((organization) => (
-                  <Popup.RadioItem
-                    key={organization.id}
-                    value={organization.id}
-                    className="aria-checked:bg-menu-selection aria-checked:text-selection-foreground"
-                  >
-                    <span className="min-w-0 flex-1 truncate">{organization.name}</span>
-                  </Popup.RadioItem>
-                ))}
-              </Popup.RadioGroup>
-            ) : (
-              <p className="p-2 text-xs text-muted-foreground">No organizations available</p>
-            )}
-          </Popup.Submenu>
+          <Popup.Item onSelect={onSettings}>Settings</Popup.Item>
+          <Popup.Sub>
+            <Popup.SubTrigger>Switch organization</Popup.SubTrigger>
+            <Popup.SubContent aria-label="Switch organization">
+              {organizations.length ? (
+                <Popup.RadioGroup value={selectedOrganizationId} onValueChange={(id: string) => onOrganizationChange?.(id)}>
+                  {organizations.map((organization) => (
+                    <Popup.RadioItem
+                      key={organization.id}
+                      value={organization.id}
+                      className="aria-checked:bg-menu-selection aria-checked:text-selection-foreground"
+                    >
+                      <span className="min-w-0 flex-1 truncate">{organization.name}</span>
+                    </Popup.RadioItem>
+                  ))}
+                </Popup.RadioGroup>
+              ) : (
+                <p className="p-2 text-xs text-muted-foreground">No organizations available</p>
+              )}
+            </Popup.SubContent>
+          </Popup.Sub>
           {onSignOut ? (
-            <Popup.Item className="text-destructive" onClick={onSignOut}>
+            <Popup.Item className="text-destructive" onSelect={onSignOut}>
               Sign out
             </Popup.Item>
           ) : null}
         </Popup.Content>
-      </Popup>
+      </Popup.Root>
       <ToolbarAction label="Search workspace" onClick={onSearch} className="size-8 shrink-0 rounded-full">
         <MagnifyingGlassIcon size={14} aria-hidden="true" />
       </ToolbarAction>
@@ -114,6 +117,8 @@ export function SidebarHeader({
 interface DisclosureProps {
   label: string
   children: ReactNode
+  open?: boolean
+  onOpenChange?(open: boolean): void
   defaultOpen?: boolean
   onAdd?: () => void
   addLabel?: string
@@ -128,12 +133,21 @@ function AddAction({ onAdd, label }: { onAdd?: () => void; label: string }) {
   ) : null
 }
 
-export function SidebarSection({ label, children, defaultOpen = true, onAdd, addLabel, className }: DisclosureProps) {
+export function SidebarSection({
+  label,
+  children,
+  defaultOpen = true,
+  open,
+  onOpenChange,
+  onAdd,
+  addLabel,
+  className,
+}: DisclosureProps) {
   const id = useId()
-  const { detailsRef, contentRef, caretRef, toggle } = useDisclosure(defaultOpen)
+  const { initialOpen, detailsRef, contentRef, caretRef, toggle } = useDisclosure(defaultOpen, open, onOpenChange)
   return (
     <div className={cx('relative shrink-0', className)}>
-      <details ref={detailsRef} open={defaultOpen} className="group/sidebar-section">
+      <details ref={detailsRef} open={initialOpen} className="group/sidebar-section">
         <summary
           onClick={(event) => {
             event.preventDefault()
@@ -174,6 +188,8 @@ export function SidebarFolder({
   icon,
   children,
   defaultOpen = true,
+  open,
+  onOpenChange,
   onAdd,
   addLabel,
   className,
@@ -181,10 +197,10 @@ export function SidebarFolder({
   icon: ReactNode
 }) {
   const id = useId()
-  const { detailsRef, contentRef, caretRef, toggle, expand } = useDisclosure(defaultOpen)
+  const { initialOpen, detailsRef, contentRef, caretRef, toggle, expand } = useDisclosure(defaultOpen, open, onOpenChange)
   return (
     <div className={cx('relative', className)}>
-      <details ref={detailsRef} open={defaultOpen} className="group/sidebar-folder">
+      <details ref={detailsRef} open={initialOpen} className="group/sidebar-folder">
         <summary
           onClick={(event) => {
             event.preventDefault()

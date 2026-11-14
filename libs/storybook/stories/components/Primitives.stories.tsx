@@ -30,7 +30,12 @@ function DialogDemo() {
     <>
       <Button onClick={() => setOpen(true)}>Open dialog</Button>
       {open ? (
-        <Dialog onClose={() => setOpen(false)}>
+        <Dialog.Root
+          open
+          onOpenChange={(open) => {
+            if (!open) setOpen(false)
+          }}
+        >
           <Dialog.Content>
             <Dialog.Header>
               <Dialog.Title>Edit details</Dialog.Title>
@@ -38,10 +43,10 @@ function DialogDemo() {
             </Dialog.Header>
             <Dialog.Discard />
             <Dialog.Body>
-              <FormField>
+              <FormField.Root>
                 <FormField.Label>Name</FormField.Label>
                 <FormField.Input autoFocus placeholder="Enter name" />
-              </FormField>
+              </FormField.Root>
             </Dialog.Body>
             <Dialog.Footer>
               <Dialog.Cancel />
@@ -50,7 +55,7 @@ function DialogDemo() {
               </Button>
             </Dialog.Footer>
           </Dialog.Content>
-        </Dialog>
+        </Dialog.Root>
       ) : null}
     </>
   )
@@ -61,7 +66,12 @@ function AlertDemo() {
     <>
       <Button onClick={() => setOpen(true)}>Confirm discard</Button>
       {open ? (
-        <AlertDialog onClose={() => setOpen(false)}>
+        <AlertDialog.Root
+          open
+          onOpenChange={(open) => {
+            if (!open) setOpen(false)
+          }}
+        >
           <AlertDialog.Content>
             <AlertDialog.Header>
               <AlertDialog.Title>Discard changes?</AlertDialog.Title>
@@ -78,7 +88,7 @@ function AlertDemo() {
               </Button>
             </AlertDialog.Footer>
           </AlertDialog.Content>
-        </AlertDialog>
+        </AlertDialog.Root>
       ) : null}
     </>
   )
@@ -87,18 +97,18 @@ export const DialogComposition: Story = { render: () => <DialogDemo /> }
 export const AlertComposition: Story = { render: () => <AlertDemo /> }
 export const PopupComposition: Story = {
   render: () => (
-    <Popup>
+    <Popup.Root>
       <Popup.Trigger aria-label="Open actions">Actions</Popup.Trigger>
       <Popup.Content aria-label="Actions">
         <Popup.Item>Clone</Popup.Item>
         <Popup.Item>Settings</Popup.Item>
       </Popup.Content>
-    </Popup>
+    </Popup.Root>
   ),
 }
 export const TableComposition: Story = {
   render: () => (
-    <Table>
+    <Table.Root>
       <Table.Content aria-label="Sample models">
         <Table.Header>
           <Table.Row>
@@ -113,13 +123,13 @@ export const TableComposition: Story = {
           </Table.Row>
         </Table.Body>
       </Table.Content>
-    </Table>
+    </Table.Root>
   ),
 }
 export const CategorizedTable: Story = {
   render: () => (
     <div className="max-h-64 max-w-160 overflow-auto rounded-lg bg-inset p-4">
-      <Table className="overflow-visible">
+      <Table.Root className="overflow-visible">
         <Table.Content className="border-separate border-spacing-0" aria-label="Categorized table example">
           <Table.Header className="sticky top-0 z-20 bg-inset">
             <Table.Row>
@@ -144,21 +154,21 @@ export const CategorizedTable: Story = {
             </Table.Category>
           ))}
         </Table.Content>
-      </Table>
+      </Table.Root>
     </div>
   ),
 }
 export const ControlsComposition: Story = {
   render: () => (
     <div className="grid max-w-md gap-4">
-      <FormField>
+      <FormField.Root>
         <FormField.Label>Connection name</FormField.Label>
         <FormField.Input placeholder="Enter name" />
         <FormField.Hint>A name for this connection.</FormField.Hint>
-      </FormField>
-      <Searchbox>
+      </FormField.Root>
+      <Searchbox.Root>
         <Searchbox.Input aria-label="Search models" placeholder="Search models…" />
-      </Searchbox>
+      </Searchbox.Root>
       <label className="flex items-center gap-2 text-sm">
         <Checkbox defaultChecked />
         Enabled
@@ -178,45 +188,54 @@ function FilterDemo({ edge = false }: { edge?: boolean }) {
   const [outsideClicks, setOutsideClicks] = useState(0)
   return (
     <div className={edge ? 'flex h-80 flex-col items-end justify-end gap-4 overflow-hidden' : 'grid gap-4'}>
-      <Popup>
+      <Popup.Root>
         <Popup.IconTrigger aria-label="Filter example">
           <FunnelIcon aria-hidden="true" className="size-3.5" />
         </Popup.IconTrigger>
         <Popup.Content aria-label="Filter example">
-          <Popup.Submenu label="Selection">
-            <Popup.RadioGroup value={status} onValueChange={setStatus}>
-              {['all', 'enabled', 'disabled'].map((value) => (
-                <Popup.RadioItem key={value} value={value}>
-                  {value === 'all' ? 'All policies' : value === 'enabled' ? 'Enabled' : 'Disabled'}
-                </Popup.RadioItem>
+          <Popup.Sub>
+            <Popup.SubTrigger>Selection</Popup.SubTrigger>
+            <Popup.SubContent aria-label="Selection">
+              <Popup.RadioGroup value={status} onValueChange={setStatus}>
+                {['all', 'enabled', 'disabled'].map((value) => (
+                  <Popup.RadioItem key={value} value={value}>
+                    {value === 'all' ? 'All policies' : value === 'enabled' ? 'Enabled' : 'Disabled'}
+                  </Popup.RadioItem>
+                ))}
+              </Popup.RadioGroup>
+            </Popup.SubContent>
+          </Popup.Sub>
+          <Popup.Sub>
+            <Popup.SubTrigger>Model type</Popup.SubTrigger>
+            <Popup.SubContent aria-label="Model type">
+              <Popup.RadioGroup value={modelType} onValueChange={setModelType}>
+                {['all', 'OpenAI Completion', 'OpenAI Response', 'Anthropic'].map((value) => (
+                  <Popup.RadioItem key={value} value={value}>
+                    {value === 'all' ? 'All model types' : value}
+                  </Popup.RadioItem>
+                ))}
+              </Popup.RadioGroup>
+            </Popup.SubContent>
+          </Popup.Sub>
+          <Popup.Sub>
+            <Popup.SubTrigger>Capabilities</Popup.SubTrigger>
+            <Popup.SubContent aria-label="Capabilities">
+              {['Vision', 'Tools', 'Reasoning'].map((value) => (
+                <Popup.CheckboxItem
+                  key={value}
+                  checked={capabilities.includes(value)}
+                  onCheckedChange={(checked) =>
+                    setCapabilities((current) => (checked ? [...current, value] : current.filter((item) => item !== value)))
+                  }
+                >
+                  {value}
+                </Popup.CheckboxItem>
               ))}
-            </Popup.RadioGroup>
-          </Popup.Submenu>
-          <Popup.Submenu label="Model type">
-            <Popup.RadioGroup value={modelType} onValueChange={setModelType}>
-              {['all', 'OpenAI Completion', 'OpenAI Response', 'Anthropic'].map((value) => (
-                <Popup.RadioItem key={value} value={value}>
-                  {value === 'all' ? 'All model types' : value}
-                </Popup.RadioItem>
-              ))}
-            </Popup.RadioGroup>
-          </Popup.Submenu>
-          <Popup.Submenu label="Capabilities">
-            {['Vision', 'Tools', 'Reasoning'].map((value) => (
-              <Popup.CheckboxItem
-                key={value}
-                checked={capabilities.includes(value)}
-                onCheckedChange={(checked) =>
-                  setCapabilities((current) => (checked ? [...current, value] : current.filter((item) => item !== value)))
-                }
-              >
-                {value}
-              </Popup.CheckboxItem>
-            ))}
-          </Popup.Submenu>
+            </Popup.SubContent>
+          </Popup.Sub>
           <Popup.Separator />
           <Popup.Item
-            onClick={() => {
+            onSelect={() => {
               setStatus('all')
               setModelType('all')
               setCapabilities([])
@@ -225,7 +244,7 @@ function FilterDemo({ edge = false }: { edge?: boolean }) {
             Clear all filters
           </Popup.Item>
         </Popup.Content>
-      </Popup>
+      </Popup.Root>
       <p className="text-xs text-muted-foreground" aria-live="polite">
         Selection: {status} · Model type: {modelType} · Capabilities: {capabilities.join(', ') || 'all'}
       </p>
@@ -236,3 +255,56 @@ function FilterDemo({ edge = false }: { edge?: boolean }) {
 
 export const FilterSubmenus: Story = { render: () => <FilterDemo /> }
 export const FilterAtContainerEdge: Story = { render: () => <FilterDemo edge /> }
+
+function ChildCompositionDemo() {
+  const [clicks, setClicks] = useState(0)
+  return (
+    <div className="grid justify-items-start gap-4">
+      <Dialog.Root>
+        <Dialog.Trigger asChild>
+          <Button>Open composed dialog</Button>
+        </Dialog.Trigger>
+        <Dialog.Content>
+          <Dialog.Header>
+            <Dialog.Title>Composed controls</Dialog.Title>
+            <Dialog.Close />
+          </Dialog.Header>
+          <Dialog.Body>
+            <p>Close with Escape or the button. Outside clicks keep this dialog open.</p>
+          </Dialog.Body>
+          <Dialog.Footer>
+            <Dialog.Close asChild>
+              <Button>Done</Button>
+            </Dialog.Close>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog.Root>
+      <Popup.Root>
+        <Popup.Trigger asChild>
+          <Button>Composed menu</Button>
+        </Popup.Trigger>
+        <Popup.Content aria-label="Composed actions">
+          <Popup.Item onSelect={() => setClicks((count) => count + 1)}>Count selection</Popup.Item>
+          <Popup.Item asChild>
+            <button type="button">Custom menu item</button>
+          </Popup.Item>
+        </Popup.Content>
+      </Popup.Root>
+      <Button asChild disabled>
+        <a href="#disabled" onClick={() => setClicks((count) => count + 1)}>
+          Disabled child link
+        </a>
+      </Button>
+      <Dialog.Root>
+        <Dialog.Trigger asChild>
+          <Button onClick={(event) => event.preventDefault()}>Cancel opening</Button>
+        </Dialog.Trigger>
+        <Dialog.Content>
+          <Dialog.Title>This dialog stays closed</Dialog.Title>
+        </Dialog.Content>
+      </Dialog.Root>
+      <output aria-live="polite">Selections: {clicks}</output>
+    </div>
+  )
+}
+export const ChildComposition: Story = { render: () => <ChildCompositionDemo /> }

@@ -1,10 +1,10 @@
-import { createContext, useContext, useId, type HTMLAttributes } from 'react'
+import { createContext, useContext, useId, type ComponentPropsWithRef } from 'react'
 import { cx } from './shared'
 import { SectionSurface } from './surfaces'
 const SectionContext = createContext<string | null>(null)
 // eslint-disable-next-line design/spacing -- The connector is a 1px hairline.
 const connectorWidth = 'w-px'
-function Root({ children, className, ...props }: HTMLAttributes<HTMLElement>) {
+function Root({ children, className, ...props }: ComponentPropsWithRef<'section'>) {
   const id = useId()
   return (
     <SectionContext value={id}>
@@ -21,12 +21,12 @@ function Root({ children, className, ...props }: HTMLAttributes<HTMLElement>) {
     </SectionContext>
   )
 }
-function Heading(props: HTMLAttributes<HTMLHeadingElement>) {
+function Heading(props: ComponentPropsWithRef<'h2'>) {
   const id = useContext(SectionContext)
   if (!id) throw new Error('FormSection.Heading requires FormSection.')
   return <h2 {...props} id={id} className={cx('flex h-6 items-center px-4 text-sm font-medium', props.className)} />
 }
-function Marker(props: HTMLAttributes<HTMLSpanElement>) {
+function Marker(props: ComponentPropsWithRef<'span'>) {
   return (
     <span
       {...props}
@@ -39,4 +39,4 @@ border border-border bg-elevated text-xs text-muted-foreground`,
     />
   )
 }
-export const FormSection = Object.assign(Root, { Heading, Marker, Content: SectionSurface })
+export const FormSection = { Root, Heading, Marker, Content: SectionSurface }

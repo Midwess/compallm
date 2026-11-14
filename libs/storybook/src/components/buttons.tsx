@@ -1,9 +1,11 @@
 import { animated, LoadingMotion } from './motion'
-import type { AnchorHTMLAttributes, ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react'
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, HTMLAttributes, ReactNode, Ref } from 'react'
 import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
 import { cx } from './shared'
+import { Slot, type CompositionProps } from './composition'
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>, CompositionProps {
+  ref?: Ref<HTMLButtonElement>
   variant?: 'primary' | 'neutral' | 'ghost' | 'destructive' | 'link'
   size?: 'compact' | 'standard' | 'authentication' | 'content'
   loading?: boolean
@@ -24,6 +26,7 @@ const sizes = {
 }
 
 export function Button({
+  asChild = false,
   variant = 'neutral',
   size = 'compact',
   loading = false,
@@ -33,30 +36,43 @@ export function Button({
   className,
   ...props
 }: ButtonProps) {
+  const Component = asChild ? Slot : animated.button
   return (
-    <animated.button
+    <Component
       {...props}
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={cx(
-        'inline-flex max-w-full shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full',
-        'border-(length:--border-hairline) border-transparent px-1.5 py-0 text-xsm leading-5 font-medium no-underline',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-        'disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:border-transparent [&_svg]:shrink-0',
-        sizes[size],
-        variants[variant],
-        size === 'compact' && variant === 'neutral' && 'h-6.5',
-        className,
-      )}
+      data-disabled={disabled || loading ? '' : undefined}
+      className={
+        asChild
+          ? className
+          : cx(
+              'inline-flex max-w-full shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full',
+              'border-(length:--border-hairline) border-transparent px-1.5 py-0 text-xsm leading-5 font-medium no-underline',
+              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+              'disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none',
+              'disabled:border-transparent [&_svg]:shrink-0',
+              sizes[size],
+              variants[variant],
+              size === 'compact' && variant === 'neutral' && 'h-6.5',
+              className,
+            )
+      }
     >
-      {loading ? (
-        <LoadingMotion>
-          <CircleNotchIcon size={14} aria-hidden="true" />
-        </LoadingMotion>
-      ) : null}
-      {children}
-    </animated.button>
+      {asChild ? (
+        children
+      ) : (
+        <>
+          {loading ? (
+            <LoadingMotion>
+              <CircleNotchIcon size={14} aria-hidden="true" />
+            </LoadingMotion>
+          ) : null}
+          {children}
+        </>
+      )}
+    </Component>
   )
 }
 export function ContentButton({ className, ...props }: ButtonProps) {
@@ -64,6 +80,7 @@ export function ContentButton({ className, ...props }: ButtonProps) {
 }
 
 export interface TextLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
+  ref?: Ref<HTMLAnchorElement>
   tone?: 'secondary' | 'muted'
   disabled?: boolean
 }
@@ -113,11 +130,17 @@ export function ResendPrompt({ remaining = 0, onResend }: { remaining?: number; 
   )
 }
 
-export function IconButton({ className, type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+export function IconButton({
+  className,
+  type = 'button',
+  ref,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { ref?: Ref<HTMLButtonElement> }) {
   return (
     <animated.button
       {...props}
       type={type}
+      ref={ref}
       className={cx(
         'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border/60',
         'bg-inset text-muted-foreground hover:border-input hover:text-foreground focus-visible:outline-1',

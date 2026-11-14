@@ -54,7 +54,7 @@ export function ProjectTableRow({
 }
 export function ProjectTable({ children, label }: { children: ReactNode; label: string }) {
   return (
-    <Table tabIndex={0} role="region" aria-label={label}>
+    <Table.Root tabIndex={0} role="region" aria-label={label}>
       <Table.Content
         className={`
   w-full min-w-160 border-collapse text-left text-xsm [&_th]:h-8 [&_th]:text-ui-12
@@ -65,7 +65,7 @@ export function ProjectTable({ children, label }: { children: ReactNode; label: 
       >
         {children}
       </Table.Content>
-    </Table>
+    </Table.Root>
   )
 }
 export function ProjectIcon() {

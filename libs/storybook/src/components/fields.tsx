@@ -147,12 +147,12 @@ function SearchboxRoot({ className, children, ...props }: import('react').HTMLAt
 function SearchboxInput(props: TextFieldProps) {
   return <TextField type="search" {...props} className={cx('h-8 py-1 pr-1.5 pl-6 text-xsm leading-5', props.className)} />
 }
-export const Searchbox = Object.assign(SearchboxRoot, { Input: SearchboxInput })
+export const Searchbox = { Root: SearchboxRoot, Input: SearchboxInput }
 export function SearchField({ className, ...props }: TextFieldProps) {
   return (
-    <Searchbox className={className}>
+    <Searchbox.Root className={className}>
       <Searchbox.Input {...props} />
-    </Searchbox>
+    </Searchbox.Root>
   )
 }
 

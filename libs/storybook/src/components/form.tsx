@@ -231,4 +231,4 @@ function Status() {
     </span>
   )
 }
-export const Form = Object.assign(Root, { Submit, Reset, Status, Error: FormError })
+export const Form = { Root, Submit, Reset, Status, Error: FormError }

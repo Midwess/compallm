@@ -92,7 +92,7 @@ function EmailForm({ mode }: { mode: Mode }) {
     },
   )
   return (
-    <Form
+    <Form.Root
       model={model}
       className="flex flex-col gap-4"
       noValidate
@@ -108,7 +108,7 @@ function EmailForm({ mode }: { mode: Mode }) {
         <ErrorMessage />
       </FeedbackSlot>
       <AccountLink mode={mode} />
-    </Form>
+    </Form.Root>
   )
 }
 
@@ -208,7 +208,7 @@ function VerificationForm() {
     [controller, model],
   )
   return (
-    <Form model={model}>
+    <Form.Root model={model}>
       <Recipient />
       <CodeInput />
       <VerificationFeedback />
@@ -216,7 +216,7 @@ function VerificationForm() {
         <ResendControl />
         <BackAction />
       </div>
-    </Form>
+    </Form.Root>
   )
 }
 

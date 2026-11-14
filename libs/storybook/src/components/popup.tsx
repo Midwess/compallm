@@ -1,10 +1,11 @@
 import { useFormField } from './form'
-import { useContext, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from 'react'
+import { useContext, type ReactNode, type ComponentPropsWithRef } from 'react'
 import { Menu } from '@base-ui/react/menu'
 import { CaretRightIcon } from '@phosphor-icons/react/dist/csr/CaretRight'
 import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
 import { animated, FloatingMotion } from './motion'
 import { cx } from './shared'
+import { Slot, type CompositionProps, type OpenStateProps } from './composition'
 import { FloatingContainerContext } from '../context'
 
 const itemClass = `flex h-8 w-full cursor-pointer items-center rounded-md px-2 text-xs outline-none
@@ -12,25 +13,48 @@ data-highlighted:bg-menu-hover focus-visible:outline-ring data-disabled:cursor-n
 const surfaceClass = `max-h-(--available-height) w-48 max-w-[calc(100vw-1rem)] overflow-y-auto overscroll-none
 rounded-control border border-border bg-menu p-1 font-sans text-foreground shadow-menu outline-none origin-(--transform-origin)`
 
-function Root({ children }: { children: ReactNode }) {
-  return <Menu.Root modal={false}>{children}</Menu.Root>
+export interface PopupRootProps extends OpenStateProps {
+  children: ReactNode
 }
 
-function Trigger({ className, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+function Root({ children, onOpenChange, ...props }: PopupRootProps) {
+  return (
+    <Menu.Root {...props} onOpenChange={(open) => onOpenChange?.(open)} modal={false}>
+      {children}
+    </Menu.Root>
+  )
+}
+
+export interface PopupTriggerProps extends ComponentPropsWithRef<'button'>, CompositionProps {}
+
+function Trigger({ className, asChild = false, children, ...props }: PopupTriggerProps) {
   return (
     <Menu.Trigger
       {...props}
-      render={<animated.button type="button" />}
-      className={cx(
-        `flex size-7 cursor-pointer items-center justify-center rounded-xl text-muted-foreground hover:bg-hover
+      render={(partProps, state) =>
+        asChild ? (
+          <Slot {...partProps} data-state={state.open ? 'open' : 'closed'}>
+            {children}
+          </Slot>
+        ) : (
+          <animated.button type="button" {...partProps} data-state={state.open ? 'open' : 'closed'} />
+        )
+      }
+      children={asChild ? undefined : children}
+      className={
+        asChild
+          ? className
+          : cx(
+              `flex size-7 cursor-pointer items-center justify-center rounded-xl text-muted-foreground hover:bg-hover
 focus-visible:outline-ring`,
-        className,
-      )}
+              className,
+            )
+      }
     />
   )
 }
 
-function IconTrigger(props: ButtonHTMLAttributes<HTMLButtonElement>) {
+function IconTrigger(props: PopupTriggerProps) {
   return (
     <Trigger
       {...props}
@@ -47,7 +71,7 @@ function Content({
   align = 'end',
   sideOffset = 4,
   ...props
-}: HTMLAttributes<HTMLDivElement> & Pick<Menu.Positioner.Props, 'align' | 'sideOffset'>) {
+}: ComponentPropsWithRef<'div'> & { align?: 'start' | 'center' | 'end'; sideOffset?: number }) {
   const container = useContext(FloatingContainerContext)
   return (
     <Menu.Portal container={container}>
@@ -64,8 +88,26 @@ function Content({
   )
 }
 
-function Item({ className, ...props }: Omit<Menu.Item.Props, 'className'> & { className?: string }) {
-  return <Menu.Item {...props} nativeButton render={<animated.button type="button" />} className={cx(itemClass, className)} />
+export interface PopupItemProps extends Omit<ComponentPropsWithRef<'button'>, 'onSelect'>, CompositionProps {
+  disabled?: boolean
+  onSelect?(event: React.MouseEvent<HTMLButtonElement>): void
+}
+function Item({ className, asChild = false, children, onSelect, onClick, ...props }: PopupItemProps) {
+  const itemProps = props as unknown as Menu.Item.Props
+  return (
+    <Menu.Item
+      {...itemProps}
+      nativeButton={!asChild}
+      render={asChild ? <Slot>{children}</Slot> : <animated.button type="button" />}
+      onClick={(event) => {
+        onClick?.(event as unknown as React.MouseEvent<HTMLButtonElement>)
+        if (!event.defaultPrevented) onSelect?.(event as unknown as React.MouseEvent<HTMLButtonElement>)
+      }}
+      className={asChild ? className : cx(itemClass, className)}
+    >
+      {asChild ? undefined : children}
+    </Menu.Item>
+  )
 }
 
 function Separator() {
@@ -73,13 +115,16 @@ function Separator() {
   return <Menu.Separator className="my-1 h-px bg-border/60" />
 }
 
-function CheckboxItem({
-  className,
-  children,
-  name,
-  selectionValue,
-  ...props
-}: Omit<Menu.CheckboxItem.Props, 'className'> & { className?: string; name?: string; selectionValue?: string }) {
+export interface PopupCheckboxItemProps extends Omit<ComponentPropsWithRef<'div'>, 'defaultChecked'> {
+  checked?: boolean
+  defaultChecked?: boolean
+  disabled?: boolean
+  onCheckedChange?(checked: boolean): void
+  name?: string
+  selectionValue?: string
+}
+
+function CheckboxItem({ className, children, name, selectionValue, ...props }: PopupCheckboxItemProps) {
   const field = useFormField<boolean | string[]>(name)
   const checked = field
     ? Array.isArray(field.value)
@@ -90,8 +135,9 @@ function CheckboxItem({
   return (
     <Menu.CheckboxItem
       {...props}
+      render={(partProps, state) => <div {...partProps} data-state={state.checked ? 'checked' : 'unchecked'} />}
       checked={checked}
-      onCheckedChange={(next, details) => {
+      onCheckedChange={(next) => {
         if (field)
           field.change(
             Array.isArray(field.value)
@@ -100,7 +146,7 @@ function CheckboxItem({
                 : field.value.filter((id) => id !== selectionValue)
               : next,
           )
-        else props.onCheckedChange?.(next, details)
+        else props.onCheckedChange?.(next)
       }}
       className={cx(itemClass, 'min-h-9 gap-3 text-xsm', className)}
     >
@@ -114,9 +160,14 @@ function CheckboxItem({
   )
 }
 
-function RadioItem({ className, children, ...props }: Omit<Menu.RadioItem.Props, 'className'> & { className?: string }) {
+function RadioItem({ className, children, ...props }: ComponentPropsWithRef<'div'> & { value: string; disabled?: boolean }) {
   return (
-    <Menu.RadioItem {...props} closeOnClick className={cx(itemClass, 'justify-between gap-4', className)}>
+    <Menu.RadioItem
+      {...props}
+      render={(partProps, state) => <div {...partProps} data-state={state.checked ? 'checked' : 'unchecked'} />}
+      closeOnClick
+      className={cx(itemClass, 'justify-between gap-4', className)}
+    >
       {children}
       <Menu.RadioItemIndicator>
         <CheckIcon aria-hidden="true" className="size-3" />
@@ -125,43 +176,64 @@ function RadioItem({ className, children, ...props }: Omit<Menu.RadioItem.Props,
   )
 }
 
-function Submenu({ label, children }: { label: ReactNode; children: ReactNode }) {
-  const container = useContext(FloatingContainerContext)
+function Sub({ children, onOpenChange, ...props }: PopupRootProps) {
   return (
-    <Menu.SubmenuRoot>
-      <Menu.SubmenuTrigger className={cx(itemClass, 'justify-between')}>
-        {label}
-        <CaretRightIcon className="size-3" aria-hidden="true" />
-      </Menu.SubmenuTrigger>
-      <Menu.Portal container={container}>
-        <Menu.Positioner
-          sideOffset={4}
-          alignOffset={-4}
-          positionMethod="fixed"
-          collisionPadding={8}
-          className="z-50 outline-none"
-        >
-          <Menu.Popup
-            aria-label={typeof label === 'string' ? label : undefined}
-            render={<FloatingMotion />}
-            className={surfaceClass}
-          >
-            {children}
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
+    <Menu.SubmenuRoot {...props} onOpenChange={(open) => onOpenChange?.(open)}>
+      {children}
     </Menu.SubmenuRoot>
   )
 }
+function SubTrigger({ children, className, asChild = false, ...props }: ComponentPropsWithRef<'div'> & CompositionProps) {
+  return (
+    <Menu.SubmenuTrigger
+      {...props}
+      render={asChild ? <Slot>{children}</Slot> : undefined}
+      className={asChild ? className : cx(itemClass, 'justify-between', className)}
+    >
+      {asChild ? undefined : (
+        <>
+          {children}
+          <CaretRightIcon className="size-3" aria-hidden="true" />
+        </>
+      )}
+    </Menu.SubmenuTrigger>
+  )
+}
+function SubContent(props: ComponentPropsWithRef<'div'>) {
+  const container = useContext(FloatingContainerContext)
+  return (
+    <Menu.Portal container={container}>
+      <Menu.Positioner
+        sideOffset={4}
+        alignOffset={-4}
+        positionMethod="fixed"
+        collisionPadding={8}
+        className="z-50 outline-none"
+      >
+        <Menu.Popup {...props} render={<FloatingMotion />} className={cx(surfaceClass, props.className)} />
+      </Menu.Positioner>
+    </Menu.Portal>
+  )
+}
 
-export const Popup = Object.assign(Root, {
+function RadioGroup({
+  onValueChange,
+  ...props
+}: ComponentPropsWithRef<'div'> & { value?: string; defaultValue?: string; onValueChange?(value: string): void }) {
+  return <Menu.RadioGroup {...props} onValueChange={(value) => onValueChange?.(String(value))} />
+}
+
+export const Popup = {
+  Root,
   Trigger,
   IconTrigger,
   Content,
   Item,
   CheckboxItem,
-  RadioGroup: Menu.RadioGroup,
+  RadioGroup,
   RadioItem,
   Separator,
-  Submenu,
-})
+  Sub,
+  SubTrigger,
+  SubContent,
+}

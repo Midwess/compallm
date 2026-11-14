@@ -66,7 +66,12 @@ function DialogProgress() {
       <PageProgress active />
       <Button onClick={() => setOpen(true)}>Customize sidebar</Button>
       {open ? (
-        <Dialog onClose={() => setOpen(false)}>
+        <Dialog.Root
+          open
+          onOpenChange={(open) => {
+            if (!open) setOpen(false)
+          }}
+        >
           <Dialog.Content>
             <Dialog.Header>
               <Dialog.Title>Customize sidebar</Dialog.Title>
@@ -74,7 +79,7 @@ function DialogProgress() {
             </Dialog.Header>
             <Dialog.Body>The request progress bar remains above this dialog.</Dialog.Body>
           </Dialog.Content>
-        </Dialog>
+        </Dialog.Root>
       ) : null}
     </Preview>
   )

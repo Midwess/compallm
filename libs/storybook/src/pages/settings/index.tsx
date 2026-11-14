@@ -83,9 +83,9 @@ function SharedSettingsForm() {
     )
   if (['role', 'new-role', 'group', 'new-group'].includes(page)) return <SettingsScreen />
   return (
-    <Form model={form}>
+    <Form.Root model={form}>
       <SettingsScreen />
-    </Form>
+    </Form.Root>
   )
 }
 export function SettingsPage() {

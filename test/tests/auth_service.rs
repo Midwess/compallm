@@ -219,6 +219,48 @@ struct OrganizationRepositoryStub(Arc<Mutex<State>>);
 
 #[async_trait::async_trait]
 impl OrganizationRepository for OrganizationRepositoryStub {
+    async fn find_member_identity(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn list_members(
+        &self,
+        _: u64,
+        _: u64,
+        _: Option<u64>,
+        _: Box<dyn compallm_query::IntoQuery>,
+        _: compallm_query::Pagination,
+        _: Vec<compallm_query::OrderBy>,
+    ) -> Result<
+        compallm_query::Connection<compallm_core::organization::group::MemberOption>,
+        OrganizationRepositoryError,
+    > {
+        unreachable!()
+    }
+    async fn group_member_ids(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn group_member_count(&self, _: u64, _: u64) -> Result<u64, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn save_group_changes(
+        &self,
+        _: &compallm_core::organization::Group,
+        _: &compallm_core::organization::group::GroupChanges,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn delete_group(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
+        unreachable!()
+    }
+
     async fn find_by_id(
         &self,
         organization_id: u64,
@@ -1108,6 +1150,21 @@ impl Fixture {
             Box<dyn compallm_core::persistent::storage::org_space::OrganizationStorage>,
         >,
     ) -> axum::Router {
+        self.graphql_with_org_repository(db_context, storage, profile_storage, org_storage, false)
+    }
+
+    fn graphql_with_org_repository(
+        &self,
+        db_context: DbContext,
+        storage: Option<Arc<compallm_storage::S3Storage>>,
+        profile_storage: Option<
+            Box<dyn compallm_core::persistent::storage::user_space::UserStorageSpace>,
+        >,
+        org_storage: Option<
+            Box<dyn compallm_core::persistent::storage::org_space::OrganizationStorage>,
+        >,
+        real_organizations: bool,
+    ) -> axum::Router {
         use axum::{
             Extension, Json, Router,
             extract::{DefaultBodyLimit, State, rejection::JsonRejection},
@@ -1149,8 +1206,12 @@ impl Fixture {
             None,
         )
         .with_auth_service(service)
-        .with_user_repository(Box::new(self.repo.clone()))
-        .with_organization_repository(Box::new(OrganizationRepositoryStub(self.repo.0.clone())));
+        .with_user_repository(Box::new(self.repo.clone()));
+        if !real_organizations {
+            di = di.with_organization_repository(Box::new(OrganizationRepositoryStub(
+                self.repo.0.clone(),
+            )));
+        }
         if let Some(storage) = storage {
             di = di.with_s3_storage(storage);
         }
@@ -4612,8 +4673,9 @@ async fn graphql_role_and_group_creation_enforces_scope_and_denies_without_write
         .sessions
         .insert(session.id, session.clone());
     let source = format!(
-        r#"permit(principal, action in [Compallm::Action::"role.read", Compallm::Action::"role.create", Compallm::Action::"role.assign", Compallm::Action::"role.delete", Compallm::Action::"group.read", Compallm::Action::"group.create"], resource in Compallm::Organization::"{org}");
-permit(principal, action == Compallm::Action::"group.role.assign", resource is Compallm::Group in Compallm::Organization::"{org}") when {{ context.role.organization == Compallm::Organization::"{org}" }};"#,
+        r#"permit(principal, action in [Compallm::Action::"role.read", Compallm::Action::"role.create", Compallm::Action::"role.assign", Compallm::Action::"role.delete", Compallm::Action::"group.read", Compallm::Action::"group.create", Compallm::Action::"member.read", Compallm::Action::"group.metadata.update", Compallm::Action::"group.delete", Compallm::Action::"role.unassign"], resource in Compallm::Organization::"{org}");
+permit(principal, action in [Compallm::Action::"group.role.assign", Compallm::Action::"group.role.unassign"], resource is Compallm::Group in Compallm::Organization::"{org}") when {{ context.role.organization == Compallm::Organization::"{org}" }};
+permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Action::"group.member.remove"], resource is Compallm::Group in Compallm::Organization::"{org}") when {{ context.member.organization == Compallm::Organization::"{org}" }};"#,
         org = organization.id
     );
     let snapshot = PolicySnapshot {
@@ -4629,7 +4691,7 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
         REFRESH_LIFETIME,
     )
     .unwrap();
-    let router = fixture.graphql_with_database(db.clone());
+    let router = fixture.graphql_with_org_repository(db.clone(), None, None, None, true);
     let policy = format!(
         r#"permit(principal, action == Compallm::Action::"model.read", resource == Compallm::Organization::"{}");"#,
         organization.id
@@ -4662,7 +4724,7 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
 
     let response = graphql_operation(
         &router,
-        "mutation($input:GroupCreateInput!){groupCreate(input:$input){node{id name roleIds}}}",
+        "mutation($input:GroupCreateInput!){groupCreate(input:$input){node{id name roles{edges{node{id}}}}}}",
         serde_json::json!({"input":{"name":"API readers", "description":"", "roleIds":[role_id]}}),
         Some(&tokens.access_token),
         None,
@@ -4672,7 +4734,7 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
     let body = graphql_body(response).await;
     assert!(body["errors"].is_null(), "{body}");
     let group = &body["data"]["groupCreate"]["node"];
-    assert_eq!(group["roleIds"], serde_json::json!([role_id]));
+    assert_eq!(group["roles"]["edges"][0]["node"]["id"], role_id);
     let group_id = group["id"].as_str().unwrap().to_owned();
     let stored = db
         .scope(repository.find_group(organization.id, group_id.parse().unwrap()))
@@ -4877,6 +4939,255 @@ permit(principal, action == Compallm::Action::"group.role.assign", resource is C
     )
     .await;
     assert_graphql_denial(denied, 403).await;
+
+    fixture.repo.0.lock().unwrap().sessions.insert(
+        12345,
+        stored_session(assignee.id, 12345, organization.id, &organization.name),
+    );
+    let update_group = "mutation($id:ID!,$input:GroupUpdateInput!){groupUpdate(id:$id,input:$input){node{id name memberCount roles{edges{node{id}}}}}}";
+    let result=graphql_body(graphql_operation(&router,update_group,serde_json::json!({"id":group_id,"input":{"addMemberIds":[assignee.id.to_string()],"addRoleIds":[owner.id.to_string()],"name":"Updated group"}}),Some(&tokens.access_token),None,false).await).await;
+    assert!(result["errors"].is_null(), "{result}");
+    assert_eq!(result["data"]["groupUpdate"]["node"]["memberCount"], "1");
+    assert_eq!(
+        fixture.repo.0.lock().unwrap().sessions[&12345].authorization_version,
+        2
+    );
+    let repeated=graphql_body(graphql_operation(&router,update_group,serde_json::json!({"id":group_id,"input":{"addMemberIds":[assignee.id.to_string()],"addRoleIds":[owner.id.to_string()]}}),Some(&tokens.access_token),None,false).await).await;
+    assert!(repeated["errors"].is_null(), "{repeated}");
+    assert_eq!(
+        fixture.repo.0.lock().unwrap().sessions[&12345].authorization_version,
+        2
+    );
+    let other_member = User::from_email(&format!("group-other-{}@example.com", organization.id))
+        .await
+        .unwrap();
+    db.scope(compallm_postgres::repository::user::UserRepository.create(other_member.clone()))
+        .await
+        .unwrap();
+    db.scope(repository.add_member(OrganizationMember {
+        organization_id: organization.id,
+        user_id: other_member.id,
+        roles: vec![],
+        groups: vec![],
+    }))
+    .await
+    .unwrap();
+    let foreign_member = User::from_email(&format!("group-foreign-{}@example.com", foreign.id))
+        .await
+        .unwrap();
+    db.scope(compallm_postgres::repository::user::UserRepository.create(foreign_member.clone()))
+        .await
+        .unwrap();
+    db.scope(repository.add_member(OrganizationMember {
+        organization_id: foreign.id,
+        user_id: foreign_member.id,
+        roles: vec![],
+        groups: vec![],
+    }))
+    .await
+    .unwrap();
+    let read = "query($id:ID!){group(id:$id){node{memberOptions(first:1){edges{cursor node{included member{id displayName email available}}}pageInfo{hasNextPage endCursor}}}} members(first:1){edges{node{id email}}}}";
+    let result = graphql_body(
+        graphql_operation(
+            &router,
+            read,
+            serde_json::json!({"id":group_id}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(result["errors"].is_null(), "{result}");
+    assert_eq!(
+        result["data"]["group"]["node"]["memberOptions"]["edges"][0]["node"]["included"],
+        true
+    );
+    assert_eq!(
+        result["data"]["members"]["edges"][0]["node"]["email"],
+        assignee.email
+    );
+    assert_eq!(
+        result["data"]["group"]["node"]["memberOptions"]["pageInfo"]["hasNextPage"],
+        true
+    );
+    let cursor = result["data"]["group"]["node"]["memberOptions"]["pageInfo"]["endCursor"]
+        .as_str()
+        .unwrap();
+    let page=graphql_body(graphql_operation(&router,"query($id:ID!,$after:String!){group(id:$id){node{memberOptions(first:1,after:$after){edges{node{included member{id}}}pageInfo{hasNextPage}}}}}",serde_json::json!({"id":group_id,"after":cursor}),Some(&tokens.access_token),None,false).await).await;
+    assert!(page["errors"].is_null(), "{page}");
+    assert_eq!(
+        page["data"]["group"]["node"]["memberOptions"]["edges"][0]["node"]["member"]["id"],
+        other_member.id.to_string()
+    );
+    assert_eq!(
+        page["data"]["group"]["node"]["memberOptions"]["pageInfo"]["hasNextPage"],
+        false
+    );
+    let no_authority = token_pair::new(
+        &session,
+        empty_snapshot(),
+        SECRET,
+        Duration::from_secs(60),
+        REFRESH_LIFETIME,
+    )
+    .unwrap();
+    let cross_collection_cursor = graphql_operation(
+        &router,
+        "query($after:String!){members(first:1,after:$after){edges{node{id email}}}}",
+        serde_json::json!({"after":cursor}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    assert_graphql_denial(cross_collection_cursor, 400).await;
+    let denied_read = graphql_operation(
+        &router,
+        "{members(first:1){edges{node{id email}}}}",
+        serde_json::json!({}),
+        Some(&no_authority.access_token),
+        None,
+        false,
+    )
+    .await;
+    assert_graphql_denial(denied_read, 403).await;
+    let foreign_change = graphql_operation(
+        &router,
+        update_group,
+        serde_json::json!({"id":group_id,"input":{"addMemberIds":[foreign_member.id.to_string()]}}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    assert_graphql_denial(foreign_change, 404).await;
+    fixture.repo.0.lock().unwrap().fail_rotation = true;
+    let failure=graphql_operation(&router,update_group,serde_json::json!({"id":group_id,"input":{"addMemberIds":[other_member.id.to_string()],"name":"Should roll back"}}),Some(&tokens.access_token),None,false).await;
+    assert_graphql_denial(failure, 503).await;
+    fixture.repo.0.lock().unwrap().fail_rotation = false;
+    assert_eq!(
+        db.scope(repository.group_member_count(organization.id, group_id.parse().unwrap()))
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        db.scope(repository.find_group_info(organization.id, group_id.parse().unwrap()))
+            .await
+            .unwrap()
+            .unwrap()
+            .name,
+        "Updated group"
+    );
+    let result = graphql_operation(
+        &router,
+        "mutation($id:ID!){groupDelete(id:$id){node}}",
+        serde_json::json!({"id":group_id}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    assert_graphql_denial(result, 409).await;
+    let result = graphql_body(
+        graphql_operation(
+            &router,
+            update_group,
+            serde_json::json!({"id":group_id,"input":{"removeRoleIds":[owner.id.to_string()]}}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(result["errors"].is_null(), "{result}");
+    assert_eq!(
+        fixture.repo.0.lock().unwrap().sessions[&12345].authorization_version,
+        3
+    );
+    let restored = graphql_body(
+        graphql_operation(
+            &router,
+            update_group,
+            serde_json::json!({"id":group_id,"input":{"addRoleIds":[owner.id.to_string()]}}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(restored["errors"].is_null(), "{restored}");
+    let result=graphql_body(graphql_operation(&router,update_group,serde_json::json!({"id":group_id,"input":{"removeMemberIds":[assignee.id.to_string()]}}),Some(&tokens.access_token),None,false).await).await;
+    assert!(result["errors"].is_null(), "{result}");
+    assert_eq!(
+        fixture.repo.0.lock().unwrap().sessions[&12345].authorization_version,
+        5
+    );
+    let competing_database = Arc::new(
+        sea_orm::Database::connect(std::env::var("COMPALLM_TEST_DATABASE_URL").unwrap())
+            .await
+            .unwrap(),
+    );
+    let competing_context = DbContext::new(Arc::new(PostgresConnection::new(competing_database)));
+    db.transaction(async {
+        repository
+            .lock_group(organization.id, group_id.parse().unwrap())
+            .await?;
+        let group = repository
+            .find_group(organization.id, group_id.parse().unwrap())
+            .await?
+            .unwrap();
+        let competing = competing_context.transaction(async {
+            repository.lock_group(organization.id, group.id).await?;
+            repository
+                .save_group_changes(
+                    &group,
+                    &compallm_core::organization::group::GroupChanges {
+                        add_member_ids: vec![other_member.id],
+                        ..Default::default()
+                    },
+                )
+                .await?;
+            Ok::<_, compallm_core::persistent::organization::OrganizationRepositoryError>(())
+        });
+        assert!(
+            tokio::time::timeout(Duration::from_millis(50), competing)
+                .await
+                .is_err()
+        );
+        assert_eq!(
+            repository
+                .group_member_count(organization.id, group.id)
+                .await?,
+            0
+        );
+        Ok::<_, compallm_core::persistent::organization::OrganizationRepositoryError>(())
+    })
+    .await
+    .unwrap();
+    let result = graphql_body(
+        graphql_operation(
+            &router,
+            "mutation($id:ID!){groupDelete(id:$id){node}}",
+            serde_json::json!({"id":group_id}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(result["errors"].is_null(), "{result}");
+    assert!(
+        db.scope(repository.find_group(organization.id, group_id.parse().unwrap()))
+            .await
+            .unwrap()
+            .is_none()
+    );
 
     type Organizations = <OrganizationSchema as sea_orm::ModelTrait>::Entity;
     for org in [organization, foreign] {

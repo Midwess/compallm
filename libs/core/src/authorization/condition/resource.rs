@@ -55,7 +55,14 @@ where
         let entities = member
             .entities()
             .clone()
-            .add_entities(resource.entities, Some(all_policies()))
+            // Target data must not replace the verified actor's relationships.
+            .add_entities(
+                resource
+                    .entities
+                    .into_iter()
+                    .filter(|entity| entity.uid() != *member.principal()),
+                Some(all_policies()),
+            )
             .map_err(|_| MemberPermissionError::Evaluation)?;
         member.evaluate(self.action, resource.uid, context, &entities)
     }

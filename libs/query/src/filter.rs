@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[cfg_attr(feature = "graphql", derive(juniper::GraphQLEnum))]
+#[cfg_attr(feature = "graphql", derive(schemars::JsonSchema))]
 pub enum FilterIs {
     Null,
     NotNull,
@@ -122,8 +123,9 @@ pub struct DatetimeFilter {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[cfg_attr(feature = "graphql", derive(juniper::GraphQLInputObject))]
+#[cfg_attr(feature = "graphql", derive(schemars::JsonSchema))]
 pub struct StringFilter {
     pub eq: Option<String>,
     pub gt: Option<String>,

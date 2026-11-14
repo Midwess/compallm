@@ -118,21 +118,39 @@ test('ignores responses from settings after leaving or restarting', async () => 
   }
 })
 
-test('group add action navigates to its creation screen', () => {
-  const paths = []
-  const url = { navigate: (path) => paths.push(path) }
-  const controller = createSettingsController('Research team', url, { signOut() {} }, 'general')
-  controller.navigate('new-group')
-  controller.setPage('new-group')
-  assert.equal(paths.at(-1), '/Research%20team/settings/new-group')
-  assert.equal(controller.store.getState().location.page, 'new-group')
-  assert.deepEqual(controller.group.store.getState().draft, {
-    id: null,
-    name: '',
-    description: '',
-    memberIds: [],
-    roleIds: [],
-  })
+test('group add creates an empty persisted group once and focuses its editor', async () => {
+  const original = globalThis.fetch,
+    paths = []
+  let creates = 0
+  const controller = createSettingsController(
+    'Research team',
+    { navigate: (path) => paths.push(path) },
+    { signOut() {} },
+    'general',
+  )
+  globalThis.fetch = async (_url, init) => {
+    const { query, variables } = JSON.parse(init.body)
+    if (query.includes('groupCreate')) {
+      creates++
+      const input = Object.values(variables).find((value) => value && typeof value === 'object' && 'roleIds' in value)
+      assert.match(input.name, /^New group at \d\d:\d\d:\d\d\.\d{3}$/)
+      assert.deepEqual(input.roleIds, [])
+      return Response.json({ data: { groupCreate: { node: { id: '52', name: input.name } } } })
+    }
+    return Response.json({ data: { roles: { edges: [] }, groups: { edges: [] } } })
+  }
+  try {
+    const stop = controller.start()
+    controller.navigate('new-group')
+    controller.navigate('new-group')
+    await until(controller.store, (state) => state.groups.some((group) => group.id === '52'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.equal(creates, 1)
+    assert.equal(paths.at(-1), '/Research%20team/settings/group/52')
+    stop()
+  } finally {
+    globalThis.fetch = original
+  }
 })
 
 test('role add creates an empty policy once and opens the persisted role', async () => {
@@ -265,23 +283,105 @@ test('failed role creation keeps the current page and does not add a role', asyn
   }
 })
 
-test('direct visits initialize the group creation screen', () => {
-  for (const page of ['new-group']) {
-    const controller = createSettingsController('Research team', { navigate() {} }, { signOut() {} }, page)
-    const state = controller.store.getState()
-    assert.equal(state.location.page, page)
-    assert.ok(page === 'new-group' ? controller.group.store.getState().draft : controller.role.store.getState().draft)
+test('group detail owns paged Include state and sends only relationship deltas', async () => {
+  const original = globalThis.fetch
+  const controller = createSettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
+  const option = (id, included) => ({
+    node: { included, member: { id, displayName: `Member ${id}`, email: `${id}@example.test`, available: true } },
+  })
+  const writes = []
+  let roleStage = 0
+  globalThis.fetch = async (_url, init) => {
+    const { query, variables } = JSON.parse(init.body)
+    if (query.includes('groupUpdate')) {
+      const input = Object.values(variables).find(
+        (value) => value && typeof value === 'object' && ('addMemberIds' in value || 'addRoleIds' in value),
+      )
+      writes.push(input)
+      if ('addRoleIds' in input) {
+        roleStage++
+        const roles = (roleStage === 1 ? ['B', 'C'] : ['B', 'C', 'D']).map((id) => ({
+          node: { id, name: id, description: '', color: '#123456' },
+        }))
+        return Response.json({
+          data: {
+            groupUpdate: { node: { id: '52', name: 'Design', description: '', memberCount: '3', roles: { edges: roles } } },
+          },
+        })
+      }
+      return Response.json({
+        data: { groupUpdate: { node: { id: '52', name: 'Design', description: '', memberCount: '3', roles: { edges: [] } } } },
+      })
+    }
+    if (query.includes('group(')) {
+      const more = Object.values(variables).some((value) => value === 'cursor-1')
+      const memberOptions = {
+        edges: more ? [option('2', true), option('3', false)] : [option('1', true)],
+        pageInfo: { endCursor: more ? 'cursor-2' : 'cursor-1', hasNextPage: !more },
+      }
+      return Response.json({
+        data: {
+          group: { node: { id: '52', name: 'Design', description: '', memberCount: '2', roles: { edges: [] }, memberOptions } },
+          roles: { edges: [] },
+        },
+      })
+    }
+    return Response.json({ data: { roles: { edges: [] }, groups: { edges: [] } } })
+  }
+  try {
+    const stop = controller.start()
+    controller.setPage('group', '52')
+    await until(controller.group.store, (state) => state.draft?.id === '52')
+    controller.group.loadMore()
+    await until(controller.group.store, (state) => state.members?.length === 3)
+    assert.deepEqual(controller.group.store.getState().draft.memberIds, ['1', '2'])
+    await controller.group.updateGroup(
+      { ...controller.group.store.getState().draft, memberSelection: { 1: true, 2: true, 3: true } },
+      ['draft.memberSelection.3'],
+      new AbortController().signal,
+    )
+    assert.deepEqual(writes, [{ addMemberIds: ['3'], removeMemberIds: [] }])
+    controller.group.rolesChanged(['B'])
+    const first = controller.group.updateGroup(
+      { ...controller.group.store.getState().draft, roleIds: ['B'] },
+      ['draft.roleIds'],
+      new AbortController().signal,
+    )
+    controller.group.rolesChanged(['B', 'D'])
+    await first
+    await controller.group.updateGroup(
+      { ...controller.group.store.getState().draft, roleIds: ['B', 'D'] },
+      ['draft.roleIds'],
+      new AbortController().signal,
+    )
+    assert.deepEqual(writes.at(-1), { addRoleIds: ['D'], removeRoleIds: [] })
+    stop()
+  } finally {
+    globalThis.fetch = original
   }
 })
 
-test('role and group drafts remain independent when navigating between pages', () => {
+test('assigned group deletion retains the dialog and group', async () => {
+  const original = globalThis.fetch
   const controller = createSettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
-  controller.role.open()
-  controller.role.store.setState((state) => ({ draft: { ...state.draft, name: 'Editor' } }))
-  controller.setPage('new-group')
-  controller.group.store.setState((state) => ({ draft: { ...state.draft, name: 'Design' } }))
-  assert.equal(controller.role.store.getState().draft.name, 'Editor')
-  assert.equal(controller.group.store.getState().draft.name, 'Design')
+  globalThis.fetch = async (_url, init) => {
+    const { query } = JSON.parse(init.body)
+    if (query.includes('groupDelete'))
+      return Response.json({ errors: [{ message: 'Remove all members', extensions: { code: 'GROUP_ASSIGNED', status: 409 } }] })
+    return Response.json({ data: { roles: { edges: [] }, groups: { edges: [{ node: { id: '52', name: 'Design' } }] } } })
+  }
+  try {
+    const stop = controller.start()
+    await until(controller.store, (state) => state.groups.length === 1)
+    controller.pages.dialogs.openDialog('delete-group', '52')
+    controller.pages.dialogs.confirmDialog({ ...controller.store.getState().dialog })
+    await until(controller.store, (state) => !state.busy)
+    assert.equal(controller.store.getState().groups.length, 1)
+    assert.equal(controller.store.getState().dialog.kind, 'delete-group')
+    stop()
+  } finally {
+    globalThis.fetch = original
+  }
 })
 
 test('role deletion navigates to blank settings after confirmation', async () => {
@@ -397,6 +497,58 @@ test('owner role metadata is read-only', async () => {
     assert.equal(controller.role.store.getState().draft.name, 'Owner')
     assert.equal(controller.role.store.getState().draft.source, '')
     assert.equal(writes, 0)
+    stop()
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+test('group navigation ignores obsolete detail and write responses', async () => {
+  const original = globalThis.fetch
+  const controller = createSettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
+  const pending = []
+  const node = (id) => ({
+    id,
+    name: id,
+    description: '',
+    memberCount: '0',
+    roles: { edges: [] },
+    memberOptions: { edges: [], pageInfo: { endCursor: null, hasNextPage: false } },
+  })
+  globalThis.fetch = async (_url, init) => {
+    const { query, variables } = JSON.parse(init.body)
+    if (query.includes('groupUpdate')) return new Promise((resolve) => pending.push({ write: true, resolve }))
+    if (query.includes('group(')) {
+      const id = Object.values(variables).find((value) => typeof value === 'string')
+      if (id === 'old') return new Promise((resolve) => pending.push({ id, resolve }))
+      return Response.json({ data: { group: { node: node(id) }, roles: { edges: [] } } })
+    }
+    return Response.json({ data: { roles: { edges: [] }, groups: { edges: [{ node: { id: 'current', name: 'current' } }] } } })
+  }
+  try {
+    const stop = controller.start()
+    controller.setPage('group', 'old')
+    controller.setPage('group', 'current')
+    await until(controller.group.store, (state) => state.draft?.id === 'current')
+    pending
+      .find((item) => item.id === 'old')
+      .resolve(Response.json({ data: { group: { node: node('old') }, roles: { edges: [] } } }))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.equal(controller.group.store.getState().draft.id, 'current')
+    const write = controller.group.updateGroup(
+      { ...controller.group.store.getState().draft, name: 'Edited' },
+      ['draft.name'],
+      new AbortController().signal,
+    )
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    controller.setPage('group', 'next')
+    await until(controller.group.store, (state) => state.draft?.id === 'next')
+    pending
+      .find((item) => item.write)
+      .resolve(Response.json({ data: { groupUpdate: { node: { ...node('current'), name: 'Saved old' } } } }))
+    assert.equal(await write, false)
+    assert.equal(controller.group.store.getState().draft.id, 'next')
+    assert.equal(controller.store.getState().groups[0].name, 'current')
     stop()
   } finally {
     globalThis.fetch = original

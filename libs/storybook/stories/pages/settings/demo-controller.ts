@@ -17,6 +17,7 @@ import { DemoOrganizationController } from './organization/demo-controller'
 export class DemoSettingsController implements SettingsController {
   store = createSettingsStore(structuredClone(initialSettings))
   pages: SettingsController['pages'] = {
+    group: null!,
     role: null!,
     search: { setQuery: (value) => this.setQuery(value), setFilter: (key, value) => this.setFilter(key, value) },
     preferences: { user: null! },
@@ -46,10 +47,20 @@ export class DemoSettingsController implements SettingsController {
     this.role = new DemoRoleController(this, failWrites)
     this.pages.role = this.role
     this.group = new DemoGroupController(this, failWrites)
+    this.pages.group = this.group
     const location = this.store.getState().location
     this.navigate(location.page, location.id)
     if (roleDraft) this.role.store.setState({ draft: structuredClone(roleDraft) })
-    if (groupDraft) this.group.store.setState({ draft: structuredClone(groupDraft) })
+    if (groupDraft)
+      this.group.store.setState({
+        draft: {
+          ...structuredClone(groupDraft),
+          id: groupDraft.id ?? this.store.getState().location.id ?? null,
+          memberSelection: Object.fromEntries(
+            this.store.getState().members.map((member) => [member.id, groupDraft.memberIds.includes(member.id)]),
+          ),
+        },
+      })
     if (initial.filters) {
       this.store.setState({ filters: structuredClone(initial.filters) })
       this.role.store.setState({ filters: structuredClone(initial.filters) })
@@ -101,9 +112,25 @@ export class DemoSettingsController implements SettingsController {
   navigate = (page: SettingsDestination, id?: string) => {
     this.role.cancel()
     this.store.setState({ location: { page, id }, query: '', filters: {}, error: null, dialog: null })
-    if (page === 'new-role' || page === 'new-group') this.store.setState({ navigationQuery: '' })
+    if (page === 'new-group') {
+      const id = crypto.randomUUID()
+      const time = new Date().toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        fractionalSecondDigits: 3,
+        hour12: false,
+      })
+      this.store.setState((state) => ({
+        groups: [...state.groups, { id, name: `New group at ${time}`, description: '', roleIds: [], memberIds: [], color: '' }],
+        location: { page: 'group', id },
+      }))
+      this.group.open(id)
+      return
+    }
+    if (page === 'new-role') this.store.setState({ navigationQuery: '' })
     if (page === 'role' || page === 'new-role') this.role.open(page === 'role' ? id : undefined)
-    if (page === 'group' || page === 'new-group') this.group.open(page === 'group' ? id : undefined)
+    if (page === 'group') this.group.open(id)
   }
   setQuery = (query: string) => this.store.setState({ query })
   setNavigationQuery = (navigationQuery: string) => this.store.setState({ navigationQuery })
@@ -201,6 +228,13 @@ export class DemoSettingsController implements SettingsController {
           members: p.members.map((m) => ({ ...m, roleIds: m.roleIds.filter((role) => role !== id) })),
           location: { page: 'blank' },
         }))
+      }
+      if (
+        d.kind === 'delete-group' &&
+        this.store.getState().groups.some((group) => group.id === id && group.memberIds.length > 0)
+      ) {
+        this.store.setState({ busy: false, error: 'Remove all members from this group before deleting it' })
+        return
       }
       if (d.kind === 'delete-group') this.group.store.setState({ draft: null })
       if (d.kind === 'delete-group')

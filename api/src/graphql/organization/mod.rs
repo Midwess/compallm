@@ -6,3 +6,5 @@ mod r#type;
 pub use r#type::Organization;
 
 pub(crate) mod mutation;
+
+pub mod member;

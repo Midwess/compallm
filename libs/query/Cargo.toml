@@ -12,9 +12,10 @@ workspace = true
 [features]
 default = []
 derive = ["dep:compallm-query-derive"]
-graphql = ["dep:juniper"]
+graphql = ["dep:schemars", "dep:juniper"]
 
 [dependencies]
+schemars = { workspace = true, optional = true }
 base64 = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }
 compallm-query-derive = { workspace = true, optional = true }

@@ -1,9 +1,10 @@
-import { GroupCreateInput } from '@compallm/contract/validation'
+import { GroupCreateInput, GroupUpdateInput } from '@compallm/contract/validation'
 import { FormError } from '../../../components/form'
-import { useEffect } from 'react'
+import { DisabledTooltip } from '../../../components/feedback'
+import { useEffect, useSyncExternalStore } from 'react'
 import { Form, contractResult } from '../../../components/form'
 import { Button } from '../../../components/buttons'
-import { XIcon } from '@phosphor-icons/react/dist/csr/X'
+import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
 import { ChoicePicker } from '../../../components/choice-picker'
 import { TextField, SearchField } from '../../../components/fields'
 import { Switch } from '../../../components/selection'
@@ -16,14 +17,29 @@ import { SettingsContent, Heading, Section, Rows, Row, Indicator, Empty } from '
 
 function GroupMembers() {
   const group = useGroupController(),
-    draft = useGroup((s) => (s.draft ? { memberIds: s.draft.memberIds } : null), ['draft.memberIds']),
-    members = useSettings((s) => s.members),
+    draft = useGroup(
+      (s) => (s.draft ? { memberIds: s.draft.memberIds, memberSelection: s.draft.memberSelection } : null),
+      ['draft.memberIds', 'draft.memberSelection'],
+    ),
+    fallbackMembers = useSettings((s) => s.members),
+    pageMembers = useGroup((s) => s.members),
+    count = useGroup((s) => s.memberCount),
+    hasNextPage = useGroup((s) => s.hasNextPage),
+    membersLoading = useGroup((s) => s.membersLoading),
     query = useGroup((s) => s.query),
     readonly = useSettings((s) => s.readonly),
     busy = useGroup((s) => s.busy)
   if (!draft) return null
-  const entries = members.map((member) => ({ id: member.id, name: member.name, detail: member.email }))
-  const selected = draft.memberIds
+  const members = pageMembers ?? fallbackMembers
+  const entries = members.map((member) => ({
+    id: member.id,
+    name: member.name,
+    detail: member.email,
+    available: !('available' in member) || member.available,
+  }))
+  const selected = draft.memberSelection
+    ? Object.keys(draft.memberSelection).filter((id) => draft.memberSelection?.[id])
+    : draft.memberIds
   const normalized = query.trim().toLocaleLowerCase()
   const visible = entries.filter((e) => `${e.name} ${e.detail}`.toLocaleLowerCase().includes(normalized))
   const title = 'Members'
@@ -31,9 +47,7 @@ function GroupMembers() {
     <section className="flex min-w-0 flex-col gap-4" aria-label={title}>
       <div className="flex shrink-0 items-center gap-2 px-4">
         <SettingsSectionTitle>{title}</SettingsSectionTitle>
-        <span className="text-xs text-muted-foreground">
-          {selected.length} / {entries.length}
-        </span>
+        <span className="text-xs text-muted-foreground">{count ?? selected.length} selected</span>
       </div>
       <SectionSurface className="flex min-w-0 flex-col p-0">
         <div className="shrink-0 p-4">
@@ -75,12 +89,22 @@ function GroupMembers() {
                       {entry.detail}
                     </Table.Cell>
                     <Table.Cell className="px-0">
-                      <Switch
-                        aria-label={`Include ${entry.name}`}
-                        name="draft.memberIds"
-                        value={entry.id}
-                        disabled={readonly || busy}
-                      />
+                      <DisabledTooltip
+                        disabled={readonly || busy || (!entry.available && !selected.includes(entry.id))}
+                        reason={
+                          readonly
+                            ? 'This group is read-only.'
+                            : busy
+                              ? 'Wait for the current update to finish.'
+                              : 'This member is inactive and cannot be added.'
+                        }
+                      >
+                        <Switch
+                          aria-label={`Include ${entry.name}`}
+                          name={`draft.memberSelection.${entry.id}`}
+                          disabled={readonly || busy || (!entry.available && !selected.includes(entry.id))}
+                        />
+                      </DisabledTooltip>
                     </Table.Cell>
                   </Table.Row>
                 ))}
@@ -95,7 +119,12 @@ function GroupMembers() {
             </Table.Content>
           </Table>
         </div>
-        <FormError name="draft.memberIds" />
+        <FormError name="draft.memberSelection" />
+        {hasNextPage ? (
+          <Button variant="ghost" loading={membersLoading} onClick={() => group.loadMore?.()}>
+            Load more members
+          </Button>
+        ) : null}
       </SectionSurface>
     </section>
   )
@@ -105,32 +134,39 @@ function GroupRoles() {
   const c = useSettingsController(),
     group = useGroupController(),
     draft = useGroup((s) => (s.draft ? { roleIds: s.draft.roleIds } : null), ['draft.roleIds']),
-    roles = useSettings((s) => s.roles),
+    fallbackRoles = useSettings((s) => s.roles),
+    roleOptions = useGroup((s) => s.roles),
     readonly = useSettings((s) => s.readonly),
     busy = useGroup((s) => s.busy)
   if (!draft) return null
+  const roles = roleOptions ?? fallbackRoles
   const selected = roles.filter((role) => draft.roleIds.includes(role.id))
   const missing = draft.roleIds.filter((id) => !roles.some((role) => role.id === id))
   return (
     <section className="flex min-w-0 flex-col gap-4" aria-label="Assigned roles">
       <div className="flex items-center justify-between gap-2 px-4">
         <SettingsSectionTitle>Assigned roles</SettingsSectionTitle>
-        <ChoicePicker
-          label="Add role"
-          searchLabel="Search roles"
-          placeholder="Search roles…"
-          emptyMessage="No roles found."
-          emptyAction={
-            roles.length === 0 ? (
-              <Button variant="ghost" className="mt-2" onClick={() => c.navigate('new-role')}>
-                Create role
-              </Button>
-            ) : undefined
-          }
+        <DisabledTooltip
           disabled={readonly || busy}
-          options={roles.map((role) => ({ id: role.id, label: role.name, description: role.description, color: role.color }))}
-          name="draft.roleIds"
-        />
+          reason={readonly ? 'This group is read-only.' : 'Wait for the current update to finish.'}
+        >
+          <ChoicePicker
+            label="Add role"
+            searchLabel="Search roles"
+            placeholder="Search roles…"
+            emptyMessage="No roles found."
+            emptyAction={
+              roles.length === 0 ? (
+                <Button variant="ghost" className="mt-2" onClick={() => c.navigate('new-role')}>
+                  Create role
+                </Button>
+              ) : undefined
+            }
+            disabled={readonly || busy}
+            options={roles.map((role) => ({ id: role.id, label: role.name, description: role.description, color: role.color }))}
+            name="draft.roleIds"
+          />
+        </DisabledTooltip>
         <FormError name="draft.roleIds" />
       </div>
       <SectionSurface className="p-0">
@@ -142,26 +178,44 @@ function GroupRoles() {
               </li>
             ))}
             {selected.map((role) => (
-              <li key={role.id} className="flex min-w-0 items-center gap-3 border-b border-divider px-4 py-2 last:border-0">
+              <li
+                key={role.id}
+                className="group/assigned-role flex min-h-14 min-w-0 items-center gap-3
+                border-b border-divider px-4 py-3 last:border-0"
+              >
                 <Indicator color={role.color} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-xsm">{role.name}</div>
-                  {role.description ? <div className="truncate text-xs text-muted-foreground">{role.description}</div> : null}
+                <div className="flex min-w-0 flex-1 items-baseline gap-3">
+                  <span className="min-w-0 max-w-60 truncate text-xsm">{role.name}</span>
+                  {role.description ? (
+                    <span
+                      className="min-w-0 max-w-80 flex-1 whitespace-normal wrap-break-word
+                      text-xs leading-4.5 text-muted-foreground"
+                    >
+                      {role.description}
+                    </span>
+                  ) : null}
                 </div>
-                <Button
-                  variant="ghost"
-                  aria-label={`Remove ${role.name} from group`}
-                  className="size-8 shrink-0 rounded-full p-0"
+                <DisabledTooltip
                   disabled={readonly || busy}
-                  onClick={() =>
-                    group.store.form.change(
-                      'draft.roleIds',
-                      draft.roleIds.filter((id) => id !== role.id),
-                    )
-                  }
+                  reason={readonly ? 'This group is read-only.' : 'Wait for the current update to finish.'}
                 >
-                  <XIcon size={14} aria-hidden="true" />
-                </Button>
+                  <Button
+                    variant="ghost"
+                    aria-label={`Remove ${role.name} from group`}
+                    className="pointer-events-none size-6 shrink-0 rounded-full p-0 text-sm opacity-0
+                    group-hover/assigned-role:pointer-events-auto group-hover/assigned-role:opacity-100
+                    group-focus-within/assigned-role:pointer-events-auto group-focus-within/assigned-role:opacity-100"
+                    disabled={readonly || busy}
+                    onClick={() =>
+                      group.store.form.change(
+                        'draft.roleIds',
+                        draft.roleIds.filter((id) => id !== role.id),
+                      )
+                    }
+                  >
+                    <TrashIcon aria-hidden="true" className="size-3.5" />
+                  </Button>
+                </DisabledTooltip>
               </li>
             ))}
           </ul>
@@ -174,15 +228,20 @@ function GroupRoles() {
 }
 
 function GroupHeading() {
-  const id = useGroup((s) => s.draft?.id, ['draft.id'])
-  const name = useGroup((s) => s.draft?.name, ['draft.name'])
-  return id ? name : 'New group'
+  const form = useGroupController().store.form
+  return useSyncExternalStore(
+    form.subscribe,
+    () => form.baseline.draft?.name ?? 'Group',
+    () => form.baseline.draft?.name ?? 'Group',
+  )
 }
 function GroupEditorContent() {
   const c = useSettingsController(),
+    loading = useGroup((s) => s.loading),
     draft = useGroup((s) => (s.draft ? { id: s.draft.id } : null), ['draft.id']),
     readonly = useSettings((s) => s.readonly),
     busy = useGroup((s) => s.busy)
+  if (loading) return <SettingsContent aria-busy="true" aria-label="Loading group" />
   if (!draft)
     return (
       <SettingsContent>
@@ -198,36 +257,39 @@ function GroupEditorContent() {
         <Section title="Group details" className="shrink-0">
           <Rows className="**:[[role=separator]]:bg-border">
             <Row label={<label htmlFor="group-name">Name</label>}>
-              <TextField
-                id="group-name"
-                className="w-xl max-w-full border-border max-lg:w-sm"
-                name="draft.name"
-                placeholder="Group name…"
+              <DisabledTooltip
                 disabled={readonly || busy}
-              />
+                reason={readonly ? 'This group is read-only.' : 'Wait for the current update to finish.'}
+              >
+                <TextField
+                  id="group-name"
+                  className="w-xl max-w-full border-border max-lg:w-sm"
+                  name="draft.name"
+                  placeholder="Group name…"
+                  disabled={readonly || busy}
+                />
+              </DisabledTooltip>
               <FormError name="draft.name" />
             </Row>
             <Row label={<label htmlFor="group-description">Description</label>} last>
-              <TextField
-                id="group-description"
-                className="w-xl max-w-full border-border max-lg:w-sm"
-                name="draft.description"
-                placeholder="Describe this group…"
+              <DisabledTooltip
                 disabled={readonly || busy}
-              />
+                reason={readonly ? 'This group is read-only.' : 'Wait for the current update to finish.'}
+              >
+                <TextField
+                  id="group-description"
+                  className="w-xl max-w-full border-border max-lg:w-sm"
+                  name="draft.description"
+                  placeholder="Describe this group…"
+                  disabled={readonly || busy}
+                />
+              </DisabledTooltip>
               <FormError name="draft.description" />
             </Row>
           </Rows>
         </Section>
         <GroupRoles />
         <GroupMembers />
-        {!readonly && !draft.id ? (
-          <div className="flex shrink-0 flex-wrap justify-end gap-2">
-            <Button variant="primary" className="w-32 rounded-xl" loading={busy} type="submit">
-              Create group
-            </Button>
-          </div>
-        ) : null}
         {!readonly && draft.id ? (
           <Section title="Danger" className="shrink-0">
             <Rows>
@@ -252,33 +314,70 @@ function GroupEditorContent() {
 export function GroupEditorSettings() {
   const group = useGroupController()
   const id = useGroup((state) => state.draft?.id, ['draft.id'])
+  const members = useGroup((state) => state.members?.map((member) => member.id).join('|'))
+  const fallbackMembers = useSettings((state) => state.members.map((member) => member.id).join('|'))
+  const memberIds = members ?? fallbackMembers
   const form = group.store.form
   const settings = useSettingsController()
   useEffect(() => {
-    form.reset(form.values)
     form.configure({
-      mode: 'button',
-      command: true,
-      validationNames: () => ['draft'],
-      error: (error, retry) => settings.apiError(error, retry),
-      parse: (values) => {
-        const draft = values.draft
-        const result = GroupCreateInput.safeParse(
-          draft ? { name: draft.name, description: draft.description, roleIds: draft.roleIds } : {},
-        )
-        return contractResult(
-          result,
-          result.success && draft ? { ...values, draft: { ...draft, ...result.data } } : values,
-          'draft',
-        )
+      mode: 'blur',
+      names: ['draft.name', 'draft.description', 'draft.roleIds', 'draft.memberSelection'],
+      changed: (name, value) => {
+        if (name === 'draft.roleIds') group.rolesChanged?.(value as string[])
       },
-      submit: async (values) => {
-        if (!values.draft) return false
-        const result = await group.saveGroup(values.draft)
+      fields: {
+        'draft.name': { group: 'metadata' },
+        'draft.description': { group: 'metadata' },
+        'draft.roleIds': { mode: 'change', group: 'roles' },
+        ...Object.fromEntries(
+          memberIds
+            .split('|')
+            .filter(Boolean)
+            .map((id) => [`draft.memberSelection.${id}`, { mode: 'change' as const, group: 'members' }]),
+        ),
+      },
+      validationNames: (names) => (id ? names : ['draft']),
+      error: (error, retry) =>
+        settings.apiError(error, () => {
+          if (group.store.getState().draft?.id === id) retry()
+        }),
+      parse: (values, names) => {
+        const draft = values.draft
+        if (id && draft) {
+          if (names.includes('draft.roleIds')) {
+            const roles = GroupCreateInput.shape.roleIds.safeParse(draft.roleIds)
+            if (!roles.success)
+              return { issues: roles.error.issues.map((issue) => ({ ...issue, path: ['draft', 'roleIds', ...issue.path] })) }
+          }
+          const patch: Record<string, unknown> = {}
+          if (names.includes('draft.name')) patch.name = draft.name
+          if (names.includes('draft.description')) patch.description = draft.description
+          const result = GroupUpdateInput.safeParse(patch)
+          return contractResult(
+            result,
+            result.success
+              ? {
+                  ...values,
+                  draft: {
+                    ...draft,
+                    name: result.data.name ?? draft.name,
+                    description: result.data.description ?? draft.description,
+                  },
+                }
+              : values,
+            'draft',
+          )
+        }
+        return { issues: [] }
+      },
+      submit: async (values, _patch, signal, names) => {
+        if (!values.draft?.id) return false
+        const result = await group.updateGroup(values.draft, names, signal)
         return result && typeof result === 'object' ? { draft: result } : false
       },
     })
-  }, [group, form, id, settings])
+  }, [group, form, id, settings, memberIds])
   return (
     <Form model={form}>
       <GroupEditorContent />

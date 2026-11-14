@@ -105,3 +105,68 @@ fn forbid_and_evaluation_errors_cannot_be_overridden_by_a_permit() {
         Err(MemberPermissionError::Evaluation)
     ));
 }
+
+#[test]
+fn self_group_assignment_preserves_the_verified_principal() {
+    use compallm_core::authorization::condition::ForAction;
+    let owner = role(
+        11,
+        r#"permit(principal in Compallm::Role::"7:11", action == Compallm::Action::"group.member.add", resource == Compallm::Group::"7:23") when { context.member.user == principal };"#,
+    );
+    let actor = OrganizationMember {
+        organization_id: 7,
+        user_id: 1,
+        roles: vec![owner.clone()],
+        groups: vec![],
+    };
+    let permission = MemberPermission::try_from(access(7, &actor)).unwrap();
+    let group = Group {
+        id: 23,
+        organization_id: 7,
+        name: "Owners".into(),
+        description: String::new(),
+        roles: vec![owner],
+    };
+    let target = OrganizationMember {
+        organization_id: 7,
+        user_id: 1,
+        roles: vec![],
+        groups: vec![],
+    };
+    (&group, &target)
+        .for_action(Action::GroupMemberAdd)
+        .check_permission(&permission)
+        .unwrap();
+}
+
+#[test]
+fn target_membership_cannot_add_authority_to_the_verified_principal() {
+    use compallm_core::authorization::condition::ForAction;
+    let source = r#"permit(principal in Compallm::Role::"7:99", action == Compallm::Action::"group.member.add", resource == Compallm::Group::"7:23");"#;
+    let actor = OrganizationMember {
+        organization_id: 7,
+        user_id: 1,
+        roles: vec![role(11, source)],
+        groups: vec![],
+    };
+    let permission = MemberPermission::try_from(access(7, &actor)).unwrap();
+    let group = Group {
+        id: 23,
+        organization_id: 7,
+        name: "Restricted".into(),
+        description: String::new(),
+        roles: vec![],
+    };
+    let target = OrganizationMember {
+        organization_id: 7,
+        user_id: 1,
+        roles: vec![role(99, "")],
+        groups: vec![],
+    };
+    assert!(matches!(
+        (&group, &target)
+            .for_action(Action::GroupMemberAdd)
+            .check_permission(&permission),
+        Err(MemberPermissionError::Denied)
+    ));
+}

@@ -99,8 +99,8 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
                 key={g.id}
                 label={g.name}
                 href={`#/settings/groups/${g.id}`}
-                icon={<Indicator color={g.color} />}
-                className="gap-2 text-xsm [&>span:first-child]:size-1.5"
+                icon={<UsersThreeIcon />}
+                className="gap-2 text-xsm [&>span:first-child]:size-3"
                 selected={location.page === 'group' && location.id === g.id}
                 onNavigate={() => navigate('group', g.id)}
               />

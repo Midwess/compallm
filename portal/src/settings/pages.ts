@@ -6,6 +6,7 @@ import { MembersController } from './members/controller'
 import { DialogsController } from './dialogs/controller'
 import { SearchController } from './search/controller'
 import { RoleController } from './role/controller'
+import { GroupController } from './group/controller'
 
 export function createSettingsPages(
   store: FormStore<SettingsState>,
@@ -13,14 +14,16 @@ export function createSettingsPages(
   user: UserPreferenceController,
   auth: ProfileAuth = {},
   renamed: (name: string) => void = () => {},
+  groupDeleted: (id: string) => void = () => {},
 ) {
   return {
+    group: new GroupController(store),
     role: new RoleController(store),
     search: new SearchController(store),
     preferences: { user },
     profile: new ProfileController(store, auth),
     organization: new OrganizationController(store, auth, renamed),
     members: new MembersController(),
-    dialogs: new DialogsController(store, roleDeleted),
+    dialogs: new DialogsController(store, roleDeleted, groupDeleted),
   } satisfies SettingsPageControllers
 }

@@ -65,17 +65,6 @@ Positive u32 context size, encoded as an exact JSON number (1–4294967295).
 """
 scalar ContextTokens
 
-type CreatedGroup {
-  description: String!
-  id: ID!
-  name: String!
-  roleIds: [ID!]!
-}
-
-type CreatedGroupPayload {
-  node: CreatedGroup!
-}
-
 input CredentialCreateInput {
   name: String!
 }
@@ -143,10 +132,26 @@ input EmailInput {
   email: String!
 }
 
+enum FilterIs {
+  NOT_NULL
+  NULL
+}
+
 type Group {
   description: String!
   id: ID!
+  memberCount: String!
+  memberOptions(
+    after: String
+    before: String
+    filter: MemberFilterInput
+    first: Int
+    last: Int
+    offset: Int
+    orderBy: [MemberOrderInput!]
+  ): GroupMemberOptionConnection!
   name: String!
+  roles: RoleConnection!
 }
 
 type GroupConnection {
@@ -165,8 +170,32 @@ type GroupEdge {
   node: Group!
 }
 
+type GroupMemberOption {
+  included: Boolean!
+  member: Member!
+}
+
+type GroupMemberOptionConnection {
+  edges: [GroupMemberOptionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type GroupMemberOptionEdge {
+  cursor: String!
+  node: GroupMemberOption!
+}
+
 type GroupPayload {
   node: Group!
+}
+
+input GroupUpdateInput {
+  addMemberIds: [String!]
+  addRoleIds: [String!]
+  description: String
+  name: String
+  removeMemberIds: [String!]
+  removeRoleIds: [String!]
 }
 
 enum HomeDestination {
@@ -186,12 +215,46 @@ input ImageUploadInput {
   size: Int!
 }
 
+type Member {
+  available: Boolean!
+  displayName: String!
+  email: String!
+  id: ID!
+}
+
+type MemberConnection {
+  edges: [MemberEdge!]!
+  pageInfo: PageInfo!
+}
+
 input MemberDisplayPatchInput {
   nameFormat: PreferenceNamingFormat
 }
 
 type MemberDisplayPreferences {
   nameFormat: PreferenceNamingFormat!
+}
+
+type MemberEdge {
+  cursor: String!
+  node: Member!
+}
+
+input MemberFilterInput {
+  displayName: StringFilter
+  email: StringFilter
+  or: [MemberMatchInput!]
+}
+
+input MemberMatchInput {
+  displayName: StringFilter
+  email: StringFilter
+}
+
+input MemberOrderInput {
+  displayName: OrderByDirection
+  email: OrderByDirection
+  id: OrderByDirection
 }
 
 input MessageCompositionPatchInput {
@@ -234,7 +297,9 @@ type Mutation {
   """
   Create a group and its initial role assignments in the verified active organization.
   """
-  groupCreate(input: GroupCreateInput!): CreatedGroupPayload!
+  groupCreate(input: GroupCreateInput!): GroupPayload!
+  groupDelete(id: ID!): BooleanPayload!
+  groupUpdate(id: ID!, input: GroupUpdateInput!): GroupPayload!
   organizationProfileUpdate(
     input: OrganizationProfileUpdateInput!
   ): OrganizationPayload!
@@ -280,6 +345,13 @@ input NavigationPatchInput {
 
 type NavigationPreferences {
   home: PreferenceDestination!
+}
+
+enum OrderByDirection {
+  AscNullsFirst
+  AscNullsLast
+  DescNullsFirst
+  DescNullsLast
 }
 
 type Organization {
@@ -618,6 +690,15 @@ type Query {
   Return the complete visible group metadata collection, ordered by ID.
   """
   groups: GroupConnection!
+  members(
+    after: String
+    before: String
+    filter: MemberFilterInput
+    first: Int
+    last: Int
+    offset: Int
+    orderBy: [MemberOrderInput!]
+  ): MemberConnection!
 
   """
   Return the active organization from verified user authority.
@@ -787,6 +868,22 @@ input SidebarVisibilityPatchInput {
 
 input SpendingLimitInput {
   amount: String
+}
+
+input StringFilter {
+  eq: String
+  gt: String
+  gte: String
+  ilike: String
+  in: [String!]
+  iregex: String
+  is: FilterIs
+  like: String
+  lt: String
+  lte: String
+  neq: String
+  regex: String
+  startsWith: String
 }
 
 """

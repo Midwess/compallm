@@ -11,6 +11,11 @@ enum CredentialDelivery {
   TOKEN
 }
 
+enum FilterIs {
+  NULL
+  NOT_NULL
+}
+
 enum HomeDestination {
   CHAT
   MODELS
@@ -21,6 +26,13 @@ enum ImageMediaType {
   JPEG
   PNG
   WEBP
+}
+
+enum OrderByDirection {
+  AscNullsFirst
+  AscNullsLast
+  DescNullsFirst
+  DescNullsLast
 }
 
 enum PreferenceAppearanceMode {
@@ -222,6 +234,15 @@ input GroupCreateInput {
   roleIds: [String!]!
 }
 
+input GroupUpdateInput {
+  name: String
+  description: String
+  addMemberIds: [String!]
+  removeMemberIds: [String!]
+  addRoleIds: [String!]
+  removeRoleIds: [String!]
+}
+
 input ImageUploadInput {
   mediaType: ImageMediaType!
   size: Int!
@@ -229,6 +250,23 @@ input ImageUploadInput {
 
 input MemberDisplayPatchInput {
   nameFormat: PreferenceNamingFormat
+}
+
+input MemberFilterInput {
+  displayName: StringFilter
+  email: StringFilter
+  or: [MemberMatchInput!]
+}
+
+input MemberMatchInput {
+  displayName: StringFilter
+  email: StringFilter
+}
+
+input MemberOrderInput {
+  id: OrderByDirection
+  displayName: OrderByDirection
+  email: OrderByDirection
 }
 
 input MessageCompositionPatchInput {
@@ -389,6 +427,22 @@ input SpendingLimitInput {
   amount: String
 }
 
+input StringFilter {
+  eq: String
+  gt: String
+  gte: String
+  in: [String!]
+  lt: String
+  lte: String
+  neq: String
+  is: FilterIs
+  startsWith: String
+  like: String
+  ilike: String
+  regex: String
+  iregex: String
+}
+
 input ThemePatchInput {
   mode: PreferenceAppearanceMode
   palettes: PalettePatchInput
@@ -456,17 +510,6 @@ type CodeFontPreferences {
   size: PreferencePixelFontSize!
 }
 
-type CreatedGroup {
-  id: ID!
-  name: String!
-  description: String!
-  roleIds: [ID!]!
-}
-
-type CreatedGroupPayload {
-  node: CreatedGroup!
-}
-
 "Email admission succeeded; cookie delivery never exposes the OTP credential."
 type EmailChallenge {
   lifetime: TokenLifetime!
@@ -481,6 +524,9 @@ type Group {
   id: ID!
   name: String!
   description: String!
+  roles: RoleConnection!
+  memberCount: String!
+  memberOptions(filter: MemberFilterInput, orderBy: [MemberOrderInput!], first: Int, last: Int, before: String, after: String, offset: Int): GroupMemberOptionConnection!
 }
 
 type GroupConnection {
@@ -493,12 +539,44 @@ type GroupEdge {
   node: Group!
 }
 
+type GroupMemberOption {
+  member: Member!
+  included: Boolean!
+}
+
+type GroupMemberOptionConnection {
+  edges: [GroupMemberOptionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type GroupMemberOptionEdge {
+  cursor: String!
+  node: GroupMemberOption!
+}
+
 type GroupPayload {
   node: Group!
 }
 
+type Member {
+  id: ID!
+  displayName: String!
+  email: String!
+  available: Boolean!
+}
+
+type MemberConnection {
+  edges: [MemberEdge!]!
+  pageInfo: PageInfo!
+}
+
 type MemberDisplayPreferences {
   nameFormat: PreferenceNamingFormat!
+}
+
+type MemberEdge {
+  cursor: String!
+  node: Member!
 }
 
 type MessageCompositionPreferences {
@@ -509,6 +587,8 @@ type MessageCompositionPreferences {
 type Mutation {
   organizationProfileUpdate(input: OrganizationProfileUpdateInput!): OrganizationPayload!
   generateOrgAvatarUrl(input: ImageUploadInput!): AvatarUploadPayload!
+  groupUpdate(id: ID!, input: GroupUpdateInput!): GroupPayload!
+  groupDelete(id: ID!): BooleanPayload!
   "Update the current user's display name and confirm an uploaded avatar."
   userProfileUpdate(input: UserProfileUpdateInput!): UserPayload!
   "Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes."
@@ -534,7 +614,7 @@ type Mutation {
   roleDelete(id: ID!): BooleanPayload!
   roleUpdate(id: ID!, input: RoleUpdateInput!): RolePayload!
   "Create a group and its initial role assignments in the verified active organization."
-  groupCreate(input: GroupCreateInput!): CreatedGroupPayload!
+  groupCreate(input: GroupCreateInput!): GroupPayload!
 }
 
 type NavigationPreferences {
@@ -605,6 +685,7 @@ type Query {
   session: SessionPayload!
   "Return the active organization from verified user authority."
   organization: OrganizationPayload!
+  members(filter: MemberFilterInput, orderBy: [MemberOrderInput!], first: Int, last: Int, before: String, after: String, offset: Int): MemberConnection!
   "Find visible role metadata in the active organization."
   role(id: ID!): RolePayload
   "Return the complete visible role metadata collection, ordered by ID."

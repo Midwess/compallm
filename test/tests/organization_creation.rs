@@ -27,6 +27,48 @@ struct Repository {
 }
 #[async_trait::async_trait]
 impl OrganizationRepository for Repository {
+    async fn find_member_identity(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn list_members(
+        &self,
+        _: u64,
+        _: u64,
+        _: Option<u64>,
+        _: Box<dyn compallm_query::IntoQuery>,
+        _: compallm_query::Pagination,
+        _: Vec<compallm_query::OrderBy>,
+    ) -> Result<
+        compallm_query::Connection<compallm_core::organization::group::MemberOption>,
+        OrganizationRepositoryError,
+    > {
+        unreachable!()
+    }
+    async fn group_member_ids(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn group_member_count(&self, _: u64, _: u64) -> Result<u64, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn save_group_changes(
+        &self,
+        _: &compallm_core::organization::Group,
+        _: &compallm_core::organization::group::GroupChanges,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn delete_group(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
+        unreachable!()
+    }
+
     async fn find_by_id(
         &self,
         _: u64,

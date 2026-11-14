@@ -10,7 +10,7 @@ import { useUserPreferenceController } from '../preference/user/use-user-prefere
 import { SettingsController, settingsPages } from '../settings/controller'
 
 export function loader({ params }: LoaderFunctionArgs) {
-  if (params.page === 'role' && params.id) return { page: 'role' as const, id: params.id }
+  if ((params.page === 'role' || params.page === 'group') && params.id) return { page: params.page, id: params.id }
   const page = settingsPages.find((page) => page === params.page)
   if (!page || params.id) return redirect(`/${encodeURIComponent(params.organizationName!)}/settings/general`)
   return { page }

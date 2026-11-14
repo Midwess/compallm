@@ -88,7 +88,7 @@ function SettingsDialogContent() {
     'revoke-key': 'Requests using this API key will no longer be authorized. This cannot be undone.',
     'remove-member': 'This member will lose membership and access to the organization.',
     'delete-role': 'Remove all members and groups assigned to this role before deleting it. This cannot be undone.',
-    'delete-group': 'Members will lose grants inherited from this group. Direct role assignments will remain.',
+    'delete-group': 'Remove all members before deleting this group. Its role links will be removed.',
     'remove-group-member': 'This member will lose grants inherited through this group. Direct roles will remain.',
   }
   const danger = [

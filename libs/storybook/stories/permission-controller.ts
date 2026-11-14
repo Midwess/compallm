@@ -1,6 +1,5 @@
 import {
   createPermissionStore,
-  createPermissionAbility,
   permissionKey,
   publishPermissions,
   type PermissionController,
@@ -9,7 +8,6 @@ import {
 } from '../src/permission'
 export class PreviewPermissionController implements PermissionController {
   readonly store = createPermissionStore()
-  readonly ability = createPermissionAbility()
   constructor(private readonly decide: (check: PermissionCheck) => PermissionStatus = () => 'allowed') {}
   ensure = async (checks: PermissionCheck[]) => {
     const entries = { ...this.store.getState().entries }

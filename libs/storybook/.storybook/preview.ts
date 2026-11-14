@@ -1,6 +1,5 @@
 import { createElement, useLayoutEffect, useState } from 'react'
 import { PermissionControllerContext } from '../src/context'
-import { PermissionAbilityProvider } from '../src/permission'
 import { PreviewPermissionController } from '../stories/permission-controller'
 import type { Preview } from '@storybook/react-vite'
 import { themes } from 'storybook/theming'
@@ -41,11 +40,7 @@ const preview: Preview = {
         'div',
         { className: 'min-h-dvh bg-background font-sans text-foreground' },
         createElement(ScrollMotion),
-        createElement(
-          PermissionControllerContext,
-          { value: permissions },
-          createElement(PermissionAbilityProvider, { value: permissions.ability, children: createElement(Story) }),
-        ),
+        createElement(PermissionControllerContext, { value: permissions }, createElement(Story)),
       )
     },
   ],

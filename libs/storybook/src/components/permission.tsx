@@ -1,14 +1,7 @@
 import { useContext, useEffect, type ReactElement, type ReactNode } from 'react'
 import { useStore } from 'zustand'
-import { useAbility } from '@casl/react'
 import { PermissionControllerContext } from '../context'
-import {
-  permissionChecks,
-  permissionKey,
-  type PermissionRequestInput,
-  type PermissionAbility,
-  type PermissionStatus,
-} from '../permission'
+import { permissionChecks, permissionKey, type PermissionRequestInput, type PermissionStatus } from '../permission'
 import { Slot } from './composition'
 import { DisabledTooltip } from './feedback'
 import { Button } from './buttons'
@@ -18,10 +11,16 @@ export function usePermissionController() {
   if (!controller) throw new Error('PermissionControllerContext is required inside an organization workspace.')
   return controller
 }
-export function usePermissionChecks(checks: ReturnType<typeof permissionChecks>) {
+export function usePermissionChecks(
+  checks: ReturnType<typeof permissionChecks>,
+  facts: import('../permission').PermissionFacts[] = [],
+) {
   const controller = usePermissionController()
-  const ability = useAbility<PermissionAbility>()
   const serialized = JSON.stringify(checks)
+  const serializedFacts = JSON.stringify(facts)
+  useEffect(() => {
+    controller.setFacts?.(JSON.parse(serializedFacts))
+  }, [controller, serializedFacts])
   const statuses = useStore(controller.store, (state) =>
     checks.map((check) => state.entries[permissionKey(check)]?.status ?? 'loading').join(','),
   )
@@ -30,7 +29,7 @@ export function usePermissionChecks(checks: ReturnType<typeof permissionChecks>)
   }, [controller, serialized, statuses])
   return checks.map((check, index) => {
     const status = statuses.split(',')[index] as PermissionStatus
-    return status === 'allowed' && !ability.can(check.action, permissionKey(check)) ? 'denied' : status
+    return status
   })
 }
 export function usePermission(request: PermissionRequestInput) {

@@ -37,10 +37,10 @@ const folder = '[&>details>summary>span:first-child]:size-3'
 const item = 'font-normal [&>span:first-child]:size-3 [&>span:first-child>svg]:size-3'
 
 export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) {
-  const roleRead = usePermission({ actions: ['ROLE_READ'] })
-  const groupRead = usePermission({ actions: ['GROUP_READ'] })
-  const roleCreate = usePermission({ actions: ['ROLE_READ', 'ROLE_CREATE'] })
-  const groupCreate = usePermission({ actions: ['GROUP_READ', 'GROUP_CREATE'] })
+  const roleRead = usePermission({ actions: ['role.read'] })
+  const groupRead = usePermission({ actions: ['group.read'] })
+  const roleCreate = usePermission({ actions: ['role.read', 'role.create'] })
+  const groupCreate = usePermission({ actions: ['group.read', 'group.create'] })
   const c = useSettingsController(),
     location = useSettings((s) => s.location),
     query = useSettings((s) => s.navigationQuery)
@@ -148,7 +148,7 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
 
 function NavigationPermission({ page, children }: { page: SettingsDestination; children: React.ReactNode }) {
   if (page === 'organization' || page === 'organization-onboarding')
-    return <PermissionRequest actions={['ORGANIZATION_SETTINGS_READ']}>{children}</PermissionRequest>
-  if (page === 'members') return <PermissionRequest actions={['MEMBER_READ']}>{children}</PermissionRequest>
+    return <PermissionRequest actions={['organization.settings.read']}>{children}</PermissionRequest>
+  if (page === 'members') return <PermissionRequest actions={['member.read']}>{children}</PermissionRequest>
   return children
 }

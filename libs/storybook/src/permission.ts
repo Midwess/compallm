@@ -1,8 +1,24 @@
-import { Ability } from '@casl/ability'
 import { createStore, type StoreApi } from 'zustand/vanilla'
-import type { PermissionAction, PermissionCheckInput, PermissionResourceType } from '@compallm/contract/graphql'
+import type { PolicyAction } from '@compallm/contract/graphql'
+export type PermissionAction = PolicyAction['name']
+export type PermissionResourceType = 'Organization' | 'Role' | 'Group' | 'Member' | 'Provider' | 'ProviderModel' | 'Model'
 
-export type PermissionCheck = PermissionCheckInput
+export interface PermissionCheck {
+  action: PermissionAction
+  resourceType: PermissionResourceType
+  resourceId?: string | null
+  roleId?: string | null
+  memberId?: string | null
+  providerModelId?: string | null
+}
+export interface PermissionFacts {
+  resourceType: PermissionResourceType
+  id: string
+  enabled?: boolean
+  providerId?: string
+  roleIds?: string[]
+  groupIds?: string[]
+}
 export type PermissionStatus = 'loading' | 'allowed' | 'denied' | 'error'
 export interface PermissionEntry {
   check: PermissionCheck
@@ -11,10 +27,9 @@ export interface PermissionEntry {
 export interface PermissionState {
   entries: Record<string, PermissionEntry>
 }
-export type PermissionAbility = Ability<[PermissionAction, string]>
 export interface PermissionController {
   readonly store: StoreApi<PermissionState>
-  readonly ability: PermissionAbility
+  setFacts?(facts: PermissionFacts[]): void
   ensure(checks: PermissionCheck[]): Promise<void>
   retry(checks: PermissionCheck[]): Promise<void>
 }
@@ -29,7 +44,7 @@ export function permissionChecks(request: PermissionRequestInput): PermissionChe
   if (request.enabled === false) return []
   return request.actions.map((action) => ({
     action,
-    resourceType: request.resource?.type ?? 'ORGANIZATION',
+    resourceType: request.resource?.type ?? 'Organization',
     resourceId: request.resource?.id,
     roleId: request.context?.roleId,
     memberId: request.context?.memberId,
@@ -49,18 +64,6 @@ export function permissionKey(check: PermissionCheck): string {
 export function createPermissionStore() {
   return createStore<PermissionState>(() => ({ entries: {} }))
 }
-export function createPermissionAbility(): PermissionAbility {
-  return new Ability<[PermissionAction, string]>()
-}
-export function publishPermissions(
-  controller: Pick<PermissionController, 'store' | 'ability'>,
-  entries: PermissionState['entries'],
-) {
-  controller.ability.update(
-    Object.entries(entries)
-      .filter(([, entry]) => entry.status === 'allowed')
-      .map(([key, entry]) => ({ action: entry.check.action, subject: key })),
-  )
+export function publishPermissions(controller: Pick<PermissionController, 'store'>, entries: PermissionState['entries']) {
   controller.store.setState({ entries })
 }
-export { AbilityProvider as PermissionAbilityProvider } from '@casl/react'

@@ -43,9 +43,9 @@ export class RoleController implements Contract {
     this.store.setState({ draft: null, loading: true, busy: false })
     this.settings.setState({ policyActions: [] })
     try {
-      if (this.permissions) await requirePermissions(this.permissions, [{ action: 'ROLE_READ', resourceType: 'ORGANIZATION' }])
+      if (this.permissions) await requirePermissions(this.permissions, [{ action: 'role.read', resourceType: 'Organization' }])
       if (request.signal.aborted || this.request !== request) return
-      const policyRead = { action: 'ROLE_POLICY_READ', resourceType: 'ROLE', resourceId: id } as const
+      const policyRead = { action: 'role.policy.read', resourceType: 'Role', resourceId: id } as const
       if (this.permissions) await this.permissions.ensure([policyRead])
       if (request.signal.aborted || this.request !== request) return
       const canReadPolicy =
@@ -171,7 +171,7 @@ export class RoleController implements Contract {
     if (!draft?.id || draft.builtin || !request) throw new Error('Role is not editable')
     const id = draft.id
     if (this.permissions)
-      await requirePermissions(this.permissions, [{ action: 'ROLE_METADATA_UPDATE', resourceType: 'ROLE', resourceId: id }])
+      await requirePermissions(this.permissions, [{ action: 'role.metadata.update', resourceType: 'Role', resourceId: id }])
     if (request.signal.aborted || this.request !== request || signal?.aborted) throw new DOMException('Cancelled', 'AbortError')
     const input = RoleUpdateInput.parse(value)
     const selection = {
@@ -271,7 +271,7 @@ export class RoleController implements Contract {
     if (request.signal.aborted || this.request !== request) return false
     if (prepared.matchesSaved) return true
     if (this.permissions)
-      await requirePermissions(this.permissions, [{ action: 'ROLE_POLICY_UPDATE', resourceType: 'ROLE', resourceId: id }])
+      await requirePermissions(this.permissions, [{ action: 'role.policy.update', resourceType: 'Role', resourceId: id }])
     if (request.signal.aborted || this.request !== request) return false
     const input = this.policyInput(prepared)
     const selection = { roleUpdate: { __args: { id, input }, node: { id: true } } } satisfies MutationGenqlSelection

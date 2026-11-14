@@ -23,26 +23,10 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
-    /// Evaluate at most 100 exact checks against the verified active organization.
-    async fn permission_decisions(
-        checks: Vec<super::authorization::input::PermissionCheckInput>,
-        #[graphql(context)] rbac: &RbacService,
-        #[graphql(context)] authority: &AuthorizationContext,
-        #[graphql(context)] organizations: &Box<dyn OrganizationRepository>,
-        #[graphql(context)] providers: &Box<
-            dyn compallm_core::persistent::provider::ProviderRepository,
-        >,
-        #[graphql(context)] models: &Box<dyn compallm_core::persistent::model::ModelRepository>,
-    ) -> Result<Collection<super::authorization::PermissionDecision>, Error> {
-        super::authorization::query::decisions(
-            checks,
-            rbac,
-            authority,
-            organizations.as_ref(),
-            providers.as_ref(),
-            models.as_ref(),
-        )
-        .await
+    async fn me(
+        #[graphql(context)] user: &UserContext,
+    ) -> Result<Payload<super::user::me::Me>, Error> {
+        super::user::me::query::get(user).await
     }
 
     async fn organization_profile(
@@ -412,7 +396,6 @@ impl GraphQLValueAsync for RegisteredQuery {
 #[derive(JsonSchema)]
 #[allow(dead_code)]
 struct Inputs {
-    permission_check: super::authorization::input::PermissionCheckInput,
     user_preferences_patch: super::preference::user::input::UserPreferencesPatchInput,
     credential_create: super::user::input::CredentialCreateInput,
     spending_limit: super::organization::input::SpendingLimitInput,

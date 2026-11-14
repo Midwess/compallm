@@ -28,12 +28,6 @@ impl From<ConnectionError> for ModelRepositoryError {
 /// Uses the active `DbContext` and leaves transaction ownership to the caller.
 #[async_trait]
 pub trait ModelRepository: Send + Sync {
-    async fn find_by_id(
-        &self,
-        organization_id: u64,
-        id: u64,
-    ) -> Result<Option<Model>, ModelRepositoryError>;
-
     /// Lists every model in the organization for management workflows.
     async fn find_all(
         &self,

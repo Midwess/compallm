@@ -1,4 +1,5 @@
 pub mod input;
+pub mod me;
 pub mod mutation;
 pub mod query;
 mod r#type;

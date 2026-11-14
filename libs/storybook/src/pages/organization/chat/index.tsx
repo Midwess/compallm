@@ -1,4 +1,4 @@
-import { PermissionRequest } from '../../../components/permission'
+import { PermissionRequest, usePermissionChecks } from '../../../components/permission'
 import { ChatCreateInput } from '@compallm/contract/validation'
 import { FormError } from '../../../components/form'
 import { Form, contractResult } from '../../../components/form'
@@ -28,7 +28,7 @@ function useChat<T>(selector: (state: ChatState) => T, names: readonly string[] 
 
 export function ChatPage() {
   return (
-    <PermissionRequest actions={['MODEL_READ']} restricted="fallback">
+    <PermissionRequest actions={['model.read']} restricted="fallback">
       <section aria-label="Create chat" className="relative flex h-full min-h-0 flex-col">
         <PageHeader className="absolute inset-x-0 top-0">
           <Title>New chat</Title>
@@ -109,14 +109,20 @@ function ChatSubmit() {
   const modelId = useChat((state) => state.modelId, ['modelId'])
   const models = useChat((state) => state.models)
   const creating = useChat((state) => state.creating)
+  usePermissionChecks(
+    [],
+    models
+      .filter((model) => model.enabled !== undefined)
+      .map((model) => ({ resourceType: 'Model', id: model.value, enabled: model.enabled })),
+  )
   const canSend =
     ChatCreateInput.safeParse({ message: draft, modelId }).success &&
     models.some((model) => model.value === modelId) &&
     !creating
   return (
     <PermissionRequest
-      actions={['MODEL_USE']}
-      resource={{ type: 'MODEL', id: modelId || undefined }}
+      actions={['model.use']}
+      resource={{ type: 'Model', id: modelId || undefined }}
       enabled={!!modelId}
       restricted="disabled"
       asChild

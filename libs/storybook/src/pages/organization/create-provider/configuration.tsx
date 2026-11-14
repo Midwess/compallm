@@ -34,8 +34,8 @@ function ConnectionFields() {
   const submitting = useProvider((state) => state.submitting)
   const providerId = useProvider((state) => state.savedProvider?.id)
   const edit = usePermission({
-    actions: ['PROVIDER_CONFIGURATION_UPDATE'],
-    resource: { type: 'PROVIDER', id: providerId },
+    actions: ['provider.configuration.update'],
+    resource: { type: 'Provider', id: providerId },
     enabled: editing && !!providerId,
   })
   const busy = submitting || (editing && !edit.allowed)
@@ -77,8 +77,8 @@ function ConnectionFields() {
           </div>
           <div className="relative min-w-0">
             <PermissionRequest
-              actions={[editing ? 'PROVIDER_CREDENTIAL_REPLACE' : 'PROVIDER_CREATE']}
-              resource={editing ? { type: 'PROVIDER', id: providerId } : undefined}
+              actions={[editing ? 'provider.credential.replace' : 'provider.create']}
+              resource={editing ? { type: 'Provider', id: providerId } : undefined}
               enabled={!editing || !!providerId}
               restricted="disabled"
               asChild
@@ -175,8 +175,8 @@ export function ProviderConfiguration() {
   const submitting = useProvider((state) => state.submitting)
   const providerId = useProvider((state) => state.savedProvider?.id)
   const edit = usePermission({
-    actions: ['PROVIDER_CONFIGURATION_UPDATE'],
-    resource: { type: 'PROVIDER', id: providerId },
+    actions: ['provider.configuration.update'],
+    resource: { type: 'Provider', id: providerId },
     enabled: intent === 'edit' && !!providerId,
   })
   const busy = submitting || (intent === 'edit' && !edit.allowed)

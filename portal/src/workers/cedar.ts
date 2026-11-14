@@ -320,8 +320,127 @@ async function editPolicyActions(
   return { source, disabledPolicies, ...projected }
 }
 
+let permissionSource: string | undefined
+
+async function evaluatePermissions(
+  authority: { userId: string; organizationId: string; source: string; entities: string },
+  checks: import('@compallm/storybook').PermissionCheck[],
+  facts: import('@compallm/storybook').PermissionFacts[],
+) {
+  const parser = await cedar()
+  if (permissionSource !== authority.source) {
+    const parsed = parser.preparsePolicySet('ui-permissions', { staticPolicies: authority.source })
+    if (parsed.type === 'failure') throw new Error('Permission policies are unavailable')
+    permissionSource = authority.source
+  }
+  const uid = (type: string, id: string) => ({
+    type: `Compallm::${type}`,
+    id: type === 'Organization' || type === 'User' ? id : `${authority.organizationId}:${id}`,
+  })
+  const escape = (value: ReturnType<typeof uid>) => ({ __entity: value })
+  const base = JSON.parse(authority.entities) as import('@cedar-policy/cedar-wasm/web').EntityJson[]
+  const entityKey = (value: EntityUidJson) => JSON.stringify(entity(value))
+  const principal = uid('User', authority.userId)
+  const org = uid('Organization', authority.organizationId)
+  const entities = new Map(base.map((item) => [entityKey(item.uid), item]))
+  const add = (type: string, id: string, fact?: import('@compallm/storybook').PermissionFacts) => {
+    const key = entityKey(uid(type, id))
+    if (entities.has(key)) return uid(type, id)
+    if (
+      (type === 'Group' && !fact?.roleIds) ||
+      (type === 'Model' && fact?.enabled === undefined) ||
+      (type === 'ProviderModel' && (fact?.enabled === undefined || !fact.providerId))
+    )
+      throw new Error('Resource facts are unavailable')
+    const attrs: import('@cedar-policy/cedar-wasm/web').EntityJson['attrs'] =
+      type === 'Organization' || type === 'User' ? {} : { organization: escape(org) }
+    const parents = type === 'Organization' ? [] : [org]
+    if (type === 'Member') {
+      if (!entities.has(entityKey(uid('User', id))) && (!fact?.roleIds || !fact?.groupIds))
+        throw new Error('Member facts are unavailable')
+      if (!entities.has(entityKey(uid('User', id))))
+        entities.set(entityKey(uid('User', id)), {
+          uid: uid('User', id),
+          attrs: {},
+          parents: [
+            org,
+            ...fact!.roleIds!.map((role) => uid('Role', role)),
+            ...fact!.groupIds!.map((group) => uid('Group', group)),
+          ],
+        })
+      attrs.user = escape(uid('User', id))
+    }
+    if (type === 'Model' || type === 'ProviderModel') attrs.enabled = fact!.enabled!
+    if (type === 'ProviderModel') {
+      attrs.provider = escape(uid('Provider', fact!.providerId!))
+      parents.push(uid('Provider', fact!.providerId!))
+    }
+    if (type === 'Group') parents.push(...fact!.roleIds!.map((id) => uid('Role', id)))
+    entities.set(key, { uid: uid(type, id), attrs, parents })
+    return uid(type, id)
+  }
+  for (const fact of facts) {
+    const type = fact.resourceType
+    const key = entityKey(uid(type, fact.id))
+    if (!base.some((item) => entityKey(item.uid) === key)) {
+      try {
+        add(type, fact.id, fact)
+      } catch {
+        /* Missing facts restrict only their target checks. */
+      }
+    }
+  }
+  const lookup = (resourceType: string, id: string) => {
+    if (!/^[1-9][0-9]*$/.test(id)) throw new Error('Resource identity is unavailable')
+    return add(
+      resourceType,
+      id,
+      facts.find((fact) => fact.resourceType === resourceType && fact.id === id),
+    )
+  }
+  const evaluate = (
+    action: string,
+    resource: ReturnType<typeof uid>,
+    context: import('@cedar-policy/cedar-wasm/web').Context,
+  ) => {
+    const answer = parser.statefulIsAuthorized({
+      principal,
+      action: { type: 'Compallm::Action', id: action },
+      resource,
+      context,
+      preparsedPolicySetId: 'ui-permissions',
+      entities: [...entities.values()],
+    })
+    if (answer.type === 'failure' || answer.response.diagnostics.errors.length)
+      throw new Error('Permission evaluation is unavailable')
+    return answer.response.decision === 'allow'
+  }
+  return checks.map((check): import('@compallm/storybook').PermissionStatus => {
+    try {
+      if (check.resourceType === 'Organization' && check.resourceId && check.resourceId !== authority.organizationId)
+        return 'denied'
+      const action = check.action
+      const resource = check.resourceType === 'Organization' ? org : lookup(check.resourceType, check.resourceId ?? '')
+      const context: import('@cedar-policy/cedar-wasm/web').Context = {}
+      if (check.roleId) context.role = escape(lookup('Role', check.roleId))
+      if (check.memberId) context.member = escape(lookup('Member', check.memberId))
+      if (check.providerModelId) context.providerModel = escape(lookup('ProviderModel', check.providerModelId))
+      const allowed = evaluate(action, resource, context)
+      if (allowed && check.roleId) {
+        const delegation = action.endsWith('unassign') ? 'role.unassign' : 'role.assign'
+        if (!evaluate(delegation, lookup('Role', check.roleId), {})) return 'denied'
+      }
+      return allowed ? 'allowed' : 'denied'
+    } catch {
+      return 'error'
+    }
+  })
+}
+
 function execute(request: Extract<CedarRequest, { type: 'request' }>): Promise<CedarResult<CedarOperation>> {
   switch (request.operation) {
+    case 'evaluatePermissions':
+      return evaluatePermissions(...request.args)
     case 'preparePolicySource': {
       const [source, current, saved] = request.args
       const compact = compactCedarSource(source)

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { PermissionControllerContext } from '../../src/context'
-import { PermissionAbilityProvider, publishPermissions, type PermissionStatus } from '../../src/permission'
+import { publishPermissions, type PermissionStatus } from '../../src/permission'
 import { PermissionRequest, PermissionRecovery } from '../../src/components/permission'
 import { Button } from '../../src/components/buttons'
 import { PreviewPermissionController } from '../permission-controller'
@@ -10,26 +10,24 @@ function Example({ status = 'allowed' }: { status?: PermissionStatus }) {
   const [controller] = useState(() => new PreviewPermissionController(() => status))
   return (
     <PermissionControllerContext value={controller}>
-      <PermissionAbilityProvider value={controller.ability}>
-        <div className="grid justify-items-start gap-4 bg-background p-6 text-foreground">
-          <p>Permission decision: {status}</p>
-          <PermissionRequest actions={['ROLE_CREATE']}>
-            <Button>Create role (hidden when restricted)</Button>
-          </PermissionRequest>
-          <PermissionRequest
-            actions={['ROLE_METADATA_UPDATE']}
-            resource={{ type: 'ROLE', id: '12' }}
-            restricted="disabled"
-            asChild
-          >
-            <Button>Edit role</Button>
-          </PermissionRequest>
-          <PermissionRequest actions={['ROLE_READ']} restricted="fallback" fallback={<p>You do not have access to roles.</p>}>
-            <p>Role list content</p>
-          </PermissionRequest>
-          <PermissionRecovery />
-        </div>
-      </PermissionAbilityProvider>
+      <div className="grid justify-items-start gap-4 bg-background p-6 text-foreground">
+        <p>Permission decision: {status}</p>
+        <PermissionRequest actions={['role.create']}>
+          <Button>Create role (hidden when restricted)</Button>
+        </PermissionRequest>
+        <PermissionRequest
+          actions={['role.metadata.update']}
+          resource={{ type: 'Role', id: '12' }}
+          restricted="disabled"
+          asChild
+        >
+          <Button>Edit role</Button>
+        </PermissionRequest>
+        <PermissionRequest actions={['role.read']} restricted="fallback" fallback={<p>You do not have access to roles.</p>}>
+          <p>Role list content</p>
+        </PermissionRequest>
+        <PermissionRecovery />
+      </div>
     </PermissionControllerContext>
   )
 }
@@ -57,17 +55,15 @@ function ReactiveExample() {
   }
   return (
     <PermissionControllerContext value={controller}>
-      <PermissionAbilityProvider value={controller.ability}>
-        <div className="grid justify-items-start gap-4 p-6">
-          <Button onClick={toggle}>{restricted ? 'Restore fixture access' : 'Revoke fixture access'}</Button>
-          <PermissionRequest actions={['ROLE_CREATE']} restricted="disabled" asChild>
-            <Button>Create role</Button>
-          </PermissionRequest>
-          <PermissionRequest actions={['ROLE_READ']}>
-            <p>Visible role content</p>
-          </PermissionRequest>
-        </div>
-      </PermissionAbilityProvider>
+      <div className="grid justify-items-start gap-4 p-6">
+        <Button onClick={toggle}>{restricted ? 'Restore fixture access' : 'Revoke fixture access'}</Button>
+        <PermissionRequest actions={['role.create']} restricted="disabled" asChild>
+          <Button>Create role</Button>
+        </PermissionRequest>
+        <PermissionRequest actions={['role.read']}>
+          <p>Visible role content</p>
+        </PermissionRequest>
+      </div>
     </PermissionControllerContext>
   )
 }

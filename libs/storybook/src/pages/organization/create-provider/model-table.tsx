@@ -21,15 +21,24 @@ export function ProviderModels() {
   const protocol = useProvider((state) => state.modelProtocolFilter)
   const capabilities = useProvider((state) => state.modelCapabilityFilter)
   const intent = useProvider((state) => state.intent)
-  const providerId = useProvider((state) => state.savedProvider?.id)
+  const savedProvider = useProvider((state) => state.savedProvider)
+  const providerId = savedProvider?.id
   const permissionStates = usePermissionChecks(
     intent === 'edit'
       ? models.map((model) => ({
-          action: 'PROVIDER_MODEL_CONFIGURATION_UPDATE',
-          resourceType: 'PROVIDER_MODEL',
+          action: 'provider.model.configuration.update',
+          resourceType: 'ProviderModel',
           resourceId: model.id,
         }))
-      : [{ action: 'PROVIDER_CREATE', resourceType: 'ORGANIZATION' }],
+      : [{ action: 'provider.create', resourceType: 'Organization' }],
+    savedProvider?.id
+      ? savedProvider.models.map((model) => ({
+          resourceType: 'ProviderModel',
+          id: model.id,
+          enabled: model.enabled,
+          providerId: savedProvider.id,
+        }))
+      : [],
   )
   const editable = (id: string) =>
     permissionStates[intent === 'edit' ? models.findIndex((model) => model.id === id) : 0] === 'allowed'
@@ -187,8 +196,8 @@ disabled:opacity-50"
           {enabled} {enabled === 1 ? 'model' : 'models'} enabled
         </p>
         <PermissionRequest
-          actions={[intent === 'edit' ? 'PROVIDER_MODEL_CREATE' : 'PROVIDER_CREATE']}
-          resource={intent === 'edit' ? { type: 'PROVIDER', id: providerId } : undefined}
+          actions={[intent === 'edit' ? 'provider.model.create' : 'provider.create']}
+          resource={intent === 'edit' ? { type: 'Provider', id: providerId } : undefined}
           enabled={intent !== 'edit' || !!providerId}
         >
           <Popup.Root>

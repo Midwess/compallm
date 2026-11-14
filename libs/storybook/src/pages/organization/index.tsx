@@ -66,8 +66,8 @@ function Destination({ item, icon }: { item: OrganizationDestination; icon: Reac
 
 function CustomizableDestinations() {
   const controller = useController()
-  const providerCreate = usePermission({ actions: ['PROVIDER_CREATE'] })
-  const modelCreate = usePermission({ actions: ['MODEL_CREATE'] })
+  const providerCreate = usePermission({ actions: ['provider.create'] })
+  const modelCreate = usePermission({ actions: ['model.create'] })
   const providers = useOrganizationState((state) => state.providers)
   const models = useOrganizationState((state) => state.models)
   const links = useOrganizationState((state) => state.links)
@@ -87,7 +87,7 @@ function CustomizableDestinations() {
               switch (item) {
                 case 'PROVIDERS':
                   return (
-                    <PermissionRequest key={item} actions={['PROVIDER_READ']}>
+                    <PermissionRequest key={item} actions={['provider.read']}>
                       <SidebarFolder
                         label="Providers"
                         icon={<HardDrivesIcon />}
@@ -102,7 +102,7 @@ function CustomizableDestinations() {
                   )
                 case 'MODELS':
                   return (
-                    <PermissionRequest key={item} actions={['MODEL_READ']}>
+                    <PermissionRequest key={item} actions={['model.read']}>
                       <SidebarFolder
                         label="Models"
                         icon={<CubeIcon />}
@@ -141,7 +141,7 @@ function CustomizableDestinations() {
                   )
                 case 'MEMBERS':
                   return (
-                    <PermissionRequest key={item} actions={['MEMBER_READ']}>
+                    <PermissionRequest key={item} actions={['member.read']}>
                       <Destination
                         key={item}
                         item={{ id: 'members', name: 'Members', href: links.members }}

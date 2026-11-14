@@ -101,8 +101,8 @@ function GroupMembers() {
                         }
                       >
                         <PermissionRequest
-                          actions={[selected.includes(entry.id) ? 'GROUP_MEMBER_REMOVE' : 'GROUP_MEMBER_ADD']}
-                          resource={{ type: 'GROUP', id: draft.id }}
+                          actions={[selected.includes(entry.id) ? 'group.member.remove' : 'group.member.add']}
+                          resource={{ type: 'Group', id: draft.id }}
                           context={{ memberId: entry.id }}
                           restricted="disabled"
                           asChild
@@ -151,8 +151,8 @@ function GroupRoles() {
   const optionPermissions = usePermissionChecks(
     draft?.id
       ? roles.map((role) => ({
-          action: draft.roleIds.includes(role.id) ? ('GROUP_ROLE_UNASSIGN' as const) : ('GROUP_ROLE_ASSIGN' as const),
-          resourceType: 'GROUP',
+          action: draft.roleIds.includes(role.id) ? ('group.role.unassign' as const) : ('group.role.assign' as const),
+          resourceType: 'Group',
           resourceId: draft.id,
           roleId: role.id,
         }))
@@ -225,8 +225,8 @@ function GroupRoles() {
                   reason={readonly ? 'This group is read-only.' : 'Wait for the current update to finish.'}
                 >
                   <PermissionRequest
-                    actions={['GROUP_ROLE_UNASSIGN']}
-                    resource={{ type: 'GROUP', id: draft.id }}
+                    actions={['group.role.unassign']}
+                    resource={{ type: 'Group', id: draft.id }}
                     context={{ roleId: role.id }}
                     restricted="disabled"
                     asChild
@@ -275,8 +275,8 @@ function GroupEditorContent() {
     readonly = useSettings((s) => s.readonly),
     busy = useGroup((s) => s.busy)
   const metadataPermission = usePermission({
-    actions: ['GROUP_METADATA_UPDATE'],
-    resource: { type: 'GROUP', id: draft?.id },
+    actions: ['group.metadata.update'],
+    resource: { type: 'Group', id: draft?.id },
     enabled: !!draft?.id,
   })
   if (loading) return <SettingsContent aria-busy="true" aria-label="Loading group" />
@@ -338,14 +338,14 @@ function GroupEditorContent() {
             </Row>
           </Rows>
         </Section>
-        <PermissionRequest actions={['ROLE_READ']}>
+        <PermissionRequest actions={['role.read']}>
           <GroupRoles />
         </PermissionRequest>
-        <PermissionRequest actions={['MEMBER_READ']}>
+        <PermissionRequest actions={['member.read']}>
           <GroupMembers />
         </PermissionRequest>
         {!readonly && draft.id ? (
-          <PermissionRequest actions={['GROUP_DELETE']} resource={{ type: 'GROUP', id: draft.id }}>
+          <PermissionRequest actions={['group.delete']} resource={{ type: 'Group', id: draft.id }}>
             <Section title="Danger" className="shrink-0">
               <Rows>
                 <Row label="Delete group" last>

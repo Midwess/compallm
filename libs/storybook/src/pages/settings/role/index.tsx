@@ -126,13 +126,13 @@ function RoleEditorContent() {
     loading = useRole((s) => s.loading),
     busy = useRole((s) => s.busy)
   const metadataPermission = usePermission({
-    actions: ['ROLE_METADATA_UPDATE'],
-    resource: { type: 'ROLE', id: draft?.id },
+    actions: ['role.metadata.update'],
+    resource: { type: 'Role', id: draft?.id },
     enabled: !!draft?.id,
   })
   const policyPermission = usePermission({
-    actions: ['ROLE_POLICY_UPDATE'],
-    resource: { type: 'ROLE', id: draft?.id },
+    actions: ['role.policy.update'],
+    resource: { type: 'Role', id: draft?.id },
     enabled: !!draft?.id,
   })
   if (loading) return <SettingsContent aria-busy="true" aria-label="Loading role" />
@@ -185,8 +185,8 @@ function RoleEditorContent() {
           </Rows>
         </Section>
         <PermissionRequest
-          actions={['ROLE_POLICY_READ']}
-          resource={{ type: 'ROLE', id: draft.id }}
+          actions={['role.policy.read']}
+          resource={{ type: 'Role', id: draft.id }}
           restricted="fallback"
           fallback={<p className="px-4 text-xs text-muted-foreground">You do not have access to this role’s policies.</p>}
         >
@@ -260,7 +260,7 @@ function RoleEditorContent() {
           </div>
         ) : null}
         {draft.id ? (
-          <PermissionRequest actions={['ROLE_DELETE']} resource={{ type: 'ROLE', id: draft.id }}>
+          <PermissionRequest actions={['role.delete']} resource={{ type: 'Role', id: draft.id }}>
             <Section title="Danger" className="shrink-0">
               <Rows>
                 <Row label="Delete role" last>

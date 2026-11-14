@@ -1,8 +1,17 @@
+import type { PermissionCheck, PermissionFacts, PermissionStatus } from '@compallm/storybook'
 import type { RoleUpdateInput } from '@compallm/contract/graphql'
 import type { PolicyProjection } from '@compallm/storybook/pages/settings'
 
 type Projection = { projection: PolicyProjection[]; diagnostics: string[] }
 export interface CedarOperations {
+  evaluatePermissions: {
+    args: [
+      authority: { userId: string; organizationId: string; source: string; entities: string },
+      checks: PermissionCheck[],
+      facts: PermissionFacts[],
+    ]
+    result: PermissionStatus[]
+  }
   preparePolicySource: {
     args: [source: string, current: string, saved: string]
     result: { compact: string; length: number; matchesDraft: boolean; matchesSaved: boolean; input: RoleUpdateInput | null }

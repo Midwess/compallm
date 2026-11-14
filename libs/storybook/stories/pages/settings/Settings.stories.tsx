@@ -446,23 +446,23 @@ export const DeleteGroup: Story = {
 export const PermissionRestrictedRole: Story = {
   ...EditRole,
   parameters: {
-    deniedPermissionActions: ['ROLE_METADATA_UPDATE', 'ROLE_POLICY_UPDATE', 'ROLE_DELETE', 'ROLE_CREATE', 'GROUP_CREATE'],
+    deniedPermissionActions: ['role.metadata.update', 'role.policy.update', 'role.delete', 'role.create', 'group.create'],
   },
 }
 export const PermissionRestrictedGroup: Story = {
   ...EditGroup,
   parameters: {
     deniedPermissionActions: [
-      'GROUP_METADATA_UPDATE',
-      'GROUP_MEMBER_ADD',
-      'GROUP_MEMBER_REMOVE',
-      'GROUP_ROLE_ASSIGN',
-      'GROUP_ROLE_UNASSIGN',
-      'GROUP_DELETE',
+      'group.metadata.update',
+      'group.member.add',
+      'group.member.remove',
+      'group.role.assign',
+      'group.role.unassign',
+      'group.delete',
     ],
   },
 }
 export const PermissionHiddenPolicies: Story = {
   ...EditRole,
-  parameters: { deniedPermissionActions: ['ROLE_POLICY_READ'] },
+  parameters: { deniedPermissionActions: ['role.policy.read'] },
 }

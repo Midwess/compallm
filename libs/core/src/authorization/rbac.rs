@@ -5,7 +5,7 @@ use crate::{
 };
 
 use super::{
-    MemberPermission, MemberPermissionError,
+    MemberPermission,
     condition::{CheckPermission, ForAction},
     policy::Action,
 };
@@ -321,96 +321,6 @@ impl RbacService {
             (group, member)
                 .for_action(action)
                 .check_permission(permission)?;
-        }
-        Ok(())
-    }
-
-    /// Evaluate group authority using complete relationship facts without returning them.
-    #[db_context::root]
-    pub async fn check_group_permission(
-        &self,
-        permission: &MemberPermission,
-        id: u64,
-        action: Action,
-        role_id: Option<u64>,
-        member_id: Option<u64>,
-    ) -> Result<(), AuthorizationError> {
-        Action::GroupRead.check_permission(permission)?;
-        let org = permission.organization_id();
-        let group = self
-            .organizations
-            .find_group(org, id)
-            .await?
-            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
-        if let Some(role_id) = role_id {
-            Action::RoleRead.check_permission(permission)?;
-            let role = self
-                .organizations
-                .find_roles_for_assignment(org, &[role_id])
-                .await?
-                .pop()
-                .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
-            let delegation = match action {
-                Action::GroupRoleAssign => Action::RoleAssign,
-                Action::GroupRoleUnassign => Action::RoleUnassign,
-                _ => return Err(MemberPermissionError::Evaluation.into()),
-            };
-            (&group, &role)
-                .for_action(action)
-                .and((&role).for_action(delegation))
-                .check_permission(permission)?;
-        } else if let Some(member_id) = member_id {
-            Action::MemberRead.check_permission(permission)?;
-            let member = self
-                .organizations
-                .find_membership(org, member_id)
-                .await?
-                .map(|(member, _)| member)
-                .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
-            (&group, &member)
-                .for_action(action)
-                .check_permission(permission)?;
-        } else {
-            (&group).for_action(action).check_permission(permission)?;
-        }
-        Ok(())
-    }
-
-    /// Evaluate member authority using verified organization scope and complete assignments.
-    #[db_context::root]
-    pub async fn check_member_permission(
-        &self,
-        permission: &MemberPermission,
-        id: u64,
-        action: Action,
-        role_id: Option<u64>,
-    ) -> Result<(), AuthorizationError> {
-        Action::MemberRead.check_permission(permission)?;
-        let org = permission.organization_id();
-        let (member, _) = self
-            .organizations
-            .find_membership(org, id)
-            .await?
-            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
-        if let Some(role_id) = role_id {
-            Action::RoleRead.check_permission(permission)?;
-            let role = self
-                .organizations
-                .find_roles_for_assignment(org, &[role_id])
-                .await?
-                .pop()
-                .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
-            let delegation = match action {
-                Action::MemberRoleAssign => Action::RoleAssign,
-                Action::MemberRoleUnassign => Action::RoleUnassign,
-                _ => return Err(MemberPermissionError::Evaluation.into()),
-            };
-            (&member, &role)
-                .for_action(action)
-                .and((&role).for_action(delegation))
-                .check_permission(permission)?;
-        } else {
-            (&member).for_action(action).check_permission(permission)?;
         }
         Ok(())
     }

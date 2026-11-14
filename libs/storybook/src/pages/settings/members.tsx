@@ -23,8 +23,8 @@ function MemberRoles({ member }: { member: SettingsMember }) {
     first = roles.find((r) => member.roleIds.includes(r.id))
   const decisions = usePermissionChecks(
     roles.map((role) => ({
-      action: member.roleIds.includes(role.id) ? ('MEMBER_ROLE_UNASSIGN' as const) : ('MEMBER_ROLE_ASSIGN' as const),
-      resourceType: 'MEMBER',
+      action: member.roleIds.includes(role.id) ? ('member.role.unassign' as const) : ('member.role.assign' as const),
+      resourceType: 'Member',
       resourceId: member.id,
       roleId: role.id,
     })),
@@ -87,7 +87,7 @@ function MemberActions({ member }: { member: SettingsMember }) {
   const c = useSettingsController(),
     readonly = useSettings((s) => s.readonly)
   return (
-    <PermissionRequest actions={['MEMBER_REMOVE']} resource={{ type: 'MEMBER', id: member.id }}>
+    <PermissionRequest actions={['member.remove']} resource={{ type: 'Member', id: member.id }}>
       <Popup.Root>
         <Popup.Trigger aria-label={`Actions for ${member.name}`} disabled={readonly} className="size-8">
           <DotsThreeIcon className="size-4" aria-hidden="true" />
@@ -169,7 +169,7 @@ export function MembersSettings() {
                 </Table.Cell>
                 <Table.Cell className="px-4 text-muted-foreground">{m.email}</Table.Cell>
                 <Table.Cell>
-                  <PermissionRequest actions={['ROLE_READ']}>
+                  <PermissionRequest actions={['role.read']}>
                     <MemberRoles member={m} />
                   </PermissionRequest>
                 </Table.Cell>

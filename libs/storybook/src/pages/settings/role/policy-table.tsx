@@ -128,8 +128,8 @@ function PermissionRow({
       <Table.Cell className="px-2 py-0">
         <DisabledTooltip disabled={owner} reason={ownerExplanation}>
           <PermissionRequest
-            actions={['ROLE_POLICY_UPDATE']}
-            resource={{ type: 'ROLE', id: c.store.getState().draft?.id }}
+            actions={['role.policy.update']}
+            resource={{ type: 'Role', id: c.store.getState().draft?.id }}
             restricted="disabled"
             asChild
           >
@@ -263,8 +263,8 @@ export function PolicyTable() {
                   action={
                     <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
                       <PermissionRequest
-                        actions={['ROLE_POLICY_UPDATE']}
-                        resource={{ type: 'ROLE', id: c.store.getState().draft?.id }}
+                        actions={['role.policy.update']}
+                        resource={{ type: 'Role', id: c.store.getState().draft?.id }}
                         restricted="disabled"
                         asChild
                       >

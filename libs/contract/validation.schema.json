@@ -3,9 +3,6 @@
   "title": "Inputs",
   "type": "object",
   "properties": {
-    "permission_check": {
-      "$ref": "#/$defs/PermissionCheckInput"
-    },
     "user_preferences_patch": {
       "$ref": "#/$defs/UserPreferencesPatchInput"
     },
@@ -71,7 +68,6 @@
     }
   },
   "required": [
-    "permission_check",
     "user_preferences_patch",
     "credential_create",
     "spending_limit",
@@ -95,107 +91,6 @@
     "provider_patch"
   ],
   "$defs": {
-    "PermissionCheckInput": {
-      "type": "object",
-      "properties": {
-        "action": {
-          "$ref": "#/$defs/PermissionAction"
-        },
-        "resourceType": {
-          "$ref": "#/$defs/PermissionResourceType"
-        },
-        "resourceId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "roleId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "memberId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "providerModelId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "action",
-        "resourceType"
-      ],
-      "x-compallm-input": true
-    },
-    "PermissionAction": {
-      "type": "string",
-      "enum": [
-        "MEMBER_READ",
-        "MEMBER_INVITE",
-        "MEMBER_REMOVE",
-        "MEMBER_ROLE_ASSIGN",
-        "MEMBER_ROLE_UNASSIGN",
-        "ROLE_READ",
-        "ROLE_CREATE",
-        "ROLE_METADATA_UPDATE",
-        "ROLE_POLICY_READ",
-        "ROLE_POLICY_UPDATE",
-        "ROLE_DELETE",
-        "ROLE_ASSIGN",
-        "ROLE_UNASSIGN",
-        "ORGANIZATION_SETTINGS_READ",
-        "ORGANIZATION_SETTINGS_UPDATE",
-        "ORGANIZATION_DELETE",
-        "GROUP_READ",
-        "GROUP_CREATE",
-        "GROUP_METADATA_UPDATE",
-        "GROUP_MEMBER_ADD",
-        "GROUP_MEMBER_REMOVE",
-        "GROUP_ROLE_ASSIGN",
-        "GROUP_ROLE_UNASSIGN",
-        "GROUP_DELETE",
-        "PROVIDER_READ",
-        "PROVIDER_CREATE",
-        "PROVIDER_CONFIGURATION_UPDATE",
-        "PROVIDER_DELETE",
-        "PROVIDER_CREDENTIAL_REPLACE",
-        "PROVIDER_MODEL_READ",
-        "PROVIDER_MODEL_CREATE",
-        "PROVIDER_MODEL_CONFIGURATION_UPDATE",
-        "PROVIDER_MODEL_PRICING_UPDATE",
-        "PROVIDER_MODEL_DELETE",
-        "MODEL_READ",
-        "MODEL_CREATE",
-        "MODEL_CONFIGURATION_UPDATE",
-        "MODEL_DELETE",
-        "MODEL_USE",
-        "MODEL_ROUTE_ADD",
-        "MODEL_ROUTE_UPDATE",
-        "MODEL_ROUTE_REMOVE",
-        "MODEL_PRICING_UPDATE"
-      ]
-    },
-    "PermissionResourceType": {
-      "type": "string",
-      "enum": [
-        "ORGANIZATION",
-        "MEMBER",
-        "ROLE",
-        "GROUP",
-        "PROVIDER",
-        "PROVIDER_MODEL",
-        "MODEL"
-      ]
-    },
     "UserPreferencesPatchInput": {
       "description": "Partial personal preferences. Omitted fields are preserved; explicit null is rejected.",
       "type": "object",

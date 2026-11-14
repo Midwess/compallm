@@ -1,5 +1,5 @@
 import { PermissionRequest } from '../../components/permission'
-import type { PermissionAction } from '@compallm/contract/graphql'
+import type { PermissionAction } from '../../permission'
 import { configureSettingsForm } from './form'
 import { Form } from '../../components/form'
 import { useEffect, useState } from 'react'
@@ -74,13 +74,13 @@ function ProtectedSettingsScreen() {
   const page = useSettings((state) => state.location.page)
   const action: PermissionAction | undefined = (
     {
-      organization: 'ORGANIZATION_SETTINGS_READ',
-      'organization-onboarding': 'ORGANIZATION_SETTINGS_READ',
-      members: 'MEMBER_READ',
-      role: 'ROLE_READ',
-      'new-role': 'ROLE_CREATE',
-      group: 'GROUP_READ',
-      'new-group': 'GROUP_CREATE',
+      organization: 'organization.settings.read',
+      'organization-onboarding': 'organization.settings.read',
+      members: 'member.read',
+      role: 'role.read',
+      'new-role': 'role.create',
+      group: 'group.read',
+      'new-group': 'group.create',
     } as Partial<Record<string, PermissionAction>>
   )[page]
   if (!action) return <SettingsScreen />

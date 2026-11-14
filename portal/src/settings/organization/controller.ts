@@ -152,7 +152,7 @@ export class OrganizationController implements Contract {
     this.settings.setState({ organizationProfileSaving: true })
     try {
       if (this.permissions)
-        await requirePermissions(this.permissions, [{ action: 'ORGANIZATION_SETTINGS_UPDATE', resourceType: 'ORGANIZATION' }])
+        await requirePermissions(this.permissions, [{ action: 'organization.settings.update', resourceType: 'Organization' }])
       if (!current()) return false as const
       if (file && (this.uploaded?.file !== file || this.uploaded.organizationId !== organizationId)) {
         const uploadInput = ImageUploadInput.parse({

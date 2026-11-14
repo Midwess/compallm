@@ -88,7 +88,7 @@ export class SettingsController implements Controller {
 
   private async loadPermissions(signal: AbortSignal, generation: number) {
     try {
-      const checks = (['ROLE_READ', 'GROUP_READ'] as const).map((action) => ({ action, resourceType: 'ORGANIZATION' as const }))
+      const checks = (['role.read', 'group.read'] as const).map((action) => ({ action, resourceType: 'Organization' as const }))
       if (this.permissions) await this.permissions.ensure(checks)
       if (signal.aborted || generation !== this.generation) return
       const allowed = (index: number) =>
@@ -222,8 +222,8 @@ export class SettingsController implements Controller {
     try {
       if (this.permissions)
         await requirePermissions(this.permissions, [
-          { action: 'ROLE_READ', resourceType: 'ORGANIZATION' },
-          { action: 'ROLE_CREATE', resourceType: 'ORGANIZATION' },
+          { action: 'role.read', resourceType: 'Organization' },
+          { action: 'role.create', resourceType: 'Organization' },
         ])
       if (signal.aborted || generation !== this.generation) return
       const selection = {
@@ -270,8 +270,8 @@ export class SettingsController implements Controller {
     try {
       if (this.permissions)
         await requirePermissions(this.permissions, [
-          { action: 'GROUP_READ', resourceType: 'ORGANIZATION' },
-          { action: 'GROUP_CREATE', resourceType: 'ORGANIZATION' },
+          { action: 'group.read', resourceType: 'Organization' },
+          { action: 'group.create', resourceType: 'Organization' },
         ])
       if (request.signal.aborted || generation !== this.generation) return
       const selection = { groupCreate: { __args: { input }, node: { id: true, name: true } } } satisfies MutationGenqlSelection

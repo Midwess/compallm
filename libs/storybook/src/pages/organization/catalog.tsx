@@ -10,12 +10,12 @@ export function OrganizationCatalogPage({ kind }: { kind: 'models' | 'providers'
   const items = useStore(controller.store, (state) => state[kind])
   const providers = kind === 'providers'
   return (
-    <PermissionRequest actions={[providers ? 'PROVIDER_READ' : 'MODEL_READ']} restricted="fallback">
+    <PermissionRequest actions={[providers ? 'provider.read' : 'model.read']} restricted="fallback">
       <section className="mx-auto grid max-w-4xl gap-8 px-8 py-10">
         <header className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-medium">{providers ? 'Providers' : 'Models'}</h1>
           {providers ? (
-            <PermissionRequest actions={['PROVIDER_CREATE']}>
+            <PermissionRequest actions={['provider.create']}>
               <Button onClick={controller.onCreateProvider}>Add provider</Button>
             </PermissionRequest>
           ) : null}

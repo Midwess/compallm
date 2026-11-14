@@ -71,8 +71,6 @@ export default defineConfig({
           'react',
           'react-dom',
           '@base-ui/react',
-          '@casl/ability',
-          '@casl/react',
           '@phosphor-icons/react',
           'tailwind-merge',
           'zustand',

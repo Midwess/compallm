@@ -54,9 +54,9 @@ export class GroupController implements Contract {
     this.request = request
     this.store.setState({ loading: true, draft: null, query: '', members: [], hasNextPage: false })
     try {
-      if (this.permissions) await requirePermissions(this.permissions, [{ action: 'GROUP_READ', resourceType: 'ORGANIZATION' }])
+      if (this.permissions) await requirePermissions(this.permissions, [{ action: 'group.read', resourceType: 'Organization' }])
       if (request.signal.aborted || this.request !== request) return
-      const reads = (['ROLE_READ', 'MEMBER_READ'] as const).map((action) => ({ action, resourceType: 'ORGANIZATION' as const }))
+      const reads = (['role.read', 'member.read'] as const).map((action) => ({ action, resourceType: 'Organization' as const }))
       if (this.permissions) await this.permissions.ensure(reads)
       if (this.request !== request || request.signal.aborted) return
       const allowed = (index: number) =>
@@ -88,6 +88,9 @@ export class GroupController implements Contract {
         this.store.setState({ loading: false, draft: null })
         return
       }
+      this.permissions?.setFacts?.([
+        { resourceType: 'Group', id, ...(group.roles ? { roleIds: group.roles.edges.map(({ node }) => node.id) } : {}) },
+      ])
       this.settings.setState({ readonly: false })
       this.baselineRoles = new Set((group.roles?.edges ?? []).map(({ node }) => node.id))
       this.baselineMembers = new Set(group.memberIds ?? [])
@@ -215,19 +218,19 @@ export class GroupController implements Contract {
     }
     const checks: PermissionCheck[] = []
     if ('name' in input || 'description' in input)
-      checks.push({ action: 'GROUP_METADATA_UPDATE', resourceType: 'GROUP', resourceId: id })
+      checks.push({ action: 'group.metadata.update', resourceType: 'Group', resourceId: id })
     for (const [field, action] of [
-      ['addRoleIds', 'GROUP_ROLE_ASSIGN'],
-      ['removeRoleIds', 'GROUP_ROLE_UNASSIGN'],
+      ['addRoleIds', 'group.role.assign'],
+      ['removeRoleIds', 'group.role.unassign'],
     ] as const)
       for (const roleId of (input[field] as string[] | undefined) ?? [])
-        checks.push({ action, resourceType: 'GROUP', resourceId: id, roleId })
+        checks.push({ action, resourceType: 'Group', resourceId: id, roleId })
     for (const [field, action] of [
-      ['addMemberIds', 'GROUP_MEMBER_ADD'],
-      ['removeMemberIds', 'GROUP_MEMBER_REMOVE'],
+      ['addMemberIds', 'group.member.add'],
+      ['removeMemberIds', 'group.member.remove'],
     ] as const)
       for (const memberId of (input[field] as string[] | undefined) ?? [])
-        checks.push({ action, resourceType: 'GROUP', resourceId: id, memberId })
+        checks.push({ action, resourceType: 'Group', resourceId: id, memberId })
     if (this.permissions) await requirePermissions(this.permissions, checks)
     if (signal.aborted || request.signal.aborted || this.request !== request) return false
     const parsed = GroupUpdateInput.parse(input)
@@ -240,10 +243,10 @@ export class GroupController implements Contract {
           description: true,
           memberIds:
             !this.permissions ||
-            this.permissions.store.getState().entries[permissionKey({ action: 'MEMBER_READ', resourceType: 'ORGANIZATION' })]
+            this.permissions.store.getState().entries[permissionKey({ action: 'member.read', resourceType: 'Organization' })]
               ?.status === 'allowed',
           ...(!this.permissions ||
-          this.permissions.store.getState().entries[permissionKey({ action: 'ROLE_READ', resourceType: 'ORGANIZATION' })]
+          this.permissions.store.getState().entries[permissionKey({ action: 'role.read', resourceType: 'Organization' })]
             ?.status === 'allowed'
             ? { roles: { edges: { node: { id: true, name: true, description: true, color: true } } } }
             : {}),
@@ -259,6 +262,9 @@ export class GroupController implements Contract {
         if (memberNames.length) this.memberRevision++
       })
     if (this.request !== request || request.signal.aborted) return false
+    this.permissions?.setFacts?.([
+      { resourceType: 'Group', id, ...(node.roles ? { roleIds: node.roles.edges.map(({ node }) => node.id) } : {}) },
+    ])
     this.baselineMembers = new Set(node.memberIds ?? [...this.baselineMembers])
     if (names.includes('draft.roleIds'))
       for (const [id, desired] of this.roleIntents) {

@@ -7,7 +7,7 @@ import { useUrlController } from '../url/use-url-controller'
 import { useAuthController } from '../auth/use-auth-controller'
 import { userPreferenceController } from '../preference/user/controller'
 import { OrganizationController } from '../organization/controller'
-import { PermissionControllerContext, PermissionAbilityProvider, PermissionRecovery } from '@compallm/storybook'
+import { PermissionControllerContext, PermissionRecovery } from '@compallm/storybook'
 import { PermissionController } from '../permission/controller'
 import type { AuthUser } from '@compallm/storybook'
 
@@ -32,18 +32,16 @@ function Workspace({ user }: { user: AuthUser }) {
   useEffect(() => userPreferenceController.connectOrganization(controller, url), [controller, url])
   return (
     <PermissionControllerContext value={permissions}>
-      <PermissionAbilityProvider value={permissions.ability}>
-        <OrganizationControllerContext value={controller}>
-          {settings ? (
+      <OrganizationControllerContext value={controller}>
+        {settings ? (
+          <Outlet />
+        ) : (
+          <OrganizationPage>
             <Outlet />
-          ) : (
-            <OrganizationPage>
-              <Outlet />
-            </OrganizationPage>
-          )}
-        </OrganizationControllerContext>
-        <PermissionRecovery />
-      </PermissionAbilityProvider>
+          </OrganizationPage>
+        )}
+      </OrganizationControllerContext>
+      <PermissionRecovery />
     </PermissionControllerContext>
   )
 }

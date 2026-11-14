@@ -542,7 +542,25 @@ type GroupPayload {
   node: Group!
 }
 
+type Me {
+  id: ID!
+  sessionId: ID!
+  organizationId: ID!
+  "Effective policies for this verified user only. UI decisions do not grant server authority."
+  cedarSource: String!
+  "Cedar JSON entity facts for the verified principal and its role/group ancestry; contains no credentials."
+  cedarEntities: String!
+}
+
+type MePayload {
+  node: Me!
+}
+
 type Member {
+  "Direct and group-inherited role identities in the verified organization."
+  effectiveRoleIds: [ID!]!
+  "Group identities in the verified organization; no policy source is exposed."
+  groupIds: [ID!]!
   id: ID!
   displayName: String!
   email: String!
@@ -658,6 +676,7 @@ type ProviderTemplate {
 }
 
 type Query {
+  me: MePayload!
   organizationProfile(id: ID!): OrganizationPayload
   "Read an active user profile using verified user identity."
   userProfile(id: ID!): UserPayload

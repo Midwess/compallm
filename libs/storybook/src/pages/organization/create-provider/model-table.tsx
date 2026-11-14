@@ -1,3 +1,4 @@
+import { PermissionRequest, usePermissionChecks } from '../../../components/permission'
 import { Table } from '../../../components/table'
 import { SectionSurface } from '../../../components/surfaces'
 import { Searchbox } from '../../../components/fields'
@@ -19,6 +20,28 @@ export function ProviderModels() {
   const status = useProvider((state) => state.modelStatusFilter)
   const protocol = useProvider((state) => state.modelProtocolFilter)
   const capabilities = useProvider((state) => state.modelCapabilityFilter)
+  const intent = useProvider((state) => state.intent)
+  const savedProvider = useProvider((state) => state.savedProvider)
+  const providerId = savedProvider?.id
+  const permissionStates = usePermissionChecks(
+    intent === 'edit'
+      ? models.map((model) => ({
+          action: 'provider.model.configuration.update',
+          resourceType: 'ProviderModel',
+          resourceId: model.id,
+        }))
+      : [{ action: 'provider.create', resourceType: 'Organization' }],
+    savedProvider?.id
+      ? savedProvider.models.map((model) => ({
+          resourceType: 'ProviderModel',
+          id: model.id,
+          enabled: model.enabled,
+          providerId: savedProvider.id,
+        }))
+      : [],
+  )
+  const editable = (id: string) =>
+    permissionStates[intent === 'edit' ? models.findIndex((model) => model.id === id) : 0] === 'allowed'
   const busy = useProvider((state) => state.submitting)
   const supported = (model: (typeof models)[number]) =>
     !!model.protocol || model.modes.some((mode) => ['chat_completions', 'responses', 'messages'].includes(mode))
@@ -39,7 +62,7 @@ export function ProviderModels() {
               )))) &&
       capabilities.every((capability) => model.capabilities?.includes(capability)),
   )
-  const selectable = visible.filter((model) => supported(model) && hasValidModelPrices(model))
+  const selectable = visible.filter((model) => supported(model) && hasValidModelPrices(model) && editable(model.id))
   const selected = selectable.filter((model) => model.enabled).length
   const all = selectable.length > 0 && selected === selectable.length
   const enabled = models.filter((model) => model.enabled).length
@@ -105,7 +128,7 @@ export function ProviderModels() {
                     size="compact"
                     aria-label={`Enable ${model.name}`}
                     name={`models[${models.indexOf(model)}].enabled`}
-                    disabled={busy || !supported(model) || !hasValidModelPrices(model)}
+                    disabled={busy || !editable(model.id) || !supported(model) || !hasValidModelPrices(model)}
                   />
                 </Table.Cell>
                 <Table.Cell className="min-w-0 px-1 text-left">
@@ -144,7 +167,7 @@ export function ProviderModels() {
                     <button
                       type="button"
                       aria-label={`Edit ${model.name}`}
-                      disabled={busy}
+                      disabled={busy || !editable(model.id)}
                       className="cursor-pointer text-muted-foreground hover:text-foreground
 focus-visible:outline-muted-foreground
 disabled:opacity-50"
@@ -172,22 +195,32 @@ disabled:opacity-50"
         <p className="text-xs text-muted-foreground">
           {enabled} {enabled === 1 ? 'model' : 'models'} enabled
         </p>
-        <Popup.Root>
-          <Popup.Trigger
-            disabled={busy}
-            className="h-8 w-auto rounded-full bg-elevated px-4 text-xs text-foreground hover:brightness-110"
-          >
-            Add generate text model
-          </Popup.Trigger>
-          <Popup.Content aria-label="Add generate text model" className="w-3xs">
-            {textModelOptions.map((option) => (
-              <Popup.Item key={option.value} className="gap-2" onSelect={() => controller.onAddModel(option.value)}>
-                <ProviderIcon provider={option.brand} />
-                {option.label}
-              </Popup.Item>
-            ))}
-          </Popup.Content>
-        </Popup.Root>
+        <PermissionRequest
+          actions={[intent === 'edit' ? 'provider.model.create' : 'provider.create']}
+          resource={intent === 'edit' ? { type: 'Provider', id: providerId } : undefined}
+          enabled={intent !== 'edit' || !!providerId}
+        >
+          {(allowed) =>
+            allowed ? (
+              <Popup.Root>
+                <Popup.Trigger
+                  disabled={busy}
+                  className="h-8 w-auto rounded-full bg-elevated px-4 text-xs text-foreground hover:brightness-110"
+                >
+                  Add generate text model
+                </Popup.Trigger>
+                <Popup.Content aria-label="Add generate text model" className="w-3xs">
+                  {textModelOptions.map((option) => (
+                    <Popup.Item key={option.value} className="gap-2" onSelect={() => controller.onAddModel(option.value)}>
+                      <ProviderIcon provider={option.brand} />
+                      {option.label}
+                    </Popup.Item>
+                  ))}
+                </Popup.Content>
+              </Popup.Root>
+            ) : null
+          }
+        </PermissionRequest>
       </div>
     </SectionSurface>
   )

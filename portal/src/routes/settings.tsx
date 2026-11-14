@@ -7,6 +7,7 @@ import { useUrlController } from '../url/use-url-controller'
 import { useAuthController } from '../auth/use-auth-controller'
 import { useOrganizationController } from '../organization/use-organization-controller'
 import { useUserPreferenceController } from '../preference/user/use-user-preference-controller'
+import { usePermissionController } from '@compallm/storybook'
 import { SettingsController, settingsPages } from '../settings/controller'
 
 export function loader({ params }: LoaderFunctionArgs) {
@@ -20,9 +21,10 @@ export function Component() {
   const { page, id } = useLoaderData() as { page: SettingsDestination; id?: string }
   const url = useUrlController()
   const auth = useAuthController()
+  const permissions = usePermissionController()
   const preferences = useUserPreferenceController()
   const organization = useOrganizationController().getCurrentOrganization()!
-  const [controller] = useState(() => new SettingsController(organization.name, url, auth, page, preferences))
+  const [controller] = useState(() => new SettingsController(organization.name, url, auth, page, preferences, permissions))
   useEffect(() => {
     let disposed = false
     let stop: (() => void) | undefined

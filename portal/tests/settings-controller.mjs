@@ -582,3 +582,69 @@ test('group navigation ignores obsolete detail and write responses', async () =>
     globalThis.fetch = original
   }
 })
+
+test('group member pages supply confirmed ancestry to permission evaluation', async () => {
+  const { GroupController } = await server.ssrLoadModule('/src/settings/group/controller.ts')
+  const { createPermissionStore, permissionKey } = await server.ssrLoadModule('/../libs/storybook/src/permission.ts')
+  const facts = []
+  const permissions = {
+    store: createPermissionStore(),
+    async evaluate(checks) {
+      this.store.setState((state) => ({
+        entries: {
+          ...state.entries,
+          ...Object.fromEntries(checks.map((check) => [permissionKey(check), { check, status: 'allowed' }])),
+        },
+      }))
+    },
+    setFacts(values) {
+      facts.push(...values)
+    },
+  }
+  const settings = createSettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
+  const group = new GroupController(settings.store, permissions)
+  const original = globalThis.fetch
+  let page = 0
+  globalThis.fetch = async () => {
+    const id = String(++page)
+    return Response.json({
+      data: {
+        group: { node: { id: '52', name: 'Design', description: '', roles: { edges: [] }, memberIds: [] } },
+        roles: { edges: [] },
+        members: {
+          edges: [
+            {
+              node: {
+                id,
+                displayName: `Member ${id}`,
+                email: `${id}@example.test`,
+                available: true,
+                effectiveRoleIds: page === 1 ? [] : ['9'],
+                groupIds: page === 1 ? [] : ['3'],
+              },
+            },
+          ],
+          pageInfo: { endCursor: id, hasNextPage: page === 1 },
+        },
+      },
+    })
+  }
+  try {
+    await group.load('52')
+    assert.ok(facts.some((fact) => fact.resourceType === 'Member' && fact.id === '1' && fact.roleIds.length === 0))
+    group.loadMore()
+    await until(group.store, (state) => state.members?.length === 2)
+    assert.deepEqual(
+      facts.find((fact) => fact.resourceType === 'Member' && fact.id === '2'),
+      {
+        resourceType: 'Member',
+        id: '2',
+        roleIds: ['9'],
+        groupIds: ['3'],
+      },
+    )
+  } finally {
+    group.cancel()
+    globalThis.fetch = original
+  }
+})

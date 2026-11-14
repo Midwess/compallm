@@ -23,3 +23,5 @@ export const SettingsControllerContext = createContext<SettingsController | null
 export const UrlControllerContext = createContext<UrlController | null>(null)
 
 export const FloatingContainerContext = createContext<RefObject<HTMLElement | null> | undefined>(undefined)
+
+export const PermissionControllerContext = createContext<import('./permission').PermissionController | null>(null)

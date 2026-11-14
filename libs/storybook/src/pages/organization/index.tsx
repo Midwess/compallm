@@ -1,3 +1,4 @@
+import { PermissionRequest, usePermission } from '../../components/permission'
 import { useContext, type ReactNode } from 'react'
 import { useStore } from 'zustand'
 import { HardDrivesIcon } from '@phosphor-icons/react/dist/csr/HardDrives'
@@ -65,6 +66,8 @@ function Destination({ item, icon }: { item: OrganizationDestination; icon: Reac
 
 function CustomizableDestinations() {
   const controller = useController()
+  const providerCreate = usePermission({ actions: ['provider.create'] })
+  const modelCreate = usePermission({ actions: ['model.create'] })
   const providers = useOrganizationState((state) => state.providers)
   const models = useOrganizationState((state) => state.models)
   const links = useOrganizationState((state) => state.links)
@@ -84,31 +87,41 @@ function CustomizableDestinations() {
               switch (item) {
                 case 'PROVIDERS':
                   return (
-                    <SidebarFolder
-                      key={item}
-                      label="Providers"
-                      icon={<HardDrivesIcon />}
-                      onAdd={controller.onCreateProvider}
-                      addLabel="Add provider"
-                    >
-                      {providers.map((entry) => (
-                        <Destination key={entry.id} item={entry} icon={<HardDrivesIcon />} />
-                      ))}
-                    </SidebarFolder>
+                    <PermissionRequest key={item} actions={['provider.read']}>
+                      {(allowed) =>
+                        allowed ? (
+                          <SidebarFolder
+                            label="Providers"
+                            icon={<HardDrivesIcon />}
+                            onAdd={providerCreate.allowed ? controller.onCreateProvider : undefined}
+                            addLabel="Add provider"
+                          >
+                            {providers.map((entry) => (
+                              <Destination key={entry.id} item={entry} icon={<HardDrivesIcon />} />
+                            ))}
+                          </SidebarFolder>
+                        ) : null
+                      }
+                    </PermissionRequest>
                   )
                 case 'MODELS':
                   return (
-                    <SidebarFolder
-                      key={item}
-                      label="Models"
-                      icon={<CubeIcon />}
-                      onAdd={controller.onCreateModel}
-                      addLabel="Add model"
-                    >
-                      {models.map((entry) => (
-                        <Destination key={entry.id} item={entry} icon={<CubeIcon />} />
-                      ))}
-                    </SidebarFolder>
+                    <PermissionRequest key={item} actions={['model.read']}>
+                      {(allowed) =>
+                        allowed ? (
+                          <SidebarFolder
+                            label="Models"
+                            icon={<CubeIcon />}
+                            onAdd={modelCreate.allowed ? controller.onCreateModel : undefined}
+                            addLabel="Add model"
+                          >
+                            {models.map((entry) => (
+                              <Destination key={entry.id} item={entry} icon={<CubeIcon />} />
+                            ))}
+                          </SidebarFolder>
+                        ) : null
+                      }
+                    </PermissionRequest>
                   )
                 case 'NOTEBOOKS':
                   return (
@@ -136,11 +149,17 @@ function CustomizableDestinations() {
                   )
                 case 'MEMBERS':
                   return (
-                    <Destination
-                      key={item}
-                      item={{ id: 'members', name: 'Members', href: links.members }}
-                      icon={<UsersIcon />}
-                    />
+                    <PermissionRequest key={item} actions={['member.read']}>
+                      {(allowed) =>
+                        allowed ? (
+                          <Destination
+                            key={item}
+                            item={{ id: 'members', name: 'Members', href: links.members }}
+                            icon={<UsersIcon />}
+                          />
+                        ) : null
+                      }
+                    </PermissionRequest>
                   )
                 case 'CONVERSATIONS':
                   return <Conversations key={item} />

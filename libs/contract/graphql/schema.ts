@@ -100,10 +100,30 @@ export type HomeDestination = 'CHAT' | 'MODELS' | 'PROVIDERS'
 
 export type ImageMediaType = 'JPEG' | 'PNG' | 'WEBP'
 
+export interface Me {
+  /** Cedar JSON entity facts for the verified principal and its role/group ancestry; contains no credentials. */
+  cedarEntities: Scalars['String']
+  /** Effective policies for this verified user only. UI decisions do not grant server authority. */
+  cedarSource: Scalars['String']
+  id: Scalars['ID']
+  organizationId: Scalars['ID']
+  sessionId: Scalars['ID']
+  __typename: 'Me'
+}
+
+export interface MePayload {
+  node: Me
+  __typename: 'MePayload'
+}
+
 export interface Member {
   available: Scalars['Boolean']
   displayName: Scalars['String']
+  /** Direct and group-inherited role identities in the verified organization. */
+  effectiveRoleIds: Scalars['ID'][]
   email: Scalars['String']
+  /** Group identities in the verified organization; no policy source is exposed. */
+  groupIds: Scalars['ID'][]
   id: Scalars['ID']
   __typename: 'Member'
 }
@@ -284,6 +304,7 @@ export interface Query {
   group: GroupPayload | null
   /** Return the complete visible group metadata collection, ordered by ID. */
   groups: GroupConnection
+  me: MePayload
   members: MemberConnection
   /** Return the active organization from verified user authority. */
   organization: OrganizationPayload
@@ -629,10 +650,32 @@ export interface ImageUploadInput {
   size: Scalars['Int']
 }
 
+export interface MeGenqlSelection {
+  /** Cedar JSON entity facts for the verified principal and its role/group ancestry; contains no credentials. */
+  cedarEntities?: boolean | number
+  /** Effective policies for this verified user only. UI decisions do not grant server authority. */
+  cedarSource?: boolean | number
+  id?: boolean | number
+  organizationId?: boolean | number
+  sessionId?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface MePayloadGenqlSelection {
+  node?: MeGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface MemberGenqlSelection {
   available?: boolean | number
   displayName?: boolean | number
+  /** Direct and group-inherited role identities in the verified organization. */
+  effectiveRoleIds?: boolean | number
   email?: boolean | number
+  /** Group identities in the verified organization; no policy source is exposed. */
+  groupIds?: boolean | number
   id?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -918,6 +961,7 @@ export interface QueryGenqlSelection {
   group?: GroupPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Return the complete visible group metadata collection, ordered by ID. */
   groups?: GroupConnectionGenqlSelection
+  me?: MePayloadGenqlSelection
   members?: MemberConnectionGenqlSelection & {
     __args?: {
       after?: Scalars['String'] | null
@@ -1271,6 +1315,18 @@ const GroupPayload_possibleTypes: string[] = ['GroupPayload']
 export const isGroupPayload = (obj?: { __typename?: any } | null): obj is GroupPayload => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isGroupPayload"')
   return GroupPayload_possibleTypes.includes(obj.__typename)
+}
+
+const Me_possibleTypes: string[] = ['Me']
+export const isMe = (obj?: { __typename?: any } | null): obj is Me => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isMe"')
+  return Me_possibleTypes.includes(obj.__typename)
+}
+
+const MePayload_possibleTypes: string[] = ['MePayload']
+export const isMePayload = (obj?: { __typename?: any } | null): obj is MePayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isMePayload"')
+  return MePayload_possibleTypes.includes(obj.__typename)
 }
 
 const Member_possibleTypes: string[] = ['Member']

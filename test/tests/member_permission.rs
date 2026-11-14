@@ -170,3 +170,68 @@ fn target_membership_cannot_add_authority_to_the_verified_principal() {
         Err(MemberPermissionError::Denied)
     ));
 }
+
+#[test]
+fn contextual_delegation_requires_both_checks_and_combines_forbids() {
+    use compallm_core::authorization::condition::ForAction;
+    let grant = role(
+        1,
+        r#"permit(principal, action == Compallm::Action::"group.role.assign", resource == Compallm::Group::"7:23") when { context.role == Compallm::Role::"7:9" }; permit(principal, action == Compallm::Action::"role.assign", resource == Compallm::Role::"7:9");"#,
+    );
+    let restriction = role(
+        2,
+        r#"forbid(principal, action == Compallm::Action::"role.assign", resource == Compallm::Role::"7:9");"#,
+    );
+    let mut member = OrganizationMember {
+        organization_id: 7,
+        user_id: 11,
+        roles: vec![grant],
+        groups: vec![],
+    };
+    let group = Group {
+        id: 23,
+        organization_id: 7,
+        name: String::new(),
+        description: String::new(),
+        roles: vec![],
+    };
+    let target = role(9, "");
+    let permission = MemberPermission::try_from(access(7, &member)).unwrap();
+    (&group, &target)
+        .for_action(Action::GroupRoleAssign)
+        .and((&target).for_action(Action::RoleAssign))
+        .check_permission(&permission)
+        .unwrap();
+    let other = role(10, "");
+    assert!(matches!(
+        (&group, &other)
+            .for_action(Action::GroupRoleAssign)
+            .check_permission(&permission),
+        Err(MemberPermissionError::Denied)
+    ));
+    member.groups.push(Group {
+        id: 3,
+        organization_id: 7,
+        name: String::new(),
+        description: String::new(),
+        roles: vec![restriction],
+    });
+    let permission = MemberPermission::try_from(access(7, &member)).unwrap();
+    assert!(matches!(
+        (&group, &target)
+            .for_action(Action::GroupRoleAssign)
+            .and((&target).for_action(Action::RoleAssign))
+            .check_permission(&permission),
+        Err(MemberPermissionError::Denied)
+    ));
+    let foreign = Group {
+        organization_id: 8,
+        ..group
+    };
+    assert!(matches!(
+        (&foreign)
+            .for_action(Action::GroupMetadataUpdate)
+            .check_permission(&permission),
+        Err(MemberPermissionError::Denied)
+    ));
+}

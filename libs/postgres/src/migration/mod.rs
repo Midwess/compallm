@@ -57,6 +57,8 @@ mod m20261114_000034_add_organization_avatar_path;
 mod m20261114_000035_member_directory;
 mod m20261114_000036_user_row_security;
 
+mod m20261114_000037_seed_testing_workspace;
+
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -101,6 +103,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261114_000034_add_organization_avatar_path::Migration),
             Box::new(m20261114_000035_member_directory::Migration),
             Box::new(m20261114_000036_user_row_security::Migration),
+            Box::new(m20261114_000037_seed_testing_workspace::Migration),
             // inject-above (do not remove this comment)
         ]
     }

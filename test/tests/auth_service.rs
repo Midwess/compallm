@@ -5089,7 +5089,7 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     }))
     .await
     .unwrap();
-    let read = "query($id:ID!){group(id:$id){node{memberIds}} members(first:1){edges{node{id email}}pageInfo{hasNextPage endCursor}}}";
+    let read = "query($id:ID!){group(id:$id){node{memberIds}} members(first:1){edges{node{id email effectiveRoleIds groupIds}}pageInfo{hasNextPage endCursor}}}";
     let result = graphql_body(
         graphql_operation(
             &router,
@@ -5112,6 +5112,14 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     assert_eq!(
         result["data"]["members"]["edges"][0]["node"]["email"],
         assignee.email
+    );
+    assert_eq!(
+        result["data"]["members"]["edges"][0]["node"]["effectiveRoleIds"],
+        serde_json::json!([owner.id.to_string()])
+    );
+    assert_eq!(
+        result["data"]["members"]["edges"][0]["node"]["groupIds"],
+        serde_json::json!([group_id])
     );
     assert_eq!(result["data"]["members"]["pageInfo"]["hasNextPage"], true);
     let cursor = result["data"]["members"]["pageInfo"]["endCursor"]
@@ -5427,4 +5435,88 @@ async fn preference_graphql_persists_grouped_updates_and_resets_for_current_user
     result?;
     cleanup?;
     Ok(())
+}
+
+#[tokio::test]
+async fn graphql_me_returns_only_the_verified_users_effective_cedar() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let session = fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    let source = r#"permit(principal, action == Compallm::Action::"provider.create", resource == Compallm::Organization::"84"); forbid(principal, action == Compallm::Action::"model.create", resource == Compallm::Organization::"84");"#;
+    let authorized = token_pair::new(
+        &session,
+        PolicySnapshot {
+            cedar_source: source.into(),
+            role_ids: vec![],
+            group_roles: Default::default(),
+        },
+        SECRET,
+        Duration::from_secs(60),
+        REFRESH_LIFETIME,
+    )
+    .unwrap();
+    let router = fixture.graphql();
+    let query = "{me{node{id sessionId organizationId cedarSource cedarEntities}}}";
+    let before = fixture.repo.0.lock().unwrap().freshness_reads;
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            query,
+            serde_json::json!({}),
+            Some(&authorized.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(body["errors"].is_null(), "{body}");
+    assert_eq!(
+        body["data"]["me"]["node"]["id"],
+        session.user_id.to_string()
+    );
+    assert_eq!(body["data"]["me"]["node"]["organizationId"], "84");
+    let parsed: cedar_policy::PolicySet = body["data"]["me"]["node"]["cedarSource"]
+        .as_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+    assert_eq!(parsed.policies().count(), 2);
+    let entities: serde_json::Value = serde_json::from_str(
+        body["data"]["me"]["node"]["cedarEntities"]
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+    let user_id = session.user_id.to_string();
+    assert!(
+        entities
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|entity| entity["uid"]["type"] == "Compallm::User"
+                && entity["uid"]["id"].as_str() == Some(user_id.as_str()))
+    );
+    assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, before + 1);
+    let anonymous = graphql_body(
+        graphql_operation(&router, query, serde_json::json!({}), None, None, false).await,
+    )
+    .await;
+    assert_eq!(
+        anonymous["errors"][0]["extensions"]["code"],
+        "UNAUTHENTICATED"
+    );
 }

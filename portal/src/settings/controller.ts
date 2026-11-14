@@ -1,3 +1,5 @@
+import { permissionKey, type PermissionController } from '@compallm/storybook'
+import { requirePermissions } from '../permission/controller'
 import {
   createSettingsStore,
   type SettingsController as Controller,
@@ -31,6 +33,7 @@ export const settingsPages = [
 ] as const satisfies readonly SettingsDestination[]
 
 export class SettingsController implements Controller {
+  private readonly permissions?: PermissionController
   readonly store = createSettingsStore({ readonly: true, codeExamples })
   readonly pages: ReturnType<typeof createSettingsPages>
   readonly role: ReturnType<typeof createSettingsPages>['role']
@@ -85,11 +88,22 @@ export class SettingsController implements Controller {
 
   private async loadPermissions(signal: AbortSignal, generation: number) {
     try {
+      const checks = (['role.read', 'group.read'] as const).map((action) => ({ action, resourceType: 'Organization' as const }))
+      if (this.permissions) await this.permissions.evaluate(checks)
+      if (signal.aborted || generation !== this.generation) return
+      const allowed = (index: number) =>
+        !this.permissions || this.permissions.store.getState().entries[permissionKey(checks[index])]?.status === 'allowed'
       const selection = {
-        roles: { edges: { node: { id: true, name: true, color: true } } },
-        groups: { edges: { node: { id: true, name: true } } },
+        ...(allowed(0) ? { roles: { edges: { node: { id: true, name: true, color: true } } } } : {}),
+        ...(allowed(1) ? { groups: { edges: { node: { id: true, name: true } } } } : {}),
       } satisfies QueryGenqlSelection
-      const { roles, groups } = await graphql(signal).query(selection)
+      if (!Object.keys(selection).length) {
+        this.store.setState({ roles: [], groups: [] })
+        return
+      }
+      const result = await graphql(signal).query(selection)
+      const roles = result.roles ?? { edges: [] }
+      const groups = result.groups ?? { edges: [] }
       if (signal.aborted || generation !== this.generation) return
       this.store.setState((state) => ({
         roles: [
@@ -133,7 +147,9 @@ export class SettingsController implements Controller {
     auth: Pick<AuthController, 'signOut'> & Partial<Pick<AuthController, 'store'>>,
     page: SettingsDestination,
     preferences: UserPreferenceController,
+    permissions?: PermissionController,
   ) {
+    this.permissions = permissions
     this.pages = createSettingsPages(
       this.store,
       (id) => {
@@ -147,6 +163,7 @@ export class SettingsController implements Controller {
       auth,
       this.organizationRenamed,
       this.groupDeleted,
+      permissions,
     )
     this.role = this.pages.role
     this.group = this.pages.group
@@ -203,6 +220,12 @@ export class SettingsController implements Controller {
     })
     const input = RoleCreateInput.parse({ name: `New role at ${time}`, description: '', cedarSource: '' })
     try {
+      if (this.permissions)
+        await requirePermissions(this.permissions, [
+          { action: 'role.read', resourceType: 'Organization' },
+          { action: 'role.create', resourceType: 'Organization' },
+        ])
+      if (signal.aborted || generation !== this.generation) return
       const selection = {
         roleCreate: { __args: { input }, node: { id: true, name: true, description: true, color: true } },
       } satisfies MutationGenqlSelection
@@ -245,6 +268,12 @@ export class SettingsController implements Controller {
     })
     const input = GroupCreateInput.parse({ name: `New group at ${time}`, description: '', roleIds: [] })
     try {
+      if (this.permissions)
+        await requirePermissions(this.permissions, [
+          { action: 'group.read', resourceType: 'Organization' },
+          { action: 'group.create', resourceType: 'Organization' },
+        ])
+      if (request.signal.aborted || generation !== this.generation) return
       const selection = { groupCreate: { __args: { input }, node: { id: true, name: true } } } satisfies MutationGenqlSelection
       const {
         groupCreate: { node },

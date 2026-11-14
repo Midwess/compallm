@@ -83,7 +83,7 @@ export class DemoCreateProviderController implements CreateProviderController {
       if (scenario === 'saved-custom')
         this.store.setState({ name: 'Internal inference', baseUrl: 'https://inference.example.com/v1' })
       this.store.setState({ intent: 'edit', apiKey: '' })
-      this.store.setState({ savedProvider: providerSnapshot(this.store.getState()) })
+      this.store.setState({ savedProvider: { ...providerSnapshot(this.store.getState()), id: '101' } })
       if (scenario === 'changed') this.onConnectionChanged('name', 'OpenAI production updated')
       if (scenario === 'clone') this.onCloneProvider()
     }
@@ -313,7 +313,7 @@ export class DemoCreateProviderController implements CreateProviderController {
   onSaveProvider = () => {
     const state = this.store.getState()
     if (state.submitting || !canSaveProvider(state)) return
-    this.store.setState({ savedProvider: providerSnapshot(state), apiKey: '' })
+    this.store.setState({ savedProvider: { ...providerSnapshot(state), id: '101' }, apiKey: '' })
     this.report(`Save provider: ${state.name}`)
     return this.store.form.values
   }

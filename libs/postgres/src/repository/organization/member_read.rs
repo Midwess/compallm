@@ -19,6 +19,8 @@ impl TryFrom<(Model, bool)> for MappedMember {
     type Error = compallm_core::persistent::organization::OrganizationRepositoryError;
     fn try_from((user, available): (Model, bool)) -> Result<Self, Self::Error> {
         Ok(Self(compallm_core::organization::group::MemberInfo {
+            effective_role_ids: Vec::new(),
+            group_ids: Vec::new(),
             id: crate::from_bigint(user.id).map_err(Self::Error::database)?,
             display_name: user.display_name,
             email: user.email,

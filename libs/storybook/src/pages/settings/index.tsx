@@ -1,3 +1,5 @@
+import { PermissionRequest } from '../../components/permission'
+import type { PermissionAction } from '../../permission'
 import { configureSettingsForm } from './form'
 import { Form } from '../../components/form'
 import { useEffect, useState } from 'react'
@@ -68,6 +70,34 @@ function SettingsScreen() {
       return <AuditSettings />
   }
 }
+function ProtectedSettingsScreen() {
+  const page = useSettings((state) => state.location.page)
+  const action: PermissionAction | undefined = (
+    {
+      organization: 'organization.settings.read',
+      'organization-onboarding': 'organization.settings.read',
+      members: 'member.read',
+      role: 'role.read',
+      'new-role': 'role.create',
+      group: 'group.read',
+      'new-group': 'group.create',
+    } as Partial<Record<string, PermissionAction>>
+  )[page]
+  if (!action) return <SettingsScreen />
+  return (
+    <PermissionRequest actions={[action]}>
+      {(allowed) =>
+        allowed ? (
+          <SettingsScreen />
+        ) : (
+          <SettingsContent>
+            <Empty title="You do not have access">Return to an available page using the sidebar.</Empty>
+          </SettingsContent>
+        )
+      }
+    </PermissionRequest>
+  )
+}
 function SharedSettingsForm() {
   const c = useSettingsController()
   const page = useSettings((s) => s.location.page)
@@ -78,13 +108,13 @@ function SharedSettingsForm() {
   if (['general', 'messaging', 'code'].includes(page))
     return (
       <UserPreferencePage>
-        <SettingsScreen />
+        <ProtectedSettingsScreen />
       </UserPreferencePage>
     )
-  if (['role', 'new-role', 'group', 'new-group'].includes(page)) return <SettingsScreen />
+  if (['role', 'new-role', 'group', 'new-group'].includes(page)) return <ProtectedSettingsScreen />
   return (
     <Form.Root model={form}>
-      <SettingsScreen />
+      <ProtectedSettingsScreen />
     </Form.Root>
   )
 }

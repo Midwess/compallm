@@ -23,6 +23,12 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
+    async fn me(
+        #[graphql(context)] user: &UserContext,
+    ) -> Result<Payload<super::user::me::Me>, Error> {
+        super::user::me::query::get(user).await
+    }
+
     async fn organization_profile(
         id: ID,
         #[graphql(context)] repository: &Box<dyn OrganizationRepository>,

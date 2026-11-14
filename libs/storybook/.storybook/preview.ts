@@ -1,4 +1,6 @@
-import { createElement, useLayoutEffect } from 'react'
+import { createElement, useLayoutEffect, useState } from 'react'
+import { PermissionControllerContext } from '../src/context'
+import { PreviewPermissionController } from '../stories/permission-controller'
 import type { Preview } from '@storybook/react-vite'
 import { themes } from 'storybook/theming'
 import { MINIMAL_VIEWPORTS } from 'storybook/viewport'
@@ -10,6 +12,13 @@ import { ScrollMotion } from '../src/components/scroll'
 const preview: Preview = {
   decorators: [
     function ThemePreview(Story, context) {
+      const [permissions] = useState(
+        () =>
+          new PreviewPermissionController((check) => {
+            const denied = context.parameters.deniedPermissionActions as string[] | undefined
+            return denied?.includes(check.action) ? 'denied' : 'allowed'
+          }),
+      )
       const theme = String(context.globals.theme ?? 'BASIC_DARK')
       useLayoutEffect(() => {
         const root = document.documentElement
@@ -31,7 +40,7 @@ const preview: Preview = {
         'div',
         { className: 'min-h-dvh bg-background font-sans text-foreground' },
         createElement(ScrollMotion),
-        createElement(Story),
+        createElement(PermissionControllerContext, { value: permissions }, createElement(Story)),
       )
     },
   ],

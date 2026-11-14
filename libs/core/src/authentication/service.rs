@@ -152,6 +152,8 @@ impl AuthService {
             Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),
         )?;
         let sender = self.email.as_ref().ok_or(EmailError::Unavailable)?;
+        #[cfg(debug_assertions)]
+        let debug_code = claims.code.clone();
         sender
             .send(EmailRequest {
                 to: compallm_utils::email::normalize_email(email),
@@ -162,6 +164,8 @@ impl AuthService {
                 )),
             })
             .await?;
+        #[cfg(debug_assertions)]
+        tracing::debug!(email = %claims.email, code = %debug_code, "Development email OTP queued");
         Ok(IssuedEmailOtp {
             token,
             validity: claims.validity,

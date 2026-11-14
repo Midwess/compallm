@@ -1,3 +1,5 @@
+import { permissionKey, type PermissionController, type PermissionCheck } from '@compallm/storybook'
+import { requirePermissions } from '../../permission/controller'
 import {
   createGroupStore,
   type GroupController as Contract,
@@ -10,10 +12,18 @@ import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/cont
 import { graphql } from '../../graphql-client'
 import { notify } from '../../notifications/toast'
 
-const memberNode = { id: true, displayName: true, email: true, available: true } as const
+const memberNode = {
+  id: true,
+  displayName: true,
+  email: true,
+  available: true,
+  effectiveRoleIds: true,
+  groupIds: true,
+} as const
 const pageInfo = { endCursor: true, hasNextPage: true } as const
 
 export class GroupController implements Contract {
+  private readonly permissions?: PermissionController
   readonly store = createGroupStore()
   private request?: AbortController
   private memberRequest?: AbortController
@@ -31,7 +41,8 @@ export class GroupController implements Contract {
     this.lastRoleSelection = next
   }
   private readonly settings: FormStore<SettingsState>
-  constructor(settings: FormStore<SettingsState>) {
+  constructor(settings: FormStore<SettingsState>, permissions?: PermissionController) {
+    this.permissions = permissions
     this.settings = settings
   }
   cancel = () => {
@@ -50,6 +61,13 @@ export class GroupController implements Contract {
     this.request = request
     this.store.setState({ loading: true, draft: null, query: '', members: [], hasNextPage: false })
     try {
+      if (this.permissions) await requirePermissions(this.permissions, [{ action: 'group.read', resourceType: 'Organization' }])
+      if (request.signal.aborted || this.request !== request) return
+      const reads = (['role.read', 'member.read'] as const).map((action) => ({ action, resourceType: 'Organization' as const }))
+      if (this.permissions) await this.permissions.evaluate(reads)
+      if (this.request !== request || request.signal.aborted) return
+      const allowed = (index: number) =>
+        !this.permissions || this.permissions.store.getState().entries[permissionKey(reads[index])]?.status === 'allowed'
       const selection = {
         group: {
           __args: { id },
@@ -57,46 +75,60 @@ export class GroupController implements Contract {
             id: true,
             name: true,
             description: true,
-            roles: { edges: { node: { id: true, name: true, description: true, color: true, owner: true } } },
-            memberIds: true,
+            ...(allowed(0)
+              ? { roles: { edges: { node: { id: true, name: true, description: true, color: true, owner: true } } } }
+              : {}),
+            memberIds: allowed(1),
           },
         },
-        roles: { edges: { node: { id: true, name: true, description: true, color: true, owner: true } } },
-        members: { __args: { first: 30 }, edges: { node: memberNode }, pageInfo },
+        ...(allowed(0)
+          ? { roles: { edges: { node: { id: true, name: true, description: true, color: true, owner: true } } } }
+          : {}),
+        ...(allowed(1) ? { members: { __args: { first: 30 }, edges: { node: memberNode }, pageInfo } } : {}),
       } satisfies QueryGenqlSelection
       const result = await graphql(request.signal).query(selection)
       if (this.request !== request || request.signal.aborted) return
       const group = result.group?.node
+      const members = result.members ?? { edges: [], pageInfo: { endCursor: null, hasNextPage: false } }
+      const roles = result.roles ?? { edges: [] }
       if (!group) {
         this.store.setState({ loading: false, draft: null })
         return
       }
+      this.permissions?.setFacts?.([
+        { resourceType: 'Group', id, ...(group.roles ? { roleIds: group.roles.edges.map(({ node }) => node.id) } : {}) },
+      ])
+      this.permissions?.setFacts?.(
+        members.edges.flatMap(({ node }) =>
+          node.effectiveRoleIds && node.groupIds
+            ? [{ resourceType: 'Member' as const, id: node.id, roleIds: node.effectiveRoleIds, groupIds: node.groupIds }]
+            : [],
+        ),
+      )
       this.settings.setState({ readonly: false })
-      this.baselineRoles = new Set(group.roles.edges.map(({ node }) => node.id))
-      this.baselineMembers = new Set(group.memberIds)
+      this.baselineRoles = new Set((group.roles?.edges ?? []).map(({ node }) => node.id))
+      this.baselineMembers = new Set(group.memberIds ?? [])
       const draft = {
         id,
         name: group.name,
         description: group.description,
         roleIds: [...this.baselineRoles],
         memberIds: [...this.baselineMembers],
-        memberSelection: Object.fromEntries(
-          result.members.edges.map(({ node }) => [node.id, this.baselineMembers.has(node.id)]),
-        ),
+        memberSelection: Object.fromEntries(members.edges.map(({ node }) => [node.id, this.baselineMembers.has(node.id)])),
       }
-      this.cursor = result.members.pageInfo.endCursor ?? undefined
+      this.cursor = members.pageInfo.endCursor ?? undefined
       this.store.setState({
         loading: false,
         draft,
-        memberCount: group.memberIds.length,
-        roles: result.roles.edges.map(({ node }) => ({ ...node, source: '', builtin: node.owner })),
-        members: result.members.edges.map(({ node: member }) => ({
+        memberCount: (group.memberIds ?? []).length,
+        roles: roles.edges.map(({ node }) => ({ ...node, source: '', builtin: node.owner })),
+        members: members.edges.map(({ node: member }) => ({
           id: member.id,
           name: member.displayName || member.email,
           email: member.email,
           available: member.available,
         })),
-        hasNextPage: result.members.pageInfo.hasNextPage,
+        hasNextPage: members.pageInfo.hasNextPage,
       })
       this.store.form.reset(this.store.form.values)
     } catch (error) {
@@ -144,6 +176,13 @@ export class GroupController implements Contract {
         return
       }
       const options = result.members
+      this.permissions?.setFacts?.(
+        options.edges.flatMap(({ node }) =>
+          node.effectiveRoleIds && node.groupIds
+            ? [{ resourceType: 'Member' as const, id: node.id, roleIds: node.effectiveRoleIds, groupIds: node.groupIds }]
+            : [],
+        ),
+      )
       const current = this.store.getState().draft!
       const selectionState = { ...current.memberSelection }
       const confirmed = { ...this.store.form.baseline.draft?.memberSelection }
@@ -198,6 +237,23 @@ export class GroupController implements Contract {
       input.addRoleIds = ids.filter((id) => roleSet.has(id) && !this.baselineRoles.has(id))
       input.removeRoleIds = ids.filter((id) => !roleSet.has(id) && this.baselineRoles.has(id))
     }
+    const checks: PermissionCheck[] = []
+    if ('name' in input || 'description' in input)
+      checks.push({ action: 'group.metadata.update', resourceType: 'Group', resourceId: id })
+    for (const [field, action] of [
+      ['addRoleIds', 'group.role.assign'],
+      ['removeRoleIds', 'group.role.unassign'],
+    ] as const)
+      for (const roleId of (input[field] as string[] | undefined) ?? [])
+        checks.push({ action, resourceType: 'Group', resourceId: id, roleId })
+    for (const [field, action] of [
+      ['addMemberIds', 'group.member.add'],
+      ['removeMemberIds', 'group.member.remove'],
+    ] as const)
+      for (const memberId of (input[field] as string[] | undefined) ?? [])
+        checks.push({ action, resourceType: 'Group', resourceId: id, memberId })
+    if (this.permissions) await requirePermissions(this.permissions, checks)
+    if (signal.aborted || request.signal.aborted || this.request !== request) return false
     const parsed = GroupUpdateInput.parse(input)
     const selection = {
       groupUpdate: {
@@ -206,8 +262,15 @@ export class GroupController implements Contract {
           id: true,
           name: true,
           description: true,
-          memberIds: true,
-          roles: { edges: { node: { id: true, name: true, description: true, color: true } } },
+          memberIds:
+            !this.permissions ||
+            this.permissions.store.getState().entries[permissionKey({ action: 'member.read', resourceType: 'Organization' })]
+              ?.status === 'allowed',
+          ...(!this.permissions ||
+          this.permissions.store.getState().entries[permissionKey({ action: 'role.read', resourceType: 'Organization' })]
+            ?.status === 'allowed'
+            ? { roles: { edges: { node: { id: true, name: true, description: true, color: true } } } }
+            : {}),
         },
       },
     } satisfies MutationGenqlSelection
@@ -220,13 +283,16 @@ export class GroupController implements Contract {
         if (memberNames.length) this.memberRevision++
       })
     if (this.request !== request || request.signal.aborted) return false
-    this.baselineMembers = new Set(node.memberIds)
+    this.permissions?.setFacts?.([
+      { resourceType: 'Group', id, ...(node.roles ? { roleIds: node.roles.edges.map(({ node }) => node.id) } : {}) },
+    ])
+    this.baselineMembers = new Set(node.memberIds ?? [...this.baselineMembers])
     if (names.includes('draft.roleIds'))
       for (const [id, desired] of this.roleIntents) {
         if (desired === roleSet.has(id)) this.roleIntents.delete(id)
       }
-    this.baselineRoles = new Set(node.roles.edges.map(({ node }) => node.id))
-    this.store.setState({ memberCount: node.memberIds.length })
+    if (node.roles) this.baselineRoles = new Set(node.roles.edges.map(({ node }) => node.id))
+    this.store.setState({ memberCount: (node.memberIds ?? [...this.baselineMembers]).length })
     this.settings.setState((state) => ({
       groups: state.groups.some((group) => group.id === id)
         ? state.groups.map((group) => (group.id === id ? { ...group, name: node.name, description: node.description } : group))

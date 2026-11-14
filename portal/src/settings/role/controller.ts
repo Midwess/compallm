@@ -9,7 +9,6 @@ import {
 import type { StoreApi } from 'zustand/vanilla'
 import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
 import { RoleUpdateInput, RoleUpdateInputConstraints } from '@compallm/contract/validation'
-import { compactCedarSource } from '@compallm/contract/cedar'
 import { ApiError, graphql } from '../../graphql-client'
 import { notify } from '../../notifications/toast'
 
@@ -20,6 +19,7 @@ export class RoleController implements Contract {
   private writes: Promise<void> = Promise.resolve()
   private parseRevision = 0
   private parseTimer?: ReturnType<typeof setTimeout>
+  private parseRequest?: AbortController
   private savedPolicy?: { id: string; source: string }
   private readonly settings: StoreApi<SettingsState>
   constructor(settings: StoreApi<SettingsState>, permissions?: PermissionController) {
@@ -31,6 +31,8 @@ export class RoleController implements Contract {
     this.store.setState({ disabledPolicies: {}, loading: false })
     this.parseRevision += 1
     clearTimeout(this.parseTimer)
+    this.parseRequest?.abort()
+    this.parseRequest = undefined
     this.request?.abort()
     this.request = undefined
   }
@@ -97,6 +99,7 @@ export class RoleController implements Contract {
           const result = await projectPolicy(
             role.cedarSource,
             new Map(catalog.value.organizationPolicyActions.edges.map(({ node }) => [node.name, node.resourceType])),
+            request.signal,
           )
           projection = result.projection
           diagnostics = result.diagnostics
@@ -121,7 +124,7 @@ export class RoleController implements Contract {
     role: { id: string; name: string; description: string; source: string | null; owner?: boolean },
     policy?: Pick<RoleDraft, 'projection' | 'diagnostics'>,
   ) => {
-    this.savedPolicy = role.source === null ? undefined : { id: role.id, source: compactCedarSource(role.source) }
+    this.savedPolicy = role.source === null ? undefined : { id: role.id, source: role.source }
     this.store.setState({
       draft: {
         ...role,
@@ -151,16 +154,15 @@ export class RoleController implements Contract {
     })
   }
   private unavailable = () => notify.info('Settings changes are not available yet.')
-  private policyInput = (source: string) => {
-    const result = RoleUpdateInput.safeParse({ cedarSource: source })
-    if (result.success) return result.data
-    const length = [...compactCedarSource(source)].length
+  private policyInput = (prepared: Awaited<ReturnType<typeof import('./cedar').preparePolicySource>>) => {
+    if (prepared.input) return prepared.input
+    const length = prepared.length
     const maximum = RoleUpdateInputConstraints.cedarSource.maxLength
     const message =
       length > maximum
         ? `Compact Cedar source has ${length.toLocaleString()} characters; the limit is ${maximum.toLocaleString()}. ` +
           'Shorten the policy before saving. Your draft is retained.'
-        : 'Policy changes could not be validated. Review the Cedar source before saving.'
+        : 'Policy changes could not be validated. Review the source before saving.'
     throw new ApiError(message, 400, 'BAD_USER_INPUT')
   }
   updateMetadata = async (value: Partial<Pick<RoleDraft, 'name' | 'description'>>, signal?: AbortSignal) => {
@@ -191,10 +193,20 @@ export class RoleController implements Contract {
     this.store.setState({ draft: { ...draft, mode } })
   }
   private projectSource = async (id: string, source: string, revision: number) => {
+    if (
+      revision !== this.parseRevision ||
+      this.store.getState().draft?.id !== id ||
+      this.store.getState().draft?.source !== source
+    )
+      return false
+    this.parseRequest?.abort()
+    const request = new AbortController()
+    this.parseRequest = request
+    const signal = this.request ? AbortSignal.any([request.signal, this.request.signal]) : request.signal
     try {
       const { projectPolicy } = await import('./cedar')
       const catalog = this.settings.getState().policyActions
-      const result = await projectPolicy(source, new Map(catalog.map((item) => [item.id, item.scope])))
+      const result = await projectPolicy(source, new Map(catalog.map((item) => [item.id, item.scope])), signal)
       if (revision !== this.parseRevision || this.store.getState().draft?.id !== id) return false
       this.store.setState((state) => ({
         draft:
@@ -209,7 +221,7 @@ export class RoleController implements Contract {
       }))
       return result.diagnostics.length === 0
     } catch {
-      if (revision === this.parseRevision)
+      if (!signal.aborted && revision === this.parseRevision)
         this.store.setState((state) => ({
           draft:
             state.draft?.id === id
@@ -217,6 +229,8 @@ export class RoleController implements Contract {
               : state.draft,
         }))
       return false
+    } finally {
+      if (this.parseRequest === request) this.parseRequest = undefined
     }
   }
   setPolicySource = (source: string) => {
@@ -229,6 +243,7 @@ export class RoleController implements Contract {
       disabledPolicies: {},
       draft: { ...draft, source, parsing: true, projection: [], diagnostics: [] },
     })
+    this.parseRequest?.abort()
     this.parseTimer = setTimeout(() => {
       void this.projectSource(id, source, revision)
     }, 150)
@@ -238,7 +253,10 @@ export class RoleController implements Contract {
     const request = this.request
     if (!draft?.id || draft.builtin || !request || this.savedPolicy?.id !== draft.id) return false
     const id = draft.id
-    if (compactCedarSource(draft.source) === compactCedarSource(source)) {
+    const { preparePolicySource } = await import('./cedar')
+    const prepared = await preparePolicySource(source, draft.source, this.savedPolicy.source, request.signal)
+    if (request.signal.aborted || this.request !== request) return false
+    if (prepared.matchesDraft) {
       clearTimeout(this.parseTimer)
       const revision = ++this.parseRevision
       this.store.setState({ draft: { ...draft, parsing: true } })
@@ -247,19 +265,19 @@ export class RoleController implements Contract {
     } else {
       const { projectPolicy } = await import('./cedar')
       const catalog = this.settings.getState().policyActions
-      const parsed = await projectPolicy(source, new Map(catalog.map((item) => [item.id, item.scope])))
+      const parsed = await projectPolicy(source, new Map(catalog.map((item) => [item.id, item.scope])), request.signal)
       if (parsed.diagnostics.length) return false
     }
     if (request.signal.aborted || this.request !== request) return false
-    if (this.savedPolicy?.source === compactCedarSource(source)) return true
+    if (prepared.matchesSaved) return true
     if (this.permissions)
       await requirePermissions(this.permissions, [{ action: 'ROLE_POLICY_UPDATE', resourceType: 'ROLE', resourceId: id }])
     if (request.signal.aborted || this.request !== request) return false
-    const input = this.policyInput(source)
+    const input = this.policyInput(prepared)
     const selection = { roleUpdate: { __args: { id, input }, node: { id: true } } } satisfies MutationGenqlSelection
     await graphql(request.signal).mutation(selection)
     if (request.signal.aborted || this.request !== request) return false
-    this.savedPolicy = { id, source: compactCedarSource(source) }
+    this.savedPolicy = { id, source: prepared.compact }
     return true
   }
   togglePolicyAction = (action: string) => {
@@ -281,36 +299,26 @@ export class RoleController implements Contract {
     this.store.setState({ busy: true })
     this.writes = this.writes.then(async () => {
       try {
-        const {
-          actionStatement,
-          actionPolicies,
-          formatPolicySource,
-          normalizePolicySource,
-          projectPolicy,
-          removePolicyAction,
-        } = await import('./cedar')
-        let source = await normalizePolicySource(original)
-        for (const action of new Set(actions)) {
-          const entry = catalog.find((item) => item.id === action)
-          if (!entry) continue
-          const current = draft.projection.filter((item) => item.action === action && item.effect !== 'forbid')
-          if (current.some((item) => !item.editable)) throw new Error('Edit this action scope in Cedar.')
-          if (enabled && current.length === 0) {
-            const statements = disabledPolicies[action] ?? [actionStatement(action, entry.scope)]
-            source += `${source && !source.endsWith('\n') ? '\n' : ''}${statements.join('\n')}\n`
-          }
-          if (!enabled && current.length) {
-            disabledPolicies[action] = await actionPolicies(source, action)
-            source = await removePolicyAction(source, action)
-          }
-        }
-        source = await formatPolicySource(source)
-        if (source === original || request.signal.aborted || this.request !== request) return
-        const projected = await projectPolicy(source, new Map(catalog.map((item) => [item.id, item.scope])))
-        if (projected.diagnostics.length) throw new Error('Policy parsing failed')
+        const { editPolicyActions } = await import('./cedar')
         if (request.signal.aborted || this.request !== request) return
-        this.store.setState((state) => ({
+        const projected = await editPolicyActions(
+          original,
+          actions,
+          enabled,
+          new Map(catalog.map((entry) => [entry.id, entry.scope])),
           disabledPolicies,
+          request.signal,
+        )
+        const source = projected.source
+        if (
+          source === original ||
+          request.signal.aborted ||
+          this.request !== request ||
+          this.store.getState().draft?.source !== original
+        )
+          return
+        this.store.setState((state) => ({
+          disabledPolicies: projected.disabledPolicies,
           draft:
             state.draft?.id === id && state.draft.source === original
               ? { ...state.draft, source, projection: projected.projection, diagnostics: projected.diagnostics }
@@ -334,13 +342,25 @@ export class RoleController implements Contract {
   formatPolicy = () => {
     const draft = this.store.getState().draft
     if (!draft || draft.builtin || draft.parsing || draft.diagnostics.length) return
+    const request = this.request
+    const revision = this.parseRevision
     void import('./cedar')
-      .then(({ formatPolicySource }) => formatPolicySource(draft.source))
+      .then(({ formatPolicySource }) => formatPolicySource(draft.source, request?.signal))
       .then((source) => {
-        if (this.store.getState().draft?.id === draft.id && this.store.getState().draft?.source === draft.source)
+        if (
+          this.request === request &&
+          revision === this.parseRevision &&
+          !request?.signal.aborted &&
+          this.store.getState().draft?.id === draft.id &&
+          this.store.getState().draft?.source === draft.source
+        )
           this.setPolicySource(source)
       })
-      .catch(notify.error)
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        if (this.request === request && !request?.signal.aborted && this.store.getState().draft?.id === draft.id)
+          notify.error(error)
+      })
   }
   saveRole = this.unavailable
   resetRole = this.unavailable

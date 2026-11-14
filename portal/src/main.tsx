@@ -20,7 +20,10 @@ import { AppLoading } from './app-loading'
 import { appearanceController } from './appearance/controller'
 import { ScrollMotion } from '@compallm/storybook/components/scroll'
 
+import { startCedarWorker } from './workers/cedar-client'
+
 onInvalidAuthorization(authController.invalidAuthorization)
+void startCedarWorker().catch(() => undefined)
 
 function App() {
   useEffect(() => appearanceController.start(), [])

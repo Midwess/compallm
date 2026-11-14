@@ -525,7 +525,6 @@ type Group {
   name: String!
   description: String!
   roles: RoleConnection!
-  memberCount: String!
   memberIds: [ID!]!
 }
 

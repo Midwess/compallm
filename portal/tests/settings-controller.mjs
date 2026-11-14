@@ -303,12 +303,24 @@ test('group detail owns paged Include state and sends only relationship deltas',
         }))
         return Response.json({
           data: {
-            groupUpdate: { node: { id: '52', name: 'Design', description: '', memberCount: '3', roles: { edges: roles } } },
+            groupUpdate: {
+              node: {
+                id: '52',
+                name: 'Design',
+                description: '',
+                memberIds: ['1', '2', '3', 'external'],
+                roles: { edges: roles },
+              },
+            },
           },
         })
       }
       return Response.json({
-        data: { groupUpdate: { node: { id: '52', name: 'Design', description: '', memberCount: '3', roles: { edges: [] } } } },
+        data: {
+          groupUpdate: {
+            node: { id: '52', name: 'Design', description: '', memberIds: ['1', '2', '3', 'external'], roles: { edges: [] } },
+          },
+        },
       })
     }
     if (query.includes('members(')) {
@@ -320,7 +332,7 @@ test('group detail owns paged Include state and sends only relationship deltas',
       return Response.json({
         data: {
           group: {
-            node: { id: '52', name: 'Design', description: '', memberCount: '2', memberIds: ['1', '2'], roles: { edges: [] } },
+            node: { id: '52', name: 'Design', description: '', memberIds: ['1', '2'], roles: { edges: [] } },
           },
           roles: { edges: [] },
           members,
@@ -336,12 +348,14 @@ test('group detail owns paged Include state and sends only relationship deltas',
     controller.group.loadMore()
     await until(controller.group.store, (state) => state.members?.length === 3)
     assert.deepEqual(controller.group.store.getState().draft.memberIds, ['1', '2'])
-    await controller.group.updateGroup(
+    const updated = await controller.group.updateGroup(
       { ...controller.group.store.getState().draft, memberSelection: { 1: true, 2: true, 3: true } },
       ['draft.memberSelection.3'],
       new AbortController().signal,
     )
     assert.deepEqual(writes, [{ addMemberIds: ['3'], removeMemberIds: [] }])
+    assert.equal(controller.group.store.getState().memberCount, 4)
+    assert.deepEqual(updated.memberIds, ['1', '2', '3', 'external'])
     controller.group.rolesChanged(['B'])
     const first = controller.group.updateGroup(
       { ...controller.group.store.getState().draft, roleIds: ['B'] },
@@ -512,7 +526,6 @@ test('group navigation ignores obsolete detail and write responses', async () =>
     id,
     name: id,
     description: '',
-    memberCount: '0',
     roles: { edges: [] },
     memberIds: [],
   })

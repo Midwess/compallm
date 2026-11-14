@@ -76,27 +76,6 @@ impl Group {
         )
         .map_err(|_| Error::internal())
     }
-    async fn member_count(
-        &self,
-        #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<String, Error> {
-        let permission = authority.member_permission().await?;
-        Action::MemberRead
-            .check_permission(&permission)
-            .map_err(AuthorizationError::from)?;
-        Action::GroupRead
-            .check_permission(&permission)
-            .map_err(AuthorizationError::from)?;
-        Ok(repository
-            .group_member_count(
-                permission.organization_id(),
-                self.id.parse().map_err(|_| Error::invalid_input())?,
-            )
-            .await
-            .map_err(AuthorizationError::from)?
-            .to_string())
-    }
     async fn member_ids(
         &self,
         #[graphql(context)] repository: &Box<dyn OrganizationRepository>,

@@ -140,7 +140,6 @@ enum FilterIs {
 type Group {
   description: String!
   id: ID!
-  memberCount: String!
   memberIds: [ID!]!
   name: String!
   roles: RoleConnection!

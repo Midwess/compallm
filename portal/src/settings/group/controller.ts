@@ -57,7 +57,6 @@ export class GroupController implements Contract {
             id: true,
             name: true,
             description: true,
-            memberCount: true,
             roles: { edges: { node: { id: true, name: true, description: true, color: true, owner: true } } },
             memberIds: true,
           },
@@ -89,7 +88,7 @@ export class GroupController implements Contract {
       this.store.setState({
         loading: false,
         draft,
-        memberCount: Number(group.memberCount),
+        memberCount: group.memberIds.length,
         roles: result.roles.edges.map(({ node }) => ({ ...node, source: '', builtin: node.owner })),
         members: result.members.edges.map(({ node: member }) => ({
           id: member.id,
@@ -207,7 +206,7 @@ export class GroupController implements Contract {
           id: true,
           name: true,
           description: true,
-          memberCount: true,
+          memberIds: true,
           roles: { edges: { node: { id: true, name: true, description: true, color: true } } },
         },
       },
@@ -221,16 +220,13 @@ export class GroupController implements Contract {
         if (memberNames.length) this.memberRevision++
       })
     if (this.request !== request || request.signal.aborted) return false
-    if (memberNames.length) {
-      for (const member of parsed.addMemberIds ?? []) this.baselineMembers.add(member)
-      for (const member of parsed.removeMemberIds ?? []) this.baselineMembers.delete(member)
-    }
+    this.baselineMembers = new Set(node.memberIds)
     if (names.includes('draft.roleIds'))
       for (const [id, desired] of this.roleIntents) {
         if (desired === roleSet.has(id)) this.roleIntents.delete(id)
       }
     this.baselineRoles = new Set(node.roles.edges.map(({ node }) => node.id))
-    this.store.setState({ memberCount: Number(node.memberCount) })
+    this.store.setState({ memberCount: node.memberIds.length })
     this.settings.setState((state) => ({
       groups: state.groups.some((group) => group.id === id)
         ? state.groups.map((group) => (group.id === id ? { ...group, name: node.name, description: node.description } : group))
@@ -242,6 +238,9 @@ export class GroupController implements Contract {
       description: node.description,
       roleIds: [...this.baselineRoles],
       memberIds: [...this.baselineMembers],
+      memberSelection: Object.fromEntries(
+        Object.keys(draft.memberSelection ?? {}).map((id) => [id, this.baselineMembers.has(id)]),
+      ),
     }
   }
 }

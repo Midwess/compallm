@@ -92,7 +92,6 @@ export default {
     Group: {
       description: [103],
       id: [28],
-      memberCount: [103],
       memberIds: [28],
       name: [103],
       roles: [87],

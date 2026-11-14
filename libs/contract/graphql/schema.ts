@@ -73,7 +73,6 @@ export type FilterIs = 'NOT_NULL' | 'NULL'
 export interface Group {
   description: Scalars['String']
   id: Scalars['ID']
-  memberCount: Scalars['String']
   memberIds: Scalars['ID'][]
   name: Scalars['String']
   roles: RoleConnection
@@ -583,7 +582,6 @@ export interface EmailInput {
 export interface GroupGenqlSelection {
   description?: boolean | number
   id?: boolean | number
-  memberCount?: boolean | number
   memberIds?: boolean | number
   name?: boolean | number
   roles?: RoleConnectionGenqlSelection

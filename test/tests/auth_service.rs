@@ -4943,10 +4943,13 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
         12345,
         stored_session(assignee.id, 12345, organization.id, &organization.name),
     );
-    let update_group = "mutation($id:ID!,$input:GroupUpdateInput!){groupUpdate(id:$id,input:$input){node{id name memberCount roles{edges{node{id}}}}}}";
+    let update_group = "mutation($id:ID!,$input:GroupUpdateInput!){groupUpdate(id:$id,input:$input){node{id name memberIds roles{edges{node{id}}}}}}";
     let result=graphql_body(graphql_operation(&router,update_group,serde_json::json!({"id":group_id,"input":{"addMemberIds":[assignee.id.to_string()],"addRoleIds":[owner.id.to_string()],"name":"Updated group"}}),Some(&tokens.access_token),None,false).await).await;
     assert!(result["errors"].is_null(), "{result}");
-    assert_eq!(result["data"]["groupUpdate"]["node"]["memberCount"], "1");
+    assert_eq!(
+        result["data"]["groupUpdate"]["node"]["memberIds"],
+        serde_json::json!([assignee.id.to_string()])
+    );
     assert_eq!(
         fixture.repo.0.lock().unwrap().sessions[&12345].authorization_version,
         2

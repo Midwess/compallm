@@ -275,7 +275,7 @@ async fn initial_seed_compresses_complete_default_access_claims() -> anyhow::Res
             roles: vec![role],
             groups: vec![],
         };
-        let session = Session::new(42, 84, "Research team").await?;
+        let session = Session::new(42, 84).await?;
         let token = AccessToken::User(UserAccessToken::new(
             session,
             PolicySnapshot::new(&member).unwrap(),

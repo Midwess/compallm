@@ -64,7 +64,7 @@ async fn owned_lookup_and_conditional_update_preserve_session_guards() {
     let context = Fixture::context(db.clone());
     context
         .transaction(async {
-            let token_session = MappedSession::try_from((Fixture::row(), "Research team".into()))
+            let token_session = MappedSession::try_from(Fixture::row())
                 .map(Session::from)
                 .unwrap();
             let mut session = SessionRepository.find(&token_session).await?.unwrap();
@@ -74,9 +74,7 @@ async fn owned_lookup_and_conditional_update_preserve_session_guards() {
                 std::time::Duration::from_secs(30 * 24 * 60 * 60),
             )
             .unwrap();
-            session
-                .switch_organization(&token, 85, "Target team")
-                .unwrap();
+            session.switch_organization(&token, 85).unwrap();
             assert!(SessionRepository.update(&session, &previous).await?);
             Ok::<_, compallm_core::persistent::session::SessionRepositoryError>(())
         })
@@ -116,7 +114,7 @@ async fn session_creation_records_login_without_updating_the_user() {
             .into_connection(),
     );
     let context = Fixture::context(db.clone());
-    let session = MappedSession::try_from((Fixture::row(), "Research team".into()))
+    let session = MappedSession::try_from(Fixture::row())
         .map(Session::from)
         .unwrap();
     context
@@ -140,16 +138,14 @@ async fn stale_update_reports_conflict_without_overwriting_the_session() {
             }])
             .into_connection(),
     ));
-    let previous = MappedSession::try_from((Fixture::row(), "Research team".into()))
+    let previous = MappedSession::try_from(Fixture::row())
         .map(Session::from)
         .unwrap();
     let mut updated = previous.clone();
     let token =
         RefreshToken::from_session(&previous, std::time::Duration::from_secs(30 * 24 * 60 * 60))
             .unwrap();
-    updated
-        .switch_organization(&token, 85, "Target team")
-        .unwrap();
+    updated.switch_organization(&token, 85).unwrap();
     assert!(
         !context
             .scope(SessionRepository.update(&updated, &previous))
@@ -169,7 +165,7 @@ async fn revocation_update_does_not_overwrite_a_concurrent_organization() {
             .into_connection(),
     );
     let context = Fixture::context(db.clone());
-    let previous = MappedSession::try_from((Fixture::row(), "Research team".into()))
+    let previous = MappedSession::try_from(Fixture::row())
         .map(Session::from)
         .unwrap();
     let mut revoked = previous.clone();
@@ -207,7 +203,7 @@ async fn revocation_update_does_not_overwrite_a_concurrent_organization() {
 
 #[tokio::test]
 async fn existing_revocation_cannot_be_cleared_or_changed() {
-    let mut previous = MappedSession::try_from((Fixture::row(), "Research team".into()))
+    let mut previous = MappedSession::try_from(Fixture::row())
         .map(Session::from)
         .unwrap();
     previous.revoke();
@@ -227,7 +223,7 @@ async fn owned_session_lookup_works_with_the_application_context() {
     ));
     context
         .scope(async {
-            let token_session = MappedSession::try_from((Fixture::row(), "Research team".into()))
+            let token_session = MappedSession::try_from(Fixture::row())
                 .map(Session::from)
                 .unwrap();
             let session = SessionRepository
@@ -237,7 +233,7 @@ async fn owned_session_lookup_works_with_the_application_context() {
                 .unwrap();
             assert_eq!(session.id, 7);
             assert_eq!(session.user_id, 42);
-            assert_eq!(session.organization_name, "Research team");
+
             assert!(
                 SessionRepository
                     .find(&Session {
@@ -265,14 +261,14 @@ async fn owned_session_lookup_works_with_the_application_context() {
 #[test]
 fn mapper_preserves_session_fields_and_rejects_unrepresentable_ids() {
     let row = Fixture::row();
-    let session = MappedSession::try_from((row.clone(), "Research team".into()))
+    let session = MappedSession::try_from(row.clone())
         .map(Session::from)
         .unwrap();
     assert_eq!(session.id, row.id as u64);
     let mut negative = row;
     negative.user_id = -1;
     assert!(
-        MappedSession::try_from((negative, "Research team".into()))
+        MappedSession::try_from(negative)
             .map(Session::from)
             .is_err()
     );
@@ -283,13 +279,13 @@ fn session_version_mapping_preserves_full_u32_range() {
     for version in [1, 42, u32::MAX] {
         let mut row = Fixture::row();
         row.authorization_version = i64::from(version);
-        let session = Session::from(MappedSession::try_from((row, "Team".into())).unwrap());
+        let session = Session::from(MappedSession::try_from(row).unwrap());
         assert_eq!(session.authorization_version, version);
     }
     for version in [-1, 0, i64::from(u32::MAX) + 1] {
         let mut row = Fixture::row();
         row.authorization_version = version;
-        assert!(MappedSession::try_from((row, "Team".into())).is_err());
+        assert!(MappedSession::try_from(row).is_err());
     }
 }
 
@@ -342,7 +338,6 @@ async fn policy_membership_loads_version_and_relationships_in_one_scoped_stateme
         .into_column_value_tuples()
         .collect();
     base.insert("authorization_version".into(), 9_i64.into());
-    base.insert("organization_name".into(), "Current team".into());
     let role = fixture_roles_0.clone().remove(2);
     let mut rows = Vec::new();
     for (group, assigned_role) in [
@@ -391,7 +386,7 @@ async fn policy_membership_loads_version_and_relationships_in_one_scoped_stateme
         .unwrap()
         .unwrap();
     assert_eq!(session.authorization_version, 9);
-    assert_eq!(session.organization_name, "Current team");
+
     assert_eq!(member.roles, vec![role.clone()]);
     assert_eq!(member.groups.len(), 2);
     assert_eq!(member.groups[0].roles, vec![role]);

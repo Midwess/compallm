@@ -322,7 +322,7 @@ export interface Session {
   id: Scalars['ID']
   /** Organization selected for this verified session. */
   organizationId: Scalars['ID']
-  /** Signed display snapshot; the name never establishes organization authority. */
+  /** Current organization name. */
   organizationName: Scalars['String']
   /** User owning this verified session. */
   userId: Scalars['ID']
@@ -940,7 +940,7 @@ export interface SessionGenqlSelection {
   id?: boolean | number
   /** Organization selected for this verified session. */
   organizationId?: boolean | number
-  /** Signed display snapshot; the name never establishes organization authority. */
+  /** Current organization name. */
   organizationName?: boolean | number
   /** User owning this verified session. */
   userId?: boolean | number

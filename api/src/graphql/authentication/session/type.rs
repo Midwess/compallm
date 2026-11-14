@@ -3,11 +3,11 @@ use compallm_core::authentication::Session as CoreSession;
 /// Session identity projected only after authenticating the selected credential.
 ///
 /// Token material, permission source, and internal freshness state are omitted.
-pub struct Session(pub(super) CoreSession);
+pub struct Session(pub(super) CoreSession, pub(super) String);
 
-impl From<CoreSession> for Session {
-    fn from(session: CoreSession) -> Self {
-        Self(session)
+impl From<(CoreSession, String)> for Session {
+    fn from((session, name): (CoreSession, String)) -> Self {
+        Self(session, name)
     }
 }
 
@@ -42,8 +42,8 @@ impl Session {
         ID::new(self.0.organization_id.to_string())
     }
 
-    /// Signed display snapshot; the name never establishes organization authority.
+    /// Current organization name.
     fn organization_name(&self) -> &str {
-        &self.0.organization_name
+        &self.1
     }
 }

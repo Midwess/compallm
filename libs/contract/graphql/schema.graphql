@@ -721,7 +721,7 @@ type Session {
   organizationId: ID!
 
   """
-  Signed display snapshot; the name never establishes organization authority.
+  Current organization name.
   """
   organizationName: String!
 

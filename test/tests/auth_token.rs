@@ -258,7 +258,7 @@ fn ids_round_trip_as_u64_in_access_and_refresh_sessions() {
     assert_eq!(first.session.id, 7);
     assert_eq!(first.session.user_id, 9_007_199_254_740_993);
     assert_eq!(first.session.organization_id, 84);
-    assert_eq!(json["u"]["s"].as_object().unwrap().len(), 6);
+    assert_eq!(json["u"]["s"].as_object().unwrap().len(), 5);
 }
 
 #[test]
@@ -281,18 +281,15 @@ fn refresh_requires_an_embedded_session_and_rejects_legacy_claims() {
 }
 
 #[test]
-fn access_and_refresh_tokens_include_the_organization_name_and_require_it() {
+fn access_and_refresh_tokens_omit_the_organization_name() {
     let tokens = Fixture::tokens();
     for encoded in [&tokens.access_token, &tokens.refresh_token] {
         let claims = test_codec::decode(encoded, SECRET).unwrap();
-        let mut payload = serde_json::to_value(&claims).unwrap();
+        let payload = serde_json::to_value(&claims).unwrap();
         let variant = if payload.get("u").is_some() { "u" } else { "r" };
-        let session = &mut payload[variant]["s"];
+        let session = &payload[variant]["s"];
         assert_eq!(session["o"], 84);
-        assert_eq!(session["n"], "Research team");
-        session.as_object_mut().unwrap().remove("n");
-        let legacy = create_jwt_token(payload, SECRET, Duration::from_secs(60)).unwrap();
-        assert!(test_codec::decode(&legacy, SECRET).is_err());
+        assert!(session.get("n").is_none());
     }
 }
 
@@ -562,12 +559,9 @@ fn wire_budget_checks_actual_encoded_bytes_on_issuance_and_input() {
         names.push_str(&format!("{seed:016x}"));
     }
     let claims = |name_len| {
-        UserAccessToken::new(
-            stored_session(1, 7, 84, names[..name_len].to_owned()),
-            empty_snapshot(),
-            lifetime,
-        )
-        .unwrap()
+        let mut snapshot = empty_snapshot();
+        snapshot.cedar_source = names[..name_len].to_owned();
+        UserAccessToken::new(stored_session(1, 7, 84, "Team"), snapshot, lifetime).unwrap()
     };
     let mut low: usize = 0;
     let mut high: usize = names.len();

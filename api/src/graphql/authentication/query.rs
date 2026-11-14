@@ -10,7 +10,7 @@ pub(crate) async fn session(
     repository: &dyn OrganizationRepository,
     database: &DbContext,
 ) -> Result<Payload<Session>, Error> {
-    let mut session = user.require().await?.access().session.clone();
+    let session = user.require().await?.access().session.clone();
     let context = database.fresh().map_err(|_| Error::internal())?;
     let organization = context
         .scope(repository.find_by_id(session.organization_id))
@@ -18,6 +18,5 @@ pub(crate) async fn session(
         .map_err(compallm_core::organization::profile_service::ProfileError::from)?
         .filter(|org| org.status == compallm_core::organization::OrganizationStatus::Active)
         .ok_or(Error::internal())?;
-    session.organization_name = organization.name;
-    Ok(Session::from(session).into())
+    Ok(Session::from((session, organization.name)).into())
 }

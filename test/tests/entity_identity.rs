@@ -20,9 +20,7 @@ async fn entity_creation_owns_ids_and_default_policy_relationships() {
     let group = Group::new(organization.id, "Operations", "", vec![owner.clone()])
         .await
         .unwrap();
-    let session = Session::new(user.id, organization.id, organization.name.clone())
-        .await
-        .unwrap();
+    let session = Session::new(user.id, organization.id).await.unwrap();
     let ids = [
         user.id,
         organization.id,

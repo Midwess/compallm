@@ -240,18 +240,11 @@ impl OrganizationRepository for OrganizationRepositoryStub {
             .find(|member| member.organization_id == organization_id)
             .map(|_| Organization {
                 id: organization_id,
-                name: state
-                    .sessions
-                    .values()
-                    .find(|session| session.organization_id == organization_id)
-                    .map(|session| session.organization_name.clone())
-                    .unwrap_or_else(|| {
-                        if organization_id == 84 {
-                            "Research team".into()
-                        } else {
-                            format!("Organization {organization_id}")
-                        }
-                    }),
+                name: if organization_id == 84 {
+                    "Research team".into()
+                } else {
+                    format!("Organization {organization_id}")
+                },
                 avatar_path: None,
                 status: compallm_core::organization::OrganizationStatus::Active,
             }))
@@ -956,7 +949,7 @@ impl SessionRepository for Repository {
         if state.fail_authority_read {
             return Err(anyhow::anyhow!("authority query failed").into());
         }
-        let Some(mut session) = state
+        let Some(session) = state
             .sessions
             .get(&presented.id)
             .filter(|s| s.is_active(presented))
@@ -982,13 +975,6 @@ impl SessionRepository for Repository {
         else {
             return Ok(None);
         };
-        if let Some(organization) = state
-            .organization
-            .as_ref()
-            .filter(|o| o.id == session.organization_id)
-        {
-            session.organization_name = organization.name.clone();
-        }
         if state.change_after_authority_read {
             state
                 .sessions
@@ -2095,63 +2081,6 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
         fixture.refresh(&original.access_token).await,
         Err(AuthError::WrongTokenVariant)
     ));
-}
-
-#[tokio::test]
-async fn renewal_refreshes_organization_name_in_both_tokens_without_a_session_write() {
-    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    fixture.repo.0.lock().unwrap().organization = Some(Organization {
-        avatar_path: None,
-        id: 84,
-        name: "Original team".into(),
-        status: compallm_core::organization::OrganizationStatus::Active,
-    });
-    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
-    let original = fixture
-        .signin(&Fixture::otp(&challenge), &challenge.code)
-        .await
-        .unwrap();
-    let before = fixture
-        .service()
-        .authenticate_access(&original.access_token)
-        .await
-        .unwrap();
-    assert_eq!(before.session.organization_name, "Original team");
-    fixture
-        .repo
-        .0
-        .lock()
-        .unwrap()
-        .organization
-        .as_mut()
-        .unwrap()
-        .name = "Renamed team".into();
-    let tokens = fixture.refresh(&original.refresh_token).await.unwrap();
-    let access = fixture
-        .service()
-        .authenticate_access(&tokens.access_token)
-        .await
-        .unwrap();
-    let refresh =
-        RefreshToken::try_from(decode_token(&tokens.refresh_token, SECRET).unwrap()).unwrap();
-    assert_eq!(access.session.organization_name, "Renamed team");
-    assert_eq!(refresh.session.organization_name, "Renamed team");
-    assert!(access.session.has_same_identity(&before.session));
-    assert_eq!(
-        fixture.repo.0.lock().unwrap().sessions[&before.session.id].organization_name,
-        "Original team"
-    );
-    assert_eq!(
-        fixture
-            .service()
-            .authenticate_access(&original.access_token)
-            .await
-            .unwrap()
-            .session
-            .organization_name,
-        "Original team"
-    );
-    fixture.assert_no_transaction();
 }
 
 #[tokio::test]

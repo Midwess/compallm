@@ -648,7 +648,7 @@ type Session {
   userId: ID!
   "Organization selected for this verified session."
   organizationId: ID!
-  "Signed display snapshot; the name never establishes organization authority."
+  "Current organization name."
   organizationName: String!
 }
 

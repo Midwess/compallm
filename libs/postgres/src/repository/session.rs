@@ -162,7 +162,6 @@ impl CoreSessionRepository for SessionRepository {
             .inner_join(Users::default())
             .inner_join(Organizations::default())
             .join(JoinType::InnerJoin, membership_relation)
-            .column_as(OrganizationColumn::Name, "organization_name")
             .filter(UserColumn::Status.eq(crate::UserStatusSchema::Active))
             .filter(OrganizationColumn::Status.eq(crate::OrganizationStatusSchema::Active))
             .filter(MemberColumn::Status.eq(crate::UserStatusSchema::Active))
@@ -258,9 +257,8 @@ impl CoreSessionRepository for SessionRepository {
             .await
             .map_err(anyhow::Error::from)?
             .map(|(session, organization)| {
-                let organization = organization.context("session organization is missing")?;
-                crate::mappers::session::MappedSession::try_from((session, organization.name))
-                    .map(Session::from)
+                organization.context("session organization is missing")?;
+                crate::mappers::session::MappedSession::try_from(session).map(Session::from)
             })
             .transpose()
     }

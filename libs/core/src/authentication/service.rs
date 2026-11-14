@@ -263,14 +263,14 @@ impl AuthService {
             return Err(AuthError::UserDisabled);
         }
 
-        let (membership, organization) = self
+        let (membership, _organization) = self
             .organizations
             .find_membership(organization_id, user.id)
             .await?
             .ok_or(AuthError::OrganizationAccessDenied)?;
 
         let previous = session.clone();
-        session.switch_organization(&claims, organization_id, organization.name)?;
+        session.switch_organization(&claims, organization_id)?;
 
         let dictionary = self.latest_dictionary().await?;
         let refresh = RefreshToken::from_session(&session, self.lifetimes.refresh)?;
@@ -289,10 +289,10 @@ impl AuthService {
         &self,
         user_id: u64,
         membership: OrganizationMember,
-        organization: Organization,
+        _organization: Organization,
         dictionary: &DCompression,
     ) -> Result<UserTokens, AuthError> {
-        let session = Session::new(user_id, membership.organization_id, organization.name).await?;
+        let session = Session::new(user_id, membership.organization_id).await?;
         let refresh = RefreshToken::from_session(&session, self.lifetimes.refresh)?;
         let tokens = self
             .issue_tokens(&refresh, PolicySnapshot::new(&membership)?, dictionary)

@@ -1,7 +1,7 @@
 import { FormError } from '../../components/form'
 import { useSyncExternalStore } from 'react'
 import { Button } from '../../components/buttons'
-import { TextField } from '../../components/fields'
+import { TextField, UrlPreview } from '../../components/fields'
 import { Select } from '../../components/dropdowns'
 import { SettingsContent, Heading, Section, Rows, Row, Empty, AvatarUploadControl } from './shared'
 import { useSettings, useSettingsController } from './controller'
@@ -70,23 +70,7 @@ export function OrganizationSettings() {
               <FormError name="organization.name" />
             </Row>
             <Row label="URL" last>
-              <div className="flex w-70 max-w-full min-w-0 items-center gap-2">
-                <a
-                  className="min-w-0 flex-1 truncate text-xsm text-ring underline"
-                  href={organizationUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {organizationUrl}
-                </a>
-                <Button
-                  variant="ghost"
-                  aria-label="Copy organization URL"
-                  onClick={() => c.pages.dialogs.copy(organizationUrl)}
-                >
-                  Copy
-                </Button>
-              </div>
+              <UrlPreview className="w-70 max-w-full" url={organizationUrl} onCopy={c.pages.dialogs.copy} />
             </Row>
           </Rows>
         </Section>

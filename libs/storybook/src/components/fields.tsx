@@ -2,8 +2,11 @@ import { animated } from './motion'
 import { otpLength, otpPattern, otpCharacters } from '@compallm/contract/auth'
 import { useEffect, useRef, useState, type ComponentPropsWithRef, type TextareaHTMLAttributes } from 'react'
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGlass'
+import { CopyIcon } from '@phosphor-icons/react/dist/csr/Copy'
+import { LinkIcon } from '@phosphor-icons/react/dist/csr/Link'
 import { cx, composeRefs } from './shared'
 import { useFormField, useNativeFormField } from './form'
+import { IconButton, TextLink } from './buttons'
 
 export type TextFieldProps = ComponentPropsWithRef<'input'> & { variant?: 'default' | 'constant' }
 export function TextField({ variant = 'default', className, onChange, onBlur, onKeyDown, value, ...props }: TextFieldProps) {
@@ -53,6 +56,38 @@ disabled:opacity-50`,
 disabled:cursor-default disabled:opacity-100`,
       )}
     />
+  )
+}
+
+export function UrlPreview({ url, onCopy, className }: { url: string; onCopy: (url: string) => void; className?: string }) {
+  return (
+    <div className={cx('flex h-8 min-w-0 items-center gap-1', className)}>
+      <TextLink
+        href={url || undefined}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={url}
+        aria-label={url}
+        className="flex h-full min-w-0 flex-1 items-center rounded-lg bg-inset text-xsm underline"
+      >
+        <LinkIcon aria-hidden="true" className="mr-1 size-3 shrink-0" />
+        <span aria-hidden="true" className="min-w-0 truncate">
+          {url.slice(0, Math.ceil(url.length / 2))}
+        </span>
+        <span aria-hidden="true" className="shrink-0">
+          {url.slice(Math.ceil(url.length / 2))}
+        </span>
+      </TextLink>
+      <IconButton
+        className="bg-elevated hover:bg-elevated-hover"
+        aria-label="Copy URL"
+        title="Copy URL"
+        disabled={!url}
+        onClick={() => onCopy(url)}
+      >
+        <CopyIcon aria-hidden="true" />
+      </IconButton>
+    </div>
   )
 }
 export function MultilineField({ className, value, onChange, onBlur, onKeyDown, ...props }: ComponentPropsWithRef<'textarea'>) {

@@ -118,7 +118,7 @@ export function Toast({
 }
 
 export function HelperText({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p {...props} className={cx('text-ui-12 leading-4.5 text-muted-foreground', className)} />
+  return <p {...props} className={cx('text-ui-12 leading-4.5 font-book text-muted-foreground', className)} />
 }
 export function InlineError({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
   return <p role="alert" {...props} className={cx('text-xsm leading-5 text-destructive', className)} />

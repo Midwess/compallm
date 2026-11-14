@@ -107,7 +107,25 @@ export const Typography: Story = {
       <SettingsSectionTitle>Section title · 15 / 23 · Medium</SettingsSectionTitle>
       <FormFieldLabel>Field label · 14 / 21 · Medium</FormFieldLabel>
       <p className="text-xsm leading-5">Body text · 13 / 20 · Regular</p>
-      <HelperText>Helper text · 12 / 18 · Regular</HelperText>
+      <HelperText>Helper text · 12 / 18 · Book (450)</HelperText>
+      <div className="grid gap-3 text-xsm leading-5">
+        <p className="font-thin">Thin · 100</p>
+        <p className="font-extralight">Extra light · 200</p>
+        <p className="font-light">Light · 300</p>
+        <p className="font-normal">Regular · 400</p>
+        <p className="font-book">Book · 450</p>
+        <p className="font-medium">Medium · 500</p>
+        <p className="font-semibold">Semibold · 600</p>
+        <p className="font-bold">Bold · 700</p>
+        <p className="font-extrabold">Extra bold · 800</p>
+        <p className="font-black">Black · 900</p>
+        <p className="font-[475]">Intermediate weight · 475</p>
+        <p className="font-book italic">Book italic · 450</p>
+        <p className="font-semibold italic">Semibold italic · 600</p>
+        <p lang="vi" className="font-book">
+          Tiếng Việt · Cài đặt giao diện và tùy chọn cá nhân
+        </p>
+      </div>
     </div>
   ),
 }

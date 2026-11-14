@@ -1,7 +1,7 @@
 import type { Ref } from 'react'
 import { extendTailwindMerge } from 'tailwind-merge'
 
-const twMerge = extendTailwindMerge({ extend: { classGroups: { 'font-size': ['text-xsm'] } } })
+const twMerge = extendTailwindMerge({ extend: { classGroups: { 'font-size': ['text-xsm'], 'font-weight': ['font-book'] } } })
 
 export function cx(...values: Array<string | undefined | false>) {
   return twMerge(values.filter(Boolean).join(' '))

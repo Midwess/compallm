@@ -10,12 +10,10 @@ impl From<MappedSession> for Session {
     }
 }
 
-impl TryFrom<(UserSessionSchema, String)> for MappedSession {
+impl TryFrom<UserSessionSchema> for MappedSession {
     type Error = SessionRepositoryError;
 
-    fn try_from(
-        (model, organization_name): (UserSessionSchema, String),
-    ) -> Result<Self, Self::Error> {
+    fn try_from(model: UserSessionSchema) -> Result<Self, Self::Error> {
         let id = crate::from_bigint(model.id).context("invalid session ID")?;
         let user_id = crate::from_bigint(model.user_id).context("invalid session user ID")?;
         let organization_id =
@@ -34,7 +32,6 @@ impl TryFrom<(UserSessionSchema, String)> for MappedSession {
             id,
             user_id,
             organization_id,
-            organization_name,
             authorization_version,
             revoked_at,
         }))
@@ -58,12 +55,9 @@ impl TryFrom<Vec<sea_orm::QueryResult>> for MappedPolicyMembership {
         use sea_orm::FromQueryResult;
         use std::collections::BTreeMap;
         let first = rows.first().context("missing authorization row")?;
-        let session = Session::from(MappedSession::try_from((
+        let session = Session::from(MappedSession::try_from(
             UserSessionSchema::from_query_result(first, "").map_err(anyhow::Error::from)?,
-            first
-                .try_get("", "organization_name")
-                .map_err(anyhow::Error::from)?,
-        ))?);
+        )?);
         let mut roles = Vec::new();
         let mut groups = BTreeMap::<u64, Group>::new();
         for row in rows {

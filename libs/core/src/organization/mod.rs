@@ -16,3 +16,6 @@ pub mod group;
 pub mod role;
 pub use group::Group;
 pub use role::Role;
+
+#[path = "profile-service.rs"]
+pub mod profile_service;

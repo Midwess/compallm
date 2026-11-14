@@ -119,3 +119,9 @@ impl FromContext<GraphqlContext> for Box<dyn compallm_core::persistent::user::Us
         <Self as FromContext<Di>>::from(context.di)
     }
 }
+
+impl FromContext<GraphqlContext> for compallm_core::organization::profile_service::ProfileService {
+    fn from(context: &GraphqlContext) -> &Self {
+        <Self as FromContext<Di>>::from(context.di)
+    }
+}

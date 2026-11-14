@@ -14,6 +14,7 @@ impl TryFrom<OrganizationSchema> for Organization {
         Ok(Self {
             id,
             name: model.name,
+            avatar_path: model.avatar_path,
             status: match model.status {
                 OrganizationStatusSchema::Active => OrganizationStatus::Active,
                 OrganizationStatusSchema::Disabled => OrganizationStatus::Disabled,

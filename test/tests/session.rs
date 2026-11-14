@@ -16,12 +16,10 @@ fn switching_changes_scope_and_both_tokens_reference_the_new_session() {
     let initial =
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), LIFETIME).unwrap();
     let mut session = initial.session.clone();
-    session
-        .switch_organization(&initial, 85, "Target team")
-        .unwrap();
+    session.switch_organization(&initial, 85).unwrap();
     assert_eq!(session.id, 7);
     assert_eq!(session.organization_id, 85);
-    assert_eq!(session.organization_name, "Target team");
+
     let tokens = token_pair::new(
         &session,
         empty_snapshot(),
@@ -99,9 +97,7 @@ fn foreign_credentials_do_not_revoke_a_session() {
         ));
         assert!(session.revoked_at.is_none());
     }
-    session
-        .switch_organization(&token, 84, "Target team")
-        .unwrap();
+    session.switch_organization(&token, 84).unwrap();
     assert!(session.refresh(&token, LIFETIME).is_ok());
     assert!(session.revoked_at.is_none());
 }
@@ -120,7 +116,7 @@ fn revocation_is_idempotent_and_blocks_renewal_switching_and_encoding() {
         Err(AuthError::InvalidSession)
     ));
     assert!(matches!(
-        session.switch_organization(&token, 85, "Target team"),
+        session.switch_organization(&token, 85),
         Err(AuthError::InvalidSession)
     ));
     assert!(matches!(
@@ -134,34 +130,18 @@ fn returning_to_an_organization_accepts_its_unexpired_refresh_token() {
     let original =
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), LIFETIME).unwrap();
     let mut session = original.session.clone();
-    session
-        .switch_organization(&original, 85, "Target team")
-        .unwrap();
+    session.switch_organization(&original, 85).unwrap();
     assert!(matches!(
         session.refresh(&original, LIFETIME),
         Err(AuthError::InvalidSession)
     ));
     let current = RefreshToken::from_session(&session, LIFETIME).unwrap();
-    session
-        .switch_organization(&current, 84, "Target team")
-        .unwrap();
+    session.switch_organization(&current, 84).unwrap();
     assert!(session.refresh(&original, LIFETIME).is_ok());
     assert!(matches!(
         session.refresh(&current, LIFETIME),
         Err(AuthError::InvalidSession)
     ));
-}
-
-#[test]
-fn organization_rename_does_not_change_session_identity_or_reject_renewal() {
-    let token =
-        RefreshToken::from_session(&stored_session(1, 7, 84, "Original team"), LIFETIME).unwrap();
-    let mut current = token.session.clone();
-    current.organization_name = "Renamed team".into();
-    assert!(current.has_same_identity(&token.session));
-    let renewed = current.refresh(&token, LIFETIME).unwrap();
-    assert_eq!(renewed.session.organization_name, "Renamed team");
-    assert_eq!(token.session.organization_name, "Original team");
 }
 
 #[test]

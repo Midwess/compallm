@@ -52,6 +52,8 @@ mod m20261113_000032_add_user_avatar_path;
 
 mod m20261114_000033_add_usernames;
 
+mod m20261114_000034_add_organization_avatar_path;
+
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -93,6 +95,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261113_000031_rename_theme_palettes::Migration),
             Box::new(m20261113_000032_add_user_avatar_path::Migration),
             Box::new(m20261114_000033_add_usernames::Migration),
+            Box::new(m20261114_000034_add_organization_avatar_path::Migration),
             // inject-above (do not remove this comment)
         ]
     }

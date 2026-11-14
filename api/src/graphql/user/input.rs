@@ -34,7 +34,7 @@ pub struct UserProfileUpdateInput {
     pub avatar_uploaded: juniper::Nullable<bool>,
 }
 
-fn serialize_nullable<S: serde::Serializer, T: Serialize>(
+pub(crate) fn serialize_nullable<S: serde::Serializer, T: Serialize>(
     value: &juniper::Nullable<T>,
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
@@ -43,7 +43,7 @@ fn serialize_nullable<S: serde::Serializer, T: Serialize>(
         _ => serializer.serialize_none(),
     }
 }
-fn deserialize_nullable<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(
+pub(crate) fn deserialize_nullable<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(
     deserializer: D,
 ) -> Result<juniper::Nullable<T>, D::Error> {
     Option::<T>::deserialize(deserializer)

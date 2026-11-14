@@ -15,6 +15,9 @@
     "reporting_schedule": {
       "$ref": "#/$defs/ReportingScheduleInput"
     },
+    "organization_profile_update": {
+      "$ref": "#/$defs/OrganizationProfileUpdateInput"
+    },
     "user_profile_update": {
       "$ref": "#/$defs/UserProfileUpdateInput"
     },
@@ -60,6 +63,7 @@
     "credential_create",
     "spending_limit",
     "reporting_schedule",
+    "organization_profile_update",
     "user_profile_update",
     "form_0",
     "form_2",
@@ -683,6 +687,32 @@
       "required": [
         "timezone"
       ],
+      "x-compallm-input": true
+    },
+    "OrganizationProfileUpdateInput": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "x-compallm-trim": true,
+          "minLength": 1,
+          "maxLength": 63,
+          "pattern": "^[A-Za-z0-9-]+$"
+        },
+        "avatarUploaded": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "default": false
+        }
+      },
+      "additionalProperties": false,
       "x-compallm-input": true
     },
     "UserProfileUpdateInput": {

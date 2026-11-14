@@ -23,6 +23,7 @@ export const settingsPages = [
   'api-keys',
   'danger',
   'organization',
+  'organization-onboarding',
   'members',
   'new-group',
   'usage-limits',
@@ -36,9 +37,14 @@ export class SettingsController implements Controller {
   readonly pages: ReturnType<typeof createSettingsPages>
   readonly role: ReturnType<typeof createSettingsPages>['role']
   readonly group = new GroupController()
-  private readonly url: Pick<UrlController, 'navigate'>
+  private readonly url: Pick<UrlController, 'navigate'> & Partial<Pick<UrlController, 'store'>>
   private readonly auth: Pick<AuthController, 'signOut'> & Partial<Pick<AuthController, 'store'>>
-  private readonly base: string
+  private readonly initialName: string
+  private stopOrganization?: () => void
+
+  private get base() {
+    return `/${encodeURIComponent(this.auth.store?.getState().currentUser?.organizationName ?? this.initialName)}`
+  }
   private request?: AbortController
   private stopProfile?: () => void
   private generation = 0
@@ -50,6 +56,8 @@ export class SettingsController implements Controller {
   start = () => {
     this.stopProfile?.()
     this.stopProfile = undefined
+    this.stopOrganization?.()
+    this.stopOrganization = undefined
     const controller = new AbortController()
     this.request?.abort()
     this.request = controller
@@ -57,11 +65,14 @@ export class SettingsController implements Controller {
     this.store.setState({ roles: [], groups: [] })
     void this.loadPermissions(controller.signal, generation)
     const location = this.store.getState().location
+    if (location.page === 'organization') this.stopOrganization = this.pages.organization.start()
     if (location.page === 'profile') this.stopProfile = this.pages.profile.start()
     if (location.page === 'role' && location.id) void this.role.load(location.id)
     return () => {
       this.stopProfile?.()
       this.stopProfile = undefined
+      this.stopOrganization?.()
+      this.stopOrganization = undefined
       controller.abort()
       this.role.cancel()
       if (this.request === controller) this.request = undefined
@@ -99,7 +110,7 @@ export class SettingsController implements Controller {
 
   constructor(
     organizationName: string,
-    url: Pick<UrlController, 'navigate'>,
+    url: Pick<UrlController, 'navigate'> & Partial<Pick<UrlController, 'store'>>,
     auth: Pick<AuthController, 'signOut'> & Partial<Pick<AuthController, 'store'>>,
     page: SettingsDestination,
     preferences: UserPreferenceController,
@@ -115,15 +126,33 @@ export class SettingsController implements Controller {
       },
       preferences,
       auth,
+      this.organizationRenamed,
     )
     this.role = this.pages.role
     this.url = url
     this.auth = auth
-    this.base = `/${encodeURIComponent(organizationName)}`
+    this.initialName = organizationName
     this.setPage(page)
   }
 
+  private organizationRenamed = (name: string) => {
+    const user = this.auth.store?.getState().currentUser
+    if (!user || user.organizationName === name) return
+    const previous = this.base
+    this.auth.store!.setState({ currentUser: { ...user, organizationName: name } })
+    const location = this.url.store?.getState()
+    if (location && (location.pathname === previous || location.pathname.startsWith(previous + '/'))) {
+      this.url.navigate(this.base + location.pathname.slice(previous.length) + location.search + location.hash, {
+        replace: true,
+      })
+    }
+  }
+
   setPage = (page: SettingsDestination, id?: string) => {
+    if (page !== 'organization') {
+      this.stopOrganization?.()
+      this.stopOrganization = undefined
+    }
     if (page !== 'profile') {
       this.stopProfile?.()
       this.stopProfile = undefined
@@ -131,6 +160,8 @@ export class SettingsController implements Controller {
     this.navigationGeneration += 1
     this.role.cancel()
     this.store.setState({ location: { page, id } })
+    if (page === 'organization' && this.request && !this.stopOrganization)
+      this.stopOrganization = this.pages.organization.start()
     if (page === 'profile' && this.request && !this.stopProfile) this.stopProfile = this.pages.profile.start()
     if (page === 'role' && id && this.request) void this.role.load(id)
     if (page === 'new-group') this.group.open()

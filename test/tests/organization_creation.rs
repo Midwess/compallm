@@ -27,6 +27,21 @@ struct Repository {
 }
 #[async_trait::async_trait]
 impl OrganizationRepository for Repository {
+    async fn find_by_id(
+        &self,
+        _: u64,
+    ) -> Result<Option<Organization>, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn update_profile(
+        &self,
+        _: u64,
+        _: Option<String>,
+        _: Option<String>,
+    ) -> Result<Organization, OrganizationRepositoryError> {
+        unreachable!()
+    }
+
     fn supports_role_policy(&self, _: &str) -> bool {
         true
     }

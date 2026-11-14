@@ -15,7 +15,6 @@ fn access(organization_id: u64, member: &OrganizationMember) -> UserAccessToken 
             id: 1,
             user_id: member.user_id,
             organization_id,
-            organization_name: String::new(),
             authorization_version: 1,
             revoked_at: None,
         },

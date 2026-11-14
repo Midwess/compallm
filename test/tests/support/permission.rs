@@ -41,7 +41,6 @@ pub fn from_source(organization_id: u64, source: &str) -> MemberPermission {
                 id: 1,
                 user_id: 100,
                 organization_id,
-                organization_name: String::new(),
                 authorization_version: 1,
                 revoked_at: None,
             },

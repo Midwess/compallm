@@ -88,3 +88,69 @@ impl S3Storage {
         token
     }
 }
+
+impl S3Storage {
+    pub(super) async fn avatar_uploaded(&self, id: u64) -> Result<bool, StorageError> {
+        use hero::cancellation::FutureExtension;
+        if id == 0 {
+            return Err(StorageError::InvalidRequest);
+        }
+        let cancellation = self.cancellation();
+        match self
+            .client
+            .raw_client()
+            .head_object()
+            .bucket(&self.settings.bucket)
+            .key(compallm_core::persistent::storage::avatar_path(id).trim_start_matches('/'))
+            .send()
+            .with_cancel(&cancellation)
+            .await
+            .map_err(|_| StorageError::Cancelled)?
+        {
+            Ok(_) => Ok(true),
+            Err(error) if super::error::status(&error) == Some(404) => Ok(false),
+            Err(_) => Err(StorageError::Unavailable),
+        }
+    }
+    pub(super) async fn generate_avatar_upload(
+        &self,
+        id: u64,
+        constraints: &compallm_core::persistent::storage::AvatarUploadConstraints,
+    ) -> Result<compallm_core::persistent::storage::AvatarUpload, StorageError> {
+        use hero::{
+            cancellation::FutureExtension,
+            s3::{ObjectPath, PostUploadOptions},
+        };
+        if id == 0 || constraints.content_type.is_empty() {
+            return Err(StorageError::InvalidRequest);
+        }
+        let path = ObjectPath::new(
+            &self.settings.bucket,
+            compallm_core::persistent::storage::avatar_path(id).trim_start_matches('/'),
+        );
+        let cancellation = self.cancellation();
+        let post = self
+            .upload_client
+            .sign_post_upload(
+                &path,
+                &PostUploadOptions {
+                    expires_at: constraints.expires_at,
+                    min_content_length: constraints.min_bytes,
+                    max_content_length: constraints.max_bytes,
+                    content_type: Some(constraints.content_type.clone()),
+                },
+            )
+            .with_cancel(&cancellation)
+            .await
+            .map_err(|_| StorageError::Cancelled)?
+            .map_err(|error| match error {
+                hero::s3::Error::InvalidRequest(_) => StorageError::InvalidRequest,
+                _ => StorageError::Unavailable,
+            })?;
+        Ok(compallm_core::persistent::storage::AvatarUpload {
+            url: post.url,
+            fields: post.fields,
+            expires_at: constraints.expires_at,
+        })
+    }
+}

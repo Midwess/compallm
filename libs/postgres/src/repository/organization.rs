@@ -736,20 +736,52 @@ impl CoreRepository for OrganizationRepository {
         self.membership(user_id, None).await
     }
 
+    async fn find_by_id(
+        &self,
+        organization_id: u64,
+    ) -> Result<Option<Organization>, OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        Organizations::find_by_id(Self::database_id(organization_id)?)
+            .one(db)
+            .await
+            .map_err(OrganizationRepositoryError::database)?
+            .map(Organization::try_from)
+            .transpose()
+    }
+    async fn update_profile(
+        &self,
+        organization_id: u64,
+        name: Option<String>,
+        avatar_path: Option<String>,
+    ) -> Result<Organization, OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let mut update = Organizations::update_many()
+            .filter(OrganizationColumn::Id.eq(Self::database_id(organization_id)?))
+            .filter(OrganizationColumn::Status.eq(OrganizationStatusSchema::Active));
+        if let Some(name) = name {
+            update = update.col_expr(OrganizationColumn::Name, Expr::value(name));
+        }
+        if let Some(path) = avatar_path {
+            update = update.col_expr(OrganizationColumn::AvatarPath, Expr::value(path));
+        }
+        let model = update
+            .exec_with_returning(db)
+            .await
+            .map_err(OrganizationRepositoryError::database)?
+            .into_iter()
+            .next()
+            .ok_or(OrganizationRepositoryError::NotFound)?;
+        Organization::try_from(model)
+    }
     async fn update_name(
         &self,
         organization_id: u64,
         name: &str,
     ) -> Result<Organization, OrganizationRepositoryError> {
-        let context = DbContext::current()?;
-        let db = PostgresConnection::from_context(&context)?;
-        let mut rows = Organizations::update_many()
-            .col_expr(OrganizationColumn::Name, Expr::value(name))
-            .filter(OrganizationColumn::Id.eq(Self::database_id(organization_id)?))
-            .exec_with_returning(db)
+        self.update_profile(organization_id, Some(name.into()), None)
             .await
-            .map_err(OrganizationRepositoryError::database)?;
-        Organization::try_from(rows.pop().ok_or(OrganizationRepositoryError::NotFound)?)
     }
     async fn create(
         &self,
@@ -760,6 +792,7 @@ impl CoreRepository for OrganizationRepository {
         let model = OrganizationActiveModel {
             id: Set(Self::database_id(organization.id)?),
             name: Set(organization.name),
+            avatar_path: Set(organization.avatar_path),
             status: Set(match organization.status {
                 OrganizationStatus::Active => OrganizationStatusSchema::Active,
                 OrganizationStatus::Disabled => OrganizationStatusSchema::Disabled,

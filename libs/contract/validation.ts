@@ -219,6 +219,20 @@ export const NavigationPatchInputInput = {}
 export const NavigationPatchInput = z.object({ home: PreferenceDestination.optional() }).strict()
 export type NavigationPatchInputFormInput = z.input<typeof NavigationPatchInput>
 export type NavigationPatchInputFormOutput = z.output<typeof NavigationPatchInput>
+export const OrganizationProfileUpdateInputConstraints = {
+  name: { minLength: 1, maxLength: 63, pattern: '^[A-Za-z0-9-]+$', trim: true },
+} as const
+export const OrganizationProfileUpdateInputInput = {
+  name: stringInput(OrganizationProfileUpdateInputConstraints['name']),
+}
+export const OrganizationProfileUpdateInput = z
+  .object({
+    name: inputString({ minLength: 1, maxLength: 63, pattern: '^[A-Za-z0-9-]+$', trim: true }).optional(),
+    avatarUploaded: z.boolean().default(false),
+  })
+  .strict()
+export type OrganizationProfileUpdateInputFormInput = z.input<typeof OrganizationProfileUpdateInput>
+export type OrganizationProfileUpdateInputFormOutput = z.output<typeof OrganizationProfileUpdateInput>
 export const OrganizationSettingsUpdateInputConstraints = { name: { minLength: 1, trim: true } } as const
 export const OrganizationSettingsUpdateInputInput = {
   name: stringInput(OrganizationSettingsUpdateInputConstraints['name']),

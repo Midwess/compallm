@@ -15,6 +15,7 @@ export type SettingsDestination =
   | 'api-keys'
   | 'danger'
   | 'organization'
+  | 'organization-onboarding'
   | 'members'
   | 'role'
   | 'new-role'
@@ -160,6 +161,10 @@ export interface SettingsDialog {
   revealedKey?: string
 }
 export interface SettingsState {
+  organizationProfileStatus: 'loading' | 'ready' | 'denied' | 'missing' | 'error'
+  organizationSavedName: string
+  organizationProfileSaving: boolean
+  organizationCanUpdateProfile: boolean
   profileStatus: 'loading' | 'ready' | 'denied' | 'missing' | 'error'
   profileSaving: boolean
   profileUpload: File | null

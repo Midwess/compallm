@@ -21,6 +21,7 @@ impl Fixture {
             status: UserStatusSchema::Active,
         };
         let organization = OrganizationSchema {
+            avatar_path: None,
             id: 84,
             name: "Research team".into(),
             status: OrganizationStatusSchema::Active,
@@ -110,6 +111,7 @@ async fn membership_hydrates_direct_and_inherited_roles_with_four_scoped_queries
         status: UserStatusSchema::Active,
     };
     let org = OrganizationSchema {
+        avatar_path: None,
         id: 84,
         name: "Research".into(),
         status: OrganizationStatusSchema::Active,

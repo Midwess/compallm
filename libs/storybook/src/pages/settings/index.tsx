@@ -9,7 +9,7 @@ import { SettingsDialogs } from './dialogs'
 import { GeneralSettings, MessagingSettings, CodeSettings } from './preferences/user/page'
 import { UserPreferencePage } from './preferences/user'
 import { ProfileSettings, SecuritySettings, ApiKeySettings, DangerSettings } from './account'
-import { OrganizationSettings } from './organization'
+import { OrganizationSettings, OrganizationOnboarding } from './organization'
 import { MembersSettings } from './members'
 import { GroupEditorSettings } from './group'
 import { RoleEditorSettings } from './role'
@@ -48,6 +48,8 @@ function SettingsScreen() {
       return <DangerSettings />
     case 'organization':
       return <OrganizationSettings />
+    case 'organization-onboarding':
+      return <OrganizationOnboarding />
     case 'members':
       return <MembersSettings />
     case 'role':

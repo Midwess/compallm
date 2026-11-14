@@ -26,6 +26,7 @@ const account = [
 ] as const
 const organization = [
   { page: 'organization', label: 'Info', Icon: InfoIcon },
+  { page: 'organization-onboarding', label: 'Onboarding', Icon: GearIcon },
   { page: 'members', label: 'Members', Icon: UsersIcon },
   { page: 'usage-limits', label: 'Usage & limits', Icon: ChartLineIcon },
 ] as const

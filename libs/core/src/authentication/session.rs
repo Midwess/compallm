@@ -13,9 +13,6 @@ pub struct Session {
     pub user_id: u64,
     #[serde(rename = "o")]
     pub organization_id: u64,
-    /// Display snapshot refreshed on token issuance; not part of session identity.
-    #[serde(rename = "n")]
-    pub organization_name: String,
     /// Current permission generation, copied from storage when renewing credentials.
     #[serde(rename = "v")]
     pub authorization_version: u32,
@@ -24,16 +21,11 @@ pub struct Session {
 }
 
 impl Session {
-    pub async fn new(
-        user_id: u64,
-        organization_id: u64,
-        organization_name: impl Into<String>,
-    ) -> Result<Self, DistributedIdError> {
+    pub async fn new(user_id: u64, organization_id: u64) -> Result<Self, DistributedIdError> {
         Ok(Self {
             id: try_gen_id().await?,
             user_id,
             organization_id,
-            organization_name: organization_name.into(),
             authorization_version: 1,
             revoked_at: None,
         })
@@ -72,11 +64,9 @@ impl Session {
         &mut self,
         presented: &RefreshToken,
         organization_id: u64,
-        organization_name: impl Into<String>,
     ) -> Result<(), AuthError> {
         self.validate_credential(presented)?;
         self.organization_id = organization_id;
-        self.organization_name = organization_name.into();
         Ok(())
     }
 

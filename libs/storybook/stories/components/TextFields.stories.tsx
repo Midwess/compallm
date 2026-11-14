@@ -35,6 +35,18 @@ export const TextField: Story = {
     </Preview>
   ),
 }
+export const UrlPreview: Story = {
+  render: () => (
+    <Preview>
+      <Sample label="Organization URL">
+        <Fields.UrlPreview url="https://compallm.example/Research" onCopy={() => {}} />
+      </Sample>
+      <Sample label="Long URL">
+        <Fields.UrlPreview url="https://compallm.example/long-organization-name-for-a-shared-workspace" onCopy={() => {}} />
+      </Sample>
+    </Preview>
+  ),
+}
 export const MultilineField: Story = {
   render: () => (
     <Preview>

@@ -224,6 +224,7 @@ type Mutation {
   Request a signup email challenge; reject existing accounts before sending.
   """
   emailSignupRequest(input: EmailInput!): EmailChallengePayload!
+  generateOrgAvatarUrl(input: ImageUploadInput!): AvatarUploadPayload!
 
   """
   Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes.
@@ -234,6 +235,9 @@ type Mutation {
   Create a group and its initial role assignments in the verified active organization.
   """
   groupCreate(input: GroupCreateInput!): CreatedGroupPayload!
+  organizationProfileUpdate(
+    input: OrganizationProfileUpdateInput!
+  ): OrganizationPayload!
 
   """
   Create a role in the verified active organization.
@@ -279,12 +283,19 @@ type NavigationPreferences {
 }
 
 type Organization {
+  avatarUrl: String
+  canUpdateProfile: Boolean!
   id: ID!
   name: String!
 }
 
 type OrganizationPayload {
   node: Organization!
+}
+
+input OrganizationProfileUpdateInput {
+  avatarUploaded: Boolean = false
+  name: String
 }
 
 input OrganizationSettingsUpdateInput {
@@ -617,6 +628,7 @@ type Query {
   Return the system-owned organization policy action catalog.
   """
   organizationPolicyActions: PolicyActionConnection!
+  organizationProfile(id: ID!): OrganizationPayload
 
   """
   Find visible role metadata in the active organization.
@@ -709,7 +721,7 @@ type Session {
   organizationId: ID!
 
   """
-  Signed display snapshot; the name never establishes organization authority.
+  Current organization name.
   """
   organizationName: String!
 

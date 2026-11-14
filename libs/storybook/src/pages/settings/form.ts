@@ -32,6 +32,31 @@ export function configureSettingsForm(c: SettingsController) {
       form.stop()
     }
   }
+  if (c.store.getState().location.page === 'organization') {
+    form.configure({
+      mode: 'blur',
+      names: ['organization.name', 'organizationUpload'],
+      fields: { organizationUpload: { mode: 'change' } },
+      parse: parseSettings,
+      error: (error, retry) =>
+        c.apiError(error, () => {
+          if (active) retry()
+        }),
+      submit: async (values, _patch, signal, names) => {
+        const confirmed = await c.pages.organization.saveProfile(
+          names.includes('organization.name') ? { name: values.organization!.name } : {},
+          names.includes('organizationUpload') ? (values.organizationUpload ?? null) : null,
+          signal,
+        )
+        if (confirmed === false) return false
+        return { organization: { ...values.organization!, ...confirmed }, organizationUpload: null }
+      },
+    })
+    return () => {
+      active = false
+      form.stop()
+    }
+  }
   form.configure({
     mode: 'change',
     parse: parseSettings,

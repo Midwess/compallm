@@ -12,13 +12,14 @@ export function createSettingsPages(
   roleDeleted: (id: string) => void,
   user: UserPreferenceController,
   auth: ProfileAuth = {},
+  renamed: (name: string) => void = () => {},
 ) {
   return {
     role: new RoleController(store),
     search: new SearchController(store),
     preferences: { user },
     profile: new ProfileController(store, auth),
-    organization: new OrganizationController(),
+    organization: new OrganizationController(store, auth, renamed),
     members: new MembersController(),
     dialogs: new DialogsController(store, roleDeleted),
   } satisfies SettingsPageControllers

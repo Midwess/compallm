@@ -10,6 +10,8 @@ pub struct Model {
     pub id: i64,
     #[sea_orm(column_type = "Text")]
     pub name: String,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub avatar_path: Option<String>,
     pub status: OrganizationStatus,
 }
 

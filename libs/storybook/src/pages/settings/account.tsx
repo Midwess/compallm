@@ -1,40 +1,10 @@
-import { FormError, useFormValue } from '../../components/form'
-import { useEffect, useState } from 'react'
-import { ImageUploadInput } from '@compallm/contract/validation'
-import { motion } from 'motion/react'
-import { useTransition } from '../../components/motion'
+import { FormError } from '../../components/form'
 import { Button } from '../../components/buttons'
-import { TextField, FileField } from '../../components/fields'
-import { Avatar } from '../../components/content'
-import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
-import { SettingsContent, Heading, Section, Rows, Row, Empty } from './shared'
+import { TextField } from '../../components/fields'
+import { SettingsContent, Heading, Section, Rows, Row, Empty, AvatarUploadControl } from './shared'
 import { useSettings, useSettingsController } from './controller'
 
-function ProfileAvatar({ name, saved }: { name: string; saved: string | null }) {
-  const file = useFormValue<File | null>(useSettingsController().store.form, 'profileUpload')
-  const [preview, setPreview] = useState<{ file: File; url: string } | null>(null)
-  useEffect(() => {
-    if (
-      !file ||
-      !ImageUploadInput.safeParse({
-        size: file.size,
-        mediaType: ({ 'image/jpeg': 'JPEG', 'image/png': 'PNG', 'image/webp': 'WEBP' } as Record<string, string>)[file.type],
-      }).success
-    )
-      return
-    const reader = new FileReader()
-    reader.onload = () => setPreview({ file, url: String(reader.result) })
-    reader.readAsDataURL(file)
-    return () => {
-      reader.onload = null
-      reader.abort()
-    }
-  }, [file])
-  return <Avatar name={name} src={file && preview?.file === file ? preview.url : (saved ?? undefined)} />
-}
-
 export function ProfileSettings() {
-  const timing = useTransition('interaction')
   const c = useSettingsController(),
     profile = useSettings((s) => s.profile, ['profile']),
     busy = useSettings((s) => s.profileSaving),
@@ -67,33 +37,14 @@ export function ProfileSettings() {
       <div className="grid gap-12">
         <Rows>
           <Row label="Profile picture" description="Choose a photo for your account">
-            <motion.label
-              initial="rest"
-              whileHover="active"
-              whileFocus="active"
-              className="group relative inline-flex size-10 cursor-pointer rounded-full
-focus-within:outline-2 focus-within:outline-ring"
-            >
-              <ProfileAvatar name={profile.name || profile.username} saved={profile.avatar} />
-              <motion.span
-                variants={{ rest: { opacity: 0 }, active: { opacity: 1 } }}
-                transition={timing}
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 grid place-items-center rounded-full bg-overlay/50
-text-on-overlay
-[@media(hover:none)]:opacity-100!"
-              >
-                <PlusIcon className="size-5" weight="bold" />
-              </motion.span>
-              <FileField
-                name="profileUpload"
-                className="sr-only"
-                accept="image/jpeg,image/png,image/webp"
-                aria-label="Upload profile photo"
-                disabled={busy}
-              />
-              <FormError name="profileUpload" />
-            </motion.label>
+            <AvatarUploadControl
+              name={profile.name || profile.username}
+              saved={profile.avatar}
+              field="profileUpload"
+              label="Upload profile photo"
+              disabled={busy}
+              disabledReason="Saving your profile."
+            />
           </Row>
           <Row label={<label htmlFor="settings-full-name">Full name</label>} description="Your name as it appears in Compallm">
             <TextField id="settings-full-name" className="w-70 max-w-full" name="profile.name" />

@@ -23,6 +23,14 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
+    async fn organization_profile(
+        id: ID,
+        #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
+        #[graphql(context)] database: &compallm_core::persistent::DbContext,
+    ) -> Result<Option<Payload<organization::Organization>>, Error> {
+        organization::query::profile(id, repository.as_ref(), database).await
+    }
+
     /// Public profile for an active user. Email and account state are excluded.
     async fn user_profile(
         id: ID,
@@ -53,15 +61,19 @@ impl Query {
     /// Return the verified current session identity.
     async fn session(
         #[graphql(context)] user: &UserContext,
+        #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
+        #[graphql(context)] database: &compallm_core::persistent::DbContext,
     ) -> Result<Payload<authentication::Session>, Error> {
-        authentication::query::session(user).await
+        authentication::query::session(user, repository.as_ref(), database).await
     }
 
     /// Return the active organization from verified user authority.
     async fn organization(
         #[graphql(context)] user: &UserContext,
+        #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
+        #[graphql(context)] database: &compallm_core::persistent::DbContext,
     ) -> Result<Payload<organization::Organization>, Error> {
-        organization::query::get(user).await
+        organization::query::get(user, repository.as_ref(), database).await
     }
 
     /// Find visible role metadata in the active organization.
@@ -103,6 +115,23 @@ pub struct Mutation;
 
 #[graphql_object(context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Mutation {
+    async fn organization_profile_update(
+        input: organization::input::OrganizationProfileUpdateInput,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] service: &compallm_core::organization::profile_service::ProfileService,
+        #[graphql(context)] database: &compallm_core::persistent::DbContext,
+    ) -> Result<Payload<organization::Organization>, Error> {
+        organization::mutation::update(input, authority, service, database).await
+    }
+    async fn generate_org_avatar_url(
+        input: super::user::input::ImageUploadInput,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] service: &compallm_core::organization::profile_service::ProfileService,
+        #[graphql(context)] database: &compallm_core::persistent::DbContext,
+    ) -> Result<Payload<super::user::AvatarUpload>, Error> {
+        organization::mutation::generate(input, authority, service, database).await
+    }
+
     /// Update the current user's display name and confirm an uploaded avatar.
     async fn user_profile_update(
         input: super::user::input::UserProfileUpdateInput,
@@ -321,6 +350,7 @@ struct Inputs {
     credential_create: super::user::input::CredentialCreateInput,
     spending_limit: super::organization::input::SpendingLimitInput,
     reporting_schedule: super::organization::input::ReportingScheduleInput,
+    organization_profile_update: organization::input::OrganizationProfileUpdateInput,
     user_profile_update: super::user::input::UserProfileUpdateInput,
     form_0: super::user::input::ProfileUpdateInput,
     form_2: super::user::input::ImageUploadInput,

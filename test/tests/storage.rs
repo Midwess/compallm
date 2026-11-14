@@ -201,6 +201,55 @@ async fn direct_avatar_upload_and_post_enforcement() {
             .as_ref(),
         b"12345678"
     );
+    use compallm_core::persistent::storage::org_space::OrganizationStorage;
+    let org_storage = compallm_storage::OrgStorage::new(std::sync::Arc::new(
+        S3Storage::new(settings.clone()).unwrap(),
+    ));
+    let org = user + 1;
+    let mut org_upload = org_storage
+        .generate_avatar_upload(org, &constraints())
+        .await
+        .unwrap();
+    assert!(!org_storage.avatar_uploaded(org).await.unwrap());
+    assert_eq!(org_upload.fields["key"], format!("avatars/{org}"));
+    assert!(
+        upload(&client, &org_upload, b"abcd")
+            .await
+            .status()
+            .is_success()
+    );
+    assert!(org_storage.avatar_uploaded(org).await.unwrap());
+    assert_eq!(
+        client
+            .get(backend.public_url(&org_storage.avatar_path(org)).unwrap())
+            .send()
+            .await
+            .unwrap()
+            .bytes()
+            .await
+            .unwrap()
+            .as_ref(),
+        b"abcd"
+    );
+    assert_eq!(
+        client
+            .get(&public_url)
+            .send()
+            .await
+            .unwrap()
+            .bytes()
+            .await
+            .unwrap()
+            .as_ref(),
+        b"12345678"
+    );
+    org_upload.fields.insert("key".into(), key.clone());
+    assert!(
+        upload(&client, &org_upload, b"abcd")
+            .await
+            .status()
+            .is_client_error()
+    );
     let sdk = hero::s3::S3Config {
         region: settings.region,
         access_key_id: settings.access_key,
@@ -209,6 +258,12 @@ async fn direct_avatar_upload_and_post_enforcement() {
         force_path_style: settings.force_path_style,
     }
     .build_client();
+    sdk.delete_object(&hero::s3::ObjectPath::new(
+        &settings.bucket,
+        format!("avatars/{org}"),
+    ))
+    .await
+    .unwrap();
     sdk.delete_object(&hero::s3::ObjectPath::new(settings.bucket, key))
         .await
         .unwrap();

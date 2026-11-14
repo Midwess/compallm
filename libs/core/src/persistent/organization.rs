@@ -30,6 +30,16 @@ impl From<ConnectionError> for OrganizationRepositoryError {
 /// Use the current DbContext and leave transaction ownership to the caller.
 #[async_trait]
 pub trait OrganizationRepository: Send + Sync {
+    async fn find_by_id(
+        &self,
+        organization_id: u64,
+    ) -> Result<Option<Organization>, OrganizationRepositoryError>;
+    async fn update_profile(
+        &self,
+        organization_id: u64,
+        name: Option<String>,
+        avatar_path: Option<String>,
+    ) -> Result<Organization, OrganizationRepositoryError>;
     fn supports_role_policy(&self, source: &str) -> bool;
     async fn update_role(
         &self,

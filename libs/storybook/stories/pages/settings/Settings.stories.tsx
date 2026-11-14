@@ -171,6 +171,17 @@ export const ApiKeysPopulated: Story = {
 }
 export const Danger: Story = { render: () => <Demo page="danger" /> }
 export const Organization: Story = { render: () => <Demo page="organization" /> }
+export const OrganizationReadOnly: Story = {
+  render: () => <Demo page="organization" initial={{ organizationCanUpdateProfile: false }} />,
+}
+export const OrganizationLoading: Story = {
+  render: () => <Demo page="organization" initial={{ organizationProfileStatus: 'loading' }} />,
+}
+export const OrganizationLoadFailure: Story = {
+  render: () => <Demo page="organization" initial={{ organizationProfileStatus: 'error' }} />,
+}
+export const OrganizationOnboarding: Story = { render: () => <Demo page="organization-onboarding" /> }
+
 export const Members: Story = { render: () => <Demo page="members" /> }
 export const EditGroup: Story = { render: () => <Demo page="group" id="research" /> }
 export const NewGroup: Story = { render: () => <Demo page="new-group" /> }

@@ -1,3 +1,12 @@
+import { useEffect, useState } from 'react'
+import { FormError, useFormValue } from '../../components/form'
+import { FileField } from '../../components/fields'
+import { motion } from 'motion/react'
+import { useTransition } from '../../components/motion'
+import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
+import { ImageUploadInput } from '@compallm/contract/validation'
+import { Avatar } from '../../components/content'
+import { useSettingsController } from './controller'
 import type { HTMLAttributes, ReactNode } from 'react'
 import { SectionSurface } from '../../components/surfaces'
 import { SettingsDivider, SettingsPageTitle, SettingsSectionHeader } from '../../components/settings'
@@ -110,4 +119,87 @@ export function Empty({ title, children, action }: { title: string; children?: R
 }
 export function Indicator({ color }: { color: string }) {
   return <span aria-hidden="true" className="inline-block size-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+}
+
+export function AvatarUploadPreview({
+  name,
+  saved,
+  field,
+}: {
+  name: string
+  saved: string | null
+  field: 'profileUpload' | 'organizationUpload'
+}) {
+  const file = useFormValue<File | null>(useSettingsController().store.form, field)
+  const [preview, setPreview] = useState<{ file: File; url: string } | null>(null)
+  useEffect(() => {
+    if (
+      !file ||
+      !ImageUploadInput.safeParse({
+        size: file.size,
+        mediaType: ({ 'image/jpeg': 'JPEG', 'image/png': 'PNG', 'image/webp': 'WEBP' } as Record<string, string>)[file.type],
+      }).success
+    )
+      return
+    const reader = new FileReader()
+    reader.onload = () => setPreview({ file, url: String(reader.result) })
+    reader.readAsDataURL(file)
+    return () => {
+      reader.onload = null
+      reader.abort()
+    }
+  }, [file])
+  return <Avatar name={name} src={file && preview?.file === file ? preview.url : (saved ?? undefined)} />
+}
+
+export function AvatarUploadControl({
+  name,
+  saved,
+  field,
+  label,
+  disabled = false,
+  disabledReason,
+}: {
+  name: string
+  saved: string | null
+  field: 'profileUpload' | 'organizationUpload'
+  label: string
+  disabled?: boolean
+  disabledReason?: string
+}) {
+  const timing = useTransition('interaction')
+  return (
+    <motion.label
+      initial="rest"
+      whileHover={disabled ? 'rest' : 'active'}
+      whileFocus={disabled ? 'rest' : 'active'}
+      title={disabled ? disabledReason : undefined}
+      className={cx(
+        `group relative inline-flex size-10 rounded-full
+focus-within:outline-2 focus-within:outline-ring`,
+        disabled ? 'cursor-default' : 'cursor-pointer',
+      )}
+    >
+      <AvatarUploadPreview name={name} saved={saved} field={field} />
+      {!disabled ? (
+        <motion.span
+          variants={{ rest: { opacity: 0 }, active: { opacity: 1 } }}
+          transition={timing}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 grid place-items-center rounded-full bg-overlay/50
+text-on-overlay [@media(hover:none)]:opacity-100!"
+        >
+          <PlusIcon className="size-5" weight="bold" />
+        </motion.span>
+      ) : null}
+      <FileField
+        name={field}
+        className="sr-only"
+        accept="image/jpeg,image/png,image/webp"
+        aria-label={label}
+        disabled={disabled}
+      />
+      <FormError name={field} />
+    </motion.label>
+  )
 }

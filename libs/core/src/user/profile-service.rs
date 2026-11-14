@@ -9,25 +9,9 @@ use crate::{
         user::{UserRepository, UserRepositoryError},
     },
 };
-use std::time::{Duration, SystemTime};
 use validify::Validify;
 
-#[derive(Clone, Copy)]
-pub enum AvatarMediaType {
-    Jpeg,
-    Png,
-    Webp,
-}
-
-impl AvatarMediaType {
-    pub fn content_type(self) -> &'static str {
-        match self {
-            Self::Jpeg => "image/jpeg",
-            Self::Png => "image/png",
-            Self::Webp => "image/webp",
-        }
-    }
-}
+pub use crate::persistent::storage::AvatarMediaType;
 
 #[derive(Default, Validify)]
 pub struct ProfilePatch {
@@ -108,15 +92,7 @@ impl ProfileService {
         Ok(self
             .storage
             .ok_or(StorageError::Unavailable)?
-            .generate_avatar_upload(
-                user.id,
-                &AvatarUploadConstraints {
-                    min_bytes: 1,
-                    max_bytes: 5 * 1024 * 1024,
-                    content_type: media_type.content_type().into(),
-                    expires_at: SystemTime::now() + Duration::from_secs(300),
-                },
-            )
+            .generate_avatar_upload(user.id, &AvatarUploadConstraints::image(media_type, size)?)
             .await?)
     }
 

@@ -240,6 +240,11 @@ input NavigationPatchInput {
   home: PreferenceDestination
 }
 
+input OrganizationProfileUpdateInput {
+  name: String
+  avatarUploaded: Boolean = false
+}
+
 input OrganizationSettingsUpdateInput {
   name: String
   slug: String
@@ -502,6 +507,8 @@ type MessageCompositionPreferences {
 }
 
 type Mutation {
+  organizationProfileUpdate(input: OrganizationProfileUpdateInput!): OrganizationPayload!
+  generateOrgAvatarUrl(input: ImageUploadInput!): AvatarUploadPayload!
   "Update the current user's display name and confirm an uploaded avatar."
   userProfileUpdate(input: UserProfileUpdateInput!): UserPayload!
   "Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes."
@@ -535,6 +542,8 @@ type NavigationPreferences {
 }
 
 type Organization {
+  avatarUrl: String
+  canUpdateProfile: Boolean!
   id: ID!
   name: String!
 }
@@ -585,6 +594,7 @@ type ProviderTemplate {
 }
 
 type Query {
+  organizationProfile(id: ID!): OrganizationPayload
   "Public profile for an active user. Email and account state are excluded."
   userProfile(id: ID!): UserPayload
   "Return the signed-in user's personal preferences; missing rows use Core defaults without a write."

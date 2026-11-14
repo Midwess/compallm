@@ -68,6 +68,9 @@ pub struct Di {
     db: Box<DbContext>,
     storage: Option<Box<dyn compallm_core::persistent::storage::user_space::UserStorageSpace>>,
     s3: Option<std::sync::Arc<compallm_storage::S3Storage>>,
+    org_storage:
+        Option<Box<dyn compallm_core::persistent::storage::org_space::OrganizationStorage>>,
+    org_profile: OnceLock<Box<compallm_core::organization::profile_service::ProfileService>>,
     users: Box<dyn UserRepository>,
     user_preferences:
         Box<dyn compallm_core::persistent::preference::user::UserPreferenceRepository>,
@@ -145,6 +148,8 @@ impl Di {
         Self {
             db: Box::new(db),
             storage: None,
+            org_storage: None,
+            org_profile: OnceLock::new(),
             s3: None,
             users: Box::new(compallm_postgres::repository::user::UserRepository),
             user_preferences: Box::new(
@@ -182,6 +187,7 @@ impl Di {
 
     pub fn initialize_services(&'static self) -> Result<(), AuthError> {
         self.profile_service();
+        self.org_profile_service();
         self.mailing_worker();
         self.user_preference_service();
         self.organization_config_service();
@@ -262,6 +268,14 @@ impl Di {
         &self.users
     }
 
+    pub fn with_organization_repository(
+        mut self,
+        organizations: Box<dyn OrganizationRepository>,
+    ) -> Self {
+        self.organizations = organizations;
+        self
+    }
+
     pub fn with_user_repository(mut self, users: Box<dyn UserRepository>) -> Self {
         self.users = users;
         self
@@ -272,6 +286,14 @@ impl Di {
         storage: Box<dyn compallm_core::persistent::storage::user_space::UserStorageSpace>,
     ) -> Self {
         self.storage = Some(storage);
+        self
+    }
+
+    pub fn with_org_storage(
+        mut self,
+        storage: Box<dyn compallm_core::persistent::storage::org_space::OrganizationStorage>,
+    ) -> Self {
+        self.org_storage = Some(storage);
         self
     }
 
@@ -287,6 +309,7 @@ impl Di {
 
     pub fn with_s3_storage(mut self, s3: std::sync::Arc<compallm_storage::S3Storage>) -> Self {
         self.storage = Some(Box::new(compallm_storage::S3UserSpace::new(s3.clone())));
+        self.org_storage = Some(Box::new(compallm_storage::OrgStorage::new(s3.clone())));
         self.s3 = Some(s3);
         self
     }
@@ -346,6 +369,19 @@ impl Di {
     pub fn organization_creation_service(&'static self) -> &'static CreationService {
         self.organization_creation
             .get_or_init(|| Box::new(CreationService::new(self.organization_repository())))
+    }
+
+    pub fn org_profile_service(
+        &'static self,
+    ) -> &'static compallm_core::organization::profile_service::ProfileService {
+        self.org_profile.get_or_init(|| {
+            Box::new(
+                compallm_core::organization::profile_service::ProfileService::new(
+                    self.organizations.as_ref(),
+                    self.org_storage.as_deref(),
+                ),
+            )
+        })
     }
 
     pub fn profile_service(&'static self) -> &'static compallm_core::user::ProfileService {
@@ -426,5 +462,13 @@ impl juniper::FromContext<Di> for compallm_core::user::ProfileService {
 impl juniper::FromContext<Di> for Box<dyn UserRepository> {
     fn from(di: &Di) -> &Self {
         &di.users
+    }
+}
+
+impl juniper::FromContext<Di> for compallm_core::organization::profile_service::ProfileService {
+    fn from(di: &Di) -> &Self {
+        di.org_profile
+            .get()
+            .expect("organization profile initialized")
     }
 }

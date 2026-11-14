@@ -1,30 +1,38 @@
-use crate::authorization::{MemberPermission, condition::CheckPermission, policy::Action};
-use crate::persistent::organization::OrganizationRepository;
-
-use super::{Organization, OrganizationConfigError};
+use super::{
+    Organization, OrganizationConfigError,
+    profile_service::{ProfileError, ProfilePatch, ProfileService},
+};
+use crate::{authorization::MemberPermission, persistent::organization::OrganizationRepository};
 
 pub struct ConfigService {
-    organizations: &'static Box<dyn OrganizationRepository>,
+    profile: ProfileService,
 }
-
 impl ConfigService {
     pub fn new(organizations: &'static Box<dyn OrganizationRepository>) -> Self {
-        Self { organizations }
+        Self {
+            profile: ProfileService::new(organizations.as_ref(), None),
+        }
     }
-
-    /// Rename the member's active organization after checking settings authority.
+    /// Rename through the shared organization profile rules.
     pub async fn update_name(
         &self,
         permission: &MemberPermission,
         name: &str,
     ) -> Result<Organization, OrganizationConfigError> {
-        Action::OrganizationSettingsUpdate.check_permission(permission)?;
-        let name =
-            Organization::normalize_name(name).map_err(|_| OrganizationConfigError::InvalidName)?;
-
-        Ok(self
-            .organizations
-            .update_name(permission.organization_id(), &name)
-            .await?)
+        self.profile
+            .update_profile(
+                permission,
+                ProfilePatch {
+                    name: Some(name.into()),
+                    avatar_uploaded: false,
+                },
+            )
+            .await
+            .map_err(|error| match error {
+                ProfileError::Permission(error) => OrganizationConfigError::Permission(error),
+                ProfileError::Persistence(error) => OrganizationConfigError::Persistence(error),
+                ProfileError::Connection(error) => OrganizationConfigError::Connection(error),
+                _ => OrganizationConfigError::InvalidName,
+            })
     }
 }

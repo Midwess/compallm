@@ -129,10 +129,12 @@ export interface Mutation {
   emailSignupConfirm: SessionCredentialsPayload
   /** Request a signup email challenge; reject existing accounts before sending. */
   emailSignupRequest: EmailChallengePayload
+  generateOrgAvatarUrl: AvatarUploadPayload
   /** Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes. */
   generateUrlAvatarUrl: AvatarUploadPayload
   /** Create a group and its initial role assignments in the verified active organization. */
   groupCreate: CreatedGroupPayload
+  organizationProfileUpdate: OrganizationPayload
   /** Create a role in the verified active organization. */
   roleCreate: RolePayload
   roleDelete: BooleanPayload
@@ -156,6 +158,8 @@ export interface NavigationPreferences {
 }
 
 export interface Organization {
+  avatarUrl: Scalars['String'] | null
+  canUpdateProfile: Scalars['Boolean']
   id: Scalars['ID']
   name: Scalars['String']
   __typename: 'Organization'
@@ -269,6 +273,7 @@ export interface Query {
   organization: OrganizationPayload
   /** Return the system-owned organization policy action catalog. */
   organizationPolicyActions: PolicyActionConnection
+  organizationProfile: OrganizationPayload | null
   /** Find visible role metadata in the active organization. */
   role: RolePayload | null
   /** Return the complete visible role metadata collection, ordered by ID. */
@@ -643,10 +648,12 @@ export interface MutationGenqlSelection {
   emailSignupConfirm?: SessionCredentialsPayloadGenqlSelection & { __args: { input: EmailCodeInput } }
   /** Request a signup email challenge; reject existing accounts before sending. */
   emailSignupRequest?: EmailChallengePayloadGenqlSelection & { __args: { input: EmailInput } }
+  generateOrgAvatarUrl?: AvatarUploadPayloadGenqlSelection & { __args: { input: ImageUploadInput } }
   /** Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes. */
   generateUrlAvatarUrl?: AvatarUploadPayloadGenqlSelection & { __args: { input: ImageUploadInput } }
   /** Create a group and its initial role assignments in the verified active organization. */
   groupCreate?: CreatedGroupPayloadGenqlSelection & { __args: { input: GroupCreateInput } }
+  organizationProfileUpdate?: OrganizationPayloadGenqlSelection & { __args: { input: OrganizationProfileUpdateInput } }
   /** Create a role in the verified active organization. */
   roleCreate?: RolePayloadGenqlSelection & { __args: { input: RoleCreateInput } }
   roleDelete?: BooleanPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
@@ -676,6 +683,8 @@ export interface NavigationPreferencesGenqlSelection {
 }
 
 export interface OrganizationGenqlSelection {
+  avatarUrl?: boolean | number
+  canUpdateProfile?: boolean | number
   id?: boolean | number
   name?: boolean | number
   __typename?: boolean | number
@@ -686,6 +695,11 @@ export interface OrganizationPayloadGenqlSelection {
   node?: OrganizationGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
+}
+
+export interface OrganizationProfileUpdateInput {
+  avatarUploaded?: Scalars['Boolean'] | null
+  name?: Scalars['String'] | null
 }
 
 export interface OrganizationSettingsUpdateInput {
@@ -854,6 +868,7 @@ export interface QueryGenqlSelection {
   organization?: OrganizationPayloadGenqlSelection
   /** Return the system-owned organization policy action catalog. */
   organizationPolicyActions?: PolicyActionConnectionGenqlSelection
+  organizationProfile?: OrganizationPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Find visible role metadata in the active organization. */
   role?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Return the complete visible role metadata collection, ordered by ID. */

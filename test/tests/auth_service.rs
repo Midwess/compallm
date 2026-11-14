@@ -1,3 +1,5 @@
+#[path = "support/permission.rs"]
+mod organization_permission_fixture;
 #[path = "support/roles.rs"]
 mod role_fixture;
 #[path = "support/token_codec.rs"]
@@ -217,6 +219,64 @@ struct OrganizationRepositoryStub(Arc<Mutex<State>>);
 
 #[async_trait::async_trait]
 impl OrganizationRepository for OrganizationRepositoryStub {
+    async fn find_by_id(
+        &self,
+        organization_id: u64,
+    ) -> Result<Option<Organization>, OrganizationRepositoryError> {
+        let state = self.0.lock().unwrap();
+        if state.disabled_organizations.contains(&organization_id) {
+            return Ok(None);
+        }
+        if let Some(org) = state
+            .organization
+            .as_ref()
+            .filter(|org| org.id == organization_id)
+        {
+            return Ok(Some(org.clone()));
+        }
+        Ok(state
+            .memberships
+            .iter()
+            .find(|member| member.organization_id == organization_id)
+            .map(|_| Organization {
+                id: organization_id,
+                name: state
+                    .sessions
+                    .values()
+                    .find(|session| session.organization_id == organization_id)
+                    .map(|session| session.organization_name.clone())
+                    .unwrap_or_else(|| {
+                        if organization_id == 84 {
+                            "Research team".into()
+                        } else {
+                            format!("Organization {organization_id}")
+                        }
+                    }),
+                avatar_path: None,
+                status: compallm_core::organization::OrganizationStatus::Active,
+            }))
+    }
+    async fn update_profile(
+        &self,
+        organization_id: u64,
+        name: Option<String>,
+        avatar_path: Option<String>,
+    ) -> Result<Organization, OrganizationRepositoryError> {
+        let mut state = self.0.lock().unwrap();
+        let org = state
+            .organization
+            .as_mut()
+            .filter(|org| org.id == organization_id)
+            .ok_or(OrganizationRepositoryError::NotFound)?;
+        if let Some(name) = name {
+            org.name = name;
+        }
+        if let Some(path) = avatar_path {
+            org.avatar_path = Some(path);
+        }
+        Ok(org.clone())
+    }
+
     fn supports_role_policy(&self, _: &str) -> bool {
         true
     }
@@ -337,6 +397,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
                     .clone()
                     .filter(|o| o.id == member.organization_id)
                     .unwrap_or(Organization {
+            avatar_path: None,
                         id: member.organization_id,
                         name: if member.organization_id == 84 {
                             "Research team".into()
@@ -377,6 +438,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
                     .clone()
                     .filter(|o| o.id == member.organization_id)
                     .unwrap_or(Organization {
+            avatar_path: None,
                         id: member.organization_id,
                         name: if member.organization_id == 84 {
                             "Research team".into()
@@ -510,6 +572,174 @@ impl UserRepository for Repository {
 struct ProfileStorage {
     uploaded: std::sync::atomic::AtomicBool,
     calls: Mutex<Vec<u64>>,
+}
+
+#[async_trait::async_trait]
+impl compallm_core::persistent::storage::org_space::OrganizationStorage for ProfileStorage {
+    fn avatar_path(&self, id: u64) -> String {
+        compallm_core::persistent::storage::avatar_path(id)
+    }
+    async fn avatar_uploaded(
+        &self,
+        id: u64,
+    ) -> Result<bool, compallm_core::persistent::storage::StorageError> {
+        compallm_core::persistent::storage::user_space::UserStorageSpace::avatar_uploaded(self, id)
+            .await
+    }
+    async fn generate_avatar_upload(
+        &self,
+        id: u64,
+        constraints: &compallm_core::persistent::storage::AvatarUploadConstraints,
+    ) -> Result<
+        compallm_core::persistent::storage::AvatarUpload,
+        compallm_core::persistent::storage::StorageError,
+    > {
+        compallm_core::persistent::storage::user_space::UserStorageSpace::generate_avatar_upload(
+            self,
+            id,
+            constraints,
+        )
+        .await
+    }
+}
+
+#[tokio::test]
+async fn organization_profile_service_requires_settings_permission_and_checks_upload_before_writes()
+{
+    use compallm_core::authorization::{
+        MemberPermission, condition::CheckPermission, policy::Action,
+    };
+    use compallm_core::organization::profile_service::{
+        ProfileError, ProfilePatch, ProfileService,
+    };
+    use compallm_core::persistent::storage::StorageError;
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    fixture.repo.0.lock().unwrap().organization = Some(Organization {
+        id: 84,
+        name: "Original".into(),
+        status: compallm_core::organization::OrganizationStatus::Active,
+        avatar_path: None,
+    });
+    let repository = Box::leak(Box::new(OrganizationRepositoryStub(fixture.repo.0.clone())));
+    let storage = Box::leak(Box::new(ProfileStorage {
+        uploaded: false.into(),
+        calls: Mutex::new(Vec::new()),
+    }));
+    let service = ProfileService::new(repository, Some(storage));
+    let denied = MemberPermission::try_from(
+        fixture.access_for_session(stored_session(1, 7, 84, "Original")),
+    )
+    .unwrap();
+    assert!(
+        Action::OrganizationSettingsUpdate
+            .check_permission(&denied)
+            .is_err()
+    );
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(service.update_profile(
+                &denied,
+                ProfilePatch {
+                    name: Some("Denied".into()),
+                    avatar_uploaded: true
+                }
+            ))
+            .await,
+        Err(ProfileError::Permission(_))
+    ));
+    assert!(storage.calls.lock().unwrap().is_empty());
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(service.generate_avatar_url(
+                &denied,
+                compallm_core::persistent::storage::AvatarMediaType::Png,
+                1024
+            ))
+            .await,
+        Err(ProfileError::Permission(_))
+    ));
+    let foreign =
+        organization_permission_fixture::permission(85, &[Action::OrganizationSettingsUpdate]);
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(service.update_profile(
+                &foreign,
+                ProfilePatch {
+                    name: Some("Foreign".into()),
+                    avatar_uploaded: true
+                }
+            ))
+            .await,
+        Err(ProfileError::Persistence(
+            OrganizationRepositoryError::NotFound
+        ))
+    ));
+    assert!(storage.calls.lock().unwrap().is_empty());
+    let permission =
+        organization_permission_fixture::permission(84, &[Action::OrganizationSettingsUpdate]);
+    assert!(matches!(
+        fixture
+            .repo
+            .1
+            .scope(service.update_profile(
+                &permission,
+                ProfilePatch {
+                    name: Some("NotSaved".into()),
+                    avatar_uploaded: true
+                }
+            ))
+            .await,
+        Err(ProfileError::Storage(StorageError::NotFound))
+    ));
+    assert_eq!(
+        fixture
+            .repo
+            .0
+            .lock()
+            .unwrap()
+            .organization
+            .as_ref()
+            .unwrap()
+            .name,
+        "Original"
+    );
+    storage
+        .uploaded
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    let saved = fixture
+        .repo
+        .1
+        .scope(service.update_profile(
+            &permission,
+            ProfilePatch {
+                name: Some(" Renamed ".into()),
+                avatar_uploaded: true,
+            },
+        ))
+        .await
+        .unwrap();
+    assert_eq!(saved.name, "Renamed");
+    assert_eq!(saved.avatar_path.as_deref(), Some("/avatars/84"));
+    let saved = fixture
+        .repo
+        .1
+        .scope(service.update_profile(
+            &permission,
+            ProfilePatch {
+                name: Some("Other".into()),
+                avatar_uploaded: false,
+            },
+        ))
+        .await
+        .unwrap();
+    assert_eq!(saved.avatar_path.as_deref(), Some("/avatars/84"));
+    assert_eq!(*storage.calls.lock().unwrap(), vec![84, 84]);
 }
 
 #[async_trait::async_trait]
@@ -878,6 +1108,20 @@ impl Fixture {
             Box<dyn compallm_core::persistent::storage::user_space::UserStorageSpace>,
         >,
     ) -> axum::Router {
+        self.graphql_with_org_storage(db_context, storage, profile_storage, None)
+    }
+
+    fn graphql_with_org_storage(
+        &self,
+        db_context: DbContext,
+        storage: Option<Arc<compallm_storage::S3Storage>>,
+        profile_storage: Option<
+            Box<dyn compallm_core::persistent::storage::user_space::UserStorageSpace>,
+        >,
+        org_storage: Option<
+            Box<dyn compallm_core::persistent::storage::org_space::OrganizationStorage>,
+        >,
+    ) -> axum::Router {
         use axum::{
             Extension, Json, Router,
             extract::{DefaultBodyLimit, State, rejection::JsonRejection},
@@ -919,12 +1163,16 @@ impl Fixture {
             None,
         )
         .with_auth_service(service)
-        .with_user_repository(Box::new(self.repo.clone()));
+        .with_user_repository(Box::new(self.repo.clone()))
+        .with_organization_repository(Box::new(OrganizationRepositoryStub(self.repo.0.clone())));
         if let Some(storage) = storage {
             di = di.with_s3_storage(storage);
         }
         if let Some(storage) = profile_storage {
             di = di.with_user_storage_space(storage);
+        }
+        if let Some(storage) = org_storage {
+            di = di.with_org_storage(storage);
         }
         let di = Box::leak(Box::new(di));
         di.initialize_services().unwrap();
@@ -1853,6 +2101,7 @@ async fn refresh_checks_current_user_and_renews_both_tokens_for_another_month() 
 async fn renewal_refreshes_organization_name_in_both_tokens_without_a_session_write() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     fixture.repo.0.lock().unwrap().organization = Some(Organization {
+        avatar_path: None,
         id: 84,
         name: "Original team".into(),
         status: compallm_core::organization::OrganizationStatus::Active,
@@ -3142,6 +3391,130 @@ async fn graphql_avatar_url_uses_shared_storage_without_storage_requests() {
 }
 
 #[tokio::test]
+async fn graphql_organization_profiles_are_public_and_writes_use_active_permission() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    {
+        let mut state = fixture.repo.0.lock().unwrap();
+        state.organization = Some(Organization {
+            id: 84,
+            name: "Original".into(),
+            avatar_path: None,
+            status: compallm_core::organization::OrganizationStatus::Active,
+        });
+        state.full_default_policies = true;
+        state.memberships[0].roles[0].cedar_source = r#"permit(principal, action == Compallm::Action::"organization.settings.update", resource == Compallm::Organization::"84");"#.into();
+    }
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let router = fixture.graphql_with_org_storage(
+        fixture.repo.1.clone(),
+        None,
+        None,
+        Some(Box::new(ProfileStorage {
+            uploaded: true.into(),
+            calls: Mutex::new(Vec::new()),
+        })),
+    );
+    let query =
+        "{ organizationProfile(id: \"84\") { node { id name avatarUrl canUpdateProfile } } }";
+    let body = graphql_body(
+        graphql_operation(&router, query, serde_json::json!({}), None, None, false).await,
+    )
+    .await;
+    assert!(body["errors"].is_null(), "{body}");
+    assert_eq!(
+        body["data"]["organizationProfile"]["node"]["canUpdateProfile"],
+        false
+    );
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            query,
+            serde_json::json!({}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(
+        body["data"]["organizationProfile"]["node"]["canUpdateProfile"],
+        true
+    );
+    let update = "mutation { organizationProfileUpdate(input: {name: \"Renamed\", avatarUploaded: true}) { node { id name } } }";
+    let denied = graphql_operation(&router, update, serde_json::json!({}), None, None, false).await;
+    assert_graphql_denial(denied, 401).await;
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            update,
+            serde_json::json!({}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(body["errors"].is_null(), "{body}");
+    assert_eq!(
+        body["data"]["organizationProfileUpdate"]["node"]["name"],
+        "Renamed"
+    );
+    assert_eq!(
+        fixture
+            .repo
+            .0
+            .lock()
+            .unwrap()
+            .organization
+            .as_ref()
+            .unwrap()
+            .avatar_path
+            .as_deref(),
+        Some("/avatars/84")
+    );
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            "{ session { node { organizationName } } }",
+            serde_json::json!({}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(
+        body["data"]["session"]["node"]["organizationName"],
+        "Renamed"
+    );
+    let upload = "mutation { generateOrgAvatarUrl(input: {mediaType: PNG, size: 1024}) { node { url fields { name value } } } }";
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            upload,
+            serde_json::json!({}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(body["errors"].is_null(), "{body}");
+    assert_eq!(
+        body["data"]["generateOrgAvatarUrl"]["node"]["fields"][0]["value"],
+        "/avatars/84"
+    );
+}
+
+#[tokio::test]
 async fn graphql_profile_public_read_and_owner_updates_hide_private_data() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
@@ -4282,6 +4655,7 @@ async fn graphql_role_and_group_creation_enforces_scope_and_denies_without_write
     let foreign = Organization::new("Foreign role API fixture").await.unwrap();
     for org in [&organization, &foreign] {
         OrganizationSchema {
+            avatar_path: None,
             id: i64::try_from(org.id).unwrap(),
             name: org.name.clone(),
             status: OrganizationStatusSchema::Active,

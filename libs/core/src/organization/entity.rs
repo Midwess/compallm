@@ -18,6 +18,7 @@ pub enum OrganizationStatus {
 pub struct Organization {
     pub id: u64,
     pub name: String,
+    pub avatar_path: Option<String>,
     pub status: OrganizationStatus,
 }
 
@@ -27,6 +28,7 @@ impl Organization {
         Ok(Self {
             id: try_gen_id().await?,
             name: name.into(),
+            avatar_path: None,
             status: OrganizationStatus::Active,
         })
     }

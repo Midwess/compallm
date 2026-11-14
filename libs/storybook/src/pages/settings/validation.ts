@@ -1,5 +1,6 @@
 import {
   UserProfileUpdateInput,
+  OrganizationProfileUpdateInput,
   OrganizationSettingsUpdateInput,
   ImageUploadInput,
   CredentialCreateInput,
@@ -28,7 +29,9 @@ export function parseSettings(values: Partial<SettingsState>, names: string[]) {
             ...(keys.includes('name') ? { displayName: draft.name } : {}),
             ...(keys.includes('username') ? { username: draft.username } : {}),
           })
-        : OrganizationSettingsUpdateInput.safeParse(patch)
+        : names.every((name) => name === 'organization.name' || !name.startsWith('organization.'))
+          ? OrganizationProfileUpdateInput.safeParse(patch)
+          : OrganizationSettingsUpdateInput.safeParse(patch)
     if (!result.success)
       issues.push(
         ...result.error.issues.map((issue) => ({

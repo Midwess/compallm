@@ -31,6 +31,7 @@ impl Fixture {
     }
     fn organization() -> OrganizationSchema {
         OrganizationSchema {
+            avatar_path: None,
             id: 84,
             name: "Research team".into(),
             status: OrganizationStatusSchema::Active,

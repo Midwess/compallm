@@ -220,3 +220,38 @@ impl From<compallm_core::user::ProfileError> for Error {
         }
     }
 }
+
+impl From<compallm_core::organization::profile_service::ProfileError> for Error {
+    fn from(error: compallm_core::organization::profile_service::ProfileError) -> Self {
+        use compallm_core::{
+            authorization::MemberPermissionError,
+            organization::profile_service::ProfileError,
+            persistent::{organization::OrganizationRepositoryError, storage::StorageError},
+        };
+        match error {
+            ProfileError::Permission(MemberPermissionError::Denied) => Self {
+                code: "FORBIDDEN",
+                status: 403,
+                message: "Organization profile update denied",
+            },
+            ProfileError::Invalid | ProfileError::Storage(StorageError::InvalidRequest) => {
+                Self::invalid_input()
+            }
+            ProfileError::Persistence(OrganizationRepositoryError::NotFound) => Self {
+                code: "NOT_FOUND",
+                status: 404,
+                message: "Organization not found",
+            },
+            ProfileError::Storage(StorageError::NotFound) => Self {
+                code: "AVATAR_NOT_UPLOADED",
+                status: 409,
+                message: "Upload the organization avatar before saving",
+            },
+            _ => Self {
+                code: "SERVICE_UNAVAILABLE",
+                status: 503,
+                message: "Organization profile is temporarily unavailable",
+            },
+        }
+    }
+}

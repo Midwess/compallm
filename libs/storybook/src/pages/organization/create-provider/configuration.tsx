@@ -1,3 +1,4 @@
+import { PermissionRequest, usePermission } from '../../../components/permission'
 import { ProviderPatchInput } from '@compallm/contract/validation'
 import { contractResult } from '../../../components/form'
 import { FormError } from '../../../components/form'
@@ -30,7 +31,14 @@ function ConnectionFields() {
   const [keyVisible, setKeyVisible] = useState(false)
   const controller = useController()
   const editing = useProvider((state) => state.intent === 'edit')
-  const busy = useProvider((state) => state.submitting)
+  const submitting = useProvider((state) => state.submitting)
+  const providerId = useProvider((state) => state.savedProvider?.id)
+  const edit = usePermission({
+    actions: ['PROVIDER_CONFIGURATION_UPDATE'],
+    resource: { type: 'PROVIDER', id: providerId },
+    enabled: editing && !!providerId,
+  })
+  const busy = submitting || (editing && !edit.allowed)
   const selected = useProvider((state) => state.selectedProviderId)
   const avatarUrl = useProvider((state) => state.avatarUrl, ['avatarUrl'])
   return (
@@ -68,16 +76,24 @@ function ConnectionFields() {
             </FieldHelp>
           </div>
           <div className="relative min-w-0">
-            <FormField.Input
-              type={keyVisible ? 'text' : 'password'}
-              className="pr-9"
-              autoComplete="off"
-              required={!editing}
-              autoCapitalize="none"
-              spellCheck={false}
-              name="apiKey"
-              placeholder={editing ? 'Leave empty to keep current key' : 'Enter your API key'}
-            />
+            <PermissionRequest
+              actions={[editing ? 'PROVIDER_CREDENTIAL_REPLACE' : 'PROVIDER_CREATE']}
+              resource={editing ? { type: 'PROVIDER', id: providerId } : undefined}
+              enabled={!editing || !!providerId}
+              restricted="disabled"
+              asChild
+            >
+              <FormField.Input
+                type={keyVisible ? 'text' : 'password'}
+                className="pr-9"
+                autoComplete="off"
+                required={!editing}
+                autoCapitalize="none"
+                spellCheck={false}
+                name="apiKey"
+                placeholder={editing ? 'Leave empty to keep current key' : 'Enter your API key'}
+              />
+            </PermissionRequest>
             <FormError name="apiKey" />
             <button
               type="button"
@@ -156,7 +172,14 @@ function TestConnection() {
 export function ProviderConfiguration() {
   const controller = useController()
   const intent = useProvider((state) => state.intent)
-  const busy = useProvider((state) => state.submitting)
+  const submitting = useProvider((state) => state.submitting)
+  const providerId = useProvider((state) => state.savedProvider?.id)
+  const edit = usePermission({
+    actions: ['PROVIDER_CONFIGURATION_UPDATE'],
+    resource: { type: 'PROVIDER', id: providerId },
+    enabled: intent === 'edit' && !!providerId,
+  })
+  const busy = submitting || (intent === 'edit' && !edit.allowed)
   const error = useProvider((state) => state.error)
   const form = controller.store.form
   useEffect(
@@ -218,36 +241,41 @@ export function ProviderConfiguration() {
   )
   return (
     <Form.Root model={form} className="mx-auto grid min-w-0 w-full max-w-4xl gap-6 px-4 py-8">
-      <FormSection.Root>
-        <FormSection.Marker>1</FormSection.Marker>
-        <FormSection.Heading>Connection</FormSection.Heading>
-        <ConnectionFields />
-      </FormSection.Root>
-      <FormSection.Root>
-        <FormSection.Marker>2</FormSection.Marker>
-        <FormSection.Heading>Enabled models</FormSection.Heading>
-        <ProviderModels />
-      </FormSection.Root>
-      <FormSection.Root>
-        <FormSection.Marker>3</FormSection.Marker>
-        <FormSection.Heading>Test connection</FormSection.Heading>
-        <TestConnection />
-      </FormSection.Root>
-      {error ? (
-        <div className="fixed right-6 bottom-6 z-50">
-          <Toast tone="error" message={error} onDismiss={() => controller.store.setState({ error: null })} />
-        </div>
+      {intent === 'edit' && !edit.allowed ? (
+        <p className="text-xs text-muted-foreground">You do not have permission to edit this provider configuration.</p>
       ) : null}
-      <div className="flex justify-end gap-2">
-        {intent !== 'create' ? (
-          <Button className="h-7 px-4 text-xs" disabled={busy} onClick={controller.onCancelProvider}>
-            Cancel
-          </Button>
+      <fieldset disabled={busy} className="contents">
+        <FormSection.Root>
+          <FormSection.Marker>1</FormSection.Marker>
+          <FormSection.Heading>Connection</FormSection.Heading>
+          <ConnectionFields />
+        </FormSection.Root>
+        <FormSection.Root>
+          <FormSection.Marker>2</FormSection.Marker>
+          <FormSection.Heading>Enabled models</FormSection.Heading>
+          <ProviderModels />
+        </FormSection.Root>
+        <FormSection.Root>
+          <FormSection.Marker>3</FormSection.Marker>
+          <FormSection.Heading>Test connection</FormSection.Heading>
+          <TestConnection />
+        </FormSection.Root>
+        {error ? (
+          <div className="fixed right-6 bottom-6 z-50">
+            <Toast tone="error" message={error} onDismiss={() => controller.store.setState({ error: null })} />
+          </div>
         ) : null}
-        <Button type="submit" variant="primary" className="h-7 w-32 text-xs" disabled={busy} loading={busy}>
-          {intent === 'edit' ? 'Save changes' : intent === 'clone' ? 'Create provider' : 'Add provider'}
-        </Button>
-      </div>
+        <div className="flex justify-end gap-2">
+          {intent !== 'create' ? (
+            <Button className="h-7 px-4 text-xs" disabled={busy} onClick={controller.onCancelProvider}>
+              Cancel
+            </Button>
+          ) : null}
+          <Button type="submit" variant="primary" className="h-7 w-32 text-xs" disabled={busy} loading={busy}>
+            {intent === 'edit' ? 'Save changes' : intent === 'clone' ? 'Create provider' : 'Add provider'}
+          </Button>
+        </div>
+      </fieldset>
     </Form.Root>
   )
 }

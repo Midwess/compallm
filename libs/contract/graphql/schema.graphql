@@ -372,6 +372,86 @@ type PalettePreferences {
   light: PreferenceLightPalette!
 }
 
+enum PermissionAction {
+  GROUP_CREATE
+  GROUP_DELETE
+  GROUP_MEMBER_ADD
+  GROUP_MEMBER_REMOVE
+  GROUP_METADATA_UPDATE
+  GROUP_READ
+  GROUP_ROLE_ASSIGN
+  GROUP_ROLE_UNASSIGN
+  MEMBER_INVITE
+  MEMBER_READ
+  MEMBER_REMOVE
+  MEMBER_ROLE_ASSIGN
+  MEMBER_ROLE_UNASSIGN
+  MODEL_CONFIGURATION_UPDATE
+  MODEL_CREATE
+  MODEL_DELETE
+  MODEL_PRICING_UPDATE
+  MODEL_READ
+  MODEL_ROUTE_ADD
+  MODEL_ROUTE_REMOVE
+  MODEL_ROUTE_UPDATE
+  MODEL_USE
+  ORGANIZATION_DELETE
+  ORGANIZATION_SETTINGS_READ
+  ORGANIZATION_SETTINGS_UPDATE
+  PROVIDER_CONFIGURATION_UPDATE
+  PROVIDER_CREATE
+  PROVIDER_CREDENTIAL_REPLACE
+  PROVIDER_DELETE
+  PROVIDER_MODEL_CONFIGURATION_UPDATE
+  PROVIDER_MODEL_CREATE
+  PROVIDER_MODEL_DELETE
+  PROVIDER_MODEL_PRICING_UPDATE
+  PROVIDER_MODEL_READ
+  PROVIDER_READ
+  ROLE_ASSIGN
+  ROLE_CREATE
+  ROLE_DELETE
+  ROLE_METADATA_UPDATE
+  ROLE_POLICY_READ
+  ROLE_POLICY_UPDATE
+  ROLE_READ
+  ROLE_UNASSIGN
+}
+
+input PermissionCheckInput {
+  action: PermissionAction!
+  memberId: ID
+  providerModelId: ID
+  resourceId: ID
+  resourceType: PermissionResourceType!
+  roleId: ID
+}
+
+type PermissionDecision {
+  allowed: Boolean!
+  index: Int!
+}
+
+type PermissionDecisionConnection {
+  edges: [PermissionDecisionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PermissionDecisionEdge {
+  cursor: String!
+  node: PermissionDecision!
+}
+
+enum PermissionResourceType {
+  GROUP
+  MEMBER
+  MODEL
+  ORGANIZATION
+  PROVIDER
+  PROVIDER_MODEL
+  ROLE
+}
+
 type PolicyAction {
   description: String!
   displayName: String!
@@ -686,6 +766,13 @@ type Query {
   """
   organizationPolicyActions: PolicyActionConnection!
   organizationProfile(id: ID!): OrganizationPayload
+
+  """
+  Evaluate at most 100 exact checks against the verified active organization.
+  """
+  permissionDecisions(
+    checks: [PermissionCheckInput!]!
+  ): PermissionDecisionConnection!
 
   """
   Find visible role metadata in the active organization.

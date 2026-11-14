@@ -76,6 +76,8 @@ pub struct Di {
         Box<dyn compallm_core::persistent::preference::user::UserPreferenceRepository>,
     user_preference_service: OnceLock<Box<compallm_core::preference::UserPreferenceService>>,
     organizations: Box<dyn OrganizationRepository>,
+    providers: Box<dyn compallm_core::persistent::provider::ProviderRepository>,
+    models: Box<dyn compallm_core::persistent::model::ModelRepository>,
     sessions: Box<dyn SessionRepository>,
     dictionaries: Box<dyn DictionaryRepository>,
     email: Option<Box<dyn EmailService>>,
@@ -156,6 +158,8 @@ impl Di {
                 compallm_postgres::repository::preference::user::UserPreferenceRepository,
             ),
             user_preference_service: OnceLock::new(),
+            providers: Box::new(compallm_postgres::repository::provider::ProviderRepository),
+            models: Box::new(compallm_postgres::repository::model::ModelRepository),
             organizations: Box::new(
                 compallm_postgres::repository::organization::OrganizationRepository,
             ),
@@ -470,5 +474,17 @@ impl juniper::FromContext<Di> for compallm_core::organization::profile_service::
         di.org_profile
             .get()
             .expect("organization profile initialized")
+    }
+}
+
+impl juniper::FromContext<Di> for Box<dyn compallm_core::persistent::provider::ProviderRepository> {
+    fn from(di: &Di) -> &Self {
+        &di.providers
+    }
+}
+
+impl juniper::FromContext<Di> for Box<dyn compallm_core::persistent::model::ModelRepository> {
+    fn from(di: &Di) -> &Self {
+        &di.models
     }
 }

@@ -1,3 +1,5 @@
+import { requirePermissions } from '../../permission/controller'
+import type { PermissionController } from '@compallm/storybook'
 import type { OrganizationController as Contract, SettingsController } from '@compallm/storybook/pages/settings'
 import type { AuthController } from '@compallm/storybook'
 import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
@@ -17,11 +19,18 @@ export class OrganizationController implements Contract {
   private identity?: string
   private active = false
   private uploaded?: { file: File; organizationId: string }
+  private readonly permissions?: PermissionController
   private readonly settings: SettingsController['store']
   private readonly auth: OrganizationAuth
   private readonly renamed: (name: string) => void
 
-  constructor(settings: SettingsController['store'], auth: OrganizationAuth, renamed: (name: string) => void) {
+  constructor(
+    settings: SettingsController['store'],
+    auth: OrganizationAuth,
+    renamed: (name: string) => void,
+    permissions?: PermissionController,
+  ) {
+    this.permissions = permissions
     this.settings = settings
     this.auth = auth
     this.renamed = renamed
@@ -142,6 +151,9 @@ export class OrganizationController implements Contract {
     })
     this.settings.setState({ organizationProfileSaving: true })
     try {
+      if (this.permissions)
+        await requirePermissions(this.permissions, [{ action: 'ORGANIZATION_SETTINGS_UPDATE', resourceType: 'ORGANIZATION' }])
+      if (!current()) return false as const
       if (file && (this.uploaded?.file !== file || this.uploaded.organizationId !== organizationId)) {
         const uploadInput = ImageUploadInput.parse({
           size: file.size,

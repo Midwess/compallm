@@ -1,3 +1,4 @@
+import { PermissionRequest } from '../../../components/permission'
 import { useId, useState } from 'react'
 import { FunnelIcon } from '@phosphor-icons/react/dist/csr/Funnel'
 import { Button } from '../../../components/buttons'
@@ -126,12 +127,19 @@ function PermissionRow({
       <Table.Cell className="px-1 py-0 text-xs text-muted-foreground">{action.description}</Table.Cell>
       <Table.Cell className="px-2 py-0">
         <DisabledTooltip disabled={owner} reason={ownerExplanation}>
-          <Switch
-            aria-label={action.label}
-            checked={permits.length > 0}
-            disabled={disabled || advanced}
-            onChange={() => void c.store.form.perform(() => c.togglePolicyAction(action.id), ['draft.source'])}
-          />
+          <PermissionRequest
+            actions={['ROLE_POLICY_UPDATE']}
+            resource={{ type: 'ROLE', id: c.store.getState().draft?.id }}
+            restricted="disabled"
+            asChild
+          >
+            <Switch
+              aria-label={action.label}
+              checked={permits.length > 0}
+              disabled={disabled || advanced}
+              onChange={() => void c.store.form.perform(() => c.togglePolicyAction(action.id), ['draft.source'])}
+            />
+          </PermissionRequest>
         </DisabledTooltip>
       </Table.Cell>
     </Table.Row>
@@ -254,21 +262,28 @@ export function PolicyTable() {
                   onOpenChange={(next) => setDisclosure((current) => ({ ...current, [category]: next }))}
                   action={
                     <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
-                      <Switch
-                        aria-label={'Allow ' + category + ' policies'}
-                        checked={allEditableSelected}
-                        disabled={disabled || editable.length === 0}
-                        onChange={() =>
-                          void c.store.form.perform(
-                            () =>
-                              c.setPolicyActions(
-                                editable.map((a) => a.id),
-                                !allEditableSelected,
-                              ),
-                            ['draft.source'],
-                          )
-                        }
-                      />
+                      <PermissionRequest
+                        actions={['ROLE_POLICY_UPDATE']}
+                        resource={{ type: 'ROLE', id: c.store.getState().draft?.id }}
+                        restricted="disabled"
+                        asChild
+                      >
+                        <Switch
+                          aria-label={'Allow ' + category + ' policies'}
+                          checked={allEditableSelected}
+                          disabled={disabled || editable.length === 0}
+                          onChange={() =>
+                            void c.store.form.perform(
+                              () =>
+                                c.setPolicyActions(
+                                  editable.map((a) => a.id),
+                                  !allEditableSelected,
+                                ),
+                              ['draft.source'],
+                            )
+                          }
+                        />
+                      </PermissionRequest>
                     </DisabledTooltip>
                   }
                 >

@@ -79,6 +79,21 @@ struct RecordingRepository(Mutex<Vec<Provider>>, Option<usize>);
 
 #[async_trait::async_trait]
 impl ProviderRepository for RecordingRepository {
+    async fn find_by_id(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Option<Provider>, ProviderRepositoryError> {
+        Ok(None)
+    }
+    async fn find_model_by_id(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Option<compallm_core::provider::ProviderModel>, ProviderRepositoryError> {
+        Ok(None)
+    }
+
     async fn insert(&self, provider: Provider) -> Result<Provider, ProviderRepositoryError> {
         DbContext::current().unwrap();
         let mut inserted = self.0.lock().unwrap();

@@ -1,3 +1,4 @@
+import { PermissionRequest } from '../../../components/permission'
 import { ChatCreateInput } from '@compallm/contract/validation'
 import { FormError } from '../../../components/form'
 import { Form, contractResult } from '../../../components/form'
@@ -27,14 +28,16 @@ function useChat<T>(selector: (state: ChatState) => T, names: readonly string[] 
 
 export function ChatPage() {
   return (
-    <section aria-label="Create chat" className="relative flex h-full min-h-0 flex-col">
-      <PageHeader className="absolute inset-x-0 top-0">
-        <Title>New chat</Title>
-      </PageHeader>
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto px-3 py-6">
-        <ChatInput />
-      </div>
-    </section>
+    <PermissionRequest actions={['MODEL_READ']} restricted="fallback">
+      <section aria-label="Create chat" className="relative flex h-full min-h-0 flex-col">
+        <PageHeader className="absolute inset-x-0 top-0">
+          <Title>New chat</Title>
+        </PageHeader>
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto px-3 py-6">
+          <ChatInput />
+        </div>
+      </section>
+    </PermissionRequest>
   )
 }
 
@@ -111,15 +114,23 @@ function ChatSubmit() {
     models.some((model) => model.value === modelId) &&
     !creating
   return (
-    <Button
-      type="submit"
-      variant="primary"
-      aria-label="Create chat"
-      disabled={!canSend}
-      loading={creating}
-      className="size-6 p-0"
+    <PermissionRequest
+      actions={['MODEL_USE']}
+      resource={{ type: 'MODEL', id: modelId || undefined }}
+      enabled={!!modelId}
+      restricted="disabled"
+      asChild
     >
-      {!creating ? <ArrowUpIcon size={14} aria-hidden="true" /> : null}
-    </Button>
+      <Button
+        type="submit"
+        variant="primary"
+        aria-label="Create chat"
+        disabled={!canSend}
+        loading={creating}
+        className="size-6 p-0"
+      >
+        {!creating ? <ArrowUpIcon size={14} aria-hidden="true" /> : null}
+      </Button>
+    </PermissionRequest>
   )
 }

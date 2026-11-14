@@ -1,3 +1,4 @@
+import { PermissionRequest, usePermissionChecks } from '../../components/permission'
 import { Form, useManagedForm } from '../../components/form'
 import { useState } from 'react'
 import { DotsThreeIcon } from '@phosphor-icons/react/dist/csr/DotsThree'
@@ -20,6 +21,14 @@ function MemberRoles({ member }: { member: SettingsMember }) {
   const inherited = new Set(groups.filter((g) => g.memberIds.includes(member.id)).flatMap((g) => g.roleIds))
   const ids = new Set([...member.roleIds, ...inherited]),
     first = roles.find((r) => member.roleIds.includes(r.id))
+  const decisions = usePermissionChecks(
+    roles.map((role) => ({
+      action: member.roleIds.includes(role.id) ? ('MEMBER_ROLE_UNASSIGN' as const) : ('MEMBER_ROLE_ASSIGN' as const),
+      resourceType: 'MEMBER',
+      resourceId: member.id,
+      roleId: role.id,
+    })),
+  )
   const form = useManagedForm(
     { roleIds: member.roleIds },
     {
@@ -59,7 +68,7 @@ function MemberRoles({ member }: { member: SettingsMember }) {
                 key={r.id}
                 aria-label={r.name}
                 checked={ids.has(r.id)}
-                disabled={inherited.has(r.id)}
+                disabled={inherited.has(r.id) || decisions[roles.findIndex((role) => role.id === r.id)] !== 'allowed'}
                 name={inherited.has(r.id) ? undefined : 'roleIds'}
                 selectionValue={r.id}
               >
@@ -78,16 +87,18 @@ function MemberActions({ member }: { member: SettingsMember }) {
   const c = useSettingsController(),
     readonly = useSettings((s) => s.readonly)
   return (
-    <Popup.Root>
-      <Popup.Trigger aria-label={`Actions for ${member.name}`} disabled={readonly} className="size-8">
-        <DotsThreeIcon className="size-4" aria-hidden="true" />
-      </Popup.Trigger>
-      <Popup.Content aria-label={`Actions for ${member.name}`} className="bg-elevated">
-        <Popup.Item className="h-10 text-destructive" onSelect={() => c.pages.dialogs.openDialog('remove-member', member.id)}>
-          Remove member
-        </Popup.Item>
-      </Popup.Content>
-    </Popup.Root>
+    <PermissionRequest actions={['MEMBER_REMOVE']} resource={{ type: 'MEMBER', id: member.id }}>
+      <Popup.Root>
+        <Popup.Trigger aria-label={`Actions for ${member.name}`} disabled={readonly} className="size-8">
+          <DotsThreeIcon className="size-4" aria-hidden="true" />
+        </Popup.Trigger>
+        <Popup.Content aria-label={`Actions for ${member.name}`} className="bg-elevated">
+          <Popup.Item className="h-10 text-destructive" onSelect={() => c.pages.dialogs.openDialog('remove-member', member.id)}>
+            Remove member
+          </Popup.Item>
+        </Popup.Content>
+      </Popup.Root>
+    </PermissionRequest>
   )
 }
 export function MembersSettings() {
@@ -158,7 +169,9 @@ export function MembersSettings() {
                 </Table.Cell>
                 <Table.Cell className="px-4 text-muted-foreground">{m.email}</Table.Cell>
                 <Table.Cell>
-                  <MemberRoles member={m} />
+                  <PermissionRequest actions={['ROLE_READ']}>
+                    <MemberRoles member={m} />
+                  </PermissionRequest>
                 </Table.Cell>
                 <Table.Cell>
                   <MemberActions member={m} />

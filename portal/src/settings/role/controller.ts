@@ -1,3 +1,5 @@
+import { permissionKey, type PermissionController } from '@compallm/storybook'
+import { requirePermissions } from '../../permission/controller'
 import {
   createRoleStore,
   type RoleController as Contract,
@@ -12,6 +14,7 @@ import { ApiError, graphql } from '../../graphql-client'
 import { notify } from '../../notifications/toast'
 
 export class RoleController implements Contract {
+  private readonly permissions?: PermissionController
   readonly store = createRoleStore()
   private request?: AbortController
   private writes: Promise<void> = Promise.resolve()
@@ -19,7 +22,8 @@ export class RoleController implements Contract {
   private parseTimer?: ReturnType<typeof setTimeout>
   private savedPolicy?: { id: string; source: string }
   private readonly settings: StoreApi<SettingsState>
-  constructor(settings: StoreApi<SettingsState>) {
+  constructor(settings: StoreApi<SettingsState>, permissions?: PermissionController) {
+    this.permissions = permissions
     this.settings = settings
   }
   cancel = () => {
@@ -37,10 +41,17 @@ export class RoleController implements Contract {
     this.store.setState({ draft: null, loading: true, busy: false })
     this.settings.setState({ policyActions: [] })
     try {
+      if (this.permissions) await requirePermissions(this.permissions, [{ action: 'ROLE_READ', resourceType: 'ORGANIZATION' }])
+      if (request.signal.aborted || this.request !== request) return
+      const policyRead = { action: 'ROLE_POLICY_READ', resourceType: 'ROLE', resourceId: id } as const
+      if (this.permissions) await this.permissions.ensure([policyRead])
+      if (request.signal.aborted || this.request !== request) return
+      const canReadPolicy =
+        !this.permissions || this.permissions.store.getState().entries[permissionKey(policyRead)]?.status === 'allowed'
       const roleSelection = {
         role: {
           __args: { id },
-          node: { id: true, name: true, description: true, color: true, cedarSource: true, owner: true },
+          node: { id: true, name: true, description: true, color: true, cedarSource: canReadPolicy, owner: true },
         },
       } satisfies QueryGenqlSelection
       const catalogSelection = {
@@ -66,13 +77,13 @@ export class RoleController implements Contract {
           })),
         })
       } else {
-        const source = metadata.value.role.node.cedarSource
+        const source = metadata.value.role.node.cedarSource ?? null
         notify.apiError(catalog.reason, () => {
           const draft = this.store.getState().draft
           if (this.request === request && draft?.id === id && draft.source === (source ?? '')) void this.load(id)
         })
       }
-      const role = metadata.value.role.node
+      const role = { ...metadata.value.role.node, cedarSource: metadata.value.role.node.cedarSource ?? null }
       let projection: RoleDraft['projection'] = []
       let diagnostics =
         role.cedarSource === null
@@ -157,6 +168,9 @@ export class RoleController implements Contract {
     const request = this.request
     if (!draft?.id || draft.builtin || !request) throw new Error('Role is not editable')
     const id = draft.id
+    if (this.permissions)
+      await requirePermissions(this.permissions, [{ action: 'ROLE_METADATA_UPDATE', resourceType: 'ROLE', resourceId: id }])
+    if (request.signal.aborted || this.request !== request || signal?.aborted) throw new DOMException('Cancelled', 'AbortError')
     const input = RoleUpdateInput.parse(value)
     const selection = {
       roleUpdate: { __args: { id, input }, node: { id: true, name: true, description: true, color: true } },
@@ -238,6 +252,9 @@ export class RoleController implements Contract {
     }
     if (request.signal.aborted || this.request !== request) return false
     if (this.savedPolicy?.source === compactCedarSource(source)) return true
+    if (this.permissions)
+      await requirePermissions(this.permissions, [{ action: 'ROLE_POLICY_UPDATE', resourceType: 'ROLE', resourceId: id }])
+    if (request.signal.aborted || this.request !== request) return false
     const input = this.policyInput(source)
     const selection = { roleUpdate: { __args: { id, input }, node: { id: true } } } satisfies MutationGenqlSelection
     await graphql(request.signal).mutation(selection)

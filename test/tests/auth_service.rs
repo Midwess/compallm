@@ -5428,3 +5428,119 @@ async fn preference_graphql_persists_grouped_updates_and_resets_for_current_user
     cleanup?;
     Ok(())
 }
+
+#[tokio::test]
+async fn graphql_permission_decisions_share_verified_authority_and_preserve_denials() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let session = fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    let snapshot = PolicySnapshot {
+        cedar_source: r#"permit(principal, action == Compallm::Action::"provider.create", resource == Compallm::Organization::"84"); permit(principal, action == Compallm::Action::"model.create", resource == Compallm::Organization::"84"); forbid(principal, action == Compallm::Action::"model.create", resource == Compallm::Organization::"84");"#.into(),
+        role_ids: vec![], group_roles: Default::default(),
+    };
+    let authorized = token_pair::new(
+        &session,
+        snapshot,
+        SECRET,
+        Duration::from_secs(60),
+        REFRESH_LIFETIME,
+    )
+    .unwrap();
+    let router = fixture.graphql();
+    let query = "query($checks:[PermissionCheckInput!]!){permissionDecisions(checks:$checks){edges{node{index allowed}} pageInfo{hasNextPage hasPreviousPage}}}";
+    let variables = serde_json::json!({ "checks": [
+        {"action":"PROVIDER_CREATE", "resourceType":"ORGANIZATION"},
+        {"action":"MODEL_CREATE", "resourceType":"ORGANIZATION"},
+        {"action":"PROVIDER_CREATE", "resourceType":"ORGANIZATION", "resourceId":"85"}
+    ] });
+    let before = fixture.repo.0.lock().unwrap().freshness_reads;
+    let body = graphql_body(
+        graphql_operation(
+            &router,
+            query,
+            variables.clone(),
+            Some(&authorized.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(body["errors"].is_null(), "{body}");
+    assert_eq!(
+        body["data"]["permissionDecisions"]["edges"],
+        serde_json::json!([
+            {"node":{"index":0,"allowed":true}}, {"node":{"index":1,"allowed":false}}, {"node":{"index":2,"allowed":false}}
+        ])
+    );
+    assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, before + 1);
+    let anonymous =
+        graphql_body(graphql_operation(&router, query, variables, None, None, false).await).await;
+    assert_eq!(
+        anonymous["errors"][0]["extensions"]["code"],
+        "UNAUTHENTICATED"
+    );
+}
+
+#[tokio::test]
+async fn graphql_permission_evaluation_failure_is_not_reported_as_an_ordinary_denial() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let session = fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    let snapshot = PolicySnapshot {
+        cedar_source: r#"permit(principal, action == Compallm::Action::"provider.create", resource == Compallm::Organization::"84"); forbid(principal, action == Compallm::Action::"provider.create", resource == Compallm::Organization::"84") when { 9223372036854775807 + 1 > 0 };"#.into(),
+        role_ids: vec![], group_roles: Default::default(),
+    };
+    let authorized = token_pair::new(
+        &session,
+        snapshot,
+        SECRET,
+        Duration::from_secs(60),
+        REFRESH_LIFETIME,
+    )
+    .unwrap();
+    let query = "{permissionDecisions(checks:[{action:PROVIDER_CREATE, resourceType:ORGANIZATION}]){edges{node{allowed}}}}";
+    let body = graphql_body(
+        graphql_operation(
+            &fixture.graphql(),
+            query,
+            serde_json::json!({}),
+            Some(&authorized.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(body["data"].is_null());
+    assert_eq!(
+        body["errors"][0]["extensions"]["code"],
+        "INTERNAL_SERVER_ERROR"
+    );
+}

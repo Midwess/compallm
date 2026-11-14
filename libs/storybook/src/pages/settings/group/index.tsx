@@ -1,3 +1,4 @@
+import { PermissionRequest, usePermission, usePermissionChecks } from '../../../components/permission'
 import { GroupCreateInput, GroupUpdateInput } from '@compallm/contract/validation'
 import { FormError } from '../../../components/form'
 import { DisabledTooltip } from '../../../components/feedback'
@@ -18,8 +19,8 @@ import { SettingsContent, Heading, Section, Rows, Row, Indicator, Empty } from '
 function GroupMembers() {
   const group = useGroupController(),
     draft = useGroup(
-      (s) => (s.draft ? { memberIds: s.draft.memberIds, memberSelection: s.draft.memberSelection } : null),
-      ['draft.memberIds', 'draft.memberSelection'],
+      (s) => (s.draft ? { id: s.draft.id, memberIds: s.draft.memberIds, memberSelection: s.draft.memberSelection } : null),
+      ['draft.id', 'draft.memberIds', 'draft.memberSelection'],
     ),
     fallbackMembers = useSettings((s) => s.members),
     pageMembers = useGroup((s) => s.members),
@@ -99,11 +100,19 @@ function GroupMembers() {
                               : 'This member is inactive and cannot be added.'
                         }
                       >
-                        <Switch
-                          aria-label={`Include ${entry.name}`}
-                          name={`draft.memberSelection.${entry.id}`}
-                          disabled={readonly || busy || (!entry.available && !selected.includes(entry.id))}
-                        />
+                        <PermissionRequest
+                          actions={[selected.includes(entry.id) ? 'GROUP_MEMBER_REMOVE' : 'GROUP_MEMBER_ADD']}
+                          resource={{ type: 'GROUP', id: draft.id }}
+                          context={{ memberId: entry.id }}
+                          restricted="disabled"
+                          asChild
+                        >
+                          <Switch
+                            aria-label={`Include ${entry.name}`}
+                            name={`draft.memberSelection.${entry.id}`}
+                            disabled={readonly || busy || (!entry.available && !selected.includes(entry.id))}
+                          />
+                        </PermissionRequest>
                       </DisabledTooltip>
                     </Table.Cell>
                   </Table.Row>
@@ -133,13 +142,23 @@ function GroupMembers() {
 function GroupRoles() {
   const c = useSettingsController(),
     group = useGroupController(),
-    draft = useGroup((s) => (s.draft ? { roleIds: s.draft.roleIds } : null), ['draft.roleIds']),
+    draft = useGroup((s) => (s.draft ? { id: s.draft.id, roleIds: s.draft.roleIds } : null), ['draft.id', 'draft.roleIds']),
     fallbackRoles = useSettings((s) => s.roles),
     roleOptions = useGroup((s) => s.roles),
     readonly = useSettings((s) => s.readonly),
     busy = useGroup((s) => s.busy)
-  if (!draft) return null
   const roles = roleOptions ?? fallbackRoles
+  const optionPermissions = usePermissionChecks(
+    draft?.id
+      ? roles.map((role) => ({
+          action: draft.roleIds.includes(role.id) ? ('GROUP_ROLE_UNASSIGN' as const) : ('GROUP_ROLE_ASSIGN' as const),
+          resourceType: 'GROUP',
+          resourceId: draft.id,
+          roleId: role.id,
+        }))
+      : [],
+  )
+  if (!draft) return null
   const selected = roles.filter((role) => draft.roleIds.includes(role.id))
   const missing = draft.roleIds.filter((id) => !roles.some((role) => role.id === id))
   return (
@@ -163,7 +182,13 @@ function GroupRoles() {
               ) : undefined
             }
             disabled={readonly || busy}
-            options={roles.map((role) => ({ id: role.id, label: role.name, description: role.description, color: role.color }))}
+            options={roles.map((role, index) => ({
+              id: role.id,
+              label: role.name,
+              description: role.description,
+              color: role.color,
+              disabled: optionPermissions[index] !== 'allowed',
+            }))}
             name="draft.roleIds"
           />
         </DisabledTooltip>
@@ -199,22 +224,30 @@ function GroupRoles() {
                   disabled={readonly || busy}
                   reason={readonly ? 'This group is read-only.' : 'Wait for the current update to finish.'}
                 >
-                  <Button
-                    variant="ghost"
-                    aria-label={`Remove ${role.name} from group`}
-                    className="pointer-events-none size-6 shrink-0 rounded-full p-0 text-sm opacity-0
+                  <PermissionRequest
+                    actions={['GROUP_ROLE_UNASSIGN']}
+                    resource={{ type: 'GROUP', id: draft.id }}
+                    context={{ roleId: role.id }}
+                    restricted="disabled"
+                    asChild
+                  >
+                    <Button
+                      variant="ghost"
+                      aria-label={`Remove ${role.name} from group`}
+                      className="pointer-events-none size-6 shrink-0 rounded-full p-0 text-sm opacity-0
                     group-hover/assigned-role:pointer-events-auto group-hover/assigned-role:opacity-100
                     group-focus-within/assigned-role:pointer-events-auto group-focus-within/assigned-role:opacity-100"
-                    disabled={readonly || busy}
-                    onClick={() =>
-                      group.store.form.change(
-                        'draft.roleIds',
-                        draft.roleIds.filter((id) => id !== role.id),
-                      )
-                    }
-                  >
-                    <TrashIcon aria-hidden="true" className="size-3.5" />
-                  </Button>
+                      disabled={readonly || busy}
+                      onClick={() =>
+                        group.store.form.change(
+                          'draft.roleIds',
+                          draft.roleIds.filter((id) => id !== role.id),
+                        )
+                      }
+                    >
+                      <TrashIcon aria-hidden="true" className="size-3.5" />
+                    </Button>
+                  </PermissionRequest>
                 </DisabledTooltip>
               </li>
             ))}
@@ -241,6 +274,11 @@ function GroupEditorContent() {
     draft = useGroup((s) => (s.draft ? { id: s.draft.id } : null), ['draft.id']),
     readonly = useSettings((s) => s.readonly),
     busy = useGroup((s) => s.busy)
+  const metadataPermission = usePermission({
+    actions: ['GROUP_METADATA_UPDATE'],
+    resource: { type: 'GROUP', id: draft?.id },
+    enabled: !!draft?.id,
+  })
   if (loading) return <SettingsContent aria-busy="true" aria-label="Loading group" />
   if (!draft)
     return (
@@ -258,53 +296,71 @@ function GroupEditorContent() {
           <Rows className="**:[[role=separator]]:bg-border">
             <Row label={<label htmlFor="group-name">Name</label>}>
               <DisabledTooltip
-                disabled={readonly || busy}
-                reason={readonly ? 'This group is read-only.' : 'Wait for the current update to finish.'}
+                disabled={readonly || busy || !metadataPermission.allowed}
+                reason={
+                  !metadataPermission.allowed
+                    ? 'You do not have permission to edit this group.'
+                    : readonly
+                      ? 'This group is read-only.'
+                      : 'Wait for the current update to finish.'
+                }
               >
                 <TextField
                   id="group-name"
                   className="w-xl max-w-full border-border max-lg:w-sm"
                   name="draft.name"
                   placeholder="Group name…"
-                  disabled={readonly || busy}
+                  disabled={readonly || busy || !metadataPermission.allowed}
                 />
               </DisabledTooltip>
               <FormError name="draft.name" />
             </Row>
             <Row label={<label htmlFor="group-description">Description</label>} last>
               <DisabledTooltip
-                disabled={readonly || busy}
-                reason={readonly ? 'This group is read-only.' : 'Wait for the current update to finish.'}
+                disabled={readonly || busy || !metadataPermission.allowed}
+                reason={
+                  !metadataPermission.allowed
+                    ? 'You do not have permission to edit this group.'
+                    : readonly
+                      ? 'This group is read-only.'
+                      : 'Wait for the current update to finish.'
+                }
               >
                 <TextField
                   id="group-description"
                   className="w-xl max-w-full border-border max-lg:w-sm"
                   name="draft.description"
                   placeholder="Describe this group…"
-                  disabled={readonly || busy}
+                  disabled={readonly || busy || !metadataPermission.allowed}
                 />
               </DisabledTooltip>
               <FormError name="draft.description" />
             </Row>
           </Rows>
         </Section>
-        <GroupRoles />
-        <GroupMembers />
+        <PermissionRequest actions={['ROLE_READ']}>
+          <GroupRoles />
+        </PermissionRequest>
+        <PermissionRequest actions={['MEMBER_READ']}>
+          <GroupMembers />
+        </PermissionRequest>
         {!readonly && draft.id ? (
-          <Section title="Danger" className="shrink-0">
-            <Rows>
-              <Row label="Delete group" last>
-                <Button
-                  variant="ghost"
-                  className="text-destructive"
-                  disabled={busy}
-                  onClick={() => c.pages.dialogs.openDialog('delete-group', draft.id!)}
-                >
-                  Delete group
-                </Button>
-              </Row>
-            </Rows>
-          </Section>
+          <PermissionRequest actions={['GROUP_DELETE']} resource={{ type: 'GROUP', id: draft.id }}>
+            <Section title="Danger" className="shrink-0">
+              <Rows>
+                <Row label="Delete group" last>
+                  <Button
+                    variant="ghost"
+                    className="text-destructive"
+                    disabled={busy}
+                    onClick={() => c.pages.dialogs.openDialog('delete-group', draft.id!)}
+                  >
+                    Delete group
+                  </Button>
+                </Row>
+              </Rows>
+            </Section>
+          </PermissionRequest>
         ) : null}
       </div>
     </SettingsContent>

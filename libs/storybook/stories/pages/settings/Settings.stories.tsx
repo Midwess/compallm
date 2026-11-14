@@ -442,3 +442,27 @@ export const DeleteGroup: Story = {
     />
   ),
 }
+
+export const PermissionRestrictedRole: Story = {
+  ...EditRole,
+  parameters: {
+    deniedPermissionActions: ['ROLE_METADATA_UPDATE', 'ROLE_POLICY_UPDATE', 'ROLE_DELETE', 'ROLE_CREATE', 'GROUP_CREATE'],
+  },
+}
+export const PermissionRestrictedGroup: Story = {
+  ...EditGroup,
+  parameters: {
+    deniedPermissionActions: [
+      'GROUP_METADATA_UPDATE',
+      'GROUP_MEMBER_ADD',
+      'GROUP_MEMBER_REMOVE',
+      'GROUP_ROLE_ASSIGN',
+      'GROUP_ROLE_UNASSIGN',
+      'GROUP_DELETE',
+    ],
+  },
+}
+export const PermissionHiddenPolicies: Story = {
+  ...EditRole,
+  parameters: { deniedPermissionActions: ['ROLE_POLICY_READ'] },
+}

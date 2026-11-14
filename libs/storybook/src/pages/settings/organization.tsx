@@ -1,3 +1,4 @@
+import { usePermission } from '../../components/permission'
 import { FormError } from '../../components/form'
 import { useSyncExternalStore } from 'react'
 import { Button } from '../../components/buttons'
@@ -16,10 +17,12 @@ export function OrganizationSettings() {
     org = useSettings((s) => s.organization, ['organization']),
     savedName = useSettings((s) => s.organizationSavedName),
     status = useSettings((s) => s.organizationProfileStatus),
-    canUpdate = useSettings((s) => s.organizationCanUpdateProfile),
+    canUpdateProfile = useSettings((s) => s.organizationCanUpdateProfile),
     busy = useSettings((s) => s.organizationProfileSaving)
   const path = savedName || org.name ? `/${encodeURIComponent(savedName || org.name)}` : ''
   const organizationUrl = path && origin ? new URL(path, origin).href : path
+  const permission = usePermission({ actions: ['ORGANIZATION_SETTINGS_UPDATE'] })
+  const canUpdate = canUpdateProfile && permission.allowed
   if (status !== 'ready')
     return (
       <SettingsContent>

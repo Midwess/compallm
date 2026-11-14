@@ -35,6 +35,62 @@ enum OrderByDirection {
   DescNullsLast
 }
 
+enum PermissionAction {
+  MEMBER_READ
+  MEMBER_INVITE
+  MEMBER_REMOVE
+  MEMBER_ROLE_ASSIGN
+  MEMBER_ROLE_UNASSIGN
+  ROLE_READ
+  ROLE_CREATE
+  ROLE_METADATA_UPDATE
+  ROLE_POLICY_READ
+  ROLE_POLICY_UPDATE
+  ROLE_DELETE
+  ROLE_ASSIGN
+  ROLE_UNASSIGN
+  ORGANIZATION_SETTINGS_READ
+  ORGANIZATION_SETTINGS_UPDATE
+  ORGANIZATION_DELETE
+  GROUP_READ
+  GROUP_CREATE
+  GROUP_METADATA_UPDATE
+  GROUP_MEMBER_ADD
+  GROUP_MEMBER_REMOVE
+  GROUP_ROLE_ASSIGN
+  GROUP_ROLE_UNASSIGN
+  GROUP_DELETE
+  PROVIDER_READ
+  PROVIDER_CREATE
+  PROVIDER_CONFIGURATION_UPDATE
+  PROVIDER_DELETE
+  PROVIDER_CREDENTIAL_REPLACE
+  PROVIDER_MODEL_READ
+  PROVIDER_MODEL_CREATE
+  PROVIDER_MODEL_CONFIGURATION_UPDATE
+  PROVIDER_MODEL_PRICING_UPDATE
+  PROVIDER_MODEL_DELETE
+  MODEL_READ
+  MODEL_CREATE
+  MODEL_CONFIGURATION_UPDATE
+  MODEL_DELETE
+  MODEL_USE
+  MODEL_ROUTE_ADD
+  MODEL_ROUTE_UPDATE
+  MODEL_ROUTE_REMOVE
+  MODEL_PRICING_UPDATE
+}
+
+enum PermissionResourceType {
+  ORGANIZATION
+  MEMBER
+  ROLE
+  GROUP
+  PROVIDER
+  PROVIDER_MODEL
+  MODEL
+}
+
 enum PreferenceAppearanceMode {
   SYSTEM
   LIGHT
@@ -295,6 +351,15 @@ input OrganizationSettingsUpdateInput {
 input PalettePatchInput {
   light: PreferenceLightPalette
   dark: PreferenceDarkPalette
+}
+
+input PermissionCheckInput {
+  action: PermissionAction!
+  resourceType: PermissionResourceType!
+  resourceId: ID
+  roleId: ID
+  memberId: ID
+  providerModelId: ID
 }
 
 input ProfileUpdateInput {
@@ -628,6 +693,21 @@ type PalettePreferences {
   dark: PreferenceDarkPalette!
 }
 
+type PermissionDecision {
+  index: Int!
+  allowed: Boolean!
+}
+
+type PermissionDecisionConnection {
+  edges: [PermissionDecisionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PermissionDecisionEdge {
+  cursor: String!
+  node: PermissionDecision!
+}
+
 type PolicyAction {
   name: String!
   displayName: String!
@@ -658,6 +738,8 @@ type ProviderTemplate {
 }
 
 type Query {
+  "Evaluate at most 100 exact checks against the verified active organization."
+  permissionDecisions(checks: [PermissionCheckInput!]!): PermissionDecisionConnection!
   organizationProfile(id: ID!): OrganizationPayload
   "Read an active user profile using verified user identity."
   userProfile(id: ID!): UserPayload

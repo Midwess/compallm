@@ -6,6 +6,7 @@ import { defineConfig } from 'vite'
 const source = (path: string) => fileURLToPath(new URL(`./src/${path}`, import.meta.url))
 const families = [
   'buttons',
+  'permission',
   'form',
   'choice-picker',
   'provider-icons',
@@ -70,6 +71,8 @@ export default defineConfig({
           'react',
           'react-dom',
           '@base-ui/react',
+          '@casl/ability',
+          '@casl/react',
           '@phosphor-icons/react',
           'tailwind-merge',
           'zustand',

@@ -28,6 +28,17 @@ impl From<ConnectionError> for ProviderRepositoryError {
 /// Uses the active `DbContext` and leaves transaction ownership to the caller.
 #[async_trait]
 pub trait ProviderRepository: Send + Sync {
+    async fn find_model_by_id(
+        &self,
+        organization_id: u64,
+        id: u64,
+    ) -> Result<Option<crate::provider::ProviderModel>, ProviderRepositoryError>;
+    async fn find_by_id(
+        &self,
+        organization_id: u64,
+        id: u64,
+    ) -> Result<Option<Provider>, ProviderRepositoryError>;
+
     async fn find_all(
         &self,
         organization_id: u64,

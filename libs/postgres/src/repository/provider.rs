@@ -50,6 +50,45 @@ impl ProviderRepository {
 
 #[async_trait::async_trait]
 impl CoreProviderRepository for ProviderRepository {
+    async fn find_by_id(
+        &self,
+        organization_id: u64,
+        id: u64,
+    ) -> Result<Option<Provider>, ProviderRepositoryError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        Providers::find_by_id(Self::database_id(id, "resource ID")?)
+            .filter(
+                ProviderColumn::OrganizationId
+                    .eq(Self::database_id(organization_id, "organization ID")?),
+            )
+            .one(db)
+            .await
+            .map_err(ProviderRepositoryError::database)?
+            .map(Provider::try_from)
+            .transpose()
+    }
+    async fn find_model_by_id(
+        &self,
+        organization_id: u64,
+        id: u64,
+    ) -> Result<Option<compallm_core::provider::ProviderModel>, ProviderRepositoryError> {
+        use crate::ProviderModelSchema;
+        type ProviderModels = <ProviderModelSchema as ModelTrait>::Entity;
+        type Column = <ProviderModels as EntityTrait>::Column;
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        ProviderModels::find_by_id(Self::database_id(id, "provider model ID")?)
+            .filter(
+                Column::OrganizationId.eq(Self::database_id(organization_id, "organization ID")?),
+            )
+            .one(db)
+            .await
+            .map_err(ProviderRepositoryError::database)?
+            .map(compallm_core::provider::ProviderModel::try_from)
+            .transpose()
+    }
+
     async fn find_all(
         &self,
         organization_id: u64,

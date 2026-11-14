@@ -199,6 +199,72 @@ export interface PalettePreferences {
   __typename: 'PalettePreferences'
 }
 
+export type PermissionAction =
+  | 'GROUP_CREATE'
+  | 'GROUP_DELETE'
+  | 'GROUP_MEMBER_ADD'
+  | 'GROUP_MEMBER_REMOVE'
+  | 'GROUP_METADATA_UPDATE'
+  | 'GROUP_READ'
+  | 'GROUP_ROLE_ASSIGN'
+  | 'GROUP_ROLE_UNASSIGN'
+  | 'MEMBER_INVITE'
+  | 'MEMBER_READ'
+  | 'MEMBER_REMOVE'
+  | 'MEMBER_ROLE_ASSIGN'
+  | 'MEMBER_ROLE_UNASSIGN'
+  | 'MODEL_CONFIGURATION_UPDATE'
+  | 'MODEL_CREATE'
+  | 'MODEL_DELETE'
+  | 'MODEL_PRICING_UPDATE'
+  | 'MODEL_READ'
+  | 'MODEL_ROUTE_ADD'
+  | 'MODEL_ROUTE_REMOVE'
+  | 'MODEL_ROUTE_UPDATE'
+  | 'MODEL_USE'
+  | 'ORGANIZATION_DELETE'
+  | 'ORGANIZATION_SETTINGS_READ'
+  | 'ORGANIZATION_SETTINGS_UPDATE'
+  | 'PROVIDER_CONFIGURATION_UPDATE'
+  | 'PROVIDER_CREATE'
+  | 'PROVIDER_CREDENTIAL_REPLACE'
+  | 'PROVIDER_DELETE'
+  | 'PROVIDER_MODEL_CONFIGURATION_UPDATE'
+  | 'PROVIDER_MODEL_CREATE'
+  | 'PROVIDER_MODEL_DELETE'
+  | 'PROVIDER_MODEL_PRICING_UPDATE'
+  | 'PROVIDER_MODEL_READ'
+  | 'PROVIDER_READ'
+  | 'ROLE_ASSIGN'
+  | 'ROLE_CREATE'
+  | 'ROLE_DELETE'
+  | 'ROLE_METADATA_UPDATE'
+  | 'ROLE_POLICY_READ'
+  | 'ROLE_POLICY_UPDATE'
+  | 'ROLE_READ'
+  | 'ROLE_UNASSIGN'
+
+export interface PermissionDecision {
+  allowed: Scalars['Boolean']
+  index: Scalars['Int']
+  __typename: 'PermissionDecision'
+}
+
+export interface PermissionDecisionConnection {
+  edges: PermissionDecisionEdge[]
+  pageInfo: PageInfo
+  __typename: 'PermissionDecisionConnection'
+}
+
+export interface PermissionDecisionEdge {
+  cursor: Scalars['String']
+  node: PermissionDecision
+  __typename: 'PermissionDecisionEdge'
+}
+
+export type PermissionResourceType =
+  'GROUP' | 'MEMBER' | 'MODEL' | 'ORGANIZATION' | 'PROVIDER' | 'PROVIDER_MODEL' | 'ROLE'
+
 export interface PolicyAction {
   description: Scalars['String']
   displayName: Scalars['String']
@@ -290,6 +356,8 @@ export interface Query {
   /** Return the system-owned organization policy action catalog. */
   organizationPolicyActions: PolicyActionConnection
   organizationProfile: OrganizationPayload | null
+  /** Evaluate at most 100 exact checks against the verified active organization. */
+  permissionDecisions: PermissionDecisionConnection
   /** Find visible role metadata in the active organization. */
   role: RolePayload | null
   /** Return the complete visible role metadata collection, ordered by ID. */
@@ -786,6 +854,36 @@ export interface PalettePreferencesGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface PermissionCheckInput {
+  action: PermissionAction
+  memberId?: Scalars['ID'] | null
+  providerModelId?: Scalars['ID'] | null
+  resourceId?: Scalars['ID'] | null
+  resourceType: PermissionResourceType
+  roleId?: Scalars['ID'] | null
+}
+
+export interface PermissionDecisionGenqlSelection {
+  allowed?: boolean | number
+  index?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PermissionDecisionConnectionGenqlSelection {
+  edges?: PermissionDecisionEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PermissionDecisionEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: PermissionDecisionGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface PolicyActionGenqlSelection {
   description?: boolean | number
   displayName?: boolean | number
@@ -934,6 +1032,8 @@ export interface QueryGenqlSelection {
   /** Return the system-owned organization policy action catalog. */
   organizationPolicyActions?: PolicyActionConnectionGenqlSelection
   organizationProfile?: OrganizationPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  /** Evaluate at most 100 exact checks against the verified active organization. */
+  permissionDecisions?: PermissionDecisionConnectionGenqlSelection & { __args: { checks: PermissionCheckInput[] } }
   /** Find visible role metadata in the active organization. */
   role?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Return the complete visible role metadata collection, ordered by ID. */
@@ -1341,6 +1441,26 @@ export const isPalettePreferences = (obj?: { __typename?: any } | null): obj is 
   return PalettePreferences_possibleTypes.includes(obj.__typename)
 }
 
+const PermissionDecision_possibleTypes: string[] = ['PermissionDecision']
+export const isPermissionDecision = (obj?: { __typename?: any } | null): obj is PermissionDecision => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPermissionDecision"')
+  return PermissionDecision_possibleTypes.includes(obj.__typename)
+}
+
+const PermissionDecisionConnection_possibleTypes: string[] = ['PermissionDecisionConnection']
+export const isPermissionDecisionConnection = (
+  obj?: { __typename?: any } | null,
+): obj is PermissionDecisionConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPermissionDecisionConnection"')
+  return PermissionDecisionConnection_possibleTypes.includes(obj.__typename)
+}
+
+const PermissionDecisionEdge_possibleTypes: string[] = ['PermissionDecisionEdge']
+export const isPermissionDecisionEdge = (obj?: { __typename?: any } | null): obj is PermissionDecisionEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPermissionDecisionEdge"')
+  return PermissionDecisionEdge_possibleTypes.includes(obj.__typename)
+}
+
 const PolicyAction_possibleTypes: string[] = ['PolicyAction']
 export const isPolicyAction = (obj?: { __typename?: any } | null): obj is PolicyAction => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isPolicyAction"')
@@ -1512,6 +1632,62 @@ export const enumOrderByDirection = {
   AscNullsLast: 'AscNullsLast' as const,
   DescNullsFirst: 'DescNullsFirst' as const,
   DescNullsLast: 'DescNullsLast' as const,
+}
+
+export const enumPermissionAction = {
+  GROUP_CREATE: 'GROUP_CREATE' as const,
+  GROUP_DELETE: 'GROUP_DELETE' as const,
+  GROUP_MEMBER_ADD: 'GROUP_MEMBER_ADD' as const,
+  GROUP_MEMBER_REMOVE: 'GROUP_MEMBER_REMOVE' as const,
+  GROUP_METADATA_UPDATE: 'GROUP_METADATA_UPDATE' as const,
+  GROUP_READ: 'GROUP_READ' as const,
+  GROUP_ROLE_ASSIGN: 'GROUP_ROLE_ASSIGN' as const,
+  GROUP_ROLE_UNASSIGN: 'GROUP_ROLE_UNASSIGN' as const,
+  MEMBER_INVITE: 'MEMBER_INVITE' as const,
+  MEMBER_READ: 'MEMBER_READ' as const,
+  MEMBER_REMOVE: 'MEMBER_REMOVE' as const,
+  MEMBER_ROLE_ASSIGN: 'MEMBER_ROLE_ASSIGN' as const,
+  MEMBER_ROLE_UNASSIGN: 'MEMBER_ROLE_UNASSIGN' as const,
+  MODEL_CONFIGURATION_UPDATE: 'MODEL_CONFIGURATION_UPDATE' as const,
+  MODEL_CREATE: 'MODEL_CREATE' as const,
+  MODEL_DELETE: 'MODEL_DELETE' as const,
+  MODEL_PRICING_UPDATE: 'MODEL_PRICING_UPDATE' as const,
+  MODEL_READ: 'MODEL_READ' as const,
+  MODEL_ROUTE_ADD: 'MODEL_ROUTE_ADD' as const,
+  MODEL_ROUTE_REMOVE: 'MODEL_ROUTE_REMOVE' as const,
+  MODEL_ROUTE_UPDATE: 'MODEL_ROUTE_UPDATE' as const,
+  MODEL_USE: 'MODEL_USE' as const,
+  ORGANIZATION_DELETE: 'ORGANIZATION_DELETE' as const,
+  ORGANIZATION_SETTINGS_READ: 'ORGANIZATION_SETTINGS_READ' as const,
+  ORGANIZATION_SETTINGS_UPDATE: 'ORGANIZATION_SETTINGS_UPDATE' as const,
+  PROVIDER_CONFIGURATION_UPDATE: 'PROVIDER_CONFIGURATION_UPDATE' as const,
+  PROVIDER_CREATE: 'PROVIDER_CREATE' as const,
+  PROVIDER_CREDENTIAL_REPLACE: 'PROVIDER_CREDENTIAL_REPLACE' as const,
+  PROVIDER_DELETE: 'PROVIDER_DELETE' as const,
+  PROVIDER_MODEL_CONFIGURATION_UPDATE: 'PROVIDER_MODEL_CONFIGURATION_UPDATE' as const,
+  PROVIDER_MODEL_CREATE: 'PROVIDER_MODEL_CREATE' as const,
+  PROVIDER_MODEL_DELETE: 'PROVIDER_MODEL_DELETE' as const,
+  PROVIDER_MODEL_PRICING_UPDATE: 'PROVIDER_MODEL_PRICING_UPDATE' as const,
+  PROVIDER_MODEL_READ: 'PROVIDER_MODEL_READ' as const,
+  PROVIDER_READ: 'PROVIDER_READ' as const,
+  ROLE_ASSIGN: 'ROLE_ASSIGN' as const,
+  ROLE_CREATE: 'ROLE_CREATE' as const,
+  ROLE_DELETE: 'ROLE_DELETE' as const,
+  ROLE_METADATA_UPDATE: 'ROLE_METADATA_UPDATE' as const,
+  ROLE_POLICY_READ: 'ROLE_POLICY_READ' as const,
+  ROLE_POLICY_UPDATE: 'ROLE_POLICY_UPDATE' as const,
+  ROLE_READ: 'ROLE_READ' as const,
+  ROLE_UNASSIGN: 'ROLE_UNASSIGN' as const,
+}
+
+export const enumPermissionResourceType = {
+  GROUP: 'GROUP' as const,
+  MEMBER: 'MEMBER' as const,
+  MODEL: 'MODEL' as const,
+  ORGANIZATION: 'ORGANIZATION' as const,
+  PROVIDER: 'PROVIDER' as const,
+  PROVIDER_MODEL: 'PROVIDER_MODEL' as const,
+  ROLE: 'ROLE' as const,
 }
 
 export const enumPreferenceAppearanceMode = {

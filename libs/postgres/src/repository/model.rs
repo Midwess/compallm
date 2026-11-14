@@ -47,6 +47,25 @@ impl ModelRepository {
 
 #[async_trait::async_trait]
 impl CoreModelRepository for ModelRepository {
+    async fn find_by_id(
+        &self,
+        organization_id: u64,
+        id: u64,
+    ) -> Result<Option<Model>, ModelRepositoryError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        Models::find_by_id(Self::database_id(id, "resource ID")?)
+            .filter(
+                ModelColumn::OrganizationId
+                    .eq(Self::database_id(organization_id, "organization ID")?),
+            )
+            .one(db)
+            .await
+            .map_err(ModelRepositoryError::database)?
+            .map(Model::try_from)
+            .transpose()
+    }
+
     async fn find_all(
         &self,
         organization_id: u64,

@@ -1,3 +1,4 @@
+import { PermissionRequest } from '../../../components/permission'
 import { DotsThreeIcon } from '@phosphor-icons/react/dist/csr/DotsThree'
 import { Popup } from '../../../components/popup'
 import { PageHeader, Title, Functions } from '../../../components/page-header'
@@ -65,7 +66,9 @@ function ProviderActions() {
         <DotsThreeIcon aria-hidden="true" className="size-4" />
       </Popup.Trigger>
       <Popup.Content aria-label="Provider actions">
-        <Popup.Item onSelect={controller.onCloneProvider}>Clone provider</Popup.Item>
+        <PermissionRequest actions={['PROVIDER_CREATE']}>
+          <Popup.Item onSelect={controller.onCloneProvider}>Clone provider</Popup.Item>
+        </PermissionRequest>
       </Popup.Content>
     </Popup.Root>
   )
@@ -79,12 +82,13 @@ function ProviderDialog() {
   return open ? <ModelDialog /> : null
 }
 export function CreateProviderPage() {
+  const intent = useProvider((state) => state.intent)
   return (
-    <>
+    <PermissionRequest actions={intent === 'edit' ? ['PROVIDER_READ'] : ['PROVIDER_CREATE']} restricted="fallback">
       <ProviderHeader />
       <ProviderContent />
       <ProviderDialog />
-    </>
+    </PermissionRequest>
   )
 }
 

@@ -39,7 +39,7 @@ pub struct AuthService {
 impl AuthService {
     fn trusted_context() -> Result<DbContext, AuthError> {
         let current = DbContext::current()?;
-        if !current.is_restricted() {
+        if !current.postgres().is_restricted() {
             return Ok(current);
         }
         if current.postgres().is_transaction() {

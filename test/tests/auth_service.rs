@@ -3905,7 +3905,9 @@ async fn authorization_context_requires_current_verified_user() {
                 let trusted = authentication
                     .execute(async {
                         let current = DbContext::current()?;
-                        Ok(PostgresConnection::from_context(&current)?.rls().is_none())
+                        Ok::<_, AuthError>(
+                            PostgresConnection::from_context(&current)?.rls().is_none(),
+                        )
                     })
                     .await
                     .unwrap();
@@ -4492,6 +4494,7 @@ async fn http_request_membership_drives_postgres_rls_and_returns_a_clean_connect
     .unwrap();
     let router = Router::new().route("/", get(|| async {
         let db = DbContext::current().unwrap();
+        db.permission().await.unwrap();
         let result = PostgresConnection::from_context(&db).unwrap().query_one_raw(
             Statement::from_string(DbBackend::Postgres,
                 "SELECT pg_backend_pid() AS pid, current_user::text AS role, compallm_rls.organization_id() AS organization, compallm_rls.organization_allowed('model.read') AS model_read, compallm_rls.organization_allowed('provider.read') AS provider_read, (SELECT count(*) FROM providers) AS providers")
@@ -4672,8 +4675,6 @@ async fn graphql_role_and_group_creation_enforces_scope_and_denies_without_write
     DbContext::initialize_default(connection.clone()).unwrap();
     let db = DbContext::new(connection);
     let repository = compallm_postgres::repository::organization::OrganizationRepository;
-    assert!(db.scope(repository.list_role_info()).await.is_err());
-    assert!(db.scope(repository.list_group_info()).await.is_err());
     assert!(
         db.scope(repository.list_members(
             Box::new(compallm_query::Query::default()),
@@ -4732,7 +4733,7 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     scoped
         .scope(async {
             assert!(fixture.service().validate_access(&access).await.unwrap());
-            assert!(DbContext::current().unwrap().is_restricted());
+            assert!(DbContext::current().unwrap().postgres().is_restricted());
             assert_eq!(
                 DbContext::current()
                     .unwrap()
@@ -5350,6 +5351,14 @@ async fn preference_graphql_persists_grouped_updates_and_resets_for_current_user
         assert!(initial["errors"].is_null(), "{initial}");
         assert_eq!(initial["data"]["userPreferences"]["node"]["navigation"]["home"], "CHAT");
         assert_eq!(initial["data"]["userPreferences"]["node"]["codeAppearance"]["theme"], "FOLLOW_INTERFACE");
+        let session = fixture.repo.0.lock().unwrap().sessions.values().next().unwrap().clone();
+        let invalid_authority = token_pair::new(&session, PolicySnapshot {
+            cedar_source: "permit(principal, action == Compallm::Action::\"retired.action\", resource);".into(),
+            role_ids: vec![], group_roles: Default::default(),
+        }, SECRET, Duration::from_secs(60), REFRESH_LIFETIME)?;
+        let personal = graphql_body(graphql_operation(&router, "{ userPreferences { node { navigation { home } } } }", serde_json::json!({}), Some(&invalid_authority.access_token), None, false).await).await;
+        assert!(personal["errors"].is_null(), "{personal}");
+        assert_eq!(personal["data"]["userPreferences"]["node"]["navigation"]["home"], "CHAT");
         let update = "mutation($input: UserPreferencesPatchInput!) { userPreferencesUpdate(input: $input) { node { navigation { home } theme { palettes { dark } } codeAppearance { font { family size } } sidebar { entries { item visibility } } } } }";
         let response = graphql_body(graphql_operation(&router, update, serde_json::json!({"input": {
             "navigation":{"home":"MODELS"}, "calendar":{"firstDay":"SUNDAY"},

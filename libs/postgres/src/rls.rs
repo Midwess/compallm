@@ -1,8 +1,13 @@
 use async_once_cell::Lazy;
 use compallm_core::authorization::{MemberPermission, policy::Action};
-use compallm_core::persistent::PermissionLoader;
+use compallm_core::persistent::{PermissionLoader, connection::IdentityLoader};
 use serde::Serialize;
-use std::{error::Error, future::Future, pin::Pin, sync::Arc};
+use std::{
+    error::Error,
+    future::Future,
+    pin::Pin,
+    sync::{Arc, OnceLock},
+};
 
 mod preparation;
 
@@ -13,39 +18,60 @@ type SettingsFuture = Pin<Box<dyn Future<Output = SettingsResult> + Send>>;
 #[derive(Clone)]
 pub struct Rls {
     settings: Arc<Lazy<SettingsResult, SettingsFuture>>,
+    permission: PermissionLoader,
+    identity: Arc<OnceLock<IdentityLoader>>,
+    identity_settings: Arc<tokio::sync::OnceCell<SettingsResult>>,
 }
 
 pub struct RlsSettings {
+    user_id: u64,
     organization_id: u64,
     permissions: Vec<Permission>,
     settings: Vec<(String, String)>,
 }
 
 impl Rls {
-    pub fn for_user(user_id: u64) -> anyhow::Result<Self> {
-        anyhow::ensure!(
-            user_id > 0 && user_id <= i64::MAX as u64,
-            "invalid user identity"
-        );
-        let settings = RlsSettings::new(user_id, 0, Vec::new())?;
-        let loader: SettingsFuture = Box::pin(async move { Ok(settings) });
-        Ok(Self {
-            settings: Arc::new(Lazy::new(loader)),
-        })
-    }
-
     pub fn new(permission: PermissionLoader) -> Self {
+        let source = permission.clone();
         let loader: SettingsFuture = Box::pin(async move {
-            let permission = permission.get_unpin().await.as_ref().map_err(Arc::clone)?;
+            let permission = source.get_unpin().await.as_ref().map_err(Arc::clone)?;
             RlsSettings::try_from(permission.as_ref())
                 .map_err(|error| Arc::from(error.into_boxed_dyn_error()))
         });
         Self {
             settings: Arc::new(Lazy::new(loader)),
+            permission,
+            identity: Arc::new(OnceLock::new()),
+            identity_settings: Arc::new(tokio::sync::OnceCell::new()),
         }
     }
 
+    pub fn identify(&self, identity: IdentityLoader) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            self.settings.try_get().is_none() && self.identity_settings.get().is_none(),
+            "database work has already started"
+        );
+        self.identity
+            .set(identity)
+            .map_err(|_| anyhow::anyhow!("identity loader is already set"))
+    }
+
     pub async fn get(&self) -> Result<&RlsSettings, PreparationError> {
+        if let Some(identity) = self.identity.get() {
+            let settings = self
+                .identity_settings
+                .get_or_init(|| async {
+                    let access = identity.get_unpin().await.as_ref().map_err(Arc::clone)?;
+                    RlsSettings::new(access.user_id, access.organization_id, Vec::new())
+                        .map_err(|error| Arc::new(error) as PreparationError)
+                })
+                .await
+                .as_ref()
+                .map_err(Arc::clone)?;
+            if !matches!(self.permission.try_get(), Some(Ok(_))) {
+                return Ok(settings);
+            }
+        }
         self.settings.get_unpin().await.as_ref().map_err(Arc::clone)
     }
 }
@@ -103,6 +129,10 @@ pub enum Field {
 }
 
 impl RlsSettings {
+    pub fn user_id(&self) -> u64 {
+        self.user_id
+    }
+
     pub fn organization_id(&self) -> u64 {
         self.organization_id
     }
@@ -135,6 +165,7 @@ impl RlsSettings {
             ));
         }
         Ok(Self {
+            user_id,
             organization_id,
             permissions,
             settings,

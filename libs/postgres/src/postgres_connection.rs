@@ -19,7 +19,10 @@ pub struct PostgresConnection {
     rls: Arc<OnceLock<Option<Rls>>>,
 }
 
-pub struct TransactionState(Mutex<Option<Arc<DatabaseTransaction>>>);
+pub struct TransactionState(
+    Mutex<Option<Arc<DatabaseTransaction>>>,
+    tokio::sync::OnceCell<()>,
+);
 
 impl TransactionState {
     pub(crate) fn get(&self) -> Result<Arc<DatabaseTransaction>, ConnectionError> {
@@ -65,12 +68,17 @@ impl PostgresConnection {
         }
     }
 
-    pub(crate) fn transaction(&self, transaction: DatabaseTransaction) -> Self {
+    pub(crate) fn transaction(
+        &self,
+        transaction: DatabaseTransaction,
+        permissions_applied: bool,
+    ) -> Self {
         Self {
             conn: self.conn.clone(),
-            transaction: Some(Arc::new(TransactionState(Mutex::new(Some(Arc::new(
-                transaction,
-            )))))),
+            transaction: Some(Arc::new(TransactionState(
+                Mutex::new(Some(Arc::new(transaction))),
+                tokio::sync::OnceCell::new_with(permissions_applied.then_some(())),
+            ))),
             rls: self.rls.clone(),
         }
     }
@@ -110,15 +118,29 @@ impl PostgresConnection {
     }
 
     async fn ensure_transaction_access(&self) -> Result<(), DbErr> {
-        if self.settings().await?.is_some()
-            && !matches!(
-                &self.conn.inner,
-                DatabaseConnectionType::SqlxPostgresPoolConnection(_)
-            )
-        {
+        let Some(settings) = self.settings().await? else {
+            return Ok(());
+        };
+        if !matches!(
+            &self.conn.inner,
+            DatabaseConnectionType::SqlxPostgresPoolConnection(_)
+        ) {
             return Err(DbErr::Custom(
                 "restricted queries require a PostgreSQL pool".into(),
             ));
+        }
+        if let Some(state) = &self.transaction
+            && !settings.permissions().is_empty()
+        {
+            state.1.get_or_try_init(|| async {
+                let (keys, values): (Vec<String>, Vec<String>) = settings.settings().iter().cloned().unzip();
+                state.get().map_err(Self::query_error)?.execute_raw(Statement::from_sql_and_values(
+                    DbBackend::Postgres,
+                    "SELECT set_config(key, value, true) FROM unnest($1::text[], $2::text[]) AS settings(key, value)",
+                    [keys.into(), values.into()],
+                )).await?;
+                Ok::<_, DbErr>(())
+            }).await?;
         }
         Ok(())
     }
@@ -261,19 +283,26 @@ impl Connection for PostgresConnection {
         })
     }
 
-    fn restrict_user(&self, user_id: u64) -> Result<(), ConnectionError> {
+    fn identify(
+        &self,
+        identity: compallm_core::persistent::connection::IdentityLoader,
+    ) -> Result<(), ConnectionError> {
         self.ensure_open()?;
         if self.transaction.is_some() {
             return Err(ConnectionError::database(anyhow::anyhow!(
-                "transaction cannot acquire a new restriction"
+                "transaction authority is fixed"
             )));
         }
-        let rls = Rls::for_user(user_id).map_err(ConnectionError::database)?;
-        self.rls.set(Some(rls)).map_err(|_| {
-            ConnectionError::database(anyhow::anyhow!(
-                "connection is already restricted or a query has started"
-            ))
-        })
+        self.rls()
+            .ok_or_else(|| {
+                ConnectionError::database(anyhow::anyhow!("request restriction is missing"))
+            })?
+            .identify(identity)
+            .map_err(ConnectionError::database)
+    }
+
+    fn is_restricted(&self) -> bool {
+        self.rls().is_some()
     }
 
     fn restrict(&self, permission: PermissionLoader) -> Result<(), ConnectionError> {
@@ -318,7 +347,10 @@ impl Connection for PostgresConnection {
                 [keys.into(), values.into()],
             )).await.map_err(ConnectionError::database)?;
         }
-        Ok(Arc::new(self.transaction(transaction)))
+        Ok(Arc::new(self.transaction(
+            transaction,
+            settings.is_some_and(|settings| !settings.permissions().is_empty()),
+        )))
     }
 
     async fn commit(&self) -> Result<(), ConnectionError> {

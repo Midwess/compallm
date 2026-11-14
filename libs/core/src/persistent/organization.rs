@@ -38,7 +38,7 @@ pub trait OrganizationRepository: Send + Sync {
         user_id: u64,
     ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError>;
 
-    /// Require current member authority; RLS filters rows and authority binds cursors.
+    /// RLS filters rows; verified request scope binds pagination cursors.
     async fn list_members(
         &self,
         query: Box<dyn compallm_query::IntoQuery>,
@@ -130,9 +130,9 @@ pub trait OrganizationRepository: Send + Sync {
         organization_id: u64,
         role_id: u64,
     ) -> Result<(), OrganizationRepositoryError>;
-    /// List metadata under current member authority and RLS.
+    /// List metadata through the current RLS connection.
     async fn list_role_info(&self) -> Result<Vec<Role>, OrganizationRepositoryError>;
-    /// List metadata under current member authority and RLS.
+    /// List metadata through the current RLS connection.
     async fn list_group_info(
         &self,
     ) -> Result<Vec<crate::organization::group::GroupInfo>, OrganizationRepositoryError>;

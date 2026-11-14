@@ -67,10 +67,10 @@ impl AuthenticationContext {
         })
     }
 
-    pub async fn execute<T>(
+    pub async fn execute<T, E>(
         &self,
-        operation: impl Future<Output = Result<T, AuthError>>,
-    ) -> Result<T, AuthError> {
+        operation: impl Future<Output = Result<T, E>>,
+    ) -> Result<T, E> {
         self.trusted.scope(operation).await
     }
 

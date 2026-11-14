@@ -63,12 +63,6 @@ pub struct MemberInfo {
     pub available: bool,
 }
 
-#[derive(Clone, Debug)]
-pub struct MemberOption {
-    pub member: MemberInfo,
-    pub included: bool,
-}
-
 #[derive(Debug, thiserror::Error)]
 pub enum GroupDeletionError {
     #[error("Remove all members from this group before deleting it")]

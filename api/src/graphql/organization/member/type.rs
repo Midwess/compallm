@@ -19,25 +19,3 @@ impl Member {
         self.0.available
     }
 }
-
-pub struct GroupMemberOption {
-    pub member: Member,
-    pub included: bool,
-}
-impl From<compallm_core::organization::group::MemberOption> for GroupMemberOption {
-    fn from(value: compallm_core::organization::group::MemberOption) -> Self {
-        Self {
-            member: value.member.into(),
-            included: value.included,
-        }
-    }
-}
-#[juniper::graphql_object]
-impl GroupMemberOption {
-    fn member(&self) -> &Member {
-        &self.member
-    }
-    fn included(&self) -> bool {
-        self.included
-    }
-}

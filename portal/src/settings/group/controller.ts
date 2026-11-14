@@ -10,7 +10,7 @@ import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/cont
 import { graphql } from '../../graphql-client'
 import { notify } from '../../notifications/toast'
 
-const memberNode = { included: true, member: { id: true, displayName: true, email: true, available: true } } as const
+const memberNode = { id: true, displayName: true, email: true, available: true } as const
 const pageInfo = { endCursor: true, hasNextPage: true } as const
 
 export class GroupController implements Contract {
@@ -59,10 +59,11 @@ export class GroupController implements Contract {
             description: true,
             memberCount: true,
             roles: { edges: { node: { id: true, name: true, description: true, color: true, owner: true } } },
-            memberOptions: { __args: { first: 30 }, edges: { node: memberNode }, pageInfo },
+            memberIds: true,
           },
         },
         roles: { edges: { node: { id: true, name: true, description: true, color: true, owner: true } } },
+        members: { __args: { first: 30 }, edges: { node: memberNode }, pageInfo },
       } satisfies QueryGenqlSelection
       const result = await graphql(request.signal).query(selection)
       if (this.request !== request || request.signal.aborted) return
@@ -73,30 +74,30 @@ export class GroupController implements Contract {
       }
       this.settings.setState({ readonly: false })
       this.baselineRoles = new Set(group.roles.edges.map(({ node }) => node.id))
-      this.baselineMembers = new Set(
-        group.memberOptions.edges.filter(({ node }) => node.included).map(({ node }) => node.member.id),
-      )
+      this.baselineMembers = new Set(group.memberIds)
       const draft = {
         id,
         name: group.name,
         description: group.description,
         roleIds: [...this.baselineRoles],
         memberIds: [...this.baselineMembers],
-        memberSelection: Object.fromEntries(group.memberOptions.edges.map(({ node }) => [node.member.id, node.included])),
+        memberSelection: Object.fromEntries(
+          result.members.edges.map(({ node }) => [node.id, this.baselineMembers.has(node.id)]),
+        ),
       }
-      this.cursor = group.memberOptions.pageInfo.endCursor ?? undefined
+      this.cursor = result.members.pageInfo.endCursor ?? undefined
       this.store.setState({
         loading: false,
         draft,
         memberCount: Number(group.memberCount),
         roles: result.roles.edges.map(({ node }) => ({ ...node, source: '', builtin: node.owner })),
-        members: group.memberOptions.edges.map(({ node: { member } }) => ({
+        members: result.members.edges.map(({ node: member }) => ({
           id: member.id,
           name: member.displayName || member.email,
           email: member.email,
           available: member.available,
         })),
-        hasNextPage: group.memberOptions.pageInfo.hasNextPage,
+        hasNextPage: result.members.pageInfo.hasNextPage,
       })
       this.store.form.reset(this.store.form.values)
     } catch (error) {
@@ -131,15 +132,10 @@ export class GroupController implements Contract {
     const filter = q ? { or: [{ displayName: { ilike: `%${q}%` } }, { email: { ilike: `%${q}%` } }] } : undefined
     try {
       const selection = {
-        group: {
-          __args: { id },
-          node: {
-            memberOptions: {
-              __args: { first: 30, after: append ? this.cursor : undefined, filter },
-              edges: { node: memberNode },
-              pageInfo,
-            },
-          },
+        members: {
+          __args: { first: 30, after: append ? this.cursor : undefined, filter },
+          edges: { node: memberNode },
+          pageInfo,
         },
       } satisfies QueryGenqlSelection
       const result = await graphql(AbortSignal.any([owner.signal, request.signal])).query(selection)
@@ -148,20 +144,17 @@ export class GroupController implements Contract {
         void this.loadMembers(append)
         return
       }
-      const options = result.group?.node.memberOptions
-      if (!options) return
+      const options = result.members
       const current = this.store.getState().draft!
       const selectionState = { ...current.memberSelection }
       const confirmed = { ...this.store.form.baseline.draft?.memberSelection }
       for (const { node } of options.edges) {
-        const key = node.member.id
-        if (selectionState[key] === confirmed[key]) selectionState[key] = node.included
-        confirmed[key] = node.included
-        if (node.included) this.baselineMembers.add(key)
-        else this.baselineMembers.delete(key)
+        const key = node.id
+        if (selectionState[key] === confirmed[key]) selectionState[key] = this.baselineMembers.has(key)
+        confirmed[key] = this.baselineMembers.has(key)
       }
       const previous = append ? (this.store.getState().members ?? []) : []
-      const rows = options.edges.map(({ node: { member } }) => ({
+      const rows = options.edges.map(({ node: member }) => ({
         id: member.id,
         name: member.displayName || member.email,
         email: member.email,
@@ -173,8 +166,7 @@ export class GroupController implements Contract {
         hasNextPage: options.pageInfo.hasNextPage,
       })
       // Newly loaded relationships extend the form baseline without submitting a write.
-      for (const { node } of options.edges)
-        this.store.form.set(`draft.memberSelection.${node.member.id}`, selectionState[node.member.id])
+      for (const { node } of options.edges) this.store.form.set(`draft.memberSelection.${node.id}`, selectionState[node.id])
       this.store.form.set('draft.memberIds', [...this.baselineMembers])
       this.store.form.accept({
         draft: { ...this.store.form.baseline.draft!, memberIds: [...this.baselineMembers], memberSelection: confirmed },

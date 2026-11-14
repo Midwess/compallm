@@ -286,9 +286,7 @@ test('failed role creation keeps the current page and does not add a role', asyn
 test('group detail owns paged Include state and sends only relationship deltas', async () => {
   const original = globalThis.fetch
   const controller = createSettingsController('Research team', { navigate() {} }, { signOut() {} }, 'general')
-  const option = (id, included) => ({
-    node: { included, member: { id, displayName: `Member ${id}`, email: `${id}@example.test`, available: true } },
-  })
+  const option = (id) => ({ node: { id, displayName: `Member ${id}`, email: `${id}@example.test`, available: true } })
   const writes = []
   let roleStage = 0
   globalThis.fetch = async (_url, init) => {
@@ -313,16 +311,19 @@ test('group detail owns paged Include state and sends only relationship deltas',
         data: { groupUpdate: { node: { id: '52', name: 'Design', description: '', memberCount: '3', roles: { edges: [] } } } },
       })
     }
-    if (query.includes('group(')) {
+    if (query.includes('members(')) {
       const more = Object.values(variables).some((value) => value === 'cursor-1')
-      const memberOptions = {
-        edges: more ? [option('2', true), option('3', false)] : [option('1', true)],
+      const members = {
+        edges: more ? [option('2'), option('3')] : [option('1')],
         pageInfo: { endCursor: more ? 'cursor-2' : 'cursor-1', hasNextPage: !more },
       }
       return Response.json({
         data: {
-          group: { node: { id: '52', name: 'Design', description: '', memberCount: '2', roles: { edges: [] }, memberOptions } },
+          group: {
+            node: { id: '52', name: 'Design', description: '', memberCount: '2', memberIds: ['1', '2'], roles: { edges: [] } },
+          },
           roles: { edges: [] },
+          members,
         },
       })
     }
@@ -513,7 +514,7 @@ test('group navigation ignores obsolete detail and write responses', async () =>
     description: '',
     memberCount: '0',
     roles: { edges: [] },
-    memberOptions: { edges: [], pageInfo: { endCursor: null, hasNextPage: false } },
+    memberIds: [],
   })
   globalThis.fetch = async (_url, init) => {
     const { query, variables } = JSON.parse(init.body)
@@ -521,7 +522,13 @@ test('group navigation ignores obsolete detail and write responses', async () =>
     if (query.includes('group(')) {
       const id = Object.values(variables).find((value) => typeof value === 'string')
       if (id === 'old') return new Promise((resolve) => pending.push({ id, resolve }))
-      return Response.json({ data: { group: { node: node(id) }, roles: { edges: [] } } })
+      return Response.json({
+        data: {
+          group: { node: node(id) },
+          roles: { edges: [] },
+          members: { edges: [], pageInfo: { endCursor: null, hasNextPage: false } },
+        },
+      })
     }
     return Response.json({ data: { roles: { edges: [] }, groups: { edges: [{ node: { id: 'current', name: 'current' } }] } } })
   }
@@ -532,7 +539,15 @@ test('group navigation ignores obsolete detail and write responses', async () =>
     await until(controller.group.store, (state) => state.draft?.id === 'current')
     pending
       .find((item) => item.id === 'old')
-      .resolve(Response.json({ data: { group: { node: node('old') }, roles: { edges: [] } } }))
+      .resolve(
+        Response.json({
+          data: {
+            group: { node: node('old') },
+            roles: { edges: [] },
+            members: { edges: [], pageInfo: { endCursor: null, hasNextPage: false } },
+          },
+        }),
+      )
     await new Promise((resolve) => setTimeout(resolve, 0))
     assert.equal(controller.group.store.getState().draft.id, 'current')
     const write = controller.group.updateGroup(

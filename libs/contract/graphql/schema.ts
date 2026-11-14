@@ -74,7 +74,7 @@ export interface Group {
   description: Scalars['String']
   id: Scalars['ID']
   memberCount: Scalars['String']
-  memberOptions: GroupMemberOptionConnection
+  memberIds: Scalars['ID'][]
   name: Scalars['String']
   roles: RoleConnection
   __typename: 'Group'
@@ -90,24 +90,6 @@ export interface GroupEdge {
   cursor: Scalars['String']
   node: Group
   __typename: 'GroupEdge'
-}
-
-export interface GroupMemberOption {
-  included: Scalars['Boolean']
-  member: Member
-  __typename: 'GroupMemberOption'
-}
-
-export interface GroupMemberOptionConnection {
-  edges: GroupMemberOptionEdge[]
-  pageInfo: PageInfo
-  __typename: 'GroupMemberOptionConnection'
-}
-
-export interface GroupMemberOptionEdge {
-  cursor: Scalars['String']
-  node: GroupMemberOption
-  __typename: 'GroupMemberOptionEdge'
 }
 
 export interface GroupPayload {
@@ -602,17 +584,7 @@ export interface GroupGenqlSelection {
   description?: boolean | number
   id?: boolean | number
   memberCount?: boolean | number
-  memberOptions?: GroupMemberOptionConnectionGenqlSelection & {
-    __args?: {
-      after?: Scalars['String'] | null
-      before?: Scalars['String'] | null
-      filter?: MemberFilterInput | null
-      first?: Scalars['Int'] | null
-      last?: Scalars['Int'] | null
-      offset?: Scalars['Int'] | null
-      orderBy?: MemberOrderInput[] | null
-    }
-  }
+  memberIds?: boolean | number
   name?: boolean | number
   roles?: RoleConnectionGenqlSelection
   __typename?: boolean | number
@@ -635,27 +607,6 @@ export interface GroupCreateInput {
 export interface GroupEdgeGenqlSelection {
   cursor?: boolean | number
   node?: GroupGenqlSelection
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface GroupMemberOptionGenqlSelection {
-  included?: boolean | number
-  member?: MemberGenqlSelection
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface GroupMemberOptionConnectionGenqlSelection {
-  edges?: GroupMemberOptionEdgeGenqlSelection
-  pageInfo?: PageInfoGenqlSelection
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface GroupMemberOptionEdgeGenqlSelection {
-  cursor?: boolean | number
-  node?: GroupMemberOptionGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -1316,26 +1267,6 @@ const GroupEdge_possibleTypes: string[] = ['GroupEdge']
 export const isGroupEdge = (obj?: { __typename?: any } | null): obj is GroupEdge => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isGroupEdge"')
   return GroupEdge_possibleTypes.includes(obj.__typename)
-}
-
-const GroupMemberOption_possibleTypes: string[] = ['GroupMemberOption']
-export const isGroupMemberOption = (obj?: { __typename?: any } | null): obj is GroupMemberOption => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isGroupMemberOption"')
-  return GroupMemberOption_possibleTypes.includes(obj.__typename)
-}
-
-const GroupMemberOptionConnection_possibleTypes: string[] = ['GroupMemberOptionConnection']
-export const isGroupMemberOptionConnection = (
-  obj?: { __typename?: any } | null,
-): obj is GroupMemberOptionConnection => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isGroupMemberOptionConnection"')
-  return GroupMemberOptionConnection_possibleTypes.includes(obj.__typename)
-}
-
-const GroupMemberOptionEdge_possibleTypes: string[] = ['GroupMemberOptionEdge']
-export const isGroupMemberOptionEdge = (obj?: { __typename?: any } | null): obj is GroupMemberOptionEdge => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isGroupMemberOptionEdge"')
-  return GroupMemberOptionEdge_possibleTypes.includes(obj.__typename)
 }
 
 const GroupPayload_possibleTypes: string[] = ['GroupPayload']

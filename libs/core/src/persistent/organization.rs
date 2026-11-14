@@ -42,12 +42,11 @@ pub trait OrganizationRepository: Send + Sync {
         &self,
         organization_id: u64,
         actor_id: u64,
-        group_id: Option<u64>,
         query: Box<dyn compallm_query::IntoQuery>,
         pagination: compallm_query::Pagination,
         ordering: Vec<compallm_query::OrderBy>,
     ) -> Result<
-        compallm_query::Connection<crate::organization::group::MemberOption>,
+        compallm_query::Connection<crate::organization::group::MemberInfo>,
         OrganizationRepositoryError,
     >;
     async fn group_member_ids(

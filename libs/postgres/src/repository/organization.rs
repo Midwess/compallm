@@ -751,12 +751,11 @@ impl CoreRepository for OrganizationRepository {
         &self,
         organization_id: u64,
         actor_id: u64,
-        group_id: Option<u64>,
         query: Box<dyn compallm_query::IntoQuery>,
         pagination: compallm_query::Pagination,
         ordering: Vec<compallm_query::OrderBy>,
     ) -> Result<
-        compallm_query::Connection<compallm_core::organization::group::MemberOption>,
+        compallm_query::Connection<compallm_core::organization::group::MemberInfo>,
         OrganizationRepositoryError,
     > {
         use crate::query::IntoSeaQuery;
@@ -773,7 +772,7 @@ impl CoreRepository for OrganizationRepository {
                     .into_query(),
             ),
         );
-        let scope = format!("members:{organization_id}:{actor_id}:{group_id:?}");
+        let scope = format!("members:{organization_id}:{actor_id}");
         let page = query
             .plan_page(base, pagination, ordering, 100, &scope)
             .map_err(|_| OrganizationRepositoryError::InvalidQuery)?
@@ -797,22 +796,6 @@ impl CoreRepository for OrganizationRepository {
                 .into_iter()
                 .collect()
         };
-        let included: BTreeSet<i64> = if let Some(group) = group_id.filter(|_| !ids.is_empty()) {
-            GroupMembers::find()
-                .select_only()
-                .column(GroupMemberColumn::UserId)
-                .filter(GroupMemberColumn::OrganizationId.eq(org))
-                .filter(GroupMemberColumn::GroupId.eq(Self::database_id(group)?))
-                .filter(GroupMemberColumn::UserId.is_in(ids))
-                .into_tuple::<i64>()
-                .all(db)
-                .await
-                .map_err(OrganizationRepositoryError::database)?
-                .into_iter()
-                .collect()
-        } else {
-            BTreeSet::new()
-        };
         Ok(compallm_query::Connection {
             page_info: page.page_info,
             edges: page
@@ -822,10 +805,9 @@ impl CoreRepository for OrganizationRepository {
                     let user = edge.node;
                     Ok(compallm_query::Edge {
                         cursor: edge.cursor,
-                        node: member_read::MappedMemberOption::try_from((
+                        node: member_read::MappedMember::try_from((
                             user.clone(),
                             active.contains(&user.id) && user.status == UserStatusSchema::Active,
-                            included.contains(&user.id),
                         ))?
                         .into(),
                     })

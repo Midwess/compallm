@@ -141,15 +141,7 @@ type Group {
   description: String!
   id: ID!
   memberCount: String!
-  memberOptions(
-    after: String
-    before: String
-    filter: MemberFilterInput
-    first: Int
-    last: Int
-    offset: Int
-    orderBy: [MemberOrderInput!]
-  ): GroupMemberOptionConnection!
+  memberIds: [ID!]!
   name: String!
   roles: RoleConnection!
 }
@@ -168,21 +160,6 @@ input GroupCreateInput {
 type GroupEdge {
   cursor: String!
   node: Group!
-}
-
-type GroupMemberOption {
-  included: Boolean!
-  member: Member!
-}
-
-type GroupMemberOptionConnection {
-  edges: [GroupMemberOptionEdge!]!
-  pageInfo: PageInfo!
-}
-
-type GroupMemberOptionEdge {
-  cursor: String!
-  node: GroupMemberOption!
 }
 
 type GroupPayload {

@@ -38,12 +38,11 @@ impl OrganizationRepository for Repository {
         &self,
         _: u64,
         _: u64,
-        _: Option<u64>,
         _: Box<dyn compallm_query::IntoQuery>,
         _: compallm_query::Pagination,
         _: Vec<compallm_query::OrderBy>,
     ) -> Result<
-        compallm_query::Connection<compallm_core::organization::group::MemberOption>,
+        compallm_query::Connection<compallm_core::organization::group::MemberInfo>,
         OrganizationRepositoryError,
     > {
         unreachable!()

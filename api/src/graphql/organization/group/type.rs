@@ -97,40 +97,27 @@ impl Group {
             .map_err(AuthorizationError::from)?
             .to_string())
     }
-    async fn member_options(
+    async fn member_ids(
         &self,
-        filter: Option<super::super::member::input::MemberFilterInput>,
-        order_by: Option<Vec<super::super::member::input::MemberOrderInput>>,
-        first: Option<i32>,
-        last: Option<i32>,
-        before: Option<String>,
-        after: Option<String>,
-        offset: Option<i32>,
         #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
         #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Collection<super::super::member::GroupMemberOption>, Error> {
-        super::super::member::query::group_options(
-            self.id.parse().map_err(|_| Error::invalid_input())?,
-            filter,
-            order_by,
-            compallm_query::Pagination {
-                first: first.or(if last.is_none() && before.is_none() {
-                    Some(30)
-                } else {
-                    None
-                }),
-                last: last.or(if first.is_none() && before.is_some() {
-                    Some(30)
-                } else {
-                    None
-                }),
-                before: before.map(compallm_query::Cursor),
-                after: after.map(compallm_query::Cursor),
-                offset,
-            },
-            repository,
-            authority,
-        )
-        .await
+    ) -> Result<Vec<ID>, Error> {
+        let permission = authority.member_permission().await?;
+        Action::MemberRead
+            .check_permission(&permission)
+            .map_err(AuthorizationError::from)?;
+        Action::GroupRead
+            .check_permission(&permission)
+            .map_err(AuthorizationError::from)?;
+        Ok(repository
+            .group_member_ids(
+                permission.organization_id(),
+                self.id.parse().map_err(|_| Error::invalid_input())?,
+            )
+            .await
+            .map_err(AuthorizationError::from)?
+            .into_iter()
+            .map(|id| ID::new(id.to_string()))
+            .collect())
     }
 }

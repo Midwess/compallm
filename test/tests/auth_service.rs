@@ -230,12 +230,11 @@ impl OrganizationRepository for OrganizationRepositoryStub {
         &self,
         _: u64,
         _: u64,
-        _: Option<u64>,
         _: Box<dyn compallm_query::IntoQuery>,
         _: compallm_query::Pagination,
         _: Vec<compallm_query::OrderBy>,
     ) -> Result<
-        compallm_query::Connection<compallm_core::organization::group::MemberOption>,
+        compallm_query::Connection<compallm_core::organization::group::MemberInfo>,
         OrganizationRepositoryError,
     > {
         unreachable!()
@@ -4986,7 +4985,7 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     }))
     .await
     .unwrap();
-    let read = "query($id:ID!){group(id:$id){node{memberOptions(first:1){edges{cursor node{included member{id displayName email available}}}pageInfo{hasNextPage endCursor}}}} members(first:1){edges{node{id email}}}}";
+    let read = "query($id:ID!){group(id:$id){node{memberIds}} members(first:1){edges{node{id email}}pageInfo{hasNextPage endCursor}}}";
     let result = graphql_body(
         graphql_operation(
             &router,
@@ -5000,31 +4999,27 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     )
     .await;
     assert!(result["errors"].is_null(), "{result}");
-    assert_eq!(
-        result["data"]["group"]["node"]["memberOptions"]["edges"][0]["node"]["included"],
-        true
+    assert!(
+        result["data"]["group"]["node"]["memberIds"]
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::json!(assignee.id.to_string()))
     );
     assert_eq!(
         result["data"]["members"]["edges"][0]["node"]["email"],
         assignee.email
     );
-    assert_eq!(
-        result["data"]["group"]["node"]["memberOptions"]["pageInfo"]["hasNextPage"],
-        true
-    );
-    let cursor = result["data"]["group"]["node"]["memberOptions"]["pageInfo"]["endCursor"]
+    assert_eq!(result["data"]["members"]["pageInfo"]["hasNextPage"], true);
+    let cursor = result["data"]["members"]["pageInfo"]["endCursor"]
         .as_str()
         .unwrap();
-    let page=graphql_body(graphql_operation(&router,"query($id:ID!,$after:String!){group(id:$id){node{memberOptions(first:1,after:$after){edges{node{included member{id}}}pageInfo{hasNextPage}}}}}",serde_json::json!({"id":group_id,"after":cursor}),Some(&tokens.access_token),None,false).await).await;
+    let page = graphql_body(graphql_operation(&router, "query($after:String!){members(first:1,after:$after){edges{node{id}}pageInfo{hasNextPage}}}", serde_json::json!({"after":cursor}), Some(&tokens.access_token), None, false).await).await;
     assert!(page["errors"].is_null(), "{page}");
     assert_eq!(
-        page["data"]["group"]["node"]["memberOptions"]["edges"][0]["node"]["member"]["id"],
+        page["data"]["members"]["edges"][0]["node"]["id"],
         other_member.id.to_string()
     );
-    assert_eq!(
-        page["data"]["group"]["node"]["memberOptions"]["pageInfo"]["hasNextPage"],
-        false
-    );
+    assert_eq!(page["data"]["members"]["pageInfo"]["hasNextPage"], false);
     let no_authority = token_pair::new(
         &session,
         empty_snapshot(),
@@ -5033,16 +5028,6 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
         REFRESH_LIFETIME,
     )
     .unwrap();
-    let cross_collection_cursor = graphql_operation(
-        &router,
-        "query($after:String!){members(first:1,after:$after){edges{node{id email}}}}",
-        serde_json::json!({"after":cursor}),
-        Some(&tokens.access_token),
-        None,
-        false,
-    )
-    .await;
-    assert_graphql_denial(cross_collection_cursor, 400).await;
     let denied_read = graphql_operation(
         &router,
         "{members(first:1){edges{node{id email}}}}",

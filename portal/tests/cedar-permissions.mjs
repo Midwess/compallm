@@ -123,3 +123,26 @@ test('Cedar worker checks contextual role delegation and does not infer missing 
   assert.deepEqual(await evaluate(source, checks, [{ resourceType: 'Group', id: '23', roleIds: [] }]), ['allowed', 'denied'])
   assert.deepEqual(await evaluate(source, checks), ['error', 'error'])
 })
+
+test('group membership checks allow other known members and retain relationship-based forbids', async () => {
+  const source =
+    'permit(principal,action == Compallm::Action::"group.member.add",resource)' +
+    ' when {context.member.organization == Compallm::Organization::"7"};' +
+    'forbid(principal,action,resource) when {context.member.user in Compallm::Role::"7:9"};'
+  const checks = ['12', '13'].map((memberId) => ({
+    action: 'group.member.add',
+    resourceType: 'Group',
+    resourceId: '23',
+    memberId,
+  }))
+  const group = { resourceType: 'Group', id: '23', roleIds: [] }
+  assert.deepEqual(await evaluate(source, checks, [group]), ['error', 'error'])
+  assert.deepEqual(
+    await evaluate(source, checks, [
+      group,
+      { resourceType: 'Member', id: '12', roleIds: [], groupIds: [] },
+      { resourceType: 'Member', id: '13', roleIds: ['9'], groupIds: ['3'] },
+    ]),
+    ['allowed', 'denied'],
+  )
+})

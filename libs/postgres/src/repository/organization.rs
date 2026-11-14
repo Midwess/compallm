@@ -779,6 +779,53 @@ impl CoreRepository for OrganizationRepository {
                 .into_iter()
                 .collect()
         };
+        let mut roles: BTreeMap<i64, BTreeSet<u64>> = BTreeMap::new();
+        let mut groups: BTreeMap<i64, Vec<u64>> = BTreeMap::new();
+        if !ids.is_empty() {
+            let direct = MemberRoles::find()
+                .select_only()
+                .columns([MemberRoleColumn::UserId, MemberRoleColumn::RoleId])
+                .filter(MemberRoleColumn::UserId.is_in(ids.clone()))
+                .into_tuple::<(i64, i64)>()
+                .all(db)
+                .await
+                .map_err(OrganizationRepositoryError::database)?;
+            for (user, role) in direct {
+                roles.entry(user).or_default().insert(
+                    crate::from_bigint(role).map_err(OrganizationRepositoryError::database)?,
+                );
+            }
+            let memberships = GroupMembers::find()
+                .filter(GroupMemberColumn::UserId.is_in(ids))
+                .all(db)
+                .await
+                .map_err(OrganizationRepositoryError::database)?;
+            let group_ids: Vec<_> = memberships.iter().map(|member| member.group_id).collect();
+            let inherited = if group_ids.is_empty() {
+                Vec::new()
+            } else {
+                GroupRoles::find()
+                    .filter(GroupRoleColumn::GroupId.is_in(group_ids))
+                    .all(db)
+                    .await
+                    .map_err(OrganizationRepositoryError::database)?
+            };
+            for member in memberships {
+                groups.entry(member.user_id).or_default().push(
+                    crate::from_bigint(member.group_id)
+                        .map_err(OrganizationRepositoryError::database)?,
+                );
+                for role in inherited.iter().filter(|role| {
+                    role.organization_id == member.organization_id
+                        && role.group_id == member.group_id
+                }) {
+                    roles.entry(member.user_id).or_default().insert(
+                        crate::from_bigint(role.role_id)
+                            .map_err(OrganizationRepositoryError::database)?,
+                    );
+                }
+            }
+        }
         Ok(compallm_query::Connection {
             page_info: page.page_info,
             edges: page
@@ -786,13 +833,23 @@ impl CoreRepository for OrganizationRepository {
                 .into_iter()
                 .map(|edge| {
                     let user = edge.node;
-                    Ok(compallm_query::Edge {
-                        cursor: edge.cursor,
-                        node: member_read::MappedMember::try_from((
+                    let mut member: compallm_core::organization::group::MemberInfo =
+                        member_read::MappedMember::try_from((
                             user.clone(),
                             active.contains(&user.id) && user.status == UserStatusSchema::Active,
                         ))?
-                        .into(),
+                        .into();
+                    member.effective_role_ids = roles
+                        .remove(&user.id)
+                        .unwrap_or_default()
+                        .into_iter()
+                        .collect();
+                    member.group_ids = groups.remove(&user.id).unwrap_or_default();
+                    member.group_ids.sort_unstable();
+                    member.group_ids.dedup();
+                    Ok(compallm_query::Edge {
+                        cursor: edge.cursor,
+                        node: member,
                     })
                 })
                 .collect::<Result<Vec<_>, OrganizationRepositoryError>>()?,

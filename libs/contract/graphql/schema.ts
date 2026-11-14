@@ -119,7 +119,11 @@ export interface MePayload {
 export interface Member {
   available: Scalars['Boolean']
   displayName: Scalars['String']
+  /** Direct and group-inherited role identities in the verified organization. */
+  effectiveRoleIds: Scalars['ID'][]
   email: Scalars['String']
+  /** Group identities in the verified organization; no policy source is exposed. */
+  groupIds: Scalars['ID'][]
   id: Scalars['ID']
   __typename: 'Member'
 }
@@ -667,7 +671,11 @@ export interface MePayloadGenqlSelection {
 export interface MemberGenqlSelection {
   available?: boolean | number
   displayName?: boolean | number
+  /** Direct and group-inherited role identities in the verified organization. */
+  effectiveRoleIds?: boolean | number
   email?: boolean | number
+  /** Group identities in the verified organization; no policy source is exposed. */
+  groupIds?: boolean | number
   id?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number

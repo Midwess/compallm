@@ -5089,7 +5089,7 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     }))
     .await
     .unwrap();
-    let read = "query($id:ID!){group(id:$id){node{memberIds}} members(first:1){edges{node{id email}}pageInfo{hasNextPage endCursor}}}";
+    let read = "query($id:ID!){group(id:$id){node{memberIds}} members(first:1){edges{node{id email effectiveRoleIds groupIds}}pageInfo{hasNextPage endCursor}}}";
     let result = graphql_body(
         graphql_operation(
             &router,
@@ -5112,6 +5112,14 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     assert_eq!(
         result["data"]["members"]["edges"][0]["node"]["email"],
         assignee.email
+    );
+    assert_eq!(
+        result["data"]["members"]["edges"][0]["node"]["effectiveRoleIds"],
+        serde_json::json!([owner.id.to_string()])
+    );
+    assert_eq!(
+        result["data"]["members"]["edges"][0]["node"]["groupIds"],
+        serde_json::json!([group_id])
     );
     assert_eq!(result["data"]["members"]["pageInfo"]["hasNextPage"], true);
     let cursor = result["data"]["members"]["pageInfo"]["endCursor"]

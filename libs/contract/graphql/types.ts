@@ -150,7 +150,9 @@ export default {
     Member: {
       available: [4],
       displayName: [105],
+      effectiveRoleIds: [28],
       email: [105],
+      groupIds: [28],
       id: [28],
       __typename: [105],
     },

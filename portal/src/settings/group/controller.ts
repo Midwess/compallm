@@ -12,7 +12,14 @@ import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/cont
 import { graphql } from '../../graphql-client'
 import { notify } from '../../notifications/toast'
 
-const memberNode = { id: true, displayName: true, email: true, available: true } as const
+const memberNode = {
+  id: true,
+  displayName: true,
+  email: true,
+  available: true,
+  effectiveRoleIds: true,
+  groupIds: true,
+} as const
 const pageInfo = { endCursor: true, hasNextPage: true } as const
 
 export class GroupController implements Contract {
@@ -91,6 +98,13 @@ export class GroupController implements Contract {
       this.permissions?.setFacts?.([
         { resourceType: 'Group', id, ...(group.roles ? { roleIds: group.roles.edges.map(({ node }) => node.id) } : {}) },
       ])
+      this.permissions?.setFacts?.(
+        members.edges.flatMap(({ node }) =>
+          node.effectiveRoleIds && node.groupIds
+            ? [{ resourceType: 'Member' as const, id: node.id, roleIds: node.effectiveRoleIds, groupIds: node.groupIds }]
+            : [],
+        ),
+      )
       this.settings.setState({ readonly: false })
       this.baselineRoles = new Set((group.roles?.edges ?? []).map(({ node }) => node.id))
       this.baselineMembers = new Set(group.memberIds ?? [])
@@ -162,6 +176,13 @@ export class GroupController implements Contract {
         return
       }
       const options = result.members
+      this.permissions?.setFacts?.(
+        options.edges.flatMap(({ node }) =>
+          node.effectiveRoleIds && node.groupIds
+            ? [{ resourceType: 'Member' as const, id: node.id, roleIds: node.effectiveRoleIds, groupIds: node.groupIds }]
+            : [],
+        ),
+      )
       const current = this.store.getState().draft!
       const selectionState = { ...current.memberSelection }
       const confirmed = { ...this.store.form.baseline.draft?.memberSelection }

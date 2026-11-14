@@ -557,6 +557,10 @@ type MePayload {
 }
 
 type Member {
+  "Direct and group-inherited role identities in the verified organization."
+  effectiveRoleIds: [ID!]!
+  "Group identities in the verified organization; no policy source is exposed."
+  groupIds: [ID!]!
   id: ID!
   displayName: String!
   email: String!

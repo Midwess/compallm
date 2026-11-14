@@ -57,6 +57,8 @@ pub struct GroupChanges {
 
 #[derive(Clone, Debug)]
 pub struct MemberInfo {
+    pub effective_role_ids: Vec<u64>,
+    pub group_ids: Vec<u64>,
     pub id: u64,
     pub display_name: String,
     pub email: String,

@@ -5493,13 +5493,14 @@ async fn graphql_me_returns_only_the_verified_users_effective_cedar() {
             .unwrap(),
     )
     .unwrap();
+    let user_id = session.user_id.to_string();
     assert!(
         entities
             .as_array()
             .unwrap()
             .iter()
             .any(|entity| entity["uid"]["type"] == "Compallm::User"
-                && entity["uid"]["id"] == session.user_id.to_string())
+                && entity["uid"]["id"].as_str() == Some(user_id.as_str()))
     );
     assert_eq!(fixture.repo.0.lock().unwrap().freshness_reads, before + 1);
     let anonymous = graphql_body(

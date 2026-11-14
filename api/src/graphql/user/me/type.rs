@@ -17,7 +17,13 @@ impl Me {
         &self,
         #[graphql(context)] user: &crate::http::authentication::UserContext,
     ) -> Result<String, crate::graphql::error::Error> {
-        Ok(user.require().await?.access().policy_snapshot.cedar_source.clone())
+        Ok(user
+            .require()
+            .await?
+            .access()
+            .policy_snapshot
+            .cedar_source
+            .clone())
     }
     /// Cedar JSON entity facts for the verified principal and its role/group ancestry; contains no credentials.
     async fn cedar_entities(

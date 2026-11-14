@@ -18,7 +18,10 @@ globalThis.self = {
     receive = callback
   },
   postMessage(message) {
-    if (message.type === 'fatal') { readyReject(new Error(message.message)); return }
+    if (message.type === 'fatal') {
+      readyReject(new Error(message.message))
+      return
+    }
     if (message.type === 'ready') {
       readyResolve()
       return
@@ -46,7 +49,12 @@ const server = await createServer({
       },
       load(id) {
         if (id !== 'virtual:node-cedar') return
-        return `import {createRequire} from 'node:module'; const c=createRequire(${JSON.stringify(import.meta.url)})(${JSON.stringify(cedarPath)}); export default async function(){}; export const preparsePolicySet=c.preparsePolicySet, statefulIsAuthorized=c.statefulIsAuthorized;`
+        return [
+          "import {createRequire} from 'node:module';",
+          `const c=createRequire(${JSON.stringify(import.meta.url)})(${JSON.stringify(cedarPath)});`,
+          'export default async function(){};',
+          'export const preparsePolicySet=c.preparsePolicySet, statefulIsAuthorized=c.statefulIsAuthorized;',
+        ].join('\n')
       },
     },
   ],
@@ -88,7 +96,8 @@ function evaluate(source, checks, facts = []) {
 }
 test('Cedar worker preserves principal grants, explicit denies, scope, and model availability', async () => {
   const source =
-    'permit(principal in Compallm::Role::"7:1",action,resource); forbid(principal,action == Compallm::Action::"model.use",resource) unless {resource.enabled};'
+    'permit(principal in Compallm::Role::"7:1",action,resource);' +
+    'forbid(principal,action == Compallm::Action::"model.use",resource) unless {resource.enabled};'
   const checks = [
     { action: 'role.create', resourceType: 'Organization' },
     { action: 'role.create', resourceType: 'Organization', resourceId: '8' },
@@ -106,7 +115,10 @@ test('Cedar worker preserves principal grants, explicit denies, scope, and model
 })
 test('Cedar worker checks contextual role delegation and does not infer missing group ancestry', async () => {
   const source =
-    'permit(principal,action == Compallm::Action::"group.role.assign",resource) when {context.role == Compallm::Role::"7:9"}; permit(principal,action == Compallm::Action::"role.assign",resource); forbid(principal,action == Compallm::Action::"role.assign",resource == Compallm::Role::"7:10");'
+    'permit(principal,action == Compallm::Action::"group.role.assign",resource)' +
+    ' when {context.role == Compallm::Role::"7:9"};' +
+    'permit(principal,action == Compallm::Action::"role.assign",resource);' +
+    'forbid(principal,action == Compallm::Action::"role.assign",resource == Compallm::Role::"7:10");'
   const checks = ['9', '10'].map((roleId) => ({ action: 'group.role.assign', resourceType: 'Group', resourceId: '23', roleId }))
   assert.deepEqual(await evaluate(source, checks, [{ resourceType: 'Group', id: '23', roleIds: [] }]), ['allowed', 'denied'])
   assert.deepEqual(await evaluate(source, checks), ['error', 'error'])

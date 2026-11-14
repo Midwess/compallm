@@ -5,7 +5,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
 
-/// Never return these plaintext claims to a browser or log them.
+/// Keep plaintext claims out of browser responses; OTP logging is limited to debug builds.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct EmailOtpAccessToken {
     #[serde(rename = "e")]

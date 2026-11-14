@@ -200,22 +200,26 @@ disabled:opacity-50"
           resource={intent === 'edit' ? { type: 'Provider', id: providerId } : undefined}
           enabled={intent !== 'edit' || !!providerId}
         >
-          <Popup.Root>
-            <Popup.Trigger
-              disabled={busy}
-              className="h-8 w-auto rounded-full bg-elevated px-4 text-xs text-foreground hover:brightness-110"
-            >
-              Add generate text model
-            </Popup.Trigger>
-            <Popup.Content aria-label="Add generate text model" className="w-3xs">
-              {textModelOptions.map((option) => (
-                <Popup.Item key={option.value} className="gap-2" onSelect={() => controller.onAddModel(option.value)}>
-                  <ProviderIcon provider={option.brand} />
-                  {option.label}
-                </Popup.Item>
-              ))}
-            </Popup.Content>
-          </Popup.Root>
+          {(allowed) =>
+            allowed ? (
+              <Popup.Root>
+                <Popup.Trigger
+                  disabled={busy}
+                  className="h-8 w-auto rounded-full bg-elevated px-4 text-xs text-foreground hover:brightness-110"
+                >
+                  Add generate text model
+                </Popup.Trigger>
+                <Popup.Content aria-label="Add generate text model" className="w-3xs">
+                  {textModelOptions.map((option) => (
+                    <Popup.Item key={option.value} className="gap-2" onSelect={() => controller.onAddModel(option.value)}>
+                      <ProviderIcon provider={option.brand} />
+                      {option.label}
+                    </Popup.Item>
+                  ))}
+                </Popup.Content>
+              </Popup.Root>
+            ) : null
+          }
         </PermissionRequest>
       </div>
     </SectionSurface>

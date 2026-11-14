@@ -88,16 +88,23 @@ function MemberActions({ member }: { member: SettingsMember }) {
     readonly = useSettings((s) => s.readonly)
   return (
     <PermissionRequest actions={['member.remove']} resource={{ type: 'Member', id: member.id }}>
-      <Popup.Root>
-        <Popup.Trigger aria-label={`Actions for ${member.name}`} disabled={readonly} className="size-8">
-          <DotsThreeIcon className="size-4" aria-hidden="true" />
-        </Popup.Trigger>
-        <Popup.Content aria-label={`Actions for ${member.name}`} className="bg-elevated">
-          <Popup.Item className="h-10 text-destructive" onSelect={() => c.pages.dialogs.openDialog('remove-member', member.id)}>
-            Remove member
-          </Popup.Item>
-        </Popup.Content>
-      </Popup.Root>
+      {(allowed) =>
+        allowed ? (
+          <Popup.Root>
+            <Popup.Trigger aria-label={`Actions for ${member.name}`} disabled={readonly} className="size-8">
+              <DotsThreeIcon className="size-4" aria-hidden="true" />
+            </Popup.Trigger>
+            <Popup.Content aria-label={`Actions for ${member.name}`} className="bg-elevated">
+              <Popup.Item
+                className="h-10 text-destructive"
+                onSelect={() => c.pages.dialogs.openDialog('remove-member', member.id)}
+              >
+                Remove member
+              </Popup.Item>
+            </Popup.Content>
+          </Popup.Root>
+        ) : null
+      }
     </PermissionRequest>
   )
 }
@@ -170,7 +177,7 @@ export function MembersSettings() {
                 <Table.Cell className="px-4 text-muted-foreground">{m.email}</Table.Cell>
                 <Table.Cell>
                   <PermissionRequest actions={['role.read']}>
-                    <MemberRoles member={m} />
+                    {(allowed) => (allowed ? <MemberRoles member={m} /> : null)}
                   </PermissionRequest>
                 </Table.Cell>
                 <Table.Cell>

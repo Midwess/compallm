@@ -148,7 +148,12 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
 
 function NavigationPermission({ page, children }: { page: SettingsDestination; children: React.ReactNode }) {
   if (page === 'organization' || page === 'organization-onboarding')
-    return <PermissionRequest actions={['organization.settings.read']}>{children}</PermissionRequest>
-  if (page === 'members') return <PermissionRequest actions={['member.read']}>{children}</PermissionRequest>
+    return (
+      <PermissionRequest actions={['organization.settings.read']}>
+        {(allowed) => (allowed ? <>{children}</> : null)}
+      </PermissionRequest>
+    )
+  if (page === 'members')
+    return <PermissionRequest actions={['member.read']}>{(allowed) => (allowed ? <>{children}</> : null)}</PermissionRequest>
   return children
 }

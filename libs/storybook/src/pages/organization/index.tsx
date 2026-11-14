@@ -88,31 +88,39 @@ function CustomizableDestinations() {
                 case 'PROVIDERS':
                   return (
                     <PermissionRequest key={item} actions={['provider.read']}>
-                      <SidebarFolder
-                        label="Providers"
-                        icon={<HardDrivesIcon />}
-                        onAdd={providerCreate.allowed ? controller.onCreateProvider : undefined}
-                        addLabel="Add provider"
-                      >
-                        {providers.map((entry) => (
-                          <Destination key={entry.id} item={entry} icon={<HardDrivesIcon />} />
-                        ))}
-                      </SidebarFolder>
+                      {(allowed) =>
+                        allowed ? (
+                          <SidebarFolder
+                            label="Providers"
+                            icon={<HardDrivesIcon />}
+                            onAdd={providerCreate.allowed ? controller.onCreateProvider : undefined}
+                            addLabel="Add provider"
+                          >
+                            {providers.map((entry) => (
+                              <Destination key={entry.id} item={entry} icon={<HardDrivesIcon />} />
+                            ))}
+                          </SidebarFolder>
+                        ) : null
+                      }
                     </PermissionRequest>
                   )
                 case 'MODELS':
                   return (
                     <PermissionRequest key={item} actions={['model.read']}>
-                      <SidebarFolder
-                        label="Models"
-                        icon={<CubeIcon />}
-                        onAdd={modelCreate.allowed ? controller.onCreateModel : undefined}
-                        addLabel="Add model"
-                      >
-                        {models.map((entry) => (
-                          <Destination key={entry.id} item={entry} icon={<CubeIcon />} />
-                        ))}
-                      </SidebarFolder>
+                      {(allowed) =>
+                        allowed ? (
+                          <SidebarFolder
+                            label="Models"
+                            icon={<CubeIcon />}
+                            onAdd={modelCreate.allowed ? controller.onCreateModel : undefined}
+                            addLabel="Add model"
+                          >
+                            {models.map((entry) => (
+                              <Destination key={entry.id} item={entry} icon={<CubeIcon />} />
+                            ))}
+                          </SidebarFolder>
+                        ) : null
+                      }
                     </PermissionRequest>
                   )
                 case 'NOTEBOOKS':
@@ -142,11 +150,15 @@ function CustomizableDestinations() {
                 case 'MEMBERS':
                   return (
                     <PermissionRequest key={item} actions={['member.read']}>
-                      <Destination
-                        key={item}
-                        item={{ id: 'members', name: 'Members', href: links.members }}
-                        icon={<UsersIcon />}
-                      />
+                      {(allowed) =>
+                        allowed ? (
+                          <Destination
+                            key={item}
+                            item={{ id: 'members', name: 'Members', href: links.members }}
+                            icon={<UsersIcon />}
+                          />
+                        ) : null
+                      }
                     </PermissionRequest>
                   )
                 case 'CONVERSATIONS':

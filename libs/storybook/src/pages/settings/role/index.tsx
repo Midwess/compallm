@@ -184,73 +184,74 @@ function RoleEditorContent() {
             </Row>
           </Rows>
         </Section>
-        <PermissionRequest
-          actions={['role.policy.read']}
-          resource={{ type: 'Role', id: draft.id }}
-          restricted="fallback"
-          fallback={<p className="px-4 text-xs text-muted-foreground">You do not have access to this role’s policies.</p>}
-        >
-          <section aria-labelledby="role-permissions-title" className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
-            <div className="grid shrink-0 justify-items-start gap-2 px-4 pt-1">
-              <SettingsSectionTitle id="role-permissions-title" className="leading-6">
-                Permissions
-              </SettingsSectionTitle>
-              <EditingMode />
-            </div>
-            <div className="relative grid min-w-0 w-full">
-              <motion.div
-                initial={false}
-                transition={timing}
-                aria-hidden={draft.mode !== 'visual'}
-                inert={draft.mode !== 'visual'}
-                animate={{
-                  opacity: draft.mode === 'visual' ? 1 : 0,
-                  x: draft.mode === 'visual' ? 0 : -animation.panelDistance,
-                  display: 'block',
-                  transitionEnd: { display: draft.mode === 'visual' ? 'block' : 'none' },
-                }}
-                style={{
-                  position: draft.mode === 'visual' ? 'relative' : 'absolute',
-                  pointerEvents: draft.mode === 'visual' ? 'auto' : 'none',
-                }}
-                className="col-start-1 row-start-1 min-w-0 w-full"
-              >
-                <PolicyTable />
-              </motion.div>
-              <motion.div
-                initial={false}
-                transition={timing}
-                aria-hidden={draft.mode !== 'cedar'}
-                inert={draft.mode !== 'cedar'}
-                animate={{
-                  opacity: draft.mode === 'cedar' ? 1 : 0,
-                  x: draft.mode === 'cedar' ? 0 : animation.panelDistance,
-                  display: 'block',
-                  transitionEnd: { display: draft.mode === 'cedar' ? 'block' : 'none' },
-                }}
-                style={{
-                  position: draft.mode === 'cedar' ? 'relative' : 'absolute',
-                  pointerEvents: draft.mode === 'cedar' ? 'auto' : 'none',
-                }}
-                className="col-start-1 row-start-1 min-w-0 w-full"
-              >
-                <CedarEditor locked={busy || draft.builtin || !policyPermission.allowed} owner={draft.builtin} />
-              </motion.div>
-            </div>
-            <div aria-live="polite" className="mt-2 shrink-0 px-4 text-xs leading-4.5 text-muted-foreground">
-              {draft.parsing ? (
-                'Checking policy…'
-              ) : draft.diagnostics.length ? (
-                <div role="alert" className="whitespace-pre-wrap text-destructive">
-                  {draft.diagnostics.join('\n')}
+        <PermissionRequest actions={['role.policy.read']} resource={{ type: 'Role', id: draft.id }}>
+          {(allowed) =>
+            allowed ? (
+              <section aria-labelledby="role-permissions-title" className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+                <div className="grid shrink-0 justify-items-start gap-2 px-4 pt-1">
+                  <SettingsSectionTitle id="role-permissions-title" className="leading-6">
+                    Permissions
+                  </SettingsSectionTitle>
+                  <EditingMode />
                 </div>
-              ) : draft.mode === 'cedar' ? (
-                'Cedar syntax is valid.'
-              ) : (
-                ''
-              )}
-            </div>
-          </section>
+                <div className="relative grid min-w-0 w-full">
+                  <motion.div
+                    initial={false}
+                    transition={timing}
+                    aria-hidden={draft.mode !== 'visual'}
+                    inert={draft.mode !== 'visual'}
+                    animate={{
+                      opacity: draft.mode === 'visual' ? 1 : 0,
+                      x: draft.mode === 'visual' ? 0 : -animation.panelDistance,
+                      display: 'block',
+                      transitionEnd: { display: draft.mode === 'visual' ? 'block' : 'none' },
+                    }}
+                    style={{
+                      position: draft.mode === 'visual' ? 'relative' : 'absolute',
+                      pointerEvents: draft.mode === 'visual' ? 'auto' : 'none',
+                    }}
+                    className="col-start-1 row-start-1 min-w-0 w-full"
+                  >
+                    <PolicyTable />
+                  </motion.div>
+                  <motion.div
+                    initial={false}
+                    transition={timing}
+                    aria-hidden={draft.mode !== 'cedar'}
+                    inert={draft.mode !== 'cedar'}
+                    animate={{
+                      opacity: draft.mode === 'cedar' ? 1 : 0,
+                      x: draft.mode === 'cedar' ? 0 : animation.panelDistance,
+                      display: 'block',
+                      transitionEnd: { display: draft.mode === 'cedar' ? 'block' : 'none' },
+                    }}
+                    style={{
+                      position: draft.mode === 'cedar' ? 'relative' : 'absolute',
+                      pointerEvents: draft.mode === 'cedar' ? 'auto' : 'none',
+                    }}
+                    className="col-start-1 row-start-1 min-w-0 w-full"
+                  >
+                    <CedarEditor locked={busy || draft.builtin || !policyPermission.allowed} owner={draft.builtin} />
+                  </motion.div>
+                </div>
+                <div aria-live="polite" className="mt-2 shrink-0 px-4 text-xs leading-4.5 text-muted-foreground">
+                  {draft.parsing ? (
+                    'Checking policy…'
+                  ) : draft.diagnostics.length ? (
+                    <div role="alert" className="whitespace-pre-wrap text-destructive">
+                      {draft.diagnostics.join('\n')}
+                    </div>
+                  ) : draft.mode === 'cedar' ? (
+                    'Cedar syntax is valid.'
+                  ) : (
+                    ''
+                  )}
+                </div>
+              </section>
+            ) : (
+              <p className="px-4 text-xs text-muted-foreground">You do not have access to this role’s policies.</p>
+            )
+          }
         </PermissionRequest>
         {!locked && !draft.id ? (
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
@@ -261,22 +262,26 @@ function RoleEditorContent() {
         ) : null}
         {draft.id ? (
           <PermissionRequest actions={['role.delete']} resource={{ type: 'Role', id: draft.id }}>
-            <Section title="Danger" className="shrink-0">
-              <Rows>
-                <Row label="Delete role" last>
-                  <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
-                    <Button
-                      variant="ghost"
-                      className="text-destructive"
-                      disabled={busy || draft.builtin}
-                      onClick={() => shared.pages.dialogs.openDialog('delete-role', draft.id!)}
-                    >
-                      Delete role
-                    </Button>
-                  </DisabledTooltip>
-                </Row>
-              </Rows>
-            </Section>
+            {(allowed) =>
+              allowed ? (
+                <Section title="Danger" className="shrink-0">
+                  <Rows>
+                    <Row label="Delete role" last>
+                      <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
+                        <Button
+                          variant="ghost"
+                          className="text-destructive"
+                          disabled={busy || draft.builtin}
+                          onClick={() => shared.pages.dialogs.openDialog('delete-role', draft.id!)}
+                        >
+                          Delete role
+                        </Button>
+                      </DisabledTooltip>
+                    </Row>
+                  </Rows>
+                </Section>
+              ) : null
+            }
           </PermissionRequest>
         ) : null}
       </div>

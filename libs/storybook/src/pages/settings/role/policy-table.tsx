@@ -127,18 +127,17 @@ function PermissionRow({
       <Table.Cell className="px-1 py-0 text-xs text-muted-foreground">{action.description}</Table.Cell>
       <Table.Cell className="px-2 py-0">
         <DisabledTooltip disabled={owner} reason={ownerExplanation}>
-          <PermissionRequest
-            actions={['role.policy.update']}
-            resource={{ type: 'Role', id: c.store.getState().draft?.id }}
-            restricted="disabled"
-            asChild
-          >
-            <Switch
-              aria-label={action.label}
-              checked={permits.length > 0}
-              disabled={disabled || advanced}
-              onChange={() => void c.store.form.perform(() => c.togglePolicyAction(action.id), ['draft.source'])}
-            />
+          <PermissionRequest actions={['role.policy.update']} resource={{ type: 'Role', id: c.store.getState().draft?.id }}>
+            {(allowed) => (
+              <DisabledTooltip disabled={!allowed} reason="You do not have permission to perform this action.">
+                <Switch
+                  aria-label={action.label}
+                  checked={permits.length > 0}
+                  disabled={!allowed || disabled || advanced}
+                  onChange={() => void c.store.form.perform(() => c.togglePolicyAction(action.id), ['draft.source'])}
+                />
+              </DisabledTooltip>
+            )}
           </PermissionRequest>
         </DisabledTooltip>
       </Table.Cell>
@@ -265,24 +264,26 @@ export function PolicyTable() {
                       <PermissionRequest
                         actions={['role.policy.update']}
                         resource={{ type: 'Role', id: c.store.getState().draft?.id }}
-                        restricted="disabled"
-                        asChild
                       >
-                        <Switch
-                          aria-label={'Allow ' + category + ' policies'}
-                          checked={allEditableSelected}
-                          disabled={disabled || editable.length === 0}
-                          onChange={() =>
-                            void c.store.form.perform(
-                              () =>
-                                c.setPolicyActions(
-                                  editable.map((a) => a.id),
-                                  !allEditableSelected,
-                                ),
-                              ['draft.source'],
-                            )
-                          }
-                        />
+                        {(allowed) => (
+                          <DisabledTooltip disabled={!allowed} reason="You do not have permission to perform this action.">
+                            <Switch
+                              aria-label={'Allow ' + category + ' policies'}
+                              checked={allEditableSelected}
+                              disabled={!allowed || disabled || editable.length === 0}
+                              onChange={() =>
+                                void c.store.form.perform(
+                                  () =>
+                                    c.setPolicyActions(
+                                      editable.map((a) => a.id),
+                                      !allEditableSelected,
+                                    ),
+                                  ['draft.source'],
+                                )
+                              }
+                            />
+                          </DisabledTooltip>
+                        )}
                       </PermissionRequest>
                     </DisabledTooltip>
                   }

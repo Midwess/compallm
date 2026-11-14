@@ -1,9 +1,7 @@
-import { useContext, useEffect, type ReactElement, type ReactNode } from 'react'
+import { useContext, useEffect, type ReactNode } from 'react'
 import { useStore } from 'zustand'
 import { PermissionControllerContext } from '../context'
 import { permissionChecks, permissionKey, type PermissionRequestInput, type PermissionStatus } from '../permission'
-import { Slot } from './composition'
-import { DisabledTooltip } from './feedback'
 
 export function usePermissionController() {
   const controller = useContext(PermissionControllerContext)
@@ -46,36 +44,8 @@ export function usePermission(request: PermissionRequestInput) {
   return { allowed, status, disabled: !allowed }
 }
 export interface PermissionRequestProps extends PermissionRequestInput {
-  restricted?: 'hidden' | 'disabled' | 'fallback'
-  explanation?: string
-  fallback?: ReactNode
-  asChild?: boolean
-  children: ReactNode | ((permission: ReturnType<typeof usePermission>) => ReactNode)
+  children: (allowed: boolean) => ReactNode
 }
-export function PermissionRequest({
-  restricted = 'hidden',
-  explanation = 'You do not have permission to perform this action.',
-  fallback,
-  asChild = false,
-  children,
-  ...request
-}: PermissionRequestProps) {
-  const permission = usePermission(request)
-  if (restricted === 'disabled') {
-    const content =
-      typeof children === 'function' ? (
-        children(permission)
-      ) : asChild ? (
-        <Slot disabled={permission.disabled}>{children as ReactElement}</Slot>
-      ) : null
-    if (content === null) throw new Error('Disabled PermissionRequest requires asChild or function children.')
-    return (
-      <DisabledTooltip disabled={permission.disabled} reason={explanation}>
-        {content}
-      </DisabledTooltip>
-    )
-  }
-  if (permission.allowed) return typeof children === 'function' ? children(permission) : children
-  if (restricted === 'hidden') return null
-  return fallback ?? <p role="status">You do not have access to this page.</p>
+export function PermissionRequest({ children, ...request }: PermissionRequestProps) {
+  return children(usePermission(request).allowed)
 }

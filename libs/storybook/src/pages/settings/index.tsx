@@ -85,16 +85,16 @@ function ProtectedSettingsScreen() {
   )[page]
   if (!action) return <SettingsScreen />
   return (
-    <PermissionRequest
-      actions={[action]}
-      restricted="fallback"
-      fallback={
-        <SettingsContent>
-          <Empty title="You do not have access">Return to an available page using the sidebar.</Empty>
-        </SettingsContent>
+    <PermissionRequest actions={[action]}>
+      {(allowed) =>
+        allowed ? (
+          <SettingsScreen />
+        ) : (
+          <SettingsContent>
+            <Empty title="You do not have access">Return to an available page using the sidebar.</Empty>
+          </SettingsContent>
+        )
       }
-    >
-      <SettingsScreen />
     </PermissionRequest>
   )
 }

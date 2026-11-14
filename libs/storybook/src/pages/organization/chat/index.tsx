@@ -1,3 +1,4 @@
+import { DisabledTooltip } from '../../../components/feedback'
 import { PermissionRequest, usePermissionChecks } from '../../../components/permission'
 import { ChatCreateInput } from '@compallm/contract/validation'
 import { FormError } from '../../../components/form'
@@ -28,15 +29,21 @@ function useChat<T>(selector: (state: ChatState) => T, names: readonly string[] 
 
 export function ChatPage() {
   return (
-    <PermissionRequest actions={['model.read']} restricted="fallback">
-      <section aria-label="Create chat" className="relative flex h-full min-h-0 flex-col">
-        <PageHeader className="absolute inset-x-0 top-0">
-          <Title>New chat</Title>
-        </PageHeader>
-        <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto px-3 py-6">
-          <ChatInput />
-        </div>
-      </section>
+    <PermissionRequest actions={['model.read']}>
+      {(allowed) =>
+        allowed ? (
+          <section aria-label="Create chat" className="relative flex h-full min-h-0 flex-col">
+            <PageHeader className="absolute inset-x-0 top-0">
+              <Title>New chat</Title>
+            </PageHeader>
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto px-3 py-6">
+              <ChatInput />
+            </div>
+          </section>
+        ) : (
+          <p role="status">You do not have access to this page.</p>
+        )
+      }
     </PermissionRequest>
   )
 }
@@ -120,23 +127,21 @@ function ChatSubmit() {
     models.some((model) => model.value === modelId) &&
     !creating
   return (
-    <PermissionRequest
-      actions={['model.use']}
-      resource={{ type: 'Model', id: modelId || undefined }}
-      enabled={!!modelId}
-      restricted="disabled"
-      asChild
-    >
-      <Button
-        type="submit"
-        variant="primary"
-        aria-label="Create chat"
-        disabled={!canSend}
-        loading={creating}
-        className="size-6 p-0"
-      >
-        {!creating ? <ArrowUpIcon size={14} aria-hidden="true" /> : null}
-      </Button>
+    <PermissionRequest actions={['model.use']} resource={{ type: 'Model', id: modelId || undefined }} enabled={!!modelId}>
+      {(allowed) => (
+        <DisabledTooltip disabled={!allowed} reason="You do not have permission to perform this action.">
+          <Button
+            type="submit"
+            variant="primary"
+            aria-label="Create chat"
+            disabled={!allowed || !canSend}
+            loading={creating}
+            className="size-6 p-0"
+          >
+            {!creating ? <ArrowUpIcon size={14} aria-hidden="true" /> : null}
+          </Button>
+        </DisabledTooltip>
+      )}
     </PermissionRequest>
   )
 }

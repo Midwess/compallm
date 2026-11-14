@@ -1,3 +1,4 @@
+import { DisabledTooltip } from '../../src/components/feedback'
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { PermissionControllerContext } from '../../src/context'
@@ -13,18 +14,17 @@ function Example({ status = 'allowed' }: { status?: PermissionStatus }) {
       <div className="grid justify-items-start gap-4 bg-background p-6 text-foreground">
         <p>Permission decision: {status}</p>
         <PermissionRequest actions={['role.create']}>
-          <Button>Create role (hidden when restricted)</Button>
+          {(allowed) => (allowed ? <Button>Create role (hidden when restricted)</Button> : null)}
         </PermissionRequest>
-        <PermissionRequest
-          actions={['role.metadata.update']}
-          resource={{ type: 'Role', id: '12' }}
-          restricted="disabled"
-          asChild
-        >
-          <Button>Edit role</Button>
+        <PermissionRequest actions={['role.metadata.update']} resource={{ type: 'Role', id: '12' }}>
+          {(allowed) => (
+            <DisabledTooltip disabled={!allowed} reason="You do not have permission to perform this action.">
+              <Button disabled={!allowed}>Edit role</Button>
+            </DisabledTooltip>
+          )}
         </PermissionRequest>
-        <PermissionRequest actions={['role.read']} restricted="fallback" fallback={<p>You do not have access to roles.</p>}>
-          <p>Role list content</p>
+        <PermissionRequest actions={['role.read']}>
+          {(allowed) => (allowed ? <p>Role list content</p> : <p>You do not have access to roles.</p>)}
         </PermissionRequest>
       </div>
     </PermissionControllerContext>
@@ -55,11 +55,15 @@ function ReactiveExample() {
     <PermissionControllerContext value={controller}>
       <div className="grid justify-items-start gap-4 p-6">
         <Button onClick={toggle}>{restricted ? 'Restore fixture access' : 'Revoke fixture access'}</Button>
-        <PermissionRequest actions={['role.create']} restricted="disabled" asChild>
-          <Button>Create role</Button>
+        <PermissionRequest actions={['role.create']}>
+          {(allowed) => (
+            <DisabledTooltip disabled={!allowed} reason="You do not have permission to perform this action.">
+              <Button disabled={!allowed}>Create role</Button>
+            </DisabledTooltip>
+          )}
         </PermissionRequest>
         <PermissionRequest actions={['role.read']}>
-          <p>Visible role content</p>
+          {(allowed) => (allowed ? <p>Visible role content</p> : null)}
         </PermissionRequest>
       </div>
     </PermissionControllerContext>

@@ -104,14 +104,16 @@ function GroupMembers() {
                           actions={[selected.includes(entry.id) ? 'group.member.remove' : 'group.member.add']}
                           resource={{ type: 'Group', id: draft.id }}
                           context={{ memberId: entry.id }}
-                          restricted="disabled"
-                          asChild
                         >
-                          <Switch
-                            aria-label={`Include ${entry.name}`}
-                            name={`draft.memberSelection.${entry.id}`}
-                            disabled={readonly || busy || (!entry.available && !selected.includes(entry.id))}
-                          />
+                          {(allowed) => (
+                            <DisabledTooltip disabled={!allowed} reason="You do not have permission to perform this action.">
+                              <Switch
+                                aria-label={`Include ${entry.name}`}
+                                name={`draft.memberSelection.${entry.id}`}
+                                disabled={!allowed || readonly || busy || (!entry.available && !selected.includes(entry.id))}
+                              />
+                            </DisabledTooltip>
+                          )}
                         </PermissionRequest>
                       </DisabledTooltip>
                     </Table.Cell>
@@ -228,25 +230,27 @@ function GroupRoles() {
                     actions={['group.role.unassign']}
                     resource={{ type: 'Group', id: draft.id }}
                     context={{ roleId: role.id }}
-                    restricted="disabled"
-                    asChild
                   >
-                    <Button
-                      variant="ghost"
-                      aria-label={`Remove ${role.name} from group`}
-                      className="pointer-events-none size-6 shrink-0 rounded-full p-0 text-sm opacity-0
+                    {(allowed) => (
+                      <DisabledTooltip disabled={!allowed} reason="You do not have permission to perform this action.">
+                        <Button
+                          variant="ghost"
+                          aria-label={`Remove ${role.name} from group`}
+                          className="pointer-events-none size-6 shrink-0 rounded-full p-0 text-sm opacity-0
                     group-hover/assigned-role:pointer-events-auto group-hover/assigned-role:opacity-100
                     group-focus-within/assigned-role:pointer-events-auto group-focus-within/assigned-role:opacity-100"
-                      disabled={readonly || busy}
-                      onClick={() =>
-                        group.store.form.change(
-                          'draft.roleIds',
-                          draft.roleIds.filter((id) => id !== role.id),
-                        )
-                      }
-                    >
-                      <TrashIcon aria-hidden="true" className="size-3.5" />
-                    </Button>
+                          disabled={!allowed || readonly || busy}
+                          onClick={() =>
+                            group.store.form.change(
+                              'draft.roleIds',
+                              draft.roleIds.filter((id) => id !== role.id),
+                            )
+                          }
+                        >
+                          <TrashIcon aria-hidden="true" className="size-3.5" />
+                        </Button>
+                      </DisabledTooltip>
+                    )}
                   </PermissionRequest>
                 </DisabledTooltip>
               </li>
@@ -338,28 +342,28 @@ function GroupEditorContent() {
             </Row>
           </Rows>
         </Section>
-        <PermissionRequest actions={['role.read']}>
-          <GroupRoles />
-        </PermissionRequest>
-        <PermissionRequest actions={['member.read']}>
-          <GroupMembers />
-        </PermissionRequest>
+        <PermissionRequest actions={['role.read']}>{(allowed) => (allowed ? <GroupRoles /> : null)}</PermissionRequest>
+        <PermissionRequest actions={['member.read']}>{(allowed) => (allowed ? <GroupMembers /> : null)}</PermissionRequest>
         {!readonly && draft.id ? (
           <PermissionRequest actions={['group.delete']} resource={{ type: 'Group', id: draft.id }}>
-            <Section title="Danger" className="shrink-0">
-              <Rows>
-                <Row label="Delete group" last>
-                  <Button
-                    variant="ghost"
-                    className="text-destructive"
-                    disabled={busy}
-                    onClick={() => c.pages.dialogs.openDialog('delete-group', draft.id!)}
-                  >
-                    Delete group
-                  </Button>
-                </Row>
-              </Rows>
-            </Section>
+            {(allowed) =>
+              allowed ? (
+                <Section title="Danger" className="shrink-0">
+                  <Rows>
+                    <Row label="Delete group" last>
+                      <Button
+                        variant="ghost"
+                        className="text-destructive"
+                        disabled={busy}
+                        onClick={() => c.pages.dialogs.openDialog('delete-group', draft.id!)}
+                      >
+                        Delete group
+                      </Button>
+                    </Row>
+                  </Rows>
+                </Section>
+              ) : null
+            }
           </PermissionRequest>
         ) : null}
       </div>

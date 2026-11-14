@@ -67,7 +67,7 @@ function ProviderActions() {
       </Popup.Trigger>
       <Popup.Content aria-label="Provider actions">
         <PermissionRequest actions={['provider.create']}>
-          <Popup.Item onSelect={controller.onCloneProvider}>Clone provider</Popup.Item>
+          {(allowed) => (allowed ? <Popup.Item onSelect={controller.onCloneProvider}>Clone provider</Popup.Item> : null)}
         </PermissionRequest>
       </Popup.Content>
     </Popup.Root>
@@ -84,10 +84,18 @@ function ProviderDialog() {
 export function CreateProviderPage() {
   const intent = useProvider((state) => state.intent)
   return (
-    <PermissionRequest actions={intent === 'edit' ? ['provider.read'] : ['provider.create']} restricted="fallback">
-      <ProviderHeader />
-      <ProviderContent />
-      <ProviderDialog />
+    <PermissionRequest actions={intent === 'edit' ? ['provider.read'] : ['provider.create']}>
+      {(allowed) =>
+        allowed ? (
+          <>
+            <ProviderHeader />
+            <ProviderContent />
+            <ProviderDialog />
+          </>
+        ) : (
+          <p role="status">You do not have access to this page.</p>
+        )
+      }
     </PermissionRequest>
   )
 }

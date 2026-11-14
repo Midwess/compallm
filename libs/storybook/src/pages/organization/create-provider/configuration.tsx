@@ -1,3 +1,4 @@
+import { DisabledTooltip } from '../../../components/feedback'
 import { PermissionRequest, usePermission } from '../../../components/permission'
 import { ProviderPatchInput } from '@compallm/contract/validation'
 import { contractResult } from '../../../components/form'
@@ -80,19 +81,22 @@ function ConnectionFields() {
               actions={[editing ? 'provider.credential.replace' : 'provider.create']}
               resource={editing ? { type: 'Provider', id: providerId } : undefined}
               enabled={!editing || !!providerId}
-              restricted="disabled"
-              asChild
             >
-              <FormField.Input
-                type={keyVisible ? 'text' : 'password'}
-                className="pr-9"
-                autoComplete="off"
-                required={!editing}
-                autoCapitalize="none"
-                spellCheck={false}
-                name="apiKey"
-                placeholder={editing ? 'Leave empty to keep current key' : 'Enter your API key'}
-              />
+              {(allowed) => (
+                <DisabledTooltip disabled={!allowed} reason="You do not have permission to perform this action.">
+                  <FormField.Input
+                    disabled={!allowed}
+                    type={keyVisible ? 'text' : 'password'}
+                    className="pr-9"
+                    autoComplete="off"
+                    required={!editing}
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    name="apiKey"
+                    placeholder={editing ? 'Leave empty to keep current key' : 'Enter your API key'}
+                  />
+                </DisabledTooltip>
+              )}
             </PermissionRequest>
             <FormError name="apiKey" />
             <button

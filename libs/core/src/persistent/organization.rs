@@ -5,6 +5,8 @@ use crate::organization::{Group, Organization, OrganizationMember, Role};
 
 #[derive(Debug, thiserror::Error)]
 pub enum OrganizationRepositoryError {
+    #[error("invalid collection query")]
+    InvalidQuery,
     #[error("name already exists in this organization")]
     NameAlreadyExists,
     #[error("organization not found")]
@@ -30,6 +32,44 @@ impl From<ConnectionError> for OrganizationRepositoryError {
 /// Use the current DbContext and leave transaction ownership to the caller.
 #[async_trait]
 pub trait OrganizationRepository: Send + Sync {
+    async fn find_member_identity(
+        &self,
+        organization_id: u64,
+        user_id: u64,
+    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError>;
+
+    async fn list_members(
+        &self,
+        organization_id: u64,
+        actor_id: u64,
+        query: Box<dyn compallm_query::IntoQuery>,
+        pagination: compallm_query::Pagination,
+        ordering: Vec<compallm_query::OrderBy>,
+    ) -> Result<
+        compallm_query::Connection<crate::organization::group::MemberInfo>,
+        OrganizationRepositoryError,
+    >;
+    async fn group_member_ids(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError>;
+    async fn group_member_count(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+    ) -> Result<u64, OrganizationRepositoryError>;
+    async fn save_group_changes(
+        &self,
+        group: &Group,
+        changes: &crate::organization::group::GroupChanges,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError>;
+    async fn delete_group(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+    ) -> Result<(), OrganizationRepositoryError>;
+
     async fn find_by_id(
         &self,
         organization_id: u64,

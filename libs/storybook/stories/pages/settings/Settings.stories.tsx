@@ -21,6 +21,8 @@ function Demo({
   initial = {},
   failure = false,
   roleLoadingMs = 0,
+  groupLoadingMs = 0,
+  pagedGroup = false,
   preferenceStatus,
   savedPreferences,
 }: {
@@ -29,6 +31,8 @@ function Demo({
   initial?: Partial<SettingsState> & { roleDraft?: RoleDraft | null; groupDraft?: GroupDraft | null }
   failure?: boolean | 'conflict'
   roleLoadingMs?: number
+  groupLoadingMs?: number
+  pagedGroup?: boolean
   preferenceStatus?: UserPreferenceState['status']
   savedPreferences?: UserPreferenceValues
 }) {
@@ -56,6 +60,22 @@ function Demo({
     }, roleLoadingMs)
     return () => clearTimeout(timer)
   }, [controller, roleLoadingMs])
+  useEffect(() => {
+    if (!groupLoadingMs) return
+    const draft = controller.group.store.getState().draft
+    controller.group.store.setState({ loading: true, draft: null })
+    const timer = setTimeout(() => controller.group.store.setState({ loading: false, draft }), groupLoadingMs)
+    return () => clearTimeout(timer)
+  }, [controller, groupLoadingMs])
+  useEffect(() => {
+    if (!pagedGroup) return
+    const members = controller.store.getState().members
+    controller.group.store.setState({
+      members: members.slice(0, 1).map((member) => ({ ...member, available: true })),
+      hasNextPage: members.length > 1,
+      memberCount: controller.group.store.getState().draft?.memberIds.length,
+    })
+  }, [controller, pagedGroup])
   return (
     <SettingsControllerContext value={controller}>
       <UserPreferenceControllerContext value={controller.pages.preferences.user}>
@@ -146,13 +166,13 @@ export const ProfileWithPhoto: Story = {
     />
   ),
 }
-export const SecurityAndAccess: Story = { render: () => <Demo page="security" /> }
-export const SecurityPopulated: Story = {
+export const Access: Story = { render: () => <Demo page="access" /> }
+export const Security: Story = { render: () => <Demo page="security" /> }
+export const AccessPopulated: Story = {
   render: () => (
     <Demo
-      page="security"
+      page="access"
       initial={{
-        passkeys: [{ id: 'passkey', name: 'My passkey' }],
         applications: [{ id: 'app', name: 'Example integration', scope: 'read your profile' }],
       }}
     />
@@ -169,7 +189,9 @@ export const ApiKeysPopulated: Story = {
     />
   ),
 }
-export const Danger: Story = { render: () => <Demo page="danger" /> }
+export const SecurityPopulated: Story = {
+  render: () => <Demo page="security" initial={{ passkeys: [{ id: 'passkey', name: 'My passkey' }] }} />,
+}
 export const Organization: Story = { render: () => <Demo page="organization" /> }
 export const OrganizationReadOnly: Story = {
   render: () => <Demo page="organization" initial={{ organizationCanUpdateProfile: false }} />,
@@ -406,4 +428,17 @@ export const KeyCreated: Story = {
 
 export const ApiErrorToast: Story = {
   render: () => <Demo page="role" id="model-operator" initial={{ error: 'Name already exists in this organization' }} />,
+}
+
+export const GroupLoading: Story = { render: () => <Demo page="group" id="research" groupLoadingMs={1200} /> }
+export const GroupPagedMembers: Story = { render: () => <Demo page="group" id="research" pagedGroup /> }
+export const GroupSaveFailure: Story = { render: () => <Demo page="group" id="research" failure /> }
+export const DeleteGroup: Story = {
+  render: () => (
+    <Demo
+      page="group"
+      id="research"
+      initial={{ dialog: { kind: 'delete-group', targetId: 'research', name: '', value: '', phrase: '' } }}
+    />
+  ),
 }

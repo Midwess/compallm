@@ -8,7 +8,7 @@ import { SettingsNavigation } from './sidebar'
 import { SettingsDialogs } from './dialogs'
 import { GeneralSettings, MessagingSettings, CodeSettings } from './preferences/user/page'
 import { UserPreferencePage } from './preferences/user'
-import { ProfileSettings, SecuritySettings, ApiKeySettings, DangerSettings } from './account'
+import { ProfileSettings, AccessSettings, SecuritySettings, ApiKeySettings } from './account'
 import { OrganizationSettings, OrganizationOnboarding } from './organization'
 import { MembersSettings } from './members'
 import { GroupEditorSettings } from './group'
@@ -40,12 +40,12 @@ function SettingsScreen() {
       return <CodeSettings />
     case 'profile':
       return <ProfileSettings />
+    case 'access':
+      return <AccessSettings />
     case 'security':
       return <SecuritySettings />
     case 'api-keys':
       return <ApiKeySettings />
-    case 'danger':
-      return <DangerSettings />
     case 'organization':
       return <OrganizationSettings />
     case 'organization-onboarding':

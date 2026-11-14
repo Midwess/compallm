@@ -65,16 +65,11 @@ export function ProfileSettings() {
             />
           </Row>
         </Rows>
-        <Section title="Account access" description="Manage sign-in methods and connected applications.">
+        <Section title="Danger zone" description="Manage your personal account.">
           <Rows>
-            <Row label="Security & access" description="Sessions, passkeys and authorized applications.">
-              <Button variant="ghost" onClick={() => c.navigate('security')}>
-                Manage
-              </Button>
-            </Row>
-            <Row label="API keys" description="Manage keys for your organization membership." last>
-              <Button variant="ghost" onClick={() => c.navigate('api-keys')}>
-                Manage
+            <Row label="Delete account" description="Manage the deletion of your Compallm account." last>
+              <Button variant="ghost" className="text-destructive" onClick={() => c.pages.dialogs.openDialog('delete-account')}>
+                Delete account
               </Button>
             </Row>
           </Rows>
@@ -83,31 +78,13 @@ export function ProfileSettings() {
     </SettingsContent>
   )
 }
-export function DangerSettings() {
-  const c = useSettingsController()
-  return (
-    <SettingsContent>
-      <Heading>Danger</Heading>
-      <Section title="Delete account" description="Permanently delete your personal account.">
-        <Rows>
-          <Row label="Delete account" description="Manage the deletion of your Compallm account." last>
-            <Button variant="ghost" className="text-destructive" onClick={() => c.pages.dialogs.openDialog('delete-account')}>
-              Delete account
-            </Button>
-          </Row>
-        </Rows>
-      </Section>
-    </SettingsContent>
-  )
-}
-export function SecuritySettings() {
+export function AccessSettings() {
   const c = useSettingsController(),
-    passkeys = useSettings((s) => s.passkeys),
     apps = useSettings((s) => s.applications)
   const others = useSettings((s) => s.hasOtherSessions)
   return (
     <SettingsContent>
-      <Heading description="Manage your sign-in methods and connected applications.">Security & access</Heading>
+      <Heading description="Manage your sessions and authorized applications.">Access</Heading>
       <div className="grid gap-12">
         <Section title="Sessions" description="Review and revoke access to your account.">
           <Rows>
@@ -127,6 +104,32 @@ export function SecuritySettings() {
             </Row>
           </Rows>
         </Section>
+        <Section title="Authorized applications" description="Review applications that can access your account.">
+          {apps.length ? (
+            <Rows>
+              {apps.map((app, i) => (
+                <Row key={app.id} label={app.name} description={`Granted access: ${app.scope}`} last={i === apps.length - 1}>
+                  <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('application', app.id)}>
+                    Review
+                  </Button>
+                </Row>
+              ))}
+            </Rows>
+          ) : (
+            <Empty title="No authorized applications">Applications you authorize will appear here.</Empty>
+          )}
+        </Section>
+      </div>
+    </SettingsContent>
+  )
+}
+export function SecuritySettings() {
+  const c = useSettingsController(),
+    passkeys = useSettings((s) => s.passkeys)
+  return (
+    <SettingsContent>
+      <Heading description="Manage your sign-in methods and API access.">Security</Heading>
+      <div className="grid gap-12">
         <Section
           title="Passkeys"
           description="Sign in with your fingerprint, face, or security key."
@@ -155,21 +158,6 @@ export function SecuritySettings() {
             >
               Add a passkey for a simpler sign-in experience.
             </Empty>
-          )}
-        </Section>
-        <Section title="Authorized applications" description="Review applications that can access your account.">
-          {apps.length ? (
-            <Rows>
-              {apps.map((app, i) => (
-                <Row key={app.id} label={app.name} description={`Granted access: ${app.scope}`} last={i === apps.length - 1}>
-                  <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('application', app.id)}>
-                    Review
-                  </Button>
-                </Row>
-              ))}
-            </Rows>
-          ) : (
-            <Empty title="No authorized applications">Applications you authorize will appear here.</Empty>
           )}
         </Section>
         <div className="px-4">

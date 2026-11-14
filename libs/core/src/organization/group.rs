@@ -31,6 +31,10 @@ pub struct Group {
 pub enum GroupCreationError {
     #[error("group name must contain 1 to 128 characters")]
     InvalidName(#[source] validify::ValidationErrors),
+    #[error("group description must contain at most 128 characters")]
+    InvalidDescription(#[source] validify::ValidationErrors),
+    #[error("group relationship changes must contain distinct non-overlapping identities")]
+    InvalidChanges,
     #[error("a group can have at most 32 roles")]
     TooManyRoles,
     #[error("group roles must belong to the same organization")]
@@ -39,6 +43,30 @@ pub enum GroupCreationError {
     DuplicateRole,
     #[error("ID generation failed")]
     IdGeneration(#[from] DistributedIdError),
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct GroupChanges {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub add_member_ids: Vec<u64>,
+    pub remove_member_ids: Vec<u64>,
+    pub add_role_ids: Vec<u64>,
+    pub remove_role_ids: Vec<u64>,
+}
+
+#[derive(Clone, Debug)]
+pub struct MemberInfo {
+    pub id: u64,
+    pub display_name: String,
+    pub email: String,
+    pub available: bool,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum GroupDeletionError {
+    #[error("Remove all members from this group before deleting it")]
+    Assigned,
 }
 
 impl Group {
@@ -55,6 +83,14 @@ impl Group {
         Ok(name.value)
     }
 
+    pub fn validate_description(value: &str) -> Result<(), validify::ValidationErrors> {
+        use validify::Validify;
+        GroupDescription {
+            value: value.into(),
+        }
+        .validify()
+    }
+
     pub async fn new(
         organization_id: u64,
         name: impl Into<String>,
@@ -64,6 +100,8 @@ impl Group {
         if roles.len() > Self::MAX_ROLES {
             return Err(GroupCreationError::TooManyRoles);
         }
+        let description = description.into();
+        Self::validate_description(&description).map_err(GroupCreationError::InvalidDescription)?;
         let name = Self::normalize_name(&name.into()).map_err(GroupCreationError::InvalidName)?;
         let mut role_ids = HashSet::new();
         for role in &roles {
@@ -78,7 +116,7 @@ impl Group {
             id: try_gen_id().await?,
             organization_id,
             name,
-            description: description.into(),
+            description,
             roles,
         })
     }
@@ -88,6 +126,12 @@ impl Group {
 struct GroupName {
     #[modify(trim)]
     #[validate(length(min = 1, max = 128))]
+    value: String,
+}
+
+#[derive(validify::Validify)]
+struct GroupDescription {
+    #[validate(length(max = 128))]
     value: String,
 }
 

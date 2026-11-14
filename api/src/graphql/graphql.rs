@@ -76,6 +76,41 @@ impl Query {
         organization::query::get(user, repository.as_ref(), database).await
     }
 
+    async fn members(
+        filter: Option<organization::member::input::MemberFilterInput>,
+        order_by: Option<Vec<organization::member::input::MemberOrderInput>>,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<String>,
+        after: Option<String>,
+        offset: Option<i32>,
+        #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Collection<organization::member::Member>, Error> {
+        organization::member::query::list(
+            filter,
+            order_by,
+            compallm_query::Pagination {
+                first: first.or(if last.is_none() && before.is_none() {
+                    Some(30)
+                } else {
+                    None
+                }),
+                last: last.or(if first.is_none() && before.is_some() {
+                    Some(30)
+                } else {
+                    None
+                }),
+                before: before.map(compallm_query::Cursor),
+                after: after.map(compallm_query::Cursor),
+                offset,
+            },
+            repository,
+            authority,
+        )
+        .await
+    }
+
     /// Find visible role metadata in the active organization.
     async fn role(
         id: ID,
@@ -130,6 +165,22 @@ impl Mutation {
         #[graphql(context)] database: &compallm_core::persistent::DbContext,
     ) -> Result<Payload<super::user::AvatarUpload>, Error> {
         organization::mutation::generate(input, authority, service, database).await
+    }
+
+    async fn group_update(
+        id: ID,
+        input: organization::group::input::GroupUpdateInput,
+        #[graphql(context)] service: &RbacService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<organization::group::Group>, Error> {
+        organization::group::mutation::update(id, input, service, authority).await
+    }
+    async fn group_delete(
+        id: ID,
+        #[graphql(context)] service: &RbacService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<bool>, Error> {
+        organization::group::mutation::delete(id, service, authority).await
     }
 
     /// Update the current user's display name and confirm an uploaded avatar.
@@ -259,7 +310,7 @@ impl Mutation {
         input: organization::group::input::GroupCreateInput,
         #[graphql(context)] service: &RbacService,
         #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Payload<organization::group::CreatedGroup>, Error> {
+    ) -> Result<Payload<organization::group::Group>, Error> {
         organization::group::mutation::create(input, service, authority).await
     }
 }
@@ -360,6 +411,9 @@ struct Inputs {
     role_create: super::organization::role::input::RoleCreateInput,
     role_update: super::organization::role::input::RoleUpdateInput,
     group_create: super::organization::group::input::GroupCreateInput,
+    group_update: super::organization::group::input::GroupUpdateInput,
+    member_filter: organization::member::input::MemberFilterInput,
+    member_order: organization::member::input::MemberOrderInput,
     email: super::authentication::input::EmailInput,
     code: super::authentication::input::EmailCodeInput,
     provider_create: super::provider::input::ProvidersCreateInput,

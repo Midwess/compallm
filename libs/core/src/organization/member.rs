@@ -92,13 +92,6 @@ impl OrganizationMember {
 
     /// Remove a group membership, without changing the group's roles.
     pub fn unassign_group(&mut self, group_id: u64) -> Result<(), MembershipAssignmentError> {
-        if self
-            .groups
-            .iter()
-            .any(|group| group.id == group_id && group.roles.iter().any(Role::org_owner))
-        {
-            return Err(MembershipAssignmentError::OwnerRole);
-        }
         self.groups.retain(|group| group.id != group_id);
         Ok(())
     }

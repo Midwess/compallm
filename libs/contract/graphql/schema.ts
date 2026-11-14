@@ -53,19 +53,6 @@ export interface CodeFontPreferences {
   __typename: 'CodeFontPreferences'
 }
 
-export interface CreatedGroup {
-  description: Scalars['String']
-  id: Scalars['ID']
-  name: Scalars['String']
-  roleIds: Scalars['ID'][]
-  __typename: 'CreatedGroup'
-}
-
-export interface CreatedGroupPayload {
-  node: CreatedGroup
-  __typename: 'CreatedGroupPayload'
-}
-
 /** How the request delivers credentials; this is never stored in signed claims. */
 export type CredentialDelivery = 'COOKIE' | 'TOKEN'
 
@@ -81,10 +68,14 @@ export interface EmailChallengePayload {
   __typename: 'EmailChallengePayload'
 }
 
+export type FilterIs = 'NOT_NULL' | 'NULL'
+
 export interface Group {
   description: Scalars['String']
   id: Scalars['ID']
+  memberIds: Scalars['ID'][]
   name: Scalars['String']
+  roles: RoleConnection
   __typename: 'Group'
 }
 
@@ -109,9 +100,29 @@ export type HomeDestination = 'CHAT' | 'MODELS' | 'PROVIDERS'
 
 export type ImageMediaType = 'JPEG' | 'PNG' | 'WEBP'
 
+export interface Member {
+  available: Scalars['Boolean']
+  displayName: Scalars['String']
+  email: Scalars['String']
+  id: Scalars['ID']
+  __typename: 'Member'
+}
+
+export interface MemberConnection {
+  edges: MemberEdge[]
+  pageInfo: PageInfo
+  __typename: 'MemberConnection'
+}
+
 export interface MemberDisplayPreferences {
   nameFormat: PreferenceNamingFormat
   __typename: 'MemberDisplayPreferences'
+}
+
+export interface MemberEdge {
+  cursor: Scalars['String']
+  node: Member
+  __typename: 'MemberEdge'
 }
 
 export interface MessageCompositionPreferences {
@@ -133,7 +144,9 @@ export interface Mutation {
   /** Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes. */
   generateUrlAvatarUrl: AvatarUploadPayload
   /** Create a group and its initial role assignments in the verified active organization. */
-  groupCreate: CreatedGroupPayload
+  groupCreate: GroupPayload
+  groupDelete: BooleanPayload
+  groupUpdate: GroupPayload
   organizationProfileUpdate: OrganizationPayload
   /** Create a role in the verified active organization. */
   roleCreate: RolePayload
@@ -156,6 +169,8 @@ export interface NavigationPreferences {
   home: PreferenceDestination
   __typename: 'NavigationPreferences'
 }
+
+export type OrderByDirection = 'AscNullsFirst' | 'AscNullsLast' | 'DescNullsFirst' | 'DescNullsLast'
 
 export interface Organization {
   avatarUrl: Scalars['String'] | null
@@ -269,6 +284,7 @@ export interface Query {
   group: GroupPayload | null
   /** Return the complete visible group metadata collection, ordered by ID. */
   groups: GroupConnection
+  members: MemberConnection
   /** Return the active organization from verified user authority. */
   organization: OrganizationPayload
   /** Return the system-owned organization policy action catalog. */
@@ -519,21 +535,6 @@ export interface CodeFontPreferencesGenqlSelection {
   __scalar?: boolean | number
 }
 
-export interface CreatedGroupGenqlSelection {
-  description?: boolean | number
-  id?: boolean | number
-  name?: boolean | number
-  roleIds?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface CreatedGroupPayloadGenqlSelection {
-  node?: CreatedGroupGenqlSelection
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
 export interface CredentialCreateInput {
   name: Scalars['String']
 }
@@ -581,7 +582,9 @@ export interface EmailInput {
 export interface GroupGenqlSelection {
   description?: boolean | number
   id?: boolean | number
+  memberIds?: boolean | number
   name?: boolean | number
+  roles?: RoleConnectionGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -612,9 +615,34 @@ export interface GroupPayloadGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface GroupUpdateInput {
+  addMemberIds?: Scalars['String'][] | null
+  addRoleIds?: Scalars['String'][] | null
+  description?: Scalars['String'] | null
+  name?: Scalars['String'] | null
+  removeMemberIds?: Scalars['String'][] | null
+  removeRoleIds?: Scalars['String'][] | null
+}
+
 export interface ImageUploadInput {
   mediaType: ImageMediaType
   size: Scalars['Int']
+}
+
+export interface MemberGenqlSelection {
+  available?: boolean | number
+  displayName?: boolean | number
+  email?: boolean | number
+  id?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface MemberConnectionGenqlSelection {
+  edges?: MemberEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
 }
 
 export interface MemberDisplayPatchInput {
@@ -625,6 +653,30 @@ export interface MemberDisplayPreferencesGenqlSelection {
   nameFormat?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
+}
+
+export interface MemberEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: MemberGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface MemberFilterInput {
+  displayName?: StringFilter | null
+  email?: StringFilter | null
+  or?: MemberMatchInput[] | null
+}
+
+export interface MemberMatchInput {
+  displayName?: StringFilter | null
+  email?: StringFilter | null
+}
+
+export interface MemberOrderInput {
+  displayName?: OrderByDirection | null
+  email?: OrderByDirection | null
+  id?: OrderByDirection | null
 }
 
 export interface MessageCompositionPatchInput {
@@ -652,7 +704,9 @@ export interface MutationGenqlSelection {
   /** Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes. */
   generateUrlAvatarUrl?: AvatarUploadPayloadGenqlSelection & { __args: { input: ImageUploadInput } }
   /** Create a group and its initial role assignments in the verified active organization. */
-  groupCreate?: CreatedGroupPayloadGenqlSelection & { __args: { input: GroupCreateInput } }
+  groupCreate?: GroupPayloadGenqlSelection & { __args: { input: GroupCreateInput } }
+  groupDelete?: BooleanPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  groupUpdate?: GroupPayloadGenqlSelection & { __args: { id: Scalars['ID']; input: GroupUpdateInput } }
   organizationProfileUpdate?: OrganizationPayloadGenqlSelection & { __args: { input: OrganizationProfileUpdateInput } }
   /** Create a role in the verified active organization. */
   roleCreate?: RolePayloadGenqlSelection & { __args: { input: RoleCreateInput } }
@@ -864,6 +918,17 @@ export interface QueryGenqlSelection {
   group?: GroupPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Return the complete visible group metadata collection, ordered by ID. */
   groups?: GroupConnectionGenqlSelection
+  members?: MemberConnectionGenqlSelection & {
+    __args?: {
+      after?: Scalars['String'] | null
+      before?: Scalars['String'] | null
+      filter?: MemberFilterInput | null
+      first?: Scalars['Int'] | null
+      last?: Scalars['Int'] | null
+      offset?: Scalars['Int'] | null
+      orderBy?: MemberOrderInput[] | null
+    }
+  }
   /** Return the active organization from verified user authority. */
   organization?: OrganizationPayloadGenqlSelection
   /** Return the system-owned organization policy action catalog. */
@@ -1014,6 +1079,22 @@ export interface SpendingLimitInput {
   amount?: Scalars['String'] | null
 }
 
+export interface StringFilter {
+  eq?: Scalars['String'] | null
+  gt?: Scalars['String'] | null
+  gte?: Scalars['String'] | null
+  ilike?: Scalars['String'] | null
+  in?: Scalars['String'][] | null
+  iregex?: Scalars['String'] | null
+  is?: FilterIs | null
+  like?: Scalars['String'] | null
+  lt?: Scalars['String'] | null
+  lte?: Scalars['String'] | null
+  neq?: Scalars['String'] | null
+  regex?: Scalars['String'] | null
+  startsWith?: Scalars['String'] | null
+}
+
 export interface ThemePatchInput {
   mode?: PreferenceAppearanceMode | null
   palettes?: PalettePatchInput | null
@@ -1156,18 +1237,6 @@ export const isCodeFontPreferences = (obj?: { __typename?: any } | null): obj is
   return CodeFontPreferences_possibleTypes.includes(obj.__typename)
 }
 
-const CreatedGroup_possibleTypes: string[] = ['CreatedGroup']
-export const isCreatedGroup = (obj?: { __typename?: any } | null): obj is CreatedGroup => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isCreatedGroup"')
-  return CreatedGroup_possibleTypes.includes(obj.__typename)
-}
-
-const CreatedGroupPayload_possibleTypes: string[] = ['CreatedGroupPayload']
-export const isCreatedGroupPayload = (obj?: { __typename?: any } | null): obj is CreatedGroupPayload => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isCreatedGroupPayload"')
-  return CreatedGroupPayload_possibleTypes.includes(obj.__typename)
-}
-
 const EmailChallenge_possibleTypes: string[] = ['EmailChallenge']
 export const isEmailChallenge = (obj?: { __typename?: any } | null): obj is EmailChallenge => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isEmailChallenge"')
@@ -1204,10 +1273,28 @@ export const isGroupPayload = (obj?: { __typename?: any } | null): obj is GroupP
   return GroupPayload_possibleTypes.includes(obj.__typename)
 }
 
+const Member_possibleTypes: string[] = ['Member']
+export const isMember = (obj?: { __typename?: any } | null): obj is Member => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isMember"')
+  return Member_possibleTypes.includes(obj.__typename)
+}
+
+const MemberConnection_possibleTypes: string[] = ['MemberConnection']
+export const isMemberConnection = (obj?: { __typename?: any } | null): obj is MemberConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isMemberConnection"')
+  return MemberConnection_possibleTypes.includes(obj.__typename)
+}
+
 const MemberDisplayPreferences_possibleTypes: string[] = ['MemberDisplayPreferences']
 export const isMemberDisplayPreferences = (obj?: { __typename?: any } | null): obj is MemberDisplayPreferences => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isMemberDisplayPreferences"')
   return MemberDisplayPreferences_possibleTypes.includes(obj.__typename)
+}
+
+const MemberEdge_possibleTypes: string[] = ['MemberEdge']
+export const isMemberEdge = (obj?: { __typename?: any } | null): obj is MemberEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isMemberEdge"')
+  return MemberEdge_possibleTypes.includes(obj.__typename)
 }
 
 const MessageCompositionPreferences_possibleTypes: string[] = ['MessageCompositionPreferences']
@@ -1403,6 +1490,11 @@ export const enumCredentialDelivery = {
   TOKEN: 'TOKEN' as const,
 }
 
+export const enumFilterIs = {
+  NOT_NULL: 'NOT_NULL' as const,
+  NULL: 'NULL' as const,
+}
+
 export const enumHomeDestination = {
   CHAT: 'CHAT' as const,
   MODELS: 'MODELS' as const,
@@ -1413,6 +1505,13 @@ export const enumImageMediaType = {
   JPEG: 'JPEG' as const,
   PNG: 'PNG' as const,
   WEBP: 'WEBP' as const,
+}
+
+export const enumOrderByDirection = {
+  AscNullsFirst: 'AscNullsFirst' as const,
+  AscNullsLast: 'AscNullsLast' as const,
+  DescNullsFirst: 'DescNullsFirst' as const,
+  DescNullsLast: 'DescNullsLast' as const,
 }
 
 export const enumPreferenceAppearanceMode = {

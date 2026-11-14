@@ -7,10 +7,9 @@ import {
 import type { UrlController, AuthController } from '@compallm/storybook'
 import { notify } from '../notifications/toast'
 import { codeExamples } from './code-examples'
-import { GroupController } from './group/controller'
 import { graphql } from '../graphql-client'
 import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
-import { RoleCreateInput } from '@compallm/contract/validation'
+import { RoleCreateInput, GroupCreateInput } from '@compallm/contract/validation'
 import { createSettingsPages } from './pages'
 
 export const settingsPages = [
@@ -19,13 +18,12 @@ export const settingsPages = [
   'messaging',
   'code',
   'profile',
+  'access',
   'security',
   'api-keys',
-  'danger',
   'organization',
   'organization-onboarding',
   'members',
-  'new-group',
   'usage-limits',
   'member-limits',
   'usage-explorer',
@@ -36,7 +34,7 @@ export class SettingsController implements Controller {
   readonly store = createSettingsStore({ readonly: true, codeExamples })
   readonly pages: ReturnType<typeof createSettingsPages>
   readonly role: ReturnType<typeof createSettingsPages>['role']
-  readonly group = new GroupController()
+  readonly group: ReturnType<typeof createSettingsPages>['group']
   private readonly url: Pick<UrlController, 'navigate'> & Partial<Pick<UrlController, 'store'>>
   private readonly auth: Pick<AuthController, 'signOut'> & Partial<Pick<AuthController, 'store'>>
   private readonly initialName: string
@@ -48,6 +46,9 @@ export class SettingsController implements Controller {
   private request?: AbortController
   private stopProfile?: () => void
   private generation = 0
+  private creatingGroup = false
+  private readonly deletedGroups = new Set<string>()
+  private readonly createdGroups = new Set<string>()
   private creatingRole = false
   private navigationGeneration = 0
   private readonly knownEmptyRoles = new Set<string>()
@@ -68,6 +69,7 @@ export class SettingsController implements Controller {
     if (location.page === 'organization') this.stopOrganization = this.pages.organization.start()
     if (location.page === 'profile') this.stopProfile = this.pages.profile.start()
     if (location.page === 'role' && location.id) void this.role.load(location.id)
+    if (location.page === 'group' && location.id) void this.group.load(location.id)
     return () => {
       this.stopProfile?.()
       this.stopProfile = undefined
@@ -75,6 +77,7 @@ export class SettingsController implements Controller {
       this.stopOrganization = undefined
       controller.abort()
       this.role.cancel()
+      this.group.cancel()
       if (this.request === controller) this.request = undefined
       this.generation += 1
     }
@@ -84,7 +87,7 @@ export class SettingsController implements Controller {
     try {
       const selection = {
         roles: { edges: { node: { id: true, name: true, color: true } } },
-        groups: { edges: { node: { id: true, name: true, description: true } } },
+        groups: { edges: { node: { id: true, name: true } } },
       } satisfies QueryGenqlSelection
       const { roles, groups } = await graphql(signal).query(selection)
       if (signal.aborted || generation !== this.generation) return
@@ -97,7 +100,23 @@ export class SettingsController implements Controller {
             (role) => this.knownEmptyRoles.has(role.id) && !roles.edges.some(({ node }) => node.id === role.id),
           ),
         ],
-        groups: groups.edges.map(({ node: group }) => ({ ...group, roleIds: [], memberIds: [], color: '' })),
+        groups: [
+          ...groups.edges
+            .filter(({ node }) => !this.deletedGroups.has(node.id))
+            .map(
+              ({ node }) =>
+                state.groups.find((group) => group.id === node.id) ?? {
+                  ...node,
+                  description: '',
+                  roleIds: [],
+                  memberIds: [],
+                  color: '',
+                },
+            ),
+          ...state.groups.filter(
+            (group) => this.createdGroups.has(group.id) && !groups.edges.some(({ node }) => node.id === group.id),
+          ),
+        ],
       }))
     } catch (error) {
       if (!signal.aborted && generation === this.generation) {
@@ -127,8 +146,10 @@ export class SettingsController implements Controller {
       preferences,
       auth,
       this.organizationRenamed,
+      this.groupDeleted,
     )
     this.role = this.pages.role
+    this.group = this.pages.group
     this.url = url
     this.auth = auth
     this.initialName = organizationName
@@ -159,12 +180,13 @@ export class SettingsController implements Controller {
     }
     this.navigationGeneration += 1
     this.role.cancel()
+    this.group.cancel()
     this.store.setState({ location: { page, id } })
     if (page === 'organization' && this.request && !this.stopOrganization)
       this.stopOrganization = this.pages.organization.start()
     if (page === 'profile' && this.request && !this.stopProfile) this.stopProfile = this.pages.profile.start()
     if (page === 'role' && id && this.request) void this.role.load(id)
-    if (page === 'new-group') this.group.open()
+    if (page === 'group' && id && this.request) void this.group.load(id)
   }
   private createRole = async () => {
     if (this.creatingRole || !this.request) return
@@ -201,11 +223,57 @@ export class SettingsController implements Controller {
       this.creatingRole = false
     }
   }
+  private groupDeleted = (id: string) => {
+    this.deletedGroups.add(id)
+    this.createdGroups.delete(id)
+    this.store.setState((state) => ({ groups: state.groups.filter((group) => group.id !== id) }))
+    if (this.request && this.store.getState().location.page === 'group' && this.store.getState().location.id === id)
+      this.navigate('blank')
+  }
+  private createGroup = async () => {
+    if (this.creatingGroup || !this.request) return
+    this.creatingGroup = true
+    const request = this.request,
+      generation = this.generation,
+      navigation = this.navigationGeneration
+    const time = new Date().toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      fractionalSecondDigits: 3,
+      hour12: false,
+    })
+    const input = GroupCreateInput.parse({ name: `New group at ${time}`, description: '', roleIds: [] })
+    try {
+      const selection = { groupCreate: { __args: { input }, node: { id: true, name: true } } } satisfies MutationGenqlSelection
+      const {
+        groupCreate: { node },
+      } = await graphql(request.signal).mutation(selection)
+      if (request.signal.aborted || generation !== this.generation) return
+      this.createdGroups.add(node.id)
+      this.store.setState((state) => ({
+        groups: [
+          ...state.groups.filter((group) => group.id !== node.id),
+          { ...node, description: '', roleIds: [], memberIds: [], color: '' },
+        ],
+      }))
+      if (navigation === this.navigationGeneration)
+        this.url.navigate(`${this.base}/settings/group/${encodeURIComponent(node.id)}`)
+    } catch (error) {
+      if (!request.signal.aborted)
+        notify.apiError(error, () => {
+          if (this.request === request && this.navigationGeneration === navigation) void this.createGroup()
+        })
+    } finally {
+      this.creatingGroup = false
+    }
+  }
   navigate = (page: SettingsDestination, id?: string) => {
-    if (page === 'new-role') void this.createRole()
-    else if (page === 'role' && id) {
+    if (page === 'new-group') void this.createGroup()
+    else if (page === 'new-role') void this.createRole()
+    else if ((page === 'role' || page === 'group') && id) {
       this.navigationGeneration += 1
-      this.url.navigate(`${this.base}/settings/role/${encodeURIComponent(id)}`)
+      this.url.navigate(`${this.base}/settings/${page}/${encodeURIComponent(id)}`)
     } else if (settingsPages.some((entry) => entry === page)) {
       this.navigationGeneration += 1
       this.url.navigate(`${this.base}/settings/${page}`)

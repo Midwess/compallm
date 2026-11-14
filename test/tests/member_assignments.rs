@@ -111,7 +111,7 @@ fn organization_owner_role_cannot_be_unassigned() {
 }
 
 #[test]
-fn group_with_owner_role_cannot_be_unassigned() {
+fn group_with_owner_role_can_be_unassigned() {
     let owner = Role {
         id: 7,
         organization_id: 10,
@@ -133,6 +133,6 @@ fn group_with_owner_role_cannot_be_unassigned() {
         roles: vec![],
         groups: vec![group.clone()],
     };
-    assert!(member.unassign_group(group.id).is_err());
-    assert_eq!(member.groups, vec![group]);
+    member.unassign_group(group.id).unwrap();
+    assert!(member.groups.is_empty());
 }

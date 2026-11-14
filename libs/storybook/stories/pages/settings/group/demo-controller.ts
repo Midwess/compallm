@@ -4,6 +4,12 @@ import type { GroupController, GroupDraft, SettingsController } from '../../../.
 const colors = ['#A49ADA', '#6EB8A8', '#D7A466', '#8CAFD1']
 export class DemoGroupController implements GroupController {
   readonly store = createGroupStore()
+  loadMore = () => {
+    this.store.setState({
+      members: this.settings.store.getState().members.map((member) => ({ ...member, available: true })),
+      hasNextPage: false,
+    })
+  }
   setQuery = (query: string) => this.store.setState({ query })
   private saveTimer?: ReturnType<typeof setTimeout>
   private closed = false
@@ -29,24 +35,17 @@ export class DemoGroupController implements GroupController {
             name: group.name,
             description: group.description,
             memberIds: [...group.memberIds],
+            memberSelection: Object.fromEntries(
+              this.settings.store.getState().members.map((member) => [member.id, group.memberIds.includes(member.id)]),
+            ),
             roleIds: [...group.roleIds],
           }
         : { id: null, name: '', description: '', memberIds: [], roleIds: [] },
       error: null,
     })
   }
-  private toggle = (field: 'memberIds' | 'roleIds', id: string) => {
-    if (this.settings.store.getState().readonly || this.store.getState().busy) return
-    this.store.setState((s) => ({
-      draft: s.draft
-        ? {
-            ...s.draft,
-            [field]: s.draft[field].includes(id) ? s.draft[field].filter((value) => value !== id) : [...s.draft[field], id],
-          }
-        : null,
-    }))
-  }
-  toggleGroupMember = (id: string) => this.toggle('memberIds', id)
+  toggleGroupMember = (id: string) =>
+    this.store.form.change(`draft.memberSelection.${id}`, !this.store.getState().draft?.memberSelection?.[id])
   saveGroup = (draft: GroupDraft): Promise<GroupDraft | false> => {
     if (!draft?.name.trim() || this.store.getState().busy || this.settings.store.getState().readonly)
       return Promise.resolve(false)
@@ -65,6 +64,7 @@ export class DemoGroupController implements GroupController {
                 ? 'This group changed elsewhere. Your draft is retained.'
                 : 'Could not save changes. Your draft is retained.',
           })
+          this.settings.store.setState({ error: 'Could not save changes. Your draft is retained.' })
           resolve(false)
           return
         }
@@ -80,10 +80,19 @@ export class DemoGroupController implements GroupController {
           groups: groups.some((g) => g.id === id) ? groups.map((g) => (g.id === id ? group : g)) : [...groups, group],
           location: { page: 'group', id },
         })
-        this.store.setState({ draft: { ...draft, id }, busy: false })
+        this.store.setState(draft.id ? { busy: false } : { draft: { ...draft, id }, busy: false })
         this.settings.report(draft.id ? 'Group saved' : 'Group created')
         resolve({ ...draft, id, name: group.name })
       }, 240)
+    })
+  }
+  updateGroup = async (draft: GroupDraft, _names: string[], signal: AbortSignal) => {
+    if (signal.aborted) return false as const
+    return this.saveGroup({
+      ...draft,
+      memberIds: draft.memberSelection
+        ? Object.keys(draft.memberSelection).filter((id) => draft.memberSelection?.[id])
+        : draft.memberIds,
     })
   }
   resetGroup = () => {

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "graphql", derive(juniper::GraphQLEnum))]
 #[cfg_attr(feature = "graphql", graphql(rename_all = "none"))]
+#[cfg_attr(feature = "graphql", derive(schemars::JsonSchema))]
 pub enum OrderByDirection {
     AscNullsFirst,
     AscNullsLast,

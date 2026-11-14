@@ -11,9 +11,9 @@ export type SettingsDestination =
   | 'messaging'
   | 'code'
   | 'profile'
+  | 'access'
   | 'security'
   | 'api-keys'
-  | 'danger'
   | 'organization'
   | 'organization-onboarding'
   | 'members'
@@ -94,6 +94,7 @@ export interface RoleDraft {
   builtin: boolean
 }
 export interface GroupDraft {
+  memberSelection?: Record<string, boolean>
   id: string | null
   name: string
   description: string
@@ -214,6 +215,7 @@ export interface SettingsController {
 }
 
 export interface SettingsPageControllers {
+  group: GroupController
   role: RoleController
   search: { setQuery(value: string): void; setFilter(key: string, value: string): void }
   preferences: { user: UserPreferenceController }

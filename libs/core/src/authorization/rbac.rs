@@ -275,6 +275,183 @@ impl RbacService {
         .await
     }
 
+    pub async fn update_group(
+        &self,
+        permission: &MemberPermission,
+        id: u64,
+        mut changes: crate::organization::group::GroupChanges,
+    ) -> Result<Group, AuthorizationError> {
+        use crate::organization::group::GroupCreationError;
+        use std::collections::BTreeSet;
+        let org = permission.organization_id();
+        let distinct = |added: &[u64], removed: &[u64]| {
+            let a: BTreeSet<_> = added.iter().copied().collect();
+            let r: BTreeSet<_> = removed.iter().copied().collect();
+            a.len() == added.len()
+                && r.len() == removed.len()
+                && a.is_disjoint(&r)
+                && !a.contains(&0)
+                && !r.contains(&0)
+        };
+        if changes.add_member_ids.len() > 100
+            || changes.remove_member_ids.len() > 100
+            || changes.add_role_ids.len() > 32
+            || changes.remove_role_ids.len() > 32
+            || !distinct(&changes.add_role_ids, &changes.remove_role_ids)
+            || !distinct(&changes.add_member_ids, &changes.remove_member_ids)
+        {
+            return Err(GroupCreationError::InvalidChanges.into());
+        }
+        if let Some(name) = changes.name.as_mut() {
+            *name = Group::normalize_name(name).map_err(GroupCreationError::InvalidName)?;
+        }
+        if let Some(description) = changes.description.as_ref() {
+            Group::validate_description(description)
+                .map_err(GroupCreationError::InvalidDescription)?;
+        }
+        let root = Self::root_write_context()?;
+        let before = root
+            .scope(self.organizations.find_group(org, id))
+            .await?
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        let ids: BTreeSet<_> = changes
+            .add_role_ids
+            .iter()
+            .chain(&changes.remove_role_ids)
+            .copied()
+            .collect();
+        if !ids.is_empty() {
+            Action::RoleRead.check_permission(permission)?;
+        }
+        let roles = self
+            .organizations
+            .find_roles_for_assignment(org, &ids.iter().copied().collect::<Vec<_>>())
+            .await?;
+        if roles.len() != ids.len() {
+            return Err(
+                crate::persistent::organization::OrganizationRepositoryError::NotFound.into(),
+            );
+        }
+        let mut members = Vec::new();
+        if !changes.add_member_ids.is_empty() || !changes.remove_member_ids.is_empty() {
+            Action::MemberRead.check_permission(permission)?;
+            for user in changes
+                .add_member_ids
+                .iter()
+                .chain(&changes.remove_member_ids)
+            {
+                let member = self
+                    .organizations
+                    .find_member_identity(org, *user)
+                    .await?
+                    .ok_or(
+                        crate::persistent::organization::OrganizationRepositoryError::NotFound,
+                    )?;
+                members.push(member);
+            }
+        }
+        self.check_group_changes(permission, &before, &changes, &roles, &members)?;
+        crate::transaction!(root, {
+            for role in &roles {
+                self.organizations.lock_role(org, role.id).await?;
+            }
+            self.organizations.lock_group(org, id).await?;
+            let group =
+                self.organizations.find_group(org, id).await?.ok_or(
+                    crate::persistent::organization::OrganizationRepositoryError::NotFound,
+                )?;
+            self.check_group_changes(permission, &group, &changes, &roles, &members)?;
+            let users = self
+                .organizations
+                .save_group_changes(&group, &changes)
+                .await?;
+            self.auth_service
+                .invalidate_permissions(org, &users)
+                .await?;
+            self.organizations.find_group(org, id).await?.ok_or(
+                crate::persistent::organization::OrganizationRepositoryError::NotFound.into(),
+            )
+        })
+    }
+
+    fn check_group_changes(
+        &self,
+        permission: &MemberPermission,
+        group: &Group,
+        changes: &crate::organization::group::GroupChanges,
+        roles: &[Role],
+        members: &[crate::organization::OrganizationMember],
+    ) -> Result<(), AuthorizationError> {
+        if changes.name.is_some() || changes.description.is_some() {
+            group
+                .for_action(Action::GroupMetadataUpdate)
+                .check_permission(permission)?;
+        }
+        let resulting = group
+            .roles
+            .iter()
+            .filter(|r| !changes.remove_role_ids.contains(&r.id))
+            .map(|r| r.id)
+            .chain(changes.add_role_ids.iter().copied())
+            .collect::<std::collections::BTreeSet<_>>();
+        if resulting.len() > Group::MAX_ROLES {
+            return Err(crate::organization::group::GroupCreationError::TooManyRoles.into());
+        }
+        for role in roles {
+            let (action, delegation) = if changes.add_role_ids.contains(&role.id) {
+                (Action::GroupRoleAssign, Action::RoleAssign)
+            } else {
+                (Action::GroupRoleUnassign, Action::RoleUnassign)
+            };
+            (group, role)
+                .for_action(action)
+                .and(role.for_action(delegation))
+                .check_permission(permission)?;
+        }
+        for member in members {
+            let action = if changes.add_member_ids.contains(&member.user_id) {
+                Action::GroupMemberAdd
+            } else {
+                Action::GroupMemberRemove
+            };
+            (group, member)
+                .for_action(action)
+                .check_permission(permission)?;
+        }
+        Ok(())
+    }
+
+    pub async fn delete_group(
+        &self,
+        permission: &MemberPermission,
+        id: u64,
+    ) -> Result<(), AuthorizationError> {
+        let org = permission.organization_id();
+        let root = Self::root_write_context()?;
+        let group = root
+            .scope(self.organizations.find_group(org, id))
+            .await?
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        group
+            .for_action(Action::GroupDelete)
+            .check_permission(permission)?;
+        crate::transaction!(root, {
+            self.organizations.lock_group(org, id).await?;
+            let group =
+                self.organizations.find_group(org, id).await?.ok_or(
+                    crate::persistent::organization::OrganizationRepositoryError::NotFound,
+                )?;
+            group
+                .for_action(Action::GroupDelete)
+                .check_permission(permission)?;
+            if self.organizations.group_member_count(org, id).await? != 0 {
+                return Err(crate::organization::group::GroupDeletionError::Assigned.into());
+            }
+            self.organizations.delete_group(org, id).await?;
+            Ok(())
+        })
+    }
+
     async fn assign_role(
         &self,
         permission: &MemberPermission,

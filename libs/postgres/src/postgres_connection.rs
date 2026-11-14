@@ -261,6 +261,21 @@ impl Connection for PostgresConnection {
         })
     }
 
+    fn restrict_user(&self, user_id: u64) -> Result<(), ConnectionError> {
+        self.ensure_open()?;
+        if self.transaction.is_some() {
+            return Err(ConnectionError::database(anyhow::anyhow!(
+                "transaction cannot acquire a new restriction"
+            )));
+        }
+        let rls = Rls::for_user(user_id).map_err(ConnectionError::database)?;
+        self.rls.set(Some(rls)).map_err(|_| {
+            ConnectionError::database(anyhow::anyhow!(
+                "connection is already restricted or a query has started"
+            ))
+        })
+    }
+
     fn restrict(&self, permission: PermissionLoader) -> Result<(), ConnectionError> {
         self.ensure_open()?;
         if self.transaction.is_some() {

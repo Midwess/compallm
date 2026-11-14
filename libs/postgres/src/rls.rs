@@ -22,6 +22,18 @@ pub struct RlsSettings {
 }
 
 impl Rls {
+    pub fn for_user(user_id: u64) -> anyhow::Result<Self> {
+        anyhow::ensure!(
+            user_id > 0 && user_id <= i64::MAX as u64,
+            "invalid user identity"
+        );
+        let settings = RlsSettings::new(user_id, 0, Vec::new())?;
+        let loader: SettingsFuture = Box::pin(async move { Ok(settings) });
+        Ok(Self {
+            settings: Arc::new(Lazy::new(loader)),
+        })
+    }
+
     pub fn new(permission: PermissionLoader) -> Self {
         let loader: SettingsFuture = Box::pin(async move {
             let permission = permission.get_unpin().await.as_ref().map_err(Arc::clone)?;
@@ -103,8 +115,13 @@ impl RlsSettings {
         &self.settings
     }
 
-    fn new(organization_id: u64, permissions: Vec<Permission>) -> Result<Self, serde_json::Error> {
+    fn new(
+        user_id: u64,
+        organization_id: u64,
+        permissions: Vec<Permission>,
+    ) -> Result<Self, serde_json::Error> {
         let mut settings = vec![
+            ("app.user_id".to_owned(), user_id.to_string()),
             (
                 "app.organization_id".to_owned(),
                 organization_id.to_string(),

@@ -708,7 +708,7 @@ type Query {
   userPreferences: UserPreferencesPayload!
 
   """
-  Public profile for an active user. Email and account state are excluded.
+  Read an active user profile using verified user identity.
   """
   userProfile(id: ID!): UserPayload
 }
@@ -918,7 +918,7 @@ type User {
   displayName: String!
 
   """
-  Email is readable only by the verified account owner and cannot be updated here.
+  Email is readable by authenticated users and cannot be updated here.
   """
   email: String!
 

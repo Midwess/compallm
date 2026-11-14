@@ -14,7 +14,10 @@ pub async fn update(
     let actor = user.require().await?;
     input.validify()?;
     let patch = input.try_into()?;
-    let context = database.fresh().map_err(|_| Error::internal())?;
+    let context = database
+        .fresh()
+        .and_then(|context| context.restrict_user(actor.access()))
+        .map_err(|_| Error::internal())?;
     let user = context
         .scope(service.update_profile(actor.access(), patch))
         .await?;
@@ -29,7 +32,10 @@ pub async fn generate_url_avatar_url(
 ) -> Result<Payload<super::AvatarUpload>, Error> {
     let actor = user.require().await?;
     input.validify()?;
-    let context = database.fresh().map_err(|_| Error::internal())?;
+    let context = database
+        .fresh()
+        .and_then(|context| context.restrict_user(actor.access()))
+        .map_err(|_| Error::internal())?;
     let upload = context
         .scope(service.generate_url_avatar_url(
             actor.access(),

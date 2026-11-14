@@ -298,7 +298,7 @@ export interface Query {
   session: SessionPayload
   /** Return the signed-in user's personal preferences; missing rows use Core defaults without a write. */
   userPreferences: UserPreferencesPayload
-  /** Public profile for an active user. Email and account state are excluded. */
+  /** Read an active user profile using verified user identity. */
   userProfile: UserPayload | null
   __typename: 'Query'
 }
@@ -418,7 +418,7 @@ export interface User {
   avatarUrl: Scalars['String'] | null
   /** Display name; this field does not establish identity or uniqueness. */
   displayName: Scalars['String']
-  /** Email is readable only by the verified account owner and cannot be updated here. */
+  /** Email is readable by authenticated users and cannot be updated here. */
   email: Scalars['String']
   /** Stable user identity, serialized as a string. */
   id: Scalars['ID']
@@ -942,7 +942,7 @@ export interface QueryGenqlSelection {
   session?: SessionPayloadGenqlSelection
   /** Return the signed-in user's personal preferences; missing rows use Core defaults without a write. */
   userPreferences?: UserPreferencesPayloadGenqlSelection
-  /** Public profile for an active user. Email and account state are excluded. */
+  /** Read an active user profile using verified user identity. */
   userProfile?: UserPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -1141,7 +1141,7 @@ export interface UserGenqlSelection {
   avatarUrl?: boolean | number
   /** Display name; this field does not establish identity or uniqueness. */
   displayName?: boolean | number
-  /** Email is readable only by the verified account owner and cannot be updated here. */
+  /** Email is readable by authenticated users and cannot be updated here. */
   email?: boolean | number
   /** Stable user identity, serialized as a string. */
   id?: boolean | number

@@ -10,7 +10,10 @@ pub async fn get(
     database: &DbContext,
 ) -> Result<Payload<super::UserPreferences>, Error> {
     let actor = user.require().await?;
-    let context = database.fresh().map_err(|_| Error::internal())?;
+    let context = database
+        .fresh()
+        .and_then(|context| context.restrict_user(actor.access()))
+        .map_err(|_| Error::internal())?;
     let preferences = context
         .scope(repository.find(actor.access().session.user_id))
         .await

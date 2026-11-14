@@ -22,6 +22,7 @@ pub trait Connection: Any + Send + Sync {
     fn as_any(&self) -> &dyn Any;
     fn is_transaction(&self) -> bool;
     fn scoped(&self) -> Arc<dyn Connection>;
+    fn restrict_user(&self, user_id: u64) -> Result<(), ConnectionError>;
     fn restrict(&self, permission: PermissionLoader) -> Result<(), ConnectionError>;
     fn ensure_open(&self) -> Result<(), ConnectionError>;
     async fn begin(&self) -> Result<Arc<dyn Connection>, ConnectionError>;

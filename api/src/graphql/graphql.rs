@@ -31,13 +31,14 @@ impl Query {
         organization::query::profile(id, repository.as_ref(), database).await
     }
 
-    /// Public profile for an active user. Email and account state are excluded.
+    /// Read an active user profile using verified user identity.
     async fn user_profile(
         id: ID,
+        #[graphql(context)] user: &UserContext,
         #[graphql(context)] repository: &Box<dyn compallm_core::persistent::user::UserRepository>,
         #[graphql(context)] database: &compallm_core::persistent::DbContext,
     ) -> Result<Option<Payload<super::user::User>>, Error> {
-        super::user::query::profile(id, repository.as_ref(), database).await
+        super::user::query::profile(id, user, repository.as_ref(), database).await
     }
 
     /// Return the signed-in user's personal preferences; missing rows use Core defaults without a write.

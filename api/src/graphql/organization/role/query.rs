@@ -40,7 +40,7 @@ pub(crate) async fn list(
         .check_permission(&permission)
         .map_err(AuthorizationError::from)?;
     let nodes = repository
-        .list_role_info(permission.organization_id())
+        .list_role_info()
         .await
         .map_err(AuthorizationError::from)?
         .into_iter()

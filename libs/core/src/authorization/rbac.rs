@@ -45,10 +45,7 @@ impl RbacService {
         permission: &MemberPermission,
     ) -> Result<Vec<Role>, AuthorizationError> {
         Action::RoleRead.check_permission(permission)?;
-        Ok(self
-            .organizations
-            .list_role_info(permission.organization_id())
-            .await?)
+        Ok(self.organizations.list_role_info().await?)
     }
 
     pub async fn list_groups(
@@ -56,10 +53,7 @@ impl RbacService {
         permission: &MemberPermission,
     ) -> Result<Vec<crate::organization::group::GroupInfo>, AuthorizationError> {
         Action::GroupRead.check_permission(permission)?;
-        Ok(self
-            .organizations
-            .list_group_info(permission.organization_id())
-            .await?)
+        Ok(self.organizations.list_group_info().await?)
     }
 
     pub async fn get_role(
@@ -82,10 +76,7 @@ impl RbacService {
         id: u64,
     ) -> Result<Option<crate::organization::group::GroupInfo>, AuthorizationError> {
         Action::GroupRead.check_permission(permission)?;
-        Ok(self
-            .organizations
-            .find_group_info(permission.organization_id(), id)
-            .await?)
+        Ok(self.organizations.find_group_info(id).await?)
     }
 
     pub async fn new_role(
@@ -342,7 +333,7 @@ impl RbacService {
             {
                 let member = self
                     .organizations
-                    .find_member_identity(org, *user)
+                    .find_member_identity(*user)
                     .await?
                     .ok_or(
                         crate::persistent::organization::OrganizationRepositoryError::NotFound,

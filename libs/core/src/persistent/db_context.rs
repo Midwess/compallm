@@ -51,6 +51,7 @@ pub struct DbContext {
     postgres: Arc<dyn Connection>,
     transaction: Option<Arc<TransactionState>>,
     member_permission: Arc<OnceLock<PermissionLoader>>,
+    user_id: Arc<OnceLock<u64>>,
     request_started: Arc<AtomicBool>,
 }
 
@@ -100,6 +101,7 @@ impl DbContext {
             postgres,
             transaction,
             member_permission: Arc::new(OnceLock::new()),
+            user_id: Arc::new(OnceLock::new()),
             request_started: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -107,12 +109,29 @@ impl DbContext {
     pub fn fresh(&self) -> Result<Self, ConnectionError> {
         self.postgres.ensure_open()?;
         self.ensure_active()?;
-        if self.transaction.is_some() || self.member_permission.get().is_some() {
+        if self.transaction.is_some()
+            || self.member_permission.get().is_some()
+            || self.user_id.get().is_some()
+        {
             return Err(ConnectionError::database(anyhow::anyhow!(
                 "a fresh context requires an unrestricted connection outside a transaction"
             )));
         }
         Ok(Self::new(self.postgres.clone()))
+    }
+
+    /// Restrict personal data to an already verified user without preparing Cedar.
+    pub fn restrict_user(
+        &self,
+        user: &crate::authentication::UserAccessToken,
+    ) -> Result<Self, ConnectionError> {
+        self.postgres.ensure_open()?;
+        self.ensure_active()?;
+        self.postgres.restrict_user(user.session.user_id)?;
+        self.user_id.set(user.session.user_id).map_err(|_| {
+            ConnectionError::database(anyhow::anyhow!("user authority is already set"))
+        })?;
+        Ok(self.clone())
     }
 
     /// Register a loader for the request's member authority once.
@@ -204,6 +223,10 @@ impl DbContext {
         Ok(Self::new(postgres))
     }
 
+    pub fn is_restricted(&self) -> bool {
+        self.member_permission.get().is_some() || self.user_id.get().is_some()
+    }
+
     pub fn postgres(&self) -> &dyn Connection {
         self.postgres.as_ref()
     }
@@ -243,6 +266,7 @@ impl DbContext {
             postgres: transaction,
             transaction: Some(Arc::new(TransactionState::default())),
             member_permission: source.member_permission.clone(),
+            user_id: source.user_id.clone(),
             request_started: source.request_started.clone(),
         };
         let guard = TransactionScope(context.clone());

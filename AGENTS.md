@@ -14,6 +14,9 @@ policy:
     - ConnectionTrait
   restricted_changes_rule: |
     Database context and connection lifecycle code is critical infrastructure. This restriction covers the listed types and related connection traits, scope handling, transactions, pooling, and RLS context setup. Follow the existing implementation and avoid changing or extending it as part of routine feature work or refactoring. If a change is necessary, explain the specific reason and proposed scope, then ask for explicit user permission before editing. Task authorization alone does not authorize changes to this infrastructure unless the user explicitly includes them.
+  context_scope_attributes: |
+    Prefer #[db_context::root] or #[db_context::current] on async functions that need a function-wide database scope instead of nesting the body in scope(async { ... }). Import compallm_core::persistent::db_context (crate::persistent::db_context inside Core). root enters an explicit root context; current preserves the caller's authority and transaction. Both restore the previous scope and require a Result return type whose error accepts ConnectionError. Attributes do not start transactions, authenticate, authorize, or replace required domain checks. Ordinary repositories inherit the active context without an extra attribute. These macros do not waive restricted_changes: changes to context infrastructure still require explicit user permission.
+
   migrations: respect user restrictions; startup and database tests may apply migrations
   before-planning-or-changes: read root README and relevant Wiki architecture and focused pages in full from a freshly fetched external checkout; discover filenames via Home.md and _Sidebar.md; report access failures without inventing rules or using stale content
 

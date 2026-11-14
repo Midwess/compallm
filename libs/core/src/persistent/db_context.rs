@@ -16,6 +16,10 @@ use std::{
 use super::{Connection, ConnectionError};
 use crate::authorization::MemberPermission;
 
+/// Function attributes for existing root and current scopes. They require an
+/// async Result-returning function and do not create a transaction.
+pub use compallm_db_context::{current, root};
+
 static DEFAULT_CONNECTION: OnceLock<Arc<dyn Connection>> = OnceLock::new();
 
 tokio::task_local! {

@@ -2,7 +2,7 @@ use compallm_core::{
     authentication::{Session, UserAccessToken},
     authorization::{MemberPermission, PolicySnapshot},
     organization::OrganizationMember,
-    persistent::{ConnectionError, DbContext, PermissionError},
+    persistent::{ConnectionError, DbContext, PermissionError, db_context},
 };
 use compallm_postgres::postgres_connection::PostgresConnection;
 use sea_orm::{DbBackend, MockDatabase};
@@ -18,6 +18,24 @@ use std::{
 struct Fixture;
 
 impl Fixture {
+    #[db_context::root]
+    async fn root_context() -> Result<DbContext, ConnectionError> {
+        DbContext::current()
+    }
+
+    #[db_context::current]
+    async fn current_actor<'a, T>(label: &'a T, fail: bool) -> anyhow::Result<(&'a T, u64, bool)> {
+        if fail {
+            return Err(anyhow::anyhow!("operation failed"));
+        }
+        let context = DbContext::current()?;
+        Ok((
+            label,
+            context.permission().await?.user_id(),
+            context.postgres().is_transaction(),
+        ))
+    }
+
     fn connection() -> DbContext {
         DbContext::new(Arc::new(PostgresConnection::new(Arc::new(
             MockDatabase::new(DbBackend::Postgres).into_connection(),
@@ -68,6 +86,11 @@ async fn default_contexts_share_connection_without_sharing_member_authority() {
     let reused = first.clone();
     first
         .request_scope(async {
+            let root = Fixture::root_context().await.unwrap();
+            assert!(matches!(
+                root.permission().await,
+                Err(PermissionError::Missing)
+            ));
             assert_eq!(
                 DbContext::current()
                     .unwrap()
@@ -373,6 +396,17 @@ async fn transaction_uses_receiver_authority_and_restores_the_request_scope() {
                             let current = DbContext::current()?;
                             assert!(current.postgres().is_transaction());
                             assert_eq!(current.permission().await.unwrap().user_id(), 1);
+                            let label = String::from("member");
+                            let (borrowed, user_id, in_transaction) =
+                                Fixture::current_actor(&label, false).await.unwrap();
+                            assert!(std::ptr::eq(borrowed, &label));
+                            assert_eq!(user_id, 1);
+                            assert!(in_transaction);
+                            assert!(Fixture::current_actor(&label, true).await.is_err());
+                            assert!(std::ptr::eq(
+                                DbContext::current()?.postgres(),
+                                current.postgres()
+                            ));
                             assert!(!std::ptr::eq(current.postgres(), transaction.postgres()));
                             Ok::<_, ConnectionError>(())
                         })

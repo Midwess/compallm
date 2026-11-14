@@ -1,9 +1,7 @@
 use crate::persistent::organization::OrganizationRepository;
 use crate::{
-    authentication::AuthService,
-    authorization::error::AuthorizationError,
-    organization::Group,
-    persistent::{DbContext, db_context},
+    authentication::AuthService, authorization::error::AuthorizationError, organization::Group,
+    persistent::db_context,
 };
 
 use super::{
@@ -28,18 +26,6 @@ impl RbacService {
             auth_service,
             organizations,
         }
-    }
-
-    fn ensure_write_context() -> Result<(), AuthorizationError> {
-        if DbContext::current()?.postgres().is_transaction() {
-            return Err(
-                crate::persistent::ConnectionError::database(anyhow::anyhow!(
-                    "RBAC writes cannot replace an active transaction"
-                ))
-                .into(),
-            );
-        }
-        Ok(())
     }
 
     pub async fn list_roles(
@@ -102,7 +88,6 @@ impl RbacService {
         {
             return Err(AuthorizationError::UnsupportedPolicy);
         }
-        Self::ensure_write_context()?;
         self.insert_role(role).await
     }
 
@@ -153,7 +138,6 @@ impl RbacService {
                 .map_err(crate::organization::role::RoleCreationError::InvalidDescription)?;
         }
         if name.is_some() || description.is_some() || cedar_source.is_some() {
-            Self::ensure_write_context()?;
             self.save_role_changes(organization_id, id, name, description, cedar_source)
                 .await?;
         }
@@ -181,7 +165,6 @@ impl RbacService {
         role.for_action(Action::RoleDelete)
             .check_permission(permission)?;
         role.ensure_deletable()?;
-        Self::ensure_write_context()?;
         self.delete_role_record(organization_id, role_id).await
     }
 
@@ -216,7 +199,6 @@ impl RbacService {
                 .and(role.for_action(Action::RoleAssign))
                 .check_permission(permission)?;
         }
-        Self::ensure_write_context()?;
         self.insert_group(group).await
     }
 
@@ -254,7 +236,6 @@ impl RbacService {
             Group::validate_description(description)
                 .map_err(GroupCreationError::InvalidDescription)?;
         }
-        Self::ensure_write_context()?;
         let before = self.load_group(org, id).await?;
         let ids: BTreeSet<_> = changes
             .add_role_ids
@@ -350,7 +331,6 @@ impl RbacService {
         id: u64,
     ) -> Result<(), AuthorizationError> {
         let org = permission.organization_id();
-        Self::ensure_write_context()?;
         let group = self.load_group(org, id).await?;
         group
             .for_action(Action::GroupDelete)
@@ -386,7 +366,6 @@ impl RbacService {
         }
         let previous = member.clone();
         member.assign_role(role)?;
-        Self::ensure_write_context()?;
         self.save_member_changes(&member, &previous).await
     }
 
@@ -418,7 +397,6 @@ impl RbacService {
         }
         let previous = member.clone();
         member.unassign_role(role_id)?;
-        Self::ensure_write_context()?;
         self.save_member_changes(&member, &previous).await
     }
 
@@ -447,7 +425,6 @@ impl RbacService {
         }
         let previous = member.clone();
         member.assign_group(group)?;
-        Self::ensure_write_context()?;
         self.save_group_member(group_id, &member, &previous).await
     }
 
@@ -476,7 +453,6 @@ impl RbacService {
         }
         let previous = member.clone();
         member.unassign_group(group_id)?;
-        Self::ensure_write_context()?;
         self.save_member_changes(&member, &previous).await
     }
 
@@ -489,7 +465,7 @@ impl RbacService {
         description: Option<String>,
         cedar_source: Option<String>,
     ) -> Result<(), AuthorizationError> {
-        crate::transaction!(DbContext::current()?, {
+        crate::transaction!(db, {
             let current = self.organizations.lock_role(organization_id, id).await?;
             if current.org_owner() {
                 return Err(AuthorizationError::from(
@@ -519,7 +495,7 @@ impl RbacService {
         organization_id: u64,
         role_id: u64,
     ) -> Result<Role, AuthorizationError> {
-        crate::transaction!(DbContext::current()?, {
+        crate::transaction!(db, {
             let role = self
                 .organizations
                 .lock_role(organization_id, role_id)
@@ -553,7 +529,7 @@ impl RbacService {
         members: &[crate::organization::OrganizationMember],
     ) -> Result<Group, AuthorizationError> {
         let org = permission.organization_id();
-        crate::transaction!(DbContext::current()?, {
+        crate::transaction!(db, {
             for role in roles {
                 self.organizations.lock_role(org, role.id).await?;
             }
@@ -583,7 +559,7 @@ impl RbacService {
         id: u64,
     ) -> Result<(), AuthorizationError> {
         let org = permission.organization_id();
-        crate::transaction!(DbContext::current()?, {
+        crate::transaction!(db, {
             self.organizations.lock_group(org, id).await?;
             let group =
                 self.organizations.find_group(org, id).await?.ok_or(
@@ -625,7 +601,7 @@ impl RbacService {
         member: &crate::organization::OrganizationMember,
         previous: &crate::organization::OrganizationMember,
     ) -> Result<(), AuthorizationError> {
-        crate::transaction!(DbContext::current()?, {
+        crate::transaction!(db, {
             self.organizations.save_member(member, previous).await?;
             self.auth_service
                 .invalidate_permissions(member.organization_id, &[member.user_id])
@@ -641,7 +617,7 @@ impl RbacService {
         member: &crate::organization::OrganizationMember,
         previous: &crate::organization::OrganizationMember,
     ) -> Result<(), AuthorizationError> {
-        crate::transaction!(DbContext::current()?, {
+        crate::transaction!(db, {
             self.organizations
                 .lock_group(member.organization_id, group_id)
                 .await?;

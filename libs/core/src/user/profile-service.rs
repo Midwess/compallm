@@ -40,6 +40,12 @@ pub enum ProfileError {
     Denied,
 }
 
+impl From<crate::persistent::ConnectionError> for ProfileError {
+    fn from(error: crate::persistent::ConnectionError) -> Self {
+        Self::Persistence(error.into())
+    }
+}
+
 pub struct ProfileService {
     users: &'static dyn UserRepository,
     storage: Option<&'static dyn UserStorageSpace>,

@@ -14,9 +14,7 @@ use crate::mail::{EmailError, EmailRequest, EmailService, EmailTemplate, OtpCode
 use crate::organization::OrganizationMember;
 use crate::persistent::dictionary::DictionaryRepository;
 use crate::persistent::session::SessionRepository;
-use crate::persistent::{
-    DbContext, db_context, organization::OrganizationRepository, user::UserRepository,
-};
+use crate::persistent::{db_context, organization::OrganizationRepository, user::UserRepository};
 use crate::user::{RegistrationService, UserStatus};
 use compallm_utils::time::unix_timestamp;
 
@@ -202,7 +200,7 @@ impl AuthService {
     ) -> Result<UserTokens, AuthError> {
         claims.verify_code(code, unix_timestamp())?;
         let dictionary = self.latest_dictionary().await?;
-        crate::transaction!(DbContext::current()?, {
+        crate::transaction!(db, {
             let user = self.registration.register(&claims.email).await?;
             self.preferences.create_defaults(user.id).await?;
             if user.status != UserStatus::Active {

@@ -2423,8 +2423,11 @@ async fn each_successful_signin_creates_an_independent_session() {
                     .await
                     .unwrap()
             );
+
+            Ok::<_, compallm_core::persistent::ConnectionError>(())
         })
-        .await;
+        .await
+        .unwrap();
     let one = AccessToken::Refresh(one)
         .encode_compressed(SECRET, REFRESH_LIFETIME)
         .unwrap();
@@ -4775,13 +4778,16 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
                     .organization_id(),
                 organization.id
             );
+
+            Ok::<_, compallm_core::persistent::ConnectionError>(())
         })
-        .await;
+        .await
+        .unwrap();
     assert!(
         scoped
             .transaction(fixture.service().validate_access(&access))
             .await
-            .unwrap()
+            .is_err()
     );
     let router = fixture.graphql_with_org_repository(db.clone(), None, None, None, true);
     let policy = format!(
@@ -5225,27 +5231,32 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
             .find_group(organization.id, group_id.parse().unwrap())
             .await?
             .unwrap();
-        let competing = competing_context.transaction(async {
-            repository.lock_group(organization.id, group.id).await?;
-            repository
-                .save_group_changes(
+        let competing_group_id = group.id;
+        let competing_member_id = other_member.id;
+        let mut competing = tokio::spawn(async move {
+            let repository = compallm_postgres::repository::organization::OrganizationRepository;
+            competing_context.transaction(async {
+                repository.lock_group(organization.id, competing_group_id).await?;
+                repository.save_group_changes(
                     &group,
                     &compallm_core::organization::group::GroupChanges {
-                        add_member_ids: vec![other_member.id],
+                        add_member_ids: vec![competing_member_id],
                         ..Default::default()
                     },
-                )
-                .await?;
-            Ok::<_, compallm_core::persistent::organization::OrganizationRepositoryError>(())
+                ).await?;
+                Ok::<_, compallm_core::persistent::organization::OrganizationRepositoryError>(())
+            }).await
         });
         assert!(
-            tokio::time::timeout(Duration::from_millis(50), competing)
+            tokio::time::timeout(Duration::from_millis(50), &mut competing)
                 .await
                 .is_err()
         );
+        competing.abort();
+        let _ = competing.await;
         assert_eq!(
             repository
-                .group_member_count(organization.id, group.id)
+                .group_member_count(organization.id, competing_group_id)
                 .await?,
             0
         );

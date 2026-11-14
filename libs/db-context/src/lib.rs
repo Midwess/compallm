@@ -4,14 +4,16 @@ use quote::{format_ident, quote};
 use syn::{ItemFn, parse_quote};
 
 /// Run an async function in a new root context, restoring its caller's scope afterward.
-/// The function must return a Result whose error accepts ConnectionError.
+/// The body can use `db` for the selected context. The function must return
+/// a Result whose error accepts ConnectionError.
 #[proc_macro_attribute]
 pub fn root(arguments: TokenStream, function: TokenStream) -> TokenStream {
     scoped(arguments, function, "root")
 }
 
 /// Run an async function in its caller's current context, preserving its transaction.
-/// The function must return a Result whose error accepts ConnectionError.
+/// The body can use `db` for the selected context. The function must return
+/// a Result whose error accepts ConnectionError.
 #[proc_macro_attribute]
 pub fn current(arguments: TokenStream, function: TokenStream) -> TokenStream {
     scoped(arguments, function, "current")
@@ -52,7 +54,8 @@ fn expand(
     let mode = format_ident!("{mode}");
     let body = function.block;
     function.block = parse_quote!({
-        #runtime::persistent::DbContext::#mode()?.scope(async #body).await
+        let db = #runtime::persistent::DbContext::#mode()?;
+        db.scope(::std::boxed::Box::pin(async #body)).await
     });
     Ok(quote!(#function))
 }

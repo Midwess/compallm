@@ -197,9 +197,21 @@ impl DbContext {
         Ok(context)
     }
 
-    /// Create an unrestricted context from the configured application connection.
-    /// Callers must authorize and scope operations using this context.
+    /// Select root authority, reusing an active root transaction. A restricted
+    /// transaction cannot enter root. Callers still authorize their operations.
     pub fn root() -> Result<Self, ConnectionError> {
+        if let Some(transaction) = CURRENT
+            .try_with(Clone::clone)
+            .ok()
+            .filter(|context| context.transaction.is_some())
+        {
+            transaction.postgres.ensure_open()?;
+            transaction.ensure_active()?;
+            if transaction.member_permission.get().is_some() {
+                return Err(transaction.reject_authority_change());
+            }
+            return Ok(transaction);
+        }
         let postgres = DEFAULT_CONNECTION
             .get()
             .cloned()
@@ -212,9 +224,15 @@ impl DbContext {
         self.postgres.as_ref()
     }
 
-    /// Activate this context for the operation, then restore the previous context.
-    pub async fn scope<F: Future>(&self, operation: F) -> F::Output {
-        CURRENT.scope(self.clone(), operation).await
+    /// Activate this authority and restore the caller afterward. Nested scopes
+    /// retain an active transaction and cannot replace its authority.
+    pub async fn scope<F, T, E>(&self, operation: F) -> Result<T, E>
+    where
+        F: Future<Output = Result<T, E>>,
+        E: From<ConnectionError>,
+    {
+        let context = self.scoped_context()?;
+        CURRENT.scope(context, operation).await
     }
 
     /// Activate a transaction using this context's connection and authority.
@@ -226,7 +244,7 @@ impl DbContext {
         F: Future<Output = Result<T, E>>,
         E: From<ConnectionError> + std::fmt::Display,
     {
-        let source = self;
+        let source = self.scoped_context()?;
         source.postgres.ensure_open()?;
         source.ensure_active()?;
         if let Some(state) = &source.transaction {
@@ -238,7 +256,7 @@ impl DbContext {
             // Register before rechecking closure, so commit cannot race with
             // a participant entering through an explicitly propagated scope.
             source.ensure_active()?;
-            let result = CURRENT.scope(source.clone(), operation).await;
+            let result = source.scope(operation).await;
             participant.succeeded = result.is_ok();
             return result;
         }
@@ -292,6 +310,44 @@ impl DbContext {
         };
         drop(guard);
         result
+    }
+
+    fn scoped_context(&self) -> Result<Self, ConnectionError> {
+        self.postgres.ensure_open()?;
+        self.ensure_active()?;
+        let Some(transaction) = CURRENT
+            .try_with(Clone::clone)
+            .ok()
+            .filter(|context| context.transaction.is_some())
+        else {
+            return Ok(self.clone());
+        };
+        transaction.postgres.ensure_open()?;
+        transaction.ensure_active()?;
+        let same_authority = match (
+            self.member_permission.get(),
+            transaction.member_permission.get(),
+        ) {
+            (None, None) => true,
+            (Some(requested), Some(active)) => Arc::ptr_eq(requested, active),
+            _ => false,
+        };
+        let same_transaction = self.transaction.as_ref().is_none_or(|requested| {
+            Arc::ptr_eq(requested, transaction.transaction.as_ref().unwrap())
+        });
+        if !same_authority || !same_transaction {
+            return Err(transaction.reject_authority_change());
+        }
+        Ok(transaction)
+    }
+
+    fn reject_authority_change(&self) -> ConnectionError {
+        if let Some(transaction) = &self.transaction {
+            transaction.rollback_only.store(true, Ordering::Release);
+        }
+        ConnectionError::database(anyhow::anyhow!(
+            "an active transaction cannot switch database authority or transaction"
+        ))
     }
 
     fn ensure_committable(&self) -> Result<(), ConnectionError> {

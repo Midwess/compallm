@@ -67,7 +67,7 @@ impl AuthenticationContext {
         })
     }
 
-    pub async fn execute<T, E>(
+    pub async fn execute<T, E: From<compallm_core::persistent::ConnectionError>>(
         &self,
         operation: impl Future<Output = Result<T, E>>,
     ) -> Result<T, E> {

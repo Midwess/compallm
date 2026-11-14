@@ -122,8 +122,11 @@ async fn find_by_id_maps_disabled_users_and_missing_rows() {
             let user = UserRepository.find_by_id(42).await.unwrap().unwrap();
             assert_eq!(user.status, UserStatus::Disabled);
             assert!(UserRepository.find_by_id(43).await.unwrap().is_none());
+
+            Ok::<_, compallm_core::persistent::ConnectionError>(())
         })
-        .await;
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -173,8 +176,11 @@ async fn invalid_database_ids_are_rejected() {
                 UserRepository.find_by_id(42).await,
                 Err(UserRepositoryError::Database(_))
             ));
+
+            Ok::<_, compallm_core::persistent::ConnectionError>(())
         })
-        .await;
+        .await
+        .unwrap();
 }
 
 #[derive(Debug)]

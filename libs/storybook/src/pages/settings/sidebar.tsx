@@ -3,7 +3,7 @@ import { GearIcon } from '@phosphor-icons/react/dist/csr/Gear'
 import { ChatTextIcon } from '@phosphor-icons/react/dist/csr/ChatText'
 import { CodeIcon } from '@phosphor-icons/react/dist/csr/Code'
 import { UserIcon } from '@phosphor-icons/react/dist/csr/User'
-import { WarningCircleIcon } from '@phosphor-icons/react/dist/csr/WarningCircle'
+import { KeyIcon } from '@phosphor-icons/react/dist/csr/Key'
 import { InfoIcon } from '@phosphor-icons/react/dist/csr/Info'
 import { UsersIcon } from '@phosphor-icons/react/dist/csr/Users'
 import { UsersThreeIcon } from '@phosphor-icons/react/dist/csr/UsersThree'
@@ -22,7 +22,8 @@ const personal = [
 ] as const
 const account = [
   { page: 'profile', label: 'Profile', Icon: UserIcon },
-  { page: 'danger', label: 'Danger', Icon: WarningCircleIcon },
+  { page: 'access', label: 'Access', Icon: KeyIcon },
+  { page: 'security', label: 'Security', Icon: ShieldCheckIcon },
 ] as const
 const organization = [
   { page: 'organization', label: 'Info', Icon: InfoIcon },
@@ -78,7 +79,7 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
       <SidebarSection label="Personal settings" className={`${category} mt-2`}>
         {links(personal)}
       </SidebarSection>
-      <SidebarSection label="Account" className={category}>
+      <SidebarSection label="Profile" className={category}>
         {links(account)}
       </SidebarSection>
       <SidebarSection label="Organization" className={category}>

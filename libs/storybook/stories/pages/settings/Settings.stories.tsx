@@ -166,13 +166,13 @@ export const ProfileWithPhoto: Story = {
     />
   ),
 }
-export const SecurityAndAccess: Story = { render: () => <Demo page="security" /> }
-export const SecurityPopulated: Story = {
+export const Access: Story = { render: () => <Demo page="access" /> }
+export const Security: Story = { render: () => <Demo page="security" /> }
+export const AccessPopulated: Story = {
   render: () => (
     <Demo
-      page="security"
+      page="access"
       initial={{
-        passkeys: [{ id: 'passkey', name: 'My passkey' }],
         applications: [{ id: 'app', name: 'Example integration', scope: 'read your profile' }],
       }}
     />
@@ -189,7 +189,9 @@ export const ApiKeysPopulated: Story = {
     />
   ),
 }
-export const Danger: Story = { render: () => <Demo page="danger" /> }
+export const SecurityPopulated: Story = {
+  render: () => <Demo page="security" initial={{ passkeys: [{ id: 'passkey', name: 'My passkey' }] }} />,
+}
 export const Organization: Story = { render: () => <Demo page="organization" /> }
 export const OrganizationReadOnly: Story = {
   render: () => <Demo page="organization" initial={{ organizationCanUpdateProfile: false }} />,

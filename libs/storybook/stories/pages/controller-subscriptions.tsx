@@ -36,19 +36,19 @@ export function ControllerSubscriptions() {
           </p>
         ))}
         <label htmlFor="subscription-email">Email address</label>
-        <Form model={emailForm}>
+        <Form.Root model={emailForm}>
           <Profiler id="email" onRender={committed}>
             <EmailInput id="subscription-email" errorId="subscription-error" inputRef={emailRef} />
           </Profiler>
-        </Form>
+        </Form.Root>
         <Profiler id="continue" onRender={committed}>
           <ContinueButton />
         </Profiler>
-        <Form model={controller.store.form}>
+        <Form.Root model={controller.store.form}>
           <Profiler id="code" onRender={committed}>
             <CodeInput />
           </Profiler>
-        </Form>
+        </Form.Root>
         <Profiler id="resend" onRender={committed}>
           <ResendControl />
         </Profiler>

@@ -65,7 +65,7 @@ function GroupMembers() {
           tabIndex={0}
           className="mx-4 min-w-0 overflow-x-auto outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
         >
-          <Table className="overflow-visible">
+          <Table.Root className="overflow-visible">
             <Table.Content aria-label="Select group members" className="min-w-md">
               <colgroup>
                 <col className="w-[42%]" />
@@ -117,7 +117,7 @@ function GroupMembers() {
                 ) : null}
               </Table.Body>
             </Table.Content>
-          </Table>
+          </Table.Root>
         </div>
         <FormError name="draft.memberSelection" />
         {hasNextPage ? (
@@ -150,7 +150,7 @@ function GroupRoles() {
           disabled={readonly || busy}
           reason={readonly ? 'This group is read-only.' : 'Wait for the current update to finish.'}
         >
-          <ChoicePicker
+          <ChoicePicker.Control
             label="Add role"
             searchLabel="Search roles"
             placeholder="Search roles…"
@@ -379,8 +379,8 @@ export function GroupEditorSettings() {
     })
   }, [group, form, id, settings, memberIds])
   return (
-    <Form model={form}>
+    <Form.Root model={form}>
       <GroupEditorContent />
-    </Form>
+    </Form.Root>
   )
 }

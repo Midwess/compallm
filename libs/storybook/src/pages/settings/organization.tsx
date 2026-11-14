@@ -115,7 +115,7 @@ export function OrganizationOnboarding() {
             </Button>
           </Row>
           <Row label="Default home view" last>
-            <Select
+            <Select.Control
               aria-label="Organization default home view"
               className="w-44"
               value={org.home}

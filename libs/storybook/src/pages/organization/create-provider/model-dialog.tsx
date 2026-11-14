@@ -53,9 +53,14 @@ export function ModelDialog() {
   if (!draft) return null
   return (
     <>
-      <Dialog onClose={controller.onCancelModel}>
+      <Dialog.Root
+        open
+        onOpenChange={(open) => {
+          if (!open) controller.onCancelModel()
+        }}
+      >
         <Dialog.Content>
-          <Form model={modelForm}>
+          <Form.Root model={modelForm}>
             <Dialog.Header>
               <Dialog.Title>
                 {editing
@@ -65,7 +70,7 @@ export function ModelDialog() {
               <Dialog.Close aria-label="Close model popup" className="focus-visible:outline-muted-foreground" />
             </Dialog.Header>
             <Dialog.Body className="py-4">
-              <FormField>
+              <FormField.Root>
                 <FormField.Label>Path</FormField.Label>
                 <FormField.Input
                   name="modelDraft.path"
@@ -74,8 +79,8 @@ export function ModelDialog() {
                   maxLength={ProviderModelFieldsConstraints.path.maxLength}
                 />
                 <FormError name="modelDraft.path" />
-              </FormField>
-              <FormField>
+              </FormField.Root>
+              <FormField.Root>
                 <div className="flex items-center gap-1">
                   <FormField.Label>Model name</FormField.Label>
                   <FieldHelp label="About model names">
@@ -89,14 +94,14 @@ export function ModelDialog() {
                   maxLength={ProviderModelFieldsConstraints.name.maxLength}
                 />
                 <FormError name="modelDraft.name" />
-              </FormField>
+              </FormField.Root>
               <div>
-                <FormField>
+                <FormField.Root>
                   <FormField.Label>Max context window</FormField.Label>
                   <FormField.Input inputMode="numeric" required placeholder="250000" name="modelDraft.maxContextTokens" />
                   <FormError name="modelDraft.maxContextTokens" />
                   <FormField.Hint>Tokens</FormField.Hint>
-                </FormField>
+                </FormField.Root>
               </div>
               <EffortMapping name="modelDraft.effortMapping" />
               <FormError name="modelDraft.effortMapping" />
@@ -114,7 +119,7 @@ export function ModelDialog() {
                     { key: 'cachedPrice', label: 'Cache read' },
                   ] as const
                 ).map(({ key, label }) => (
-                  <FormField key={key}>
+                  <FormField.Root key={key}>
                     <FormField.Label>{label}</FormField.Label>
                     <FormField.Input
                       required
@@ -124,7 +129,7 @@ export function ModelDialog() {
                       name={`modelDraft.${key}`}
                     />
                     <FormError name={`modelDraft.${key}`} />
-                  </FormField>
+                  </FormField.Root>
                 ))}
               </div>
             </Dialog.Body>
@@ -134,10 +139,10 @@ export function ModelDialog() {
                 {editing ? 'Save model' : 'Add model'}
               </Button>
             </Dialog.Footer>
-          </Form>
+          </Form.Root>
         </Dialog.Content>
         <ModelDiscard />
-      </Dialog>
+      </Dialog.Root>
     </>
   )
 }

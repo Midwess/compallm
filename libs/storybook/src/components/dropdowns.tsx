@@ -1,10 +1,11 @@
-import { useContext, type ReactNode } from 'react'
+import { useContext, type ReactNode, type ComponentPropsWithRef } from 'react'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
 import { animated, FloatingMotion } from './motion'
 import { useFormField, useFormInvalid } from './form'
 import { cx } from './shared'
+import { Slot, type CompositionProps, type OpenStateProps } from './composition'
 import { FloatingContainerContext } from '../context'
 
 export interface SelectItem {
@@ -17,56 +18,84 @@ export interface SelectProps extends Omit<DropdownProps, 'label'> {
   'aria-label': string
 }
 
-function SelectRoot(props: Omit<BaseSelect.Root.Props<string, false>, 'modal' | 'multiple'>) {
+export interface SelectRootProps extends OpenStateProps {
+  children: ReactNode
+  name?: string
+  value?: string | null
+  defaultValue?: string | null
+  onValueChange?(value: string | null): void
+  disabled?: boolean
+  items?: SelectItem[]
+}
+
+function SelectRoot(props: SelectRootProps) {
   const field = useFormField<string>(props.name)
   return (
     <BaseSelect.Root
       {...props}
       value={field ? field.value : props.value}
-      onValueChange={(value, details) => {
+      onValueChange={(value) => {
         if (field && value !== null) field.change(value)
-        else props.onValueChange?.(value, details)
+        else props.onValueChange?.(value)
       }}
-      onOpenChange={(open, details) => {
+      onOpenChange={(open) => {
         if (!open) field?.blur()
-        props.onOpenChange?.(open, details)
+        props.onOpenChange?.(open)
       }}
       modal={false}
     />
   )
 }
 
-function SelectTrigger({
-  className,
-  children,
-  ...props
-}: Omit<BaseSelect.Trigger.Props, 'className'> & { className?: string }) {
+function SelectTrigger({ className, children, asChild = false, ...props }: ComponentPropsWithRef<'button'> & CompositionProps) {
   return (
     <BaseSelect.Trigger
       {...props}
-      render={<animated.button type="button" />}
-      className={cx(
-        `flex h-7.5 w-full min-w-0 cursor-pointer items-center justify-between gap-1 rounded-xl
+      render={(partProps, state) =>
+        asChild ? (
+          <Slot {...partProps} data-state={state.open ? 'open' : 'closed'}>
+            {children}
+          </Slot>
+        ) : (
+          <animated.button type="button" {...partProps} data-state={state.open ? 'open' : 'closed'} />
+        )
+      }
+      className={
+        asChild
+          ? className
+          : cx(
+              `flex h-7.5 w-full min-w-0 cursor-pointer items-center justify-between gap-1 rounded-xl
 border-(length:--border-hairline)
         border-transparent bg-elevated px-1.5 py-0 text-xsm leading-5 text-foreground shadow-control
         focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-ring
         disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`,
-        className,
-      )}
+              className,
+            )
+      }
     >
-      {children}
-      <BaseSelect.Icon>
-        <CaretDownIcon size={10} aria-hidden="true" />
-      </BaseSelect.Icon>
+      {asChild ? undefined : (
+        <>
+          {children}
+          <BaseSelect.Icon>
+            <CaretDownIcon size={10} aria-hidden="true" />
+          </BaseSelect.Icon>
+        </>
+      )}
     </BaseSelect.Trigger>
   )
 }
 
-function SelectValue({ className, ...props }: Omit<BaseSelect.Value.Props, 'className'> & { className?: string }) {
+function SelectValue({
+  className,
+  ...props
+}: Omit<ComponentPropsWithRef<'span'>, 'children'> & {
+  placeholder?: ReactNode
+  children?: ReactNode | ((value: string | null) => ReactNode)
+}) {
   return <BaseSelect.Value {...props} className={cx('flex min-w-0 items-center gap-2 truncate', className)} />
 }
 
-function SelectContent({ className, children, ...props }: Omit<BaseSelect.Popup.Props, 'className'> & { className?: string }) {
+function SelectContent({ className, children, ...props }: ComponentPropsWithRef<'div'>) {
   const container = useContext(FloatingContainerContext)
   return (
     <BaseSelect.Portal container={container}>
@@ -99,7 +128,11 @@ function SelectContent({ className, children, ...props }: Omit<BaseSelect.Popup.
   )
 }
 
-function SelectEntry({ className, children, ...props }: Omit<BaseSelect.Item.Props, 'className'> & { className?: string }) {
+function SelectEntry({
+  className,
+  children,
+  ...props
+}: ComponentPropsWithRef<'div'> & { value: string; label?: string; disabled?: boolean }) {
   return (
     <BaseSelect.Item
       {...props}
@@ -121,15 +154,16 @@ function SelectControl({ 'aria-label': label, ...props }: SelectProps) {
   return <Dropdown {...props} label={label} />
 }
 
-export const Select = Object.assign(SelectControl, {
+export const Select = {
+  Control: SelectControl,
   Root: SelectRoot,
   Trigger: SelectTrigger,
   Value: SelectValue,
   Content: SelectContent,
   Item: SelectEntry,
-})
+}
 
-export interface DropdownProps {
+export interface DropdownProps extends OpenStateProps {
   name?: string
   options: SelectItem[]
   value?: string
@@ -150,6 +184,8 @@ export function Dropdown({
   label,
   disabled,
   defaultOpen = false,
+  open,
+  onOpenChange,
   className,
 }: DropdownProps) {
   const invalid = useFormInvalid(name)
@@ -165,6 +201,8 @@ export function Dropdown({
         }}
         disabled={disabled}
         defaultOpen={defaultOpen}
+        open={open}
+        onOpenChange={onOpenChange}
       >
         <Select.Trigger
           aria-label={label}

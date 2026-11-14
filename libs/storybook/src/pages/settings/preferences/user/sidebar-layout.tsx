@@ -49,9 +49,14 @@ export function CustomizeSidebar() {
     setTarget(null)
   }
   return (
-    <Dialog onClose={settings.pages.dialogs.closeDialog}>
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open) settings.pages.dialogs.closeDialog()
+      }}
+    >
       <Dialog.Content className="w-120 rounded-xl bg-inset">
-        <Form model={controller.store.form}>
+        <Form.Root model={controller.store.form}>
           <Dialog.Header className="h-14 px-6">
             <Dialog.Title>Customize sidebar</Dialog.Title>
             <Dialog.Close />
@@ -59,7 +64,7 @@ export function CustomizeSidebar() {
           <Dialog.Body className="gap-4 px-6 pt-4 pb-6">
             <div className="flex items-center justify-between rounded-lg bg-elevated px-3 py-2 text-xsm">
               <span>Default badge style</span>
-              <Select
+              <Select.Control
                 aria-label="Default badge style"
                 className="w-26"
                 name="draft.sidebarBadgeStyle"
@@ -204,14 +209,14 @@ text-muted-foreground focus-visible:outline-ring"
                           <DotsSixVerticalIcon aria-hidden="true" className="size-3" />
                         </button>
                         <span className="min-w-0 flex-1 text-xs">{preferenceLabel(item)}</span>
-                        <Select
+                        <Select.Control
                           aria-label={`${preferenceLabel(item)} category`}
                           className="w-29"
                           value={section.category}
                           options={categories}
                           onValueChange={(category) => moveItem(item, category as PreferenceSidebarCategory)}
                         />
-                        <Select
+                        <Select.Control
                           aria-label={`${preferenceLabel(item)} visibility`}
                           className="w-29"
                           name={`draft.sidebar${item}`}
@@ -231,8 +236,8 @@ text-muted-foreground focus-visible:outline-ring"
               {announcement}
             </span>
           </Dialog.Body>
-        </Form>
+        </Form.Root>
       </Dialog.Content>
-    </Dialog>
+    </Dialog.Root>
   )
 }

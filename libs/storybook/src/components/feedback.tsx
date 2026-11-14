@@ -1,6 +1,9 @@
 import { animated, LoadingMotion, overlay, FieldErrorMotion } from './motion'
 import {
+  createContext,
+  useContext,
   useId,
+  type ComponentPropsWithRef,
   useEffect,
   useState,
   useRef,
@@ -8,10 +11,12 @@ import {
   type HTMLAttributes,
   type ReactElement,
   type ReactNode,
+  type RefObject,
 } from 'react'
 import { createPortal } from 'react-dom'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
-import { cx } from './shared'
+import { cx, composeRefs } from './shared'
+import { Slot, useControllableState, type CompositionProps, type OpenStateProps } from './composition'
 import { RichMessage } from './rich-message'
 import { Button } from './buttons'
 import { QuestionIcon } from '@phosphor-icons/react/dist/csr/Question'
@@ -136,13 +141,17 @@ export function KeyboardKey({ children }: { children: ReactNode }) {
     </kbd>
   )
 }
-function TooltipPopup({ content }: { content: ReactNode }) {
+function TooltipContent({ children, className, ...props }: ComponentPropsWithRef<'div'>) {
   return (
     <BaseTooltip.Portal>
       <BaseTooltip.Positioner sideOffset={6} className="z-50">
         <BaseTooltip.Popup
-          className="max-w-xs rounded-full border border-border bg-elevated px-3 py-1.5 text-center text-xs leading-4
-text-foreground shadow-floating"
+          {...props}
+          className={cx(
+            `max-w-xs rounded-full border border-border bg-elevated px-3 py-1.5 text-center text-xs leading-4
+text-foreground shadow-floating`,
+            className,
+          )}
         >
           <BaseTooltip.Arrow
             className="absolute flex data-[side=top]:-bottom-1 data-[side=bottom]:-top-1
@@ -150,23 +159,49 @@ text-foreground shadow-floating"
           >
             <span className="block size-2 rotate-45 bg-elevated" />
           </BaseTooltip.Arrow>
-          {content}
+          {children}
         </BaseTooltip.Popup>
       </BaseTooltip.Positioner>
     </BaseTooltip.Portal>
   )
 }
 
-export function Tooltip({ children, content }: { children: ReactElement; content: ReactNode }) {
+function TooltipRoot({ children, onOpenChange, ...props }: OpenStateProps & { children: ReactNode }) {
   return (
     <BaseTooltip.Provider>
-      <BaseTooltip.Root>
-        <BaseTooltip.Trigger render={children} />
-        <TooltipPopup content={content} />
+      <BaseTooltip.Root {...props} onOpenChange={(open) => onOpenChange?.(open)}>
+        {children}
       </BaseTooltip.Root>
     </BaseTooltip.Provider>
   )
 }
+function TooltipTrigger({ asChild = false, children, ...props }: ComponentPropsWithRef<'button'> & CompositionProps) {
+  return (
+    <BaseTooltip.Trigger
+      {...props}
+      render={(partProps, state) =>
+        asChild ? (
+          <Slot {...partProps} data-state={state.open ? 'open' : 'closed'}>
+            {children}
+          </Slot>
+        ) : (
+          <button {...partProps} data-state={state.open ? 'open' : 'closed'} />
+        )
+      }
+    >
+      {asChild ? undefined : children}
+    </BaseTooltip.Trigger>
+  )
+}
+function TooltipControl({ children, content }: { children: ReactElement; content: ReactNode }) {
+  return (
+    <TooltipRoot>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent>{content}</TooltipContent>
+    </TooltipRoot>
+  )
+}
+export const Tooltip = { Root: TooltipRoot, Trigger: TooltipTrigger, Content: TooltipContent, Control: TooltipControl }
 
 export function DisabledTooltip({
   disabled,
@@ -189,14 +224,14 @@ export function DisabledTooltip({
         >
           {children}
         </BaseTooltip.Trigger>
-        <TooltipPopup content={reason} />
+        <TooltipContent>{reason}</TooltipContent>
       </BaseTooltip.Root>
     </BaseTooltip.Provider>
   )
 }
 export function FieldHelp({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <Tooltip content={children}>
+    <Tooltip.Control content={children}>
       <animated.button
         type="button"
         aria-label={label}
@@ -207,7 +242,7 @@ focus-visible:text-foreground focus-visible:outline-1 focus-visible:outline-mute
       >
         <QuestionIcon className="size-4" aria-hidden="true" />
       </animated.button>
-    </Tooltip>
+    </Tooltip.Control>
   )
 }
 export function EmptyState({ title, children, action }: { title: ReactNode; children?: ReactNode; action?: ReactNode }) {
@@ -250,25 +285,97 @@ export function Callout({
     </aside>
   )
 }
-export function Popover({ label, children }: { label: string; children: ReactNode }) {
+const PopoverContext = createContext<{
+  id: string
+  trigger: RefObject<HTMLButtonElement | null>
+  open: boolean
+  setOpen(open: boolean): void
+} | null>(null)
+function usePopover() {
+  const context = useContext(PopoverContext)
+  if (!context) throw new Error('Popover parts require Popover.Root.')
+  return context
+}
+function PopoverRoot({
+  children,
+  open: suppliedOpen,
+  defaultOpen = false,
+  onOpenChange,
+}: OpenStateProps & { children: ReactNode }) {
   const id = useId()
+  const [open, setOpen] = useControllableState(suppliedOpen, defaultOpen, onOpenChange)
+  const trigger = useRef<HTMLButtonElement>(null)
   return (
-    <span className="inline">
-      <Button popoverTarget={id}>{label}</Button>
-      <overlay.div
-        id={id}
-        popover="auto"
-        className={`
+    <PopoverContext value={{ id, trigger, open, setOpen }}>
+      <span className="inline">{children}</span>
+    </PopoverContext>
+  )
+}
+function PopoverTrigger({ asChild = false, ...props }: ComponentPropsWithRef<'button'> & CompositionProps) {
+  const { id, trigger, open, setOpen } = usePopover()
+  return (
+    <Button
+      {...props}
+      ref={composeRefs(trigger, props.ref)}
+      asChild={asChild}
+      popoverTarget={id}
+      aria-expanded={open}
+      data-state={open ? 'open' : 'closed'}
+      onClick={(event) => {
+        props.onClick?.(event)
+        if (!event.defaultPrevented && !props.disabled) {
+          event.preventDefault()
+          setOpen(!open)
+        }
+      }}
+    />
+  )
+}
+function PopoverContent({ className, ref: forwardedRef, onToggle, ...props }: ComponentPropsWithRef<'div'>) {
+  const { id, trigger, open, setOpen } = usePopover()
+  const ref = useRef<HTMLDivElement>(null)
+  const [toggleVersion, setToggleVersion] = useState(0)
+  useEffect(() => {
+    const element = ref.current
+    if (!element) return
+    if (open && !element.matches(':popover-open')) element.showPopover({ source: trigger.current ?? undefined })
+    else if (!open && element.matches(':popover-open')) element.hidePopover()
+  }, [open, trigger, toggleVersion])
+  return (
+    <overlay.div
+      {...props}
+      ref={composeRefs(ref, forwardedRef)}
+      id={id}
+      popover="auto"
+      data-state={open ? 'open' : 'closed'}
+      onToggle={(event) => {
+        onToggle?.(event)
+        const actual = event.currentTarget.matches(':popover-open')
+        if (actual !== open) {
+          setOpen(actual)
+          setToggleVersion((version) => version + 1)
+        }
+      }}
+      className={cx(
+        `
   w-12 max-w-[calc(100vw-32px)] rounded-xl border-(length:--border-hairline) border-input bg-menu p-2
   text-foreground [&:popover-open]:absolute [&:popover-open]:m-1 [&:popover-open]:[position-area:bottom_span-right]
   [&:popover-open]:[position-try-fallbacks:flip-block,flip-inline] [&>*+*]:mt-1.5
-`}
-      >
-        {children}
-      </overlay.div>
-    </span>
+`,
+        className,
+      )}
+    />
   )
 }
+function PopoverControl({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <PopoverRoot>
+      <PopoverTrigger>{label}</PopoverTrigger>
+      <PopoverContent>{children}</PopoverContent>
+    </PopoverRoot>
+  )
+}
+export const Popover = { Root: PopoverRoot, Trigger: PopoverTrigger, Content: PopoverContent, Control: PopoverControl }
 export function DropInsertionIndicator({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return <div aria-hidden="true" {...props} className={cx('h-0.5 w-full rounded-hairline bg-ring', className)} />
 }

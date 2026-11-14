@@ -36,5 +36,5 @@ export function UserPreferencePage({ children }: { children: ReactNode }) {
         ) : null}
       </SettingsContent>
     )
-  return <Form model={controller.store.form}>{children}</Form>
+  return <Form.Root model={controller.store.form}>{children}</Form.Root>
 }

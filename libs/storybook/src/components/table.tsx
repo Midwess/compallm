@@ -1,20 +1,11 @@
 import { animate } from 'motion'
 import { motion } from 'motion/react'
 import { animated, animation, transition, useTransition } from './motion'
-import {
-  useState,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  type ReactNode,
-  type HTMLAttributes,
-  type TableHTMLAttributes,
-  type ThHTMLAttributes,
-  type TdHTMLAttributes,
-} from 'react'
+import { useEffect, useLayoutEffect, useRef, type ReactNode, type ComponentPropsWithRef } from 'react'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
-import { cx } from './shared'
-function Root({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+import { cx, composeRefs } from './shared'
+import { useControllableState } from './composition'
+function Root({ className, ref: forwardedRef, ...props }: ComponentPropsWithRef<'div'>) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const root = ref.current
@@ -46,27 +37,34 @@ function Root({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
       cancelAnimationFrame(frame)
     }
   }, [])
-  return <div ref={ref} data-slot="table-container" {...props} className={cx('w-full overflow-x-auto', className)} />
+  return (
+    <div
+      ref={composeRefs(ref, forwardedRef)}
+      data-slot="table-container"
+      {...props}
+      className={cx('w-full overflow-x-auto', className)}
+    />
+  )
 }
-function Content({ className, ...props }: TableHTMLAttributes<HTMLTableElement>) {
+function Content({ className, ...props }: ComponentPropsWithRef<'table'>) {
   return <table data-slot="table" {...props} className={cx('w-full table-fixed text-left text-xs', className)} />
 }
-function Header({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
+function Header({ className, ...props }: ComponentPropsWithRef<'tbody'>) {
   return <thead data-slot="table-header" {...props} className={cx('h-8 text-muted-foreground [&>tr]:h-8', className)} />
 }
-function Body(props: HTMLAttributes<HTMLTableSectionElement>) {
+function Body(props: ComponentPropsWithRef<'tbody'>) {
   return <tbody data-slot="table-body" {...props} />
 }
-function Row({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) {
+function Row({ className, ...props }: ComponentPropsWithRef<'tr'>) {
   return <tr data-slot="table-row" {...props} className={cx('h-12 border-b border-divider last:border-b-0', className)} />
 }
-function Head({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
+function Head({ className, ...props }: ComponentPropsWithRef<'th'>) {
   return <th data-slot="table-head" scope="col" {...props} className={cx('px-2 font-normal', className)} />
 }
-function Cell({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
+function Cell({ className, ...props }: ComponentPropsWithRef<'td'>) {
   return <td data-slot="table-cell" {...props} className={cx('px-2', className)} />
 }
-function Empty({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+function Empty({ className, ...props }: ComponentPropsWithRef<'div'>) {
   return (
     <div
       {...props}
@@ -87,8 +85,7 @@ export interface TableCategoryProps {
 
 function Category({ label, count, action, columns = 3, open, defaultOpen = true, onOpenChange, children }: TableCategoryProps) {
   const timing = useTransition('disclosure')
-  const [localOpen, setLocalOpen] = useState(defaultOpen)
-  const expanded = open ?? localOpen
+  const [expanded, setExpanded] = useControllableState(open, defaultOpen, onOpenChange)
   const body = useRef<HTMLTableSectionElement>(null)
   const previous = useRef(expanded)
   useLayoutEffect(() => {
@@ -124,7 +121,12 @@ function Category({ label, count, action, columns = 3, open, defaultOpen = true,
     }
   }, [expanded, children])
   return (
-    <tbody ref={body} data-slot="table-category" className="[&:not(:first-of-type)>tr:first-child]:table-row">
+    <tbody
+      ref={body}
+      data-state={expanded ? 'open' : 'closed'}
+      data-slot="table-category"
+      className="[&:not(:first-of-type)>tr:first-child]:table-row"
+    >
       <tr aria-hidden="true" className="hidden h-2">
         <td colSpan={columns} className="h-2 p-0" />
       </tr>
@@ -145,8 +147,7 @@ translate-y-(--category-offset,0px)`,
 focus-visible:outline-2 focus-visible:outline-ring"
             onClick={() => {
               const next = !expanded
-              if (open === undefined) setLocalOpen(next)
-              onOpenChange?.(next)
+              setExpanded(next)
             }}
           >
             <motion.span
@@ -175,4 +176,4 @@ translate-y-(--category-offset,0px)"
   )
 }
 
-export const Table = Object.assign(Root, { Content, Header, Body, Row, Head, Cell, Empty, Category })
+export const Table = { Root, Content, Header, Body, Row, Head, Cell, Empty, Category }

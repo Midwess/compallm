@@ -60,14 +60,14 @@ function ProviderHeader() {
 function ProviderActions() {
   const controller = useController()
   return (
-    <Popup>
+    <Popup.Root>
       <Popup.Trigger aria-label="Provider actions">
         <DotsThreeIcon aria-hidden="true" className="size-4" />
       </Popup.Trigger>
       <Popup.Content aria-label="Provider actions">
-        <Popup.Item onClick={controller.onCloneProvider}>Clone provider</Popup.Item>
+        <Popup.Item onSelect={controller.onCloneProvider}>Clone provider</Popup.Item>
       </Popup.Content>
-    </Popup>
+    </Popup.Root>
   )
 }
 function ProviderContent() {

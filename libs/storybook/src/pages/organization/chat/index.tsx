@@ -69,7 +69,7 @@ function ChatInput() {
     [controller, form],
   )
   return (
-    <Form model={form} aria-label="Create chat" className="w-full max-w-205.5">
+    <Form.Root model={form} aria-label="Create chat" className="w-full max-w-205.5">
       <div className="rounded-lg border-(length:--border-hairline) border-border bg-composer p-3 focus-within:border-input">
         <MultilineField
           name="draft"
@@ -83,7 +83,7 @@ function ChatInput() {
         />
         <FormError name="draft" />
         <div className="flex items-center gap-3">
-          <Select
+          <Select.Control
             aria-label="Chat model"
             options={models}
             name="modelId"
@@ -97,7 +97,7 @@ function ChatInput() {
           <ChatSubmit />
         </div>
       </div>
-    </Form>
+    </Form.Root>
   )
 }
 

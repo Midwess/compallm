@@ -74,7 +74,7 @@ function PreferenceControl({ item, last = false }: { item: Preference; last?: bo
       last={last}
     >
       {item.options ? (
-        <Select aria-label={item.label} name={`draft.${item.key}`} className="w-44" options={item.options} />
+        <Select.Control aria-label={item.label} name={`draft.${item.key}`} className="w-44" options={item.options} />
       ) : (
         <Switch id={id} name={`draft.${item.key}`} />
       )}
@@ -158,28 +158,34 @@ function CodeAppearanceSection() {
         }}
       />
       <SettingsRow label="Font" className="min-h-15 bg-transparent px-4 py-3">
-        <Popup>
+        <Popup.Root>
           <Popup.Trigger aria-label="Code font" className="h-8 w-auto gap-2 px-0 text-xs text-muted-foreground">
             {preferenceLabel(fontSize)}, Regular, {preferenceLabel(font)}
             <CaretDownIcon aria-hidden="true" className="size-3" />
           </Popup.Trigger>
           <Popup.Content aria-label="Code font settings">
-            <Popup.Submenu label="Font size">
-              {preferenceOptions.codeFontSize.map(({ value, label }) => (
-                <Popup.Item key={value} onClick={() => c.store.form.change('draft.codeFontSize', value)}>
-                  {label}
-                </Popup.Item>
-              ))}
-            </Popup.Submenu>
-            <Popup.Submenu label="Font">
-              {preferenceOptions.codeFont.map(({ value, label }) => (
-                <Popup.Item key={value} onClick={() => c.store.form.change('draft.' + 'codeFont', value)}>
-                  {label}
-                </Popup.Item>
-              ))}
-            </Popup.Submenu>
+            <Popup.Sub>
+              <Popup.SubTrigger>Font size</Popup.SubTrigger>
+              <Popup.SubContent aria-label="Font size">
+                {preferenceOptions.codeFontSize.map(({ value, label }) => (
+                  <Popup.Item key={value} onSelect={() => c.store.form.change('draft.codeFontSize', value)}>
+                    {label}
+                  </Popup.Item>
+                ))}
+              </Popup.SubContent>
+            </Popup.Sub>
+            <Popup.Sub>
+              <Popup.SubTrigger>Font</Popup.SubTrigger>
+              <Popup.SubContent aria-label="Font">
+                {preferenceOptions.codeFont.map(({ value, label }) => (
+                  <Popup.Item key={value} onSelect={() => c.store.form.change('draft.' + 'codeFont', value)}>
+                    {label}
+                  </Popup.Item>
+                ))}
+              </Popup.SubContent>
+            </Popup.Sub>
           </Popup.Content>
-        </Popup>
+        </Popup.Root>
       </SettingsRow>
       <div className="px-2 pb-2">
         <CodePreview

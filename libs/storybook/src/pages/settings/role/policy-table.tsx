@@ -29,40 +29,49 @@ function PolicyFilters({ categories }: { categories: string[] }) {
     </Popup.RadioGroup>
   )
   return (
-    <Popup>
+    <Popup.Root>
       <Popup.IconTrigger aria-label="Filter policies" title="Filter policies" className="size-8 shrink-0 rounded-full">
         <FunnelIcon aria-hidden="true" className="size-3" />
       </Popup.IconTrigger>
       <Popup.Content aria-label="Policy filters">
-        <Popup.Submenu label="Resource type">
-          {options('policy-resource', [
-            { value: 'all', label: 'All resources' },
-            ...categories.map((value) => ({ value, label: value })),
-          ])}
-        </Popup.Submenu>
-        <Popup.Submenu label="Selection">
-          {options('policy-selection', [
-            { value: 'all', label: 'All policies' },
-            { value: 'enabled', label: 'Enabled' },
-            { value: 'disabled', label: 'Disabled' },
-          ])}
-        </Popup.Submenu>
-        <Popup.Submenu label="Access">
-          {options('policy-access', [
-            { value: 'all', label: 'All access levels' },
-            ...accessLevels.map((value) => ({ value, label: value })),
-          ])}
-        </Popup.Submenu>
+        <Popup.Sub>
+          <Popup.SubTrigger>Resource type</Popup.SubTrigger>
+          <Popup.SubContent aria-label="Resource type">
+            {options('policy-resource', [
+              { value: 'all', label: 'All resources' },
+              ...categories.map((value) => ({ value, label: value })),
+            ])}
+          </Popup.SubContent>
+        </Popup.Sub>
+        <Popup.Sub>
+          <Popup.SubTrigger>Selection</Popup.SubTrigger>
+          <Popup.SubContent aria-label="Selection">
+            {options('policy-selection', [
+              { value: 'all', label: 'All policies' },
+              { value: 'enabled', label: 'Enabled' },
+              { value: 'disabled', label: 'Disabled' },
+            ])}
+          </Popup.SubContent>
+        </Popup.Sub>
+        <Popup.Sub>
+          <Popup.SubTrigger>Access</Popup.SubTrigger>
+          <Popup.SubContent aria-label="Access">
+            {options('policy-access', [
+              { value: 'all', label: 'All access levels' },
+              ...accessLevels.map((value) => ({ value, label: value })),
+            ])}
+          </Popup.SubContent>
+        </Popup.Sub>
         <Popup.Separator />
         <Popup.Item
-          onClick={() => {
+          onSelect={() => {
             for (const key of ['policy-resource', 'policy-selection', 'policy-access']) c.setFilter(key, 'all')
           }}
         >
           Clear all filters
         </Popup.Item>
       </Popup.Content>
-    </Popup>
+    </Popup.Root>
   )
 }
 
@@ -211,7 +220,7 @@ export function PolicyTable() {
         aria-label="Permission catalog"
         className="mx-2 min-w-0 overflow-x-auto outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
       >
-        <Table className="overflow-visible">
+        <Table.Root className="overflow-visible">
           <Table.Content aria-label="Permission policies" className="min-w-md border-separate border-spacing-0">
             <colgroup>
               <col className="w-[60%]" />
@@ -286,7 +295,7 @@ export function PolicyTable() {
               </Table.Body>
             ) : null}
           </Table.Content>
-        </Table>
+        </Table.Root>
       </div>
       <p className="shrink-0 px-4 py-4 text-xs leading-4.5 text-muted-foreground" aria-live="polite">
         {selectedCount} selected · {filtered.length} policies

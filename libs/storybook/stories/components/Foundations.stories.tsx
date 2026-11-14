@@ -50,7 +50,7 @@ export const Mapping: Story = {
           Penpot foundation families map to shared components and their existing Storybook previews.
         </p>
       </div>
-      <Table>
+      <Table.Root>
         <Table.Content className="min-w-3xl text-xsm" aria-label="Penpot to Storybook foundation mapping">
           <Table.Header>
             <Table.Row>
@@ -77,7 +77,7 @@ export const Mapping: Story = {
             ))}
           </Table.Body>
         </Table.Content>
-      </Table>
+      </Table.Root>
     </div>
   ),
 }

@@ -82,7 +82,7 @@ function Session() {
           <Switch checked={slow} onChange={(event) => controller.setSlow(event.currentTarget.checked)} />
           Slow responses
         </label>
-        <Select
+        <Select.Control
           aria-label="Commit behavior"
           value={mode}
           options={['blur', 'change', 'debounce', 'button'].map((value) => ({ value, label: value }))}
@@ -94,7 +94,7 @@ function Session() {
         <Button onClick={controller.reject}>Reject next write</Button>
       </div>
       <div className="grid items-start gap-6 lg:grid-cols-2">
-        <Form model={form} className="grid gap-4 rounded-xl border border-divider bg-surface p-5">
+        <Form.Root model={form} className="grid gap-4 rounded-xl border border-divider bg-surface p-5">
           <h2 className="text-sm font-medium">Edit role</h2>
           <label className="grid gap-2 text-sm">
             Role name
@@ -115,7 +115,7 @@ function Session() {
             <Form.Reset>Reset fields</Form.Reset>
             <Form.Status />
           </div>
-        </Form>
+        </Form.Root>
         <section className="grid gap-3 rounded-xl border border-divider bg-surface p-5 text-xs">
           <h2 className="text-sm font-medium">Draft → Submitted → Confirmed</h2>
           {(['name', 'description'] as const).map((name) => (
@@ -201,12 +201,12 @@ function CompletionPractice() {
     ),
   )
   return (
-    <Form model={form} className="grid gap-3 rounded-xl border border-divider p-5">
+    <Form.Root model={form} className="grid gap-3 rounded-xl border border-divider p-5">
       <h2 className="text-sm font-medium">Completion commit</h2>
       <CodeEntry name="code" aria-label="Practice verification code" />
       <Form.Error name="code" />
       <p className="text-xs text-muted-foreground">Mock verified code: {verified || '—'}</p>
-    </Form>
+    </Form.Root>
   )
 }
 function LargeFormPractice() {
@@ -219,7 +219,7 @@ function LargeFormPractice() {
   return (
     <details className="rounded-xl border border-divider p-5">
       <summary>Large form: 1,000 registered native inputs</summary>
-      <Form model={form} className="grid max-h-96 gap-3 overflow-auto p-3">
+      <Form.Root model={form} className="grid max-h-96 gap-3 overflow-auto p-3">
         {Array.from({ length: 1000 }, (_, index) => (
           <label key={index} className="grid gap-1 text-xs">
             Field {index + 1}
@@ -227,7 +227,7 @@ function LargeFormPractice() {
           </label>
         ))}
         <Form.Submit>Commit</Form.Submit>
-      </Form>
+      </Form.Root>
     </details>
   )
 }

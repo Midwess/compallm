@@ -61,20 +61,25 @@ function DialogSelect() {
     <Preview>
       <Button onClick={() => setOpen(true)}>Open select dialog</Button>
       {open ? (
-        <Dialog onClose={() => setOpen(false)}>
+        <Dialog.Root
+          open
+          onOpenChange={(open) => {
+            if (!open) setOpen(false)
+          }}
+        >
           <Dialog.Content>
             <Dialog.Header>
               <Dialog.Title>Choose language</Dialog.Title>
               <Dialog.Close />
             </Dialog.Header>
             <Dialog.Body>
-              <Menus.Select aria-label="Dialog language" options={options} defaultValue="rust" />
+              <Menus.Select.Control aria-label="Dialog language" options={options} defaultValue="rust" />
             </Dialog.Body>
             <Dialog.Footer>
               <Dialog.Cancel />
             </Dialog.Footer>
           </Dialog.Content>
-        </Dialog>
+        </Dialog.Root>
       ) : null}
     </Preview>
   )
@@ -85,10 +90,10 @@ export const Select: Story = {
   render: () => (
     <Preview>
       <Sample label="Custom select">
-        <Menus.Select aria-label="Language" options={options} />
+        <Menus.Select.Control aria-label="Language" options={options} />
       </Sample>
       <Sample label="Options with icons">
-        <Menus.Select
+        <Menus.Select.Control
           aria-label="Badge style"
           options={[
             {
@@ -109,7 +114,7 @@ export const Select: Story = {
         />
       </Sample>
       <Sample label="Disabled">
-        <Menus.Select aria-label="Disabled language" options={options} disabled />
+        <Menus.Select.Control aria-label="Disabled language" options={options} disabled />
       </Sample>
     </Preview>
   ),

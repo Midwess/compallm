@@ -331,8 +331,8 @@ export function RoleEditorSettings() {
     })
   }, [c, form, id, settings])
   return (
-    <Form model={form} key={id ?? 'new'}>
+    <Form.Root model={form} key={id ?? 'new'}>
       <RoleEditorContent />
-    </Form>
+    </Form.Root>
   )
 }

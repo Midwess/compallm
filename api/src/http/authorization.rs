@@ -48,18 +48,6 @@ impl IntoResponse for AuthorizationError {
 impl AuthorizationContext {
     /// Prepare organization-bound permission once, using only verified, current access.
     pub async fn member_permission(&self) -> Result<Arc<MemberPermission>, AuthorizationError> {
-        let permission = self.load_permission().await?;
-        compallm_core::persistent::DbContext::current()
-            .map_err(|_| AuthorizationError::InvalidAuthority)?
-            .permission()
-            .await
-            .map_err(|_| AuthorizationError::InvalidAuthority)?;
-        Ok(permission)
-    }
-
-    pub(super) async fn load_permission(
-        &self,
-    ) -> Result<Arc<MemberPermission>, AuthorizationError> {
         let user = self
             .user
             .require()

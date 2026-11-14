@@ -44,6 +44,7 @@ pub trait OrganizationRepository: Send + Sync {
         query: Box<dyn compallm_query::IntoQuery>,
         pagination: compallm_query::Pagination,
         ordering: Vec<compallm_query::OrderBy>,
+        cursor_scope: &str,
     ) -> Result<
         compallm_query::Connection<crate::organization::group::MemberInfo>,
         OrganizationRepositoryError,

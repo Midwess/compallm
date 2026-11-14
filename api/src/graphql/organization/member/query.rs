@@ -29,8 +29,18 @@ pub(crate) async fn list(
         .map(compallm_query::OrderBy::try_from)
         .collect::<Result<Vec<_>, _>>()
         .map_err(|_| Error::invalid_input())?;
+    let cursor_scope = format!(
+        "members:{}:{}",
+        permission.organization_id(),
+        permission.user_id()
+    );
     let page = repository
-        .list_members(Box::new(filter.unwrap_or_default()), pagination, ordering)
+        .list_members(
+            Box::new(filter.unwrap_or_default()),
+            pagination,
+            ordering,
+            &cursor_scope,
+        )
         .await
         .map_err(AuthorizationError::from)?;
     let page = compallm_query::Connection {

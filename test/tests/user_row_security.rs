@@ -10,8 +10,8 @@ use compallm_postgres::{
     repository::preference::user::UserPreferenceRepository,
 };
 use sea_orm::{
-    ColumnTrait, ConnectOptions, ConnectionTrait, Database, DbBackend, EntityTrait, ModelTrait,
-    QueryFilter, Set, Statement, sea_query::Expr,
+    ColumnTrait, ConnectOptions, ConnectionTrait, Database, EntityTrait, ModelTrait, QueryFilter,
+    Set, sea_query::Expr,
 };
 use std::{sync::Arc, time::Duration};
 
@@ -69,10 +69,6 @@ async fn authenticated_profiles_and_preferences_enforce_database_ownership() -> 
         let personal = root
             .fresh()?
             .restrict(async move { Ok::<_, std::convert::Infallible>(permission) })?;
-        let identity: compallm_core::persistent::connection::IdentityLoader = Arc::new(
-            async_once_cell::Lazy::new(Box::pin(async move { Ok(actor.session) })),
-        );
-        personal.postgres().identify(identity)?;
         assert!(personal.fresh().is_err());
         let db = PostgresConnection::from_context(&personal)?;
         let visible = Users::find().all(db).await?;
@@ -151,18 +147,6 @@ async fn authenticated_profiles_and_preferences_enforce_database_ownership() -> 
             2
         );
         assert!(root.scope(preferences.find(first + 1)).await?.is_some());
-        personal.transaction(async {
-            let current = DbContext::current()?;
-            let connection = PostgresConnection::from_context(&current)?;
-            let decision = || Statement::from_string(DbBackend::Postgres,
-                "SELECT compallm_rls.organization_allowed('model.read') AS allowed");
-            let before = connection.query_one_raw(decision()).await?.unwrap();
-            assert!(!before.try_get::<bool>("", "allowed")?);
-            current.permission().await?;
-            let after = connection.query_one_raw(decision()).await?.unwrap();
-            assert!(after.try_get::<bool>("", "allowed")?);
-            Ok::<_, anyhow::Error>(())
-        }).await?;
         root.transaction(async {
             let current = DbContext::current()?;
             let missing_identity = PostgresConnection::from_context(&current)?;

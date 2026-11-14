@@ -37,25 +37,9 @@ pub struct AuthService {
 }
 
 impl AuthService {
-    fn trusted_context() -> Result<DbContext, AuthError> {
-        let current = DbContext::current()?;
-        if !current.postgres().is_restricted() {
-            return Ok(current);
-        }
-        if current.postgres().is_transaction() {
-            return Err(
-                crate::persistent::ConnectionError::database(anyhow::anyhow!(
-                    "authentication cannot replace a restricted transaction"
-                ))
-                .into(),
-            );
-        }
-        Ok(DbContext::root()?)
-    }
-
     /// Return true for current access, false for stale access; reject missing/revoked/ahead state.
     pub async fn validate_access(&self, claims: &UserAccessToken) -> Result<bool, AuthError> {
-        Self::trusted_context()?
+        DbContext::root()?
             .scope(async {
                 claims.validate(unix_timestamp())?;
                 let version = self
@@ -79,19 +63,15 @@ impl AuthService {
         organization_id: u64,
         user_ids: &[u64],
     ) -> Result<u64, AuthError> {
-        Self::trusted_context()?
-            .scope(async {
-                Ok(self
-                    .sessions
-                    .invalidate_permissions(organization_id, user_ids)
-                    .await?)
-            })
-            .await
+        Ok(self
+            .sessions
+            .invalidate_permissions(organization_id, user_ids)
+            .await?)
     }
 
     /// Revoke only the persisted session identified by the verified access credential.
     pub async fn signout(&self, claims: &UserAccessToken) -> Result<(), AuthError> {
-        Self::trusted_context()?
+        DbContext::root()?
             .scope(async {
                 claims.validate(unix_timestamp())?;
                 let mut session = self
@@ -142,7 +122,7 @@ impl AuthService {
 
     /// Reject existing accounts before requesting OTP delivery for signup.
     pub async fn signup_email(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
-        Self::trusted_context()?
+        DbContext::root()?
             .scope(async {
                 let email = compallm_utils::email::normalize_email(email);
                 if self.users.find_by_email(&email).await?.is_some() {
@@ -157,7 +137,7 @@ impl AuthService {
 
     /// Require an existing active account before admitting signin email.
     pub async fn signin_email(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
-        Self::trusted_context()?
+        DbContext::root()?
             .scope(async {
                 let email = compallm_utils::email::normalize_email(email);
                 compallm_utils::email::validate_email(&email)
@@ -207,7 +187,7 @@ impl AuthService {
         claims: &EmailOtpAccessToken,
         code: &str,
     ) -> Result<UserTokens, AuthError> {
-        Self::trusted_context()?
+        DbContext::root()?
             .scope(async {
                 claims.verify_code(code, unix_timestamp())?;
                 let user = self
@@ -234,7 +214,7 @@ impl AuthService {
         claims: &EmailOtpAccessToken,
         code: &str,
     ) -> Result<UserTokens, AuthError> {
-        Self::trusted_context()?
+        DbContext::root()?
             .scope(async {
                 claims.verify_code(code, unix_timestamp())?;
                 let dictionary = self.latest_dictionary().await?;
@@ -257,7 +237,7 @@ impl AuthService {
 
     /// Verify the envelope and inner claims, preserving the concrete token variant.
     pub async fn authenticate_token(&self, token: &str) -> Result<AccessToken, AuthError> {
-        Self::trusted_context()?
+        DbContext::root()?
             .scope(async {
                 AccessToken::decode(token, &self.jwt_secret, self.dictionaries.as_ref()).await
             })
@@ -271,7 +251,7 @@ impl AuthService {
 
     /// Read-only renewal: validates CWT/session state and never consumes the credential.
     pub async fn refresh(&self, refresh_token: &str) -> Result<UserTokens, AuthError> {
-        Self::trusted_context()?
+        DbContext::root()?
             .scope(async {
                 let claims = RefreshToken::try_from(self.authenticate_token(refresh_token).await?)?;
                 let (session, membership) = self
@@ -299,7 +279,7 @@ impl AuthService {
         refresh_token: &str,
         organization_id: u64,
     ) -> Result<UserTokens, AuthError> {
-        Self::trusted_context()?
+        DbContext::root()?
             .scope(async {
                 let claims = RefreshToken::try_from(self.authenticate_token(refresh_token).await?)?;
                 let mut session = self

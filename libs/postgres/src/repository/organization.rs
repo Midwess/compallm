@@ -740,6 +740,7 @@ impl CoreRepository for OrganizationRepository {
         query: Box<dyn compallm_query::IntoQuery>,
         pagination: compallm_query::Pagination,
         ordering: Vec<compallm_query::OrderBy>,
+        cursor_scope: &str,
     ) -> Result<
         compallm_query::Connection<compallm_core::organization::group::MemberInfo>,
         OrganizationRepositoryError,
@@ -748,18 +749,6 @@ impl CoreRepository for OrganizationRepository {
 
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
-        let settings = db
-            .rls()
-            .ok_or_else(|| {
-                OrganizationRepositoryError::database(anyhow::anyhow!("request scope is missing"))
-            })?
-            .get()
-            .await
-            .map_err(|error| {
-                OrganizationRepositoryError::database(anyhow::anyhow!(error.to_string()))
-            })?;
-        let organization_id = settings.organization_id();
-        let actor_id = settings.user_id();
         let base = member_read::Entity::find().filter(
             member_read::Column::Id.in_subquery(
                 Members::find()
@@ -768,9 +757,8 @@ impl CoreRepository for OrganizationRepository {
                     .into_query(),
             ),
         );
-        let scope = format!("members:{organization_id}:{actor_id}");
         let page = query
-            .plan_page(base, pagination, ordering, 100, &scope)
+            .plan_page(base, pagination, ordering, 100, cursor_scope)
             .map_err(|_| OrganizationRepositoryError::InvalidQuery)?
             .fetch(db)
             .await

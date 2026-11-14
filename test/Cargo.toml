@@ -10,7 +10,6 @@ publish = false
 workspace = true
 
 [dev-dependencies]
-async-once-cell.workspace = true
 juniper.workspace = true
 compallm-query = { workspace = true, features = ["derive"] }
 compallm-api = { path = "../api" }

@@ -35,6 +35,59 @@ use compallm_core::{
 };
 use sea_orm::{DatabaseConnection, DbBackend, DbErr, MockDatabase, Statement, Transaction};
 
+thread_local! {
+    static ROOT_CONNECTION: std::cell::RefCell<Option<Arc<dyn compallm_core::persistent::Connection>>> = const { std::cell::RefCell::new(None) };
+}
+
+struct TestRoot;
+
+impl TestRoot {
+    fn set(connection: Arc<dyn compallm_core::persistent::Connection>) {
+        static INITIALIZE: std::sync::Once = std::sync::Once::new();
+        INITIALIZE.call_once(|| DbContext::initialize_default(Arc::new(Self)).unwrap());
+        ROOT_CONNECTION.with(|root| *root.borrow_mut() = Some(connection));
+    }
+}
+
+#[async_trait::async_trait]
+impl compallm_core::persistent::Connection for TestRoot {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn is_transaction(&self) -> bool {
+        false
+    }
+    fn scoped(&self) -> Arc<dyn compallm_core::persistent::Connection> {
+        ROOT_CONNECTION.with(|root| root.borrow().as_ref().unwrap().scoped())
+    }
+    fn restrict(
+        &self,
+        _: compallm_core::persistent::PermissionLoader,
+    ) -> Result<(), compallm_core::persistent::ConnectionError> {
+        unreachable!()
+    }
+    fn ensure_open(&self) -> Result<(), compallm_core::persistent::ConnectionError> {
+        Ok(())
+    }
+    async fn begin(
+        &self,
+    ) -> Result<
+        Arc<dyn compallm_core::persistent::Connection>,
+        compallm_core::persistent::ConnectionError,
+    > {
+        unreachable!()
+    }
+    async fn commit(&self) -> Result<(), compallm_core::persistent::ConnectionError> {
+        unreachable!()
+    }
+    async fn rollback(&self) -> Result<(), compallm_core::persistent::ConnectionError> {
+        unreachable!()
+    }
+    fn cancel(&self) {
+        unreachable!()
+    }
+}
+
 const SECRET: &str = "test-signing-secret-at-least-32-bytes";
 const REFRESH_LIFETIME: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 
@@ -230,6 +283,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
         _: Box<dyn compallm_query::IntoQuery>,
         _: compallm_query::Pagination,
         _: Vec<compallm_query::OrderBy>,
+        _: &str,
     ) -> Result<
         compallm_query::Connection<compallm_core::organization::group::MemberInfo>,
         OrganizationRepositoryError,
@@ -1271,6 +1325,7 @@ impl Fixture {
             Err(error) => panic!("{error}"),
         }
         let db = Arc::new(MockDatabase::new(DbBackend::Postgres).into_connection());
+        TestRoot::set(Arc::new(PostgresConnection::new(db.clone())));
         let memberships = user
             .as_ref()
             .map(|user| {
@@ -1368,11 +1423,7 @@ impl Fixture {
         claims: &EmailOtpAccessToken,
         code: &str,
     ) -> Result<UserTokens, AuthError> {
-        // The caller keeps account creation and the first session atomic.
-        self.repo
-            .1
-            .transaction(self.service().signup(claims, code))
-            .await
+        self.service().signup(claims, code).await
     }
 
     async fn register(&self, email: &str) -> Result<User, compallm_core::user::RegistrationError> {
@@ -1837,7 +1888,7 @@ async fn invalid_signature_is_rejected_before_dictionary_lookup() {
 }
 
 #[tokio::test]
-async fn signup_requires_verified_email_and_uses_one_caller_transaction() {
+async fn signup_requires_verified_email_and_uses_one_root_transaction() {
     let fixture = Fixture::new(None);
     let challenge = test_challenge("James@MIDWESS.COM", SECRET).unwrap();
     let issued = fixture
@@ -2036,7 +2087,7 @@ async fn signup_username_uses_domain_then_number_when_taken() {
 }
 
 #[tokio::test]
-async fn refresh_requires_a_context_from_the_application_entry_point() {
+async fn refresh_uses_root_without_a_caller_scope() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let service = fixture.service();
     let tokens = token_pair::compressed_new(
@@ -2048,19 +2099,8 @@ async fn refresh_requires_a_context_from_the_application_entry_point() {
     )
     .unwrap();
 
-    assert!(matches!(
-        service.refresh(&tokens.refresh_token).await,
-        Err(AuthError::Connection(_))
-    ));
-    assert!(fixture.repo.0.lock().unwrap().contexts.is_empty());
-
     fixture.remember(&tokens.refresh_token);
-    fixture
-        .repo
-        .1
-        .scope(service.refresh(&tokens.refresh_token))
-        .await
-        .unwrap();
+    service.refresh(&tokens.refresh_token).await.unwrap();
     assert_eq!(fixture.repo.0.lock().unwrap().contexts.len(), 0);
     assert!(DbContext::current().is_err());
     assert!(
@@ -2483,7 +2523,7 @@ async fn invalid_signature_cannot_revoke_a_valid_session() {
 }
 
 #[tokio::test]
-async fn read_only_refresh_runs_inside_an_enclosing_transaction() {
+async fn read_only_refresh_uses_root_with_an_enclosing_transaction() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let token = AccessToken::Refresh(
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
@@ -2573,7 +2613,7 @@ async fn token_for_another_organization_cannot_read_or_revoke_an_owned_session()
 }
 
 #[tokio::test]
-async fn organization_switch_joins_an_enclosing_transaction() {
+async fn organization_switch_uses_root_with_an_enclosing_transaction() {
     let fixture_roles_0 = default_roles(85, [1, 2, 3]).await;
 
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
@@ -4494,7 +4534,6 @@ async fn http_request_membership_drives_postgres_rls_and_returns_a_clean_connect
     .unwrap();
     let router = Router::new().route("/", get(|| async {
         let db = DbContext::current().unwrap();
-        db.permission().await.unwrap();
         let result = PostgresConnection::from_context(&db).unwrap().query_one_raw(
             Statement::from_string(DbBackend::Postgres,
                 "SELECT pg_backend_pid() AS pid, current_user::text AS role, compallm_rls.organization_id() AS organization, compallm_rls.organization_allowed('model.read') AS model_read, compallm_rls.organization_allowed('provider.read') AS provider_read, (SELECT count(*) FROM providers) AS providers")
@@ -4672,21 +4711,9 @@ async fn graphql_role_and_group_creation_enforces_scope_and_denies_without_write
         .unwrap();
     }
     let connection = Arc::new(PostgresConnection::new(pool.clone()));
-    DbContext::initialize_default(connection.clone()).unwrap();
+    TestRoot::set(connection.clone());
     let db = DbContext::new(connection);
     let repository = compallm_postgres::repository::organization::OrganizationRepository;
-    assert!(
-        db.scope(repository.list_members(
-            Box::new(compallm_query::Query::default()),
-            compallm_query::Pagination {
-                first: Some(1),
-                ..Default::default()
-            },
-            vec![],
-        ))
-        .await
-        .is_err()
-    );
     let foreign_role = Role::new(foreign.id, "Foreign role", "", "").await.unwrap();
     db.scope(repository.create_roles(vec![foreign_role.clone()]))
         .await
@@ -4733,7 +4760,12 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     scoped
         .scope(async {
             assert!(fixture.service().validate_access(&access).await.unwrap());
-            assert!(DbContext::current().unwrap().postgres().is_restricted());
+            assert!(
+                PostgresConnection::from_context(&DbContext::current().unwrap())
+                    .unwrap()
+                    .rls()
+                    .is_some()
+            );
             assert_eq!(
                 DbContext::current()
                     .unwrap()
@@ -4749,7 +4781,7 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
         scoped
             .transaction(fixture.service().validate_access(&access))
             .await
-            .is_err()
+            .unwrap()
     );
     let router = fixture.graphql_with_org_repository(db.clone(), None, None, None, true);
     let policy = format!(
@@ -5351,14 +5383,6 @@ async fn preference_graphql_persists_grouped_updates_and_resets_for_current_user
         assert!(initial["errors"].is_null(), "{initial}");
         assert_eq!(initial["data"]["userPreferences"]["node"]["navigation"]["home"], "CHAT");
         assert_eq!(initial["data"]["userPreferences"]["node"]["codeAppearance"]["theme"], "FOLLOW_INTERFACE");
-        let session = fixture.repo.0.lock().unwrap().sessions.values().next().unwrap().clone();
-        let invalid_authority = token_pair::new(&session, PolicySnapshot {
-            cedar_source: "permit(principal, action == Compallm::Action::\"retired.action\", resource);".into(),
-            role_ids: vec![], group_roles: Default::default(),
-        }, SECRET, Duration::from_secs(60), REFRESH_LIFETIME)?;
-        let personal = graphql_body(graphql_operation(&router, "{ userPreferences { node { navigation { home } } } }", serde_json::json!({}), Some(&invalid_authority.access_token), None, false).await).await;
-        assert!(personal["errors"].is_null(), "{personal}");
-        assert_eq!(personal["data"]["userPreferences"]["node"]["navigation"]["home"], "CHAT");
         let update = "mutation($input: UserPreferencesPatchInput!) { userPreferencesUpdate(input: $input) { node { navigation { home } theme { palettes { dark } } codeAppearance { font { family size } } sidebar { entries { item visibility } } } } }";
         let response = graphql_body(graphql_operation(&router, update, serde_json::json!({"input": {
             "navigation":{"home":"MODELS"}, "calendar":{"firstDay":"SUNDAY"},

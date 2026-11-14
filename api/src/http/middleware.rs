@@ -25,31 +25,15 @@ impl AuthorizationMiddleware {
         mut request: Request,
         next: Next,
     ) -> Response {
-        let identity = user.clone();
         let authorization = super::authorization::context(user, cookies);
         let loader = authorization.clone();
         let Ok(context) = DbContext::current() else {
             return no_store(RequestError::Internal.into_response());
         };
         if context
-            .restrict(async move { loader.load_permission().await })
+            .restrict(async move { loader.member_permission().await })
             .is_err()
         {
-            return no_store(RequestError::Internal.into_response());
-        }
-        let loader: compallm_core::persistent::connection::IdentityLoader =
-            Arc::new(async_once_cell::Lazy::new(Box::pin(async move {
-                identity
-                    .require()
-                    .await
-                    .map(|verified| verified.access().session.clone())
-                    .map_err(|error| {
-                        Arc::new(super::authorization::AuthorizationError::Authentication(
-                            error,
-                        )) as Arc<dyn std::error::Error + Send + Sync>
-                    })
-            })));
-        if context.postgres().identify(loader).is_err() {
             return no_store(RequestError::Internal.into_response());
         }
         request.extensions_mut().insert(authorization);

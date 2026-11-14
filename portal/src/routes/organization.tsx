@@ -7,7 +7,7 @@ import { useUrlController } from '../url/use-url-controller'
 import { useAuthController } from '../auth/use-auth-controller'
 import { userPreferenceController } from '../preference/user/controller'
 import { OrganizationController } from '../organization/controller'
-import { PermissionControllerContext, PermissionRecovery } from '@compallm/storybook'
+import { PermissionControllerContext } from '@compallm/storybook'
 import { PermissionController } from '../permission/controller'
 import type { AuthUser } from '@compallm/storybook'
 
@@ -41,7 +41,6 @@ function Workspace({ user }: { user: AuthUser }) {
           </OrganizationPage>
         )}
       </OrganizationControllerContext>
-      <PermissionRecovery />
     </PermissionControllerContext>
   )
 }

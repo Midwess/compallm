@@ -19,7 +19,7 @@ export interface PermissionFacts {
   roleIds?: string[]
   groupIds?: string[]
 }
-export type PermissionStatus = 'loading' | 'allowed' | 'denied' | 'error'
+export type PermissionStatus = 'allowed' | 'denied' | 'error'
 export interface PermissionEntry {
   check: PermissionCheck
   status: PermissionStatus
@@ -30,8 +30,7 @@ export interface PermissionState {
 export interface PermissionController {
   readonly store: StoreApi<PermissionState>
   setFacts?(facts: PermissionFacts[]): void
-  ensure(checks: PermissionCheck[]): Promise<void>
-  retry(checks: PermissionCheck[]): Promise<void>
+  evaluate(checks: PermissionCheck[]): Promise<void>
 }
 export interface PermissionRequestInput {
   enabled?: boolean

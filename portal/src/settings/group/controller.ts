@@ -57,7 +57,7 @@ export class GroupController implements Contract {
       if (this.permissions) await requirePermissions(this.permissions, [{ action: 'group.read', resourceType: 'Organization' }])
       if (request.signal.aborted || this.request !== request) return
       const reads = (['role.read', 'member.read'] as const).map((action) => ({ action, resourceType: 'Organization' as const }))
-      if (this.permissions) await this.permissions.ensure(reads)
+      if (this.permissions) await this.permissions.evaluate(reads)
       if (this.request !== request || request.signal.aborted) return
       const allowed = (index: number) =>
         !this.permissions || this.permissions.store.getState().entries[permissionKey(reads[index])]?.status === 'allowed'

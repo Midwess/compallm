@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { PermissionControllerContext } from '../../src/context'
 import { publishPermissions, type PermissionStatus } from '../../src/permission'
-import { PermissionRequest, PermissionRecovery } from '../../src/components/permission'
+import { PermissionRequest } from '../../src/components/permission'
 import { Button } from '../../src/components/buttons'
 import { PreviewPermissionController } from '../permission-controller'
 
@@ -26,7 +26,6 @@ function Example({ status = 'allowed' }: { status?: PermissionStatus }) {
         <PermissionRequest actions={['role.read']} restricted="fallback" fallback={<p>You do not have access to roles.</p>}>
           <p>Role list content</p>
         </PermissionRequest>
-        <PermissionRecovery />
       </div>
     </PermissionControllerContext>
   )
@@ -36,7 +35,6 @@ export default meta
 type Story = StoryObj<typeof meta>
 export const Allowed: Story = {}
 export const Denied: Story = { args: { status: 'denied' } }
-export const Loading: Story = { args: { status: 'loading' } }
 export const Failed: Story = { args: { status: 'error' } }
 
 function ReactiveExample() {

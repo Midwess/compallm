@@ -4,6 +4,7 @@ import type { PolicyProjection } from '@compallm/storybook/pages/settings'
 
 type Projection = { projection: PolicyProjection[]; diagnostics: string[] }
 export interface CedarOperations {
+  clearPermissions: { args: []; result: boolean }
   evaluatePermissions: {
     args: [
       authority: { userId: string; organizationId: string; source: string; entities: string },

@@ -46,7 +46,7 @@ export class RoleController implements Contract {
       if (this.permissions) await requirePermissions(this.permissions, [{ action: 'role.read', resourceType: 'Organization' }])
       if (request.signal.aborted || this.request !== request) return
       const policyRead = { action: 'role.policy.read', resourceType: 'Role', resourceId: id } as const
-      if (this.permissions) await this.permissions.ensure([policyRead])
+      if (this.permissions) await this.permissions.evaluate([policyRead])
       if (request.signal.aborted || this.request !== request) return
       const canReadPolicy =
         !this.permissions || this.permissions.store.getState().entries[permissionKey(policyRead)]?.status === 'allowed'

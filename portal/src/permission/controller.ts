@@ -20,24 +20,7 @@ export class PermissionController implements Contract {
   private facts = new Map<string, PermissionFacts>()
   private generation = 0
   private active = true
-  private load() {
-    if (!this.authority) {
-      const scope = this.scope
-      const selection = {
-        me: { node: { id: true, organizationId: true, cedarSource: true, cedarEntities: true } },
-      } satisfies QueryGenqlSelection
-      this.authority = graphql(scope.signal)
-        .query(selection)
-        .then(({ me: { node } }) => ({
-          userId: node.id,
-          organizationId: node.organizationId,
-          source: node.cedarSource,
-          entities: node.cedarEntities,
-        }))
-    }
-    return this.authority
-  }
-  ensure = async (checks: PermissionCheck[]) => {
+  evaluate = async (checks: PermissionCheck[]) => {
     if (!this.active) return
     const waits: Promise<void>[] = []
     for (const check of checks) {
@@ -48,21 +31,21 @@ export class PermissionController implements Contract {
         continue
       }
       if (this.store.getState().entries[key]) continue
-      this.store.setState((state) => ({ entries: { ...state.entries, [key]: { check, status: 'loading' } } }))
+      this.store.setState((state) => ({ entries: { ...state.entries, [key]: { check, status: 'denied' } } }))
       const scope = this.scope
       const generation = this.generation
-      const operation = this.load()
+      const operation = (this.authority ?? Promise.reject(new Error('Permissions are unavailable.')))
         .then(async (authority) => {
           const [result] = await cedarWorker.request(
             'evaluatePermissions',
             [authority, [check], [...this.facts.values()]],
             scope.signal,
           )
-          if (!scope.signal.aborted && this.active && generation === this.generation)
+          if (!scope.signal.aborted && this.active && (generation === this.generation || check.resourceType === 'Organization'))
             this.store.setState((state) => ({ entries: { ...state.entries, [key]: { check, status: result } } }))
         })
         .catch(() => {
-          if (!scope.signal.aborted && this.active && generation === this.generation)
+          if (!scope.signal.aborted && this.active && (generation === this.generation || check.resourceType === 'Organization'))
             this.store.setState((state) => ({ entries: { ...state.entries, [key]: { check, status: 'error' } } }))
         })
         .finally(() => {
@@ -72,13 +55,6 @@ export class PermissionController implements Contract {
       waits.push(operation)
     }
     await Promise.all(waits)
-  }
-  retry = async (checks: PermissionCheck[]) => {
-    this.authority = undefined
-    const entries = { ...this.store.getState().entries }
-    for (const check of checks) if (entries[permissionKey(check)]?.status === 'error') delete entries[permissionKey(check)]
-    publishPermissions(this, entries)
-    await this.ensure(checks)
   }
   setFacts = (facts: PermissionFacts[]) => {
     let changed = false
@@ -94,26 +70,39 @@ export class PermissionController implements Contract {
       publishPermissions(
         this,
         Object.fromEntries(
-          Object.entries(this.store.getState().entries).filter(
-            ([, entry]) => entry.check.resourceType === 'Organization' && entry.status !== 'loading',
-          ),
+          Object.entries(this.store.getState().entries).filter(([, entry]) => entry.check.resourceType === 'Organization'),
         ),
       )
     }
   }
   start = () => {
     this.active = true
-    void this.ensure([
-      { action: 'role.read', resourceType: 'Organization' },
-      { action: 'group.read', resourceType: 'Organization' },
-      { action: 'model.read', resourceType: 'Organization' },
-    ])
+    if (this.authority) return
+    const scope = this.scope
+    const selection = {
+      me: { node: { id: true, organizationId: true, cedarSource: true, cedarEntities: true } },
+    } satisfies QueryGenqlSelection
+    this.authority = graphql(scope.signal)
+      .query(selection)
+      .then(async ({ me: { node } }) => {
+        const authority = {
+          userId: node.id,
+          organizationId: node.organizationId,
+          source: node.cedarSource,
+          entities: node.cedarEntities,
+        }
+        await cedarWorker.request('evaluatePermissions', [authority, [], []], scope.signal)
+        return authority
+      })
+    void this.authority.catch(() => undefined)
   }
+
   stop = () => {
     this.active = false
     this.scope.abort()
     this.scope = new AbortController()
     this.authority = undefined
+    void cedarWorker.request('clearPermissions', []).catch(() => undefined)
     this.pending.clear()
     this.facts.clear()
     this.generation++
@@ -122,7 +111,7 @@ export class PermissionController implements Contract {
 }
 export async function requirePermissions(controller: Contract | undefined, checks: PermissionCheck[]) {
   if (!controller) return
-  await controller.ensure(checks)
+  await controller.evaluate(checks)
   if (checks.some((check) => controller.store.getState().entries[permissionKey(check)]?.status !== 'allowed'))
     throw new ApiError('You do not have permission to perform this action.', 403, 'FORBIDDEN')
 }

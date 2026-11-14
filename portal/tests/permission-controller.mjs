@@ -28,19 +28,21 @@ test('one me read supplies local worker checks and allow/deny results stay cache
     return reply()
   }
   cedarWorker.request = async (operation, [authority, requested]) => {
+    if (operation === 'clearPermissions') return true
     assert.equal(operation, 'evaluatePermissions')
     assert.equal(authority.source, 'verified policies')
     checks.push(...requested)
     return requested.map((check) => (check.resourceId === '11' ? 'allowed' : 'denied'))
   }
   const controller = new PermissionController()
+  controller.start()
   try {
-    await Promise.all([controller.ensure([role('11'), role('12')]), controller.ensure([role('11')])])
+    await Promise.all([controller.evaluate([role('11'), role('12')]), controller.evaluate([role('11')])])
     assert.equal(reads, 1)
     assert.equal(checks.length, 2)
     assert.equal(controller.store.getState().entries[permissionKey(role('11'))].status, 'allowed')
     assert.equal(controller.store.getState().entries[permissionKey(role('12'))].status, 'denied')
-    await controller.ensure([role('11'), role('12')])
+    await controller.evaluate([role('11'), role('12')])
     assert.equal(checks.length, 2)
     assert.equal(reads, 1)
   } finally {
@@ -50,18 +52,22 @@ test('one me read supplies local worker checks and allow/deny results stay cache
   }
 })
 
-test('stopped worker checks cannot restore old authority and failures require explicit retry', async () => {
+test('stopped checks stay cleared and failed checks remain restricted until reload', async () => {
   const original = globalThis.fetch,
     request = cedarWorker.request
   globalThis.fetch = async () => reply()
   let complete
-  cedarWorker.request = async () =>
-    new Promise((resolve) => {
+  cedarWorker.request = async (operation, args) => {
+    if (operation === 'clearPermissions') return true
+    if (args[1].length === 0) return []
+    return new Promise((resolve) => {
       complete = resolve
     })
+  }
   const controller = new PermissionController()
+  controller.start()
   try {
-    const pending = controller.ensure([role('11')])
+    const pending = controller.evaluate([role('11')])
     await new Promise((resolve) => setImmediate(resolve))
     controller.stop()
     complete(['allowed'])
@@ -69,19 +75,25 @@ test('stopped worker checks cannot restore old authority and failures require ex
     assert.deepEqual(controller.store.getState().entries, {})
     const next = new PermissionController()
     let attempts = 0
-    cedarWorker.request = async () => {
+    cedarWorker.request = async (operation, args) => {
+      if (operation === 'clearPermissions') return true
+      if (args[1].length === 0) return []
       attempts++
       if (attempts === 1) throw new Error('worker failed')
       return ['allowed']
     }
-    await next.ensure([role('11')])
+    next.start()
+    await next.evaluate([role('11')])
     assert.equal(next.store.getState().entries[permissionKey(role('11'))].status, 'error')
-    await next.ensure([role('11')])
+    await next.evaluate([role('11')])
     assert.equal(attempts, 1)
-    await next.retry([role('11')])
-    assert.equal(attempts, 2)
-    assert.equal(next.store.getState().entries[permissionKey(role('11'))].status, 'allowed')
     next.stop()
+    const reloaded = new PermissionController()
+    reloaded.start()
+    await reloaded.evaluate([role('11')])
+    assert.equal(attempts, 2)
+    assert.equal(reloaded.store.getState().entries[permissionKey(role('11'))].status, 'allowed')
+    reloaded.stop()
   } finally {
     controller.stop()
     globalThis.fetch = original

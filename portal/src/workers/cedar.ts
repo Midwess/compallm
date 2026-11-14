@@ -339,7 +339,10 @@ async function evaluatePermissions(
   })
   const escape = (value: ReturnType<typeof uid>) => ({ __entity: value })
   const base = JSON.parse(authority.entities) as import('@cedar-policy/cedar-wasm/web').EntityJson[]
-  const entityKey = (value: EntityUidJson) => JSON.stringify(entity(value))
+  const entityKey = (value: EntityUidJson) => {
+    const uid = entity(value)
+    return `${uid.type}\0${uid.id}`
+  }
   const principal = uid('User', authority.userId)
   const org = uid('Organization', authority.organizationId)
   const entities = new Map(base.map((item) => [entityKey(item.uid), item]))
@@ -372,6 +375,7 @@ async function evaluatePermissions(
     }
     if (type === 'Model' || type === 'ProviderModel') attrs.enabled = fact!.enabled!
     if (type === 'ProviderModel') {
+      add('Provider', fact!.providerId!)
       attrs.provider = escape(uid('Provider', fact!.providerId!))
       parents.push(uid('Provider', fact!.providerId!))
     }
@@ -439,6 +443,13 @@ async function evaluatePermissions(
 
 function execute(request: Extract<CedarRequest, { type: 'request' }>): Promise<CedarResult<CedarOperation>> {
   switch (request.operation) {
+    case 'clearPermissions': {
+      permissionSource = undefined
+      return cedar().then((parser) => {
+        parser.preparsePolicySet('ui-permissions', { staticPolicies: '' })
+        return true
+      })
+    }
     case 'evaluatePermissions':
       return evaluatePermissions(...request.args)
     case 'preparePolicySource': {

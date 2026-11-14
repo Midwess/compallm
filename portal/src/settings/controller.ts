@@ -89,7 +89,7 @@ export class SettingsController implements Controller {
   private async loadPermissions(signal: AbortSignal, generation: number) {
     try {
       const checks = (['role.read', 'group.read'] as const).map((action) => ({ action, resourceType: 'Organization' as const }))
-      if (this.permissions) await this.permissions.ensure(checks)
+      if (this.permissions) await this.permissions.evaluate(checks)
       if (signal.aborted || generation !== this.generation) return
       const allowed = (index: number) =>
         !this.permissions || this.permissions.store.getState().entries[permissionKey(checks[index])]?.status === 'allowed'

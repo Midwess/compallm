@@ -82,12 +82,14 @@ function PermissionRow({
   statements,
   disabled,
   owner,
+  busy,
 }: {
   id: string
   action: SettingsPolicyAction
   statements: PolicyProjection[]
   disabled: boolean
   owner: boolean
+  busy: boolean
 }) {
   const c = useRoleController()
   const disabledPolicies = useRole((state) => state.disabledPolicies?.[action.id])
@@ -134,7 +136,10 @@ function PermissionRow({
                   aria-label={action.label}
                   checked={permits.length > 0}
                   disabled={!allowed || disabled || advanced}
-                  onChange={() => void c.store.form.perform(() => c.togglePolicyAction(action.id), ['draft.source'])}
+                  aria-disabled={!allowed || disabled || advanced || busy}
+                  onChange={() => {
+                    if (!busy) void c.store.form.perform(() => c.togglePolicyAction(action.id), ['draft.source'])
+                  }}
                 />
               </DisabledTooltip>
             )}
@@ -184,7 +189,7 @@ export function PolicyTable() {
     )
   })
   const filtering = Boolean(normalized) || Object.values(filters).some((v) => v && v !== 'all')
-  const disabled = draft.builtin || busy || draft.parsing || draft.diagnostics.length > 0
+  const disabled = draft.builtin || draft.parsing || draft.diagnostics.length > 0
   const selectedCount = actions.filter((a) => (projection.get(a.id) ?? []).some((entry) => entry.effect !== 'forbid')).length
   return (
     <SectionSurface className="flex min-w-0 flex-col overflow-hidden p-0">
@@ -271,8 +276,10 @@ export function PolicyTable() {
                               aria-label={'Allow ' + category + ' policies'}
                               checked={allEditableSelected}
                               disabled={!allowed || disabled || editable.length === 0}
+                              aria-disabled={!allowed || disabled || editable.length === 0 || busy}
                               onChange={() =>
-                                void c.store.form.perform(
+                                !busy &&
+                                c.store.form.perform(
                                   () =>
                                     c.setPolicyActions(
                                       editable.map((a) => a.id),
@@ -296,6 +303,7 @@ export function PolicyTable() {
                       statements={projection.get(action.id) ?? []}
                       disabled={disabled}
                       owner={draft.builtin}
+                      busy={busy}
                     />
                   ))}
                 </Table.Category>

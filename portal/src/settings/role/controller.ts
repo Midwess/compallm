@@ -256,19 +256,20 @@ export class RoleController implements Contract {
     const { preparePolicySource } = await import('./cedar')
     const prepared = await preparePolicySource(source, draft.source, this.savedPolicy.source, request.signal)
     if (request.signal.aborted || this.request !== request) return false
-    if (prepared.matchesDraft) {
+    if (prepared.matchesDraft && draft.parsing) {
       clearTimeout(this.parseTimer)
       const revision = ++this.parseRevision
       this.store.setState({ draft: { ...draft, parsing: true } })
       if (!(await this.projectSource(id, draft.source, revision))) return false
       if (revision !== this.parseRevision) return false
-    } else {
+    } else if (!prepared.matchesDraft) {
       const { projectPolicy } = await import('./cedar')
       const catalog = this.settings.getState().policyActions
       const parsed = await projectPolicy(source, new Map(catalog.map((item) => [item.id, item.scope])), request.signal)
       if (parsed.diagnostics.length) return false
     }
     if (request.signal.aborted || this.request !== request) return false
+    if (prepared.matchesDraft && this.store.getState().draft?.diagnostics.length) return false
     if (prepared.matchesSaved) return true
     if (this.permissions)
       await requirePermissions(this.permissions, [{ action: 'role.policy.update', resourceType: 'Role', resourceId: id }])

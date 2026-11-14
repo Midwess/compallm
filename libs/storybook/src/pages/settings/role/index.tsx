@@ -1,6 +1,6 @@
 import { PermissionRequest, usePermission } from '../../../components/permission'
 import { FormError } from '../../../components/form'
-import { useEffect, useSyncExternalStore } from 'react'
+import { memo, useEffect, useSyncExternalStore } from 'react'
 import { Form } from '../../../components/form'
 import { RoleUpdateInput } from '@compallm/contract/validation'
 import { motion } from 'motion/react'
@@ -16,6 +16,12 @@ import { PolicyTable } from './policy-table'
 import { DisabledTooltip } from '../../../components/feedback'
 
 const ownerExplanation = 'The Owner role cannot be edited or deleted.'
+const policyPanelVariants = {
+  visible: { opacity: 1, x: 0, display: 'block', transitionEnd: { display: 'block' } },
+  visualHidden: { opacity: 0, x: -animation.panelDistance, transitionEnd: { display: 'none' } },
+  cedarHidden: { opacity: 0, x: animation.panelDistance, transitionEnd: { display: 'none' } },
+}
+
 import { SettingsContent, Heading, Section, Rows, Row, Empty } from '../shared'
 
 function EditingMode() {
@@ -106,6 +112,52 @@ function RoleHeading() {
   )
 }
 
+const RoleDetails = memo(function RoleDetails() {
+  const id = useRole((state) => state.draft?.id, ['draft.id'])
+  const builtin = useRole((state) => state.draft?.builtin, ['draft.builtin'])
+  const metadataPermission = usePermission({
+    actions: ['role.metadata.update'],
+    resource: { type: 'Role', id },
+    enabled: !!id,
+  })
+  return (
+    <Section title="Role details" className="shrink-0">
+      <Rows className="**:[[role=separator]]:bg-border">
+        <Row label={<label htmlFor="role-name">Name</label>}>
+          <DisabledTooltip
+            disabled={builtin || !metadataPermission.allowed}
+            reason={builtin ? ownerExplanation : 'You do not have permission to edit this role.'}
+          >
+            <TextField
+              id="role-name"
+              className="w-xl max-w-full border-border max-lg:w-sm"
+              placeholder="Role name…"
+              name="draft.name"
+              disabled={builtin || !metadataPermission.allowed}
+            />
+            <FormError name="draft.name" />
+          </DisabledTooltip>
+        </Row>
+        <Row label={<label htmlFor="role-description">Description</label>} last>
+          <DisabledTooltip
+            disabled={builtin || !metadataPermission.allowed}
+            reason={builtin ? ownerExplanation : 'You do not have permission to edit this role.'}
+          >
+            <TextField
+              id="role-description"
+              className="w-xl max-w-full border-border max-lg:w-sm"
+              placeholder="Describe this role…"
+              name="draft.description"
+              disabled={builtin || !metadataPermission.allowed}
+            />
+            <FormError name="draft.description" />
+          </DisabledTooltip>
+        </Row>
+      </Rows>
+    </Section>
+  )
+})
+
 function RoleEditorContent() {
   const timing = useTransition('panel')
   const shared = useSettingsController(),
@@ -125,11 +177,6 @@ function RoleEditorContent() {
     readonly = useSettings((s) => s.readonly),
     loading = useRole((s) => s.loading),
     busy = useRole((s) => s.busy)
-  const metadataPermission = usePermission({
-    actions: ['role.metadata.update'],
-    resource: { type: 'Role', id: draft?.id },
-    enabled: !!draft?.id,
-  })
   const policyPermission = usePermission({
     actions: ['role.policy.update'],
     resource: { type: 'Role', id: draft?.id },
@@ -150,40 +197,7 @@ function RoleEditorContent() {
         <RoleHeading />
       </Heading>
       <div className="flex min-w-0 flex-1 flex-col gap-6">
-        <Section title="Role details" className="shrink-0">
-          <Rows className="**:[[role=separator]]:bg-border">
-            <Row label={<label htmlFor="role-name">Name</label>}>
-              <DisabledTooltip
-                disabled={draft.builtin || !metadataPermission.allowed}
-                reason={draft.builtin ? ownerExplanation : 'You do not have permission to edit this role.'}
-              >
-                <TextField
-                  id="role-name"
-                  className="w-xl max-w-full border-border max-lg:w-sm"
-                  placeholder="Role name…"
-                  name="draft.name"
-                  disabled={busy || draft.builtin || !metadataPermission.allowed}
-                />
-                <FormError name="draft.name" />
-              </DisabledTooltip>
-            </Row>
-            <Row label={<label htmlFor="role-description">Description</label>} last>
-              <DisabledTooltip
-                disabled={draft.builtin || !metadataPermission.allowed}
-                reason={draft.builtin ? ownerExplanation : 'You do not have permission to edit this role.'}
-              >
-                <TextField
-                  id="role-description"
-                  className="w-xl max-w-full border-border max-lg:w-sm"
-                  placeholder="Describe this role…"
-                  name="draft.description"
-                  disabled={busy || draft.builtin || !metadataPermission.allowed}
-                />
-                <FormError name="draft.description" />
-              </DisabledTooltip>
-            </Row>
-          </Rows>
-        </Section>
+        <RoleDetails />
         <PermissionRequest actions={['role.policy.read']} resource={{ type: 'Role', id: draft.id }}>
           {(allowed) =>
             allowed ? (
@@ -200,12 +214,8 @@ function RoleEditorContent() {
                     transition={timing}
                     aria-hidden={draft.mode !== 'visual'}
                     inert={draft.mode !== 'visual'}
-                    animate={{
-                      opacity: draft.mode === 'visual' ? 1 : 0,
-                      x: draft.mode === 'visual' ? 0 : -animation.panelDistance,
-                      display: 'block',
-                      transitionEnd: { display: draft.mode === 'visual' ? 'block' : 'none' },
-                    }}
+                    variants={policyPanelVariants}
+                    animate={draft.mode === 'visual' ? 'visible' : 'visualHidden'}
                     style={{
                       position: draft.mode === 'visual' ? 'relative' : 'absolute',
                       pointerEvents: draft.mode === 'visual' ? 'auto' : 'none',
@@ -219,12 +229,8 @@ function RoleEditorContent() {
                     transition={timing}
                     aria-hidden={draft.mode !== 'cedar'}
                     inert={draft.mode !== 'cedar'}
-                    animate={{
-                      opacity: draft.mode === 'cedar' ? 1 : 0,
-                      x: draft.mode === 'cedar' ? 0 : animation.panelDistance,
-                      display: 'block',
-                      transitionEnd: { display: draft.mode === 'cedar' ? 'block' : 'none' },
-                    }}
+                    variants={policyPanelVariants}
+                    animate={draft.mode === 'cedar' ? 'visible' : 'cedarHidden'}
                     style={{
                       position: draft.mode === 'cedar' ? 'relative' : 'absolute',
                       pointerEvents: draft.mode === 'cedar' ? 'auto' : 'none',

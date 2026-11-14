@@ -15,7 +15,7 @@
   --code-added-indicator: oklch(0.587961 0.088643 146.676);
   --code-removed-indicator: oklch(0.548028 0.073417 15.106);
   --code-gutter: oklch(0.478132 0.003431 264.5282);
-  --font-ui: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-ui: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
   --font-code: 'JetBrains Mono', ui-monospace, monospace;
   --border-hairline: 0.5px;
   --ui-font-scale: 1;
@@ -133,6 +133,7 @@
   --radius-hairline: 0.0625rem;
   --font-sans: var(--font-ui);
   --font-mono: var(--font-code);
+  --font-weight-book: 450;
   --text-xs: calc(0.75rem * var(--ui-font-scale, 1));
   --text-xs--line-height: calc(1rem * var(--ui-font-scale, 1));
   --text-xsm: calc(0.8125rem * var(--ui-font-scale, 1));

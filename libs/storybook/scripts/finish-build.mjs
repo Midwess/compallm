@@ -22,7 +22,7 @@ await cp(new URL('../src/styles/themes/', import.meta.url), new URL('../dist/the
 })
 await mkdir(new URL('../dist/licenses/', import.meta.url), { recursive: true })
 await copyFile(
-  new URL('../node_modules/@fontsource/inter/LICENSE', import.meta.url),
+  new URL('../node_modules/@fontsource-variable/inter/LICENSE', import.meta.url),
   new URL('../dist/licenses/Inter-OFL.txt', import.meta.url),
 )
 

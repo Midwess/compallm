@@ -2,7 +2,7 @@ import type { HTMLAttributes } from 'react'
 import { cx } from './shared'
 
 export function SettingsPageTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
-  return <h1 {...props} className={cx('m-0 text-2xl leading-8 font-medium text-foreground', className)} />
+  return <h1 {...props} className={cx('m-0 text-2xl leading-8 font-medium tracking-[-0.16px] text-foreground', className)} />
 }
 
 export function SettingsSectionHeader({ className, ...props }: HTMLAttributes<HTMLElement>) {
@@ -10,11 +10,11 @@ export function SettingsSectionHeader({ className, ...props }: HTMLAttributes<HT
 }
 
 export function SettingsSectionTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
-  return <h2 {...props} className={cx('m-0 text-ui-15 leading-6 font-medium text-foreground', className)} />
+  return <h2 {...props} className={cx('m-0 text-ui-15 leading-5.75 font-medium text-foreground', className)} />
 }
 
 export function SettingsSectionDescription({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p {...props} className={cx('m-0 text-xsm leading-6 text-muted-foreground', className)} />
+  return <p {...props} className={cx('m-0 text-xsm leading-6 font-book text-muted-foreground', className)} />
 }
 
 export function SettingsDivider({ className, ...props }: HTMLAttributes<HTMLHRElement>) {

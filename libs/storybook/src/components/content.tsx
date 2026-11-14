@@ -47,7 +47,7 @@ export function SettingsRow({
     >
       <div>
         <strong className="block leading-4">{label}</strong>
-        {description ? <p className="mt-0.5 text-ui-12 leading-3.75 text-muted-foreground">{description}</p> : null}
+        {description ? <p className="mt-0.5 text-ui-12 leading-4 font-book text-muted-foreground">{description}</p> : null}
       </div>
       {children}
     </div>

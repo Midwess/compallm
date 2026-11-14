@@ -8,6 +8,12 @@ policy:
   backward-compatibility: false # Preserve only when explicitly requested.
   issue-required-to-start: false
   preserve: unrelated working-tree changes
+  restricted_changes:
+    - DbContext
+    - PostgresConnection
+    - ConnectionTrait
+  restricted_changes_rule: |
+    Database context and connection lifecycle code is critical infrastructure. This restriction covers the listed types and related connection traits, scope handling, transactions, pooling, and RLS context setup. Follow the existing implementation and avoid changing or extending it as part of routine feature work or refactoring. If a change is necessary, explain the specific reason and proposed scope, then ask for explicit user permission before editing. Task authorization alone does not authorize changes to this infrastructure unless the user explicitly includes them.
   migrations: respect user restrictions; startup and database tests may apply migrations
   before-planning-or-changes: read root README and relevant Wiki architecture and focused pages in full from a freshly fetched external checkout; discover filenames via Home.md and _Sidebar.md; report access failures without inventing rules or using stale content
 

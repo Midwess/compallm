@@ -116,6 +116,8 @@ export const EmailInputConstraints = {
     trim: true,
     asciiLowercase: true,
     emailPolicy: {
+      minimumDomainSegments: 2,
+      allowDomainLiteral: false,
       localMaxBytes: 64,
       labelMaxBytes: 63,
       domainMaxBytes: 254,
@@ -140,6 +142,8 @@ export const EmailInput = z
       trim: true,
       asciiLowercase: true,
       emailPolicy: {
+        minimumDomainSegments: 2,
+        allowDomainLiteral: false,
         localMaxBytes: 64,
         labelMaxBytes: 63,
         domainMaxBytes: 254,
@@ -243,6 +247,8 @@ export const InvitationCreateInputConstraints = {
     trim: true,
     asciiLowercase: true,
     emailPolicy: {
+      minimumDomainSegments: 2,
+      allowDomainLiteral: false,
       localMaxBytes: 64,
       labelMaxBytes: 63,
       domainMaxBytes: 254,
@@ -263,6 +269,8 @@ export const InvitationCreateInput = z
       trim: true,
       asciiLowercase: true,
       emailPolicy: {
+        minimumDomainSegments: 2,
+        allowDomainLiteral: false,
         localMaxBytes: 64,
         labelMaxBytes: 63,
         domainMaxBytes: 254,

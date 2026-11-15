@@ -61,7 +61,7 @@ heck = { version = "0.5", default-features = false }
 pluralizer = { version = "0.5", default-features = false }
 syn = { version = "2", default-features = false }
 tempfile = { version = "3", default-features = false }
-maud = { version = "0.27", default-features = false }
+minijinja = { version = "3.1", default-features = false }
 cedar-policy = { version = "4" }
 rayon = { version = "1" }
 lz4_flex = { version = "0.14", default-features = false, features = ["std", "checked-decode"] }

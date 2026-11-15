@@ -156,7 +156,7 @@ impl MailingService {
             .subject(request.subject)
             .multipart(MultiPart::alternative_plain_html(
                 request.text.plain_text(),
-                request.text.to_string(),
+                request.text.render().map_err(anyhow::Error::from)?,
             ))
             .map_err(anyhow::Error::from)?;
         let job = Job {

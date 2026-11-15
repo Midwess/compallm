@@ -126,6 +126,8 @@
           "x-compallm-ascii-lowercase": true,
           "x-compallm-format": "emailAddress",
           "x-compallm-email-policy": {
+            "minimumDomainSegments": 2,
+            "allowDomainLiteral": false,
             "localMaxBytes": 64,
             "labelMaxBytes": 63,
             "domainMaxBytes": 254,
@@ -1358,6 +1360,8 @@
           "x-compallm-ascii-lowercase": true,
           "x-compallm-format": "emailAddress",
           "x-compallm-email-policy": {
+            "minimumDomainSegments": 2,
+            "allowDomainLiteral": false,
             "localMaxBytes": 64,
             "labelMaxBytes": 63,
             "domainMaxBytes": 254,

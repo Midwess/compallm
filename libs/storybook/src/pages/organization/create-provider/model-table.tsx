@@ -91,7 +91,7 @@ export function ProviderModels() {
           className="w-full table-fixed text-xs"
           aria-label="Provider models"
           columns={[
-            { id: 'enabled', className: 'w-8' },
+            { id: 'enabled', className: 'w-10' },
             { id: 'name' },
             { id: 'capabilities', className: 'w-1/4', visibilityClassName: 'hidden xl:table-cell' },
             { id: 'context', className: 'w-20', visibilityClassName: 'hidden lg:table-cell' },

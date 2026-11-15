@@ -1101,6 +1101,16 @@
           "items": {
             "$ref": "#/$defs/MemberMatchInput"
           }
+        },
+        "roleId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IDFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -1224,6 +1234,18 @@
             {
               "type": "null"
             }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "IDFilter": {
+      "type": "object",
+      "properties": {
+        "eq": {
+          "type": [
+            "string",
+            "null"
           ]
         }
       },

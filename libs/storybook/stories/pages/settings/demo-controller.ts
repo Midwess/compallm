@@ -23,7 +23,13 @@ export class DemoSettingsController implements SettingsController {
     preferences: { user: null! },
     profile: new DemoProfileController(this.store, (file) => this.avatarUrl(file)),
     organization: new DemoOrganizationController(this.store, (file) => this.avatarUrl(file)),
-    members: { setMemberRoles: (member, roles) => this.setMemberRoles(member, roles) },
+    members: {
+      search: (query) => this.searchMembers(query),
+      setOrder: (memberOrder) => {
+        this.store.setState({ memberOrder })
+        this.searchMembers(this.appliedMemberQuery)
+      },
+    },
     dialogs: {
       openDialog: (kind, id) => this.openDialog(kind, id),
       closeDialog: () => this.closeDialog(),
@@ -43,6 +49,7 @@ export class DemoSettingsController implements SettingsController {
   ) {
     const { roleDraft, groupDraft, ...shared } = initial
     this.store.setState(structuredClone(shared))
+    this.directory = structuredClone(this.store.getState().members)
     this.pages.preferences.user = new DemoUserPreferenceController(failWrites)
     this.role = new DemoRoleController(this, failWrites)
     this.pages.role = this.role
@@ -134,7 +141,10 @@ export class DemoSettingsController implements SettingsController {
   }
   setQuery = (query: string) => this.store.setState({ query })
   setNavigationQuery = (navigationQuery: string) => this.store.setState({ navigationQuery })
-  setFilter = (key: string, value: string) => this.store.setState((s) => ({ filters: { ...s.filters, [key]: value } }))
+  setFilter = (key: string, value: string) => {
+    this.store.setState((s) => ({ filters: { ...s.filters, [key]: value } }))
+    if (key === 'memberRole') this.searchMembers(this.appliedMemberQuery)
+  }
   private avatarUrl = (file: File | null) => {
     const url = file ? URL.createObjectURL(file) : null
     if (url) this.urls.push(url)
@@ -172,7 +182,7 @@ export class DemoSettingsController implements SettingsController {
     if (!d) return
     if (
       d.kind === 'delete-role' &&
-      (s.members.some((member) => member.roleIds.includes(d.targetId ?? '')) ||
+      (s.members.some((member) => member.role?.id === d.targetId) ||
         s.groups.some((group) => group.roleIds.includes(d.targetId ?? '')))
     ) {
       this.report('Remove all members and groups assigned to this role before deleting it')
@@ -225,7 +235,7 @@ export class DemoSettingsController implements SettingsController {
         this.store.setState((p) => ({
           roles: p.roles.filter((r) => r.id !== id),
           groups: p.groups.map((g) => ({ ...g, roleIds: g.roleIds.filter((role) => role !== id) })),
-          members: p.members.map((m) => ({ ...m, roleIds: m.roleIds.filter((role) => role !== id) })),
+
           location: { page: 'blank' },
         }))
       }
@@ -258,11 +268,23 @@ export class DemoSettingsController implements SettingsController {
       this.report(destructive ? 'Deletion requested' : 'Changes applied')
     })
   }
-  setMemberRoles = (memberId: string, roleIds: string[]) => {
-    if (this.store.getState().readonly) return
-    this.store.setState((s) => ({
-      members: s.members.map((m) => (m.id !== memberId ? m : { ...m, roleIds })),
-    }))
+  private directory = structuredClone(this.store.getState().members)
+  private appliedMemberQuery = ''
+  searchMembers = (query: string) => {
+    this.appliedMemberQuery = query.trim()
+    const role = this.store.getState().filters.memberRole
+    const members = this.directory.filter(
+      (member) =>
+        `${member.name} ${member.email}`.toLowerCase().includes(this.appliedMemberQuery.toLowerCase()) &&
+        (!role ||
+          role === 'all' ||
+          member.role?.id === role ||
+          this.store.getState().groups.some((group) => group.memberIds.includes(member.id) && group.roleIds.includes(role))),
+    )
+    members.sort((a, b) => a.name.localeCompare(b.name) * (this.store.getState().memberOrder === 'DESC_NULLS_LAST' ? -1 : 1))
+    const current = this.store.getState().currentMemberId
+    members.sort((a, b) => Number(b.id === current) - Number(a.id === current))
+    this.store.setState({ members, membersPage: 1 })
   }
   copy = (value: string) => {
     void navigator.clipboard

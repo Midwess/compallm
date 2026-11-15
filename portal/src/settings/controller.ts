@@ -67,6 +67,7 @@ export class SettingsController implements Controller {
     this.request = controller
     const generation = ++this.generation
     this.store.setState({ roles: [], groups: [] })
+    if (this.store.getState().location.page === 'members') this.pages.members.start()
     void this.loadPermissions(controller.signal, generation)
     const location = this.store.getState().location
     if (location.page === 'organization') this.stopOrganization = this.pages.organization.start()
@@ -81,6 +82,7 @@ export class SettingsController implements Controller {
       controller.abort()
       this.role.cancel()
       this.group.cancel()
+      this.pages.members.cancel()
       if (this.request === controller) this.request = undefined
       this.generation += 1
     }
@@ -195,6 +197,7 @@ export class SettingsController implements Controller {
       this.stopProfile?.()
       this.stopProfile = undefined
     }
+    this.pages.members.cancel()
     this.navigationGeneration += 1
     this.role.cancel()
     this.group.cancel()
@@ -202,6 +205,7 @@ export class SettingsController implements Controller {
     if (page === 'organization' && this.request && !this.stopOrganization)
       this.stopOrganization = this.pages.organization.start()
     if (page === 'profile' && this.request && !this.stopProfile) this.stopProfile = this.pages.profile.start()
+    if (page === 'members' && this.request) this.pages.members.start()
     if (page === 'role' && id && this.request) void this.role.load(id)
     if (page === 'group' && id && this.request) void this.group.load(id)
   }

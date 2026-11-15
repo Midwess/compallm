@@ -46,6 +46,7 @@ pub trait OrganizationRepository: Send + Sync {
         pagination: compallm_query::Pagination,
         ordering: Vec<compallm_query::OrderBy>,
         cursor_scope: &str,
+        current_user_first: Option<u64>,
     ) -> Result<
         compallm_query::Connection<crate::organization::group::MemberInfo>,
         OrganizationRepositoryError,

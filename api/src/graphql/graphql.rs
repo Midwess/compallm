@@ -82,6 +82,7 @@ impl Query {
     }
 
     async fn members(
+        current_user_first: Option<bool>,
         filter: Option<organization::member::input::MemberFilterInput>,
         order_by: Option<Vec<organization::member::input::MemberOrderInput>>,
         first: Option<i32>,
@@ -97,12 +98,12 @@ impl Query {
             order_by,
             compallm_query::Pagination {
                 first: first.or(if last.is_none() && before.is_none() {
-                    Some(30)
+                    Some(20)
                 } else {
                     None
                 }),
                 last: last.or(if first.is_none() && before.is_some() {
-                    Some(30)
+                    Some(20)
                 } else {
                     None
                 }),
@@ -110,6 +111,7 @@ impl Query {
                 after: after.map(compallm_query::Cursor),
                 offset,
             },
+            current_user_first.unwrap_or(false),
             repository,
             authority,
         )

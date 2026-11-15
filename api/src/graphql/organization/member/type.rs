@@ -4,8 +4,45 @@ impl From<compallm_core::organization::group::MemberInfo> for Member {
         Self(value)
     }
 }
-#[juniper::graphql_object(context = crate::graphql::GraphqlContext)]
+#[juniper::graphql_object(context = crate::graphql::GraphqlContext, scalar = juniper::DefaultScalarValue)]
 impl Member {
+    async fn role(
+        &self,
+        #[graphql(context)] authority: &crate::http::authorization::AuthorizationContext,
+    ) -> Result<super::super::role::Role, crate::graphql::error::Error> {
+        use compallm_core::authorization::{
+            condition::CheckPermission, error::AuthorizationError, policy::Action,
+        };
+        let permission = authority.member_permission().await?;
+        Action::MemberRead
+            .check_permission(&permission)
+            .map_err(AuthorizationError::from)?;
+        Action::RoleRead
+            .check_permission(&permission)
+            .map_err(AuthorizationError::from)?;
+        self.0
+            .role
+            .clone()
+            .map(Into::into)
+            .ok_or(crate::graphql::error::Error::internal())
+    }
+    async fn groups(
+        &self,
+        #[graphql(context)] authority: &crate::http::authorization::AuthorizationContext,
+    ) -> Result<Vec<super::super::group::Group>, crate::graphql::error::Error> {
+        use compallm_core::authorization::{
+            condition::CheckPermission, error::AuthorizationError, policy::Action,
+        };
+        let permission = authority.member_permission().await?;
+        Action::MemberRead
+            .check_permission(&permission)
+            .map_err(AuthorizationError::from)?;
+        Action::GroupRead
+            .check_permission(&permission)
+            .map_err(AuthorizationError::from)?;
+        Ok(self.0.groups.iter().cloned().map(Into::into).collect())
+    }
+
     /// Direct and group-inherited role identities in the verified organization.
     async fn effective_role_ids(
         &self,
@@ -49,6 +86,9 @@ impl Member {
             .iter()
             .map(|id| juniper::ID::new(id.to_string()))
             .collect())
+    }
+    fn joined_at(&self) -> f64 {
+        self.0.joined_at() as f64
     }
     fn id(&self) -> juniper::ID {
         juniper::ID::new(self.0.id.to_string())

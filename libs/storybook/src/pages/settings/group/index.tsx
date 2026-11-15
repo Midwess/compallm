@@ -6,7 +6,7 @@ import { useEffect, useSyncExternalStore } from 'react'
 import { Form, contractResult } from '../../../components/form'
 import { Button } from '../../../components/buttons'
 import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
-import { ChoicePicker } from '../../../components/choice-picker'
+import { Select } from '../../../components/dropdowns'
 import { TextField, SearchField } from '../../../components/fields'
 import { Switch } from '../../../components/selection'
 import { SectionSurface } from '../../../components/surfaces'
@@ -171,28 +171,42 @@ function GroupRoles() {
           disabled={readonly || busy}
           reason={readonly ? 'This group is read-only.' : 'Wait for the current update to finish.'}
         >
-          <ChoicePicker.Control
-            label="Add role"
-            searchLabel="Search roles"
-            placeholder="Search roles…"
-            emptyMessage="No roles found."
-            emptyAction={
-              roles.length === 0 ? (
-                <Button variant="ghost" className="mt-2" onClick={() => c.navigate('new-role')}>
-                  Create role
-                </Button>
-              ) : undefined
-            }
+          <Select.Root
+            value={null}
             disabled={readonly || busy}
-            options={roles.map((role, index) => ({
-              id: role.id,
-              label: role.name,
-              description: role.description,
-              color: role.color,
-              disabled: optionPermissions[index] !== 'allowed',
-            }))}
-            name="draft.roleIds"
-          />
+            onValueChange={(roleId) => {
+              if (roleId === 'create-role') c.navigate('new-role')
+              else if (roleId) group.store.form.change('draft.roleIds', [...new Set([...draft.roleIds, roleId])])
+            }}
+          >
+            <Select.Trigger aria-label="Add role" className="h-6 w-auto gap-2 rounded-full px-2 text-xs">
+              <Select.Value placeholder="Add role" />
+            </Select.Trigger>
+            <Select.Content aria-label="Add role" className="w-64">
+              {roles.map((role, index) =>
+                role.owner ? null : (
+                  <Select.Item
+                    key={role.id}
+                    value={role.id}
+                    disabled={draft.roleIds.includes(role.id) || optionPermissions[index] !== 'allowed'}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="mr-1 size-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: `color-mix(in oklab, ${role.color} 70%, var(--foreground))` }}
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate">{role.name}</span>
+                      {role.description ? (
+                        <span className="block truncate text-xs text-muted-foreground">{role.description}</span>
+                      ) : null}
+                    </span>
+                  </Select.Item>
+                ),
+              )}
+              {!roles.length ? <Select.Item value="create-role">Create role</Select.Item> : null}
+            </Select.Content>
+          </Select.Root>
         </DisabledTooltip>
         <FormError name="draft.roleIds" />
       </div>
@@ -212,7 +226,7 @@ function GroupRoles() {
               >
                 <Indicator color={role.color} />
                 <div className="flex min-w-0 flex-1 items-baseline gap-3">
-                  <span className="min-w-0 max-w-60 truncate text-xsm">{role.name}</span>
+                  <span className="line-clamp-2 min-w-0 max-w-60 whitespace-normal text-left text-xsm">{role.name}</span>
                   {role.description ? (
                     <span
                       className="min-w-0 max-w-80 flex-1 whitespace-normal wrap-break-word

@@ -43,6 +43,8 @@ test('loads role and group summaries in one request', async () => {
     selection = query
     return Response.json({
       data: {
+        me: { node: { id: 'actor', organizationOwner: false } },
+        organization: { node: { ownerMemberIds: [] } },
         roles: { edges: [{ node: { id: '1', name: 'Editor', color: '#c06040', owner: false } }] },
         groups: { edges: [{ node: { id: '2', name: 'Design', description: '' } }] },
       },

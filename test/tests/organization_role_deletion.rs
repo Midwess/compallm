@@ -109,7 +109,7 @@ async fn role_deletion_blocks_new_group_links_and_invalidates_existing_assignees
         assert_eq!(loaded.role,membership.role);
         assert_eq!(loaded.groups[0].roles(),membership.groups[0].roles());
         let mut assigned = membership.clone();
-        assigned.assign_role(membership.groups[0].roles()[0].clone())?;
+        assigned.assign_role(1, membership.groups[0].roles()[0].clone())?;
         context.transaction(async {
             organizations.save_member(&assigned,&membership).await?;
             sessions.invalidate_permissions(1,&[42]).await?;

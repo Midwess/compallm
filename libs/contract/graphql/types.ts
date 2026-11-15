@@ -146,6 +146,7 @@ export default {
       cedarSource: [107],
       id: [29],
       organizationId: [29],
+      organizationOwner: [4],
       sessionId: [29],
       __typename: [107],
     },
@@ -273,6 +274,13 @@ export default {
           input: [52, 'OrganizationProfileUpdateInput!'],
         },
       ],
+      roleAssign: [
+        94,
+        {
+          id: [29, 'ID!'],
+          memberId: [29, 'ID!'],
+        },
+      ],
       roleCreate: [
         94,
         {
@@ -328,6 +336,7 @@ export default {
       canUpdateProfile: [4],
       id: [29],
       name: [107],
+      ownerMemberIds: [29],
       __typename: [107],
     },
     OrganizationPayload: {
@@ -515,9 +524,15 @@ export default {
         94,
         {
           id: [29, 'ID!'],
+          includeUnseen: [4, 'Boolean!'],
         },
       ],
-      roles: [91],
+      roles: [
+        91,
+        {
+          includeUnseen: [4, 'Boolean!'],
+        },
+      ],
       session: [99],
       userPreferences: [121],
       userProfile: [

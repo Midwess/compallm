@@ -121,18 +121,20 @@ impl Query {
     /// Find visible role metadata in the active organization.
     async fn role(
         id: ID,
+        #[graphql(default = false)] include_unseen: bool,
         #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
         #[graphql(context)] authority: &AuthorizationContext,
     ) -> Result<Option<Payload<organization::role::Role>>, Error> {
-        organization::role::query::get(id, repository, authority).await
+        organization::role::query::get(id, include_unseen, repository, authority).await
     }
 
     /// Return the complete visible role metadata collection, ordered by ID.
     async fn roles(
+        #[graphql(default = false)] include_unseen: bool,
         #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
         #[graphql(context)] authority: &AuthorizationContext,
     ) -> Result<Collection<organization::role::Role>, Error> {
-        organization::role::query::list(repository, authority).await
+        organization::role::query::list(include_unseen, repository, authority).await
     }
 
     /// Find visible group metadata in the active organization.
@@ -287,6 +289,15 @@ impl Mutation {
         #[graphql(context)] authority: &AuthorizationContext,
     ) -> Result<Payload<organization::role::Role>, Error> {
         organization::role::mutation::create(input, service, authority).await
+    }
+
+    async fn role_assign(
+        id: ID,
+        member_id: ID,
+        #[graphql(context)] service: &RbacService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<organization::role::Role>, Error> {
+        organization::role::mutation::assign(id, member_id, service, authority).await
     }
 
     async fn role_delete(

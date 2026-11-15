@@ -44,6 +44,7 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
   const c = useSettingsController(),
     location = useSettings((s) => s.location),
     query = useSettings((s) => s.navigationQuery)
+  const actorIsOwner = useSettings((s) => s.actorIsOwner)
   const roles = useSettings((s) => s.roles),
     groups = useSettings((s) => s.groups)
   const match = (label: string) => label.toLowerCase().includes(query.toLowerCase())
@@ -126,7 +127,7 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
               addLabel="Create role"
             >
               {roles
-                .filter((r) => !r.builtin && match(r.name))
+                .filter((r) => (!r.owner || actorIsOwner) && match(r.name))
                 .map((r) => (
                   <SidebarItem
                     key={r.id}

@@ -548,6 +548,7 @@ type GroupPayload {
 }
 
 type Me {
+  organizationOwner: Boolean!
   id: ID!
   sessionId: ID!
   organizationId: ID!
@@ -621,6 +622,7 @@ type Mutation {
   sessionRevoke: BooleanPayload!
   "Create a role in the verified active organization."
   roleCreate(input: RoleCreateInput!): RolePayload!
+  roleAssign(id: ID!, memberId: ID!): RolePayload!
   roleDelete(id: ID!): BooleanPayload!
   roleUpdate(id: ID!, input: RoleUpdateInput!): RolePayload!
   "Create a group and its initial role assignments in the verified active organization."
@@ -632,6 +634,7 @@ type NavigationPreferences {
 }
 
 type Organization {
+  ownerMemberIds: [ID!]!
   avatarUrl: String
   canUpdateProfile: Boolean!
   id: ID!
@@ -698,9 +701,9 @@ type Query {
   organization: OrganizationPayload!
   members(currentUserFirst: Boolean, filter: MemberFilterInput, orderBy: [MemberOrderInput!], first: Int, last: Int, before: String, after: String, offset: Int): MemberConnection!
   "Find visible role metadata in the active organization."
-  role(id: ID!): RolePayload
+  role(id: ID!, includeUnseen: Boolean! = false): RolePayload
   "Return the complete visible role metadata collection, ordered by ID."
-  roles: RoleConnection!
+  roles(includeUnseen: Boolean! = false): RoleConnection!
   "Find visible group metadata in the active organization."
   group(id: ID!): GroupPayload
   "Return the complete visible group metadata collection, ordered by ID."

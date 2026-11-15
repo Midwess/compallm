@@ -339,6 +339,100 @@ impl RbacService {
     }
 
     #[db_context::root]
+    pub async fn assign_role(
+        &self,
+        permission: &MemberPermission,
+        role_id: u64,
+        user_id: u64,
+    ) -> Result<Role, AuthorizationError> {
+        let org = permission.organization_id();
+        Action::MemberRead.check_permission(permission)?;
+        Action::RoleRead.check_permission(permission)?;
+        let mut member = self
+            .organizations
+            .find_membership(org, user_id)
+            .await?
+            .map(|(member, _)| member)
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        let role = self
+            .organizations
+            .find_roles_for_assignment(org, &[role_id])
+            .await?
+            .into_iter()
+            .next()
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
+        (&member, &role)
+            .for_action(Action::MemberRoleAssign)
+            .and(role.for_action(Action::RoleAssign))
+            .check_permission(permission)?;
+        if member.role.id == role_id {
+            return Ok(role);
+        }
+        let previous = member.clone();
+        (&previous, &previous.role)
+            .for_action(Action::MemberRoleUnassign)
+            .and(previous.role.for_action(Action::RoleUnassign))
+            .check_permission(permission)?;
+        let assigned_role = member
+            .effective_roles()
+            .find(|existing| existing.id == role.id)
+            .cloned()
+            .unwrap_or_else(|| role.clone());
+        member.assign_role(permission.user_id(), assigned_role)?;
+        let before_owner = previous.is_owner();
+        let after_owner = member.is_owner();
+        let owner_role = self
+            .organizations
+            .owner_role(member.organization_id)
+            .await?;
+        crate::transaction!(db, {
+            let role_ids = [owner_role.id, role.id]
+                .into_iter()
+                .collect::<std::collections::BTreeSet<_>>();
+            for id in role_ids {
+                self.organizations
+                    .lock_role(member.organization_id, id)
+                    .await?;
+            }
+            if before_owner != after_owner {
+                let owners = self
+                    .organizations
+                    .active_owner_ids(member.organization_id)
+                    .await?;
+                previous.ensure_owner_change(permission.user_id(), &member.role, &owners)?;
+            }
+            let current = self
+                .organizations
+                .lock_role(member.organization_id, role.id)
+                .await?;
+            if current.name != role.name
+                || current.description != role.description
+                || current.org_owner() != role.org_owner()
+            {
+                return Err(
+                    crate::persistent::organization::OrganizationRepositoryError::Conflict.into(),
+                );
+            }
+            self.organizations.save_member(&member, &previous).await?;
+            if after_owner
+                && !self
+                    .organizations
+                    .active_owner_ids(member.organization_id)
+                    .await?
+                    .contains(&member.user_id)
+            {
+                return Err(
+                    crate::persistent::organization::OrganizationRepositoryError::NotFound.into(),
+                );
+            }
+            self.auth_service
+                .invalidate_permissions(member.organization_id, &[member.user_id])
+                .await?;
+            Ok(role)
+        })
+    }
+
+    #[db_context::root]
     async fn load_member(
         &self,
         org: u64,

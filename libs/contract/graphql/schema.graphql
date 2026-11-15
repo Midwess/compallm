@@ -207,6 +207,7 @@ type Me {
   cedarSource: String!
   id: ID!
   organizationId: ID!
+  organizationOwner: Boolean!
   sessionId: ID!
 }
 
@@ -316,6 +317,7 @@ type Mutation {
   organizationProfileUpdate(
     input: OrganizationProfileUpdateInput!
   ): OrganizationPayload!
+  roleAssign(id: ID!, memberId: ID!): RolePayload!
 
   """
   Create a role in the verified active organization.
@@ -372,6 +374,7 @@ type Organization {
   canUpdateProfile: Boolean!
   id: ID!
   name: String!
+  ownerMemberIds: [ID!]!
 }
 
 type OrganizationPayload {
@@ -729,12 +732,12 @@ type Query {
   """
   Find visible role metadata in the active organization.
   """
-  role(id: ID!): RolePayload
+  role(id: ID!, includeUnseen: Boolean! = false): RolePayload
 
   """
   Return the complete visible role metadata collection, ordered by ID.
   """
-  roles: RoleConnection!
+  roles(includeUnseen: Boolean! = false): RoleConnection!
 
   """
   Return the verified current session identity.

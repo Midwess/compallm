@@ -11,7 +11,7 @@ import { FloatingContainerContext } from '../context'
 const itemClass = `flex h-8 w-full cursor-pointer items-center rounded-md px-2 text-xs outline-none
 data-highlighted:bg-menu-hover focus-visible:outline-ring data-disabled:cursor-not-allowed data-disabled:opacity-50`
 const surfaceClass = `max-h-(--available-height) w-48 max-w-[calc(100vw-1rem)] overflow-y-auto overscroll-none
-rounded-control border border-border bg-menu p-1 font-sans text-foreground shadow-menu outline-none origin-(--transform-origin)`
+rounded-xl border border-border bg-menu p-1 font-sans text-foreground shadow-menu outline-none origin-(--transform-origin)`
 
 export interface PopupRootProps extends OpenStateProps {
   children: ReactNode

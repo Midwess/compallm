@@ -124,3 +124,214 @@ test('failed page reads retain rows and pagination position and cancel after lea
     globalThis.fetch = original
   }
 })
+
+test('group changes submit explicit deltas and deselecting all removes confirmed groups', async () => {
+  const original = globalThis.fetch
+  const writes = []
+  const memberships = { research: true, design: true }
+  globalThis.fetch = async (_input, init) => {
+    const body = JSON.parse(init.body)
+    if (body.query.includes('groupUpdate')) {
+      const values = Object.values(body.variables)
+      const id = values.find((value) => typeof value === 'string')
+      const input = values.find((value) => value && typeof value === 'object')
+      writes.push({ id, input })
+      memberships[id] = Boolean(input.addMemberIds?.length)
+      return Response.json({ data: { groupUpdate: { node: { id, memberIds: memberships[id] ? ['person'] : [] } } } })
+    }
+    return Response.json(page('person'))
+  }
+  const store = createSettingsStore({
+    groups: [
+      { id: 'research', name: 'Research', description: '', roleIds: [], memberIds: [], color: '' },
+      { id: 'design', name: 'Design', description: '', roleIds: [], memberIds: [], color: '' },
+    ],
+  })
+  const controller = new MembersController(store)
+  try {
+    controller.start()
+    await tick()
+    assert.deepEqual(await controller.setMemberGroups('person', []), [])
+    assert.deepEqual(
+      writes.map(({ id }) => id),
+      ['design', 'research'],
+    )
+    assert.ok(writes.every(({ input }) => input.removeMemberIds.includes('person')))
+    assert.equal(store.getState().members[0].groups.length, 0)
+    assert.deepEqual(await controller.setMemberGroups('person', ['design', 'research']), ['design', 'research'])
+    assert.equal(writes.length, 4)
+    assert.equal(store.getState().members[0].groups.length, 2)
+  } finally {
+    controller.cancel()
+    globalThis.fetch = original
+  }
+})
+
+test('role selection replaces one required role through one mutation without changing groups', async () => {
+  const original = globalThis.fetch,
+    writes = []
+  let currentRole = { id: 'member', name: 'Member', description: '', color: '', owner: false }
+  globalThis.fetch = async (_url, init) => {
+    const body = JSON.parse(init.body)
+    if (body.query.includes('invitations')) return Response.json({ data: { invitations: { edges: [], pageInfo: {} } } })
+    if (body.query.includes('roleAssign')) {
+      writes.push(body)
+      currentRole = { id: 'admin', name: 'Admin', description: '', color: '', owner: false }
+      return Response.json({ data: { roleAssign: { node: currentRole } } })
+    }
+    const result = page('target')
+    result.data.members.edges[0].node.role = currentRole
+    return Response.json(result)
+  }
+  const store = createSettingsStore(),
+    controller = new MembersController(store)
+  try {
+    controller.start()
+    await tick()
+    await controller.setMemberRole('target', 'admin')
+    await tick()
+    assert.equal(store.getState().members[0].role.id, 'admin')
+    assert.equal(store.getState().members[0].groups.length, 2)
+    assert.equal(writes.length, 1)
+    assert.ok(writes[0].query.includes('roleAssign'))
+  } finally {
+    controller.cancel()
+    globalThis.fetch = original
+  }
+})
+
+test('failed or obsolete role writes retain confirmed member data without replay', async () => {
+  const original = globalThis.fetch
+  let finish,
+    writeCount = 0
+  globalThis.fetch = async (_url, init) => {
+    const body = JSON.parse(init.body)
+    if (body.query.includes('roleAssign')) {
+      writeCount++
+      return new Promise((resolve) => {
+        finish = resolve
+      })
+    }
+    if (body.query.includes('invitations')) return Response.json({ data: { invitations: { edges: [], pageInfo: {} } } })
+    return Response.json(page('target'))
+  }
+  const store = createSettingsStore(),
+    controller = new MembersController(store)
+  try {
+    controller.start()
+    await tick()
+    const pending = controller.setMemberRole('target', 'admin')
+    await tick()
+    assert.equal(await controller.setMemberRole('target', 'other'), false)
+    controller.cancel()
+    finish(Response.json({ data: { roleAssign: { node: { id: 'admin', name: 'Admin' } } } }))
+    assert.equal(await pending, false)
+    assert.equal(store.getState().members[0].role.id, 'member')
+    assert.equal(writeCount, 1)
+  } finally {
+    controller.cancel()
+    globalThis.fetch = original
+  }
+})
+
+test('self-role changes are rejected before a write even when permissions allow it', async () => {
+  const original = globalThis.fetch
+  let owner = true,
+    refreshes = 0
+  globalThis.fetch = async (_url, init) => {
+    const { query } = JSON.parse(init.body)
+    if (query.includes('roleAssign')) {
+      owner = false
+      return Response.json({
+        data: { roleAssign: { node: { id: 'admin', name: 'Admin', owner: false, description: '', color: '' } } },
+      })
+    }
+    const result = page('target')
+    result.data.me = { node: { id: 'target', organizationOwner: owner } }
+    result.data.organization = { node: { ownerMemberIds: owner ? ['target', 'other'] : ['other'] } }
+    result.data.members.edges[0].node.role = {
+      id: owner ? 'owner' : 'admin',
+      name: owner ? 'Owner' : 'Admin',
+      owner,
+      description: '',
+    }
+    return Response.json(result)
+  }
+  const permissions = {
+    store: { getState: () => ({ entries: {} }) },
+    async evaluate(checks) {
+      this.store.getState = () => ({
+        entries: Object.fromEntries(
+          checks.map((check) => [
+            JSON.stringify([
+              check.action,
+              check.resourceType,
+              check.resourceId ?? null,
+              check.roleId ?? null,
+              check.memberId ?? null,
+              check.providerModelId ?? null,
+            ]),
+            { check, status: 'allowed' },
+          ]),
+        ),
+      })
+    },
+    refresh() {
+      refreshes++
+    },
+  }
+  const store = createSettingsStore(),
+    controller = new MembersController(store, permissions, {
+      store: { getState: () => ({ currentUser: { userId: 'target' } }) },
+    })
+  try {
+    controller.start()
+    await tick()
+    assert.equal(await controller.setMemberRole('target', 'admin'), false)
+    await tick()
+    assert.equal(refreshes, 0)
+    assert.equal(owner, true)
+    assert.equal(store.getState().actorIsOwner, true)
+    assert.equal(store.getState().members[0].role.id, 'owner')
+    assert.equal(await controller.setMemberRole('target', 'owner'), undefined)
+  } finally {
+    controller.cancel()
+    globalThis.fetch = original
+  }
+})
+
+test('a later group failure preserves the first confirmed change for explicit retry', async () => {
+  const original = globalThis.fetch,
+    writes = []
+  let fail = true
+  globalThis.fetch = async (_url, init) => {
+    const body = JSON.parse(init.body)
+    if (!body.query.includes('groupUpdate')) return Response.json(page('person'))
+    const id = Object.values(body.variables).find((value) => typeof value === 'string')
+    writes.push(id)
+    if (id === 'research' && fail) throw new Error('group unavailable')
+    return Response.json({ data: { groupUpdate: { node: { id, memberIds: [] } } } })
+  }
+  const store = createSettingsStore({
+      groups: [
+        { id: 'research', name: 'Research', description: '', roleIds: [], memberIds: [], color: '' },
+        { id: 'design', name: 'Design', description: '', roleIds: [], memberIds: [], color: '' },
+      ],
+    }),
+    controller = new MembersController(store)
+  try {
+    controller.start()
+    await tick()
+    assert.equal(await controller.setMemberGroups('person', []), false)
+    assert.deepEqual(
+      store.getState().members[0].groups.map((group) => group.id),
+      ['research'],
+    )
+    fail = false
+    assert.deepEqual(await controller.setMemberGroups('person', []), [])
+    assert.deepEqual(writes, ['design', 'research', 'research'])
+  } finally {
+    controller.cancel()
+    globalThis.fetch = original
+  }
+})

@@ -108,6 +108,7 @@ export interface Me {
   cedarSource: Scalars['String']
   id: Scalars['ID']
   organizationId: Scalars['ID']
+  organizationOwner: Scalars['Boolean']
   sessionId: Scalars['ID']
   __typename: 'Me'
 }
@@ -172,6 +173,7 @@ export interface Mutation {
   groupDelete: BooleanPayload
   groupUpdate: GroupPayload
   organizationProfileUpdate: OrganizationPayload
+  roleAssign: RolePayload
   /** Create a role in the verified active organization. */
   roleCreate: RolePayload
   roleDelete: BooleanPayload
@@ -201,6 +203,7 @@ export interface Organization {
   canUpdateProfile: Scalars['Boolean']
   id: Scalars['ID']
   name: Scalars['String']
+  ownerMemberIds: Scalars['ID'][]
   __typename: 'Organization'
 }
 
@@ -665,6 +668,7 @@ export interface MeGenqlSelection {
   cedarSource?: boolean | number
   id?: boolean | number
   organizationId?: boolean | number
+  organizationOwner?: boolean | number
   sessionId?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -763,6 +767,7 @@ export interface MutationGenqlSelection {
   groupDelete?: BooleanPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   groupUpdate?: GroupPayloadGenqlSelection & { __args: { id: Scalars['ID']; input: GroupUpdateInput } }
   organizationProfileUpdate?: OrganizationPayloadGenqlSelection & { __args: { input: OrganizationProfileUpdateInput } }
+  roleAssign?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; memberId: Scalars['ID'] } }
   /** Create a role in the verified active organization. */
   roleCreate?: RolePayloadGenqlSelection & { __args: { input: RoleCreateInput } }
   roleDelete?: BooleanPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
@@ -796,6 +801,7 @@ export interface OrganizationGenqlSelection {
   canUpdateProfile?: boolean | number
   id?: boolean | number
   name?: boolean | number
+  ownerMemberIds?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -992,9 +998,9 @@ export interface QueryGenqlSelection {
   organizationPolicyActions?: PolicyActionConnectionGenqlSelection
   organizationProfile?: OrganizationPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Find visible role metadata in the active organization. */
-  role?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  role?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; includeUnseen?: Scalars['Boolean'] } }
   /** Return the complete visible role metadata collection, ordered by ID. */
-  roles?: RoleConnectionGenqlSelection
+  roles?: RoleConnectionGenqlSelection & { __args?: { includeUnseen?: Scalars['Boolean'] } }
   /** Return the verified current session identity. */
   session?: SessionPayloadGenqlSelection
   /** Return the signed-in user's personal preferences; missing rows use Core defaults without a write. */

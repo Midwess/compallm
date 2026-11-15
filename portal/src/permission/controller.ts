@@ -22,6 +22,8 @@ export class PermissionController implements Contract {
   private active = true
   evaluate = async (checks: PermissionCheck[]) => {
     if (!this.active) return
+    const scope = this.scope
+    const generation = this.generation
     const waits: Promise<void>[] = []
     for (const check of checks) {
       const key = permissionKey(check)
@@ -55,6 +57,8 @@ export class PermissionController implements Contract {
       waits.push(operation)
     }
     await Promise.all(waits)
+    if (this.active && this.scope === scope && !scope.signal.aborted && generation !== this.generation)
+      await this.evaluate(checks)
   }
   setFacts = (facts: PermissionFacts[]) => {
     let changed = false

@@ -27,6 +27,12 @@ struct Repository {
 }
 #[async_trait::async_trait]
 impl OrganizationRepository for Repository {
+    async fn owner_role(&self, _: u64) -> Result<Role, OrganizationRepositoryError> {
+        Err(OrganizationRepositoryError::NotFound)
+    }
+    async fn active_owner_ids(&self, _: u64) -> Result<Vec<u64>, OrganizationRepositoryError> {
+        Ok(vec![])
+    }
     async fn find_member_identity(
         &self,
         _: u64,

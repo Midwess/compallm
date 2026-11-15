@@ -87,6 +87,8 @@ export const initialSettings: Partial<SettingsState> = {
     },
   ],
   currentMemberId: 'alex',
+  actorIsOwner: true,
+  ownerMemberIds: ['alex'],
   members: [
     {
       id: 'alex',

@@ -25,7 +25,7 @@ export function createSettingsPages(
     preferences: { user },
     profile: new ProfileController(store, auth),
     organization: new OrganizationController(store, auth, renamed, permissions),
-    members: new MembersController(store, permissions),
+    members: new MembersController(store, permissions, auth),
     dialogs: new DialogsController(store, roleDeleted, groupDeleted),
   } satisfies SettingsPageControllers
 }

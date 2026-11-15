@@ -100,3 +100,34 @@ test('stopped checks stay cleared and failed checks remain restricted until relo
     cedarWorker.request = request
   }
 })
+
+test('checks awaiting older member facts settle against current facts before returning', async () => {
+  const original = globalThis.fetch,
+    request = cedarWorker.request
+  globalThis.fetch = async () => reply()
+  let release
+  cedarWorker.request = async (operation, args) => {
+    if (operation === 'clearPermissions') return true
+    if (args[1].length === 0) return []
+    if (args[2][0]?.roleIds.includes('new')) return ['allowed']
+    return new Promise((resolve) => {
+      release = () => resolve(['denied'])
+    })
+  }
+  const controller = new PermissionController()
+  controller.start()
+  const check = { action: 'member.role.assign', resourceType: 'Member', resourceId: '12', roleId: '9' }
+  try {
+    controller.setFacts([{ resourceType: 'Member', id: '12', roleIds: ['old'], groupIds: [] }])
+    const pending = controller.evaluate([check])
+    await new Promise((resolve) => setImmediate(resolve))
+    controller.setFacts([{ resourceType: 'Member', id: '12', roleIds: ['new'], groupIds: [] }])
+    release()
+    await pending
+    assert.equal(controller.store.getState().entries[permissionKey(check)].status, 'allowed')
+  } finally {
+    controller.stop()
+    globalThis.fetch = original
+    cedarWorker.request = request
+  }
+})

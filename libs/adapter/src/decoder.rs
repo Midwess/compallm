@@ -1,20 +1,18 @@
-pub trait RequestDecoder<E> {
-    fn next(&mut self, input: &mut &[u8]) -> Result<RequestDecoderStatus, RequestDecoderError>;
+pub trait Decoder<E> {
+    fn next(&mut self, input: &mut &[u8]) -> Result<DecoderStatus<E>, DecoderError>;
 
-    fn get_component(&self) -> Option<E>;
-
-    fn finish(&mut self) -> Result<(), RequestDecoderError>;
+    fn finish(&mut self) -> Result<(), DecoderError>;
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RequestDecoderStatus {
-    ComponentReady,
+pub enum DecoderStatus<E> {
+    Component(E),
     NeedInput,
-    Progress,
+    Finished,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
-pub enum RequestDecoderError {
+pub enum DecoderError {
     #[error("invalid request: {0}")]
     InvalidInput(&'static str),
     #[error("unsupported request component: {0}")]

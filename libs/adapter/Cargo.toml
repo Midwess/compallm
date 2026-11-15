@@ -16,11 +16,11 @@ bytes.workspace = true
 futures-core.workspace = true
 futures-io = { workspace = true, features = ["std"] }
 thiserror.workspace = true
+serde_json = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
 futures-util = { workspace = true, features = ["std", "io"] }
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true, features = ["std"] }
 tempfile.workspace = true
 tokio = { workspace = true, features = ["fs", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 tokio-util = { workspace = true, features = ["io", "compat"] }

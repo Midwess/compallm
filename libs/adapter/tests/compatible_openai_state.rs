@@ -1,60 +1,97 @@
-use adapter::t2t::copenai::request::state::{CompatibleOpenAIDecoderState as State, ObjectPhase};
+use adapter::decoder::{Decoder as RequestDecoder, DecoderStatus as RequestDecoderStatus};
+use adapter::t2t::component::{Content, Message, Role, TextRequestComponent};
+use adapter::t2t::copenai::request::CompatibleOpenAIRequestDecoder;
 
 #[test]
-fn advances_partial_key_and_model_value_one_byte_at_a_time() {
-    let mut state = State::new();
-    for byte in b"{\"mode" {
-        state = state.next(*byte).unwrap();
-    }
-    assert!(matches!(&state, State::Key { text, .. } if text == "mode"));
-    assert_eq!(state.position(), &State::Request);
-
-    for byte in b"l\":\"provider/model" {
-        state = state.next(*byte).unwrap();
-    }
-    assert!(matches!(state, State::String { .. }));
-    assert_eq!(state.position(), &State::Model);
-
-    state = state.next(b'"').unwrap();
-    assert!(matches!(
-        state,
-        State::Object {
-            phase: ObjectPhase::CommaOrEnd,
-            ..
+fn emits_components_across_arbitrary_chunks() {
+    let body = br#"{"model":"provider/model","messages":[{"content":"hello\n\uD83D\uDE00","role":"user"},{"role":"assistant","content":"yes"}],"stream":true}"#;
+    for size in 1..=body.len() {
+        let mut decoder = CompatibleOpenAIRequestDecoder::new();
+        let mut components = Vec::new();
+        for chunk in body.chunks(size) {
+            let mut input = chunk;
+            loop {
+                match decoder.next(&mut input).unwrap() {
+                    RequestDecoderStatus::Component(component) => components.push(component),
+                    RequestDecoderStatus::NeedInput => {
+                        assert!(input.is_empty());
+                        break;
+                    }
+                    RequestDecoderStatus::Finished => panic!("unexpected finish"),
+                }
+            }
         }
-    ));
-    assert_eq!(state.position(), &State::Request);
-    state = state.next(b'}').unwrap();
-    state.finish().unwrap();
+        decoder.finish().unwrap();
+        assert_eq!(
+            components,
+            vec![
+                TextRequestComponent::Model("provider/model".into()),
+                TextRequestComponent::Message(Message {
+                    role: Role::User,
+                    content: Some(Content::Text("hello\n😀".into())),
+                    tool_calls: None,
+                    tool_call_id: None,
+                    reasoning: None,
+                    reasoning_content: None,
+                    reasoning_details: None
+                }),
+                TextRequestComponent::Message(Message {
+                    role: Role::Assistant,
+                    content: Some(Content::Text("yes".into())),
+                    tool_calls: None,
+                    tool_call_id: None,
+                    reasoning: None,
+                    reasoning_content: None,
+                    reasoning_details: None
+                }),
+                TextRequestComponent::Stream(true),
+            ]
+        );
+        assert_eq!(
+            decoder.next(&mut &b""[..]).unwrap(),
+            RequestDecoderStatus::Finished
+        );
+    }
 }
 
 #[test]
-fn retains_nested_positions_and_string_progress_across_chunks() {
-    let body = r#"{
-        "model":"provider/model",
-        "messages":[{"role":"user","content":"Paris é \" \\ \uD83D\uDE00"}],
-        "tools":[{"type":"function","function":{"name":"weather","parameters":{
-            "properties":{"city":{"type":"string"}},"required":["city"],
-            "additionalProperties":false,"example":[null,-1.2e+3,{"x":true}]
-        }}}],
-        "tool_choice":{"type":"function","function":{"name":"weather"}},
-        "response_format":{"type":"json_schema","json_schema":{
-            "name":"answer","strict":true,"schema":{"type":"object"}
-        }},
-        "provider":{"require_parameters":true},"top_p":0.9,"stream":false
-    }"#;
-    for size in [1, 2, 7, 64] {
-        let mut state = State::new();
-        let mut saw_tool = false;
-        let mut saw_schema = false;
-        for chunk in body.as_bytes().chunks(size) {
-            for byte in chunk {
-                state = state.next(*byte).unwrap();
-                saw_tool |= state.position() == &State::Tool;
-                saw_schema |= state.position() == &State::ResponseFormatJsonSchemaSchema;
+fn returns_early_and_rejects_invalid_or_incomplete_requests() {
+    let mut decoder = CompatibleOpenAIRequestDecoder::new();
+    let mut input = &br#"{"model":"x","messages":[]}"#[..];
+    assert_eq!(
+        decoder.next(&mut input).unwrap(),
+        RequestDecoderStatus::Component(TextRequestComponent::Model("x".into()))
+    );
+    assert_eq!(input, br#","messages":[]}"#);
+    assert!(decoder.next(&mut input).is_err());
+
+    for body in [
+        &br#"{"model":"x","messages":[{"role":"unknown","content":"x"}]}"#[..],
+        &br#"{"model":"x","messages":[{"role":"user","content":null}]}"#[..],
+        &br#"{"model":"x","messages":[{"role":"user"}]}"#[..],
+        &br#"{"model":"x","model":"y"}"#[..],
+        &br#"{"model":"x","messages":[{"role":"user","content":"x",}]}"#[..],
+        &br#"{"model":"x","messages":[{"role":"user","content":"x"}]} {}"#[..],
+    ] {
+        let mut decoder = CompatibleOpenAIRequestDecoder::new();
+        let mut input = body;
+        loop {
+            match decoder.next(&mut input) {
+                Ok(RequestDecoderStatus::Component(_)) => {}
+                Err(_) => break,
+                other => panic!("unexpected result: {other:?}"),
             }
         }
-        state.finish().unwrap();
-        assert!(saw_tool && saw_schema);
     }
+    let mut decoder = CompatibleOpenAIRequestDecoder::new();
+    let mut input = &br#"{"model":"x""#[..];
+    assert!(matches!(
+        decoder.next(&mut input),
+        Ok(RequestDecoderStatus::Component(_))
+    ));
+    assert_eq!(
+        decoder.next(&mut input).unwrap(),
+        RequestDecoderStatus::NeedInput
+    );
+    assert!(decoder.finish().is_err());
 }

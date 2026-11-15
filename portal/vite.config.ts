@@ -5,13 +5,14 @@ import { defaultClientConditions, defineConfig, searchForWorkspaceRoot } from 'v
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
+  cacheDir: 'node_modules/.vite-portal',
   plugins: [react(), ...(command === 'serve' ? [tailwindcss()] : [])],
   resolve: {
     dedupe: ['react', 'react-dom'],
     conditions: command === 'serve' ? ['compallm-source', ...defaultClientConditions] : [...defaultClientConditions],
   },
   optimizeDeps: {
-    exclude: ['@compallm/contract'],
+    exclude: ['@compallm/contract', '@cedar-policy/cedar-wasm'],
     include: ['@compallm/contract > zod'],
   },
   server: {

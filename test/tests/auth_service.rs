@@ -2826,7 +2826,7 @@ async fn refresh_preserves_coherent_session_and_authority_without_restamping() {
         state.sessions.insert(7, stored);
         state.memberships[0].role.cedar_source.clear();
         state.memberships[0].groups.push(
-            compallm_core::organization::Group::from_parts(
+            compallm_core::organization::Group::new(
                 9,
                 84,
                 "Team".into(),
@@ -3054,7 +3054,7 @@ async fn access_issuance_includes_direct_and_group_authority_and_refresh_rebuild
     {
         let mut state = fixture.repo.0.lock().unwrap();
         state.memberships[0].groups.push(
-            Group::from_parts(
+            Group::new(
                 9,
                 84,
                 "Team".into(),

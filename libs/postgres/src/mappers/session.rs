@@ -79,7 +79,7 @@ impl TryFrom<Vec<sea_orm::QueryResult>> for MappedPolicyMembership {
                 let id = crate::from_bigint(group_id).context("invalid group ID")?;
                 if let std::collections::btree_map::Entry::Vacant(entry) = groups.entry(id) {
                     entry.insert(
-                        Group::from_parts(
+                        Group::new(
                             id,
                             session.organization_id,
                             row.try_get("", "group_name").map_err(anyhow::Error::from)?,

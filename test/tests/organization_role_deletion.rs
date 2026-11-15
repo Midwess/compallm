@@ -92,7 +92,7 @@ async fn role_deletion_blocks_new_group_links_and_invalidates_existing_assignees
         let competing_context = DbContext::new(Arc::new(PostgresConnection::new(competing.clone())));
         let organizations = OrganizationRepository;
         let sessions = SessionRepository;
-        let group = Group::from_parts(21, 1, "Concurrent".into(), String::new(), vec![Role {
+        let group = Group::new(21, 1, "Concurrent".into(), String::new(), vec![Role {
                 id: 10,
                 organization_id: 1,
                 name: "Reports".into(),

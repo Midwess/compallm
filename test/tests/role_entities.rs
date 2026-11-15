@@ -176,7 +176,7 @@ async fn group_roles_keep_provenance_and_inherit_without_copying_to_direct_roles
 
     let mut member = member(2).await;
     member.groups.push(
-        Group::from_parts(
+        Group::new(
             9,
             42,
             "Operations".into(),
@@ -226,7 +226,7 @@ async fn statement_identity_survives_formatting_and_reordering() {
 #[tokio::test]
 async fn empty_groups_remain_inside_the_organization_resource_scope() {
     let member = member(0).await;
-    let group = Group::from_parts(77, 42, "Empty team".into(), String::new(), vec![]).unwrap();
+    let group = Group::new(77, 42, "Empty team".into(), String::new(), vec![]).unwrap();
     let entity = Entity::try_from(&group).unwrap();
     let data = Entities::try_from(&member)
         .unwrap()

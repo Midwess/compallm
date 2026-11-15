@@ -103,7 +103,7 @@ impl Group {
         Ok(())
     }
 
-    pub fn from_parts(
+    pub fn new(
         id: u64,
         organization_id: u64,
         name: String,
@@ -141,7 +141,7 @@ impl Group {
         .validify()
     }
 
-    pub async fn new(
+    pub async fn create(
         organization_id: u64,
         name: impl Into<String>,
         description: impl Into<String>,

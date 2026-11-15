@@ -11,7 +11,7 @@ fn role(id: u64, org: u64, owner: bool) -> Role {
 }
 #[test]
 fn replacing_direct_role_preserves_multiple_groups_and_rejects_foreign_role() {
-    let group = Group::from_parts(
+    let group = Group::new(
         20,
         10,
         "One".into(),
@@ -26,7 +26,7 @@ fn replacing_direct_role_preserves_multiple_groups_and_rejects_foreign_role() {
         groups: vec![group],
     };
     member
-        .assign_group(Group::from_parts(21, 10, "Two".into(), String::new(), vec![]).unwrap())
+        .assign_group(Group::new(21, 10, "Two".into(), String::new(), vec![]).unwrap())
         .unwrap();
     member.assign_role(role(2, 10, false)).unwrap();
     assert_eq!(member.role.id, 2);
@@ -41,11 +41,11 @@ fn replacing_direct_role_preserves_multiple_groups_and_rejects_foreign_role() {
 #[tokio::test]
 async fn owner_is_rejected_by_group_creation_rehydration_and_role_replacement() {
     assert!(matches!(
-        Group::new(10, "Group", "", vec![role(1, 10, true)]).await,
+        Group::create(10, "Group", "", vec![role(1, 10, true)]).await,
         Err(GroupCreationError::OwnerRole)
     ));
     assert!(matches!(
-        Group::from_parts(
+        Group::new(
             20,
             10,
             "Group".into(),
@@ -54,7 +54,7 @@ async fn owner_is_rejected_by_group_creation_rehydration_and_role_replacement() 
         ),
         Err(GroupCreationError::OwnerRole)
     ));
-    let mut group = Group::from_parts(
+    let mut group = Group::new(
         20,
         10,
         "Group".into(),

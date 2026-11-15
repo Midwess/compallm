@@ -192,7 +192,7 @@ impl RbacService {
                 crate::persistent::organization::OrganizationRepositoryError::NotFound.into(),
             );
         }
-        let group = Group::new(organization_id, name, description, assigned).await?;
+        let group = Group::create(organization_id, name, description, assigned).await?;
         for role in group.roles() {
             (&group, role)
                 .for_action(Action::GroupRoleAssign)

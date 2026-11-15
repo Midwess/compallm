@@ -54,7 +54,7 @@ impl From<MappedGroup> for Group {
 impl TryFrom<(OrganizationGroupSchema, Vec<Role>)> for MappedGroup {
     type Error = anyhow::Error;
     fn try_from((row, roles): (OrganizationGroupSchema, Vec<Role>)) -> Result<Self, Self::Error> {
-        let group = Group::from_parts(
+        let group = Group::new(
             from_bigint(row.id)?,
             from_bigint(row.organization_id)?,
             row.name,

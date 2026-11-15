@@ -37,7 +37,7 @@ fn role(id: u64, source: &str) -> Role {
 
 #[test]
 fn direct_and_group_permissions_apply_to_the_members_organization() {
-    let member = OrganizationMember { organization_id: 7, user_id: 11, groups: vec![Group::from_parts(4, 7, String::new(), String::new(), vec![role(
+    let member = OrganizationMember { organization_id: 7, user_id: 11, groups: vec![Group::new(4, 7, String::new(), String::new(), vec![role(
                 2,
                 r#"permit(principal in Compallm::Role::"7:2", action == Compallm::Action::"provider.read", resource == Compallm::Organization::"7");"#,
             )]).unwrap()], role: role(
@@ -73,7 +73,7 @@ fn forbid_and_evaluation_errors_cannot_be_overridden_by_a_permit() {
         organization_id: 7,
         user_id: 11,
         groups: vec![
-            Group::from_parts(4, 7, String::new(), String::new(), vec![role(2, forbid)]).unwrap(),
+            Group::new(4, 7, String::new(), String::new(), vec![role(2, forbid)]).unwrap(),
         ],
         role: role(1, permit),
     };
@@ -107,7 +107,7 @@ fn self_group_assignment_preserves_the_verified_principal() {
         role: owner.clone(),
     };
     let permission = MemberPermission::try_from(access(7, &actor)).unwrap();
-    let group = Group::from_parts(
+    let group = Group::new(
         23,
         7,
         "Owners".into(),
@@ -148,7 +148,7 @@ fn target_membership_cannot_add_authority_to_the_verified_principal() {
         role: role(11, source),
     };
     let permission = MemberPermission::try_from(access(7, &actor)).unwrap();
-    let group = Group::from_parts(23, 7, "Restricted".into(), String::new(), vec![]).unwrap();
+    let group = Group::new(23, 7, "Restricted".into(), String::new(), vec![]).unwrap();
     let target = OrganizationMember {
         organization_id: 7,
         user_id: 1,
@@ -180,7 +180,7 @@ fn contextual_delegation_requires_both_checks_and_combines_forbids() {
         groups: vec![],
         role: grant,
     };
-    let group = Group::from_parts(23, 7, String::new(), String::new(), vec![]).unwrap();
+    let group = Group::new(23, 7, String::new(), String::new(), vec![]).unwrap();
     let target = role(9, "");
     let permission = MemberPermission::try_from(access(7, &member)).unwrap();
     (&group, &target)
@@ -197,7 +197,7 @@ fn contextual_delegation_requires_both_checks_and_combines_forbids() {
     ));
     member
         .groups
-        .push(Group::from_parts(3, 7, String::new(), String::new(), vec![restriction]).unwrap());
+        .push(Group::new(3, 7, String::new(), String::new(), vec![restriction]).unwrap());
     let permission = MemberPermission::try_from(access(7, &member)).unwrap();
     assert!(matches!(
         (&group, &target)

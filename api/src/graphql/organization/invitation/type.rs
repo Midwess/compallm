@@ -58,8 +58,10 @@ pub struct InvitationContext {
     pub expires_at: f64,
     pub signup: bool,
 }
-impl From<compallm_core::authentication::InvitationContext> for InvitationContext {
-    fn from(value: compallm_core::authentication::InvitationContext) -> Self {
+impl From<compallm_core::organization::invitation_service::InvitationContext>
+    for InvitationContext
+{
+    fn from(value: compallm_core::organization::invitation_service::InvitationContext) -> Self {
         Self {
             organization_name: value.organization_name,
             organization_id: juniper::ID::new(value.invitation.organization_id.to_string()),

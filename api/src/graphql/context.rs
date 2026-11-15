@@ -133,3 +133,11 @@ impl FromContext<GraphqlContext>
         <Self as FromContext<Di>>::from(context.di)
     }
 }
+
+impl FromContext<GraphqlContext>
+    for compallm_core::organization::invitation_service::InvitationService
+{
+    fn from(context: &GraphqlContext) -> &Self {
+        juniper::FromContext::from(context.di)
+    }
+}

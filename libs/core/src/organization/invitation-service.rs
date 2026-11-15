@@ -1,6 +1,6 @@
-use super::{
+use crate::authentication::{
     AuthError, AuthService, EmailOtpAccessToken, UserTokens,
-    token::{AccessToken, EncryptedAccessToken, InvitationToken, TokenValidity},
+    token::{AccessToken, InvitationToken, TokenValidity},
 };
 use crate::{
     authorization::{MemberPermission, condition::CheckPermission, policy::Action},
@@ -8,7 +8,10 @@ use crate::{
         OrganizationMember,
         invitation::{Invitation, InvitationStatus},
     },
-    persistent::{db_context, invitation::InvitationRepository},
+    persistent::{
+        db_context, invitation::InvitationRepository, organization::OrganizationRepository,
+        user::UserRepository,
+    },
     user::UserStatus,
 };
 use compallm_utils::time::unix_timestamp;
@@ -25,14 +28,35 @@ pub struct InvitationContext {
     pub signup: bool,
 }
 
-impl AuthService {
-    fn invitations(&self) -> Result<&dyn InvitationRepository, AuthError> {
-        self.invitations.ok_or(AuthError::InvalidConfiguration)
-    }
+pub struct InvitationService {
+    invitations: &'static dyn InvitationRepository,
+    organizations: &'static Box<dyn OrganizationRepository>,
+    users: &'static Box<dyn UserRepository>,
+    registration: &'static crate::user::RegistrationService,
+    preferences: &'static crate::preference::UserPreferenceService,
+    email: Option<&'static Box<dyn crate::mail::EmailService>>,
+    auth: &'static AuthService,
+}
 
-    pub fn with_invitations(mut self, repository: &'static dyn InvitationRepository) -> Self {
-        self.invitations = Some(repository);
-        self
+impl InvitationService {
+    pub fn new(
+        invitations: &'static dyn InvitationRepository,
+        organizations: &'static Box<dyn OrganizationRepository>,
+        users: &'static Box<dyn UserRepository>,
+        registration: &'static crate::user::RegistrationService,
+        preferences: &'static crate::preference::UserPreferenceService,
+        email: Option<&'static Box<dyn crate::mail::EmailService>>,
+        auth: &'static AuthService,
+    ) -> Self {
+        Self {
+            invitations,
+            organizations,
+            users,
+            registration,
+            preferences,
+            email,
+            auth,
+        }
     }
 
     #[db_context::root]
@@ -41,7 +65,7 @@ impl AuthService {
         claims: &InvitationToken,
     ) -> Result<InvitationContext, AuthError> {
         let invitation = self
-            .invitations()?
+            .invitations
             .find(claims.organization_id, claims.invitation_id, false)
             .await?
             .ok_or(AuthError::InvalidInvitation)?;
@@ -96,7 +120,7 @@ impl AuthService {
         permission: &MemberPermission,
         emails: Vec<String>,
     ) -> Result<Vec<IssuedInvitation>, AuthError> {
-        self.latest_dictionary().await?;
+        self.auth.latest_dictionary().await?;
         crate::transaction!(db, {
             let mut issued = Vec::with_capacity(emails.len());
             for email in emails {
@@ -134,7 +158,7 @@ impl AuthService {
         email: String,
         resend: Option<u64>,
     ) -> Result<IssuedInvitation, AuthError> {
-        let repository = self.invitations()?;
+        let repository = self.invitations;
         repository.member_role(organization_id).await?;
         let validity = TokenValidity::new(Duration::from_secs(InvitationToken::TTL_SECONDS))?;
         let invitation_id = hero::distributed_id::try_gen_id().await?;
@@ -144,15 +168,13 @@ impl AuthService {
             email: email.clone(),
             validity,
         };
-        let token = AccessToken::Invitation(claims.clone())
-            .encrypt(&EncryptedAccessToken::new(&self.jwt_secret)?)
-            .await?
-            .compress(self.latest_dictionary().await?)
-            .await?
-            .encode(
-                &self.jwt_secret,
+        let token = self
+            .auth
+            .encrypt_token(
+                AccessToken::Invitation(claims.clone()),
                 Duration::from_secs(InvitationToken::TTL_SECONDS),
-            )?;
+            )
+            .await?;
         let invitation = crate::transaction!(db, {
             repository.lock_organization(organization_id).await?;
             if let Some(previous) = resend {
@@ -233,7 +255,7 @@ impl AuthService {
         id: u64,
     ) -> Result<IssuedInvitation, AuthError> {
         let old = self
-            .invitations()?
+            .invitations
             .find(organization_id, id, false)
             .await?
             .ok_or(AuthError::InvalidInvitation)?;
@@ -294,10 +316,8 @@ impl AuthService {
         id: u64,
     ) -> Result<Invitation, AuthError> {
         crate::transaction!(db, {
-            self.invitations()?
-                .lock_organization(organization_id)
-                .await?;
-            self.invitations()?
+            self.invitations.lock_organization(organization_id).await?;
+            self.invitations
                 .revoke(organization_id, id, unix_timestamp())
                 .await
         })
@@ -309,15 +329,16 @@ impl AuthService {
         invitation: &InvitationToken,
         email: &str,
         signup: bool,
-    ) -> Result<super::IssuedEmailOtp, AuthError> {
+    ) -> Result<crate::authentication::IssuedEmailOtp, AuthError> {
         let context = self.invitation_context(invitation).await?;
         if compallm_utils::email::normalize_email(email) != invitation.email
             || signup != context.signup
         {
             return Err(AuthError::InvalidInvitation);
         }
-        self.send_email_otp_for_invitation(email, Some(invitation.invitation_id))
-            .await
+        let mut claims = EmailOtpAccessToken::new(invitation.email.clone())?;
+        claims.invitation_id = Some(invitation.invitation_id);
+        self.auth.issue_email_otp(claims).await
     }
 
     #[db_context::root]
@@ -336,8 +357,8 @@ impl AuthService {
         if context.signup != signup {
             return Err(AuthError::InvalidInvitation);
         }
-        let dictionary = self.latest_dictionary().await?;
-        let repository = self.invitations()?;
+        let dictionary = self.auth.latest_dictionary().await?;
+        let repository = self.invitations;
         crate::transaction!(db, {
             repository
                 .lock_organization(invitation.organization_id)
@@ -400,7 +421,9 @@ impl AuthService {
                     unix_timestamp(),
                 )
                 .await?;
-            self.start_session(user.id, membership, dictionary).await
+            self.auth
+                .start_session(user.id, membership, dictionary)
+                .await
         })
     }
 }

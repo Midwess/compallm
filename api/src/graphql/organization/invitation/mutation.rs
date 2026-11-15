@@ -4,14 +4,14 @@ use crate::{
     http::{authentication::CookieDelivery, authorization::AuthorizationContext},
 };
 use compallm_core::{
-    authentication::AuthService,
     authorization::{condition::CheckPermission, error::AuthorizationError, policy::Action},
+    organization::invitation_service::InvitationService,
 };
 use validify::Validify;
 
 pub async fn create(
     mut input: InvitationCreateInput,
-    auth: &AuthService,
+    service: &InvitationService,
     authority: &AuthorizationContext,
     cookies: &CookieDelivery,
 ) -> Result<Payload<InvitationIssued>, Error> {
@@ -19,11 +19,11 @@ pub async fn create(
     cookies.validate_origin()?;
     cookies.invitation_url("")?;
     let permission = authority.member_permission().await?;
-    let mut issued = auth
+    let mut issued = service
         .invitation_create(&permission, &input.email, None)
         .await?;
     let url = cookies.invitation_url(&issued.token)?;
-    let _ = auth.invitation_send(&mut issued, &url).await;
+    let _ = service.invitation_send(&mut issued, &url).await;
     Ok(InvitationIssued {
         invitation: issued.invitation.into(),
         url,
@@ -33,7 +33,7 @@ pub async fn create(
 }
 pub async fn resend(
     id: juniper::ID,
-    auth: &AuthService,
+    service: &InvitationService,
     authority: &AuthorizationContext,
     cookies: &CookieDelivery,
 ) -> Result<Payload<InvitationIssued>, Error> {
@@ -44,9 +44,9 @@ pub async fn resend(
         .check_permission(&permission)
         .map_err(AuthorizationError::from)?;
     let id = id.parse().map_err(|_| Error::invalid_input())?;
-    let mut issued = auth.invitation_resend(&permission, id).await?;
+    let mut issued = service.invitation_resend(&permission, id).await?;
     let url = cookies.invitation_url(&issued.token)?;
-    let _ = auth.invitation_send(&mut issued, &url).await;
+    let _ = service.invitation_send(&mut issued, &url).await;
     Ok(InvitationIssued {
         invitation: issued.invitation.into(),
         url,
@@ -56,11 +56,11 @@ pub async fn resend(
 }
 pub async fn revoke(
     id: juniper::ID,
-    auth: &AuthService,
+    service: &InvitationService,
     authority: &AuthorizationContext,
 ) -> Result<Payload<Invitation>, Error> {
     let permission = authority.member_permission().await?;
-    let invitation = auth
+    let invitation = service
         .invitation_revoke(&permission, id.parse().map_err(|_| Error::invalid_input())?)
         .await?;
     Ok(Invitation::from(invitation).into())
@@ -68,7 +68,7 @@ pub async fn revoke(
 
 pub async fn create_many(
     mut input: super::input::InvitationBatchCreateInput,
-    auth: &AuthService,
+    service: &InvitationService,
     authority: &AuthorizationContext,
     cookies: &CookieDelivery,
 ) -> Result<crate::graphql::base_type::Collection<InvitationIssued>, Error> {
@@ -81,11 +81,11 @@ pub async fn create_many(
         .into_iter()
         .map(|input| input.email)
         .collect();
-    let issued = auth.invitations_create(&permission, &emails).await?;
+    let issued = service.invitations_create(&permission, &emails).await?;
     let mut nodes = Vec::with_capacity(issued.len());
     for mut issued in issued {
         let url = cookies.invitation_url(&issued.token)?;
-        let _ = auth.invitation_send(&mut issued, &url).await;
+        let _ = service.invitation_send(&mut issued, &url).await;
         nodes.push(InvitationIssued {
             invitation: issued.invitation.into(),
             url,

@@ -68,6 +68,7 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     )));
     di.initialize_services()?;
     let auth = di.auth_service();
+    let invitations = di.invitation_service();
     let owner = root
         .scope(OrganizationRepository.find_membership(ORG, OWNER))
         .await?
@@ -76,23 +77,26 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     let permission = member_permission(&owner);
     let suffix = compallm_utils::time::unix_timestamp();
     let email = format!("new-{suffix}@example.com");
-    let mut issued = auth
+    let mut issued = invitations
         .invitation_create(&permission, &format!("  {}  ", email.to_uppercase()), None)
         .await?;
     assert_eq!(issued.invitation.email, email);
-    auth.invitation_send(
-        &mut issued,
-        "http://localhost/api/invitations/open?token=copyable",
-    )
-    .await?;
+    invitations
+        .invitation_send(
+            &mut issued,
+            "http://localhost/api/invitations/open?token=copyable",
+        )
+        .await?;
     assert!(!issued.email_admitted);
     assert!(matches!(
-        auth.invitation_create(&permission, &email, None).await,
+        invitations
+            .invitation_create(&permission, &email, None)
+            .await,
         Err(AuthError::InvitationConflict)
     ));
     let claims = InvitationToken::try_from(auth.authenticate_token(&issued.token).await?)?;
     assert!(auth.authenticate_access(&issued.token).await.is_err());
-    assert!(auth.invitation_context(&claims).await?.signup);
+    assert!(invitations.invitation_context(&claims).await?.signup);
     let mut tampered = issued.token.clone().into_bytes();
     tampered[20] ^= 1;
     assert!(
@@ -101,13 +105,15 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
             .is_err()
     );
     assert!(
-        auth.invitation_email(&claims, "wrong@example.com", true)
+        invitations
+            .invitation_email(&claims, "wrong@example.com", true)
             .await
             .is_err()
     );
     let challenge = otp(&claims);
     assert!(matches!(
-        auth.invitation_confirm(&claims, &challenge, "wrong", true)
+        invitations
+            .invitation_confirm(&claims, &challenge, "wrong", true)
             .await,
         Err(AuthError::IncorrectCode)
     ));
@@ -115,8 +121,8 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     type Orgs = <compallm_postgres::OrganizationSchema as ModelTrait>::Entity;
     let org_count = Orgs::find().count(pool.as_ref()).await?;
     let (a, b) = tokio::join!(
-        auth.invitation_confirm(&claims, &challenge, &challenge.code, true),
-        auth.invitation_confirm(&claims, &challenge, &challenge.code, true)
+        invitations.invitation_confirm(&claims, &challenge, &challenge.code, true),
+        invitations.invitation_confirm(&claims, &challenge, &challenge.code, true)
     );
     assert_eq!(usize::from(a.is_ok()) + usize::from(b.is_ok()), 1);
     let tokens = a.or(b)?;
@@ -167,7 +173,7 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         .await?
         .is_some()
     );
-    assert!(auth.invitation_context(&claims).await.is_err());
+    assert!(invitations.invitation_context(&claims).await.is_err());
     let accepted = root
         .scope(InvitationRepository.find(ORG, claims.invitation_id, false))
         .await?
@@ -185,7 +191,7 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         .await?
         .unwrap()
         .0;
-    let existing = auth
+    let existing = invitations
         .invitation_create(
             &member_permission(&other_membership),
             "owner@compallm.com",
@@ -195,7 +201,7 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     let existing_claims =
         InvitationToken::try_from(auth.authenticate_token(&existing.token).await?)?;
     let existing_otp = otp(&existing_claims);
-    let tokens = auth
+    let tokens = invitations
         .invitation_confirm(&existing_claims, &existing_otp, &existing_otp.code, false)
         .await?;
     assert_eq!(
@@ -212,21 +218,22 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         .0;
     assert_eq!(after.role, owner.role);
 
-    let rotate = auth
+    let rotate = invitations
         .invitation_create(&permission, &format!("rotate-{suffix}@example.com"), None)
         .await?;
     let old = InvitationToken::try_from(auth.authenticate_token(&rotate.token).await?)?;
-    let fresh = auth
+    let fresh = invitations
         .invitation_resend(&permission, old.invitation_id)
         .await?;
     assert_ne!(fresh.invitation.id, old.invitation_id);
-    assert!(auth.invitation_context(&old).await.is_err());
+    assert!(invitations.invitation_context(&old).await.is_err());
     let fresh_claims = InvitationToken::try_from(auth.authenticate_token(&fresh.token).await?)?;
-    auth.invitation_revoke(&permission, fresh.invitation.id)
+    invitations
+        .invitation_revoke(&permission, fresh.invitation.id)
         .await?;
-    assert!(auth.invitation_context(&fresh_claims).await.is_err());
+    assert!(invitations.invitation_context(&fresh_claims).await.is_err());
 
-    let preserved = auth
+    let preserved = invitations
         .invitation_create(&permission, &format!("preserve-{suffix}@example.com"), None)
         .await?;
     let preserved_claims =
@@ -242,13 +249,14 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     root.scope(OrganizationRepository.add_member(with_grants.clone()))
         .await?;
     let preserved_otp = otp(&preserved_claims);
-    auth.invitation_confirm(
-        &preserved_claims,
-        &preserved_otp,
-        &preserved_otp.code,
-        false,
-    )
-    .await?;
+    invitations
+        .invitation_confirm(
+            &preserved_claims,
+            &preserved_otp,
+            &preserved_otp.code,
+            false,
+        )
+        .await?;
     assert_eq!(
         root.scope(OrganizationRepository.find_membership(ORG, preserved_user.id))
             .await?
@@ -258,7 +266,7 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         with_grants.role
     );
 
-    let lost_permission = auth
+    let lost_permission = invitations
         .invitation_create(&permission, &format!("lost-{suffix}@example.com"), None)
         .await?;
     let lost_claims =
@@ -276,7 +284,8 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         .exec(pool.as_ref())
         .await?;
     let lost_otp = otp(&lost_claims);
-    auth.invitation_confirm(&lost_claims, &lost_otp, &lost_otp.code, true)
+    invitations
+        .invitation_confirm(&lost_claims, &lost_otp, &lost_otp.code, true)
         .await?;
     let current_owner = root
         .scope(OrganizationRepository.find_membership(ORG, OWNER))
@@ -286,7 +295,7 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     root.scope(OrganizationRepository.save_member(&owner, &current_owner))
         .await?;
 
-    let expired = auth
+    let expired = invitations
         .invitation_create(&permission, &format!("expired-{suffix}@example.com"), None)
         .await?;
     let mut expired_claims =
@@ -295,17 +304,18 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     expired_claims.validity.issued_at =
         expired_claims.validity.expires_at - InvitationToken::TTL_SECONDS;
     assert!(matches!(
-        auth.invitation_context(&expired_claims).await,
+        invitations.invitation_context(&expired_claims).await,
         Err(AuthError::ExpiredToken)
     ));
     let expired_otp = otp(&expired_claims);
     assert!(
-        auth.invitation_confirm(&expired_claims, &expired_otp, &expired_otp.code, true)
+        invitations
+            .invitation_confirm(&expired_claims, &expired_otp, &expired_otp.code, true)
             .await
             .is_err()
     );
 
-    let disabled = auth
+    let disabled = invitations
         .invitation_create(&permission, &format!("disabled-{suffix}@example.com"), None)
         .await?;
     let disabled_claims =
@@ -327,17 +337,18 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         .exec(pool.as_ref())
         .await?;
     assert!(matches!(
-        auth.invitation_context(&disabled_claims).await,
+        invitations.invitation_context(&disabled_claims).await,
         Err(AuthError::UserDisabled)
     ));
     let disabled_otp = otp(&disabled_claims);
     assert!(
-        auth.invitation_confirm(&disabled_claims, &disabled_otp, &disabled_otp.code, false)
+        invitations
+            .invitation_confirm(&disabled_claims, &disabled_otp, &disabled_otp.code, false)
             .await
             .is_err()
     );
 
-    let disabled_org = auth
+    let disabled_org = invitations
         .invitation_create(
             &member_permission(&other_membership),
             &format!("disabled-org-{suffix}@example.com"),
@@ -355,17 +366,23 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         .filter(OrgColumn::Id.eq(other.id as i64))
         .exec(pool.as_ref())
         .await?;
-    assert!(auth.invitation_context(&disabled_org_claims).await.is_err());
+    assert!(
+        invitations
+            .invitation_context(&disabled_org_claims)
+            .await
+            .is_err()
+    );
     let disabled_org_otp = otp(&disabled_org_claims);
     assert!(
-        auth.invitation_confirm(
-            &disabled_org_claims,
-            &disabled_org_otp,
-            &disabled_org_otp.code,
-            true
-        )
-        .await
-        .is_err()
+        invitations
+            .invitation_confirm(
+                &disabled_org_claims,
+                &disabled_org_otp,
+                &disabled_org_otp.code,
+                true
+            )
+            .await
+            .is_err()
     );
     Orgs::update_many()
         .col_expr(
@@ -386,18 +403,19 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         format!("batch-a-{suffix}@example.com"),
         format!("batch-b-{suffix}@example.com"),
     ];
-    let batch = auth
+    let batch = invitations
         .invitations_create(&member_permission(&owner), &batch_emails)
         .await?;
     assert_eq!(batch.len(), 2);
     let rollback_email = format!("batch-rollback-{suffix}@example.com");
     assert!(
-        auth.invitations_create(
-            &member_permission(&owner),
-            &[rollback_email.clone(), "owner@compallm.com".into()]
-        )
-        .await
-        .is_err()
+        invitations
+            .invitations_create(
+                &member_permission(&owner),
+                &[rollback_email.clone(), "owner@compallm.com".into()]
+            )
+            .await
+            .is_err()
     );
     assert!(
         !root
@@ -437,7 +455,8 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     );
     let denied = member_permission(&membership);
     assert!(
-        auth.invitation_create(&denied, "denied@example.com", None)
+        invitations
+            .invitation_create(&denied, "denied@example.com", None)
             .await
             .is_err()
     );
@@ -597,7 +616,10 @@ async fn verify_browser_flow(
 ) -> anyhow::Result<()> {
     use tower::ServiceExt;
     let auth = di.auth_service();
-    let issued = auth.invitation_create(permission, email, None).await?;
+    let invitations = di.invitation_service();
+    let issued = invitations
+        .invitation_create(permission, email, None)
+        .await?;
     let router = browser_router(di);
     let response = router
         .clone()

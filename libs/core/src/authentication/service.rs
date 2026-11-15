@@ -25,17 +25,15 @@ pub struct TokenLifetimes {
 }
 
 pub struct AuthService {
-    pub(super) users: &'static Box<dyn UserRepository>,
-    pub(super) organizations: &'static Box<dyn OrganizationRepository>,
+    users: &'static Box<dyn UserRepository>,
+    organizations: &'static Box<dyn OrganizationRepository>,
     sessions: &'static Box<dyn SessionRepository>,
     dictionaries: &'static Box<dyn DictionaryRepository>,
-    pub(super) registration: &'static RegistrationService,
-    pub(super) preferences: &'static crate::preference::UserPreferenceService,
-    pub(super) invitations:
-        Option<&'static dyn crate::persistent::invitation::InvitationRepository>,
-    pub(super) jwt_secret: String,
+    registration: &'static RegistrationService,
+    preferences: &'static crate::preference::UserPreferenceService,
+    jwt_secret: String,
     lifetimes: TokenLifetimes,
-    pub(super) email: Option<&'static Box<dyn EmailService>>,
+    email: Option<&'static Box<dyn EmailService>>,
 }
 
 impl AuthService {
@@ -105,7 +103,6 @@ impl AuthService {
     ) -> Result<Self, AuthError> {
         EncryptedAccessToken::new(&jwt_secret)?;
         Ok(Self {
-            invitations: None,
             users,
             organizations,
             sessions,
@@ -145,30 +142,41 @@ impl AuthService {
     }
 
     async fn send_email_otp(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
-        self.send_email_otp_for_invitation(email, None).await
+        self.issue_email_otp(EmailOtpAccessToken::new(
+            compallm_utils::email::normalize_email(email),
+        )?)
+        .await
     }
 
-    pub(super) async fn send_email_otp_for_invitation(
+    pub(crate) async fn encrypt_token(
         &self,
-        email: &str,
-        invitation_id: Option<u64>,
-    ) -> Result<IssuedEmailOtp, AuthError> {
-        let mut claims = EmailOtpAccessToken::new(compallm_utils::email::normalize_email(email))?;
-        claims.invitation_id = invitation_id;
-        let dictionary = self.latest_dictionary().await?;
-        let encrypted = AccessToken::EmailOtp(claims.clone())
+        token: AccessToken,
+        lifetime: Duration,
+    ) -> Result<String, AuthError> {
+        token
             .encrypt(&EncryptedAccessToken::new(&self.jwt_secret)?)
+            .await?
+            .compress(self.latest_dictionary().await?)
+            .await?
+            .encode(&self.jwt_secret, lifetime)
+    }
+
+    pub(crate) async fn issue_email_otp(
+        &self,
+        claims: EmailOtpAccessToken,
+    ) -> Result<IssuedEmailOtp, AuthError> {
+        let token = self
+            .encrypt_token(
+                AccessToken::EmailOtp(claims.clone()),
+                Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),
+            )
             .await?;
-        let token = encrypted.compress(dictionary).await?.encode(
-            &self.jwt_secret,
-            Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),
-        )?;
         let sender = self.email.as_ref().ok_or(EmailError::Unavailable)?;
         #[cfg(debug_assertions)]
         let debug_code = claims.code.clone();
         sender
             .send(EmailRequest {
-                to: compallm_utils::email::normalize_email(email),
+                to: compallm_utils::email::normalize_email(&claims.email),
                 subject: "Your Compallm verification code".into(),
                 text: EmailTemplate::OtpCode(OtpCode::new(
                     claims.code,
@@ -315,7 +323,7 @@ impl AuthService {
         Ok(tokens)
     }
 
-    pub(super) async fn start_session(
+    pub(crate) async fn start_session(
         &self,
         user_id: u64,
         membership: OrganizationMember,
@@ -330,7 +338,7 @@ impl AuthService {
         Ok(tokens)
     }
 
-    pub(super) async fn latest_dictionary(&self) -> Result<&DCompression, AuthError> {
+    pub(crate) async fn latest_dictionary(&self) -> Result<&DCompression, AuthError> {
         self.dictionaries
             .latest(DictionaryType::AccessToken)
             .await

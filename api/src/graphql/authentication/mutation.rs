@@ -6,13 +6,16 @@ use crate::{
     graphql::{base_type::Payload, error::Error},
     http::authentication::{AuthenticationContext, CookieDelivery, UserContext},
 };
-use compallm_core::authentication::AuthService;
+use compallm_core::{
+    authentication::AuthService, organization::invitation_service::InvitationService,
+};
 use validify::Validify;
 
 /// Request signup email admission. Reject existing accounts before sending or issuing a challenge.
 pub(crate) async fn signup_email_request(
     input: EmailInput,
     auth: &AuthService,
+    invitations: &InvitationService,
     identity: &AuthenticationContext,
     cookies: &CookieDelivery,
 ) -> Result<Payload<EmailChallenge>, Error> {
@@ -29,7 +32,7 @@ pub(crate) async fn signup_email_request(
                     return Err(Error::invalid_input());
                 }
                 identity
-                    .execute(auth.invitation_email(&invitation, &input.email, true))
+                    .execute(invitations.invitation_email(&invitation, &input.email, true))
                     .await?
             }
             None => identity.execute(auth.signup_email(&input.email)).await?,
@@ -45,6 +48,7 @@ pub(crate) async fn signup_email_request(
 pub(crate) async fn signin_email_request(
     input: EmailInput,
     auth: &AuthService,
+    invitations: &InvitationService,
     identity: &AuthenticationContext,
     cookies: &CookieDelivery,
 ) -> Result<Payload<EmailChallenge>, Error> {
@@ -61,7 +65,7 @@ pub(crate) async fn signin_email_request(
                     return Err(Error::invalid_input());
                 }
                 identity
-                    .execute(auth.invitation_email(&invitation, &input.email, false))
+                    .execute(invitations.invitation_email(&invitation, &input.email, false))
                     .await?
             }
             None => identity.execute(auth.signin_email(&input.email)).await?,
@@ -77,6 +81,7 @@ pub(crate) async fn signin_email_request(
 pub(crate) async fn signup_email_confirm(
     input: EmailCodeInput,
     auth: &AuthService,
+    invitations: &InvitationService,
     identity: &AuthenticationContext,
     cookies: &CookieDelivery,
 ) -> Result<Payload<SessionCredentials>, Error> {
@@ -93,7 +98,7 @@ pub(crate) async fn signup_email_confirm(
                     return Err(Error::invalid_input());
                 }
                 identity
-                    .execute(auth.invitation_confirm(
+                    .execute(invitations.invitation_confirm(
                         &invitation,
                         identity.otp().await?,
                         &input.code,
@@ -118,6 +123,7 @@ pub(crate) async fn signup_email_confirm(
 pub(crate) async fn signin_email_confirm(
     mut input: EmailCodeInput,
     auth: &AuthService,
+    invitations: &InvitationService,
     identity: &AuthenticationContext,
     cookies: &CookieDelivery,
 ) -> Result<Payload<SessionCredentials>, Error> {
@@ -133,7 +139,7 @@ pub(crate) async fn signin_email_confirm(
                     return Err(Error::invalid_input());
                 }
                 identity
-                    .execute(auth.invitation_confirm(
+                    .execute(invitations.invitation_confirm(
                         &invitation,
                         identity.otp().await?,
                         &input.code,

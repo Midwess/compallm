@@ -20,3 +20,6 @@ pub use role::Role;
 
 #[path = "profile-service.rs"]
 pub mod profile_service;
+
+#[path = "invitation-service.rs"]
+pub mod invitation_service;

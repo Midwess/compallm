@@ -89,6 +89,8 @@ pub struct Di {
     authentication: OnceLock<AuthenticationMiddleware>,
     // Filled after Di reaches its permanent address so services can borrow it.
     auth: OnceLock<Box<AuthService>>,
+    invitation_service:
+        OnceLock<Box<compallm_core::organization::invitation_service::InvitationService>>,
     registration: OnceLock<Box<RegistrationService>>,
     organization_creation: OnceLock<Box<CreationService>>,
     organization_config: OnceLock<Box<ConfigService>>,
@@ -172,6 +174,7 @@ impl Di {
             graphql: OnceLock::new(),
             authentication: OnceLock::new(),
             auth: OnceLock::new(),
+            invitation_service: OnceLock::new(),
             registration: OnceLock::new(),
             organization_creation: OnceLock::new(),
             organization_config: OnceLock::new(),
@@ -195,30 +198,29 @@ impl Di {
         self.organization_config_service();
         if self.auth.get().is_some() {
             self.rbac_service();
+            self.initialize_invitations();
             self.initialize_http()?;
             return Ok(());
         }
-        let service = Box::new(
-            AuthService::new(
-                self.user_repository(),
-                self.organization_repository(),
-                self.session_repository(),
-                &self.dictionaries,
-                self.registration_service(),
-                self.user_preference_service(),
-                self.settings.jwt_secret.clone(),
-                TokenLifetimes {
-                    user: Duration::from_secs(self.settings.user_token_ttl_seconds),
-                    refresh: Duration::from_secs(self.settings.refresh_token_ttl_seconds),
-                },
-                self.email_service(),
-            )?
-            .with_invitations(self.invitations.as_ref()),
-        );
+        let service = Box::new(AuthService::new(
+            self.user_repository(),
+            self.organization_repository(),
+            self.session_repository(),
+            &self.dictionaries,
+            self.registration_service(),
+            self.user_preference_service(),
+            self.settings.jwt_secret.clone(),
+            TokenLifetimes {
+                user: Duration::from_secs(self.settings.user_token_ttl_seconds),
+                refresh: Duration::from_secs(self.settings.refresh_token_ttl_seconds),
+            },
+            self.email_service(),
+        )?);
         // Concurrent initialization may build a second candidate, but only one
         // box is retained; all callers subsequently borrow that same service.
         let _ = self.auth.set(service);
         self.rbac_service();
+        self.initialize_invitations();
         self.initialize_http()?;
         Ok(())
     }
@@ -253,6 +255,30 @@ impl Di {
         self.graphql
             .get()
             .expect("GraphQL schema must be initialized")
+    }
+
+    fn initialize_invitations(&'static self) {
+        self.invitation_service.get_or_init(|| {
+            Box::new(
+                compallm_core::organization::invitation_service::InvitationService::new(
+                    self.invitations.as_ref(),
+                    self.organization_repository(),
+                    self.user_repository(),
+                    self.registration_service(),
+                    self.user_preference_service(),
+                    self.email_service(),
+                    self.auth_service(),
+                ),
+            )
+        });
+    }
+
+    pub fn invitation_service(
+        &self,
+    ) -> &compallm_core::organization::invitation_service::InvitationService {
+        self.invitation_service
+            .get()
+            .expect("invitation service initialized")
     }
 
     pub fn invitation_settings(&self) -> AuthenticationSettings {
@@ -490,5 +516,13 @@ impl juniper::FromContext<Di>
 {
     fn from(di: &Di) -> &Self {
         &di.invitations
+    }
+}
+
+impl juniper::FromContext<Di>
+    for compallm_core::organization::invitation_service::InvitationService
+{
+    fn from(di: &Di) -> &Self {
+        di.invitation_service()
     }
 }

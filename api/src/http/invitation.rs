@@ -22,7 +22,7 @@ pub async fn open(
     let result = async {
         let claims =
             InvitationToken::try_from(di.auth_service().authenticate_token(&query.token).await?)?;
-        di.auth_service().invitation_context(&claims).await?;
+        di.invitation_service().invitation_context(&claims).await?;
         let headers = di.invitation_settings().invitation_headers(
             query.token,
             claims

@@ -7,8 +7,8 @@ use crate::{
     http::{authentication::AuthenticationContext, authorization::AuthorizationContext},
 };
 use compallm_core::{
-    authentication::AuthService,
     authorization::{condition::CheckPermission, error::AuthorizationError, policy::Action},
+    organization::invitation_service::InvitationService,
     persistent::invitation::InvitationRepository,
 };
 
@@ -49,12 +49,17 @@ pub async fn list(
     .into())
 }
 pub async fn context(
-    auth: &AuthService,
+    service: &InvitationService,
     identity: &AuthenticationContext,
 ) -> Result<Payload<InvitationContext>, Error> {
     let claims = identity
         .invitation()
         .await?
         .ok_or(compallm_core::authentication::AuthError::InvalidInvitation)?;
-    Ok(InvitationContext::from(identity.execute(auth.invitation_context(&claims)).await?).into())
+    Ok(InvitationContext::from(
+        identity
+            .execute(service.invitation_context(&claims))
+            .await?,
+    )
+    .into())
 }

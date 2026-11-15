@@ -13,7 +13,7 @@
   },
   {
     "value": "reader@localhost",
-    "valid": true
+    "valid": false
   },
   {
     "value": "Name <Reader@example.com>",
@@ -37,15 +37,15 @@
   },
   {
     "value": "reader@[127.0.0.1]",
-    "valid": true
+    "valid": false
   },
   {
     "value": "reader@[IPv6:2001:db8::1]",
-    "valid": true
+    "valid": false
   },
   {
     "value": "reader@[]",
-    "valid": true
+    "valid": false
   },
   {
     "value": "user+mailbox/department=shipping@example.com",
@@ -61,7 +61,7 @@
   },
   {
     "value": "reader@a_b",
-    "valid": true
+    "valid": false
   },
   {
     "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com",

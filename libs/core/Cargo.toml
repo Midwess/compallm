@@ -29,7 +29,7 @@ chacha20poly1305 = { workspace = true, features = ["std"] }
 compallm-utils.workspace = true
 hero = { workspace = true, features = ["distributed-id"] }
 hkdf = { workspace = true, features = ["std"] }
-maud.workspace = true
+minijinja.workspace = true
 rand = { workspace = true, features = ["std", "thread_rng"] }
 rust_decimal = { workspace = true, features = ["std", "serde-with-str"] }
 serde = { workspace = true, features = ["std", "derive"] }

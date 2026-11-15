@@ -5,9 +5,16 @@ pub fn normalize_email(email: &str) -> String {
 }
 
 pub fn validate_email(value: &str) -> Result<(), validify::ValidationError> {
-    email_address::EmailAddress::is_valid(value)
+    email_address::EmailAddress::parse_with_options(value, email_options())
+        .is_ok()
         .then_some(())
         .ok_or_else(|| validify::ValidationError::new_field("email"))
+}
+
+fn email_options() -> email_address::Options {
+    email_address::Options::default()
+        .with_required_tld()
+        .without_domain_literal()
 }
 
 /// Describe the existing parser for the explicit browser adapter. Character
@@ -56,6 +63,8 @@ pub fn validate_email_contract() -> serde_json::Value {
             .last()
             .unwrap();
         serde_json::json!({
+            "minimumDomainSegments": email_options().minimum_sub_domains,
+            "allowDomainLiteral": email_options().allow_domain_literal,
             "localMaxBytes": local_limit,
             "labelMaxBytes": label_limit,
             "domainMaxBytes": domain_limit,

@@ -1,4 +1,6 @@
 export interface EmailPolicy {
+  minimumDomainSegments: number
+  allowDomainLiteral: boolean
   localMaxBytes: number
   labelMaxBytes: number
   domainMaxBytes: number
@@ -11,7 +13,7 @@ export interface EmailPolicy {
 const bytes = new TextEncoder()
 const policies = new WeakMap<EmailPolicy, Record<'atom' | 'quoted' | 'literal' | 'edge', RegExp>>()
 
-// Explicit adapter for the Rust email_address default parser. Its character
+// Explicit adapter for the configured Rust email_address parser. Its character
 // classes and UTF-8 byte limits are exported from the Rust dependency itself.
 export function emailAddress(value: string, policy: EmailPolicy): boolean {
   let patterns = policies.get(policy)
@@ -54,10 +56,13 @@ export function emailAddress(value: string, policy: EmailPolicy): boolean {
     }
   } else if (!local.split('.').every((part) => patterns.atom.test(part))) return false
   if (domain.startsWith('[') && domain.endsWith(']')) {
+    if (!policy.allowDomainLiteral) return false
     const literal = domain.slice(1, -1)
     return literal === '' || patterns.literal.test(literal)
   }
-  return domain.split('.').every((label) => {
+  const labels = domain.split('.')
+  if (labels.length < policy.minimumDomainSegments) return false
+  return labels.every((label) => {
     const characters = [...label]
     return (
       bytes.encode(label).length <= policy.labelMaxBytes &&

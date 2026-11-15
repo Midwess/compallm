@@ -402,3 +402,67 @@ async fn constructor_settings_control_concurrency_and_queue_capacity() {
     service.shutdown().await;
     smtp.stop().await;
 }
+
+#[tokio::test]
+async fn invitation_delivery_does_not_throttle_the_first_otp_or_reset_its_cooldown() {
+    for hold in [true, false] {
+        let mut smtp = Smtp::start(hold, false).await;
+        let service = smtp.service();
+        let invitation = || EmailRequest {
+            to: " Reader@Example.com ".into(),
+            subject: "Invitation".into(),
+            text: EmailTemplate::Invitation(
+                compallm_core::mail::template::invitation::InvitationEmail {
+                    organization: "Team".into(),
+                    inviter: "owner@example.com".into(),
+                    recipient: "reader@example.com".into(),
+                    url: "https://example.com/api/invitations/open?token=test".into(),
+                },
+            ),
+        };
+        service.send(invitation()).await.unwrap();
+        Smtp::wait(|| smtp.started.load(Ordering::SeqCst) == 1).await;
+        if !hold {
+            Smtp::wait(|| service.status().sent == 1).await;
+        }
+        service
+            .send(Smtp::request("reader@example.com"))
+            .await
+            .unwrap();
+        Smtp::wait(|| smtp.started.load(Ordering::SeqCst) == 2).await;
+        assert!(matches!(
+            service.send(invitation()).await,
+            Err(EmailError::Throttled)
+        ));
+        assert!(matches!(
+            service.send(Smtp::request("READER@EXAMPLE.COM")).await,
+            Err(EmailError::Throttled)
+        ));
+        smtp.gate.add_permits(2);
+        Smtp::wait(|| service.status().sent == 2).await;
+        pause();
+        assert!(matches!(
+            service.send(invitation()).await,
+            Err(EmailError::Throttled)
+        ));
+        assert!(matches!(
+            service.send(Smtp::request("reader@example.com")).await,
+            Err(EmailError::Throttled)
+        ));
+        advance(Duration::from_secs(30)).await;
+        service.send(invitation()).await.unwrap();
+        service
+            .send(Smtp::request("reader@example.com"))
+            .await
+            .unwrap();
+        assert!(matches!(
+            service.send(Smtp::request("reader@example.com")).await,
+            Err(EmailError::Throttled)
+        ));
+        resume();
+        smtp.gate.add_permits(2);
+        Smtp::wait(|| service.status().sent == 4).await;
+        service.shutdown().await;
+        smtp.stop().await;
+    }
+}

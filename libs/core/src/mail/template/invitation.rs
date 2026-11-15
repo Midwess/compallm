@@ -21,7 +21,7 @@ impl fmt::Display for InvitationEmail {
             html lang="en" { body {
                 h1 { "Join " (self.organization) }
                 p { (self.inviter) " invited " (self.recipient) " to join their organization on Compallm." }
-                p { a href=(self.url) { "Accept invitation" } }
+                p { a href=(self.url) target="_blank" rel="noopener noreferrer" { "Accept invitation" } }
                 p { "This invitation expires seven days after issuance. Continue to receive an email verification code." }
                 p { "If you did not expect this invitation, ignore this email." }
             } }

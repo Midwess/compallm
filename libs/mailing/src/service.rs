@@ -3,7 +3,7 @@ use crate::{
     recipient::{Recipients, Reservation},
 };
 use async_channel::{Receiver, Sender};
-use compallm_core::mail::{EmailError, EmailRequest, EmailService};
+use compallm_core::mail::{EmailError, EmailRequest, EmailService, EmailTemplate};
 use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
     message::{Mailbox, MultiPart},
@@ -35,7 +35,8 @@ pub struct MailingStatus {
 pub struct MailingService {
     tx: Sender<Job>,
     rx: Receiver<Job>,
-    recipients: Arc<Recipients>,
+    otp_recipients: Arc<Recipients>,
+    invitation_recipients: Arc<Recipients>,
     transport: AsyncSmtpTransport<Tokio1Executor>,
     from: Mailbox,
     started: AtomicBool,
@@ -77,7 +78,10 @@ impl MailingService {
             rx,
             transport: builder.build(),
             from,
-            recipients: Arc::new(Recipients::new(Duration::from_secs(
+            otp_recipients: Arc::new(Recipients::new(Duration::from_secs(
+                settings.recipient_cooldown_seconds,
+            ))),
+            invitation_recipients: Arc::new(Recipients::new(Duration::from_secs(
                 settings.recipient_cooldown_seconds,
             ))),
             started: AtomicBool::new(false),
@@ -140,7 +144,11 @@ impl MailingService {
             return Err(EmailError::Unavailable);
         }
         let email = compallm_utils::email::normalize_email(&request.to);
-        let reservation = self.recipients.reserve(email.clone())?;
+        let recipients = match &request.text {
+            EmailTemplate::OtpCode(_) => &self.otp_recipients,
+            EmailTemplate::Invitation(_) => &self.invitation_recipients,
+        };
+        let reservation = recipients.reserve(email.clone())?;
         let to = email.parse::<Mailbox>().map_err(anyhow::Error::from)?;
         let message = Message::builder()
             .from(self.from.clone())

@@ -63,7 +63,7 @@ impl Group {
             .map_err(AuthorizationError::from)?
             .ok_or(compallm_core::persistent::organization::OrganizationRepositoryError::NotFound)
             .map_err(AuthorizationError::from)?;
-        let nodes = group.roles.into_iter().map(Into::into).collect();
+        let nodes = group.roles().iter().cloned().map(Into::into).collect();
         Collection::complete(
             nodes,
             &format!(

@@ -149,7 +149,7 @@ function GroupRoles() {
     roleOptions = useGroup((s) => s.roles),
     readonly = useSettings((s) => s.readonly),
     busy = useGroup((s) => s.busy)
-  const roles = roleOptions ?? fallbackRoles
+  const roles = (roleOptions ?? fallbackRoles).filter((role) => !role.owner)
   const optionPermissions = usePermissionChecks(
     draft?.id
       ? roles.map((role) => ({

@@ -58,7 +58,7 @@ impl TryFrom<Vec<sea_orm::QueryResult>> for MappedPolicyMembership {
         let session = Session::from(MappedSession::try_from(
             UserSessionSchema::from_query_result(first, "").map_err(anyhow::Error::from)?,
         )?);
-        let mut roles = Vec::new();
+        let mut direct_role = None;
         let mut groups = BTreeMap::<u64, Group>::new();
         for row in rows {
             let group_id: Option<i64> = row.try_get("", "group_id").map_err(anyhow::Error::from)?;
@@ -77,26 +77,35 @@ impl TryFrom<Vec<sea_orm::QueryResult>> for MappedPolicyMembership {
                 .transpose()?;
             if let Some(group_id) = group_id {
                 let id = crate::from_bigint(group_id).context("invalid group ID")?;
-                let group = groups.entry(id).or_insert(Group {
-                    id,
-                    organization_id: session.organization_id,
-                    name: row.try_get("", "group_name").map_err(anyhow::Error::from)?,
-                    description: row
-                        .try_get("", "group_description")
+                if let std::collections::btree_map::Entry::Vacant(entry) = groups.entry(id) {
+                    entry.insert(
+                        Group::from_parts(
+                            id,
+                            session.organization_id,
+                            row.try_get("", "group_name").map_err(anyhow::Error::from)?,
+                            row.try_get("", "group_description")
+                                .map_err(anyhow::Error::from)?,
+                            Vec::new(),
+                        )
                         .map_err(anyhow::Error::from)?,
-                    roles: Vec::new(),
-                });
-                if let Some(role) = role {
-                    group.roles.push(role);
+                    );
                 }
-            } else if let Some(role) = role {
-                roles.push(role);
+                if let Some(role) = role {
+                    let group = groups.get_mut(&id).context("group is missing")?;
+                    let mut assigned = group.roles().to_vec();
+                    assigned.push(role);
+                    group.replace_roles(assigned).map_err(anyhow::Error::from)?;
+                }
+            } else if let Some(role) = role
+                && direct_role.replace(role).is_some()
+            {
+                return Err(anyhow::anyhow!("membership has multiple direct roles").into());
             }
         }
         let member = OrganizationMember {
             organization_id: session.organization_id,
             user_id: session.user_id,
-            roles,
+            role: direct_role.context("membership requires a direct role")?,
             groups: groups.into_values().collect(),
         };
         Ok(Self((session, member)))

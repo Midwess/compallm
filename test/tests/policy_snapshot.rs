@@ -12,8 +12,18 @@ fn member(roles: Vec<Role>) -> OrganizationMember {
     OrganizationMember {
         organization_id: 7,
         user_id: 11,
-        roles,
-        groups: vec![],
+        groups: if roles.len() > 1 {
+            vec![
+                Group::from_parts(99, 7, "Extra".into(), String::new(), roles[1..].to_vec())
+                    .unwrap(),
+            ]
+        } else {
+            vec![]
+        },
+        role: roles
+            .first()
+            .cloned()
+            .expect("fixture requires a direct role"),
     }
 }
 
@@ -25,7 +35,7 @@ async fn default_sources_preserve_authorization() -> anyhow::Result<()> {
         let original = role.cedar_source.clone();
         let member = member(vec![role.clone()]);
         let snapshot = PolicySnapshot::try_from(&member).unwrap();
-        assert_eq!(member.roles[0].cedar_source, original);
+        assert_eq!(member.role.cedar_source, original);
         let before = PolicySet::try_from(&role)?;
         let after = PolicySet::try_from(&snapshot)?;
         let structures = |set: &PolicySet| -> anyhow::Result<Vec<String>> {
@@ -67,19 +77,14 @@ async fn assignments_are_deterministic_and_sources_are_not_duplicated() -> anyho
     let fixture_roles_0 = default_roles(7, [1, 2, 3]).await;
 
     let roles = fixture_roles_0.clone();
-    let mut member = member(vec![roles[2].clone(), roles[0].clone(), roles[2].clone()]);
-    member.groups = vec![Group {
-        id: 8,
-        organization_id: 7,
-        name: "Team".into(),
-        description: String::new(),
-        roles: vec![roles[2].clone()],
-    }];
+    let mut member = member(vec![roles[0].clone()]);
+    member.groups = vec![
+        Group::from_parts(8, 7, "Team".into(), String::new(), vec![roles[2].clone()]).unwrap(),
+    ];
     let snapshot = PolicySnapshot::try_from(&member).unwrap();
-    assert_eq!(snapshot.role_ids, vec![1, 3]);
+    assert_eq!(snapshot.role_id, 1);
     assert_eq!(snapshot.group_roles[&8], vec![3]);
     assert_eq!(PolicySet::try_from(&snapshot)?.policies().count(), 7);
-    member.roles.reverse();
     assert_eq!(snapshot, PolicySnapshot::try_from(&member).unwrap());
     let encoded = serde_json::to_string(&snapshot)?;
     assert_eq!(snapshot, serde_json::from_str(&encoded)?);
@@ -165,17 +170,12 @@ fn merged_roles_preserve_inherited_forbid_over_direct_permit() -> anyhow::Result
         format!("// same permit with different formatting\n{permit}\n{forbid}"),
     );
     let mut member = member(vec![direct]);
-    member.groups = vec![Group {
-        id: 8,
-        organization_id: 7,
-        name: "Team".into(),
-        description: String::new(),
-        roles: vec![inherited],
-    }];
+    member.groups =
+        vec![Group::from_parts(8, 7, "Team".into(), String::new(), vec![inherited]).unwrap()];
     let snapshot = PolicySnapshot::new(&member).unwrap();
     let policies: PolicySet = snapshot.cedar_source.parse()?;
     assert_eq!(policies.policies().count(), 3);
-    assert_eq!(snapshot.role_ids, vec![10]);
+    assert_eq!(snapshot.role_id, 10);
     assert_eq!(snapshot.group_roles[&8], vec![20]);
     let entities = Entities::try_from(&member)?;
     let request = Request::new(

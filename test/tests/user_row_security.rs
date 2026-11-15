@@ -43,15 +43,10 @@ async fn authenticated_profiles_and_preferences_enforce_database_ownership() -> 
         .await?;
     }
     let result = async {
-        let member = OrganizationMember {
-            user_id: first,
-            organization_id: 1,
-            roles: vec![compallm_core::organization::Role {
+        let member = OrganizationMember { user_id: first, organization_id: 1, groups: vec![], role: compallm_core::organization::Role {
                 id: 1, organization_id: 1, name: "Model reader".into(), description: String::new(), org_owner: false,
                 cedar_source: "permit(principal, action == Compallm::Action::\"model.read\", resource == Compallm::Organization::\"1\");".into(),
-            }],
-            groups: vec![],
-        };
+            } };
         let actor = UserAccessToken::new(
             Session {
                 id: 1,

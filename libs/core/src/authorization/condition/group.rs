@@ -18,7 +18,7 @@ impl TryFrom<&Group> for Resource {
         )?;
         resource.entities =
             vec![Entity::try_from(group).map_err(|_| MemberPermissionError::Evaluation)?];
-        for role in &group.roles {
+        for role in group.roles() {
             resource.entities.extend(Self::try_from(role)?.entities);
         }
         Ok(resource)

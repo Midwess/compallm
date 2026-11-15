@@ -602,8 +602,8 @@ async fn plain_snapshot_budget_measures_real_jwt_including_unicode_and_escaping(
         let snapshot = PolicySnapshot::new(&OrganizationMember {
             organization_id: 84,
             user_id: 1,
-            roles: vec![role.clone()],
             groups: vec![],
+            role: role.clone(),
         })
         .unwrap();
         let access = UserAccessToken::new(
@@ -629,8 +629,8 @@ async fn plain_snapshot_budget_measures_real_jwt_including_unicode_and_escaping(
 fn empty_snapshot() -> compallm_core::authorization::PolicySnapshot {
     compallm_core::authorization::PolicySnapshot {
         cedar_source: String::new(),
-        role_ids: vec![],
         group_roles: std::collections::BTreeMap::new(),
+        role_id: 3,
     }
 }
 

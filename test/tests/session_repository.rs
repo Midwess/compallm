@@ -390,10 +390,10 @@ async fn policy_membership_loads_version_and_relationships_in_one_scoped_stateme
         .unwrap();
     assert_eq!(session.authorization_version, 9);
 
-    assert_eq!(member.roles, vec![role.clone()]);
+    assert_eq!(member.role, role.clone());
     assert_eq!(member.groups.len(), 2);
-    assert_eq!(member.groups[0].roles, vec![role]);
-    assert!(member.groups[1].roles.is_empty());
+    assert_eq!(member.groups[0].roles(), vec![role]);
+    assert!(member.groups[1].roles().is_empty());
     drop(context);
     let log = Arc::try_unwrap(db).unwrap().into_transaction_log();
     assert_eq!(log.len(), 1);

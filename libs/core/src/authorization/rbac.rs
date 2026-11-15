@@ -193,7 +193,7 @@ impl RbacService {
             );
         }
         let group = Group::new(organization_id, name, description, assigned).await?;
-        for role in &group.roles {
+        for role in group.roles() {
             (&group, role)
                 .for_action(Action::GroupRoleAssign)
                 .and(role.for_action(Action::RoleAssign))
@@ -263,13 +263,7 @@ impl RbacService {
                 .iter()
                 .chain(&changes.remove_member_ids)
             {
-                let member = self
-                    .organizations
-                    .find_member_identity(*user)
-                    .await?
-                    .ok_or(
-                        crate::persistent::organization::OrganizationRepositoryError::NotFound,
-                    )?;
+                let member = self.load_member(org, *user).await?;
                 members.push(member);
             }
         }
@@ -291,16 +285,22 @@ impl RbacService {
                 .for_action(Action::GroupMetadataUpdate)
                 .check_permission(permission)?;
         }
-        let resulting = group
-            .roles
+        let mut proposed = group.clone();
+        let mut assigned = group
+            .roles()
             .iter()
             .filter(|r| !changes.remove_role_ids.contains(&r.id))
-            .map(|r| r.id)
-            .chain(changes.add_role_ids.iter().copied())
-            .collect::<std::collections::BTreeSet<_>>();
-        if resulting.len() > Group::MAX_ROLES {
-            return Err(crate::organization::group::GroupCreationError::TooManyRoles.into());
+            .cloned()
+            .collect::<Vec<_>>();
+        for role in roles
+            .iter()
+            .filter(|r| changes.add_role_ids.contains(&r.id))
+        {
+            if !assigned.iter().any(|r| r.id == role.id) {
+                assigned.push(role.clone());
+            }
         }
+        proposed.replace_roles(assigned)?;
         for role in roles {
             let (action, delegation) = if changes.add_role_ids.contains(&role.id) {
                 (Action::GroupRoleAssign, Action::RoleAssign)
@@ -338,66 +338,16 @@ impl RbacService {
         self.delete_group_record(permission, id).await
     }
 
-    async fn assign_role(
+    #[db_context::root]
+    async fn load_member(
         &self,
-        permission: &MemberPermission,
-        role_id: u64,
+        org: u64,
         user_id: u64,
-    ) -> Result<(), AuthorizationError> {
-        let organization_id = permission.organization_id();
-        let (mut member, _) = self
-            .organizations
-            .find_membership(organization_id, user_id)
+    ) -> Result<crate::organization::OrganizationMember, AuthorizationError> {
+        self.organizations
+            .find_member_identity(org, user_id)
             .await?
-            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
-        let role = self
-            .organizations
-            .find_roles_for_assignment(organization_id, &[role_id])
-            .await?
-            .into_iter()
-            .next()
-            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
-        (&member, &role)
-            .for_action(Action::MemberRoleAssign)
-            .and(role.for_action(Action::RoleAssign))
-            .check_permission(permission)?;
-        if member.roles.iter().any(|role| role.id == role_id) {
-            return Ok(());
-        }
-        let previous = member.clone();
-        member.assign_role(role)?;
-        self.save_member_changes(&member, &previous).await
-    }
-
-    async fn unassign_role(
-        &self,
-        permission: &MemberPermission,
-        role_id: u64,
-        user_id: u64,
-    ) -> Result<(), AuthorizationError> {
-        let organization_id = permission.organization_id();
-        let (mut member, _) = self
-            .organizations
-            .find_membership(organization_id, user_id)
-            .await?
-            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
-        let role = self
-            .organizations
-            .find_roles_for_assignment(organization_id, &[role_id])
-            .await?
-            .into_iter()
-            .next()
-            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
-        (&member, &role)
-            .for_action(Action::MemberRoleUnassign)
-            .and(role.for_action(Action::RoleUnassign))
-            .check_permission(permission)?;
-        if !member.roles.iter().any(|role| role.id == role_id) {
-            return Ok(());
-        }
-        let previous = member.clone();
-        member.unassign_role(role_id)?;
-        self.save_member_changes(&member, &previous).await
+            .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound.into())
     }
 
     async fn assign_group(

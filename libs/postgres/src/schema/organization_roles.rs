@@ -8,10 +8,14 @@ pub struct Model {
     #[sea_orm(
         primary_key,
         auto_increment = false,
-        unique_key = "organization_roles_organization_name_key"
+        unique_key = "organization_role_owner_identity"
     )]
     pub organization_id: i64,
-    #[sea_orm(primary_key, auto_increment = false)]
+    #[sea_orm(
+        primary_key,
+        auto_increment = false,
+        unique_key = "organization_role_owner_identity"
+    )]
     pub id: i64,
     #[sea_orm(
         column_type = "Text",
@@ -22,13 +26,12 @@ pub struct Model {
     pub description: String,
     #[sea_orm(column_type = "Text")]
     pub cedar_source: String,
+    #[sea_orm(unique_key = "organization_role_owner_identity")]
     pub org_owner: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::organization_group_roles::Entity")]
-    OrganizationGroupRoles,
     #[sea_orm(has_many = "super::organization_member_roles::Entity")]
     OrganizationMemberRoles,
     #[sea_orm(
@@ -41,12 +44,6 @@ pub enum Relation {
     Organizations,
 }
 
-impl Related<super::organization_group_roles::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::OrganizationGroupRoles.def()
-    }
-}
-
 impl Related<super::organization_member_roles::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OrganizationMemberRoles.def()
@@ -56,6 +53,19 @@ impl Related<super::organization_member_roles::Entity> for Entity {
 impl Related<super::organizations::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Organizations.def()
+    }
+}
+
+impl Related<super::organization_members::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::organization_member_roles::Relation::OrganizationMembers.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(
+            super::organization_member_roles::Relation::OrganizationRoles
+                .def()
+                .rev(),
+        )
     }
 }
 

@@ -55,8 +55,8 @@ async fn member(index: usize) -> OrganizationMember {
     OrganizationMember {
         organization_id: 42,
         user_id: 100,
-        roles: vec![default_roles(42, [901, 502, 73]).await.remove(index)],
         groups: vec![],
+        role: default_roles(42, [901, 502, 73]).await.remove(index),
     }
 }
 fn decision(
@@ -175,21 +175,23 @@ async fn group_roles_keep_provenance_and_inherit_without_copying_to_direct_roles
     let fixture_roles_0 = default_roles(42, [901, 502, 73]).await;
 
     let mut member = member(2).await;
-    member.roles.clear();
-    member.groups.push(Group {
-        id: 9,
-        organization_id: 42,
-        name: "Operations".into(),
-        description: String::new(),
-        roles: vec![fixture_roles_0.clone().remove(1)],
-    });
-    assert!(member.roles.is_empty());
+    member.groups.push(
+        Group::from_parts(
+            9,
+            42,
+            "Operations".into(),
+            String::new(),
+            vec![fixture_roles_0.clone().remove(1)],
+        )
+        .unwrap(),
+    );
+    assert_eq!(member.role.id, 73);
     assert_eq!(
         decision(&member, "role.read", "Organization", 42, 0, true),
         Decision::Allow
     );
     let mut foreign = member.clone();
-    foreign.groups[0].roles[0].organization_id = 43;
+    foreign.groups[0].organization_id = 43;
     assert!(Entities::try_from(&foreign).is_err());
 }
 
@@ -224,19 +226,13 @@ async fn statement_identity_survives_formatting_and_reordering() {
 #[tokio::test]
 async fn empty_groups_remain_inside_the_organization_resource_scope() {
     let member = member(0).await;
-    let group = Group {
-        id: 77,
-        organization_id: 42,
-        name: "Empty team".into(),
-        description: String::new(),
-        roles: vec![],
-    };
+    let group = Group::from_parts(77, 42, "Empty team".into(), String::new(), vec![]).unwrap();
     let entity = Entity::try_from(&group).unwrap();
     let data = Entities::try_from(&member)
         .unwrap()
         .add_entities([entity], Some(all_policies()))
         .unwrap();
-    let policies = PolicySet::try_from(&member.roles[0]).unwrap();
+    let policies = PolicySet::try_from(&member.role).unwrap();
     let request = Request::new(
         "Compallm::User::\"100\"".parse().unwrap(),
         "Compallm::Action::\"group.read\"".parse().unwrap(),
@@ -262,8 +258,8 @@ async fn default_permissions_and_owner_restrictions_use_generated_record_ids() {
     let admin = OrganizationMember {
         organization_id: 42,
         user_id: 100,
-        roles: vec![roles[1].clone()],
         groups: vec![],
+        role: roles[1].clone(),
     };
     assert_eq!(
         decision(&admin, "role.assign", "Role", 42, roles[0].id, true),
@@ -276,8 +272,8 @@ async fn default_permissions_and_owner_restrictions_use_generated_record_ids() {
     let owner = OrganizationMember {
         organization_id: 42,
         user_id: 100,
-        roles: vec![roles[0].clone()],
         groups: vec![],
+        role: roles[0].clone(),
     };
     assert_eq!(
         decision(&owner, "organization.delete", "Organization", 42, 0, true),

@@ -9,7 +9,7 @@ use compallm_core::{
 };
 use sea_orm::{
     ColumnTrait, ConnectionTrait, EntityTrait, ExprTrait, JoinType, ModelTrait, QueryFilter,
-    QuerySelect, QueryTrait, Set,
+    QuerySelect, QueryTrait, RelationTrait, Set,
     prelude::{DateTimeUtc, DateTimeWithTimeZone},
     sea_query::{Expr, UnionType},
 };
@@ -128,10 +128,7 @@ impl CoreSessionRepository for SessionRepository {
             .from((GroupColumn::OrganizationId, GroupColumn::Id))
             .to((GroupRoleColumn::OrganizationId, GroupRoleColumn::GroupId))
             .into();
-        let role_relation = GroupRoles::belongs_to(Roles::default())
-            .from((GroupRoleColumn::OrganizationId, GroupRoleColumn::RoleId))
-            .to((RoleColumn::OrganizationId, RoleColumn::Id))
-            .into();
+        let role_relation = <GroupRoles as EntityTrait>::Relation::OrganizationRoles1.def();
         let inherited = GroupMembers::find()
             .select_only()
             .column_as(GroupColumn::Id, "group_id")

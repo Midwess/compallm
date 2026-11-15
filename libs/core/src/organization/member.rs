@@ -15,7 +15,7 @@ use crate::authorization::{
 pub struct OrganizationMember {
     pub organization_id: u64,
     pub user_id: u64,
-    pub roles: Vec<Role>,
+    pub role: Role,
     pub groups: Vec<Group>,
 }
 
@@ -23,8 +23,6 @@ pub struct OrganizationMember {
 pub enum MembershipAssignmentError {
     #[error("assignment belongs to another organization")]
     ForeignOrganization,
-    #[error("the organization owner role cannot be unassigned")]
-    OwnerRole,
 }
 
 impl SystemPolicy for OrganizationMember {
@@ -56,16 +54,14 @@ impl OrganizationMember {
         if role.organization_id != self.organization_id {
             return Err(MembershipAssignmentError::ForeignOrganization);
         }
-        if !self.roles.iter().any(|existing| existing.id == role.id) {
-            self.roles.push(role);
-        }
+        self.role = role;
         Ok(())
     }
 
     pub fn assign_group(&mut self, group: Group) -> Result<(), MembershipAssignmentError> {
         if group.organization_id != self.organization_id
             || group
-                .roles
+                .roles()
                 .iter()
                 .any(|role| role.organization_id != self.organization_id)
         {
@@ -77,19 +73,6 @@ impl OrganizationMember {
         Ok(())
     }
 
-    /// Remove a direct role assignment. Group-inherited roles are unaffected.
-    pub fn unassign_role(&mut self, role_id: u64) -> Result<(), MembershipAssignmentError> {
-        if self
-            .roles
-            .iter()
-            .any(|role| role.id == role_id && role.org_owner())
-        {
-            return Err(MembershipAssignmentError::OwnerRole);
-        }
-        self.roles.retain(|role| role.id != role_id);
-        Ok(())
-    }
-
     /// Remove a group membership, without changing the group's roles.
     pub fn unassign_group(&mut self, group_id: u64) -> Result<(), MembershipAssignmentError> {
         self.groups.retain(|group| group.id != group_id);
@@ -97,9 +80,7 @@ impl OrganizationMember {
     }
 
     pub fn effective_roles(&self) -> impl Iterator<Item = &Role> {
-        self.roles
-            .iter()
-            .chain(self.groups.iter().flat_map(|g| g.roles.iter()))
+        std::iter::once(&self.role).chain(self.groups.iter().flat_map(|g| g.roles().iter()))
     }
 }
 
@@ -155,9 +136,7 @@ impl TryFrom<&OrganizationMember> for Entities {
             insert(Entity::try_from(role)?)?;
         }
         let mut parents = HashSet::from([org]);
-        for role in &member.roles {
-            parents.insert(Entity::try_from(role)?.uid());
-        }
+        parents.insert(Entity::try_from(&member.role)?.uid());
         for group in &member.groups {
             anyhow::ensure!(
                 group.organization_id == member.organization_id,

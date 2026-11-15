@@ -13,11 +13,10 @@ async fn entity_creation_owns_ids_and_default_policy_relationships() {
     assert!(roles[0].org_owner());
     assert!(!roles[1].org_owner());
     assert!(!roles[2].org_owner());
-    let owner = roles[0].clone();
     let custom = Role::new(organization.id, "Reviewer", "", " ")
         .await
         .unwrap();
-    let group = Group::new(organization.id, "Operations", "", vec![owner.clone()])
+    let group = Group::new(organization.id, "Operations", "", vec![custom.clone()])
         .await
         .unwrap();
     let session = Session::new(user.id, organization.id).await.unwrap();
@@ -39,7 +38,7 @@ async fn entity_creation_owns_ids_and_default_policy_relationships() {
     );
     assert_eq!(session.user_id, user.id);
     assert_eq!(session.organization_id, organization.id);
-    assert_eq!(group.roles, vec![owner]);
+    assert_eq!(group.roles(), vec![custom]);
     for role in &roles {
         assert_eq!(role.organization_id, organization.id);
         let policies = cedar_policy::PolicySet::try_from(role).unwrap();
@@ -109,7 +108,7 @@ async fn group_constructor_limits_assigned_roles() {
         Group::new(1, "Group", "", roles.clone())
             .await
             .unwrap()
-            .roles
+            .roles()
             .len(),
         32
     );

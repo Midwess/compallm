@@ -43,7 +43,7 @@ test('loads role and group summaries in one request', async () => {
     selection = query
     return Response.json({
       data: {
-        roles: { edges: [{ node: { id: '1', name: 'Editor', color: '#c06040' } }] },
+        roles: { edges: [{ node: { id: '1', name: 'Editor', color: '#c06040', owner: false } }] },
         groups: { edges: [{ node: { id: '2', name: 'Design', description: '' } }] },
       },
     })
@@ -57,8 +57,9 @@ test('loads role and group summaries in one request', async () => {
     )
     assert.equal(controller.store.getState().groups[0].name, 'Design')
     assert.equal(requests, 1)
-    assert.match(selection, /roles\s*\{\s*edges\s*\{\s*node\s*\{\s*id[\s,]+name[\s,]+color\s*\}/)
+    assert.match(selection, /roles\s*\{\s*edges\s*\{\s*node\s*\{\s*id[\s,]+name[\s,]+color[\s,]+owner\s*\}/)
     assert.equal(controller.store.getState().roles[0].color, '#c06040')
+    assert.equal(controller.store.getState().roles[0].owner, false)
     assert.equal(controller.store.getState().error, null)
     stop()
   } finally {

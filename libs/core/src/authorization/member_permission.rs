@@ -93,7 +93,7 @@ impl TryFrom<UserAccessToken> for MemberPermission {
         let valid_id = |id: u64| id > 0 && id <= i64::MAX as u64;
         if !valid_id(user_id)
             || !valid_id(organization_id)
-            || snapshot.role_ids.iter().any(|id| !valid_id(*id))
+            || !valid_id(snapshot.role_id)
             || snapshot.group_roles.iter().any(|(group, roles)| {
                 !valid_id(*group) || roles.iter().any(|role| !valid_id(*role))
             })
@@ -140,9 +140,7 @@ impl TryFrom<(u64, u64, &PolicySnapshot)> for MemberEntities {
             .parse()
             .map_err(|_| MemberPermissionError::InvalidAuthority)?;
         let mut entities = vec![Entity::new_no_attrs(org.clone(), HashSet::new())];
-        let roles: BTreeSet<_> = snapshot
-            .role_ids
-            .iter()
+        let roles: BTreeSet<_> = std::iter::once(&snapshot.role_id)
             .chain(snapshot.group_roles.values().flatten())
             .copied()
             .collect();
@@ -163,7 +161,7 @@ impl TryFrom<(u64, u64, &PolicySnapshot)> for MemberEntities {
             );
         }
         let mut parents = HashSet::from([org.clone()]);
-        for role in &snapshot.role_ids {
+        for role in std::iter::once(&snapshot.role_id) {
             parents.insert(
                 format!("Compallm::Role::\"{organization_id}:{role}\"")
                     .parse()

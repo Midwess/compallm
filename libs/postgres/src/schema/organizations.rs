@@ -75,4 +75,17 @@ impl Related<super::user_sessions::Entity> for Entity {
     }
 }
 
+impl Related<super::organization_member_roles::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::organization_roles::Relation::OrganizationMemberRoles.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(
+            super::organization_roles::Relation::Organizations
+                .def()
+                .rev(),
+        )
+    }
+}
+
 impl ActiveModelBehavior for ActiveModel {}

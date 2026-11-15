@@ -25,15 +25,15 @@ pub fn from_source(organization_id: u64, source: &str) -> MemberPermission {
     let member = OrganizationMember {
         organization_id,
         user_id: 100,
-        roles: vec![Role {
+        groups: Vec::new(),
+        role: Role {
             id: 1,
             organization_id,
             name: String::new(),
             description: String::new(),
             cedar_source: source.to_owned(),
             org_owner: false,
-        }],
-        groups: Vec::new(),
+        },
     };
     MemberPermission::try_from(
         UserAccessToken::new(

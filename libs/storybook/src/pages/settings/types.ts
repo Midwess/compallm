@@ -31,6 +31,7 @@ export interface SettingsLocation {
   id?: string
 }
 export interface SettingsRole {
+  owner?: boolean
   id: string
   name: string
   description: string

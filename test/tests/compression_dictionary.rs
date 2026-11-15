@@ -272,8 +272,8 @@ async fn initial_seed_compresses_complete_default_access_claims() -> anyhow::Res
         let member = OrganizationMember {
             organization_id: 84,
             user_id: 42,
-            roles: vec![role],
             groups: vec![],
+            role,
         };
         let session = Session::new(42, 84).await?;
         let token = AccessToken::User(UserAccessToken::new(

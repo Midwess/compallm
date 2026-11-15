@@ -9,7 +9,6 @@ pub struct Model {
     pub organization_id: i64,
     #[sea_orm(primary_key, auto_increment = false)]
     pub user_id: i64,
-    #[sea_orm(primary_key, auto_increment = false)]
     pub role_id: i64,
 }
 
@@ -42,6 +41,19 @@ impl Related<super::organization_members::Entity> for Entity {
 impl Related<super::organization_roles::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OrganizationRoles.def()
+    }
+}
+
+impl Related<super::organizations::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::organization_roles::Relation::Organizations.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(
+            super::organization_roles::Relation::OrganizationMemberRoles
+                .def()
+                .rev(),
+        )
     }
 }
 

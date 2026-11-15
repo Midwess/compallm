@@ -159,7 +159,7 @@ fn serialized_session_requires_its_version_and_version_is_not_identity() {
 fn empty_snapshot() -> compallm_core::authorization::PolicySnapshot {
     compallm_core::authorization::PolicySnapshot {
         cedar_source: String::new(),
-        role_ids: vec![],
         group_roles: std::collections::BTreeMap::new(),
+        role_id: 3,
     }
 }

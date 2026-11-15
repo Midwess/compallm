@@ -17,7 +17,7 @@ use compallm_core::{
 };
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, JoinType, ModelTrait, PaginatorTrait, QueryFilter,
-    QueryOrder, QuerySelect, QueryTrait, Set,
+    QueryOrder, QuerySelect, QueryTrait, RelationTrait, Set,
     sea_query::{Alias, Expr, Func, LockType, UnionType},
 };
 use std::collections::{BTreeMap, BTreeSet};
@@ -61,15 +61,19 @@ impl OrganizationRepository {
         &self,
         user_id: u64,
         organization_id: Option<u64>,
+        active_only: bool,
     ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError> {
         let user_id = Self::database_id(user_id)?;
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
         let mut query = Members::find()
             .find_also_related(Organizations::default())
-            .filter(MemberColumn::UserId.eq(user_id))
-            .filter(MemberColumn::Status.eq(UserStatusSchema::Active))
-            .filter(OrganizationColumn::Status.eq(OrganizationStatusSchema::Active));
+            .filter(MemberColumn::UserId.eq(user_id));
+        if active_only {
+            query = query
+                .filter(MemberColumn::Status.eq(UserStatusSchema::Active))
+                .filter(OrganizationColumn::Status.eq(OrganizationStatusSchema::Active));
+        }
         if let Some(id) = organization_id {
             query = query.filter(MemberColumn::OrganizationId.eq(Self::database_id(id)?));
         }
@@ -83,9 +87,8 @@ impl OrganizationRepository {
         };
         let organization =
             Organization::try_from(organization.context("membership organization is missing")?)?;
-        let mut member = OrganizationMember::try_from(member)?;
-        let org = Self::database_id(member.organization_id)?;
-        member.roles = Roles::find()
+        let org = member.organization_id;
+        let roles = Roles::find()
             .filter(RoleColumn::OrganizationId.eq(org))
             .filter(
                 RoleColumn::Id.in_subquery(
@@ -103,8 +106,14 @@ impl OrganizationRepository {
             .map_err(OrganizationRepositoryError::database)?
             .into_iter()
             .map(Role::try_from)
-            .collect::<Result<_, _>>()
+            .collect::<Result<Vec<_>, _>>()
             .map_err(OrganizationRepositoryError::database)?;
+        let [role]: [Role; 1] = roles
+            .try_into()
+            .map_err(|_| OrganizationRepositoryError::Conflict)?;
+        let mut member = OrganizationMember::from(
+            crate::mappers::organization_member::MappedMember::try_from((member, role))?,
+        );
         let groups = Groups::find()
             .filter(GroupColumn::OrganizationId.eq(org))
             .filter(
@@ -123,10 +132,7 @@ impl OrganizationRepository {
             .map_err(OrganizationRepositoryError::database)?;
         let mut grouped = BTreeMap::<i64, Vec<Role>>::new();
         if !groups.is_empty() {
-            let relation = GroupRoles::belongs_to(Roles::default())
-                .from((GroupRoleColumn::OrganizationId, GroupRoleColumn::RoleId))
-                .to((RoleColumn::OrganizationId, RoleColumn::Id))
-                .into();
+            let relation = <GroupRoles as EntityTrait>::Relation::OrganizationRoles1.def();
             let rows = Roles::find()
                 .join_rev(JoinType::InnerJoin, relation)
                 .column_as(GroupRoleColumn::GroupId, "group_id")
@@ -406,10 +412,11 @@ impl CoreRepository for OrganizationRepository {
             description: Set(group.description.clone()),
         };
         let links = group
-            .roles
+            .roles()
             .iter()
             .map(|role| {
                 Ok(GroupRoleActiveModel {
+                    owner_role: Set(false),
                     organization_id: Set(org),
                     group_id: Set(id),
                     role_id: Set(Self::database_id(role.id)?),
@@ -613,9 +620,13 @@ impl CoreRepository for OrganizationRepository {
         cedar_policy::Entities::try_from(member).map_err(OrganizationRepositoryError::database)?;
         let org = Self::database_id(member.organization_id)?;
         let user = Self::database_id(member.user_id)?;
-        let roles = member.roles.iter().map(|r| r.id).collect::<BTreeSet<_>>();
+        let roles = std::iter::once(&member.role)
+            .map(|r| r.id)
+            .collect::<BTreeSet<_>>();
         let groups = member.groups.iter().map(|g| g.id).collect::<BTreeSet<_>>();
-        let previous_roles = previous.roles.iter().map(|r| r.id).collect::<BTreeSet<_>>();
+        let previous_roles = std::iter::once(&previous.role)
+            .map(|r| r.id)
+            .collect::<BTreeSet<_>>();
         let previous_groups = previous
             .groups
             .iter()
@@ -714,26 +725,23 @@ impl CoreRepository for OrganizationRepository {
         organization_id: u64,
         user_id: u64,
     ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError> {
-        self.membership(user_id, Some(organization_id)).await
+        self.membership(user_id, Some(organization_id), true).await
     }
     async fn find_first_membership(
         &self,
         user_id: u64,
     ) -> Result<Option<(OrganizationMember, Organization)>, OrganizationRepositoryError> {
-        self.membership(user_id, None).await
+        self.membership(user_id, None, true).await
     }
 
     async fn find_member_identity(
         &self,
+        organization_id: u64,
         user_id: u64,
     ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
-        let context = DbContext::current()?;
-        let row = Members::find()
-            .filter(MemberColumn::UserId.eq(Self::database_id(user_id)?))
-            .one(PostgresConnection::from_context(&context)?)
+        self.membership(user_id, Some(organization_id), false)
             .await
-            .map_err(OrganizationRepositoryError::database)?;
-        row.map(OrganizationMember::try_from).transpose()
+            .map(|value| value.map(|(member, _)| member))
     }
     async fn list_members(
         &self,
@@ -905,7 +913,7 @@ impl CoreRepository for OrganizationRepository {
         let db = PostgresConnection::from_context(&context)?;
         let org = Self::database_id(group.organization_id)?;
         let id = Self::database_id(group.id)?;
-        let role_ids: BTreeSet<_> = group.roles.iter().map(|r| r.id).collect();
+        let role_ids: BTreeSet<_> = group.roles().iter().map(|r| r.id).collect();
         let role_difference = changes.add_role_ids.iter().any(|id| !role_ids.contains(id))
             || changes
                 .remove_role_ids
@@ -959,6 +967,7 @@ impl CoreRepository for OrganizationRepository {
         for role in &changes.add_role_ids {
             if !role_ids.contains(role) {
                 GroupRoles::insert(GroupRoleActiveModel {
+                    owner_role: Set(false),
                     organization_id: Set(org),
                     group_id: Set(id),
                     role_id: Set(Self::database_id(*role)?),
@@ -1150,9 +1159,7 @@ impl CoreRepository for OrganizationRepository {
             user_id: Set(user),
             status: Set(UserStatusSchema::Active),
         };
-        let role_links = member
-            .roles
-            .iter()
+        let role_links = std::iter::once(&member.role)
             .map(|r| {
                 Ok(MemberRoleActiveModel {
                     organization_id: Set(org),

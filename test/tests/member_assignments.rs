@@ -84,3 +84,40 @@ fn self_role_replacement_is_denied_but_reselection_preserves_the_role() {
     assert_eq!(member.role.id, 1);
     member.assign_role(9, role(1, 10, true)).unwrap();
 }
+
+#[test]
+fn ownership_changes_require_an_active_owner_and_preserve_an_owner() {
+    use compallm_core::organization::member::MembershipAssignmentError;
+    let member = OrganizationMember {
+        organization_id: 10,
+        user_id: 9,
+        role: role(1, 10, true),
+        groups: vec![],
+    };
+    assert!(member.is_owner());
+    assert!(matches!(
+        member.ensure_owner_change(8, &role(2, 10, false), &[9]),
+        Err(MembershipAssignmentError::OwnerChangeDenied)
+    ));
+    assert!(matches!(
+        member.ensure_owner_change(9, &role(2, 10, false), &[9]),
+        Err(MembershipAssignmentError::OwnerRole)
+    ));
+    member
+        .ensure_owner_change(8, &role(2, 10, false), &[8, 9])
+        .unwrap();
+    member
+        .ensure_owner_change(7, &role(1, 10, true), &[9])
+        .unwrap();
+    let ordinary = OrganizationMember {
+        role: role(2, 10, false),
+        ..member
+    };
+    assert!(matches!(
+        ordinary.ensure_owner_change(8, &role(1, 10, true), &[]),
+        Err(MembershipAssignmentError::OwnerChangeDenied)
+    ));
+    ordinary
+        .ensure_owner_change(8, &role(1, 10, true), &[8])
+        .unwrap();
+}

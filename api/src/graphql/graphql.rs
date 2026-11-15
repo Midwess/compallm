@@ -122,21 +122,19 @@ impl Query {
     async fn role(
         id: ID,
         #[graphql(default = false)] include_unseen: bool,
-        #[graphql(context)] service: &RbacService,
         #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
         #[graphql(context)] authority: &AuthorizationContext,
     ) -> Result<Option<Payload<organization::role::Role>>, Error> {
-        organization::role::query::get(id, include_unseen, service, repository, authority).await
+        organization::role::query::get(id, include_unseen, repository, authority).await
     }
 
     /// Return the complete visible role metadata collection, ordered by ID.
     async fn roles(
         #[graphql(default = false)] include_unseen: bool,
-        #[graphql(context)] service: &RbacService,
         #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
         #[graphql(context)] authority: &AuthorizationContext,
     ) -> Result<Collection<organization::role::Role>, Error> {
-        organization::role::query::list(include_unseen, service, repository, authority).await
+        organization::role::query::list(include_unseen, repository, authority).await
     }
 
     /// Find visible group metadata in the active organization.

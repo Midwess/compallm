@@ -15,7 +15,6 @@ use juniper::ID;
 pub(crate) async fn get(
     id: ID,
     include_unseen: bool,
-    service: &compallm_core::authorization::rbac::RbacService,
     repository: &Box<dyn OrganizationRepository>,
     authority: &AuthorizationContext,
 ) -> Result<Option<Payload<Role>>, Error> {
@@ -24,7 +23,11 @@ pub(crate) async fn get(
     Action::RoleRead
         .check_permission(&permission)
         .map_err(AuthorizationError::from)?;
-    let owner = service.is_owner(&permission).await?;
+    let owner = repository
+        .active_owner_ids(permission.organization_id())
+        .await
+        .map_err(AuthorizationError::from)?
+        .contains(&permission.user_id());
     Ok(repository
         .find_roles_for_assignment(permission.organization_id(), &[id])
         .await
@@ -37,7 +40,6 @@ pub(crate) async fn get(
 
 pub(crate) async fn list(
     include_unseen: bool,
-    service: &compallm_core::authorization::rbac::RbacService,
     repository: &Box<dyn OrganizationRepository>,
     authority: &AuthorizationContext,
 ) -> Result<Collection<Role>, Error> {
@@ -45,7 +47,11 @@ pub(crate) async fn list(
     Action::RoleRead
         .check_permission(&permission)
         .map_err(AuthorizationError::from)?;
-    let owner = service.is_owner(&permission).await?;
+    let owner = repository
+        .active_owner_ids(permission.organization_id())
+        .await
+        .map_err(AuthorizationError::from)?
+        .contains(&permission.user_id());
     let nodes = repository
         .list_role_info()
         .await

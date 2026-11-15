@@ -25,6 +25,8 @@ pub enum MembershipAssignmentError {
     ForeignOrganization,
     #[error("members cannot change their own role")]
     SelfRoleChange,
+    #[error("only an active direct owner can change ownership")]
+    OwnerChangeDenied,
     #[error("the last active organization owner cannot be unassigned")]
     OwnerRole,
 }
@@ -54,6 +56,31 @@ impl SystemPolicy for OrganizationMember {
 }
 
 impl OrganizationMember {
+    pub fn is_owner(&self) -> bool {
+        self.role.org_owner()
+    }
+
+    pub fn ensure_owner_change(
+        &self,
+        actor_id: u64,
+        role: &Role,
+        active_owner_ids: &[u64],
+    ) -> Result<(), MembershipAssignmentError> {
+        if role.organization_id != self.organization_id {
+            return Err(MembershipAssignmentError::ForeignOrganization);
+        }
+        if self.is_owner() == role.org_owner() {
+            return Ok(());
+        }
+        if !active_owner_ids.contains(&actor_id) {
+            return Err(MembershipAssignmentError::OwnerChangeDenied);
+        }
+        if self.is_owner() && !active_owner_ids.iter().any(|id| *id != self.user_id) {
+            return Err(MembershipAssignmentError::OwnerRole);
+        }
+        Ok(())
+    }
+
     pub fn assign_role(
         &mut self,
         actor_id: u64,

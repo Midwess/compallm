@@ -339,42 +339,6 @@ impl RbacService {
     }
 
     #[db_context::root]
-    pub async fn owner_ids(
-        &self,
-        permission: &MemberPermission,
-    ) -> Result<Vec<u64>, AuthorizationError> {
-        Action::MemberRead.check_permission(permission)?;
-        Ok(self
-            .organizations
-            .active_owner_ids(permission.organization_id())
-            .await?)
-    }
-
-    #[db_context::root]
-    pub async fn is_owner(
-        &self,
-        permission: &MemberPermission,
-    ) -> Result<bool, AuthorizationError> {
-        Ok(self
-            .organizations
-            .active_owner_ids(permission.organization_id())
-            .await?
-            .contains(&permission.user_id()))
-    }
-
-    async fn check_owner_change(
-        &self,
-        permission: &MemberPermission,
-        before: bool,
-        after: bool,
-    ) -> Result<(), AuthorizationError> {
-        if before != after && !self.is_owner(permission).await? {
-            return Err(super::MemberPermissionError::Denied.into());
-        }
-        Ok(())
-    }
-
-    #[db_context::root]
     pub async fn assign_role(
         &self,
         permission: &MemberPermission,
@@ -397,8 +361,6 @@ impl RbacService {
             .into_iter()
             .next()
             .ok_or(crate::persistent::organization::OrganizationRepositoryError::NotFound)?;
-        self.check_owner_change(permission, member.role.org_owner(), role.org_owner())
-            .await?;
         (&member, &role)
             .for_action(Action::MemberRoleAssign)
             .and(role.for_action(Action::RoleAssign))
@@ -417,8 +379,8 @@ impl RbacService {
             .cloned()
             .unwrap_or_else(|| role.clone());
         member.assign_role(permission.user_id(), assigned_role)?;
-        let before_owner = previous.role.org_owner();
-        let after_owner = member.role.org_owner();
+        let before_owner = previous.is_owner();
+        let after_owner = member.is_owner();
         let owner_role = self
             .organizations
             .owner_role(member.organization_id)
@@ -437,14 +399,7 @@ impl RbacService {
                     .organizations
                     .active_owner_ids(member.organization_id)
                     .await?;
-                if !owners.contains(&permission.user_id()) {
-                    return Err(super::MemberPermissionError::Denied.into());
-                }
-                if before_owner && !after_owner && !owners.iter().any(|id| *id != member.user_id) {
-                    return Err(
-                        crate::organization::member::MembershipAssignmentError::OwnerRole.into(),
-                    );
-                }
+                previous.ensure_owner_change(permission.user_id(), &member.role, &owners)?;
             }
             let current = self
                 .organizations

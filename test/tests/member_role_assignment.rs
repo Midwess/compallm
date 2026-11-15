@@ -272,10 +272,7 @@ async fn role_assignment_replaces_direct_grants_preserves_groups_and_invalidates
         .unwrap()
         .0;
     assert!(std::iter::once(&promoted.role).any(|r| r.org_owner()));
-    assert!(
-        root.scope(service.is_owner(&member_permission(&promoted)))
-            .await?
-    );
+    assert!(promoted.is_owner());
     assert!(
         root.scope(service.create_group(&permission, "Owner group denied", "", vec![owner_role]))
             .await

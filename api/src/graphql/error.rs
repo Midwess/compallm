@@ -155,6 +155,7 @@ impl From<compallm_core::authorization::error::AuthorizationError> for Error {
             E::RoleDeletion(compallm_core::organization::role::RoleDeletionError::Assigned) => Self { code: "ROLE_ASSIGNED", status: 409, message: "Remove all members and groups assigned to this role before deleting it" },
             E::RoleDeletion(compallm_core::organization::role::RoleDeletionError::OwnerRole) => Self { code: "FORBIDDEN", status: 403, message: "The owner role cannot be deleted" },
             E::Membership(compallm_core::organization::member::MembershipAssignmentError::SelfRoleChange) => Self { code: "SELF_ROLE_CHANGE", status: 403, message: "You cannot change your own role" },
+            E::Membership(compallm_core::organization::member::MembershipAssignmentError::OwnerChangeDenied) => Self { code: "FORBIDDEN", status: 403, message: "Permission denied" },
             E::Membership(compallm_core::organization::member::MembershipAssignmentError::OwnerRole) => Self { code: "LAST_OWNER", status: 409, message: "The last active owner cannot be unassigned" },
             E::Membership(compallm_core::organization::member::MembershipAssignmentError::ForeignOrganization) => Self::invalid_input(),
             E::Permission(MemberPermissionError::Denied) => Self { code: "FORBIDDEN", status: 403, message: "Permission denied" },

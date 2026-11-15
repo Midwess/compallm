@@ -20,7 +20,9 @@ impl From<CoreOrganization> for Organization {
 impl Organization {
     async fn owner_member_ids(
         &self,
-        #[graphql(context)] service: &compallm_core::authorization::rbac::RbacService,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::organization::OrganizationRepository,
+        >,
         #[graphql(context)] authority: &crate::http::authorization::AuthorizationContext,
     ) -> Result<Vec<juniper::ID>, crate::graphql::error::Error> {
         let permission = authority.member_permission().await?;
@@ -32,9 +34,16 @@ impl Organization {
                 .into(),
             );
         }
-        Ok(service
-            .owner_ids(&permission)
-            .await?
+        use compallm_core::authorization::{
+            condition::CheckPermission, error::AuthorizationError, policy::Action,
+        };
+        Action::MemberRead
+            .check_permission(&permission)
+            .map_err(AuthorizationError::from)?;
+        Ok(repository
+            .active_owner_ids(permission.organization_id())
+            .await
+            .map_err(AuthorizationError::from)?
             .into_iter()
             .map(|id| juniper::ID::new(id.to_string()))
             .collect())

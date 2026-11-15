@@ -18,7 +18,7 @@ use compallm_core::{
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, JoinType, ModelTrait, PaginatorTrait, QueryFilter,
     QueryOrder, QuerySelect, QueryTrait, RelationTrait, Set,
-    sea_query::{Alias, Expr, Func, LockType, UnionType},
+    sea_query::{Alias, Expr, ExprTrait, Func, LockType, UnionType},
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -707,8 +707,9 @@ impl CoreRepository for OrganizationRepository {
         &self,
         query: Box<dyn compallm_query::IntoQuery>,
         pagination: compallm_query::Pagination,
-        ordering: Vec<compallm_query::OrderBy>,
+        mut ordering: Vec<compallm_query::OrderBy>,
         cursor_scope: &str,
+        current_user_first: Option<u64>,
     ) -> Result<
         compallm_query::Connection<compallm_core::organization::group::MemberInfo>,
         OrganizationRepositoryError,
@@ -717,7 +718,34 @@ impl CoreRepository for OrganizationRepository {
 
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
-        let base = member_read::Entity::find().filter(
+        let query = member_read::MemberQuery::try_from(query.into_query())?;
+        let rank = if let Some(user_id) = current_user_first {
+            ordering.insert(
+                0,
+                compallm_query::OrderBy {
+                    field: "sort_rank".into(),
+                    direction: compallm_query::OrderByDirection::AscNullsLast,
+                },
+            );
+            Expr::case(member_read::Column::Id.eq(Self::database_id(user_id)?), 0).finally(1)
+        } else {
+            Expr::case(Expr::value(false), 0).finally(1)
+        };
+        let source = member_read::Entity::find()
+            .select_only()
+            .columns([
+                member_read::Column::Id,
+                member_read::Column::DisplayName,
+                member_read::Column::Email,
+                member_read::Column::Status,
+            ])
+            .expr_as(rank, "sort_rank")
+            .into_query();
+        let mut base = member_read::Entity::find();
+        QueryTrait::query(&mut base)
+            .from_clear()
+            .from_subquery(source, member_read::Entity);
+        let mut base = base.filter(
             member_read::Column::Id.in_subquery(
                 Members::find()
                     .select_only()
@@ -725,8 +753,44 @@ impl CoreRepository for OrganizationRepository {
                     .into_query(),
             ),
         );
-        let page = query
-            .plan_page(base, pagination, ordering, 100, cursor_scope)
+        if let Some(role_id) = query.role_id {
+            let direct = Members::find()
+                .select_only()
+                .column(MemberColumn::UserId)
+                .filter(MemberColumn::RoleId.eq(role_id))
+                .into_query();
+            let inherited = GroupMembers::find()
+                .select_only()
+                .column(GroupMemberColumn::UserId)
+                .filter(
+                    GroupMemberColumn::GroupId.in_subquery(
+                        GroupRoles::find()
+                            .select_only()
+                            .column(GroupRoleColumn::GroupId)
+                            .filter(GroupRoleColumn::RoleId.eq(role_id))
+                            .filter(
+                                Expr::col((GroupRoles::default(), GroupRoleColumn::OrganizationId))
+                                    .equals((
+                                        GroupMembers::default(),
+                                        GroupMemberColumn::OrganizationId,
+                                    )),
+                            )
+                            .into_query(),
+                    ),
+                )
+                .into_query();
+            base = base.filter(
+                sea_orm::Condition::any()
+                    .add(member_read::Column::Id.in_subquery(direct))
+                    .add(member_read::Column::Id.in_subquery(inherited)),
+            );
+        }
+        let cursor_scope = format!(
+            "{cursor_scope}:role:{:?}:first:{current_user_first:?}",
+            query.role_id
+        );
+        let page = Box::new(query.query)
+            .plan_page(base, pagination, ordering, 100, &cursor_scope)
             .map_err(|_| OrganizationRepositoryError::InvalidQuery)?
             .fetch(db)
             .await
@@ -749,16 +813,53 @@ impl CoreRepository for OrganizationRepository {
         };
         let mut roles: BTreeMap<i64, BTreeSet<u64>> = BTreeMap::new();
         let mut groups: BTreeMap<i64, Vec<u64>> = BTreeMap::new();
+        let mut member_roles: BTreeMap<i64, Role> = BTreeMap::new();
+        let mut group_info: BTreeMap<i64, Vec<compallm_core::organization::group::GroupInfo>> =
+            BTreeMap::new();
         if !ids.is_empty() {
             let direct = Members::find()
                 .select_only()
-                .columns([MemberColumn::UserId, MemberColumn::RoleId])
+                .columns([
+                    MemberColumn::UserId,
+                    MemberColumn::RoleId,
+                    MemberColumn::OrganizationId,
+                ])
                 .filter(MemberColumn::UserId.is_in(ids.clone()))
-                .into_tuple::<(i64, i64)>()
+                .into_tuple::<(i64, i64, i64)>()
                 .all(db)
                 .await
                 .map_err(OrganizationRepositoryError::database)?;
-            for (user, role) in direct {
+            let definitions = Roles::find()
+                .select_only()
+                .columns([
+                    RoleColumn::OrganizationId,
+                    RoleColumn::Id,
+                    RoleColumn::Name,
+                    RoleColumn::Description,
+                    RoleColumn::OrgOwner,
+                ])
+                .expr_as(Expr::value(String::new()), "cedar_source")
+                .filter(RoleColumn::Id.is_in(direct.iter().map(|(_, role, _)| *role)))
+                .into_model::<OrganizationRoleSchema>()
+                .all(db)
+                .await
+                .map_err(OrganizationRepositoryError::database)?;
+            let definitions = definitions
+                .into_iter()
+                .map(|row| {
+                    let key = (row.organization_id, row.id);
+                    Ok((
+                        key,
+                        Role::try_from(row).map_err(OrganizationRepositoryError::database)?,
+                    ))
+                })
+                .collect::<Result<BTreeMap<_, _>, OrganizationRepositoryError>>()?;
+            for (user, role, organization) in direct {
+                if let Some(definition) = definitions.get(&(organization, role))
+                    && member_roles.insert(user, definition.clone()).is_some()
+                {
+                    return Err(OrganizationRepositoryError::Conflict);
+                }
                 roles.entry(user).or_default().insert(
                     crate::from_bigint(role).map_err(OrganizationRepositoryError::database)?,
                 );
@@ -769,6 +870,15 @@ impl CoreRepository for OrganizationRepository {
                 .await
                 .map_err(OrganizationRepositoryError::database)?;
             let group_ids: Vec<_> = memberships.iter().map(|member| member.group_id).collect();
+            let definitions = Groups::find()
+                .filter(GroupColumn::Id.is_in(group_ids.clone()))
+                .all(db)
+                .await
+                .map_err(OrganizationRepositoryError::database)?;
+            let definitions: BTreeMap<_, _> = definitions
+                .into_iter()
+                .map(|row| ((row.organization_id, row.id), row))
+                .collect();
             let inherited = if group_ids.is_empty() {
                 Vec::new()
             } else {
@@ -779,6 +889,16 @@ impl CoreRepository for OrganizationRepository {
                     .map_err(OrganizationRepositoryError::database)?
             };
             for member in memberships {
+                if let Some(group) = definitions.get(&(member.organization_id, member.group_id)) {
+                    group_info.entry(member.user_id).or_default().push(
+                        compallm_core::organization::group::GroupInfo {
+                            id: crate::from_bigint(group.id)
+                                .map_err(OrganizationRepositoryError::database)?,
+                            name: group.name.clone(),
+                            description: group.description.clone(),
+                        },
+                    );
+                }
                 groups.entry(member.user_id).or_default().push(
                     crate::from_bigint(member.group_id)
                         .map_err(OrganizationRepositoryError::database)?,
@@ -807,6 +927,9 @@ impl CoreRepository for OrganizationRepository {
                             active.contains(&user.id) && user.status == UserStatusSchema::Active,
                         ))?
                         .into();
+                    member.role = member_roles.remove(&user.id);
+                    member.groups = group_info.remove(&user.id).unwrap_or_default();
+                    member.groups.sort_by_key(|group| group.id);
                     member.effective_role_ids = roles
                         .remove(&user.id)
                         .unwrap_or_default()
@@ -957,7 +1080,10 @@ impl CoreRepository for OrganizationRepository {
                 && !before.contains(&user)
                 && (member.status != UserStatusSchema::Active
                     || member_read::Entity::find_by_id(Self::database_id(user)?)
+                        .select_only()
+                        .column(member_read::Column::Id)
                         .filter(member_read::Column::Status.eq(UserStatusSchema::Active))
+                        .into_tuple::<i64>()
                         .one(db)
                         .await
                         .map_err(OrganizationRepositoryError::database)?

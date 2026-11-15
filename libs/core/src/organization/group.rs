@@ -59,6 +59,8 @@ pub struct GroupChanges {
 
 #[derive(Clone, Debug)]
 pub struct MemberInfo {
+    pub role: Option<Role>,
+    pub groups: Vec<GroupInfo>,
     pub effective_role_ids: Vec<u64>,
     pub group_ids: Vec<u64>,
     pub id: u64,
@@ -71,6 +73,12 @@ pub struct MemberInfo {
 pub enum GroupDeletionError {
     #[error("Remove all members from this group before deleting it")]
     Assigned,
+}
+
+impl MemberInfo {
+    pub fn joined_at(&self) -> u64 {
+        hero::distributed_id::id_to_unix_timestamp(self.id) / 1000
+    }
 }
 
 impl Group {

@@ -243,6 +243,10 @@ input GroupUpdateInput {
   removeRoleIds: [String!]
 }
 
+input IDFilter {
+  eq: ID
+}
+
 input ImageUploadInput {
   mediaType: ImageMediaType!
   size: Int!
@@ -256,6 +260,7 @@ input MemberFilterInput {
   displayName: StringFilter
   email: StringFilter
   or: [MemberMatchInput!]
+  roleId: IDFilter
 }
 
 input MemberMatchInput {
@@ -557,10 +562,13 @@ type MePayload {
 }
 
 type Member {
+  role: Role!
+  groups: [Group!]!
   "Direct and group-inherited role identities in the verified organization."
   effectiveRoleIds: [ID!]!
   "Group identities in the verified organization; no policy source is exposed."
   groupIds: [ID!]!
+  joinedAt: Float!
   id: ID!
   displayName: String!
   email: String!
@@ -688,7 +696,7 @@ type Query {
   session: SessionPayload!
   "Return the active organization from verified user authority."
   organization: OrganizationPayload!
-  members(filter: MemberFilterInput, orderBy: [MemberOrderInput!], first: Int, last: Int, before: String, after: String, offset: Int): MemberConnection!
+  members(currentUserFirst: Boolean, filter: MemberFilterInput, orderBy: [MemberOrderInput!], first: Int, last: Int, before: String, after: String, offset: Int): MemberConnection!
   "Find visible role metadata in the active organization."
   role(id: ID!): RolePayload
   "Return the complete visible role metadata collection, ordered by ID."

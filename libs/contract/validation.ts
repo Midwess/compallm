@@ -224,6 +224,11 @@ export type GroupUpdateInputFormOutput = z.output<typeof GroupUpdateInput>
 export const HomeDestination = z.enum(['CHAT', 'MODELS', 'PROVIDERS'])
 export type HomeDestinationFormInput = z.input<typeof HomeDestination>
 export type HomeDestinationFormOutput = z.output<typeof HomeDestination>
+export const IDFilterConstraints = {} as const
+export const IDFilterInput = {}
+export const IDFilter = z.object({ eq: inputString({}).nullable().optional() }).strict()
+export type IDFilterFormInput = z.input<typeof IDFilter>
+export type IDFilterFormOutput = z.output<typeof IDFilter>
 export const ImageMediaType = z.enum(['JPEG', 'PNG', 'WEBP'])
 export type ImageMediaTypeFormInput = z.input<typeof ImageMediaType>
 export type ImageMediaTypeFormOutput = z.output<typeof ImageMediaType>
@@ -275,6 +280,7 @@ export const MemberFilterInput = z
     displayName: StringFilter.nullable().optional(),
     email: StringFilter.nullable().optional(),
     or: z.array(MemberMatchInput).nullable().optional(),
+    roleId: IDFilter.nullable().optional(),
   })
   .strict()
 export type MemberFilterInputFormInput = z.input<typeof MemberFilterInput>

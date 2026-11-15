@@ -285,6 +285,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
         _: compallm_query::Pagination,
         _: Vec<compallm_query::OrderBy>,
         _: &str,
+        _: Option<u64>,
     ) -> Result<
         compallm_query::Connection<compallm_core::organization::group::MemberInfo>,
         OrganizationRepositoryError,
@@ -5143,7 +5144,7 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     }))
     .await
     .unwrap();
-    let read = "query($id:ID!){group(id:$id){node{memberIds}} members(first:1){edges{node{id email effectiveRoleIds groupIds}}pageInfo{hasNextPage endCursor}}}";
+    let read = "query($id:ID!){group(id:$id){node{memberIds}} members(first:1){edges{node{id email effectiveRoleIds groupIds joinedAt role{id name} groups{id name}}}pageInfo{hasNextPage endCursor}}}";
     let result = graphql_body(
         graphql_operation(
             &router,

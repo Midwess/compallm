@@ -180,9 +180,11 @@ type Id = juniper::ID;
 type Id = String;
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[cfg_attr(feature = "graphql", derive(juniper::GraphQLInputObject))]
+#[cfg_attr(feature = "graphql", derive(schemars::JsonSchema))]
 pub struct IDFilter {
+    #[cfg_attr(feature = "graphql", schemars(with = "Option<String>"))]
     pub eq: Option<Id>,
 }
 

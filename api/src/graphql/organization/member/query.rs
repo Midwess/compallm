@@ -15,6 +15,7 @@ pub(crate) async fn list(
     filter: Option<MemberFilterInput>,
     order_by: Option<Vec<MemberOrderInput>>,
     pagination: compallm_query::Pagination,
+    current_user_first: bool,
     repository: &Box<dyn OrganizationRepository>,
     authority: &AuthorizationContext,
 ) -> Result<Collection<Member>, Error> {
@@ -22,6 +23,17 @@ pub(crate) async fn list(
     Action::MemberRead
         .check_permission(&permission)
         .map_err(AuthorizationError::from)?;
+    if filter
+        .as_ref()
+        .is_some_and(|filter| filter.role_id.is_some())
+    {
+        Action::RoleRead
+            .check_permission(&permission)
+            .map_err(AuthorizationError::from)?;
+        Action::GroupRead
+            .check_permission(&permission)
+            .map_err(AuthorizationError::from)?;
+    }
     pagination.validate().map_err(|_| Error::invalid_input())?;
     let ordering = order_by
         .unwrap_or_default()
@@ -40,6 +52,7 @@ pub(crate) async fn list(
             pagination,
             ordering,
             &cursor_scope,
+            current_user_first.then_some(permission.user_id()),
         )
         .await
         .map_err(AuthorizationError::from)?;

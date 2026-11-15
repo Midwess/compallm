@@ -1,3 +1,4 @@
+import type { Group, Role } from '@compallm/contract/graphql'
 import type { UserPreferenceController } from './preferences/user/controller'
 import type { FormStore } from '../../components/form'
 import type { RoleController } from './role/controller'
@@ -48,10 +49,13 @@ export interface SettingsGroup {
   color: string
 }
 export interface SettingsMember {
+  role: Pick<Role, 'id' | 'name' | 'description' | 'color' | 'owner'> | null
+  groups?: Pick<Group, 'id' | 'name' | 'description'>[]
+  joinedAt?: number | null
+  available?: boolean
   id: string
   name: string
   email: string
-  roleIds: string[]
   limitUsd: string | null
   currentUsageUsd: string | null
   previousUsageUsd: string | null
@@ -163,6 +167,14 @@ export interface SettingsDialog {
   revealedKey?: string
 }
 export interface SettingsState {
+  currentMemberId?: string
+  membersComplete?: boolean
+  membersLoading: boolean
+  membersHasNextPage: boolean
+  membersHasPreviousPage: boolean
+  membersEndCursor: string | null
+  membersPage: number
+  memberOrder: 'ASC_NULLS_LAST' | 'DESC_NULLS_LAST'
   organizationProfileStatus: 'loading' | 'ready' | 'denied' | 'missing' | 'error'
   organizationSavedName: string
   organizationProfileSaving: boolean
@@ -222,7 +234,12 @@ export interface SettingsPageControllers {
   preferences: { user: UserPreferenceController }
   profile: ProfileController
   organization: OrganizationController
-  members: { setMemberRoles(memberId: string, roleIds: string[]): void | false | Promise<void | false> }
+  members: {
+    search?(query: string): void
+    nextPage?(): void
+    previousPage?(): void
+    setOrder?(value: SettingsState['memberOrder']): void
+  }
   dialogs: {
     openDialog(kind: SettingsDialogKind, targetId?: string): void
     closeDialog(): void

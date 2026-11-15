@@ -466,3 +466,32 @@ export const PermissionHiddenPolicies: Story = {
   ...EditRole,
   parameters: { deniedPermissionActions: ['role.policy.read'] },
 }
+
+export const MembersEmpty: Story = { render: () => <Demo page="members" initial={{ members: [] }} /> }
+export const MembersLoading: Story = { render: () => <Demo page="members" initial={{ membersLoading: true }} /> }
+export const MembersPaged: Story = {
+  render: () => <Demo page="members" initial={{ membersHasNextPage: true, membersComplete: false }} />,
+}
+export const MembersLight: Story = { ...Members, globals: { theme: 'BASIC_WHITE' } }
+export const MembersLongLabels: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      initial={{
+        members: [
+          {
+            id: 'long',
+            name: 'Organization member with an exceptionally long display name',
+            email: 'long.email.address@example-organization.com',
+            role: { id: 'custom', name: 'Custom role with a long display name', description: '', color: '', owner: false },
+            groups: [{ id: 'research', name: 'Research and development group with a long name', description: '' }],
+            joinedAt: 1794000000,
+            limitUsd: null,
+            currentUsageUsd: null,
+            previousUsageUsd: null,
+          },
+        ],
+      }}
+    />
+  ),
+}

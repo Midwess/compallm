@@ -5,6 +5,7 @@ pub struct MemberFilterInput {
     pub display_name: Option<compallm_query::filter::StringFilter>,
     pub email: Option<compallm_query::filter::StringFilter>,
     pub or: Option<Vec<MemberMatchInput>>,
+    pub role_id: Option<compallm_query::filter::IDFilter>,
 }
 
 #[derive(Default, schemars::JsonSchema, juniper::GraphQLInputObject, compallm_query::IntoQuery)]

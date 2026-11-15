@@ -6,6 +6,7 @@
 export type Scalars = {
   Boolean: boolean
   ContextTokens: number
+  Float: number
   ID: string
   Int: number
   String: string
@@ -124,7 +125,10 @@ export interface Member {
   email: Scalars['String']
   /** Group identities in the verified organization; no policy source is exposed. */
   groupIds: Scalars['ID'][]
+  groups: Group[]
   id: Scalars['ID']
+  joinedAt: Scalars['Float']
+  role: Role
   __typename: 'Member'
 }
 
@@ -645,6 +649,10 @@ export interface GroupUpdateInput {
   removeRoleIds?: Scalars['String'][] | null
 }
 
+export interface IDFilter {
+  eq?: Scalars['ID'] | null
+}
+
 export interface ImageUploadInput {
   mediaType: ImageMediaType
   size: Scalars['Int']
@@ -676,7 +684,10 @@ export interface MemberGenqlSelection {
   email?: boolean | number
   /** Group identities in the verified organization; no policy source is exposed. */
   groupIds?: boolean | number
+  groups?: GroupGenqlSelection
   id?: boolean | number
+  joinedAt?: boolean | number
+  role?: RoleGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -709,6 +720,7 @@ export interface MemberFilterInput {
   displayName?: StringFilter | null
   email?: StringFilter | null
   or?: MemberMatchInput[] | null
+  roleId?: IDFilter | null
 }
 
 export interface MemberMatchInput {
@@ -966,6 +978,7 @@ export interface QueryGenqlSelection {
     __args?: {
       after?: Scalars['String'] | null
       before?: Scalars['String'] | null
+      currentUserFirst?: Scalars['Boolean'] | null
       filter?: MemberFilterInput | null
       first?: Scalars['Int'] | null
       last?: Scalars['Int'] | null

@@ -40,6 +40,7 @@ impl OrganizationRepository for Repository {
         _: compallm_query::Pagination,
         _: Vec<compallm_query::OrderBy>,
         _: &str,
+        _: Option<u64>,
     ) -> Result<
         compallm_query::Connection<compallm_core::organization::group::MemberInfo>,
         OrganizationRepositoryError,

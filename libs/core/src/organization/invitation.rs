@@ -1,5 +1,12 @@
 use crate::authentication::{AuthError, token::InvitationToken};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InvitationStatus {
+    Pending,
+    Accepted,
+    Revoked,
+}
+
 #[derive(Clone, Debug)]
 pub struct Invitation {
     pub id: u64,
@@ -7,7 +14,7 @@ pub struct Invitation {
     pub email: String,
     pub inviter_id: u64,
     pub expires_at: u64,
-    pub status: String,
+    pub status: InvitationStatus,
     pub accepted_at: Option<u64>,
     pub accepted_by: Option<u64>,
     pub revoked_at: Option<u64>,
@@ -20,7 +27,7 @@ impl Invitation {
             || self.organization_id != claims.organization_id
             || self.email != claims.email
             || self.expires_at != claims.validity.expires_at
-            || self.status != "pending"
+            || self.status != InvitationStatus::Pending
             || self.accepted_at.is_some()
             || self.accepted_by.is_some()
             || self.revoked_at.is_some()

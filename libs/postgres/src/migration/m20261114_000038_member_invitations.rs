@@ -6,12 +6,13 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager.get_connection().execute_unprepared(r#"
+CREATE TYPE public.organization_member_invitation_status AS ENUM ('pending', 'accepted', 'revoked');
 CREATE TABLE public.organization_member_invitations (
  organization_id BIGINT NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
  id BIGINT NOT NULL CHECK (id > 0),
  email TEXT NOT NULL CHECK (email = lower(btrim(email))),
  inviter_id BIGINT NOT NULL REFERENCES public.users(id),
- status TEXT NOT NULL CHECK (status IN ('pending', 'accepted', 'revoked')),
+ status public.organization_member_invitation_status NOT NULL,
  expires_at BIGINT NOT NULL CHECK (expires_at > 0),
  accepted_at BIGINT,
  accepted_by BIGINT REFERENCES public.users(id),
@@ -43,7 +44,7 @@ CREATE UNIQUE INDEX organization_default_member_role ON public.organization_role
         Ok(())
     }
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager.get_connection().execute_unprepared("DROP TABLE public.organization_member_invitations; ALTER TABLE public.organization_roles DROP COLUMN default_member;").await?;
+        manager.get_connection().execute_unprepared("DROP TABLE public.organization_member_invitations; DROP TYPE public.organization_member_invitation_status; ALTER TABLE public.organization_roles DROP COLUMN default_member;").await?;
         Ok(())
     }
 }

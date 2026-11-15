@@ -19,12 +19,17 @@ impl Invitation {
     fn inviter_id(&self) -> juniper::ID {
         juniper::ID::new(self.0.inviter_id.to_string())
     }
-    fn status(&self) -> &str {
-        if self.0.status == "pending" && self.0.expires_at <= compallm_utils::time::unix_timestamp()
-        {
-            "expired"
-        } else {
-            &self.0.status
+    fn status(&self) -> &'static str {
+        use compallm_core::organization::invitation::InvitationStatus;
+        match self.0.status {
+            InvitationStatus::Pending
+                if self.0.expires_at <= compallm_utils::time::unix_timestamp() =>
+            {
+                "expired"
+            }
+            InvitationStatus::Pending => "pending",
+            InvitationStatus::Accepted => "accepted",
+            InvitationStatus::Revoked => "revoked",
         }
     }
     fn issued_at(&self) -> f64 {

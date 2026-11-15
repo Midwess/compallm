@@ -4,7 +4,10 @@ use super::{
 };
 use crate::{
     authorization::{MemberPermission, condition::CheckPermission, policy::Action},
-    organization::{OrganizationMember, invitation::Invitation},
+    organization::{
+        OrganizationMember,
+        invitation::{Invitation, InvitationStatus},
+    },
     persistent::{db_context, invitation::InvitationRepository},
     user::UserStatus,
 };
@@ -195,7 +198,7 @@ impl AuthService {
                     organization_id,
                     email: email.clone(),
                     inviter_id,
-                    status: "pending".into(),
+                    status: InvitationStatus::Pending,
                     expires_at: claims.validity.expires_at,
                     accepted_at: None,
                     accepted_by: None,

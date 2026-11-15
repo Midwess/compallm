@@ -46,7 +46,7 @@ fn invitation_record_binds_recipient_scope_expiry_and_pending_lifecycle() {
         organization_id: 2,
         email: claims.email.clone(),
         inviter_id: 3,
-        status: "pending".into(),
+        status: compallm_core::organization::invitation::InvitationStatus::Pending,
         expires_at: claims.validity.expires_at,
         accepted_at: None,
         accepted_by: None,
@@ -62,9 +62,12 @@ fn invitation_record_binds_recipient_scope_expiry_and_pending_lifecycle() {
     let mut changed = row.clone();
     changed.organization_id = 4;
     assert!(changed.validate(&claims, now).is_err());
-    for state in ["accepted", "revoked"] {
+    for state in [
+        compallm_core::organization::invitation::InvitationStatus::Accepted,
+        compallm_core::organization::invitation::InvitationStatus::Revoked,
+    ] {
         let mut changed = row.clone();
-        changed.status = state.into();
+        changed.status = state;
         assert!(changed.validate(&claims, now).is_err());
     }
 }

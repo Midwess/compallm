@@ -465,7 +465,7 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         organization_id: ORG,
         email: format!("rls-write-{suffix}@example.com"),
         inviter_id: user.id,
-        status: "pending".into(),
+        status: compallm_core::organization::invitation::InvitationStatus::Pending,
         expires_at: compallm_utils::time::unix_timestamp() + 604800,
         accepted_at: None,
         accepted_by: None,

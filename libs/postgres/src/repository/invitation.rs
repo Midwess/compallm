@@ -1,10 +1,13 @@
 use crate::{
-    postgres_connection::PostgresConnection, query::IntoSeaQuery,
-    schema::OrganizationMemberInvitationSchema,
+    postgres_connection::PostgresConnection,
+    query::IntoSeaQuery,
+    schema::{
+        OrganizationMemberInvitationSchema, OrganizationMemberInvitationStatusSchema as Status,
+    },
 };
 use compallm_core::{
     authentication::AuthError,
-    organization::invitation::Invitation,
+    organization::invitation::{Invitation, InvitationStatus},
     persistent::{DbContext, organization::OrganizationRepositoryError},
 };
 use sea_orm::{
@@ -72,7 +75,7 @@ impl compallm_core::persistent::invitation::InvitationRepository for InvitationR
         Ok(Entity::find()
             .filter(Column::OrganizationId.eq(id(organization_id)?))
             .filter(Column::Email.eq(email))
-            .filter(Column::Status.eq("pending"))
+            .filter(Column::Status.eq(Status::Pending))
             .filter(Column::ExpiresAt.gt(id(now)?))
             .one(db)
             .await
@@ -87,7 +90,7 @@ impl compallm_core::persistent::invitation::InvitationRepository for InvitationR
             id: Set(id(value.id)?),
             email: Set(value.email),
             inviter_id: Set(id(value.inviter_id)?),
-            status: Set(value.status),
+            status: Set(value.status.into()),
             expires_at: Set(id(value.expires_at)?),
             accepted_at: Set(None),
             accepted_by: Set(None),
@@ -110,11 +113,14 @@ impl compallm_core::persistent::invitation::InvitationRepository for InvitationR
             .find(organization_id, invitation_id, true)
             .await?
             .ok_or(AuthError::InvalidInvitation)?;
-        if row.status != "pending" {
+        if row.status != InvitationStatus::Pending {
             return Err(AuthError::InvalidInvitation);
         }
         Entity::update_many()
-            .col_expr(Column::Status, sea_orm::sea_query::Expr::value("revoked"))
+            .col_expr(
+                Column::Status,
+                sea_orm::sea_query::Expr::value(Status::Revoked),
+            )
             .col_expr(Column::RevokedAt, sea_orm::sea_query::Expr::value(id(now)?))
             .filter(Column::OrganizationId.eq(id(organization_id)?))
             .filter(Column::Id.eq(id(invitation_id)?))
@@ -135,7 +141,10 @@ impl compallm_core::persistent::invitation::InvitationRepository for InvitationR
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
         let result = Entity::update_many()
-            .col_expr(Column::Status, sea_orm::sea_query::Expr::value("accepted"))
+            .col_expr(
+                Column::Status,
+                sea_orm::sea_query::Expr::value(Status::Accepted),
+            )
             .col_expr(
                 Column::AcceptedAt,
                 sea_orm::sea_query::Expr::value(id(now)?),
@@ -146,7 +155,7 @@ impl compallm_core::persistent::invitation::InvitationRepository for InvitationR
             )
             .filter(Column::OrganizationId.eq(id(organization_id)?))
             .filter(Column::Id.eq(id(invitation_id)?))
-            .filter(Column::Status.eq("pending"))
+            .filter(Column::Status.eq(Status::Pending))
             .filter(Column::ExpiresAt.gt(id(now)?))
             .exec(db)
             .await
@@ -199,7 +208,7 @@ impl compallm_core::persistent::invitation::InvitationRepository for InvitationR
         let page = query
             .plan_page(
                 Entity::find()
-                    .filter(Column::Status.eq("pending"))
+                    .filter(Column::Status.eq(Status::Pending))
                     .filter(Column::ExpiresAt.gt(id(compallm_utils::time::unix_timestamp())?)),
                 pagination,
                 ordering,

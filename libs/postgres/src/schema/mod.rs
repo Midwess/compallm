@@ -48,6 +48,7 @@ pub use self::provider_token_usage::Model as ProviderTokenUsageSchema;
 pub use self::provider_video_usage::Model as ProviderVideoUsageSchema;
 pub use self::providers::Model as ProviderSchema;
 pub use self::sea_orm_active_enums::Lz4DictionaryType as Lz4DictionaryTypeSchema;
+pub use self::sea_orm_active_enums::OrganizationMemberInvitationStatus as OrganizationMemberInvitationStatusSchema;
 pub use self::sea_orm_active_enums::OrganizationStatus as OrganizationStatusSchema;
 pub use self::sea_orm_active_enums::ProviderUsageStatus as ProviderUsageStatusSchema;
 pub use self::sea_orm_active_enums::UsageDirection as UsageDirectionSchema;

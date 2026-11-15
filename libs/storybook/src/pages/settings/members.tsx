@@ -122,7 +122,7 @@ function MemberRows({ label, members, complete }: { label: string; members: Sett
             <PermissionRequest actions={['role.read']}>
               {(allowed) =>
                 allowed ? (
-                  <span className="line-clamp-2 whitespace-normal break-words text-left text-xs">
+                  <span className="line-clamp-2 whitespace-normal wrap-break-word text-left text-xs">
                     {member.role?.name ?? 'Unavailable'}
                   </span>
                 ) : null
@@ -133,7 +133,7 @@ function MemberRows({ label, members, complete }: { label: string; members: Sett
             <PermissionRequest actions={['group.read']}>
               {(allowed) =>
                 allowed ? (
-                  <span className="line-clamp-2 whitespace-normal break-words text-left text-xs">
+                  <span className="line-clamp-2 whitespace-normal wrap-break-word text-left text-xs">
                     {member.groups?.map((group) => group.name).join(', ') || 'None'}
                   </span>
                 ) : null

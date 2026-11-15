@@ -210,7 +210,7 @@ function overlayElement<Tag extends 'div' | 'span' | 'dialog'>(tag: Tag) {
           ghost = undefined
         }
         const exit = () => {
-          if (exiting || reducedMotion() || !node.getClientRects().length) return
+          if (exiting || !node.isConnected || reducedMotion() || !node.getClientRects().length) return
           exiting = true
           const bounds = node.getBoundingClientRect()
           const image = node.cloneNode(true) as HTMLElement
@@ -233,7 +233,8 @@ function overlayElement<Tag extends 'div' | 'span' | 'dialog'>(tag: Tag) {
             transform: 'none',
             opacity: '1',
           })
-          ;(node.closest('dialog')?.parentElement ?? document.body).appendChild(image)
+          const parent = node.closest('dialog')?.parentElement
+          ;(parent?.isConnected ? parent : document.body).appendChild(image)
           image.showPopover()
           ghost = image
           running?.stop()
@@ -268,15 +269,18 @@ function overlayElement<Tag extends 'div' | 'span' | 'dialog'>(tag: Tag) {
 
 export const overlay = { div: overlayElement('div'), span: overlayElement('span'), dialog: overlayElement('dialog') }
 
-export function FloatingMotion({ ref, ...props }: HTMLMotionProps<'div'>) {
-  const timing = useTransition('enter')
+export function FloatingMotion({ ref, ...props }: HTMLMotionProps<'div'> & { 'data-closed'?: string }) {
+  const closed = props['data-closed'] !== undefined
+  const timing = useTransition(closed ? 'exit' : 'enter')
   const reduced = useReducedMotion()
   return (
     <motion.div
       {...props}
       ref={ref}
+      aria-hidden={closed ? true : props['aria-hidden']}
+      inert={closed || undefined}
       initial={reduced ? false : { opacity: 0, scale: animation.overlayScale }}
-      animate={{ opacity: 1, scale: 1 }}
+      animate={closed ? { opacity: 0, scale: animation.overlayScale } : { opacity: 1, scale: 1 }}
       transition={timing}
     />
   )

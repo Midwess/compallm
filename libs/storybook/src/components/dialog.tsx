@@ -7,6 +7,7 @@ import {
   useEffect,
   useId,
   useRef,
+  useMemo,
   type ReactNode,
   type Ref,
   type ComponentPropsWithRef,
@@ -73,6 +74,7 @@ function MountedContent({
 }: DialogHTMLAttributes<HTMLDialogElement> & { ref?: Ref<HTMLDialogElement> }) {
   const { titleId, onClose } = useDialog()
   const ref = useRef<HTMLDialogElement>(null)
+  const mergedRef = useMemo(() => composeRefs(ref, forwardedRef), [forwardedRef])
   useEffect(() => {
     const previous = document.activeElement
     const element = ref.current
@@ -85,7 +87,7 @@ function MountedContent({
   return (
     <overlay.dialog
       {...props}
-      ref={composeRefs(ref, forwardedRef)}
+      ref={mergedRef}
       data-state="open"
       role={role}
       aria-labelledby={titleId}

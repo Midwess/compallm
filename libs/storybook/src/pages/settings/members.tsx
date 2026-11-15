@@ -1,10 +1,16 @@
+import { ChoicePicker } from '../../components/choice-picker'
+import { Searchbox } from '../../components/fields'
+import { Form, useManagedForm, useFormValue } from '../../components/form'
+import { Select } from '../../components/dropdowns'
+import { Dialog } from '../../components/dialog'
+import type { PermissionCheck } from '../../permission'
 import { ArrowDownLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowDownLeft'
 import { Tooltip } from '../../components/feedback'
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { EyeIcon } from '@phosphor-icons/react/dist/csr/Eye'
 import { EyeSlashIcon } from '@phosphor-icons/react/dist/csr/EyeSlash'
 import { DotsThreeIcon } from '@phosphor-icons/react/dist/csr/DotsThree'
-import { PermissionRequest } from '../../components/permission'
+import { PermissionRequest, usePermissionChecks } from '../../components/permission'
 import { SearchField } from '../../components/fields'
 import { Button } from '../../components/buttons'
 import { Table } from '../../components/table'
@@ -28,6 +34,206 @@ function DirectoryDate({ value }: { value?: number | null }) {
     >
       {date.toLocaleDateString(undefined, sameYear ? { month: 'short', day: 'numeric' } : { month: 'short', year: 'numeric' })}
     </time>
+  )
+}
+
+function MemberRoles({ member }: { member: SettingsMember }) {
+  const roles = useSettings((s) => s.roles)
+  const actorIsOwner = useSettings((s) => s.actorIsOwner)
+  const currentMemberId = useSettings((s) => s.currentMemberId)
+  const ownerIds = useSettings((s) => s.ownerMemberIds ?? [])
+  const [confirmation, setConfirmation] = useState<string | null>(null)
+  const first = member.role
+  const known = Boolean(first)
+  const label = first?.name ?? 'Unavailable'
+  const c = useSettingsController()
+  const checksFor = (id: string): PermissionCheck[] => [
+    ...(id
+      ? [
+          { action: 'member.role.assign' as const, resourceType: 'Member' as const, resourceId: member.id, roleId: id },
+          { action: 'role.assign' as const, resourceType: 'Role' as const, resourceId: id },
+        ]
+      : []),
+    ...(first && first.id !== id
+      ? [
+          { action: 'member.role.unassign' as const, resourceType: 'Member' as const, resourceId: member.id, roleId: first.id },
+          { action: 'role.unassign' as const, resourceType: 'Role' as const, resourceId: first.id },
+        ]
+      : []),
+  ]
+  const protectedOwner = first?.owner
+  const options = roles.filter((r) => !r.owner || actorIsOwner)
+  const optionChecks = options.map((role) => checksFor(role.id))
+  const statuses = usePermissionChecks(optionChecks.flat())
+  const allowed = optionChecks.map((checks, index) => {
+    const offset = optionChecks.slice(0, index).reduce((total, previous) => total + previous.length, 0)
+    return statuses.slice(offset, offset + checks.length).every((status) => status === 'allowed')
+  })
+  const form = useManagedForm(
+    { roleId: first?.id ?? '' },
+    {
+      mode: 'change',
+      submit: async (values) => {
+        const result = await c.pages.members.setMemberRole(member.id, values.roleId)
+        if (result === false) return false
+        setConfirmation(null)
+        return values
+      },
+    },
+  )
+  const selected = useFormValue<string>(form, 'roleId')
+  const pending = useSyncExternalStore(
+    form.subscribe,
+    () => form.pending,
+    () => false,
+  )
+  const cancelConfirmation = () => {
+    if (pending) return
+    form.escape('roleId')
+    setConfirmation(null)
+  }
+  if (member.id === currentMemberId || (protectedOwner && (!actorIsOwner || ownerIds.length <= 1)))
+    return <span className="line-clamp-2 whitespace-normal wrap-break-word text-left text-xs">{label}</span>
+  return (
+    <Form.Root model={form}>
+      <Select.Root
+        value={selected}
+        disabled={pending || confirmation !== null}
+        onValueChange={(value) => {
+          if (value === null || value === selected || pending) return
+          if (Boolean(protectedOwner) !== Boolean(roles.find((r) => r.id === value)?.owner)) setConfirmation(value)
+          else form.change('roleId', value)
+        }}
+      >
+        <Select.Trigger
+          aria-label={`Roles for ${member.name}`}
+          className="h-auto min-h-6 w-full max-w-30 rounded-lg px-2 py-0.5 text-left text-xs"
+        >
+          <Select.Value>
+            {selected === (first?.id ?? '') ? label : (roles.find((r) => r.id === selected)?.name ?? 'Unavailable')}
+          </Select.Value>
+        </Select.Trigger>
+        <Select.Content aria-label={`Roles for ${member.name}`} className="w-64">
+          {options.map((role, index) => {
+            const unavailable =
+              !known || !allowed[index] || (protectedOwner && (!actorIsOwner || ownerIds.length <= 1) && role.id !== first?.id)
+            if (unavailable) return null
+            return (
+              <Select.Item key={role.id} value={role.id}>
+                {role.color ? (
+                  <span
+                    aria-hidden="true"
+                    className="mr-1 size-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: `color-mix(in oklab, ${role.color} 70%, var(--foreground))` }}
+                  />
+                ) : null}
+                <span className="min-w-0">
+                  <span className="block truncate">{role.name}</span>
+                  {role.description ? (
+                    <span className="block truncate text-xs text-muted-foreground">{role.description}</span>
+                  ) : null}
+                </span>
+              </Select.Item>
+            )
+          })}
+        </Select.Content>
+      </Select.Root>
+      <Form.Error name="roleId" />
+      {confirmation !== null ? (
+        <Dialog.Root
+          open
+          onOpenChange={(open) => {
+            if (!open) cancelConfirmation()
+          }}
+        >
+          <Dialog.Content className="w-100">
+            <Dialog.Header>
+              <Dialog.Title>
+                {roles.find((r) => r.id === confirmation)?.owner
+                  ? `Make ${member.name} an owner?`
+                  : `Change ${member.name}’s role?`}
+              </Dialog.Title>
+              {!pending ? <Dialog.Close /> : null}
+            </Dialog.Header>
+            <Dialog.Footer>
+              <Button disabled={pending} onClick={cancelConfirmation}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                loading={pending}
+                onClick={() => {
+                  form.change('roleId', confirmation)
+                  void form.submit()
+                }}
+              >
+                Confirm
+              </Button>
+            </Dialog.Footer>
+          </Dialog.Content>
+        </Dialog.Root>
+      ) : null}
+    </Form.Root>
+  )
+}
+
+function MemberGroups({ member }: { member: SettingsMember }) {
+  const c = useSettingsController()
+  const catalog = useSettings((s) => s.groups)
+  const confirmed = member.groups ?? catalog.filter((group) => group.memberIds.includes(member.id))
+  const ids = confirmed.map((group) => group.id)
+  const options = [...new Map([...catalog, ...confirmed].map((group) => [group.id, group])).values()]
+  const checks = usePermissionChecks(
+    options.map((group) => ({
+      action: ids.includes(group.id) ? ('group.member.remove' as const) : ('group.member.add' as const),
+      resourceType: 'Group',
+      resourceId: group.id,
+      memberId: member.id,
+    })),
+  )
+  const form = useManagedForm(
+    { groupIds: ids },
+    {
+      mode: 'change',
+      submit: async (values) => {
+        const result = await c.pages.members.setMemberGroups?.(member.id, values.groupIds)
+        return result === false || !result ? false : { groupIds: result }
+      },
+    },
+  )
+  const selected = useFormValue<string[]>(form, 'groupIds') ?? []
+  const selectedGroups = options.filter((group) => selected.includes(group.id))
+  const editable = Boolean(c.pages.members.setMemberGroups)
+  const pickerOptions = options.map((group, index) => ({
+    id: group.id,
+    label: group.name,
+    description: group.description,
+    disabled: !editable || checks[index] !== 'allowed',
+  }))
+  return (
+    <PermissionRequest actions={['group.read']}>
+      {(allowed) =>
+        allowed ? (
+          <Form.Root model={form}>
+            <ChoicePicker.Root options={pickerOptions} value={selected} onValueChange={(next) => form.change('groupIds', next)}>
+              <ChoicePicker.Trigger aria-label={`Groups for ${member.name}`}>
+                {selectedGroups[0]?.name ?? 'None'}
+                {selectedGroups.length > 1 ? ` +${selectedGroups.length - 1}` : ''}
+              </ChoicePicker.Trigger>
+              <ChoicePicker.Content>
+                <div className="p-2 pb-0">
+                  <Searchbox.Root>
+                    <ChoicePicker.Input aria-label={`Search groups for ${member.name}`} placeholder="Search groups…" />
+                  </Searchbox.Root>
+                </div>
+                <ChoicePicker.Empty>Empty.</ChoicePicker.Empty>
+                <ChoicePicker.List>{(option) => <ChoicePicker.Item key={option.id} value={option} />}</ChoicePicker.List>
+              </ChoicePicker.Content>
+            </ChoicePicker.Root>
+          </Form.Root>
+        ) : null
+      }
+    </PermissionRequest>
   )
 }
 
@@ -120,25 +326,11 @@ function MemberRows({ label, members, complete }: { label: string; members: Sett
           </Table.Cell>
           <Table.Cell column="role">
             <PermissionRequest actions={['role.read']}>
-              {(allowed) =>
-                allowed ? (
-                  <span className="line-clamp-2 whitespace-normal wrap-break-word text-left text-xs">
-                    {member.role?.name ?? 'Unavailable'}
-                  </span>
-                ) : null
-              }
+              {(allowed) => (allowed ? <MemberRoles member={member} /> : null)}
             </PermissionRequest>
           </Table.Cell>
           <Table.Cell column="groups">
-            <PermissionRequest actions={['group.read']}>
-              {(allowed) =>
-                allowed ? (
-                  <span className="line-clamp-2 whitespace-normal wrap-break-word text-left text-xs">
-                    {member.groups?.map((group) => group.name).join(', ') || 'None'}
-                  </span>
-                ) : null
-              }
-            </PermissionRequest>
+            <MemberGroups member={member} />
           </Table.Cell>
           <Table.Cell column="joined">
             <DirectoryDate value={member.joinedAt} />

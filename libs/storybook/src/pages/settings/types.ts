@@ -167,6 +167,8 @@ export interface SettingsDialog {
   revealedKey?: string
 }
 export interface SettingsState {
+  actorIsOwner?: boolean
+  ownerMemberIds?: string[]
   currentMemberId?: string
   membersComplete?: boolean
   membersLoading: boolean
@@ -235,6 +237,8 @@ export interface SettingsPageControllers {
   profile: ProfileController
   organization: OrganizationController
   members: {
+    setMemberRole(memberId: string, roleId: string): void | false | Promise<void | false>
+    setMemberGroups?(memberId: string, groupIds: string[]): Promise<string[] | false>
     search?(query: string): void
     nextPage?(): void
     previousPage?(): void

@@ -28,10 +28,10 @@ fn replacing_direct_role_preserves_multiple_groups_and_rejects_foreign_role() {
     member
         .assign_group(Group::new(21, 10, "Two".into(), String::new(), vec![]).unwrap())
         .unwrap();
-    member.assign_role(role(2, 10, false)).unwrap();
+    member.assign_role(8, role(2, 10, false)).unwrap();
     assert_eq!(member.role.id, 2);
     assert_eq!(member.groups.len(), 2);
-    assert!(member.assign_role(role(4, 11, false)).is_err());
+    assert!(member.assign_role(8, role(4, 11, false)).is_err());
     assert_eq!(member.role.id, 2);
     assert_eq!(
         member.effective_roles().map(|r| r.id).collect::<Vec<_>>(),
@@ -67,4 +67,20 @@ async fn owner_is_rejected_by_group_creation_rehydration_and_role_replacement() 
         Err(GroupCreationError::OwnerRole)
     ));
     assert_eq!(group.roles()[0].id, 2);
+}
+
+#[test]
+fn self_role_replacement_is_denied_but_reselection_preserves_the_role() {
+    let mut member = OrganizationMember {
+        organization_id: 10,
+        user_id: 9,
+        role: role(1, 10, true),
+        groups: vec![],
+    };
+    assert!(matches!(
+        member.assign_role(9, role(2, 10, false)),
+        Err(compallm_core::organization::member::MembershipAssignmentError::SelfRoleChange)
+    ));
+    assert_eq!(member.role.id, 1);
+    member.assign_role(9, role(1, 10, true)).unwrap();
 }

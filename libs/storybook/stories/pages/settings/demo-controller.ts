@@ -24,6 +24,29 @@ export class DemoSettingsController implements SettingsController {
     profile: new DemoProfileController(this.store, (file) => this.avatarUrl(file)),
     organization: new DemoOrganizationController(this.store, (file) => this.avatarUrl(file)),
     members: {
+      setMemberRole: async (id, roleId) => {
+        if (this.store.getState().readonly || id === this.store.getState().currentMemberId) return false
+        await new Promise((resolve) => setTimeout(resolve, 300))
+        if (this.failWrites) {
+          this.apiError(new Error('Role assignment failed'))
+          return false
+        }
+        const role = this.store.getState().roles.find((role) => role.id === roleId)
+        if (!role) return false
+        this.store.setState((state) => ({
+          members: state.members.map((member) =>
+            member.id === id ? { ...member, role: { ...role, owner: Boolean(role.owner) } } : member,
+          ),
+        }))
+      },
+      setMemberGroups: async (id, groupIds) => {
+        if (this.store.getState().readonly) return false
+        const groups = this.store.getState().groups.filter((group) => groupIds.includes(group.id))
+        this.store.setState((state) => ({
+          members: state.members.map((member) => (member.id === id ? { ...member, groups } : member)),
+        }))
+        return groupIds
+      },
       search: (query) => this.searchMembers(query),
       setOrder: (memberOrder) => {
         this.store.setState({ memberOrder })

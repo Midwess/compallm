@@ -495,3 +495,25 @@ export const MembersLongLabels: Story = {
     />
   ),
 }
+
+export const MembersAsAdmin: Story = { render: () => <Demo page="members" initial={{ actorIsOwner: false }} /> }
+export const MembersMultipleOwners: Story = {
+  render: () => <Demo page="members" initial={{ actorIsOwner: true, ownerMemberIds: ['alex', 'jamie'] }} />,
+}
+export const MemberOwnerDemotion: Story = {
+  render: () => (
+    <Demo page="members" initial={{ actorIsOwner: true, currentMemberId: 'other', ownerMemberIds: ['alex', 'other'] }} />
+  ),
+}
+export const MemberOwnerDemotionRetry: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      failure
+      initial={{ actorIsOwner: true, currentMemberId: 'other', ownerMemberIds: ['alex', 'other'] }}
+    />
+  ),
+}
+export const MembersOwnRoleReadOnly: Story = {
+  render: () => <Demo page="members" initial={{ actorIsOwner: true, currentMemberId: 'alex', ownerMemberIds: ['alex'] }} />,
+}

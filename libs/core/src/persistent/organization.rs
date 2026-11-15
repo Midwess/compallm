@@ -32,6 +32,18 @@ impl From<ConnectionError> for OrganizationRepositoryError {
 /// Use the current DbContext and leave transaction ownership to the caller.
 #[async_trait]
 pub trait OrganizationRepository: Send + Sync {
+    async fn owner_role(&self, organization_id: u64) -> Result<Role, OrganizationRepositoryError>;
+    async fn active_owner_ids(
+        &self,
+        organization_id: u64,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError>;
+    async fn record_owner_change(
+        &self,
+        organization_id: u64,
+        actor_id: u64,
+        member_id: u64,
+        owner: bool,
+    ) -> Result<(), OrganizationRepositoryError>;
     /// Load complete membership state in the supplied verified organization.
     async fn find_member_identity(
         &self,

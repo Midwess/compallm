@@ -272,6 +272,21 @@ struct OrganizationRepositoryStub(Arc<Mutex<State>>);
 
 #[async_trait::async_trait]
 impl OrganizationRepository for OrganizationRepositoryStub {
+    async fn owner_role(&self, _: u64) -> Result<Role, OrganizationRepositoryError> {
+        Err(OrganizationRepositoryError::NotFound)
+    }
+    async fn active_owner_ids(&self, _: u64) -> Result<Vec<u64>, OrganizationRepositoryError> {
+        Ok(vec![])
+    }
+    async fn record_owner_change(
+        &self,
+        _: u64,
+        _: u64,
+        _: u64,
+        _: bool,
+    ) -> Result<(), OrganizationRepositoryError> {
+        unreachable!()
+    }
     async fn find_member_identity(
         &self,
         _: u64,
@@ -5045,7 +5060,7 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
         .unwrap();
     let owner_detail = graphql_operation(
         &router,
-        "query($id:ID!){role(id:$id){node{id owner}}}",
+        "query($id:ID!){role(id:$id,includeUnseen:true){node{id owner}}}",
         serde_json::json!({"id": owner.id.to_string()}),
         Some(&tokens.access_token),
         None,

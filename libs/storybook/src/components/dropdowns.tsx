@@ -1,7 +1,6 @@
 import { useContext, type ReactNode, type ComponentPropsWithRef } from 'react'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
-import { CheckIcon } from '@phosphor-icons/react/dist/csr/Check'
 import { animated, FloatingMotion } from './motion'
 import { useFormField, useFormInvalid } from './form'
 import { cx } from './shared'
@@ -64,9 +63,9 @@ function SelectTrigger({ className, children, asChild = false, ...props }: Compo
         asChild
           ? className
           : cx(
-              `flex h-7.5 w-full min-w-0 cursor-pointer items-center justify-between gap-1 rounded-xl
+              `flex min-h-7.5 w-full min-w-0 cursor-pointer items-center justify-between gap-1 rounded-xl
 border-(length:--border-hairline)
-        border-transparent bg-elevated px-1.5 py-0 text-xsm leading-5 text-foreground shadow-control
+        border-transparent bg-elevated px-1.5 py-1 text-left text-xsm leading-5 text-foreground shadow-control
         focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-ring
         disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`,
               className,
@@ -92,7 +91,18 @@ function SelectValue({
   placeholder?: ReactNode
   children?: ReactNode | ((value: string | null) => ReactNode)
 }) {
-  return <BaseSelect.Value {...props} className={cx('flex min-w-0 items-center gap-2 truncate', className)} />
+  const { children, ...rest } = props
+  if (children === undefined)
+    return <BaseSelect.Value {...rest} className={cx('line-clamp-2 min-w-0 flex-1 whitespace-normal text-left', className)} />
+  return (
+    <BaseSelect.Value {...rest} className={cx('min-w-0 flex-1 text-left', className)}>
+      {(value: string | null) => (
+        <span className="line-clamp-2 whitespace-normal text-left">
+          {typeof children === 'function' ? children(value) : children}
+        </span>
+      )}
+    </BaseSelect.Value>
+  )
 }
 
 function SelectContent({ className, children, ...props }: ComponentPropsWithRef<'div'>) {
@@ -111,7 +121,7 @@ function SelectContent({ className, children, ...props }: ComponentPropsWithRef<
           {...props}
           render={<FloatingMotion />}
           className={cx(
-            `w-(--anchor-width) max-w-[calc(100vw-1rem)] origin-(--transform-origin) rounded-control
+            `w-(--anchor-width) max-w-[calc(100vw-1rem)] origin-(--transform-origin) rounded-xl
             border-(length:--border-hairline) border-border bg-elevated font-sans text-foreground shadow-menu outline-none`,
             className,
           )}
@@ -143,9 +153,6 @@ function SelectEntry({
       )}
     >
       <BaseSelect.ItemText className="flex min-w-0 flex-1 items-center gap-1">{children}</BaseSelect.ItemText>
-      <BaseSelect.ItemIndicator>
-        <CheckIcon size={14} aria-hidden="true" />
-      </BaseSelect.ItemIndicator>
     </BaseSelect.Item>
   )
 }
@@ -215,7 +222,7 @@ export function Dropdown({
               return (
                 <>
                   {item?.icon}
-                  <span className="truncate">{item?.label ?? label}</span>
+                  <span className="line-clamp-2 min-w-0 whitespace-normal text-left">{item?.label ?? label}</span>
                 </>
               )
             }}

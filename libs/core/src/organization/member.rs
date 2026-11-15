@@ -23,6 +23,10 @@ pub struct OrganizationMember {
 pub enum MembershipAssignmentError {
     #[error("assignment belongs to another organization")]
     ForeignOrganization,
+    #[error("members cannot change their own role")]
+    SelfRoleChange,
+    #[error("the last active organization owner cannot be unassigned")]
+    OwnerRole,
 }
 
 impl SystemPolicy for OrganizationMember {
@@ -50,9 +54,16 @@ impl SystemPolicy for OrganizationMember {
 }
 
 impl OrganizationMember {
-    pub fn assign_role(&mut self, role: Role) -> Result<(), MembershipAssignmentError> {
+    pub fn assign_role(
+        &mut self,
+        actor_id: u64,
+        role: Role,
+    ) -> Result<(), MembershipAssignmentError> {
         if role.organization_id != self.organization_id {
             return Err(MembershipAssignmentError::ForeignOrganization);
+        }
+        if actor_id == self.user_id && role.id != self.role.id {
+            return Err(MembershipAssignmentError::SelfRoleChange);
         }
         self.role = role;
         Ok(())

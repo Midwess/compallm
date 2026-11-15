@@ -22,6 +22,8 @@ use sea_orm::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
+type OwnershipEvents = <crate::schema::OrganizationOwnershipEventSchema as ModelTrait>::Entity;
+type OwnershipEventActiveModel = <OwnershipEvents as EntityTrait>::ActiveModel;
 type Organizations = <OrganizationSchema as ModelTrait>::Entity;
 type OrganizationActiveModel = <Organizations as EntityTrait>::ActiveModel;
 type OrganizationColumn = <Organizations as EntityTrait>::Column;
@@ -694,6 +696,92 @@ impl CoreRepository for OrganizationRepository {
         self.membership(user_id, None, true).await
     }
 
+    async fn owner_role(&self, organization_id: u64) -> Result<Role, OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        Roles::find()
+            .filter(RoleColumn::OrganizationId.eq(Self::database_id(organization_id)?))
+            .filter(RoleColumn::OrgOwner.eq(true))
+            .one(PostgresConnection::from_context(&context)?)
+            .await
+            .map_err(OrganizationRepositoryError::database)?
+            .map(Role::try_from)
+            .transpose()
+            .map_err(OrganizationRepositoryError::database)?
+            .ok_or(OrganizationRepositoryError::NotFound)
+    }
+    async fn active_owner_ids(
+        &self,
+        organization_id: u64,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        Members::find()
+            .select_only()
+            .column(MemberColumn::UserId)
+            .filter(MemberColumn::OrganizationId.eq(Self::database_id(organization_id)?))
+            .filter(
+                MemberColumn::RoleId.in_subquery(
+                    Roles::find()
+                        .select_only()
+                        .column(RoleColumn::Id)
+                        .filter(RoleColumn::OrganizationId.eq(Self::database_id(organization_id)?))
+                        .filter(RoleColumn::OrgOwner.eq(true))
+                        .into_query(),
+                ),
+            )
+            .filter(
+                MemberColumn::UserId.in_subquery(
+                    Members::find()
+                        .select_only()
+                        .column(MemberColumn::UserId)
+                        .filter(
+                            MemberColumn::OrganizationId.eq(Self::database_id(organization_id)?),
+                        )
+                        .filter(MemberColumn::Status.eq(UserStatusSchema::Active))
+                        .into_query(),
+                ),
+            )
+            .filter(
+                MemberColumn::UserId.in_subquery(
+                    member_read::Entity::find()
+                        .select_only()
+                        .column(member_read::Column::Id)
+                        .filter(member_read::Column::Status.eq(UserStatusSchema::Active))
+                        .into_query(),
+                ),
+            )
+            .order_by_asc(MemberColumn::UserId)
+            .into_tuple::<i64>()
+            .all(PostgresConnection::from_context(&context)?)
+            .await
+            .map_err(OrganizationRepositoryError::database)?
+            .into_iter()
+            .map(|id| crate::from_bigint(id).map_err(OrganizationRepositoryError::database))
+            .collect()
+    }
+    async fn record_owner_change(
+        &self,
+        organization_id: u64,
+        actor_id: u64,
+        member_id: u64,
+        owner: bool,
+    ) -> Result<(), OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        OwnershipEvents::insert(OwnershipEventActiveModel {
+            organization_id: Set(Self::database_id(organization_id)?),
+            id: Set(Self::database_id(
+                hero::distributed_id::try_gen_id()
+                    .await
+                    .map_err(OrganizationRepositoryError::database)?,
+            )?),
+            actor_id: Set(Self::database_id(actor_id)?),
+            member_id: Set(Self::database_id(member_id)?),
+            owner: Set(owner),
+        })
+        .exec_without_returning(PostgresConnection::from_context(&context)?)
+        .await
+        .map_err(OrganizationRepositoryError::database)?;
+        Ok(())
+    }
     async fn find_member_identity(
         &self,
         organization_id: u64,

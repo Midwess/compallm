@@ -107,12 +107,12 @@ function Trigger({ asChild = false, children, ...props }: ComponentPropsWithRef<
             {...partProps}
             data-state={state.open ? 'open' : 'closed'}
             variant="neutral"
-            className="h-6 rounded-full px-2 text-xs"
+            className="h-auto min-h-6 justify-start rounded-full px-2 py-0.5 text-left text-xs"
           />
         )
       }
     >
-      {asChild ? undefined : children}
+      {asChild ? undefined : <span className="line-clamp-2 min-w-0 whitespace-normal text-left">{children}</span>}
     </Combobox.Trigger>
   )
 }
@@ -126,7 +126,7 @@ function Content({ className, ...props }: ComponentPropsWithRef<'div'>) {
           render={<FloatingMotion />}
           className={cx(
             `flex max-h-(--available-height) w-2xs max-w-[calc(100vw-1rem)] flex-col overflow-hidden
-rounded-control border border-border bg-menu font-sans text-foreground shadow-menu`,
+rounded-xl border border-border bg-menu font-sans text-foreground shadow-menu`,
             className,
           )}
         />

@@ -3,6 +3,14 @@ use crate::{graphql::GraphqlContext, http::authorization::AuthorizationContext};
 pub struct Me(pub compallm_core::authentication::Session);
 #[juniper::graphql_object(context = GraphqlContext)]
 impl Me {
+    async fn organization_owner(
+        &self,
+        #[graphql(context)] service: &compallm_core::authorization::rbac::RbacService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<bool, crate::graphql::error::Error> {
+        let permission = authority.member_permission().await?;
+        Ok(service.is_owner(&permission).await?)
+    }
     fn id(&self) -> juniper::ID {
         juniper::ID::new(self.0.user_id.to_string())
     }

@@ -90,14 +90,31 @@ export class SettingsController implements Controller {
 
   private async loadPermissions(signal: AbortSignal, generation: number) {
     try {
-      const checks = (['role.read', 'group.read'] as const).map((action) => ({ action, resourceType: 'Organization' as const }))
+      const checks = (['role.read', 'group.read', 'member.read'] as const).map((action) => ({
+        action,
+        resourceType: 'Organization' as const,
+      }))
       if (this.permissions) await this.permissions.evaluate(checks)
       if (signal.aborted || generation !== this.generation) return
       const allowed = (index: number) =>
         !this.permissions || this.permissions.store.getState().entries[permissionKey(checks[index])]?.status === 'allowed'
       const selection = {
+        me: { node: { id: true, organizationOwner: true } },
+        ...(allowed(2) ? { organization: { node: { ownerMemberIds: true } } } : {}),
         ...(allowed(0) ? { roles: { edges: { node: { id: true, name: true, color: true, owner: true } } } } : {}),
-        ...(allowed(1) ? { groups: { edges: { node: { id: true, name: true } } } } : {}),
+        ...(allowed(1)
+          ? {
+              groups: {
+                edges: {
+                  node: {
+                    id: true,
+                    name: true,
+                    ...(allowed(0) ? { roles: { edges: { node: { id: true } } } } : {}),
+                  },
+                },
+              },
+            }
+          : {}),
       } satisfies QueryGenqlSelection
       if (!Object.keys(selection).length) {
         this.store.setState({ roles: [], groups: [] })
@@ -107,7 +124,23 @@ export class SettingsController implements Controller {
       const roles = result.roles ?? { edges: [] }
       const groups = result.groups ?? { edges: [] }
       if (signal.aborted || generation !== this.generation) return
+      this.permissions?.setFacts?.(
+        groups.edges.flatMap(({ node }) =>
+          node.roles
+            ? [
+                {
+                  resourceType: 'Group' as const,
+                  id: node.id,
+                  roleIds: node.roles.edges.map(({ node }) => node.id),
+                },
+              ]
+            : [],
+        ),
+      )
       this.store.setState((state) => ({
+        currentMemberId: result.me?.node.id,
+        actorIsOwner: result.me?.node.organizationOwner ?? false,
+        ownerMemberIds: result.organization?.node.ownerMemberIds ?? [],
         roles: [
           ...roles.edges
             .filter(({ node }) => !this.deletedRoles.has(node.id))
@@ -124,7 +157,7 @@ export class SettingsController implements Controller {
                 state.groups.find((group) => group.id === node.id) ?? {
                   ...node,
                   description: '',
-                  roleIds: [],
+                  roleIds: node.roles?.edges.map(({ node }) => node.id) ?? [],
                   memberIds: [],
                   color: '',
                 },

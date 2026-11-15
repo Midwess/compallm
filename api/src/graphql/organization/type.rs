@@ -18,6 +18,27 @@ impl From<CoreOrganization> for Organization {
 
 #[juniper::graphql_object(context = crate::graphql::GraphqlContext)]
 impl Organization {
+    async fn owner_member_ids(
+        &self,
+        #[graphql(context)] service: &compallm_core::authorization::rbac::RbacService,
+        #[graphql(context)] authority: &crate::http::authorization::AuthorizationContext,
+    ) -> Result<Vec<juniper::ID>, crate::graphql::error::Error> {
+        let permission = authority.member_permission().await?;
+        if permission.organization_id() != self.id {
+            return Err(
+                compallm_core::authorization::error::AuthorizationError::from(
+                    compallm_core::authorization::MemberPermissionError::Denied,
+                )
+                .into(),
+            );
+        }
+        Ok(service
+            .owner_ids(&permission)
+            .await?
+            .into_iter()
+            .map(|id| juniper::ID::new(id.to_string()))
+            .collect())
+    }
     fn avatar_url(
         &self,
         #[graphql(context)] storage: &Option<std::sync::Arc<compallm_storage::S3Storage>>,

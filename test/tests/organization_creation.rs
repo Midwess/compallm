@@ -33,15 +33,6 @@ impl OrganizationRepository for Repository {
     async fn active_owner_ids(&self, _: u64) -> Result<Vec<u64>, OrganizationRepositoryError> {
         Ok(vec![])
     }
-    async fn record_owner_change(
-        &self,
-        _: u64,
-        _: u64,
-        _: u64,
-        _: bool,
-    ) -> Result<(), OrganizationRepositoryError> {
-        unreachable!()
-    }
     async fn find_member_identity(
         &self,
         _: u64,

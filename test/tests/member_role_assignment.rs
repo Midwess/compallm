@@ -314,16 +314,7 @@ async fn role_assignment_replaces_direct_grants_preserves_groups_and_invalidates
     let permission = member_permission(&fresh_owner);
     root.scope(service.assign_role(&permission, role.id, target))
         .await?;
-    use sea_orm::{ColumnTrait, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter};
-    type Events = <compallm_postgres::OrganizationOwnershipEventSchema as ModelTrait>::Entity;
-    type EventColumn = <Events as EntityTrait>::Column;
-    assert!(
-        Events::find()
-            .filter(EventColumn::OrganizationId.eq(org as i64))
-            .count(pool.as_ref())
-            .await?
-            >= 2
-    );
+    use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
     root.scope(service.assign_role(&permission, admin_role, target))
         .await?;
     let target_user = root

@@ -10,7 +10,6 @@ mod organization_group_members;
 mod organization_group_roles;
 mod organization_groups;
 mod organization_members;
-mod organization_ownership_events;
 mod organization_roles;
 mod organizations;
 mod provider_audio_usage;
@@ -36,7 +35,6 @@ pub use self::organization_group_members::Model as OrganizationGroupMemberSchema
 pub use self::organization_group_roles::Model as OrganizationGroupRoleSchema;
 pub use self::organization_groups::Model as OrganizationGroupSchema;
 pub use self::organization_members::Model as OrganizationMemberSchema;
-pub use self::organization_ownership_events::Model as OrganizationOwnershipEventSchema;
 pub use self::organization_roles::Model as OrganizationRoleSchema;
 pub use self::organizations::Model as OrganizationSchema;
 pub use self::provider_audio_usage::Model as ProviderAudioUsageSchema;

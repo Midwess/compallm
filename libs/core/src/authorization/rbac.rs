@@ -425,16 +425,6 @@ impl RbacService {
                     crate::persistent::organization::OrganizationRepositoryError::NotFound.into(),
                 );
             }
-            if before_owner != after_owner {
-                self.organizations
-                    .record_owner_change(
-                        member.organization_id,
-                        permission.user_id(),
-                        member.user_id,
-                        after_owner,
-                    )
-                    .await?;
-            }
             self.auth_service
                 .invalidate_permissions(member.organization_id, &[member.user_id])
                 .await?;

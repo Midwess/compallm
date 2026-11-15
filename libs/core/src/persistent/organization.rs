@@ -37,13 +37,6 @@ pub trait OrganizationRepository: Send + Sync {
         &self,
         organization_id: u64,
     ) -> Result<Vec<u64>, OrganizationRepositoryError>;
-    async fn record_owner_change(
-        &self,
-        organization_id: u64,
-        actor_id: u64,
-        member_id: u64,
-        owner: bool,
-    ) -> Result<(), OrganizationRepositoryError>;
     /// Load complete membership state in the supplied verified organization.
     async fn find_member_identity(
         &self,

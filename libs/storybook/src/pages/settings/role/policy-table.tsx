@@ -233,7 +233,7 @@ export function PolicyTable() {
         className="mx-2 min-w-0 overflow-x-auto outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
       >
         <Table.Root className="overflow-visible">
-          <Table.Content aria-label="Permission policies" className="min-w-md border-separate border-spacing-0">
+          <Table.Content aria-label="Permission policies" className="min-w-0 border-separate border-spacing-0">
             <colgroup>
               <col className="w-[60%]" />
               <col />

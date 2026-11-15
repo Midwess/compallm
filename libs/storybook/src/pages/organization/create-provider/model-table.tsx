@@ -87,17 +87,20 @@ export function ProviderModels() {
         <ModelFilters />
       </div>
       <Table.Root tabIndex={0} role="region" aria-label="Scrollable provider model table" className="min-w-0">
-        <Table.Content className="w-full min-w-3xl table-fixed text-xs" aria-label="Provider models">
-          <colgroup>
-            <col className="w-6" />
-            <col className="w-44" />
-            <col className="w-52" />
-            <col className="w-16" />
-            <col className="w-20" />
-            <col className="w-20" />
-            <col className="w-20" />
-            <col className="w-8" />
-          </colgroup>
+        <Table.Content
+          className="w-full table-fixed text-xs"
+          aria-label="Provider models"
+          columns={[
+            { id: 'enabled', className: 'w-8' },
+            { id: 'name' },
+            { id: 'capabilities', className: 'w-1/4', visibilityClassName: 'hidden xl:table-cell' },
+            { id: 'context', className: 'w-20', visibilityClassName: 'hidden lg:table-cell' },
+            { id: 'input', className: 'w-20', visibilityClassName: 'hidden md:table-cell' },
+            { id: 'output', className: 'w-20', visibilityClassName: 'hidden md:table-cell' },
+            { id: 'cached', className: 'w-20', visibilityClassName: 'hidden xl:table-cell' },
+            { id: 'actions', className: 'w-12' },
+          ]}
+        >
           <Table.Header className="h-8 text-muted-foreground">
             <Table.Row className="border-b border-divider">
               <Table.Head className="p-0 text-left">
@@ -110,8 +113,15 @@ export function ProviderModels() {
                   onChange={(event) => toggleAll(event.target.checked)}
                 />
               </Table.Head>
-              {['Model name', 'Capabilities', 'Context', '1M input', '1M output', '1M cached'].map((label) => (
-                <Table.Head key={label} className="px-1 text-left font-normal">
+              {[
+                ['name', 'Model name'],
+                ['capabilities', 'Capabilities'],
+                ['context', 'Context'],
+                ['input', '1M input'],
+                ['output', '1M output'],
+                ['cached', '1M cached'],
+              ].map(([column, label]) => (
+                <Table.Head column={column} key={label} className="px-1 text-left font-normal">
                   {label}
                 </Table.Head>
               ))}
@@ -131,7 +141,7 @@ export function ProviderModels() {
                     disabled={busy || !editable(model.id) || !supported(model) || !hasValidModelPrices(model)}
                   />
                 </Table.Cell>
-                <Table.Cell className="min-w-0 px-1 text-left">
+                <Table.Cell column="name" className="min-w-0 px-1 text-left">
                   <span title={model.name} className="block max-w-44 truncate font-medium">
                     {Array.from(model.name).length > 50 ? `${Array.from(model.name).slice(0, 50).join('')}…` : model.name}
                   </span>
@@ -139,7 +149,7 @@ export function ProviderModels() {
                     {modelTypeLabels(model).join(' · ') || model.description || 'Not declared'}
                   </span>
                 </Table.Cell>
-                <Table.Cell className="px-1 py-2 text-left">
+                <Table.Cell column="capabilities" className="px-1 py-2 text-left">
                   <div className="flex flex-wrap gap-1">
                     {model.capabilities?.length ? (
                       capabilityOptions
@@ -154,11 +164,15 @@ export function ProviderModels() {
                     )}
                   </div>
                 </Table.Cell>
-                <Table.Cell className="whitespace-nowrap px-1 text-left text-muted-foreground">
+                <Table.Cell column="context" className="whitespace-nowrap px-1 text-left text-muted-foreground">
                   {model.maxContextTokens ? Number(model.maxContextTokens).toLocaleString('en-US') : 'Not set'}
                 </Table.Cell>
                 {[model.inputPrice, model.outputPrice, model.cachedPrice].map((value, index) => (
-                  <Table.Cell key={index} className="whitespace-nowrap px-1 text-left text-muted-foreground">
+                  <Table.Cell
+                    column={['input', 'output', 'cached'][index]}
+                    key={index}
+                    className="whitespace-nowrap px-1 text-left text-muted-foreground"
+                  >
                     {price(value)}
                   </Table.Cell>
                 ))}

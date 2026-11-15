@@ -54,6 +54,7 @@ export { CreateProviderControllerContext } from './context'
 export { Dialog, AlertDialog } from './components/dialog'
 export { Popup } from './components/popup'
 export { Table } from './components/table'
+export type { TableColumn } from './components/table'
 export { FormField } from './components/form-field'
 export { FormSection } from './components/form-section'
 

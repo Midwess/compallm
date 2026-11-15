@@ -39,16 +39,21 @@ export function ProviderChooser() {
         <ProviderFilters />
       </div>
       <Table.Root>
-        <Table.Content className="w-full min-w-3xl table-fixed text-left text-xs" aria-label="Providers">
-          <colgroup>
-            <col className="w-1/4" />
-            <col />
-            <col className="w-20" />
-          </colgroup>
+        <Table.Content
+          className="w-full table-fixed text-left text-xs"
+          aria-label="Providers"
+          columns={[
+            { id: 'name' },
+            { id: 'endpoint', className: 'w-1/2', visibilityClassName: 'hidden md:table-cell' },
+            { id: 'choose', className: 'w-16' },
+          ]}
+        >
           <Table.Header className="h-9 text-muted-foreground [&>tr]:h-9">
             <Table.Row className="border-b border-divider">
               <Table.Head className="px-4 font-normal">Provider</Table.Head>
-              <Table.Head className="px-4 font-normal">Base URL</Table.Head>
+              <Table.Head column="endpoint" className="px-4 font-normal">
+                Base URL
+              </Table.Head>
               <Table.Head className="text-center">Choose</Table.Head>
             </Table.Row>
           </Table.Header>
@@ -71,13 +76,13 @@ export function ProviderChooser() {
                     <span className="flex items-center gap-3">
                       <ProviderIcon provider={provider.id} className="size-5" />
                       <span>
-                        <span className="block text-sm font-medium">{provider.name}</span>
+                        <span className="block truncate text-sm font-medium">{provider.name}</span>
                         <span className="mt-1 block text-xs text-muted-foreground">{provider.id}</span>
                       </span>
                     </span>
                   </button>
                 </Table.Cell>
-                <Table.Cell className="truncate px-4 text-muted-foreground">
+                <Table.Cell column="endpoint" className="truncate px-4 text-muted-foreground">
                   {provider.baseUrl ?? 'Configure endpoint'}
                 </Table.Cell>
                 <Table.Cell className="text-center">

@@ -15,6 +15,10 @@ authoritative and can be edited directly.
   `src/pages/`.
 - Main design: dark neutral surfaces, violet primary actions, Inter typography, and Phosphor Regular SVG icons. Reuse the shared
   Tailwind v4 theme in `src/styles/theme.css`.
+- Use semantic colors from `src/styles/theme.css` for all page, component, and preview surfaces, text, borders, icons, badges,
+  and avatars. Never hardcode colors to match one palette. Derive softer or alternate tones with CSS `color-mix()` using
+  existing theme variables, or Tailwind opacity utilities. Verify contrast, hover, selected, and disabled states in light and
+  dark palettes; do not introduce new color tokens when mixing existing colors is sufficient.
 - Always consider transition consistency when designing or changing components and pages. Reuse the shared Motion presets and
   helpers in `src/components/motion.tsx` for interaction feedback, entrances, exits, disclosure, and reordering. Keep equivalent
   interactions consistent in timing, easing, and movement. Adjust shared presets centrally; do not introduce component-specific
@@ -29,6 +33,10 @@ authoritative and can be edited directly.
   items retain their full hover area.
 - Disabled controls must remain hoverable and expose a tooltip explaining why they are disabled; provide a keyboard-accessible
   explanation.
+- Tables must fit their container before using horizontal scrolling. Define responsive visibility once through `Table.Content`
+  column definitions, such as `visibilityClassName: 'hidden md:table-cell'`, and reference the same column ID on its header and
+  cells. Keep the base cell gutters intact. Long values must truncate with an ellipsis or use an explicit two-line clamp; text
+  and controls must never overlap adjacent columns.
 - Add meaningful variants for loading, empty, disabled, and error states where relevant. Keep semantic HTML, keyboard focus, and
   responsive behavior.
 - Use Tailwind’s default spacing scale in half steps for dimensions, spacing, gaps, and offsets: `0.5` is 2px at the default

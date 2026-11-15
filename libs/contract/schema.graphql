@@ -252,6 +252,14 @@ input ImageUploadInput {
   size: Int!
 }
 
+input InvitationBatchCreateInput {
+  invitations: [InvitationCreateInput!]!
+}
+
+input InvitationCreateInput {
+  email: String!
+}
+
 input MemberDisplayPatchInput {
   nameFormat: PreferenceNamingFormat
 }
@@ -547,6 +555,62 @@ type GroupPayload {
   node: Group!
 }
 
+type Invitation {
+  id: ID!
+  organizationId: ID!
+  email: String!
+  inviterId: ID!
+  status: String!
+  issuedAt: Float!
+  expiresAt: Float!
+}
+
+type InvitationConnection {
+  edges: [InvitationEdge!]!
+  pageInfo: PageInfo!
+}
+
+type InvitationContext {
+  organizationName: String!
+  organizationId: ID!
+  email: String!
+  expiresAt: Float!
+  signup: Boolean!
+}
+
+type InvitationContextPayload {
+  node: InvitationContext!
+}
+
+type InvitationEdge {
+  cursor: String!
+  node: Invitation!
+}
+
+type InvitationIssued {
+  invitation: Invitation!
+  url: String!
+  emailAdmitted: Boolean!
+}
+
+type InvitationIssuedConnection {
+  edges: [InvitationIssuedEdge!]!
+  pageInfo: PageInfo!
+}
+
+type InvitationIssuedEdge {
+  cursor: String!
+  node: InvitationIssued!
+}
+
+type InvitationIssuedPayload {
+  node: InvitationIssued!
+}
+
+type InvitationPayload {
+  node: Invitation!
+}
+
 type Me {
   organizationOwner: Boolean!
   id: ID!
@@ -596,6 +660,10 @@ type MessageCompositionPreferences {
 }
 
 type Mutation {
+  invitationCreateMany(input: InvitationBatchCreateInput!): InvitationIssuedConnection!
+  invitationCreate(input: InvitationCreateInput!): InvitationIssuedPayload!
+  invitationResend(id: ID!): InvitationIssuedPayload!
+  invitationRevoke(id: ID!): InvitationPayload!
   organizationProfileUpdate(input: OrganizationProfileUpdateInput!): OrganizationPayload!
   generateOrgAvatarUrl(input: ImageUploadInput!): AvatarUploadPayload!
   groupUpdate(id: ID!, input: GroupUpdateInput!): GroupPayload!
@@ -687,6 +755,8 @@ type ProviderTemplate {
 }
 
 type Query {
+  invitationContext: InvitationContextPayload!
+  invitations(first: Int, after: String): InvitationConnection!
   me: MePayload!
   organizationProfile(id: ID!): OrganizationPayload
   "Read an active user profile using verified user identity."

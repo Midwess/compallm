@@ -574,6 +574,13 @@ impl OrganizationRepository for OrganizationRepositoryStub {
     async fn create_roles(&self, _roles: Vec<Role>) -> Result<(), OrganizationRepositoryError> {
         Ok(())
     }
+    async fn set_default_member_role(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<(), OrganizationRepositoryError> {
+        Ok(())
+    }
     async fn add_member(
         &self,
         member: OrganizationMember,

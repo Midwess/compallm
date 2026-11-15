@@ -14,6 +14,10 @@ impl From<crate::user::RegistrationError> for AuthError {
 
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {
+    #[error("invitation is no longer available")]
+    InvalidInvitation,
+    #[error("recipient is already a member or has a pending invitation")]
+    InvitationConflict,
     #[error(transparent)]
     Preferences(#[from] crate::persistent::preference::user::UserPreferenceRepositoryError),
     #[error("compression dictionary is unavailable")]

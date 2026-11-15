@@ -13,3 +13,6 @@ pub use token::{
     TokenValidity, UserAccessToken,
 };
 pub use token::{EmailOtpChallenge, IssuedEmailOtp, UserTokens};
+
+mod invitation;
+pub use invitation::{InvitationContext, IssuedInvitation};

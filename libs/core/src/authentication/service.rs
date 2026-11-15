@@ -25,15 +25,17 @@ pub struct TokenLifetimes {
 }
 
 pub struct AuthService {
-    users: &'static Box<dyn UserRepository>,
-    organizations: &'static Box<dyn OrganizationRepository>,
+    pub(super) users: &'static Box<dyn UserRepository>,
+    pub(super) organizations: &'static Box<dyn OrganizationRepository>,
     sessions: &'static Box<dyn SessionRepository>,
     dictionaries: &'static Box<dyn DictionaryRepository>,
-    registration: &'static RegistrationService,
-    preferences: &'static crate::preference::UserPreferenceService,
-    jwt_secret: String,
+    pub(super) registration: &'static RegistrationService,
+    pub(super) preferences: &'static crate::preference::UserPreferenceService,
+    pub(super) invitations:
+        Option<&'static dyn crate::persistent::invitation::InvitationRepository>,
+    pub(super) jwt_secret: String,
     lifetimes: TokenLifetimes,
-    email: Option<&'static Box<dyn EmailService>>,
+    pub(super) email: Option<&'static Box<dyn EmailService>>,
 }
 
 impl AuthService {
@@ -103,6 +105,7 @@ impl AuthService {
     ) -> Result<Self, AuthError> {
         EncryptedAccessToken::new(&jwt_secret)?;
         Ok(Self {
+            invitations: None,
             users,
             organizations,
             sessions,
@@ -142,7 +145,16 @@ impl AuthService {
     }
 
     async fn send_email_otp(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
-        let claims = EmailOtpAccessToken::new(compallm_utils::email::normalize_email(email))?;
+        self.send_email_otp_for_invitation(email, None).await
+    }
+
+    pub(super) async fn send_email_otp_for_invitation(
+        &self,
+        email: &str,
+        invitation_id: Option<u64>,
+    ) -> Result<IssuedEmailOtp, AuthError> {
+        let mut claims = EmailOtpAccessToken::new(compallm_utils::email::normalize_email(email))?;
+        claims.invitation_id = invitation_id;
         let dictionary = self.latest_dictionary().await?;
         let encrypted = AccessToken::EmailOtp(claims.clone())
             .encrypt(&EncryptedAccessToken::new(&self.jwt_secret)?)
@@ -178,6 +190,9 @@ impl AuthService {
         claims: &EmailOtpAccessToken,
         code: &str,
     ) -> Result<UserTokens, AuthError> {
+        if claims.invitation_id.is_some() {
+            return Err(AuthError::InvalidInvitation);
+        }
         claims.verify_code(code, unix_timestamp())?;
         let user = self
             .users
@@ -202,6 +217,9 @@ impl AuthService {
         claims: &EmailOtpAccessToken,
         code: &str,
     ) -> Result<UserTokens, AuthError> {
+        if claims.invitation_id.is_some() {
+            return Err(AuthError::InvalidInvitation);
+        }
         claims.verify_code(code, unix_timestamp())?;
         let dictionary = self.latest_dictionary().await?;
         crate::transaction!(db, {
@@ -297,7 +315,7 @@ impl AuthService {
         Ok(tokens)
     }
 
-    async fn start_session(
+    pub(super) async fn start_session(
         &self,
         user_id: u64,
         membership: OrganizationMember,
@@ -312,7 +330,7 @@ impl AuthService {
         Ok(tokens)
     }
 
-    async fn latest_dictionary(&self) -> Result<&DCompression, AuthError> {
+    pub(super) async fn latest_dictionary(&self) -> Result<&DCompression, AuthError> {
         self.dictionaries
             .latest(DictionaryType::AccessToken)
             .await

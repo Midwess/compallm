@@ -213,6 +213,7 @@ impl CoreRepository for OrganizationRepository {
             RoleColumn::Description,
             RoleColumn::OrgOwner,
         ])
+        .expr_as(Expr::value(false), "default_member")
         .expr_as(Expr::value(String::new()), "cedar_source")
         .lock_exclusive()
         .into_model::<OrganizationRoleSchema>()
@@ -457,6 +458,7 @@ impl CoreRepository for OrganizationRepository {
                     .arg(Expr::col(RoleColumn::Id)),
                 "cedar_source",
             )
+            .expr_as(Expr::value(false), "default_member")
             .into_model::<OrganizationRoleSchema>()
             .one(db)
             .await
@@ -900,6 +902,7 @@ impl CoreRepository for OrganizationRepository {
                     RoleColumn::Description,
                     RoleColumn::OrgOwner,
                 ])
+                .expr_as(Expr::value(false), "default_member")
                 .expr_as(Expr::value(String::new()), "cedar_source")
                 .filter(RoleColumn::Id.is_in(direct.iter().map(|(_, role, _)| *role)))
                 .into_model::<OrganizationRoleSchema>()
@@ -1292,6 +1295,25 @@ impl CoreRepository for OrganizationRepository {
                 .exec_without_returning(db)
                 .await
                 .map_err(Self::creation_error)?;
+        }
+        Ok(())
+    }
+    async fn set_default_member_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<(), OrganizationRepositoryError> {
+        let context = DbContext::current()?;
+        let result = Roles::update_many()
+            .col_expr(RoleColumn::DefaultMember, Expr::value(true))
+            .filter(RoleColumn::OrganizationId.eq(Self::database_id(organization_id)?))
+            .filter(RoleColumn::Id.eq(Self::database_id(role_id)?))
+            .filter(RoleColumn::OrgOwner.eq(false))
+            .exec(PostgresConnection::from_context(&context)?)
+            .await
+            .map_err(OrganizationRepositoryError::database)?;
+        if result.rows_affected != 1 {
+            return Err(OrganizationRepositoryError::NotFound);
         }
         Ok(())
     }

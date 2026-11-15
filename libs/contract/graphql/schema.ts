@@ -101,6 +101,72 @@ export type HomeDestination = 'CHAT' | 'MODELS' | 'PROVIDERS'
 
 export type ImageMediaType = 'JPEG' | 'PNG' | 'WEBP'
 
+export interface Invitation {
+  email: Scalars['String']
+  expiresAt: Scalars['Float']
+  id: Scalars['ID']
+  inviterId: Scalars['ID']
+  issuedAt: Scalars['Float']
+  organizationId: Scalars['ID']
+  status: Scalars['String']
+  __typename: 'Invitation'
+}
+
+export interface InvitationConnection {
+  edges: InvitationEdge[]
+  pageInfo: PageInfo
+  __typename: 'InvitationConnection'
+}
+
+export interface InvitationContext {
+  email: Scalars['String']
+  expiresAt: Scalars['Float']
+  organizationId: Scalars['ID']
+  organizationName: Scalars['String']
+  signup: Scalars['Boolean']
+  __typename: 'InvitationContext'
+}
+
+export interface InvitationContextPayload {
+  node: InvitationContext
+  __typename: 'InvitationContextPayload'
+}
+
+export interface InvitationEdge {
+  cursor: Scalars['String']
+  node: Invitation
+  __typename: 'InvitationEdge'
+}
+
+export interface InvitationIssued {
+  emailAdmitted: Scalars['Boolean']
+  invitation: Invitation
+  url: Scalars['String']
+  __typename: 'InvitationIssued'
+}
+
+export interface InvitationIssuedConnection {
+  edges: InvitationIssuedEdge[]
+  pageInfo: PageInfo
+  __typename: 'InvitationIssuedConnection'
+}
+
+export interface InvitationIssuedEdge {
+  cursor: Scalars['String']
+  node: InvitationIssued
+  __typename: 'InvitationIssuedEdge'
+}
+
+export interface InvitationIssuedPayload {
+  node: InvitationIssued
+  __typename: 'InvitationIssuedPayload'
+}
+
+export interface InvitationPayload {
+  node: Invitation
+  __typename: 'InvitationPayload'
+}
+
 export interface Me {
   /** Cedar JSON entity facts for the verified principal and its role/group ancestry; contains no credentials. */
   cedarEntities: Scalars['String']
@@ -172,6 +238,10 @@ export interface Mutation {
   groupCreate: GroupPayload
   groupDelete: BooleanPayload
   groupUpdate: GroupPayload
+  invitationCreate: InvitationIssuedPayload
+  invitationCreateMany: InvitationIssuedConnection
+  invitationResend: InvitationIssuedPayload
+  invitationRevoke: InvitationPayload
   organizationProfileUpdate: OrganizationPayload
   roleAssign: RolePayload
   /** Create a role in the verified active organization. */
@@ -311,6 +381,8 @@ export interface Query {
   group: GroupPayload | null
   /** Return the complete visible group metadata collection, ordered by ID. */
   groups: GroupConnection
+  invitationContext: InvitationContextPayload
+  invitations: InvitationConnection
   me: MePayload
   members: MemberConnection
   /** Return the active organization from verified user authority. */
@@ -661,6 +733,90 @@ export interface ImageUploadInput {
   size: Scalars['Int']
 }
 
+export interface InvitationGenqlSelection {
+  email?: boolean | number
+  expiresAt?: boolean | number
+  id?: boolean | number
+  inviterId?: boolean | number
+  issuedAt?: boolean | number
+  organizationId?: boolean | number
+  status?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface InvitationBatchCreateInput {
+  invitations: InvitationCreateInput[]
+}
+
+export interface InvitationConnectionGenqlSelection {
+  edges?: InvitationEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface InvitationContextGenqlSelection {
+  email?: boolean | number
+  expiresAt?: boolean | number
+  organizationId?: boolean | number
+  organizationName?: boolean | number
+  signup?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface InvitationContextPayloadGenqlSelection {
+  node?: InvitationContextGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface InvitationCreateInput {
+  email: Scalars['String']
+}
+
+export interface InvitationEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: InvitationGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface InvitationIssuedGenqlSelection {
+  emailAdmitted?: boolean | number
+  invitation?: InvitationGenqlSelection
+  url?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface InvitationIssuedConnectionGenqlSelection {
+  edges?: InvitationIssuedEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface InvitationIssuedEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: InvitationIssuedGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface InvitationIssuedPayloadGenqlSelection {
+  node?: InvitationIssuedGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface InvitationPayloadGenqlSelection {
+  node?: InvitationGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface MeGenqlSelection {
   /** Cedar JSON entity facts for the verified principal and its role/group ancestry; contains no credentials. */
   cedarEntities?: boolean | number
@@ -766,6 +922,10 @@ export interface MutationGenqlSelection {
   groupCreate?: GroupPayloadGenqlSelection & { __args: { input: GroupCreateInput } }
   groupDelete?: BooleanPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   groupUpdate?: GroupPayloadGenqlSelection & { __args: { id: Scalars['ID']; input: GroupUpdateInput } }
+  invitationCreate?: InvitationIssuedPayloadGenqlSelection & { __args: { input: InvitationCreateInput } }
+  invitationCreateMany?: InvitationIssuedConnectionGenqlSelection & { __args: { input: InvitationBatchCreateInput } }
+  invitationResend?: InvitationIssuedPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  invitationRevoke?: InvitationPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   organizationProfileUpdate?: OrganizationPayloadGenqlSelection & { __args: { input: OrganizationProfileUpdateInput } }
   roleAssign?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; memberId: Scalars['ID'] } }
   /** Create a role in the verified active organization. */
@@ -979,6 +1139,10 @@ export interface QueryGenqlSelection {
   group?: GroupPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Return the complete visible group metadata collection, ordered by ID. */
   groups?: GroupConnectionGenqlSelection
+  invitationContext?: InvitationContextPayloadGenqlSelection
+  invitations?: InvitationConnectionGenqlSelection & {
+    __args?: { after?: Scalars['String'] | null; first?: Scalars['Int'] | null }
+  }
   me?: MePayloadGenqlSelection
   members?: MemberConnectionGenqlSelection & {
     __args?: {
@@ -1334,6 +1498,66 @@ const GroupPayload_possibleTypes: string[] = ['GroupPayload']
 export const isGroupPayload = (obj?: { __typename?: any } | null): obj is GroupPayload => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isGroupPayload"')
   return GroupPayload_possibleTypes.includes(obj.__typename)
+}
+
+const Invitation_possibleTypes: string[] = ['Invitation']
+export const isInvitation = (obj?: { __typename?: any } | null): obj is Invitation => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isInvitation"')
+  return Invitation_possibleTypes.includes(obj.__typename)
+}
+
+const InvitationConnection_possibleTypes: string[] = ['InvitationConnection']
+export const isInvitationConnection = (obj?: { __typename?: any } | null): obj is InvitationConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isInvitationConnection"')
+  return InvitationConnection_possibleTypes.includes(obj.__typename)
+}
+
+const InvitationContext_possibleTypes: string[] = ['InvitationContext']
+export const isInvitationContext = (obj?: { __typename?: any } | null): obj is InvitationContext => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isInvitationContext"')
+  return InvitationContext_possibleTypes.includes(obj.__typename)
+}
+
+const InvitationContextPayload_possibleTypes: string[] = ['InvitationContextPayload']
+export const isInvitationContextPayload = (obj?: { __typename?: any } | null): obj is InvitationContextPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isInvitationContextPayload"')
+  return InvitationContextPayload_possibleTypes.includes(obj.__typename)
+}
+
+const InvitationEdge_possibleTypes: string[] = ['InvitationEdge']
+export const isInvitationEdge = (obj?: { __typename?: any } | null): obj is InvitationEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isInvitationEdge"')
+  return InvitationEdge_possibleTypes.includes(obj.__typename)
+}
+
+const InvitationIssued_possibleTypes: string[] = ['InvitationIssued']
+export const isInvitationIssued = (obj?: { __typename?: any } | null): obj is InvitationIssued => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isInvitationIssued"')
+  return InvitationIssued_possibleTypes.includes(obj.__typename)
+}
+
+const InvitationIssuedConnection_possibleTypes: string[] = ['InvitationIssuedConnection']
+export const isInvitationIssuedConnection = (obj?: { __typename?: any } | null): obj is InvitationIssuedConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isInvitationIssuedConnection"')
+  return InvitationIssuedConnection_possibleTypes.includes(obj.__typename)
+}
+
+const InvitationIssuedEdge_possibleTypes: string[] = ['InvitationIssuedEdge']
+export const isInvitationIssuedEdge = (obj?: { __typename?: any } | null): obj is InvitationIssuedEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isInvitationIssuedEdge"')
+  return InvitationIssuedEdge_possibleTypes.includes(obj.__typename)
+}
+
+const InvitationIssuedPayload_possibleTypes: string[] = ['InvitationIssuedPayload']
+export const isInvitationIssuedPayload = (obj?: { __typename?: any } | null): obj is InvitationIssuedPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isInvitationIssuedPayload"')
+  return InvitationIssuedPayload_possibleTypes.includes(obj.__typename)
+}
+
+const InvitationPayload_possibleTypes: string[] = ['InvitationPayload']
+export const isInvitationPayload = (obj?: { __typename?: any } | null): obj is InvitationPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isInvitationPayload"')
+  return InvitationPayload_possibleTypes.includes(obj.__typename)
 }
 
 const Me_possibleTypes: string[] = ['Me']

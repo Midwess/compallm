@@ -42,6 +42,10 @@ test('member pages use server search and discard obsolete reads while retaining 
   const original = globalThis.fetch,
     requests = []
   globalThis.fetch = (_input, init) => {
+    if (JSON.parse(init.body).query.includes('invitations'))
+      return Promise.resolve(
+        Response.json({ data: { invitations: { edges: [], pageInfo: { endCursor: null, hasNextPage: false } } } }),
+      )
     const body = JSON.parse(init.body)
     return new Promise((resolve) => requests.push({ ...body, signal: init.signal, resolve }))
   }
@@ -93,6 +97,10 @@ test('failed page reads retain rows and pagination position and cancel after lea
   let requests = 0,
     pending
   globalThis.fetch = async (_url, init) => {
+    if (JSON.parse(init.body).query.includes('invitations'))
+      return Promise.resolve(
+        Response.json({ data: { invitations: { edges: [], pageInfo: { endCursor: null, hasNextPage: false } } } }),
+      )
     requests++
     if (requests === 1) return Response.json(page('confirmed', true))
     if (requests === 2) throw new Error('network unavailable')
@@ -130,6 +138,10 @@ test('group changes submit explicit deltas and deselecting all removes confirmed
   const writes = []
   const memberships = { research: true, design: true }
   globalThis.fetch = async (_input, init) => {
+    if (JSON.parse(init.body).query.includes('invitations'))
+      return Promise.resolve(
+        Response.json({ data: { invitations: { edges: [], pageInfo: { endCursor: null, hasNextPage: false } } } }),
+      )
     const body = JSON.parse(init.body)
     if (body.query.includes('groupUpdate')) {
       const values = Object.values(body.variables)
@@ -172,6 +184,10 @@ test('role selection replaces one required role through one mutation without cha
     writes = []
   let currentRole = { id: 'member', name: 'Member', description: '', color: '', owner: false }
   globalThis.fetch = async (_url, init) => {
+    if (JSON.parse(init.body).query.includes('invitations'))
+      return Promise.resolve(
+        Response.json({ data: { invitations: { edges: [], pageInfo: { endCursor: null, hasNextPage: false } } } }),
+      )
     const body = JSON.parse(init.body)
     if (body.query.includes('invitations')) return Response.json({ data: { invitations: { edges: [], pageInfo: {} } } })
     if (body.query.includes('roleAssign')) {
@@ -205,6 +221,10 @@ test('failed or obsolete role writes retain confirmed member data without replay
   let finish,
     writeCount = 0
   globalThis.fetch = async (_url, init) => {
+    if (JSON.parse(init.body).query.includes('invitations'))
+      return Promise.resolve(
+        Response.json({ data: { invitations: { edges: [], pageInfo: { endCursor: null, hasNextPage: false } } } }),
+      )
     const body = JSON.parse(init.body)
     if (body.query.includes('roleAssign')) {
       writeCount++
@@ -239,6 +259,10 @@ test('self-role changes are rejected before a write even when permissions allow 
   let owner = true,
     refreshes = 0
   globalThis.fetch = async (_url, init) => {
+    if (JSON.parse(init.body).query.includes('invitations'))
+      return Promise.resolve(
+        Response.json({ data: { invitations: { edges: [], pageInfo: { endCursor: null, hasNextPage: false } } } }),
+      )
     const { query } = JSON.parse(init.body)
     if (query.includes('roleAssign')) {
       owner = false
@@ -305,6 +329,10 @@ test('a later group failure preserves the first confirmed change for explicit re
     writes = []
   let fail = true
   globalThis.fetch = async (_url, init) => {
+    if (JSON.parse(init.body).query.includes('invitations'))
+      return Promise.resolve(
+        Response.json({ data: { invitations: { edges: [], pageInfo: { endCursor: null, hasNextPage: false } } } }),
+      )
     const body = JSON.parse(init.body)
     if (!body.query.includes('groupUpdate')) return Response.json(page('person'))
     const id = Object.values(body.variables).find((value) => typeof value === 'string')
@@ -334,4 +362,66 @@ test('a later group failure preserves the first confirmed change for explicit re
     controller.cancel()
     globalThis.fetch = original
   }
+})
+
+test('mail admission failure retains a copyable invitation and revoke is explicit', async () => {
+  const original = globalThis.fetch
+  let writes = 0
+  globalThis.fetch = async (_input, init) => {
+    const query = JSON.parse(init.body).query
+    if (query.includes('invitationCreateMany')) {
+      writes++
+      return Response.json({
+        data: {
+          invitationCreateMany: {
+            edges: [
+              {
+                node: {
+                  invitation: { id: '1', email: 'new@example.com', status: 'pending', expiresAt: 2000000000 },
+                  url: 'http://localhost/api/invitations/open?token=secret',
+                  emailAdmitted: false,
+                },
+              },
+            ],
+          },
+        },
+      })
+    }
+    if (query.includes('invitationRevoke')) {
+      writes++
+      return Response.json({
+        data: { invitationRevoke: { node: { id: '1', email: 'new@example.com', status: 'revoked', expiresAt: 2000000000 } } },
+      })
+    }
+    if (query.includes('invitations'))
+      return Response.json({ data: { invitations: { edges: [], pageInfo: { hasNextPage: false, endCursor: null } } } })
+    return Response.json(page('existing'))
+  }
+  const store = createSettingsStore(),
+    controller = new MembersController(store)
+  try {
+    controller.start()
+    await tick()
+    assert.equal(await controller.invite('new@example.com'), true)
+    await tick()
+    assert.equal(store.getState().invitationEmailAdmitted, false)
+    assert.match(store.getState().invitationLink, /token=secret/)
+    assert.equal(writes, 1)
+    await controller.revoke('1')
+    assert.equal(writes, 2)
+    assert.equal(store.getState().invitationLink, null)
+  } finally {
+    controller.cancel()
+    globalThis.fetch = original
+  }
+})
+
+test('invitation text splits all supported separators and rejects invalid recipients together', async () => {
+  const { invitationBatchInput, invitationTextSchema } = await import('../../libs/contract/dist/invitation.js')
+  const result = invitationBatchInput(
+    ' One@example.com\ntwo@example.com;three@example.com,four@example.com|five@example.com one@example.com ',
+  )
+  assert.equal(result.invitations.length, 5)
+  assert.equal(result.invitations[0].email, 'one@example.com')
+  assert.equal(invitationTextSchema.safeParse({ email: 'valid@example.com;broken' }).success, false)
 })

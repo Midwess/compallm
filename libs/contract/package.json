@@ -32,6 +32,10 @@
     "./graphql": {
       "types": "./dist/graphql.d.ts",
       "import": "./dist/graphql.js"
+    },
+    "./invitation": {
+      "types": "./dist/invitation.d.ts",
+      "import": "./dist/invitation.js"
     }
   },
   "dependencies": {

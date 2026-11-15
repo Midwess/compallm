@@ -201,6 +201,10 @@ impl Hooks for App {
                 ))
                 .layer(DefaultBodyLimit::max(di.max_request_body_bytes())),
         );
+        router = router.route(
+            "/api/invitations/open",
+            axum::routing::get(compallm_api::http::invitation::open).with_state(di),
+        );
         if ctx.environment == Environment::Development {
             router = router.route("/api/graphiql", axum::routing::get(endpoint::graphiql));
         }
@@ -208,7 +212,9 @@ impl Hooks for App {
     }
 
     async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
-        let router = Self::with_api_fallback(router);
+        let router = Self::with_api_fallback(router).layer(axum::middleware::from_fn(
+            compallm_api::http::invitation::redact_query,
+        ));
         #[cfg(not(debug_assertions))]
         {
             use axum_frontend::static_router;

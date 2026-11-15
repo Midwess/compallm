@@ -125,3 +125,11 @@ impl FromContext<GraphqlContext> for compallm_core::organization::profile_servic
         <Self as FromContext<Di>>::from(context.di)
     }
 }
+
+impl FromContext<GraphqlContext>
+    for Box<dyn compallm_core::persistent::invitation::InvitationRepository>
+{
+    fn from(context: &GraphqlContext) -> &Self {
+        <Self as FromContext<Di>>::from(context.di)
+    }
+}

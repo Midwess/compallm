@@ -23,6 +23,32 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
+    async fn invitation_context(
+        #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] identity: &AuthenticationContext,
+    ) -> Result<Payload<organization::invitation::InvitationContext>, Error> {
+        organization::invitation::query::context(auth, identity).await
+    }
+    async fn invitations(
+        first: Option<i32>,
+        after: Option<String>,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::invitation::InvitationRepository,
+        >,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Collection<organization::invitation::Invitation>, Error> {
+        organization::invitation::query::list(
+            compallm_query::Pagination {
+                first: Some(first.unwrap_or(20)),
+                after: after.map(compallm_query::Cursor),
+                ..Default::default()
+            },
+            repository.as_ref(),
+            authority,
+        )
+        .await
+    }
+
     async fn me(
         #[graphql(context)] user: &UserContext,
     ) -> Result<Payload<super::user::me::Me>, Error> {
@@ -159,6 +185,39 @@ pub struct Mutation;
 
 #[graphql_object(context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Mutation {
+    async fn invitation_create_many(
+        input: organization::invitation::input::InvitationBatchCreateInput,
+        #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] cookies: &CookieDelivery,
+    ) -> Result<Collection<organization::invitation::InvitationIssued>, Error> {
+        organization::invitation::mutation::create_many(input, auth, authority, cookies).await
+    }
+
+    async fn invitation_create(
+        input: organization::invitation::input::InvitationCreateInput,
+        #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] cookies: &CookieDelivery,
+    ) -> Result<Payload<organization::invitation::InvitationIssued>, Error> {
+        organization::invitation::mutation::create(input, auth, authority, cookies).await
+    }
+    async fn invitation_resend(
+        id: ID,
+        #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] cookies: &CookieDelivery,
+    ) -> Result<Payload<organization::invitation::InvitationIssued>, Error> {
+        organization::invitation::mutation::resend(id, auth, authority, cookies).await
+    }
+    async fn invitation_revoke(
+        id: ID,
+        #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<organization::invitation::Invitation>, Error> {
+        organization::invitation::mutation::revoke(id, auth, authority).await
+    }
+
     async fn organization_profile_update(
         input: organization::input::OrganizationProfileUpdateInput,
         #[graphql(context)] authority: &AuthorizationContext,
@@ -409,6 +468,8 @@ impl GraphQLValueAsync for RegisteredQuery {
 #[derive(JsonSchema)]
 #[allow(dead_code)]
 struct Inputs {
+    invitation_batch_create: organization::invitation::input::InvitationBatchCreateInput,
+    invitation_create: organization::invitation::input::InvitationCreateInput,
     user_preferences_patch: super::preference::user::input::UserPreferencesPatchInput,
     credential_create: super::user::input::CredentialCreateInput,
     spending_limit: super::organization::input::SpendingLimitInput,

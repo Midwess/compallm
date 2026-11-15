@@ -133,6 +133,96 @@ h-auto min-h-16 resize-y`,
   )
 }
 
+export function TokenField({
+  name,
+  parseToken,
+  ...props
+}: { name: string; parseToken: (text: string) => string | null } & ComponentPropsWithRef<'textarea'>) {
+  const field = useFormField<string>(name)
+  const input = useRef<HTMLTextAreaElement>(null)
+  const [compositionDraft, setCompositionDraft] = useState<string | null>(null)
+  const value = field?.value ?? ''
+  const tokens: string[] = []
+  const remaining: string[] = []
+  const parts = value.split(/([\s;,|]+)/u)
+  for (let i = 0; i < parts.length; i += 2) {
+    const text = parts[i]
+    if (!text) continue
+    const parsed = parts[i + 1] ? parseToken(text) : null
+    if (parsed) {
+      if (!tokens.includes(parsed)) tokens.push(parsed)
+    } else remaining.push(text + (parts[i + 1] ?? ''))
+  }
+  const draft = remaining.join('')
+  const update = (next: string, nextTokens = tokens) => {
+    field?.change(nextTokens.map((token) => `${token}, `).join('') + next)
+  }
+  return (
+    <div
+      aria-invalid={field?.invalid || undefined}
+      className="flex max-h-40 min-h-18 w-full flex-wrap overflow-y-auto content-start items-start gap-1 rounded-lg
+border-(length:--border-hairline) border-input bg-inset p-1.5 text-left text-xsm text-foreground
+focus-within:border-muted-foreground/60 aria-invalid:border-destructive"
+    >
+      {tokens.map((token) => (
+        <button
+          key={token}
+          type="button"
+          aria-label={`Edit ${token}`}
+          className="max-w-full truncate rounded bg-foreground/10 px-1.5 py-0.5 text-left
+hover:bg-foreground/15 focus-visible:outline-2 focus-visible:outline-primary"
+          onClick={() => {
+            update(
+              `${draft}${draft && !/[\s;,|]$/u.test(draft) ? ', ' : ''}${token}`,
+              tokens.filter((item) => item !== token),
+            )
+            input.current?.focus()
+          }}
+        >
+          {token}
+        </button>
+      ))}
+      <MultilineField
+        {...props}
+        ref={composeRefs(input, props.ref)}
+        value={compositionDraft ?? draft}
+        aria-invalid={field?.invalid || undefined}
+        aria-describedby={`${name}-error`}
+        placeholder={tokens.length ? undefined : props.placeholder}
+        className="field-sizing-content min-h-6 min-w-28 flex-1 basis-28 resize-none
+rounded-none border-0 bg-transparent p-0 text-xsm"
+        rows={1}
+        onCompositionStart={(event) => setCompositionDraft(event.currentTarget.value)}
+        onCompositionEnd={(event) => {
+          setCompositionDraft(null)
+          update(event.currentTarget.value)
+          if (/[\s;,|]/u.test(event.currentTarget.value)) field?.blur()
+        }}
+        onChange={(event) => {
+          if ('isComposing' in event.nativeEvent && event.nativeEvent.isComposing) {
+            setCompositionDraft(event.currentTarget.value)
+            return
+          }
+          update(event.currentTarget.value)
+          if (
+            !('isComposing' in event.nativeEvent && event.nativeEvent.isComposing) &&
+            /[\s;,|]/u.test(event.currentTarget.value)
+          )
+            field?.blur()
+        }}
+        onBlur={() => field?.blur()}
+        onKeyDown={(event) => {
+          if (event.nativeEvent.isComposing) return
+          if (event.key === 'Backspace' && !draft && tokens.length) {
+            event.preventDefault()
+            update(tokens[tokens.length - 1], tokens.slice(0, -1))
+          }
+        }}
+      />
+    </div>
+  )
+}
+
 function SearchboxRoot({ className, children, ...props }: import('react').HTMLAttributes<HTMLDivElement>) {
   return (
     <div {...props} className={cx('relative min-w-0', className)}>

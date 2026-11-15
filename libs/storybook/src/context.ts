@@ -25,3 +25,5 @@ export const UrlControllerContext = createContext<UrlController | null>(null)
 export const FloatingContainerContext = createContext<RefObject<HTMLElement | null> | undefined>(undefined)
 
 export const PermissionControllerContext = createContext<import('./permission').PermissionController | null>(null)
+
+export const InvitationControllerContext = createContext<import('./pages/invitation').InvitationController | null>(null)

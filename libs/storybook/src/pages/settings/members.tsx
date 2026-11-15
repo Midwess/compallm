@@ -1,25 +1,103 @@
-import { ChoicePicker } from '../../components/choice-picker'
-import { Searchbox } from '../../components/fields'
-import { Form, useManagedForm, useFormValue } from '../../components/form'
-import { Select } from '../../components/dropdowns'
-import { Dialog } from '../../components/dialog'
-import type { PermissionCheck } from '../../permission'
 import { ArrowDownLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowDownLeft'
 import { Tooltip } from '../../components/feedback'
 import { useState, useSyncExternalStore } from 'react'
 import { EyeIcon } from '@phosphor-icons/react/dist/csr/Eye'
 import { EyeSlashIcon } from '@phosphor-icons/react/dist/csr/EyeSlash'
+import { UserPlusIcon } from '@phosphor-icons/react/dist/csr/UserPlus'
 import { DotsThreeIcon } from '@phosphor-icons/react/dist/csr/DotsThree'
+import { ChoicePicker } from '../../components/choice-picker'
+import { Searchbox } from '../../components/fields'
 import { PermissionRequest, usePermissionChecks } from '../../components/permission'
-import { SearchField } from '../../components/fields'
+import { Form, useManagedForm, useFormValue } from '../../components/form'
+import { SearchField, TokenField, TextField } from '../../components/fields'
 import { Button } from '../../components/buttons'
 import { Table } from '../../components/table'
 import { Avatar } from '../../components/content'
 import { FunnelIcon } from '@phosphor-icons/react/dist/csr/Funnel'
+import { Select } from '../../components/dropdowns'
+import { Dialog } from '../../components/dialog'
 import { Popup } from '../../components/popup'
+import type { PermissionCheck } from '../../permission'
 import type { SettingsMember } from './types'
+import { InvitationCreateInput } from '@compallm/contract/validation'
+import { invitationTextSchema } from '@compallm/contract/invitation'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { SettingsContent, Heading } from './shared'
 import { useSettings, useSettingsController } from './controller'
+
+function InviteMember() {
+  const c = useSettingsController()
+  const busy = useSettings((s) => s.invitationBusy)
+  const link = useSettings((s) => s.invitationLink)
+  const admitted = useSettings((s) => s.invitationEmailAdmitted)
+  const links = useSettings((s) => s.invitationLinks ?? [])
+  const form = useManagedForm(
+    { email: '' },
+    {
+      resolver: zodResolver(invitationTextSchema),
+      submit: async (values) => ((await c.pages.members.invite?.(values.email)) ? values : false),
+    },
+  )
+  return (
+    <div className="space-y-4">
+      <Form.Root model={form} className="space-y-4">
+        <label className="grid gap-1 text-xsm font-medium">
+          Email
+          <div className="relative">
+            <TokenField
+              name="email"
+              parseToken={(email) => {
+                const result = InvitationCreateInput.safeParse({ email })
+                return result.success ? result.data.email : null
+              }}
+              aria-label="Invite by email"
+              placeholder="email@example.com, another@example.com…"
+            />
+            <Form.Error name="email" />
+          </div>
+        </label>
+        <label className="grid gap-1 text-xsm font-medium">
+          Role
+          <Select.Root value="member">
+            <Select.Trigger aria-label="Invitation role" className="h-8 w-full rounded-lg bg-elevated text-left">
+              <Select.Value>
+                Member <span className="font-normal text-muted-foreground">— Standard organization access</span>
+              </Select.Value>
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="member">Member</Select.Item>
+            </Select.Content>
+          </Select.Root>
+        </label>
+        {link ? (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              {admitted ? 'Invitation email queued.' : 'Email was not queued. Share this link or resend explicitly.'}
+            </p>
+            {links.length ? (
+              links.map((item) => (
+                <div key={item.email} className="flex min-w-0 items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate text-xs">{item.email}</span>
+                  <Button onClick={() => c.pages.dialogs.copy(item.url)}>Copy link</Button>
+                </div>
+              ))
+            ) : (
+              <>
+                <TextField aria-label="New invitation link" variant="constant" value={link} />
+                <Button onClick={() => c.pages.dialogs.copy(link)}>Copy invitation link</Button>
+              </>
+            )}
+          </div>
+        ) : null}
+        <div className="flex justify-end pt-6">
+          <Button type="submit" variant="primary" loading={busy} className="h-8 px-3">
+            Send invitations
+          </Button>
+        </div>
+      </Form.Root>
+    </div>
+  )
+}
 
 function DirectoryDate({ value }: { value?: number | null }) {
   const [year] = useState(() => new Date().getUTCFullYear())
@@ -34,6 +112,79 @@ function DirectoryDate({ value }: { value?: number | null }) {
     >
       {date.toLocaleDateString(undefined, sameYear ? { month: 'short', day: 'numeric' } : { month: 'short', year: 'numeric' })}
     </time>
+  )
+}
+
+function Invitations() {
+  const c = useSettingsController()
+  const invitations = useSettings((s) => s.invitations.filter((invitation) => invitation.status === 'pending'))
+  const loading = useSettings((s) => s.invitationsLoading)
+  const more = useSettings((s) => s.invitationsHasNextPage)
+  if (!invitations.length) return null
+  return (
+    <Table.Category
+      variant="directory"
+      label="Invited"
+      count={`${invitations.length}${more ? ' shown' : ''}`}
+      columns={6}
+      defaultOpen={invitations.length > 0}
+    >
+      {invitations.map((row) => (
+        <Table.Row key={row.id} className="h-14 border-0">
+          <Table.Cell column="name" className="pl-0">
+            <div className="flex items-center gap-2.5 py-1">
+              <span
+                className="grid size-6 shrink-0 place-items-center rounded-full border border-dashed
+border-border text-ui-11 text-muted-foreground"
+              >
+                @
+              </span>
+              <span className="truncate text-xsm font-medium">Invited member</span>
+            </div>
+          </Table.Cell>
+          <Table.Cell column="email" className="text-muted-foreground">
+            <MemberEmail key={row.email} email={row.email} name={`invitation ${row.id}`} />
+          </Table.Cell>
+          <Table.Cell column="role" className="px-2 text-muted-foreground">
+            Member (Invited)
+          </Table.Cell>
+          <Table.Cell column="groups" className="px-2 text-muted-foreground">
+            —
+          </Table.Cell>
+          <Table.Cell column="joined">
+            <DirectoryDate value={row.issuedAt ?? row.expiresAt - 604800} />
+          </Table.Cell>
+          <Table.Cell column="actions" className="px-0">
+            <PermissionRequest actions={['member.invite']}>
+              {(allowed) =>
+                allowed && (row.status === 'pending' || row.status === 'expired') ? (
+                  <Popup.Root>
+                    <Popup.Trigger aria-label={`Actions for invitation ${row.id}`} className="size-8 p-0">
+                      <DotsThreeIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+                    </Popup.Trigger>
+                    <Popup.Content aria-label="Invitation actions">
+                      <Popup.Item onSelect={() => void c.pages.members.resend?.(row.id)}>Resend invitation</Popup.Item>
+                      <Popup.Item className="text-destructive" onSelect={() => void c.pages.members.revoke?.(row.id)}>
+                        Revoke invitation
+                      </Popup.Item>
+                    </Popup.Content>
+                  </Popup.Root>
+                ) : null
+              }
+            </PermissionRequest>
+          </Table.Cell>
+        </Table.Row>
+      ))}
+      {more ? (
+        <Table.Row className="border-0">
+          <Table.Cell colSpan={6} className="px-4 py-2 lg:px-13">
+            <Button aria-busy={loading} onClick={() => c.pages.members.loadMoreInvitations?.()}>
+              More invitations
+            </Button>
+          </Table.Cell>
+        </Table.Row>
+      ) : null}
+    </Table.Category>
   )
 }
 
@@ -344,6 +495,29 @@ function MemberRows({ label, members, complete }: { label: string; members: Sett
   )
 }
 
+function InvitationDialog() {
+  const open = useSettings((s) => s.invitationsOpen ?? false)
+  return (
+    <Dialog.Root defaultOpen={open}>
+      <Dialog.Trigger asChild>
+        <Button variant="neutral" className="ml-auto h-8 shrink-0 gap-1.5 px-3">
+          <UserPlusIcon className="size-3.5" aria-hidden="true" />
+          Invite
+        </Button>
+      </Dialog.Trigger>
+      <Dialog.Content className="top-[22vh] bottom-auto max-h-[76dvh] w-140 rounded-xl bg-inset md:left-61">
+        <Dialog.Header className="h-14 border-0">
+          <Dialog.Title className="flex items-center gap-2 text-ui-15 font-medium">Send invitations</Dialog.Title>
+          <Dialog.Close />
+        </Dialog.Header>
+        <Dialog.Body className="pt-3 pb-4">
+          <PermissionRequest actions={['member.invite']}>{(allowed) => (allowed ? <InviteMember /> : null)}</PermissionRequest>
+        </Dialog.Body>
+      </Dialog.Content>
+    </Dialog.Root>
+  )
+}
+
 function MemberFilters() {
   const c = useSettingsController()
   const roles = useSettings((s) => s.roles)
@@ -398,6 +572,7 @@ export function MembersSettings() {
   const next = useSettings((s) => s.membersHasNextPage)
   const previous = useSettings((s) => s.membersHasPreviousPage)
   const page = useSettings((s) => s.membersPage)
+  const invitations = useSettings((s) => s.invitations.length)
   const confirmedComplete = useSettings((s) => s.membersComplete !== false)
   const complete = confirmedComplete && !loading && !next && !previous && page === 1
   const active = members.filter((member) => member.available !== false)
@@ -421,6 +596,11 @@ export function MembersSettings() {
           className="w-75 max-w-full"
         />
         <MemberFilters />
+        {c.pages.members.invite || invitations ? (
+          <PermissionRequest actions={['member.invite']}>
+            {(allowed) => (allowed ? <InvitationDialog /> : null)}
+          </PermissionRequest>
+        ) : null}
       </div>
       <Table.Root className="min-h-0 flex-1 overflow-auto">
         <Table.Content
@@ -459,6 +639,7 @@ export function MembersSettings() {
               </Table.Head>
             </Table.Row>
           </Table.Header>
+          <Invitations key={invitations ? 'populated' : 'empty'} />
           {active.length || !inactive.length ? <MemberRows label="Active" members={active} complete={complete} /> : null}
           {inactive.length ? <MemberRows label="Inactive" members={inactive} complete={complete} /> : null}
         </Table.Content>

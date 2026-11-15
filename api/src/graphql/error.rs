@@ -17,6 +17,19 @@ pub struct Error {
 impl From<AuthError> for Error {
     fn from(error: AuthError) -> Self {
         let (code, status, message) = match error {
+            AuthError::InvalidInvitation => (
+                "INVITATION_UNAVAILABLE",
+                410,
+                "Invitation is expired, revoked, consumed, or unavailable",
+            ),
+            AuthError::OrganizationRepository(
+                compallm_core::persistent::organization::OrganizationRepositoryError::InvalidQuery,
+            ) => ("BAD_USER_INPUT", 400, "Invalid collection query"),
+            AuthError::InvitationConflict => (
+                "INVITATION_CONFLICT",
+                409,
+                "Recipient already belongs to this organization or has a pending invitation",
+            ),
             AuthError::Persistence(UserRepositoryError::EmailAlreadyExists) => (
                 "EMAIL_REGISTERED",
                 409,

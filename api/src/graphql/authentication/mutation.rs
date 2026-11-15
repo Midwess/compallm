@@ -23,7 +23,17 @@ pub(crate) async fn signup_email_request(
         cookies.validate_origin()?;
     }
     (
-        identity.execute(auth.signup_email(&input.email)).await?,
+        match identity.invitation().await? {
+            Some(invitation) => {
+                if mode != CredentialDelivery::Cookie {
+                    return Err(Error::invalid_input());
+                }
+                identity
+                    .execute(auth.invitation_email(&invitation, &input.email, true))
+                    .await?
+            }
+            None => identity.execute(auth.signup_email(&input.email)).await?,
+        },
         mode,
         cookies,
     )
@@ -45,7 +55,17 @@ pub(crate) async fn signin_email_request(
         cookies.validate_origin()?;
     }
     (
-        identity.execute(auth.signin_email(&input.email)).await?,
+        match identity.invitation().await? {
+            Some(invitation) => {
+                if mode != CredentialDelivery::Cookie {
+                    return Err(Error::invalid_input());
+                }
+                identity
+                    .execute(auth.invitation_email(&invitation, &input.email, false))
+                    .await?
+            }
+            None => identity.execute(auth.signin_email(&input.email)).await?,
+        },
         mode,
         cookies,
     )
@@ -67,9 +87,26 @@ pub(crate) async fn signup_email_confirm(
         cookies.validate_origin()?;
     }
     (
-        identity
-            .execute(auth.signup(identity.otp().await?, &input.code))
-            .await?,
+        match identity.invitation().await? {
+            Some(invitation) => {
+                if mode != CredentialDelivery::Cookie {
+                    return Err(Error::invalid_input());
+                }
+                identity
+                    .execute(auth.invitation_confirm(
+                        &invitation,
+                        identity.otp().await?,
+                        &input.code,
+                        true,
+                    ))
+                    .await?
+            }
+            None => {
+                identity
+                    .execute(auth.signup(identity.otp().await?, &input.code))
+                    .await?
+            }
+        },
         mode,
         cookies,
     )
@@ -90,9 +127,26 @@ pub(crate) async fn signin_email_confirm(
         cookies.validate_origin()?;
     }
     (
-        identity
-            .execute(auth.signin(identity.otp().await?, &input.code))
-            .await?,
+        match identity.invitation().await? {
+            Some(invitation) => {
+                if mode != CredentialDelivery::Cookie {
+                    return Err(Error::invalid_input());
+                }
+                identity
+                    .execute(auth.invitation_confirm(
+                        &invitation,
+                        identity.otp().await?,
+                        &input.code,
+                        false,
+                    ))
+                    .await?
+            }
+            None => {
+                identity
+                    .execute(auth.signin(identity.otp().await?, &input.code))
+                    .await?
+            }
+        },
         mode,
         cookies,
     )

@@ -1,4 +1,4 @@
-import type { Group, Role } from '@compallm/contract/graphql'
+import type { Invitation, Group, Role } from '@compallm/contract/graphql'
 import type { UserPreferenceController } from './preferences/user/controller'
 import type { FormStore } from '../../components/form'
 import type { RoleController } from './role/controller'
@@ -32,11 +32,11 @@ export interface SettingsLocation {
   id?: string
 }
 export interface SettingsRole {
-  owner?: boolean
   id: string
   name: string
   description: string
   source: string
+  owner?: boolean
   builtin?: boolean
   color: string
 }
@@ -49,9 +49,9 @@ export interface SettingsGroup {
   color: string
 }
 export interface SettingsMember {
+  joinedAt?: number | null
   role: Pick<Role, 'id' | 'name' | 'description' | 'color' | 'owner'> | null
   groups?: Pick<Group, 'id' | 'name' | 'description'>[]
-  joinedAt?: number | null
   available?: boolean
   id: string
   name: string
@@ -171,12 +171,20 @@ export interface SettingsState {
   ownerMemberIds?: string[]
   currentMemberId?: string
   membersComplete?: boolean
+  invitationsOpen?: boolean
   membersLoading: boolean
   membersHasNextPage: boolean
   membersHasPreviousPage: boolean
   membersEndCursor: string | null
   membersPage: number
   memberOrder: 'ASC_NULLS_LAST' | 'DESC_NULLS_LAST'
+  invitations: (Pick<Invitation, 'id' | 'email' | 'status' | 'expiresAt'> & Partial<Pick<Invitation, 'issuedAt'>>)[]
+  invitationsLoading: boolean
+  invitationsHasNextPage: boolean
+  invitationLinks?: { email: string; url: string; emailAdmitted: boolean }[]
+  invitationLink: string | null
+  invitationEmailAdmitted: boolean
+  invitationBusy: boolean
   organizationProfileStatus: 'loading' | 'ready' | 'denied' | 'missing' | 'error'
   organizationSavedName: string
   organizationProfileSaving: boolean
@@ -237,12 +245,16 @@ export interface SettingsPageControllers {
   profile: ProfileController
   organization: OrganizationController
   members: {
-    setMemberRole(memberId: string, roleId: string): void | false | Promise<void | false>
     setMemberGroups?(memberId: string, groupIds: string[]): Promise<string[] | false>
     search?(query: string): void
+    setMemberRole(memberId: string, roleId: string): void | false | Promise<void | false>
     nextPage?(): void
     previousPage?(): void
     setOrder?(value: SettingsState['memberOrder']): void
+    invite?(email: string): Promise<boolean>
+    resend?(id: string): Promise<boolean>
+    revoke?(id: string): Promise<void>
+    loadMoreInvitations?(): void
   }
   dialogs: {
     openDialog(kind: SettingsDialogKind, targetId?: string): void

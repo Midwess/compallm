@@ -186,6 +186,15 @@ export class AuthController implements SignupController, SigninController {
     await this.signingOut
   }
 
+  forgetCurrentUser = () => {
+    this.sessionGeneration += 1
+    this.sessionRequest?.abort()
+    this.sessionLoading?.cancel()
+    this.sessionPending = undefined
+    this.stop()
+    this.store.setState({ currentUser: null, status: 'anonymous' })
+  }
+
   invalidAuthorization = () => {
     this.sessionGeneration += 1
     this.sessionRequest?.abort()

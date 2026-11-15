@@ -37,6 +37,9 @@ impl CreationService {
             let organization = self.organizations.create(organization).await?;
             self.organizations.create_roles(roles.clone()).await?;
             self.organizations
+                .set_default_member_role(organization.id, roles[2].id)
+                .await?;
+            self.organizations
                 .add_member(OrganizationMember {
                     organization_id: organization.id,
                     user_id: user.id,

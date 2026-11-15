@@ -28,6 +28,7 @@ pub struct Model {
     pub cedar_source: String,
     #[sea_orm(unique_key = "organization_role_owner_identity")]
     pub org_owner: bool,
+    pub default_member: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

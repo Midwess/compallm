@@ -77,6 +77,7 @@ pub struct Di {
     user_preference_service: OnceLock<Box<compallm_core::preference::UserPreferenceService>>,
     organizations: Box<dyn OrganizationRepository>,
     sessions: Box<dyn SessionRepository>,
+    invitations: Box<dyn compallm_core::persistent::invitation::InvitationRepository>,
     dictionaries: Box<dyn DictionaryRepository>,
     email: Option<Box<dyn EmailService>>,
     mailing: Option<Box<compallm_mailing::MailingService>>,
@@ -159,6 +160,7 @@ impl Di {
             organizations: Box::new(
                 compallm_postgres::repository::organization::OrganizationRepository,
             ),
+            invitations: Box::new(compallm_postgres::repository::invitation::InvitationRepository),
             sessions: Box::new(compallm_postgres::repository::session::SessionRepository),
             dictionaries: Box::new(dictionaries),
             email,
@@ -196,20 +198,23 @@ impl Di {
             self.initialize_http()?;
             return Ok(());
         }
-        let service = Box::new(AuthService::new(
-            self.user_repository(),
-            self.organization_repository(),
-            self.session_repository(),
-            &self.dictionaries,
-            self.registration_service(),
-            self.user_preference_service(),
-            self.settings.jwt_secret.clone(),
-            TokenLifetimes {
-                user: Duration::from_secs(self.settings.user_token_ttl_seconds),
-                refresh: Duration::from_secs(self.settings.refresh_token_ttl_seconds),
-            },
-            self.email_service(),
-        )?);
+        let service = Box::new(
+            AuthService::new(
+                self.user_repository(),
+                self.organization_repository(),
+                self.session_repository(),
+                &self.dictionaries,
+                self.registration_service(),
+                self.user_preference_service(),
+                self.settings.jwt_secret.clone(),
+                TokenLifetimes {
+                    user: Duration::from_secs(self.settings.user_token_ttl_seconds),
+                    refresh: Duration::from_secs(self.settings.refresh_token_ttl_seconds),
+                },
+                self.email_service(),
+            )?
+            .with_invitations(self.invitations.as_ref()),
+        );
         // Concurrent initialization may build a second candidate, but only one
         // box is retained; all callers subsequently borrow that same service.
         let _ = self.auth.set(service);
@@ -248,6 +253,13 @@ impl Di {
         self.graphql
             .get()
             .expect("GraphQL schema must be initialized")
+    }
+
+    pub fn invitation_settings(&self) -> AuthenticationSettings {
+        AuthenticationSettings {
+            cookie_secure: self.graphql_settings.cookie_secure,
+            public_origin: self.graphql_settings.public_origin.clone(),
+        }
     }
 
     pub fn authentication(&self) -> &AuthenticationMiddleware {
@@ -470,5 +482,13 @@ impl juniper::FromContext<Di> for compallm_core::organization::profile_service::
         di.org_profile
             .get()
             .expect("organization profile initialized")
+    }
+}
+
+impl juniper::FromContext<Di>
+    for Box<dyn compallm_core::persistent::invitation::InvitationRepository>
+{
+    fn from(di: &Di) -> &Self {
+        &di.invitations
     }
 }

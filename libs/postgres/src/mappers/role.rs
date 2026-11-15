@@ -23,6 +23,7 @@ impl TryFrom<Role>
             description: Set(role.description),
             cedar_source: Set(role.cedar_source),
             org_owner: Set(role.org_owner),
+            default_member: Set(false),
         })
     }
 }

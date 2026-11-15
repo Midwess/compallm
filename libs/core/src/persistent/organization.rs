@@ -179,6 +179,11 @@ pub trait OrganizationRepository: Send + Sync {
     ) -> Result<Organization, OrganizationRepositoryError>;
     /// Insert initial default-role records within organization creation.
     async fn create_roles(&self, roles: Vec<Role>) -> Result<(), OrganizationRepositoryError>;
+    async fn set_default_member_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<(), OrganizationRepositoryError>;
     async fn add_member(
         &self,
         member: OrganizationMember,

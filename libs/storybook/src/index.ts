@@ -87,3 +87,5 @@ export type { PopupRootProps, PopupTriggerProps, PopupItemProps, PopupCheckboxIt
 export * from './permission'
 export * from './components/permission'
 export { PermissionControllerContext } from './context'
+
+export { InvitationPage } from './pages/invitation'

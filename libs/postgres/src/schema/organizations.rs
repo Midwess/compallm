@@ -51,12 +51,6 @@ impl Related<super::organization_groups::Entity> for Entity {
     }
 }
 
-impl Related<super::organization_members::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::OrganizationMembers.def()
-    }
-}
-
 impl Related<super::organization_roles::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OrganizationRoles.def()
@@ -72,6 +66,19 @@ impl Related<super::providers::Entity> for Entity {
 impl Related<super::user_sessions::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::UserSessions.def()
+    }
+}
+
+impl Related<super::organization_members::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::organization_roles::Relation::OrganizationMembers.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(
+            super::organization_roles::Relation::Organizations
+                .def()
+                .rev(),
+        )
     }
 }
 

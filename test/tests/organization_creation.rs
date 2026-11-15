@@ -30,6 +30,7 @@ impl OrganizationRepository for Repository {
     async fn find_member_identity(
         &self,
         _: u64,
+        _: u64,
     ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
         unreachable!()
     }
@@ -273,7 +274,7 @@ async fn default_organization_and_owner_are_inserted_in_one_transaction() {
         )));
     }
     let member = state.member.as_ref().unwrap();
-    assert_eq!(member.roles, vec![roles[0].clone()]);
+    assert_eq!(member.role, roles[0].clone());
     assert_eq!(member.organization_id, organization.id);
     assert_eq!(member.user_id, 42);
     let sql = format!(
@@ -325,14 +326,32 @@ fn member_mapper_retains_scoped_identity_without_inventing_assignments() {
         organization_id: 84,
         user_id: 42,
         status: UserStatusSchema::Active,
+        role_id: 3,
     };
-    let member = compallm_core::organization::OrganizationMember::try_from(row).unwrap();
-    assert_eq!(member.organization_id, 84);
-    assert!(member.roles.is_empty() && member.groups.is_empty());
+    let role = Role {
+        id: 3,
+        organization_id: 84,
+        name: "Member".into(),
+        description: String::new(),
+        cedar_source: String::new(),
+        org_owner: false,
+    };
+    let member = compallm_postgres::mappers::organization_member::MappedMember::try_from((
+        row,
+        role.clone(),
+    ))
+    .unwrap()
+    .0;
+    assert_eq!(member.role.id, 3);
+    assert!(member.groups.is_empty());
     let invalid = OrganizationMemberSchema {
         organization_id: 0,
         user_id: -1,
         status: UserStatusSchema::Active,
+        role_id: 3,
     };
-    assert!(compallm_core::organization::OrganizationMember::try_from(invalid).is_err());
+    assert!(
+        compallm_postgres::mappers::organization_member::MappedMember::try_from((invalid, role))
+            .is_err()
+    );
 }

@@ -50,7 +50,15 @@ export const initialSettings: Partial<SettingsState> = {
   policyActions,
   models: ['general-chat', 'coding-assistant'],
   roles: [
-    { id: 'owner', name: 'Owner', description: 'Organization ownership', source: '', builtin: true, color: '#98999C' },
+    {
+      id: 'owner',
+      owner: true,
+      name: 'Owner',
+      description: 'Organization ownership',
+      source: '',
+      builtin: true,
+      color: '#98999C',
+    },
     {
       id: 'admin',
       name: 'Administrator',

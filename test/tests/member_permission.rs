@@ -37,24 +37,13 @@ fn role(id: u64, source: &str) -> Role {
 
 #[test]
 fn direct_and_group_permissions_apply_to_the_members_organization() {
-    let member = OrganizationMember {
-        organization_id: 7,
-        user_id: 11,
-        roles: vec![role(
-            1,
-            r#"permit(principal in Compallm::Role::"7:1", action == Compallm::Action::"provider.create", resource == Compallm::Organization::"7");"#,
-        )],
-        groups: vec![Group {
-            id: 4,
-            organization_id: 7,
-            name: String::new(),
-            description: String::new(),
-            roles: vec![role(
+    let member = OrganizationMember { organization_id: 7, user_id: 11, groups: vec![Group::new(4, 7, String::new(), String::new(), vec![role(
                 2,
                 r#"permit(principal in Compallm::Role::"7:2", action == Compallm::Action::"provider.read", resource == Compallm::Organization::"7");"#,
-            )],
-        }],
-    };
+            )]).unwrap()], role: role(
+            1,
+            r#"permit(principal in Compallm::Role::"7:1", action == Compallm::Action::"provider.create", resource == Compallm::Organization::"7");"#,
+        ) };
     let permission = MemberPermission::try_from(access(7, &member)).unwrap();
     assert_eq!(permission.user_id(), 11);
     assert_eq!(permission.organization_id(), 7);
@@ -83,14 +72,10 @@ fn forbid_and_evaluation_errors_cannot_be_overridden_by_a_permit() {
     let mut member = OrganizationMember {
         organization_id: 7,
         user_id: 11,
-        roles: vec![role(1, permit)],
-        groups: vec![Group {
-            id: 4,
-            organization_id: 7,
-            name: String::new(),
-            description: String::new(),
-            roles: vec![role(2, forbid)],
-        }],
+        groups: vec![
+            Group::new(4, 7, String::new(), String::new(), vec![role(2, forbid)]).unwrap(),
+        ],
+        role: role(1, permit),
     };
     let permission = MemberPermission::try_from(access(7, &member)).unwrap();
     assert!(matches!(
@@ -98,7 +83,9 @@ fn forbid_and_evaluation_errors_cannot_be_overridden_by_a_permit() {
         Err(MemberPermissionError::Denied)
     ));
     // A valid policy can still fail at evaluation, such as arithmetic overflow.
-    member.groups[0].roles[0].cedar_source = r#"forbid(principal, action == Compallm::Action::"provider.read", resource == Compallm::Organization::"7") when { 9223372036854775807 + 1 > 0 };"#.into();
+    let mut changed = member.groups[0].roles().to_vec();
+    changed[0].cedar_source = r#"forbid(principal, action == Compallm::Action::"provider.read", resource == Compallm::Organization::"7") when { 9223372036854775807 + 1 > 0 };"#.into();
+    member.groups[0].replace_roles(changed).unwrap();
     let permission = MemberPermission::try_from(access(7, &member)).unwrap();
     assert!(matches!(
         Action::ProviderRead.check_permission(&permission),
@@ -116,22 +103,33 @@ fn self_group_assignment_preserves_the_verified_principal() {
     let actor = OrganizationMember {
         organization_id: 7,
         user_id: 1,
-        roles: vec![owner.clone()],
         groups: vec![],
+        role: owner.clone(),
     };
     let permission = MemberPermission::try_from(access(7, &actor)).unwrap();
-    let group = Group {
-        id: 23,
-        organization_id: 7,
-        name: "Owners".into(),
-        description: String::new(),
-        roles: vec![owner],
-    };
+    let group = Group::new(
+        23,
+        7,
+        "Owners".into(),
+        String::new(),
+        vec![Role {
+            org_owner: false,
+            ..owner
+        }],
+    )
+    .unwrap();
     let target = OrganizationMember {
         organization_id: 7,
         user_id: 1,
-        roles: vec![],
         groups: vec![],
+        role: compallm_core::organization::Role {
+            id: 3,
+            organization_id: 7,
+            name: "Member".into(),
+            description: String::new(),
+            cedar_source: String::new(),
+            org_owner: false,
+        },
     };
     (&group, &target)
         .for_action(Action::GroupMemberAdd)
@@ -146,22 +144,16 @@ fn target_membership_cannot_add_authority_to_the_verified_principal() {
     let actor = OrganizationMember {
         organization_id: 7,
         user_id: 1,
-        roles: vec![role(11, source)],
         groups: vec![],
+        role: role(11, source),
     };
     let permission = MemberPermission::try_from(access(7, &actor)).unwrap();
-    let group = Group {
-        id: 23,
-        organization_id: 7,
-        name: "Restricted".into(),
-        description: String::new(),
-        roles: vec![],
-    };
+    let group = Group::new(23, 7, "Restricted".into(), String::new(), vec![]).unwrap();
     let target = OrganizationMember {
         organization_id: 7,
         user_id: 1,
-        roles: vec![role(99, "")],
         groups: vec![],
+        role: role(99, ""),
     };
     assert!(matches!(
         (&group, &target)
@@ -185,16 +177,10 @@ fn contextual_delegation_requires_both_checks_and_combines_forbids() {
     let mut member = OrganizationMember {
         organization_id: 7,
         user_id: 11,
-        roles: vec![grant],
         groups: vec![],
+        role: grant,
     };
-    let group = Group {
-        id: 23,
-        organization_id: 7,
-        name: String::new(),
-        description: String::new(),
-        roles: vec![],
-    };
+    let group = Group::new(23, 7, String::new(), String::new(), vec![]).unwrap();
     let target = role(9, "");
     let permission = MemberPermission::try_from(access(7, &member)).unwrap();
     (&group, &target)
@@ -209,13 +195,9 @@ fn contextual_delegation_requires_both_checks_and_combines_forbids() {
             .check_permission(&permission),
         Err(MemberPermissionError::Denied)
     ));
-    member.groups.push(Group {
-        id: 3,
-        organization_id: 7,
-        name: String::new(),
-        description: String::new(),
-        roles: vec![restriction],
-    });
+    member
+        .groups
+        .push(Group::new(3, 7, String::new(), String::new(), vec![restriction]).unwrap());
     let permission = MemberPermission::try_from(access(7, &member)).unwrap();
     assert!(matches!(
         (&group, &target)
@@ -224,10 +206,8 @@ fn contextual_delegation_requires_both_checks_and_combines_forbids() {
             .check_permission(&permission),
         Err(MemberPermissionError::Denied)
     ));
-    let foreign = Group {
-        organization_id: 8,
-        ..group
-    };
+    let mut foreign = group;
+    foreign.organization_id = 8;
     assert!(matches!(
         (&foreign)
             .for_action(Action::GroupMetadataUpdate)

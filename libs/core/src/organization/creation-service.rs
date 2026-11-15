@@ -40,7 +40,7 @@ impl CreationService {
                 .add_member(OrganizationMember {
                     organization_id: organization.id,
                     user_id: user.id,
-                    roles: vec![roles[0].clone()],
+                    role: roles[0].clone(),
                     groups: Vec::new(),
                 })
                 .await?;

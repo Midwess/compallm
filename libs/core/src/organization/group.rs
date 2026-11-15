@@ -24,7 +24,7 @@ pub struct Group {
     pub organization_id: u64,
     pub name: String,
     pub description: String,
-    pub roles: Vec<Role>,
+    roles: Vec<Role>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -39,6 +39,8 @@ pub enum GroupCreationError {
     TooManyRoles,
     #[error("group roles must belong to the same organization")]
     ForeignRole,
+    #[error("Owner cannot be assigned to a group")]
+    OwnerRole,
     #[error("group roles must be distinct")]
     DuplicateRole,
     #[error("ID generation failed")]
@@ -72,6 +74,52 @@ pub enum GroupDeletionError {
 }
 
 impl Group {
+    pub fn roles(&self) -> &[Role] {
+        &self.roles
+    }
+
+    pub fn replace_roles(&mut self, roles: Vec<Role>) -> Result<(), GroupCreationError> {
+        Self::validate_roles(self.organization_id, &roles)?;
+        self.roles = roles;
+        Ok(())
+    }
+
+    fn validate_roles(organization_id: u64, roles: &[Role]) -> Result<(), GroupCreationError> {
+        if roles.len() > Self::MAX_ROLES {
+            return Err(GroupCreationError::TooManyRoles);
+        }
+        let mut ids = HashSet::new();
+        for role in roles {
+            if role.org_owner() {
+                return Err(GroupCreationError::OwnerRole);
+            }
+            if role.organization_id != organization_id {
+                return Err(GroupCreationError::ForeignRole);
+            }
+            if !ids.insert(role.id) {
+                return Err(GroupCreationError::DuplicateRole);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn new(
+        id: u64,
+        organization_id: u64,
+        name: String,
+        description: String,
+        roles: Vec<Role>,
+    ) -> Result<Self, GroupCreationError> {
+        Self::validate_roles(organization_id, &roles)?;
+        Ok(Self {
+            id,
+            organization_id,
+            name,
+            description,
+            roles,
+        })
+    }
+
     /// Maximum number of roles assigned to a group.
     pub const MAX_ROLES: usize = 32;
     /// Maximum group name length, in Unicode characters, after trimming.
@@ -93,27 +141,16 @@ impl Group {
         .validify()
     }
 
-    pub async fn new(
+    pub async fn create(
         organization_id: u64,
         name: impl Into<String>,
         description: impl Into<String>,
         roles: Vec<Role>,
     ) -> Result<Self, GroupCreationError> {
-        if roles.len() > Self::MAX_ROLES {
-            return Err(GroupCreationError::TooManyRoles);
-        }
+        Self::validate_roles(organization_id, &roles)?;
         let description = description.into();
         Self::validate_description(&description).map_err(GroupCreationError::InvalidDescription)?;
         let name = Self::normalize_name(&name.into()).map_err(GroupCreationError::InvalidName)?;
-        let mut role_ids = HashSet::new();
-        for role in &roles {
-            if role.organization_id != organization_id {
-                return Err(GroupCreationError::ForeignRole);
-            }
-            if !role_ids.insert(role.id) {
-                return Err(GroupCreationError::DuplicateRole);
-            }
-        }
         Ok(Self {
             id: try_gen_id().await?,
             organization_id,

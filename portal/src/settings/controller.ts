@@ -94,7 +94,7 @@ export class SettingsController implements Controller {
       const allowed = (index: number) =>
         !this.permissions || this.permissions.store.getState().entries[permissionKey(checks[index])]?.status === 'allowed'
       const selection = {
-        ...(allowed(0) ? { roles: { edges: { node: { id: true, name: true, color: true } } } } : {}),
+        ...(allowed(0) ? { roles: { edges: { node: { id: true, name: true, color: true, owner: true } } } } : {}),
         ...(allowed(1) ? { groups: { edges: { node: { id: true, name: true } } } } : {}),
       } satisfies QueryGenqlSelection
       if (!Object.keys(selection).length) {

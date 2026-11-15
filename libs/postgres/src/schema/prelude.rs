@@ -9,7 +9,6 @@ pub use super::models::Entity as Models;
 pub use super::organization_group_members::Entity as OrganizationGroupMembers;
 pub use super::organization_group_roles::Entity as OrganizationGroupRoles;
 pub use super::organization_groups::Entity as OrganizationGroups;
-pub use super::organization_member_roles::Entity as OrganizationMemberRoles;
 pub use super::organization_members::Entity as OrganizationMembers;
 pub use super::organization_roles::Entity as OrganizationRoles;
 pub use super::organizations::Entity as Organizations;

@@ -275,6 +275,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
     async fn find_member_identity(
         &self,
         _: u64,
+        _: u64,
     ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
         unreachable!()
     }
@@ -406,7 +407,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
             .memberships
             .iter()
             .filter(|member| member.organization_id == organization_id)
-            .flat_map(|member| &member.roles)
+            .map(|member| &member.role)
             .filter(|role| role_ids.contains(&role.id))
             .cloned()
             .collect())
@@ -471,7 +472,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
             .map(|mut member| {
                 if !state.full_default_policies {
                     // Synthetic bounded policies for transport/lifecycle tests; full defaults have dedicated rejection tests.
-                    for role in &mut member.roles {
+                    for role in std::iter::once(&mut member.role) {
                         role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.read", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
                   }
               }
@@ -512,7 +513,7 @@ impl OrganizationRepository for OrganizationRepositoryStub {
             .map(|mut member| {
                 if !state.full_default_policies {
                     // Synthetic bounded policies for transport/lifecycle tests; full defaults have dedicated rejection tests.
-                    for role in &mut member.roles {
+                    for role in std::iter::once(&mut member.role) {
                         role.cedar_source = format!(r#"permit(principal in Compallm::Role::"{}:{}", action == Compallm::Action::"model.read", resource == Compallm::Organization::"{}");"#, role.organization_id, role.id, role.organization_id);
                   }
               }
@@ -1332,8 +1333,8 @@ impl Fixture {
                 vec![OrganizationMember {
                     organization_id: 84,
                     user_id: user.id,
-                    roles: vec![Fixture::role(84, 0)],
                     groups: Vec::new(),
+                    role: Fixture::role(84, 0),
                 }]
             })
             .unwrap_or_default();
@@ -2205,14 +2206,14 @@ async fn signin_selects_first_active_membership_independent_of_roles() {
         OrganizationMember {
             organization_id: 80,
             user_id: 1,
-            roles: vec![fixture_roles_0.clone().remove(2)],
             groups: Vec::new(),
+            role: fixture_roles_0.clone().remove(2),
         },
         OrganizationMember {
             organization_id: 85,
             user_id: 1,
-            roles: vec![Fixture::role(85, 1)],
             groups: Vec::new(),
+            role: Fixture::role(85, 1),
         },
     ];
     let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
@@ -2223,7 +2224,7 @@ async fn signin_selects_first_active_membership_independent_of_roles() {
     let claims =
         UserAccessToken::try_from(decode_token(&tokens.access_token, SECRET).unwrap()).unwrap();
     assert_eq!(claims.session.organization_id, 80);
-    assert_eq!(claims.policy_snapshot.role_ids, vec![3]);
+    assert_eq!(claims.policy_snapshot.role_id, 3);
     fixture.assert_no_transaction();
 }
 
@@ -2241,8 +2242,8 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
         .push(OrganizationMember {
             organization_id: 85,
             user_id: 1,
-            roles: vec![fixture_roles_0.clone().remove(2)],
             groups: Vec::new(),
+            role: fixture_roles_0.clone().remove(2),
         });
     let refresh = AccessToken::Refresh(
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
@@ -2272,14 +2273,14 @@ async fn organization_switch_is_separate_and_uses_current_membership_roles() {
             .is_none()
     );
     // Membership changes are checked again instead of copying role from an old JWT.
-    fixture.repo.0.lock().unwrap().memberships[1].roles = vec![Fixture::role(85, 1)];
+    fixture.repo.0.lock().unwrap().memberships[1].role = Fixture::role(85, 1);
     let tokens = fixture
         .switch_organization(&tokens.refresh_token, 85)
         .await
         .unwrap();
     let claims =
         UserAccessToken::try_from(decode_token(&tokens.access_token, SECRET).unwrap()).unwrap();
-    assert_eq!(claims.policy_snapshot.role_ids, vec![2]);
+    assert_eq!(claims.policy_snapshot.role_id, 2);
     assert!(matches!(
         fixture
             .switch_organization(&tokens.refresh_token, 999)
@@ -2333,8 +2334,8 @@ async fn refresh_without_selection_keeps_the_session_organization() {
         OrganizationMember {
             organization_id: 80,
             user_id: 1,
-            roles: vec![fixture_roles_0.clone().remove(2)],
             groups: Vec::new(),
+            role: fixture_roles_0.clone().remove(2),
         },
     );
     let refresh = AccessToken::Refresh(
@@ -2636,8 +2637,8 @@ async fn organization_switch_uses_root_with_an_enclosing_transaction() {
         .push(OrganizationMember {
             organization_id: 85,
             user_id: 1,
-            roles: vec![fixture_roles_0.clone().remove(2)],
             groups: Vec::new(),
+            role: fixture_roles_0.clone().remove(2),
         });
     let service = fixture.service();
     let tokens = fixture
@@ -2823,16 +2824,17 @@ async fn refresh_preserves_coherent_session_and_authority_without_restamping() {
         let mut stored = presented.clone();
         stored.authorization_version = 4;
         state.sessions.insert(7, stored);
-        state.memberships[0].roles.clear();
-        state.memberships[0]
-            .groups
-            .push(compallm_core::organization::Group {
-                id: 9,
-                organization_id: 84,
-                name: "Team".into(),
-                description: String::new(),
-                roles: vec![fixture_roles_0.clone().remove(2)],
-            });
+        state.memberships[0].role.cedar_source.clear();
+        state.memberships[0].groups.push(
+            compallm_core::organization::Group::new(
+                9,
+                84,
+                "Team".into(),
+                String::new(),
+                vec![fixture_roles_0.clone().remove(2)],
+            )
+            .unwrap(),
+        );
         state.change_after_authority_read = true;
     }
     let service = fixture.service();
@@ -2851,7 +2853,7 @@ async fn refresh_preserves_coherent_session_and_authority_without_restamping() {
     let session = claims.session;
     let snapshot = claims.policy_snapshot;
     assert_eq!(session.authorization_version, 4);
-    assert!(snapshot.role_ids.is_empty());
+    assert!(snapshot.role_id > 0);
     assert_eq!(snapshot.group_roles[&9], vec![3]);
     assert!(!snapshot.cedar_source.is_empty());
     assert_eq!(
@@ -2899,8 +2901,8 @@ async fn refresh_rejects_unavailable_invalid_or_oversized_authority() {
                 "foreign user" => presented.user_id = 99,
                 "future version" => presented.authorization_version = 2,
                 "oversized" => {
-                    state.memberships[0].roles = vec![fixture_roles_0.clone().remove(0)];
-                    make_oversized(&mut state.memberships[0].roles[0]);
+                    state.memberships[0].role = fixture_roles_0.clone().remove(0);
+                    make_oversized(&mut state.memberships[0].role);
                     state.full_default_policies = true;
                 }
                 "database failure" => state.fail_authority_read = true,
@@ -2929,11 +2931,14 @@ async fn snapshot_creation_uses_only_loaded_membership_without_session_or_contex
     let membership = OrganizationMember {
         organization_id: 84,
         user_id: 1,
-        roles: fixture_roles_0.clone(),
         groups: vec![],
+        role: (fixture_roles_0.clone())
+            .first()
+            .cloned()
+            .expect("fixture requires a direct role"),
     };
     let snapshot = compallm_core::authorization::PolicySnapshot::new(&membership).unwrap();
-    assert_eq!(snapshot.role_ids, vec![1, 2, 3]);
+    assert_eq!(snapshot.role_id, 1);
     assert!(!snapshot.cedar_source.is_empty());
     assert!(DbContext::current().is_err());
     assert!(fixture.repo.0.lock().unwrap().sessions.is_empty());
@@ -3035,8 +3040,8 @@ async fn explicit_permission_invalidation_scopes_users_and_sessions() {
 fn empty_snapshot() -> compallm_core::authorization::PolicySnapshot {
     compallm_core::authorization::PolicySnapshot {
         cedar_source: String::new(),
-        role_ids: vec![],
         group_roles: std::collections::BTreeMap::new(),
+        role_id: 3,
     }
 }
 
@@ -3048,13 +3053,16 @@ async fn access_issuance_includes_direct_and_group_authority_and_refresh_rebuild
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     {
         let mut state = fixture.repo.0.lock().unwrap();
-        state.memberships[0].groups.push(Group {
-            id: 9,
-            organization_id: 84,
-            name: "Team".into(),
-            description: String::new(),
-            roles: vec![fixture_roles_0.clone().remove(2)],
-        });
+        state.memberships[0].groups.push(
+            Group::new(
+                9,
+                84,
+                "Team".into(),
+                String::new(),
+                vec![fixture_roles_0.clone().remove(2)],
+            )
+            .unwrap(),
+        );
     }
     let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
     let issued = fixture
@@ -3065,11 +3073,11 @@ async fn access_issuance_includes_direct_and_group_authority_and_refresh_rebuild
         UserAccessToken::try_from(decode_token(&issued.access_token, SECRET).unwrap()).unwrap();
     let expected = PolicySnapshot::new(&fixture.repo.0.lock().unwrap().memberships[0]).unwrap();
     assert_eq!(access.policy_snapshot, expected);
-    assert_eq!(access.policy_snapshot.role_ids, vec![1]);
+    assert_eq!(access.policy_snapshot.role_id, 1);
     assert_eq!(access.policy_snapshot.group_roles[&9], vec![3]);
     {
         let mut state = fixture.repo.0.lock().unwrap();
-        state.memberships[0].roles.clear();
+        state.memberships[0].role.cedar_source.clear();
         state.memberships[0].groups.clear();
         state
             .sessions
@@ -3083,7 +3091,7 @@ async fn access_issuance_includes_direct_and_group_authority_and_refresh_rebuild
         UserAccessToken::try_from(decode_token(&renewed.access_token, SECRET).unwrap()).unwrap();
     assert_eq!(new_access.session.authorization_version, 2);
     assert!(new_access.policy_snapshot.cedar_source.is_empty());
-    assert!(new_access.policy_snapshot.role_ids.is_empty());
+    assert_eq!(new_access.policy_snapshot.role_id, 1);
     assert!(new_access.policy_snapshot.group_roles.is_empty());
     let refresh = decode_token(&renewed.refresh_token, SECRET).unwrap();
     assert!(
@@ -3101,7 +3109,7 @@ async fn default_policies_fit_with_compression() {
     {
         let mut state = fixture.repo.0.lock().unwrap();
         state.full_default_policies = true;
-        state.memberships[0].roles = vec![roles[0].clone()];
+        state.memberships[0].role = roles[0].clone();
     }
     let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
     let tokens = fixture
@@ -3113,18 +3121,18 @@ async fn default_policies_fit_with_compression() {
 }
 
 #[tokio::test]
-async fn signin_accepts_active_memberships_with_custom_or_no_roles() {
+async fn signin_accepts_active_memberships_with_custom_or_default_role() {
     for custom in [false, true] {
         let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
         {
             let mut state = fixture.repo.0.lock().unwrap();
-            state.memberships[0].roles = if custom {
-                vec![Role {
+            state.memberships[0].role = if custom {
+                Role {
                     id: 77,
                     ..Fixture::role(84, 0)
-                }]
+                }
             } else {
-                vec![]
+                Fixture::role(84, 0)
             };
         }
         let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
@@ -3135,8 +3143,8 @@ async fn signin_accepts_active_memberships_with_custom_or_no_roles() {
         let access =
             UserAccessToken::try_from(decode_token(&tokens.access_token, SECRET).unwrap()).unwrap();
         assert_eq!(
-            access.policy_snapshot.role_ids,
-            if custom { vec![77] } else { vec![] }
+            access.policy_snapshot.role_id,
+            if custom { 77 } else { Fixture::role(84, 0).id }
         );
         assert!(
             serde_json::to_value(access)
@@ -3204,8 +3212,8 @@ async fn invalid_authorization_clears_cookies_without_revoking_session() {
             cedar_source:
                 "permit(principal, action == Compallm::Action::\"retired.action\", resource);"
                     .into(),
-            role_ids: Vec::new(),
             group_roles: Default::default(),
+            role_id: 3,
         },
         SECRET,
         Duration::from_secs(60),
@@ -3273,8 +3281,8 @@ async fn policy_catalog_requires_a_current_user_without_a_role_grant() {
     let query = "{ organizationPolicyActions { edges { node { name entityType resourceType } } pageInfo { hasNextPage hasPreviousPage } } }";
     let snapshot = |source: &str| PolicySnapshot {
         cedar_source: source.into(),
-        role_ids: Vec::new(),
         group_roles: Default::default(),
+        role_id: 3,
     };
     let authorized = token_pair::new(
         &session,
@@ -3429,7 +3437,7 @@ async fn graphql_organization_profiles_are_public_and_writes_use_active_permissi
             status: compallm_core::organization::OrganizationStatus::Active,
         });
         state.full_default_policies = true;
-        state.memberships[0].roles[0].cedar_source = r#"permit(principal, action == Compallm::Action::"organization.settings.update", resource == Compallm::Organization::"84");"#.into();
+        state.memberships[0].role.cedar_source = r#"permit(principal, action == Compallm::Action::"organization.settings.update", resource == Compallm::Organization::"84");"#.into();
     }
     let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
     let tokens = fixture
@@ -3836,7 +3844,7 @@ async fn graphql_stale_cookie_rebuilds_current_authority_but_bearer_and_unavaila
     let router = fixture.graphql();
     {
         let mut state = fixture.repo.0.lock().unwrap();
-        state.memberships[0].roles.clear();
+        state.memberships[0].role.cedar_source.clear();
         state
             .sessions
             .values_mut()
@@ -3870,7 +3878,7 @@ async fn graphql_stale_cookie_rebuilds_current_authority_but_bearer_and_unavaila
         .unwrap();
     let renewed = UserAccessToken::try_from(decode_token(renewed, SECRET).unwrap()).unwrap();
     assert_eq!(renewed.session.authorization_version, 2);
-    assert!(renewed.policy_snapshot.role_ids.is_empty());
+    assert!(renewed.policy_snapshot.cedar_source.is_empty());
     {
         let mut state = fixture.repo.0.lock().unwrap();
         assert_eq!(state.authority_reads, 1);
@@ -4610,8 +4618,15 @@ async fn restricted_query_errors_and_cancellation_discard_dirty_connections() {
     let member = OrganizationMember {
         organization_id: 84,
         user_id: 1,
-        roles: Vec::new(),
         groups: Vec::new(),
+        role: compallm_core::organization::Role {
+            id: 3,
+            organization_id: 84,
+            name: "Member".into(),
+            description: String::new(),
+            cedar_source: String::new(),
+            org_owner: false,
+        },
     };
     let access = UserAccessToken::new(
         stored_session(1, 1, 84, "RLS fixture"),
@@ -4738,8 +4753,8 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     );
     let snapshot = PolicySnapshot {
         cedar_source: source,
-        role_ids: Vec::new(),
         group_roles: Default::default(),
+        role_id: 3,
     };
     let tokens = token_pair::new(
         &session,
@@ -4839,8 +4854,8 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(stored.roles.len(), 1);
-    assert_eq!(stored.roles[0].id.to_string(), role_id);
+    assert_eq!(stored.roles().len(), 1);
+    assert_eq!(stored.roles()[0].id.to_string(), role_id);
 
     let response = graphql_operation(&router,
         "query($role:ID!, $group:ID!, $foreign:ID!){roles{edges{node{id}}} role(id:$role){node{id}} foreign:role(id:$foreign){node{id}} groups{edges{node{id}}} group(id:$group){node{id}}}",
@@ -4962,13 +4977,12 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     let assigned_member = OrganizationMember {
         organization_id: organization.id,
         user_id: assignee.id,
-        roles: vec![
-            db.scope(repository.find_role(organization.id, role_id.parse().unwrap()))
-                .await
-                .unwrap()
-                .unwrap(),
-        ],
         groups: vec![],
+        role: db
+            .scope(repository.find_role(organization.id, role_id.parse().unwrap()))
+            .await
+            .unwrap()
+            .unwrap(),
     };
     db.scope(repository.add_member(assigned_member))
         .await
@@ -4983,16 +4997,27 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     )
     .await;
     assert_graphql_denial(assigned, 409).await;
-    type MemberRoles =
-        <compallm_postgres::OrganizationMemberRoleSchema as sea_orm::ModelTrait>::Entity;
-    MemberRoles::delete_by_id((
-        i64::try_from(organization.id).unwrap(),
-        i64::try_from(assignee.id).unwrap(),
-        role_id.parse::<i64>().unwrap(),
-    ))
-    .exec(pool.as_ref())
-    .await
-    .unwrap();
+    type MemberRoles = <compallm_postgres::OrganizationMemberSchema as sea_orm::ModelTrait>::Entity;
+    use sea_orm::{ColumnTrait as _, QueryFilter as _};
+    let fallback_role = Role::new(organization.id, "Remaining membership role", "", "")
+        .await
+        .unwrap();
+    db.scope(repository.create_roles(vec![fallback_role.clone()]))
+        .await
+        .unwrap();
+    let fallback_role_record = fallback_role.clone();
+    let fallback_role = fallback_role.id;
+    type MemberRoleColumn = <MemberRoles as EntityTrait>::Column;
+    MemberRoles::update_many()
+        .col_expr(
+            MemberRoleColumn::RoleId,
+            sea_orm::sea_query::Expr::value(i64::try_from(fallback_role).unwrap()),
+        )
+        .filter(MemberRoleColumn::OrganizationId.eq(i64::try_from(organization.id).unwrap()))
+        .filter(MemberRoleColumn::UserId.eq(i64::try_from(assignee.id).unwrap()))
+        .exec(pool.as_ref())
+        .await
+        .unwrap();
     let deleted = graphql_operation(
         &router,
         delete_role,
@@ -5045,7 +5070,25 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
         stored_session(assignee.id, 12345, organization.id, &organization.name),
     );
     let update_group = "mutation($id:ID!,$input:GroupUpdateInput!){groupUpdate(id:$id,input:$input){node{id name memberIds roles{edges{node{id}}}}}}";
-    let result=graphql_body(graphql_operation(&router,update_group,serde_json::json!({"id":group_id,"input":{"addMemberIds":[assignee.id.to_string()],"addRoleIds":[owner.id.to_string()],"name":"Updated group"}}),Some(&tokens.access_token),None,false).await).await;
+    let owner_group = graphql_operation(&router, "mutation($input:GroupCreateInput!){groupCreate(input:$input){node{id}}}",
+        serde_json::json!({"input": {"name": "Owner group prohibited", "description": "", "roleIds": [owner.id.to_string()]}}),
+        Some(&tokens.access_token), None, false).await;
+    assert_graphql_denial(owner_group, 400).await;
+    let rejected = graphql_operation(
+        &router,
+        update_group,
+        serde_json::json!({"id": group_id, "input": {"addRoleIds": [owner.id.to_string()]}}),
+        Some(&tokens.access_token),
+        None,
+        false,
+    )
+    .await;
+    assert_graphql_denial(rejected, 400).await;
+    assert_eq!(
+        fixture.repo.0.lock().unwrap().sessions[&12345].authorization_version,
+        1
+    );
+    let result=graphql_body(graphql_operation(&router,update_group,serde_json::json!({"id":group_id,"input":{"addMemberIds":[assignee.id.to_string()],"addRoleIds":[fallback_role_record.id.to_string()],"name":"Updated group"}}),Some(&tokens.access_token),None,false).await).await;
     assert!(result["errors"].is_null(), "{result}");
     assert_eq!(
         result["data"]["groupUpdate"]["node"]["memberIds"],
@@ -5055,7 +5098,18 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
         fixture.repo.0.lock().unwrap().sessions[&12345].authorization_version,
         2
     );
-    let repeated=graphql_body(graphql_operation(&router,update_group,serde_json::json!({"id":group_id,"input":{"addMemberIds":[assignee.id.to_string()],"addRoleIds":[owner.id.to_string()]}}),Some(&tokens.access_token),None,false).await).await;
+    let repeated = graphql_body(
+        graphql_operation(
+            &router,
+            update_group,
+            serde_json::json!({"id":group_id,"input":{"addMemberIds":[assignee.id.to_string()],"addRoleIds":[fallback_role_record.id.to_string()]}}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
     assert!(repeated["errors"].is_null(), "{repeated}");
     assert_eq!(
         fixture.repo.0.lock().unwrap().sessions[&12345].authorization_version,
@@ -5070,8 +5124,8 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     db.scope(repository.add_member(OrganizationMember {
         organization_id: organization.id,
         user_id: other_member.id,
-        roles: vec![],
         groups: vec![],
+        role: fallback_role_record.clone(),
     }))
     .await
     .unwrap();
@@ -5084,8 +5138,8 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     db.scope(repository.add_member(OrganizationMember {
         organization_id: foreign.id,
         user_id: foreign_member.id,
-        roles: vec![],
         groups: vec![],
+        role: foreign_role.clone(),
     }))
     .await
     .unwrap();
@@ -5115,7 +5169,7 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     );
     assert_eq!(
         result["data"]["members"]["edges"][0]["node"]["effectiveRoleIds"],
-        serde_json::json!([owner.id.to_string()])
+        serde_json::json!([fallback_role_record.id.to_string()])
     );
     assert_eq!(
         result["data"]["members"]["edges"][0]["node"]["groupIds"],
@@ -5193,7 +5247,7 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
         graphql_operation(
             &router,
             update_group,
-            serde_json::json!({"id":group_id,"input":{"removeRoleIds":[owner.id.to_string()]}}),
+            serde_json::json!({"id":group_id,"input":{"removeRoleIds":[fallback_role_record.id.to_string()]}}),
             Some(&tokens.access_token),
             None,
             false,
@@ -5210,7 +5264,7 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
         graphql_operation(
             &router,
             update_group,
-            serde_json::json!({"id":group_id,"input":{"addRoleIds":[owner.id.to_string()]}}),
+            serde_json::json!({"id":group_id,"input":{"addRoleIds":[fallback_role_record.id.to_string()]}}),
             Some(&tokens.access_token),
             None,
             false,
@@ -5219,6 +5273,18 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     )
     .await;
     assert!(restored["errors"].is_null(), "{restored}");
+    type Memberships = <compallm_postgres::OrganizationMemberSchema as sea_orm::ModelTrait>::Entity;
+    type MembershipColumn = <Memberships as EntityTrait>::Column;
+    Memberships::update_many()
+        .col_expr(
+            MembershipColumn::Status,
+            sea_orm::sea_query::Expr::value(compallm_postgres::UserStatusSchema::Disabled),
+        )
+        .filter(MembershipColumn::OrganizationId.eq(i64::try_from(organization.id).unwrap()))
+        .filter(MembershipColumn::UserId.eq(i64::try_from(assignee.id).unwrap()))
+        .exec(pool.as_ref())
+        .await
+        .unwrap();
     let result=graphql_body(graphql_operation(&router,update_group,serde_json::json!({"id":group_id,"input":{"removeMemberIds":[assignee.id.to_string()]}}),Some(&tokens.access_token),None,false).await).await;
     assert!(result["errors"].is_null(), "{result}");
     assert_eq!(
@@ -5460,8 +5526,8 @@ async fn graphql_me_returns_only_the_verified_users_effective_cedar() {
         &session,
         PolicySnapshot {
             cedar_source: source.into(),
-            role_ids: vec![],
             group_roles: Default::default(),
+            role_id: 3,
         },
         SECRET,
         Duration::from_secs(60),

@@ -11,6 +11,7 @@ pub struct Model {
     pub group_id: i64,
     #[sea_orm(primary_key, auto_increment = false)]
     pub role_id: i64,
+    pub owner_role: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -25,23 +26,25 @@ pub enum Relation {
     OrganizationGroups,
     #[sea_orm(
         belongs_to = "super::organization_roles::Entity",
+        from = "(Column::OrganizationId, Column::RoleId, Column::OwnerRole)",
+        to = "(super::organization_roles::Column::OrganizationId, super::organization_roles::Column::Id, super::organization_roles::Column::OrgOwner)",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    OrganizationRoles2,
+    #[sea_orm(
+        belongs_to = "super::organization_roles::Entity",
         from = "(Column::OrganizationId, Column::RoleId)",
         to = "(super::organization_roles::Column::OrganizationId, super::organization_roles::Column::Id)",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    OrganizationRoles,
+    OrganizationRoles1,
 }
 
 impl Related<super::organization_groups::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OrganizationGroups.def()
-    }
-}
-
-impl Related<super::organization_roles::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::OrganizationRoles.def()
     }
 }
 

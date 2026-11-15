@@ -45,8 +45,15 @@ impl Fixture {
         let membership = OrganizationMember {
             user_id,
             organization_id,
-            roles: Vec::new(),
             groups: Vec::new(),
+            role: compallm_core::organization::Role {
+                id: 3,
+                organization_id,
+                name: "Member".into(),
+                description: String::new(),
+                cedar_source: String::new(),
+                org_owner: false,
+            },
         };
         let access = UserAccessToken::new(
             Session {

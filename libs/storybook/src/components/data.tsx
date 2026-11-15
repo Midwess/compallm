@@ -9,15 +9,15 @@ import { cx } from './shared'
 
 export function ProjectTableHeader() {
   return (
-    <thead>
-      <tr>
-        <th scope="col">Name</th>
-        <th scope="col">Health</th>
-        <th scope="col">Priority</th>
-        <th scope="col">Lead</th>
-        <th scope="col">Progress</th>
-      </tr>
-    </thead>
+    <Table.Header>
+      <Table.Row>
+        <Table.Head>Name</Table.Head>
+        <Table.Head column="health">Health</Table.Head>
+        <Table.Head column="priority">Priority</Table.Head>
+        <Table.Head column="lead">Lead</Table.Head>
+        <Table.Head column="progress">Progress</Table.Head>
+      </Table.Row>
+    </Table.Header>
   )
 }
 export function ProjectTableRow({
@@ -34,32 +34,39 @@ export function ProjectTableRow({
   progress?: number
 }) {
   return (
-    <tr>
-      <td>
+    <Table.Row>
+      <Table.Cell>
         <span className="flex items-center gap-1.5 font-medium">
           <ProjectIcon />
-          {name}
+          <span className="truncate">{name}</span>
         </span>
-      </td>
-      <td>
+      </Table.Cell>
+      <Table.Cell column="health">
         <ProjectHealth>{health}</ProjectHealth>
-      </td>
-      <td>{priority}</td>
-      <td>{lead ? <Avatar name={lead} size={24} /> : 'Unassigned'}</td>
-      <td>
+      </Table.Cell>
+      <Table.Cell column="priority">{priority}</Table.Cell>
+      <Table.Cell column="lead">{lead ? <Avatar name={lead} size={24} /> : 'Unassigned'}</Table.Cell>
+      <Table.Cell column="progress">
         <ProjectProgress value={progress} />
-      </td>
-    </tr>
+      </Table.Cell>
+    </Table.Row>
   )
 }
 export function ProjectTable({ children, label }: { children: ReactNode; label: string }) {
   return (
     <Table.Root tabIndex={0} role="region" aria-label={label}>
       <Table.Content
+        columns={[
+          { id: 'name' },
+          { id: 'health', visibilityClassName: 'hidden md:table-cell' },
+          { id: 'priority', visibilityClassName: 'hidden lg:table-cell' },
+          { id: 'lead', visibilityClassName: 'hidden md:table-cell' },
+          { id: 'progress', visibilityClassName: 'hidden lg:table-cell' },
+        ]}
         className={`
-  w-full min-w-160 border-collapse text-left text-xsm [&_th]:h-8 [&_th]:text-ui-12
+  w-full min-w-0 border-collapse text-left text-xsm [&_th]:h-8 [&_th]:text-ui-12
   [&_th]:font-normal [&_th]:text-muted-foreground [&_td]:h-12 [&_th]:border-b-[0.5px] [&_th]:border-divider
-  [&_th]:px-1.5 [&_th]:py-1 [&_td]:border-b-[0.5px] [&_td]:border-divider [&_td]:px-1.5
+  [&_th]:py-1 [&_td]:border-b-[0.5px] [&_td]:border-divider
   [&_td]:py-1
 `}
       >

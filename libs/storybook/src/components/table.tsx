@@ -1,10 +1,39 @@
 import { animate } from 'motion'
 import { motion } from 'motion/react'
 import { animated, animation, transition, useTransition } from './motion'
-import { useEffect, useLayoutEffect, useRef, type ReactNode, type ComponentPropsWithRef } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useContext,
+  createContext,
+  type ReactNode,
+  type ComponentPropsWithRef,
+} from 'react'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { cx, composeRefs } from './shared'
 import { useControllableState } from './composition'
+export interface TableColumn {
+  id: string
+  className?: string
+  visibilityClassName?: string
+}
+const emptyColumns: TableColumn[] = []
+const columnDisplays: Record<string, string> = {
+  'table-cell': 'table-column',
+  'sm:table-cell': 'sm:table-column',
+  'md:table-cell': 'md:table-column',
+  'lg:table-cell': 'lg:table-column',
+  'xl:table-cell': 'xl:table-column',
+  '2xl:table-cell': '2xl:table-column',
+}
+const ColumnsContext = createContext<{ columns: TableColumn[]; visibleCount?: number }>({ columns: [] })
+function useColumn(id?: string) {
+  const { columns } = useContext(ColumnsContext)
+  return id ? columns.find((column) => column.id === id)?.visibilityClassName : undefined
+}
+
 function Root({ className, ref: forwardedRef, ...props }: ComponentPropsWithRef<'div'>) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -42,13 +71,70 @@ function Root({ className, ref: forwardedRef, ...props }: ComponentPropsWithRef<
       ref={composeRefs(ref, forwardedRef)}
       data-slot="table-container"
       {...props}
-      className={cx('w-full overflow-x-auto', className)}
+      className={cx('min-w-0 w-full max-w-full overflow-x-auto', className)}
     />
   )
 }
-function Content({ className, ...props }: ComponentPropsWithRef<'table'>) {
-  return <table data-slot="table" {...props} className={cx('w-full table-fixed text-left text-xs', className)} />
+function Content({
+  className,
+  columns = emptyColumns,
+  children,
+  ref: forwardedRef,
+  ...props
+}: ComponentPropsWithRef<'table'> & { columns?: TableColumn[] }) {
+  const ref = useRef<HTMLTableElement>(null)
+  const [visibleCount, setVisibleCount] = useState<number>()
+  useLayoutEffect(() => {
+    const table = ref.current
+    if (!table) return
+    const update = () => {
+      const row = table.tHead?.rows[0]
+      if (row)
+        setVisibleCount(
+          [...row.cells]
+            .filter((cell) => getComputedStyle(cell).display !== 'none')
+            .reduce((count, cell) => count + cell.colSpan, 0),
+        )
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(table)
+    window.addEventListener('resize', update)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', update)
+    }
+  }, [columns, children])
+  return (
+    <ColumnsContext value={{ columns, visibleCount }}>
+      <table
+        ref={composeRefs(ref, forwardedRef)}
+        data-slot="table"
+        {...props}
+        className={cx('w-full max-w-full table-fixed text-left text-xs', className)}
+      >
+        {columns.length ? (
+          <colgroup>
+            {columns.map((column) => (
+              <col
+                key={column.id}
+                className={cx(
+                  column.className,
+                  column.visibilityClassName
+                    ?.split(/\s+/)
+                    .map((value) => columnDisplays[value] ?? value)
+                    .join(' '),
+                )}
+              />
+            ))}
+          </colgroup>
+        ) : null}
+        {children}
+      </table>
+    </ColumnsContext>
+  )
 }
+
 function Header({ className, ...props }: ComponentPropsWithRef<'tbody'>) {
   return <thead data-slot="table-header" {...props} className={cx('h-8 text-muted-foreground [&>tr]:h-8', className)} />
 }
@@ -58,12 +144,37 @@ function Body(props: ComponentPropsWithRef<'tbody'>) {
 function Row({ className, ...props }: ComponentPropsWithRef<'tr'>) {
   return <tr data-slot="table-row" {...props} className={cx('h-12 border-b border-divider last:border-b-0', className)} />
 }
-function Head({ className, ...props }: ComponentPropsWithRef<'th'>) {
-  return <th data-slot="table-head" scope="col" {...props} className={cx('px-2 font-normal', className)} />
+function Head({ className, column, children, ...props }: ComponentPropsWithRef<'th'> & { column?: string }) {
+  const visibility = useColumn(column)
+  return (
+    <th
+      data-slot="table-head"
+      data-column={column}
+      scope="col"
+      {...props}
+      className={cx('min-w-0 overflow-hidden text-left font-normal', visibility, className)}
+    >
+      <div className="min-w-0 truncate px-2 **:min-w-0 *:max-w-full">{children}</div>
+    </th>
+  )
 }
-function Cell({ className, ...props }: ComponentPropsWithRef<'td'>) {
-  return <td data-slot="table-cell" {...props} className={cx('px-2', className)} />
+function Cell({ className, column, children, ...props }: ComponentPropsWithRef<'td'> & { column?: string }) {
+  const visibility = useColumn(column)
+  const { visibleCount } = useContext(ColumnsContext)
+  const colSpan = props.colSpan && visibleCount ? Math.min(props.colSpan, visibleCount) : props.colSpan
+  return (
+    <td
+      data-slot="table-cell"
+      data-column={column}
+      {...props}
+      colSpan={colSpan}
+      className={cx('min-w-0 overflow-hidden text-left', visibility, className)}
+    >
+      <div className="min-w-0 truncate px-2 **:min-w-0 *:max-w-full">{children}</div>
+    </td>
+  )
 }
+
 function Empty({ className, ...props }: ComponentPropsWithRef<'div'>) {
   return (
     <div
@@ -84,6 +195,8 @@ export interface TableCategoryProps {
 }
 
 function Category({ label, count, action, columns = 3, open, defaultOpen = true, onOpenChange, children }: TableCategoryProps) {
+  const { visibleCount } = useContext(ColumnsContext)
+  columns = visibleCount || columns
   const timing = useTransition('disclosure')
   const [expanded, setExpanded] = useControllableState(open, defaultOpen, onOpenChange)
   const body = useRef<HTMLTableSectionElement>(null)

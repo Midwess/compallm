@@ -67,7 +67,7 @@ function GroupMembers() {
           className="mx-4 min-w-0 overflow-x-auto outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
         >
           <Table.Root className="overflow-visible">
-            <Table.Content aria-label="Select group members" className="min-w-md">
+            <Table.Content aria-label="Select group members" className="min-w-0">
               <colgroup>
                 <col className="w-[42%]" />
                 <col />

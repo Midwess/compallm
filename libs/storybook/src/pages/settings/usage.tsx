@@ -105,7 +105,7 @@ export function MemberLimitSettings() {
         </Popup.Root>
       </div>
       <Table.Root>
-        <Table.Content aria-label="Member spending limits" className="min-w-180">
+        <Table.Content aria-label="Member spending limits" className="min-w-0">
           <Table.Header>
             <Table.Row>
               <Table.Head>Name</Table.Head>
@@ -185,7 +185,7 @@ export function UsageExplorerSettings() {
       </div>
       <Section title="Usage by model" description="Token measurements and estimated upstream costs.">
         <Table.Root>
-          <Table.Content aria-label="Usage by model" className="min-w-180">
+          <Table.Content aria-label="Usage by model" className="min-w-0">
             <Table.Header>
               <Table.Row>
                 <Table.Head>Model</Table.Head>
@@ -245,7 +245,7 @@ export function AuditSettings() {
         <ReportFilter name="Actions" options={[...new Set(data.map((e) => e.action))]} />
       </div>
       <Table.Root>
-        <Table.Content aria-label="Audit events" className="min-w-160">
+        <Table.Content aria-label="Audit events" className="min-w-0">
           <Table.Header>
             <Table.Row>
               {['Actor', 'Action', 'Resource', 'Result'].map((label) => (

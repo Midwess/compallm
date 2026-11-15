@@ -4997,8 +4997,7 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
     )
     .await;
     assert_graphql_denial(assigned, 409).await;
-    type MemberRoles =
-        <compallm_postgres::OrganizationMemberRoleSchema as sea_orm::ModelTrait>::Entity;
+    type MemberRoles = <compallm_postgres::OrganizationMemberSchema as sea_orm::ModelTrait>::Entity;
     use sea_orm::{ColumnTrait as _, QueryFilter as _};
     let fallback_role = Role::new(organization.id, "Remaining membership role", "", "")
         .await

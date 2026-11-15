@@ -16,7 +16,9 @@ impl TryFrom<(OrganizationMemberSchema, Role)> for MappedMember {
         let organization_id = crate::from_bigint(model.organization_id)
             .context("invalid membership organization ID")?;
         let user_id = crate::from_bigint(model.user_id).context("invalid membership user ID")?;
-        if role.organization_id != organization_id {
+        if role.organization_id != organization_id
+            || crate::from_bigint(model.role_id).context("invalid direct role ID")? != role.id
+        {
             return Err(OrganizationRepositoryError::Conflict);
         }
         Ok(Self(OrganizationMember {

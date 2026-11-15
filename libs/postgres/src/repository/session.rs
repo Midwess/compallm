@@ -24,8 +24,6 @@ type Members = <crate::OrganizationMemberSchema as ModelTrait>::Entity;
 type MemberColumn = <Members as EntityTrait>::Column;
 type Roles = <crate::OrganizationRoleSchema as ModelTrait>::Entity;
 type RoleColumn = <Roles as EntityTrait>::Column;
-type MemberRoles = <crate::OrganizationMemberRoleSchema as ModelTrait>::Entity;
-type MemberRoleColumn = <MemberRoles as EntityTrait>::Column;
 type Groups = <crate::OrganizationGroupSchema as ModelTrait>::Entity;
 type GroupColumn = <Groups as EntityTrait>::Column;
 type GroupMembers = <crate::OrganizationGroupMemberSchema as ModelTrait>::Entity;
@@ -91,9 +89,9 @@ impl CoreSessionRepository for SessionRepository {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
         // Keep session state and all effective assignments in one MVCC statement.
-        let direct_relation = Roles::belongs_to(MemberRoles::default())
+        let direct_relation = Roles::belongs_to(Members::default())
             .from((RoleColumn::OrganizationId, RoleColumn::Id))
-            .to((MemberRoleColumn::OrganizationId, MemberRoleColumn::RoleId))
+            .to((MemberColumn::OrganizationId, MemberColumn::RoleId))
             .into();
         let mut direct = Roles::find()
             .select_only()
@@ -110,11 +108,11 @@ impl CoreSessionRepository for SessionRepository {
             .column(RoleColumn::OrgOwner)
             .join(JoinType::InnerJoin, direct_relation)
             .filter(
-                Expr::col((MemberRoles::default(), MemberRoleColumn::OrganizationId))
+                Expr::col((Members::default(), MemberColumn::OrganizationId))
                     .equals((Sessions::default(), SessionColumn::OrganizationId)),
             )
             .filter(
-                Expr::col((MemberRoles::default(), MemberRoleColumn::UserId))
+                Expr::col((Members::default(), MemberColumn::UserId))
                     .equals((Sessions::default(), SessionColumn::UserId)),
             );
         let group_relation = GroupMembers::belongs_to(Groups::default())

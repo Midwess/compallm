@@ -60,11 +60,6 @@ async fn role_deletion_blocks_new_group_links_and_invalidates_existing_assignees
                     PRIMARY KEY (organization_id,group_id,user_id),
                     FOREIGN KEY (organization_id,group_id) REFERENCES organization_groups ON DELETE CASCADE
                 );
-                CREATE TABLE organization_member_roles (
-                    organization_id bigint, user_id bigint, role_id bigint,
-                    PRIMARY KEY (organization_id,user_id,role_id),
-                    FOREIGN KEY (organization_id,role_id) REFERENCES organization_roles ON DELETE CASCADE
-                );
                 CREATE TABLE user_sessions (
                     id bigint PRIMARY KEY, organization_id bigint, user_id bigint,
                     authorization_version bigint NOT NULL, revoked_at timestamptz
@@ -74,14 +69,14 @@ async fn role_deletion_blocks_new_group_links_and_invalidates_existing_assignees
                 CREATE TABLE users (id bigint PRIMARY KEY, status user_status NOT NULL);
                 CREATE TABLE organizations (id bigint PRIMARY KEY, name text NOT NULL, status organization_status NOT NULL, avatar_path text);
                 CREATE TABLE organization_members (
-                    organization_id bigint, user_id bigint, status user_status NOT NULL,
-                    PRIMARY KEY (organization_id,user_id)
+                    organization_id bigint, user_id bigint, status user_status NOT NULL, role_id bigint NOT NULL,
+                    PRIMARY KEY (organization_id,user_id),
+                    FOREIGN KEY (organization_id,role_id) REFERENCES organization_roles(organization_id,id)
                 );
                 INSERT INTO users VALUES (42,'active');
                 INSERT INTO organizations VALUES (1,'Team','active',NULL);
-                INSERT INTO organization_members VALUES (1,42,'active');
                 INSERT INTO organization_roles VALUES (1,10,'Reports','','',false), (1,11,'Member','','',false);
-                INSERT INTO organization_member_roles VALUES (1,42,11);
+                INSERT INTO organization_members VALUES (1,42,'active',11);
                 INSERT INTO user_sessions VALUES (100,1,42,1,NULL);",
             )
             .await?;
@@ -120,6 +115,8 @@ async fn role_deletion_blocks_new_group_links_and_invalidates_existing_assignees
             sessions.invalidate_permissions(1,&[42]).await?;
             Ok::<_,anyhow::Error>(())
         }).await?;
+        assert!(context.scope(organizations.delete_role(1, 10)).await.is_err());
+        context.scope(organizations.save_member(&membership, &assigned)).await?;
         context
             .transaction(async {
                 organizations.lock_role(1, 10).await?;

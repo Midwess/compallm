@@ -11,6 +11,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub user_id: i64,
     pub status: UserStatus,
+    pub role_id: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -24,13 +25,13 @@ pub enum Relation {
     #[sea_orm(has_many = "super::organization_group_members::Entity")]
     OrganizationGroupMembers,
     #[sea_orm(
-        belongs_to = "super::organization_member_roles::Entity",
-        from = "(Column::OrganizationId, Column::UserId)",
-        to = "(super::organization_member_roles::Column::OrganizationId, super::organization_member_roles::Column::UserId)",
+        belongs_to = "super::organization_roles::Entity",
+        from = "(Column::OrganizationId, Column::RoleId)",
+        to = "(super::organization_roles::Column::OrganizationId, super::organization_roles::Column::Id)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    OrganizationMemberRoles,
+    OrganizationRoles,
     #[sea_orm(
         belongs_to = "super::organizations::Entity",
         from = "Column::OrganizationId",
@@ -73,15 +74,9 @@ impl Related<super::organization_group_members::Entity> for Entity {
     }
 }
 
-impl Related<super::organization_member_roles::Entity> for Entity {
+impl Related<super::organization_roles::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::OrganizationMemberRoles.def()
-    }
-}
-
-impl Related<super::organizations::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Organizations.def()
+        Relation::OrganizationRoles.def()
     }
 }
 
@@ -91,13 +86,13 @@ impl Related<super::users::Entity> for Entity {
     }
 }
 
-impl Related<super::organization_roles::Entity> for Entity {
+impl Related<super::organizations::Entity> for Entity {
     fn to() -> RelationDef {
-        super::organization_member_roles::Relation::OrganizationRoles.def()
+        super::organization_roles::Relation::Organizations.def()
     }
     fn via() -> Option<RelationDef> {
         Some(
-            super::organization_member_roles::Relation::OrganizationMembers
+            super::organization_roles::Relation::OrganizationMembers
                 .def()
                 .rev(),
         )

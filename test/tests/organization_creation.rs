@@ -326,6 +326,7 @@ fn member_mapper_retains_scoped_identity_without_inventing_assignments() {
         organization_id: 84,
         user_id: 42,
         status: UserStatusSchema::Active,
+        role_id: 3,
     };
     let role = Role {
         id: 3,
@@ -347,6 +348,7 @@ fn member_mapper_retains_scoped_identity_without_inventing_assignments() {
         organization_id: 0,
         user_id: -1,
         status: UserStatusSchema::Active,
+        role_id: 3,
     };
     assert!(
         compallm_postgres::mappers::organization_member::MappedMember::try_from((invalid, role))

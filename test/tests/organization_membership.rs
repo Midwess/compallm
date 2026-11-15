@@ -19,6 +19,7 @@ impl Fixture {
             organization_id: 84,
             user_id: 1,
             status: UserStatusSchema::Active,
+            role_id: 2,
         };
         let organization = OrganizationSchema {
             avatar_path: None,
@@ -97,7 +98,7 @@ async fn selected_membership_query_checks_both_user_and_organization() {
     assert!(log.contains("organization_id"));
     assert!(log.contains("LEFT JOIN"));
     assert!(log.contains("active"));
-    assert!(log.contains("organization_member_roles"));
+    assert!(log.contains("organization_members"));
 }
 
 #[tokio::test]
@@ -109,6 +110,7 @@ async fn membership_hydrates_direct_and_inherited_roles_with_four_scoped_queries
         organization_id: 84,
         user_id: 1,
         status: UserStatusSchema::Active,
+        role_id: 9,
     };
     let org = OrganizationSchema {
         avatar_path: None,

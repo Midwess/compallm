@@ -47,7 +47,7 @@ async fn single_role_migration_preserves_direct_grants_and_enforces_membership_i
                 id bigint PRIMARY KEY, organization_id bigint, user_id bigint,
                 authorization_version bigint NOT NULL, revoked_at timestamptz
             );
-            INSERT INTO organization_roles VALUES (1,10,true),(1,11,false),(1,12,false),(2,11,false);
+            INSERT INTO organization_roles VALUES (1,10,true),(1,11,false),(1,12,false),(2,11,false),(2,13,false);
             INSERT INTO organization_members VALUES (1,42),(1,43),(2,42);
             INSERT INTO organization_member_roles VALUES (1,42,11),(1,43,12),(2,42,11);
             INSERT INTO organization_group_roles VALUES (1,20,10),(1,21,12);
@@ -70,16 +70,17 @@ async fn single_role_migration_preserves_direct_grants_and_enforces_membership_i
         let tx = db.begin().await?;
         migration.up(&SchemaManager::new(&tx)).await?;
         tx.commit().await?;
-        assert_eq!(scalar(&db, "SELECT role_id AS value FROM organization_member_roles WHERE organization_id=1 AND user_id=42").await?, 11);
+        assert_eq!(scalar(&db, "SELECT role_id AS value FROM organization_members WHERE organization_id=1 AND user_id=42").await?, 11);
         assert_eq!(scalar(&db, "SELECT count(*) AS value FROM organization_group_roles WHERE role_id=10").await?, 0);
         assert_eq!(scalar(&db, "SELECT count(*) AS value FROM organization_group_members WHERE organization_id=1 AND user_id=42").await?, 2);
         for (id, version) in [(100,2),(101,1),(102,1)] {
             assert_eq!(scalar(&db, &format!("SELECT authorization_version AS value FROM user_sessions WHERE id={id}")).await?, version);
         }
         for sql in [
-            "INSERT INTO organization_member_roles VALUES (1,42,12)",
+            "UPDATE organization_members SET role_id=NULL WHERE organization_id=1 AND user_id=42",
             "INSERT INTO organization_members VALUES (1,44)",
-            "DELETE FROM organization_member_roles WHERE organization_id=1 AND user_id=42",
+            "UPDATE organization_members SET role_id=99 WHERE organization_id=1 AND user_id=42",
+            "UPDATE organization_members SET role_id=13 WHERE organization_id=1 AND user_id=42",
             "INSERT INTO organization_group_roles (organization_id,group_id,role_id) VALUES (1,20,10)",
             "INSERT INTO organization_group_roles VALUES (1,20,10,true)",
             "UPDATE organization_roles SET org_owner=true WHERE organization_id=1 AND id=12",
@@ -87,14 +88,20 @@ async fn single_role_migration_preserves_direct_grants_and_enforces_membership_i
             assert!(db.execute_unprepared(sql).await.is_err());
         }
         let tx = db.begin().await?;
-        tx.execute_unprepared("INSERT INTO organization_members VALUES (1,44); INSERT INTO organization_member_roles VALUES (1,44,11)").await?;
+        tx.execute_unprepared("INSERT INTO organization_members VALUES (1,44,11)").await?;
         tx.commit().await?;
         let tx = db.begin().await?;
-        tx.execute_unprepared("DELETE FROM organization_member_roles WHERE organization_id=1 AND user_id=42; INSERT INTO organization_member_roles VALUES (1,42,12)").await?;
+        tx.execute_unprepared("UPDATE organization_members SET role_id=12 WHERE organization_id=1 AND user_id=42").await?;
+        tx.commit().await?;
+        assert_eq!(scalar(&db, "SELECT role_id AS value FROM organization_members WHERE organization_id=1 AND user_id=42").await?, 12);
+        assert_eq!(scalar(&db, "SELECT role_id AS value FROM organization_members WHERE organization_id=2 AND user_id=42").await?, 11);
+        db.execute_unprepared("DELETE FROM organization_members WHERE organization_id=1 AND user_id=44").await?;
+        assert_eq!(scalar(&db, "SELECT count(*) AS value FROM information_schema.tables WHERE table_schema='public' AND table_name='organization_member_roles'").await?, 0);
+        assert_eq!(scalar(&db, "SELECT count(*) AS value FROM pg_indexes WHERE tablename='organization_members' AND indexname='organization_members_role_idx' AND indexdef LIKE '%(organization_id, role_id)%'").await?, 1);
+        let tx = db.begin().await?;
+        migration.down(&SchemaManager::new(&tx)).await?;
         tx.commit().await?;
         assert_eq!(scalar(&db, "SELECT role_id AS value FROM organization_member_roles WHERE organization_id=1 AND user_id=42").await?, 12);
-        assert_eq!(scalar(&db, "SELECT role_id AS value FROM organization_member_roles WHERE organization_id=2 AND user_id=42").await?, 11);
-        db.execute_unprepared("DELETE FROM organization_members WHERE organization_id=1 AND user_id=44").await?;
         db.close().await?;
         Ok::<_, anyhow::Error>(())
     }.await;

@@ -54,24 +54,27 @@ export function SettingsRow({
   )
 }
 export function Avatar({ name, src, size = 40 }: { name: string; src?: string; size?: number }) {
-  const initials = name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join('')
-    .toUpperCase()
+  const initial = Array.from(name.trim())[0]?.toUpperCase() || '?'
+  const tones = [
+    'bg-primary/25 text-primary',
+    'bg-success/25 text-success',
+    'bg-warning/25 text-warning',
+    'bg-destructive/25 text-destructive',
+    'bg-muted-foreground/25 text-foreground',
+  ]
+  const tone = tones[(initial.codePointAt(0) ?? 0) % tones.length]
   return (
     <span
-      className={`
-  relative inline-flex flex-none items-center justify-center overflow-hidden rounded-full bg-elevated text-xsm
-  size-(--avatar-size) font-medium [&>img]:size-full [&>img]:object-cover
-`}
+      className={cx(
+        `relative inline-flex flex-none items-center justify-center overflow-hidden rounded-full text-xsm
+size-(--avatar-size) font-medium [&>img]:size-full [&>img]:object-cover`,
+        tone,
+      )}
       style={{ '--avatar-size': `${size}px` } as CSSProperties}
       role="img"
       aria-label={name}
     >
-      <span aria-hidden="true">{initials}</span>
+      <span aria-hidden="true">{initial}</span>
       {src ? <AvatarImage key={src} src={src} /> : null}
     </span>
   )

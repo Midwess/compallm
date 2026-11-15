@@ -89,3 +89,7 @@ export * from './components/permission'
 export { PermissionControllerContext } from './context'
 
 export { InvitationPage } from './pages/invitation'
+
+export { OnboardingPage } from './pages/onboarding'
+export type { OnboardingController, OnboardingState, OnboardingStep, OnboardingProfile } from './pages/onboarding'
+export { OnboardingControllerContext } from './context'

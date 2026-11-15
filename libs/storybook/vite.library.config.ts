@@ -52,6 +52,7 @@ export default defineConfig({
         'pages/signup': source('pages/signup/index.tsx'),
         'pages/signin': source('pages/signin/index.tsx'),
         'pages/main': source('pages/main/index.tsx'),
+        'pages/onboarding': source('pages/onboarding/index.tsx'),
         'pages/settings': source('pages/settings/index.tsx'),
         'pages/organization': source('pages/organization/index.tsx'),
         'pages/organization/chat': source('pages/organization/chat/index.tsx'),

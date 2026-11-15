@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="840" viewBox="0 0 660 840">
+  <defs>
+    <radialGradient id="edge" gradientUnits="userSpaceOnUse" cx="1040" cy="420" r="940">
+      <stop offset="0.85" stop-color="white" stop-opacity="1" />
+      <stop offset="1" stop-color="white" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <path fill="url(#edge)" d="M0 0h660v840H0z" />
+</svg>

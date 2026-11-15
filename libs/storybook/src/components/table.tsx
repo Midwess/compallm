@@ -154,7 +154,7 @@ function Head({ className, column, children, ...props }: ComponentPropsWithRef<'
       {...props}
       className={cx('min-w-0 overflow-hidden text-left font-normal', visibility, className)}
     >
-      <div className="min-w-0 truncate px-2 [&_*]:min-w-0 [&>*]:max-w-full">{children}</div>
+      <div className="min-w-0 truncate px-2 **:min-w-0 *:max-w-full">{children}</div>
     </th>
   )
 }
@@ -170,7 +170,7 @@ function Cell({ className, column, children, ...props }: ComponentPropsWithRef<'
       colSpan={colSpan}
       className={cx('min-w-0 overflow-hidden text-left', visibility, className)}
     >
-      <div className="min-w-0 truncate px-2 [&_*]:min-w-0 [&>*]:max-w-full">{children}</div>
+      <div className="min-w-0 truncate px-2 **:min-w-0 *:max-w-full">{children}</div>
     </td>
   )
 }

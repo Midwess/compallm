@@ -10,6 +10,11 @@ pub trait InvitationRepository: Send + Sync {
         lock: bool,
     ) -> Result<Option<Invitation>, AuthError>;
     async fn lock_organization(&self, organization_id: u64) -> Result<(), AuthError>;
+    async fn find_pending_by_email(
+        &self,
+        organization_id: u64,
+        email: &str,
+    ) -> Result<Vec<Invitation>, AuthError>;
     async fn has_pending(
         &self,
         organization_id: u64,

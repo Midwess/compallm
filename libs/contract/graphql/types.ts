@@ -344,12 +344,6 @@ export default {
           input: [35, 'InvitationBatchCreateInput!'],
         },
       ],
-      invitationResend: [
-        44,
-        {
-          id: [29, 'ID!'],
-        },
-      ],
       invitationRevoke: [
         45,
         {

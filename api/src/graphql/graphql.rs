@@ -203,14 +203,6 @@ impl Mutation {
     ) -> Result<Payload<organization::invitation::InvitationIssued>, Error> {
         organization::invitation::mutation::create(input, service, authority, cookies).await
     }
-    async fn invitation_resend(
-        id: ID,
-        #[graphql(context)] service: &InvitationService,
-        #[graphql(context)] authority: &AuthorizationContext,
-        #[graphql(context)] cookies: &CookieDelivery,
-    ) -> Result<Payload<organization::invitation::InvitationIssued>, Error> {
-        organization::invitation::mutation::resend(id, service, authority, cookies).await
-    }
     async fn invitation_revoke(
         id: ID,
         #[graphql(context)] service: &InvitationService,

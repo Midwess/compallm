@@ -382,7 +382,6 @@ type Mutation {
   invitationCreateMany(
     input: InvitationBatchCreateInput!
   ): InvitationIssuedConnection!
-  invitationResend(id: ID!): InvitationIssuedPayload!
   invitationRevoke(id: ID!): InvitationPayload!
   organizationProfileUpdate(
     input: OrganizationProfileUpdateInput!

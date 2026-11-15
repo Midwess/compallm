@@ -662,7 +662,6 @@ type MessageCompositionPreferences {
 type Mutation {
   invitationCreateMany(input: InvitationBatchCreateInput!): InvitationIssuedConnection!
   invitationCreate(input: InvitationCreateInput!): InvitationIssuedPayload!
-  invitationResend(id: ID!): InvitationIssuedPayload!
   invitationRevoke(id: ID!): InvitationPayload!
   organizationProfileUpdate(input: OrganizationProfileUpdateInput!): OrganizationPayload!
   generateOrgAvatarUrl(input: ImageUploadInput!): AvatarUploadPayload!

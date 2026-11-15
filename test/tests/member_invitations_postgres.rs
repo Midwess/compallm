@@ -20,6 +20,7 @@ use sea_orm::{Database, EntityTrait, ModelTrait, PaginatorTrait};
 use std::{sync::Arc, time::Duration};
 
 const ORG: u64 = 7_000_000_000_000_000_000;
+const LINK_PREFIX: &str = "http://localhost/api/invitations/open?token=";
 const OWNER: u64 = ORG + 100;
 fn member_permission(member: &compallm_core::organization::OrganizationMember) -> MemberPermission {
     MemberPermission::try_from(
@@ -78,22 +79,25 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     let suffix = compallm_utils::time::unix_timestamp();
     let email = format!("new-{suffix}@example.com");
     let mut issued = invitations
-        .invitation_create(&permission, &format!("  {}  ", email.to_uppercase()), None)
-        .await?;
-    assert_eq!(issued.invitation.email, email);
-    invitations
-        .invitation_send(
-            &mut issued,
-            "http://localhost/api/invitations/open?token=copyable",
+        .send_invitation(
+            &permission,
+            &format!("  {}  ", email.to_uppercase()),
+            LINK_PREFIX,
         )
         .await?;
+    assert_eq!(issued.invitation.email, email);
     assert!(!issued.email_admitted);
-    assert!(matches!(
-        invitations
-            .invitation_create(&permission, &email, None)
-            .await,
-        Err(AuthError::InvitationConflict)
-    ));
+    let previous = InvitationToken::try_from(auth.authenticate_token(&issued.token).await?)?;
+    issued = invitations
+        .send_invitation(&permission, &email, LINK_PREFIX)
+        .await?;
+    assert!(invitations.invitation_context(&previous).await.is_err());
+    assert_eq!(
+        root.scope(InvitationRepository.find_pending_by_email(ORG, &email))
+            .await?
+            .len(),
+        1
+    );
     let claims = InvitationToken::try_from(auth.authenticate_token(&issued.token).await?)?;
     assert!(auth.authenticate_access(&issued.token).await.is_err());
     assert!(invitations.invitation_context(&claims).await?.signup);
@@ -192,10 +196,10 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         .unwrap()
         .0;
     let existing = invitations
-        .invitation_create(
+        .send_invitation(
             &member_permission(&other_membership),
             "owner@compallm.com",
-            None,
+            LINK_PREFIX,
         )
         .await?;
     let existing_claims =
@@ -219,22 +223,48 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     assert_eq!(after.role, owner.role);
 
     let rotate = invitations
-        .invitation_create(&permission, &format!("rotate-{suffix}@example.com"), None)
+        .send_invitation(
+            &permission,
+            &format!("rotate-{suffix}@example.com"),
+            LINK_PREFIX,
+        )
         .await?;
     let old = InvitationToken::try_from(auth.authenticate_token(&rotate.token).await?)?;
     let fresh = invitations
-        .invitation_resend(&permission, old.invitation_id)
+        .send_invitation(&permission, &old.email, LINK_PREFIX)
         .await?;
     assert_ne!(fresh.invitation.id, old.invitation_id);
     assert!(invitations.invitation_context(&old).await.is_err());
     let fresh_claims = InvitationToken::try_from(auth.authenticate_token(&fresh.token).await?)?;
     invitations
-        .invitation_revoke(&permission, fresh.invitation.id)
+        .revoke_invitation(&permission, fresh.invitation.id)
         .await?;
     assert!(invitations.invitation_context(&fresh_claims).await.is_err());
 
+    let repeated_email = format!("concurrent-send-{suffix}@example.com");
+    let (first, second) = tokio::join!(
+        invitations.send_invitation(&permission, &repeated_email, LINK_PREFIX),
+        invitations.send_invitation(&permission, &repeated_email, LINK_PREFIX),
+    );
+    let (first, second) = (first?, second?);
+    assert_ne!(first.invitation.id, second.invitation.id);
+    let pending = root
+        .scope(InvitationRepository.find_pending_by_email(ORG, &repeated_email))
+        .await?;
+    assert_eq!(pending.len(), 1);
+    let first_claims = InvitationToken::try_from(auth.authenticate_token(&first.token).await?)?;
+    let second_claims = InvitationToken::try_from(auth.authenticate_token(&second.token).await?)?;
+    assert_ne!(
+        invitations.invitation_context(&first_claims).await.is_ok(),
+        invitations.invitation_context(&second_claims).await.is_ok()
+    );
+
     let preserved = invitations
-        .invitation_create(&permission, &format!("preserve-{suffix}@example.com"), None)
+        .send_invitation(
+            &permission,
+            &format!("preserve-{suffix}@example.com"),
+            LINK_PREFIX,
+        )
         .await?;
     let preserved_claims =
         InvitationToken::try_from(auth.authenticate_token(&preserved.token).await?)?;
@@ -267,7 +297,11 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     );
 
     let lost_permission = invitations
-        .invitation_create(&permission, &format!("lost-{suffix}@example.com"), None)
+        .send_invitation(
+            &permission,
+            &format!("lost-{suffix}@example.com"),
+            LINK_PREFIX,
+        )
         .await?;
     let lost_claims =
         InvitationToken::try_from(auth.authenticate_token(&lost_permission.token).await?)?;
@@ -296,7 +330,11 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         .await?;
 
     let expired = invitations
-        .invitation_create(&permission, &format!("expired-{suffix}@example.com"), None)
+        .send_invitation(
+            &permission,
+            &format!("expired-{suffix}@example.com"),
+            LINK_PREFIX,
+        )
         .await?;
     let mut expired_claims =
         InvitationToken::try_from(auth.authenticate_token(&expired.token).await?)?;
@@ -316,7 +354,11 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     );
 
     let disabled = invitations
-        .invitation_create(&permission, &format!("disabled-{suffix}@example.com"), None)
+        .send_invitation(
+            &permission,
+            &format!("disabled-{suffix}@example.com"),
+            LINK_PREFIX,
+        )
         .await?;
     let disabled_claims =
         InvitationToken::try_from(auth.authenticate_token(&disabled.token).await?)?;
@@ -349,10 +391,10 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     );
 
     let disabled_org = invitations
-        .invitation_create(
+        .send_invitation(
             &member_permission(&other_membership),
             &format!("disabled-org-{suffix}@example.com"),
-            None,
+            LINK_PREFIX,
         )
         .await?;
     let disabled_org_claims =
@@ -404,15 +446,45 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         format!("batch-b-{suffix}@example.com"),
     ];
     let batch = invitations
-        .invitations_create(&member_permission(&owner), &batch_emails)
+        .send_invitations(&member_permission(&owner), &batch_emails, LINK_PREFIX)
         .await?;
     assert_eq!(batch.len(), 2);
+    let original_batch_claims =
+        InvitationToken::try_from(auth.authenticate_token(&batch[0].token).await?)?;
+    let batch = invitations
+        .send_invitations(&member_permission(&owner), &batch_emails, LINK_PREFIX)
+        .await?;
+    assert!(
+        invitations
+            .invitation_context(&original_batch_claims)
+            .await
+            .is_err()
+    );
+    let retained_claims =
+        InvitationToken::try_from(auth.authenticate_token(&batch[0].token).await?)?;
+    assert!(
+        invitations
+            .send_invitations(
+                &member_permission(&owner),
+                &[batch_emails[0].clone(), "owner@compallm.com".into()],
+                LINK_PREFIX
+            )
+            .await
+            .is_err()
+    );
+    assert!(
+        invitations
+            .invitation_context(&retained_claims)
+            .await
+            .is_ok()
+    );
     let rollback_email = format!("batch-rollback-{suffix}@example.com");
     assert!(
         invitations
-            .invitations_create(
+            .send_invitations(
                 &member_permission(&owner),
-                &[rollback_email.clone(), "owner@compallm.com".into()]
+                &[rollback_email.clone(), "owner@compallm.com".into()],
+                LINK_PREFIX
             )
             .await
             .is_err()
@@ -456,7 +528,7 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     let denied = member_permission(&membership);
     assert!(
         invitations
-            .invitation_create(&denied, "denied@example.com", None)
+            .send_invitation(&denied, "denied@example.com", LINK_PREFIX)
             .await
             .is_err()
     );
@@ -618,7 +690,7 @@ async fn verify_browser_flow(
     let auth = di.auth_service();
     let invitations = di.invitation_service();
     let issued = invitations
-        .invitation_create(permission, email, None)
+        .send_invitation(permission, email, LINK_PREFIX)
         .await?;
     let router = browser_router(di);
     let response = router

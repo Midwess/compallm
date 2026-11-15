@@ -1,7 +1,7 @@
 import { type PermissionCheck, permissionKey, type PermissionController, type FormStore } from '@compallm/storybook'
 import type { SettingsState } from '@compallm/storybook/pages/settings'
 import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
-import { GroupUpdateInput } from '@compallm/contract/validation'
+import { GroupUpdateInput, InvitationCreateInput } from '@compallm/contract/validation'
 import { invitationBatchInput } from '@compallm/contract/invitation'
 import { graphql } from '../../graphql-client'
 import { requirePermissions } from '../../permission/controller'
@@ -382,15 +382,18 @@ export class MembersController {
   }
   resend = async (id: string) => {
     const owner = this.lifecycle
-    if (!owner || this.store.getState().invitationBusy) return false
+    const invitation = this.store.getState().invitations.find((row) => row.id === id)
+    if (!owner || !invitation || this.store.getState().invitationBusy) return false
     this.invitationsRequest?.abort()
     this.store.setState({ invitationBusy: true, invitationsLoading: false })
     try {
       if (this.permissions)
         await requirePermissions(this.permissions, [{ action: 'member.invite', resourceType: 'Organization' }])
       if (owner.signal.aborted) return false
-      const selection = { invitationResend: { __args: { id }, node: issuedNode } } satisfies MutationGenqlSelection
-      const result = (await graphql(owner.signal).mutation(selection)).invitationResend.node
+      const selection = {
+        invitationCreate: { __args: { input: InvitationCreateInput.parse({ email: invitation.email }) }, node: issuedNode },
+      } satisfies MutationGenqlSelection
+      const result = (await graphql(owner.signal).mutation(selection)).invitationCreate.node
       if (owner.signal.aborted || this.lifecycle !== owner) return false
       this.store.setState({ invitationLink: result.url, invitationEmailAdmitted: result.emailAdmitted })
       void this.loadInvitations(false)

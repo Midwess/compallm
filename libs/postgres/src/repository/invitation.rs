@@ -64,6 +64,24 @@ impl compallm_core::persistent::invitation::InvitationRepository for InvitationR
             .ok_or(AuthError::InvalidInvitation)?;
         Ok(())
     }
+    async fn find_pending_by_email(
+        &self,
+        organization_id: u64,
+        email: &str,
+    ) -> Result<Vec<Invitation>, AuthError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        Entity::find()
+            .filter(Column::OrganizationId.eq(id(organization_id)?))
+            .filter(Column::Email.eq(email))
+            .filter(Column::Status.eq(Status::Pending))
+            .all(db)
+            .await
+            .map_err(error)?
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect()
+    }
     async fn has_pending(
         &self,
         organization_id: u64,

@@ -240,7 +240,6 @@ export interface Mutation {
   groupUpdate: GroupPayload
   invitationCreate: InvitationIssuedPayload
   invitationCreateMany: InvitationIssuedConnection
-  invitationResend: InvitationIssuedPayload
   invitationRevoke: InvitationPayload
   organizationProfileUpdate: OrganizationPayload
   roleAssign: RolePayload
@@ -924,7 +923,6 @@ export interface MutationGenqlSelection {
   groupUpdate?: GroupPayloadGenqlSelection & { __args: { id: Scalars['ID']; input: GroupUpdateInput } }
   invitationCreate?: InvitationIssuedPayloadGenqlSelection & { __args: { input: InvitationCreateInput } }
   invitationCreateMany?: InvitationIssuedConnectionGenqlSelection & { __args: { input: InvitationBatchCreateInput } }
-  invitationResend?: InvitationIssuedPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   invitationRevoke?: InvitationPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   organizationProfileUpdate?: OrganizationPayloadGenqlSelection & { __args: { input: OrganizationProfileUpdateInput } }
   roleAssign?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; memberId: Scalars['ID'] } }

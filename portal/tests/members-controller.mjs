@@ -367,10 +367,12 @@ test('a later group failure preserves the first confirmed change for explicit re
 test('mail admission failure retains a copyable invitation and revoke is explicit', async () => {
   const original = globalThis.fetch
   let writes = 0
+  let sent = false
   globalThis.fetch = async (_input, init) => {
     const query = JSON.parse(init.body).query
     if (query.includes('invitationCreateMany')) {
       writes++
+      sent = true
       return Response.json({
         data: {
           invitationCreateMany: {
@@ -387,14 +389,38 @@ test('mail admission failure retains a copyable invitation and revoke is explici
         },
       })
     }
+    if (query.includes('invitationCreate')) {
+      writes++
+      assert.equal(Object.values(JSON.parse(init.body).variables).find((value) => value?.email)?.email, 'new@example.com')
+      return Response.json({
+        data: {
+          invitationCreate: {
+            node: {
+              invitation: { id: '2', email: 'new@example.com', status: 'pending', expiresAt: 2000000000 },
+              url: 'http://localhost/api/invitations/open?token=fresh',
+              emailAdmitted: true,
+            },
+          },
+        },
+      })
+    }
     if (query.includes('invitationRevoke')) {
       writes++
       return Response.json({
-        data: { invitationRevoke: { node: { id: '1', email: 'new@example.com', status: 'revoked', expiresAt: 2000000000 } } },
+        data: { invitationRevoke: { node: { id: '2', email: 'new@example.com', status: 'revoked', expiresAt: 2000000000 } } },
       })
     }
     if (query.includes('invitations'))
-      return Response.json({ data: { invitations: { edges: [], pageInfo: { hasNextPage: false, endCursor: null } } } })
+      return Response.json({
+        data: {
+          invitations: {
+            edges: sent
+              ? [{ node: { id: writes >= 2 ? '2' : '1', email: 'new@example.com', status: 'pending', expiresAt: 2000000000 } }]
+              : [],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+      })
     return Response.json(page('existing'))
   }
   const store = createSettingsStore(),
@@ -407,8 +433,11 @@ test('mail admission failure retains a copyable invitation and revoke is explici
     assert.equal(store.getState().invitationEmailAdmitted, false)
     assert.match(store.getState().invitationLink, /token=secret/)
     assert.equal(writes, 1)
-    await controller.revoke('1')
-    assert.equal(writes, 2)
+    assert.equal(await controller.resend('1'), true)
+    await tick()
+    assert.match(store.getState().invitationLink, /token=fresh/)
+    await controller.revoke('2')
+    assert.equal(writes, 3)
     assert.equal(store.getState().invitationLink, null)
   } finally {
     controller.cancel()

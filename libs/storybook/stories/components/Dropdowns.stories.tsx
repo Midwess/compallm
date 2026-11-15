@@ -193,3 +193,13 @@ export const SelectOption: Story = {
     </Preview>
   ),
 }
+
+export const RepeatedSelection: Story = {
+  render: () => (
+    <Preview>
+      <Sample label="Choose repeatedly, close, and reopen">
+        <ControlledDropdown />
+      </Sample>
+    </Preview>
+  ),
+}

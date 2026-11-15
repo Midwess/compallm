@@ -308,3 +308,33 @@ function ChildCompositionDemo() {
   )
 }
 export const ChildComposition: Story = { render: () => <ChildCompositionDemo /> }
+
+function DialogRerenderDemo() {
+  const [open, setOpen] = useState(false)
+  const [count, setCount] = useState(0)
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Open updating dialog</Button>
+      <Dialog.Root open={open} onOpenChange={setOpen}>
+        <Dialog.Content>
+          <Dialog.Header>
+            <Dialog.Title>Update details</Dialog.Title>
+            <Dialog.Close />
+          </Dialog.Header>
+          <Dialog.Body>
+            <output aria-label="Dialog update count">{count}</output>
+            <Button onClick={() => setCount((value) => value + 1)}>Update dialog content</Button>
+          </Dialog.Body>
+          <Dialog.Footer>
+            <Dialog.Cancel />
+            <Button variant="primary" onClick={() => setOpen(false)}>
+              Save
+            </Button>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog.Root>
+    </>
+  )
+}
+
+export const DialogRerender: Story = { render: () => <DialogRerenderDemo /> }

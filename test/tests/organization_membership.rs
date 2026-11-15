@@ -35,6 +35,7 @@ impl Fixture {
         row.insert("B_status".to_string(), "active".into());
         let role = default_roles(84, [1, 2, 3]).await.remove(1);
         let role = OrganizationRoleSchema {
+            default_member: false,
             organization_id: 84,
             id: role.id as i64,
             name: role.name,
@@ -125,6 +126,7 @@ async fn membership_hydrates_direct_and_inherited_roles_with_four_scoped_queries
     membership.insert("A_status".into(), "active".into());
     membership.insert("B_status".into(), "active".into());
     let direct = OrganizationRoleSchema {
+        default_member: false,
         organization_id: 84,
         id: 9,
         name: "Reports".into(),
@@ -154,6 +156,7 @@ async fn membership_hydrates_direct_and_inherited_roles_with_four_scoped_queries
         .map(|group_id| {
             let role = fixture_roles_0.clone().remove(1);
             let mut row = OrganizationRoleSchema {
+                default_member: false,
                 organization_id: 84,
                 id: 2,
                 name: role.name,

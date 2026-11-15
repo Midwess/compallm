@@ -58,6 +58,8 @@ mod m20261114_000035_member_directory;
 mod m20261114_000036_user_row_security;
 
 mod m20261114_000037_seed_testing_workspace;
+
+mod m20261114_000038_member_invitations;
 mod m20261115_000040_single_member_role;
 
 pub struct Migrator;
@@ -105,6 +107,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261114_000035_member_directory::Migration),
             Box::new(m20261114_000036_user_row_security::Migration),
             Box::new(m20261114_000037_seed_testing_workspace::Migration),
+            Box::new(m20261114_000038_member_invitations::Migration),
             Box::new(m20261115_000040_single_member_role::Migration),
             // inject-above (do not remove this comment)
         ]

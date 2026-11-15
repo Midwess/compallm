@@ -108,6 +108,19 @@ impl AuthenticationContext {
             .map_err(|error| *error)
     }
 
+    pub async fn invitation(
+        &self,
+    ) -> Result<Option<compallm_core::authentication::token::InvitationToken>, RequestError> {
+        let Some(encoded) = header::cookie(&self.headers, self.settings.invitation_name())? else {
+            return Ok(None);
+        };
+        self.settings.validate_origin(&self.headers)?;
+        let claims = compallm_core::authentication::token::InvitationToken::try_from(
+            self.execute(self.auth.authenticate_token(&encoded)).await?,
+        )?;
+        Ok(Some(claims))
+    }
+
     pub async fn otp(&self) -> Result<&EmailOtpAccessToken, RequestError> {
         match self.selected().await {
             Ok(SelectedToken {
@@ -252,14 +265,18 @@ pub(super) fn finalize(
             Err(RequestError::Unauthenticated | RequestError::Expired)
                 if !context.headers.contains_key(AUTHORIZATION) && staged.is_empty() =>
             {
-                response
-                    .headers_mut()
-                    .extend(context.settings.clear_headers()?)
+                for value in context.settings.clear_headers()?.get_all(SET_COOKIE) {
+                    if !cookie_is_overridden(value, &staged, response.headers()) {
+                        response.headers_mut().append(SET_COOKIE, value.clone());
+                    }
+                }
             }
             _ => {}
         }
     }
-    response.headers_mut().extend(staged);
+    for value in staged.get_all(SET_COOKIE) {
+        response.headers_mut().append(SET_COOKIE, value.clone());
+    }
     Ok(())
 }
 

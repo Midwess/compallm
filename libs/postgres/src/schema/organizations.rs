@@ -23,6 +23,8 @@ pub enum Relation {
     Models,
     #[sea_orm(has_many = "super::organization_groups::Entity")]
     OrganizationGroups,
+    #[sea_orm(has_many = "super::organization_member_invitations::Entity")]
+    OrganizationMemberInvitations,
     #[sea_orm(has_many = "super::organization_members::Entity")]
     OrganizationMembers,
     #[sea_orm(has_many = "super::organization_roles::Entity")]
@@ -48,6 +50,12 @@ impl Related<super::models::Entity> for Entity {
 impl Related<super::organization_groups::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OrganizationGroups.def()
+    }
+}
+
+impl Related<super::organization_member_invitations::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::OrganizationMemberInvitations.def()
     }
 }
 

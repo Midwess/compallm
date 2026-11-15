@@ -195,6 +195,70 @@ input ImageUploadInput {
   size: Int!
 }
 
+type Invitation {
+  email: String!
+  expiresAt: Float!
+  id: ID!
+  inviterId: ID!
+  issuedAt: Float!
+  organizationId: ID!
+  status: String!
+}
+
+input InvitationBatchCreateInput {
+  invitations: [InvitationCreateInput!]!
+}
+
+type InvitationConnection {
+  edges: [InvitationEdge!]!
+  pageInfo: PageInfo!
+}
+
+type InvitationContext {
+  email: String!
+  expiresAt: Float!
+  organizationId: ID!
+  organizationName: String!
+  signup: Boolean!
+}
+
+type InvitationContextPayload {
+  node: InvitationContext!
+}
+
+input InvitationCreateInput {
+  email: String!
+}
+
+type InvitationEdge {
+  cursor: String!
+  node: Invitation!
+}
+
+type InvitationIssued {
+  emailAdmitted: Boolean!
+  invitation: Invitation!
+  url: String!
+}
+
+type InvitationIssuedConnection {
+  edges: [InvitationIssuedEdge!]!
+  pageInfo: PageInfo!
+}
+
+type InvitationIssuedEdge {
+  cursor: String!
+  node: InvitationIssued!
+}
+
+type InvitationIssuedPayload {
+  node: InvitationIssued!
+}
+
+type InvitationPayload {
+  node: Invitation!
+}
+
 type Me {
   """
   Cedar JSON entity facts for the verified principal and its role/group ancestry; contains no credentials.
@@ -314,6 +378,11 @@ type Mutation {
   groupCreate(input: GroupCreateInput!): GroupPayload!
   groupDelete(id: ID!): BooleanPayload!
   groupUpdate(id: ID!, input: GroupUpdateInput!): GroupPayload!
+  invitationCreate(input: InvitationCreateInput!): InvitationIssuedPayload!
+  invitationCreateMany(
+    input: InvitationBatchCreateInput!
+  ): InvitationIssuedConnection!
+  invitationRevoke(id: ID!): InvitationPayload!
   organizationProfileUpdate(
     input: OrganizationProfileUpdateInput!
   ): OrganizationPayload!
@@ -706,6 +775,8 @@ type Query {
   Return the complete visible group metadata collection, ordered by ID.
   """
   groups: GroupConnection!
+  invitationContext: InvitationContextPayload!
+  invitations(after: String, first: Int): InvitationConnection!
   me: MePayload!
   members(
     after: String

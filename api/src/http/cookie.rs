@@ -31,7 +31,27 @@ impl CookieDelivery {
     }
 
     pub fn set_user(&self, tokens: UserTokens) -> Result<(), RequestError> {
-        self.replace(self.settings.replacement_headers(tokens)?)
+        let mut headers = self.settings.replacement_headers(tokens)?;
+        self.settings.append_cookie(
+            &mut headers,
+            self.settings.invitation_name(),
+            String::new(),
+            0,
+        )?;
+        self.replace(headers)
+    }
+
+    pub fn invitation_url(&self, token: &str) -> Result<String, RequestError> {
+        let origin = if self.settings.public_origin.is_empty() {
+            self.request
+                .get(ORIGIN)
+                .and_then(|v| v.to_str().ok())
+                .ok_or(RequestError::Origin)?
+        } else {
+            &self.settings.public_origin
+        };
+        self.settings.validate_origin(&self.request)?;
+        Ok(format!("{origin}/api/invitations/open?token={token}"))
     }
 
     pub fn clear(&self) -> Result<(), RequestError> {
@@ -42,7 +62,33 @@ impl CookieDelivery {
     }
 
     fn replace(&self, headers: HeaderMap) -> Result<(), RequestError> {
-        *self.response.lock().map_err(|_| RequestError::Internal)? = headers;
+        let mut response = self.response.lock().map_err(|_| RequestError::Internal)?;
+        let names: Vec<_> = headers
+            .get_all(SET_COOKIE)
+            .iter()
+            .filter_map(|value| value.to_str().ok())
+            .filter_map(|value| Cookie::parse(value).ok())
+            .map(|cookie| cookie.name().to_owned())
+            .collect();
+        let retained: Vec<_> = response
+            .get_all(SET_COOKIE)
+            .iter()
+            .filter(|value| {
+                value
+                    .to_str()
+                    .ok()
+                    .and_then(|v| Cookie::parse(v).ok())
+                    .is_none_or(|cookie| !names.iter().any(|name| name == cookie.name()))
+            })
+            .cloned()
+            .collect();
+        response.remove(SET_COOKIE);
+        for value in retained
+            .into_iter()
+            .chain(headers.get_all(SET_COOKIE).iter().cloned())
+        {
+            response.append(SET_COOKIE, value);
+        }
         Ok(())
     }
 }
@@ -82,6 +128,24 @@ impl AuthenticationSettings {
             return Err(AuthError::InvalidConfiguration);
         }
         Ok(())
+    }
+
+    pub(super) fn invitation_name(&self) -> &'static str {
+        if self.cookie_secure {
+            "__Host-invitation"
+        } else {
+            "compallm-invitation"
+        }
+    }
+
+    pub fn invitation_headers(
+        &self,
+        token: String,
+        seconds: u64,
+    ) -> Result<HeaderMap, RequestError> {
+        let mut headers = self.clear_headers()?;
+        self.append_cookie(&mut headers, self.invitation_name(), token, seconds)?;
+        Ok(headers)
     }
 
     pub(super) fn names(&self) -> (&'static str, &'static str) {

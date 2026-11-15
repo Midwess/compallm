@@ -517,3 +517,23 @@ export const MemberOwnerDemotionRetry: Story = {
 export const MembersOwnRoleReadOnly: Story = {
   render: () => <Demo page="members" initial={{ actorIsOwner: true, currentMemberId: 'alex', ownerMemberIds: ['alex'] }} />,
 }
+
+export const MembershipInvitations: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      initial={{
+        invitations: [
+          { id: 'pending', email: 'alex@example.com', status: 'pending', expiresAt: 2000000000 },
+          { id: 'expired', email: 'expired@example.com', status: 'expired', expiresAt: 1700000000 },
+        ],
+        invitationLink: 'https://compallm.example/api/invitations/open?token=preview',
+        invitationEmailAdmitted: false,
+        invitationsOpen: false,
+        membersHasNextPage: true,
+      }}
+    />
+  ),
+}
+
+export const InviteDialog: Story = { render: () => <Demo page="members" initial={{ invitationsOpen: true }} /> }

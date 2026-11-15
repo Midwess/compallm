@@ -1,16 +1,10 @@
-import { createBrowserRouter, Link, Outlet, useNavigation } from 'react-router'
+import { createBrowserRouter, Link, Outlet } from 'react-router'
 import { urlController } from './url/controller'
 import { redirect } from 'react-router'
 import { guestOnly, requireCurrentUser, organizationIndex, confirmationAccess } from './auth/route-access'
 
 function Layout() {
-  const navigation = useNavigation()
-  return (
-    <>
-      {navigation.state !== 'idle' ? <p role="status">Loading page…</p> : null}
-      <Outlet />
-    </>
-  )
+  return <Outlet />
 }
 
 function RouteError() {
@@ -26,7 +20,7 @@ function RouteError() {
 }
 
 function InitialLoading() {
-  return <p role="status">Loading page…</p>
+  return null
 }
 
 function NotFound() {
@@ -45,6 +39,7 @@ export const router = createBrowserRouter([
     HydrateFallback: InitialLoading,
     children: [
       { index: true, loader: guestOnly, lazy: () => import('./routes/signup') },
+      { path: 'invitation', lazy: () => import('./routes/invitation') },
       { path: 'login', loader: guestOnly, lazy: () => import('./routes/login') },
       { path: 'signup', loader: guestOnly, lazy: () => import('./routes/signup') },
       { path: 'login/confirmation', loader: confirmationAccess, lazy: () => import('./routes/login') },

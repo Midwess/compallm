@@ -3,6 +3,7 @@
 pub mod connection;
 pub mod db_context;
 pub mod dictionary;
+pub mod invitation;
 pub mod model;
 pub mod organization;
 pub mod provider;

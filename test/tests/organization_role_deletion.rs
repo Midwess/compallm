@@ -43,6 +43,7 @@ async fn role_deletion_blocks_new_group_links_and_invalidates_existing_assignees
                 "CREATE TABLE organization_roles (
                     organization_id bigint, id bigint, name text NOT NULL,
                     description text NOT NULL, cedar_source text NOT NULL, org_owner boolean NOT NULL,
+                    default_member boolean NOT NULL DEFAULT false,
                     PRIMARY KEY (organization_id,id)
                 );
                 CREATE TABLE organization_groups (
@@ -75,7 +76,7 @@ async fn role_deletion_blocks_new_group_links_and_invalidates_existing_assignees
                 );
                 INSERT INTO users VALUES (42,'active');
                 INSERT INTO organizations VALUES (1,'Team','active',NULL);
-                INSERT INTO organization_roles VALUES (1,10,'Reports','','',false), (1,11,'Member','','',false);
+                INSERT INTO organization_roles (organization_id,id,name,description,cedar_source,org_owner) VALUES (1,10,'Reports','','',false), (1,11,'Member','','',false);
                 INSERT INTO organization_members VALUES (1,42,'active',11);
                 INSERT INTO user_sessions VALUES (100,1,42,1,NULL);",
             )

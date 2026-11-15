@@ -73,6 +73,22 @@ export class DemoSettingsController implements SettingsController {
     const { roleDraft, groupDraft, ...shared } = initial
     this.store.setState(structuredClone(shared))
     this.directory = structuredClone(this.store.getState().members)
+    this.pages.members.invite = async (text) => {
+      const { invitationBatchInput } = await import('@compallm/contract/invitation')
+      const { invitations } = invitationBatchInput(text)
+      this.store.setState((state) => ({
+        invitations: [
+          ...state.invitations,
+          ...invitations.map(({ email }, index) => ({
+            id: `preview-${index}`,
+            email,
+            status: 'pending',
+            expiresAt: 2000000000,
+          })),
+        ],
+      }))
+      return true
+    }
     this.pages.preferences.user = new DemoUserPreferenceController(failWrites)
     this.role = new DemoRoleController(this, failWrites)
     this.pages.role = this.role

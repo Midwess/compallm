@@ -8,6 +8,7 @@ use crate::http::{
     authentication::{AuthenticationContext, CookieDelivery, UserContext},
     authorization::AuthorizationContext,
 };
+use compallm_core::organization::invitation_service::InvitationService;
 use compallm_core::{
     authentication::AuthService, authorization::rbac::RbacService,
     persistent::organization::OrganizationRepository,
@@ -23,6 +24,32 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
+    async fn invitation_context(
+        #[graphql(context)] service: &InvitationService,
+        #[graphql(context)] identity: &AuthenticationContext,
+    ) -> Result<Payload<organization::invitation::InvitationContext>, Error> {
+        organization::invitation::query::context(service, identity).await
+    }
+    async fn invitations(
+        first: Option<i32>,
+        after: Option<String>,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::invitation::InvitationRepository,
+        >,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Collection<organization::invitation::Invitation>, Error> {
+        organization::invitation::query::list(
+            compallm_query::Pagination {
+                first: Some(first.unwrap_or(20)),
+                after: after.map(compallm_query::Cursor),
+                ..Default::default()
+            },
+            repository.as_ref(),
+            authority,
+        )
+        .await
+    }
+
     async fn me(
         #[graphql(context)] user: &UserContext,
     ) -> Result<Payload<super::user::me::Me>, Error> {
@@ -159,6 +186,31 @@ pub struct Mutation;
 
 #[graphql_object(context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Mutation {
+    async fn invitation_create_many(
+        input: organization::invitation::input::InvitationBatchCreateInput,
+        #[graphql(context)] service: &InvitationService,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] cookies: &CookieDelivery,
+    ) -> Result<Collection<organization::invitation::InvitationIssued>, Error> {
+        organization::invitation::mutation::create_many(input, service, authority, cookies).await
+    }
+
+    async fn invitation_create(
+        input: organization::invitation::input::InvitationCreateInput,
+        #[graphql(context)] service: &InvitationService,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] cookies: &CookieDelivery,
+    ) -> Result<Payload<organization::invitation::InvitationIssued>, Error> {
+        organization::invitation::mutation::create(input, service, authority, cookies).await
+    }
+    async fn invitation_revoke(
+        id: ID,
+        #[graphql(context)] service: &InvitationService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<organization::invitation::Invitation>, Error> {
+        organization::invitation::mutation::revoke(id, service, authority).await
+    }
+
     async fn organization_profile_update(
         input: organization::input::OrganizationProfileUpdateInput,
         #[graphql(context)] authority: &AuthorizationContext,
@@ -228,40 +280,48 @@ impl Mutation {
     async fn email_signup_request(
         input: authentication::input::EmailInput,
         #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] invitations: &InvitationService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<Payload<authentication::EmailChallenge>, Error> {
-        authentication::mutation::signup_email_request(input, auth, identity, cookies).await
+        authentication::mutation::signup_email_request(input, auth, invitations, identity, cookies)
+            .await
     }
 
     /// Confirm the verified signup challenge and create the account and session.
     async fn email_signup_confirm(
         input: authentication::input::EmailCodeInput,
         #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] invitations: &InvitationService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<Payload<authentication::SessionCredentials>, Error> {
-        authentication::mutation::signup_email_confirm(input, auth, identity, cookies).await
+        authentication::mutation::signup_email_confirm(input, auth, invitations, identity, cookies)
+            .await
     }
 
     /// Request a signin email challenge for an existing active account.
     async fn email_signin_request(
         input: authentication::input::EmailInput,
         #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] invitations: &InvitationService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<Payload<authentication::EmailChallenge>, Error> {
-        authentication::mutation::signin_email_request(input, auth, identity, cookies).await
+        authentication::mutation::signin_email_request(input, auth, invitations, identity, cookies)
+            .await
     }
 
     /// Confirm the verified signin challenge and create a scoped session.
     async fn email_signin_confirm(
         input: authentication::input::EmailCodeInput,
         #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] invitations: &InvitationService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<Payload<authentication::SessionCredentials>, Error> {
-        authentication::mutation::signin_email_confirm(input, auth, identity, cookies).await
+        authentication::mutation::signin_email_confirm(input, auth, invitations, identity, cookies)
+            .await
     }
 
     /// Refresh using explicit refresh Bearer authority; leave browser cookies unchanged.
@@ -409,6 +469,8 @@ impl GraphQLValueAsync for RegisteredQuery {
 #[derive(JsonSchema)]
 #[allow(dead_code)]
 struct Inputs {
+    invitation_batch_create: organization::invitation::input::InvitationBatchCreateInput,
+    invitation_create: organization::invitation::input::InvitationCreateInput,
     user_preferences_patch: super::preference::user::input::UserPreferencesPatchInput,
     credential_create: super::user::input::CredentialCreateInput,
     spending_limit: super::organization::input::SpendingLimitInput,

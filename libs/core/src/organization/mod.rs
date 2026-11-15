@@ -4,6 +4,7 @@ pub mod config_service;
 pub mod creation_service;
 pub mod entity;
 pub mod error;
+pub mod invitation;
 pub mod member;
 
 pub use config_service::ConfigService;
@@ -19,3 +20,6 @@ pub use role::Role;
 
 #[path = "profile-service.rs"]
 pub mod profile_service;
+
+#[path = "invitation-service.rs"]
+pub mod invitation_service;

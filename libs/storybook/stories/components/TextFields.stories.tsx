@@ -1,3 +1,7 @@
+import { zodResolver } from '@hookform/resolvers/zod'
+import { InvitationCreateInput } from '@compallm/contract/validation'
+import { invitationTextSchema } from '@compallm/contract/invitation'
+import { Form, useManagedForm } from '../../src/components/form'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as Fields from '../../src/components/fields'
 import { Preview, Sample } from './Preview'
@@ -173,3 +177,31 @@ export const DocumentBodyEditor: Story = {
     </Preview>
   ),
 }
+
+function InvitationRecipientsExample() {
+  const form = useManagedForm(
+    { email: 'alex@example.com, sam@example.com; incomplete' },
+    { resolver: zodResolver(invitationTextSchema) },
+  )
+  return (
+    <Preview>
+      <Sample label="Recipients · delimiters validate addresses" wide>
+        <Form.Root model={form}>
+          <div className="relative">
+            <Fields.TokenField
+              name="email"
+              aria-label="Invitation recipients"
+              placeholder="email@example.com, another@example.com…"
+              parseToken={(email) => {
+                const result = InvitationCreateInput.safeParse({ email })
+                return result.success ? result.data.email : null
+              }}
+            />
+            <Form.Error name="email" />
+          </div>
+        </Form.Root>
+      </Sample>
+    </Preview>
+  )
+}
+export const InvitationRecipients: Story = { render: () => <InvitationRecipientsExample /> }

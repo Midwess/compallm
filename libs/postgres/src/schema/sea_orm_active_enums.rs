@@ -9,6 +9,20 @@ pub enum Lz4DictionaryType {
     AccessToken,
 }
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(
+    rs_type = "Enum",
+    db_type = "Enum",
+    enum_name = "organization_member_invitation_status"
+)]
+pub enum OrganizationMemberInvitationStatus {
+    #[sea_orm(string_value = "pending")]
+    Pending,
+    #[sea_orm(string_value = "accepted")]
+    Accepted,
+    #[sea_orm(string_value = "revoked")]
+    Revoked,
+}
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "organization_status")]
 pub enum OrganizationStatus {
     #[sea_orm(string_value = "active")]

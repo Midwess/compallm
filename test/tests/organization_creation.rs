@@ -200,6 +200,13 @@ impl OrganizationRepository for Repository {
         self.state.lock().unwrap().roles = roles;
         Ok(())
     }
+    async fn set_default_member_role(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<(), OrganizationRepositoryError> {
+        Ok(())
+    }
     async fn add_member(
         &self,
         member: OrganizationMember,

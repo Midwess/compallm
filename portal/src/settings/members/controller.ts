@@ -1,18 +1,24 @@
-import { GroupUpdateInput } from '@compallm/contract/validation'
-import type { PermissionCheck } from '@compallm/storybook'
-import type { ProfileAuth } from '../profile/controller'
-import { permissionKey, type PermissionController, type FormStore } from '@compallm/storybook'
+import { type PermissionCheck, permissionKey, type PermissionController, type FormStore } from '@compallm/storybook'
 import type { SettingsState } from '@compallm/storybook/pages/settings'
 import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
+import { GroupUpdateInput, InvitationCreateInput } from '@compallm/contract/validation'
+import { invitationBatchInput } from '@compallm/contract/invitation'
 import { graphql } from '../../graphql-client'
 import { requirePermissions } from '../../permission/controller'
+import type { ProfileAuth } from '../profile/controller'
 import { notify } from '../../notifications/toast'
+
+const invitationNode = { id: true, email: true, status: true, expiresAt: true, issuedAt: true } as const
 const pageInfo = { endCursor: true, hasNextPage: true } as const
+const issuedNode = { invitation: invitationNode, url: true, emailAdmitted: true } as const
+
 export class MembersController {
   private request?: AbortController
+  private invitationsRequest?: AbortController
   private stop?: () => void
   private appliedQuery = ''
   private cursor?: string
+  private invitationCursor?: string
   private history: (string | undefined)[] = []
   private lifecycle?: AbortController
   private readonly store: FormStore<SettingsState>
@@ -140,8 +146,10 @@ export class MembersController {
     this.cancel()
     this.lifecycle = new AbortController()
     this.appliedQuery = this.store.getState().query.trim()
+    this.store.setState({ invitationBusy: false })
     this.cursor = undefined
     this.history = []
+    this.invitationCursor = undefined
     this.stop = this.store.subscribe((next, previous) => {
       if (next.memberOrder !== previous.memberOrder || next.filters.memberRole !== previous.filters.memberRole) {
         this.cursor = undefined
@@ -156,11 +164,13 @@ export class MembersController {
       }
     })
     void this.load()
+    void this.loadInvitations(false)
     return this.cancel
   }
   cancel = () => {
     this.lifecycle?.abort()
     this.request?.abort()
+    this.invitationsRequest?.abort()
     this.stop?.()
     this.stop = undefined
     this.lifecycle = undefined
@@ -259,14 +269,14 @@ export class MembersController {
         ),
       )
       this.store.setState({
-        currentMemberId: result.me?.node.id,
         actorIsOwner: result.me?.node.organizationOwner ?? false,
+        currentMemberId: result.me?.node.id ?? this.auth.store?.getState().currentUser?.userId,
         ownerMemberIds: result.organization?.node.ownerMemberIds ?? [],
         members: result.members.edges.map(({ node }) => ({
           id: node.id,
           name: node.displayName || 'Member',
           email: node.email,
-          role: node.role ?? null,
+          role: node.role && 'id' in node.role && 'name' in node.role && 'description' in node.role ? node.role : null,
           groups: node.groups,
           available: node.available,
           joinedAt: node.joinedAt,
@@ -297,6 +307,125 @@ export class MembersController {
       }
     } finally {
       if (this.request === request) this.store.setState({ membersLoading: false })
+    }
+  }
+  loadMoreInvitations = () => {
+    if (this.store.getState().invitationsHasNextPage) void this.loadInvitations(true)
+  }
+  private async loadInvitations(append: boolean) {
+    const owner = this.lifecycle
+    if (!owner) return
+    this.invitationsRequest?.abort()
+    const request = new AbortController()
+    this.invitationsRequest = request
+    this.store.setState({ invitationsLoading: true })
+    try {
+      if (this.permissions)
+        await requirePermissions(this.permissions, [{ action: 'member.read', resourceType: 'Organization' }])
+      if (request.signal.aborted || owner.signal.aborted) return
+      const selection = {
+        invitations: {
+          __args: { first: 20, after: append ? this.invitationCursor : undefined },
+          edges: { node: invitationNode },
+          pageInfo,
+        },
+      } satisfies QueryGenqlSelection
+      const result = await graphql(AbortSignal.any([request.signal, owner.signal])).query(selection)
+      if (this.invitationsRequest !== request || request.signal.aborted || owner.signal.aborted) return
+      this.invitationCursor = result.invitations.pageInfo.endCursor ?? undefined
+      this.store.setState((state) => ({
+        invitations: [...(append ? state.invitations : []), ...result.invitations.edges.map(({ node }) => node)],
+        invitationsHasNextPage: result.invitations.pageInfo.hasNextPage,
+      }))
+    } catch (error) {
+      if (!request.signal.aborted && !owner.signal.aborted)
+        notify.apiError(error, () => {
+          if (this.invitationsRequest === request) void this.loadInvitations(append)
+        })
+    } finally {
+      if (this.invitationsRequest === request) this.store.setState({ invitationsLoading: false })
+    }
+  }
+  invite = async (text: string) => {
+    const owner = this.lifecycle
+    if (!owner || this.store.getState().invitationBusy) return false
+    const input = invitationBatchInput(text)
+    this.invitationsRequest?.abort()
+    this.store.setState({ invitationBusy: true, invitationsLoading: false })
+    try {
+      if (this.permissions)
+        await requirePermissions(this.permissions, [{ action: 'member.invite', resourceType: 'Organization' }])
+      if (owner.signal.aborted) return false
+      const selection = {
+        invitationCreateMany: { __args: { input }, edges: { node: issuedNode } },
+      } satisfies MutationGenqlSelection
+      const result = await graphql(owner.signal).mutation(selection)
+      if (owner.signal.aborted || this.lifecycle !== owner) return false
+      const links = result.invitationCreateMany.edges.map(({ node }) => ({
+        email: node.invitation.email,
+        url: node.url,
+        emailAdmitted: node.emailAdmitted,
+      }))
+      this.store.setState({
+        invitationLinks: links,
+        invitationLink: links[0]?.url ?? null,
+        invitationEmailAdmitted: links.every((link) => link.emailAdmitted),
+      })
+      void this.loadInvitations(false)
+      return true
+    } catch (error) {
+      if (!owner.signal.aborted) notify.error(error)
+      return false
+    } finally {
+      if (this.lifecycle === owner) this.store.setState({ invitationBusy: false })
+    }
+  }
+  resend = async (id: string) => {
+    const owner = this.lifecycle
+    const invitation = this.store.getState().invitations.find((row) => row.id === id)
+    if (!owner || !invitation || this.store.getState().invitationBusy) return false
+    this.invitationsRequest?.abort()
+    this.store.setState({ invitationBusy: true, invitationsLoading: false })
+    try {
+      if (this.permissions)
+        await requirePermissions(this.permissions, [{ action: 'member.invite', resourceType: 'Organization' }])
+      if (owner.signal.aborted) return false
+      const selection = {
+        invitationCreate: { __args: { input: InvitationCreateInput.parse({ email: invitation.email }) }, node: issuedNode },
+      } satisfies MutationGenqlSelection
+      const result = (await graphql(owner.signal).mutation(selection)).invitationCreate.node
+      if (owner.signal.aborted || this.lifecycle !== owner) return false
+      this.store.setState({ invitationLink: result.url, invitationEmailAdmitted: result.emailAdmitted })
+      void this.loadInvitations(false)
+      return true
+    } catch (error) {
+      if (!owner.signal.aborted) notify.error(error)
+      return false
+    } finally {
+      if (this.lifecycle === owner) this.store.setState({ invitationBusy: false })
+    }
+  }
+  revoke = async (id: string) => {
+    const owner = this.lifecycle
+    if (!owner || this.store.getState().invitationBusy) return
+    this.invitationsRequest?.abort()
+    this.store.setState({ invitationBusy: true, invitationsLoading: false })
+    try {
+      if (this.permissions)
+        await requirePermissions(this.permissions, [{ action: 'member.invite', resourceType: 'Organization' }])
+      if (owner.signal.aborted) return
+      const selection = { invitationRevoke: { __args: { id }, node: invitationNode } } satisfies MutationGenqlSelection
+      const result = await graphql(owner.signal).mutation(selection)
+      if (!owner.signal.aborted && this.lifecycle === owner) {
+        this.store.setState((state) => ({
+          invitations: state.invitations.filter((row) => row.id !== result.invitationRevoke.node.id),
+          invitationLink: null,
+        }))
+      }
+    } catch (error) {
+      if (!owner.signal.aborted) notify.error(error)
+    } finally {
+      if (this.lifecycle === owner) this.store.setState({ invitationBusy: false })
     }
   }
 }

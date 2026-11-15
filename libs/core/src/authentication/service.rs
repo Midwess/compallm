@@ -142,21 +142,41 @@ impl AuthService {
     }
 
     async fn send_email_otp(&self, email: &str) -> Result<IssuedEmailOtp, AuthError> {
-        let claims = EmailOtpAccessToken::new(compallm_utils::email::normalize_email(email))?;
-        let dictionary = self.latest_dictionary().await?;
-        let encrypted = AccessToken::EmailOtp(claims.clone())
+        self.issue_email_otp(EmailOtpAccessToken::new(
+            compallm_utils::email::normalize_email(email),
+        )?)
+        .await
+    }
+
+    pub(crate) async fn encrypt_token(
+        &self,
+        token: AccessToken,
+        lifetime: Duration,
+    ) -> Result<String, AuthError> {
+        token
             .encrypt(&EncryptedAccessToken::new(&self.jwt_secret)?)
+            .await?
+            .compress(self.latest_dictionary().await?)
+            .await?
+            .encode(&self.jwt_secret, lifetime)
+    }
+
+    pub(crate) async fn issue_email_otp(
+        &self,
+        claims: EmailOtpAccessToken,
+    ) -> Result<IssuedEmailOtp, AuthError> {
+        let token = self
+            .encrypt_token(
+                AccessToken::EmailOtp(claims.clone()),
+                Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),
+            )
             .await?;
-        let token = encrypted.compress(dictionary).await?.encode(
-            &self.jwt_secret,
-            Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),
-        )?;
         let sender = self.email.as_ref().ok_or(EmailError::Unavailable)?;
         #[cfg(debug_assertions)]
         let debug_code = claims.code.clone();
         sender
             .send(EmailRequest {
-                to: compallm_utils::email::normalize_email(email),
+                to: compallm_utils::email::normalize_email(&claims.email),
                 subject: "Your Compallm verification code".into(),
                 text: EmailTemplate::OtpCode(OtpCode::new(
                     claims.code,
@@ -178,6 +198,9 @@ impl AuthService {
         claims: &EmailOtpAccessToken,
         code: &str,
     ) -> Result<UserTokens, AuthError> {
+        if claims.invitation_id.is_some() {
+            return Err(AuthError::InvalidInvitation);
+        }
         claims.verify_code(code, unix_timestamp())?;
         let user = self
             .users
@@ -202,6 +225,9 @@ impl AuthService {
         claims: &EmailOtpAccessToken,
         code: &str,
     ) -> Result<UserTokens, AuthError> {
+        if claims.invitation_id.is_some() {
+            return Err(AuthError::InvalidInvitation);
+        }
         claims.verify_code(code, unix_timestamp())?;
         let dictionary = self.latest_dictionary().await?;
         crate::transaction!(db, {
@@ -297,7 +323,7 @@ impl AuthService {
         Ok(tokens)
     }
 
-    async fn start_session(
+    pub(crate) async fn start_session(
         &self,
         user_id: u64,
         membership: OrganizationMember,
@@ -312,7 +338,7 @@ impl AuthService {
         Ok(tokens)
     }
 
-    async fn latest_dictionary(&self) -> Result<&DCompression, AuthError> {
+    pub(crate) async fn latest_dictionary(&self) -> Result<&DCompression, AuthError> {
         self.dictionaries
             .latest(DictionaryType::AccessToken)
             .await

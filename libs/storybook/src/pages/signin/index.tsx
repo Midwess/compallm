@@ -1,4 +1,4 @@
-import { AuthenticationPage } from '../auth/auth-page'
+import { AccessLoginPage } from '../auth/access-panel'
 import { createAuthStore } from '../auth/store'
 import type { AuthController, AuthState } from '../auth/types'
 
@@ -12,5 +12,5 @@ export function createSigninStore(initial: Partial<SigninState> = {}) {
 export type SigninStore = ReturnType<typeof createSigninStore>
 
 export function SigninPage() {
-  return <AuthenticationPage mode="signin" />
+  return <AccessLoginPage />
 }

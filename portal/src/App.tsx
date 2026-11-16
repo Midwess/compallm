@@ -1,10 +1,16 @@
+import { AuthVerificationHost } from '@compallm/storybook'
 import { createBrowserRouter, Link, Outlet } from 'react-router'
 import { urlController } from './url/controller'
 import { redirect } from 'react-router'
 import { guestOnly, requireCurrentUser, organizationIndex, confirmationAccess } from './auth/route-access'
 
 function Layout() {
-  return <Outlet />
+  return (
+    <>
+      <Outlet />
+      <AuthVerificationHost />
+    </>
+  )
 }
 
 function RouteError() {

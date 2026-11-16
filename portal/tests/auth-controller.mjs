@@ -253,3 +253,63 @@ test('the optional security route is offered once and reload skips to the worksp
   const reload = await loader()
   assert.equal(reload.headers.get('Location'), '/Personal')
 })
+
+test('sensitive verification preserves identity and uses purpose without navigation', async (t) => {
+  const url = urlController()
+  const controller = new AuthController(url)
+  controller.store.setState({ currentUser: user, status: 'authenticated' })
+  t.after(controller.stop)
+  const writes = []
+  t.mock.method(globalThis, 'fetch', async (_url, init) => {
+    const { query, variables } = JSON.parse(init.body)
+    if (query.includes('userProfile')) return reply({ userProfile: { node: { email: 'owner@example.com' } } })
+    const input = Object.values(variables).find((value) => value?.purpose)
+    assert.equal(input.purpose, 'PASSKEY_CHANGE')
+    writes.push(query.includes('emailSigninRequest') ? 'request' : 'confirm')
+    if (query.includes('emailSigninRequest'))
+      return reply({
+        emailSigninRequest: {
+          node: {
+            lifetime: { expiresInSeconds: '180', throttleSeconds: '0' },
+          },
+        },
+      })
+    return reply({ emailSigninConfirm: { node: { purpose: 'PASSKEY_CHANGE' } } })
+  })
+  const result = controller.requestVerification()
+  await controller.useEmailCode()
+  await controller.requestCode('')
+  assert.equal(controller.store.getState().step, 'code')
+  await controller.verifyCode('123456')
+  assert.equal(await result, true)
+  assert.equal(controller.store.getState().verificationActive, false)
+  assert.equal(controller.store.getState().currentUser, user)
+  assert.equal(controller.store.getState().lastLoginMethod, 'email')
+  assert.deepEqual(url.destinations, [])
+  assert.deepEqual(writes, ['request', 'confirm'])
+})
+
+test('cancelling sensitive verification ignores late results and preserves identity', async (t) => {
+  const controller = new AuthController(urlController())
+  controller.store.setState({ currentUser: user, status: 'authenticated' })
+  t.after(controller.stop)
+  let resolve
+  t.mock.method(
+    globalThis,
+    'fetch',
+    () =>
+      new Promise((done) => {
+        resolve = done
+      }),
+  )
+  const result = controller.requestVerification()
+  await controller.useEmailCode()
+  const request = controller.requestCode('')
+  controller.cancelVerification()
+  resolve(reply({ userProfile: { node: { email: 'owner@example.com' } } }))
+  await request
+  assert.equal(await result, false)
+  assert.equal(controller.store.getState().verificationActive, false)
+  assert.equal(controller.store.getState().currentUser, user)
+  assert.equal(controller.store.getState().step, 'choose')
+})

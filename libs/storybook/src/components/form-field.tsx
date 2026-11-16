@@ -29,7 +29,7 @@ function Input(props: TextFieldProps) {
     <TextField
       {...props}
       id={id}
-      className={cx('h-8 rounded-lg px-1.5 py-1 text-sm leading-5 focus:outline-input', props.className)}
+      className={cx('h-8 rounded-xl px-1.5 py-1 text-sm leading-5 focus:outline-input', props.className)}
     />
   )
 }

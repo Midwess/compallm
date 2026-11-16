@@ -1,7 +1,9 @@
+import { DemoAuthController } from './demo-auth-controller'
+import { AuthVerificationHost } from '../../src/pages/auth/access-panel'
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { createStore } from 'zustand/vanilla'
-import { PasskeyControllerContext } from '../../src/context'
+import { AuthControllerContext, PasskeyControllerContext } from '../../src/context'
 import {
   SecurityEnhancementPage,
   PasskeySettings,
@@ -46,33 +48,30 @@ function Preview({ screen = false, initial = {} }: { screen?: boolean; initial?:
       },
       add: async () => false,
       remove: async () => false,
-      verifyPasskey: async () => {
-        store.setState({ reauthentication: false })
-        return true
-      },
-      sendEmail: async () => {
-        store.setState({ emailSent: true })
-        return true
-      },
-      verifyEmail: async () => {
-        store.setState({ reauthentication: false })
-        return true
-      },
     }
   })
+  const [auth] = useState(() => {
+    const result = new DemoAuthController('signin')
+    Object.assign(result, { requestVerification: async () => false })
+    result.store.setState({ verificationActive: initial.reauthentication, step: initial.emailSent ? 'code' : 'choose' })
+    return result
+  })
   return (
-    <PasskeyControllerContext value={controller}>
-      {screen ? (
-        <SecurityEnhancementPage onSkip={() => {}} />
-      ) : (
-        <main className="min-h-dvh bg-surface p-8 text-foreground">
-          <div className="mx-auto max-w-160">
-            <PasskeySettings />
-          </div>
-        </main>
-      )}
-      <PasskeyDialogs />
-    </PasskeyControllerContext>
+    <AuthControllerContext value={auth}>
+      <PasskeyControllerContext value={controller}>
+        {screen ? (
+          <SecurityEnhancementPage onSkip={() => {}} />
+        ) : (
+          <main className="min-h-dvh bg-surface p-8 text-foreground">
+            <div className="mx-auto max-w-160">
+              <PasskeySettings />
+            </div>
+          </main>
+        )}
+        <PasskeyDialogs />
+        <AuthVerificationHost />
+      </PasskeyControllerContext>
+    </AuthControllerContext>
   )
 }
 export const SecurityStep: Story = { render: () => <Preview screen /> }

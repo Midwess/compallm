@@ -1,12 +1,12 @@
 import { useContext } from 'react'
 import { useStore } from 'zustand'
-import { PasskeyControllerContext } from '../../context'
-import { AuthLayout } from '../auth/layout'
+import { AuthControllerContext, PasskeyControllerContext } from '../../context'
+import { AccessLayout } from '../auth/access-panel'
 import { Button } from '../../components/buttons'
-import { TextField, CodeEntry } from '../../components/fields'
+import { TextField } from '../../components/fields'
 import { Form, useManagedForm, contractResult } from '../../components/form'
 import { Dialog } from '../../components/dialog'
-import { PasskeyRegistrationInput, EmailCodeInput } from '@compallm/contract/validation'
+import { PasskeyRegistrationInput } from '@compallm/contract/validation'
 import { Section, Rows, Row, Empty } from '../settings/shared'
 import { Popup } from '../../components/popup'
 import { SettingsDivider } from '../../components/settings'
@@ -23,7 +23,7 @@ export function SecurityEnhancementPage({ onSkip }: { onSkip: () => void }) {
   const controller = useController()
   const busy = useStore(controller.store, (s) => s.busy)
   return (
-    <AuthLayout>
+    <AccessLayout>
       <div className="grid gap-6">
         <h1 className="m-0 text-ui-28 leading-10 font-medium">Enhance your security.</h1>
         <p className="m-0 text-sm leading-6 text-muted-foreground">
@@ -36,7 +36,7 @@ export function SecurityEnhancementPage({ onSkip }: { onSkip: () => void }) {
           Skip for now
         </Button>
       </div>
-    </AuthLayout>
+    </AccessLayout>
   )
 }
 export function PasskeySettings() {
@@ -201,19 +201,19 @@ function PasskeyRow({
 }
 export function PasskeyDialogs() {
   const controller = useController()
+  const auth = useContext(AuthControllerContext)
   const dialog = useStore(controller.store, (s) => s.dialog)
   const enrollment = useStore(controller.store, (s) => s.enrollment)
   const reauthentication = useStore(controller.store, (s) => s.reauthentication)
   const error = useStore(controller.store, (s) => s.error)
+  if (reauthentication && auth?.requestVerification) return <PasskeyDialogContent suspended />
   if (dialog?.kind === 'add' && enrollment === 'device' && !reauthentication && !error) return null
   return dialog ? <PasskeyDialogContent /> : null
 }
-function PasskeyDialogContent() {
+function PasskeyDialogContent({ suspended = false }: { suspended?: boolean }) {
   const controller = useController()
   const busy = useStore(controller.store, (s) => s.busy)
   const error = useStore(controller.store, (s) => s.error)
-  const reauthentication = useStore(controller.store, (s) => s.reauthentication)
-  const emailSent = useStore(controller.store, (s) => s.emailSent)
   const dialog = useStore(controller.store, (s) => s.dialog)!
   const enrollment = useStore(controller.store, (s) => s.enrollment)
   const passkeyName =
@@ -225,20 +225,12 @@ function PasskeyDialogContent() {
       command: true,
       parse: (values) => {
         const state = controller.store.getState()
-        if (state.reauthentication)
-          return state.emailSent
-            ? contractResult(EmailCodeInput.pick({ code: true }).safeParse({ code: values.code }), values)
-            : { values }
         return state.dialog?.kind === 'add' && state.enrollment === 'name'
           ? contractResult(PasskeyRegistrationInput.safeParse({ name: values.name }), values)
           : { values }
       },
       submit: async (values) => {
         const state = controller.store.getState()
-        if (state.reauthentication) {
-          await controller.verifyEmail(values.code)
-          return false as const
-        }
         if (state.dialog?.kind === 'add' && state.enrollment === 'device') {
           await controller.prepare()
           return false as const
@@ -251,14 +243,14 @@ function PasskeyDialogContent() {
   )
   return (
     <Dialog.Root
-      open
+      open={!suspended}
       onOpenChange={(open) => {
         if (!open) controller.close()
       }}
     >
       <Dialog.Content
         className={
-          dialog.kind === 'remove' && !reauthentication
+          dialog.kind === 'remove'
             ? 'w-120 max-w-[calc(100vw-2rem)] rounded-xl bg-inset md:top-[28.2svh] md:right-2 md:bottom-auto md:left-61'
             : 'w-120 max-w-[calc(100vw-2rem)] rounded-xl bg-inset'
         }
@@ -266,50 +258,23 @@ function PasskeyDialogContent() {
         <Form.Root model={form}>
           <Dialog.Header className="border-0 px-6 pt-6 pb-0">
             <Dialog.Title className="text-ui-15 leading-6 font-semibold">
-              {reauthentication
-                ? 'Verify your identity'
-                : dialog.kind === 'add'
-                  ? enrollment === 'name'
-                    ? 'Name your passkey'
-                    : 'Create a passkey'
-                  : `Revoke access for "${passkeyName ?? 'passkey'}"?`}
+              {dialog.kind === 'add'
+                ? enrollment === 'name'
+                  ? 'Name your passkey'
+                  : 'Create a passkey'
+                : `Revoke access for "${passkeyName ?? 'passkey'}"?`}
             </Dialog.Title>
-            {dialog.kind === 'add' || reauthentication ? <Dialog.Close /> : null}
+            {dialog.kind === 'add' ? <Dialog.Close /> : null}
           </Dialog.Header>
-          <Dialog.Body
-            className={
-              dialog.kind === 'remove' && !reauthentication ? 'grid gap-4 px-6 pt-1 pb-1' : 'grid gap-4 px-6 pt-1 pb-4'
-            }
-          >
+          <Dialog.Body className={dialog.kind === 'remove' ? 'grid gap-4 px-6 pt-1 pb-1' : 'grid gap-4 px-6 pt-1 pb-4'}>
             <Dialog.Description className="text-ui-15 leading-6">
-              {reauthentication
-                ? 'Verify with a passkey or an email code, then confirm your change.'
-                : dialog.kind === 'add'
-                  ? enrollment === 'name'
-                    ? 'Give your passkey a name so you can recognize it later.'
-                    : 'Follow your device’s instructions to create a passkey.'
-                  : 'You cannot undo this action.'}
+              {dialog.kind === 'add'
+                ? enrollment === 'name'
+                  ? 'Give your passkey a name so you can recognize it later.'
+                  : 'Follow your device’s instructions to create a passkey.'
+                : 'You cannot undo this action.'}
             </Dialog.Description>
-            {reauthentication ? (
-              emailSent ? (
-                <>
-                  <CodeEntry name="code" aria-label="Email verification code" disabled={busy} />
-                  <Form.Error name="code" />
-                  <Button variant="link" onClick={() => void controller.sendEmail()} loading={busy}>
-                    Send a new code
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button onClick={() => void controller.verifyPasskey()} loading={busy}>
-                    Use passkey
-                  </Button>
-                  <Button variant="ghost" onClick={() => void controller.sendEmail()} loading={busy}>
-                    Send email code
-                  </Button>
-                </>
-              )
-            ) : dialog.kind === 'add' && enrollment === 'name' ? (
+            {dialog.kind === 'add' && enrollment === 'name' ? (
               <label className="grid gap-2 text-sm">
                 Passkey name
                 <TextField name="name" placeholder="For example, Personal laptop" readOnly={busy} />
@@ -322,33 +287,23 @@ function PasskeyDialogContent() {
               </p>
             ) : null}
             {error ? (
-              <p role="alert" className="text-sm text-destructive">
+              <p role="alert" className="text-center text-sm text-destructive">
                 {error}
               </p>
             ) : null}
           </Dialog.Body>
-          <Dialog.Footer
-            className={dialog.kind === 'remove' && !reauthentication ? 'border-0 px-6 pt-4 pb-6' : 'border-0 px-6 pt-0 pb-5'}
-          >
+          <Dialog.Footer className={dialog.kind === 'remove' ? 'border-0 px-6 pt-4 pb-6' : 'border-0 px-6 pt-0 pb-5'}>
             <Dialog.Cancel variant="neutral" className="h-8 px-3">
               Cancel
             </Dialog.Cancel>
-            {!reauthentication || emailSent ? (
-              <Button
-                type="submit"
-                variant={dialog.kind === 'remove' && !reauthentication ? 'destructive' : 'primary'}
-                loading={busy}
-                className="px-3 text-primary-foreground"
-              >
-                {reauthentication
-                  ? 'Verify email code'
-                  : dialog.kind === 'add'
-                    ? enrollment === 'name'
-                      ? 'Save'
-                      : 'Try again'
-                    : 'Revoke'}
-              </Button>
-            ) : null}
+            <Button
+              type="submit"
+              variant={dialog.kind === 'remove' ? 'destructive' : 'primary'}
+              loading={busy}
+              className="px-3 text-primary-foreground"
+            >
+              {dialog.kind === 'add' ? (enrollment === 'name' ? 'Save' : 'Try again') : 'Revoke'}
+            </Button>
           </Dialog.Footer>
         </Form.Root>
       </Dialog.Content>

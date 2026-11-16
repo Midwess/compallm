@@ -23,7 +23,4 @@ export interface PasskeyController {
   rename(id: string, name: string): Promise<boolean>
   add(name: string): Promise<boolean>
   remove(id: string): Promise<boolean>
-  verifyPasskey(): Promise<boolean>
-  sendEmail(): Promise<boolean>
-  verifyEmail(code: string): Promise<boolean>
 }

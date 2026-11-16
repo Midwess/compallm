@@ -124,38 +124,100 @@ test('cancel discards the pending credential response and expired naming require
   assert.equal(controller.store.getState().dialog, null)
 })
 
-test('rename denial opens verification and email proof uses PASSKEY_CHANGE without replaying the rename', async (t) => {
+test('management delegates verification to auth and never replays a rename', async (t) => {
+  const store = createStore(() => ({ currentUser: { id: 'session', userId: '42' } }))
+  let finish,
+    verificationSignal,
+    writes = 0
+  const controller = new PasskeyController({
+    store,
+    requestVerification: (signal) => {
+      verificationSignal = signal
+      return new Promise((resolve) => {
+        finish = resolve
+      })
+    },
+  })
+  t.after(controller.start())
+  t.mock.method(globalThis, 'fetch', async () => {
+    writes++
+    return Response.json({
+      data: null,
+      errors: [
+        {
+          message: 'Verify',
+          extensions: {
+            code: 'REAUTHENTICATION_REQUIRED',
+            status: 401,
+          },
+        },
+      ],
+    })
+  })
+  const pending = controller.rename('1', 'Work')
+  while (!finish) await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(verificationSignal.aborted, false)
+  finish(true)
+  assert.equal(await pending, false)
+  assert.equal(writes, 1)
+  assert.equal(controller.store.getState().reauthentication, false)
+  assert.equal(controller.store.getState().dialog, null)
+})
+
+test('native duplicate credential rejection explains the existing passkey and allows another device', async (t) => {
   const { controller, stop } = setup()
   t.after(stop)
-  let renames = 0
-  t.mock.method(globalThis, 'fetch', async (_url, init) => {
-    const { query, variables } = JSON.parse(init.body)
-    if (query.includes('passkeyUpdate')) {
-      renames++
-      return Response.json({
-        data: null,
-        errors: [{ message: 'Verify your identity', extensions: { code: 'REAUTHENTICATION_REQUIRED', status: 401 } }],
-      })
+  const originalSecure = Object.getOwnPropertyDescriptor(globalThis, 'isSecureContext')
+  const originalCredential = Object.getOwnPropertyDescriptor(globalThis, 'PublicKeyCredential')
+  Object.defineProperty(globalThis, 'isSecureContext', { configurable: true, value: true })
+  Object.defineProperty(globalThis, 'PublicKeyCredential', { configurable: true, value: class {} })
+  t.after(() => {
+    for (const [key, descriptor] of [
+      ['isSecureContext', originalSecure],
+      ['PublicKeyCredential', originalCredential],
+    ]) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor)
+      else delete globalThis[key]
     }
-    if (query.includes('userProfile')) return reply({ userProfile: { node: { email: 'owner@example.com' } } })
-    const input = Object.values(variables).find((v) => v?.purpose)
-    assert.equal(input.purpose, 'PASSKEY_CHANGE')
-    if (query.includes('emailSigninRequest')) {
-      assert.equal(input.email, 'owner@example.com')
-      return reply({ emailSigninRequest: { node: { lifetime: { expiresAt: '180' } } } })
-    }
-    assert.ok(query.includes('emailSigninConfirm'))
-    assert.equal(input.code, '123456')
-    return reply({ emailSigninConfirm: { node: { purpose: 'PASSKEY_CHANGE' } } })
   })
-  controller.edit('1')
-  assert.equal(await controller.rename('1', 'Work'), false)
-  assert.equal(controller.store.getState().reauthentication, true)
-  assert.equal(controller.store.getState().dialog.kind, 'verify')
-  assert.equal(await controller.sendEmail(), true)
-  assert.equal(controller.store.getState().emailSent, true)
-  assert.equal(await controller.verifyEmail('123456'), true)
-  assert.equal(controller.store.getState().dialog, null)
-  assert.equal(controller.store.getState().editingId, '1')
-  assert.equal(renames, 1)
+  const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: {
+      credentials: {
+        create: async () => {
+          throw new DOMException('Excluded credential', 'InvalidStateError')
+        },
+      },
+    },
+  })
+  t.after(() => {
+    if (originalNavigator) Object.defineProperty(globalThis, 'navigator', originalNavigator)
+  })
+  t.mock.method(globalThis, 'fetch', async () =>
+    reply({
+      passkeyRegistrationStart: {
+        node: {
+          token: 'ceremony',
+          expiresAt: '9999999999',
+          options: {
+            challenge: 'AQ',
+            rpId: 'localhost',
+            rpName: 'Compallm',
+            userId: 'AQ',
+            userName: 'owner@example.com',
+            userDisplayName: 'Owner',
+            algorithms: [-7],
+            credentials: [],
+            timeout: 300000,
+            userVerification: 'required',
+            residentKey: 'required',
+            extensions: {},
+          },
+        },
+      },
+    }),
+  )
+  assert.equal(await controller.prepare(), false)
+  assert.match(controller.store.getState().error, /already exists/)
 })

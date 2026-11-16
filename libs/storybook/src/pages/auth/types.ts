@@ -17,6 +17,8 @@ export type AuthUser = Pick<Session, 'id' | 'userId' | 'organizationId' | 'organ
   Partial<Pick<Session, 'avatarUrl'>>
 
 export interface AuthState {
+  verificationActive?: boolean
+  lastLoginMethod?: 'email' | 'passkey' | null
   currentUser: AuthUser | null
   status: 'unknown' | 'checking' | 'authenticated' | 'anonymous' | 'error'
   step: 'choose' | 'email' | 'code' | 'passkey' | 'complete'
@@ -44,6 +46,8 @@ export interface AuthController {
   clearError(): void
   onInvalidEmail(): void
   requestCode(email: string): Promise<void>
+  requestVerification?(signal?: AbortSignal): Promise<boolean>
+  cancelVerification?(): void
   verifyPasskey?(): Promise<void>
   useEmailCode?(): Promise<void>
   backToMethods?(): void

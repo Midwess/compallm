@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { userEvent, within } from 'storybook/test'
 import { AuthDemo } from '../auth-demo'
 import { ControllerSubscriptions } from '../controller-subscriptions'
 
@@ -21,16 +20,9 @@ export const Default: Story = { render: () => <AuthDemo mode="signup" /> }
 export const Subscriptions: Story = { render: () => <ControllerSubscriptions /> }
 export const SendingCode: Story = {
   render: () => <AuthDemo mode="signup" scenario="pending" initialState={{ step: 'email', email: 'alex@example.com' }} />,
-  play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Continue' }))
-  },
 }
 export const CheckingCode: Story = {
   render: () => <AuthDemo mode="signup" scenario="pending" initialState={{ step: 'code', email: 'alex@example.com' }} />,
-  play: async ({ canvasElement }) => {
-    const firstDigit = within(canvasElement).getAllByRole('textbox')[0]
-    await userEvent.type(firstDigit, '123456')
-  },
 }
 export const VerifyEmail: Story = {
   render: () => <AuthDemo mode="signup" initialState={{ step: 'code', email: 'alex@example.com' }} />,

@@ -2,7 +2,7 @@ import { createStore } from 'zustand/vanilla'
 import type { PasskeyController as Contract, PasskeyState } from '@compallm/storybook'
 import type { AuthController } from '@compallm/storybook'
 import type { MutationGenqlSelection, QueryGenqlSelection, PasskeyFinishInput as FinishInput } from '@compallm/contract/graphql'
-import { PasskeyRegistrationInput, PasskeyFinishInput, EmailInput, EmailCodeInput } from '@compallm/contract/validation'
+import { PasskeyRegistrationInput, PasskeyFinishInput } from '@compallm/contract/validation'
 import { graphql, ApiError } from '../graphql-client'
 import { apiErrorMessage, notify } from '../notifications/toast'
 import { credential, ceremonySelection, passkeySelection } from './browser'
@@ -25,8 +25,8 @@ export class PasskeyController implements Contract {
   private registration?: { input: FinishInput; expiresAt: number }
   private pendingCredential?: string
   private pendingRemoval?: string
-  private readonly auth: Pick<AuthController, 'store'>
-  constructor(auth: Pick<AuthController, 'store'>) {
+  private readonly auth: Pick<AuthController, 'store' | 'requestVerification'>
+  constructor(auth: Pick<AuthController, 'store' | 'requestVerification'>) {
     this.auth = auth
   }
   start = () => {
@@ -107,7 +107,7 @@ export class PasskeyController implements Contract {
     this.registration = undefined
     this.store.setState({ dialog: null, busy: false, error: null, reauthentication: false, emailSent: false })
   }
-  private async run(work: (signal: AbortSignal) => Promise<void>) {
+  private async run(work: (signal: AbortSignal) => Promise<void>): Promise<boolean> {
     if (this.store.getState().busy) return false
     const operation = new AbortController()
     this.operation = operation
@@ -118,14 +118,29 @@ export class PasskeyController implements Contract {
       return !signal.aborted
     } catch (error) {
       if (!signal.aborted) {
-        if (error instanceof ApiError && error.code === 'REAUTHENTICATION_REQUIRED')
+        if (error instanceof ApiError && error.code === 'REAUTHENTICATION_REQUIRED') {
           this.store.setState((s) => ({ reauthentication: true, dialog: s.dialog ?? { kind: 'verify' } }))
-        else {
+          if (this.auth.requestVerification) {
+            const verified = await this.auth.requestVerification(signal)
+            if (!signal.aborted) {
+              this.store.setState((s) => ({
+                reauthentication: false,
+                dialog: verified && s.dialog?.kind !== 'verify' ? s.dialog : null,
+              }))
+              if (verified && this.store.getState().dialog?.kind === 'add' && this.store.getState().enrollment === 'device') {
+                this.store.setState({ busy: false })
+                return await this.prepare()
+              }
+            }
+          }
+        } else {
           this.store.setState({
             error:
-              error instanceof DOMException && ['NotAllowedError', 'AbortError'].includes(error.name)
-                ? 'Passkey verification was cancelled or timed out. Try again or use email.'
-                : apiErrorMessage(error),
+              error instanceof DOMException && error.name === 'InvalidStateError'
+                ? 'A passkey for this account already exists on this device. Try another device or password manager.'
+                : error instanceof DOMException && ['NotAllowedError', 'AbortError'].includes(error.name)
+                  ? 'Passkey verification was cancelled or timed out. Try again or use email.'
+                  : apiErrorMessage(error),
           })
         }
       }
@@ -134,7 +149,7 @@ export class PasskeyController implements Contract {
       if (this.operation === operation) this.store.setState({ busy: false })
     }
   }
-  prepare = () =>
+  prepare = (): Promise<boolean> =>
     this.run(async (signal) => {
       const {
         passkeyRegistrationStart: { node: ceremony },
@@ -227,52 +242,4 @@ export class PasskeyController implements Contract {
       }
     })
   }
-  verifyPasskey = () =>
-    this.run(async (signal) => {
-      const {
-        passkeyAuthenticationStart: { node: ceremony },
-      } = await graphql(signal).mutation({
-        passkeyAuthenticationStart: { __args: { purpose: 'PASSKEY_CHANGE' }, node: ceremonySelection },
-      } satisfies MutationGenqlSelection)
-      const input = PasskeyFinishInput.parse({
-        ...(await credential(ceremony.options, ceremony.token, false, signal)),
-        purpose: 'PASSKEY_CHANGE',
-      })
-      await graphql(signal).mutation({
-        passkeyAuthenticationFinish: { __args: { input }, node: { purpose: true } },
-      } satisfies MutationGenqlSelection)
-      if (!signal.aborted)
-        this.store.setState((s) => ({
-          reauthentication: false,
-          emailSent: false,
-          dialog: s.dialog?.kind === 'verify' ? null : s.dialog,
-        }))
-    })
-  sendEmail = () =>
-    this.run(async (signal) => {
-      const user = this.auth.store.getState().currentUser
-      if (!user) return
-      const profile = await graphql(signal).query({
-        userProfile: { __args: { id: user.userId }, node: { email: true } },
-      } satisfies QueryGenqlSelection)
-      const input = EmailInput.parse({ email: profile.userProfile?.node.email, purpose: 'PASSKEY_CHANGE' })
-      await graphql(signal).mutation({
-        emailSigninRequest: { __args: { input }, node: { lifetime: { expiresAt: true } } },
-      } satisfies MutationGenqlSelection)
-      if (!signal.aborted) this.store.setState({ emailSent: true })
-    })
-  verifyEmail = (code: string) =>
-    this.run(async (signal) => {
-      const input = EmailCodeInput.parse({ code, purpose: 'PASSKEY_CHANGE' })
-      await graphql(signal).mutation({
-        emailSigninConfirm: { __args: { input }, node: { purpose: true } },
-      } satisfies MutationGenqlSelection)
-      if (!signal.aborted) {
-        this.store.setState((s) => ({
-          reauthentication: false,
-          emailSent: false,
-          dialog: s.dialog?.kind === 'verify' ? null : s.dialog,
-        }))
-      }
-    })
 }

@@ -51,8 +51,8 @@ export function InvitationPage() {
     'You’re ready to join'
   ) : context ? (
     <span className="grid gap-2">
-      <span>You’re invited by</span>
-      <span className="flex min-w-0 items-center gap-3">
+      <span className="italic">You’re invited by</span>
+      <span className="flex w-fit min-w-0 max-w-full items-center gap-3 border-b border-current pb-2">
         <span className="line-clamp-2 min-w-0">{context.organizationName}</span>
         <Avatar name={context.organizationName} size={32} />
       </span>

@@ -92,3 +92,42 @@ test('reloading invitation confirmation retains code entry without requesting an
   assert.equal(controller.store.getState().step, 'code')
   assert.equal(writes, 0)
 })
+
+test('new and existing invitation recipients reach the security offer after OTP confirmation', async (t) => {
+  const { urlController } = await server.ssrLoadModule('/src/url/controller.ts')
+  const destinations = []
+  t.mock.method(urlController, 'navigate', (href) => {
+    destinations.push(href)
+  })
+  for (const signup of [true, false]) {
+    const user = {
+      id: signup ? 'new-session' : 'existing-session',
+      userId: '42',
+      organizationId: '84',
+      organizationName: 'Research',
+    }
+    t.mock.method(globalThis, 'fetch', async (_url, init) => {
+      const { query } = JSON.parse(init.body)
+      if (query.includes('invitationContext'))
+        return Response.json({
+          data: {
+            invitationContext: {
+              node: { organizationName: 'Research', email: 'reader@example.com', signup, expiresAt: 2000000000 },
+            },
+          },
+        })
+      if (query.includes('emailSignupConfirm'))
+        return Response.json({ data: { emailSignupConfirm: { node: { accessLifetime: { expiresInSeconds: '60' } } } } })
+      if (query.includes('emailSigninConfirm'))
+        return Response.json({ data: { emailSigninConfirm: { node: { accessLifetime: { expiresInSeconds: '60' } } } } })
+      return Response.json({ data: { session: { node: user } } })
+    })
+    const controller = new InvitationController()
+    const stop = controller.start()
+    await tick()
+    await controller.confirm('123456')
+    assert.equal(destinations.at(-1), '/security')
+    assert.equal(authController.securityOfferSession, user.id)
+    stop()
+  }
+})

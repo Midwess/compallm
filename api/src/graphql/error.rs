@@ -17,6 +17,21 @@ pub struct Error {
 impl From<AuthError> for Error {
     fn from(error: AuthError) -> Self {
         let (code, status, message) = match error {
+            AuthError::ReauthenticationRequired => (
+                "REAUTHENTICATION_REQUIRED",
+                403,
+                "Verify your identity to continue",
+            ),
+            AuthError::InvalidPasskey => ("PASSKEY_INVALID", 401, "Passkey verification failed"),
+            AuthError::PasskeyConflict => (
+                "PASSKEY_CONFLICT",
+                409,
+                "This passkey is already registered",
+            ),
+            AuthError::PasskeyLimit => ("PASSKEY_LIMIT", 409, "You can add up to 20 passkeys"),
+            AuthError::PasskeyUnavailable => {
+                ("PASSKEY_UNAVAILABLE", 503, "Passkeys are not configured")
+            }
             AuthError::InvalidInvitation => (
                 "INVITATION_UNAVAILABLE",
                 410,
@@ -68,7 +83,8 @@ impl From<AuthError> for Error {
                 422,
                 "Authentication credential exceeds the supported size limit",
             ),
-            AuthError::Preferences(_)
+            AuthError::PasskeyPersistence(_)
+            | AuthError::Preferences(_)
             | AuthError::SessionPersistence(_)
             | AuthError::OrganizationRepository(_)
             | AuthError::Connection(_)

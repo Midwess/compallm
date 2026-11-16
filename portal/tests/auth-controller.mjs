@@ -162,6 +162,8 @@ test('confirmed signup retries only identity loading after a temporary failure',
     assert.equal(identities, 2)
     assert.deepEqual(controller.store.getState().currentUser, user)
     assert.equal(controller.store.getState().step, 'complete')
+    assert.equal(url.destinations.at(-1), '/security')
+    assert.equal(controller.securityOfferSession, user.id)
   } finally {
     controller.stop()
     globalThis.fetch = original
@@ -194,4 +196,120 @@ test('signout cancels deduplicated identity checks and ignores their late result
     controller.stop()
     globalThis.fetch = original
   }
+})
+
+test(
+  'discoverable login starts without email and the email alternative waits for an explicit address',
+  { timeout: 10000 },
+  async () => {
+    const originalFetch = globalThis.fetch
+    const controller = new AuthController(urlController())
+    let sent = 0,
+      started = 0
+    globalThis.fetch = async (_url, init) => {
+      const { query, variables } = JSON.parse(init.body)
+      if (query.includes('passkeyAuthenticationStart')) {
+        started++
+        assert.ok(!query.includes('email:'))
+        assert.ok(!JSON.stringify(variables ?? {}).includes('@'))
+        return Response.json({
+          errors: [{ message: 'Passkey unavailable', extensions: { code: 'PASSKEY_UNAVAILABLE', status: 503 } }],
+        })
+      }
+      if (query.includes('emailSigninRequest')) {
+        sent++
+        return reply({ emailSigninRequest: { node: { lifetime: { expiresInSeconds: '600', throttleSeconds: '30' } } } })
+      }
+      throw new Error('Unexpected request')
+    }
+    try {
+      controller.start('signin')
+      assert.equal(controller.store.getState().step, 'choose')
+      await controller.verifyPasskey()
+      assert.equal(started, 1)
+      assert.equal(sent, 0)
+      await controller.useEmailCode()
+      assert.equal(controller.store.getState().step, 'email')
+      assert.equal(sent, 0)
+      await controller.requestCode('reader@example.com')
+      assert.equal(controller.store.getState().step, 'code')
+      assert.equal(sent, 1)
+    } finally {
+      controller.stop()
+      globalThis.fetch = originalFetch
+    }
+  },
+)
+
+test('the optional security route is offered once and reload skips to the workspace', async (t) => {
+  const { loader } = await server.ssrLoadModule('/src/routes/security.tsx')
+  const { authController } = await server.ssrLoadModule('/src/auth/controller.ts')
+  t.mock.method(authController, 'ensureCurrentUser', async () => user)
+  authController.securityOfferSession = user.id
+  assert.equal(await loader(), null)
+  const next = await loader()
+  assert.equal(next.headers.get('Location'), '/Personal')
+  authController.securityOfferSession = undefined
+  const reload = await loader()
+  assert.equal(reload.headers.get('Location'), '/Personal')
+})
+
+test('sensitive verification preserves identity and uses purpose without navigation', async (t) => {
+  const url = urlController()
+  const controller = new AuthController(url)
+  controller.store.setState({ currentUser: user, status: 'authenticated' })
+  t.after(controller.stop)
+  const writes = []
+  t.mock.method(globalThis, 'fetch', async (_url, init) => {
+    const { query, variables } = JSON.parse(init.body)
+    if (query.includes('userProfile')) return reply({ userProfile: { node: { email: 'owner@example.com' } } })
+    const input = Object.values(variables).find((value) => value?.purpose)
+    assert.equal(input.purpose, 'PASSKEY_CHANGE')
+    writes.push(query.includes('emailSigninRequest') ? 'request' : 'confirm')
+    if (query.includes('emailSigninRequest'))
+      return reply({
+        emailSigninRequest: {
+          node: {
+            lifetime: { expiresInSeconds: '180', throttleSeconds: '0' },
+          },
+        },
+      })
+    return reply({ emailSigninConfirm: { node: { purpose: 'PASSKEY_CHANGE' } } })
+  })
+  const result = controller.requestVerification()
+  await controller.useEmailCode()
+  await controller.requestCode('')
+  assert.equal(controller.store.getState().step, 'code')
+  await controller.verifyCode('123456')
+  assert.equal(await result, true)
+  assert.equal(controller.store.getState().verificationActive, false)
+  assert.equal(controller.store.getState().currentUser, user)
+  assert.equal(controller.store.getState().lastLoginMethod, 'email')
+  assert.deepEqual(url.destinations, [])
+  assert.deepEqual(writes, ['request', 'confirm'])
+})
+
+test('cancelling sensitive verification ignores late results and preserves identity', async (t) => {
+  const controller = new AuthController(urlController())
+  controller.store.setState({ currentUser: user, status: 'authenticated' })
+  t.after(controller.stop)
+  let resolve
+  t.mock.method(
+    globalThis,
+    'fetch',
+    () =>
+      new Promise((done) => {
+        resolve = done
+      }),
+  )
+  const result = controller.requestVerification()
+  await controller.useEmailCode()
+  const request = controller.requestCode('')
+  controller.cancelVerification()
+  resolve(reply({ userProfile: { node: { email: 'owner@example.com' } } }))
+  await request
+  assert.equal(await result, false)
+  assert.equal(controller.store.getState().verificationActive, false)
+  assert.equal(controller.store.getState().currentUser, user)
+  assert.equal(controller.store.getState().step, 'choose')
 })

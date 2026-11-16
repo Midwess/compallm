@@ -111,7 +111,7 @@ function SharedSettingsForm() {
         <ProtectedSettingsScreen />
       </UserPreferencePage>
     )
-  if (['role', 'new-role', 'group', 'new-group', 'members', 'organization-onboarding'].includes(page))
+  if (['role', 'new-role', 'group', 'new-group', 'members', 'organization-onboarding', 'security'].includes(page))
     return <ProtectedSettingsScreen />
   return (
     <Form.Root model={form}>

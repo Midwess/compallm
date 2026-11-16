@@ -320,6 +320,9 @@ impl InvitationService {
         signup: bool,
     ) -> Result<UserTokens, AuthError> {
         otp.verify_code(code, unix_timestamp())?;
+        if otp.purpose != crate::authentication::AuthenticationPurpose::Login {
+            return Err(AuthError::WrongTokenVariant);
+        }
         if otp.invitation_id != Some(invitation.invitation_id) || otp.email != invitation.email {
             return Err(AuthError::InvalidInvitation);
         }
@@ -415,7 +418,7 @@ impl InvitationService {
                 )
                 .await?;
             self.auth
-                .start_session(user.id, membership, dictionary)
+                .start_enrollment_session(user.id, membership, dictionary)
                 .await
         })
     }

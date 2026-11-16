@@ -3,6 +3,11 @@ schema {
   mutation: Mutation
 }
 
+enum AuthenticationPurpose {
+  LOGIN
+  PASSKEY_CHANGE
+}
+
 "How the request delivers credentials; this is never stored in signed claims."
 enum CredentialDelivery {
   "Set HttpOnly cookies and return metadata without credential values."
@@ -235,6 +240,7 @@ The verified encrypted challenge comes from request context, never this input.
 The adapter calls `validify()` before Core verifies the code and challenge.
 """
 input EmailCodeInput {
+  purpose: AuthenticationPurpose = LOGIN
   "Exactly six ASCII digits after trimming surrounding whitespace."
   code: String!
   "Cookie delivery is the default; token delivery must be requested explicitly."
@@ -248,6 +254,7 @@ Call `validify()` before Core execution. GraphQL parsing alone does not run
 normalization, application validation, or email ownership checks.
 """
 input EmailInput {
+  purpose: AuthenticationPurpose = LOGIN
   "Trimmed and ASCII-lowercased using the shared Rust email policy."
   email: String!
   invitation: Boolean = false
@@ -349,6 +356,24 @@ input OrganizationSettingsUpdateInput {
 input PalettePatchInput {
   light: PreferenceLightPalette
   dark: PreferenceDarkPalette
+}
+
+input PasskeyFinishInput {
+  purpose: AuthenticationPurpose = LOGIN
+  token: String!
+  id: String!
+  rawId: String!
+  clientDataJson: String!
+  attestationObject: String
+  authenticatorData: String
+  signature: String
+  userHandle: String
+  transports: [String!]
+  delivery: CredentialDelivery = COOKIE
+}
+
+input PasskeyRegistrationInput {
+  name: String!
 }
 
 input ProfileUpdateInput {
@@ -605,6 +630,10 @@ type GroupPayload {
   node: Group!
 }
 
+type IDPayload {
+  node: ID!
+}
+
 type Invitation {
   id: ID!
   organizationId: ID!
@@ -710,6 +739,12 @@ type MessageCompositionPreferences {
 }
 
 type Mutation {
+  passkeyRegistrationStart: PasskeyCeremonyPayload!
+  passkeyRegistrationFinish(input: PasskeyFinishInput!, name: PasskeyRegistrationInput!): PasskeySummaryPayload!
+  passkeyUpdate(id: ID!, input: PasskeyRegistrationInput!): PasskeySummaryPayload!
+  passkeyAuthenticationStart(purpose: AuthenticationPurpose! = LOGIN): PasskeyCeremonyPayload!
+  passkeyAuthenticationFinish(input: PasskeyFinishInput!): SessionCredentialsPayload!
+  passkeyRemove(id: ID!): IDPayload!
   analyticUserProfilePut(input: AnalyticUserProfilePutInput!): AnalyticUserProfilePayload!
   organizationOnboardingSettingsUpdate(input: OrganizationOnboardingSettingsInput!): OrganizationOnboardingSettingsPayload!
   onboardingAdvance(back: Boolean! = false): OnboardingContextPayload!
@@ -810,6 +845,64 @@ type PalettePreferences {
   dark: PreferenceDarkPalette!
 }
 
+type PasskeyCeremony {
+  token: String!
+  expiresAt: String!
+  options: PasskeyOptions!
+}
+
+type PasskeyCeremonyPayload {
+  node: PasskeyCeremony!
+}
+
+type PasskeyDescriptor {
+  id: String!
+  transports: [String!]!
+}
+
+type PasskeyExtensions {
+  credProps: Boolean
+  credentialProtectionPolicy: String
+  enforceCredentialProtectionPolicy: Boolean
+}
+
+type PasskeyOptions {
+  challenge: String!
+  rpId: String!
+  rpName: String
+  userId: String
+  userName: String
+  userDisplayName: String
+  algorithms: [Int!]!
+  credentials: [PasskeyDescriptor!]!
+  extensions: PasskeyExtensions!
+  timeout: Int!
+  residentKey: String
+  userVerification: String!
+}
+
+type PasskeySummary {
+  id: ID!
+  credentialId: String!
+  name: String!
+  registeredAt: String!
+  lastUsedAt: String
+}
+
+type PasskeySummaryConnection {
+  edges: [PasskeySummaryEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PasskeySummaryEdge {
+  cursor: String!
+  node: PasskeySummary!
+}
+
+type PasskeySummaryPayload {
+  node: PasskeySummary!
+}
+
 type PolicyAction {
   name: String!
   displayName: String!
@@ -840,6 +933,7 @@ type ProviderTemplate {
 }
 
 type Query {
+  passkeys: PasskeySummaryConnection!
   analyticUserProfile(key: String!): AnalyticUserProfilePayload
   onboardingContext: OnboardingContextPayload
   organizationOnboardingSettings: OrganizationOnboardingSettingsPayload!
@@ -893,6 +987,7 @@ type RolePayload {
 }
 
 type Session {
+  passkey: PasskeySummary
   "Public avatar for this user; clients show a fallback while absent or loading."
   avatarUrl: String
   "Login session identity, serialized as a string without numeric precision loss."
@@ -907,8 +1002,11 @@ type Session {
 
 "Timing is always returned; credential values exist only in explicit TOKEN delivery."
 type SessionCredentials {
-  accessLifetime: TokenLifetime!
-  refreshLifetime: TokenLifetime!
+  purpose: AuthenticationPurpose!
+  accessLifetime: TokenLifetime
+  refreshLifetime: TokenLifetime
+  passkeyChangeLifetime: TokenLifetime
+  passkeyChangeToken: String
   accessToken: String
   refreshToken: String
 }

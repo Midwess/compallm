@@ -24,6 +24,11 @@ input AnalyticUserProfilePutInput {
   value: String!
 }
 
+enum AuthenticationPurpose {
+  LOGIN
+  PASSKEY_CHANGE
+}
+
 type AvatarUpload {
   """
   Expiration as Unix seconds, encoded as a string.
@@ -126,6 +131,7 @@ input EmailCodeInput {
   Cookie delivery is the default; token delivery must be requested explicitly.
   """
   delivery: CredentialDelivery = COOKIE
+  purpose: AuthenticationPurpose = LOGIN
 }
 
 """
@@ -145,6 +151,7 @@ input EmailInput {
   """
   email: String!
   invitation: Boolean = false
+  purpose: AuthenticationPurpose = LOGIN
 }
 
 enum FilterIs {
@@ -197,6 +204,10 @@ enum HomeDestination {
 
 input IDFilter {
   eq: ID
+}
+
+type IDPayload {
+  node: ID!
 }
 
 enum ImageMediaType {
@@ -411,6 +422,22 @@ type Mutation {
   organizationProfileUpdate(
     input: OrganizationProfileUpdateInput!
   ): OrganizationPayload!
+  passkeyAuthenticationFinish(
+    input: PasskeyFinishInput!
+  ): SessionCredentialsPayload!
+  passkeyAuthenticationStart(
+    purpose: AuthenticationPurpose! = LOGIN
+  ): PasskeyCeremonyPayload!
+  passkeyRegistrationFinish(
+    input: PasskeyFinishInput!
+    name: PasskeyRegistrationInput!
+  ): PasskeySummaryPayload!
+  passkeyRegistrationStart: PasskeyCeremonyPayload!
+  passkeyRemove(id: ID!): IDPayload!
+  passkeyUpdate(
+    id: ID!
+    input: PasskeyRegistrationInput!
+  ): PasskeySummaryPayload!
   roleAssign(id: ID!, memberId: ID!): RolePayload!
 
   """
@@ -570,6 +597,82 @@ input PalettePatchInput {
 type PalettePreferences {
   dark: PreferenceDarkPalette!
   light: PreferenceLightPalette!
+}
+
+type PasskeyCeremony {
+  expiresAt: String!
+  options: PasskeyOptions!
+  token: String!
+}
+
+type PasskeyCeremonyPayload {
+  node: PasskeyCeremony!
+}
+
+type PasskeyDescriptor {
+  id: String!
+  transports: [String!]!
+}
+
+type PasskeyExtensions {
+  credProps: Boolean
+  credentialProtectionPolicy: String
+  enforceCredentialProtectionPolicy: Boolean
+}
+
+input PasskeyFinishInput {
+  attestationObject: String
+  authenticatorData: String
+  clientDataJson: String!
+  delivery: CredentialDelivery = COOKIE
+  id: String!
+  purpose: AuthenticationPurpose = LOGIN
+  rawId: String!
+  signature: String
+  token: String!
+  transports: [String!]
+  userHandle: String
+}
+
+type PasskeyOptions {
+  algorithms: [Int!]!
+  challenge: String!
+  credentials: [PasskeyDescriptor!]!
+  extensions: PasskeyExtensions!
+  residentKey: String
+  rpId: String!
+  rpName: String
+  timeout: Int!
+  userDisplayName: String
+  userId: String
+  userName: String
+  userVerification: String!
+}
+
+input PasskeyRegistrationInput {
+  name: String!
+}
+
+type PasskeySummary {
+  credentialId: String!
+  id: ID!
+  lastUsedAt: String
+  name: String!
+  registeredAt: String!
+}
+
+type PasskeySummaryConnection {
+  edges: [PasskeySummaryEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PasskeySummaryEdge {
+  cursor: String!
+  node: PasskeySummary!
+}
+
+type PasskeySummaryPayload {
+  node: PasskeySummary!
 }
 
 type PolicyAction {
@@ -894,6 +997,7 @@ type Query {
   """
   organizationPolicyActions: PolicyActionConnection!
   organizationProfile(id: ID!): OrganizationPayload
+  passkeys: PasskeySummaryConnection!
 
   """
   Find visible role metadata in the active organization.
@@ -989,6 +1093,7 @@ type Session {
   Current organization name.
   """
   organizationName: String!
+  passkey: PasskeySummary
 
   """
   User owning this verified session.
@@ -1000,9 +1105,12 @@ type Session {
 Timing is always returned; credential values exist only in explicit TOKEN delivery.
 """
 type SessionCredentials {
-  accessLifetime: TokenLifetime!
+  accessLifetime: TokenLifetime
   accessToken: String
-  refreshLifetime: TokenLifetime!
+  passkeyChangeLifetime: TokenLifetime
+  passkeyChangeToken: String
+  purpose: AuthenticationPurpose!
+  refreshLifetime: TokenLifetime
   refreshToken: String
 }
 

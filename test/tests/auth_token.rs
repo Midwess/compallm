@@ -655,3 +655,40 @@ fn access_requires_the_signed_snapshot_and_refresh_omits_it() {
             .is_none()
     );
 }
+
+#[test]
+fn passkey_change_verification_is_local_bound_and_expires_after_three_minutes() {
+    use compallm_core::authentication::PasskeyChangeToken;
+    let session = stored_session(1, 7, 84, "Research team");
+    let claims = PasskeyChangeToken::new(&session).unwrap();
+    assert!(claims.validate(claims.validity.issued_at + 179).is_ok());
+    assert!(claims.validate(claims.validity.issued_at + 180).is_err());
+    let token = AccessToken::PasskeyChange(claims.clone())
+        .encode(SECRET, Duration::from_secs(180))
+        .unwrap();
+    for _ in 0..2 {
+        assert!(AccessToken::decode_passkey_change(&token, SECRET, &session).is_ok());
+    }
+    let mut foreign = session.clone();
+    foreign.user_id += 1;
+    assert!(AccessToken::decode_passkey_change(&token, SECRET, &foreign).is_err());
+    foreign = session.clone();
+    foreign.id += 1;
+    assert!(AccessToken::decode_passkey_change(&token, SECRET, &foreign).is_err());
+    let mut bytes = URL_SAFE_NO_PAD.decode(&token).unwrap();
+    let last = bytes.len() - 1;
+    bytes[last] ^= 1;
+    assert!(
+        AccessToken::decode_passkey_change(&URL_SAFE_NO_PAD.encode(bytes), SECRET, &session)
+            .is_err()
+    );
+    assert!(UserAccessToken::try_from(AccessToken::PasskeyChange(claims.clone())).is_err());
+    let mut expired = claims;
+    expired.validity.issued_at -= 181;
+    expired.validity.expires_at -= 181;
+    assert!(expired.authorize(&session).is_err());
+    assert!(
+        AccessToken::decode_passkey_change(&Fixture::tokens().access_token, SECRET, &session)
+            .is_err()
+    );
+}

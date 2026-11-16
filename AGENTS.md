@@ -129,6 +129,29 @@ conventions:
     use: concrete clients, reused pools, bounded timeouts
     never: hold database transactions across email or HTTP calls
 
+  portal-responsiveness:
+    applies-to: API requests, response processing, permissions, and growing Portal collections
+    rules: |
+      Diagnose visible loading or scrolling flicker with a browser performance trace. Attribute main-thread tasks, frame gaps,
+      React render/commit time, mounted rows, and worker messages before changing code; measure the same interaction again.
+      Keep the request progress animation as a visual reference, and investigate application work in every build environment.
+      Review budgets for collections are no attributable task over 50 ms and incremental render p95 at or below 5 ms; these are
+      measurement targets, not guarantees that a single React commit can be interrupted.
+
+      Reuse the shared GraphQL client and request-activity tracking. Parse each response once while retaining safe HTTP/GraphQL
+      error handling, cancellation, and authentication checks. Request bounded pages and only needed fields; cancel obsolete reads,
+      ignore stale results, and retain confirmed data on recoverable failures. Never replay authentication or uncertain writes.
+      Reconcile successful mutations from confirmed results without reloading an entire directory when a targeted update suffices;
+      preserve unchanged record identities, loaded cursors, drafts, and scroll position.
+
+      Use the shared data-driven Table/List collection primitives for growing collections, and follow libs/storybook/AGENTS.md
+      and https://github.com/Midwess/compallm/wiki/Portal-rendering. Keep the existing page scroll owner, table layout, keyboard
+      behavior, and focused/open editors.
+      Use the shared yieldToBrowser/processInSlices for cancellable application work; yield between bounded batches, knowing that
+      yielding cannot interrupt expensive individual work or React commits. Keep option rendering and option-specific permission
+      checks lazy. Reuse the permission controller's deduplicated worker batching; unknown or stale permission facts remain denied,
+      and authorization is still enforced by the API and Core.
+
   database:
     repository-queries:
       must: SeaORM syntax

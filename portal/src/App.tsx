@@ -1,10 +1,16 @@
+import { AuthVerificationHost } from '@compallm/storybook'
 import { createBrowserRouter, Link, Outlet } from 'react-router'
 import { urlController } from './url/controller'
 import { redirect } from 'react-router'
 import { guestOnly, requireCurrentUser, organizationIndex, confirmationAccess } from './auth/route-access'
 
 function Layout() {
-  return <Outlet />
+  return (
+    <>
+      <Outlet />
+      <AuthVerificationHost />
+    </>
+  )
 }
 
 function RouteError() {
@@ -39,6 +45,7 @@ export const router = createBrowserRouter([
     HydrateFallback: InitialLoading,
     children: [
       { index: true, loader: guestOnly, lazy: () => import('./routes/signup') },
+      { path: 'security', lazy: () => import('./routes/security') },
       { path: 'invitation', lazy: () => import('./routes/invitation') },
       { path: 'login', loader: guestOnly, lazy: () => import('./routes/login') },
       { path: 'signup', loader: guestOnly, lazy: () => import('./routes/signup') },

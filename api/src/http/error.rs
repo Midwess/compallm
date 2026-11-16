@@ -24,7 +24,8 @@ impl From<AuthError> for RequestError {
         match error {
             AuthError::ExpiredToken => Self::Expired,
             AuthError::TokenTooLarge { .. } => Self::CredentialTooLarge,
-            AuthError::SessionPersistence(_)
+            AuthError::PasskeyPersistence(_)
+            | AuthError::SessionPersistence(_)
             | AuthError::OrganizationRepository(_)
             | AuthError::Connection(_)
             | AuthError::DictionaryUnavailable

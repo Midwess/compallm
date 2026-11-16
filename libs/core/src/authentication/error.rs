@@ -14,6 +14,19 @@ impl From<crate::user::RegistrationError> for AuthError {
 
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {
+    #[error("passkeys are unavailable")]
+    PasskeyUnavailable,
+    #[error("passkey verification failed")]
+    InvalidPasskey,
+    #[error("verify your identity again")]
+    ReauthenticationRequired,
+    #[error("passkey limit reached")]
+    PasskeyLimit,
+    #[error("passkey is already registered")]
+    PasskeyConflict,
+    #[error("passkey storage is unavailable")]
+    PasskeyPersistence(#[source] anyhow::Error),
+
     #[error("invitation is no longer available")]
     InvalidInvitation,
     #[error("recipient is already a member or has a pending invitation")]

@@ -19,6 +19,8 @@ settings:
     tls: |-
       <%= get_env(name="SMTP_TLS", default="starttls") | indent(width=6) %>
   graphql:
+    passkey_rp_id: "<%= get_env(name="PASSKEY_RP_ID", default="") %>"
+    passkey_origin: "<%= get_env(name="PASSKEY_ORIGIN", default="") %>"
     cookie_secure: <%= get_env(name="AUTH_COOKIE_false", default="false") %>
     public_origin: |-
       <%= get_env(name="AUTH_PUBLIC_ORIGIN", default="") | indent(width=6) %>

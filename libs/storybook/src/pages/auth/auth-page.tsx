@@ -37,7 +37,7 @@ const errors = {
 
 export function AuthenticationPage({ mode }: { mode: Mode }) {
   return (
-    <AuthLayout>
+    <AuthLayout centered={mode === 'signin'}>
       <AuthContent mode={mode} />
     </AuthLayout>
   )
@@ -46,13 +46,14 @@ export function AuthenticationPage({ mode }: { mode: Mode }) {
 function AuthContent({ mode }: { mode: Mode }) {
   const step = useAuthState((state) => state.step)
   if (step === 'complete') return <Completion mode={mode} />
+  if (mode === 'signin' && (step === 'choose' || step === 'passkey')) return <PasskeyLogin />
   return (
-    <div data-route={pagePaths[mode]} className="flex flex-col gap-6">
-      <h1 className="m-0 text-ui-28 leading-10 font-medium tracking-[-0.5px]">
+    <div data-route={pagePaths[mode]} className={mode === 'signin' ? 'flex flex-col gap-6 text-center' : 'flex flex-col gap-6'}>
+      <h1 className={mode === 'signin' ? 'm-0 text-lg font-medium' : 'm-0 text-ui-28 leading-10 font-medium tracking-[-0.5px]'}>
         {step === 'email'
           ? mode === 'signup'
             ? 'Create your account.'
-            : 'Welcome back.'
+            : 'Log in to Compallm'
           : mode === 'signup'
             ? 'Verify your email.'
             : 'Check your email.'}
@@ -94,7 +95,7 @@ function EmailForm({ mode }: { mode: Mode }) {
   return (
     <Form.Root
       model={model}
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-4 text-left"
       noValidate
       aria-label={mode === 'signup' ? 'Create account' : 'Sign in'}
     >
@@ -107,6 +108,11 @@ function EmailForm({ mode }: { mode: Mode }) {
       <FeedbackSlot className="h-12 shrink-0">
         <ErrorMessage />
       </FeedbackSlot>
+      {mode === 'signin' ? (
+        <Button variant="link" onClick={() => controller.backToMethods?.()}>
+          Back to log in
+        </Button>
+      ) : null}
       <AccountLink mode={mode} />
     </Form.Root>
   )
@@ -136,7 +142,7 @@ export function ContinueButton() {
   const remaining = useAuthState((state) => state.remaining)
   return (
     <Button className="w-full" variant="primary" size="authentication" type="submit" loading={pending} disabled={remaining > 0}>
-      {pending ? 'Sending code…' : remaining > 0 ? `Try again in ${remaining}s` : 'Continue'}
+      {pending ? 'Continuing…' : remaining > 0 ? `Try again in ${remaining}s` : 'Continue'}
     </Button>
   )
 }
@@ -144,6 +150,31 @@ export function ContinueButton() {
 function AccountLink({ mode }: { mode: Mode }) {
   const controller = useAuthController()
   const target = mode === 'signup' ? 'signin' : 'signup'
+  if (mode === 'signin')
+    return (
+      <p className="m-0 flex items-center justify-center gap-1 text-xsm leading-4 text-muted-foreground">
+        Don’t have an account?
+        <TextLink
+          className="font-normal text-foreground"
+          href={controller.links?.signup ?? pagePaths.signup}
+          onClick={(event) => {
+            if (
+              controller.navigate &&
+              !event.metaKey &&
+              !event.ctrlKey &&
+              !event.shiftKey &&
+              !event.altKey &&
+              event.button === 0
+            ) {
+              event.preventDefault()
+              controller.navigate(controller.links?.signup ?? pagePaths.signup)
+            }
+          }}
+        >
+          Sign up
+        </TextLink>
+      </p>
+    )
   return (
     <AccountPrompt
       className="mt-2 min-h-11"
@@ -296,5 +327,43 @@ function BackAction() {
     >
       Use a different email
     </Button>
+  )
+}
+
+function PasskeyLogin() {
+  const controller = useAuthController()
+  const pending = useAuthState((s) => s.pending)
+  const error = useAuthState((s) => s.serverError)
+  return (
+    <div className="text-center">
+      <h1 className="m-0 mb-6 text-lg font-medium leading-5.5">Log in to Compallm</h1>
+      <div className="grid gap-4">
+        <Button
+          variant="neutral"
+          size="standard"
+          className="h-11 w-full rounded-lg text-xsm"
+          onClick={() => void controller.useEmailCode?.()}
+        >
+          Continue with email
+        </Button>
+        <Button
+          variant="neutral"
+          size="standard"
+          className="h-11 w-full rounded-lg text-xsm disabled:opacity-100"
+          loading={pending === 'passkey'}
+          onClick={() => void controller.verifyPasskey?.()}
+        >
+          {pending === 'passkey' ? 'Waiting for passkey' : 'Log in with passkey'}
+        </Button>
+      </div>
+      {error ? (
+        <p role="alert" className="mt-4 text-left text-xs leading-4.5 text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <div className="mt-8">
+        <AccountLink mode="signin" />
+      </div>
+    </div>
   )
 }

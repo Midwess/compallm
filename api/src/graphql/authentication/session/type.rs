@@ -15,6 +15,23 @@ use juniper::{ID, graphql_object};
 
 #[graphql_object(context = crate::graphql::GraphqlContext)]
 impl Session {
+    async fn passkey(
+        &self,
+        #[graphql(context)] user: &crate::http::authentication::UserContext,
+        #[graphql(context)] identity: &crate::http::authentication::AuthenticationContext,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::passkey::PasskeyRepository,
+        >,
+    ) -> Result<Option<super::super::passkey::PasskeySummary>, crate::graphql::error::Error> {
+        let actor = user.require().await?.access();
+        if !actor.session.has_same_identity(&self.0) {
+            return Err(compallm_core::authentication::AuthError::InvalidSession.into());
+        }
+        Ok(identity
+            .execute(repository.session_passkey(&actor.session))
+            .await?
+            .map(Into::into))
+    }
     /// Public avatar for this user; clients show a fallback while absent or loading.
     fn avatar_url(
         &self,

@@ -1,3 +1,6 @@
+import { useContext } from 'react'
+import { PasskeyControllerContext } from '../../context'
+import { PasskeySettings } from '../passkey'
 import { FormError } from '../../components/form'
 import { Button } from '../../components/buttons'
 import { TextField } from '../../components/fields'
@@ -124,47 +127,91 @@ export function AccessSettings() {
   )
 }
 export function SecuritySettings() {
-  const c = useSettingsController(),
-    passkeys = useSettings((s) => s.passkeys)
+  const c = useSettingsController()
+  const passkeys = useContext(PasskeyControllerContext)
+  const previewPasskeys = useSettings((state) => state.passkeys)
+  const applications = useSettings((state) => state.applications)
+  const keys = useSettings((state) => state.apiKeys)
   return (
     <SettingsContent>
-      <Heading description="Manage your sign-in methods and API access.">Security</Heading>
+      <Heading>Security &amp; access</Heading>
       <div className="grid gap-12">
-        <Section
-          title="Passkeys"
-          description="Sign in with your fingerprint, face, or security key."
-          action={
-            passkeys.length ? (
-              <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('add-passkey')}>
-                Add passkey
+        <Section title="Sessions" description="Devices logged into your account">
+          <Rows>
+            <Row label="Current session" description="You are signed in to Compallm." last>
+              <Button variant="ghost" onClick={c.signOut}>
+                Log out
               </Button>
-            ) : null
-          }
-        >
-          {passkeys.length ? (
+            </Row>
+          </Rows>
+        </Section>
+        {passkeys ? (
+          <PasskeySettings />
+        ) : (
+          <Section
+            title="Passkeys"
+            description="Passkeys are a secure way to sign in to your Compallm account."
+            action={
+              previewPasskeys.length ? (
+                <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('add-passkey')}>
+                  New passkey
+                </Button>
+              ) : undefined
+            }
+          >
+            {previewPasskeys.length ? (
+              <Rows>
+                {previewPasskeys.map((key, index) => (
+                  <Row key={key.id} label={key.name} last={index === previewPasskeys.length - 1}>
+                    <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('remove-passkey', key.id)}>
+                      Revoke
+                    </Button>
+                  </Row>
+                ))}
+              </Rows>
+            ) : (
+              <Empty
+                title="No passkeys registered"
+                action={<Button onClick={() => c.pages.dialogs.openDialog('add-passkey')}>New passkey</Button>}
+              >
+                Add a passkey for a simpler sign-in experience.
+              </Empty>
+            )}
+          </Section>
+        )}
+        <Section title="Personal API keys" description="Use API keys to connect your tools to Compallm.">
+          <Rows>
+            <Row
+              label={keys.length ? `${keys.length} API keys` : 'No API keys created'}
+              description="Review your personal API access."
+              last
+            >
+              <Button variant="ghost" onClick={() => c.navigate('api-keys')}>
+                Manage API keys
+              </Button>
+            </Row>
+          </Rows>
+        </Section>
+        <Section title="Authorized applications" description="Applications you’ve approved">
+          {applications.length ? (
             <Rows>
-              {passkeys.map((key, i) => (
-                <Row key={key.id} label={key.name} description="Use this passkey to sign in." last={i === passkeys.length - 1}>
-                  <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('remove-passkey', key.id)}>
-                    Remove
+              {applications.map((app, index) => (
+                <Row
+                  key={app.id}
+                  label={app.name}
+                  description={`Granted access: ${app.scope}`}
+                  last={index === applications.length - 1}
+                >
+                  <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('application', app.id)}>
+                    Review
                   </Button>
                 </Row>
               ))}
             </Rows>
           ) : (
-            <Empty
-              title="No passkeys yet"
-              action={<Button onClick={() => c.pages.dialogs.openDialog('add-passkey')}>Add passkey</Button>}
-            >
-              Add a passkey for a simpler sign-in experience.
-            </Empty>
+            <Empty title="No authorized applications">Applications you authorize will appear here.</Empty>
           )}
         </Section>
-        <div className="px-4">
-          <Button variant="ghost" onClick={() => c.navigate('api-keys')}>
-            Manage API keys
-          </Button>
-        </div>
       </div>
     </SettingsContent>
   )

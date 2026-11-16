@@ -1,3 +1,4 @@
+import { passkeyController } from '../passkey/instance'
 import { useContext, useEffect, useState } from 'react'
 import { redirect, type LoaderFunctionArgs } from 'react-router'
 import { useLoaderData } from 'react-router'
@@ -45,6 +46,7 @@ export function Component() {
     }
   }, [controller])
   useEffect(() => controller.setPage(page, id), [controller, page, id])
+  useEffect(() => (page === 'security' ? passkeyController.startView() : undefined), [page])
   return (
     <SettingsControllerContext value={controller}>
       <SettingsPage />

@@ -50,13 +50,13 @@ export function InvitationPage() {
   ) : state.step === 'confirmed' ? (
     'You’re ready to join'
   ) : context ? (
-    <span className="grid gap-2">
-      <span>You’re invited by</span>
-      <span className="flex w-fit min-w-0 max-w-full items-center gap-3">
-        <span className="line-clamp-2 min-w-0 origin-left -skew-x-3 underline decoration-1 underline-offset-4">
+    <span className="grid gap-3">
+      <span className="text-base font-normal text-muted-foreground">You’re invited by</span>
+      <span className="flex w-fit min-w-0 max-w-full items-center gap-2.5">
+        <span className="line-clamp-2 min-w-0 text-2xl font-medium underline decoration-foreground/25 decoration-1 underline-offset-8">
           {context.organizationName}
         </span>
-        <Avatar name={context.organizationName} size={32} />
+        <Avatar name={context.organizationName} size={28} />
       </span>
     </span>
   ) : (

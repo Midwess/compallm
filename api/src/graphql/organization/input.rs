@@ -89,3 +89,46 @@ fn spending_amount(value: &str) -> Result<(), validify::ValidationError> {
 fn spending_amount_contract() -> serde_json::Value {
     serde_json::json!({"pattern": "^[0-9]+(?:\\.[0-9]+)?$"})
 }
+
+#[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct OrganizationProfileUpdateInput {
+    #[serde(
+        default,
+        skip_serializing_if = "juniper::Nullable::is_implicit_null",
+        serialize_with = "crate::graphql::user::input::serialize_nullable",
+        deserialize_with = "crate::graphql::user::input::deserialize_nullable"
+    )]
+    #[schemars(with = "Option<String>", extend("x-compallm-non-null" = true, "x-compallm-trim" = true, "minLength" = 1, "maxLength" = 63, "pattern" = "^[A-Za-z0-9-]+$"))]
+    pub name: juniper::Nullable<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "juniper::Nullable::is_implicit_null",
+        serialize_with = "crate::graphql::user::input::serialize_nullable",
+        deserialize_with = "crate::graphql::user::input::deserialize_nullable"
+    )]
+    #[schemars(with = "Option<bool>", extend("x-compallm-non-null" = true, "default" = false))]
+    #[graphql(default = juniper::Nullable::Some(false))]
+    pub avatar_uploaded: juniper::Nullable<bool>,
+}
+impl TryFrom<OrganizationProfileUpdateInput>
+    for compallm_core::organization::profile_service::ProfilePatch
+{
+    type Error = crate::graphql::error::Error;
+    fn try_from(value: OrganizationProfileUpdateInput) -> Result<Self, Self::Error> {
+        let name = match value.name {
+            juniper::Nullable::Some(name) => Some(name),
+            juniper::Nullable::ImplicitNull => None,
+            juniper::Nullable::ExplicitNull => return Err(Self::Error::invalid_input()),
+        };
+        let avatar_uploaded = match value.avatar_uploaded {
+            juniper::Nullable::Some(value) => value,
+            juniper::Nullable::ImplicitNull => false,
+            juniper::Nullable::ExplicitNull => return Err(Self::Error::invalid_input()),
+        };
+        Ok(Self {
+            name,
+            avatar_uploaded,
+        })
+    }
+}

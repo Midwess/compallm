@@ -54,6 +54,7 @@ export { CreateProviderControllerContext } from './context'
 export { Dialog, AlertDialog } from './components/dialog'
 export { Popup } from './components/popup'
 export { Table } from './components/table'
+export type { TableColumn } from './components/table'
 export { FormField } from './components/form-field'
 export { FormSection } from './components/form-section'
 
@@ -74,3 +75,21 @@ export * from './components/effort-mapping'
 export * from './components/provider-avatar'
 
 export * from './components/form'
+
+export * from './components/app-loading-overlay'
+export { ScrollMotion } from './components/scroll'
+export type { AppController, AppState, AppLoadingTask } from './app'
+
+export type { CompositionProps, OpenStateProps } from './components/composition'
+export type { DialogRootProps } from './components/dialog'
+export type { PopupRootProps, PopupTriggerProps, PopupItemProps, PopupCheckboxItemProps } from './components/popup'
+
+export * from './permission'
+export * from './components/permission'
+export { PermissionControllerContext } from './context'
+
+export { InvitationPage } from './pages/invitation'
+
+export { OnboardingPage } from './pages/onboarding'
+export type { OnboardingController, OnboardingState, OnboardingStep, OnboardingProfile } from './pages/onboarding'
+export { OnboardingControllerContext } from './context'

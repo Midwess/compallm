@@ -61,3 +61,17 @@ pub(crate) async fn delete(
     service.delete_role(&permission, id).await?;
     Ok(true.into())
 }
+
+pub(crate) async fn assign(
+    id: juniper::ID,
+    member_id: juniper::ID,
+    service: &RbacService,
+    authority: &AuthorizationContext,
+) -> Result<Payload<Role>, Error> {
+    let id = id.parse::<u64>().map_err(|_| Error::invalid_input())?;
+    let member_id = member_id
+        .parse::<u64>()
+        .map_err(|_| Error::invalid_input())?;
+    let permission = authority.member_permission().await?;
+    Ok(Role::from(service.assign_role(&permission, id, member_id).await?).into())
+}

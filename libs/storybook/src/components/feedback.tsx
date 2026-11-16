@@ -1,6 +1,9 @@
 import { animated, LoadingMotion, overlay, FieldErrorMotion } from './motion'
 import {
+  createContext,
+  useContext,
   useId,
+  type ComponentPropsWithRef,
   useEffect,
   useState,
   useRef,
@@ -8,10 +11,12 @@ import {
   type HTMLAttributes,
   type ReactElement,
   type ReactNode,
+  type RefObject,
 } from 'react'
 import { createPortal } from 'react-dom'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
-import { cx } from './shared'
+import { cx, composeRefs } from './shared'
+import { Slot, useControllableState, type CompositionProps, type OpenStateProps } from './composition'
 import { RichMessage } from './rich-message'
 import { Button } from './buttons'
 import { QuestionIcon } from '@phosphor-icons/react/dist/csr/Question'
@@ -32,7 +37,7 @@ export interface ToastProps extends Omit<HTMLAttributes<HTMLDivElement>, 'childr
 
 const toastTones = {
   info: { Icon: InfoIcon, color: 'text-primary', label: 'Info' },
-  error: { Icon: WarningCircleIcon, color: 'text-error', label: 'Error' },
+  error: { Icon: WarningCircleIcon, color: 'text-destructive', label: 'Error' },
   warning: { Icon: WarningIcon, color: 'text-warning', label: 'Warning' },
   success: { Icon: CheckCircleIcon, color: 'text-success', label: 'Success' },
   loading: { Icon: SpinnerGapIcon, color: 'text-primary', label: 'Loading' },
@@ -57,7 +62,7 @@ export function Toast({
       data-tone={tone}
       className={cx(
         'flex w-fit min-w-0 max-w-100 items-start gap-2.5 rounded-xl',
-        'border border-border bg-elevated p-2 font-sans text-xsm leading-5 text-text shadow-lg',
+        'border border-border bg-elevated p-2 font-sans text-xsm leading-5 text-foreground shadow-floating',
         className,
       )}
     >
@@ -68,7 +73,7 @@ export function Toast({
         <div className="wrap-anywhere" role={tone === 'error' ? 'alert' : 'status'} aria-atomic="true">
           <span className="sr-only">{label}: </span>
           {title ? <p className="text-sm leading-5.5 font-semibold">{title}</p> : null}
-          <div className={cx(title ? 'mt-0.5 text-muted' : 'text-text')}>
+          <div className={cx(title ? 'mt-0.5 text-muted-foreground' : 'text-foreground')}>
             <RichMessage message={message} />
           </div>
         </div>
@@ -77,8 +82,8 @@ export function Toast({
             type="button"
             onClick={onDismiss}
             className={cx(
-              'min-h-6 cursor-pointer rounded text-muted hover:text-text',
-              'focus-visible:outline-2 focus-visible:outline-focus',
+              'min-h-6 cursor-pointer rounded text-muted-foreground hover:text-foreground',
+              'focus-visible:outline-2 focus-visible:outline-ring',
             )}
           >
             Dismiss
@@ -88,8 +93,8 @@ export function Toast({
               type="button"
               onClick={action.onClick}
               className={cx(
-                'min-h-6 cursor-pointer rounded text-primary hover:text-focus',
-                'focus-visible:outline-2 focus-visible:outline-focus',
+                'min-h-6 cursor-pointer rounded text-primary hover:text-ring',
+                'focus-visible:outline-2 focus-visible:outline-ring',
               )}
             >
               {action.label}
@@ -102,8 +107,8 @@ export function Toast({
         onClick={onDismiss}
         aria-label={dismissLabel}
         className={cx(
-          'inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded text-muted',
-          'hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
+          'inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground',
+          'hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
         )}
       >
         <XIcon size={16} weight="regular" aria-hidden="true" />
@@ -113,10 +118,10 @@ export function Toast({
 }
 
 export function HelperText({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p {...props} className={cx('text-[12px] leading-4.5 text-muted', className)} />
+  return <p {...props} className={cx('text-ui-12 leading-4.5 font-book text-muted-foreground', className)} />
 }
 export function InlineError({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p role="alert" {...props} className={cx('text-xsm leading-5 text-error', className)} />
+  return <p role="alert" {...props} className={cx('text-xsm leading-5 text-destructive', className)} />
 }
 export function CodeError(props: HTMLAttributes<HTMLParagraphElement>) {
   return <InlineError {...props}>{props.children ?? 'Incorrect code. Try again.'}</InlineError>
@@ -129,20 +134,24 @@ export function KeyboardKey({ children }: { children: ReactNode }) {
     <kbd
       className={`
   inline-flex h-7 min-w-7 items-center justify-center rounded-md bg-elevated p-0.5
-  font-sans text-[14px]
+  font-sans text-ui-14
 `}
     >
       {children}
     </kbd>
   )
 }
-function TooltipPopup({ content }: { content: ReactNode }) {
+function TooltipContent({ children, className, ...props }: ComponentPropsWithRef<'div'>) {
   return (
     <BaseTooltip.Portal>
       <BaseTooltip.Positioner sideOffset={6} className="z-50">
         <BaseTooltip.Popup
-          className="max-w-xs rounded-full border border-border bg-elevated px-3 py-1.5 text-center text-xs leading-4
-text-text shadow-lg"
+          {...props}
+          className={cx(
+            `max-w-xs rounded-full border border-border bg-elevated px-3 py-1.5 text-center text-xs leading-4
+text-foreground shadow-floating`,
+            className,
+          )}
         >
           <BaseTooltip.Arrow
             className="absolute flex data-[side=top]:-bottom-1 data-[side=bottom]:-top-1
@@ -150,23 +159,49 @@ text-text shadow-lg"
           >
             <span className="block size-2 rotate-45 bg-elevated" />
           </BaseTooltip.Arrow>
-          {content}
+          {children}
         </BaseTooltip.Popup>
       </BaseTooltip.Positioner>
     </BaseTooltip.Portal>
   )
 }
 
-export function Tooltip({ children, content }: { children: ReactElement; content: ReactNode }) {
+function TooltipRoot({ children, onOpenChange, ...props }: OpenStateProps & { children: ReactNode }) {
   return (
     <BaseTooltip.Provider>
-      <BaseTooltip.Root>
-        <BaseTooltip.Trigger render={children} />
-        <TooltipPopup content={content} />
+      <BaseTooltip.Root {...props} onOpenChange={(open) => onOpenChange?.(open)}>
+        {children}
       </BaseTooltip.Root>
     </BaseTooltip.Provider>
   )
 }
+function TooltipTrigger({ asChild = false, children, ...props }: ComponentPropsWithRef<'button'> & CompositionProps) {
+  return (
+    <BaseTooltip.Trigger
+      {...props}
+      render={(partProps, state) =>
+        asChild ? (
+          <Slot {...partProps} data-state={state.open ? 'open' : 'closed'}>
+            {children}
+          </Slot>
+        ) : (
+          <button {...partProps} data-state={state.open ? 'open' : 'closed'} />
+        )
+      }
+    >
+      {asChild ? undefined : children}
+    </BaseTooltip.Trigger>
+  )
+}
+function TooltipControl({ children, content }: { children: ReactElement; content: ReactNode }) {
+  return (
+    <TooltipRoot>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent>{content}</TooltipContent>
+    </TooltipRoot>
+  )
+}
+export const Tooltip = { Root: TooltipRoot, Trigger: TooltipTrigger, Content: TooltipContent, Control: TooltipControl }
 
 export function DisabledTooltip({
   disabled,
@@ -189,37 +224,37 @@ export function DisabledTooltip({
         >
           {children}
         </BaseTooltip.Trigger>
-        <TooltipPopup content={reason} />
+        <TooltipContent>{reason}</TooltipContent>
       </BaseTooltip.Root>
     </BaseTooltip.Provider>
   )
 }
 export function FieldHelp({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <Tooltip content={children}>
+    <Tooltip.Control content={children}>
       <animated.button
         type="button"
         aria-label={label}
         className={`
-inline-flex size-5 shrink-0 cursor-help items-center justify-center rounded text-muted hover:text-text
-focus-visible:text-text focus-visible:outline-1 focus-visible:outline-muted
+inline-flex size-5 shrink-0 cursor-help items-center justify-center rounded text-muted-foreground hover:text-foreground
+focus-visible:text-foreground focus-visible:outline-1 focus-visible:outline-muted-foreground
 `}
       >
         <QuestionIcon className="size-4" aria-hidden="true" />
       </animated.button>
-    </Tooltip>
+    </Tooltip.Control>
   )
 }
 export function EmptyState({ title, children, action }: { title: ReactNode; children?: ReactNode; action?: ReactNode }) {
   return (
     <div
       className={`
-  flex min-h-32 flex-col items-center gap-1 bg-surface p-3 text-center [&>h3]:text-[16px]
+  flex min-h-32 flex-col items-center gap-1 bg-surface p-3 text-center [&>h3]:text-ui-16
   [&>h3]:font-medium
 `}
     >
       <h3>{title}</h3>
-      <div className="text-xsm leading-5 text-muted">{children}</div>
+      <div className="text-xsm leading-5 text-muted-foreground">{children}</div>
       {action}
     </div>
   )
@@ -238,39 +273,111 @@ export function Callout({
   return (
     <aside
       className={`
-  flex flex-col gap-1 rounded-[10px] bg-elevated p-2 data-[tone=success]:text-success
-  data-[tone=warning]:text-warning data-[tone=error]:text-error [&>strong]:text-[15px]
+  flex flex-col gap-1 rounded-control bg-elevated p-2 data-[tone=success]:text-success
+  data-[tone=warning]:text-warning data-[tone=error]:text-destructive [&>strong]:text-ui-15
   [&>strong]:font-medium
 `}
       data-tone={tone}
     >
       <strong>{title}</strong>
-      <div className="text-[12px] leading-4.5 text-muted">{children}</div>
+      <div className="text-ui-12 leading-4.5 text-muted-foreground">{children}</div>
       {action}
     </aside>
   )
 }
-export function Popover({ label, children }: { label: string; children: ReactNode }) {
+const PopoverContext = createContext<{
+  id: string
+  trigger: RefObject<HTMLButtonElement | null>
+  open: boolean
+  setOpen(open: boolean): void
+} | null>(null)
+function usePopover() {
+  const context = useContext(PopoverContext)
+  if (!context) throw new Error('Popover parts require Popover.Root.')
+  return context
+}
+function PopoverRoot({
+  children,
+  open: suppliedOpen,
+  defaultOpen = false,
+  onOpenChange,
+}: OpenStateProps & { children: ReactNode }) {
   const id = useId()
+  const [open, setOpen] = useControllableState(suppliedOpen, defaultOpen, onOpenChange)
+  const trigger = useRef<HTMLButtonElement>(null)
   return (
-    <span className="inline">
-      <Button popoverTarget={id}>{label}</Button>
-      <overlay.div
-        id={id}
-        popover="auto"
-        className={`
-  w-12 max-w-[calc(100vw-32px)] rounded-xl border-[0.5px] border-input-border bg-menu p-2
-  text-text [&:popover-open]:absolute [&:popover-open]:m-1 [&:popover-open]:[position-area:bottom_span-right]
-  [&:popover-open]:[position-try-fallbacks:flip-block,flip-inline] [&>*+*]:mt-1.5
-`}
-      >
-        {children}
-      </overlay.div>
-    </span>
+    <PopoverContext value={{ id, trigger, open, setOpen }}>
+      <span className="inline">{children}</span>
+    </PopoverContext>
   )
 }
+function PopoverTrigger({ asChild = false, ...props }: ComponentPropsWithRef<'button'> & CompositionProps) {
+  const { id, trigger, open, setOpen } = usePopover()
+  return (
+    <Button
+      {...props}
+      ref={composeRefs(trigger, props.ref)}
+      asChild={asChild}
+      popoverTarget={id}
+      aria-expanded={open}
+      data-state={open ? 'open' : 'closed'}
+      onClick={(event) => {
+        props.onClick?.(event)
+        if (!event.defaultPrevented && !props.disabled) {
+          event.preventDefault()
+          setOpen(!open)
+        }
+      }}
+    />
+  )
+}
+function PopoverContent({ className, ref: forwardedRef, onToggle, ...props }: ComponentPropsWithRef<'div'>) {
+  const { id, trigger, open, setOpen } = usePopover()
+  const ref = useRef<HTMLDivElement>(null)
+  const [toggleVersion, setToggleVersion] = useState(0)
+  useEffect(() => {
+    const element = ref.current
+    if (!element) return
+    if (open && !element.matches(':popover-open')) element.showPopover({ source: trigger.current ?? undefined })
+    else if (!open && element.matches(':popover-open')) element.hidePopover()
+  }, [open, trigger, toggleVersion])
+  return (
+    <overlay.div
+      {...props}
+      ref={composeRefs(ref, forwardedRef)}
+      id={id}
+      popover="auto"
+      data-state={open ? 'open' : 'closed'}
+      onToggle={(event) => {
+        onToggle?.(event)
+        const actual = event.currentTarget.matches(':popover-open')
+        if (actual !== open) {
+          setOpen(actual)
+          setToggleVersion((version) => version + 1)
+        }
+      }}
+      className={cx(
+        `
+  w-12 max-w-[calc(100vw-32px)] rounded-xl border-(length:--border-hairline) border-input bg-menu p-2
+  text-foreground [&:popover-open]:absolute [&:popover-open]:m-1 [&:popover-open]:[position-area:bottom_span-right]
+  [&:popover-open]:[position-try-fallbacks:flip-block,flip-inline] [&>*+*]:mt-1.5
+`,
+        className,
+      )}
+    />
+  )
+}
+function PopoverControl({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <PopoverRoot>
+      <PopoverTrigger>{label}</PopoverTrigger>
+      <PopoverContent>{children}</PopoverContent>
+    </PopoverRoot>
+  )
+}
+export const Popover = { Root: PopoverRoot, Trigger: PopoverTrigger, Content: PopoverContent, Control: PopoverControl }
 export function DropInsertionIndicator({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div aria-hidden="true" {...props} className={cx('h-0.5 w-full rounded-[1px] bg-focus', className)} />
+  return <div aria-hidden="true" {...props} className={cx('h-0.5 w-full rounded-hairline bg-ring', className)} />
 }
 
 export function FeedbackSlot({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
@@ -330,7 +437,8 @@ export function FieldErrorIndicator({
             aria-label="Show validation error"
             aria-describedby={id}
             className="fixed z-50 inline-flex size-5 cursor-help items-center justify-center rounded-full
-bg-error text-on-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
+bg-error-background text-error-foreground focus-visible:outline-2
+focus-visible:outline-offset-2 focus-visible:outline-destructive"
             onPointerEnter={() => setDismissedVersion(undefined)}
             onFocus={() => setDismissedVersion(undefined)}
           >
@@ -340,8 +448,9 @@ bg-error text-on-primary focus-visible:outline-2 focus-visible:outline-offset-2 
             <BaseTooltip.Positioner side="right" align="center" sideOffset={-20} collisionPadding={8} className="z-40">
               <BaseTooltip.Popup
                 render={<FieldErrorMotion />}
-                className="min-h-5 max-w-xs origin-left rounded-full bg-error py-1 pr-1 pl-6
-text-xs leading-3 text-on-primary shadow-lg data-[side=left]:origin-right data-[side=left]:pr-6 data-[side=left]:pl-1"
+                className="min-h-5 max-w-xs origin-left rounded-full bg-error-background py-1 pr-1 pl-6
+text-xs leading-3 text-error-foreground shadow-floating
+data-[side=left]:origin-right data-[side=left]:pr-6 data-[side=left]:pl-1"
               >
                 {message}
               </BaseTooltip.Popup>
@@ -365,7 +474,7 @@ function attachFieldError(
   const originalDescription = anchor.getAttribute('aria-describedby')
   anchor.setAttribute('aria-invalid', 'true')
   anchor.setAttribute('aria-describedby', [...new Set([...(originalDescription?.split(' ') ?? []), id])].join(' '))
-  anchor.style.borderColor = 'var(--color-error)'
+  anchor.style.borderColor = 'var(--destructive)'
   const textControl = anchor.matches('input:not([type=file]), textarea')
   const padding = parseFloat(getComputedStyle(anchor).paddingRight)
   if (textControl) anchor.style.paddingRight = `${Math.max(padding, 32)}px`

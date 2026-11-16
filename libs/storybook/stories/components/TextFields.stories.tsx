@@ -1,3 +1,7 @@
+import { zodResolver } from '@hookform/resolvers/zod'
+import { InvitationCreateInput } from '@compallm/contract/validation'
+import { invitationTextSchema } from '@compallm/contract/invitation'
+import { Form, useManagedForm } from '../../src/components/form'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as Fields from '../../src/components/fields'
 import { Preview, Sample } from './Preview'
@@ -20,14 +24,29 @@ export const TextField: Story = {
           aria-label="Invalid text"
           aria-invalid="true"
           defaultValue="Invalid value"
-          aria-describedby="text-error"
+          aria-describedby="text-destructive"
         />
-        <p id="text-error" className="text-xsm leading-5 text-error">
+        <p id="text-destructive" className="text-xsm leading-5 text-destructive">
           Check this value.
         </p>
       </Sample>
       <Sample label="Disabled">
         <Fields.TextField aria-label="Disabled text" disabled placeholder="Enter a value…" />
+      </Sample>
+      <Sample label="Constant">
+        <Fields.TextField variant="constant" aria-label="Account email" value="alex@example.com" />
+      </Sample>
+    </Preview>
+  ),
+}
+export const UrlPreview: Story = {
+  render: () => (
+    <Preview>
+      <Sample label="Organization URL">
+        <Fields.UrlPreview url="https://compallm.example/Research" onCopy={() => {}} />
+      </Sample>
+      <Sample label="Long URL">
+        <Fields.UrlPreview url="https://compallm.example/long-organization-name-for-a-shared-workspace" onCopy={() => {}} />
       </Sample>
     </Preview>
   ),
@@ -158,3 +177,31 @@ export const DocumentBodyEditor: Story = {
     </Preview>
   ),
 }
+
+function InvitationRecipientsExample() {
+  const form = useManagedForm(
+    { email: 'alex@example.com, sam@example.com; incomplete' },
+    { resolver: zodResolver(invitationTextSchema) },
+  )
+  return (
+    <Preview>
+      <Sample label="Recipients · delimiters validate addresses" wide>
+        <Form.Root model={form}>
+          <div className="relative">
+            <Fields.TokenField
+              name="email"
+              aria-label="Invitation recipients"
+              placeholder="email@example.com, another@example.com…"
+              parseToken={(email) => {
+                const result = InvitationCreateInput.safeParse({ email })
+                return result.success ? result.data.email : null
+              }}
+            />
+            <Form.Error name="email" />
+          </div>
+        </Form.Root>
+      </Sample>
+    </Preview>
+  )
+}
+export const InvitationRecipients: Story = { render: () => <InvitationRecipientsExample /> }

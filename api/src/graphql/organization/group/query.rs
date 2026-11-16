@@ -23,7 +23,7 @@ pub(crate) async fn get(
         .check_permission(&permission)
         .map_err(AuthorizationError::from)?;
     Ok(repository
-        .find_group_info(permission.organization_id(), id)
+        .find_group_info(id)
         .await
         .map_err(AuthorizationError::from)?
         .map(|node| Payload::from(Group::from(node))))
@@ -38,7 +38,7 @@ pub(crate) async fn list(
         .check_permission(&permission)
         .map_err(AuthorizationError::from)?;
     let nodes = repository
-        .list_group_info(permission.organization_id())
+        .list_group_info()
         .await
         .map_err(AuthorizationError::from)?
         .into_iter()

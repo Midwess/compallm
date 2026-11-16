@@ -13,16 +13,13 @@ async fn entity_creation_owns_ids_and_default_policy_relationships() {
     assert!(roles[0].org_owner());
     assert!(!roles[1].org_owner());
     assert!(!roles[2].org_owner());
-    let owner = roles[0].clone();
     let custom = Role::new(organization.id, "Reviewer", "", " ")
         .await
         .unwrap();
-    let group = Group::new(organization.id, "Operations", "", vec![owner.clone()])
+    let group = Group::create(organization.id, "Operations", "", vec![custom.clone()])
         .await
         .unwrap();
-    let session = Session::new(user.id, organization.id, organization.name.clone())
-        .await
-        .unwrap();
+    let session = Session::new(user.id, organization.id).await.unwrap();
     let ids = [
         user.id,
         organization.id,
@@ -41,7 +38,7 @@ async fn entity_creation_owns_ids_and_default_policy_relationships() {
     );
     assert_eq!(session.user_id, user.id);
     assert_eq!(session.organization_id, organization.id);
-    assert_eq!(group.roles, vec![owner]);
+    assert_eq!(group.roles(), vec![custom]);
     for role in &roles {
         assert_eq!(role.organization_id, organization.id);
         let policies = cedar_policy::PolicySet::try_from(role).unwrap();
@@ -108,17 +105,17 @@ async fn group_constructor_limits_assigned_roles() {
         })
         .collect();
     assert_eq!(
-        Group::new(1, "Group", "", roles.clone())
+        Group::create(1, "Group", "", roles.clone())
             .await
             .unwrap()
-            .roles
+            .roles()
             .len(),
         32
     );
     let mut too_many = roles;
     too_many.push(too_many[0].clone());
     assert!(matches!(
-        Group::new(1, "Group", "", too_many).await,
+        Group::create(1, "Group", "", too_many).await,
         Err(GroupCreationError::TooManyRoles)
     ));
 }
@@ -129,18 +126,18 @@ async fn group_constructor_checks_name_and_role_scope() {
     compallm_postgres::init_id_generator("group-validation-test").unwrap();
     let role = Role::new(1, "Role", "", "").await.unwrap();
     assert!(matches!(
-        Group::new(1, "  ", "", vec![]).await,
+        Group::create(1, "  ", "", vec![]).await,
         Err(GroupCreationError::InvalidName(_))
     ));
     assert!(matches!(
-        Group::new(2, "Group", "", vec![role.clone()]).await,
+        Group::create(2, "Group", "", vec![role.clone()]).await,
         Err(GroupCreationError::ForeignRole)
     ));
     assert!(matches!(
-        Group::new(1, "Group", "", vec![role.clone(), role]).await,
+        Group::create(1, "Group", "", vec![role.clone(), role]).await,
         Err(GroupCreationError::DuplicateRole)
     ));
-    let group = Group::new(1, "  Research  ", "", vec![]).await.unwrap();
+    let group = Group::create(1, "  Research  ", "", vec![]).await.unwrap();
     assert_eq!(group.name, "Research");
 }
 

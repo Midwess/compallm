@@ -3,7 +3,7 @@ import type { FormStore } from '../../../components/form'
 export interface ChatState {
   draft: string
   modelId: string
-  models: { value: string; label: string }[]
+  models: { value: string; label: string; enabled?: boolean }[]
   creating: boolean
 }
 

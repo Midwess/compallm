@@ -32,6 +32,9 @@ serde = { workspace = true, features = ["derive"] }
 compallm-postgres = { workspace = true, features = ["cli"] }
 compallm-utils.workspace = true
 compallm-mailing.workspace = true
+compallm-storage.workspace = true
+loco-rs.workspace = true
+reqwest = { version = "0.12", default-features = false, features = ["multipart", "rustls-tls"] }
 base64 = { workspace = true, features = ["std"] }
 hero = { workspace = true, features = ["distributed-id", "token"] }
 sea-orm = { workspace = true, features = ["mock"] }

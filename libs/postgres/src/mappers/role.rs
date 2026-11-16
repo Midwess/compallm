@@ -23,6 +23,7 @@ impl TryFrom<Role>
             description: Set(role.description),
             cedar_source: Set(role.cedar_source),
             org_owner: Set(role.org_owner),
+            default_member: Set(false),
         })
     }
 }
@@ -54,13 +55,13 @@ impl From<MappedGroup> for Group {
 impl TryFrom<(OrganizationGroupSchema, Vec<Role>)> for MappedGroup {
     type Error = anyhow::Error;
     fn try_from((row, roles): (OrganizationGroupSchema, Vec<Role>)) -> Result<Self, Self::Error> {
-        let group = Group {
-            id: from_bigint(row.id)?,
-            organization_id: from_bigint(row.organization_id)?,
-            name: row.name,
-            description: row.description,
+        let group = Group::new(
+            from_bigint(row.id)?,
+            from_bigint(row.organization_id)?,
+            row.name,
+            row.description,
             roles,
-        };
+        )?;
         cedar_policy::Entity::try_from(&group)?;
         Ok(Self(group))
     }

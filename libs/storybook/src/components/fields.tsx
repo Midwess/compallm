@@ -2,16 +2,24 @@ import { animated } from './motion'
 import { otpLength, otpPattern, otpCharacters } from '@compallm/contract/auth'
 import { useEffect, useRef, useState, type ComponentPropsWithRef, type TextareaHTMLAttributes } from 'react'
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGlass'
+import { CopyIcon } from '@phosphor-icons/react/dist/csr/Copy'
+import { LinkIcon } from '@phosphor-icons/react/dist/csr/Link'
 import { cx, composeRefs } from './shared'
 import { useFormField, useNativeFormField } from './form'
+import { IconButton, TextLink } from './buttons'
 
-export type TextFieldProps = ComponentPropsWithRef<'input'>
-export function TextField({ className, onChange, onBlur, onKeyDown, value, ...props }: TextFieldProps) {
-  const field = useNativeFormField(props.name)
+export type TextFieldProps = ComponentPropsWithRef<'input'> & { variant?: 'default' | 'constant' }
+export function TextField({ variant = 'default', className, onChange, onBlur, onKeyDown, value, ...props }: TextFieldProps) {
+  const constant = variant === 'constant'
+  const field = useNativeFormField(constant ? undefined : props.name)
   return (
     <animated.input
       {...props}
       {...field?.registration}
+      disabled={constant || props.disabled}
+      readOnly={constant || props.readOnly}
+      tabIndex={constant ? -1 : props.tabIndex}
+      data-variant={variant}
       ref={composeRefs(field?.registration.ref, props.ref)}
       value={field ? undefined : value}
       defaultValue={field ? field.defaultValue : props.defaultValue}
@@ -38,12 +46,48 @@ export function TextField({ className, onChange, onBlur, onKeyDown, value, ...pr
         }
       }}
       className={cx(
-        `block h-8 w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
-py-1 text-left text-sm leading-5.5 text-text placeholder:text-muted placeholder:opacity-100
-focus:border-muted/60 focus:outline-none aria-invalid:border-error disabled:cursor-not-allowed disabled:opacity-50`,
+        `block h-8 w-full min-w-0 rounded-lg border-(length:--border-hairline) border-input bg-inset px-1.5
+py-1 text-left text-sm leading-5.5 text-foreground placeholder:text-muted-foreground placeholder:opacity-100
+focus:border-muted-foreground/60 focus:outline-none aria-invalid:border-destructive disabled:cursor-not-allowed
+disabled:opacity-50`,
         className,
+        constant &&
+          `pointer-events-none cursor-default bg-elevated caret-transparent select-none
+disabled:cursor-default disabled:opacity-100`,
       )}
     />
+  )
+}
+
+export function UrlPreview({ url, onCopy, className }: { url: string; onCopy: (url: string) => void; className?: string }) {
+  return (
+    <div className={cx('flex h-8 min-w-0 items-center gap-1', className)}>
+      <TextLink
+        href={url || undefined}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={url}
+        aria-label={url}
+        className="flex h-full min-w-0 flex-1 items-center rounded-lg bg-inset text-xsm underline"
+      >
+        <LinkIcon aria-hidden="true" className="mr-1 size-3 shrink-0" />
+        <span aria-hidden="true" className="min-w-0 truncate">
+          {url.slice(0, Math.ceil(url.length / 2))}
+        </span>
+        <span aria-hidden="true" className="shrink-0">
+          {url.slice(Math.ceil(url.length / 2))}
+        </span>
+      </TextLink>
+      <IconButton
+        className="bg-elevated hover:bg-elevated-hover"
+        aria-label="Copy URL"
+        title="Copy URL"
+        disabled={!url}
+        onClick={() => onCopy(url)}
+      >
+        <CopyIcon aria-hidden="true" />
+      </IconButton>
+    </div>
   )
 }
 export function MultilineField({ className, value, onChange, onBlur, onKeyDown, ...props }: ComponentPropsWithRef<'textarea'>) {
@@ -78,13 +122,104 @@ export function MultilineField({ className, value, onChange, onBlur, onKeyDown, 
         }
       }}
       className={cx(
-        `block w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
-py-1 text-left text-sm leading-5.5 text-text placeholder:text-muted placeholder:opacity-100
-focus:border-muted/60 focus:outline-none aria-invalid:border-error disabled:cursor-not-allowed disabled:opacity-50
+        `block w-full min-w-0 rounded-lg border-(length:--border-hairline) border-input bg-inset px-1.5
+py-1 text-left text-sm leading-5.5 text-foreground placeholder:text-muted-foreground placeholder:opacity-100
+focus:border-muted-foreground/60 focus:outline-none aria-invalid:border-destructive disabled:cursor-not-allowed
+disabled:opacity-50
 h-auto min-h-16 resize-y`,
         className,
       )}
     />
+  )
+}
+
+export function TokenField({
+  name,
+  parseToken,
+  ...props
+}: { name: string; parseToken: (text: string) => string | null } & ComponentPropsWithRef<'textarea'>) {
+  const field = useFormField<string>(name)
+  const input = useRef<HTMLTextAreaElement>(null)
+  const [compositionDraft, setCompositionDraft] = useState<string | null>(null)
+  const value = field?.value ?? ''
+  const tokens: string[] = []
+  const remaining: string[] = []
+  const parts = value.split(/([\s;,|]+)/u)
+  for (let i = 0; i < parts.length; i += 2) {
+    const text = parts[i]
+    if (!text) continue
+    const parsed = parts[i + 1] ? parseToken(text) : null
+    if (parsed) {
+      if (!tokens.includes(parsed)) tokens.push(parsed)
+    } else remaining.push(text + (parts[i + 1] ?? ''))
+  }
+  const draft = remaining.join('')
+  const update = (next: string, nextTokens = tokens) => {
+    field?.change(nextTokens.map((token) => `${token}, `).join('') + next)
+  }
+  return (
+    <div
+      aria-invalid={field?.invalid || undefined}
+      className="flex max-h-40 min-h-18 w-full flex-wrap overflow-y-auto content-start items-start gap-1 rounded-lg
+border-(length:--border-hairline) border-input bg-inset p-1.5 text-left text-xsm text-foreground
+focus-within:border-muted-foreground/60 aria-invalid:border-destructive"
+    >
+      {tokens.map((token) => (
+        <button
+          key={token}
+          type="button"
+          aria-label={`Edit ${token}`}
+          className="max-w-full truncate rounded bg-foreground/10 px-1.5 py-0.5 text-left
+hover:bg-foreground/15 focus-visible:outline-2 focus-visible:outline-primary"
+          onClick={() => {
+            update(
+              `${draft}${draft && !/[\s;,|]$/u.test(draft) ? ', ' : ''}${token}`,
+              tokens.filter((item) => item !== token),
+            )
+            input.current?.focus()
+          }}
+        >
+          {token}
+        </button>
+      ))}
+      <MultilineField
+        {...props}
+        ref={composeRefs(input, props.ref)}
+        value={compositionDraft ?? draft}
+        aria-invalid={field?.invalid || undefined}
+        aria-describedby={`${name}-error`}
+        placeholder={tokens.length ? undefined : props.placeholder}
+        className="field-sizing-content min-h-6 min-w-28 flex-1 basis-28 resize-none
+rounded-none border-0 bg-transparent p-0 text-xsm"
+        rows={1}
+        onCompositionStart={(event) => setCompositionDraft(event.currentTarget.value)}
+        onCompositionEnd={(event) => {
+          setCompositionDraft(null)
+          update(event.currentTarget.value)
+          if (/[\s;,|]/u.test(event.currentTarget.value)) field?.blur()
+        }}
+        onChange={(event) => {
+          if ('isComposing' in event.nativeEvent && event.nativeEvent.isComposing) {
+            setCompositionDraft(event.currentTarget.value)
+            return
+          }
+          update(event.currentTarget.value)
+          if (
+            !('isComposing' in event.nativeEvent && event.nativeEvent.isComposing) &&
+            /[\s;,|]/u.test(event.currentTarget.value)
+          )
+            field?.blur()
+        }}
+        onBlur={() => field?.blur()}
+        onKeyDown={(event) => {
+          if (event.nativeEvent.isComposing) return
+          if (event.key === 'Backspace' && !draft && tokens.length) {
+            event.preventDefault()
+            update(tokens[tokens.length - 1], tokens.slice(0, -1))
+          }
+        }}
+      />
+    </div>
   )
 }
 
@@ -93,7 +228,7 @@ function SearchboxRoot({ className, children, ...props }: import('react').HTMLAt
     <div {...props} className={cx('relative min-w-0', className)}>
       <MagnifyingGlassIcon
         aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 left-1.5 size-3.5 -translate-y-1/2 text-muted"
+        className="pointer-events-none absolute top-1/2 left-1.5 size-3.5 -translate-y-1/2 text-muted-foreground"
       />
       {children}
     </div>
@@ -102,17 +237,17 @@ function SearchboxRoot({ className, children, ...props }: import('react').HTMLAt
 function SearchboxInput(props: TextFieldProps) {
   return <TextField type="search" {...props} className={cx('h-8 py-1 pr-1.5 pl-6 text-xsm leading-5', props.className)} />
 }
-export const Searchbox = Object.assign(SearchboxRoot, { Input: SearchboxInput })
+export const Searchbox = { Root: SearchboxRoot, Input: SearchboxInput }
 export function SearchField({ className, ...props }: TextFieldProps) {
   return (
-    <Searchbox className={className}>
+    <Searchbox.Root className={className}>
       <Searchbox.Input {...props} />
-    </Searchbox>
+    </Searchbox.Root>
   )
 }
 
 export function EmailField({ className, ...props }: TextFieldProps) {
-  return <TextField type="email" autoComplete="email" {...props} className={cx('h-12 p-1.5 text-[15px]', className)} />
+  return <TextField type="email" autoComplete="email" {...props} className={cx('h-12 p-1.5 text-ui-15', className)} />
 }
 
 export function CodeField({ className, ...props }: TextFieldProps) {
@@ -122,7 +257,7 @@ export function CodeField({ className, ...props }: TextFieldProps) {
       pattern={otpPattern}
       maxLength={1}
       {...props}
-      className={cx('h-14 w-13 p-0 text-center text-[20px]', className)}
+      className={cx('h-14 w-13 p-0 text-center text-ui-20', className)}
     />
   )
 }
@@ -238,7 +373,7 @@ export function InlineTitleEditor({ className, ...props }: TextFieldProps) {
   return (
     <TextField
       {...props}
-      className={cx('border-transparent bg-transparent p-0 h-8 text-[24px] leading-8 font-medium', className)}
+      className={cx('border-transparent bg-transparent p-0 h-8 text-ui-24 leading-8 font-medium', className)}
     />
   )
 }
@@ -255,7 +390,7 @@ export function DocumentBodyEditor({ className, ...props }: TextareaHTMLAttribut
   return (
     <MultilineField
       {...props}
-      className={cx('border-transparent bg-transparent p-0 min-h-24 text-[15px] leading-6', className)}
+      className={cx('border-transparent bg-transparent p-0 min-h-24 text-ui-15 leading-6', className)}
     />
   )
 }

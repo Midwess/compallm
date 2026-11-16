@@ -19,7 +19,7 @@ export function ControllerSubscriptions() {
   }
   return (
     <AuthControllerContext value={controller}>
-      <main className="grid max-w-180 gap-4 p-4 font-sans text-text">
+      <main className="grid max-w-180 gap-4 p-4 font-sans text-foreground">
         <h1>Controller subscriptions</h1>
         <p>One controller, four independent UI subscriptions. Counts record React commits.</p>
         {['email', 'continue', 'code', 'resend'].map((id) => (
@@ -36,19 +36,19 @@ export function ControllerSubscriptions() {
           </p>
         ))}
         <label htmlFor="subscription-email">Email address</label>
-        <Form model={emailForm}>
+        <Form.Root model={emailForm}>
           <Profiler id="email" onRender={committed}>
             <EmailInput id="subscription-email" errorId="subscription-error" inputRef={emailRef} />
           </Profiler>
-        </Form>
+        </Form.Root>
         <Profiler id="continue" onRender={committed}>
           <ContinueButton />
         </Profiler>
-        <Form model={controller.store.form}>
+        <Form.Root model={controller.store.form}>
           <Profiler id="code" onRender={committed}>
             <CodeInput />
           </Profiler>
-        </Form>
+        </Form.Root>
         <Profiler id="resend" onRender={committed}>
           <ResendControl />
         </Profiler>

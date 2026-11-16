@@ -81,7 +81,11 @@ pub(super) fn prepare(member: &MemberPermission) -> anyhow::Result<RlsSettings> 
             }
         }
     }
-    Ok(RlsSettings::new(member.organization_id(), permissions)?)
+    Ok(RlsSettings::new(
+        member.user_id(),
+        member.organization_id(),
+        permissions,
+    )?)
 }
 
 pub(super) fn validate_source(source: &str) -> anyhow::Result<()> {

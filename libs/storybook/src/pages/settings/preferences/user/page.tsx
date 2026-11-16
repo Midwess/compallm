@@ -23,13 +23,13 @@ const general: Preference[] = [
   {
     key: 'displayNames',
     label: 'Display names',
-    description: 'Choose how member names appear.',
+    description: 'Choose how member names appear. Applying this preference is not available yet.',
     options: preferenceOptions.displayNames,
   },
   {
     key: 'firstDay',
     label: 'First day of the week',
-    description: 'Used in calendars and reporting periods.',
+    description: 'Used in calendars and reporting periods. Applying this preference is not available yet.',
     options: preferenceOptions.firstDay,
   },
 ]
@@ -74,7 +74,7 @@ function PreferenceControl({ item, last = false }: { item: Preference; last?: bo
       last={last}
     >
       {item.options ? (
-        <Select aria-label={item.label} name={`draft.${item.key}`} className="w-44" options={item.options} />
+        <Select.Control aria-label={item.label} name={`draft.${item.key}`} className="w-44" options={item.options} />
       ) : (
         <Switch id={id} name={`draft.${item.key}`} />
       )}
@@ -92,21 +92,14 @@ function PreferenceRows({ items }: { items: Preference[] }) {
   )
 }
 export function GeneralSettings() {
-  return (
-    <SettingsContent>
-      <Heading>General</Heading>
-      <Section title="General" description="Choose how Compallm opens and displays information.">
-        <PreferenceRows items={general} />
-      </Section>
-    </SettingsContent>
-  )
-}
-export function AppearanceSettings() {
   const c = useSettingsController()
   return (
     <SettingsContent>
-      <Heading>Appearance</Heading>
+      <Heading>General</Heading>
       <div className="grid gap-12">
+        <Section title="General" description="Choose how Compallm opens.">
+          <PreferenceRows items={general} />
+        </Section>
         <Section title="Interface" description="Make the workspace comfortable for you.">
           <Rows>
             <Row label="App sidebar" description="Choose which items appear in your sidebar.">
@@ -122,7 +115,6 @@ export function AppearanceSettings() {
         <Section title="Interface theme" description="Follow your system or choose a theme.">
           <PreferenceRows items={themes} />
         </Section>
-        <CodeAppearanceSection />
       </div>
     </SettingsContent>
   )
@@ -166,28 +158,34 @@ function CodeAppearanceSection() {
         }}
       />
       <SettingsRow label="Font" className="min-h-15 bg-transparent px-4 py-3">
-        <Popup>
-          <Popup.Trigger aria-label="Code font" className="h-8 w-auto gap-2 px-0 text-xs text-muted">
+        <Popup.Root>
+          <Popup.Trigger aria-label="Code font" className="h-8 w-auto gap-2 px-0 text-xs text-muted-foreground">
             {preferenceLabel(fontSize)}, Regular, {preferenceLabel(font)}
             <CaretDownIcon aria-hidden="true" className="size-3" />
           </Popup.Trigger>
           <Popup.Content aria-label="Code font settings">
-            <Popup.Submenu label="Font size">
-              {preferenceOptions.codeFontSize.map(({ value, label }) => (
-                <Popup.Item key={value} onClick={() => c.store.form.change('draft.codeFontSize', value)}>
-                  {label}
-                </Popup.Item>
-              ))}
-            </Popup.Submenu>
-            <Popup.Submenu label="Font">
-              {preferenceOptions.codeFont.map(({ value, label }) => (
-                <Popup.Item key={value} onClick={() => c.store.form.change('draft.' + 'codeFont', value)}>
-                  {label}
-                </Popup.Item>
-              ))}
-            </Popup.Submenu>
+            <Popup.Sub>
+              <Popup.SubTrigger>Font size</Popup.SubTrigger>
+              <Popup.SubContent aria-label="Font size">
+                {preferenceOptions.codeFontSize.map(({ value, label }) => (
+                  <Popup.Item key={value} onSelect={() => c.store.form.change('draft.codeFontSize', value)}>
+                    {label}
+                  </Popup.Item>
+                ))}
+              </Popup.SubContent>
+            </Popup.Sub>
+            <Popup.Sub>
+              <Popup.SubTrigger>Font</Popup.SubTrigger>
+              <Popup.SubContent aria-label="Font">
+                {preferenceOptions.codeFont.map(({ value, label }) => (
+                  <Popup.Item key={value} onSelect={() => c.store.form.change('draft.' + 'codeFont', value)}>
+                    {label}
+                  </Popup.Item>
+                ))}
+              </Popup.SubContent>
+            </Popup.Sub>
           </Popup.Content>
-        </Popup>
+        </Popup.Root>
       </SettingsRow>
       <div className="px-2 pb-2">
         <CodePreview
@@ -205,7 +203,7 @@ function CodeAppearanceSection() {
 export function CodeSettings() {
   return (
     <SettingsContent>
-      <Heading>Code appearance</Heading>
+      <Heading>Coding</Heading>
       <CodeAppearanceSection />
     </SettingsContent>
   )

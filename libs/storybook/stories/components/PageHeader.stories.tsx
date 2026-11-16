@@ -7,7 +7,7 @@ import { SearchField } from '../../src/components/fields'
 function Demo({ long = false }: { long?: boolean }) {
   const [action, setAction] = useState('')
   return (
-    <div data-ui="component-preview" className="min-h-64 bg-surface font-sans text-text">
+    <div data-ui="component-preview" className="min-h-64 bg-surface font-sans text-foreground">
       <PageHeader>
         <Title>{long ? 'A longer page title that truncates while keeping actions visible' : 'Members'}</Title>
         <Functions>
@@ -18,7 +18,7 @@ function Demo({ long = false }: { long?: boolean }) {
       </PageHeader>
       <div className="grid gap-6 px-4 py-6">
         <SearchField aria-label="Search members" placeholder="Search members…" className="max-w-70" />
-        <p data-ui="content-start" className="text-xs text-muted">
+        <p data-ui="content-start" className="text-xs text-muted-foreground">
           Content shares the header title’s left edge.
         </p>
         <output aria-label="Header action" className="text-xs">

@@ -11,9 +11,9 @@ type Story = StoryObj<typeof meta>
 function HeaderDemo({ initial = [] }: { initial?: KeyValueEntry[] }) {
   const [value, change] = useState(initial)
   return (
-    <KeyValueEditor value={value} onValueChange={change}>
+    <KeyValueEditor.Root value={value} onValueChange={change}>
       <KeyValueEditor.Disclosure defaultOpen>Headers</KeyValueEditor.Disclosure>
-    </KeyValueEditor>
+    </KeyValueEditor.Root>
   )
 }
 function EffortDemo({ initial = {}, focused }: { initial?: EffortValues; focused?: 'low' }) {

@@ -87,8 +87,15 @@ async fn contextual_assignment_requires_independent_delegation_and_supports_nest
     let target = OrganizationMember {
         organization_id: 42,
         user_id: 200,
-        roles: Vec::new(),
         groups: Vec::new(),
+        role: compallm_core::organization::Role {
+            id: 3,
+            organization_id: 42,
+            name: "Member".into(),
+            description: String::new(),
+            cedar_source: String::new(),
+            org_owner: false,
+        },
     };
     let assignment = (&target, &roles[2]).for_action(Action::MemberRoleAssign);
     Action::GroupRead

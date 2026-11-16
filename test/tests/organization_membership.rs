@@ -19,8 +19,10 @@ impl Fixture {
             organization_id: 84,
             user_id: 1,
             status: UserStatusSchema::Active,
+            role_id: 2,
         };
         let organization = OrganizationSchema {
+            avatar_path: None,
             id: 84,
             name: "Research team".into(),
             status: OrganizationStatusSchema::Active,
@@ -33,6 +35,7 @@ impl Fixture {
         row.insert("B_status".to_string(), "active".into());
         let role = default_roles(84, [1, 2, 3]).await.remove(1);
         let role = OrganizationRoleSchema {
+            default_member: false,
             organization_id: 84,
             id: role.id as i64,
             name: role.name,
@@ -61,7 +64,7 @@ async fn first_membership_query_filters_active_organizations_without_role_identi
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(member.0.roles[0].id, 2);
+    assert_eq!(member.0.role.id, 2);
     assert_eq!(member.0.organization_id, 84);
     assert_eq!(member.1.name, "Research team");
     drop(context);
@@ -96,7 +99,7 @@ async fn selected_membership_query_checks_both_user_and_organization() {
     assert!(log.contains("organization_id"));
     assert!(log.contains("LEFT JOIN"));
     assert!(log.contains("active"));
-    assert!(log.contains("organization_member_roles"));
+    assert!(log.contains("organization_members"));
 }
 
 #[tokio::test]
@@ -108,8 +111,10 @@ async fn membership_hydrates_direct_and_inherited_roles_with_four_scoped_queries
         organization_id: 84,
         user_id: 1,
         status: UserStatusSchema::Active,
+        role_id: 9,
     };
     let org = OrganizationSchema {
+        avatar_path: None,
         id: 84,
         name: "Research".into(),
         status: OrganizationStatusSchema::Active,
@@ -121,6 +126,7 @@ async fn membership_hydrates_direct_and_inherited_roles_with_four_scoped_queries
     membership.insert("A_status".into(), "active".into());
     membership.insert("B_status".into(), "active".into());
     let direct = OrganizationRoleSchema {
+        default_member: false,
         organization_id: 84,
         id: 9,
         name: "Reports".into(),
@@ -150,6 +156,7 @@ async fn membership_hydrates_direct_and_inherited_roles_with_four_scoped_queries
         .map(|group_id| {
             let role = fixture_roles_0.clone().remove(1);
             let mut row = OrganizationRoleSchema {
+                default_member: false,
                 organization_id: 84,
                 id: 2,
                 name: role.name,
@@ -176,7 +183,9 @@ async fn membership_hydrates_direct_and_inherited_roles_with_four_scoped_queries
         .unwrap()
         .unwrap();
     assert_eq!(
-        member.roles.iter().map(|r| r.id).collect::<Vec<_>>(),
+        std::iter::once(&member.role)
+            .map(|r| r.id)
+            .collect::<Vec<_>>(),
         vec![9]
     );
     assert_eq!(member.groups.len(), 2);
@@ -184,7 +193,7 @@ async fn membership_hydrates_direct_and_inherited_roles_with_four_scoped_queries
         member
             .groups
             .iter()
-            .all(|g| g.roles.len() == 1 && g.roles[0].id == 2)
+            .all(|g| g.roles().len() == 1 && g.roles()[0].id == 2)
     );
     drop(ctx);
     let log = Arc::try_unwrap(db).unwrap().into_transaction_log();

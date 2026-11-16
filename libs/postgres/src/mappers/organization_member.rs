@@ -1,22 +1,31 @@
+use crate::schema::OrganizationMemberSchema;
 use anyhow::Context;
 use compallm_core::{
-    organization::OrganizationMember, persistent::organization::OrganizationRepositoryError,
+    organization::{OrganizationMember, Role},
+    persistent::organization::OrganizationRepositoryError,
 };
-
-use crate::schema::OrganizationMemberSchema;
-
-impl TryFrom<OrganizationMemberSchema> for OrganizationMember {
+pub struct MappedMember(pub OrganizationMember);
+impl From<MappedMember> for OrganizationMember {
+    fn from(value: MappedMember) -> Self {
+        value.0
+    }
+}
+impl TryFrom<(OrganizationMemberSchema, Role)> for MappedMember {
     type Error = OrganizationRepositoryError;
-
-    fn try_from(model: OrganizationMemberSchema) -> Result<Self, Self::Error> {
+    fn try_from((model, role): (OrganizationMemberSchema, Role)) -> Result<Self, Self::Error> {
         let organization_id = crate::from_bigint(model.organization_id)
             .context("invalid membership organization ID")?;
         let user_id = crate::from_bigint(model.user_id).context("invalid membership user ID")?;
-        Ok(Self {
+        if role.organization_id != organization_id
+            || crate::from_bigint(model.role_id).context("invalid direct role ID")? != role.id
+        {
+            return Err(OrganizationRepositoryError::Conflict);
+        }
+        Ok(Self(OrganizationMember {
             organization_id,
             user_id,
-            roles: Vec::new(),
+            role,
             groups: Vec::new(),
-        })
+        }))
     }
 }

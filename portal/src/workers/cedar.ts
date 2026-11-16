@@ -1,0 +1,515 @@
+import { compactCedarSource } from '@compallm/contract/cedar'
+import { RoleUpdateInput } from '@compallm/contract/validation'
+import type { PolicyProjection } from '@compallm/storybook/pages/settings'
+import type { EntityUidJson, PolicyJson } from '@cedar-policy/cedar-wasm/web'
+
+let engine: Promise<typeof import('@cedar-policy/cedar-wasm/web')> | undefined
+
+function cedar() {
+  engine ??= import('@cedar-policy/cedar-wasm/web')
+    .then(async (module) => {
+      await module.default()
+      return module
+    })
+    .catch((error: unknown) => {
+      engine = undefined
+      throw error
+    })
+  return engine
+}
+
+export async function formatPolicySource(source: string) {
+  const parser = await cedar()
+  const normalized = await normalizePolicySource(source)
+  const result = parser.formatPolicies({ policyText: normalized, lineWidth: 80, indentWidth: 2 })
+  if (result.type === 'failure') throw new Error('Cedar formatting failed')
+  return result.formatted_policy
+}
+
+function statementJson(parser: Awaited<ReturnType<typeof cedar>>, source: string) {
+  const policy = parser.policyToJson(source)
+  return policy.type === 'success' ? policy : parser.templateToJson(source)
+}
+
+function statementText(parser: Awaited<ReturnType<typeof cedar>>, policy: PolicyJson) {
+  const rendered = parser.policyToText(policy)
+  return rendered.type === 'success' ? rendered : parser.templateToText(policy)
+}
+
+function entity(value: EntityUidJson) {
+  return '__entity' in value ? value.__entity : value
+}
+
+function actionEntities(policy: import('@cedar-policy/cedar-wasm/web').PolicyJson) {
+  return policy.action.op === '==' && 'entity' in policy.action
+    ? [policy.action.entity]
+    : policy.action.op === 'in' && 'entities' in policy.action
+      ? policy.action.entities
+      : policy.action.op === 'in' && 'entity' in policy.action
+        ? [policy.action.entity]
+        : []
+}
+
+function sourceStatements(source: string) {
+  const statements: { start: number; end: number; text: string; hasComment: boolean; comments: string[] }[] = []
+  let start = -1
+  let depth = 0
+  let hasComment = false
+  let comments: string[] = []
+  for (let index = 0; index < source.length; index++) {
+    const char = source[index]
+    if (char === '/' && source[index + 1] === '/') {
+      if (start >= 0) hasComment = true
+      const commentStart = index
+      while (index < source.length && source[index] !== '\n') index++
+      if (start >= 0) comments.push(source.slice(commentStart, index))
+      continue
+    }
+    if (char === '/' && source[index + 1] === '*') {
+      if (start >= 0) hasComment = true
+      const commentStart = index
+      index += 2
+      while (index < source.length && !(source[index] === '*' && source[index + 1] === '/')) index++
+      index++
+      if (start >= 0) comments.push(source.slice(commentStart, index + 1))
+      continue
+    }
+    if (start < 0) {
+      if (/\s/u.test(char)) continue
+      start = index
+      hasComment = false
+      comments = []
+    }
+    if (char === '"') {
+      for (index++; index < source.length; index++) {
+        if (source[index] === '\\') index++
+        else if (source[index] === '"') break
+      }
+      continue
+    }
+    if ('([{'.includes(char)) depth++
+    else if (')]}'.includes(char)) depth--
+    else if (char === ';' && depth === 0) {
+      statements.push({ start, end: index + 1, text: source.slice(start, index + 1), hasComment, comments })
+      start = -1
+    }
+  }
+  return statements
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
+  if (value && typeof value === 'object')
+    return `{${Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`)
+      .join(',')}}`
+  return JSON.stringify(value) ?? 'null'
+}
+
+function policyGroup(policy: PolicyJson) {
+  return stableJson({
+    effect: policy.effect,
+    principal: policy.principal,
+    resource: policy.resource,
+    conditions: policy.conditions,
+    annotations: policy.annotations ?? {},
+  })
+}
+
+export async function normalizePolicySource(source: string) {
+  const parser = await cedar()
+  const parsed = parser.policySetTextToParts(source)
+  if (parsed.type === 'failure') throw new Error('Invalid policy')
+  const statements = sourceStatements(source)
+  if (statements.length !== parsed.policies.length + parsed.policy_templates.length)
+    throw new Error('Unable to locate policy statements')
+  const groups = new Map<string, { policy: PolicyJson; actions: Map<string, EntityUidJson>; spans: typeof statements }>()
+  for (const span of statements) {
+    if (span.hasComment || ![...parsed.policies, ...parsed.policy_templates].includes(span.text)) continue
+    const result = statementJson(parser, span.text)
+    if (result.type === 'failure' || result.json.action.op === 'All') continue
+    const actions = actionEntities(result.json)
+    if (!actions.length) continue
+    const actionGroup = result.json.action.op === '==' ? `equals:${stableJson(entity(actions[0]))}` : 'in'
+    const key = `${policyGroup(result.json)}:${actionGroup}`
+    const group = groups.get(key) ?? { policy: result.json, actions: new Map<string, EntityUidJson>(), spans: [] }
+    for (const value of actions) group.actions.set(stableJson(entity(value)), value)
+    group.spans.push(span)
+    groups.set(key, group)
+  }
+  const edits: { start: number; end: number; text: string }[] = []
+  for (const group of groups.values()) {
+    const actions = [...group.actions.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([, value]) => value)
+    const canonical: PolicyJson = {
+      ...group.policy,
+      action: group.policy.action.op === '==' ? { op: '==', entity: actions[0] } : { op: 'in', entities: actions },
+    }
+    const rendered = statementText(parser, canonical)
+    if (rendered.type === 'failure') throw new Error('Unable to normalize policy')
+    const checked = statementJson(parser, rendered.text)
+    if (
+      checked.type === 'failure' ||
+      policyGroup(checked.json) !== policyGroup(group.policy) ||
+      stableJson(actionEntities(checked.json).map(entity)) !== stableJson(actions.map(entity))
+    )
+      throw new Error('Policy normalization changed meaning')
+    group.spans.forEach((span, index) =>
+      edits.push({ start: span.start, end: span.end, text: index === 0 ? rendered.text : '' }),
+    )
+  }
+  for (const edit of edits.sort((left, right) => right.start - left.start))
+    source = source.slice(0, edit.start) + edit.text + source.slice(edit.end)
+  if (parser.policySetTextToParts(source).type === 'failure') throw new Error('Invalid normalized policy')
+  return source
+}
+
+export function actionStatement(action: string, resourceType: string) {
+  const organization = '?resource'
+  const principal = '?principal'
+  const resource =
+    resourceType === 'Organization' ? `resource == ${organization}` : `resource is Compallm::${resourceType} in ${organization}`
+  return `permit(principal in ${principal}, action == Compallm::Action::${JSON.stringify(action)}, ${resource});`
+}
+
+export async function projectPolicy(source: string, actionsByName: ReadonlyMap<string, string>) {
+  const parser = await cedar()
+  const parsed = parser.policySetTextToParts(source)
+  if (parsed.type === 'failure')
+    return {
+      projection: [] as PolicyProjection[],
+      diagnostics: parsed.errors.map((error) => error.message),
+    }
+  const projection: PolicyProjection[] = []
+  for (const statement of [...parsed.policies, ...parsed.policy_templates]) {
+    const result = statementJson(parser, statement)
+    if (result.type === 'failure') {
+      projection.push({ action: '', source: statement, advanced: true, editable: false })
+      continue
+    }
+    const policy = result.json
+    const actions = actionEntities(policy)
+    const names =
+      policy.action.op === 'All'
+        ? [...actionsByName.keys()]
+        : actions
+            .map(entity)
+            .filter((action) => action.type === 'Compallm::Action' && actionsByName.has(action.id))
+            .map((action) => action.id)
+    const unknownActions = actions
+      .map(entity)
+      .filter((action) => action.type !== 'Compallm::Action' || !actionsByName.has(action.id))
+    if (!names.length || unknownActions.length)
+      projection.push({
+        action: '',
+        effect: policy.effect,
+        source: statement,
+        advanced: true,
+        editable: false,
+        reason: unknownActions.length
+          ? 'Contains actions outside the current catalog. Edit them in Cedar.'
+          : 'Edit this statement in Cedar.',
+      })
+    for (const action of names) {
+      const editable =
+        policy.effect === 'permit' &&
+        policy.action.op !== 'All' &&
+        actions.length > 0 &&
+        sourceStatements(source).some((span) => span.text === statement)
+      projection.push({
+        action,
+        effect: policy.effect,
+        source: statement,
+        advanced: !editable,
+        editable,
+        resourceRestricted: policy.conditions.length > 0,
+        reason: policy.action.op === 'All' ? 'Applies to all actions. Edit its action scope in Cedar.' : undefined,
+      })
+    }
+  }
+  return { projection, diagnostics: [] as string[] }
+}
+
+export async function actionPolicies(source: string, action: string) {
+  const parser = await cedar()
+  const parsed = parser.policySetTextToParts(source)
+  if (parsed.type === 'failure') throw new Error('Invalid policy')
+  const policies: string[] = []
+  for (const statement of [...parsed.policies, ...parsed.policy_templates]) {
+    const result = statementJson(parser, statement)
+    if (result.type === 'failure' || result.json.effect !== 'permit') continue
+    const matching = actionEntities(result.json).filter(
+      (value) => entity(value).type === 'Compallm::Action' && entity(value).id === action,
+    )
+    if (!matching.length) continue
+    const policy: PolicyJson = {
+      ...result.json,
+      action: result.json.action.op === '==' ? { op: '==', entity: matching[0] } : { op: 'in', entities: matching },
+    }
+    const rendered = statementText(parser, policy)
+    if (rendered.type === 'failure') throw new Error('Unable to retain action policy')
+    policies.push(rendered.text)
+  }
+  return [...new Set(policies)]
+}
+
+export async function removePolicyAction(source: string, action: string) {
+  const parser = await cedar()
+  const parsed = parser.policySetTextToParts(source)
+  if (parsed.type === 'failure') throw new Error('Invalid policy')
+  for (const span of sourceStatements(source).reverse()) {
+    if (![...parsed.policies, ...parsed.policy_templates].includes(span.text)) continue
+    const result = statementJson(parser, span.text)
+    if (result.type === 'failure' || result.json.effect !== 'permit') continue
+    const values = actionEntities(result.json)
+    const remaining = values.filter((value) => entity(value).type !== 'Compallm::Action' || entity(value).id !== action)
+    if (values.length === remaining.length) continue
+    let replacement = ''
+    if (remaining.length) {
+      const policy: PolicyJson = { ...result.json, action: { op: 'in', entities: remaining } }
+      const rendered = statementText(parser, policy)
+      if (rendered.type === 'failure') throw new Error('Unable to update action list')
+      const checked = statementJson(parser, rendered.text)
+      if (
+        checked.type === 'failure' ||
+        policyGroup(checked.json) !== policyGroup(policy) ||
+        checked.json.action.op !== policy.action.op ||
+        stableJson(actionEntities(checked.json).map(entity)) !== stableJson(actionEntities(policy).map(entity))
+      )
+        throw new Error('Policy edit changed other rules')
+      replacement = rendered.text
+    }
+    const comments = span.comments.length ? span.comments.join('\n') + '\n' : ''
+    source = source.slice(0, span.start) + comments + replacement + source.slice(span.end)
+  }
+  if (parser.policySetTextToParts(source).type === 'failure') throw new Error('Invalid updated policy')
+  return source
+}
+
+import type { CedarRequest, CedarResponse, CedarOperation, CedarResult } from './cedar-protocol'
+
+async function editPolicyActions(
+  source: string,
+  actions: string[],
+  enabled: boolean,
+  catalog: [string, string][],
+  retained: Record<string, string[]>,
+) {
+  const disabledPolicies = { ...retained }
+  const scopes = new Map(catalog)
+  const original = await projectPolicy(source, scopes)
+  if (original.diagnostics.length) throw new Error('Policy parsing failed')
+  source = await normalizePolicySource(source)
+  for (const action of new Set(actions)) {
+    const scope = scopes.get(action)
+    if (!scope) continue
+    const current = original.projection.filter((entry) => entry.action === action && entry.effect !== 'forbid')
+    if (current.some((entry) => !entry.editable)) throw new Error('Edit this action scope in Cedar.')
+    if (enabled && !current.length) {
+      const statements = disabledPolicies[action] ?? [actionStatement(action, scope)]
+      source += `${source && !source.endsWith('\n') ? '\n' : ''}${statements.join('\n')}\n`
+    }
+    if (!enabled && current.length) {
+      disabledPolicies[action] = await actionPolicies(source, action)
+      source = await removePolicyAction(source, action)
+    }
+  }
+  source = await formatPolicySource(source)
+  const projected = await projectPolicy(source, scopes)
+  if (projected.diagnostics.length) throw new Error('Policy parsing failed')
+  return { source, disabledPolicies, ...projected }
+}
+
+let permissionSource: string | undefined
+
+async function evaluatePermissions(
+  authority: { userId: string; organizationId: string; source: string; entities: string },
+  checks: import('@compallm/storybook').PermissionCheck[],
+  facts: import('@compallm/storybook').PermissionFacts[],
+) {
+  const parser = await cedar()
+  if (permissionSource !== authority.source) {
+    const parsed = parser.preparsePolicySet('ui-permissions', { staticPolicies: authority.source })
+    if (parsed.type === 'failure') throw new Error('Permission policies are unavailable')
+    permissionSource = authority.source
+  }
+  const uid = (type: string, id: string) => ({
+    type: `Compallm::${type}`,
+    id: type === 'Organization' || type === 'User' ? id : `${authority.organizationId}:${id}`,
+  })
+  const escape = (value: ReturnType<typeof uid>) => ({ __entity: value })
+  const base = JSON.parse(authority.entities) as import('@cedar-policy/cedar-wasm/web').EntityJson[]
+  const entityKey = (value: EntityUidJson) => {
+    const uid = entity(value)
+    return `${uid.type}\0${uid.id}`
+  }
+  const principal = uid('User', authority.userId)
+  const org = uid('Organization', authority.organizationId)
+  const entities = new Map(base.map((item) => [entityKey(item.uid), item]))
+  const add = (type: string, id: string, fact?: import('@compallm/storybook').PermissionFacts) => {
+    const key = entityKey(uid(type, id))
+    if (entities.has(key)) return uid(type, id)
+    if (
+      (type === 'Group' && !fact?.roleIds) ||
+      (type === 'Model' && fact?.enabled === undefined) ||
+      (type === 'ProviderModel' && (fact?.enabled === undefined || !fact.providerId))
+    )
+      throw new Error('Resource facts are unavailable')
+    const attrs: import('@cedar-policy/cedar-wasm/web').EntityJson['attrs'] =
+      type === 'Organization' || type === 'User' ? {} : { organization: escape(org) }
+    const parents = type === 'Organization' ? [] : [org]
+    if (type === 'Member') {
+      if (!entities.has(entityKey(uid('User', id))) && (!fact?.roleIds || !fact?.groupIds))
+        throw new Error('Member facts are unavailable')
+      if (!entities.has(entityKey(uid('User', id))))
+        entities.set(entityKey(uid('User', id)), {
+          uid: uid('User', id),
+          attrs: {},
+          parents: [
+            org,
+            ...fact!.roleIds!.map((role) => uid('Role', role)),
+            ...fact!.groupIds!.map((group) => uid('Group', group)),
+          ],
+        })
+      attrs.user = escape(uid('User', id))
+    }
+    if (type === 'Model' || type === 'ProviderModel') attrs.enabled = fact!.enabled!
+    if (type === 'ProviderModel') {
+      add('Provider', fact!.providerId!)
+      attrs.provider = escape(uid('Provider', fact!.providerId!))
+      parents.push(uid('Provider', fact!.providerId!))
+    }
+    if (type === 'Group') parents.push(...fact!.roleIds!.map((id) => uid('Role', id)))
+    entities.set(key, { uid: uid(type, id), attrs, parents })
+    return uid(type, id)
+  }
+  for (const fact of facts) {
+    const type = fact.resourceType
+    const key = entityKey(uid(type, fact.id))
+    if (!base.some((item) => entityKey(item.uid) === key)) {
+      try {
+        add(type, fact.id, fact)
+      } catch {
+        /* Missing facts restrict only their target checks. */
+      }
+    }
+  }
+  const lookup = (resourceType: string, id: string) => {
+    if (!/^[1-9][0-9]*$/.test(id)) throw new Error('Resource identity is unavailable')
+    return add(
+      resourceType,
+      id,
+      facts.find((fact) => fact.resourceType === resourceType && fact.id === id),
+    )
+  }
+  const evaluate = (
+    action: string,
+    resource: ReturnType<typeof uid>,
+    context: import('@cedar-policy/cedar-wasm/web').Context,
+  ) => {
+    const answer = parser.statefulIsAuthorized({
+      principal,
+      action: { type: 'Compallm::Action', id: action },
+      resource,
+      context,
+      preparsedPolicySetId: 'ui-permissions',
+      entities: [...entities.values()],
+    })
+    if (answer.type === 'failure' || answer.response.diagnostics.errors.length)
+      throw new Error('Permission evaluation is unavailable')
+    return answer.response.decision === 'allow'
+  }
+  return checks.map((check): import('@compallm/storybook').PermissionStatus => {
+    try {
+      if (check.resourceType === 'Organization' && check.resourceId && check.resourceId !== authority.organizationId)
+        return 'denied'
+      const action = check.action
+      const resource = check.resourceType === 'Organization' ? org : lookup(check.resourceType, check.resourceId ?? '')
+      const context: import('@cedar-policy/cedar-wasm/web').Context = {}
+      if (check.roleId) context.role = escape(lookup('Role', check.roleId))
+      if (check.memberId) context.member = escape(lookup('Member', check.memberId))
+      if (check.providerModelId) context.providerModel = escape(lookup('ProviderModel', check.providerModelId))
+      const allowed = evaluate(action, resource, context)
+      if (allowed && check.roleId) {
+        const delegation = action.endsWith('unassign') ? 'role.unassign' : 'role.assign'
+        if (!evaluate(delegation, lookup('Role', check.roleId), {})) return 'denied'
+      }
+      return allowed ? 'allowed' : 'denied'
+    } catch {
+      return 'error'
+    }
+  })
+}
+
+function execute(request: Extract<CedarRequest, { type: 'request' }>): Promise<CedarResult<CedarOperation>> {
+  switch (request.operation) {
+    case 'clearPermissions': {
+      permissionSource = undefined
+      return cedar().then((parser) => {
+        parser.preparsePolicySet('ui-permissions', { staticPolicies: '' })
+        return true
+      })
+    }
+    case 'evaluatePermissions':
+      return evaluatePermissions(...request.args)
+    case 'preparePolicySource': {
+      const [source, current, saved] = request.args
+      const compact = compactCedarSource(source)
+      const parsed = RoleUpdateInput.safeParse({ cedarSource: source })
+      return Promise.resolve({
+        compact,
+        length: [...compact].length,
+        matchesDraft: compact === compactCedarSource(current),
+        matchesSaved: compact === compactCedarSource(saved),
+        input: parsed.success ? parsed.data : null,
+      })
+    }
+    case 'projectPolicy':
+      return projectPolicy(request.args[0], new Map(request.args[1]))
+    case 'formatPolicySource':
+      return formatPolicySource(...request.args)
+    case 'normalizePolicySource':
+      return normalizePolicySource(...request.args)
+    case 'actionPolicies':
+      return actionPolicies(...request.args)
+    case 'removePolicyAction':
+      return removePolicyAction(...request.args)
+    case 'editPolicyActions':
+      return editPolicyActions(...request.args)
+  }
+}
+
+const pending = new Set<number>()
+const cancelled = new Set<number>()
+let queue = Promise.resolve()
+const respond = (message: CedarResponse) => self.postMessage(message)
+self.addEventListener('message', (event: MessageEvent<CedarRequest>) => {
+  const request = event.data
+  if (request.type === 'cancel') {
+    if (pending.has(request.id)) cancelled.add(request.id)
+    return
+  }
+  pending.add(request.id)
+  queue = queue.then(async () => {
+    try {
+      if (cancelled.has(request.id)) return
+      const result = await execute(request)
+      if (!cancelled.has(request.id)) respond({ type: 'result', id: request.id, result })
+    } catch (error) {
+      if (error instanceof WebAssembly.RuntimeError) {
+        respond({ type: 'fatal', message: 'Cedar processing failed. Retry the operation.' })
+        return
+      }
+      if (!cancelled.has(request.id))
+        respond({ type: 'error', id: request.id, message: error instanceof Error ? error.message : 'Cedar processing failed' })
+    } finally {
+      pending.delete(request.id)
+      cancelled.delete(request.id)
+    }
+  })
+})
+void cedar()
+  .then(() => respond({ type: 'ready' }))
+  .catch(() => {
+    respond({ type: 'fatal', message: 'Cedar could not initialize. Retry the operation.' })
+  })

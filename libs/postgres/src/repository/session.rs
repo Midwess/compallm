@@ -9,7 +9,7 @@ use compallm_core::{
 };
 use sea_orm::{
     ColumnTrait, ConnectionTrait, EntityTrait, ExprTrait, JoinType, ModelTrait, QueryFilter,
-    QuerySelect, QueryTrait, Set,
+    QuerySelect, QueryTrait, RelationTrait, Set,
     prelude::{DateTimeUtc, DateTimeWithTimeZone},
     sea_query::{Expr, UnionType},
 };
@@ -24,8 +24,6 @@ type Members = <crate::OrganizationMemberSchema as ModelTrait>::Entity;
 type MemberColumn = <Members as EntityTrait>::Column;
 type Roles = <crate::OrganizationRoleSchema as ModelTrait>::Entity;
 type RoleColumn = <Roles as EntityTrait>::Column;
-type MemberRoles = <crate::OrganizationMemberRoleSchema as ModelTrait>::Entity;
-type MemberRoleColumn = <MemberRoles as EntityTrait>::Column;
 type Groups = <crate::OrganizationGroupSchema as ModelTrait>::Entity;
 type GroupColumn = <Groups as EntityTrait>::Column;
 type GroupMembers = <crate::OrganizationGroupMemberSchema as ModelTrait>::Entity;
@@ -91,9 +89,9 @@ impl CoreSessionRepository for SessionRepository {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
         // Keep session state and all effective assignments in one MVCC statement.
-        let direct_relation = Roles::belongs_to(MemberRoles::default())
+        let direct_relation = Roles::belongs_to(Members::default())
             .from((RoleColumn::OrganizationId, RoleColumn::Id))
-            .to((MemberRoleColumn::OrganizationId, MemberRoleColumn::RoleId))
+            .to((MemberColumn::OrganizationId, MemberColumn::RoleId))
             .into();
         let mut direct = Roles::find()
             .select_only()
@@ -110,11 +108,11 @@ impl CoreSessionRepository for SessionRepository {
             .column(RoleColumn::OrgOwner)
             .join(JoinType::InnerJoin, direct_relation)
             .filter(
-                Expr::col((MemberRoles::default(), MemberRoleColumn::OrganizationId))
+                Expr::col((Members::default(), MemberColumn::OrganizationId))
                     .equals((Sessions::default(), SessionColumn::OrganizationId)),
             )
             .filter(
-                Expr::col((MemberRoles::default(), MemberRoleColumn::UserId))
+                Expr::col((Members::default(), MemberColumn::UserId))
                     .equals((Sessions::default(), SessionColumn::UserId)),
             );
         let group_relation = GroupMembers::belongs_to(Groups::default())
@@ -128,10 +126,7 @@ impl CoreSessionRepository for SessionRepository {
             .from((GroupColumn::OrganizationId, GroupColumn::Id))
             .to((GroupRoleColumn::OrganizationId, GroupRoleColumn::GroupId))
             .into();
-        let role_relation = GroupRoles::belongs_to(Roles::default())
-            .from((GroupRoleColumn::OrganizationId, GroupRoleColumn::RoleId))
-            .to((RoleColumn::OrganizationId, RoleColumn::Id))
-            .into();
+        let role_relation = <GroupRoles as EntityTrait>::Relation::OrganizationRoles1.def();
         let inherited = GroupMembers::find()
             .select_only()
             .column_as(GroupColumn::Id, "group_id")
@@ -162,7 +157,6 @@ impl CoreSessionRepository for SessionRepository {
             .inner_join(Users::default())
             .inner_join(Organizations::default())
             .join(JoinType::InnerJoin, membership_relation)
-            .column_as(OrganizationColumn::Name, "organization_name")
             .filter(UserColumn::Status.eq(crate::UserStatusSchema::Active))
             .filter(OrganizationColumn::Status.eq(crate::OrganizationStatusSchema::Active))
             .filter(MemberColumn::Status.eq(crate::UserStatusSchema::Active))
@@ -258,9 +252,8 @@ impl CoreSessionRepository for SessionRepository {
             .await
             .map_err(anyhow::Error::from)?
             .map(|(session, organization)| {
-                let organization = organization.context("session organization is missing")?;
-                crate::mappers::session::MappedSession::try_from((session, organization.name))
-                    .map(Session::from)
+                organization.context("session organization is missing")?;
+                crate::mappers::session::MappedSession::try_from(session).map(Session::from)
             })
             .transpose()
     }

@@ -25,14 +25,38 @@ impl RegistrationService {
     /// User, default organization, and owner membership succeed atomically.
     /// Joins an existing transaction when invoked by another service.
     pub async fn register(&self, email: &str) -> Result<User, RegistrationError> {
-        let user = User::from_email(email).await?;
+        self.register_path(email, true).await
+    }
+
+    pub async fn register_invited(&self, email: &str) -> Result<User, RegistrationError> {
+        self.register_path(email, false).await
+    }
+
+    async fn register_path(
+        &self,
+        email: &str,
+        personal_organization: bool,
+    ) -> Result<User, RegistrationError> {
+        let mut user = User::from_email(email).await?;
         if self.users.find_by_email(&user.email).await?.is_some() {
             return Err(UserRepositoryError::EmailAlreadyExists.into());
         }
 
         transaction!(DbContext::current()?, {
-            let user = self.users.create(user).await?;
-            self.organizations.create_default(&user).await?;
+            let mut attempt = 0_u64;
+            let user = loop {
+                user.username = User::username_candidate(&user.email, attempt);
+                match self.users.create(user.clone()).await {
+                    Ok(user) => break user,
+                    Err(UserRepositoryError::UsernameAlreadyExists) => {
+                        attempt += 1;
+                    }
+                    Err(error) => return Err(error.into()),
+                }
+            };
+            if personal_organization {
+                self.organizations.create_default(&user).await?;
+            }
             Ok(user)
         })
     }

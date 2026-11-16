@@ -6,6 +6,9 @@ import { Preview, Row, Sample } from './Preview'
 const meta = { title: 'Components/Content & code', parameters: { layout: 'fullscreen' } } satisfies Meta
 export default meta
 type Story = StoryObj<typeof meta>
+const avatarImage =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E" +
+  "%3Crect width='40' height='40' fill='%237c3aed'/%3E%3C/svg%3E"
 export const SectionHeading: Story = {
   render: () => (
     <Preview>
@@ -36,6 +39,8 @@ export const Avatar: Story = {
         <Row>
           <Content.Avatar name="Alex Morgan" />
           <Content.Avatar name="Sam Lee" size={24} />
+          <Content.Avatar name="Failed Image" src="/missing-avatar.png" />
+          <Content.Avatar name="Loaded Image" src={avatarImage} />
         </Row>
       </Sample>
     </Preview>

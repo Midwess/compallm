@@ -31,6 +31,7 @@ impl Fixture {
                     .into_iter()
                     .map(|name| {
                         let model = OrganizationSchema {
+                            avatar_path: None,
                             id: 84,
                             name: name.into(),
                             status: OrganizationStatusSchema::Active,
@@ -41,7 +42,7 @@ impl Fixture {
                         row
                     })
                     .collect::<Vec<_>>();
-                db.append_query_results([rows])
+                db.append_query_results([rows.clone(), rows])
             }
             Err(error) => db.append_query_errors([error]),
         };

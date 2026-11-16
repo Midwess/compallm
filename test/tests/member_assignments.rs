@@ -1,138 +1,123 @@
-use compallm_core::organization::{Group, OrganizationMember, Role};
-
-#[test]
-fn assignment_is_scoped_and_idempotent() {
-    let role = Role {
-        id: 1,
-        organization_id: 10,
-        name: "Role".into(),
+use compallm_core::organization::{Group, OrganizationMember, Role, group::GroupCreationError};
+fn role(id: u64, org: u64, owner: bool) -> Role {
+    Role {
+        id,
+        organization_id: org,
+        name: format!("Role {id}"),
         description: String::new(),
         cedar_source: String::new(),
-        org_owner: false,
-    };
-    let group = Group {
-        id: 2,
-        organization_id: 10,
-        name: "Group".into(),
-        description: String::new(),
-        roles: vec![role.clone()],
-    };
-    let mut member = OrganizationMember {
-        organization_id: 10,
-        user_id: 9,
-        roles: vec![],
-        groups: vec![],
-    };
-    member.assign_role(role.clone()).unwrap();
-    member.assign_role(role.clone()).unwrap();
-    member.assign_group(group.clone()).unwrap();
-    member.assign_group(group.clone()).unwrap();
-    assert_eq!(member.roles.len(), 1);
-    assert_eq!(member.groups.len(), 1);
-    assert!(
-        member
-            .assign_role(Role {
-                organization_id: 11,
-                ..role
-            })
-            .is_err()
-    );
-    assert!(
-        member
-            .assign_group(Group {
-                organization_id: 11,
-                ..group
-            })
-            .is_err()
-    );
-    assert_eq!(member.roles.len(), 1);
-    assert_eq!(member.groups.len(), 1);
+        org_owner: owner,
+    }
 }
-
 #[test]
-fn unassignment_removes_only_the_requested_direct_relationship() {
-    let role = Role {
-        id: 1,
-        organization_id: 10,
-        name: "Role".into(),
-        description: String::new(),
-        cedar_source: String::new(),
-        org_owner: false,
-    };
-    let group = Group {
-        id: 2,
-        organization_id: 10,
-        name: "Group".into(),
-        description: String::new(),
-        roles: vec![role.clone()],
-    };
+fn replacing_direct_role_preserves_multiple_groups_and_rejects_foreign_role() {
+    let group = Group::new(
+        20,
+        10,
+        "One".into(),
+        String::new(),
+        vec![role(3, 10, false)],
+    )
+    .unwrap();
     let mut member = OrganizationMember {
         organization_id: 10,
         user_id: 9,
-        roles: vec![role],
+        role: role(1, 10, false),
         groups: vec![group],
     };
-    member.unassign_role(999).unwrap();
-    assert_eq!(member.roles.len(), 1);
-    member.unassign_role(1).unwrap();
-    member.unassign_role(1).unwrap();
-    assert!(member.roles.is_empty());
-    assert_eq!(member.effective_roles().count(), 1);
-    member.unassign_group(999).unwrap();
-    assert_eq!(member.groups.len(), 1);
-    member.unassign_group(2).unwrap();
-    member.unassign_group(2).unwrap();
-    assert!(member.groups.is_empty());
-    assert_eq!(member.effective_roles().count(), 0);
+    member
+        .assign_group(Group::new(21, 10, "Two".into(), String::new(), vec![]).unwrap())
+        .unwrap();
+    member.assign_role(8, role(2, 10, false)).unwrap();
+    assert_eq!(member.role.id, 2);
+    assert_eq!(member.groups.len(), 2);
+    assert!(member.assign_role(8, role(4, 11, false)).is_err());
+    assert_eq!(member.role.id, 2);
+    assert_eq!(
+        member.effective_roles().map(|r| r.id).collect::<Vec<_>>(),
+        vec![2, 3]
+    );
+}
+#[tokio::test]
+async fn owner_is_rejected_by_group_creation_rehydration_and_role_replacement() {
+    assert!(matches!(
+        Group::create(10, "Group", "", vec![role(1, 10, true)]).await,
+        Err(GroupCreationError::OwnerRole)
+    ));
+    assert!(matches!(
+        Group::new(
+            20,
+            10,
+            "Group".into(),
+            String::new(),
+            vec![role(1, 10, true)]
+        ),
+        Err(GroupCreationError::OwnerRole)
+    ));
+    let mut group = Group::new(
+        20,
+        10,
+        "Group".into(),
+        String::new(),
+        vec![role(2, 10, false)],
+    )
+    .unwrap();
+    assert!(matches!(
+        group.replace_roles(vec![role(1, 10, true)]),
+        Err(GroupCreationError::OwnerRole)
+    ));
+    assert_eq!(group.roles()[0].id, 2);
 }
 
 #[test]
-fn organization_owner_role_cannot_be_unassigned() {
-    use compallm_core::organization::member::MembershipAssignmentError;
-    let owner = Role {
-        id: 7,
-        organization_id: 10,
-        name: "renamed".into(),
-        description: String::new(),
-        cedar_source: String::new(),
-        org_owner: true,
-    };
+fn self_role_replacement_is_denied_but_reselection_preserves_the_role() {
     let mut member = OrganizationMember {
         organization_id: 10,
         user_id: 9,
-        roles: vec![owner.clone()],
+        role: role(1, 10, true),
         groups: vec![],
     };
     assert!(matches!(
-        member.unassign_role(owner.id),
-        Err(MembershipAssignmentError::OwnerRole)
+        member.assign_role(9, role(2, 10, false)),
+        Err(compallm_core::organization::member::MembershipAssignmentError::SelfRoleChange)
     ));
-    assert_eq!(member.roles, vec![owner]);
+    assert_eq!(member.role.id, 1);
+    member.assign_role(9, role(1, 10, true)).unwrap();
 }
 
 #[test]
-fn group_with_owner_role_cannot_be_unassigned() {
-    let owner = Role {
-        id: 7,
-        organization_id: 10,
-        name: "Owner".into(),
-        description: String::new(),
-        cedar_source: String::new(),
-        org_owner: true,
-    };
-    let group = Group {
-        id: 2,
-        organization_id: 10,
-        name: "Group".into(),
-        description: String::new(),
-        roles: vec![owner],
-    };
-    let mut member = OrganizationMember {
+fn ownership_changes_require_an_active_owner_and_preserve_an_owner() {
+    use compallm_core::organization::member::MembershipAssignmentError;
+    let member = OrganizationMember {
         organization_id: 10,
         user_id: 9,
-        roles: vec![],
-        groups: vec![group.clone()],
+        role: role(1, 10, true),
+        groups: vec![],
     };
-    assert!(member.unassign_group(group.id).is_err());
-    assert_eq!(member.groups, vec![group]);
+    assert!(member.is_owner());
+    assert!(matches!(
+        member.ensure_owner_change(8, &role(2, 10, false), &[9]),
+        Err(MembershipAssignmentError::OwnerChangeDenied)
+    ));
+    assert!(matches!(
+        member.ensure_owner_change(9, &role(2, 10, false), &[9]),
+        Err(MembershipAssignmentError::OwnerRole)
+    ));
+    member
+        .ensure_owner_change(8, &role(2, 10, false), &[8, 9])
+        .unwrap();
+    member
+        .ensure_owner_change(7, &role(1, 10, true), &[9])
+        .unwrap();
+    let ordinary = OrganizationMember {
+        role: role(2, 10, false),
+        ..member
+    };
+    assert!(matches!(
+        ordinary.ensure_owner_change(8, &role(1, 10, true), &[]),
+        Err(MembershipAssignmentError::OwnerChangeDenied)
+    ));
+    ordinary
+        .ensure_owner_change(8, &role(1, 10, true), &[8])
+        .unwrap();
 }

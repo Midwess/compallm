@@ -8,6 +8,7 @@ use crate::http::{
     authentication::{AuthenticationContext, CookieDelivery, UserContext},
     authorization::AuthorizationContext,
 };
+use compallm_core::organization::invitation_service::InvitationService;
 use compallm_core::{
     authentication::AuthService, authorization::rbac::RbacService,
     persistent::organization::OrganizationRepository,
@@ -23,15 +24,63 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
+    async fn invitation_context(
+        #[graphql(context)] service: &InvitationService,
+        #[graphql(context)] identity: &AuthenticationContext,
+    ) -> Result<Payload<organization::invitation::InvitationContext>, Error> {
+        organization::invitation::query::context(service, identity).await
+    }
+    async fn invitations(
+        first: Option<i32>,
+        after: Option<String>,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::invitation::InvitationRepository,
+        >,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Collection<organization::invitation::Invitation>, Error> {
+        organization::invitation::query::list(
+            compallm_query::Pagination {
+                first: Some(first.unwrap_or(20)),
+                after: after.map(compallm_query::Cursor),
+                ..Default::default()
+            },
+            repository.as_ref(),
+            authority,
+        )
+        .await
+    }
+
+    async fn me(
+        #[graphql(context)] user: &UserContext,
+    ) -> Result<Payload<super::user::me::Me>, Error> {
+        super::user::me::query::get(user).await
+    }
+
+    async fn organization_profile(
+        id: ID,
+        #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
+        #[graphql(context)] identity: &AuthenticationContext,
+    ) -> Result<Option<Payload<organization::Organization>>, Error> {
+        organization::query::profile(id, repository.as_ref(), identity).await
+    }
+
+    /// Read an active user profile using verified user identity.
+    async fn user_profile(
+        id: ID,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] repository: &Box<dyn compallm_core::persistent::user::UserRepository>,
+    ) -> Result<Option<Payload<super::user::User>>, Error> {
+        super::user::query::profile(id, user, repository.as_ref()).await
+    }
+
     /// Return the signed-in user's personal preferences; missing rows use Core defaults without a write.
     async fn user_preferences(
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] repository: &Box<
             dyn compallm_core::persistent::preference::user::UserPreferenceRepository,
         >,
-        #[graphql(context)] database: &compallm_core::persistent::DbContext,
     ) -> Result<Payload<super::preference::user::UserPreferences>, Error> {
-        super::preference::user::query::get(user, repository.as_ref(), database).await
+        super::preference::user::query::get(user, repository.as_ref()).await
     }
 
     /// Return the system-owned organization policy action catalog.
@@ -44,32 +93,75 @@ impl Query {
     /// Return the verified current session identity.
     async fn session(
         #[graphql(context)] user: &UserContext,
+        #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
+        #[graphql(context)] identity: &AuthenticationContext,
     ) -> Result<Payload<authentication::Session>, Error> {
-        authentication::query::session(user).await
+        authentication::query::session(user, repository.as_ref(), identity).await
     }
 
     /// Return the active organization from verified user authority.
     async fn organization(
         #[graphql(context)] user: &UserContext,
+        #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
+        #[graphql(context)] identity: &AuthenticationContext,
     ) -> Result<Payload<organization::Organization>, Error> {
-        organization::query::get(user).await
+        organization::query::get(user, repository.as_ref(), identity).await
+    }
+
+    async fn members(
+        current_user_first: Option<bool>,
+        filter: Option<organization::member::input::MemberFilterInput>,
+        order_by: Option<Vec<organization::member::input::MemberOrderInput>>,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<String>,
+        after: Option<String>,
+        offset: Option<i32>,
+        #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Collection<organization::member::Member>, Error> {
+        organization::member::query::list(
+            filter,
+            order_by,
+            compallm_query::Pagination {
+                first: first.or(if last.is_none() && before.is_none() {
+                    Some(20)
+                } else {
+                    None
+                }),
+                last: last.or(if first.is_none() && before.is_some() {
+                    Some(20)
+                } else {
+                    None
+                }),
+                before: before.map(compallm_query::Cursor),
+                after: after.map(compallm_query::Cursor),
+                offset,
+            },
+            current_user_first.unwrap_or(false),
+            repository,
+            authority,
+        )
+        .await
     }
 
     /// Find visible role metadata in the active organization.
     async fn role(
         id: ID,
+        #[graphql(default = false)] include_unseen: bool,
         #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
         #[graphql(context)] authority: &AuthorizationContext,
     ) -> Result<Option<Payload<organization::role::Role>>, Error> {
-        organization::role::query::get(id, repository, authority).await
+        organization::role::query::get(id, include_unseen, repository, authority).await
     }
 
     /// Return the complete visible role metadata collection, ordered by ID.
     async fn roles(
+        #[graphql(default = false)] include_unseen: bool,
         #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
         #[graphql(context)] authority: &AuthorizationContext,
     ) -> Result<Collection<organization::role::Role>, Error> {
-        organization::role::query::list(repository, authority).await
+        organization::role::query::list(include_unseen, repository, authority).await
     }
 
     /// Find visible group metadata in the active organization.
@@ -94,63 +186,142 @@ pub struct Mutation;
 
 #[graphql_object(context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Mutation {
+    async fn invitation_create_many(
+        input: organization::invitation::input::InvitationBatchCreateInput,
+        #[graphql(context)] service: &InvitationService,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] cookies: &CookieDelivery,
+    ) -> Result<Collection<organization::invitation::InvitationIssued>, Error> {
+        organization::invitation::mutation::create_many(input, service, authority, cookies).await
+    }
+
+    async fn invitation_create(
+        input: organization::invitation::input::InvitationCreateInput,
+        #[graphql(context)] service: &InvitationService,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] cookies: &CookieDelivery,
+    ) -> Result<Payload<organization::invitation::InvitationIssued>, Error> {
+        organization::invitation::mutation::create(input, service, authority, cookies).await
+    }
+    async fn invitation_revoke(
+        id: ID,
+        #[graphql(context)] service: &InvitationService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<organization::invitation::Invitation>, Error> {
+        organization::invitation::mutation::revoke(id, service, authority).await
+    }
+
+    async fn organization_profile_update(
+        input: organization::input::OrganizationProfileUpdateInput,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] service: &compallm_core::organization::profile_service::ProfileService,
+    ) -> Result<Payload<organization::Organization>, Error> {
+        organization::mutation::update(input, authority, service).await
+    }
+    async fn generate_org_avatar_url(
+        input: super::user::input::ImageUploadInput,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] service: &compallm_core::organization::profile_service::ProfileService,
+    ) -> Result<Payload<super::user::AvatarUpload>, Error> {
+        organization::mutation::generate(input, authority, service).await
+    }
+
+    async fn group_update(
+        id: ID,
+        input: organization::group::input::GroupUpdateInput,
+        #[graphql(context)] service: &RbacService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<organization::group::Group>, Error> {
+        organization::group::mutation::update(id, input, service, authority).await
+    }
+    async fn group_delete(
+        id: ID,
+        #[graphql(context)] service: &RbacService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<bool>, Error> {
+        organization::group::mutation::delete(id, service, authority).await
+    }
+
+    /// Update the current user's display name and confirm an uploaded avatar.
+    async fn user_profile_update(
+        input: super::user::input::UserProfileUpdateInput,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::user::ProfileService,
+    ) -> Result<Payload<super::user::User>, Error> {
+        super::user::mutation::update(input, user, service).await
+    }
+    /// Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes.
+    async fn generate_url_avatar_url(
+        input: super::user::input::ImageUploadInput,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::user::ProfileService,
+    ) -> Result<Payload<super::user::AvatarUpload>, Error> {
+        super::user::mutation::generate_url_avatar_url(input, user, service).await
+    }
+
     /// Atomically patch the signed-in user's preferences, preserving omitted fields.
     async fn user_preferences_update(
         input: super::preference::user::input::UserPreferencesPatchInput,
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] service: &compallm_core::preference::UserPreferenceService,
-        #[graphql(context)] database: &compallm_core::persistent::DbContext,
     ) -> Result<Payload<super::preference::user::UserPreferences>, Error> {
-        super::preference::user::mutation::update(input, user, service, database).await
+        super::preference::user::mutation::update(input, user, service).await
     }
     /// Restore selected preference groups, or ALL alone, to Core defaults.
     async fn user_preferences_reset(
         groups: Vec<super::preference::user::input::UserPreferenceGroup>,
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] service: &compallm_core::preference::UserPreferenceService,
-        #[graphql(context)] database: &compallm_core::persistent::DbContext,
     ) -> Result<Payload<super::preference::user::UserPreferences>, Error> {
-        super::preference::user::mutation::reset(groups, user, service, database).await
+        super::preference::user::mutation::reset(groups, user, service).await
     }
 
     /// Request a signup email challenge; reject existing accounts before sending.
     async fn email_signup_request(
         input: authentication::input::EmailInput,
         #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] invitations: &InvitationService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<Payload<authentication::EmailChallenge>, Error> {
-        authentication::mutation::signup_email_request(input, auth, identity, cookies).await
+        authentication::mutation::signup_email_request(input, auth, invitations, identity, cookies)
+            .await
     }
 
     /// Confirm the verified signup challenge and create the account and session.
     async fn email_signup_confirm(
         input: authentication::input::EmailCodeInput,
         #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] invitations: &InvitationService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<Payload<authentication::SessionCredentials>, Error> {
-        authentication::mutation::signup_email_confirm(input, auth, identity, cookies).await
+        authentication::mutation::signup_email_confirm(input, auth, invitations, identity, cookies)
+            .await
     }
 
     /// Request a signin email challenge for an existing active account.
     async fn email_signin_request(
         input: authentication::input::EmailInput,
         #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] invitations: &InvitationService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<Payload<authentication::EmailChallenge>, Error> {
-        authentication::mutation::signin_email_request(input, auth, identity, cookies).await
+        authentication::mutation::signin_email_request(input, auth, invitations, identity, cookies)
+            .await
     }
 
     /// Confirm the verified signin challenge and create a scoped session.
     async fn email_signin_confirm(
         input: authentication::input::EmailCodeInput,
         #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] invitations: &InvitationService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<Payload<authentication::SessionCredentials>, Error> {
-        authentication::mutation::signin_email_confirm(input, auth, identity, cookies).await
+        authentication::mutation::signin_email_confirm(input, auth, invitations, identity, cookies)
+            .await
     }
 
     /// Refresh using explicit refresh Bearer authority; leave browser cookies unchanged.
@@ -180,6 +351,15 @@ impl Mutation {
         organization::role::mutation::create(input, service, authority).await
     }
 
+    async fn role_assign(
+        id: ID,
+        member_id: ID,
+        #[graphql(context)] service: &RbacService,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Payload<organization::role::Role>, Error> {
+        organization::role::mutation::assign(id, member_id, service, authority).await
+    }
+
     async fn role_delete(
         id: ID,
         #[graphql(context)] service: &RbacService,
@@ -202,7 +382,7 @@ impl Mutation {
         input: organization::group::input::GroupCreateInput,
         #[graphql(context)] service: &RbacService,
         #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Payload<organization::group::CreatedGroup>, Error> {
+    ) -> Result<Payload<organization::group::Group>, Error> {
         organization::group::mutation::create(input, service, authority).await
     }
 }
@@ -289,10 +469,14 @@ impl GraphQLValueAsync for RegisteredQuery {
 #[derive(JsonSchema)]
 #[allow(dead_code)]
 struct Inputs {
+    invitation_batch_create: organization::invitation::input::InvitationBatchCreateInput,
+    invitation_create: organization::invitation::input::InvitationCreateInput,
     user_preferences_patch: super::preference::user::input::UserPreferencesPatchInput,
     credential_create: super::user::input::CredentialCreateInput,
     spending_limit: super::organization::input::SpendingLimitInput,
     reporting_schedule: super::organization::input::ReportingScheduleInput,
+    organization_profile_update: organization::input::OrganizationProfileUpdateInput,
+    user_profile_update: super::user::input::UserProfileUpdateInput,
     form_0: super::user::input::ProfileUpdateInput,
     form_2: super::user::input::ImageUploadInput,
     form_3: super::organization::input::OrganizationSettingsUpdateInput,
@@ -301,6 +485,9 @@ struct Inputs {
     role_create: super::organization::role::input::RoleCreateInput,
     role_update: super::organization::role::input::RoleUpdateInput,
     group_create: super::organization::group::input::GroupCreateInput,
+    group_update: super::organization::group::input::GroupUpdateInput,
+    member_filter: organization::member::input::MemberFilterInput,
+    member_order: organization::member::input::MemberOrderInput,
     email: super::authentication::input::EmailInput,
     code: super::authentication::input::EmailCodeInput,
     provider_create: super::provider::input::ProvidersCreateInput,

@@ -11,21 +11,21 @@ type Story = StoryObj<typeof meta>
 
 export const Expanded: Story = {
   render: () => (
-    <div data-ui="component-preview" className="h-svh bg-background font-sans text-text">
+    <div data-ui="component-preview" className="h-svh bg-background font-sans text-foreground">
       <SidebarDemo />
     </div>
   ),
 }
 export const Collapsed: Story = {
   render: () => (
-    <div data-ui="component-preview" className="h-svh bg-background font-sans text-text">
+    <div data-ui="component-preview" className="h-svh bg-background font-sans text-foreground">
       <SidebarDemo defaultOpen={false} />
     </div>
   ),
 }
 export const Selected: Story = {
   render: () => (
-    <div data-ui="component-preview" className="h-svh bg-background font-sans text-text">
+    <div data-ui="component-preview" className="h-svh bg-background font-sans text-foreground">
       <SidebarDemo initialSelection="#members" />
     </div>
   ),
@@ -33,7 +33,7 @@ export const Selected: Story = {
 
 export const LongWorkspaceName: Story = {
   render: () => (
-    <div data-ui="component-preview" className="h-80 bg-background font-sans text-text">
+    <div data-ui="component-preview" className="h-80 bg-background font-sans text-foreground">
       <SidebarDemo workspaceName="Research and development organization with a long workspace name" />
     </div>
   ),
@@ -42,7 +42,7 @@ export const LongWorkspaceName: Story = {
 function NestedDisclosure() {
   const [items, setItems] = useState(['First model'])
   return (
-    <div className="h-svh bg-background font-sans text-text">
+    <div className="h-svh bg-background font-sans text-foreground">
       <Sidebar>
         <SidebarSection label="Workspace">
           <SidebarFolder
@@ -70,14 +70,16 @@ export const NestedDisclosureAndAdding: Story = { render: () => <NestedDisclosur
 function SettingsNavigationDemo() {
   const [settings, setSettings] = useState(false)
   return (
-    <div data-ui="component-preview" className="flex h-svh bg-background font-sans text-text">
+    <div data-ui="component-preview" className="flex h-svh bg-background font-sans text-foreground">
       {!settings ? <SidebarDemo onSettings={() => setSettings(true)} /> : null}
       <main className="min-w-0 flex-1 p-6">
         <h1 className="mb-4 text-lg font-medium">{settings ? 'Settings' : 'Workspace'}</h1>
         {settings ? (
           <Button onClick={() => setSettings(false)}>Back to workspace</Button>
         ) : (
-          <p className="text-xs text-muted">Open the workspace menu, hover Switch organization, then select Settings.</p>
+          <p className="text-xs text-muted-foreground">
+            Open the workspace menu, hover Switch organization, then select Settings.
+          </p>
         )}
       </main>
     </div>

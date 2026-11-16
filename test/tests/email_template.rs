@@ -6,7 +6,7 @@ fn otp_template_renders_html_and_plain_text_with_the_same_code_and_expiry() {
     let template = EmailTemplate::OtpCode(OtpCode::new("012345", Duration::from_secs(600)));
     let html = template.to_string();
     let text = template.plain_text();
-    assert!(html.starts_with("<!DOCTYPE html>"));
+    assert!(html.to_ascii_lowercase().starts_with("<!doctype html>"));
     assert!(html.contains("012345"));
     assert!(html.contains("10 minutes"));
     assert!(html.contains("role=\"presentation\""));

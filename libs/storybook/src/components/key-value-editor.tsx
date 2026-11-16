@@ -10,6 +10,7 @@ import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { TextField } from './fields'
 import { cx } from './shared'
+import { useControllableState, type OpenStateProps } from './composition'
 
 export interface KeyValueEntry {
   id: string
@@ -32,6 +33,7 @@ function useEditor() {
 }
 type EditorProps = {
   name?: string
+  defaultValue?: KeyValueEntry[]
   value?: KeyValueEntry[]
   onValueChange?(entries: KeyValueEntry[]): void
   disabled?: boolean
@@ -76,6 +78,7 @@ function BoundRoot({
 function UnboundRoot({
   name,
   value: suppliedValue,
+  defaultValue = [],
   onValueChange: suppliedChange,
   disabled = false,
   children,
@@ -84,10 +87,11 @@ function UnboundRoot({
   keyMaxLength,
 }: EditorProps) {
   const field = useFormField<KeyValueEntry[]>(name)
-  const value = field ? (field.value ?? []) : (suppliedValue ?? [])
+  const [localValue, change] = useControllableState(suppliedValue, defaultValue, suppliedChange)
+  const value = field ? (field.value ?? []) : localValue
   const onValueChange = (value: KeyValueEntry[]) => {
     if (field) field.change(value)
-    else suppliedChange?.(value)
+    else change(value)
   }
   return (
     <EditorContext value={{ entries: value, change: onValueChange, disabled, acceptEntry, keyMaxLength }}>
@@ -103,10 +107,15 @@ function UnboundRoot({
     </EditorContext>
   )
 }
-function Disclosure({ children = 'Headers', defaultOpen = false }: { children?: ReactNode; defaultOpen?: boolean }) {
-  const { detailsRef, contentRef, caretRef, toggle } = useDisclosure(defaultOpen)
+function Disclosure({
+  children = 'Headers',
+  defaultOpen = false,
+  open,
+  onOpenChange,
+}: OpenStateProps & { children?: ReactNode }) {
+  const { initialOpen, detailsRef, contentRef, caretRef, toggle } = useDisclosure(defaultOpen, open, onOpenChange)
   return (
-    <details ref={detailsRef} className="group/headers w-full min-w-0 max-w-full" open={defaultOpen || undefined}>
+    <details ref={detailsRef} className="group/headers w-full min-w-0 max-w-full" open={initialOpen || undefined}>
       <summary
         onClick={(event) => {
           event.preventDefault()
@@ -127,12 +136,13 @@ function Content() {
   const timing = useTransition('reorder')
   const { name, entries, change, disabled, acceptEntry, keyMaxLength } = useEditor()
   const pendingFocus = useRef<string | null>(null)
-  const { rowNodes, drag, preview, announcement, id, keyboardMove, startDrag, pointerMove, endDrag } = useReorder(
-    entries.map((entry) => entry.id),
-    (order) => change(order.flatMap((key) => entries.filter((entry) => entry.id === key))),
-    disabled,
-    'Header',
-  )
+  const { rowNodes, drag, preview, committedDrop, announcement, id, keyboardMove, startDrag, pointerMove, endDrag } =
+    useReorder(
+      entries.map((entry) => entry.id),
+      (order) => change(order.flatMap((key) => entries.filter((entry) => entry.id === key))),
+      disabled,
+      'Header',
+    )
   function update(index: number, patch: Partial<KeyValueEntry>) {
     const next = { ...entries[index], ...patch }
     if (acceptEntry && !acceptEntry(next)) return
@@ -142,7 +152,7 @@ function Content() {
     <div role="table" aria-label="Custom headers" className="grid w-full min-w-0 max-w-full grid-cols-[minmax(0,1fr)] gap-2">
       <div
         role="row"
-        className="grid grid-cols-[2rem_minmax(0,1fr)_minmax(0,1fr)_1.5rem] items-center gap-1 text-xs text-muted"
+        className="grid grid-cols-[2rem_minmax(0,1fr)_minmax(0,1fr)_1.5rem] items-center gap-1 text-xs text-muted-foreground"
       >
         <span role="columnheader">Order</span>
         <span role="columnheader" className="pl-1.5">
@@ -160,7 +170,7 @@ function Content() {
           key={entry.id}
           initial={false}
           animate={{ y: preview?.offsets[entry.id] ?? 0 }}
-          transition={timing}
+          transition={committedDrop ? { duration: 0 } : timing}
           role="row"
           data-dragging={preview?.key === entry.id || undefined}
           ref={(node) => {
@@ -176,8 +186,8 @@ function Content() {
               aria-label={`Reorder header ${index + 1}`}
               aria-describedby={`${id}-reorder`}
               className={`
-flex size-6 touch-none cursor-grab items-center justify-center text-muted hover:text-text
-active:cursor-grabbing focus-visible:outline-muted disabled:opacity-40
+flex size-6 touch-none cursor-grab items-center justify-center text-muted-foreground hover:text-foreground
+active:cursor-grabbing focus-visible:outline-muted-foreground disabled:opacity-40
 `}
               onPointerDown={(event) => startDrag(entry.id, event)}
               onPointerMove={pointerMove}
@@ -245,7 +255,8 @@ p-1
                 disabled={disabled}
                 aria-label={`Remove header ${index + 1}`}
                 className={`
-flex size-6 cursor-pointer items-center justify-center text-muted hover:text-text focus-visible:outline-muted
+flex size-6 cursor-pointer items-center justify-center text-muted-foreground hover:text-foreground
+focus-visible:outline-muted-foreground
 disabled:opacity-40
 `}
                 onClick={() => change(entries.filter((row) => row.id !== entry.id))}
@@ -286,4 +297,4 @@ disabled:opacity-40
     </div>
   )
 }
-export const KeyValueEditor = Object.assign(Root, { Disclosure, Content })
+export const KeyValueEditor = { Root, Disclosure, Content }

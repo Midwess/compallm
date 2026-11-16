@@ -27,6 +27,68 @@ struct Repository {
 }
 #[async_trait::async_trait]
 impl OrganizationRepository for Repository {
+    async fn owner_role(&self, _: u64) -> Result<Role, OrganizationRepositoryError> {
+        Err(OrganizationRepositoryError::NotFound)
+    }
+    async fn active_owner_ids(&self, _: u64) -> Result<Vec<u64>, OrganizationRepositoryError> {
+        Ok(vec![])
+    }
+    async fn find_member_identity(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn list_members(
+        &self,
+        _: Box<dyn compallm_query::IntoQuery>,
+        _: compallm_query::Pagination,
+        _: Vec<compallm_query::OrderBy>,
+        _: &str,
+        _: Option<u64>,
+    ) -> Result<
+        compallm_query::Connection<compallm_core::organization::group::MemberInfo>,
+        OrganizationRepositoryError,
+    > {
+        unreachable!()
+    }
+    async fn group_member_ids(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn group_member_count(&self, _: u64, _: u64) -> Result<u64, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn save_group_changes(
+        &self,
+        _: &compallm_core::organization::Group,
+        _: &compallm_core::organization::group::GroupChanges,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn delete_group(&self, _: u64, _: u64) -> Result<(), OrganizationRepositoryError> {
+        unreachable!()
+    }
+
+    async fn find_by_id(
+        &self,
+        _: u64,
+    ) -> Result<Option<Organization>, OrganizationRepositoryError> {
+        unreachable!()
+    }
+    async fn update_profile(
+        &self,
+        _: u64,
+        _: Option<String>,
+        _: Option<String>,
+    ) -> Result<Organization, OrganizationRepositoryError> {
+        unreachable!()
+    }
+
     fn supports_role_policy(&self, _: &str) -> bool {
         true
     }
@@ -75,19 +137,17 @@ impl OrganizationRepository for Repository {
     async fn find_role(&self, _: u64, _: u64) -> Result<Option<Role>, OrganizationRepositoryError> {
         unimplemented!()
     }
-    async fn list_role_info(&self, _: u64) -> Result<Vec<Role>, OrganizationRepositoryError> {
+    async fn list_role_info(&self) -> Result<Vec<Role>, OrganizationRepositoryError> {
         unimplemented!()
     }
     async fn list_group_info(
         &self,
-        _: u64,
     ) -> Result<Vec<compallm_core::organization::group::GroupInfo>, OrganizationRepositoryError>
     {
         unimplemented!()
     }
     async fn find_group_info(
         &self,
-        _: u64,
         _: u64,
     ) -> Result<Option<compallm_core::organization::group::GroupInfo>, OrganizationRepositoryError>
     {
@@ -140,6 +200,13 @@ impl OrganizationRepository for Repository {
         self.state.lock().unwrap().roles = roles;
         Ok(())
     }
+    async fn set_default_member_role(
+        &self,
+        _: u64,
+        _: u64,
+    ) -> Result<(), OrganizationRepositoryError> {
+        Ok(())
+    }
     async fn add_member(
         &self,
         member: OrganizationMember,
@@ -184,6 +251,8 @@ impl Fixture {
             id: 42,
             email: "james@midwess.com".into(),
             display_name: "James".into(),
+            username: "james".into(),
+            avatar_path: None,
             status: UserStatus::Active,
         }
     }
@@ -219,7 +288,7 @@ async fn default_organization_and_owner_are_inserted_in_one_transaction() {
         )));
     }
     let member = state.member.as_ref().unwrap();
-    assert_eq!(member.roles, vec![roles[0].clone()]);
+    assert_eq!(member.role, roles[0].clone());
     assert_eq!(member.organization_id, organization.id);
     assert_eq!(member.user_id, 42);
     let sql = format!(
@@ -271,14 +340,32 @@ fn member_mapper_retains_scoped_identity_without_inventing_assignments() {
         organization_id: 84,
         user_id: 42,
         status: UserStatusSchema::Active,
+        role_id: 3,
     };
-    let member = compallm_core::organization::OrganizationMember::try_from(row).unwrap();
-    assert_eq!(member.organization_id, 84);
-    assert!(member.roles.is_empty() && member.groups.is_empty());
+    let role = Role {
+        id: 3,
+        organization_id: 84,
+        name: "Member".into(),
+        description: String::new(),
+        cedar_source: String::new(),
+        org_owner: false,
+    };
+    let member = compallm_postgres::mappers::organization_member::MappedMember::try_from((
+        row,
+        role.clone(),
+    ))
+    .unwrap()
+    .0;
+    assert_eq!(member.role.id, 3);
+    assert!(member.groups.is_empty());
     let invalid = OrganizationMemberSchema {
         organization_id: 0,
         user_id: -1,
         status: UserStatusSchema::Active,
+        role_id: 3,
     };
-    assert!(compallm_core::organization::OrganizationMember::try_from(invalid).is_err());
+    assert!(
+        compallm_postgres::mappers::organization_member::MappedMember::try_from((invalid, role))
+            .is_err()
+    );
 }

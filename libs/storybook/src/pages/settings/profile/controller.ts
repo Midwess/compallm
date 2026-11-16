@@ -1,8 +1,10 @@
 import type { SettingsProfile } from '../types'
 
 export interface ProfileController {
-  updateProfile(
-    value: Partial<SettingsProfile>,
-  ): void | false | Partial<SettingsProfile> | Promise<void | false | Partial<SettingsProfile>>
-  setAvatar(file: File | null): void | false | Partial<SettingsProfile> | Promise<void | false | Partial<SettingsProfile>>
+  reload?(): void
+  saveProfile(
+    value: Partial<Pick<SettingsProfile, 'name' | 'username'>>,
+    file: File | null,
+    signal: AbortSignal,
+  ): false | Partial<SettingsProfile> | Promise<false | Partial<SettingsProfile>>
 }

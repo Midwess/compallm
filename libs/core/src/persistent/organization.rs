@@ -5,6 +5,8 @@ use crate::organization::{Group, Organization, OrganizationMember, Role};
 
 #[derive(Debug, thiserror::Error)]
 pub enum OrganizationRepositoryError {
+    #[error("invalid collection query")]
+    InvalidQuery,
     #[error("name already exists in this organization")]
     NameAlreadyExists,
     #[error("organization not found")]
@@ -30,6 +32,61 @@ impl From<ConnectionError> for OrganizationRepositoryError {
 /// Use the current DbContext and leave transaction ownership to the caller.
 #[async_trait]
 pub trait OrganizationRepository: Send + Sync {
+    async fn owner_role(&self, organization_id: u64) -> Result<Role, OrganizationRepositoryError>;
+    async fn active_owner_ids(
+        &self,
+        organization_id: u64,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError>;
+    /// Load complete membership state in the supplied verified organization.
+    async fn find_member_identity(
+        &self,
+        organization_id: u64,
+        user_id: u64,
+    ) -> Result<Option<OrganizationMember>, OrganizationRepositoryError>;
+
+    /// RLS filters rows; verified request scope binds pagination cursors.
+    async fn list_members(
+        &self,
+        query: Box<dyn compallm_query::IntoQuery>,
+        pagination: compallm_query::Pagination,
+        ordering: Vec<compallm_query::OrderBy>,
+        cursor_scope: &str,
+        current_user_first: Option<u64>,
+    ) -> Result<
+        compallm_query::Connection<crate::organization::group::MemberInfo>,
+        OrganizationRepositoryError,
+    >;
+    async fn group_member_ids(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError>;
+    async fn group_member_count(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+    ) -> Result<u64, OrganizationRepositoryError>;
+    async fn save_group_changes(
+        &self,
+        group: &Group,
+        changes: &crate::organization::group::GroupChanges,
+    ) -> Result<Vec<u64>, OrganizationRepositoryError>;
+    async fn delete_group(
+        &self,
+        organization_id: u64,
+        group_id: u64,
+    ) -> Result<(), OrganizationRepositoryError>;
+
+    async fn find_by_id(
+        &self,
+        organization_id: u64,
+    ) -> Result<Option<Organization>, OrganizationRepositoryError>;
+    async fn update_profile(
+        &self,
+        organization_id: u64,
+        name: Option<String>,
+        avatar_path: Option<String>,
+    ) -> Result<Organization, OrganizationRepositoryError>;
     fn supports_role_policy(&self, source: &str) -> bool;
     async fn update_role(
         &self,
@@ -81,17 +138,15 @@ pub trait OrganizationRepository: Send + Sync {
         organization_id: u64,
         role_id: u64,
     ) -> Result<(), OrganizationRepositoryError>;
-    async fn list_role_info(
-        &self,
-        organization_id: u64,
-    ) -> Result<Vec<Role>, OrganizationRepositoryError>;
+    /// List metadata through the current RLS connection.
+    async fn list_role_info(&self) -> Result<Vec<Role>, OrganizationRepositoryError>;
+    /// List metadata through the current RLS connection.
     async fn list_group_info(
         &self,
-        organization_id: u64,
     ) -> Result<Vec<crate::organization::group::GroupInfo>, OrganizationRepositoryError>;
+    /// Find metadata in the current verified organization.
     async fn find_group_info(
         &self,
-        organization_id: u64,
         group_id: u64,
     ) -> Result<Option<crate::organization::group::GroupInfo>, OrganizationRepositoryError>;
     /// Find a group and its assigned roles using its organization-scoped identity.
@@ -124,6 +179,11 @@ pub trait OrganizationRepository: Send + Sync {
     ) -> Result<Organization, OrganizationRepositoryError>;
     /// Insert initial default-role records within organization creation.
     async fn create_roles(&self, roles: Vec<Role>) -> Result<(), OrganizationRepositoryError>;
+    async fn set_default_member_role(
+        &self,
+        organization_id: u64,
+        role_id: u64,
+    ) -> Result<(), OrganizationRepositoryError>;
     async fn add_member(
         &self,
         member: OrganizationMember,

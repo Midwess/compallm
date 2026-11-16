@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { after, test } from 'node:test'
 import { createServer } from 'vite'
 import { createStore } from 'zustand/vanilla'
+import { createMemoryRouter, redirect } from 'react-router'
 
 // Load application TypeScript without a browser, listener, or backend process.
 const server = await createServer({
@@ -13,6 +14,7 @@ const server = await createServer({
 })
 after(() => server.close())
 const { AuthController } = await server.ssrLoadModule('/src/auth/controller.ts')
+const { UrlController } = await server.ssrLoadModule('/src/url/controller.ts')
 
 function urlController() {
   const store = createStore(() => ({ pathname: '/signup', search: '', hash: '' }))
@@ -45,6 +47,73 @@ const user = {
   organizationName: 'Personal',
 }
 const reply = (data) => Response.json({ data })
+
+test('startup retry recovers a failed deep link and rechecks anonymous access', { timeout: 10000 }, async () => {
+  const originalFetch = globalThis.fetch
+  const originalWindow = globalThis.window
+  try {
+    for (const authenticated of [true, false]) {
+      const href = 'http://localhost/Research/chat?view=recent#message'
+      globalThis.window = { location: new URL(href) }
+      const url = new UrlController()
+      let retry
+      const app = {
+        beginLoading: () => ({
+          complete() {},
+          cancel() {},
+          fail(_error, action) {
+            retry = action
+          },
+        }),
+      }
+      const controller = new AuthController(url, app, url.retryFailedRoute)
+      let attempts = 0
+      globalThis.fetch = async () => {
+        attempts++
+        if (attempts === 1) throw new TypeError('Network unavailable')
+        return reply({ session: { node: authenticated ? user : null } })
+      }
+      const router = createMemoryRouter(
+        [
+          {
+            path: '/Research/chat',
+            loader: async () => {
+              const currentUser = await controller.ensureCurrentUser()
+              return currentUser ? currentUser : redirect('/login')
+            },
+            shouldRevalidate: () => false,
+          },
+          { path: '/login' },
+        ],
+        { initialEntries: ['/Research/chat?view=recent#message'] },
+      )
+      const disconnect = url.connect(router)
+      try {
+        await until(
+          { getState: () => router.state, subscribe: router.subscribe },
+          (state) => state.initialized && state.navigation.state === 'idle',
+        )
+        assert.ok(router.state.errors)
+        await retry()
+        assert.equal(router.state.errors, null)
+        if (authenticated) {
+          assert.equal(router.state.location.pathname, '/Research/chat')
+          assert.equal(router.state.location.search, '?view=recent')
+          assert.equal(router.state.location.hash, '#message')
+        } else assert.equal(router.state.location.pathname, '/login')
+        assert.equal(attempts, 2)
+      } finally {
+        disconnect()
+        router.dispose()
+        controller.stop()
+      }
+    }
+  } finally {
+    globalThis.fetch = originalFetch
+    if (originalWindow === undefined) delete globalThis.window
+    else globalThis.window = originalWindow
+  }
+})
 
 test('invalid authorization clears in-memory identity and returns to sign in', () => {
   const url = urlController()

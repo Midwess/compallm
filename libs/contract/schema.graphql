@@ -11,6 +11,11 @@ enum CredentialDelivery {
   TOKEN
 }
 
+enum FilterIs {
+  NULL
+  NOT_NULL
+}
+
 enum HomeDestination {
   CHAT
   MODELS
@@ -21,6 +26,13 @@ enum ImageMediaType {
   JPEG
   PNG
   WEBP
+}
+
+enum OrderByDirection {
+  AscNullsFirst
+  AscNullsLast
+  DescNullsFirst
+  DescNullsLast
 }
 
 enum PreferenceAppearanceMode {
@@ -42,9 +54,9 @@ enum PreferenceCodeTheme {
 }
 
 enum PreferenceDarkPalette {
-  DARK
-  MAGIC_BLUE
-  CLASSIC_DARK
+  BASIC_DARK
+  BLUEBERRY_DARK
+  MARSHMALLOW_DARK
 }
 
 enum PreferenceDestination {
@@ -53,6 +65,10 @@ enum PreferenceDestination {
   PROVIDERS
   NOTEBOOKS
   PLUGINS
+  STATS
+  API_KEYS
+  MEMBERS
+  CONVERSATIONS
 }
 
 enum PreferenceFontFamily {
@@ -66,8 +82,9 @@ enum PreferenceKeyCombination {
 }
 
 enum PreferenceLightPalette {
-  LIGHT
-  PURE_LIGHT
+  BASIC_WHITE
+  BLUEBERRY_WHITE
+  MARSHMALLOW_WHITE
 }
 
 enum PreferenceNamingFormat {
@@ -88,6 +105,13 @@ enum PreferenceRelativeFontSize {
   DEFAULT
   LARGE
   LARGER
+}
+
+enum PreferenceSidebarCategory {
+  WORKSPACE
+  ROUTERS
+  ORGANIZATION
+  CONVERSATIONS
 }
 
 enum PreferenceSidebarVisibility {
@@ -210,13 +234,52 @@ input GroupCreateInput {
   roleIds: [String!]!
 }
 
+input GroupUpdateInput {
+  name: String
+  description: String
+  addMemberIds: [String!]
+  removeMemberIds: [String!]
+  addRoleIds: [String!]
+  removeRoleIds: [String!]
+}
+
+input IDFilter {
+  eq: ID
+}
+
 input ImageUploadInput {
   mediaType: ImageMediaType!
   size: Int!
 }
 
+input InvitationBatchCreateInput {
+  invitations: [InvitationCreateInput!]!
+}
+
+input InvitationCreateInput {
+  email: String!
+}
+
 input MemberDisplayPatchInput {
   nameFormat: PreferenceNamingFormat
+}
+
+input MemberFilterInput {
+  displayName: StringFilter
+  email: StringFilter
+  or: [MemberMatchInput!]
+  roleId: IDFilter
+}
+
+input MemberMatchInput {
+  displayName: StringFilter
+  email: StringFilter
+}
+
+input MemberOrderInput {
+  id: OrderByDirection
+  displayName: OrderByDirection
+  email: OrderByDirection
 }
 
 input MessageCompositionPatchInput {
@@ -226,6 +289,11 @@ input MessageCompositionPatchInput {
 
 input NavigationPatchInput {
   home: PreferenceDestination
+}
+
+input OrganizationProfileUpdateInput {
+  name: String
+  avatarUploaded: Boolean = false
 }
 
 input OrganizationSettingsUpdateInput {
@@ -350,8 +418,14 @@ input RoleUpdateInput {
   cedarSource: String
 }
 
+input SidebarLayoutSectionInput {
+  category: PreferenceSidebarCategory!
+  items: [PreferenceDestination!]!
+}
+
 "Order replaces ordering while preserving visibility; visibility patches are keyed by destination."
 input SidebarPatchInput {
+  layout: [SidebarLayoutSectionInput!]
   order: [PreferenceDestination!]
   visibility: [SidebarVisibilityPatchInput!]
   badgeStyle: PreferenceBadgeStyle
@@ -364,6 +438,22 @@ input SidebarVisibilityPatchInput {
 
 input SpendingLimitInput {
   amount: String
+}
+
+input StringFilter {
+  eq: String
+  gt: String
+  gte: String
+  in: [String!]
+  lt: String
+  lte: String
+  neq: String
+  is: FilterIs
+  startsWith: String
+  like: String
+  ilike: String
+  regex: String
+  iregex: String
 }
 
 input ThemePatchInput {
@@ -389,6 +479,12 @@ input UserPreferencesPatchInput {
   codeAppearance: CodeAppearancePatchInput
 }
 
+input UserProfileUpdateInput {
+  displayName: String
+  username: String
+  avatarUploaded: Boolean = false
+}
+
 "Positive u32 context size, encoded as an exact JSON number (1–4294967295)."
 scalar ContextTokens
 
@@ -396,6 +492,17 @@ type AccessibilityPreferences {
   underlineLinks: Boolean!
   reduceMotion: Boolean!
   pointerCursors: Boolean!
+}
+
+type AvatarUpload {
+  url: String!
+  fields: [UploadFormField!]!
+  "Expiration as Unix seconds, encoded as a string."
+  expiresAt: String!
+}
+
+type AvatarUploadPayload {
+  node: AvatarUpload!
 }
 
 type BooleanPayload {
@@ -416,17 +523,6 @@ type CodeFontPreferences {
   size: PreferencePixelFontSize!
 }
 
-type CreatedGroup {
-  id: ID!
-  name: String!
-  description: String!
-  roleIds: [ID!]!
-}
-
-type CreatedGroupPayload {
-  node: CreatedGroup!
-}
-
 "Email admission succeeded; cookie delivery never exposes the OTP credential."
 type EmailChallenge {
   lifetime: TokenLifetime!
@@ -441,6 +537,8 @@ type Group {
   id: ID!
   name: String!
   description: String!
+  roles: RoleConnection!
+  memberIds: [ID!]!
 }
 
 type GroupConnection {
@@ -457,8 +555,103 @@ type GroupPayload {
   node: Group!
 }
 
+type Invitation {
+  id: ID!
+  organizationId: ID!
+  email: String!
+  inviterId: ID!
+  status: String!
+  issuedAt: Float!
+  expiresAt: Float!
+}
+
+type InvitationConnection {
+  edges: [InvitationEdge!]!
+  pageInfo: PageInfo!
+}
+
+type InvitationContext {
+  organizationName: String!
+  organizationId: ID!
+  email: String!
+  expiresAt: Float!
+  signup: Boolean!
+}
+
+type InvitationContextPayload {
+  node: InvitationContext!
+}
+
+type InvitationEdge {
+  cursor: String!
+  node: Invitation!
+}
+
+type InvitationIssued {
+  invitation: Invitation!
+  url: String!
+  emailAdmitted: Boolean!
+}
+
+type InvitationIssuedConnection {
+  edges: [InvitationIssuedEdge!]!
+  pageInfo: PageInfo!
+}
+
+type InvitationIssuedEdge {
+  cursor: String!
+  node: InvitationIssued!
+}
+
+type InvitationIssuedPayload {
+  node: InvitationIssued!
+}
+
+type InvitationPayload {
+  node: Invitation!
+}
+
+type Me {
+  organizationOwner: Boolean!
+  id: ID!
+  sessionId: ID!
+  organizationId: ID!
+  "Effective policies for this verified user only. UI decisions do not grant server authority."
+  cedarSource: String!
+  "Cedar JSON entity facts for the verified principal and its role/group ancestry; contains no credentials."
+  cedarEntities: String!
+}
+
+type MePayload {
+  node: Me!
+}
+
+type Member {
+  role: Role!
+  groups: [Group!]!
+  "Direct and group-inherited role identities in the verified organization."
+  effectiveRoleIds: [ID!]!
+  "Group identities in the verified organization; no policy source is exposed."
+  groupIds: [ID!]!
+  joinedAt: Float!
+  id: ID!
+  displayName: String!
+  email: String!
+  available: Boolean!
+}
+
+type MemberConnection {
+  edges: [MemberEdge!]!
+  pageInfo: PageInfo!
+}
+
 type MemberDisplayPreferences {
   nameFormat: PreferenceNamingFormat!
+}
+
+type MemberEdge {
+  cursor: String!
+  node: Member!
 }
 
 type MessageCompositionPreferences {
@@ -467,6 +660,17 @@ type MessageCompositionPreferences {
 }
 
 type Mutation {
+  invitationCreateMany(input: InvitationBatchCreateInput!): InvitationIssuedConnection!
+  invitationCreate(input: InvitationCreateInput!): InvitationIssuedPayload!
+  invitationRevoke(id: ID!): InvitationPayload!
+  organizationProfileUpdate(input: OrganizationProfileUpdateInput!): OrganizationPayload!
+  generateOrgAvatarUrl(input: ImageUploadInput!): AvatarUploadPayload!
+  groupUpdate(id: ID!, input: GroupUpdateInput!): GroupPayload!
+  groupDelete(id: ID!): BooleanPayload!
+  "Update the current user's display name and confirm an uploaded avatar."
+  userProfileUpdate(input: UserProfileUpdateInput!): UserPayload!
+  "Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes."
+  generateUrlAvatarUrl(input: ImageUploadInput!): AvatarUploadPayload!
   "Atomically patch the signed-in user's preferences, preserving omitted fields."
   userPreferencesUpdate(input: UserPreferencesPatchInput!): UserPreferencesPayload!
   "Restore selected preference groups, or ALL alone, to Core defaults."
@@ -485,10 +689,11 @@ type Mutation {
   sessionRevoke: BooleanPayload!
   "Create a role in the verified active organization."
   roleCreate(input: RoleCreateInput!): RolePayload!
+  roleAssign(id: ID!, memberId: ID!): RolePayload!
   roleDelete(id: ID!): BooleanPayload!
   roleUpdate(id: ID!, input: RoleUpdateInput!): RolePayload!
   "Create a group and its initial role assignments in the verified active organization."
-  groupCreate(input: GroupCreateInput!): CreatedGroupPayload!
+  groupCreate(input: GroupCreateInput!): GroupPayload!
 }
 
 type NavigationPreferences {
@@ -496,6 +701,9 @@ type NavigationPreferences {
 }
 
 type Organization {
+  ownerMemberIds: [ID!]!
+  avatarUrl: String
+  canUpdateProfile: Boolean!
   id: ID!
   name: String!
 }
@@ -546,6 +754,12 @@ type ProviderTemplate {
 }
 
 type Query {
+  invitationContext: InvitationContextPayload!
+  invitations(first: Int, after: String): InvitationConnection!
+  me: MePayload!
+  organizationProfile(id: ID!): OrganizationPayload
+  "Read an active user profile using verified user identity."
+  userProfile(id: ID!): UserPayload
   "Return the signed-in user's personal preferences; missing rows use Core defaults without a write."
   userPreferences: UserPreferencesPayload!
   "Return the system-owned organization policy action catalog."
@@ -554,10 +768,11 @@ type Query {
   session: SessionPayload!
   "Return the active organization from verified user authority."
   organization: OrganizationPayload!
+  members(currentUserFirst: Boolean, filter: MemberFilterInput, orderBy: [MemberOrderInput!], first: Int, last: Int, before: String, after: String, offset: Int): MemberConnection!
   "Find visible role metadata in the active organization."
-  role(id: ID!): RolePayload
+  role(id: ID!, includeUnseen: Boolean! = false): RolePayload
   "Return the complete visible role metadata collection, ordered by ID."
-  roles: RoleConnection!
+  roles(includeUnseen: Boolean! = false): RoleConnection!
   "Find visible group metadata in the active organization."
   group(id: ID!): GroupPayload
   "Return the complete visible group metadata collection, ordered by ID."
@@ -589,13 +804,15 @@ type RolePayload {
 }
 
 type Session {
+  "Public avatar for this user; clients show a fallback while absent or loading."
+  avatarUrl: String
   "Login session identity, serialized as a string without numeric precision loss."
   id: ID!
   "User owning this verified session."
   userId: ID!
   "Organization selected for this verified session."
   organizationId: ID!
-  "Signed display snapshot; the name never establishes organization authority."
+  "Current organization name."
   organizationName: String!
 }
 
@@ -620,7 +837,13 @@ type SidebarEntry {
   visibility: PreferenceSidebarVisibility!
 }
 
+type SidebarLayoutSection {
+  category: PreferenceSidebarCategory!
+  items: [PreferenceDestination!]!
+}
+
 type SidebarPreferences {
+  layout: [SidebarLayoutSection!]!
   badgeStyle: PreferenceBadgeStyle!
   entries: [SidebarEntry!]!
 }
@@ -641,6 +864,27 @@ type TokenLifetime {
 type TypographyPreferences {
   family: PreferenceFontFamily!
   size: PreferenceRelativeFontSize!
+}
+
+type UploadFormField {
+  name: String!
+  value: String!
+}
+
+type User {
+  "Public avatar URL; the object may not exist yet and clients must show a fallback."
+  avatarUrl: String
+  "Stable user identity, serialized as a string."
+  id: ID!
+  username: String!
+  "Email is readable by authenticated users and cannot be updated here."
+  email: String!
+  "Display name; this field does not establish identity or uniqueness."
+  displayName: String!
+}
+
+type UserPayload {
+  node: User!
 }
 
 type UserPreferences {

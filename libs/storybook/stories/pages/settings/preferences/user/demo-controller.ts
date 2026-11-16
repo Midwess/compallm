@@ -13,6 +13,7 @@ const defaults: UserPreferenceValues = {
   ...userPreferenceDefaults,
   sidebar: {
     ...userPreferenceDefaults.sidebar,
+    layout: userPreferenceDefaults.sidebar.layout.map((section) => ({ ...section, items: [...section.items] })),
     entries: userPreferenceDefaults.sidebar.entries.map((entry) => ({ ...entry })),
   },
 }
@@ -38,12 +39,15 @@ export class DemoUserPreferenceController implements UserPreferenceController {
     const next = merge({}, saved, groups) as UserPreferenceValues
     next.sidebar = {
       badgeStyle: sidebar?.badgeStyle ?? saved.sidebar.badgeStyle,
-      entries: draft.sidebarOrder.map((item) => ({
-        item,
-        visibility: draft[
-          `sidebar${item}` as keyof PreferenceDraft
-        ] as UserPreferenceValues['sidebar']['entries'][number]['visibility'],
-      })),
+      layout: draft.sidebarLayout.map((section) => ({ ...section, items: [...section.items] })),
+      entries: draft.sidebarLayout
+        .flatMap((section) => section.items)
+        .map((item) => ({
+          item,
+          visibility: draft[
+            `sidebar${item}` as keyof PreferenceDraft
+          ] as UserPreferenceValues['sidebar']['entries'][number]['visibility'],
+        })),
     }
     this.store.setState({ saved: next })
     return patch

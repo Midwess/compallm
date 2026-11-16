@@ -30,11 +30,11 @@ export const Tooltip: Story = {
   render: () => (
     <Preview>
       <Sample label="Hover or keyboard focus">
-        <Feedback.Tooltip content="Add provider">
+        <Feedback.Tooltip.Control content="Add provider">
           <Button aria-label="Add provider">
             <PlusIcon size={14} aria-hidden="true" />
           </Button>
-        </Feedback.Tooltip>
+        </Feedback.Tooltip.Control>
       </Sample>
     </Preview>
   ),
@@ -86,12 +86,12 @@ export const Popover: Story = {
   render: () => (
     <Preview>
       <Sample label="Local display controls">
-        <Feedback.Popover label="Display options">
+        <Feedback.Popover.Control label="Display options">
           <h2>Display options</h2>
           <CheckboxOption defaultChecked>Show descriptions</CheckboxOption>
           <CheckboxOption>Show archived items</CheckboxOption>
           <Feedback.HelperText>Changes apply to this sample only.</Feedback.HelperText>
-        </Feedback.Popover>
+        </Feedback.Popover.Control>
       </Sample>
     </Preview>
   ),
@@ -136,6 +136,27 @@ export const FieldHelp: Story = {
           </Feedback.FieldHelp>
         </span>
       </Sample>
+    </Preview>
+  ),
+}
+
+export const ComposedOverlays: Story = {
+  render: () => (
+    <Preview>
+      <Feedback.Tooltip.Root>
+        <Feedback.Tooltip.Trigger asChild>
+          <Button>Hover or focus</Button>
+        </Feedback.Tooltip.Trigger>
+        <Feedback.Tooltip.Content>Composed tooltip</Feedback.Tooltip.Content>
+      </Feedback.Tooltip.Root>
+      <Feedback.Popover.Root>
+        <Feedback.Popover.Trigger asChild>
+          <Button>Composed popover</Button>
+        </Feedback.Popover.Trigger>
+        <Feedback.Popover.Content>
+          <Feedback.HelperText>Outside clicks and Escape dismiss this popover.</Feedback.HelperText>
+        </Feedback.Popover.Content>
+      </Feedback.Popover.Root>
     </Preview>
   ),
 }

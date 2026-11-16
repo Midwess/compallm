@@ -1,3 +1,4 @@
+import type { Invitation, Group, Role } from '@compallm/contract/graphql'
 import type { UserPreferenceController } from './preferences/user/controller'
 import type { FormStore } from '../../components/form'
 import type { RoleController } from './role/controller'
@@ -8,14 +9,14 @@ import type { OrganizationController } from './organization/controller'
 export type SettingsDestination =
   | 'blank'
   | 'general'
-  | 'appearance'
   | 'messaging'
   | 'code'
   | 'profile'
+  | 'access'
   | 'security'
   | 'api-keys'
-  | 'danger'
   | 'organization'
+  | 'organization-onboarding'
   | 'members'
   | 'role'
   | 'new-role'
@@ -35,6 +36,7 @@ export interface SettingsRole {
   name: string
   description: string
   source: string
+  owner?: boolean
   builtin?: boolean
   color: string
 }
@@ -47,10 +49,13 @@ export interface SettingsGroup {
   color: string
 }
 export interface SettingsMember {
+  joinedAt?: number | null
+  role: Pick<Role, 'id' | 'name' | 'description' | 'color' | 'owner'> | null
+  groups?: Pick<Group, 'id' | 'name' | 'description'>[]
+  available?: boolean
   id: string
   name: string
   email: string
-  roleIds: string[]
   limitUsd: string | null
   currentUsageUsd: string | null
   previousUsageUsd: string | null
@@ -94,6 +99,7 @@ export interface RoleDraft {
   builtin: boolean
 }
 export interface GroupDraft {
+  memberSelection?: Record<string, boolean>
   id: string | null
   name: string
   description: string
@@ -161,6 +167,30 @@ export interface SettingsDialog {
   revealedKey?: string
 }
 export interface SettingsState {
+  actorIsOwner?: boolean
+  ownerMemberIds?: string[]
+  currentMemberId?: string
+  membersComplete?: boolean
+  invitationsOpen?: boolean
+  membersLoading: boolean
+  membersHasNextPage: boolean
+  membersHasPreviousPage: boolean
+  membersEndCursor: string | null
+  membersPage: number
+  memberOrder: 'ASC_NULLS_LAST' | 'DESC_NULLS_LAST'
+  invitations: (Pick<Invitation, 'id' | 'email' | 'status' | 'expiresAt'> & Partial<Pick<Invitation, 'issuedAt'>>)[]
+  invitationsLoading: boolean
+  invitationsHasNextPage: boolean
+  invitationLinks?: { email: string; url: string; emailAdmitted: boolean }[]
+  invitationLink: string | null
+  invitationEmailAdmitted: boolean
+  invitationBusy: boolean
+  organizationProfileStatus: 'loading' | 'ready' | 'denied' | 'missing' | 'error'
+  organizationSavedName: string
+  organizationProfileSaving: boolean
+  organizationCanUpdateProfile: boolean
+  profileStatus: 'loading' | 'ready' | 'denied' | 'missing' | 'error'
+  profileSaving: boolean
   profileUpload: File | null
   organizationUpload: File | null
   codeExamples: Record<string, { code: string; lineChanges?: Record<number, 'added' | 'removed'> }>
@@ -208,12 +238,24 @@ export interface SettingsController {
 }
 
 export interface SettingsPageControllers {
+  group: GroupController
   role: RoleController
   search: { setQuery(value: string): void; setFilter(key: string, value: string): void }
   preferences: { user: UserPreferenceController }
   profile: ProfileController
   organization: OrganizationController
-  members: { setMemberRoles(memberId: string, roleIds: string[]): void | false | Promise<void | false> }
+  members: {
+    setMemberGroups?(memberId: string, groupIds: string[]): Promise<string[] | false>
+    search?(query: string): void
+    setMemberRole(memberId: string, roleId: string): void | false | Promise<void | false>
+    nextPage?(): void
+    previousPage?(): void
+    setOrder?(value: SettingsState['memberOrder']): void
+    invite?(email: string): Promise<boolean>
+    resend?(id: string): Promise<boolean>
+    revoke?(id: string): Promise<void>
+    loadMoreInvitations?(): void
+  }
   dialogs: {
     openDialog(kind: SettingsDialogKind, targetId?: string): void
     closeDialog(): void

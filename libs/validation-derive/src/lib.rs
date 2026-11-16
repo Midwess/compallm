@@ -82,9 +82,12 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                         {
                             field_type = inner;
                         }
-                        if length && !matches!(field_type, syn::Type::Path(p) if p.path.is_ident("String")) {
-                            return Err(rule.error("length export currently supports String fields only"));
+                        let array = matches!(field_type, syn::Type::Path(p) if p.path.segments.last().is_some_and(|s| s.ident == "Vec"));
+                        if length && !array && !matches!(field_type, syn::Type::Path(p) if p.path.is_ident("String")) {
+                            return Err(rule.error("length export supports String and Vec fields only"));
                         }
+                        let min_key = if array { "minItems" } else { "minLength" };
+                        let max_key = if array { "maxItems" } else { "maxLength" };
                         let mut message = None;
                         let mut keys = Vec::new();
                         rule.parse_nested_meta(|bound| {
@@ -92,14 +95,14 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                                 message = Some(bound.value()?.parse::<syn::LitStr>()?);
                                 return Ok(());
                             }
-                            let key = if bound.path.is_ident("min") { if length { "minLength" } else { "minimum" } }
-                                else if bound.path.is_ident("max") { if length { "maxLength" } else { "maximum" } }
+                            let key = if bound.path.is_ident("min") { if length { min_key } else { "minimum" } }
+                                else if bound.path.is_ident("max") { if length { max_key } else { "maximum" } }
                                 else if bound.path.is_ident("equal") && length { "equal" }
                                 else { return Err(bound.error("unsupported contract bound")); };
                             let value: syn::Expr = bound.value()?.parse()?;
                             if key == "equal" {
-                                keys.extend(["minLength", "maxLength"]);
-                                updates_for_field.push(quote! { property["minLength"] = ::serde_json::json!(#value); property["maxLength"] = ::serde_json::json!(#value); });
+                                keys.extend([min_key, max_key]);
+                                updates_for_field.push(quote! { property[#min_key] = ::serde_json::json!(#value); property[#max_key] = ::serde_json::json!(#value); });
                             } else {
                                 keys.push(key);
                                 updates_for_field.push(quote! { property[#key] = ::serde_json::json!(#value); });

@@ -7,6 +7,9 @@ import type { CreateProviderController } from './pages/organization/create-provi
 import type { UserPreferenceController } from './pages/settings/preferences/user/controller'
 import type { SettingsController } from './pages/settings/types'
 import type { FormScope } from './components/form-model'
+import type { AppController } from './app'
+
+export const AppControllerContext = createContext<AppController | null>(null)
 
 export const FormContext = createContext<FormScope | null>(null)
 
@@ -20,3 +23,9 @@ export const SettingsControllerContext = createContext<SettingsController | null
 export const UrlControllerContext = createContext<UrlController | null>(null)
 
 export const FloatingContainerContext = createContext<RefObject<HTMLElement | null> | undefined>(undefined)
+
+export const PermissionControllerContext = createContext<import('./permission').PermissionController | null>(null)
+
+export const InvitationControllerContext = createContext<import('./pages/invitation').InvitationController | null>(null)
+
+export const OnboardingControllerContext = createContext<import('./pages/onboarding').OnboardingController | null>(null)

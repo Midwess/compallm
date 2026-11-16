@@ -21,6 +21,8 @@ function Demo({
   initial = {},
   failure = false,
   roleLoadingMs = 0,
+  groupLoadingMs = 0,
+  pagedGroup = false,
   preferenceStatus,
   savedPreferences,
 }: {
@@ -29,6 +31,8 @@ function Demo({
   initial?: Partial<SettingsState> & { roleDraft?: RoleDraft | null; groupDraft?: GroupDraft | null }
   failure?: boolean | 'conflict'
   roleLoadingMs?: number
+  groupLoadingMs?: number
+  pagedGroup?: boolean
   preferenceStatus?: UserPreferenceState['status']
   savedPreferences?: UserPreferenceValues
 }) {
@@ -56,6 +60,22 @@ function Demo({
     }, roleLoadingMs)
     return () => clearTimeout(timer)
   }, [controller, roleLoadingMs])
+  useEffect(() => {
+    if (!groupLoadingMs) return
+    const draft = controller.group.store.getState().draft
+    controller.group.store.setState({ loading: true, draft: null })
+    const timer = setTimeout(() => controller.group.store.setState({ loading: false, draft }), groupLoadingMs)
+    return () => clearTimeout(timer)
+  }, [controller, groupLoadingMs])
+  useEffect(() => {
+    if (!pagedGroup) return
+    const members = controller.store.getState().members
+    controller.group.store.setState({
+      members: members.slice(0, 1).map((member) => ({ ...member, available: true })),
+      hasNextPage: members.length > 1,
+      memberCount: controller.group.store.getState().draft?.memberIds.length,
+    })
+  }, [controller, pagedGroup])
   return (
     <SettingsControllerContext value={controller}>
       <UserPreferenceControllerContext value={controller.pages.preferences.user}>
@@ -92,7 +112,11 @@ export const SavedPreferences: Story = {
         navigation: { home: 'MODELS' },
         memberDisplay: { nameFormat: 'USERNAME' },
         calendar: { firstDay: 'SUNDAY' },
-        sidebar: { ...userPreferenceDefaults.sidebar, entries: [...userPreferenceDefaults.sidebar.entries] },
+        sidebar: {
+          ...userPreferenceDefaults.sidebar,
+          layout: userPreferenceDefaults.sidebar.layout.map((section) => ({ ...section, items: [...section.items] })),
+          entries: [...userPreferenceDefaults.sidebar.entries],
+        },
       }}
     />
   ),
@@ -111,14 +135,17 @@ export const GeneralCompactDesktop: Story = {
   },
   globals: { viewport: { value: 'settingsCompact', isRotated: false } },
 }
-export const Appearance: Story = { render: () => <Demo page="appearance" /> }
 export const SidebarPreferences: Story = {
-  render: () => <Demo page="appearance" initial={{ dialog: { kind: 'customize-sidebar', name: '', value: '', phrase: '' } }} />,
+  render: () => <Demo page="general" initial={{ dialog: { kind: 'customize-sidebar', name: '', value: '', phrase: '' } }} />,
 }
 export const Messaging: Story = { render: () => <Demo page="messaging" /> }
 export const CodeAppearance: Story = { render: () => <Demo page="code" /> }
-export const PreferenceSaveFailure: Story = { render: () => <Demo page="appearance" failure /> }
+export const PreferenceSaveFailure: Story = { render: () => <Demo page="general" failure /> }
 export const Profile: Story = { render: () => <Demo page="profile" /> }
+export const ProfileLoading: Story = { render: () => <Demo page="profile" initial={{ profileStatus: 'loading' }} /> }
+export const ProfileMissing: Story = { render: () => <Demo page="profile" initial={{ profileStatus: 'missing' }} /> }
+export const ProfileDenied: Story = { render: () => <Demo page="profile" initial={{ profileStatus: 'denied' }} /> }
+export const ProfileLoadFailure: Story = { render: () => <Demo page="profile" initial={{ profileStatus: 'error' }} /> }
 export const ProfileWithPhoto: Story = {
   render: () => (
     <Demo
@@ -139,13 +166,13 @@ export const ProfileWithPhoto: Story = {
     />
   ),
 }
-export const SecurityAndAccess: Story = { render: () => <Demo page="security" /> }
-export const SecurityPopulated: Story = {
+export const Access: Story = { render: () => <Demo page="access" /> }
+export const Security: Story = { render: () => <Demo page="security" /> }
+export const AccessPopulated: Story = {
   render: () => (
     <Demo
-      page="security"
+      page="access"
       initial={{
-        passkeys: [{ id: 'passkey', name: 'My passkey' }],
         applications: [{ id: 'app', name: 'Example integration', scope: 'read your profile' }],
       }}
     />
@@ -162,8 +189,21 @@ export const ApiKeysPopulated: Story = {
     />
   ),
 }
-export const Danger: Story = { render: () => <Demo page="danger" /> }
+export const SecurityPopulated: Story = {
+  render: () => <Demo page="security" initial={{ passkeys: [{ id: 'passkey', name: 'My passkey' }] }} />,
+}
 export const Organization: Story = { render: () => <Demo page="organization" /> }
+export const OrganizationReadOnly: Story = {
+  render: () => <Demo page="organization" initial={{ organizationCanUpdateProfile: false }} />,
+}
+export const OrganizationLoading: Story = {
+  render: () => <Demo page="organization" initial={{ organizationProfileStatus: 'loading' }} />,
+}
+export const OrganizationLoadFailure: Story = {
+  render: () => <Demo page="organization" initial={{ organizationProfileStatus: 'error' }} />,
+}
+export const OrganizationOnboarding: Story = { render: () => <Demo page="organization-onboarding" /> }
+
 export const Members: Story = { render: () => <Demo page="members" /> }
 export const EditGroup: Story = { render: () => <Demo page="group" id="research" /> }
 export const NewGroup: Story = { render: () => <Demo page="new-group" /> }
@@ -389,3 +429,111 @@ export const KeyCreated: Story = {
 export const ApiErrorToast: Story = {
   render: () => <Demo page="role" id="model-operator" initial={{ error: 'Name already exists in this organization' }} />,
 }
+
+export const GroupLoading: Story = { render: () => <Demo page="group" id="research" groupLoadingMs={1200} /> }
+export const GroupPagedMembers: Story = { render: () => <Demo page="group" id="research" pagedGroup /> }
+export const GroupSaveFailure: Story = { render: () => <Demo page="group" id="research" failure /> }
+export const DeleteGroup: Story = {
+  render: () => (
+    <Demo
+      page="group"
+      id="research"
+      initial={{ dialog: { kind: 'delete-group', targetId: 'research', name: '', value: '', phrase: '' } }}
+    />
+  ),
+}
+
+export const PermissionRestrictedRole: Story = {
+  ...EditRole,
+  parameters: {
+    deniedPermissionActions: ['role.metadata.update', 'role.policy.update', 'role.delete', 'role.create', 'group.create'],
+  },
+}
+export const PermissionRestrictedGroup: Story = {
+  ...EditGroup,
+  parameters: {
+    deniedPermissionActions: [
+      'group.metadata.update',
+      'group.member.add',
+      'group.member.remove',
+      'group.role.assign',
+      'group.role.unassign',
+      'group.delete',
+    ],
+  },
+}
+export const PermissionHiddenPolicies: Story = {
+  ...EditRole,
+  parameters: { deniedPermissionActions: ['role.policy.read'] },
+}
+
+export const MembersEmpty: Story = { render: () => <Demo page="members" initial={{ members: [] }} /> }
+export const MembersLoading: Story = { render: () => <Demo page="members" initial={{ membersLoading: true }} /> }
+export const MembersPaged: Story = {
+  render: () => <Demo page="members" initial={{ membersHasNextPage: true, membersComplete: false }} />,
+}
+export const MembersLight: Story = { ...Members, globals: { theme: 'BASIC_WHITE' } }
+export const MembersLongLabels: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      initial={{
+        members: [
+          {
+            id: 'long',
+            name: 'Organization member with an exceptionally long display name',
+            email: 'long.email.address@example-organization.com',
+            role: { id: 'custom', name: 'Custom role with a long display name', description: '', color: '', owner: false },
+            groups: [{ id: 'research', name: 'Research and development group with a long name', description: '' }],
+            joinedAt: 1794000000,
+            limitUsd: null,
+            currentUsageUsd: null,
+            previousUsageUsd: null,
+          },
+        ],
+      }}
+    />
+  ),
+}
+
+export const MembersAsAdmin: Story = { render: () => <Demo page="members" initial={{ actorIsOwner: false }} /> }
+export const MembersMultipleOwners: Story = {
+  render: () => <Demo page="members" initial={{ actorIsOwner: true, ownerMemberIds: ['alex', 'jamie'] }} />,
+}
+export const MemberOwnerDemotion: Story = {
+  render: () => (
+    <Demo page="members" initial={{ actorIsOwner: true, currentMemberId: 'other', ownerMemberIds: ['alex', 'other'] }} />
+  ),
+}
+export const MemberOwnerDemotionRetry: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      failure
+      initial={{ actorIsOwner: true, currentMemberId: 'other', ownerMemberIds: ['alex', 'other'] }}
+    />
+  ),
+}
+export const MembersOwnRoleReadOnly: Story = {
+  render: () => <Demo page="members" initial={{ actorIsOwner: true, currentMemberId: 'alex', ownerMemberIds: ['alex'] }} />,
+}
+
+export const MembershipInvitations: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      initial={{
+        invitations: [
+          { id: 'pending', email: 'alex@example.com', status: 'pending', expiresAt: 2000000000 },
+          { id: 'expired', email: 'expired@example.com', status: 'expired', expiresAt: 1700000000 },
+        ],
+        invitationLink: 'https://compallm.example/api/invitations/open?token=preview',
+        invitationEmailAdmitted: false,
+        invitationsOpen: false,
+        membersHasNextPage: true,
+      }}
+    />
+  ),
+}
+
+export const InviteDialog: Story = { render: () => <Demo page="members" initial={{ invitationsOpen: true }} /> }

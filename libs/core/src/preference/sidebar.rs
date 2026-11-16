@@ -1,4 +1,4 @@
-use super::values::{BadgeStyle, Destination, SidebarVisibility};
+use super::values::{BadgeStyle, Destination, SidebarCategory, SidebarVisibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -10,10 +10,19 @@ pub struct SidebarEntry {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct SidebarSection {
+    pub category: SidebarCategory,
+    pub items: Vec<Destination>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct SidebarPreferences {
     pub badge_style: BadgeStyle,
     /// Entries are in display order.
     pub entries: Vec<SidebarEntry>,
+    #[serde(default)]
+    pub layout: Vec<SidebarSection>,
 }
 
 impl validify::Validate for SidebarPreferences {
@@ -37,8 +46,27 @@ impl validify::Validate for SidebarPreferences {
             ));
             return Err(errors);
         }
+        let mut categories = std::collections::HashSet::new();
+        let mut items = std::collections::HashSet::new();
+        if self.layout.iter().any(|section| {
+            !categories.insert(section.category)
+                || section
+                    .items
+                    .iter()
+                    .any(|item| *item == Destination::Chat || !items.insert(*item))
+        }) {
+            return Err(invalid_layout());
+        }
         Ok(())
     }
+}
+
+fn invalid_layout() -> validify::ValidationErrors {
+    let mut errors = validify::ValidationErrors::new();
+    errors.add(validify::ValidationError::new_schema(
+        "invalid_sidebar_layout",
+    ));
+    errors
 }
 
 impl SidebarPreferences {
@@ -53,7 +81,97 @@ impl SidebarPreferences {
                 self.entries.push(entry);
             }
         }
+        let defaults = default_layout();
+        for section in &defaults {
+            if !self
+                .layout
+                .iter()
+                .any(|saved| saved.category == section.category)
+            {
+                self.layout.push(SidebarSection {
+                    category: section.category,
+                    items: vec![],
+                });
+            }
+        }
+        for entry in &self.entries {
+            if self
+                .layout
+                .iter()
+                .any(|section| section.items.contains(&entry.item))
+            {
+                continue;
+            }
+            if let Some(section) = defaults
+                .iter()
+                .find(|section| section.items.contains(&entry.item))
+            {
+                self.layout
+                    .iter_mut()
+                    .find(|saved| saved.category == section.category)
+                    .expect("default category")
+                    .items
+                    .push(entry.item);
+            }
+        }
     }
+
+    pub fn replace_layout(
+        &mut self,
+        layout: Vec<SidebarSection>,
+    ) -> Result<(), validify::ValidationErrors> {
+        let mut candidate = self.clone();
+        candidate.append_missing_defaults();
+        candidate.layout = layout;
+        validify::Validate::validate(&candidate)?;
+        let defaults = Self::default();
+        if candidate.layout.len() != defaults.layout.len()
+            || candidate
+                .layout
+                .iter()
+                .map(|section| section.items.len())
+                .sum::<usize>()
+                != defaults.entries.len()
+        {
+            return Err(invalid_layout());
+        }
+        self.layout = candidate.layout;
+        let old = candidate.entries;
+        self.entries = self
+            .layout
+            .iter()
+            .flat_map(|section| &section.items)
+            .map(|item| {
+                old.iter()
+                    .find(|entry| entry.item == *item)
+                    .expect("known sidebar entry")
+                    .clone()
+            })
+            .collect();
+        Ok(())
+    }
+}
+
+fn default_layout() -> Vec<SidebarSection> {
+    use Destination::*;
+    vec![
+        SidebarSection {
+            category: SidebarCategory::Workspace,
+            items: vec![Providers, Models, Notebooks, Plugins],
+        },
+        SidebarSection {
+            category: SidebarCategory::Routers,
+            items: vec![Stats, ApiKeys],
+        },
+        SidebarSection {
+            category: SidebarCategory::Organization,
+            items: vec![Members],
+        },
+        SidebarSection {
+            category: SidebarCategory::Conversations,
+            items: vec![Conversations],
+        },
+    ]
 }
 
 impl Default for SidebarPreferences {
@@ -63,9 +181,14 @@ impl Default for SidebarPreferences {
             Destination::Models,
             Destination::Notebooks,
             Destination::Plugins,
+            Destination::Stats,
+            Destination::ApiKeys,
+            Destination::Members,
+            Destination::Conversations,
         ];
         Self {
             badge_style: BadgeStyle::Dot,
+            layout: default_layout(),
             entries: items
                 .into_iter()
                 .map(|item| SidebarEntry {

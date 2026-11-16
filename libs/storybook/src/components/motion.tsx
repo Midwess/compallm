@@ -1,8 +1,11 @@
 import {
   createElement,
   useCallback,
+  useEffect,
+  useId,
   useLayoutEffect,
   useRef,
+  useState,
   type RefObject,
   type ComponentPropsWithRef,
   type Ref,
@@ -17,7 +20,10 @@ export const animation = {
   disclosure: { duration: 0.18, ease: 'easeOut' },
   reorder: { duration: 0.18, ease: 'easeOut' },
   panel: { duration: 0.2, ease: 'easeOut' },
+  scroll: { duration: 0.1, ease: [0.16, 1, 0.3, 1] },
+  scrollResponse: 0.8,
   loading: { duration: 1, ease: 'linear', repeat: Infinity },
+  cubeGrid: { duration: 1.3, ease: 'easeInOut', repeat: Infinity, times: [0, 0.35, 0.7, 1] },
   distance: 6,
   panelDistance: 12,
   overlayScale: 0.96,
@@ -25,7 +31,33 @@ export const animation = {
   pressScale: 0.98,
   switchTravel: 10,
   indicatorScale: 0.8,
+  celebration: { count: 100, ticks: 180, durationMs: 3800, spread: 90, startVelocity: 22 },
 } as const
+
+export function CubeGridMotion({ stopped = false }: { stopped?: boolean }) {
+  const reduced = useReducedMotion()
+  return (
+    <span aria-hidden="true" className="grid size-8 grid-cols-3 grid-rows-3 text-muted-foreground/60">
+      {Array.from({ length: 9 }, (_, index) => (
+        <motion.span
+          key={index}
+          className="bg-current"
+          initial={false}
+          animate={{ scale: stopped || reduced ? 1 : [1, 0, 1, 1] }}
+          transition={
+            stopped || reduced
+              ? { duration: 0 }
+              : {
+                  ...animation.cubeGrid,
+                  times: [...animation.cubeGrid.times],
+                  delay: (2 - Math.floor(index / 3) + (index % 3)) * 0.1,
+                }
+          }
+        />
+      ))}
+    </span>
+  )
+}
 
 export function reducedMotion() {
   return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -181,7 +213,7 @@ function overlayElement<Tag extends 'div' | 'span' | 'dialog'>(tag: Tag) {
           ghost = undefined
         }
         const exit = () => {
-          if (exiting || reducedMotion() || !node.getClientRects().length) return
+          if (exiting || !node.isConnected || reducedMotion() || !node.getClientRects().length) return
           exiting = true
           const bounds = node.getBoundingClientRect()
           const image = node.cloneNode(true) as HTMLElement
@@ -204,7 +236,8 @@ function overlayElement<Tag extends 'div' | 'span' | 'dialog'>(tag: Tag) {
             transform: 'none',
             opacity: '1',
           })
-          ;(node.closest('dialog')?.parentElement ?? document.body).appendChild(image)
+          const parent = node.closest('dialog')?.parentElement
+          ;(parent?.isConnected ? parent : document.body).appendChild(image)
           image.showPopover()
           ghost = image
           running?.stop()
@@ -239,15 +272,18 @@ function overlayElement<Tag extends 'div' | 'span' | 'dialog'>(tag: Tag) {
 
 export const overlay = { div: overlayElement('div'), span: overlayElement('span'), dialog: overlayElement('dialog') }
 
-export function FloatingMotion({ ref, ...props }: HTMLMotionProps<'div'>) {
-  const timing = useTransition('enter')
+export function FloatingMotion({ ref, ...props }: HTMLMotionProps<'div'> & { 'data-closed'?: string }) {
+  const closed = props['data-closed'] !== undefined
+  const timing = useTransition(closed ? 'exit' : 'enter')
   const reduced = useReducedMotion()
   return (
     <motion.div
       {...props}
       ref={ref}
+      aria-hidden={closed ? true : props['aria-hidden']}
+      inert={closed || undefined}
       initial={reduced ? false : { opacity: 0, scale: animation.overlayScale }}
-      animate={{ opacity: 1, scale: 1 }}
+      animate={closed ? { opacity: 0, scale: animation.overlayScale } : { opacity: 1, scale: 1 }}
       transition={timing}
     />
   )
@@ -273,22 +309,18 @@ export function useSelectionMotion(
     initialized.current = true
     const track = node.parentElement?.querySelector<HTMLElement>('[data-selection-track]')
     const indicator = node.parentElement?.querySelector<HTMLElement>('[data-selection-indicator]')
-    const colors = getComputedStyle(node)
-    const primary = colors.getPropertyValue('--color-primary').trim()
-    const disabled = colors.getPropertyValue('--color-disabled').trim()
-    const border = colors.getPropertyValue('--color-input-border').trim()
     controls.current = []
-    if (track)
-      controls.current.push(
-        animate(
-          track,
-          {
-            backgroundColor: selected ? primary : kind === 'switch' ? disabled : 'rgba(0,0,0,0)',
-            borderColor: selected ? primary : border,
-          },
-          timing,
-        ),
-      )
+    if (track) {
+      const backgroundColor = selected ? 'var(--control)' : kind === 'switch' ? 'var(--disabled)' : 'transparent'
+      const borderColor = selected ? 'var(--control)' : 'var(--input)'
+      const control = animate(track, { backgroundColor, borderColor }, timing)
+      controls.current.push(control)
+      void control.then(() => {
+        if (!controls.current.includes(control)) return
+        track.style.backgroundColor = backgroundColor
+        track.style.borderColor = borderColor
+      })
+    }
     if (indicator)
       controls.current.push(
         animate(
@@ -326,11 +358,12 @@ export function useSelectionMotion(
   }, [inputRef, kind, update])
 }
 
-export function useDisclosure(defaultOpen: boolean) {
+export function useDisclosure(defaultOpen: boolean, controlledOpen?: boolean, onOpenChange?: (open: boolean) => void) {
   const details = useRef<HTMLDetailsElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const caret = useRef<SVGSVGElement>(null)
-  const desired = useRef(defaultOpen)
+  const [initialOpen] = useState(controlledOpen ?? defaultOpen)
+  const desired = useRef(initialOpen)
   const running = useRef<ReturnType<typeof animate>[]>([])
   const change = useCallback((open: boolean) => {
     const root = details.current,
@@ -339,6 +372,7 @@ export function useDisclosure(defaultOpen: boolean) {
     if (!root || !body || !icon) return
     desired.current = open
     root.querySelector('summary')?.setAttribute('aria-expanded', String(open))
+    root.dataset.state = open ? 'open' : 'closed'
     const height = root.open ? body.getBoundingClientRect().height : 0
     for (const control of running.current) control.stop()
     root.open = true
@@ -365,6 +399,8 @@ export function useDisclosure(defaultOpen: boolean) {
       icon = caret.current
     if (!root || !body || !icon) return
     root.open = desired.current
+    root.dataset.state = desired.current ? 'open' : 'closed'
+    root.querySelector('summary')?.setAttribute('aria-expanded', String(desired.current))
     body.inert = !desired.current
     body.setAttribute('aria-hidden', String(!desired.current))
     icon.style.transform = `rotate(${desired.current ? 0 : animation.collapsedRotation}deg)`
@@ -372,12 +408,21 @@ export function useDisclosure(defaultOpen: boolean) {
       for (const control of running.current) control.stop()
     }
   }, [])
+  useLayoutEffect(() => {
+    if (controlledOpen !== undefined && controlledOpen !== desired.current) change(controlledOpen)
+  }, [controlledOpen, change])
+  const request = (open: boolean) => {
+    if (open === desired.current) return
+    if (controlledOpen === undefined) change(open)
+    onOpenChange?.(open)
+  }
   return {
+    initialOpen,
     detailsRef: details,
     contentRef: content,
     caretRef: caret,
-    toggle: () => change(!desired.current),
-    expand: () => change(true),
+    toggle: () => request(!desired.current),
+    expand: () => request(true),
   }
 }
 
@@ -393,4 +438,75 @@ export function FieldErrorMotion({ children, ...props }: HTMLMotionProps<'div'> 
       {children}
     </motion.div>
   )
+}
+
+export function CelebrationMotion({ active }: { active: boolean }) {
+  const canvas = useRef<HTMLCanvasElement>(null)
+  const id = useId()
+  const reduced = useReducedMotion()
+  useEffect(() => {
+    const node = canvas.current
+    if (!active || reduced || !node || reducedMotion()) return
+    let disposed = false
+    let stop: (() => void) | undefined
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const cancel = () => {
+      disposed = true
+      if (timer) clearTimeout(timer)
+      stop?.()
+    }
+    preference.addEventListener('change', cancel)
+    const launch = async () => {
+      const { confetti } = await import('@tsparticles/confetti')
+      if (disposed) return
+      const sample = document.createElement('canvas').getContext('2d')
+      if (!sample) return
+      const style = getComputedStyle(node)
+      const colors = ['--primary', '--ring', '--foreground', '--warning', '--success'].map((key) => {
+        sample.clearRect(0, 0, 1, 1)
+        sample.fillStyle = style.getPropertyValue(key).trim()
+        sample.fillRect(0, 0, 1, 1)
+        return (
+          '#' +
+          [...sample.getImageData(0, 0, 1, 1).data]
+            .slice(0, 3)
+            .map((channel) => channel.toString(16).padStart(2, '0'))
+            .join('')
+        )
+      })
+      const preset = animation.celebration
+      const fire = await confetti.create(node, { count: 0, disableForReducedMotion: true })
+      const container = await fire({
+        count: disposed ? 0 : preset.count,
+        colors,
+        angle: 90,
+        spread: preset.spread,
+        startVelocity: preset.startVelocity,
+        ticks: preset.ticks,
+        position: { x: 50, y: 80 },
+        scalar: 0.8,
+        disableForReducedMotion: true,
+      })
+      stop = () => container?.destroy()
+      if (disposed) {
+        stop()
+        return
+      }
+      timer = setTimeout(stop, preset.durationMs)
+    }
+    void launch().catch(cancel)
+    return () => {
+      cancel()
+      preference.removeEventListener('change', cancel)
+    }
+  }, [active, id, reduced])
+  return active && !reduced ? (
+    <canvas
+      ref={canvas}
+      id={`celebration-${id}`}
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 size-full"
+    />
+  ) : null
 }

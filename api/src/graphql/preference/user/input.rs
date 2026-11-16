@@ -30,16 +30,16 @@ impl From<PreferenceWeekday> for compallm_core::preference::values::Weekday {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, GraphQLEnum, schemars::JsonSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PreferenceDarkPalette {
-    Dark,
-    MagicBlue,
-    ClassicDark,
+    BasicDark,
+    BlueberryDark,
+    MarshmallowDark,
 }
 impl From<PreferenceDarkPalette> for compallm_core::preference::values::DarkPalette {
     fn from(value: PreferenceDarkPalette) -> Self {
         match value {
-            PreferenceDarkPalette::Dark => Self::Dark,
-            PreferenceDarkPalette::MagicBlue => Self::MagicBlue,
-            PreferenceDarkPalette::ClassicDark => Self::ClassicDark,
+            PreferenceDarkPalette::BasicDark => Self::BasicDark,
+            PreferenceDarkPalette::BlueberryDark => Self::BlueberryDark,
+            PreferenceDarkPalette::MarshmallowDark => Self::MarshmallowDark,
         }
     }
 }
@@ -67,6 +67,10 @@ pub enum PreferenceDestination {
     Providers,
     Notebooks,
     Plugins,
+    Stats,
+    ApiKeys,
+    Members,
+    Conversations,
 }
 impl From<PreferenceDestination> for compallm_core::preference::values::Destination {
     fn from(value: PreferenceDestination) -> Self {
@@ -76,6 +80,10 @@ impl From<PreferenceDestination> for compallm_core::preference::values::Destinat
             PreferenceDestination::Providers => Self::Providers,
             PreferenceDestination::Notebooks => Self::Notebooks,
             PreferenceDestination::Plugins => Self::Plugins,
+            PreferenceDestination::Stats => Self::Stats,
+            PreferenceDestination::ApiKeys => Self::ApiKeys,
+            PreferenceDestination::Members => Self::Members,
+            PreferenceDestination::Conversations => Self::Conversations,
         }
     }
 }
@@ -210,17 +218,52 @@ impl From<PreferencePixelFontSize> for compallm_core::preference::values::PixelF
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, GraphQLEnum, schemars::JsonSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PreferenceLightPalette {
-    Light,
-    PureLight,
+    BasicWhite,
+    BlueberryWhite,
+    MarshmallowWhite,
 }
 impl From<PreferenceLightPalette> for compallm_core::preference::values::LightPalette {
     fn from(value: PreferenceLightPalette) -> Self {
         match value {
-            PreferenceLightPalette::Light => Self::Light,
-            PreferenceLightPalette::PureLight => Self::PureLight,
+            PreferenceLightPalette::BasicWhite => Self::BasicWhite,
+            PreferenceLightPalette::BlueberryWhite => Self::BlueberryWhite,
+            PreferenceLightPalette::MarshmallowWhite => Self::MarshmallowWhite,
         }
     }
 }
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, GraphQLEnum, schemars::JsonSchema)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum PreferenceSidebarCategory {
+    Workspace,
+    Routers,
+    Organization,
+    Conversations,
+}
+impl From<PreferenceSidebarCategory> for compallm_core::preference::values::SidebarCategory {
+    fn from(value: PreferenceSidebarCategory) -> Self {
+        match value {
+            PreferenceSidebarCategory::Workspace => Self::Workspace,
+            PreferenceSidebarCategory::Routers => Self::Routers,
+            PreferenceSidebarCategory::Organization => Self::Organization,
+            PreferenceSidebarCategory::Conversations => Self::Conversations,
+        }
+    }
+}
+#[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SidebarLayoutSectionInput {
+    pub category: PreferenceSidebarCategory,
+    pub items: Vec<PreferenceDestination>,
+}
+impl From<SidebarLayoutSectionInput> for compallm_core::preference::sidebar::SidebarSection {
+    fn from(value: SidebarLayoutSectionInput) -> Self {
+        Self {
+            category: value.category.into(),
+            items: value.items.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SidebarVisibilityPatchInput {
@@ -544,6 +587,15 @@ pub struct SidebarPatchInput {
         serialize_with = "serialize_field",
         deserialize_with = "deserialize_field"
     )]
+    #[schemars(with = "Option<Vec<SidebarLayoutSectionInput>>", extend("x-compallm-non-null" = true))]
+    pub layout: Nullable<Vec<SidebarLayoutSectionInput>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "Nullable::is_implicit_null",
+        serialize_with = "serialize_field",
+        deserialize_with = "deserialize_field"
+    )]
     #[schemars(with = "Option<Vec<PreferenceDestination>>", extend("x-compallm-non-null" = true))]
     pub order: Nullable<Vec<PreferenceDestination>>,
     #[serde(
@@ -567,6 +619,8 @@ impl TryFrom<SidebarPatchInput> for compallm_core::preference::patch::SidebarPat
     type Error = crate::graphql::error::Error;
     fn try_from(value: SidebarPatchInput) -> Result<Self, Self::Error> {
         Ok(Self {
+            layout: supplied(value.layout)?
+                .map(|values| values.into_iter().map(Into::into).collect()),
             order: supplied(value.order)?
                 .map(|values| values.into_iter().map(Into::into).collect()),
             visibility: supplied(value.visibility)?

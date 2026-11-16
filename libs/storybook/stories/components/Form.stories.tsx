@@ -23,7 +23,7 @@ function Demo({ mode = 'button', reject = false }: { mode?: CommitMode; reject?:
   const name = useFormValue<string>(form, 'name')
   return (
     <div className="grid max-w-lg gap-4 p-6">
-      <Form model={form} className="grid gap-4">
+      <Form.Root model={form} className="grid gap-4">
         <label className="grid gap-2 text-sm">
           Name
           <TextField name="name" />
@@ -40,11 +40,11 @@ function Demo({ mode = 'button', reject = false }: { mode?: CommitMode; reject?:
         <Button type="button" onClick={() => void form.retry()}>
           Retry latest draft
         </Button>
-      </Form>
-      <p className="text-xs text-muted">
+      </Form.Root>
+      <p className="text-xs text-muted-foreground">
         Draft: {name}. Confirmed: {saved.name}, {saved.enabled ? 'enabled' : 'disabled'}.
       </p>
-      <p className="text-xs text-muted">
+      <p className="text-xs text-muted-foreground">
         Button mode suppresses blur and Enter. Other modes commit only at their configured trigger.
       </p>
       <TextField aria-label="Standalone input" placeholder="Outside the form" />
@@ -77,15 +77,17 @@ function ValidationExample({ edge = false }: { edge?: boolean }) {
   }, [form])
   return (
     <div className={edge ? 'flex min-h-48 justify-end p-2' : 'min-h-48 p-6'}>
-      <Form model={form} className="grid w-72 content-start gap-3">
+      <Form.Root model={form} className="grid w-72 content-start gap-3">
         <label className="grid gap-2 text-sm">
           Role name
           <TextField name="name" />
         </label>
         <Form.Error name="name" />
-        <p className="text-xs text-muted">The message opens for five seconds. Hover or focus the warning to reopen it.</p>
+        <p className="text-xs text-muted-foreground">
+          The message opens for five seconds. Hover or focus the warning to reopen it.
+        </p>
         <Form.Submit>Validate</Form.Submit>
-      </Form>
+      </Form.Root>
     </div>
   )
 }

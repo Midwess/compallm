@@ -7,9 +7,9 @@ use compallm_core::{
     user::{User, UserStatus},
 };
 use sea_orm::{
-    ActiveModelTrait, DbErr, EntityTrait, ModelTrait, QueryFilter, RuntimeErr, Set,
+    DbErr, EntityTrait, ModelTrait, QueryFilter, RuntimeErr, Set,
     prelude::ChronoUtc,
-    sea_query::{Expr, ExprTrait, Func},
+    sea_query::{Expr, ExprTrait, Func, OnConflict},
 };
 
 use crate::{UserSchema, postgres_connection::PostgresConnection, schema::UserStatusSchema};
@@ -34,9 +34,12 @@ impl UserRepository {
         | DbErr::Query(RuntimeErr::SqlxError(driver)) = &error
             && let sea_orm::sqlx::Error::Database(database) = driver.as_ref()
             && database.is_unique_violation()
-            && database.constraint() == Some("users_email_unique")
         {
-            return UserRepositoryError::EmailAlreadyExists;
+            match database.constraint() {
+                Some("users_email_unique") => return UserRepositoryError::EmailAlreadyExists,
+                Some("users_username_unique") => return UserRepositoryError::UsernameAlreadyExists,
+                _ => {}
+            }
         }
         UserRepositoryError::database(error)
     }
@@ -76,6 +79,8 @@ impl CoreUserRepository for UserRepository {
             id: Set(id),
             email: Set(user.email),
             display_name: Set(user.display_name),
+            username: Set(user.username),
+            avatar_path: Set(user.avatar_path),
             status: Set(match user.status {
                 UserStatus::Active => UserStatusSchema::Active,
                 UserStatus::Disabled => UserStatusSchema::Disabled,
@@ -83,6 +88,49 @@ impl CoreUserRepository for UserRepository {
             email_verified_at: Set(ChronoUtc::now().fixed_offset()),
             ..Default::default()
         };
-        User::try_from(model.insert(db).await.map_err(Self::insert_error)?)
+        let inserted = Users::insert(model)
+            .on_conflict(
+                OnConflict::column(UserColumn::Username)
+                    .do_nothing()
+                    .to_owned(),
+            )
+            .exec_with_returning(db)
+            .await
+            .map_err(|error| match error {
+                DbErr::RecordNotInserted => UserRepositoryError::UsernameAlreadyExists,
+                other => Self::insert_error(other),
+            })?;
+        User::try_from(inserted)
+    }
+    async fn update_profile(
+        &self,
+        user_id: u64,
+        display_name: Option<String>,
+        username: Option<String>,
+        avatar_path: Option<String>,
+    ) -> Result<User, UserRepositoryError> {
+        let id = Self::database_id(user_id)?;
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let mut update = Users::update_many()
+            .filter(Expr::col(UserColumn::Id).eq(id))
+            .filter(Expr::col(UserColumn::Status).eq(UserStatusSchema::Active));
+        if let Some(name) = display_name {
+            update = update.col_expr(UserColumn::DisplayName, Expr::val(name));
+        }
+        if let Some(username) = username {
+            update = update.col_expr(UserColumn::Username, Expr::val(username));
+        }
+        if let Some(path) = avatar_path {
+            update = update.col_expr(UserColumn::AvatarPath, Expr::val(path));
+        }
+        let model = update
+            .exec_with_returning(db)
+            .await
+            .map_err(Self::insert_error)?
+            .into_iter()
+            .next()
+            .ok_or(UserRepositoryError::NotFound)?;
+        User::try_from(model)
     }
 }

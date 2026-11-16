@@ -1,3 +1,4 @@
+import { PermissionRequest } from '../../../components/permission'
 import { useId, useState } from 'react'
 import { FunnelIcon } from '@phosphor-icons/react/dist/csr/Funnel'
 import { Button } from '../../../components/buttons'
@@ -29,40 +30,49 @@ function PolicyFilters({ categories }: { categories: string[] }) {
     </Popup.RadioGroup>
   )
   return (
-    <Popup>
+    <Popup.Root>
       <Popup.IconTrigger aria-label="Filter policies" title="Filter policies" className="size-8 shrink-0 rounded-full">
         <FunnelIcon aria-hidden="true" className="size-3" />
       </Popup.IconTrigger>
       <Popup.Content aria-label="Policy filters">
-        <Popup.Submenu label="Resource type">
-          {options('policy-resource', [
-            { value: 'all', label: 'All resources' },
-            ...categories.map((value) => ({ value, label: value })),
-          ])}
-        </Popup.Submenu>
-        <Popup.Submenu label="Selection">
-          {options('policy-selection', [
-            { value: 'all', label: 'All policies' },
-            { value: 'enabled', label: 'Enabled' },
-            { value: 'disabled', label: 'Disabled' },
-          ])}
-        </Popup.Submenu>
-        <Popup.Submenu label="Access">
-          {options('policy-access', [
-            { value: 'all', label: 'All access levels' },
-            ...accessLevels.map((value) => ({ value, label: value })),
-          ])}
-        </Popup.Submenu>
+        <Popup.Sub>
+          <Popup.SubTrigger>Resource type</Popup.SubTrigger>
+          <Popup.SubContent aria-label="Resource type">
+            {options('policy-resource', [
+              { value: 'all', label: 'All resources' },
+              ...categories.map((value) => ({ value, label: value })),
+            ])}
+          </Popup.SubContent>
+        </Popup.Sub>
+        <Popup.Sub>
+          <Popup.SubTrigger>Selection</Popup.SubTrigger>
+          <Popup.SubContent aria-label="Selection">
+            {options('policy-selection', [
+              { value: 'all', label: 'All policies' },
+              { value: 'enabled', label: 'Enabled' },
+              { value: 'disabled', label: 'Disabled' },
+            ])}
+          </Popup.SubContent>
+        </Popup.Sub>
+        <Popup.Sub>
+          <Popup.SubTrigger>Access</Popup.SubTrigger>
+          <Popup.SubContent aria-label="Access">
+            {options('policy-access', [
+              { value: 'all', label: 'All access levels' },
+              ...accessLevels.map((value) => ({ value, label: value })),
+            ])}
+          </Popup.SubContent>
+        </Popup.Sub>
         <Popup.Separator />
         <Popup.Item
-          onClick={() => {
+          onSelect={() => {
             for (const key of ['policy-resource', 'policy-selection', 'policy-access']) c.setFilter(key, 'all')
           }}
         >
           Clear all filters
         </Popup.Item>
       </Popup.Content>
-    </Popup>
+    </Popup.Root>
   )
 }
 
@@ -72,12 +82,14 @@ function PermissionRow({
   statements,
   disabled,
   owner,
+  busy,
 }: {
   id: string
   action: SettingsPolicyAction
   statements: PolicyProjection[]
   disabled: boolean
   owner: boolean
+  busy: boolean
 }) {
   const c = useRoleController()
   const disabledPolicies = useRole((state) => state.disabledPolicies?.[action.id])
@@ -91,19 +103,19 @@ function PermissionRow({
         <span className="block truncate text-xsm leading-4.5 font-medium" title={action.description}>
           {action.label}
         </span>
-        <span className="block truncate text-[11px] leading-4 text-muted">
+        <span className="block truncate text-ui-11 leading-4 text-muted-foreground">
           {action.id}
           {denied ? ' · Deny rule' : null}
           {statements.some((p) => p.resourceRestricted) ? ' · Advanced scope' : null}
         </span>
-        {reason ? <span className="block text-xs text-muted">{reason}</span> : null}
+        {reason ? <span className="block text-xs text-muted-foreground">{reason}</span> : null}
         {reason ? (
           <Button variant="ghost" className="h-6 px-0 text-xs" onClick={() => c.setPolicyMode('cedar')}>
             Edit in Cedar
           </Button>
         ) : null}
         {!permits.length && disabledPolicies?.length ? (
-          <details className="mt-1 text-xs text-muted">
+          <details className="mt-1 text-xs text-muted-foreground">
             <summary className="cursor-pointer">Re-enabling restores these rules</summary>
             <p>Retained until you leave this role or edit the Cedar source.</p>
             {disabledPolicies.map((source) => (
@@ -114,15 +126,24 @@ function PermissionRow({
           </details>
         ) : null}
       </Table.Cell>
-      <Table.Cell className="px-1 py-0 text-xs text-muted">{action.description}</Table.Cell>
+      <Table.Cell className="px-1 py-0 text-xs text-muted-foreground">{action.description}</Table.Cell>
       <Table.Cell className="px-2 py-0">
         <DisabledTooltip disabled={owner} reason={ownerExplanation}>
-          <Switch
-            aria-label={action.label}
-            checked={permits.length > 0}
-            disabled={disabled || advanced}
-            onChange={() => void c.store.form.perform(() => c.togglePolicyAction(action.id), ['draft.source'])}
-          />
+          <PermissionRequest actions={['role.policy.update']} resource={{ type: 'Role', id: c.store.getState().draft?.id }}>
+            {(allowed) => (
+              <DisabledTooltip disabled={!allowed} reason="You do not have permission to perform this action.">
+                <Switch
+                  aria-label={action.label}
+                  checked={permits.length > 0}
+                  disabled={!allowed || disabled || advanced}
+                  aria-disabled={!allowed || disabled || advanced || busy}
+                  onChange={() => {
+                    if (!busy) void c.store.form.perform(() => c.togglePolicyAction(action.id), ['draft.source'])
+                  }}
+                />
+              </DisabledTooltip>
+            )}
+          </PermissionRequest>
         </DisabledTooltip>
       </Table.Cell>
     </Table.Row>
@@ -168,7 +189,7 @@ export function PolicyTable() {
     )
   })
   const filtering = Boolean(normalized) || Object.values(filters).some((v) => v && v !== 'all')
-  const disabled = draft.builtin || busy || draft.parsing || draft.diagnostics.length > 0
+  const disabled = draft.builtin || draft.parsing || draft.diagnostics.length > 0
   const selectedCount = actions.filter((a) => (projection.get(a.id) ?? []).some((entry) => entry.effect !== 'forbid')).length
   return (
     <SectionSurface className="flex min-w-0 flex-col overflow-hidden p-0">
@@ -191,7 +212,7 @@ export function PolicyTable() {
         )}
       </div>
       {draft.projection.some((entry) => !entry.action) ? (
-        <div className="px-4 pb-4 text-xs text-muted">
+        <div className="px-4 pb-4 text-xs text-muted-foreground">
           {[...new Map(draft.projection.filter((entry) => !entry.action).map((entry) => [entry.source, entry])).values()].map(
             (entry) => (
               <details key={entry.source} className="mt-2">
@@ -209,10 +230,10 @@ export function PolicyTable() {
         tabIndex={0}
         role="region"
         aria-label="Permission catalog"
-        className="mx-2 min-w-0 overflow-x-auto outline-offset-2 focus-visible:outline-2 focus-visible:outline-focus"
+        className="mx-2 min-w-0 overflow-x-auto outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
       >
-        <Table className="overflow-visible">
-          <Table.Content aria-label="Permission policies" className="min-w-md border-separate border-spacing-0">
+        <Table.Root className="overflow-visible">
+          <Table.Content aria-label="Permission policies" className="min-w-0 border-separate border-spacing-0">
             <colgroup>
               <col className="w-[60%]" />
               <col />
@@ -245,21 +266,32 @@ export function PolicyTable() {
                   onOpenChange={(next) => setDisclosure((current) => ({ ...current, [category]: next }))}
                   action={
                     <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
-                      <Switch
-                        aria-label={'Allow ' + category + ' policies'}
-                        checked={allEditableSelected}
-                        disabled={disabled || editable.length === 0}
-                        onChange={() =>
-                          void c.store.form.perform(
-                            () =>
-                              c.setPolicyActions(
-                                editable.map((a) => a.id),
-                                !allEditableSelected,
-                              ),
-                            ['draft.source'],
-                          )
-                        }
-                      />
+                      <PermissionRequest
+                        actions={['role.policy.update']}
+                        resource={{ type: 'Role', id: c.store.getState().draft?.id }}
+                      >
+                        {(allowed) => (
+                          <DisabledTooltip disabled={!allowed} reason="You do not have permission to perform this action.">
+                            <Switch
+                              aria-label={'Allow ' + category + ' policies'}
+                              checked={allEditableSelected}
+                              disabled={!allowed || disabled || editable.length === 0}
+                              aria-disabled={!allowed || disabled || editable.length === 0 || busy}
+                              onChange={() =>
+                                !busy &&
+                                c.store.form.perform(
+                                  () =>
+                                    c.setPolicyActions(
+                                      editable.map((a) => a.id),
+                                      !allEditableSelected,
+                                    ),
+                                  ['draft.source'],
+                                )
+                              }
+                            />
+                          </DisabledTooltip>
+                        )}
+                      </PermissionRequest>
                     </DisabledTooltip>
                   }
                 >
@@ -271,6 +303,7 @@ export function PolicyTable() {
                       statements={projection.get(action.id) ?? []}
                       disabled={disabled}
                       owner={draft.builtin}
+                      busy={busy}
                     />
                   ))}
                 </Table.Category>
@@ -279,16 +312,16 @@ export function PolicyTable() {
             {!filtered.length ? (
               <Table.Body>
                 <Table.Row>
-                  <Table.Cell colSpan={3} className="py-8 text-center text-muted">
+                  <Table.Cell colSpan={3} className="py-8 text-center text-muted-foreground">
                     No policies match your search or filters.
                   </Table.Cell>
                 </Table.Row>
               </Table.Body>
             ) : null}
           </Table.Content>
-        </Table>
+        </Table.Root>
       </div>
-      <p className="shrink-0 px-4 py-4 text-xs leading-4.5 text-muted" aria-live="polite">
+      <p className="shrink-0 px-4 py-4 text-xs leading-4.5 text-muted-foreground" aria-live="polite">
         {selectedCount} selected · {filtered.length} policies
       </p>
     </SectionSurface>

@@ -7,8 +7,8 @@ impl Default for ThemePreferences {
         Self {
             mode: AppearanceMode::System,
             palettes: ColorPalette {
-                light: LightPalette::Light,
-                dark: DarkPalette::Dark,
+                light: LightPalette::BasicWhite,
+                dark: DarkPalette::BasicDark,
             },
         }
     }

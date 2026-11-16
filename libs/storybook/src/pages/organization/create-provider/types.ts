@@ -48,6 +48,7 @@ export interface ProviderModel extends ModelDraft {
 }
 export type ConnectionTest = { status: 'idle' | 'testing' } | { status: 'passed' } | { status: 'failed'; message: string }
 export interface ProviderSnapshot {
+  id?: string
   name: string
   baseUrl: string
   protocol: ApiProtocol

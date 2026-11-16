@@ -1,3 +1,4 @@
+import type { UserPreferences } from '@compallm/contract/graphql'
 import type { StoreApi } from 'zustand/vanilla'
 
 export interface OrganizationDestination {
@@ -13,6 +14,11 @@ export interface OrganizationState {
   models: OrganizationDestination[]
   conversations: { id: string; name: string; href: string }[]
   links: { stats: string; keys: string; members: string; notebooks: string; plugins: string }
+  sidebarOrder: UserPreferences['sidebar']['entries'][number]['item'][]
+  sidebarLayout: {
+    category: UserPreferences['sidebar']['layout'][number]['category']
+    items: UserPreferences['sidebar']['entries'][number]['item'][]
+  }[]
   selectedDestination: string | null
 }
 

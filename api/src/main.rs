@@ -26,6 +26,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
         return compallm_api::generation::generate();
     }
+    if std::env::args().nth(1).as_deref() == Some("storage") {
+        if std::env::args().nth(2).as_deref() != Some("setup") || std::env::args().len() != 3 {
+            return Err("usage: storage setup".into());
+        }
+        return compallm_api::storage::setup().await;
+    }
     cli::main::<App, Migrator>()
         .await
         .map_err(|error| Box::new(error) as Box<dyn Error>)

@@ -55,7 +55,7 @@ export const SectionHeader: Story = {
 export const Divider: Story = {
   render: () => (
     <Preview>
-      <div className="w-full max-w-160 rounded-[10px] bg-inset p-4">
+      <div className="w-full max-w-160 rounded-control bg-inset p-4">
         <SettingsDivider />
       </div>
     </Preview>

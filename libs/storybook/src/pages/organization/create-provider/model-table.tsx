@@ -1,3 +1,4 @@
+import { PermissionRequest, usePermissionChecks } from '../../../components/permission'
 import { Table } from '../../../components/table'
 import { SectionSurface } from '../../../components/surfaces'
 import { Searchbox } from '../../../components/fields'
@@ -19,6 +20,28 @@ export function ProviderModels() {
   const status = useProvider((state) => state.modelStatusFilter)
   const protocol = useProvider((state) => state.modelProtocolFilter)
   const capabilities = useProvider((state) => state.modelCapabilityFilter)
+  const intent = useProvider((state) => state.intent)
+  const savedProvider = useProvider((state) => state.savedProvider)
+  const providerId = savedProvider?.id
+  const permissionStates = usePermissionChecks(
+    intent === 'edit'
+      ? models.map((model) => ({
+          action: 'provider.model.configuration.update',
+          resourceType: 'ProviderModel',
+          resourceId: model.id,
+        }))
+      : [{ action: 'provider.create', resourceType: 'Organization' }],
+    savedProvider?.id
+      ? savedProvider.models.map((model) => ({
+          resourceType: 'ProviderModel',
+          id: model.id,
+          enabled: model.enabled,
+          providerId: savedProvider.id,
+        }))
+      : [],
+  )
+  const editable = (id: string) =>
+    permissionStates[intent === 'edit' ? models.findIndex((model) => model.id === id) : 0] === 'allowed'
   const busy = useProvider((state) => state.submitting)
   const supported = (model: (typeof models)[number]) =>
     !!model.protocol || model.modes.some((mode) => ['chat_completions', 'responses', 'messages'].includes(mode))
@@ -39,7 +62,7 @@ export function ProviderModels() {
               )))) &&
       capabilities.every((capability) => model.capabilities?.includes(capability)),
   )
-  const selectable = visible.filter((model) => supported(model) && hasValidModelPrices(model))
+  const selectable = visible.filter((model) => supported(model) && hasValidModelPrices(model) && editable(model.id))
   const selected = selectable.filter((model) => model.enabled).length
   const all = selectable.length > 0 && selected === selectable.length
   const enabled = models.filter((model) => model.enabled).length
@@ -53,29 +76,32 @@ export function ProviderModels() {
   return (
     <SectionSurface className="grid min-w-0 gap-4">
       <div className="flex items-center gap-3">
-        <Searchbox className="flex-1">
+        <Searchbox.Root className="flex-1">
           <Searchbox.Input
             aria-label="Search models"
             placeholder="Search models…"
             value={query}
             onChange={(event) => controller.onModelQueryChanged(event.target.value)}
           />
-        </Searchbox>
+        </Searchbox.Root>
         <ModelFilters />
       </div>
-      <Table tabIndex={0} role="region" aria-label="Scrollable provider model table" className="min-w-0">
-        <Table.Content className="w-full min-w-3xl table-fixed text-xs" aria-label="Provider models">
-          <colgroup>
-            <col className="w-6" />
-            <col className="w-44" />
-            <col className="w-52" />
-            <col className="w-16" />
-            <col className="w-20" />
-            <col className="w-20" />
-            <col className="w-20" />
-            <col className="w-8" />
-          </colgroup>
-          <Table.Header className="h-8 text-muted">
+      <Table.Root tabIndex={0} role="region" aria-label="Scrollable provider model table" className="min-w-0">
+        <Table.Content
+          className="w-full table-fixed text-xs"
+          aria-label="Provider models"
+          columns={[
+            { id: 'enabled', className: 'w-10' },
+            { id: 'name' },
+            { id: 'capabilities', className: 'w-1/4', visibilityClassName: 'hidden xl:table-cell' },
+            { id: 'context', className: 'w-20', visibilityClassName: 'hidden lg:table-cell' },
+            { id: 'input', className: 'w-20', visibilityClassName: 'hidden md:table-cell' },
+            { id: 'output', className: 'w-20', visibilityClassName: 'hidden md:table-cell' },
+            { id: 'cached', className: 'w-20', visibilityClassName: 'hidden xl:table-cell' },
+            { id: 'actions', className: 'w-12' },
+          ]}
+        >
+          <Table.Header className="h-8 text-muted-foreground">
             <Table.Row className="border-b border-divider">
               <Table.Head className="p-0 text-left">
                 <Checkbox
@@ -87,8 +113,15 @@ export function ProviderModels() {
                   onChange={(event) => toggleAll(event.target.checked)}
                 />
               </Table.Head>
-              {['Model name', 'Capabilities', 'Context', '1M input', '1M output', '1M cached'].map((label) => (
-                <Table.Head key={label} className="px-1 text-left font-normal">
+              {[
+                ['name', 'Model name'],
+                ['capabilities', 'Capabilities'],
+                ['context', 'Context'],
+                ['input', '1M input'],
+                ['output', '1M output'],
+                ['cached', '1M cached'],
+              ].map(([column, label]) => (
+                <Table.Head column={column} key={label} className="px-1 text-left font-normal">
                   {label}
                 </Table.Head>
               ))}
@@ -105,37 +138,41 @@ export function ProviderModels() {
                     size="compact"
                     aria-label={`Enable ${model.name}`}
                     name={`models[${models.indexOf(model)}].enabled`}
-                    disabled={busy || !supported(model) || !hasValidModelPrices(model)}
+                    disabled={busy || !editable(model.id) || !supported(model) || !hasValidModelPrices(model)}
                   />
                 </Table.Cell>
-                <Table.Cell className="min-w-0 px-1 text-left">
+                <Table.Cell column="name" className="min-w-0 px-1 text-left">
                   <span title={model.name} className="block max-w-44 truncate font-medium">
                     {Array.from(model.name).length > 50 ? `${Array.from(model.name).slice(0, 50).join('')}…` : model.name}
                   </span>
-                  <span className="mt-1 block text-xs text-muted">
+                  <span className="mt-1 block text-xs text-muted-foreground">
                     {modelTypeLabels(model).join(' · ') || model.description || 'Not declared'}
                   </span>
                 </Table.Cell>
-                <Table.Cell className="px-1 py-2 text-left">
+                <Table.Cell column="capabilities" className="px-1 py-2 text-left">
                   <div className="flex flex-wrap gap-1">
                     {model.capabilities?.length ? (
                       capabilityOptions
                         .filter((option) => model.capabilities?.includes(option.value))
                         .map((option) => (
-                          <span key={option.value} className="rounded bg-elevated px-1 py-0.5 text-muted">
+                          <span key={option.value} className="rounded bg-elevated px-1 py-0.5 text-muted-foreground">
                             {option.label}
                           </span>
                         ))
                     ) : (
-                      <span className="text-muted">Not declared</span>
+                      <span className="text-muted-foreground">Not declared</span>
                     )}
                   </div>
                 </Table.Cell>
-                <Table.Cell className="whitespace-nowrap px-1 text-left text-muted">
+                <Table.Cell column="context" className="whitespace-nowrap px-1 text-left text-muted-foreground">
                   {model.maxContextTokens ? Number(model.maxContextTokens).toLocaleString('en-US') : 'Not set'}
                 </Table.Cell>
                 {[model.inputPrice, model.outputPrice, model.cachedPrice].map((value, index) => (
-                  <Table.Cell key={index} className="whitespace-nowrap px-1 text-left text-muted">
+                  <Table.Cell
+                    column={['input', 'output', 'cached'][index]}
+                    key={index}
+                    className="whitespace-nowrap px-1 text-left text-muted-foreground"
+                  >
                     {price(value)}
                   </Table.Cell>
                 ))}
@@ -144,8 +181,10 @@ export function ProviderModels() {
                     <button
                       type="button"
                       aria-label={`Edit ${model.name}`}
-                      disabled={busy}
-                      className="cursor-pointer text-muted hover:text-text focus-visible:outline-muted disabled:opacity-50"
+                      disabled={busy || !editable(model.id)}
+                      className="cursor-pointer text-muted-foreground hover:text-foreground
+focus-visible:outline-muted-foreground
+disabled:opacity-50"
                       onClick={() => controller.onEditModel(model.id)}
                     >
                       Edit
@@ -165,27 +204,37 @@ export function ProviderModels() {
             </p>
           </Table.Empty>
         ) : null}
-      </Table>
+      </Table.Root>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted-foreground">
           {enabled} {enabled === 1 ? 'model' : 'models'} enabled
         </p>
-        <Popup>
-          <Popup.Trigger
-            disabled={busy}
-            className="h-8 w-auto rounded-full bg-elevated px-4 text-xs text-text hover:brightness-110"
-          >
-            Add generate text model
-          </Popup.Trigger>
-          <Popup.Content aria-label="Add generate text model" className="w-3xs">
-            {textModelOptions.map((option) => (
-              <Popup.Item key={option.value} className="gap-2" onClick={() => controller.onAddModel(option.value)}>
-                <ProviderIcon provider={option.brand} />
-                {option.label}
-              </Popup.Item>
-            ))}
-          </Popup.Content>
-        </Popup>
+        <PermissionRequest
+          actions={[intent === 'edit' ? 'provider.model.create' : 'provider.create']}
+          resource={intent === 'edit' ? { type: 'Provider', id: providerId } : undefined}
+          enabled={intent !== 'edit' || !!providerId}
+        >
+          {(allowed) =>
+            allowed ? (
+              <Popup.Root>
+                <Popup.Trigger
+                  disabled={busy}
+                  className="h-8 w-auto rounded-full bg-elevated px-4 text-xs text-foreground hover:brightness-110"
+                >
+                  Add generate text model
+                </Popup.Trigger>
+                <Popup.Content aria-label="Add generate text model" className="w-3xs">
+                  {textModelOptions.map((option) => (
+                    <Popup.Item key={option.value} className="gap-2" onSelect={() => controller.onAddModel(option.value)}>
+                      <ProviderIcon provider={option.brand} />
+                      {option.label}
+                    </Popup.Item>
+                  ))}
+                </Popup.Content>
+              </Popup.Root>
+            ) : null
+          }
+        </PermissionRequest>
       </div>
     </SectionSurface>
   )

@@ -85,7 +85,7 @@ export function MemberLimitSettings() {
           onChange={(e) => c.pages.search.setQuery(e.target.value)}
           className="w-75 max-w-full"
         />
-        <Popup>
+        <Popup.Root>
           <Popup.Trigger aria-label="Display properties">
             <SlidersHorizontalIcon className="size-4" />
           </Popup.Trigger>
@@ -102,10 +102,10 @@ export function MemberLimitSettings() {
               </Popup.CheckboxItem>
             ))}
           </Popup.Content>
-        </Popup>
+        </Popup.Root>
       </div>
-      <Table>
-        <Table.Content aria-label="Member spending limits" className="min-w-180">
+      <Table.Root>
+        <Table.Content aria-label="Member spending limits" className="min-w-0">
           <Table.Header>
             <Table.Row>
               <Table.Head>Name</Table.Head>
@@ -120,7 +120,7 @@ export function MemberLimitSettings() {
               <Table.Row key={m.id}>
                 <Table.Cell>
                   <span className="block text-xsm font-medium">{m.name}</span>
-                  <span className="text-muted">{m.email}</span>
+                  <span className="text-muted-foreground">{m.email}</span>
                 </Table.Cell>
                 {columns.includes('previous') ? <Table.Cell>{money(m.previousUsageUsd)}</Table.Cell> : null}
                 {columns.includes('current') ? <Table.Cell>{money(m.currentUsageUsd)}</Table.Cell> : null}
@@ -144,7 +144,7 @@ export function MemberLimitSettings() {
             ))}
           </Table.Body>
         </Table.Content>
-      </Table>
+      </Table.Root>
     </SettingsContent>
   )
 }
@@ -152,7 +152,7 @@ function ReportFilter({ name, options }: { name: string; options: string[] }) {
   const c = useSettingsController(),
     value = useSettings((s) => s.filters[name] ?? 'all')
   return (
-    <Select
+    <Select.Control
       aria-label={name}
       className="min-w-36 flex-1"
       value={value}
@@ -177,15 +177,15 @@ export function UsageExplorerSettings() {
       </div>
       <div className="mb-12 grid grid-cols-2 gap-4 px-4 lg:grid-cols-4">
         {['Client requests', 'Input tokens', 'Output tokens', 'Provider cost estimate'].map((label) => (
-          <div key={label} className="rounded-[10px] bg-inset p-4">
-            <p className="text-xs text-muted">{label}</p>
+          <div key={label} className="rounded-control bg-inset p-4">
+            <p className="text-xs text-muted-foreground">{label}</p>
             <p className="mt-5 text-2xl">—</p>
           </div>
         ))}
       </div>
       <Section title="Usage by model" description="Token measurements and estimated upstream costs.">
-        <Table>
-          <Table.Content aria-label="Usage by model" className="min-w-180">
+        <Table.Root>
+          <Table.Content aria-label="Usage by model" className="min-w-0">
             <Table.Header>
               <Table.Row>
                 <Table.Head>Model</Table.Head>
@@ -207,12 +207,12 @@ export function UsageExplorerSettings() {
               ))}
             </Table.Body>
           </Table.Content>
-        </Table>
+        </Table.Root>
         {!data.length ? (
           <Table.Empty>No usage to display. Usage measurements will appear when records are available.</Table.Empty>
         ) : null}
       </Section>
-      <p className="mt-6 px-4 text-xs leading-5 text-muted">
+      <p className="mt-6 px-4 text-xs leading-5 text-muted-foreground">
         Unknown measurements are shown as —. Provider cost is an estimate from saved rates.
       </p>
     </SettingsContent>
@@ -244,8 +244,8 @@ export function AuditSettings() {
         <ReportFilter name="Actors" options={actors.map((m) => m.name)} />
         <ReportFilter name="Actions" options={[...new Set(data.map((e) => e.action))]} />
       </div>
-      <Table>
-        <Table.Content aria-label="Audit events" className="min-w-160">
+      <Table.Root>
+        <Table.Content aria-label="Audit events" className="min-w-0">
           <Table.Header>
             <Table.Row>
               {['Actor', 'Action', 'Resource', 'Result'].map((label) => (
@@ -264,7 +264,7 @@ export function AuditSettings() {
             ))}
           </Table.Body>
         </Table.Content>
-      </Table>
+      </Table.Root>
       {!visible.length ? (
         <Table.Empty>No events to display. Security and permission events will appear here.</Table.Empty>
       ) : null}

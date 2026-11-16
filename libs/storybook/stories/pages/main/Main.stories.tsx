@@ -22,7 +22,7 @@ export const WithContent: Story = {
           </Functions>
         </PageHeader>
         <section className="px-3 py-6">
-          <p className="text-xs text-muted">Feature pages supply this content through children.</p>
+          <p className="text-xs text-muted-foreground">Feature pages supply this content through children.</p>
         </section>
       </>
     ),

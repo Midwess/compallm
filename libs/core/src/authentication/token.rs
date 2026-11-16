@@ -1,4 +1,4 @@
-//! Authenticated CBOR Web Tokens. Only email OTP claims need extra encryption.
+//! Authenticated CBOR Web Tokens with encrypted OTP and invitation claims.
 
 use super::AuthError;
 use crate::compression::{DCompression, DictionaryType};
@@ -21,6 +21,7 @@ const TOKEN_CLAIM: i64 = -65537;
 mod compress_token;
 mod email_otp;
 mod encrypted;
+mod invitation;
 mod refresh;
 mod user;
 pub mod validity;
@@ -28,6 +29,7 @@ pub mod validity;
 pub use compress_token::CompressedToken;
 pub use email_otp::EmailOtpAccessToken;
 pub use encrypted::{EncryptedAccessToken, EncryptedToken};
+pub use invitation::InvitationToken;
 pub use refresh::RefreshToken;
 pub use user::UserAccessToken;
 pub use validity::TokenValidity;
@@ -44,6 +46,8 @@ pub enum AccessToken {
     EmailOtp(EmailOtpAccessToken),
     #[serde(rename = "u")]
     User(UserAccessToken),
+    #[serde(rename = "i")]
+    Invitation(InvitationToken),
     #[serde(rename = "r")]
     Refresh(RefreshToken),
 }
@@ -72,6 +76,7 @@ impl AccessToken {
                 }
             }
             Self::EmailOtp(token) => token.validate(now),
+            Self::Invitation(token) => token.validate(now),
             Self::User(token) => token.validate(now),
             Self::Refresh(token) => token.validate(now),
             Self::Encrypted(token) => token.validate(),
@@ -93,7 +98,7 @@ impl AccessToken {
         if matches!(self, Self::Compressed(_)) {
             return Err(AuthError::InvalidToken);
         }
-        if matches!(self, Self::EmailOtp(_)) {
+        if matches!(self, Self::EmailOtp(_) | Self::Invitation(_)) {
             return Err(AuthError::WrongTokenVariant);
         }
         self.validate(unix_timestamp())?;
@@ -244,13 +249,15 @@ impl AccessToken {
         match token {
             Self::Encrypted(payload) => {
                 let token: Self = EncryptedAccessToken::new(secret)?.decrypt(&payload)?;
-                if !matches!(token, Self::EmailOtp(_)) {
+                if !matches!(token, Self::EmailOtp(_) | Self::Invitation(_)) {
                     return Err(AuthError::WrongTokenVariant);
                 }
                 token.validate(unix_timestamp())?;
                 Ok(token)
             }
-            Self::EmailOtp(_) | Self::Compressed(_) => Err(AuthError::WrongTokenVariant),
+            Self::EmailOtp(_) | Self::Invitation(_) | Self::Compressed(_) => {
+                Err(AuthError::WrongTokenVariant)
+            }
             token => Ok(token),
         }
     }

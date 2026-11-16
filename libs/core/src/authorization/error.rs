@@ -1,5 +1,7 @@
 #[derive(Debug, thiserror::Error)]
 pub enum AuthorizationError {
+    #[error(transparent)]
+    GroupDeletion(#[from] crate::organization::group::GroupDeletionError),
     #[error("policy is not supported by data protection")]
     UnsupportedPolicy,
     #[error(transparent)]

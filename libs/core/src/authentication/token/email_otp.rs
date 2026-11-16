@@ -5,11 +5,13 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
 
-/// Never return these plaintext claims to a browser or log them.
+/// Keep plaintext claims out of browser responses; OTP logging is limited to debug builds.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct EmailOtpAccessToken {
     #[serde(rename = "e")]
     pub email: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub invitation_id: Option<u64>,
     #[serde(rename = "c")]
     pub code: String,
     #[serde(rename = "v")]
@@ -24,6 +26,7 @@ impl EmailOtpAccessToken {
     pub fn new(email: String) -> Result<Self, AuthError> {
         email::validate_email(&email).map_err(|_| AuthError::InvalidEmail)?;
         Ok(Self {
+            invitation_id: None,
             email,
             code: format!("{:06}", rand::rng().random_range(0..1_000_000)),
             validity: TokenValidity::new(std::time::Duration::from_secs(Self::TTL_SECONDS))?,

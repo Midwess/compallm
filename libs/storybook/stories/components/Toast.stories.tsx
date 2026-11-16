@@ -40,7 +40,7 @@ function ToastDemo({ action, onDismiss, ...props }: ToastProps) {
           />
         ) : null}
         {result ? (
-          <p role="status" className="text-xsm text-muted">
+          <p role="status" className="text-xsm text-muted-foreground">
             {result}
           </p>
         ) : null}

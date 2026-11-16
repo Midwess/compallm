@@ -1,4 +1,5 @@
-import { useContext, useSyncExternalStore } from 'react'
+import { useContext } from 'react'
+import { resolveCodeAppearance, useSystemLight } from '../../../../components/code-appearance'
 import { useFormStore, type FormStore } from '../../../../components/form'
 import { UserPreferenceControllerContext } from '../../../../context'
 import type { PreferenceDraft, UserPreferenceValues } from './values'
@@ -22,26 +23,11 @@ export function useUserPreferenceController() {
 export function useUserPreference<T>(selector: (state: UserPreferenceState) => T, names: readonly string[] = []) {
   return useFormStore(useUserPreferenceController().store, selector, names)
 }
-const systemTheme = '(prefers-color-scheme: light)'
-const subscribeTheme = (notify: () => void) => {
-  const query = window.matchMedia(systemTheme)
-  query.addEventListener('change', notify)
-  return () => query.removeEventListener('change', notify)
-}
 export function useCodeAppearance() {
   const selected = useUserPreference((s) => s.draft.codeTheme, ['draft.codeTheme']),
     appTheme = useUserPreference((s) => s.draft.theme, ['draft.theme']),
     font = useUserPreference((s) => s.draft.codeFont, ['draft.codeFont']),
     size = useUserPreference((s) => s.draft.codeFontSize, ['draft.codeFontSize']),
-    light = useSyncExternalStore(
-      subscribeTheme,
-      () => window.matchMedia(systemTheme).matches,
-      () => false,
-    )
-  const effective = selected === 'FOLLOW_INTERFACE' ? appTheme : selected
-  return {
-    theme: (effective.includes('LIGHT') || (effective === 'SYSTEM' && light) ? 'light' : 'dark') as 'light' | 'dark',
-    fontSize: Number(size.slice(2)),
-    fontFamily: font === 'MONOSPACE' ? 'monospace' : undefined,
-  }
+    light = useSystemLight()
+  return resolveCodeAppearance(selected, appTheme, font, size, light)
 }

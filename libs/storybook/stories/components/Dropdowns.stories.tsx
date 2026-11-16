@@ -61,20 +61,25 @@ function DialogSelect() {
     <Preview>
       <Button onClick={() => setOpen(true)}>Open select dialog</Button>
       {open ? (
-        <Dialog onClose={() => setOpen(false)}>
+        <Dialog.Root
+          open
+          onOpenChange={(open) => {
+            if (!open) setOpen(false)
+          }}
+        >
           <Dialog.Content>
             <Dialog.Header>
               <Dialog.Title>Choose language</Dialog.Title>
               <Dialog.Close />
             </Dialog.Header>
             <Dialog.Body>
-              <Menus.Select aria-label="Dialog language" options={options} defaultValue="rust" />
+              <Menus.Select.Control aria-label="Dialog language" options={options} defaultValue="rust" />
             </Dialog.Body>
             <Dialog.Footer>
               <Dialog.Cancel />
             </Dialog.Footer>
           </Dialog.Content>
-        </Dialog>
+        </Dialog.Root>
       ) : null}
     </Preview>
   )
@@ -85,18 +90,22 @@ export const Select: Story = {
   render: () => (
     <Preview>
       <Sample label="Custom select">
-        <Menus.Select aria-label="Language" options={options} />
+        <Menus.Select.Control aria-label="Language" options={options} />
       </Sample>
       <Sample label="Options with icons">
-        <Menus.Select
+        <Menus.Select.Control
           aria-label="Badge style"
           options={[
-            { value: 'dot', label: 'Dot', icon: <span aria-hidden="true" className="size-1.5 rounded-full bg-muted" /> },
+            {
+              value: 'dot',
+              label: 'Dot',
+              icon: <span aria-hidden="true" className="size-1.5 rounded-full bg-muted-foreground" />,
+            },
             {
               value: 'count',
               label: 'Count',
               icon: (
-                <span aria-hidden="true" className="text-muted">
+                <span aria-hidden="true" className="text-muted-foreground">
                   1
                 </span>
               ),
@@ -105,7 +114,7 @@ export const Select: Story = {
         />
       </Sample>
       <Sample label="Disabled">
-        <Menus.Select aria-label="Disabled language" options={options} disabled />
+        <Menus.Select.Control aria-label="Disabled language" options={options} disabled />
       </Sample>
     </Preview>
   ),
@@ -180,6 +189,16 @@ export const SelectOption: Story = {
             <Menus.SelectOption value="selected">Selected option</Menus.SelectOption>
           </Menus.Select.Content>
         </Menus.Select.Root>
+      </Sample>
+    </Preview>
+  ),
+}
+
+export const RepeatedSelection: Story = {
+  render: () => (
+    <Preview>
+      <Sample label="Choose repeatedly, close, and reopen">
+        <ControlledDropdown />
       </Sample>
     </Preview>
   ),

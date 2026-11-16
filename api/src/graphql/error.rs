@@ -17,6 +17,19 @@ pub struct Error {
 impl From<AuthError> for Error {
     fn from(error: AuthError) -> Self {
         let (code, status, message) = match error {
+            AuthError::InvalidInvitation => (
+                "INVITATION_UNAVAILABLE",
+                410,
+                "Invitation is expired, revoked, consumed, or unavailable",
+            ),
+            AuthError::OrganizationRepository(
+                compallm_core::persistent::organization::OrganizationRepositoryError::InvalidQuery,
+            ) => ("BAD_USER_INPUT", 400, "Invalid collection query"),
+            AuthError::InvitationConflict => (
+                "INVITATION_CONFLICT",
+                409,
+                "Recipient already belongs to this organization or has a pending invitation",
+            ),
             AuthError::Persistence(UserRepositoryError::EmailAlreadyExists) => (
                 "EMAIL_REGISTERED",
                 409,
@@ -38,7 +51,7 @@ impl From<AuthError> for Error {
             | AuthError::TokenEncoding(_)
             | AuthError::TokenPayload(_)
             | AuthError::TokenCrypto(_) => ("UNAUTHENTICATED", 401, "Authentication required"),
-            AuthError::InvalidEmail | AuthError::InvalidDisplayName => {
+            AuthError::InvalidEmail | AuthError::InvalidUsername => {
                 ("BAD_USER_INPUT", 400, "Invalid request fields")
             }
             AuthError::Email(EmailError::Throttled) => (
@@ -149,8 +162,15 @@ impl From<crate::http::authorization::AuthorizationError> for Error {
 impl From<compallm_core::authorization::error::AuthorizationError> for Error {
     fn from(error: compallm_core::authorization::error::AuthorizationError) -> Self {
         match error {
+            E::Persistence(compallm_core::persistent::organization::OrganizationRepositoryError::InvalidQuery) => Self::invalid_input(),
+            E::GroupDeletion(_) => Self { code: "GROUP_ASSIGNED", status: 409, message: "Remove all members from this group before deleting it" },
+            E::Persistence(compallm_core::persistent::organization::OrganizationRepositoryError::Conflict) => Self { code: "CONFLICT", status: 409, message: "Assignments changed; reload and retry" },
             E::RoleDeletion(compallm_core::organization::role::RoleDeletionError::Assigned) => Self { code: "ROLE_ASSIGNED", status: 409, message: "Remove all members and groups assigned to this role before deleting it" },
             E::RoleDeletion(compallm_core::organization::role::RoleDeletionError::OwnerRole) => Self { code: "FORBIDDEN", status: 403, message: "The owner role cannot be deleted" },
+            E::Membership(compallm_core::organization::member::MembershipAssignmentError::SelfRoleChange) => Self { code: "SELF_ROLE_CHANGE", status: 403, message: "You cannot change your own role" },
+            E::Membership(compallm_core::organization::member::MembershipAssignmentError::OwnerChangeDenied) => Self { code: "FORBIDDEN", status: 403, message: "Permission denied" },
+            E::Membership(compallm_core::organization::member::MembershipAssignmentError::OwnerRole) => Self { code: "LAST_OWNER", status: 409, message: "The last active owner cannot be unassigned" },
+            E::Membership(compallm_core::organization::member::MembershipAssignmentError::ForeignOrganization) => Self::invalid_input(),
             E::Permission(MemberPermissionError::Denied) => Self { code: "FORBIDDEN", status: 403, message: "Permission denied" },
             E::Group(compallm_core::organization::group::GroupCreationError::IdGeneration(_)) | E::Role(compallm_core::organization::role::RoleCreationError::IdGeneration(_)) => Self { code: "SERVICE_UNAVAILABLE", status: 503, message: "Authorization operation is temporarily unavailable" },
             E::Group(_) | E::Role(_) | E::UnsupportedPolicy => Self::invalid_input(),
@@ -183,6 +203,74 @@ impl From<compallm_core::preference::UserPreferenceError> for Error {
                 code: "SERVICE_UNAVAILABLE",
                 status: 503,
                 message: "Preference state is temporarily unavailable",
+            },
+        }
+    }
+}
+
+impl From<compallm_core::user::ProfileError> for Error {
+    fn from(error: compallm_core::user::ProfileError) -> Self {
+        use compallm_core::persistent::storage::user_space::StorageError;
+        use compallm_core::user::ProfileError;
+        match error {
+            ProfileError::Authentication(error) => error.into(),
+            ProfileError::Invalid(_) | ProfileError::InvalidOperation => Self::invalid_input(),
+            ProfileError::Persistence(UserRepositoryError::UsernameAlreadyExists) => Self {
+                code: "USERNAME_TAKEN",
+                status: 409,
+                message: "Username is already in use",
+            },
+            ProfileError::Denied | ProfileError::Persistence(UserRepositoryError::NotFound) => {
+                Self {
+                    code: "FORBIDDEN",
+                    status: 403,
+                    message: "Profile operation denied",
+                }
+            }
+            ProfileError::Storage(StorageError::NotFound) => Self {
+                code: "AVATAR_NOT_UPLOADED",
+                status: 409,
+                message: "Upload the avatar before saving the profile",
+            },
+            _ => Self {
+                code: "SERVICE_UNAVAILABLE",
+                status: 503,
+                message: "Profile operation is temporarily unavailable",
+            },
+        }
+    }
+}
+
+impl From<compallm_core::organization::profile_service::ProfileError> for Error {
+    fn from(error: compallm_core::organization::profile_service::ProfileError) -> Self {
+        use compallm_core::{
+            authorization::MemberPermissionError,
+            organization::profile_service::ProfileError,
+            persistent::{organization::OrganizationRepositoryError, storage::StorageError},
+        };
+        match error {
+            ProfileError::Permission(MemberPermissionError::Denied) => Self {
+                code: "FORBIDDEN",
+                status: 403,
+                message: "Organization profile update denied",
+            },
+            ProfileError::Invalid | ProfileError::Storage(StorageError::InvalidRequest) => {
+                Self::invalid_input()
+            }
+            ProfileError::Persistence(OrganizationRepositoryError::NotFound) => Self {
+                code: "NOT_FOUND",
+                status: 404,
+                message: "Organization not found",
+            },
+            ProfileError::Storage(StorageError::NotFound) => Self {
+                code: "AVATAR_NOT_UPLOADED",
+                status: 409,
+                message: "Upload the organization avatar before saving",
+            },
+            _ => Self {
+                code: "SERVICE_UNAVAILABLE",
+                status: 503,
+                message: "Organization profile is temporarily unavailable",
             },
         }
     }

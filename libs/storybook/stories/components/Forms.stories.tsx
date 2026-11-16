@@ -48,9 +48,9 @@ export const FormFieldLabel: Story = {
         <Forms.FormFieldLabel htmlFor="label-sample">Field label</Forms.FormFieldLabel>
         <input
           className={`
-  block h-8 w-full min-w-0 rounded-lg border-[0.5px] border-input-border bg-inset px-1.5
-  py-0.75 text-[14px] leading-5 text-text placeholder:text-muted placeholder:opacity-100
-  focus:outline-1 focus:outline-offset-1 focus:outline-focus aria-invalid:border-error
+  block h-8 w-full min-w-0 rounded-lg border-(length:--border-hairline) border-input bg-inset px-1.5
+  py-0.75 text-[14px] leading-5 text-foreground placeholder:text-muted-foreground placeholder:opacity-100
+  focus:outline-1 focus:outline-offset-1 focus:outline-ring aria-invalid:border-destructive
   disabled:cursor-not-allowed disabled:opacity-50
 `}
           id="label-sample"

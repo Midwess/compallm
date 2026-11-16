@@ -37,10 +37,13 @@ impl CreationService {
             let organization = self.organizations.create(organization).await?;
             self.organizations.create_roles(roles.clone()).await?;
             self.organizations
+                .set_default_member_role(organization.id, roles[2].id)
+                .await?;
+            self.organizations
                 .add_member(OrganizationMember {
                     organization_id: organization.id,
                     user_id: user.id,
-                    roles: vec![roles[0].clone()],
+                    role: roles[0].clone(),
                     groups: Vec::new(),
                 })
                 .await?;
@@ -52,7 +55,11 @@ impl CreationService {
         &self,
         user: &User,
     ) -> Result<Organization, OrganizationCreationError> {
-        let base = &user.display_name;
+        let base = if user.display_name.is_empty() {
+            &user.username
+        } else {
+            &user.display_name
+        };
         let base = if base.is_empty() {
             format!("user-{}", user.id)
         } else {

@@ -39,7 +39,7 @@ export const Radio: Story = {
     <Preview>
       <Sample label="Radio group">
         <fieldset className="flex max-w-full flex-wrap items-center gap-2">
-          <legend className="text-[12px] leading-4.5 text-muted">Default response</legend>
+          <legend className="text-[12px] leading-4.5 text-muted-foreground">Default response</legend>
           <label className="inline-flex min-h-6 cursor-pointer items-center gap-0.5 text-xsm">
             <Selection.Radio name="response" value="concise" defaultChecked />
             Concise

@@ -1,3 +1,5 @@
+import { DisabledTooltip } from '../../../components/feedback'
+import { PermissionRequest, usePermission } from '../../../components/permission'
 import { ProviderPatchInput } from '@compallm/contract/validation'
 import { contractResult } from '../../../components/form'
 import { FormError } from '../../../components/form'
@@ -30,22 +32,29 @@ function ConnectionFields() {
   const [keyVisible, setKeyVisible] = useState(false)
   const controller = useController()
   const editing = useProvider((state) => state.intent === 'edit')
-  const busy = useProvider((state) => state.submitting)
+  const submitting = useProvider((state) => state.submitting)
+  const providerId = useProvider((state) => state.savedProvider?.id)
+  const edit = usePermission({
+    actions: ['provider.configuration.update'],
+    resource: { type: 'Provider', id: providerId },
+    enabled: editing && !!providerId,
+  })
+  const busy = submitting || (editing && !edit.allowed)
   const selected = useProvider((state) => state.selectedProviderId)
   const avatarUrl = useProvider((state) => state.avatarUrl, ['avatarUrl'])
   return (
     <SectionSurface className="grid min-w-0 gap-4">
       <fieldset disabled={busy} className="grid min-w-0 gap-4">
         <div className="flex min-w-0 items-end gap-3">
-          <FormField className="flex-1">
+          <FormField.Root className="flex-1">
             <FormField.Label>Connection name</FormField.Label>
             <FormField.Input name="name" required placeholder="Enter connection name" />
             <FormError name="name" />
-          </FormField>
+          </FormField.Root>
           <ProviderAvatar name="avatarFile" provider={selected} src={avatarUrl} disabled={busy} />
           <FormError name="avatarFile" />
         </div>
-        <FormField>
+        <FormField.Root>
           <FormField.Label>Base URL</FormField.Label>
           <FormField.Input
             name="baseUrl"
@@ -56,8 +65,8 @@ function ConnectionFields() {
             placeholder="https://api.example.com/v1"
           />
           <FormError name="baseUrl" />
-        </FormField>
-        <FormField>
+        </FormField.Root>
+        <FormField.Root>
           <div className="flex items-center gap-1">
             <FormField.Label>API key</FormField.Label>
             <FieldHelp label="About API keys">
@@ -68,24 +77,35 @@ function ConnectionFields() {
             </FieldHelp>
           </div>
           <div className="relative min-w-0">
-            <FormField.Input
-              type={keyVisible ? 'text' : 'password'}
-              className="pr-9"
-              autoComplete="off"
-              required={!editing}
-              autoCapitalize="none"
-              spellCheck={false}
-              name="apiKey"
-              placeholder={editing ? 'Leave empty to keep current key' : 'Enter your API key'}
-            />
+            <PermissionRequest
+              actions={[editing ? 'provider.credential.replace' : 'provider.create']}
+              resource={editing ? { type: 'Provider', id: providerId } : undefined}
+              enabled={!editing || !!providerId}
+            >
+              {(allowed) => (
+                <DisabledTooltip disabled={!allowed} reason="You do not have permission to perform this action.">
+                  <FormField.Input
+                    disabled={!allowed}
+                    type={keyVisible ? 'text' : 'password'}
+                    className="pr-9"
+                    autoComplete="off"
+                    required={!editing}
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    name="apiKey"
+                    placeholder={editing ? 'Leave empty to keep current key' : 'Enter your API key'}
+                  />
+                </DisabledTooltip>
+              )}
+            </PermissionRequest>
             <FormError name="apiKey" />
             <button
               type="button"
               aria-label={keyVisible ? 'Hide API key' : 'Show API key'}
               aria-pressed={keyVisible}
               className={`
-absolute inset-y-0 right-0 flex w-8 items-center justify-center rounded-lg text-muted
-hover:text-text focus-visible:outline-muted
+absolute inset-y-0 right-0 flex w-8 items-center justify-center rounded-lg text-muted-foreground
+hover:text-foreground focus-visible:outline-muted-foreground
 `}
               onClick={() => setKeyVisible((visible) => !visible)}
             >
@@ -96,16 +116,16 @@ hover:text-text focus-visible:outline-muted
               )}
             </button>
           </div>
-        </FormField>
+        </FormField.Root>
       </fieldset>
-      <KeyValueEditor
+      <KeyValueEditor.Root
         name="headers"
         acceptEntry={acceptsHeaderInput}
         keyMaxLength={ProviderHeaderConstraints.key.maxLength}
         disabled={busy || !controller.onHeadersChanged}
       >
         <KeyValueEditor.Disclosure>Headers</KeyValueEditor.Disclosure>
-      </KeyValueEditor>
+      </KeyValueEditor.Root>
       <FormError name="headers" />
       <FormError name="models" />
     </SectionSurface>
@@ -118,7 +138,7 @@ function TestConnection() {
   const busy = useProvider((state) => state.submitting)
   return (
     <SectionSurface className="grid gap-2">
-      <p className="flex min-w-0 items-center gap-2 text-xs text-focus">
+      <p className="flex min-w-0 items-center gap-2 text-xs text-ring">
         <LinkSimpleIcon aria-hidden="true" className="size-3.5 shrink-0" />
         <span className="truncate">{endpoint || 'Configure the connection endpoint'}</span>
       </p>
@@ -138,15 +158,15 @@ function TestConnection() {
               Check passed
             </span>
           ) : result.status === 'failed' ? (
-            <Tooltip content={result.message}>
+            <Tooltip.Control content={result.message}>
               <button
                 type="button"
-                className="flex cursor-help items-center gap-1.5 text-xs text-error focus-visible:outline-focus"
+                className="flex cursor-help items-center gap-1.5 text-xs text-destructive focus-visible:outline-ring"
               >
                 <XCircleIcon aria-hidden="true" className="size-3.5" />
                 Connection failed
               </button>
-            </Tooltip>
+            </Tooltip.Control>
           ) : null}
         </span>
       </div>
@@ -156,7 +176,14 @@ function TestConnection() {
 export function ProviderConfiguration() {
   const controller = useController()
   const intent = useProvider((state) => state.intent)
-  const busy = useProvider((state) => state.submitting)
+  const submitting = useProvider((state) => state.submitting)
+  const providerId = useProvider((state) => state.savedProvider?.id)
+  const edit = usePermission({
+    actions: ['provider.configuration.update'],
+    resource: { type: 'Provider', id: providerId },
+    enabled: intent === 'edit' && !!providerId,
+  })
+  const busy = submitting || (intent === 'edit' && !edit.allowed)
   const error = useProvider((state) => state.error)
   const form = controller.store.form
   useEffect(
@@ -217,37 +244,42 @@ export function ProviderConfiguration() {
     [controller, form],
   )
   return (
-    <Form model={form} className="mx-auto grid min-w-0 w-full max-w-4xl gap-6 px-4 py-8">
-      <FormSection>
-        <FormSection.Marker>1</FormSection.Marker>
-        <FormSection.Heading>Connection</FormSection.Heading>
-        <ConnectionFields />
-      </FormSection>
-      <FormSection>
-        <FormSection.Marker>2</FormSection.Marker>
-        <FormSection.Heading>Enabled models</FormSection.Heading>
-        <ProviderModels />
-      </FormSection>
-      <FormSection>
-        <FormSection.Marker>3</FormSection.Marker>
-        <FormSection.Heading>Test connection</FormSection.Heading>
-        <TestConnection />
-      </FormSection>
-      {error ? (
-        <div className="fixed right-6 bottom-6 z-50">
-          <Toast tone="error" message={error} onDismiss={() => controller.store.setState({ error: null })} />
-        </div>
+    <Form.Root model={form} className="mx-auto grid min-w-0 w-full max-w-4xl gap-6 px-4 py-8">
+      {intent === 'edit' && !edit.allowed ? (
+        <p className="text-xs text-muted-foreground">You do not have permission to edit this provider configuration.</p>
       ) : null}
-      <div className="flex justify-end gap-2">
-        {intent !== 'create' ? (
-          <Button className="h-7 px-4 text-xs" disabled={busy} onClick={controller.onCancelProvider}>
-            Cancel
-          </Button>
+      <fieldset disabled={busy} className="contents">
+        <FormSection.Root>
+          <FormSection.Marker>1</FormSection.Marker>
+          <FormSection.Heading>Connection</FormSection.Heading>
+          <ConnectionFields />
+        </FormSection.Root>
+        <FormSection.Root>
+          <FormSection.Marker>2</FormSection.Marker>
+          <FormSection.Heading>Enabled models</FormSection.Heading>
+          <ProviderModels />
+        </FormSection.Root>
+        <FormSection.Root>
+          <FormSection.Marker>3</FormSection.Marker>
+          <FormSection.Heading>Test connection</FormSection.Heading>
+          <TestConnection />
+        </FormSection.Root>
+        {error ? (
+          <div className="fixed right-6 bottom-6 z-50">
+            <Toast tone="error" message={error} onDismiss={() => controller.store.setState({ error: null })} />
+          </div>
         ) : null}
-        <Button type="submit" variant="primary" className="h-7 w-32 text-xs" disabled={busy} loading={busy}>
-          {intent === 'edit' ? 'Save changes' : intent === 'clone' ? 'Create provider' : 'Add provider'}
-        </Button>
-      </div>
-    </Form>
+        <div className="flex justify-end gap-2">
+          {intent !== 'create' ? (
+            <Button className="h-7 px-4 text-xs" disabled={busy} onClick={controller.onCancelProvider}>
+              Cancel
+            </Button>
+          ) : null}
+          <Button type="submit" variant="primary" className="h-7 w-32 text-xs" disabled={busy} loading={busy}>
+            {intent === 'edit' ? 'Save changes' : intent === 'clone' ? 'Create provider' : 'Add provider'}
+          </Button>
+        </div>
+      </fieldset>
+    </Form.Root>
   )
 }

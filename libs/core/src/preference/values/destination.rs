@@ -8,4 +8,8 @@ pub enum Destination {
     Providers,
     Notebooks,
     Plugins,
+    Stats,
+    ApiKeys,
+    Members,
+    Conversations,
 }

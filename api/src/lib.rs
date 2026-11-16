@@ -8,3 +8,5 @@ pub mod di;
 pub mod workers;
 
 pub mod generation;
+
+pub mod storage;

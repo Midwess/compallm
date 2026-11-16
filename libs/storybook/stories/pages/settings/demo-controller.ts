@@ -17,12 +17,42 @@ import { DemoOrganizationController } from './organization/demo-controller'
 export class DemoSettingsController implements SettingsController {
   store = createSettingsStore(structuredClone(initialSettings))
   pages: SettingsController['pages'] = {
+    group: null!,
     role: null!,
     search: { setQuery: (value) => this.setQuery(value), setFilter: (key, value) => this.setFilter(key, value) },
     preferences: { user: null! },
     profile: new DemoProfileController(this.store, (file) => this.avatarUrl(file)),
     organization: new DemoOrganizationController(this.store, (file) => this.avatarUrl(file)),
-    members: { setMemberRoles: (member, roles) => this.setMemberRoles(member, roles) },
+    members: {
+      setMemberRole: async (id, roleId) => {
+        if (this.store.getState().readonly || id === this.store.getState().currentMemberId) return false
+        await new Promise((resolve) => setTimeout(resolve, 300))
+        if (this.failWrites) {
+          this.apiError(new Error('Role assignment failed'))
+          return false
+        }
+        const role = this.store.getState().roles.find((role) => role.id === roleId)
+        if (!role) return false
+        this.store.setState((state) => ({
+          members: state.members.map((member) =>
+            member.id === id ? { ...member, role: { ...role, owner: Boolean(role.owner) } } : member,
+          ),
+        }))
+      },
+      setMemberGroups: async (id, groupIds) => {
+        if (this.store.getState().readonly) return false
+        const groups = this.store.getState().groups.filter((group) => groupIds.includes(group.id))
+        this.store.setState((state) => ({
+          members: state.members.map((member) => (member.id === id ? { ...member, groups } : member)),
+        }))
+        return groupIds
+      },
+      search: (query) => this.searchMembers(query),
+      setOrder: (memberOrder) => {
+        this.store.setState({ memberOrder })
+        this.searchMembers(this.appliedMemberQuery)
+      },
+    },
     dialogs: {
       openDialog: (kind, id) => this.openDialog(kind, id),
       closeDialog: () => this.closeDialog(),
@@ -42,14 +72,41 @@ export class DemoSettingsController implements SettingsController {
   ) {
     const { roleDraft, groupDraft, ...shared } = initial
     this.store.setState(structuredClone(shared))
+    this.directory = structuredClone(this.store.getState().members)
+    this.pages.members.invite = async (text) => {
+      const { invitationBatchInput } = await import('@compallm/contract/invitation')
+      const { invitations } = invitationBatchInput(text)
+      this.store.setState((state) => ({
+        invitations: [
+          ...state.invitations,
+          ...invitations.map(({ email }, index) => ({
+            id: `preview-${index}`,
+            email,
+            status: 'pending',
+            expiresAt: 2000000000,
+          })),
+        ],
+      }))
+      return true
+    }
     this.pages.preferences.user = new DemoUserPreferenceController(failWrites)
     this.role = new DemoRoleController(this, failWrites)
     this.pages.role = this.role
     this.group = new DemoGroupController(this, failWrites)
+    this.pages.group = this.group
     const location = this.store.getState().location
     this.navigate(location.page, location.id)
     if (roleDraft) this.role.store.setState({ draft: structuredClone(roleDraft) })
-    if (groupDraft) this.group.store.setState({ draft: structuredClone(groupDraft) })
+    if (groupDraft)
+      this.group.store.setState({
+        draft: {
+          ...structuredClone(groupDraft),
+          id: groupDraft.id ?? this.store.getState().location.id ?? null,
+          memberSelection: Object.fromEntries(
+            this.store.getState().members.map((member) => [member.id, groupDraft.memberIds.includes(member.id)]),
+          ),
+        },
+      })
     if (initial.filters) {
       this.store.setState({ filters: structuredClone(initial.filters) })
       this.role.store.setState({ filters: structuredClone(initial.filters) })
@@ -101,13 +158,32 @@ export class DemoSettingsController implements SettingsController {
   navigate = (page: SettingsDestination, id?: string) => {
     this.role.cancel()
     this.store.setState({ location: { page, id }, query: '', filters: {}, error: null, dialog: null })
-    if (page === 'new-role' || page === 'new-group') this.store.setState({ navigationQuery: '' })
+    if (page === 'new-group') {
+      const id = crypto.randomUUID()
+      const time = new Date().toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        fractionalSecondDigits: 3,
+        hour12: false,
+      })
+      this.store.setState((state) => ({
+        groups: [...state.groups, { id, name: `New group at ${time}`, description: '', roleIds: [], memberIds: [], color: '' }],
+        location: { page: 'group', id },
+      }))
+      this.group.open(id)
+      return
+    }
+    if (page === 'new-role') this.store.setState({ navigationQuery: '' })
     if (page === 'role' || page === 'new-role') this.role.open(page === 'role' ? id : undefined)
-    if (page === 'group' || page === 'new-group') this.group.open(page === 'group' ? id : undefined)
+    if (page === 'group') this.group.open(id)
   }
   setQuery = (query: string) => this.store.setState({ query })
   setNavigationQuery = (navigationQuery: string) => this.store.setState({ navigationQuery })
-  setFilter = (key: string, value: string) => this.store.setState((s) => ({ filters: { ...s.filters, [key]: value } }))
+  setFilter = (key: string, value: string) => {
+    this.store.setState((s) => ({ filters: { ...s.filters, [key]: value } }))
+    if (key === 'memberRole') this.searchMembers(this.appliedMemberQuery)
+  }
   private avatarUrl = (file: File | null) => {
     const url = file ? URL.createObjectURL(file) : null
     if (url) this.urls.push(url)
@@ -145,7 +221,7 @@ export class DemoSettingsController implements SettingsController {
     if (!d) return
     if (
       d.kind === 'delete-role' &&
-      (s.members.some((member) => member.roleIds.includes(d.targetId ?? '')) ||
+      (s.members.some((member) => member.role?.id === d.targetId) ||
         s.groups.some((group) => group.roleIds.includes(d.targetId ?? '')))
     ) {
       this.report('Remove all members and groups assigned to this role before deleting it')
@@ -198,9 +274,16 @@ export class DemoSettingsController implements SettingsController {
         this.store.setState((p) => ({
           roles: p.roles.filter((r) => r.id !== id),
           groups: p.groups.map((g) => ({ ...g, roleIds: g.roleIds.filter((role) => role !== id) })),
-          members: p.members.map((m) => ({ ...m, roleIds: m.roleIds.filter((role) => role !== id) })),
+
           location: { page: 'blank' },
         }))
+      }
+      if (
+        d.kind === 'delete-group' &&
+        this.store.getState().groups.some((group) => group.id === id && group.memberIds.length > 0)
+      ) {
+        this.store.setState({ busy: false, error: 'Remove all members from this group before deleting it' })
+        return
       }
       if (d.kind === 'delete-group') this.group.store.setState({ draft: null })
       if (d.kind === 'delete-group')
@@ -224,11 +307,23 @@ export class DemoSettingsController implements SettingsController {
       this.report(destructive ? 'Deletion requested' : 'Changes applied')
     })
   }
-  setMemberRoles = (memberId: string, roleIds: string[]) => {
-    if (this.store.getState().readonly) return
-    this.store.setState((s) => ({
-      members: s.members.map((m) => (m.id !== memberId ? m : { ...m, roleIds })),
-    }))
+  private directory = structuredClone(this.store.getState().members)
+  private appliedMemberQuery = ''
+  searchMembers = (query: string) => {
+    this.appliedMemberQuery = query.trim()
+    const role = this.store.getState().filters.memberRole
+    const members = this.directory.filter(
+      (member) =>
+        `${member.name} ${member.email}`.toLowerCase().includes(this.appliedMemberQuery.toLowerCase()) &&
+        (!role ||
+          role === 'all' ||
+          member.role?.id === role ||
+          this.store.getState().groups.some((group) => group.memberIds.includes(member.id) && group.roleIds.includes(role))),
+    )
+    members.sort((a, b) => a.name.localeCompare(b.name) * (this.store.getState().memberOrder === 'DESC_NULLS_LAST' ? -1 : 1))
+    const current = this.store.getState().currentMemberId
+    members.sort((a, b) => Number(b.id === current) - Number(a.id === current))
+    this.store.setState({ members, membersPage: 1 })
   }
   copy = (value: string) => {
     void navigator.clipboard

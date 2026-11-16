@@ -6,7 +6,10 @@ use compallm_postgres::{
     Migrator, postgres_connection::PostgresConnection,
     repository::preference::user::UserPreferenceRepository,
 };
-use sea_orm::{ConnectionTrait, Database, EntityTrait, ModelTrait, Set};
+use sea_orm::{
+    ColumnTrait, ConnectionTrait, Database, EntityTrait, ModelTrait, QueryFilter, Set,
+    prelude::Expr,
+};
 use sea_orm_migration::{MigratorTrait, SchemaManager};
 use std::{
     sync::Arc,
@@ -70,6 +73,11 @@ async fn preferences_backfill_concurrency_reset_and_owner_isolation() -> anyhow:
             .unwrap();
         backfill.up(&manager).await?;
         backfill.up(&manager).await?;
+        let palettes = Migrator::migrations()
+            .into_iter()
+            .find(|migration| migration.name().ends_with("rename_theme_palettes"))
+            .unwrap();
+        palettes.up(&manager).await?;
         assert!(
             context
                 .scope(repository.find(1))
@@ -150,6 +158,52 @@ async fn preferences_backfill_concurrency_reset_and_owner_isolation() -> anyhow:
             saved.sidebar.entries[0].visibility,
             SidebarVisibility::Hidden
         );
+        let mut layout = saved.sidebar.layout.clone();
+        let from = layout
+            .iter()
+            .position(|section| section.items.contains(&Destination::Plugins))
+            .unwrap();
+        layout[from]
+            .items
+            .retain(|item| *item != Destination::Plugins);
+        layout[2].items.insert(0, Destination::Plugins);
+        layout.swap(0, 2);
+        let hierarchy = UserPreferencesPatch {
+            sidebar: Some(SidebarPatch {
+                layout: Some(layout.clone()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        context.scope(repository.update(1, &hierarchy)).await?;
+        let persisted = context.scope(repository.find(1)).await?.unwrap();
+        assert_eq!(persisted.sidebar.layout, layout);
+        assert_eq!(persisted.sidebar.entries[0].item, Destination::Plugins);
+        assert_eq!(
+            persisted.sidebar.entries[0].visibility,
+            SidebarVisibility::Hidden
+        );
+        let mut invalid = layout.clone();
+        invalid[1].items.push(Destination::Plugins);
+        assert!(
+            context
+                .scope(repository.update(
+                    1,
+                    &UserPreferencesPatch {
+                        sidebar: Some(SidebarPatch {
+                            layout: Some(invalid),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }
+                ))
+                .await
+                .is_err()
+        );
+        assert_eq!(
+            context.scope(repository.find(1)).await?.unwrap().sidebar,
+            persisted.sidebar
+        );
         let reset = context
             .scope(repository.reset(1, &[UserPreferenceGroup::Sidebar]))
             .await?;
@@ -166,6 +220,49 @@ async fn preferences_backfill_concurrency_reset_and_owner_isolation() -> anyhow:
             UserPreferences::default()
         );
         backfill.down(&manager).await?;
+        assert!(context.scope(repository.find(3)).await?.is_some());
+        type Preferences = <compallm_postgres::schema::UserPreferenceSchema as ModelTrait>::Entity;
+        type PreferenceColumn = <Preferences as EntityTrait>::Column;
+        for (light, dark, expected_light, expected_dark) in [
+            ("light", "dark", "basic_white", "basic_dark"),
+            (
+                "pure_light",
+                "magic_blue",
+                "marshmallow_white",
+                "blueberry_dark",
+            ),
+            (
+                "blueberry_white",
+                "classic_dark",
+                "blueberry_white",
+                "marshmallow_dark",
+            ),
+        ] {
+            let mut theme = serde_json::json!({
+                "mode": "light", "palettes": {"light": light, "dark": dark}
+            });
+            Preferences::update_many()
+                .col_expr(PreferenceColumn::Theme, Expr::val(theme.clone()))
+                .filter(PreferenceColumn::UserId.eq(3_i64))
+                .exec(pool.as_ref())
+                .await?;
+            palettes.up(&manager).await?;
+            palettes.up(&manager).await?;
+            theme["palettes"]["light"] = expected_light.into();
+            theme["palettes"]["dark"] = expected_dark.into();
+            let saved = Preferences::find_by_id(3)
+                .one(pool.as_ref())
+                .await?
+                .unwrap();
+            assert_eq!(saved.theme, theme);
+            assert_eq!(
+                saved.accessibility,
+                serde_json::to_value(UserPreferences::default().accessibility)?
+            );
+            context.scope(repository.find(3)).await?.unwrap();
+        }
+        palettes.down(&manager).await?;
+        palettes.up(&manager).await?;
         assert!(context.scope(repository.find(3)).await?.is_some());
         drop(context);
         drop(manager);

@@ -1,6 +1,11 @@
 import { useState, type ReactNode } from 'react'
 import { OrganizationControllerContext } from '../../../src/context'
-import { OrganizationPage, createOrganizationStore, type OrganizationController } from '../../../src/pages/organization'
+import {
+  OrganizationPage,
+  createOrganizationStore,
+  type OrganizationController,
+  type OrganizationState,
+} from '../../../src/pages/organization'
 
 class DemoOrganizationController implements OrganizationController {
   readonly store = createOrganizationStore({
@@ -46,17 +51,36 @@ class DemoOrganizationController implements OrganizationController {
   onCreateModel = () => this.report('Create model')
 }
 
-export function OrganizationDemo({ empty = false, children }: { empty?: boolean; children?: ReactNode }) {
+export function OrganizationDemo({
+  empty = false,
+  children,
+  sidebarOrder,
+  sidebarLayout,
+}: {
+  empty?: boolean
+  children?: ReactNode
+  sidebarOrder?: OrganizationState['sidebarOrder']
+  sidebarLayout?: OrganizationState['sidebarLayout']
+}) {
   const [intent, setIntent] = useState('')
   const [controller] = useState(() => {
     const result = new DemoOrganizationController(setIntent)
+    if (sidebarOrder)
+      result.store.setState({
+        sidebarOrder,
+        sidebarLayout: result.store.getState().sidebarLayout.map((section) => ({
+          ...section,
+          items: [...section.items].sort((a, b) => sidebarOrder.indexOf(a) - sidebarOrder.indexOf(b)),
+        })),
+      })
+    if (sidebarLayout) result.store.setState({ sidebarLayout })
     if (empty) result.store.setState({ providers: [], models: [], conversations: [] })
     return result
   })
   return (
     <OrganizationControllerContext value={controller}>
       <OrganizationPage>{children}</OrganizationPage>
-      <output aria-label="Controller intent" className="fixed right-8 bottom-12 text-xs text-muted">
+      <output aria-label="Controller intent" className="fixed right-8 bottom-12 text-xs text-muted-foreground">
         {intent}
       </output>
     </OrganizationControllerContext>

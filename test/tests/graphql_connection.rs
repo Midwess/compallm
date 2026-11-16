@@ -1,7 +1,4 @@
-use compallm_api::graphql::{
-    base_type::{Collection, Connection, Edge, PageInfo, Payload},
-    organization::group::Group,
-};
+use compallm_api::graphql::base_type::{Collection, Connection, Edge, PageInfo, Payload};
 use juniper::{DefaultScalarValue, EmptyMutation, EmptySubscription, RootNode, Variables};
 use serde_json::json;
 
@@ -25,6 +22,13 @@ impl From<RoleName> for Role {
             color: "#c06040".into(),
         }
     }
+}
+
+#[derive(juniper::GraphQLObject)]
+struct Group {
+    id: juniper::ID,
+    name: String,
+    description: String,
 }
 
 struct Query;

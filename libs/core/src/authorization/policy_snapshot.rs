@@ -17,7 +17,7 @@ pub struct PolicySnapshot {
     pub cedar_source: String,
     /// Direct assignments only; inherited assignments remain in `group_roles`.
     #[serde(rename = "r")]
-    pub role_ids: Vec<u64>,
+    pub role_id: u64,
     /// Group ID to its directly assigned roles. Empty groups remain represented.
     #[serde(rename = "g")]
     pub group_roles: BTreeMap<u64, Vec<u64>>,
@@ -56,19 +56,13 @@ impl PolicySnapshot {
             })
             .collect::<anyhow::Result<Vec<_>>>()?
             .join("\n");
-        let role_ids = member
-            .roles
-            .iter()
-            .map(|role| role.id)
-            .collect::<BTreeSet<_>>()
-            .into_iter()
-            .collect();
+        let role_id = member.role.id;
         let mut groups = BTreeMap::<u64, BTreeSet<u64>>::new();
         for group in &member.groups {
             groups
                 .entry(group.id)
                 .or_default()
-                .extend(group.roles.iter().map(|role| role.id));
+                .extend(group.roles().iter().map(|role| role.id));
         }
         let group_roles = groups
             .into_iter()
@@ -76,7 +70,7 @@ impl PolicySnapshot {
             .collect();
         Ok(Self {
             cedar_source,
-            role_ids,
+            role_id,
             group_roles,
         })
     }

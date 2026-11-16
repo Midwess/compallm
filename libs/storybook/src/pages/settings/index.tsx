@@ -1,3 +1,5 @@
+import { PermissionRequest } from '../../components/permission'
+import type { PermissionAction } from '../../permission'
 import { configureSettingsForm } from './form'
 import { Form } from '../../components/form'
 import { useEffect, useState } from 'react'
@@ -6,10 +8,10 @@ import { Button } from '../../components/buttons'
 import { Toast } from '../../components/feedback'
 import { SettingsNavigation } from './sidebar'
 import { SettingsDialogs } from './dialogs'
-import { GeneralSettings, AppearanceSettings, MessagingSettings, CodeSettings } from './preferences/user/page'
+import { GeneralSettings, MessagingSettings, CodeSettings } from './preferences/user/page'
 import { UserPreferencePage } from './preferences/user'
-import { ProfileSettings, SecuritySettings, ApiKeySettings, DangerSettings } from './account'
-import { OrganizationSettings } from './organization'
+import { ProfileSettings, AccessSettings, SecuritySettings, ApiKeySettings } from './account'
+import { OrganizationSettings, OrganizationOnboarding } from './organization'
 import { MembersSettings } from './members'
 import { GroupEditorSettings } from './group'
 import { RoleEditorSettings } from './role'
@@ -34,22 +36,22 @@ function SettingsScreen() {
       return null
     case 'general':
       return <GeneralSettings />
-    case 'appearance':
-      return <AppearanceSettings />
     case 'messaging':
       return <MessagingSettings />
     case 'code':
       return <CodeSettings />
     case 'profile':
       return <ProfileSettings />
+    case 'access':
+      return <AccessSettings />
     case 'security':
       return <SecuritySettings />
     case 'api-keys':
       return <ApiKeySettings />
-    case 'danger':
-      return <DangerSettings />
     case 'organization':
       return <OrganizationSettings />
+    case 'organization-onboarding':
+      return <OrganizationOnboarding />
     case 'members':
       return <MembersSettings />
     case 'role':
@@ -68,6 +70,34 @@ function SettingsScreen() {
       return <AuditSettings />
   }
 }
+function ProtectedSettingsScreen() {
+  const page = useSettings((state) => state.location.page)
+  const action: PermissionAction | undefined = (
+    {
+      organization: 'organization.settings.read',
+      'organization-onboarding': 'organization.settings.read',
+      members: 'member.read',
+      role: 'role.read',
+      'new-role': 'role.create',
+      group: 'group.read',
+      'new-group': 'group.create',
+    } as Partial<Record<string, PermissionAction>>
+  )[page]
+  if (!action) return <SettingsScreen />
+  return (
+    <PermissionRequest actions={[action]}>
+      {(allowed) =>
+        allowed ? (
+          <SettingsScreen />
+        ) : (
+          <SettingsContent>
+            <Empty title="You do not have access">Return to an available page using the sidebar.</Empty>
+          </SettingsContent>
+        )
+      }
+    </PermissionRequest>
+  )
+}
 function SharedSettingsForm() {
   const c = useSettingsController()
   const page = useSettings((s) => s.location.page)
@@ -75,22 +105,23 @@ function SharedSettingsForm() {
   useEffect(() => {
     return configureSettingsForm(c)
   }, [c, form, page])
-  if (['general', 'appearance', 'messaging', 'code'].includes(page))
+  if (['general', 'messaging', 'code'].includes(page))
     return (
       <UserPreferencePage>
-        <SettingsScreen />
+        <ProtectedSettingsScreen />
       </UserPreferencePage>
     )
-  if (['role', 'new-role', 'group', 'new-group'].includes(page)) return <SettingsScreen />
+  if (['role', 'new-role', 'group', 'new-group', 'members'].includes(page)) return <ProtectedSettingsScreen />
   return (
-    <Form model={form}>
-      <SettingsScreen />
-    </Form>
+    <Form.Root model={form}>
+      <ProtectedSettingsScreen />
+    </Form.Root>
   )
 }
 export function SettingsPage() {
   const [open, setOpen] = useState(false),
     c = useSettingsController()
+  const membersPage = useSettings((s) => s.location.page === 'members')
   const notice = useSettings((s) => s.notice)
   const errorToast = useSettings((s) => s.errorToast)
   useEffect(() => {
@@ -119,7 +150,7 @@ export function SettingsPage() {
     return () => subscriptions.forEach((unsubscribe) => unsubscribe())
   }, [c])
   return (
-    <div className="relative flex h-dvh min-h-0 overflow-hidden bg-background font-sans text-text">
+    <div className="relative flex h-dvh min-h-0 overflow-hidden bg-background font-sans text-foreground">
       {open ? (
         <button
           aria-label="Close settings navigation"
@@ -131,15 +162,18 @@ export function SettingsPage() {
         <SettingsNavigation onNavigate={() => setOpen(false)} />
       </div>
       <main
-        className="@container relative my-2 mr-2 ml-2 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-none
-rounded-xl border-[0.5px] border-divider bg-surface pr-2 scrollbar-gutter-stable md:ml-0"
+        className={cx(
+          `@container relative mr-2 mb-2 ml-2 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto
+overscroll-none rounded-xl border-(length:--border-hairline) border-divider bg-surface pr-2 scrollbar-gutter-stable md:ml-0`,
+          membersPage ? 'mt-2' : 'mt-4',
+        )}
         aria-label="Settings content"
       >
         <button
           type="button"
           aria-label="Open settings navigation"
           onClick={() => setOpen(true)}
-          className="absolute top-4 left-4 z-10 rounded p-1 text-muted hover:text-text md:hidden"
+          className="absolute top-4 left-4 z-10 rounded p-1 text-muted-foreground hover:text-foreground md:hidden"
         >
           <ListIcon className="size-4" />
         </button>

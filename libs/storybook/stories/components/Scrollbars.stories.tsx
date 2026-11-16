@@ -10,7 +10,7 @@ export const Universal: Story = {
   render: () => (
     <div className="grid max-w-208 gap-6 p-6">
       <SettingsPageTitle>Native scrollbars</SettingsPageTitle>
-      <p className="text-xsm text-muted">The shared stylesheet styles every scroll container, including Safari.</p>
+      <p className="text-xsm text-muted-foreground">The shared stylesheet styles every scroll container, including Safari.</p>
       <div className="grid gap-4 sm:grid-cols-2">
         <div
           tabIndex={0}

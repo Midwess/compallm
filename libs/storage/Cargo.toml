@@ -1,0 +1,18 @@
+[package]
+name = "compallm-storage"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+compallm-core.workspace = true
+hero = { workspace = true, features = ["s3", "cancellation"] }
+aws-sdk-s3 = "=1.142.0"
+async-trait.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, features = ["std"] }
+url = "2"

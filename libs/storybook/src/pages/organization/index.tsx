@@ -1,3 +1,4 @@
+import { PermissionRequest, usePermission } from '../../components/permission'
 import { useContext, type ReactNode } from 'react'
 import { useStore } from 'zustand'
 import { HardDrivesIcon } from '@phosphor-icons/react/dist/csr/HardDrives'
@@ -14,6 +15,7 @@ import { Sidebar, SidebarHeader, SidebarSection, SidebarFolder, SidebarItem } fr
 import type { OrganizationState, OrganizationDestination } from './types'
 
 export { createOrganizationStore } from './store'
+export { OrganizationCatalogPage } from './catalog'
 export type { OrganizationState, OrganizationController, OrganizationDestination } from './types'
 
 function useController() {
@@ -62,27 +64,112 @@ function Destination({ item, icon }: { item: OrganizationDestination; icon: Reac
   )
 }
 
-function Providers() {
+function CustomizableDestinations() {
   const controller = useController()
+  const providerCreate = usePermission({ actions: ['provider.create'] })
+  const modelCreate = usePermission({ actions: ['model.create'] })
   const providers = useOrganizationState((state) => state.providers)
-  return (
-    <SidebarSection label="Providers" onAdd={controller.onCreateProvider} addLabel="Add provider">
-      {providers.map((item) => (
-        <Destination key={item.id} item={item} icon={<HardDrivesIcon />} />
-      ))}
-    </SidebarSection>
-  )
-}
-
-function Models() {
-  const controller = useController()
   const models = useOrganizationState((state) => state.models)
+  const links = useOrganizationState((state) => state.links)
+  const layout = useOrganizationState((state) => state.sidebarLayout)
   return (
-    <SidebarFolder label="Models" icon={<CubeIcon />} onAdd={controller.onCreateModel} addLabel="Add model">
-      {models.map((item) => (
-        <Destination key={item.id} item={item} icon={<CubeIcon />} />
-      ))}
-    </SidebarFolder>
+    <>
+      {layout
+        .filter((section) => section.items.length > 0)
+        .map((section) => (
+          <SidebarSection
+            key={section.category}
+            label={section.category[0] + section.category.slice(1).toLowerCase()}
+            onAdd={section.category === 'ROUTERS' ? controller.onCreateRouter : undefined}
+            addLabel={section.category === 'ROUTERS' ? 'Add router' : undefined}
+          >
+            {section.items.map((item) => {
+              switch (item) {
+                case 'PROVIDERS':
+                  return (
+                    <PermissionRequest key={item} actions={['provider.read']}>
+                      {(allowed) =>
+                        allowed ? (
+                          <SidebarFolder
+                            label="Providers"
+                            icon={<HardDrivesIcon />}
+                            onAdd={providerCreate.allowed ? controller.onCreateProvider : undefined}
+                            addLabel="Add provider"
+                          >
+                            {providers.map((entry) => (
+                              <Destination key={entry.id} item={entry} icon={<HardDrivesIcon />} />
+                            ))}
+                          </SidebarFolder>
+                        ) : null
+                      }
+                    </PermissionRequest>
+                  )
+                case 'MODELS':
+                  return (
+                    <PermissionRequest key={item} actions={['model.read']}>
+                      {(allowed) =>
+                        allowed ? (
+                          <SidebarFolder
+                            label="Models"
+                            icon={<CubeIcon />}
+                            onAdd={modelCreate.allowed ? controller.onCreateModel : undefined}
+                            addLabel="Add model"
+                          >
+                            {models.map((entry) => (
+                              <Destination key={entry.id} item={entry} icon={<CubeIcon />} />
+                            ))}
+                          </SidebarFolder>
+                        ) : null
+                      }
+                    </PermissionRequest>
+                  )
+                case 'NOTEBOOKS':
+                  return (
+                    <Destination
+                      key={item}
+                      item={{ id: 'notebooks', name: 'Notebooks', href: links.notebooks }}
+                      icon={<NotebookIcon />}
+                    />
+                  )
+                case 'PLUGINS':
+                  return (
+                    <Destination
+                      key={item}
+                      item={{ id: 'plugins', name: 'Plugins', href: links.plugins }}
+                      icon={<PlugsIcon />}
+                    />
+                  )
+                case 'STATS':
+                  return (
+                    <Destination key={item} item={{ id: 'stats', name: 'Stats', href: links.stats }} icon={<ChartBarIcon />} />
+                  )
+                case 'API_KEYS':
+                  return (
+                    <Destination key={item} item={{ id: 'api-key', name: 'API key', href: links.keys }} icon={<KeyIcon />} />
+                  )
+                case 'MEMBERS':
+                  return (
+                    <PermissionRequest key={item} actions={['member.read']}>
+                      {(allowed) =>
+                        allowed ? (
+                          <Destination
+                            key={item}
+                            item={{ id: 'members', name: 'Members', href: links.members }}
+                            icon={<UsersIcon />}
+                          />
+                        ) : null
+                      }
+                    </PermissionRequest>
+                  )
+                case 'CONVERSATIONS':
+                  return <Conversations key={item} />
+                default:
+                  return null
+              }
+            })}
+          </SidebarSection>
+        ))}
+    </>
   )
 }
 
@@ -91,7 +178,12 @@ function Conversations() {
   const conversations = useOrganizationState((state) => state.conversations)
   const selected = useOrganizationState((state) => state.selectedDestination)
   return (
-    <SidebarSection label="Conversations" onAdd={() => controller.onOpenChat()} addLabel="New conversation">
+    <SidebarFolder
+      label="Conversations"
+      icon={<ChatCircleIcon />}
+      onAdd={() => controller.onOpenChat()}
+      addLabel="New conversation"
+    >
       {conversations.map((item) => (
         <SidebarItem
           key={item.id}
@@ -102,28 +194,15 @@ function Conversations() {
           onNavigate={() => controller.onOpenChat(item.id)}
         />
       ))}
-    </SidebarSection>
+    </SidebarFolder>
   )
 }
 
 function OrganizationSidebar() {
-  const controller = useController()
-  const links = useOrganizationState((state) => state.links)
   return (
     <Sidebar>
       <OrganizationHeader />
-      <Providers />
-      <SidebarSection label="Routers" onAdd={controller.onCreateRouter} addLabel="Add router">
-        <Destination item={{ id: 'stats', name: 'Stats', href: links.stats }} icon={<ChartBarIcon />} />
-        <Destination item={{ id: 'api-key', name: 'API key', href: links.keys }} icon={<KeyIcon />} />
-        <Models />
-      </SidebarSection>
-      <SidebarSection label="Workspace">
-        <Destination item={{ id: 'members', name: 'Members', href: links.members }} icon={<UsersIcon />} />
-        <Destination item={{ id: 'notebooks', name: 'Notebooks', href: links.notebooks }} icon={<NotebookIcon />} />
-        <Destination item={{ id: 'plugins', name: 'Plugins', href: links.plugins }} icon={<PlugsIcon />} />
-      </SidebarSection>
-      <Conversations />
+      <CustomizableDestinations />
     </Sidebar>
   )
 }

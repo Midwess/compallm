@@ -1,8 +1,14 @@
 import { createFormControl, type FieldValues, type UseFormReturn, type Resolver } from 'react-hook-form'
 import getBy from 'lodash-es/get.js'
-import cloneDeep from 'lodash-es/cloneDeep.js'
+import cloneDeepWith from 'lodash-es/cloneDeepWith.js'
 import isEqual from 'lodash-es/isEqual.js'
 import set from 'lodash-es/set.js'
+
+export function cloneFormValue<T>(value: T): T {
+  return cloneDeepWith(value, (item) => (typeof Blob !== 'undefined' && item instanceof Blob ? item : undefined))
+}
+
+const cloneDeep = cloneFormValue
 
 function setBy<V>(source: V, path: string, value: unknown): V {
   const keys = path.replace(/\[(\d+)\]/g, '.$1').split('.')

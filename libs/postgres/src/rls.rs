@@ -103,8 +103,13 @@ impl RlsSettings {
         &self.settings
     }
 
-    fn new(organization_id: u64, permissions: Vec<Permission>) -> Result<Self, serde_json::Error> {
+    fn new(
+        user_id: u64,
+        organization_id: u64,
+        permissions: Vec<Permission>,
+    ) -> Result<Self, serde_json::Error> {
         let mut settings = vec![
+            ("app.user_id".to_owned(), user_id.to_string()),
             (
                 "app.organization_id".to_owned(),
                 organization_id.to_string(),

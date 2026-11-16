@@ -102,6 +102,13 @@ impl Hooks for App {
         #[cfg(debug_assertions)]
         let app = app.merge(dev_server.router(["/"]));
 
+        let app = app.layer(
+            tower_http::compression::CompressionLayer::new()
+                .no_deflate()
+                .no_zstd()
+                .quality(tower_http::CompressionLevel::Precise(4)),
+        );
+
         #[cfg(debug_assertions)]
         {
             tokio::select! {

@@ -223,7 +223,18 @@ impl Hooks for App {
                     di.authentication().clone(),
                     AuthenticationMiddleware::handle,
                 ))
-                .layer(DefaultBodyLimit::max(di.max_request_body_bytes())),
+                .layer::<_, std::convert::Infallible>(DefaultBodyLimit::max(
+                    di.max_request_body_bytes(),
+                ))
+                .layer::<_, std::convert::Infallible>(
+                    tower_http::decompression::RequestDecompressionLayer::new()
+                        .no_br()
+                        .no_deflate()
+                        .no_zstd(),
+                )
+                .layer(tower_http::limit::RequestBodyLimitLayer::new(
+                    di.max_request_body_bytes(),
+                )),
         );
         router = router.route(
             "/api/invitations/open",

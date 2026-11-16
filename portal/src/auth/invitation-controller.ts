@@ -60,7 +60,11 @@ export class InvitationController {
     if (!request || !context || this.store.getState().busy) return false
     this.store.setState({ busy: true, error: null })
     try {
-      const input = emailRequestSchema(context.signup ? 'signup' : 'signin').parse({ email: context.email, delivery: 'COOKIE' })
+      const input = emailRequestSchema(context.signup ? 'signup' : 'signin').parse({
+        email: context.email,
+        delivery: 'COOKIE',
+        invitation: true,
+      })
       const client = graphql(request.signal)
       if (context.signup)
         await client.mutation({

@@ -101,6 +101,7 @@ export default {
     EmailInput: {
       delivery: [18],
       email: [132],
+      invitation: [7],
       __typename: [132],
     },
     FilterIs: {},

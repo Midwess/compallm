@@ -20,6 +20,17 @@ impl CookieDelivery {
         self.settings.validate_origin(&self.request)
     }
 
+    pub fn clear_invitation(&self) -> Result<(), RequestError> {
+        let mut headers = HeaderMap::new();
+        self.settings.append_cookie(
+            &mut headers,
+            self.settings.invitation_name(),
+            String::new(),
+            0,
+        )?;
+        self.replace(headers)
+    }
+
     pub fn set_otp(&self, token: String, seconds: u64) -> Result<(), RequestError> {
         let mut headers = HeaderMap::new();
         let names = self.settings.names();

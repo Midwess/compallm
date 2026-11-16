@@ -26,7 +26,19 @@ pub(crate) async fn signup_email_request(
         cookies.validate_origin()?;
     }
     (
-        match identity.invitation().await? {
+        match if input.invitation.unwrap_or(false) {
+            Some(
+                identity
+                    .invitation()
+                    .await?
+                    .ok_or(compallm_core::authentication::AuthError::InvalidInvitation)?,
+            )
+        } else {
+            if mode == CredentialDelivery::Cookie {
+                cookies.clear_invitation()?;
+            }
+            None
+        } {
             Some(invitation) => {
                 if mode != CredentialDelivery::Cookie {
                     return Err(Error::invalid_input());
@@ -59,7 +71,19 @@ pub(crate) async fn signin_email_request(
         cookies.validate_origin()?;
     }
     (
-        match identity.invitation().await? {
+        match if input.invitation.unwrap_or(false) {
+            Some(
+                identity
+                    .invitation()
+                    .await?
+                    .ok_or(compallm_core::authentication::AuthError::InvalidInvitation)?,
+            )
+        } else {
+            if mode == CredentialDelivery::Cookie {
+                cookies.clear_invitation()?;
+            }
+            None
+        } {
             Some(invitation) => {
                 if mode != CredentialDelivery::Cookie {
                     return Err(Error::invalid_input());
@@ -92,7 +116,16 @@ pub(crate) async fn signup_email_confirm(
         cookies.validate_origin()?;
     }
     (
-        match identity.invitation().await? {
+        match if identity.otp().await?.invitation_id.is_some() {
+            Some(
+                identity
+                    .invitation()
+                    .await?
+                    .ok_or(compallm_core::authentication::AuthError::InvalidInvitation)?,
+            )
+        } else {
+            None
+        } {
             Some(invitation) => {
                 if mode != CredentialDelivery::Cookie {
                     return Err(Error::invalid_input());
@@ -133,7 +166,16 @@ pub(crate) async fn signin_email_confirm(
         cookies.validate_origin()?;
     }
     (
-        match identity.invitation().await? {
+        match if identity.otp().await?.invitation_id.is_some() {
+            Some(
+                identity
+                    .invitation()
+                    .await?
+                    .ok_or(compallm_core::authentication::AuthError::InvalidInvitation)?,
+            )
+        } else {
+            None
+        } {
             Some(invitation) => {
                 if mode != CredentialDelivery::Cookie {
                     return Err(Error::invalid_input());

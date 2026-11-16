@@ -755,6 +755,7 @@ export interface EmailInput {
   delivery?: CredentialDelivery | null
   /** Trimmed and ASCII-lowercased using the shared Rust email policy. */
   email: Scalars['String']
+  invitation?: Scalars['Boolean'] | null
 }
 
 export interface GroupGenqlSelection {

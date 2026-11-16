@@ -5609,3 +5609,43 @@ async fn graphql_me_returns_only_the_verified_users_effective_cedar() {
         "UNAUTHENTICATED"
     );
 }
+
+#[tokio::test]
+async fn ordinary_signin_ignores_stale_invitation_cookie_and_clears_it() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let router = fixture.graphql();
+    let response = graphql_operation(&router,
+        "mutation($input:EmailInput!){emailSigninRequest(input:$input){node{lifetime{expiresInSeconds}}}}",
+        serde_json::json!({"input":{"email":"james@midwess.com"}}), None,
+        Some("compallm-invitation=stale"), true).await;
+    let cookies = response_cookies(&response);
+    let body = graphql_body(response).await;
+    assert!(body.get("errors").is_none(), "{body}");
+    assert!(cookies.contains("compallm-invitation="));
+    let challenge = cookies
+        .split(';')
+        .find_map(|value| value.trim().strip_prefix("compallm-access="))
+        .unwrap();
+    let claims = EmailOtpAccessToken::try_from(decode_token(challenge, SECRET).unwrap()).unwrap();
+    assert!(claims.invitation_id.is_none());
+    let response = graphql_operation(&router,
+        "mutation($input:EmailCodeInput!){emailSigninConfirm(input:$input){node{accessLifetime{expiresInSeconds}}}}",
+        serde_json::json!({"input":{"code":claims.code}}), None,
+        Some(&format!("compallm-access={challenge}; compallm-invitation=stale")), true).await;
+    let body = graphql_body(response).await;
+    assert!(body.get("errors").is_none(), "{body}");
+    assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
+}
+
+#[tokio::test]
+async fn explicit_invitation_request_without_cookie_never_falls_back_to_signin() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let router = fixture.graphql();
+    let response = graphql_operation(&router,
+        "mutation($input:EmailInput!){emailSigninRequest(input:$input){node{lifetime{expiresInSeconds}}}}",
+        serde_json::json!({"input":{"email":"james@midwess.com","invitation":true}}), None, None, true).await;
+    assert!(!response.headers().contains_key("set-cookie"));
+    let body = graphql_body(response).await;
+    assert!(body.get("errors").is_some());
+    assert!(fixture.repo.0.lock().unwrap().logins.is_empty());
+}

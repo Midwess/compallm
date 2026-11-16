@@ -53,7 +53,10 @@ export function InvitationPage() {
     <span className="grid gap-3">
       <span className="text-base font-normal text-muted-foreground">You’re invited by</span>
       <span className="flex w-fit min-w-0 max-w-full items-center gap-2.5">
-        <span className="line-clamp-2 min-w-0 text-2xl font-medium underline decoration-foreground/25 decoration-1 underline-offset-8">
+        <span
+          className="line-clamp-2 min-w-0 text-2xl leading-8 font-medium underline
+decoration-foreground/25 decoration-1 underline-offset-4"
+        >
           {context.organizationName}
         </span>
         <Avatar name={context.organizationName} size={28} />

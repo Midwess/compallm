@@ -42,7 +42,9 @@ export function InvitationPage() {
   const title = unavailable
     ? 'This invitation is unavailable'
     : code
-      ? 'Check your email'
+      ? context?.signup
+        ? 'Let’s us create your new account'
+        : 'Check your email'
       : state.step === 'confirmed'
         ? 'You’re ready to join'
         : 'You’re invited'
@@ -118,7 +120,7 @@ export function InvitationPage() {
                 </div>
                 <div className="grid gap-2">
                   <label htmlFor="invitation-recipient" className="text-sm text-muted-foreground">
-                    Invited email
+                    Your email
                   </label>
                   <TextField
                     id="invitation-recipient"
@@ -128,9 +130,6 @@ export function InvitationPage() {
                     className="h-10 text-base"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Invitation expires {new Date(context.expiresAt * 1000).toLocaleDateString()}.
-                </p>
               </div>
             )
           ) : null}

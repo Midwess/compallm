@@ -24,7 +24,7 @@ const personal = [
 const account = [
   { page: 'profile', label: 'Profile', Icon: UserIcon },
   { page: 'access', label: 'Access', Icon: KeyIcon },
-  { page: 'security', label: 'Security', Icon: ShieldCheckIcon },
+  { page: 'security', label: 'Security & access', Icon: ShieldCheckIcon },
 ] as const
 const organization = [
   { page: 'organization', label: 'Info', Icon: InfoIcon },

@@ -427,14 +427,19 @@ type Mutation {
   passkeyAuthenticationFinish(
     input: PasskeyFinishInput!
   ): SessionCredentialsPayload!
-  passkeyAuthenticationStart(email: String!): PasskeyCeremonyPayload!
+  passkeyAuthenticationStart: PasskeyCeremonyPayload!
   passkeyReauthenticationFinish(input: PasskeyFinishInput!): BooleanPayload!
   passkeyReauthenticationStart: PasskeyCeremonyPayload!
-  passkeyRegistrationFinish(input: PasskeyFinishInput!): PasskeySummaryPayload!
-  passkeyRegistrationStart(
-    input: PasskeyRegistrationInput!
-  ): PasskeyCeremonyPayload!
+  passkeyRegistrationFinish(
+    input: PasskeyFinishInput!
+    name: PasskeyRegistrationInput!
+  ): PasskeySummaryPayload!
+  passkeyRegistrationStart: PasskeyCeremonyPayload!
   passkeyRemove(id: ID!): IDPayload!
+  passkeyUpdate(
+    id: ID!
+    input: PasskeyRegistrationInput!
+  ): PasskeySummaryPayload!
   roleAssign(id: ID!, memberId: ID!): RolePayload!
 
   """
@@ -611,6 +616,12 @@ type PasskeyDescriptor {
   transports: [String!]!
 }
 
+type PasskeyExtensions {
+  credProps: Boolean
+  credentialProtectionPolicy: String
+  enforceCredentialProtectionPolicy: Boolean
+}
+
 input PasskeyFinishInput {
   attestationObject: String
   authenticatorData: String
@@ -628,6 +639,8 @@ type PasskeyOptions {
   algorithms: [Int!]!
   challenge: String!
   credentials: [PasskeyDescriptor!]!
+  extensions: PasskeyExtensions!
+  residentKey: String
   rpId: String!
   rpName: String
   timeout: Int!
@@ -949,7 +962,6 @@ input ProvidersCreateInput {
 
 type Query {
   analyticUserProfile(key: String!): AnalyticUserProfilePayload
-  emailAuthenticationMethods(email: String!): BooleanPayload!
 
   """
   Find visible group metadata in the active organization.
@@ -1082,6 +1094,7 @@ type Session {
   Current organization name.
   """
   organizationName: String!
+  passkey: PasskeySummary
 
   """
   User owning this verified session.

@@ -55,6 +55,25 @@ pub struct PasskeyOptions {
     pub algorithms: Vec<i32>,
     pub credentials: Vec<PasskeyDescriptor>,
     pub timeout: i32,
+    pub resident_key: Option<String>,
+    pub extensions: PasskeyExtensions,
+}
+pub struct PasskeyExtensions {
+    pub cred_props: Option<bool>,
+    pub credential_protection_policy: Option<String>,
+    pub enforce_credential_protection_policy: Option<bool>,
+}
+#[juniper::graphql_object]
+impl PasskeyExtensions {
+    fn cred_props(&self) -> Option<bool> {
+        self.cred_props
+    }
+    fn credential_protection_policy(&self) -> Option<&str> {
+        self.credential_protection_policy.as_deref()
+    }
+    fn enforce_credential_protection_policy(&self) -> Option<bool> {
+        self.enforce_credential_protection_policy
+    }
 }
 pub struct PasskeyDescriptor {
     pub id: String,
@@ -95,8 +114,14 @@ impl PasskeyOptions {
     fn credentials(&self) -> &[PasskeyDescriptor] {
         &self.credentials
     }
+    fn extensions(&self) -> &PasskeyExtensions {
+        &self.extensions
+    }
     fn timeout(&self) -> i32 {
         self.timeout
+    }
+    fn resident_key(&self) -> Option<&str> {
+        self.resident_key.as_deref()
     }
     fn user_verification(&self) -> &str {
         "required"
@@ -158,6 +183,15 @@ impl TryFrom<CeremonyStart> for PasskeyCeremony {
                     .unwrap_or_default(),
                 credentials,
                 timeout: 300_000,
+                resident_key: text(&p["authenticatorSelection"]["residentKey"]),
+                extensions: PasskeyExtensions {
+                    cred_props: p["extensions"]["credProps"].as_bool(),
+                    credential_protection_policy: text(
+                        &p["extensions"]["credentialProtectionPolicy"],
+                    ),
+                    enforce_credential_protection_policy:
+                        p["extensions"]["enforceCredentialProtectionPolicy"].as_bool(),
+                },
             },
         })
     }

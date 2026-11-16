@@ -11,38 +11,42 @@ use compallm_core::authentication::passkey::PasskeyService;
 use juniper::ID;
 use validify::Validify;
 pub async fn registration_start(
-    mut input: PasskeyRegistrationInput,
     user: &UserContext,
     service: &PasskeyService,
 ) -> Result<Payload<PasskeyCeremony>, Error> {
-    input.validify()?;
     Ok(PasskeyCeremony::try_from(
         service
-            .registration_start(user.require().await?.access(), &input.name)
+            .registration_start(user.require().await?.access())
             .await?,
     )?
     .into())
 }
 pub async fn registration_finish(
     mut input: PasskeyFinishInput,
+    mut name: PasskeyRegistrationInput,
     user: &UserContext,
     service: &PasskeyService,
 ) -> Result<Payload<PasskeySummary>, Error> {
     input.validify()?;
+    name.validify()?;
     let response = serde_json::from_value(serde_json::Value::from(&input))
         .map_err(|_| Error::invalid_input())?;
     Ok(PasskeySummary::from(
         service
-            .registration_finish(user.require().await?.access(), &input.token, response)
+            .registration_finish(
+                user.require().await?.access(),
+                &input.token,
+                response,
+                &name.name,
+            )
             .await?,
     )
     .into())
 }
 pub async fn authentication_start(
-    email: &str,
     service: &PasskeyService,
 ) -> Result<Payload<PasskeyCeremony>, Error> {
-    Ok(PasskeyCeremony::try_from(service.authentication_start(email).await?)?.into())
+    Ok(PasskeyCeremony::try_from(service.authentication_start().await?)?.into())
 }
 pub async fn authentication_finish(
     mut input: PasskeyFinishInput,
@@ -120,4 +124,20 @@ pub async fn email_confirm(
         .email_confirm(user.require().await?.access(), &input.token, &input.code)
         .await?;
     Ok(true.into())
+}
+
+pub async fn update(
+    id: ID,
+    mut input: PasskeyRegistrationInput,
+    user: &UserContext,
+    service: &PasskeyService,
+) -> Result<Payload<PasskeySummary>, Error> {
+    input.validify()?;
+    let id = id.parse::<u64>().map_err(|_| Error::invalid_input())?;
+    Ok(PasskeySummary::from(
+        service
+            .rename(user.require().await?.access(), id, &input.name)
+            .await?,
+    )
+    .into())
 }

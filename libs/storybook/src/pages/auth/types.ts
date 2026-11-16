@@ -19,7 +19,7 @@ export type AuthUser = Pick<Session, 'id' | 'userId' | 'organizationId' | 'organ
 export interface AuthState {
   currentUser: AuthUser | null
   status: 'unknown' | 'checking' | 'authenticated' | 'anonymous' | 'error'
-  step: 'email' | 'code' | 'passkey' | 'complete'
+  step: 'choose' | 'email' | 'code' | 'passkey' | 'complete'
   email: string
   code: string
   error: AuthError | null
@@ -46,6 +46,7 @@ export interface AuthController {
   requestCode(email: string): Promise<void>
   verifyPasskey?(): Promise<void>
   useEmailCode?(): Promise<void>
+  backToMethods?(): void
   resendCode(): Promise<void>
   retry(): Promise<void>
   showResend(): void

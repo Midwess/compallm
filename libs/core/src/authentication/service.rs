@@ -339,7 +339,7 @@ impl AuthService {
         membership: OrganizationMember,
         dictionary: &DCompression,
     ) -> Result<UserTokens, AuthError> {
-        self.start_session_with_method(user_id, membership, dictionary, "email_code")
+        self.start_session_with_method(user_id, membership, dictionary, "email_code", None)
             .await
     }
 
@@ -350,6 +350,7 @@ impl AuthService {
         membership: OrganizationMember,
         dictionary: &DCompression,
         method: &str,
+        credential_id: Option<u64>,
     ) -> Result<UserTokens, AuthError> {
         let session = Session::new(user_id, membership.organization_id).await?;
         let refresh = RefreshToken::from_session(&session, self.lifetimes.refresh)?;
@@ -361,7 +362,7 @@ impl AuthService {
                 self.sessions.create(session.clone()).await?;
                 repository.ensure_email_identity(user_id).await?;
                 repository
-                    .record_method(&session, method, unix_timestamp())
+                    .record_method(&session, method, unix_timestamp(), credential_id)
                     .await?;
                 Ok(tokens)
             })

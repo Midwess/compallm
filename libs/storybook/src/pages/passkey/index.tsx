@@ -7,7 +7,12 @@ import { TextField, CodeEntry } from '../../components/fields'
 import { Form, useManagedForm, contractResult } from '../../components/form'
 import { Dialog } from '../../components/dialog'
 import { PasskeyRegistrationInput, EmailReauthenticationInput } from '@compallm/contract/validation'
-import { Section, Rows, Row, Empty } from '../settings/shared'
+import { Section, Empty } from '../settings/shared'
+import { Popup } from '../../components/popup'
+import { KeyIcon } from '@phosphor-icons/react/dist/csr/Key'
+import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
+import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
+import { DotsThreeIcon } from '@phosphor-icons/react/dist/csr/DotsThree'
 export type { PasskeyController, PasskeyState } from './types'
 function useController() {
   const controller = useContext(PasskeyControllerContext)
@@ -16,6 +21,7 @@ function useController() {
 }
 export function SecurityEnhancementPage({ onSkip }: { onSkip: () => void }) {
   const controller = useController()
+  const busy = useStore(controller.store, (s) => s.busy)
   return (
     <AuthLayout>
       <div className="grid gap-6">
@@ -23,7 +29,7 @@ export function SecurityEnhancementPage({ onSkip }: { onSkip: () => void }) {
         <p className="m-0 text-sm leading-6 text-muted-foreground">
           Add a passkey to sign in with your fingerprint, face, or security key. You can also set this up later in settings.
         </p>
-        <Button variant="primary" size="authentication" onClick={controller.openAdd}>
+        <Button variant="primary" size="authentication" onClick={controller.openAdd} loading={busy}>
           Passkey
         </Button>
         <Button variant="ghost" onClick={onSkip}>
@@ -38,20 +44,12 @@ export function PasskeySettings() {
   const records = useStore(controller.store, (s) => s.records)
   const status = useStore(controller.store, (s) => s.status)
   const error = useStore(controller.store, (s) => s.error)
+  const currentPasskeyId = useStore(controller.store, (s) => s.currentPasskeyId)
+  const busy = useStore(controller.store, (s) => s.busy)
   return (
-    <Section
-      title="Passkeys"
-      description="Sign in with your fingerprint, face, or security key."
-      action={
-        status === 'ready' && records.length ? (
-          <Button variant="ghost" onClick={controller.openAdd}>
-            Add passkey
-          </Button>
-        ) : undefined
-      }
-    >
+    <Section title="Passkeys" description="Passkeys are a secure way to sign in to your Compallm account.">
       {status === 'loading' ? (
-        <p role="status" className="px-4 text-sm text-muted-foreground">
+        <p role="status" className="px-4 text-xsm text-muted-foreground">
           Loading passkeys…
         </p>
       ) : null}
@@ -64,33 +62,122 @@ export function PasskeySettings() {
         </Empty>
       ) : null}
       {status === 'ready' ? (
-        records.length ? (
-          <Rows>
-            {records.map((record, index) => (
-              <Row
-                key={record.id}
-                label={record.name}
-                description={credentialDescription(record.registeredAt, record.lastUsedAt)}
-                last={index === records.length - 1}
-              >
-                <Button variant="ghost" onClick={() => controller.openRemove(record.id)}>
-                  Remove
-                </Button>
-              </Row>
-            ))}
-          </Rows>
-        ) : (
-          <Empty title="No passkeys yet" action={<Button onClick={controller.openAdd}>Add passkey</Button>}>
-            Add a passkey for a simpler sign-in experience.
-          </Empty>
-        )
+        <div>
+          <div className="flex min-h-16 items-center justify-between gap-3 px-4">
+            <span className="text-xsm text-muted-foreground">
+              {records.length ? `${records.length} ${records.length === 1 ? 'passkey' : 'passkeys'}` : 'No passkeys registered'}
+            </span>
+            <Button variant="ghost" onClick={controller.openAdd} loading={busy}>
+              New passkey
+            </Button>
+          </div>
+          {records.length ? (
+            <ul className="m-0 list-none p-0">
+              {records.map((record) => (
+                <PasskeyRow key={record.id} record={record} current={record.id === currentPasskeyId} />
+              ))}
+            </ul>
+          ) : null}
+        </div>
       ) : null}
     </Section>
+  )
+}
+function PasskeyRow({ record, current }: { record: import('./types').PasskeyState['records'][number]; current: boolean }) {
+  const controller = useController()
+  const editing = useStore(controller.store, (s) => s.editingId === record.id)
+  const busy = useStore(controller.store, (s) => s.busy)
+  const error = useStore(controller.store, (s) => s.error)
+  const model = useManagedForm(
+    { name: record.name },
+    {
+      mode: 'button',
+      command: true,
+      parse: (values) => contractResult(PasskeyRegistrationInput.safeParse(values), values),
+      submit: async (values): Promise<{ name: string } | false> => {
+        if (!(await controller.rename(record.id, values.name))) return false
+        if (controller.store.getState().editingId === record.id && model.values.name === values.name) controller.edit(null)
+        return values
+      },
+    },
+  )
+  if (editing)
+    return (
+      <li className="border-t border-divider px-4 py-4">
+        <Form.Root
+          model={model}
+          className="flex flex-wrap items-start gap-3"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              controller.edit(null)
+            }
+            if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+              event.preventDefault()
+              void model.submit()
+            }
+          }}
+        >
+          <label className="min-w-0 flex-1">
+            <span className="sr-only">Passkey name</span>
+            <TextField name="name" autoFocus className="w-full" />
+            <Form.Error name="name" />
+          </label>
+          <Button variant="ghost" className="px-3" onClick={() => controller.edit(null)}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="neutral" className="h-8 px-3" loading={busy}>
+            Save
+          </Button>
+          {error ? (
+            <p role="alert" className="w-full text-xs text-destructive">
+              {error}
+            </p>
+          ) : null}
+        </Form.Root>
+      </li>
+    )
+  return (
+    <li className="flex min-h-16 min-w-0 items-center gap-3 border-t border-divider px-4 py-4">
+      <span className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
+        <KeyIcon size={16} aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="m-0 truncate text-xsm leading-4 font-medium">{record.name}</p>
+        <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
+          {current ? 'Used with current session' : credentialDescription(record.registeredAt, record.lastUsedAt)}
+        </p>
+      </div>
+      <Popup.Root>
+        <Popup.Trigger aria-label={`Actions for ${record.name}`} className="size-8 p-0">
+          <DotsThreeIcon size={16} aria-hidden="true" />
+        </Popup.Trigger>
+        <Popup.Content className="w-44" aria-label={`Actions for ${record.name}`}>
+          <Popup.Item
+            onSelect={() => {
+              model.reset({ name: record.name })
+              controller.edit(record.id)
+            }}
+          >
+            <PencilSimpleIcon size={16} aria-hidden="true" />
+            Rename…
+          </Popup.Item>
+          <Popup.Item className="text-destructive" onSelect={() => controller.openRemove(record.id)}>
+            <TrashIcon size={16} aria-hidden="true" />
+            Revoke
+          </Popup.Item>
+        </Popup.Content>
+      </Popup.Root>
+    </li>
   )
 }
 export function PasskeyDialogs() {
   const controller = useController()
   const dialog = useStore(controller.store, (s) => s.dialog)
+  const enrollment = useStore(controller.store, (s) => s.enrollment)
+  const reauthentication = useStore(controller.store, (s) => s.reauthentication)
+  const error = useStore(controller.store, (s) => s.error)
+  if (dialog?.kind === 'add' && enrollment === 'device' && !reauthentication && !error) return null
   return dialog ? <PasskeyDialogContent /> : null
 }
 function PasskeyDialogContent() {
@@ -100,6 +187,9 @@ function PasskeyDialogContent() {
   const reauthentication = useStore(controller.store, (s) => s.reauthentication)
   const emailSent = useStore(controller.store, (s) => s.emailSent)
   const dialog = useStore(controller.store, (s) => s.dialog)!
+  const enrollment = useStore(controller.store, (s) => s.enrollment)
+  const passkeyName =
+    dialog.kind === 'remove' ? controller.store.getState().records.find((record) => record.id === dialog.id)?.name : undefined
   const form = useManagedForm(
     { name: '', code: '' },
     {
@@ -111,7 +201,7 @@ function PasskeyDialogContent() {
           return state.emailSent
             ? contractResult(EmailReauthenticationInput.pick({ code: true }).safeParse({ code: values.code }), values)
             : { values }
-        return state.dialog?.kind === 'add'
+        return state.dialog?.kind === 'add' && state.enrollment === 'name'
           ? contractResult(PasskeyRegistrationInput.safeParse({ name: values.name }), values)
           : { values }
       },
@@ -119,6 +209,10 @@ function PasskeyDialogContent() {
         const state = controller.store.getState()
         if (state.reauthentication) {
           await controller.verifyEmail(values.code)
+          return false as const
+        }
+        if (state.dialog?.kind === 'add' && state.enrollment === 'device') {
+          await controller.prepare()
           return false as const
         }
         if (state.dialog?.kind === 'add') await controller.add(values.name)
@@ -134,21 +228,39 @@ function PasskeyDialogContent() {
         if (!open) controller.close()
       }}
     >
-      <Dialog.Content className="w-110 rounded-xl bg-elevated">
+      <Dialog.Content
+        className={
+          dialog.kind === 'remove' && !reauthentication
+            ? 'w-120 max-w-[calc(100vw-2rem)] rounded-xl bg-inset md:top-[28.2svh] md:right-2 md:bottom-auto md:left-61'
+            : 'w-120 max-w-[calc(100vw-2rem)] rounded-xl bg-inset'
+        }
+      >
         <Form.Root model={form}>
-          <Dialog.Header>
-            <Dialog.Title>
-              {reauthentication ? 'Verify your identity' : dialog.kind === 'add' ? 'Add a passkey' : 'Remove passkey?'}
+          <Dialog.Header className="border-0 px-6 pt-6 pb-0">
+            <Dialog.Title className="text-ui-15 leading-6 font-semibold">
+              {reauthentication
+                ? 'Verify your identity'
+                : dialog.kind === 'add'
+                  ? enrollment === 'name'
+                    ? 'Name your passkey'
+                    : 'Create a passkey'
+                  : `Revoke access for "${passkeyName ?? 'passkey'}"?`}
             </Dialog.Title>
-            <Dialog.Close />
+            {dialog.kind === 'add' || reauthentication ? <Dialog.Close /> : null}
           </Dialog.Header>
-          <Dialog.Body className="grid gap-4">
-            <Dialog.Description>
+          <Dialog.Body
+            className={
+              dialog.kind === 'remove' && !reauthentication ? 'grid gap-4 px-6 pt-1 pb-1' : 'grid gap-4 px-6 pt-1 pb-4'
+            }
+          >
+            <Dialog.Description className="text-ui-15 leading-6">
               {reauthentication
                 ? 'Verify with a passkey or an email code, then confirm your change.'
                 : dialog.kind === 'add'
-                  ? 'Give this passkey a name, then follow your device’s instructions.'
-                  : 'You will no longer be able to sign in with this passkey. Existing sessions stay signed in.'}
+                  ? enrollment === 'name'
+                    ? 'Give your passkey a name so you can recognize it later.'
+                    : 'Follow your device’s instructions to create a passkey.'
+                  : 'You cannot undo this action.'}
             </Dialog.Description>
             {reauthentication ? (
               emailSent ? (
@@ -169,16 +281,16 @@ function PasskeyDialogContent() {
                   </Button>
                 </>
               )
-            ) : dialog.kind === 'add' ? (
+            ) : dialog.kind === 'add' && enrollment === 'name' ? (
               <label className="grid gap-2 text-sm">
                 Passkey name
-                <TextField name="name" placeholder="For example, Personal laptop" />
+                <TextField name="name" placeholder="For example, Personal laptop" readOnly={busy} />
                 <Form.Error name="name" />
               </label>
             ) : null}
             {busy ? (
               <p role="status" className="text-sm text-muted-foreground">
-                Complete verification on your device…
+                {dialog.kind === 'add' && enrollment === 'name' ? 'Saving passkey…' : 'Complete verification on your device…'}
               </p>
             ) : null}
             {error ? (
@@ -187,15 +299,26 @@ function PasskeyDialogContent() {
               </p>
             ) : null}
           </Dialog.Body>
-          <Dialog.Footer>
-            <Dialog.Cancel variant="ghost">Cancel</Dialog.Cancel>
+          <Dialog.Footer
+            className={dialog.kind === 'remove' && !reauthentication ? 'border-0 px-6 pt-4 pb-6' : 'border-0 px-6 pt-0 pb-5'}
+          >
+            <Dialog.Cancel variant="neutral" className="h-8 px-3">
+              Cancel
+            </Dialog.Cancel>
             {!reauthentication || emailSent ? (
               <Button
                 type="submit"
                 variant={dialog.kind === 'remove' && !reauthentication ? 'destructive' : 'primary'}
                 loading={busy}
+                className="px-3 text-primary-foreground"
               >
-                {reauthentication ? 'Verify email code' : dialog.kind === 'add' ? 'Continue' : 'Remove'}
+                {reauthentication
+                  ? 'Verify email code'
+                  : dialog.kind === 'add'
+                    ? enrollment === 'name'
+                      ? 'Save'
+                      : 'Try again'
+                    : 'Revoke'}
               </Button>
             ) : null}
           </Dialog.Footer>

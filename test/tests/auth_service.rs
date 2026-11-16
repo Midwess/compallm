@@ -5658,7 +5658,7 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
     use compallm_core::{
         authentication::passkey::PasskeyService, persistent::passkey::PasskeyRepository,
     };
-    use webauthn_authenticator_rs::{WebauthnAuthenticator, softpasskey::SoftPasskey};
+    use webauthn_authenticator_rs::WebauthnAuthenticator;
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let repository = Box::leak(Box::new(passkey_support::MemoryPasskeys::default()));
     let auth = Box::leak(Box::new(
@@ -5679,8 +5679,21 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
         .await
         .unwrap();
     let origin = url::Url::parse("http://localhost").unwrap();
-    let mut authenticator = WebauthnAuthenticator::new(SoftPasskey::new(true));
-    let start = service.registration_start(&actor, "Laptop").await.unwrap();
+    let mut authenticator =
+        WebauthnAuthenticator::new(passkey_support::ResidentAuthenticator::new());
+    let start = service.registration_start(&actor).await.unwrap();
+    assert_eq!(
+        start.options["publicKey"]["authenticatorSelection"]["residentKey"],
+        "required"
+    );
+    assert_eq!(start.options["publicKey"]["user"]["name"], otp.email);
+    assert!(
+        repository
+            .list(actor.session.user_id)
+            .await
+            .unwrap()
+            .is_empty()
+    );
     let response = authenticator
         .do_registration(
             origin.clone(),
@@ -5688,12 +5701,12 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
         )
         .unwrap();
     let record = service
-        .registration_finish(&actor, &start.token, response.clone())
+        .registration_finish(&actor, &start.token, response.clone(), "Laptop")
         .await
         .unwrap();
     assert!(
         service
-            .registration_finish(&actor, &start.token, response)
+            .registration_finish(&actor, &start.token, response, "Laptop")
             .await
             .is_err()
     );
@@ -5701,14 +5714,57 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
         repository.list(actor.session.user_id).await.unwrap().len(),
         1
     );
-    assert!(service.methods(&otp.email).await.unwrap());
-    let start = service.authentication_start(&otp.email).await.unwrap();
+
+    let renamed = service
+        .rename(&actor, record.id, "Work Macbook")
+        .await
+        .unwrap();
+    assert_eq!(renamed.name, "Work Macbook");
+    assert_eq!(
+        repository
+            .session_passkey(&actor.session)
+            .await
+            .unwrap()
+            .unwrap()
+            .id,
+        record.id
+    );
+    let start = service.authentication_start().await.unwrap();
+    assert!(
+        start.options["publicKey"]["allowCredentials"]
+            .as_array()
+            .is_some_and(|a| a.is_empty())
+    );
     let assertion = authenticator
         .do_authentication(
             origin.clone(),
             serde_json::from_value(start.options).unwrap(),
         )
         .unwrap();
+    let mut missing_handle = assertion.clone();
+    missing_handle.response.user_handle = None;
+    assert!(
+        service
+            .authentication_finish(&start.token, missing_handle)
+            .await
+            .is_err()
+    );
+    let mut wrong_handle = assertion.clone();
+    wrong_handle.response.user_handle = Some(uuid::Uuid::new_v4().as_bytes().to_vec().into());
+    assert!(
+        service
+            .authentication_finish(&start.token, wrong_handle)
+            .await
+            .is_err()
+    );
+    let mut unknown_credential = assertion.clone();
+    unknown_credential.raw_id = vec![1, 2, 3, 4].into();
+    assert!(
+        service
+            .authentication_finish(&start.token, unknown_credential)
+            .await
+            .is_err()
+    );
     let login = service
         .authentication_finish(&start.token, assertion.clone())
         .await
@@ -5744,7 +5800,7 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
         .reauthentication_finish(&actor, &reauth.token, assertion)
         .await
         .unwrap();
-    let pending = service.authentication_start(&otp.email).await.unwrap();
+    let pending = service.authentication_start().await.unwrap();
     let pending_assertion = authenticator
         .do_authentication(
             url::Url::parse("http://localhost").unwrap(),
@@ -5759,7 +5815,7 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
             .unwrap()
             .is_empty()
     );
-    assert!(!service.methods(&otp.email).await.unwrap());
+
     assert!(auth.validate_access(&actor).await.unwrap());
     assert!(auth.validate_access(&login_actor).await.unwrap());
     assert!(
@@ -5782,7 +5838,7 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
 #[tokio::test]
 async fn passkey_management_requires_recent_evidence_and_rejects_foreign_or_expired_ceremonies() {
     use compallm_core::authentication::passkey::PasskeyService;
-    use webauthn_authenticator_rs::{WebauthnAuthenticator, softpasskey::SoftPasskey};
+    use webauthn_authenticator_rs::WebauthnAuthenticator;
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let repository = Box::leak(Box::new(passkey_support::MemoryPasskeys::default()));
     let auth = Box::leak(Box::new(
@@ -5804,7 +5860,7 @@ async fn passkey_management_requires_recent_evidence_and_rejects_foreign_or_expi
         .unwrap();
     repository.state.lock().unwrap().evidence.clear();
     assert!(matches!(
-        service.registration_start(&actor, "Laptop").await,
+        service.registration_start(&actor).await,
         Err(AuthError::ReauthenticationRequired)
     ));
     assert!(repository.state.lock().unwrap().challenges.is_empty());
@@ -5818,8 +5874,9 @@ async fn passkey_management_requires_recent_evidence_and_rejects_foreign_or_expi
         (actor.session.id, "email_code".into()),
         compallm_utils::time::unix_timestamp(),
     );
-    let start = service.registration_start(&actor, "Laptop").await.unwrap();
-    let mut authenticator = WebauthnAuthenticator::new(SoftPasskey::new(true));
+    let start = service.registration_start(&actor).await.unwrap();
+    let mut authenticator =
+        WebauthnAuthenticator::new(passkey_support::ResidentAuthenticator::new());
     let response = authenticator
         .do_registration(
             url::Url::parse("http://localhost").unwrap(),
@@ -5830,7 +5887,7 @@ async fn passkey_management_requires_recent_evidence_and_rejects_foreign_or_expi
     foreign.session.user_id += 1;
     assert!(
         service
-            .registration_finish(&foreign, &start.token, response.clone())
+            .registration_finish(&foreign, &start.token, response.clone(), "Laptop")
             .await
             .is_err()
     );
@@ -5839,7 +5896,7 @@ async fn passkey_management_requires_recent_evidence_and_rejects_foreign_or_expi
     }
     assert!(
         service
-            .registration_finish(&actor, &start.token, response)
+            .registration_finish(&actor, &start.token, response, "Laptop")
             .await
             .is_err()
     );
@@ -5936,4 +5993,77 @@ async fn email_reauthentication_is_session_bound_single_use_and_has_five_attempt
             .contains_key(&(actor.session.id, "email_code".into()))
     );
     assert!(auth.validate_access(&actor).await.unwrap());
+}
+
+#[tokio::test]
+async fn discoverable_passkey_ceremony_accepts_either_account_without_an_email_binding() {
+    use compallm_core::authentication::passkey::PasskeyService;
+    use webauthn_authenticator_rs::WebauthnAuthenticator;
+    let first = Fixture::user(UserStatus::Active);
+    let fixture = Fixture::new(Some(first.clone()));
+    let repository = Box::leak(Box::new(passkey_support::MemoryPasskeys::default()));
+    let auth = Box::leak(Box::new(
+        fixture.service().with_passkey_repository(repository),
+    ));
+    let service = PasskeyService::new(
+        repository,
+        auth,
+        SECRET.into(),
+        "localhost",
+        "http://localhost",
+    )
+    .unwrap();
+    let origin = url::Url::parse("http://localhost").unwrap();
+    let mut authenticators = [
+        WebauthnAuthenticator::new(passkey_support::ResidentAuthenticator::new()),
+        WebauthnAuthenticator::new(passkey_support::ResidentAuthenticator::new()),
+    ];
+    let mut second = first.clone();
+    second.id += 1;
+    second.email = "second@example.com".into();
+    for (index, account) in [first.clone(), second.clone()].into_iter().enumerate() {
+        {
+            let mut state = fixture.repo.0.lock().unwrap();
+            state.user = Some(account.clone());
+            for membership in &mut state.memberships {
+                membership.user_id = account.id;
+            }
+        }
+        let otp = EmailOtpAccessToken::new(account.email.clone()).unwrap();
+        let login = auth.signin(&otp, &otp.code).await.unwrap();
+        let actor = auth.authenticate_access(&login.access_token).await.unwrap();
+        let enrollment = service.registration_start(&actor).await.unwrap();
+        let response = authenticators[index]
+            .do_registration(
+                origin.clone(),
+                serde_json::from_value(enrollment.options).unwrap(),
+            )
+            .unwrap();
+        service
+            .registration_finish(&actor, &enrollment.token, response, "Macbook")
+            .await
+            .unwrap();
+    }
+    for (index, account) in [first, second].into_iter().enumerate() {
+        let start = service.authentication_start().await.unwrap();
+        {
+            let mut state = fixture.repo.0.lock().unwrap();
+            state.user = Some(account.clone());
+            for membership in &mut state.memberships {
+                membership.user_id = account.id;
+            }
+        }
+        let assertion = authenticators[index]
+            .do_authentication(
+                origin.clone(),
+                serde_json::from_value(start.options).unwrap(),
+            )
+            .unwrap();
+        let login = service
+            .authentication_finish(&start.token, assertion)
+            .await
+            .unwrap();
+        let actor = auth.authenticate_access(&login.access_token).await.unwrap();
+        assert_eq!(actor.session.user_id, account.id);
+    }
 }

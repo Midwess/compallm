@@ -129,27 +129,68 @@ export function AccessSettings() {
 export function SecuritySettings() {
   const c = useSettingsController()
   const passkeys = useContext(PasskeyControllerContext)
+  const previewPasskeys = useSettings((state) => state.passkeys)
+  const applications = useSettings((state) => state.applications)
+  const keys = useSettings((state) => state.apiKeys)
   return (
     <SettingsContent>
-      <Heading description="Manage your sign-in methods and API access.">Security</Heading>
+      <Heading className="mb-8">Security &amp; access</Heading>
       <div className="grid gap-12">
+        <Section title="Sessions" description="Devices logged into your account">
+          <div className="flex min-h-16 items-center justify-between gap-4 px-4">
+            <div className="text-xsm">
+              <p className="m-0 font-medium">Current session</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">You are signed in to Compallm</p>
+            </div>
+            <Button variant="ghost" onClick={c.signOut}>
+              Log out
+            </Button>
+          </div>
+        </Section>
         {passkeys ? (
           <PasskeySettings />
         ) : (
-          <Section title="Passkeys" description="Sign in with your fingerprint, face, or security key.">
-            <Empty
-              title="No passkeys yet"
-              action={<Button onClick={() => c.pages.dialogs.openDialog('add-passkey')}>Add passkey</Button>}
-            >
-              Add a passkey for a simpler sign-in experience.
-            </Empty>
+          <Section title="Passkeys" description="Passkeys are a secure way to sign in to your Compallm account.">
+            <div className="flex min-h-16 items-center justify-between gap-3 px-4">
+              <span className="text-xsm text-muted-foreground">
+                {previewPasskeys.length
+                  ? `${previewPasskeys.length} ${previewPasskeys.length === 1 ? 'passkey' : 'passkeys'}`
+                  : 'No passkeys registered'}
+              </span>
+              <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('add-passkey')}>
+                New passkey
+              </Button>
+            </div>
+            {previewPasskeys.length ? (
+              <Rows>
+                {previewPasskeys.map((key, index) => (
+                  <Row key={key.id} label={key.name} last={index === previewPasskeys.length - 1}>
+                    <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('remove-passkey', key.id)}>
+                      Revoke
+                    </Button>
+                  </Row>
+                ))}
+              </Rows>
+            ) : null}
           </Section>
         )}
-        <div className="px-4">
-          <Button variant="ghost" onClick={() => c.navigate('api-keys')}>
-            Manage API keys
-          </Button>
-        </div>
+        <Section title="Personal API keys" description="Use API keys to connect your tools to Compallm.">
+          <div className="flex min-h-16 items-center justify-between gap-3 px-4">
+            <span className="text-xsm text-muted-foreground">
+              {keys.length ? `${keys.length} API keys` : 'No API keys created'}
+            </span>
+            <Button variant="ghost" onClick={() => c.navigate('api-keys')}>
+              Manage API keys
+            </Button>
+          </div>
+        </Section>
+        <Section title="Authorized applications" description="Applications you’ve approved">
+          <p className="px-4 py-4 text-xsm text-muted-foreground">
+            {applications.length
+              ? `${applications.length} authorized applications`
+              : 'No applications have been authorized to connect with your account.'}
+          </p>
+        </Section>
       </div>
     </SettingsContent>
   )

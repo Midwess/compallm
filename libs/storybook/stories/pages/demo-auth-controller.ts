@@ -31,7 +31,10 @@ export class DemoAuthController implements SignupController, SigninController {
   constructor(mode: 'signup' | 'signin', scenario: AuthDemoScenario = 'default', initial?: AuthInitialState) {
     this.mode = mode
     this.scenario = scenario
-    this.store = (mode === 'signup' ? createSignupStore : createSigninStore)(initialValues(initial))
+    this.store = (mode === 'signup' ? createSignupStore : createSigninStore)({
+      ...initialValues(initial),
+      ...(!initial && mode === 'signin' ? { step: 'choose' } : {}),
+    })
     this.lastAttempt = initial?.step === 'code' && initial.error ? initial.code : undefined
   }
 
@@ -85,6 +88,24 @@ export class DemoAuthController implements SignupController, SigninController {
     return this.verifyCodeValue(false, code)
   }
   requestCode = (email: string) => this.request('request', email)
+  useEmailCode = async () => {
+    this.generation += 1
+    this.store.setState({ step: 'email', pending: null, serverError: null })
+  }
+  backToMethods = () => {
+    this.generation += 1
+    this.store.setState({ step: 'choose', pending: null, serverError: null })
+  }
+  verifyPasskey = async () => {
+    const generation = ++this.generation
+    this.store.setState({ step: 'passkey', pending: 'passkey', serverError: null })
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    if (generation === this.generation)
+      this.store.setState({
+        pending: null,
+        serverError: 'Passkey verification was cancelled. Try again or continue with email.',
+      })
+  }
   resendCode = () => this.request('resend')
   showResend = () => this.store.setState({ resendRevealed: true })
 

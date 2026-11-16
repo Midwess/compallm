@@ -1,14 +1,17 @@
 import { createStore } from 'zustand/vanilla'
 import type { PasskeyController as Contract, PasskeyState } from '@compallm/storybook'
 import type { AuthController } from '@compallm/storybook'
-import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
+import type { MutationGenqlSelection, QueryGenqlSelection, PasskeyFinishInput as FinishInput } from '@compallm/contract/graphql'
 import { PasskeyRegistrationInput, PasskeyFinishInput, EmailReauthenticationInput } from '@compallm/contract/validation'
 import { graphql, ApiError } from '../graphql-client'
-import { apiErrorMessage } from '../notifications/toast'
+import { apiErrorMessage, notify } from '../notifications/toast'
 import { credential, ceremonySelection, passkeySelection } from './browser'
 export class PasskeyController implements Contract {
   readonly store = createStore<PasskeyState>(() => ({
     records: [],
+    enrollment: 'device',
+    editingId: null,
+    currentPasskeyId: null,
     status: 'loading',
     dialog: null,
     busy: false,
@@ -19,6 +22,7 @@ export class PasskeyController implements Contract {
   private scope = new AbortController()
   private read?: AbortController
   private operation?: AbortController
+  private registration?: { input: FinishInput; expiresAt: number }
   private emailToken?: string
   private pendingCredential?: string
   private pendingRemoval?: string
@@ -45,10 +49,14 @@ export class PasskeyController implements Contract {
     this.read?.abort()
     this.operation?.abort()
     this.emailToken = undefined
+    this.registration = undefined
     this.pendingCredential = undefined
     this.pendingRemoval = undefined
     this.store.setState({
       records: [],
+      enrollment: 'device',
+      editingId: null,
+      currentPasskeyId: null,
       status: 'loading',
       dialog: null,
       busy: false,
@@ -70,8 +78,14 @@ export class PasskeyController implements Contract {
     try {
       const result = await graphql(signal).query({
         passkeys: { edges: { node: passkeySelection } },
+        session: { node: { passkey: { id: true } } },
       } satisfies QueryGenqlSelection)
-      if (!signal.aborted) this.store.setState({ records: result.passkeys.edges.map((e) => e.node), status: 'ready' })
+      if (!signal.aborted)
+        this.store.setState({
+          records: result.passkeys.edges.map((e) => e.node),
+          status: 'ready',
+          currentPasskeyId: result.session.node.passkey?.id ?? null,
+        })
     } catch (error) {
       if (!signal.aborted)
         this.store.setState({
@@ -82,7 +96,8 @@ export class PasskeyController implements Contract {
   }
   openAdd = () => {
     this.close()
-    this.store.setState({ dialog: { kind: 'add' } })
+    this.store.setState({ dialog: { kind: 'add' }, enrollment: 'device' })
+    void this.prepare()
   }
   openRemove = (id: string) => {
     this.close()
@@ -92,6 +107,7 @@ export class PasskeyController implements Contract {
     this.read?.abort()
     this.operation?.abort()
     this.emailToken = undefined
+    this.registration = undefined
     this.store.setState({ dialog: null, busy: false, error: null, reauthentication: false, emailSent: false })
   }
   private async run(work: (signal: AbortSignal) => Promise<void>) {
@@ -121,6 +137,32 @@ export class PasskeyController implements Contract {
       if (this.operation === operation) this.store.setState({ busy: false })
     }
   }
+  prepare = () =>
+    this.run(async (signal) => {
+      const {
+        passkeyRegistrationStart: { node: ceremony },
+      } = await graphql(signal).mutation({
+        passkeyRegistrationStart: { node: ceremonySelection },
+      } satisfies MutationGenqlSelection)
+      const input = PasskeyFinishInput.parse(await credential(ceremony.options, ceremony.token, true, signal))
+      if (!signal.aborted) {
+        this.registration = { input, expiresAt: Number(ceremony.expiresAt) * 1000 }
+        this.store.setState({ enrollment: 'name' })
+      }
+    })
+  edit = (id: string | null) => {
+    this.store.setState({ editingId: id, error: null })
+  }
+  rename = (id: string, name: string) =>
+    this.run(async (signal) => {
+      const input = PasskeyRegistrationInput.parse({ name })
+      const {
+        passkeyUpdate: { node },
+      } = await graphql(signal).mutation({
+        passkeyUpdate: { __args: { id, input }, node: passkeySelection },
+      } satisfies MutationGenqlSelection)
+      if (!signal.aborted) this.store.setState((s) => ({ records: s.records.map((p) => (p.id === id ? node : p)) }))
+    })
   add = async (name: string) => {
     return this.run(async (signal) => {
       if (this.pendingCredential) {
@@ -134,25 +176,28 @@ export class PasskeyController implements Contract {
         this.pendingCredential = undefined
         if (confirmed) return
       }
-      const input = PasskeyRegistrationInput.parse({ name })
-      const {
-        passkeyRegistrationStart: { node: ceremony },
-      } = await graphql(signal).mutation({
-        passkeyRegistrationStart: { __args: { input }, node: ceremonySelection },
-      } satisfies MutationGenqlSelection)
-      const response = PasskeyFinishInput.parse(await credential(ceremony.options, ceremony.token, true, signal))
+      const nameInput = PasskeyRegistrationInput.parse({ name })
+      const registration = this.registration
+      if (!registration || registration.expiresAt <= Date.now()) {
+        this.registration = undefined
+        this.store.setState({ enrollment: 'device' })
+        throw new Error('This verification expired. Verify your device again, then save your passkey name.')
+      }
+      const response = registration.input
       this.pendingCredential = response.rawId
       const {
         passkeyRegistrationFinish: { node },
       } = await graphql(signal).mutation({
-        passkeyRegistrationFinish: { __args: { input: response }, node: passkeySelection },
+        passkeyRegistrationFinish: { __args: { input: response, name: nameInput }, node: passkeySelection },
       } satisfies MutationGenqlSelection)
       if (!signal.aborted) {
         this.pendingCredential = undefined
+        this.registration = undefined
         this.store.setState((s) => ({
           records: [...s.records.filter((p) => p.id !== node.id), node],
           dialog: null,
           status: 'ready',
+          currentPasskeyId: node.id,
         }))
       }
     })
@@ -176,7 +221,12 @@ export class PasskeyController implements Contract {
       } = await graphql(signal).mutation({ passkeyRemove: { __args: { id }, node: true } } satisfies MutationGenqlSelection)
       if (!signal.aborted) {
         this.pendingRemoval = undefined
-        this.store.setState((s) => ({ records: s.records.filter((p) => p.id !== node), dialog: null }))
+        notify.info('Passkey revoked')
+        this.store.setState((s) => ({
+          records: s.records.filter((p) => p.id !== node),
+          dialog: null,
+          currentPasskeyId: s.currentPasskeyId === node ? null : s.currentPasskeyId,
+        }))
       }
     })
   }

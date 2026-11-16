@@ -43,6 +43,7 @@ export class AuthController implements SignupController, SigninController {
 
   private mode: 'signup' | 'signin' = 'signin'
   private passkeyUncertain = false
+  private expectedPasskey?: string
   private confirmed = false
   private destination: string | undefined
   private resendDeadline = 0
@@ -89,7 +90,7 @@ export class AuthController implements SignupController, SigninController {
     this.passkeyUncertain = false
     this.destination = undefined
     const { currentUser, status } = this.store.getState()
-    this.store.setState({ ...initialFormState, currentUser, status })
+    this.store.setState({ ...initialFormState, currentUser, status, step: mode === 'signin' ? 'choose' : 'email' })
     this.authLocation = ''
     this.applyAuthUrl()
     this.unsubscribeUrl = this.url.store.subscribe(this.applyAuthUrl)
@@ -118,7 +119,13 @@ export class AuthController implements SignupController, SigninController {
         this.abort?.abort()
         this.lastCode = undefined
         this.setResendDeadline(0)
-        this.store.setState({ step: 'email', code: '', pending: null, error: null, serverError: null })
+        this.store.setState({
+          step: this.mode === 'signin' ? 'choose' : 'email',
+          code: '',
+          pending: null,
+          error: null,
+          serverError: null,
+        })
       }
       return
     }
@@ -171,46 +178,27 @@ export class AuthController implements SignupController, SigninController {
     this.navigate(this.mode === 'signup' ? '/signup' : '/login')
   }
   requestCode = async (email: string) => {
-    if (this.mode !== 'signin') {
-      await this.request('request', email)
-      return
-    }
-    if (this.store.getState().pending || this.store.getState().step !== 'email') return
-    const input = emailRequestSchema('signin').safeParse({ email, delivery: 'COOKIE' })
-    if (!input.success) {
-      this.onInvalidEmail()
-      return
-    }
-    this.store.setState({ email: input.data.email })
-    let passkey: boolean | undefined
-    let completed = false
-    await this.perform(
-      'request',
-      async (signal) => {
-        const result = await graphql(signal).query({
-          emailAuthenticationMethods: { __args: { email: input.data.email }, node: true },
-        } satisfies QueryGenqlSelection)
-        passkey = result.emailAuthenticationMethods.node
-      },
-      () => {
-        completed = true
-        if (passkey) this.store.setState({ step: 'passkey' })
-      },
-    )
-    if (!completed || this.store.getState().email !== input.data.email) return
-    if (passkey && this.store.getState().step === 'passkey') await this.verifyPasskey()
-    else if (passkey === false && this.store.getState().step === 'email') await this.request('request', input.data.email)
+    await this.request('request', email)
   }
   useEmailCode = async () => {
-    this.passkeyUncertain = false
     this.abort?.abort()
     this.generation += 1
     this.confirmed = false
-    this.store.setState({ step: 'email', pending: null, serverError: null, error: null })
-    await this.request('request')
+    this.passkeyUncertain = false
+    this.expectedPasskey = undefined
+    this.store.setState({ step: 'email', pending: null, error: null, serverError: null })
+  }
+  backToMethods = () => {
+    this.abort?.abort()
+    this.generation += 1
+    this.confirmed = false
+    this.passkeyUncertain = false
+    this.expectedPasskey = undefined
+    this.store.setState({ step: 'choose', pending: null, error: null, serverError: null })
   }
   verifyPasskey = async () => {
-    if (this.store.getState().pending || this.store.getState().step !== 'passkey') return
+    if (this.store.getState().pending || !['choose', 'passkey'].includes(this.store.getState().step)) return
+    this.store.setState({ step: 'passkey' })
     await this.perform(
       'passkey',
       async (signal) => {
@@ -218,9 +206,9 @@ export class AuthController implements SignupController, SigninController {
           const restored = await this.refreshCurrentUser(signal, false)
           if (restored) {
             const result = await graphql(signal).query({
-              userProfile: { __args: { id: restored.userId }, node: { email: true } },
+              session: { node: { passkey: { credentialId: true } } },
             } satisfies QueryGenqlSelection)
-            if (result.userProfile?.node.email === this.store.getState().email) this.confirmed = true
+            if (result.session.node.passkey?.credentialId === this.expectedPasskey) this.confirmed = true
           }
           this.passkeyUncertain = false
           if (!this.confirmed)
@@ -230,9 +218,10 @@ export class AuthController implements SignupController, SigninController {
           const {
             passkeyAuthenticationStart: { node: ceremony },
           } = await graphql(signal).mutation({
-            passkeyAuthenticationStart: { __args: { email: this.store.getState().email }, node: ceremonySelection },
+            passkeyAuthenticationStart: { node: ceremonySelection },
           } satisfies MutationGenqlSelection)
           const input = PasskeyFinishInput.parse(await credential(ceremony.options, ceremony.token, false, signal))
+          this.expectedPasskey = input.rawId
           this.passkeyUncertain = true
           await graphql(signal).mutation({
             passkeyAuthenticationFinish: { __args: { input }, node: { accessLifetime: { expiresInSeconds: true } } },
@@ -491,7 +480,12 @@ export class AuthController implements SignupController, SigninController {
         })
         return
       }
-      if (operation === 'passkey' && error instanceof ApiError && error.status < 500) this.passkeyUncertain = false
+      if (operation === 'passkey') {
+        if (error instanceof ApiError && error.status < 500) this.passkeyUncertain = false
+        this.failedOperation = operation
+        this.store.setState({ error: null, serverError: apiErrorMessage(error) })
+        return
+      }
       this.failedOperation = operation
       this.lastCode = undefined
       const reason = error instanceof ApiError ? authFailureReasons[error.code] : undefined

@@ -10,6 +10,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub provider: String,
     pub authenticated_at: i64,
+    pub passkey_id: Option<i64>,
 }
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}

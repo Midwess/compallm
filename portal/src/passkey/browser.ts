@@ -1,5 +1,6 @@
 import type { PasskeyOptions, PasskeyFinishInput } from '@compallm/contract/graphql'
-type Options = Omit<PasskeyOptions, '__typename' | 'credentials'> & {
+type Options = Omit<PasskeyOptions, '__typename' | 'credentials' | 'extensions'> & {
+  extensions: Omit<PasskeyOptions['extensions'], '__typename'>
   credentials: Pick<PasskeyOptions['credentials'][number], 'id' | 'transports'>[]
 }
 export function supportsPasskeys() {
@@ -41,8 +42,17 @@ export async function credential(
           },
           pubKeyCredParams: options.algorithms.map((alg) => ({ type: 'public-key', alg })),
           excludeCredentials: descriptors,
-          authenticatorSelection: { userVerification: 'required', residentKey: 'preferred' },
+          authenticatorSelection: { userVerification: 'required', residentKey: 'required', requireResidentKey: true },
           attestation: 'none',
+          extensions: {
+            ...(options.extensions.credProps !== null ? { credProps: options.extensions.credProps } : {}),
+            ...(options.extensions.credentialProtectionPolicy
+              ? { credentialProtectionPolicy: options.extensions.credentialProtectionPolicy }
+              : {}),
+            ...(options.extensions.enforceCredentialProtectionPolicy !== null
+              ? { enforceCredentialProtectionPolicy: options.extensions.enforceCredentialProtectionPolicy }
+              : {}),
+          },
           timeout: options.timeout,
         },
       })
@@ -51,7 +61,7 @@ export async function credential(
         publicKey: {
           challenge: decode(options.challenge),
           rpId: options.rpId,
-          allowCredentials: descriptors,
+          ...(descriptors.length ? { allowCredentials: descriptors } : {}),
           userVerification: 'required',
           timeout: options.timeout,
         },
@@ -90,6 +100,8 @@ export const ceremonySelection = {
     credentials: { id: true, transports: true },
     timeout: true,
     userVerification: true,
+    residentKey: true,
+    extensions: { credProps: true, credentialProtectionPolicy: true, enforceCredentialProtectionPolicy: true },
   },
 } as const
 export const passkeySelection = { credentialId: true, id: true, name: true, registeredAt: true, lastUsedAt: true } as const

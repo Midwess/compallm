@@ -198,36 +198,48 @@ test('signout cancels deduplicated identity checks and ignores their late result
   }
 })
 
-test('passkey-first login sends email only after the explicit OTP alternative', { timeout: 10000 }, async () => {
-  const originalFetch = globalThis.fetch
-  const controller = new AuthController(urlController())
-  let sent = 0
-  globalThis.fetch = async (_url, init) => {
-    const { query } = JSON.parse(init.body)
-    if (query.includes('emailAuthenticationMethods')) return reply({ emailAuthenticationMethods: { node: true } })
-    if (query.includes('passkeyAuthenticationStart'))
-      return Response.json({
-        errors: [{ message: 'Use your device or choose email.', extensions: { code: 'PASSKEY_UNAVAILABLE', status: 503 } }],
-      })
-    if (query.includes('emailSigninRequest')) {
-      sent++
-      return reply({ emailSigninRequest: { node: { lifetime: { expiresInSeconds: '600', throttleSeconds: '30' } } } })
+test(
+  'discoverable login starts without email and the email alternative waits for an explicit address',
+  { timeout: 10000 },
+  async () => {
+    const originalFetch = globalThis.fetch
+    const controller = new AuthController(urlController())
+    let sent = 0,
+      started = 0
+    globalThis.fetch = async (_url, init) => {
+      const { query, variables } = JSON.parse(init.body)
+      if (query.includes('passkeyAuthenticationStart')) {
+        started++
+        assert.ok(!query.includes('email:'))
+        assert.ok(!JSON.stringify(variables ?? {}).includes('@'))
+        return Response.json({
+          errors: [{ message: 'Passkey unavailable', extensions: { code: 'PASSKEY_UNAVAILABLE', status: 503 } }],
+        })
+      }
+      if (query.includes('emailSigninRequest')) {
+        sent++
+        return reply({ emailSigninRequest: { node: { lifetime: { expiresInSeconds: '600', throttleSeconds: '30' } } } })
+      }
+      throw new Error('Unexpected request')
     }
-    throw new Error('Unexpected request')
-  }
-  try {
-    controller.start('signin')
-    await controller.requestCode('reader@example.com')
-    assert.equal(controller.store.getState().step, 'passkey')
-    assert.equal(sent, 0)
-    await controller.useEmailCode()
-    assert.equal(controller.store.getState().step, 'code')
-    assert.equal(sent, 1)
-  } finally {
-    controller.stop()
-    globalThis.fetch = originalFetch
-  }
-})
+    try {
+      controller.start('signin')
+      assert.equal(controller.store.getState().step, 'choose')
+      await controller.verifyPasskey()
+      assert.equal(started, 1)
+      assert.equal(sent, 0)
+      await controller.useEmailCode()
+      assert.equal(controller.store.getState().step, 'email')
+      assert.equal(sent, 0)
+      await controller.requestCode('reader@example.com')
+      assert.equal(controller.store.getState().step, 'code')
+      assert.equal(sent, 1)
+    } finally {
+      controller.stop()
+      globalThis.fetch = originalFetch
+    }
+  },
+)
 
 test('the optional security route is offered once and reload skips to the workspace', async (t) => {
   const { loader } = await server.ssrLoadModule('/src/routes/security.tsx')

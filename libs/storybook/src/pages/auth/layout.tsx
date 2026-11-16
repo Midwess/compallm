@@ -2,7 +2,20 @@ import type { ReactNode } from 'react'
 import { BookOpenIcon } from '@phosphor-icons/react/dist/csr/BookOpen'
 import { SparkleIcon } from '@phosphor-icons/react/dist/csr/Sparkle'
 
-export function AuthLayout({ children }: { children: ReactNode }) {
+export function AuthLayout({ children, centered = false }: { children: ReactNode; centered?: boolean }) {
+  if (centered) {
+    return (
+      <main
+        className="flex min-h-svh justify-center bg-linear-to-b from-surface to-background
+          px-4 pt-[30.5svh] pb-22 font-sans text-foreground"
+      >
+        <section aria-label="Account access" className="flex w-72 max-w-full flex-col items-center">
+          <BookOpenIcon size={48} weight="fill" className="mb-8 text-foreground" aria-label="Compallm" />
+          <div className="w-full">{children}</div>
+        </section>
+      </main>
+    )
+  }
   return (
     <main
       className={`

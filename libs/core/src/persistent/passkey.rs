@@ -7,6 +7,13 @@ use uuid::Uuid;
 #[async_trait::async_trait]
 pub trait PasskeyRepository: Send + Sync {
     async fn list(&self, user_id: u64) -> Result<Vec<PasskeyRecord>, AuthError>;
+    async fn find_discoverable(
+        &self,
+        handle: Uuid,
+        credential_id: &[u8],
+    ) -> Result<Option<(u64, PasskeyRecord)>, AuthError>;
+    async fn rename(&self, user_id: u64, id: u64, name: &str) -> Result<(), AuthError>;
+    async fn session_passkey(&self, session: &Session) -> Result<Option<PasskeyRecord>, AuthError>;
     async fn lock_user(&self, user_id: u64) -> Result<Uuid, AuthError>;
     async fn create(&self, user_id: u64, credential: PasskeyRecord) -> Result<(), AuthError>;
     async fn update(&self, credential: &PasskeyRecord) -> Result<(), AuthError>;
@@ -20,6 +27,7 @@ pub trait PasskeyRepository: Send + Sync {
         session: &Session,
         method: &str,
         at: u64,
+        credential_id: Option<u64>,
     ) -> Result<(), AuthError>;
     async fn recently_verified(&self, session: &Session, since: u64) -> Result<bool, AuthError>;
     async fn ensure_email_identity(&self, user_id: u64) -> Result<(), AuthError>;

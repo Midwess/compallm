@@ -71,6 +71,88 @@ impl Repository for PasskeyRepository {
             .map(TryInto::try_into)
             .collect()
     }
+    async fn find_discoverable(
+        &self,
+        handle: Uuid,
+        credential_id: &[u8],
+    ) -> Result<Option<(u64, PasskeyRecord)>, AuthError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let user = handles::Entity::find()
+            .filter(handles::Column::Handle.eq(handle))
+            .one(db)
+            .await
+            .map_err(anyhow::Error::from)?;
+        let Some(user) = user else {
+            return Ok(None);
+        };
+        let owned = identities::Entity::find()
+            .select_only()
+            .column(identities::Column::PasskeyId)
+            .filter(identities::Column::UserId.eq(user.user_id))
+            .filter(identities::Column::Provider.eq("passkey"))
+            .into_query();
+        let record = credentials::Entity::find()
+            .filter(credentials::Column::CredentialId.eq(credential_id.to_vec()))
+            .filter(credentials::Column::Id.in_subquery(owned))
+            .one(db)
+            .await
+            .map_err(anyhow::Error::from)?;
+        record
+            .map(|record| {
+                Ok((
+                    crate::from_bigint(user.user_id)
+                        .map_err(|e| AuthError::Unexpected(e.into()))?,
+                    record.try_into()?,
+                ))
+            })
+            .transpose()
+    }
+    async fn rename(&self, user_id: u64, credential_id: u64, name: &str) -> Result<(), AuthError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let owned = identities::Entity::find()
+            .select_only()
+            .column(identities::Column::PasskeyId)
+            .filter(identities::Column::UserId.eq(id(user_id)?))
+            .filter(identities::Column::Provider.eq("passkey"))
+            .into_query();
+        let result = credentials::Entity::update_many()
+            .filter(credentials::Column::Id.eq(id(credential_id)?))
+            .filter(credentials::Column::Id.in_subquery(owned))
+            .col_expr(credentials::Column::FriendlyName, Expr::value(name))
+            .exec(db)
+            .await
+            .map_err(anyhow::Error::from)?;
+        if result.rows_affected != 1 {
+            return Err(AuthError::InvalidPasskey);
+        }
+        Ok(())
+    }
+    async fn session_passkey(&self, session: &Session) -> Result<Option<PasskeyRecord>, AuthError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let used = methods::Entity::find()
+            .select_only()
+            .column(methods::Column::PasskeyId)
+            .filter(methods::Column::SessionId.eq(id(session.id)?))
+            .filter(methods::Column::Method.eq("passkey"))
+            .into_query();
+        let owned = identities::Entity::find()
+            .select_only()
+            .column(identities::Column::PasskeyId)
+            .filter(identities::Column::UserId.eq(id(session.user_id)?))
+            .filter(identities::Column::Provider.eq("passkey"))
+            .into_query();
+        credentials::Entity::find()
+            .filter(credentials::Column::Id.in_subquery(used))
+            .filter(credentials::Column::Id.in_subquery(owned))
+            .one(db)
+            .await
+            .map_err(anyhow::Error::from)?
+            .map(TryInto::try_into)
+            .transpose()
+    }
     async fn lock_user(&self, user_id: u64) -> Result<Uuid, AuthError> {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
@@ -223,6 +305,7 @@ impl Repository for PasskeyRepository {
         session: &Session,
         method: &str,
         at: u64,
+        credential_id: Option<u64>,
     ) -> Result<(), AuthError> {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
@@ -231,6 +314,7 @@ impl Repository for PasskeyRepository {
             method: Set(method.into()),
             provider: Set(String::new()),
             authenticated_at: Set(id(at)?),
+            passkey_id: Set(credential_id.map(id).transpose()?),
         })
         .on_conflict(
             OnConflict::columns([
@@ -238,7 +322,7 @@ impl Repository for PasskeyRepository {
                 methods::Column::Method,
                 methods::Column::Provider,
             ])
-            .update_column(methods::Column::AuthenticatedAt)
+            .update_columns([methods::Column::AuthenticatedAt, methods::Column::PasskeyId])
             .to_owned(),
         )
         .exec(db)

@@ -10,6 +10,13 @@ use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use uuid::Uuid;
 use webauthn_rs::{Webauthn, WebauthnBuilder, prelude::*};
+use webauthn_rs_core::{
+    WebauthnCore,
+    proto::{
+        AttestationConveyancePreference, AuthenticationState, RegistrationState,
+        UserVerificationPolicy,
+    },
+};
 
 pub const CEREMONY_SECONDS: u64 = 300;
 pub const MAX_PASSKEYS: usize = 20;
@@ -31,9 +38,8 @@ pub struct Ceremony {
 }
 #[derive(Serialize, Deserialize)]
 struct Binding {
-    user_id: u64,
+    user_id: Option<u64>,
     session: Option<Session>,
-    name: Option<String>,
     verification: serde_json::Value,
     attempts: u8,
 }
@@ -52,6 +58,7 @@ pub struct PasskeyService {
     repository: &'static dyn PasskeyRepository,
     auth: &'static AuthService,
     webauthn: Option<Webauthn>,
+    discoverable: Option<WebauthnCore>,
     secret: String,
 }
 impl PasskeyService {
@@ -77,7 +84,19 @@ impl PasskeyService {
                     .map_err(|_| AuthError::InvalidConfiguration)?,
             )
         };
+        // The core adapter enables resident registration and modal discovery with the same validated RP policy.
+        let discoverable = webauthn.as_ref().map(|engine| {
+            WebauthnCore::new_unsafe_experts_only(
+                "Compallm",
+                rp_id,
+                engine.get_allowed_origins().to_vec(),
+                std::time::Duration::from_secs(CEREMONY_SECONDS),
+                Some(false),
+                Some(false),
+            )
+        });
         Ok(Self {
+            discoverable,
             repository,
             auth,
             webauthn,
@@ -86,6 +105,11 @@ impl PasskeyService {
     }
     fn engine(&self) -> Result<&Webauthn, AuthError> {
         self.webauthn.as_ref().ok_or(AuthError::PasskeyUnavailable)
+    }
+    fn discovery_engine(&self) -> Result<&WebauthnCore, AuthError> {
+        self.discoverable
+            .as_ref()
+            .ok_or(AuthError::PasskeyUnavailable)
     }
     fn sign(&self, ticket: &Ticket) -> Result<String, AuthError> {
         let payload = URL_SAFE_NO_PAD.encode(serde_json::to_vec(ticket)?);
@@ -198,36 +222,18 @@ impl PasskeyService {
         match (&binding.session, actor) {
             (Some(session), Some(actor))
                 if session.has_same_identity(&actor.session)
-                    && binding.user_id == actor.session.user_id => {}
+                    && binding.user_id == Some(actor.session.user_id) => {}
             (None, None) => {}
             _ => return Err(AuthError::InvalidSession),
         }
         Ok((ceremony, binding))
     }
     #[db_context::root]
-    pub async fn methods(&self, email: &str) -> Result<bool, AuthError> {
-        let email = compallm_utils::email::normalize_email(email);
-        compallm_utils::email::validate_email(&email).map_err(|_| AuthError::InvalidEmail)?;
-        let user = self
-            .auth
-            .users
-            .find_by_email(&email)
-            .await?
-            .ok_or(AuthError::UserNotFound)?;
-        self.active_user(user.id).await?;
-        Ok(self.webauthn.is_some() && !self.repository.list(user.id).await?.is_empty())
-    }
-    #[db_context::root]
     pub async fn registration_start(
         &self,
         actor: &UserAccessToken,
-        name: &str,
     ) -> Result<CeremonyStart, AuthError> {
         self.actor(actor, true).await?;
-        let name = name.trim();
-        if name.is_empty() || name.chars().count() > 64 {
-            return Err(AuthError::InvalidPasskey);
-        }
         let user = self.active_user(actor.session.user_id).await?;
         crate::transaction!(db, {
             let handle = self.repository.lock_user(user.id).await?;
@@ -235,26 +241,46 @@ impl PasskeyService {
             if credentials.len() >= MAX_PASSKEYS {
                 return Err(AuthError::PasskeyLimit);
             }
+            let display = if user.display_name.is_empty() {
+                &user.email
+            } else {
+                &user.display_name
+            };
+            let options = self
+                .discovery_engine()?
+                .new_challenge_register_builder(handle.as_bytes(), &user.email, display)
+                .map_err(|_| AuthError::InvalidPasskey)?
+                .attestation(AttestationConveyancePreference::None)
+                .credential_algorithms(COSEAlgorithm::secure_algs())
+                .require_resident_key(true)
+                .user_verification_policy(UserVerificationPolicy::Required)
+                .reject_synchronised_authenticators(false)
+                .exclude_credentials(Some(
+                    credentials
+                        .iter()
+                        .map(|p| p.credential.cred_id().clone())
+                        .collect(),
+                ))
+                .extensions(Some(
+                    webauthn_rs_core::proto::RequestRegistrationExtensions {
+                        cred_props: Some(true),
+                        uvm: Some(true),
+                        cred_protect: Some(webauthn_rs_core::proto::CredProtect {
+                            credential_protection_policy: webauthn_rs_core::proto::CredentialProtectionPolicy::UserVerificationRequired,
+                            enforce_credential_protection_policy: Some(false),
+                        }),
+                        ..Default::default()
+                    },
+                ));
             let (options, state) = self
-                .engine()?
-                .start_passkey_registration(
-                    handle,
-                    &user.email,
-                    &user.display_name,
-                    Some(
-                        credentials
-                            .iter()
-                            .map(|p| p.credential.cred_id().clone())
-                            .collect(),
-                    ),
-                )
+                .discovery_engine()?
+                .generate_challenge_register(options)
                 .map_err(|_| AuthError::InvalidPasskey)?;
             self.store(
                 "registration",
                 Binding {
-                    user_id: user.id,
+                    user_id: Some(user.id),
                     session: Some(actor.session.clone()),
-                    name: Some(name.into()),
                     verification: serde_json::to_value(state)?,
                     attempts: 0,
                 },
@@ -269,30 +295,37 @@ impl PasskeyService {
         actor: &UserAccessToken,
         token: &str,
         response: RegisterPublicKeyCredential,
+        name: &str,
     ) -> Result<PasskeyRecord, AuthError> {
+        let name = name.trim();
+        if name.is_empty() || name.chars().count() > 64 {
+            return Err(AuthError::InvalidPasskey);
+        }
         self.actor(actor, true).await?;
         let id = hero::distributed_id::try_gen_id().await?;
         crate::transaction!(db, {
             self.repository.lock_user(actor.session.user_id).await?;
             self.actor(actor, true).await?;
             let (ceremony, binding) = self.load(token, "registration", Some(actor)).await?;
-            let state: PasskeyRegistration = serde_json::from_value(binding.verification)?;
+            let state: RegistrationState = serde_json::from_value(binding.verification)?;
             let credential = self
-                .engine()?
-                .finish_passkey_registration(&response, &state)
+                .discovery_engine()?
+                .register_credential(&response, &state, None)
                 .map_err(|_| AuthError::InvalidPasskey)?;
-            if self.repository.list(binding.user_id).await?.len() >= MAX_PASSKEYS {
+            let user_id = binding.user_id.ok_or(AuthError::InvalidToken)?;
+            if self.repository.list(user_id).await?.len() >= MAX_PASSKEYS {
                 return Err(AuthError::PasskeyLimit);
             }
             let record = PasskeyRecord {
                 id,
-                name: binding.name.ok_or(AuthError::InvalidPasskey)?,
+                name: name.into(),
                 registered_at: unix_timestamp(),
                 last_used_at: None,
-                credential,
+                credential: credential.into(),
             };
+            self.repository.create(user_id, record.clone()).await?;
             self.repository
-                .create(binding.user_id, record.clone())
+                .record_method(&actor.session, "passkey", unix_timestamp(), Some(record.id))
                 .await?;
             if !self.repository.delete_challenge(ceremony.id).await? {
                 return Err(AuthError::InvalidToken);
@@ -301,17 +334,26 @@ impl PasskeyService {
         })
     }
     #[db_context::root]
-    pub async fn authentication_start(&self, email: &str) -> Result<CeremonyStart, AuthError> {
-        let email = compallm_utils::email::normalize_email(email);
-        compallm_utils::email::validate_email(&email).map_err(|_| AuthError::InvalidEmail)?;
-        let user = self
-            .auth
-            .users
-            .find_by_email(&email)
-            .await?
-            .ok_or(AuthError::UserNotFound)?;
-        self.active_user(user.id).await?;
-        self.start_authentication(user.id, None).await
+    pub async fn authentication_start(&self) -> Result<CeremonyStart, AuthError> {
+        let builder = self
+            .discovery_engine()?
+            .new_challenge_authenticate_builder(Vec::new(), Some(UserVerificationPolicy::Required))
+            .map_err(|_| AuthError::InvalidPasskey)?;
+        let (options, state) = self
+            .discovery_engine()?
+            .generate_challenge_authenticate(builder)
+            .map_err(|_| AuthError::InvalidPasskey)?;
+        self.store(
+            "authentication",
+            Binding {
+                user_id: None,
+                session: None,
+                verification: serde_json::to_value(state)?,
+                attempts: 0,
+            },
+            serde_json::to_value(options)?,
+        )
+        .await
     }
     #[db_context::root]
     pub async fn reauthentication_start(
@@ -344,9 +386,8 @@ impl PasskeyService {
         self.store(
             purpose,
             Binding {
-                user_id,
+                user_id: Some(user_id),
                 session,
-                name: None,
                 verification: serde_json::to_value(state)?,
                 attempts: 0,
             },
@@ -359,7 +400,7 @@ impl PasskeyService {
         token: &str,
         response: &PublicKeyCredential,
         actor: Option<&UserAccessToken>,
-    ) -> Result<(u64, Uuid), AuthError> {
+    ) -> Result<(u64, Uuid, u64), AuthError> {
         let purpose = if actor.is_some() {
             "reauthentication"
         } else {
@@ -372,24 +413,51 @@ impl PasskeyService {
             .await?
             .ok_or(AuthError::InvalidToken)?;
         let preliminary: Binding = serde_json::from_value(preliminary.state)?;
-        self.repository.lock_user(preliminary.user_id).await?;
+        let (user_id, selected) = if actor.is_none() {
+            let handle = response
+                .get_user_unique_id()
+                .and_then(|bytes| Uuid::from_slice(bytes).ok())
+                .ok_or(AuthError::InvalidPasskey)?;
+            let (user_id, record) = self
+                .repository
+                .find_discoverable(handle, response.get_credential_id())
+                .await?
+                .ok_or(AuthError::InvalidPasskey)?;
+            (user_id, Some((handle, record.id)))
+        } else {
+            (preliminary.user_id.ok_or(AuthError::InvalidToken)?, None)
+        };
+        self.repository.lock_user(user_id).await?;
         let (ceremony, binding) = self.load(token, purpose, actor).await?;
-        self.active_user(binding.user_id).await?;
+        self.active_user(user_id).await?;
         if let Some(actor) = actor {
             self.actor(actor, false).await?;
         }
-        let state: PasskeyAuthentication = serde_json::from_value(binding.verification)?;
-        let result = self
-            .engine()?
-            .finish_passkey_authentication(response, &state)
-            .map_err(|_| AuthError::InvalidPasskey)?;
-        let mut record = self
-            .repository
-            .list(binding.user_id)
-            .await?
+        let records = self.repository.list(user_id).await?;
+        let mut record = records
             .into_iter()
-            .find(|r| r.credential.cred_id() == result.cred_id())
+            .find(|r| r.credential.cred_id().as_ref() == response.get_credential_id())
             .ok_or(AuthError::InvalidPasskey)?;
+        let result = if let Some((handle, id)) = selected {
+            let reloaded = self
+                .repository
+                .find_discoverable(handle, response.get_credential_id())
+                .await?
+                .ok_or(AuthError::InvalidPasskey)?;
+            if reloaded.0 != user_id || reloaded.1.id != id {
+                return Err(AuthError::InvalidPasskey);
+            }
+            let mut state: AuthenticationState = serde_json::from_value(binding.verification)?;
+            state.set_allowed_credentials(vec![record.credential.clone().into()]);
+            self.discovery_engine()?
+                .authenticate_credential(response, &state)
+                .map_err(|_| AuthError::InvalidPasskey)?
+        } else {
+            let state: PasskeyAuthentication = serde_json::from_value(binding.verification)?;
+            self.engine()?
+                .finish_passkey_authentication(response, &state)
+                .map_err(|_| AuthError::InvalidPasskey)?
+        };
         let current: Credential = record.credential.clone().into();
         if (current.counter != 0 || result.counter() != 0) && result.counter() <= current.counter {
             return Err(AuthError::InvalidPasskey);
@@ -400,7 +468,7 @@ impl PasskeyService {
             .ok_or(AuthError::InvalidPasskey)?;
         record.last_used_at = Some(unix_timestamp());
         self.repository.update(&record).await?;
-        Ok((binding.user_id, ceremony.id))
+        Ok((user_id, ceremony.id, record.id))
     }
     #[db_context::root]
     pub async fn authentication_finish(
@@ -410,7 +478,8 @@ impl PasskeyService {
     ) -> Result<UserTokens, AuthError> {
         self.auth.latest_dictionary().await?;
         crate::transaction!(db, {
-            let (user_id, ceremony) = self.verify_assertion(token, &response, None).await?;
+            let (user_id, ceremony, credential_id) =
+                self.verify_assertion(token, &response, None).await?;
             let (membership, _) = self
                 .auth
                 .organizations
@@ -424,6 +493,7 @@ impl PasskeyService {
                     membership,
                     self.auth.latest_dictionary().await?,
                     "passkey",
+                    Some(credential_id),
                 )
                 .await?;
             if !self.repository.delete_challenge(ceremony).await? {
@@ -441,14 +511,49 @@ impl PasskeyService {
     ) -> Result<(), AuthError> {
         self.actor(actor, false).await?;
         crate::transaction!(db, {
-            let (_, ceremony) = self.verify_assertion(token, &response, Some(actor)).await?;
+            let (_, ceremony, credential_id) =
+                self.verify_assertion(token, &response, Some(actor)).await?;
             self.repository
-                .record_method(&actor.session, "passkey", unix_timestamp())
+                .record_method(
+                    &actor.session,
+                    "passkey",
+                    unix_timestamp(),
+                    Some(credential_id),
+                )
                 .await?;
             if !self.repository.delete_challenge(ceremony).await? {
                 return Err(AuthError::InvalidToken);
             }
             Ok(())
+        })
+    }
+    #[db_context::root]
+    pub async fn rename(
+        &self,
+        actor: &UserAccessToken,
+        id: u64,
+        name: &str,
+    ) -> Result<PasskeyRecord, AuthError> {
+        self.actor(actor, false).await?;
+        let name = name.trim();
+        if name.is_empty() || name.chars().count() > 64 {
+            return Err(AuthError::InvalidPasskey);
+        }
+        crate::transaction!(db, {
+            self.repository.lock_user(actor.session.user_id).await?;
+            self.actor(actor, false).await?;
+            let mut record = self
+                .repository
+                .list(actor.session.user_id)
+                .await?
+                .into_iter()
+                .find(|p| p.id == id)
+                .ok_or(AuthError::InvalidPasskey)?;
+            record.name = name.into();
+            self.repository
+                .rename(actor.session.user_id, id, name)
+                .await?;
+            Ok(record)
         })
     }
     #[db_context::root]
@@ -502,9 +607,8 @@ impl PasskeyService {
                 purpose: ticket.purpose,
                 expires_at,
                 state: serde_json::to_value(Binding {
-                    user_id: user.id,
+                    user_id: Some(user.id),
                     session: Some(actor.session.clone()),
-                    name: None,
                     verification: serde_json::json!(hash),
                     attempts: 0,
                 })?,
@@ -552,7 +656,7 @@ impl PasskeyService {
                 Ok::<bool, AuthError>(false)
             } else {
                 self.repository
-                    .record_method(&actor.session, "email_code", unix_timestamp())
+                    .record_method(&actor.session, "email_code", unix_timestamp(), None)
                     .await?;
                 self.repository.delete_challenge(ceremony.id).await?;
                 Ok(true)

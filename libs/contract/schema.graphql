@@ -736,9 +736,10 @@ type MessageCompositionPreferences {
 }
 
 type Mutation {
-  passkeyRegistrationStart(input: PasskeyRegistrationInput!): PasskeyCeremonyPayload!
-  passkeyRegistrationFinish(input: PasskeyFinishInput!): PasskeySummaryPayload!
-  passkeyAuthenticationStart(email: String!): PasskeyCeremonyPayload!
+  passkeyRegistrationStart: PasskeyCeremonyPayload!
+  passkeyRegistrationFinish(input: PasskeyFinishInput!, name: PasskeyRegistrationInput!): PasskeySummaryPayload!
+  passkeyUpdate(id: ID!, input: PasskeyRegistrationInput!): PasskeySummaryPayload!
+  passkeyAuthenticationStart: PasskeyCeremonyPayload!
   passkeyAuthenticationFinish(input: PasskeyFinishInput!): SessionCredentialsPayload!
   passkeyReauthenticationStart: PasskeyCeremonyPayload!
   passkeyReauthenticationFinish(input: PasskeyFinishInput!): BooleanPayload!
@@ -860,6 +861,12 @@ type PasskeyDescriptor {
   transports: [String!]!
 }
 
+type PasskeyExtensions {
+  credProps: Boolean
+  credentialProtectionPolicy: String
+  enforceCredentialProtectionPolicy: Boolean
+}
+
 type PasskeyOptions {
   challenge: String!
   rpId: String!
@@ -869,7 +876,9 @@ type PasskeyOptions {
   userDisplayName: String
   algorithms: [Int!]!
   credentials: [PasskeyDescriptor!]!
+  extensions: PasskeyExtensions!
   timeout: Int!
+  residentKey: String
   userVerification: String!
 }
 
@@ -925,7 +934,6 @@ type ProviderTemplate {
 }
 
 type Query {
-  emailAuthenticationMethods(email: String!): BooleanPayload!
   passkeys: PasskeySummaryConnection!
   analyticUserProfile(key: String!): AnalyticUserProfilePayload
   onboardingContext: OnboardingContextPayload
@@ -980,6 +988,7 @@ type RolePayload {
 }
 
 type Session {
+  passkey: PasskeySummary
   "Public avatar for this user; clients show a fallback while absent or loading."
   avatarUrl: String
   "Login session identity, serialized as a string without numeric precision loss."

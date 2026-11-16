@@ -1722,6 +1722,7 @@ dependencies = [
  "uuid",
  "validify",
  "webauthn-rs",
+ "webauthn-rs-core",
 ]
 
 [[package]]
@@ -1859,6 +1860,7 @@ dependencies = [
  "validify",
  "webauthn-authenticator-rs",
  "webauthn-rs",
+ "webauthn-rs-core",
 ]
 
 [[package]]

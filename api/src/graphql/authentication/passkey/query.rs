@@ -1,17 +1,9 @@
 use super::PasskeySummary;
 use crate::{
-    graphql::{
-        base_type::{Collection, Payload},
-        error::Error,
-    },
+    graphql::{base_type::Collection, error::Error},
     http::authentication::{AuthenticationContext, UserContext},
 };
-use compallm_core::{
-    authentication::passkey::PasskeyService, persistent::passkey::PasskeyRepository,
-};
-pub async fn methods(email: &str, service: &PasskeyService) -> Result<Payload<bool>, Error> {
-    Ok(service.methods(email).await?.into())
-}
+use compallm_core::persistent::passkey::PasskeyRepository;
 pub async fn list(
     user: &UserContext,
     identity: &AuthenticationContext,

@@ -24,12 +24,6 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
-    async fn email_authentication_methods(
-        email: String,
-        #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
-    ) -> Result<Payload<bool>, Error> {
-        authentication::passkey::query::methods(&email, service).await
-    }
     async fn passkeys(
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] identity: &AuthenticationContext,
@@ -229,24 +223,31 @@ pub struct Mutation;
 #[graphql_object(context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Mutation {
     async fn passkey_registration_start(
-        input: authentication::passkey::input::PasskeyRegistrationInput,
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
     ) -> Result<Payload<authentication::passkey::PasskeyCeremony>, Error> {
-        authentication::passkey::mutation::registration_start(input, user, service).await
+        authentication::passkey::mutation::registration_start(user, service).await
     }
     async fn passkey_registration_finish(
         input: authentication::passkey::input::PasskeyFinishInput,
+        name: authentication::passkey::input::PasskeyRegistrationInput,
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
     ) -> Result<Payload<authentication::passkey::PasskeySummary>, Error> {
-        authentication::passkey::mutation::registration_finish(input, user, service).await
+        authentication::passkey::mutation::registration_finish(input, name, user, service).await
+    }
+    async fn passkey_update(
+        id: ID,
+        input: authentication::passkey::input::PasskeyRegistrationInput,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
+    ) -> Result<Payload<authentication::passkey::PasskeySummary>, Error> {
+        authentication::passkey::mutation::update(id, input, user, service).await
     }
     async fn passkey_authentication_start(
-        email: String,
         #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
     ) -> Result<Payload<authentication::passkey::PasskeyCeremony>, Error> {
-        authentication::passkey::mutation::authentication_start(&email, service).await
+        authentication::passkey::mutation::authentication_start(service).await
     }
     async fn passkey_authentication_finish(
         input: authentication::passkey::input::PasskeyFinishInput,

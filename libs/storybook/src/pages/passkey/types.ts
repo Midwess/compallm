@@ -4,6 +4,9 @@ export interface PasskeyState {
   records: Pick<PasskeySummary, 'id' | 'name' | 'registeredAt' | 'lastUsedAt'>[]
   status: 'loading' | 'ready' | 'denied' | 'error'
   dialog: { kind: 'add' } | { kind: 'remove'; id: string } | null
+  enrollment: 'device' | 'name'
+  editingId: string | null
+  currentPasskeyId: string | null
   busy: boolean
   error: string | null
   reauthentication: boolean
@@ -15,6 +18,9 @@ export interface PasskeyController {
   openAdd(): void
   openRemove(id: string): void
   close(): void
+  prepare(): Promise<boolean>
+  edit(id: string | null): void
+  rename(id: string, name: string): Promise<boolean>
   add(name: string): Promise<boolean>
   remove(id: string): Promise<boolean>
   verifyPasskey(): Promise<boolean>

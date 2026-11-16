@@ -17,6 +17,7 @@ pub struct State {
     pub challenges: HashMap<Uuid, Ceremony>,
     pub evidence: HashMap<(u64, String), u64>,
     pub handles: HashMap<u64, Uuid>,
+    pub session_credentials: HashMap<u64, u64>,
 }
 #[async_trait::async_trait]
 impl PasskeyRepository for MemoryPasskeys {
@@ -30,6 +31,42 @@ impl PasskeyRepository for MemoryPasskeys {
             .filter(|(u, _)| *u == user)
             .map(|(_, r)| r.clone())
             .collect())
+    }
+    async fn find_discoverable(
+        &self,
+        handle: Uuid,
+        credential_id: &[u8],
+    ) -> Result<Option<(u64, PasskeyRecord)>, AuthError> {
+        let state = self.state.lock().unwrap();
+        Ok(state
+            .records
+            .values()
+            .find(|(user, record)| {
+                state.handles.get(user) == Some(&handle)
+                    && record.credential.cred_id().as_ref() == credential_id
+            })
+            .cloned())
+    }
+    async fn rename(&self, user: u64, id: u64, name: &str) -> Result<(), AuthError> {
+        let mut state = self.state.lock().unwrap();
+        let (owner, record) = state
+            .records
+            .get_mut(&id)
+            .ok_or(AuthError::InvalidPasskey)?;
+        if *owner != user {
+            return Err(AuthError::InvalidPasskey);
+        }
+        record.name = name.into();
+        Ok(())
+    }
+    async fn session_passkey(&self, session: &Session) -> Result<Option<PasskeyRecord>, AuthError> {
+        let state = self.state.lock().unwrap();
+        Ok(state
+            .session_credentials
+            .get(&session.id)
+            .and_then(|id| state.records.get(id))
+            .filter(|(owner, _)| *owner == session.user_id)
+            .map(|(_, r)| r.clone()))
     }
     async fn lock_user(&self, user: u64) -> Result<Uuid, AuthError> {
         Ok(*self
@@ -87,7 +124,15 @@ impl PasskeyRepository for MemoryPasskeys {
         session: &Session,
         method: &str,
         at: u64,
+        credential_id: Option<u64>,
     ) -> Result<(), AuthError> {
+        if let Some(id) = credential_id {
+            self.state
+                .lock()
+                .unwrap()
+                .session_credentials
+                .insert(session.id, id);
+        }
         self.state
             .lock()
             .unwrap()
@@ -114,5 +159,62 @@ impl PasskeyRepository for MemoryPasskeys {
             .challenges
             .retain(|_, c| c.expires_at > now);
         Ok(())
+    }
+}
+
+pub struct ResidentAuthenticator {
+    inner: webauthn_authenticator_rs::softpasskey::SoftPasskey,
+    credential: Option<webauthn_rs_core::proto::AllowCredentials>,
+    handle: Option<webauthn_rs_core::proto::Base64UrlSafeData>,
+}
+impl ResidentAuthenticator {
+    pub fn new() -> Self {
+        Self {
+            inner: webauthn_authenticator_rs::softpasskey::SoftPasskey::new(true),
+            credential: None,
+            handle: None,
+        }
+    }
+}
+impl webauthn_authenticator_rs::AuthenticatorBackend for ResidentAuthenticator {
+    fn perform_register(
+        &mut self,
+        origin: url::Url,
+        mut options: webauthn_rs_core::proto::PublicKeyCredentialCreationOptions,
+        timeout: u32,
+    ) -> Result<
+        webauthn_rs_core::proto::RegisterPublicKeyCredential,
+        webauthn_authenticator_rs::error::WebauthnCError,
+    > {
+        self.handle = Some(options.user.id.clone());
+        if let Some(selection) = &mut options.authenticator_selection {
+            selection.require_resident_key = false;
+            selection.resident_key = None;
+        }
+        let response = self.inner.perform_register(origin, options, timeout)?;
+        self.credential = Some(webauthn_rs_core::proto::AllowCredentials {
+            type_: "public-key".into(),
+            id: response.raw_id.clone(),
+            transports: None,
+        });
+        Ok(response)
+    }
+    fn perform_auth(
+        &mut self,
+        origin: url::Url,
+        mut options: webauthn_rs_core::proto::PublicKeyCredentialRequestOptions,
+        timeout: u32,
+    ) -> Result<
+        webauthn_rs_core::proto::PublicKeyCredential,
+        webauthn_authenticator_rs::error::WebauthnCError,
+    > {
+        if options.allow_credentials.is_empty() {
+            options
+                .allow_credentials
+                .push(self.credential.clone().unwrap());
+        }
+        let mut response = self.inner.perform_auth(origin, options, timeout)?;
+        response.response.user_handle = self.handle.clone();
+        Ok(response)
     }
 }

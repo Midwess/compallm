@@ -65,11 +65,6 @@ export function ProfileSettings() {
             />
           </Row>
         </Rows>
-        {c.reopenOnboarding ? (
-          <Button variant="ghost" onClick={c.reopenOnboarding}>
-            Open onboarding
-          </Button>
-        ) : null}
         <Section title="Danger zone" description="Manage your personal account.">
           <Rows>
             <Row label="Delete account" description="Manage the deletion of your Compallm account." last>

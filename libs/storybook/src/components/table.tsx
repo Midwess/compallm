@@ -304,7 +304,6 @@ function Row({ className, ref, onFocusCapture, onBlurCapture, ...props }: Compon
       ref={composeRefs(ref, scope?.measure)}
       data-index={scope?.index}
       data-collection-key={scope?.key}
-      aria-rowindex={scope ? scope.index + 2 : undefined}
       onFocusCapture={(event) => {
         onFocusCapture?.(event)
         release.current ??= scope?.retain({})

@@ -139,7 +139,7 @@ export function OnboardingDialog({
       <Dialog.Content
         onCancel={(event) => event.preventDefault()}
         className={[
-          'w-168 max-w-[calc(100%-2rem)] rounded-3xl border-0 bg-transparent',
+          'w-2xl max-w-[calc(100%-2rem)] rounded-3xl border-0 bg-transparent',
           firstPresentation ? 'backdrop:bg-background' : 'backdrop:bg-transparent',
         ].join(' ')}
       >

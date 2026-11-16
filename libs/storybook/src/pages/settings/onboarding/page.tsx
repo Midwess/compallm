@@ -51,7 +51,7 @@ p-3 shadow-menu ring-1 ring-border"
       >
         <div ref={viewport} className="relative aspect-21/13 w-full">
           <div
-            className="absolute top-0 left-0 w-168 origin-top-left rounded-3xl shadow-menu
+            className="absolute top-0 left-0 w-2xl origin-top-left rounded-3xl shadow-menu
 ring-1 ring-border [&_main]:min-h-104"
             style={{ transform: `scale(${scale})` }}
           >

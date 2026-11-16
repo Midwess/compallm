@@ -22,7 +22,7 @@ export function OnboardingPanel({
   return (
     <main
       aria-labelledby={id}
-      className="relative isolate flex min-h-104 w-full max-w-168 flex-col overflow-hidden
+      className="relative isolate flex min-h-104 w-full max-w-2xl flex-col overflow-hidden
 rounded-3xl bg-card px-6 pt-6 pb-4 font-sans text-foreground ring-1 ring-border ring-inset md:min-h-104"
     >
       <div

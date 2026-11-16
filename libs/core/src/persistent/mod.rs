@@ -19,3 +19,5 @@ pub mod storage;
 
 pub mod analytics;
 pub mod onboarding;
+
+pub mod passkey;

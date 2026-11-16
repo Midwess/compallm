@@ -25,18 +25,27 @@ pub struct TokenLifetimes {
 }
 
 pub struct AuthService {
-    users: &'static Box<dyn UserRepository>,
-    organizations: &'static Box<dyn OrganizationRepository>,
+    pub(crate) passkeys: Option<&'static dyn crate::persistent::passkey::PasskeyRepository>,
+    pub(super) users: &'static Box<dyn UserRepository>,
+    pub(super) organizations: &'static Box<dyn OrganizationRepository>,
     sessions: &'static Box<dyn SessionRepository>,
     dictionaries: &'static Box<dyn DictionaryRepository>,
     registration: &'static RegistrationService,
     preferences: &'static crate::preference::UserPreferenceService,
     jwt_secret: String,
     lifetimes: TokenLifetimes,
-    email: Option<&'static Box<dyn EmailService>>,
+    pub(super) email: Option<&'static Box<dyn EmailService>>,
 }
 
 impl AuthService {
+    pub fn with_passkey_repository(
+        mut self,
+        repository: &'static dyn crate::persistent::passkey::PasskeyRepository,
+    ) -> Self {
+        self.passkeys = Some(repository);
+        self
+    }
+
     /// Return true for current access, false for stale access; reject missing/revoked/ahead state.
     #[db_context::root]
     pub async fn validate_access(&self, claims: &UserAccessToken) -> Result<bool, AuthError> {
@@ -103,6 +112,7 @@ impl AuthService {
     ) -> Result<Self, AuthError> {
         EncryptedAccessToken::new(&jwt_secret)?;
         Ok(Self {
+            passkeys: None,
             users,
             organizations,
             sessions,
@@ -329,13 +339,36 @@ impl AuthService {
         membership: OrganizationMember,
         dictionary: &DCompression,
     ) -> Result<UserTokens, AuthError> {
+        self.start_session_with_method(user_id, membership, dictionary, "email_code")
+            .await
+    }
+
+    #[db_context::current]
+    pub(crate) async fn start_session_with_method(
+        &self,
+        user_id: u64,
+        membership: OrganizationMember,
+        dictionary: &DCompression,
+        method: &str,
+    ) -> Result<UserTokens, AuthError> {
         let session = Session::new(user_id, membership.organization_id).await?;
         let refresh = RefreshToken::from_session(&session, self.lifetimes.refresh)?;
         let tokens = self
             .issue_tokens(&refresh, PolicySnapshot::new(&membership)?, dictionary)
             .await?;
-        self.sessions.create(session).await?;
-        Ok(tokens)
+        if let Some(repository) = self.passkeys {
+            crate::transaction!(db, {
+                self.sessions.create(session.clone()).await?;
+                repository.ensure_email_identity(user_id).await?;
+                repository
+                    .record_method(&session, method, unix_timestamp())
+                    .await?;
+                Ok(tokens)
+            })
+        } else {
+            self.sessions.create(session).await?;
+            Ok(tokens)
+        }
     }
 
     pub(crate) async fn latest_dictionary(&self) -> Result<&DCompression, AuthError> {

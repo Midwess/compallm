@@ -43,3 +43,8 @@ serde_json = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util", "sync", "time", "test-util"] }
 tempfile = { workspace = true, features = ["getrandom"] }
 cedar-policy.workspace = true
+
+webauthn-rs.workspace = true
+uuid.workspace = true
+url.workspace = true
+webauthn-authenticator-rs = { version = "0.5.5", features = ["softpasskey"] }

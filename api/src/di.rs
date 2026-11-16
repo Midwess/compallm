@@ -26,6 +26,8 @@ static DI: OnceCell<Di> = OnceCell::const_new();
 pub struct GraphqlSettings {
     pub cookie_secure: bool,
     pub public_origin: String,
+    pub passkey_rp_id: String,
+    pub passkey_origin: String,
     pub max_body_bytes: usize,
     pub max_depth: usize,
     pub max_fields: usize,
@@ -37,6 +39,8 @@ impl Default for GraphqlSettings {
         Self {
             cookie_secure: true,
             public_origin: String::new(),
+            passkey_rp_id: String::new(),
+            passkey_origin: String::new(),
             max_body_bytes: 65_536,
             max_depth: 24,
             max_fields: 512,
@@ -75,6 +79,9 @@ pub struct Di {
     onboarding: Box<dyn compallm_core::persistent::onboarding::OnboardingRepository>,
     analytics_service: OnceLock<Box<compallm_core::analytics::AnalyticsService>>,
     onboarding_service: OnceLock<Box<compallm_core::onboarding::OnboardingService>>,
+    pub cleanup_cancellation: hero::cancellation::CancellationToken,
+    passkey_repository: Box<dyn compallm_core::persistent::passkey::PasskeyRepository>,
+    passkeys: OnceLock<Box<compallm_core::authentication::passkey::PasskeyService>>,
     users: Box<dyn UserRepository>,
     user_preferences:
         Box<dyn compallm_core::persistent::preference::user::UserPreferenceRepository>,
@@ -162,6 +169,10 @@ impl Di {
             onboarding: Box::new(compallm_postgres::repository::onboarding::OnboardingRepository),
             analytics_service: OnceLock::new(),
             onboarding_service: OnceLock::new(),
+            cleanup_cancellation: hero::cancellation::CancellationToken::current_or_new()
+                .child_token(),
+            passkey_repository: Box::new(compallm_postgres::repository::passkey::PasskeyRepository),
+            passkeys: OnceLock::new(),
             users: Box::new(compallm_postgres::repository::user::UserRepository),
             user_preferences: Box::new(
                 compallm_postgres::repository::preference::user::UserPreferenceRepository,
@@ -212,20 +223,23 @@ impl Di {
             self.initialize_http()?;
             return Ok(());
         }
-        let service = Box::new(AuthService::new(
-            self.user_repository(),
-            self.organization_repository(),
-            self.session_repository(),
-            &self.dictionaries,
-            self.registration_service(),
-            self.user_preference_service(),
-            self.settings.jwt_secret.clone(),
-            TokenLifetimes {
-                user: Duration::from_secs(self.settings.user_token_ttl_seconds),
-                refresh: Duration::from_secs(self.settings.refresh_token_ttl_seconds),
-            },
-            self.email_service(),
-        )?);
+        let service = Box::new(
+            AuthService::new(
+                self.user_repository(),
+                self.organization_repository(),
+                self.session_repository(),
+                &self.dictionaries,
+                self.registration_service(),
+                self.user_preference_service(),
+                self.settings.jwt_secret.clone(),
+                TokenLifetimes {
+                    user: Duration::from_secs(self.settings.user_token_ttl_seconds),
+                    refresh: Duration::from_secs(self.settings.refresh_token_ttl_seconds),
+                },
+                self.email_service(),
+            )?
+            .with_passkey_repository(self.passkey_repository.as_ref()),
+        );
         // Concurrent initialization may build a second candidate, but only one
         // box is retained; all callers subsequently borrow that same service.
         let _ = self.auth.set(service);
@@ -235,7 +249,35 @@ impl Di {
         Ok(())
     }
 
+    pub fn passkey_repository(
+        &self,
+    ) -> &Box<dyn compallm_core::persistent::passkey::PasskeyRepository> {
+        &self.passkey_repository
+    }
+
+    pub fn passkey_service(
+        &'static self,
+    ) -> &'static compallm_core::authentication::passkey::PasskeyService {
+        self.passkeys.get().expect("passkey service initialized")
+    }
+
     fn initialize_http(&'static self) -> Result<(), AuthError> {
+        if !self.graphql_settings.passkey_origin.is_empty()
+            && self.graphql_settings.cookie_secure
+            && !self.graphql_settings.passkey_origin.starts_with("https://")
+        {
+            return Err(AuthError::InvalidConfiguration);
+        }
+        if self.passkeys.get().is_none() {
+            let service = compallm_core::authentication::passkey::PasskeyService::new(
+                self.passkey_repository.as_ref(),
+                self.auth_service(),
+                self.settings.jwt_secret.clone(),
+                &self.graphql_settings.passkey_rp_id,
+                &self.graphql_settings.passkey_origin,
+            )?;
+            let _ = self.passkeys.set(Box::new(service));
+        }
         let settings = &self.graphql_settings;
         if settings.max_body_bytes == 0
             || settings.max_depth == 0
@@ -593,5 +635,16 @@ impl juniper::FromContext<Di>
 {
     fn from(di: &Di) -> &Self {
         &di.onboarding
+    }
+}
+
+impl juniper::FromContext<Di> for compallm_core::authentication::passkey::PasskeyService {
+    fn from(di: &Di) -> &Self {
+        di.passkeys.get().expect("passkey service initialized")
+    }
+}
+impl juniper::FromContext<Di> for Box<dyn compallm_core::persistent::passkey::PasskeyRepository> {
+    fn from(di: &Di) -> &Self {
+        &di.passkey_repository
     }
 }

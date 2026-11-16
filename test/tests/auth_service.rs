@@ -5649,3 +5649,291 @@ async fn explicit_invitation_request_without_cookie_never_falls_back_to_signin()
     assert!(body.get("errors").is_some());
     assert!(fixture.repo.0.lock().unwrap().logins.is_empty());
 }
+
+#[path = "support/passkeys.rs"]
+mod passkey_support;
+
+#[tokio::test]
+async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_session_evidence() {
+    use compallm_core::{
+        authentication::passkey::PasskeyService, persistent::passkey::PasskeyRepository,
+    };
+    use webauthn_authenticator_rs::{WebauthnAuthenticator, softpasskey::SoftPasskey};
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let repository = Box::leak(Box::new(passkey_support::MemoryPasskeys::default()));
+    let auth = Box::leak(Box::new(
+        fixture.service().with_passkey_repository(repository),
+    ));
+    let service = PasskeyService::new(
+        repository,
+        auth,
+        SECRET.into(),
+        "localhost",
+        "http://localhost",
+    )
+    .unwrap();
+    let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
+    let tokens = auth.signin(&otp, &otp.code).await.unwrap();
+    let actor = auth
+        .authenticate_access(&tokens.access_token)
+        .await
+        .unwrap();
+    let origin = url::Url::parse("http://localhost").unwrap();
+    let mut authenticator = WebauthnAuthenticator::new(SoftPasskey::new(true));
+    let start = service.registration_start(&actor, "Laptop").await.unwrap();
+    let response = authenticator
+        .do_registration(
+            origin.clone(),
+            serde_json::from_value(start.options).unwrap(),
+        )
+        .unwrap();
+    let record = service
+        .registration_finish(&actor, &start.token, response.clone())
+        .await
+        .unwrap();
+    assert!(
+        service
+            .registration_finish(&actor, &start.token, response)
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        repository.list(actor.session.user_id).await.unwrap().len(),
+        1
+    );
+    assert!(service.methods(&otp.email).await.unwrap());
+    let start = service.authentication_start(&otp.email).await.unwrap();
+    let assertion = authenticator
+        .do_authentication(
+            origin.clone(),
+            serde_json::from_value(start.options).unwrap(),
+        )
+        .unwrap();
+    let login = service
+        .authentication_finish(&start.token, assertion.clone())
+        .await
+        .unwrap();
+    assert!(
+        service
+            .authentication_finish(&start.token, assertion)
+            .await
+            .is_err()
+    );
+    let login_actor = auth.authenticate_access(&login.access_token).await.unwrap();
+    assert_ne!(actor.session.id, login_actor.session.id);
+    assert_eq!(actor.session.user_id, login_actor.session.user_id);
+    assert!(
+        repository
+            .state
+            .lock()
+            .unwrap()
+            .evidence
+            .contains_key(&(login_actor.session.id, "passkey".into()))
+    );
+    let reauth = service.reauthentication_start(&actor).await.unwrap();
+    let assertion = authenticator
+        .do_authentication(origin, serde_json::from_value(reauth.options).unwrap())
+        .unwrap();
+    assert!(
+        service
+            .authentication_finish(&reauth.token, assertion.clone())
+            .await
+            .is_err()
+    );
+    service
+        .reauthentication_finish(&actor, &reauth.token, assertion)
+        .await
+        .unwrap();
+    let pending = service.authentication_start(&otp.email).await.unwrap();
+    let pending_assertion = authenticator
+        .do_authentication(
+            url::Url::parse("http://localhost").unwrap(),
+            serde_json::from_value(pending.options).unwrap(),
+        )
+        .unwrap();
+    service.remove(&actor, record.id).await.unwrap();
+    assert!(
+        repository
+            .list(actor.session.user_id)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert!(!service.methods(&otp.email).await.unwrap());
+    assert!(auth.validate_access(&actor).await.unwrap());
+    assert!(auth.validate_access(&login_actor).await.unwrap());
+    assert!(
+        repository
+            .state
+            .lock()
+            .unwrap()
+            .challenges
+            .values()
+            .any(|c| c.purpose == "authentication")
+    );
+    assert!(
+        service
+            .authentication_finish(&pending.token, pending_assertion)
+            .await
+            .is_err()
+    );
+}
+
+#[tokio::test]
+async fn passkey_management_requires_recent_evidence_and_rejects_foreign_or_expired_ceremonies() {
+    use compallm_core::authentication::passkey::PasskeyService;
+    use webauthn_authenticator_rs::{WebauthnAuthenticator, softpasskey::SoftPasskey};
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let repository = Box::leak(Box::new(passkey_support::MemoryPasskeys::default()));
+    let auth = Box::leak(Box::new(
+        fixture.service().with_passkey_repository(repository),
+    ));
+    let service = PasskeyService::new(
+        repository,
+        auth,
+        SECRET.into(),
+        "localhost",
+        "http://localhost",
+    )
+    .unwrap();
+    let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
+    let tokens = auth.signin(&otp, &otp.code).await.unwrap();
+    let actor = auth
+        .authenticate_access(&tokens.access_token)
+        .await
+        .unwrap();
+    repository.state.lock().unwrap().evidence.clear();
+    assert!(matches!(
+        service.registration_start(&actor, "Laptop").await,
+        Err(AuthError::ReauthenticationRequired)
+    ));
+    assert!(repository.state.lock().unwrap().challenges.is_empty());
+    assert!(matches!(
+        service.remove(&actor, 1).await,
+        Err(AuthError::ReauthenticationRequired)
+    ));
+    let _ = auth.refresh(&tokens.refresh_token).await.unwrap();
+    assert!(repository.state.lock().unwrap().evidence.is_empty());
+    repository.state.lock().unwrap().evidence.insert(
+        (actor.session.id, "email_code".into()),
+        compallm_utils::time::unix_timestamp(),
+    );
+    let start = service.registration_start(&actor, "Laptop").await.unwrap();
+    let mut authenticator = WebauthnAuthenticator::new(SoftPasskey::new(true));
+    let response = authenticator
+        .do_registration(
+            url::Url::parse("http://localhost").unwrap(),
+            serde_json::from_value(start.options).unwrap(),
+        )
+        .unwrap();
+    let mut foreign = actor.clone();
+    foreign.session.user_id += 1;
+    assert!(
+        service
+            .registration_finish(&foreign, &start.token, response.clone())
+            .await
+            .is_err()
+    );
+    for ceremony in repository.state.lock().unwrap().challenges.values_mut() {
+        ceremony.expires_at = 0;
+    }
+    assert!(
+        service
+            .registration_finish(&actor, &start.token, response)
+            .await
+            .is_err()
+    );
+    assert!(repository.state.lock().unwrap().records.is_empty());
+}
+
+#[tokio::test]
+async fn email_reauthentication_is_session_bound_single_use_and_has_five_attempts() {
+    use compallm_core::authentication::passkey::PasskeyService;
+    struct Email(Arc<Mutex<String>>);
+    #[async_trait::async_trait]
+    impl compallm_core::mail::EmailService for Email {
+        async fn send(
+            &self,
+            request: compallm_core::mail::EmailRequest,
+        ) -> Result<(), compallm_core::mail::EmailError> {
+            if let compallm_core::mail::EmailTemplate::OtpCode(code) = request.text {
+                *self.0.lock().unwrap() = code.code;
+            }
+            Ok(())
+        }
+    }
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let repository = Box::leak(Box::new(passkey_support::MemoryPasskeys::default()));
+    let email = Arc::new(Mutex::new(String::new()));
+    let sender = Box::leak(Box::new(
+        Box::new(Email(email.clone())) as Box<dyn compallm_core::mail::EmailService>
+    ));
+    let auth = Box::leak(Box::new(
+        fixture
+            .service_with_dependencies(
+                Box::new(TestDictionary {
+                    dictionary: compallm_core::compression::DCompression::new(
+                        compallm_core::compression::DictionaryType::AccessToken,
+                        1,
+                        "passkey session user policy",
+                    )
+                    .unwrap(),
+                    newer: None,
+                }),
+                Some(sender),
+            )
+            .with_passkey_repository(repository),
+    ));
+    let service = PasskeyService::new(
+        repository,
+        auth,
+        SECRET.into(),
+        "localhost",
+        "http://localhost",
+    )
+    .unwrap();
+    let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
+    let tokens = auth.signin(&otp, &otp.code).await.unwrap();
+    let actor = auth
+        .authenticate_access(&tokens.access_token)
+        .await
+        .unwrap();
+    repository.state.lock().unwrap().evidence.clear();
+    let challenge = service.email_request(&actor).await.unwrap();
+    let code = email.lock().unwrap().clone();
+    let wrong = if code == "000000" { "111111" } else { "000000" };
+    for _ in 0..5 {
+        assert!(matches!(
+            service.email_confirm(&actor, &challenge.token, wrong).await,
+            Err(AuthError::IncorrectCode)
+        ));
+    }
+    assert!(
+        service
+            .email_confirm(&actor, &challenge.token, &code)
+            .await
+            .is_err()
+    );
+    assert!(repository.state.lock().unwrap().evidence.is_empty());
+    let challenge = service.email_request(&actor).await.unwrap();
+    let code = email.lock().unwrap().clone();
+    service
+        .email_confirm(&actor, &challenge.token, &code)
+        .await
+        .unwrap();
+    assert!(
+        service
+            .email_confirm(&actor, &challenge.token, &code)
+            .await
+            .is_err()
+    );
+    assert!(
+        repository
+            .state
+            .lock()
+            .unwrap()
+            .evidence
+            .contains_key(&(actor.session.id, "email_code".into()))
+    );
+    assert!(auth.validate_access(&actor).await.unwrap());
+}

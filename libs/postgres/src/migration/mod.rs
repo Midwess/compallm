@@ -64,6 +64,8 @@ mod m20261115_000040_single_member_role;
 
 mod m20261116_000041_onboarding;
 
+mod m20261116_000042_passkeys;
+
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -112,6 +114,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261114_000038_member_invitations::Migration),
             Box::new(m20261115_000040_single_member_role::Migration),
             Box::new(m20261116_000041_onboarding::Migration),
+            Box::new(m20261116_000042_passkeys::Migration),
             // inject-above (do not remove this comment)
         ]
     }

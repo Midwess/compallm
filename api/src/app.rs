@@ -141,6 +141,22 @@ impl Hooks for App {
         init_id_generator(Self::app_name())
             .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
         Di::init(&ctx).await?;
+        tokio::spawn(async {
+            let di = Di::instance();
+            loop {
+                let timer = hero::cancellation::CancellationToken::timeout(
+                    std::time::Duration::from_secs(60),
+                );
+                tokio::select! {
+                    _ = di.cleanup_cancellation.cancelled() => break,
+                    _ = timer.cancelled() => {
+                        if di.passkey_service().cleanup().await.is_err() {
+                            tracing::warn!("passkey cleanup failed");
+                        }
+                    }
+                }
+            }
+        });
         if let Some(worker) = Di::instance().mailing_worker() {
             use loco_rs::bgworker::BackgroundWorker;
             tokio::spawn(async move {
@@ -153,6 +169,7 @@ impl Hooks for App {
     }
 
     async fn on_shutdown(_ctx: &AppContext) {
+        Di::instance().cleanup_cancellation.cancel();
         if let Some(service) = Di::instance().mailing_service() {
             service.shutdown().await;
         }

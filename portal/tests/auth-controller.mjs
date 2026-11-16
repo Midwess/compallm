@@ -162,6 +162,8 @@ test('confirmed signup retries only identity loading after a temporary failure',
     assert.equal(identities, 2)
     assert.deepEqual(controller.store.getState().currentUser, user)
     assert.equal(controller.store.getState().step, 'complete')
+    assert.equal(url.destinations.at(-1), '/security')
+    assert.equal(controller.securityOfferSession, user.id)
   } finally {
     controller.stop()
     globalThis.fetch = original
@@ -194,4 +196,48 @@ test('signout cancels deduplicated identity checks and ignores their late result
     controller.stop()
     globalThis.fetch = original
   }
+})
+
+test('passkey-first login sends email only after the explicit OTP alternative', { timeout: 10000 }, async () => {
+  const originalFetch = globalThis.fetch
+  const controller = new AuthController(urlController())
+  let sent = 0
+  globalThis.fetch = async (_url, init) => {
+    const { query } = JSON.parse(init.body)
+    if (query.includes('emailAuthenticationMethods')) return reply({ emailAuthenticationMethods: { node: true } })
+    if (query.includes('passkeyAuthenticationStart'))
+      return Response.json({
+        errors: [{ message: 'Use your device or choose email.', extensions: { code: 'PASSKEY_UNAVAILABLE', status: 503 } }],
+      })
+    if (query.includes('emailSigninRequest')) {
+      sent++
+      return reply({ emailSigninRequest: { node: { lifetime: { expiresInSeconds: '600', throttleSeconds: '30' } } } })
+    }
+    throw new Error('Unexpected request')
+  }
+  try {
+    controller.start('signin')
+    await controller.requestCode('reader@example.com')
+    assert.equal(controller.store.getState().step, 'passkey')
+    assert.equal(sent, 0)
+    await controller.useEmailCode()
+    assert.equal(controller.store.getState().step, 'code')
+    assert.equal(sent, 1)
+  } finally {
+    controller.stop()
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('the optional security route is offered once and reload skips to the workspace', async (t) => {
+  const { loader } = await server.ssrLoadModule('/src/routes/security.tsx')
+  const { authController } = await server.ssrLoadModule('/src/auth/controller.ts')
+  t.mock.method(authController, 'ensureCurrentUser', async () => user)
+  authController.securityOfferSession = user.id
+  assert.equal(await loader(), null)
+  const next = await loader()
+  assert.equal(next.headers.get('Location'), '/Personal')
+  authController.securityOfferSession = undefined
+  const reload = await loader()
+  assert.equal(reload.headers.get('Location'), '/Personal')
 })

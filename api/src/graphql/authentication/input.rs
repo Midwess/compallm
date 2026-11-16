@@ -72,7 +72,7 @@ impl EmailCodeInput {
     }
 }
 
-fn cookie_delivery() -> Option<CredentialDelivery> {
+pub(crate) fn cookie_delivery() -> Option<CredentialDelivery> {
     Some(CredentialDelivery::Cookie)
 }
 
@@ -100,7 +100,7 @@ impl EmailCodeInput {
     }
 }
 
-fn require_delivery(value: Option<CredentialDelivery>) -> Result<(), ValidationErrors> {
+pub(crate) fn require_delivery(value: Option<CredentialDelivery>) -> Result<(), ValidationErrors> {
     if value.is_some() {
         return Ok(());
     }

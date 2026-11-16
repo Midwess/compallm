@@ -110,6 +110,11 @@ export interface GroupPayload {
 
 export type HomeDestination = 'CHAT' | 'MODELS' | 'PROVIDERS'
 
+export interface IDPayload {
+  node: Scalars['ID']
+  __typename: 'IDPayload'
+}
+
 export type ImageMediaType = 'JPEG' | 'PNG' | 'WEBP'
 
 export interface Invitation {
@@ -235,6 +240,8 @@ export interface MessageCompositionPreferences {
 
 export interface Mutation {
   analyticUserProfilePut: AnalyticUserProfilePayload
+  emailReauthenticationConfirm: BooleanPayload
+  emailReauthenticationRequest: PasskeyCeremonyPayload
   /** Confirm the verified signin challenge and create a scoped session. */
   emailSigninConfirm: SessionCredentialsPayload
   /** Request a signin email challenge for an existing active account. */
@@ -258,6 +265,13 @@ export interface Mutation {
   onboardingPresent: OnboardingContextPayload
   organizationOnboardingSettingsUpdate: OrganizationOnboardingSettingsPayload
   organizationProfileUpdate: OrganizationPayload
+  passkeyAuthenticationFinish: SessionCredentialsPayload
+  passkeyAuthenticationStart: PasskeyCeremonyPayload
+  passkeyReauthenticationFinish: BooleanPayload
+  passkeyReauthenticationStart: PasskeyCeremonyPayload
+  passkeyRegistrationFinish: PasskeySummaryPayload
+  passkeyRegistrationStart: PasskeyCeremonyPayload
+  passkeyRemove: IDPayload
   roleAssign: RolePayload
   /** Create a role in the verified active organization. */
   roleCreate: RolePayload
@@ -353,6 +367,64 @@ export interface PalettePreferences {
   __typename: 'PalettePreferences'
 }
 
+export interface PasskeyCeremony {
+  expiresAt: Scalars['String']
+  options: PasskeyOptions
+  token: Scalars['String']
+  __typename: 'PasskeyCeremony'
+}
+
+export interface PasskeyCeremonyPayload {
+  node: PasskeyCeremony
+  __typename: 'PasskeyCeremonyPayload'
+}
+
+export interface PasskeyDescriptor {
+  id: Scalars['String']
+  transports: Scalars['String'][]
+  __typename: 'PasskeyDescriptor'
+}
+
+export interface PasskeyOptions {
+  algorithms: Scalars['Int'][]
+  challenge: Scalars['String']
+  credentials: PasskeyDescriptor[]
+  rpId: Scalars['String']
+  rpName: Scalars['String'] | null
+  timeout: Scalars['Int']
+  userDisplayName: Scalars['String'] | null
+  userId: Scalars['String'] | null
+  userName: Scalars['String'] | null
+  userVerification: Scalars['String']
+  __typename: 'PasskeyOptions'
+}
+
+export interface PasskeySummary {
+  credentialId: Scalars['String']
+  id: Scalars['ID']
+  lastUsedAt: Scalars['String'] | null
+  name: Scalars['String']
+  registeredAt: Scalars['String']
+  __typename: 'PasskeySummary'
+}
+
+export interface PasskeySummaryConnection {
+  edges: PasskeySummaryEdge[]
+  pageInfo: PageInfo
+  __typename: 'PasskeySummaryConnection'
+}
+
+export interface PasskeySummaryEdge {
+  cursor: Scalars['String']
+  node: PasskeySummary
+  __typename: 'PasskeySummaryEdge'
+}
+
+export interface PasskeySummaryPayload {
+  node: PasskeySummary
+  __typename: 'PasskeySummaryPayload'
+}
+
 export interface PolicyAction {
   description: Scalars['String']
   displayName: Scalars['String']
@@ -435,6 +507,7 @@ export interface ProviderTemplate {
 
 export interface Query {
   analyticUserProfile: AnalyticUserProfilePayload | null
+  emailAuthenticationMethods: BooleanPayload
   /** Find visible group metadata in the active organization. */
   group: GroupPayload | null
   /** Return the complete visible group metadata collection, ordered by ID. */
@@ -450,6 +523,7 @@ export interface Query {
   /** Return the system-owned organization policy action catalog. */
   organizationPolicyActions: PolicyActionConnection
   organizationProfile: OrganizationPayload | null
+  passkeys: PasskeySummaryConnection
   /** Find visible role metadata in the active organization. */
   role: RolePayload | null
   /** Return the complete visible role metadata collection, ordered by ID. */
@@ -758,6 +832,11 @@ export interface EmailInput {
   invitation?: Scalars['Boolean'] | null
 }
 
+export interface EmailReauthenticationInput {
+  code: Scalars['String']
+  token: Scalars['String']
+}
+
 export interface GroupGenqlSelection {
   description?: boolean | number
   id?: boolean | number
@@ -805,6 +884,12 @@ export interface GroupUpdateInput {
 
 export interface IDFilter {
   eq?: Scalars['ID'] | null
+}
+
+export interface IDPayloadGenqlSelection {
+  node?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
 }
 
 export interface ImageUploadInput {
@@ -987,6 +1072,8 @@ export interface MessageCompositionPreferencesGenqlSelection {
 
 export interface MutationGenqlSelection {
   analyticUserProfilePut?: AnalyticUserProfilePayloadGenqlSelection & { __args: { input: AnalyticUserProfilePutInput } }
+  emailReauthenticationConfirm?: BooleanPayloadGenqlSelection & { __args: { input: EmailReauthenticationInput } }
+  emailReauthenticationRequest?: PasskeyCeremonyPayloadGenqlSelection
   /** Confirm the verified signin challenge and create a scoped session. */
   emailSigninConfirm?: SessionCredentialsPayloadGenqlSelection & { __args: { input: EmailCodeInput } }
   /** Request a signin email challenge for an existing active account. */
@@ -1012,6 +1099,13 @@ export interface MutationGenqlSelection {
     __args: { input: OrganizationOnboardingSettingsInput }
   }
   organizationProfileUpdate?: OrganizationPayloadGenqlSelection & { __args: { input: OrganizationProfileUpdateInput } }
+  passkeyAuthenticationFinish?: SessionCredentialsPayloadGenqlSelection & { __args: { input: PasskeyFinishInput } }
+  passkeyAuthenticationStart?: PasskeyCeremonyPayloadGenqlSelection & { __args: { email: Scalars['String'] } }
+  passkeyReauthenticationFinish?: BooleanPayloadGenqlSelection & { __args: { input: PasskeyFinishInput } }
+  passkeyReauthenticationStart?: PasskeyCeremonyPayloadGenqlSelection
+  passkeyRegistrationFinish?: PasskeySummaryPayloadGenqlSelection & { __args: { input: PasskeyFinishInput } }
+  passkeyRegistrationStart?: PasskeyCeremonyPayloadGenqlSelection & { __args: { input: PasskeyRegistrationInput } }
+  passkeyRemove?: IDPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   roleAssign?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; memberId: Scalars['ID'] } }
   /** Create a role in the verified active organization. */
   roleCreate?: RolePayloadGenqlSelection & { __args: { input: RoleCreateInput } }
@@ -1147,6 +1241,89 @@ export interface PalettePreferencesGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface PasskeyCeremonyGenqlSelection {
+  expiresAt?: boolean | number
+  options?: PasskeyOptionsGenqlSelection
+  token?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeyCeremonyPayloadGenqlSelection {
+  node?: PasskeyCeremonyGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeyDescriptorGenqlSelection {
+  id?: boolean | number
+  transports?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeyFinishInput {
+  attestationObject?: Scalars['String'] | null
+  authenticatorData?: Scalars['String'] | null
+  clientDataJson: Scalars['String']
+  delivery?: CredentialDelivery | null
+  id: Scalars['String']
+  rawId: Scalars['String']
+  signature?: Scalars['String'] | null
+  token: Scalars['String']
+  transports?: Scalars['String'][] | null
+  userHandle?: Scalars['String'] | null
+}
+
+export interface PasskeyOptionsGenqlSelection {
+  algorithms?: boolean | number
+  challenge?: boolean | number
+  credentials?: PasskeyDescriptorGenqlSelection
+  rpId?: boolean | number
+  rpName?: boolean | number
+  timeout?: boolean | number
+  userDisplayName?: boolean | number
+  userId?: boolean | number
+  userName?: boolean | number
+  userVerification?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeyRegistrationInput {
+  name: Scalars['String']
+}
+
+export interface PasskeySummaryGenqlSelection {
+  credentialId?: boolean | number
+  id?: boolean | number
+  lastUsedAt?: boolean | number
+  name?: boolean | number
+  registeredAt?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeySummaryConnectionGenqlSelection {
+  edges?: PasskeySummaryEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeySummaryEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: PasskeySummaryGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeySummaryPayloadGenqlSelection {
+  node?: PasskeySummaryGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface PolicyActionGenqlSelection {
   description?: boolean | number
   displayName?: boolean | number
@@ -1276,6 +1453,7 @@ export interface ProvidersCreateInput {
 
 export interface QueryGenqlSelection {
   analyticUserProfile?: AnalyticUserProfilePayloadGenqlSelection & { __args: { key: Scalars['String'] } }
+  emailAuthenticationMethods?: BooleanPayloadGenqlSelection & { __args: { email: Scalars['String'] } }
   /** Find visible group metadata in the active organization. */
   group?: GroupPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Return the complete visible group metadata collection, ordered by ID. */
@@ -1304,6 +1482,7 @@ export interface QueryGenqlSelection {
   /** Return the system-owned organization policy action catalog. */
   organizationPolicyActions?: PolicyActionConnectionGenqlSelection
   organizationProfile?: OrganizationPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  passkeys?: PasskeySummaryConnectionGenqlSelection
   /** Find visible role metadata in the active organization. */
   role?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; includeUnseen?: Scalars['Boolean'] } }
   /** Return the complete visible role metadata collection, ordered by ID. */
@@ -1655,6 +1834,12 @@ export const isGroupPayload = (obj?: { __typename?: any } | null): obj is GroupP
   return GroupPayload_possibleTypes.includes(obj.__typename)
 }
 
+const IDPayload_possibleTypes: string[] = ['IDPayload']
+export const isIDPayload = (obj?: { __typename?: any } | null): obj is IDPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isIDPayload"')
+  return IDPayload_possibleTypes.includes(obj.__typename)
+}
+
 const Invitation_possibleTypes: string[] = ['Invitation']
 export const isInvitation = (obj?: { __typename?: any } | null): obj is Invitation => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isInvitation"')
@@ -1827,6 +2012,54 @@ const PalettePreferences_possibleTypes: string[] = ['PalettePreferences']
 export const isPalettePreferences = (obj?: { __typename?: any } | null): obj is PalettePreferences => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isPalettePreferences"')
   return PalettePreferences_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeyCeremony_possibleTypes: string[] = ['PasskeyCeremony']
+export const isPasskeyCeremony = (obj?: { __typename?: any } | null): obj is PasskeyCeremony => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeyCeremony"')
+  return PasskeyCeremony_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeyCeremonyPayload_possibleTypes: string[] = ['PasskeyCeremonyPayload']
+export const isPasskeyCeremonyPayload = (obj?: { __typename?: any } | null): obj is PasskeyCeremonyPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeyCeremonyPayload"')
+  return PasskeyCeremonyPayload_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeyDescriptor_possibleTypes: string[] = ['PasskeyDescriptor']
+export const isPasskeyDescriptor = (obj?: { __typename?: any } | null): obj is PasskeyDescriptor => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeyDescriptor"')
+  return PasskeyDescriptor_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeyOptions_possibleTypes: string[] = ['PasskeyOptions']
+export const isPasskeyOptions = (obj?: { __typename?: any } | null): obj is PasskeyOptions => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeyOptions"')
+  return PasskeyOptions_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeySummary_possibleTypes: string[] = ['PasskeySummary']
+export const isPasskeySummary = (obj?: { __typename?: any } | null): obj is PasskeySummary => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeySummary"')
+  return PasskeySummary_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeySummaryConnection_possibleTypes: string[] = ['PasskeySummaryConnection']
+export const isPasskeySummaryConnection = (obj?: { __typename?: any } | null): obj is PasskeySummaryConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeySummaryConnection"')
+  return PasskeySummaryConnection_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeySummaryEdge_possibleTypes: string[] = ['PasskeySummaryEdge']
+export const isPasskeySummaryEdge = (obj?: { __typename?: any } | null): obj is PasskeySummaryEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeySummaryEdge"')
+  return PasskeySummaryEdge_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeySummaryPayload_possibleTypes: string[] = ['PasskeySummaryPayload']
+export const isPasskeySummaryPayload = (obj?: { __typename?: any } | null): obj is PasskeySummaryPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeySummaryPayload"')
+  return PasskeySummaryPayload_possibleTypes.includes(obj.__typename)
 }
 
 const PolicyAction_possibleTypes: string[] = ['PolicyAction']

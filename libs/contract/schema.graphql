@@ -255,6 +255,11 @@ input EmailInput {
   delivery: CredentialDelivery = COOKIE
 }
 
+input EmailReauthenticationInput {
+  token: String!
+  code: String!
+}
+
 input GroupCreateInput {
   name: String!
   description: String!
@@ -349,6 +354,23 @@ input OrganizationSettingsUpdateInput {
 input PalettePatchInput {
   light: PreferenceLightPalette
   dark: PreferenceDarkPalette
+}
+
+input PasskeyFinishInput {
+  token: String!
+  id: String!
+  rawId: String!
+  clientDataJson: String!
+  attestationObject: String
+  authenticatorData: String
+  signature: String
+  userHandle: String
+  transports: [String!]
+  delivery: CredentialDelivery = COOKIE
+}
+
+input PasskeyRegistrationInput {
+  name: String!
 }
 
 input ProfileUpdateInput {
@@ -605,6 +627,10 @@ type GroupPayload {
   node: Group!
 }
 
+type IDPayload {
+  node: ID!
+}
+
 type Invitation {
   id: ID!
   organizationId: ID!
@@ -710,6 +736,15 @@ type MessageCompositionPreferences {
 }
 
 type Mutation {
+  passkeyRegistrationStart(input: PasskeyRegistrationInput!): PasskeyCeremonyPayload!
+  passkeyRegistrationFinish(input: PasskeyFinishInput!): PasskeySummaryPayload!
+  passkeyAuthenticationStart(email: String!): PasskeyCeremonyPayload!
+  passkeyAuthenticationFinish(input: PasskeyFinishInput!): SessionCredentialsPayload!
+  passkeyReauthenticationStart: PasskeyCeremonyPayload!
+  passkeyReauthenticationFinish(input: PasskeyFinishInput!): BooleanPayload!
+  passkeyRemove(id: ID!): IDPayload!
+  emailReauthenticationRequest: PasskeyCeremonyPayload!
+  emailReauthenticationConfirm(input: EmailReauthenticationInput!): BooleanPayload!
   analyticUserProfilePut(input: AnalyticUserProfilePutInput!): AnalyticUserProfilePayload!
   organizationOnboardingSettingsUpdate(input: OrganizationOnboardingSettingsInput!): OrganizationOnboardingSettingsPayload!
   onboardingAdvance(back: Boolean! = false): OnboardingContextPayload!
@@ -810,6 +845,56 @@ type PalettePreferences {
   dark: PreferenceDarkPalette!
 }
 
+type PasskeyCeremony {
+  token: String!
+  expiresAt: String!
+  options: PasskeyOptions!
+}
+
+type PasskeyCeremonyPayload {
+  node: PasskeyCeremony!
+}
+
+type PasskeyDescriptor {
+  id: String!
+  transports: [String!]!
+}
+
+type PasskeyOptions {
+  challenge: String!
+  rpId: String!
+  rpName: String
+  userId: String
+  userName: String
+  userDisplayName: String
+  algorithms: [Int!]!
+  credentials: [PasskeyDescriptor!]!
+  timeout: Int!
+  userVerification: String!
+}
+
+type PasskeySummary {
+  id: ID!
+  credentialId: String!
+  name: String!
+  registeredAt: String!
+  lastUsedAt: String
+}
+
+type PasskeySummaryConnection {
+  edges: [PasskeySummaryEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PasskeySummaryEdge {
+  cursor: String!
+  node: PasskeySummary!
+}
+
+type PasskeySummaryPayload {
+  node: PasskeySummary!
+}
+
 type PolicyAction {
   name: String!
   displayName: String!
@@ -840,6 +925,8 @@ type ProviderTemplate {
 }
 
 type Query {
+  emailAuthenticationMethods(email: String!): BooleanPayload!
+  passkeys: PasskeySummaryConnection!
   analyticUserProfile(key: String!): AnalyticUserProfilePayload
   onboardingContext: OnboardingContextPayload
   organizationOnboardingSettings: OrganizationOnboardingSettingsPayload!

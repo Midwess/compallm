@@ -8,3 +8,5 @@ pub(crate) mod query;
 mod session;
 
 pub use session::Session;
+
+pub mod passkey;

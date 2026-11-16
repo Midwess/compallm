@@ -1,3 +1,5 @@
+import { credential, ceremonySelection } from '../passkey/browser'
+import { PasskeyFinishInput } from '@compallm/contract/validation'
 import { emailRequestSchema, otpRequestSchema } from '@compallm/contract/auth'
 import { createSignupStore, type SignupController, type SignupState } from '@compallm/storybook/pages/signup'
 import type { SigninController } from '@compallm/storybook/pages/signin'
@@ -25,6 +27,7 @@ const initialFormState = createSignupStore().getInitialState()
 
 export class AuthController implements SignupController, SigninController {
   readonly store = createSignupStore()
+  securityOfferSession: string | undefined
   private sessionPending: Promise<AuthUser | null> | undefined
   private sessionRequest: AbortController | undefined
   private sessionGeneration = 0
@@ -39,6 +42,7 @@ export class AuthController implements SignupController, SigninController {
   private abort: AbortController | undefined
 
   private mode: 'signup' | 'signin' = 'signin'
+  private passkeyUncertain = false
   private confirmed = false
   private destination: string | undefined
   private resendDeadline = 0
@@ -82,6 +86,7 @@ export class AuthController implements SignupController, SigninController {
     this.lastCode = undefined
     this.failedOperation = null
     this.confirmed = false
+    this.passkeyUncertain = false
     this.destination = undefined
     const { currentUser, status } = this.store.getState()
     this.store.setState({ ...initialFormState, currentUser, status })
@@ -151,7 +156,13 @@ export class AuthController implements SignupController, SigninController {
     await this.verify(false, code)
   }
   useDifferentEmail = () => {
+    if (this.store.getState().pending === 'passkey') {
+      this.abort?.abort()
+      this.generation += 1
+      this.store.setState({ pending: null })
+    }
     if (this.store.getState().pending) return
+    this.passkeyUncertain = false
     this.lastCode = undefined
     this.confirmed = false
     this.failedOperation = null
@@ -160,13 +171,95 @@ export class AuthController implements SignupController, SigninController {
     this.navigate(this.mode === 'signup' ? '/signup' : '/login')
   }
   requestCode = async (email: string) => {
-    await this.request('request', email)
+    if (this.mode !== 'signin') {
+      await this.request('request', email)
+      return
+    }
+    if (this.store.getState().pending || this.store.getState().step !== 'email') return
+    const input = emailRequestSchema('signin').safeParse({ email, delivery: 'COOKIE' })
+    if (!input.success) {
+      this.onInvalidEmail()
+      return
+    }
+    this.store.setState({ email: input.data.email })
+    let passkey: boolean | undefined
+    let completed = false
+    await this.perform(
+      'request',
+      async (signal) => {
+        const result = await graphql(signal).query({
+          emailAuthenticationMethods: { __args: { email: input.data.email }, node: true },
+        } satisfies QueryGenqlSelection)
+        passkey = result.emailAuthenticationMethods.node
+      },
+      () => {
+        completed = true
+        if (passkey) this.store.setState({ step: 'passkey' })
+      },
+    )
+    if (!completed || this.store.getState().email !== input.data.email) return
+    if (passkey && this.store.getState().step === 'passkey') await this.verifyPasskey()
+    else if (passkey === false && this.store.getState().step === 'email') await this.request('request', input.data.email)
+  }
+  useEmailCode = async () => {
+    this.passkeyUncertain = false
+    this.abort?.abort()
+    this.generation += 1
+    this.confirmed = false
+    this.store.setState({ step: 'email', pending: null, serverError: null, error: null })
+    await this.request('request')
+  }
+  verifyPasskey = async () => {
+    if (this.store.getState().pending || this.store.getState().step !== 'passkey') return
+    await this.perform(
+      'passkey',
+      async (signal) => {
+        if (this.passkeyUncertain) {
+          const restored = await this.refreshCurrentUser(signal, false)
+          if (restored) {
+            const result = await graphql(signal).query({
+              userProfile: { __args: { id: restored.userId }, node: { email: true } },
+            } satisfies QueryGenqlSelection)
+            if (result.userProfile?.node.email === this.store.getState().email) this.confirmed = true
+          }
+          this.passkeyUncertain = false
+          if (!this.confirmed)
+            throw new Error('Sign-in could not be confirmed. Try your passkey again or use email code instead.')
+        }
+        if (!this.confirmed) {
+          const {
+            passkeyAuthenticationStart: { node: ceremony },
+          } = await graphql(signal).mutation({
+            passkeyAuthenticationStart: { __args: { email: this.store.getState().email }, node: ceremonySelection },
+          } satisfies MutationGenqlSelection)
+          const input = PasskeyFinishInput.parse(await credential(ceremony.options, ceremony.token, false, signal))
+          this.passkeyUncertain = true
+          await graphql(signal).mutation({
+            passkeyAuthenticationFinish: { __args: { input }, node: { accessLifetime: { expiresInSeconds: true } } },
+          } satisfies MutationGenqlSelection)
+          if (signal.aborted) return
+          this.confirmed = true
+          this.passkeyUncertain = false
+        }
+        const user = await this.refreshCurrentUser(signal, false)
+        if (!user) throw new Error('Session could not be confirmed')
+        this.destination = organizationRoot(user)
+      },
+      () => {
+        this.store.setState({ step: 'complete' })
+        if (this.destination) this.navigate(this.destination)
+      },
+    )
   }
   resendCode = async () => {
     await this.request('resend')
   }
   retry = async () => {
     if (!this.failedOperation) return
+    if (this.failedOperation === 'passkey') {
+      await this.verifyPasskey()
+      return
+    }
     if (this.failedOperation === 'verify') await this.verify(true)
     else if (this.failedOperation) await this.request(this.failedOperation)
   }
@@ -367,7 +460,10 @@ export class AuthController implements SignupController, SigninController {
         }
         const user = await this.refreshCurrentUser(signal)
         if (!user) throw new Error('Session could not be confirmed')
-        this.destination = organizationRoot(user)
+        if (this.mode === 'signup') {
+          this.securityOfferSession = user.id
+          this.destination = '/security'
+        } else this.destination = organizationRoot(user)
       },
       () => {
         this.setResendDeadline(0)
@@ -388,7 +484,14 @@ export class AuthController implements SignupController, SigninController {
       success()
     } catch (error) {
       if (generation !== this.generation) return
-      if (isObjectLike(error) && get(error, 'name') === 'AbortError') return
+      if (isObjectLike(error) && get(error, 'name') === 'AbortError' && this.abort?.signal.aborted) return
+      if (operation === 'passkey' && error instanceof DOMException && ['AbortError', 'NotAllowedError'].includes(error.name)) {
+        this.store.setState({
+          serverError: 'Passkey verification was cancelled or timed out. Try again or use email code instead.',
+        })
+        return
+      }
+      if (operation === 'passkey' && error instanceof ApiError && error.status < 500) this.passkeyUncertain = false
       this.failedOperation = operation
       this.lastCode = undefined
       const reason = error instanceof ApiError ? authFailureReasons[error.code] : undefined

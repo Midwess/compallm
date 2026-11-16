@@ -71,3 +71,7 @@ hmac = "0.12"
 serde_bytes = "0.11"
 cedar-policy-formatter = { version = "4" }
 elsa = { version = "1" }
+
+webauthn-rs = { version = "0.5.5", features = ["danger-allow-state-serialisation", "danger-credential-internals"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+url = "2"

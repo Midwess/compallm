@@ -46,6 +46,7 @@ export function AuthenticationPage({ mode }: { mode: Mode }) {
 function AuthContent({ mode }: { mode: Mode }) {
   const step = useAuthState((state) => state.step)
   if (step === 'complete') return <Completion mode={mode} />
+  if (step === 'passkey') return <PasskeyLogin />
   return (
     <div data-route={pagePaths[mode]} className="flex flex-col gap-6">
       <h1 className="m-0 text-ui-28 leading-10 font-medium tracking-[-0.5px]">
@@ -136,7 +137,7 @@ export function ContinueButton() {
   const remaining = useAuthState((state) => state.remaining)
   return (
     <Button className="w-full" variant="primary" size="authentication" type="submit" loading={pending} disabled={remaining > 0}>
-      {pending ? 'Sending code…' : remaining > 0 ? `Try again in ${remaining}s` : 'Continue'}
+      {pending ? 'Continuing…' : remaining > 0 ? `Try again in ${remaining}s` : 'Continue'}
     </Button>
   )
 }
@@ -296,5 +297,34 @@ function BackAction() {
     >
       Use a different email
     </Button>
+  )
+}
+
+function PasskeyLogin() {
+  const controller = useAuthController()
+  const pending = useAuthState((s) => s.pending)
+  const email = useAuthState((s) => s.email)
+  return (
+    <div className="grid gap-5">
+      <h1 className="m-0 text-ui-28 leading-10 font-medium">Sign in with your passkey.</h1>
+      <p className="text-sm leading-6 text-muted-foreground">
+        Use a passkey for <strong className="font-medium break-all text-foreground">{email}</strong>.
+      </p>
+      <Button
+        variant="primary"
+        size="authentication"
+        loading={pending === 'passkey'}
+        onClick={() => void controller.verifyPasskey?.()}
+      >
+        {pending === 'passkey' ? 'Complete on your device…' : 'Use passkey'}
+      </Button>
+      <Button variant="ghost" onClick={() => void controller.useEmailCode?.()}>
+        Use email code instead
+      </Button>
+      <Button variant="link" onClick={controller.useDifferentEmail}>
+        Use a different email
+      </Button>
+      <ErrorMessage />
+    </div>
   )
 }

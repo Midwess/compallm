@@ -32,3 +32,5 @@ export const OnboardingControllerContext = createContext<import('./pages/onboard
 
 export const CollectionContext = createContext<import('./components/collection-types').CollectionScope | null>(null)
 export const CollectionRowContext = createContext<import('./components/collection-types').CollectionRowScope | null>(null)
+
+export const PasskeyControllerContext = createContext<import('./pages/passkey/types').PasskeyController | null>(null)

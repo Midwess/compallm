@@ -10,7 +10,7 @@ export type AuthInitialState =
   | { step: 'email'; email?: string; error?: AuthFailureReason }
   | { step: 'code'; email: string; code?: string; error?: AuthFailureReason; retryAfterSeconds?: number }
 
-export type AuthOperation = 'request' | 'verify' | 'resend'
+export type AuthOperation = 'request' | 'verify' | 'resend' | 'passkey'
 export type AuthError = AuthFailureReason | 'invalid-email'
 
 export type AuthUser = Pick<Session, 'id' | 'userId' | 'organizationId' | 'organizationName'> &
@@ -19,7 +19,7 @@ export type AuthUser = Pick<Session, 'id' | 'userId' | 'organizationId' | 'organ
 export interface AuthState {
   currentUser: AuthUser | null
   status: 'unknown' | 'checking' | 'authenticated' | 'anonymous' | 'error'
-  step: 'email' | 'code' | 'complete'
+  step: 'email' | 'code' | 'passkey' | 'complete'
   email: string
   code: string
   error: AuthError | null
@@ -44,6 +44,8 @@ export interface AuthController {
   clearError(): void
   onInvalidEmail(): void
   requestCode(email: string): Promise<void>
+  verifyPasskey?(): Promise<void>
+  useEmailCode?(): Promise<void>
   resendCode(): Promise<void>
   retry(): Promise<void>
   showResend(): void

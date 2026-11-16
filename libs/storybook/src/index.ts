@@ -98,3 +98,6 @@ export { CollectionForms } from './components/collection-forms'
 export { yieldToBrowser, processInSlices } from './components/scheduling'
 export { List } from './components/list'
 export type { CollectionPaging } from './components/collection-types'
+
+export * from './pages/passkey'
+export { PasskeyControllerContext } from './context'

@@ -1,3 +1,6 @@
+import { useContext } from 'react'
+import { PasskeyControllerContext } from '../../context'
+import { PasskeySettings } from '../passkey'
 import { FormError } from '../../components/form'
 import { Button } from '../../components/buttons'
 import { TextField } from '../../components/fields'
@@ -124,42 +127,24 @@ export function AccessSettings() {
   )
 }
 export function SecuritySettings() {
-  const c = useSettingsController(),
-    passkeys = useSettings((s) => s.passkeys)
+  const c = useSettingsController()
+  const passkeys = useContext(PasskeyControllerContext)
   return (
     <SettingsContent>
       <Heading description="Manage your sign-in methods and API access.">Security</Heading>
       <div className="grid gap-12">
-        <Section
-          title="Passkeys"
-          description="Sign in with your fingerprint, face, or security key."
-          action={
-            passkeys.length ? (
-              <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('add-passkey')}>
-                Add passkey
-              </Button>
-            ) : null
-          }
-        >
-          {passkeys.length ? (
-            <Rows>
-              {passkeys.map((key, i) => (
-                <Row key={key.id} label={key.name} description="Use this passkey to sign in." last={i === passkeys.length - 1}>
-                  <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('remove-passkey', key.id)}>
-                    Remove
-                  </Button>
-                </Row>
-              ))}
-            </Rows>
-          ) : (
+        {passkeys ? (
+          <PasskeySettings />
+        ) : (
+          <Section title="Passkeys" description="Sign in with your fingerprint, face, or security key.">
             <Empty
               title="No passkeys yet"
               action={<Button onClick={() => c.pages.dialogs.openDialog('add-passkey')}>Add passkey</Button>}
             >
               Add a passkey for a simpler sign-in experience.
             </Empty>
-          )}
-        </Section>
+          </Section>
+        )}
         <div className="px-4">
           <Button variant="ghost" onClick={() => c.navigate('api-keys')}>
             Manage API keys

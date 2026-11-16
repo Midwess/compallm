@@ -4,7 +4,6 @@ import type { QueryGenqlSelection, MutationGenqlSelection, InvitationContext } f
 import { graphql } from '../graphql-client'
 import { authController } from '../auth/controller'
 import { urlController } from '../url/controller'
-import { organizationRoot } from '../organization/paths'
 import { apiErrorMessage } from '../notifications/toast'
 
 type Context = Pick<InvitationContext, 'organizationName' | 'email' | 'expiresAt' | 'signup'>
@@ -107,7 +106,10 @@ export class InvitationController {
         this.store.setState({ step: 'confirmed' })
       }
       const user = await authController.refreshCurrentUser(request.signal, false)
-      if (user && !request.signal.aborted) urlController.navigate(organizationRoot(user), { replace: true })
+      if (user && !request.signal.aborted) {
+        authController.securityOfferSession = user.id
+        urlController.navigate('/security', { replace: true })
+      }
       return true
     } catch (error) {
       if (!request.signal.aborted) this.store.setState({ error: apiErrorMessage(error) })

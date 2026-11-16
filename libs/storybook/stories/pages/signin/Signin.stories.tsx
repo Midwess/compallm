@@ -1,3 +1,7 @@
+import { useState } from 'react'
+import { AuthControllerContext } from '../../../src/context'
+import { SigninPage } from '../../../src/pages/signin'
+import { DemoAuthController } from '../demo-auth-controller'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { userEvent, within } from 'storybook/test'
 import { AuthDemo } from '../auth-demo'
@@ -51,3 +55,18 @@ export const TemporaryFailure: Story = {
   render: () => <AuthDemo mode="signin" scenario="network-error" initialState={{ step: 'code', email: 'alex@example.com' }} />,
 }
 export const RequestThrottled: Story = { render: () => <AuthDemo mode="signin" scenario="throttled" /> }
+
+function PasskeyPreview({ pending = false }: { pending?: boolean }) {
+  const [controller] = useState(() => {
+    const result = new DemoAuthController('signin')
+    result.store.setState({ step: 'passkey', email: 'alex@example.com', pending: pending ? 'passkey' : null })
+    return result
+  })
+  return (
+    <AuthControllerContext value={controller}>
+      <SigninPage />
+    </AuthControllerContext>
+  )
+}
+export const Passkey: Story = { render: () => <PasskeyPreview /> }
+export const PasskeyPrompt: Story = { render: () => <PasskeyPreview pending /> }

@@ -147,6 +147,11 @@ input EmailInput {
   invitation: Boolean = false
 }
 
+input EmailReauthenticationInput {
+  code: String!
+  token: String!
+}
+
 enum FilterIs {
   NOT_NULL
   NULL
@@ -197,6 +202,10 @@ enum HomeDestination {
 
 input IDFilter {
   eq: ID
+}
+
+type IDPayload {
+  node: ID!
 }
 
 enum ImageMediaType {
@@ -364,6 +373,10 @@ type Mutation {
   analyticUserProfilePut(
     input: AnalyticUserProfilePutInput!
   ): AnalyticUserProfilePayload!
+  emailReauthenticationConfirm(
+    input: EmailReauthenticationInput!
+  ): BooleanPayload!
+  emailReauthenticationRequest: PasskeyCeremonyPayload!
 
   """
   Confirm the verified signin challenge and create a scoped session.
@@ -411,6 +424,17 @@ type Mutation {
   organizationProfileUpdate(
     input: OrganizationProfileUpdateInput!
   ): OrganizationPayload!
+  passkeyAuthenticationFinish(
+    input: PasskeyFinishInput!
+  ): SessionCredentialsPayload!
+  passkeyAuthenticationStart(email: String!): PasskeyCeremonyPayload!
+  passkeyReauthenticationFinish(input: PasskeyFinishInput!): BooleanPayload!
+  passkeyReauthenticationStart: PasskeyCeremonyPayload!
+  passkeyRegistrationFinish(input: PasskeyFinishInput!): PasskeySummaryPayload!
+  passkeyRegistrationStart(
+    input: PasskeyRegistrationInput!
+  ): PasskeyCeremonyPayload!
+  passkeyRemove(id: ID!): IDPayload!
   roleAssign(id: ID!, memberId: ID!): RolePayload!
 
   """
@@ -570,6 +594,73 @@ input PalettePatchInput {
 type PalettePreferences {
   dark: PreferenceDarkPalette!
   light: PreferenceLightPalette!
+}
+
+type PasskeyCeremony {
+  expiresAt: String!
+  options: PasskeyOptions!
+  token: String!
+}
+
+type PasskeyCeremonyPayload {
+  node: PasskeyCeremony!
+}
+
+type PasskeyDescriptor {
+  id: String!
+  transports: [String!]!
+}
+
+input PasskeyFinishInput {
+  attestationObject: String
+  authenticatorData: String
+  clientDataJson: String!
+  delivery: CredentialDelivery = COOKIE
+  id: String!
+  rawId: String!
+  signature: String
+  token: String!
+  transports: [String!]
+  userHandle: String
+}
+
+type PasskeyOptions {
+  algorithms: [Int!]!
+  challenge: String!
+  credentials: [PasskeyDescriptor!]!
+  rpId: String!
+  rpName: String
+  timeout: Int!
+  userDisplayName: String
+  userId: String
+  userName: String
+  userVerification: String!
+}
+
+input PasskeyRegistrationInput {
+  name: String!
+}
+
+type PasskeySummary {
+  credentialId: String!
+  id: ID!
+  lastUsedAt: String
+  name: String!
+  registeredAt: String!
+}
+
+type PasskeySummaryConnection {
+  edges: [PasskeySummaryEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PasskeySummaryEdge {
+  cursor: String!
+  node: PasskeySummary!
+}
+
+type PasskeySummaryPayload {
+  node: PasskeySummary!
 }
 
 type PolicyAction {
@@ -858,6 +949,7 @@ input ProvidersCreateInput {
 
 type Query {
   analyticUserProfile(key: String!): AnalyticUserProfilePayload
+  emailAuthenticationMethods(email: String!): BooleanPayload!
 
   """
   Find visible group metadata in the active organization.
@@ -894,6 +986,7 @@ type Query {
   """
   organizationPolicyActions: PolicyActionConnection!
   organizationProfile(id: ID!): OrganizationPayload
+  passkeys: PasskeySummaryConnection!
 
   """
   Find visible role metadata in the active organization.

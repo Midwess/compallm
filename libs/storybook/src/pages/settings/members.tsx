@@ -250,6 +250,7 @@ border-border text-ui-11 text-muted-foreground"
 }
 
 function MemberRoles({ member }: { member: SettingsMember }) {
+  const [open, setOpen] = useState(false)
   const roles = useSettings((s) => s.roles)
   const actorIsOwner = useSettings((s) => s.actorIsOwner)
   const currentMemberId = useSettings((s) => s.currentMemberId)
@@ -275,7 +276,7 @@ function MemberRoles({ member }: { member: SettingsMember }) {
   ]
   const protectedOwner = first?.owner
   const options = roles.filter((r) => !r.owner || actorIsOwner)
-  const optionChecks = options.map((role) => checksFor(role.id))
+  const optionChecks = open ? options.map((role) => checksFor(role.id)) : []
   const statuses = usePermissionChecks(optionChecks.flat())
   const allowed = optionChecks.map((checks, index) => {
     const offset = optionChecks.slice(0, index).reduce((total, previous) => total + previous.length, 0)
@@ -309,6 +310,8 @@ function MemberRoles({ member }: { member: SettingsMember }) {
   return (
     <Form.Root model={form}>
       <Select.Root
+        open={open}
+        onOpenChange={setOpen}
         value={selected}
         disabled={pending || confirmation !== null}
         onValueChange={(value) => {
@@ -325,30 +328,34 @@ function MemberRoles({ member }: { member: SettingsMember }) {
             {selected === (first?.id ?? '') ? label : (roles.find((r) => r.id === selected)?.name ?? 'Unavailable')}
           </Select.Value>
         </Select.Trigger>
-        <Select.Content aria-label={`Roles for ${member.name}`} className="w-64">
-          {options.map((role, index) => {
-            const unavailable =
-              !known || !allowed[index] || (protectedOwner && (!actorIsOwner || ownerIds.length <= 1) && role.id !== first?.id)
-            if (unavailable) return null
-            return (
-              <Select.Item key={role.id} value={role.id}>
-                {role.color ? (
-                  <span
-                    aria-hidden="true"
-                    className="mr-1 size-1.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: `color-mix(in oklab, ${role.color} 70%, var(--foreground))` }}
-                  />
-                ) : null}
-                <span className="min-w-0">
-                  <span className="block truncate">{role.name}</span>
-                  {role.description ? (
-                    <span className="block truncate text-xs text-muted-foreground">{role.description}</span>
+        {open ? (
+          <Select.Content aria-label={`Roles for ${member.name}`} className="w-64">
+            {options.map((role, index) => {
+              const unavailable =
+                !known ||
+                !allowed[index] ||
+                (protectedOwner && (!actorIsOwner || ownerIds.length <= 1) && role.id !== first?.id)
+              if (unavailable) return null
+              return (
+                <Select.Item key={role.id} value={role.id}>
+                  {role.color ? (
+                    <span
+                      aria-hidden="true"
+                      className="mr-1 size-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: `color-mix(in oklab, ${role.color} 70%, var(--foreground))` }}
+                    />
                   ) : null}
-                </span>
-              </Select.Item>
-            )
-          })}
-        </Select.Content>
+                  <span className="min-w-0">
+                    <span className="block truncate">{role.name}</span>
+                    {role.description ? (
+                      <span className="block truncate text-xs text-muted-foreground">{role.description}</span>
+                    ) : null}
+                  </span>
+                </Select.Item>
+              )
+            })}
+          </Select.Content>
+        ) : null}
       </Select.Root>
       <Form.Error name="roleId" />
       {confirmation !== null ? (
@@ -390,13 +397,14 @@ function MemberRoles({ member }: { member: SettingsMember }) {
 }
 
 function MemberGroups({ member }: { member: SettingsMember }) {
+  const [open, setOpen] = useState(false)
   const c = useSettingsController()
   const catalog = useSettings((s) => s.groups)
   const confirmed = member.groups ?? catalog.filter((group) => group.memberIds.includes(member.id))
   const ids = confirmed.map((group) => group.id)
   const options = [...new Map([...catalog, ...confirmed].map((group) => [group.id, group])).values()]
   const checks = usePermissionChecks(
-    options.map((group) => ({
+    (open ? options : []).map((group) => ({
       action: ids.includes(group.id) ? ('group.member.remove' as const) : ('group.member.add' as const),
       resourceType: 'Group',
       resourceId: group.id,
@@ -427,20 +435,28 @@ function MemberGroups({ member }: { member: SettingsMember }) {
       {(allowed) =>
         allowed ? (
           <Form.Root model={form}>
-            <ChoicePicker.Root options={pickerOptions} value={selected} onValueChange={(next) => form.change('groupIds', next)}>
+            <ChoicePicker.Root
+              open={open}
+              onOpenChange={setOpen}
+              options={pickerOptions}
+              value={selected}
+              onValueChange={(next) => form.change('groupIds', next)}
+            >
               <ChoicePicker.Trigger aria-label={`Groups for ${member.name}`}>
                 {selectedGroups[0]?.name ?? 'None'}
                 {selectedGroups.length > 1 ? ` +${selectedGroups.length - 1}` : ''}
               </ChoicePicker.Trigger>
-              <ChoicePicker.Content>
-                <div className="p-2 pb-0">
-                  <Searchbox.Root>
-                    <ChoicePicker.Input aria-label={`Search groups for ${member.name}`} placeholder="Search groups…" />
-                  </Searchbox.Root>
-                </div>
-                <ChoicePicker.Empty>Empty.</ChoicePicker.Empty>
-                <ChoicePicker.List>{(option) => <ChoicePicker.Item key={option.id} value={option} />}</ChoicePicker.List>
-              </ChoicePicker.Content>
+              {open ? (
+                <ChoicePicker.Content>
+                  <div className="p-2 pb-0">
+                    <Searchbox.Root>
+                      <ChoicePicker.Input aria-label={`Search groups for ${member.name}`} placeholder="Search groups…" />
+                    </Searchbox.Root>
+                  </div>
+                  <ChoicePicker.Empty>Empty.</ChoicePicker.Empty>
+                  <ChoicePicker.List>{(option) => <ChoicePicker.Item key={option.id} value={option} />}</ChoicePicker.List>
+                </ChoicePicker.Content>
+              ) : null}
             </ChoicePicker.Root>
           </Form.Root>
         ) : null

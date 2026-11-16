@@ -707,7 +707,7 @@ export function MembersSettings() {
                 Role
               </Table.Head>
               <Table.Head column="groups">Groups</Table.Head>
-              <Table.Head column="joined">Joined</Table.Head>
+              <Table.Head column="joined">Joined/Sent</Table.Head>
               <Table.Head column="actions">
                 <span className="sr-only">Actions</span>
               </Table.Head>

@@ -516,7 +516,7 @@ export function progressWave(host: HTMLElement) {
   if (!wave || reducedMotion()) return
   return animate(
     wave,
-    { backgroundPositionX: ['0rem', '40rem'] },
+    { x: [-640, host.clientWidth] },
     {
       duration: 2.4,
       ease: 'linear',

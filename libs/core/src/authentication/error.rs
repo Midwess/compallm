@@ -24,6 +24,8 @@ pub enum AuthError {
     PasskeyLimit,
     #[error("passkey is already registered")]
     PasskeyConflict,
+    #[error("passkey storage is unavailable")]
+    PasskeyPersistence(#[source] anyhow::Error),
 
     #[error("invitation is no longer available")]
     InvalidInvitation,

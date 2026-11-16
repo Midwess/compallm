@@ -66,7 +66,7 @@ impl Repository for PasskeyRepository {
             .order_by_asc(credentials::Column::Id)
             .all(db)
             .await
-            .map_err(anyhow::Error::from)?
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?
             .into_iter()
             .map(TryInto::try_into)
             .collect()
@@ -82,7 +82,7 @@ impl Repository for PasskeyRepository {
             .filter(handles::Column::Handle.eq(handle))
             .one(db)
             .await
-            .map_err(anyhow::Error::from)?;
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?;
         let Some(user) = user else {
             return Ok(None);
         };
@@ -97,7 +97,7 @@ impl Repository for PasskeyRepository {
             .filter(credentials::Column::Id.in_subquery(owned))
             .one(db)
             .await
-            .map_err(anyhow::Error::from)?;
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?;
         record
             .map(|record| {
                 Ok((
@@ -123,7 +123,7 @@ impl Repository for PasskeyRepository {
             .col_expr(credentials::Column::FriendlyName, Expr::value(name))
             .exec(db)
             .await
-            .map_err(anyhow::Error::from)?;
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?;
         if result.rows_affected != 1 {
             return Err(AuthError::InvalidPasskey);
         }
@@ -149,7 +149,7 @@ impl Repository for PasskeyRepository {
             .filter(credentials::Column::Id.in_subquery(owned))
             .one(db)
             .await
-            .map_err(anyhow::Error::from)?
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?
             .map(TryInto::try_into)
             .transpose()
     }
@@ -160,7 +160,7 @@ impl Repository for PasskeyRepository {
             .lock_exclusive()
             .one(db)
             .await
-            .map_err(anyhow::Error::from)?
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?
             .ok_or(AuthError::UserNotFound)?;
         if let Some(handle) = user.handle {
             return Ok(handle);
@@ -171,7 +171,7 @@ impl Repository for PasskeyRepository {
             .col_expr(handles::Column::Handle, Expr::value(handle))
             .exec(db)
             .await
-            .map_err(anyhow::Error::from)?;
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?;
         Ok(handle)
     }
     async fn create(&self, user_id: u64, credential: PasskeyRecord) -> Result<(), AuthError> {
@@ -194,7 +194,7 @@ impl Repository for PasskeyRepository {
             ) {
                 AuthError::PasskeyConflict
             } else {
-                AuthError::Unexpected(error.into())
+                AuthError::PasskeyPersistence(error.into())
             }
         })?;
         identities::Entity::insert(identities::ActiveModel {
@@ -206,7 +206,7 @@ impl Repository for PasskeyRepository {
         })
         .exec(db)
         .await
-        .map_err(anyhow::Error::from)?;
+        .map_err(|error| AuthError::PasskeyPersistence(error.into()))?;
         Ok(())
     }
     async fn update(&self, credential: &PasskeyRecord) -> Result<(), AuthError> {
@@ -224,7 +224,7 @@ impl Repository for PasskeyRepository {
             )
             .exec(db)
             .await
-            .map_err(anyhow::Error::from)?;
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?;
         if result.rows_affected != 1 {
             return Err(AuthError::InvalidPasskey);
         }
@@ -239,14 +239,14 @@ impl Repository for PasskeyRepository {
             .filter(identities::Column::PasskeyId.eq(id(credential_id)?))
             .exec(db)
             .await
-            .map_err(anyhow::Error::from)?;
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?;
         if result.rows_affected == 0 {
             return Ok(false);
         }
         credentials::Entity::delete_by_id(id(credential_id)?)
             .exec(db)
             .await
-            .map_err(anyhow::Error::from)?;
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?;
         Ok(true)
     }
     async fn insert_challenge(&self, c: Ceremony) -> Result<(), AuthError> {
@@ -260,7 +260,7 @@ impl Repository for PasskeyRepository {
         })
         .exec(db)
         .await
-        .map_err(anyhow::Error::from)?;
+        .map_err(|error| AuthError::PasskeyPersistence(error.into()))?;
         Ok(())
     }
     async fn challenge(
@@ -275,7 +275,7 @@ impl Repository for PasskeyRepository {
         query
             .one(db)
             .await
-            .map_err(anyhow::Error::from)?
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?
             .map(TryInto::try_into)
             .transpose()
     }
@@ -285,7 +285,7 @@ impl Repository for PasskeyRepository {
         Ok(challenges::Entity::delete_by_id(challenge_id)
             .exec(db)
             .await
-            .map_err(anyhow::Error::from)?
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?
             .rows_affected
             == 1)
     }
@@ -297,7 +297,7 @@ impl Repository for PasskeyRepository {
             .col_expr(challenges::Column::State, Expr::value(c.state))
             .exec(db)
             .await
-            .map_err(anyhow::Error::from)?;
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?;
         Ok(())
     }
     async fn record_method(
@@ -327,7 +327,7 @@ impl Repository for PasskeyRepository {
         )
         .exec(db)
         .await
-        .map_err(anyhow::Error::from)?;
+        .map_err(|error| AuthError::PasskeyPersistence(error.into()))?;
         Ok(())
     }
     async fn recently_verified(&self, session: &Session, since: u64) -> Result<bool, AuthError> {
@@ -339,7 +339,7 @@ impl Repository for PasskeyRepository {
             .filter(methods::Column::Method.is_in(["email_code", "passkey"]))
             .one(db)
             .await
-            .map_err(anyhow::Error::from)?
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?
             .is_some())
     }
     async fn ensure_email_identity(&self, user_id: u64) -> Result<(), AuthError> {
@@ -360,7 +360,7 @@ impl Repository for PasskeyRepository {
         .try_insert()
         .exec(db)
         .await
-        .map_err(anyhow::Error::from)?;
+        .map_err(|error| AuthError::PasskeyPersistence(error.into()))?;
         Ok(())
     }
     async fn cleanup(&self, now: u64) -> Result<(), AuthError> {
@@ -376,7 +376,7 @@ impl Repository for PasskeyRepository {
             .filter(challenges::Column::Id.in_subquery(expired))
             .exec(db)
             .await
-            .map_err(anyhow::Error::from)?;
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?;
         let referenced = identities::Entity::find()
             .select_only()
             .column(identities::Column::PasskeyId)
@@ -392,7 +392,7 @@ impl Repository for PasskeyRepository {
             .filter(credentials::Column::Id.in_subquery(orphans))
             .exec(db)
             .await
-            .map_err(anyhow::Error::from)?;
+            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?;
         Ok(())
     }
 }

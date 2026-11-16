@@ -83,7 +83,8 @@ impl From<AuthError> for Error {
                 422,
                 "Authentication credential exceeds the supported size limit",
             ),
-            AuthError::Preferences(_)
+            AuthError::PasskeyPersistence(_)
+            | AuthError::Preferences(_)
             | AuthError::SessionPersistence(_)
             | AuthError::OrganizationRepository(_)
             | AuthError::Connection(_)

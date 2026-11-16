@@ -208,14 +208,6 @@ impl MigrationTrait for Migration {
                             .big_integer()
                             .not_null(),
                     )
-                    .col(ColumnDef::new(a("passkey_id")).big_integer().null())
-                    .foreign_key(
-                        ForeignKey::create()
-                            .name("session_authentication_method_passkey_fk")
-                            .from(a("session_authentication_methods"), a("passkey_id"))
-                            .to(a("webauthn_credentials"), a("id"))
-                            .on_delete(ForeignKeyAction::SetNull),
-                    )
                     .primary_key(
                         Index::create()
                             .col(a("session_id"))

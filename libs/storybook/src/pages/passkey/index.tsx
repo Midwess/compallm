@@ -7,9 +7,9 @@ import { TextField, CodeEntry } from '../../components/fields'
 import { Form, useManagedForm, contractResult } from '../../components/form'
 import { Dialog } from '../../components/dialog'
 import { PasskeyRegistrationInput, EmailReauthenticationInput } from '@compallm/contract/validation'
-import { Section, Empty } from '../settings/shared'
+import { Section, Rows, Row, Empty } from '../settings/shared'
 import { Popup } from '../../components/popup'
-import { KeyIcon } from '@phosphor-icons/react/dist/csr/Key'
+import { SettingsDivider } from '../../components/settings'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
 import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
 import { DotsThreeIcon } from '@phosphor-icons/react/dist/csr/DotsThree'
@@ -47,11 +47,23 @@ export function PasskeySettings() {
   const currentPasskeyId = useStore(controller.store, (s) => s.currentPasskeyId)
   const busy = useStore(controller.store, (s) => s.busy)
   return (
-    <Section title="Passkeys" description="Passkeys are a secure way to sign in to your Compallm account.">
+    <Section
+      title="Passkeys"
+      description="Passkeys are a secure way to sign in to your Compallm account."
+      action={
+        status === 'ready' && records.length ? (
+          <Button variant="ghost" onClick={controller.openAdd} loading={busy}>
+            New passkey
+          </Button>
+        ) : undefined
+      }
+    >
       {status === 'loading' ? (
-        <p role="status" className="px-4 text-xsm text-muted-foreground">
-          Loading passkeys…
-        </p>
+        <Rows>
+          <div role="status" className="p-4 text-xsm text-muted-foreground">
+            Loading passkeys…
+          </div>
+        </Rows>
       ) : null}
       {status === 'error' || status === 'denied' ? (
         <Empty
@@ -62,28 +74,44 @@ export function PasskeySettings() {
         </Empty>
       ) : null}
       {status === 'ready' ? (
-        <div>
-          <div className="flex min-h-16 items-center justify-between gap-3 px-4">
-            <span className="text-xsm text-muted-foreground">
-              {records.length ? `${records.length} ${records.length === 1 ? 'passkey' : 'passkeys'}` : 'No passkeys registered'}
-            </span>
-            <Button variant="ghost" onClick={controller.openAdd} loading={busy}>
-              New passkey
-            </Button>
-          </div>
-          {records.length ? (
+        records.length ? (
+          <Rows>
             <ul className="m-0 list-none p-0">
-              {records.map((record) => (
-                <PasskeyRow key={record.id} record={record} current={record.id === currentPasskeyId} />
+              {records.map((record, index) => (
+                <PasskeyRow
+                  key={record.id}
+                  record={record}
+                  current={record.id === currentPasskeyId}
+                  last={index === records.length - 1}
+                />
               ))}
             </ul>
-          ) : null}
-        </div>
+          </Rows>
+        ) : (
+          <Empty
+            title="No passkeys registered"
+            action={
+              <Button onClick={controller.openAdd} loading={busy}>
+                New passkey
+              </Button>
+            }
+          >
+            Add a passkey for a simpler sign-in experience.
+          </Empty>
+        )
       ) : null}
     </Section>
   )
 }
-function PasskeyRow({ record, current }: { record: import('./types').PasskeyState['records'][number]; current: boolean }) {
+function PasskeyRow({
+  record,
+  current,
+  last,
+}: {
+  record: import('./types').PasskeyState['records'][number]
+  current: boolean
+  last: boolean
+}) {
   const controller = useController()
   const editing = useStore(controller.store, (s) => s.editingId === record.id)
   const busy = useStore(controller.store, (s) => s.busy)
@@ -103,71 +131,71 @@ function PasskeyRow({ record, current }: { record: import('./types').PasskeyStat
   )
   if (editing)
     return (
-      <li className="border-t border-divider px-4 py-4">
-        <Form.Root
-          model={model}
-          className="flex flex-wrap items-start gap-3"
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              event.preventDefault()
-              controller.edit(null)
-            }
-            if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
-              event.preventDefault()
-              void model.submit()
-            }
-          }}
-        >
-          <label className="min-w-0 flex-1">
-            <span className="sr-only">Passkey name</span>
-            <TextField name="name" autoFocus className="w-full" />
-            <Form.Error name="name" />
-          </label>
-          <Button variant="ghost" className="px-3" onClick={() => controller.edit(null)}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="neutral" className="h-8 px-3" loading={busy}>
-            Save
-          </Button>
-          {error ? (
-            <p role="alert" className="w-full text-xs text-destructive">
-              {error}
-            </p>
-          ) : null}
-        </Form.Root>
+      <li>
+        <div className="p-4">
+          <Form.Root
+            model={model}
+            className="flex flex-wrap items-start gap-3"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault()
+                controller.edit(null)
+              }
+              if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                event.preventDefault()
+                void model.submit()
+              }
+            }}
+          >
+            <label className="min-w-0 flex-1">
+              <span className="sr-only">Passkey name</span>
+              <TextField name="name" autoFocus className="w-full" />
+              <Form.Error name="name" />
+            </label>
+            <Button variant="ghost" className="px-3" onClick={() => controller.edit(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="neutral" className="h-8 px-3" loading={busy}>
+              Save
+            </Button>
+            {error ? (
+              <p role="alert" className="w-full text-xs text-destructive">
+                {error}
+              </p>
+            ) : null}
+          </Form.Root>
+        </div>
+        {!last ? <SettingsDivider className="mx-4" /> : null}
       </li>
     )
   return (
-    <li className="flex min-h-16 min-w-0 items-center gap-3 border-t border-divider px-4 py-4">
-      <span className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
-        <KeyIcon size={16} aria-hidden="true" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="m-0 truncate text-xsm leading-4 font-medium">{record.name}</p>
-        <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
-          {current ? 'Used with current session' : credentialDescription(record.registeredAt, record.lastUsedAt)}
-        </p>
-      </div>
-      <Popup.Root>
-        <Popup.Trigger aria-label={`Actions for ${record.name}`} className="size-8 p-0">
-          <DotsThreeIcon size={16} aria-hidden="true" />
-        </Popup.Trigger>
-        <Popup.Content className="w-44" aria-label={`Actions for ${record.name}`}>
-          <Popup.Item
-            onSelect={() => {
-              model.reset({ name: record.name })
-              controller.edit(record.id)
-            }}
-          >
-            <PencilSimpleIcon size={16} aria-hidden="true" />
-            Rename…
-          </Popup.Item>
-          <Popup.Item className="text-destructive" onSelect={() => controller.openRemove(record.id)}>
-            <TrashIcon size={16} aria-hidden="true" />
-            Revoke
-          </Popup.Item>
-        </Popup.Content>
-      </Popup.Root>
+    <li>
+      <Row
+        label={record.name}
+        description={current ? 'Used with current session' : credentialDescription(record.registeredAt, record.lastUsedAt)}
+        last={last}
+      >
+        <Popup.Root>
+          <Popup.Trigger aria-label={`Actions for ${record.name}`} className="size-8 p-0">
+            <DotsThreeIcon size={16} aria-hidden="true" />
+          </Popup.Trigger>
+          <Popup.Content className="w-44" aria-label={`Actions for ${record.name}`}>
+            <Popup.Item
+              onSelect={() => {
+                model.reset({ name: record.name })
+                controller.edit(record.id)
+              }}
+            >
+              <PencilSimpleIcon size={16} aria-hidden="true" />
+              Rename…
+            </Popup.Item>
+            <Popup.Item className="text-destructive" onSelect={() => controller.openRemove(record.id)}>
+              <TrashIcon size={16} aria-hidden="true" />
+              Revoke
+            </Popup.Item>
+          </Popup.Content>
+        </Popup.Root>
+      </Row>
     </li>
   )
 }

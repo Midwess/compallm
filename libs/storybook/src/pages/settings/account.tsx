@@ -134,33 +134,31 @@ export function SecuritySettings() {
   const keys = useSettings((state) => state.apiKeys)
   return (
     <SettingsContent>
-      <Heading className="mb-8">Security &amp; access</Heading>
+      <Heading>Security &amp; access</Heading>
       <div className="grid gap-12">
         <Section title="Sessions" description="Devices logged into your account">
-          <div className="flex min-h-16 items-center justify-between gap-4 px-4">
-            <div className="text-xsm">
-              <p className="m-0 font-medium">Current session</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">You are signed in to Compallm</p>
-            </div>
-            <Button variant="ghost" onClick={c.signOut}>
-              Log out
-            </Button>
-          </div>
+          <Rows>
+            <Row label="Current session" description="You are signed in to Compallm." last>
+              <Button variant="ghost" onClick={c.signOut}>
+                Log out
+              </Button>
+            </Row>
+          </Rows>
         </Section>
         {passkeys ? (
           <PasskeySettings />
         ) : (
-          <Section title="Passkeys" description="Passkeys are a secure way to sign in to your Compallm account.">
-            <div className="flex min-h-16 items-center justify-between gap-3 px-4">
-              <span className="text-xsm text-muted-foreground">
-                {previewPasskeys.length
-                  ? `${previewPasskeys.length} ${previewPasskeys.length === 1 ? 'passkey' : 'passkeys'}`
-                  : 'No passkeys registered'}
-              </span>
-              <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('add-passkey')}>
-                New passkey
-              </Button>
-            </div>
+          <Section
+            title="Passkeys"
+            description="Passkeys are a secure way to sign in to your Compallm account."
+            action={
+              previewPasskeys.length ? (
+                <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('add-passkey')}>
+                  New passkey
+                </Button>
+              ) : undefined
+            }
+          >
             {previewPasskeys.length ? (
               <Rows>
                 {previewPasskeys.map((key, index) => (
@@ -171,25 +169,48 @@ export function SecuritySettings() {
                   </Row>
                 ))}
               </Rows>
-            ) : null}
+            ) : (
+              <Empty
+                title="No passkeys registered"
+                action={<Button onClick={() => c.pages.dialogs.openDialog('add-passkey')}>New passkey</Button>}
+              >
+                Add a passkey for a simpler sign-in experience.
+              </Empty>
+            )}
           </Section>
         )}
         <Section title="Personal API keys" description="Use API keys to connect your tools to Compallm.">
-          <div className="flex min-h-16 items-center justify-between gap-3 px-4">
-            <span className="text-xsm text-muted-foreground">
-              {keys.length ? `${keys.length} API keys` : 'No API keys created'}
-            </span>
-            <Button variant="ghost" onClick={() => c.navigate('api-keys')}>
-              Manage API keys
-            </Button>
-          </div>
+          <Rows>
+            <Row
+              label={keys.length ? `${keys.length} API keys` : 'No API keys created'}
+              description="Review your personal API access."
+              last
+            >
+              <Button variant="ghost" onClick={() => c.navigate('api-keys')}>
+                Manage API keys
+              </Button>
+            </Row>
+          </Rows>
         </Section>
         <Section title="Authorized applications" description="Applications you’ve approved">
-          <p className="px-4 py-4 text-xsm text-muted-foreground">
-            {applications.length
-              ? `${applications.length} authorized applications`
-              : 'No applications have been authorized to connect with your account.'}
-          </p>
+          {applications.length ? (
+            <Rows>
+              {applications.map((app, index) => (
+                <Row
+                  key={app.id}
+                  label={app.name}
+                  description={`Granted access: ${app.scope}`}
+                  last={index === applications.length - 1}
+                >
+                  <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('application', app.id)}>
+                    Review
+                  </Button>
+                </Row>
+              ))}
+            </Rows>
+          ) : (
+            <Empty title="No authorized applications">Applications you authorize will appear here.</Empty>
+          )}
         </Section>
       </div>
     </SettingsContent>

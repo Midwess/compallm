@@ -1,3 +1,5 @@
+import { useRowRetention } from './collection'
+import { useState } from 'react'
 import { useFormField } from './form'
 import { createContext, useContext, type ComponentPropsWithRef, type ReactNode } from 'react'
 import { Combobox } from '@base-ui/react/combobox'
@@ -58,6 +60,8 @@ function Root({
   defaultOpen,
   onOpenChange,
 }: ChoicePickerRootProps) {
+  const [observedOpen, setObservedOpen] = useState(false)
+  useRowRetention(open ?? observedOpen)
   const field = useFormField<string[]>(name)
   const [value, change] = useControllableState(suppliedValue, defaultValue, suppliedChange)
   const ids = field ? (field.value ?? []) : value
@@ -72,6 +76,7 @@ function Root({
         open={open}
         defaultOpen={defaultOpen}
         onOpenChange={(next) => {
+          setObservedOpen(next)
           if (!next) field?.blur()
           onOpenChange?.(next)
         }}

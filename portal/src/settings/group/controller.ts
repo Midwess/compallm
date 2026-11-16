@@ -59,7 +59,7 @@ export class GroupController implements Contract {
     this.cancel()
     const request = new AbortController()
     this.request = request
-    this.store.setState({ loading: true, draft: null, query: '', members: [], hasNextPage: false })
+    this.store.setState({ loading: true, draft: null, query: '', members: [], hasNextPage: false, membersLoadError: false })
     try {
       if (this.permissions) await requirePermissions(this.permissions, [{ action: 'group.read', resourceType: 'Organization' }])
       if (request.signal.aborted || this.request !== request) return
@@ -145,7 +145,7 @@ export class GroupController implements Contract {
     void this.loadMembers(false)
   }
   loadMore = () => {
-    if (this.store.getState().hasNextPage) void this.loadMembers(true)
+    if (this.store.getState().hasNextPage && !this.store.getState().membersLoading) void this.loadMembers(true)
   }
   private async loadMembers(append: boolean) {
     const id = this.store.getState().draft?.id,
@@ -155,7 +155,7 @@ export class GroupController implements Contract {
     const request = new AbortController()
     this.memberRequest = request
     const revision = this.memberRevision
-    this.store.setState({ membersLoading: true })
+    this.store.setState({ membersLoading: true, membersLoadError: false })
     const q = this.store
       .getState()
       .query.trim()
@@ -210,6 +210,7 @@ export class GroupController implements Contract {
         draft: { ...this.store.form.baseline.draft!, memberIds: [...this.baselineMembers], memberSelection: confirmed },
       })
     } catch (error) {
+      if (!request.signal.aborted && this.memberRequest === request) this.store.setState({ membersLoadError: true })
       if (!request.signal.aborted && !owner.signal.aborted)
         notify.apiError(error, () => {
           if (this.request === owner && this.memberRequest === request) void this.loadMembers(append)

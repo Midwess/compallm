@@ -17,6 +17,7 @@ const families = [
   'popup',
   'rich-message',
   'table',
+  'list',
   'form-field',
   'form-section',
   'content',

@@ -1,3 +1,4 @@
+import { List } from '../../components/list'
 import { PermissionRequest } from '../../components/permission'
 import { useContext } from 'react'
 import { useStore } from 'zustand'
@@ -23,13 +24,11 @@ export function OrganizationCatalogPage({ kind }: { kind: 'models' | 'providers'
               ) : null}
             </header>
             {items.length ? (
-              <ul className="divide-y divide-divider rounded-lg bg-inset px-4">
-                {items.map((item) => (
-                  <li key={item.id} className="py-4 text-xsm">
-                    {item.name}
-                  </li>
-                ))}
-              </ul>
+              <List.Root>
+                <List.Items items={items} getKey={(item) => item.id} estimateSize={52} className="rounded-lg bg-inset px-4">
+                  {(item) => <div className="border-b border-divider px-4 py-4 text-xsm">{item.name}</div>}
+                </List.Items>
+              </List.Root>
             ) : (
               <div className="grid gap-2 rounded-lg bg-inset px-6 py-8">
                 <h2 className="text-sm font-medium">{providers ? 'No providers available' : 'No models available'}</h2>

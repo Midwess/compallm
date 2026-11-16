@@ -582,8 +582,24 @@ export const MembersRenderingBatches: Story = {
       page="members"
       initial={{
         members: Array.from({ length: 20 }, (_, index) => ({
-          ...initialSettings.members![0],
+          ...initialSettings.members![1],
           id: `batch-${index}`,
+          name: `Member ${index}`,
+          email: `member${index}@example.com`,
+        })),
+      }}
+    />
+  ),
+}
+
+export const MembersRoleUpdates: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      initial={{
+        members: Array.from({ length: 1000 }, (_, index) => ({
+          ...initialSettings.members![1],
+          id: `editable-${index}`,
           name: `Member ${index}`,
           email: `member${index}@example.com`,
         })),

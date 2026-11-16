@@ -25,6 +25,7 @@ function GroupMembers() {
     fallbackMembers = useSettings((s) => s.members),
     pageMembers = useGroup((s) => s.members),
     count = useGroup((s) => s.memberCount),
+    membersLoadError = useGroup((s) => s.membersLoadError),
     hasNextPage = useGroup((s) => s.hasNextPage),
     membersLoading = useGroup((s) => s.membersLoading),
     query = useGroup((s) => s.query),
@@ -80,8 +81,17 @@ function GroupMembers() {
                   <Table.Head className="px-0">Include</Table.Head>
                 </Table.Row>
               </Table.Header>
-              <Table.Body>
-                {visible.map((entry) => (
+              <Table.Body
+                items={visible}
+                getKey={(entry) => entry.id}
+                paging={{
+                  hasMore: Boolean(hasNextPage),
+                  loading: Boolean(membersLoading),
+                  error: membersLoadError,
+                  onLoadMore: () => group.loadMore?.(),
+                }}
+              >
+                {(entry) => (
                   <Table.Row key={entry.id}>
                     <Table.Cell className="px-0 pr-3">
                       <span className="flex items-center gap-2 truncate text-xsm leading-4.5">{entry.name}</span>
@@ -118,24 +128,22 @@ function GroupMembers() {
                       </DisabledTooltip>
                     </Table.Cell>
                   </Table.Row>
-                ))}
-                {!visible.length ? (
+                )}
+              </Table.Body>
+
+              {!visible.length ? (
+                <Table.Body>
                   <Table.Row>
                     <Table.Cell colSpan={3} className="py-6 text-center text-muted-foreground">
                       No members match your search.
                     </Table.Cell>
                   </Table.Row>
-                ) : null}
-              </Table.Body>
+                </Table.Body>
+              ) : null}
             </Table.Content>
           </Table.Root>
         </div>
         <FormError name="draft.memberSelection" />
-        {hasNextPage ? (
-          <Button variant="ghost" loading={membersLoading} onClick={() => group.loadMore?.()}>
-            Load more members
-          </Button>
-        ) : null}
       </SectionSurface>
     </section>
   )

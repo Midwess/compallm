@@ -1,3 +1,4 @@
+import { CollectionForms } from '../../../src/components/collection-forms'
 import { DemoOrganizationOnboardingController } from './onboarding/demo-controller'
 import { createSettingsStore } from '../../../src/pages/settings'
 import type {
@@ -26,6 +27,7 @@ export class DemoSettingsController implements SettingsController {
     profile: new DemoProfileController(this.store, (file) => this.avatarUrl(file)),
     organization: new DemoOrganizationController(this.store, (file) => this.avatarUrl(file)),
     members: {
+      forms: new CollectionForms(),
       loadMore: async () => {
         const state = this.store.getState()
         if (!state.membersHasNextPage || state.membersLoading) return
@@ -154,6 +156,7 @@ export class DemoSettingsController implements SettingsController {
     this.group.start()
   }
   stop = () => {
+    this.pages.members.forms.dispose()
     this.closed = true
     this.pages.preferences.user.cancel()
     this.role.stop()

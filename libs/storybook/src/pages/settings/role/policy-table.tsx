@@ -260,6 +260,9 @@ export function PolicyTable() {
               return (
                 <Table.Category
                   key={category}
+                  items={matched}
+                  getKey={(action) => action.id}
+                  estimateSize={48}
                   label={category}
                   count={selected + ' / ' + all.length}
                   open={open}
@@ -295,7 +298,7 @@ export function PolicyTable() {
                     </DisabledTooltip>
                   }
                 >
-                  {matched.map((action) => (
+                  {(action) => (
                     <PermissionRow
                       key={action.id}
                       id={id + '-category-' + index + '-' + action.id}
@@ -305,7 +308,7 @@ export function PolicyTable() {
                       owner={draft.builtin}
                       busy={busy}
                     />
-                  ))}
+                  )}
                 </Table.Category>
               )
             })}

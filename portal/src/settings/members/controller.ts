@@ -1,3 +1,4 @@
+import { CollectionForms } from '@compallm/storybook'
 import { type PermissionCheck, permissionKey, type PermissionController, type FormStore } from '@compallm/storybook'
 import type { SettingsState } from '@compallm/storybook/pages/settings'
 import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
@@ -13,6 +14,7 @@ const pageInfo = { endCursor: true, hasNextPage: true } as const
 const issuedNode = { invitation: invitationNode, url: true, emailAdmitted: true } as const
 
 export class MembersController {
+  readonly forms = new CollectionForms()
   private request?: AbortController
   private invitationsRequest?: AbortController
   private stop?: () => void
@@ -131,8 +133,32 @@ export class MembersController {
       if (owner.signal.aborted || this.lifecycle !== owner) return false
       this.store.setState((state) => ({
         members: state.members.map((row) => (row.id === memberId ? { ...row, role } : row)),
+        ...(Boolean(member.role?.owner) !== role.owner
+          ? {
+              ownerMemberIds: role.owner
+                ? [...new Set([...(state.ownerMemberIds ?? []), memberId])]
+                : state.ownerMemberIds?.filter((id) => id !== memberId),
+            }
+          : {}),
       }))
-      void this.load()
+      const updated = this.store.getState().members.find((row) => row.id === memberId)
+      if (updated?.groups)
+        this.permissions?.setFacts?.([
+          {
+            resourceType: 'Member',
+            id: memberId,
+            groupIds: updated.groups.map((group) => group.id),
+            roleIds: [
+              ...new Set([
+                role.id,
+                ...this.store
+                  .getState()
+                  .groups.filter((group) => updated.groups?.some(({ id }) => id === group.id))
+                  .flatMap((group) => group.roleIds),
+              ]),
+            ],
+          },
+        ])
     } catch (error) {
       if (!owner.signal.aborted) notify.error(error)
       return false
@@ -160,6 +186,7 @@ export class MembersController {
     return this.cancel
   }
   cancel = () => {
+    this.forms.dispose()
     this.lifecycle?.abort()
     this.request?.abort()
     this.invitationsRequest?.abort()

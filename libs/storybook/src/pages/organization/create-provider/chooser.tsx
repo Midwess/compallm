@@ -57,8 +57,8 @@ export function ProviderChooser() {
               <Table.Head className="text-center">Choose</Table.Head>
             </Table.Row>
           </Table.Header>
-          <Table.Body>
-            {filtered.map((provider) => (
+          <Table.Body items={filtered} getKey={(provider) => provider.id} estimateSize={56}>
+            {(provider) => (
               <Table.Row
                 key={provider.id}
                 className="h-14 cursor-pointer border-b border-divider hover:bg-inset"
@@ -98,7 +98,7 @@ export function ProviderChooser() {
                   </ToolbarAction>
                 </Table.Cell>
               </Table.Row>
-            ))}
+            )}
           </Table.Body>
         </Table.Content>
         {!filtered.length ? <p className="py-12 text-center text-sm text-muted-foreground">No providers found</p> : null}

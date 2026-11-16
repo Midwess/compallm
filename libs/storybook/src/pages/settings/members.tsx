@@ -1,9 +1,8 @@
-import { useProgressiveRows } from '../../components/progressive-rows'
+import { CollectionRowContext } from '../../context'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { ArrowDownLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowDownLeft'
 import { Tooltip } from '../../components/feedback'
-import { memo, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
-import useInfiniteScroll from 'react-infinite-scroll-hook'
+import { memo, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { EyeIcon } from '@phosphor-icons/react/dist/csr/Eye'
 import { EyeSlashIcon } from '@phosphor-icons/react/dist/csr/EyeSlash'
 import { UserPlusIcon } from '@phosphor-icons/react/dist/csr/UserPlus'
@@ -137,49 +136,11 @@ function DirectoryDate({ value }: { value?: number | null }) {
   )
 }
 
-function LoadMoreRows({
-  root,
-  loading,
-  more,
-  failed,
-  onLoadMore,
-  label,
-  disabled = false,
-}: {
-  root: HTMLElement | null
-  loading: boolean
-  more: boolean
-  failed: boolean
-  onLoadMore(): void
-  label: string
-  disabled?: boolean
-}) {
-  const [sentry, { rootRef }] = useInfiniteScroll({
-    loading,
-    hasNextPage: more,
-    onLoadMore,
-    disabled: disabled || failed || !root,
-    rootMargin: '0px 0px 160px 0px',
-  })
-  useEffect(() => rootRef(root), [root, rootRef])
-  if (!more) return null
-  return (
-    <Table.Row className="h-8 border-0">
-      <Table.Cell colSpan={6}>
-        <div ref={sentry} className="flex h-8 items-center justify-center" aria-busy={loading}>
-          {failed ? <Button onClick={onLoadMore}>Retry {label}</Button> : <span className="sr-only">{label}</span>}
-        </div>
-      </Table.Cell>
-    </Table.Row>
-  )
-}
-
-function Invitations({ root }: { root: HTMLElement | null }) {
+function Invitations() {
   const [open, setOpen] = useState(true)
   const c = useSettingsController()
   const confirmed = useSettings((s) => s.invitations)
   const invitations = useMemo(() => confirmed.filter((invitation) => invitation.status === 'pending'), [confirmed])
-  const visible = useProgressiveRows(invitations)
   const loading = useSettings((s) => s.invitationsLoading)
   const more = useSettings((s) => s.invitationsHasNextPage)
   const failed = useSettings((s) => s.invitationsLoadError ?? false)
@@ -193,8 +154,17 @@ function Invitations({ root }: { root: HTMLElement | null }) {
       columns={6}
       open={open}
       onOpenChange={setOpen}
+      items={invitations}
+      getKey={(row) => row.id}
+      estimateSize={56}
+      paging={{
+        hasMore: more,
+        loading: loading || busy,
+        error: failed,
+        onLoadMore: () => c.pages.members.loadMoreInvitations?.(),
+      }}
     >
-      {visible.rows.map((row) => (
+      {(row) => (
         <Table.Row key={row.id} className="h-14 border-0">
           <Table.Cell column="name" className="pl-0">
             <div className="flex items-center gap-2.5 py-1">
@@ -239,22 +209,15 @@ border-border text-ui-11 text-muted-foreground"
             </PermissionRequest>
           </Table.Cell>
         </Table.Row>
-      ))}
-      <LoadMoreRows
-        root={root}
-        loading={loading || busy || visible.revealing}
-        more={more}
-        failed={failed}
-        disabled={!open}
-        onLoadMore={() => c.pages.members.loadMoreInvitations?.()}
-        label="invitations"
-      />
+      )}
     </Table.Category>
   )
 }
 
 function MemberRoles({ member }: { member: SettingsMember }) {
-  const [activated, setActivated] = useState(false)
+  const row = useContext(CollectionRowContext)
+  const [initiallyOpen, setInitiallyOpen] = useState(false)
+  const [activated, setActivated] = useState(() => row?.forms.has(`${row.key}:role`) ?? false)
   const current = useSettings((state) => state.currentMemberId)
   const owner = useSettings((state) => state.actorIsOwner)
   const owners = useSettings((state) => state.ownerMemberIds ?? [])
@@ -264,14 +227,17 @@ function MemberRoles({ member }: { member: SettingsMember }) {
         {member.role?.name ?? 'Unavailable'}
       </span>
     )
-  if (activated) return <MemberRolePicker member={member} />
+  if (activated) return <MemberRolePicker member={member} initiallyOpen={initiallyOpen} />
   return (
     <Button
       variant="neutral"
       aria-label={`Roles for ${member.name}`}
       aria-haspopup="listbox"
       className="h-auto min-h-6 w-fit max-w-full justify-between rounded-lg px-2 py-0.5 text-left text-xs"
-      onClick={() => setActivated(true)}
+      onClick={() => {
+        setInitiallyOpen(true)
+        setActivated(true)
+      }}
     >
       <span className="line-clamp-2 min-w-0 flex-1 whitespace-normal text-left">{member.role?.name ?? 'Unavailable'}</span>
       <CaretDownIcon size={10} aria-hidden="true" />
@@ -279,8 +245,8 @@ function MemberRoles({ member }: { member: SettingsMember }) {
   )
 }
 
-function MemberRolePicker({ member }: { member: SettingsMember }) {
-  const [open, setOpen] = useState(true)
+function MemberRolePicker({ member, initiallyOpen }: { member: SettingsMember; initiallyOpen: boolean }) {
+  const [open, setOpen] = useState(initiallyOpen)
   const roles = useSettings((s) => s.roles)
   const actorIsOwner = useSettings((s) => s.actorIsOwner)
   const currentMemberId = useSettings((s) => s.currentMemberId)
@@ -323,6 +289,7 @@ function MemberRolePicker({ member }: { member: SettingsMember }) {
         return values
       },
     },
+    'role',
   )
   const selected = useFormValue<string>(form, 'roleId')
   const pending = useSyncExternalStore(
@@ -427,8 +394,10 @@ function MemberRolePicker({ member }: { member: SettingsMember }) {
 }
 
 function MemberGroups({ member }: { member: SettingsMember }) {
-  const [activated, setActivated] = useState(false)
-  if (activated) return <MemberGroupPicker member={member} />
+  const row = useContext(CollectionRowContext)
+  const [initiallyOpen, setInitiallyOpen] = useState(false)
+  const [activated, setActivated] = useState(() => row?.forms.has(`${row.key}:groups`) ?? false)
+  if (activated) return <MemberGroupPicker member={member} initiallyOpen={initiallyOpen} />
   const groups = member.groups ?? []
   return (
     <PermissionRequest actions={['group.read']}>
@@ -439,7 +408,10 @@ function MemberGroups({ member }: { member: SettingsMember }) {
             aria-label={`Groups for ${member.name}`}
             aria-haspopup="listbox"
             className="h-auto min-h-6 justify-start rounded-full px-2 py-0.5 text-left text-xs"
-            onClick={() => setActivated(true)}
+            onClick={() => {
+              setInitiallyOpen(true)
+              setActivated(true)
+            }}
           >
             <span className="line-clamp-2 whitespace-normal text-left">
               {groups[0]?.name ?? 'None'}
@@ -452,8 +424,8 @@ function MemberGroups({ member }: { member: SettingsMember }) {
   )
 }
 
-function MemberGroupPicker({ member }: { member: SettingsMember }) {
-  const [open, setOpen] = useState(true)
+function MemberGroupPicker({ member, initiallyOpen }: { member: SettingsMember; initiallyOpen: boolean }) {
+  const [open, setOpen] = useState(initiallyOpen)
   const c = useSettingsController()
   const catalog = useSettings((s) => s.groups)
   const confirmed = member.groups ?? catalog.filter((group) => group.memberIds.includes(member.id))
@@ -476,6 +448,7 @@ function MemberGroupPicker({ member }: { member: SettingsMember }) {
         return result === false || !result ? false : { groupIds: result }
       },
     },
+    'groups',
   )
   const selected = useFormValue<string[]>(form, 'groupIds') ?? []
   const selectedGroups = options.filter((group) => selected.includes(group.id))
@@ -619,20 +592,23 @@ const MemberRow = memo(function MemberRow({ member }: { member: SettingsMember }
   )
 })
 
+const memberKey = (member: SettingsMember) => member.id
+const renderMember = (member: SettingsMember) => <MemberRow member={member} />
+
 function MemberRows({
   label,
   members,
   complete,
   open,
   onOpenChange,
-  children,
+  paging,
 }: {
   label: string
   members: SettingsMember[]
   complete: boolean
   open: boolean
   onOpenChange(open: boolean): void
-  children?: ReactNode
+  paging: import('../../components/collection-types').CollectionPaging
 }) {
   return (
     <Table.Category
@@ -642,11 +618,12 @@ function MemberRows({
       onOpenChange={onOpenChange}
       columns={6}
       count={complete || members.length ? `${members.length}${complete ? '' : ' shown'}` : undefined}
+      items={members}
+      getKey={memberKey}
+      estimateSize={56}
+      paging={paging}
     >
-      {members.map((member) => (
-        <MemberRow key={member.id} member={member} />
-      ))}
-      {children}
+      {renderMember}
     </Table.Category>
   )
 }
@@ -731,23 +708,18 @@ const memberColumns = [
 export function MembersSettings() {
   const c = useSettingsController()
   const members = useSettings((s) => s.members)
-  const visible = useProgressiveRows(members)
   const query = useSettings((s) => s.query)
   const order = useSettings((s) => s.memberOrder)
   const loading = useSettings((s) => s.membersLoading)
   const next = useSettings((s) => s.membersHasNextPage)
   const failed = useSettings((s) => s.membersLoadError ?? false)
-  const [root, setRoot] = useState<HTMLElement | null>(null)
-  const attachTable = useCallback((element: HTMLDivElement | null) => {
-    setRoot(element?.closest<HTMLElement>('[aria-label="Settings content"]') ?? null)
-  }, [])
   const [activeOpen, setActiveOpen] = useState(true)
   const [inactiveOpen, setInactiveOpen] = useState(true)
   const invitations = useSettings((s) => s.invitations.length)
   const confirmedComplete = useSettings((s) => s.membersComplete !== false)
-  const complete = confirmedComplete && !loading && !next && !visible.revealing
-  const active = visible.rows.filter((member) => member.available !== false)
-  const inactive = visible.rows.filter((member) => member.available === false)
+  const complete = confirmedComplete && !loading && !next
+  const active = useMemo(() => members.filter((member) => member.available !== false), [members])
+  const inactive = useMemo(() => members.filter((member) => member.available === false), [members])
   const descending = order === 'DESC_NULLS_LAST'
   return (
     <SettingsContent wide className="flex min-h-full flex-col pt-16 pb-6">
@@ -774,7 +746,7 @@ export function MembersSettings() {
         ) : null}
       </div>
       <Table.Root
-        ref={attachTable}
+        forms={c.pages.members.forms}
         className="overflow-visible
 [&_[data-slot=table-category-header]>td]:rounded-none [&_[data-slot=table-category-header]>td]:bg-transparent
 [&_[data-slot=table-category-header]>td]:before:pointer-events-none
@@ -787,7 +759,7 @@ export function MembersSettings() {
         <Table.Content
           className="border-separate border-spacing-0"
           aria-label="Organization members"
-          aria-busy={loading || visible.revealing}
+          aria-busy={loading}
           columns={memberColumns}
         >
           <Table.Header className="sticky top-0 z-20 bg-surface">
@@ -813,21 +785,21 @@ export function MembersSettings() {
               </Table.Head>
             </Table.Row>
           </Table.Header>
-          <Invitations root={root} />
+          <Invitations />
           {active.length || !inactive.length ? (
-            <MemberRows label="Active" members={active} complete={complete} open={activeOpen} onOpenChange={setActiveOpen}>
-              {!inactive.length ? (
-                <LoadMoreRows
-                  root={root}
-                  loading={loading || visible.revealing}
-                  more={next}
-                  failed={failed}
-                  disabled={!activeOpen}
-                  onLoadMore={() => c.pages.members.loadMore?.()}
-                  label="members"
-                />
-              ) : null}
-            </MemberRows>
+            <MemberRows
+              label="Active"
+              members={active}
+              complete={complete}
+              open={activeOpen}
+              onOpenChange={setActiveOpen}
+              paging={{
+                hasMore: next && !inactive.length,
+                loading,
+                error: failed,
+                onLoadMore: () => c.pages.members.loadMore?.(),
+              }}
+            />
           ) : null}
           {inactive.length ? (
             <MemberRows
@@ -836,17 +808,8 @@ export function MembersSettings() {
               complete={complete}
               open={inactiveOpen}
               onOpenChange={setInactiveOpen}
-            >
-              <LoadMoreRows
-                root={root}
-                loading={loading || visible.revealing}
-                more={next}
-                failed={failed}
-                disabled={!inactiveOpen}
-                onLoadMore={() => c.pages.members.loadMore?.()}
-                label="members"
-              />
-            </MemberRows>
+              paging={{ hasMore: next, loading, error: failed, onLoadMore: () => c.pages.members.loadMore?.() }}
+            />
           ) : null}
         </Table.Content>
       </Table.Root>

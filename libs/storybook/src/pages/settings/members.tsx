@@ -666,7 +666,16 @@ export function MembersSettings() {
           </PermissionRequest>
         ) : null}
       </div>
-      <Table.Root ref={attachTable} className="overflow-visible">
+      <Table.Root
+        ref={attachTable}
+        className="overflow-visible
+[&_[data-slot=table-category-header]>td]:rounded-none [&_[data-slot=table-category-header]>td]:bg-transparent
+[&_[data-slot=table-category-header]>td]:before:pointer-events-none
+[&_[data-slot=table-category-header]>td]:before:absolute [&_[data-slot=table-category-header]>td]:before:inset-y-0
+[&_[data-slot=table-category-header]>td]:before:-inset-x-6 lg:[&_[data-slot=table-category-header]>td]:before:-inset-x-14
+[&_[data-slot=table-category-header]>td]:before:bg-inset [&_[data-slot=table-category-header]>td]:before:content-['']
+[&_[data-slot=table-category-header]_button]:relative"
+      >
         <Table.Content
           className="border-separate border-spacing-0"
           aria-label="Organization members"

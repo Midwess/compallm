@@ -558,3 +558,20 @@ export const InvitationsScroll: Story = {
     />
   ),
 }
+
+export const RecentInvitationDates: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      initial={{
+        invitations: [30, 300, 3600, 7200, 90000].map((age, index) => ({
+          id: `recent-${index}`,
+          email: `person${index}@example.com`,
+          status: 'pending',
+          issuedAt: Math.floor(Date.now() / 1000) - age,
+          expiresAt: Math.floor(Date.now() / 1000) - age + 604800,
+        })),
+      }}
+    />
+  ),
+}

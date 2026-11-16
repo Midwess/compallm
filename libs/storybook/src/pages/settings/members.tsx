@@ -101,17 +101,36 @@ function InviteMember() {
 }
 
 function DirectoryDate({ value }: { value?: number | null }) {
-  const [year] = useState(() => new Date().getUTCFullYear())
+  const [now, setNow] = useState(() => Date.now())
+  const age = value ? Math.max(0, Math.floor(now / 1000) - value) : 86400
+  const recent = age < 86400
+  useEffect(() => {
+    if (!recent) return
+    const timer = setInterval(() => setNow(Date.now()), 60000)
+    return () => clearInterval(timer)
+  }, [value, recent])
   if (!value) return <span className="text-muted-foreground">—</span>
   const date = new Date(value * 1000)
-  const sameYear = date.getUTCFullYear() === year
+  const sameYear = date.getUTCFullYear() === new Date(now).getUTCFullYear()
+  const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'always' })
+  const label =
+    age < 60
+      ? 'Just now'
+      : age < 3600
+        ? relative.format(-Math.floor(age / 60), 'minute')
+        : age < 86400
+          ? relative.format(-Math.floor(age / 3600), 'hour')
+          : date.toLocaleDateString(
+              undefined,
+              sameYear ? { month: 'short', day: 'numeric' } : { month: 'short', year: 'numeric' },
+            )
   return (
     <time
       dateTime={date.toISOString()}
-      title={date.toLocaleDateString()}
+      title={date.toLocaleString()}
       className="whitespace-nowrap text-xs text-muted-foreground"
     >
-      {date.toLocaleDateString(undefined, sameYear ? { month: 'short', day: 'numeric' } : { month: 'short', year: 'numeric' })}
+      {label}
     </time>
   )
 }
@@ -685,8 +704,8 @@ export function MembersSettings() {
             { id: 'name' },
             { id: 'email' },
             { id: 'role', className: 'w-1/6', visibilityClassName: 'hidden md:table-cell' },
-            { id: 'groups', className: 'w-1/6', visibilityClassName: 'hidden md:table-cell' },
-            { id: 'joined', className: 'w-20', visibilityClassName: 'hidden lg:table-cell' },
+            { id: 'groups', className: 'w-1/6 lg:w-[calc(100%/6-1.5rem)]', visibilityClassName: 'hidden md:table-cell' },
+            { id: 'joined', className: 'w-26', visibilityClassName: 'hidden lg:table-cell' },
             { id: 'actions', className: 'w-12' },
           ]}
         >
@@ -707,7 +726,7 @@ export function MembersSettings() {
                 Role
               </Table.Head>
               <Table.Head column="groups">Groups</Table.Head>
-              <Table.Head column="joined">Joined/Sent</Table.Head>
+              <Table.Head column="joined">Time</Table.Head>
               <Table.Head column="actions">
                 <span className="sr-only">Actions</span>
               </Table.Head>

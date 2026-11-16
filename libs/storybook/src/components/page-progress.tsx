@@ -45,35 +45,41 @@ export function PageProgress({ active }: { active: boolean }) {
   useLayoutEffect(() => {
     if (!host.current) return
     clearTimeout(completion.current)
-    const reduced = reducedMotion()
-    BProgress.configure({
-      parent: host.current,
-      template,
-      showSpinner: false,
-      trickle: false,
-      easing: 'linear',
-      positionUsing: 'width',
-      minimum: 0.08,
-      maximum: 1,
-      indeterminate: false,
-      speed: reduced ? 0 : minimumVisible,
-    })
-    if (active) {
-      if (startedAt.current === null || !BProgress.isStarted()) {
-        BProgress.remove()
-        startedAt.current = performance.now()
-        BProgress.start()
-        BProgress.set(reduced ? 0.35 : 0.9)
+    let frame = requestAnimationFrame(() => {
+      if (!host.current) return
+      const reduced = reducedMotion()
+      BProgress.configure({
+        parent: host.current,
+        template,
+        showSpinner: false,
+        trickle: false,
+        easing: 'linear',
+        positionUsing: 'width',
+        minimum: 0.08,
+        maximum: 1,
+        indeterminate: false,
+        speed: reduced ? 0 : minimumVisible,
+      })
+      if (active) {
+        if (startedAt.current === null || !BProgress.isStarted()) {
+          BProgress.remove()
+          startedAt.current = performance.now()
+          BProgress.start()
+          BProgress.set(reduced ? 0.35 : 0.9)
+        }
+      } else if (startedAt.current !== null) {
+        const remaining = Math.max(0, minimumVisible - (performance.now() - startedAt.current))
+        completion.current = setTimeout(() => {
+          frame = requestAnimationFrame(() => {
+            BProgress.configure({ speed: reduced ? 0 : completionSpeed })
+            BProgress.done()
+            startedAt.current = null
+          })
+        }, remaining)
       }
-    } else if (startedAt.current !== null) {
-      const remaining = Math.max(0, minimumVisible - (performance.now() - startedAt.current))
-      completion.current = setTimeout(() => {
-        BProgress.configure({ speed: reduced ? 0 : completionSpeed })
-        BProgress.done()
-        startedAt.current = null
-      }, remaining)
-    }
+    })
     return () => {
+      cancelAnimationFrame(frame)
       clearTimeout(completion.current)
     }
   }, [active])

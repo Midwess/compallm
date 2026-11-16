@@ -516,10 +516,10 @@ export function progressWave(host: HTMLElement) {
   if (!wave || reducedMotion()) return
   return animate(
     wave,
-    { x: [-640, host.clientWidth] },
+    { scaleY: [0.7, 1.15, 0.7], opacity: [0.75, 1, 0.75] },
     {
-      duration: 2.4,
-      ease: 'linear',
+      duration: 1.8,
+      ease: 'easeInOut',
       repeat: Infinity,
     },
   )

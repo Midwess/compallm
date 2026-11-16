@@ -7,7 +7,8 @@ const completionSpeed = 100
 const template = `<div class="bar absolute inset-y-0 left-0 bg-primary"
 style="box-shadow:0 0 6px color-mix(in srgb,var(--primary) 65%,transparent)">
 <span class="absolute inset-x-0 top-0 h-8 overflow-hidden">
-<svg data-progress-wave viewBox="0 0 640 32" class="absolute top-0 left-0 h-8 w-160 overflow-visible"
+<svg data-progress-wave viewBox="0 0 640 32"
+class="absolute top-0 right-0 h-8 w-160 max-w-full origin-top-right overflow-visible"
 aria-hidden="true" style="color:var(--primary)">
 <defs>
 <linearGradient id="progress-energy" x1="0" x2="1">
@@ -21,8 +22,6 @@ aria-hidden="true" style="color:var(--primary)">
 fill="url(#progress-energy)" style="filter:blur(4px)"/>
 <path d="M0 1 C180 1 290 2 380 8 S535 11 640 1 C525 5 480 3 390 2 S150 0 0 1Z"
 fill="url(#progress-energy)"/>
-<path d="M180 1 Q460 3 640 1" fill="none" stroke="var(--primary-foreground)"
-stroke-width="1.5" style="filter:drop-shadow(0 1px 3px var(--primary))"/>
 </svg>
 </span>
 </div>`

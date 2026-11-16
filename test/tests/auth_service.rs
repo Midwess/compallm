@@ -1,3 +1,5 @@
+#[path = "support/onboarding.rs"]
+mod onboarding_support;
 #[path = "support/permission.rs"]
 mod organization_permission_fixture;
 #[path = "support/roles.rs"]
@@ -1269,6 +1271,7 @@ impl Fixture {
             None,
         )
         .with_auth_service(service)
+        .with_onboarding_repository(Box::new(onboarding_support::MemoryOnboarding::default()))
         .with_user_repository(Box::new(self.repo.clone()));
         if !real_organizations {
             di = di.with_organization_repository(Box::new(OrganizationRepositoryStub(
@@ -1394,7 +1397,10 @@ impl Fixture {
         let organizations = Box::leak(Box::new(Box::new(OrganizationRepositoryStub(
             self.repo.0.clone(),
         )) as Box<dyn OrganizationRepository>));
-        let creation = Box::leak(Box::new(CreationService::new(organizations)));
+        let creation = Box::leak(Box::new(CreationService::new(
+            organizations,
+            onboarding_support::repository(),
+        )));
         let registration = Box::leak(Box::new(RegistrationService::new(users, creation)));
         let dictionaries = Box::leak(Box::new(dictionary));
         AuthService::new(
@@ -1473,7 +1479,10 @@ impl Fixture {
         let organizations = Box::leak(Box::new(Box::new(OrganizationRepositoryStub(
             self.repo.0.clone(),
         )) as Box<dyn OrganizationRepository>));
-        let creation = Box::leak(Box::new(CreationService::new(organizations)));
+        let creation = Box::leak(Box::new(CreationService::new(
+            organizations,
+            onboarding_support::repository(),
+        )));
         RegistrationService::new(users, creation)
     }
 

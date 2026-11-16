@@ -275,3 +275,45 @@ impl From<compallm_core::organization::profile_service::ProfileError> for Error 
         }
     }
 }
+
+impl From<compallm_core::analytics::AnalyticsError> for Error {
+    fn from(e: compallm_core::analytics::AnalyticsError) -> Self {
+        use compallm_core::analytics::AnalyticsError as E;
+        match e {
+            E::Invalid(e) => e.into(),
+            E::Authentication(e) => e.into(),
+            E::Persistence(_) => Self {
+                code: "SERVICE_UNAVAILABLE",
+                status: 503,
+                message: "Analytics is temporarily unavailable",
+            },
+        }
+    }
+}
+impl From<compallm_core::onboarding::OnboardingError> for Error {
+    fn from(e: compallm_core::onboarding::OnboardingError) -> Self {
+        use compallm_core::onboarding::OnboardingError as E;
+        match e {
+            E::Invalid(e) => e.into(),
+            E::Authentication(e) => e.into(),
+            E::Permission(e) => {
+                compallm_core::authorization::error::AuthorizationError::from(e).into()
+            }
+            E::Requirements => Self {
+                code: "ONBOARDING_REQUIREMENTS",
+                status: 422,
+                message: "Complete the required profile fields before continuing",
+            },
+            E::Transition => Self {
+                code: "ONBOARDING_CONFLICT",
+                status: 409,
+                message: "Reload onboarding before continuing",
+            },
+            _ => Self {
+                code: "SERVICE_UNAVAILABLE",
+                status: 503,
+                message: "Onboarding is temporarily unavailable",
+            },
+        }
+    }
+}

@@ -75,7 +75,7 @@ function ProtectedSettingsScreen() {
   const action: PermissionAction | undefined = (
     {
       organization: 'organization.settings.read',
-      'organization-onboarding': 'organization.settings.read',
+      'organization-onboarding': 'organization.onboarding.read',
       members: 'member.read',
       role: 'role.read',
       'new-role': 'role.create',
@@ -111,7 +111,8 @@ function SharedSettingsForm() {
         <ProtectedSettingsScreen />
       </UserPreferencePage>
     )
-  if (['role', 'new-role', 'group', 'new-group', 'members'].includes(page)) return <ProtectedSettingsScreen />
+  if (['role', 'new-role', 'group', 'new-group', 'members', 'organization-onboarding'].includes(page))
+    return <ProtectedSettingsScreen />
   return (
     <Form.Root model={form}>
       <ProtectedSettingsScreen />
@@ -232,3 +233,9 @@ export { configureUserPreferenceForm } from './preferences/user/form'
 export { loadedPreferenceDraft, initialPreferenceDraft } from './preferences/user/values'
 export type { PreferenceDraft, UserPreferenceValues } from './preferences/user/values'
 export type { UserPreferenceController, UserPreferenceState } from './preferences/user/controller'
+
+export type {
+  OrganizationOnboardingController,
+  OrganizationOnboardingState,
+  OnboardingSettingsValues,
+} from './onboarding/controller'

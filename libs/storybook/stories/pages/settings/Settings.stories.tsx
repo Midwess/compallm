@@ -203,6 +203,7 @@ export const OrganizationLoadFailure: Story = {
   render: () => <Demo page="organization" initial={{ organizationProfileStatus: 'error' }} />,
 }
 export const OrganizationOnboarding: Story = { render: () => <Demo page="organization-onboarding" /> }
+export const OrganizationOnboardingLight: Story = { ...OrganizationOnboarding, globals: { theme: 'BASIC_WHITE' } }
 
 export const Members: Story = { render: () => <Demo page="members" /> }
 export const EditGroup: Story = { render: () => <Demo page="group" id="research" /> }

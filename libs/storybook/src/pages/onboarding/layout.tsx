@@ -1,6 +1,5 @@
 import { useId, type ReactNode } from 'react'
 import artworkImage from '../../assets/onboarding/midnight-penpot.webp'
-import opacityMask from '../../assets/onboarding/edge-opacity.svg'
 import { Button } from '../../components/buttons'
 import { useOnboarding, useOnboardingController } from './controller'
 
@@ -20,21 +19,34 @@ export function OnboardingLayout({
   const id = useId()
   const controller = useOnboardingController()
   const step = useOnboarding((state) => state.step)
+  const embedded = useOnboarding((state) => state.embedded)
+  const artworkColor = useOnboarding((state) => state.artworkColor)
+  const pending = useOnboarding((state) => state.pending)
   return (
-    <div className="grid min-h-dvh place-items-center bg-background p-4 sm:p-8">
+    <div className={embedded ? 'grid place-items-center' : 'grid min-h-dvh place-items-center bg-background p-4 sm:p-8'}>
       <main
         aria-labelledby={id}
         className="relative isolate flex min-h-112 w-full max-w-3xl flex-col overflow-hidden
 rounded-3xl bg-card px-6 pt-6 pb-4 font-sans text-foreground ring-1 ring-border ring-inset md:min-h-120 md:px-6"
       >
-        <img
-          src={artworkImage}
-          alt=""
+        <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 right-0 -z-10 h-full w-full object-cover
+          className="pointer-events-none absolute inset-y-0 right-0 -z-10 isolate w-full
 opacity-15 md:w-[45.833333%] md:opacity-25 dark:md:opacity-100"
-          style={{ maskImage: `url(${opacityMask})`, maskSize: '100% 100%' }}
-        />
+          style={{
+            maskImage: 'radial-gradient(ellipse 142.424% 111.905% at 157.576% 50%, black 85%, transparent 100%)',
+          }}
+        >
+          <img
+            src={artworkImage}
+            alt=""
+            className="absolute inset-0 size-full object-cover"
+            style={{ filter: artworkColor ? 'grayscale(1)' : undefined }}
+          />
+          {artworkColor ? (
+            <div className="absolute inset-0" style={{ backgroundColor: artworkColor, mixBlendMode: 'color' }} />
+          ) : null}
+        </div>
         <div
           role="progressbar"
           aria-label="Welcome progress"
@@ -76,11 +88,11 @@ leading-6 text-muted-foreground"
               ['profile', 'workspace', 'work', 'preferences', 'introduction'].includes(step) ? '' : 'invisible',
             ].join(' ')}
           >
-            <Button variant="ghost" className="text-disabled" onClick={controller.back}>
+            <Button variant="ghost" className="text-disabled" onClick={controller.back} loading={pending}>
               Back
             </Button>
             {step === 'work' ? (
-              <Button variant="ghost" className="text-disabled" onClick={controller.skip}>
+              <Button variant="ghost" className="text-disabled" onClick={controller.skip} loading={pending}>
                 I don’t want to share
               </Button>
             ) : null}

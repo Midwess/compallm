@@ -24,6 +24,19 @@ export const AccessibilityPatchInput = z
   .strict()
 export type AccessibilityPatchInputFormInput = z.input<typeof AccessibilityPatchInput>
 export type AccessibilityPatchInputFormOutput = z.output<typeof AccessibilityPatchInput>
+export const AnalyticUserProfilePutInputConstraints = {
+  key: { minLength: 1, maxLength: 64 },
+  value: { maxLength: 256 },
+} as const
+export const AnalyticUserProfilePutInputInput = {
+  key: stringInput(AnalyticUserProfilePutInputConstraints['key']),
+  value: stringInput(AnalyticUserProfilePutInputConstraints['value']),
+}
+export const AnalyticUserProfilePutInput = z
+  .object({ key: inputString({ minLength: 1, maxLength: 64 }), value: inputString({ maxLength: 256 }) })
+  .strict()
+export type AnalyticUserProfilePutInputFormInput = z.input<typeof AnalyticUserProfilePutInput>
+export type AnalyticUserProfilePutInputFormOutput = z.output<typeof AnalyticUserProfilePutInput>
 export const PreferenceWeekday = z.enum(['MONDAY', 'SUNDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'])
 export type PreferenceWeekdayFormInput = z.input<typeof PreferenceWeekday>
 export type PreferenceWeekdayFormOutput = z.output<typeof PreferenceWeekday>
@@ -383,6 +396,45 @@ export const NavigationPatchInputInput = {}
 export const NavigationPatchInput = z.object({ home: PreferenceDestination.optional() }).strict()
 export type NavigationPatchInputFormInput = z.input<typeof NavigationPatchInput>
 export type NavigationPatchInputFormOutput = z.output<typeof NavigationPatchInput>
+export const OnboardingDestination = z.enum(['CHAT', 'MODELS', 'PROVIDERS'])
+export type OnboardingDestinationFormInput = z.input<typeof OnboardingDestination>
+export type OnboardingDestinationFormOutput = z.output<typeof OnboardingDestination>
+export const OnboardingLinkInputConstraints = {
+  label: { minLength: 1, maxLength: 128 },
+  href: { maxLength: 2048, format: 'webUrl' },
+} as const
+export const OnboardingLinkInputInput = {
+  label: stringInput(OnboardingLinkInputConstraints['label']),
+  href: stringInput(OnboardingLinkInputConstraints['href']),
+}
+export const OnboardingLinkInput = z
+  .object({
+    label: inputString({ minLength: 1, maxLength: 128 }),
+    href: inputString({ maxLength: 2048, format: 'webUrl' }),
+  })
+  .strict()
+export type OnboardingLinkInputFormInput = z.input<typeof OnboardingLinkInput>
+export type OnboardingLinkInputFormOutput = z.output<typeof OnboardingLinkInput>
+export const OrganizationOnboardingSettingsInputConstraints = {
+  welcome: { maxLength: 4096 },
+  artworkColor: { pattern: '^#[0-9a-fA-F]{6}$' },
+} as const
+export const OrganizationOnboardingSettingsInputInput = {
+  welcome: stringInput(OrganizationOnboardingSettingsInputConstraints['welcome']),
+  artworkColor: stringInput(OrganizationOnboardingSettingsInputConstraints['artworkColor']),
+}
+export const OrganizationOnboardingSettingsInput = z
+  .object({
+    welcome: inputString({ maxLength: 4096 }),
+    links: z.array(OnboardingLinkInput).max(20),
+    destination: OnboardingDestination,
+    artworkColor: inputString({ pattern: '^#[0-9a-fA-F]{6}$' }).nullable().optional(),
+    requireFullName: z.boolean(),
+    requireAvatar: z.boolean(),
+  })
+  .strict()
+export type OrganizationOnboardingSettingsInputFormInput = z.input<typeof OrganizationOnboardingSettingsInput>
+export type OrganizationOnboardingSettingsInputFormOutput = z.output<typeof OrganizationOnboardingSettingsInput>
 export const OrganizationProfileUpdateInputConstraints = {
   name: { minLength: 1, maxLength: 63, pattern: '^[A-Za-z0-9-]+$', trim: true },
 } as const

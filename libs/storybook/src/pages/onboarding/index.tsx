@@ -1,3 +1,4 @@
+import { Dialog } from '../../components/dialog'
 import { Button } from '../../components/buttons'
 import { Checkbox } from '../../components/selection'
 import { SectionSurface } from '../../components/surfaces'
@@ -27,6 +28,7 @@ export function OnboardingPage() {
   const appearance = useOnboarding((s) => s.appearance)
   const error = useOnboarding((s) => s.error)
   const completed = useOnboarding((s) => s.completed)
+  const pending = useOnboarding((s) => s.pending)
   const ready = step === 'ready' || completed
   const organization = step === 'organization' || (ready && invited)
   const introduction = step === 'introduction'
@@ -52,7 +54,7 @@ export function OnboardingPage() {
   return (
     <div data-theme={appearance === 'SYSTEM' ? undefined : appearance === 'LIGHT' ? 'basic-white' : 'basic-dark'}>
       {['welcome', 'profile', 'workspace', 'work', 'preferences'].includes(step) && !completed ? (
-        <PersonalSetup step={step} />
+        <PersonalSetup key={step} step={step} />
       ) : (
         <OnboardingLayout
           title={title}
@@ -60,6 +62,7 @@ export function OnboardingPage() {
           progress={ready ? 1 : organization ? (existingUser ? 0.65 : 0.8) : introduction ? 0.9 : explore ? 0.58 : 0.28}
           action={
             <Button
+              loading={pending}
               variant="primary"
               size="authentication"
               className="h-12 w-full text-base"
@@ -117,5 +120,21 @@ export function OnboardingPage() {
         </div>
       ) : null}
     </div>
+  )
+}
+
+export { OnboardingPreviewController } from './preview-controller'
+
+export function OnboardingDialog({ open, onOpenChange }: { open: boolean; onOpenChange(open: boolean): void }) {
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Content className="w-3xl max-w-[calc(100%-2rem)] rounded-3xl border-0 bg-transparent backdrop:bg-transparent">
+        <Dialog.Title className="sr-only">Welcome to your workspace</Dialog.Title>
+        <OnboardingPage />
+        <Button variant="ghost" className="absolute top-9 right-6" onClick={() => onOpenChange(false)}>
+          Close
+        </Button>
+      </Dialog.Content>
+    </Dialog.Root>
   )
 }

@@ -12,7 +12,7 @@ after(() => server.close())
 const { InvitationController } = await server.ssrLoadModule('/src/auth/invitation-controller.ts')
 const { authController } = await server.ssrLoadModule('/src/auth/controller.ts')
 const tick = () => new Promise((resolve) => setTimeout(resolve, 10))
-test('landing waits for Continue and confirmed acceptance retries identity without replaying the write', async () => {
+test('landing waits for Continue and confirmed acceptance retries identity without replaying the write', async (t) => {
   const original = globalThis.fetch
   let writes = 0,
     sessions = 0
@@ -50,6 +50,9 @@ test('landing waits for Continue and confirmed acceptance retries identity witho
     assert.equal(authController.store.getState().currentUser, null)
     assert.equal(writes, 0)
     assert.equal(controller.store.getState().context.email, 'fixed@example.com')
+    const { urlController } = await server.ssrLoadModule('/src/url/controller.ts')
+    urlController.store.setState({ search: '' })
+    t.mock.method(urlController, 'navigate', () => true)
     await controller.continue()
     assert.equal(writes, 1)
     assert.equal(controller.store.getState().step, 'code')
@@ -62,4 +65,29 @@ test('landing waits for Continue and confirmed acceptance retries identity witho
   } finally {
     globalThis.fetch = original
   }
+})
+
+test('reloading invitation confirmation retains code entry without requesting another email', async (t) => {
+  const { urlController } = await server.ssrLoadModule('/src/url/controller.ts')
+  const previous = urlController.store.getState()
+  urlController.store.setState({ pathname: '/invitation', search: '?step=code' })
+  t.after(() => urlController.store.setState(previous))
+  let writes = 0
+  t.mock.method(globalThis, 'fetch', async (_input, init) => {
+    const { query } = JSON.parse(init.body)
+    if (!query.includes('invitationContext')) writes++
+    return Response.json({
+      data: {
+        invitationContext: {
+          node: { organizationName: 'Research', email: 'fixed@example.com', signup: true, expiresAt: 2000000000 },
+        },
+      },
+    })
+  })
+  const controller = new InvitationController()
+  const stop = controller.start()
+  t.after(stop)
+  await tick()
+  assert.equal(controller.store.getState().step, 'code')
+  assert.equal(writes, 0)
 })

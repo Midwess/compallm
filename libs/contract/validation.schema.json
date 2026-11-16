@@ -3,6 +3,15 @@
   "title": "Inputs",
   "type": "object",
   "properties": {
+    "analytic_user_profile_put": {
+      "$ref": "#/$defs/AnalyticUserProfilePutInput"
+    },
+    "onboarding_link": {
+      "$ref": "#/$defs/OnboardingLinkInput"
+    },
+    "organization_onboarding_settings": {
+      "$ref": "#/$defs/OrganizationOnboardingSettingsInput"
+    },
     "invitation_batch_create": {
       "$ref": "#/$defs/InvitationBatchCreateInput"
     },
@@ -74,6 +83,9 @@
     }
   },
   "required": [
+    "analytic_user_profile_put",
+    "onboarding_link",
+    "organization_onboarding_settings",
     "invitation_batch_create",
     "invitation_create",
     "user_preferences_patch",
@@ -99,6 +111,96 @@
     "provider_patch"
   ],
   "$defs": {
+    "AnalyticUserProfilePutInput": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 256
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "value"
+      ],
+      "x-compallm-input": true
+    },
+    "OnboardingLinkInput": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "href": {
+          "type": "string",
+          "x-compallm-format": "webUrl",
+          "maxLength": 2048
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "href"
+      ],
+      "x-compallm-input": true
+    },
+    "OrganizationOnboardingSettingsInput": {
+      "type": "object",
+      "properties": {
+        "welcome": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OnboardingLinkInput"
+          },
+          "maxItems": 20
+        },
+        "destination": {
+          "$ref": "#/$defs/OnboardingDestination"
+        },
+        "artworkColor": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "requireFullName": {
+          "type": "boolean"
+        },
+        "requireAvatar": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "welcome",
+        "links",
+        "destination",
+        "requireFullName",
+        "requireAvatar"
+      ],
+      "x-compallm-input": true
+    },
+    "OnboardingDestination": {
+      "type": "string",
+      "enum": [
+        "CHAT",
+        "MODELS",
+        "PROVIDERS"
+      ]
+    },
     "InvitationBatchCreateInput": {
       "type": "object",
       "properties": {

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { useStore } from 'zustand'
 import { Outlet, useMatch } from 'react-router'
-import { OrganizationControllerContext } from '@compallm/storybook/context'
+import { OnboardingControllerContext, OrganizationControllerContext } from '@compallm/storybook/context'
 import { OrganizationPage } from '@compallm/storybook/pages/organization'
 import { useUrlController } from '../url/use-url-controller'
 import { useAuthController } from '../auth/use-auth-controller'
@@ -9,6 +9,8 @@ import { userPreferenceController } from '../preference/user/controller'
 import { OrganizationController } from '../organization/controller'
 import { PermissionControllerContext } from '@compallm/storybook'
 import { PermissionController } from '../permission/controller'
+import { OnboardingDialog } from '@compallm/storybook/pages/onboarding'
+import { OnboardingController } from '../onboarding/controller'
 import type { AuthUser } from '@compallm/storybook'
 
 export function Component() {
@@ -27,20 +29,31 @@ function Workspace({ user }: { user: AuthUser }) {
     permissions.start()
     return permissions.stop
   }, [permissions])
+  const [onboarding] = useState(() => new OnboardingController(auth, url, permissions))
+  useEffect(() => onboarding.start(), [onboarding])
+  const visible = useStore(onboarding.store, (s) => s.visible)
   const [controller] = useState(() => new OrganizationController(user, url, auth))
   useEffect(() => controller.setCurrentUser(user), [controller, user])
   useEffect(() => userPreferenceController.connectOrganization(controller, url), [controller, url])
   return (
     <PermissionControllerContext value={permissions}>
-      <OrganizationControllerContext value={controller}>
-        {settings ? (
-          <Outlet />
-        ) : (
-          <OrganizationPage>
+      <OnboardingControllerContext value={onboarding}>
+        <OrganizationControllerContext value={controller}>
+          {settings ? (
             <Outlet />
-          </OrganizationPage>
-        )}
-      </OrganizationControllerContext>
+          ) : (
+            <OrganizationPage>
+              <Outlet />
+            </OrganizationPage>
+          )}
+          <OnboardingDialog
+            open={visible}
+            onOpenChange={(open) => {
+              if (!open) onboarding.dismiss()
+            }}
+          />
+        </OrganizationControllerContext>
+      </OnboardingControllerContext>
     </PermissionControllerContext>
   )
 }

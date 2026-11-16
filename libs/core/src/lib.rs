@@ -13,3 +13,6 @@ pub mod persistent;
 pub mod preference;
 pub mod provider;
 pub mod user;
+
+pub mod analytics;
+pub mod onboarding;

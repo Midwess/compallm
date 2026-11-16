@@ -19,6 +19,17 @@ export interface AccessibilityPreferences {
   __typename: 'AccessibilityPreferences'
 }
 
+export interface AnalyticUserProfile {
+  key: Scalars['String']
+  value: Scalars['String']
+  __typename: 'AnalyticUserProfile'
+}
+
+export interface AnalyticUserProfilePayload {
+  node: AnalyticUserProfile
+  __typename: 'AnalyticUserProfilePayload'
+}
+
 export interface AvatarUpload {
   /** Expiration as Unix seconds, encoded as a string. */
   expiresAt: Scalars['String']
@@ -223,6 +234,7 @@ export interface MessageCompositionPreferences {
 }
 
 export interface Mutation {
+  analyticUserProfilePut: AnalyticUserProfilePayload
   /** Confirm the verified signin challenge and create a scoped session. */
   emailSigninConfirm: SessionCredentialsPayload
   /** Request a signin email challenge for an existing active account. */
@@ -241,6 +253,10 @@ export interface Mutation {
   invitationCreate: InvitationIssuedPayload
   invitationCreateMany: InvitationIssuedConnection
   invitationRevoke: InvitationPayload
+  onboardingAdvance: OnboardingContextPayload
+  onboardingComplete: OnboardingContextPayload
+  onboardingPresent: OnboardingContextPayload
+  organizationOnboardingSettingsUpdate: OrganizationOnboardingSettingsPayload
   organizationProfileUpdate: OrganizationPayload
   roleAssign: RolePayload
   /** Create a role in the verified active organization. */
@@ -265,6 +281,32 @@ export interface NavigationPreferences {
   __typename: 'NavigationPreferences'
 }
 
+export interface OnboardingContext {
+  flow: OnboardingFlow
+  required: Scalars['Boolean']
+  settings: OrganizationOnboardingSettings
+  shouldPresent: Scalars['Boolean']
+  step: OnboardingStep
+  __typename: 'OnboardingContext'
+}
+
+export interface OnboardingContextPayload {
+  node: OnboardingContext
+  __typename: 'OnboardingContextPayload'
+}
+
+export type OnboardingDestination = 'CHAT' | 'MODELS' | 'PROVIDERS'
+
+export type OnboardingFlow = 'INVITED_EXISTING' | 'INVITED_NEW' | 'PERSONAL'
+
+export interface OnboardingLink {
+  href: Scalars['String']
+  label: Scalars['String']
+  __typename: 'OnboardingLink'
+}
+
+export type OnboardingStep = 'INTRODUCTION' | 'PREFERENCES' | 'PROFILE' | 'READY' | 'WORK' | 'WORKSPACE'
+
 export type OrderByDirection = 'AscNullsFirst' | 'AscNullsLast' | 'DescNullsFirst' | 'DescNullsLast'
 
 export interface Organization {
@@ -274,6 +316,21 @@ export interface Organization {
   name: Scalars['String']
   ownerMemberIds: Scalars['ID'][]
   __typename: 'Organization'
+}
+
+export interface OrganizationOnboardingSettings {
+  artworkColor: Scalars['String'] | null
+  destination: OnboardingDestination
+  links: OnboardingLink[]
+  requireAvatar: Scalars['Boolean']
+  requireFullName: Scalars['Boolean']
+  welcome: Scalars['String']
+  __typename: 'OrganizationOnboardingSettings'
+}
+
+export interface OrganizationOnboardingSettingsPayload {
+  node: OrganizationOnboardingSettings
+  __typename: 'OrganizationOnboardingSettingsPayload'
 }
 
 export interface OrganizationPayload {
@@ -376,6 +433,7 @@ export interface ProviderTemplate {
 }
 
 export interface Query {
+  analyticUserProfile: AnalyticUserProfilePayload | null
   /** Find visible group metadata in the active organization. */
   group: GroupPayload | null
   /** Return the complete visible group metadata collection, ordered by ID. */
@@ -384,8 +442,10 @@ export interface Query {
   invitations: InvitationConnection
   me: MePayload
   members: MemberConnection
+  onboardingContext: OnboardingContextPayload | null
   /** Return the active organization from verified user authority. */
   organization: OrganizationPayload
+  organizationOnboardingSettings: OrganizationOnboardingSettingsPayload
   /** Return the system-owned organization policy action catalog. */
   organizationPolicyActions: PolicyActionConnection
   organizationProfile: OrganizationPayload | null
@@ -572,6 +632,24 @@ export interface AccessibilityPreferencesGenqlSelection {
   underlineLinks?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
+}
+
+export interface AnalyticUserProfileGenqlSelection {
+  key?: boolean | number
+  value?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface AnalyticUserProfilePayloadGenqlSelection {
+  node?: AnalyticUserProfileGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface AnalyticUserProfilePutInput {
+  key: Scalars['String']
+  value: Scalars['String']
 }
 
 export interface AvatarUploadGenqlSelection {
@@ -906,6 +984,7 @@ export interface MessageCompositionPreferencesGenqlSelection {
 }
 
 export interface MutationGenqlSelection {
+  analyticUserProfilePut?: AnalyticUserProfilePayloadGenqlSelection & { __args: { input: AnalyticUserProfilePutInput } }
   /** Confirm the verified signin challenge and create a scoped session. */
   emailSigninConfirm?: SessionCredentialsPayloadGenqlSelection & { __args: { input: EmailCodeInput } }
   /** Request a signin email challenge for an existing active account. */
@@ -924,6 +1003,12 @@ export interface MutationGenqlSelection {
   invitationCreate?: InvitationIssuedPayloadGenqlSelection & { __args: { input: InvitationCreateInput } }
   invitationCreateMany?: InvitationIssuedConnectionGenqlSelection & { __args: { input: InvitationBatchCreateInput } }
   invitationRevoke?: InvitationPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  onboardingAdvance?: OnboardingContextPayloadGenqlSelection & { __args?: { back?: Scalars['Boolean'] } }
+  onboardingComplete?: OnboardingContextPayloadGenqlSelection
+  onboardingPresent?: OnboardingContextPayloadGenqlSelection & { __args?: { manual?: Scalars['Boolean'] } }
+  organizationOnboardingSettingsUpdate?: OrganizationOnboardingSettingsPayloadGenqlSelection & {
+    __args: { input: OrganizationOnboardingSettingsInput }
+  }
   organizationProfileUpdate?: OrganizationPayloadGenqlSelection & { __args: { input: OrganizationProfileUpdateInput } }
   roleAssign?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; memberId: Scalars['ID'] } }
   /** Create a role in the verified active organization. */
@@ -954,12 +1039,66 @@ export interface NavigationPreferencesGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface OnboardingContextGenqlSelection {
+  flow?: boolean | number
+  required?: boolean | number
+  settings?: OrganizationOnboardingSettingsGenqlSelection
+  shouldPresent?: boolean | number
+  step?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface OnboardingContextPayloadGenqlSelection {
+  node?: OnboardingContextGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface OnboardingLinkGenqlSelection {
+  href?: boolean | number
+  label?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface OnboardingLinkInput {
+  href: Scalars['String']
+  label: Scalars['String']
+}
+
 export interface OrganizationGenqlSelection {
   avatarUrl?: boolean | number
   canUpdateProfile?: boolean | number
   id?: boolean | number
   name?: boolean | number
   ownerMemberIds?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface OrganizationOnboardingSettingsGenqlSelection {
+  artworkColor?: boolean | number
+  destination?: boolean | number
+  links?: OnboardingLinkGenqlSelection
+  requireAvatar?: boolean | number
+  requireFullName?: boolean | number
+  welcome?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface OrganizationOnboardingSettingsInput {
+  artworkColor?: Scalars['String'] | null
+  destination: OnboardingDestination
+  links: OnboardingLinkInput[]
+  requireAvatar: Scalars['Boolean']
+  requireFullName: Scalars['Boolean']
+  welcome: Scalars['String']
+}
+
+export interface OrganizationOnboardingSettingsPayloadGenqlSelection {
+  node?: OrganizationOnboardingSettingsGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -1133,6 +1272,7 @@ export interface ProvidersCreateInput {
 }
 
 export interface QueryGenqlSelection {
+  analyticUserProfile?: AnalyticUserProfilePayloadGenqlSelection & { __args: { key: Scalars['String'] } }
   /** Find visible group metadata in the active organization. */
   group?: GroupPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Return the complete visible group metadata collection, ordered by ID. */
@@ -1154,8 +1294,10 @@ export interface QueryGenqlSelection {
       orderBy?: MemberOrderInput[] | null
     }
   }
+  onboardingContext?: OnboardingContextPayloadGenqlSelection
   /** Return the active organization from verified user authority. */
   organization?: OrganizationPayloadGenqlSelection
+  organizationOnboardingSettings?: OrganizationOnboardingSettingsPayloadGenqlSelection
   /** Return the system-owned organization policy action catalog. */
   organizationPolicyActions?: PolicyActionConnectionGenqlSelection
   organizationProfile?: OrganizationPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
@@ -1426,6 +1568,18 @@ export const isAccessibilityPreferences = (obj?: { __typename?: any } | null): o
   return AccessibilityPreferences_possibleTypes.includes(obj.__typename)
 }
 
+const AnalyticUserProfile_possibleTypes: string[] = ['AnalyticUserProfile']
+export const isAnalyticUserProfile = (obj?: { __typename?: any } | null): obj is AnalyticUserProfile => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isAnalyticUserProfile"')
+  return AnalyticUserProfile_possibleTypes.includes(obj.__typename)
+}
+
+const AnalyticUserProfilePayload_possibleTypes: string[] = ['AnalyticUserProfilePayload']
+export const isAnalyticUserProfilePayload = (obj?: { __typename?: any } | null): obj is AnalyticUserProfilePayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isAnalyticUserProfilePayload"')
+  return AnalyticUserProfilePayload_possibleTypes.includes(obj.__typename)
+}
+
 const AvatarUpload_possibleTypes: string[] = ['AvatarUpload']
 export const isAvatarUpload = (obj?: { __typename?: any } | null): obj is AvatarUpload => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isAvatarUpload"')
@@ -1614,10 +1768,44 @@ export const isNavigationPreferences = (obj?: { __typename?: any } | null): obj 
   return NavigationPreferences_possibleTypes.includes(obj.__typename)
 }
 
+const OnboardingContext_possibleTypes: string[] = ['OnboardingContext']
+export const isOnboardingContext = (obj?: { __typename?: any } | null): obj is OnboardingContext => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isOnboardingContext"')
+  return OnboardingContext_possibleTypes.includes(obj.__typename)
+}
+
+const OnboardingContextPayload_possibleTypes: string[] = ['OnboardingContextPayload']
+export const isOnboardingContextPayload = (obj?: { __typename?: any } | null): obj is OnboardingContextPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isOnboardingContextPayload"')
+  return OnboardingContextPayload_possibleTypes.includes(obj.__typename)
+}
+
+const OnboardingLink_possibleTypes: string[] = ['OnboardingLink']
+export const isOnboardingLink = (obj?: { __typename?: any } | null): obj is OnboardingLink => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isOnboardingLink"')
+  return OnboardingLink_possibleTypes.includes(obj.__typename)
+}
+
 const Organization_possibleTypes: string[] = ['Organization']
 export const isOrganization = (obj?: { __typename?: any } | null): obj is Organization => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isOrganization"')
   return Organization_possibleTypes.includes(obj.__typename)
+}
+
+const OrganizationOnboardingSettings_possibleTypes: string[] = ['OrganizationOnboardingSettings']
+export const isOrganizationOnboardingSettings = (
+  obj?: { __typename?: any } | null,
+): obj is OrganizationOnboardingSettings => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isOrganizationOnboardingSettings"')
+  return OrganizationOnboardingSettings_possibleTypes.includes(obj.__typename)
+}
+
+const OrganizationOnboardingSettingsPayload_possibleTypes: string[] = ['OrganizationOnboardingSettingsPayload']
+export const isOrganizationOnboardingSettingsPayload = (
+  obj?: { __typename?: any } | null,
+): obj is OrganizationOnboardingSettingsPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isOrganizationOnboardingSettingsPayload"')
+  return OrganizationOnboardingSettingsPayload_possibleTypes.includes(obj.__typename)
 }
 
 const OrganizationPayload_possibleTypes: string[] = ['OrganizationPayload']
@@ -1802,6 +1990,27 @@ export const enumImageMediaType = {
   JPEG: 'JPEG' as const,
   PNG: 'PNG' as const,
   WEBP: 'WEBP' as const,
+}
+
+export const enumOnboardingDestination = {
+  CHAT: 'CHAT' as const,
+  MODELS: 'MODELS' as const,
+  PROVIDERS: 'PROVIDERS' as const,
+}
+
+export const enumOnboardingFlow = {
+  INVITED_EXISTING: 'INVITED_EXISTING' as const,
+  INVITED_NEW: 'INVITED_NEW' as const,
+  PERSONAL: 'PERSONAL' as const,
+}
+
+export const enumOnboardingStep = {
+  INTRODUCTION: 'INTRODUCTION' as const,
+  PREFERENCES: 'PREFERENCES' as const,
+  PROFILE: 'PROFILE' as const,
+  READY: 'READY' as const,
+  WORK: 'WORK' as const,
+  WORKSPACE: 'WORKSPACE' as const,
 }
 
 export const enumOrderByDirection = {

@@ -25,3 +25,6 @@ pub use runtime::{ApplicationSchema, Query, build_schema};
 pub(crate) use runtime::validation_schema;
 
 pub mod preference;
+
+pub mod analytics;
+pub mod onboarding;

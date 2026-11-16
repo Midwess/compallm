@@ -71,6 +71,10 @@ pub struct Di {
     org_storage:
         Option<Box<dyn compallm_core::persistent::storage::org_space::OrganizationStorage>>,
     org_profile: OnceLock<Box<compallm_core::organization::profile_service::ProfileService>>,
+    analytics: Box<dyn compallm_core::persistent::analytics::AnalyticsRepository>,
+    onboarding: Box<dyn compallm_core::persistent::onboarding::OnboardingRepository>,
+    analytics_service: OnceLock<Box<compallm_core::analytics::AnalyticsService>>,
+    onboarding_service: OnceLock<Box<compallm_core::onboarding::OnboardingService>>,
     users: Box<dyn UserRepository>,
     user_preferences:
         Box<dyn compallm_core::persistent::preference::user::UserPreferenceRepository>,
@@ -154,6 +158,10 @@ impl Di {
             org_storage: None,
             org_profile: OnceLock::new(),
             s3: None,
+            analytics: Box::new(compallm_postgres::repository::analytics::AnalyticsRepository),
+            onboarding: Box::new(compallm_postgres::repository::onboarding::OnboardingRepository),
+            analytics_service: OnceLock::new(),
+            onboarding_service: OnceLock::new(),
             users: Box::new(compallm_postgres::repository::user::UserRepository),
             user_preferences: Box::new(
                 compallm_postgres::repository::preference::user::UserPreferenceRepository,
@@ -191,6 +199,8 @@ impl Di {
     }
 
     pub fn initialize_services(&'static self) -> Result<(), AuthError> {
+        self.analytics_service();
+        self.onboarding_service();
         self.profile_service();
         self.org_profile_service();
         self.mailing_worker();
@@ -261,6 +271,7 @@ impl Di {
         self.invitation_service.get_or_init(|| {
             Box::new(
                 compallm_core::organization::invitation_service::InvitationService::new(
+                    self.onboarding.as_ref(),
                     self.invitations.as_ref(),
                     self.organization_repository(),
                     self.user_repository(),
@@ -311,6 +322,14 @@ impl Di {
         organizations: Box<dyn OrganizationRepository>,
     ) -> Self {
         self.organizations = organizations;
+        self
+    }
+
+    pub fn with_onboarding_repository(
+        mut self,
+        repository: Box<dyn compallm_core::persistent::onboarding::OnboardingRepository>,
+    ) -> Self {
+        self.onboarding = repository;
         self
     }
 
@@ -405,8 +424,12 @@ impl Di {
     }
 
     pub fn organization_creation_service(&'static self) -> &'static CreationService {
-        self.organization_creation
-            .get_or_init(|| Box::new(CreationService::new(self.organization_repository())))
+        self.organization_creation.get_or_init(|| {
+            Box::new(CreationService::new(
+                self.organization_repository(),
+                self.onboarding.as_ref(),
+            ))
+        })
     }
 
     pub fn org_profile_service(
@@ -422,6 +445,24 @@ impl Di {
         })
     }
 
+    pub fn analytics_service(&'static self) -> &'static compallm_core::analytics::AnalyticsService {
+        self.analytics_service.get_or_init(|| {
+            Box::new(compallm_core::analytics::AnalyticsService::new(
+                self.analytics.as_ref(),
+            ))
+        })
+    }
+    pub fn onboarding_service(
+        &'static self,
+    ) -> &'static compallm_core::onboarding::OnboardingService {
+        self.onboarding_service.get_or_init(|| {
+            Box::new(compallm_core::onboarding::OnboardingService::new(
+                self.onboarding.as_ref(),
+                self.users.as_ref(),
+                self.organizations.as_ref(),
+            ))
+        })
+    }
     pub fn profile_service(&'static self) -> &'static compallm_core::user::ProfileService {
         self.profile.get_or_init(|| {
             Box::new(compallm_core::user::ProfileService::new(
@@ -524,5 +565,33 @@ impl juniper::FromContext<Di>
 {
     fn from(di: &Di) -> &Self {
         di.invitation_service()
+    }
+}
+
+impl juniper::FromContext<Di> for compallm_core::analytics::AnalyticsService {
+    fn from(di: &Di) -> &Self {
+        di.analytics_service.get().expect("analytics initialized")
+    }
+}
+
+impl juniper::FromContext<Di> for compallm_core::onboarding::OnboardingService {
+    fn from(di: &Di) -> &Self {
+        di.onboarding_service.get().expect("onboarding initialized")
+    }
+}
+
+impl juniper::FromContext<Di>
+    for Box<dyn compallm_core::persistent::analytics::AnalyticsRepository>
+{
+    fn from(di: &Di) -> &Self {
+        &di.analytics
+    }
+}
+
+impl juniper::FromContext<Di>
+    for Box<dyn compallm_core::persistent::onboarding::OnboardingRepository>
+{
+    fn from(di: &Di) -> &Self {
+        &di.onboarding
     }
 }

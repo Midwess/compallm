@@ -1,3 +1,4 @@
+import { DemoOrganizationOnboardingController } from './onboarding/demo-controller'
 import { createSettingsStore } from '../../../src/pages/settings'
 import type {
   SettingsController,
@@ -17,6 +18,7 @@ import { DemoOrganizationController } from './organization/demo-controller'
 export class DemoSettingsController implements SettingsController {
   store = createSettingsStore(structuredClone(initialSettings))
   pages: SettingsController['pages'] = {
+    onboarding: new DemoOrganizationOnboardingController(),
     group: null!,
     role: null!,
     search: { setQuery: (value) => this.setQuery(value), setFilter: (key, value) => this.setFilter(key, value) },

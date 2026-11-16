@@ -1,4 +1,11 @@
-import { UserProfileUpdateInput, OrganizationProfileUpdateInput, PreferenceAppearanceMode } from '@compallm/contract/validation'
+import {
+  UserProfileUpdateInput,
+  ProfileUpdateInput,
+  ImageUploadInput,
+  AnalyticUserProfilePutInput,
+  OrganizationProfileUpdateInput,
+  PreferenceAppearanceMode,
+} from '@compallm/contract/validation'
 import { useId, useSyncExternalStore, useState, useEffect, useRef } from 'react'
 import { Button } from '../../components/buttons'
 import { Avatar } from '../../components/content'
@@ -36,6 +43,7 @@ export function PersonalSetup({ step }: { step: OnboardingStep }) {
     {
       photo: null as File | null,
       username: initial.profile.username,
+      displayName: initial.profile.displayName,
       workspaceName: initial.organization.name,
       workType: initial.workType ? (knownWork ? initial.workType : 'other') : 'engineering',
       otherWorkType: knownWork ? '' : initial.workType,
@@ -46,10 +54,32 @@ export function PersonalSetup({ step }: { step: OnboardingStep }) {
       command: true,
       parse: (values) => {
         if (profile) {
-          const user = UserProfileUpdateInput.safeParse({ username: values.username })
+          if (initial.requireFullName) {
+            const requiredName = ProfileUpdateInput.shape.name.unwrap().safeParse(values.displayName)
+            if (!requiredName.success)
+              return { issues: requiredName.error.issues.map((issue) => ({ ...issue, path: ['displayName'] })) }
+          }
+          if (values.photo) {
+            const image = ImageUploadInput.safeParse({
+              size: values.photo.size,
+              mediaType: ({ 'image/jpeg': 'JPEG', 'image/png': 'PNG', 'image/webp': 'WEBP' } as Record<string, string>)[
+                values.photo.type
+              ],
+            })
+            if (!image.success) return { issues: image.error.issues.map((issue) => ({ ...issue, path: ['photo'] })) }
+          }
+          const user = UserProfileUpdateInput.safeParse({
+            username: values.username,
+            ...(initial.requireFullName ? { displayName: values.displayName } : {}),
+          })
           return user.success ? { values: { ...values, username: user.data.username! } } : { issues: user.error.issues }
         }
-        if (!workspace) return { values }
+        if (work) {
+          const value = values.workType === 'other' ? values.otherWorkType.trim() || 'other' : values.workType
+          const answer = AnalyticUserProfilePutInput.safeParse({ key: 'work', value })
+          if (!answer.success) return { issues: answer.error.issues.map((issue) => ({ ...issue, path: ['otherWorkType'] })) }
+        }
+        if (!workspace || values.workspaceName === initial.organization.name) return { values }
         const org = OrganizationProfileUpdateInput.safeParse({ name: values.workspaceName })
         return org.success
           ? { values: { ...values, workspaceName: org.data.name! } }
@@ -57,7 +87,14 @@ export function PersonalSetup({ step }: { step: OnboardingStep }) {
       },
       submit: async (values, _patch, signal) => {
         let accepted = false
-        if (profile) accepted = Boolean(await controller.saveProfile({ username: values.username }, values.photo, signal))
+        if (profile)
+          accepted = Boolean(
+            await controller.saveProfile(
+              { username: values.username, ...(initial.requireFullName ? { displayName: values.displayName } : {}) },
+              values.photo,
+              signal,
+            ),
+          )
         if (workspace) accepted = await controller.saveWorkspaceName(values.workspaceName, signal)
         if (work)
           accepted = await controller.saveWorkType(
@@ -66,7 +103,7 @@ export function PersonalSetup({ step }: { step: OnboardingStep }) {
           )
         if (step === 'preferences') accepted = await controller.saveAppearance(values.appearance, signal)
         if (!accepted || signal.aborted) return false
-        controller.next()
+        await controller.next()
         return values
       },
     },
@@ -82,6 +119,7 @@ export function PersonalSetup({ step }: { step: OnboardingStep }) {
   const light = step === 'preferences' && (appearance === 'LIGHT' || (appearance === 'SYSTEM' && systemLight))
   return (
     <Form.Root
+      key={step}
       model={form}
       aria-label="Personal setup"
       data-theme={step === 'preferences' ? (light ? 'basic-white' : 'basic-dark') : undefined}
@@ -139,7 +177,9 @@ bg-overlay/60 text-on-overlay opacity-0 group-hover:opacity-100 group-focus-visi
               </Button>
               <input
                 ref={fileInput}
+                name="photo"
                 type="file"
+                required={initial.requireAvatar && !initial.profile.avatarUrl}
                 accept="image/jpeg,image/png,image/webp"
                 aria-label="Profile photo"
                 className="sr-only"
@@ -151,10 +191,17 @@ bg-overlay/60 text-on-overlay opacity-0 group-hover:opacity-100 group-focus-visi
                   localPhoto.current = URL.createObjectURL(file)
                   setPreview(localPhoto.current)
                   form.change('photo', file)
-                  event.target.value = ''
                 }}
               />
+              <Form.Error name="photo" />
             </div>
+            {initial.requireFullName ? (
+              <label className="grid gap-2 text-sm text-muted-foreground">
+                Full name
+                <TextField name="displayName" className="h-10 text-base" required />
+                <Form.Error name="displayName" />
+              </label>
+            ) : null}
           </div>
         ) : workspace ? (
           <div className="grid gap-2">
@@ -185,6 +232,7 @@ bg-overlay/60 text-on-overlay opacity-0 group-hover:opacity-100 group-focus-visi
               <label className="grid gap-2 text-sm text-muted-foreground">
                 Let us know
                 <TextField name="otherWorkType" placeholder="Tell us about your work" className="h-10 text-base" />
+                <Form.Error name="otherWorkType" />
               </label>
             ) : null}
           </div>

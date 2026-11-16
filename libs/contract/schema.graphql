@@ -28,6 +28,27 @@ enum ImageMediaType {
   WEBP
 }
 
+enum OnboardingDestination {
+  CHAT
+  MODELS
+  PROVIDERS
+}
+
+enum OnboardingFlow {
+  PERSONAL
+  INVITED_NEW
+  INVITED_EXISTING
+}
+
+enum OnboardingStep {
+  PROFILE
+  WORKSPACE
+  WORK
+  PREFERENCES
+  INTRODUCTION
+  READY
+}
+
 enum OrderByDirection {
   AscNullsFirst
   AscNullsLast
@@ -179,6 +200,11 @@ input AccessibilityPatchInput {
   pointerCursors: Boolean
 }
 
+input AnalyticUserProfilePutInput {
+  key: String!
+  value: String!
+}
+
 input CalendarPatchInput {
   firstDay: PreferenceWeekday
 }
@@ -289,6 +315,20 @@ input MessageCompositionPatchInput {
 
 input NavigationPatchInput {
   home: PreferenceDestination
+}
+
+input OnboardingLinkInput {
+  label: String!
+  href: String!
+}
+
+input OrganizationOnboardingSettingsInput {
+  welcome: String!
+  links: [OnboardingLinkInput!]!
+  destination: OnboardingDestination!
+  artworkColor: String
+  requireFullName: Boolean!
+  requireAvatar: Boolean!
 }
 
 input OrganizationProfileUpdateInput {
@@ -494,6 +534,15 @@ type AccessibilityPreferences {
   pointerCursors: Boolean!
 }
 
+type AnalyticUserProfile {
+  key: String!
+  value: String!
+}
+
+type AnalyticUserProfilePayload {
+  node: AnalyticUserProfile!
+}
+
 type AvatarUpload {
   url: String!
   fields: [UploadFormField!]!
@@ -660,6 +709,11 @@ type MessageCompositionPreferences {
 }
 
 type Mutation {
+  analyticUserProfilePut(input: AnalyticUserProfilePutInput!): AnalyticUserProfilePayload!
+  organizationOnboardingSettingsUpdate(input: OrganizationOnboardingSettingsInput!): OrganizationOnboardingSettingsPayload!
+  onboardingAdvance(back: Boolean! = false): OnboardingContextPayload!
+  onboardingComplete: OnboardingContextPayload!
+  onboardingPresent(manual: Boolean! = false): OnboardingContextPayload!
   invitationCreateMany(input: InvitationBatchCreateInput!): InvitationIssuedConnection!
   invitationCreate(input: InvitationCreateInput!): InvitationIssuedPayload!
   invitationRevoke(id: ID!): InvitationPayload!
@@ -700,12 +754,42 @@ type NavigationPreferences {
   home: PreferenceDestination!
 }
 
+type OnboardingContext {
+  required: Boolean!
+  flow: OnboardingFlow!
+  step: OnboardingStep!
+  settings: OrganizationOnboardingSettings!
+  shouldPresent: Boolean!
+}
+
+type OnboardingContextPayload {
+  node: OnboardingContext!
+}
+
+type OnboardingLink {
+  label: String!
+  href: String!
+}
+
 type Organization {
   ownerMemberIds: [ID!]!
   avatarUrl: String
   canUpdateProfile: Boolean!
   id: ID!
   name: String!
+}
+
+type OrganizationOnboardingSettings {
+  welcome: String!
+  links: [OnboardingLink!]!
+  destination: OnboardingDestination!
+  artworkColor: String
+  requireFullName: Boolean!
+  requireAvatar: Boolean!
+}
+
+type OrganizationOnboardingSettingsPayload {
+  node: OrganizationOnboardingSettings!
 }
 
 type OrganizationPayload {
@@ -754,6 +838,9 @@ type ProviderTemplate {
 }
 
 type Query {
+  analyticUserProfile(key: String!): AnalyticUserProfilePayload
+  onboardingContext: OnboardingContextPayload
+  organizationOnboardingSettings: OrganizationOnboardingSettingsPayload!
   invitationContext: InvitationContextPayload!
   invitations(first: Int, after: String): InvitationConnection!
   me: MePayload!

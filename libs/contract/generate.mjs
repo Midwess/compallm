@@ -100,7 +100,7 @@ function visit(name) {
   ordered.push(name)
 }
 Object.keys(definitions).sort().forEach(visit)
-const formats = new Set(['baseUrl', 'nonblank', 'authorization', 'emailAddress', 'resourceId'])
+const formats = new Set(['baseUrl', 'webUrl', 'nonblank', 'authorization', 'emailAddress', 'resourceId'])
 const objectRules = {
   header: 'headerObject',
   headerUpdate: 'headerUpdateObject',

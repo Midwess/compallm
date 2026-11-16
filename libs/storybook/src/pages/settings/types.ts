@@ -227,6 +227,7 @@ export interface SettingsController {
   store: FormStore<SettingsState>
   role: RoleController
   group: GroupController
+  reopenOnboarding?(): void
   pages: SettingsPageControllers
   navigate(page: SettingsDestination, id?: string): void
   setNavigationQuery(value: string): void
@@ -238,6 +239,7 @@ export interface SettingsController {
 }
 
 export interface SettingsPageControllers {
+  onboarding?: import('./onboarding/controller').OrganizationOnboardingController
   group: GroupController
   role: RoleController
   search: { setQuery(value: string): void; setFilter(key: string, value: string): void }

@@ -21,18 +21,29 @@ export class ApiError extends Error {
   }
 }
 
-const requestFetch: typeof fetch = async (input, init) => {
+type GraphqlFetcher = NonNullable<NonNullable<Parameters<typeof createClient>[0]>['fetcher']>
+
+const request = async (operation: Parameters<GraphqlFetcher>[0], signal?: AbortSignal) => {
   const finish = beginRequest()
   try {
-    const response = await fetch(input, init)
-    const payload = await response
-      .clone()
-      .json()
-      .catch(() => null)
+    const response = await fetch('/api/graphql', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      signal,
+      body: JSON.stringify(operation),
+    })
+    let payload
+    try {
+      payload = await response.json()
+    } catch (error) {
+      if (signal?.aborted) throw error
+      throw new ApiError('Request failed. Please try again.', response.ok ? 502 : response.status, 'INVALID_RESPONSE')
+    }
     const failure = payload?.errors?.[0]
     if (!response.ok || failure) {
       if (
-        !init?.signal?.aborted &&
+        !signal?.aborted &&
         payload?.errors?.some(
           (error: { extensions?: { code?: string } }) => error.extensions?.code === 'INVALID_AUTHORIZATION_STATE',
         )
@@ -47,7 +58,9 @@ const requestFetch: typeof fetch = async (input, init) => {
         typeof failure?.extensions?.code === 'string' ? failure.extensions.code : 'REQUEST_FAILED',
       )
     }
-    return response
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload) || !Object.hasOwn(payload, 'data'))
+      throw new ApiError('Request failed. Please try again.', 502, 'INVALID_RESPONSE')
+    return payload
   } finally {
     finish()
   }
@@ -56,8 +69,5 @@ const requestFetch: typeof fetch = async (input, init) => {
 /** Consumer-owned configuration; each call can cancel its own request. */
 export const graphql = (signal?: AbortSignal) =>
   createClient({
-    url: '/api/graphql',
-    credentials: 'same-origin',
-    signal,
-    fetch: requestFetch,
+    fetcher: (operation) => request(operation, signal),
   })

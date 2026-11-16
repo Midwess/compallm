@@ -10,6 +10,10 @@ async fn creates_application_schema_with_scoped_usage_and_global_templates() {
         .append_query_results([
             Vec::<std::collections::BTreeMap<String, sea_orm::Value>>::new(),
             Vec::new(),
+            vec![std::collections::BTreeMap::from([(
+                "has_column".to_owned(),
+                sea_orm::Value::Bool(Some(false)),
+            )])],
         ])
         .into_connection();
     for migration in migrations.iter().filter(|m| {
@@ -134,8 +138,12 @@ async fn creates_application_schema_with_scoped_usage_and_global_templates() {
     assert!(log.contains("provider_audio_usage_attempt_direction_unique"));
     assert!(log.contains("provider_image_usage_attempt_idx"));
     assert!(log.contains("provider_video_usage_attempt_idx"));
+    assert_eq!(log.matches("INSERT INTO").count(), 1);
+    assert!(log.contains(r#"INSERT INTO \"user_identities\""#));
     for removed in [
-        "INSERT INTO",
+        "INSERT INTO \\\"users\\\"",
+        "INSERT INTO \\\"organizations\\\"",
+        "INSERT INTO \\\"provider_templates\\\"",
         "UPDATE \\\"providers\\\" SET",
         "UPDATE \\\"provider_models\\\" SET",
         "CREATE TABLE \\\"provider_usage\\\"",

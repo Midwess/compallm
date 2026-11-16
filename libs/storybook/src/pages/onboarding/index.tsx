@@ -137,6 +137,7 @@ export function OnboardingDialog({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Content
+        onCancel={(event) => event.preventDefault()}
         className={[
           'w-3xl max-w-[calc(100%-2rem)] rounded-3xl border-0 bg-transparent',
           firstPresentation ? 'backdrop:bg-background' : 'backdrop:bg-transparent',

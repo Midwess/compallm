@@ -453,6 +453,7 @@ export default {
     },
     OnboardingContext: {
       flow: [67],
+      hasBeenPresented: [7],
       required: [7],
       settings: [73],
       shouldPresent: [7],

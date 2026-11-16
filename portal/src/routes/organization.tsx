@@ -31,6 +31,7 @@ function Workspace({ user }: { user: AuthUser }) {
   }, [permissions])
   const [onboarding] = useState(() => new OnboardingController(auth, url, permissions))
   useEffect(() => onboarding.start(), [onboarding])
+  const firstPresentation = useStore(onboarding.store, (s) => s.firstPresentation)
   const visible = useStore(onboarding.store, (s) => s.visible)
   const [controller] = useState(() => new OrganizationController(user, url, auth))
   useEffect(() => controller.setCurrentUser(user), [controller, user])
@@ -48,6 +49,7 @@ function Workspace({ user }: { user: AuthUser }) {
           )}
           <OnboardingDialog
             open={visible}
+            firstPresentation={firstPresentation}
             onOpenChange={(open) => {
               if (!open) onboarding.dismiss()
             }}

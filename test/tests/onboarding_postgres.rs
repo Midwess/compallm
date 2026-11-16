@@ -58,7 +58,7 @@ async fn signup_invitation_snapshots_requirements_and_analytics_are_scoped() -> 
         .await?;
     let org = owner.session.organization_id;
     let router = graphql::browser_router(di);
-    let result=graphql::execute(&router,&credentials.access_token,"{ onboardingContext { node { required flow step shouldPresent settings { requireAvatar } } } }").await?;
+    let result=graphql::execute(&router,&credentials.access_token,"{ onboardingContext { node { required flow step shouldPresent hasBeenPresented settings { requireAvatar } } } }").await?;
     assert!(result.get("errors").is_none(), "{result}");
     assert_eq!(
         result["data"]["onboardingContext"]["node"]["required"],
@@ -77,6 +77,10 @@ async fn signup_invitation_snapshots_requirements_and_analytics_are_scoped() -> 
         "Learning"
     );
 
+    assert_eq!(
+        result["data"]["onboardingContext"]["node"]["hasBeenPresented"],
+        false
+    );
     let owner_permission = MemberPermission::try_from(owner.clone())?;
     let own = root
         .scope(OnboardingRepository.find(org, owner.session.user_id, false))

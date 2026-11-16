@@ -283,6 +283,7 @@ export interface NavigationPreferences {
 
 export interface OnboardingContext {
   flow: OnboardingFlow
+  hasBeenPresented: Scalars['Boolean']
   required: Scalars['Boolean']
   settings: OrganizationOnboardingSettings
   shouldPresent: Scalars['Boolean']
@@ -1041,6 +1042,7 @@ export interface NavigationPreferencesGenqlSelection {
 
 export interface OnboardingContextGenqlSelection {
   flow?: boolean | number
+  hasBeenPresented?: boolean | number
   required?: boolean | number
   settings?: OrganizationOnboardingSettingsGenqlSelection
   shouldPresent?: boolean | number

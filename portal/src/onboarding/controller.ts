@@ -23,6 +23,7 @@ import { organizationRoot } from '../organization/paths'
 export const onboardingSelection = {
   required: true,
   shouldPresent: true,
+  hasBeenPresented: true,
   flow: true,
   step: true,
   settings: {
@@ -37,7 +38,7 @@ export const onboardingSelection = {
 const profileSelection = { displayName: true, username: true, email: true, avatarUrl: true } as const
 type Context = FieldsSelection<OnboardingContext, typeof onboardingSelection>
 export class OnboardingController implements Contract {
-  readonly store = createStore<OnboardingState & { visible: boolean }>(() => ({
+  readonly store = createStore<OnboardingState & { visible: boolean; firstPresentation: boolean }>(() => ({
     step: 'profile',
     invited: false,
     existingUser: false,
@@ -49,6 +50,7 @@ export class OnboardingController implements Contract {
     error: null,
     embedded: true,
     visible: false,
+    firstPresentation: false,
     pending: false,
   }))
   private scope = new AbortController()
@@ -118,6 +120,8 @@ export class OnboardingController implements Contract {
       this.apply(presented.onboardingPresent.node)
       this.store.setState({
         pending: false,
+        firstPresentation:
+          !manual && Boolean(context?.required) && context?.flow !== 'INVITED_EXISTING' && !context?.hasBeenPresented,
         visible: true,
         completed: false,
         profile: result.userProfile?.node ?? this.store.getState().profile,

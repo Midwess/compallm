@@ -74,14 +74,16 @@ export const CustomArtwork: Story = {
   render: () => <Demo initial={{ step: 'introduction', invited: true, artworkColor: '#9b5de5', organization }} />,
 }
 
-function PopupDemo() {
+function PopupDemo({ firstPresentation = false }: { firstPresentation?: boolean }) {
   const [open, setOpen] = useState(true)
   const [controller] = useState(() => new DemoOnboardingController({ embedded: true, step: 'profile' }))
   return (
     <OnboardingControllerContext value={controller}>
       <Button onClick={() => setOpen(true)}>Open onboarding</Button>
-      <OnboardingDialog open={open} onOpenChange={setOpen} />
+      <OnboardingDialog open={open} onOpenChange={setOpen} firstPresentation={firstPresentation} />
     </OnboardingControllerContext>
   )
 }
 export const Popup: Story = { render: () => <PopupDemo /> }
+
+export const FirstSignup: Story = { render: () => <PopupDemo firstPresentation /> }

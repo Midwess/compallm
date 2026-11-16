@@ -5,6 +5,9 @@ import { useStore } from 'zustand'
 import type { StoreApi } from 'zustand/vanilla'
 import type { InvitationContext } from '@compallm/contract/graphql'
 import { InvitationControllerContext } from '../context'
+import { Avatar } from '../components/content'
+import { Toast } from '../components/feedback'
+import { OnboardingPanel } from './onboarding/panel'
 import { Button } from '../components/buttons'
 import { TextField, CodeEntry } from '../components/fields'
 import { Form, useManagedForm } from '../components/form'
@@ -33,40 +36,111 @@ export function InvitationPage() {
       submit: async (values) => ((await controller.confirm(values.code)) ? values : false),
     },
   )
+  const context = state.context
+  const code = state.step === 'code'
+  const unavailable = !state.loading && !context
+  const title = unavailable
+    ? 'This invitation is unavailable'
+    : code
+      ? 'Check your email'
+      : state.step === 'confirmed'
+        ? 'You’re ready to join'
+        : 'You’re invited'
+  const description = unavailable
+    ? 'Ask your team for a fresh invitation.\nWe’ll keep a place for you.'
+    : code
+      ? `We sent a six-digit code to ${context?.email}.\nEnter it below to join your team.`
+      : 'A new space, and a team to explore it with.\nLet’s get you settled in.'
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-5 p-8">
-      <h1 className="text-2xl font-semibold">
-        {state.context ? `Join ${state.context.organizationName}` : 'Organization invitation'}
-      </h1>
-      {state.error ? <p role="alert">{state.error}</p> : null}
-      {!state.context && !state.loading && controller.reload ? <Button onClick={controller.reload}>Retry</Button> : null}
-      {state.context && !state.loading ? (
-        <>
-          <TextField aria-label="Invitation recipient" variant="constant" value={state.context.email} />
-          <p className="text-sm text-muted-foreground">
-            Expires {new Date(state.context.expiresAt * 1000).toLocaleString()}. Continue to verify this email and{' '}
-            {state.context.signup ? 'create your account' : 'sign in'}.
-          </p>
-          {state.step === 'continue' ? (
-            <Button aria-busy={state.busy} onClick={() => void controller.continue()}>
-              Continue
-            </Button>
-          ) : state.step === 'confirmed' ? (
-            <Button onClick={() => void controller.confirm('')}>Enter organization</Button>
-          ) : (
-            <>
-              <Form.Root model={form}>
-                <CodeEntry name="code" aria-label="Email verification code" />
-                <Form.Error name="code" />
-                <Button type="submit" aria-busy={state.busy}>
-                  Accept invitation
+    <div
+      data-theme="basic-dark"
+      className="dark grid min-h-dvh place-items-center bg-overlay p-4 font-sans text-foreground sm:p-8"
+    >
+      <Form.Root model={form} className="w-full max-w-3xl">
+        <OnboardingPanel
+          title={title}
+          description={description}
+          progress={code ? 0.18 : state.step === 'confirmed' ? 0.24 : 0.08}
+          action={
+            context && !state.loading ? (
+              <Button
+                type={code ? 'submit' : 'button'}
+                variant="primary"
+                size="authentication"
+                className="h-12 w-full text-base"
+                loading={state.busy}
+                onClick={
+                  code
+                    ? undefined
+                    : () => {
+                        void (state.step === 'confirmed' ? controller.confirm('') : controller.continue())
+                      }
+                }
+              >
+                {code ? 'Accept invitation' : state.step === 'confirmed' ? 'Enter organization' : 'Continue'}
+              </Button>
+            ) : unavailable && controller.reload ? (
+              <Button variant="primary" size="authentication" className="h-12 w-full text-base" onClick={controller.reload}>
+                Try again
+              </Button>
+            ) : (
+              <div className="h-12" />
+            )
+          }
+          footer={
+            <div className="mt-2 flex h-8 items-center justify-center">
+              {code ? (
+                <Button
+                  variant="ghost"
+                  className="text-disabled"
+                  loading={state.busy}
+                  onClick={() => {
+                    void controller.continue()
+                  }}
+                >
+                  Resend verification code
                 </Button>
-              </Form.Root>
-              <Button onClick={() => void controller.continue()}>Resend verification code</Button>
-            </>
-          )}
-        </>
+              ) : null}
+            </div>
+          }
+        >
+          {context && !state.loading ? (
+            code ? (
+              <div className="grid gap-3">
+                <CodeEntry name="code" aria-label="Email verification code" disabled={state.busy} />
+                <Form.Error name="code" />
+              </div>
+            ) : (
+              <div className="grid gap-6">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar name={context.organizationName} size={40} />
+                  <p className="line-clamp-2 min-w-0 text-lg font-medium">{context.organizationName}</p>
+                </div>
+                <div className="grid gap-2">
+                  <label htmlFor="invitation-recipient" className="text-sm text-muted-foreground">
+                    Invited email
+                  </label>
+                  <TextField
+                    id="invitation-recipient"
+                    aria-label="Invitation recipient"
+                    variant="constant"
+                    value={context.email}
+                    className="h-10 text-base"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Invitation expires {new Date(context.expiresAt * 1000).toLocaleDateString()}.
+                </p>
+              </div>
+            )
+          ) : null}
+        </OnboardingPanel>
+      </Form.Root>
+      {state.error && context ? (
+        <div className="fixed right-6 bottom-6 z-50 max-w-[calc(100vw-3rem)]">
+          <Toast tone="error" message={state.error} onDismiss={() => controller.store.setState({ error: null })} />
+        </div>
       ) : null}
-    </main>
+    </div>
   )
 }

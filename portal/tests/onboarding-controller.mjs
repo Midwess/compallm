@@ -14,6 +14,7 @@ const { OrganizationOnboardingController } = await server.ssrLoadModule('/src/se
 const { createAuthStore } = await server.ssrLoadModule('../libs/storybook/src/pages/auth/store.ts')
 const context = (patch = {}) => ({
   required: true,
+  hasBeenPresented: false,
   shouldPresent: true,
   flow: 'PERSONAL',
   step: 'PROFILE',
@@ -73,6 +74,7 @@ test('dismissal retains pending state and reload respects the session reminder',
   const f = setup()
   t.after(f.stop)
   await until(() => f.controller.store.getState().visible)
+  assert.equal(f.controller.store.getState().firstPresentation, true)
   f.controller.dismiss()
   assert.equal(f.controller.store.getState().visible, false)
   await f.controller.load(false)
@@ -81,6 +83,7 @@ test('dismissal retains pending state and reload respects the session reminder',
   f.controller.reopen()
   await until(() => f.controller.store.getState().visible)
   assert.equal(presents, 2)
+  assert.equal(f.controller.store.getState().firstPresentation, false)
 })
 test('unchanged generated workspace name and skipped work send no profile or analytics write', async (t) => {
   const writes = []
@@ -146,4 +149,24 @@ test('settings preview uses confirmed values and cancelled responses cannot repl
   await assert.rejects(saving)
   assert.equal(controller.store.getState().saved.welcome, 'Welcome')
   assert.equal(controller.store.form.get('draft.welcome'), 'Local draft')
+})
+
+test('invited new accounts receive the black first presentation and reminders use a popup', async (t) => {
+  let seen = false
+  t.mock.method(globalThis, 'fetch', async (_url, init) => {
+    const { query } = JSON.parse(init.body)
+    const current = context({ flow: 'INVITED_NEW', hasBeenPresented: seen })
+    if (query.includes('onboardingPresent')) {
+      seen = true
+      return response({ onboardingPresent: { node: current } })
+    }
+    return response({ onboardingContext: { node: current }, userProfile: { node: profile }, analyticUserProfile: null })
+  })
+  const f = setup()
+  t.after(f.stop)
+  await until(() => f.controller.store.getState().visible)
+  assert.equal(f.controller.store.getState().firstPresentation, true)
+  f.controller.dismiss()
+  await f.controller.load(false)
+  assert.equal(f.controller.store.getState().firstPresentation, false)
 })

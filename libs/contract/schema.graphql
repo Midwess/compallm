@@ -760,6 +760,7 @@ type OnboardingContext {
   step: OnboardingStep!
   settings: OrganizationOnboardingSettings!
   shouldPresent: Boolean!
+  hasBeenPresented: Boolean!
 }
 
 type OnboardingContextPayload {

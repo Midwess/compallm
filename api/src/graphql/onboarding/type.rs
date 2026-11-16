@@ -55,11 +55,13 @@ pub struct OnboardingContext {
     pub step: OnboardingStep,
     pub settings: OrganizationOnboardingSettings,
     pub should_present: bool,
+    pub has_been_presented: bool,
 }
 impl From<(core::Context, u64)> for OnboardingContext {
     fn from((v, session): (core::Context, u64)) -> Self {
         Self {
             required: v.required,
+            has_been_presented: !v.progress.presented_session_ids.is_empty(),
             should_present: v.required && !v.progress.presented_session_ids.contains(&session),
             flow: match v.progress.flow {
                 core::Flow::Personal => OnboardingFlow::Personal,

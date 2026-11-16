@@ -125,10 +125,23 @@ export function OnboardingPage() {
 
 export { OnboardingPreviewController } from './preview-controller'
 
-export function OnboardingDialog({ open, onOpenChange }: { open: boolean; onOpenChange(open: boolean): void }) {
+export function OnboardingDialog({
+  open,
+  onOpenChange,
+  firstPresentation = false,
+}: {
+  open: boolean
+  onOpenChange(open: boolean): void
+  firstPresentation?: boolean
+}) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Content className="w-3xl max-w-[calc(100%-2rem)] rounded-3xl border-0 bg-transparent backdrop:bg-transparent">
+      <Dialog.Content
+        className={[
+          'w-3xl max-w-[calc(100%-2rem)] rounded-3xl border-0 bg-transparent',
+          firstPresentation ? 'backdrop:bg-overlay' : 'backdrop:bg-transparent',
+        ].join(' ')}
+      >
         <Dialog.Title className="sr-only">Welcome to your workspace</Dialog.Title>
         <OnboardingPage />
         <Button variant="ghost" className="absolute top-9 right-6" onClick={() => onOpenChange(false)}>

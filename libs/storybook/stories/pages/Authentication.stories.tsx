@@ -117,6 +117,9 @@ export const EmailEntry: Story = { render: () => <Preview initial={{ step: 'emai
 export const EmailCode: Story = {
   render: () => <Preview initial={{ step: 'code', email: 'alex@example.com', remaining: 24 }} />,
 }
+export const EmailCodeError: Story = {
+  render: () => <Preview initial={{ step: 'code', email: 'alex@example.com', error: 'incorrect-code' }} />,
+}
 export const WaitingForPasskey: Story = {
   render: () => <Preview waiting initial={{ step: 'passkey', pending: 'passkey', lastLoginMethod: 'passkey' }} />,
 }

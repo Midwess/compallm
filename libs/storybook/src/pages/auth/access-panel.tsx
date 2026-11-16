@@ -78,6 +78,18 @@ export function AccessPanel({ intent = 'login', accountEmail, title, description
       await controller.requestCode(accountEmail ?? controller.store.getState().email)
   }
   const methods = last === 'email' ? (['email', 'passkey'] as const) : (['passkey', 'email'] as const)
+  const errorMessage = failure ? (
+    <p role="alert" className="m-0 text-center text-xs leading-5 text-destructive">
+      {controller.store.getState().serverError ??
+        (failure === 'incorrect-code'
+          ? 'Incorrect code. Check it and try again.'
+          : failure === 'expired-code'
+            ? 'This code has expired. Request a new code.'
+            : failure === 'throttled'
+              ? 'Please wait before requesting another code.'
+              : 'Verification was unsuccessful. Please try again.')}
+    </p>
+  ) : null
   return (
     <div className="w-full text-center">
       {!verifying ? (
@@ -88,31 +100,30 @@ export function AccessPanel({ intent = 'login', accountEmail, title, description
           {complete ? <CheckIcon size={24} aria-hidden="true" /> : <BookOpenIcon size={24} aria-hidden="true" />}
         </div>
       ) : null}
-      <EntranceMotion key={heading} subtle>
-        {verifying ? (
-          <Dialog.Title className="mb-4 text-sm font-medium">Verify your identity</Dialog.Title>
-        ) : (
-          <h1 className="m-0 text-2xl font-medium tracking-tight">{heading}</h1>
-        )}
-      </EntranceMotion>
-      {!verifying ? (
-        <EntranceMotion key={message} subtle order={1}>
-          <p className="mt-3 mb-0 text-sm leading-6 text-muted-foreground">{message}</p>
+      <div className={verifying ? undefined : 'grid gap-2'}>
+        <EntranceMotion key={heading} subtle>
+          {verifying ? (
+            <Dialog.Title className="mb-4 text-sm font-medium">Verify your identity</Dialog.Title>
+          ) : (
+            <h1 className="m-0 text-2xl font-medium tracking-tight">{heading}</h1>
+          )}
         </EntranceMotion>
-      ) : null}
+        {!verifying ? (
+          <EntranceMotion key={message} subtle order={1}>
+            <p className="m-0 text-sm leading-6 text-muted-foreground">{message}</p>
+          </EntranceMotion>
+        ) : null}
+      </div>
       {!verifying && !complete && (accountEmail || code) ? (
-        <div
-          className="mt-5 inline-flex max-w-full items-center gap-2 rounded-full
-          border border-border bg-surface px-3 py-1.5 text-xs"
-        >
-          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+        <div className="mt-2 flex max-w-full items-center justify-center gap-2 text-xs text-muted-foreground">
+          <span className="flex size-5 shrink-0 items-center justify-center">
             <EnvelopeSimpleIcon size={12} aria-hidden="true" />
           </span>
-          <span className="truncate">{accountEmail ?? email}</span>
+          <span className="min-w-0 break-all">{accountEmail ?? email}</span>
         </div>
       ) : null}
       {!complete ? (
-        <div className={verifying ? '' : 'mt-7'}>
+        <div className={verifying ? '' : 'pt-6'}>
           {enteringEmail || code ? (
             <Form.Root
               model={model}
@@ -133,18 +144,24 @@ export function AccessPanel({ intent = 'login', accountEmail, title, description
                   <Form.Error name="email" />
                 </div>
               )}
-              <EntranceMotion order={0} className="text-center">
-                <Button
-                  size={verifying ? 'compact' : 'standard'}
-                  className={verifying ? 'h-8 w-full px-3' : 'h-12 w-fit rounded-full px-6 text-sm'}
-                  type="submit"
-                  loading={pending !== null}
-                >
-                  {code ? (pending === 'verify' ? 'Verifying…' : 'Verify email') : 'Continue with email'}
-                </Button>
-              </EntranceMotion>
+              <div className="grid gap-2">
+                <EntranceMotion order={0} className="text-center">
+                  <Button
+                    size="compact"
+                    className={code ? 'h-8 w-fit rounded-full px-4' : 'h-8 w-full rounded-full px-3'}
+                    type="submit"
+                    loading={pending !== null}
+                  >
+                    {code ? (pending === 'verify' ? 'Verifying…' : 'Verify email') : 'Continue with email'}
+                  </Button>
+                </EntranceMotion>
+                {errorMessage}
+              </div>
               {code ? (
-                <EntranceMotion order={1} className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                <EntranceMotion
+                  order={1}
+                  className="flex flex-wrap items-center justify-center gap-1 text-xs text-muted-foreground"
+                >
                   Didn’t get a code?
                   <Button
                     variant="link"
@@ -168,7 +185,7 @@ export function AccessPanel({ intent = 'login', accountEmail, title, description
               ) : null}
             </Form.Root>
           ) : (
-            <div className={verifying ? 'grid w-full gap-2' : 'mx-auto grid w-max max-w-full gap-3'}>
+            <div className={verifying ? 'grid w-full gap-2' : 'mx-auto grid w-max max-w-full gap-4'}>
               {methods.map((method, index) => (
                 <EntranceMotion key={method} order={index} subtle={verifying} className="grid min-w-0">
                   <Button
@@ -198,7 +215,9 @@ export function AccessPanel({ intent = 'login', accountEmail, title, description
                   {last === method ? (
                     <p
                       className={
-                        verifying ? 'mt-1 mb-2 text-xs leading-4 text-disabled' : 'mt-2 mb-2 text-xs leading-5 text-disabled'
+                        verifying
+                          ? 'mt-1 mb-2 text-xs leading-4 text-disabled'
+                          : 'm-0 pt-2 pb-2 text-xs leading-5 text-disabled'
                       }
                     >
                       You used {method === 'passkey' ? 'passkey' : 'email'} last time
@@ -206,6 +225,7 @@ export function AccessPanel({ intent = 'login', accountEmail, title, description
                   ) : null}
                 </EntranceMotion>
               ))}
+              {errorMessage}
               {pending === 'passkey' ? (
                 <p role="status" className="mt-2 mb-0 text-xs leading-5 text-muted-foreground">
                   Complete the prompt on your device.
@@ -215,22 +235,10 @@ export function AccessPanel({ intent = 'login', accountEmail, title, description
               ) : null}
             </div>
           )}
-          {failure ? (
-            <p role="alert" className="mt-4 mb-0 text-center text-xs leading-5 text-destructive">
-              {controller.store.getState().serverError ??
-                (failure === 'incorrect-code'
-                  ? 'Incorrect code. Check it and try again.'
-                  : failure === 'expired-code'
-                    ? 'This code has expired. Request a new code.'
-                    : failure === 'throttled'
-                      ? 'Please wait before requesting another code.'
-                      : 'Verification was unsuccessful. Please try again.')}
-            </p>
-          ) : null}
         </div>
       ) : null}
       {!verifying ? (
-        <div className="mt-7 pt-5 text-xs leading-5 text-muted-foreground">
+        <div className="pt-6 text-xs leading-5 text-muted-foreground">
           <span>
             {signup ? 'Already have an account?' : 'New to Compallm?'}{' '}
             <a

@@ -29,3 +29,6 @@ export const PermissionControllerContext = createContext<import('./permission').
 export const InvitationControllerContext = createContext<import('./pages/invitation').InvitationController | null>(null)
 
 export const OnboardingControllerContext = createContext<import('./pages/onboarding').OnboardingController | null>(null)
+
+export const CollectionContext = createContext<import('./components/collection-types').CollectionScope | null>(null)
+export const CollectionRowContext = createContext<import('./components/collection-types').CollectionRowScope | null>(null)

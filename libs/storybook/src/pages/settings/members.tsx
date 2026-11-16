@@ -1,7 +1,8 @@
+import { CollectionRowContext } from '../../context'
+import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { ArrowDownLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowDownLeft'
 import { Tooltip } from '../../components/feedback'
-import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
-import useInfiniteScroll from 'react-infinite-scroll-hook'
+import { memo, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { EyeIcon } from '@phosphor-icons/react/dist/csr/Eye'
 import { EyeSlashIcon } from '@phosphor-icons/react/dist/csr/EyeSlash'
 import { UserPlusIcon } from '@phosphor-icons/react/dist/csr/UserPlus'
@@ -135,47 +136,11 @@ function DirectoryDate({ value }: { value?: number | null }) {
   )
 }
 
-function LoadMoreRows({
-  root,
-  loading,
-  more,
-  failed,
-  onLoadMore,
-  label,
-  disabled = false,
-}: {
-  root: HTMLElement | null
-  loading: boolean
-  more: boolean
-  failed: boolean
-  onLoadMore(): void
-  label: string
-  disabled?: boolean
-}) {
-  const [sentry, { rootRef }] = useInfiniteScroll({
-    loading,
-    hasNextPage: more,
-    onLoadMore,
-    disabled: disabled || failed || !root,
-    rootMargin: '0px 0px 160px 0px',
-  })
-  useEffect(() => rootRef(root), [root, rootRef])
-  if (!more) return null
-  return (
-    <Table.Row className="h-8 border-0">
-      <Table.Cell colSpan={6}>
-        <div ref={sentry} className="flex h-8 items-center justify-center" aria-busy={loading}>
-          {failed ? <Button onClick={onLoadMore}>Retry {label}</Button> : <span className="sr-only">{label}</span>}
-        </div>
-      </Table.Cell>
-    </Table.Row>
-  )
-}
-
-function Invitations({ root }: { root: HTMLElement | null }) {
+function Invitations() {
   const [open, setOpen] = useState(true)
   const c = useSettingsController()
-  const invitations = useSettings((s) => s.invitations.filter((invitation) => invitation.status === 'pending'))
+  const confirmed = useSettings((s) => s.invitations)
+  const invitations = useMemo(() => confirmed.filter((invitation) => invitation.status === 'pending'), [confirmed])
   const loading = useSettings((s) => s.invitationsLoading)
   const more = useSettings((s) => s.invitationsHasNextPage)
   const failed = useSettings((s) => s.invitationsLoadError ?? false)
@@ -189,8 +154,17 @@ function Invitations({ root }: { root: HTMLElement | null }) {
       columns={6}
       open={open}
       onOpenChange={setOpen}
+      items={invitations}
+      getKey={(row) => row.id}
+      estimateSize={56}
+      paging={{
+        hasMore: more,
+        loading: loading || busy,
+        error: failed,
+        onLoadMore: () => c.pages.members.loadMoreInvitations?.(),
+      }}
     >
-      {invitations.map((row) => (
+      {(row) => (
         <Table.Row key={row.id} className="h-14 border-0">
           <Table.Cell column="name" className="pl-0">
             <div className="flex items-center gap-2.5 py-1">
@@ -235,21 +209,44 @@ border-border text-ui-11 text-muted-foreground"
             </PermissionRequest>
           </Table.Cell>
         </Table.Row>
-      ))}
-      <LoadMoreRows
-        root={root}
-        loading={loading || busy}
-        more={more}
-        failed={failed}
-        disabled={!open}
-        onLoadMore={() => c.pages.members.loadMoreInvitations?.()}
-        label="invitations"
-      />
+      )}
     </Table.Category>
   )
 }
 
 function MemberRoles({ member }: { member: SettingsMember }) {
+  const row = useContext(CollectionRowContext)
+  const [initiallyOpen, setInitiallyOpen] = useState(false)
+  const [activated, setActivated] = useState(() => row?.forms.has(`${row.key}:role`) ?? false)
+  const current = useSettings((state) => state.currentMemberId)
+  const owner = useSettings((state) => state.actorIsOwner)
+  const owners = useSettings((state) => state.ownerMemberIds ?? [])
+  if (member.id === current || (member.role?.owner && (!owner || owners.length <= 1)))
+    return (
+      <span className="line-clamp-2 whitespace-normal wrap-break-word text-left text-xs">
+        {member.role?.name ?? 'Unavailable'}
+      </span>
+    )
+  if (activated) return <MemberRolePicker member={member} initiallyOpen={initiallyOpen} />
+  return (
+    <Button
+      variant="neutral"
+      aria-label={`Roles for ${member.name}`}
+      aria-haspopup="listbox"
+      className="h-auto min-h-6 w-fit max-w-full justify-between rounded-lg px-2 py-0.5 text-left text-xs"
+      onClick={() => {
+        setInitiallyOpen(true)
+        setActivated(true)
+      }}
+    >
+      <span className="line-clamp-2 min-w-0 flex-1 whitespace-normal text-left">{member.role?.name ?? 'Unavailable'}</span>
+      <CaretDownIcon size={10} aria-hidden="true" />
+    </Button>
+  )
+}
+
+function MemberRolePicker({ member, initiallyOpen }: { member: SettingsMember; initiallyOpen: boolean }) {
+  const [open, setOpen] = useState(initiallyOpen)
   const roles = useSettings((s) => s.roles)
   const actorIsOwner = useSettings((s) => s.actorIsOwner)
   const currentMemberId = useSettings((s) => s.currentMemberId)
@@ -275,7 +272,7 @@ function MemberRoles({ member }: { member: SettingsMember }) {
   ]
   const protectedOwner = first?.owner
   const options = roles.filter((r) => !r.owner || actorIsOwner)
-  const optionChecks = options.map((role) => checksFor(role.id))
+  const optionChecks = open ? options.map((role) => checksFor(role.id)) : []
   const statuses = usePermissionChecks(optionChecks.flat())
   const allowed = optionChecks.map((checks, index) => {
     const offset = optionChecks.slice(0, index).reduce((total, previous) => total + previous.length, 0)
@@ -292,6 +289,7 @@ function MemberRoles({ member }: { member: SettingsMember }) {
         return values
       },
     },
+    'role',
   )
   const selected = useFormValue<string>(form, 'roleId')
   const pending = useSyncExternalStore(
@@ -309,6 +307,8 @@ function MemberRoles({ member }: { member: SettingsMember }) {
   return (
     <Form.Root model={form}>
       <Select.Root
+        open={open}
+        onOpenChange={setOpen}
         value={selected}
         disabled={pending || confirmation !== null}
         onValueChange={(value) => {
@@ -319,36 +319,40 @@ function MemberRoles({ member }: { member: SettingsMember }) {
       >
         <Select.Trigger
           aria-label={`Roles for ${member.name}`}
-          className="h-auto min-h-6 w-full max-w-30 rounded-lg px-2 py-0.5 text-left text-xs"
+          className="h-auto min-h-6 w-fit max-w-full rounded-lg px-2 py-0.5 text-left text-xs"
         >
           <Select.Value>
             {selected === (first?.id ?? '') ? label : (roles.find((r) => r.id === selected)?.name ?? 'Unavailable')}
           </Select.Value>
         </Select.Trigger>
-        <Select.Content aria-label={`Roles for ${member.name}`} className="w-64">
-          {options.map((role, index) => {
-            const unavailable =
-              !known || !allowed[index] || (protectedOwner && (!actorIsOwner || ownerIds.length <= 1) && role.id !== first?.id)
-            if (unavailable) return null
-            return (
-              <Select.Item key={role.id} value={role.id}>
-                {role.color ? (
-                  <span
-                    aria-hidden="true"
-                    className="mr-1 size-1.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: `color-mix(in oklab, ${role.color} 70%, var(--foreground))` }}
-                  />
-                ) : null}
-                <span className="min-w-0">
-                  <span className="block truncate">{role.name}</span>
-                  {role.description ? (
-                    <span className="block truncate text-xs text-muted-foreground">{role.description}</span>
+        {open ? (
+          <Select.Content aria-label={`Roles for ${member.name}`} className="w-64">
+            {options.map((role, index) => {
+              const unavailable =
+                !known ||
+                !allowed[index] ||
+                (protectedOwner && (!actorIsOwner || ownerIds.length <= 1) && role.id !== first?.id)
+              if (unavailable) return null
+              return (
+                <Select.Item key={role.id} value={role.id}>
+                  {role.color ? (
+                    <span
+                      aria-hidden="true"
+                      className="mr-1 size-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: `color-mix(in oklab, ${role.color} 70%, var(--foreground))` }}
+                    />
                   ) : null}
-                </span>
-              </Select.Item>
-            )
-          })}
-        </Select.Content>
+                  <span className="min-w-0">
+                    <span className="block truncate">{role.name}</span>
+                    {role.description ? (
+                      <span className="block truncate text-xs text-muted-foreground">{role.description}</span>
+                    ) : null}
+                  </span>
+                </Select.Item>
+              )
+            })}
+          </Select.Content>
+        ) : null}
       </Select.Root>
       <Form.Error name="roleId" />
       {confirmation !== null ? (
@@ -390,13 +394,45 @@ function MemberRoles({ member }: { member: SettingsMember }) {
 }
 
 function MemberGroups({ member }: { member: SettingsMember }) {
+  const row = useContext(CollectionRowContext)
+  const [initiallyOpen, setInitiallyOpen] = useState(false)
+  const [activated, setActivated] = useState(() => row?.forms.has(`${row.key}:groups`) ?? false)
+  if (activated) return <MemberGroupPicker member={member} initiallyOpen={initiallyOpen} />
+  const groups = member.groups ?? []
+  return (
+    <PermissionRequest actions={['group.read']}>
+      {(allowed) =>
+        allowed ? (
+          <Button
+            variant="neutral"
+            aria-label={`Groups for ${member.name}`}
+            aria-haspopup="listbox"
+            className="h-auto min-h-6 justify-start rounded-full px-2 py-0.5 text-left text-xs"
+            onClick={() => {
+              setInitiallyOpen(true)
+              setActivated(true)
+            }}
+          >
+            <span className="line-clamp-2 whitespace-normal text-left">
+              {groups[0]?.name ?? 'None'}
+              {groups.length > 1 ? ` +${groups.length - 1}` : ''}
+            </span>
+          </Button>
+        ) : null
+      }
+    </PermissionRequest>
+  )
+}
+
+function MemberGroupPicker({ member, initiallyOpen }: { member: SettingsMember; initiallyOpen: boolean }) {
+  const [open, setOpen] = useState(initiallyOpen)
   const c = useSettingsController()
   const catalog = useSettings((s) => s.groups)
   const confirmed = member.groups ?? catalog.filter((group) => group.memberIds.includes(member.id))
   const ids = confirmed.map((group) => group.id)
   const options = [...new Map([...catalog, ...confirmed].map((group) => [group.id, group])).values()]
   const checks = usePermissionChecks(
-    options.map((group) => ({
+    (open ? options : []).map((group) => ({
       action: ids.includes(group.id) ? ('group.member.remove' as const) : ('group.member.add' as const),
       resourceType: 'Group',
       resourceId: group.id,
@@ -412,6 +448,7 @@ function MemberGroups({ member }: { member: SettingsMember }) {
         return result === false || !result ? false : { groupIds: result }
       },
     },
+    'groups',
   )
   const selected = useFormValue<string[]>(form, 'groupIds') ?? []
   const selectedGroups = options.filter((group) => selected.includes(group.id))
@@ -427,20 +464,28 @@ function MemberGroups({ member }: { member: SettingsMember }) {
       {(allowed) =>
         allowed ? (
           <Form.Root model={form}>
-            <ChoicePicker.Root options={pickerOptions} value={selected} onValueChange={(next) => form.change('groupIds', next)}>
+            <ChoicePicker.Root
+              open={open}
+              onOpenChange={setOpen}
+              options={pickerOptions}
+              value={selected}
+              onValueChange={(next) => form.change('groupIds', next)}
+            >
               <ChoicePicker.Trigger aria-label={`Groups for ${member.name}`}>
                 {selectedGroups[0]?.name ?? 'None'}
                 {selectedGroups.length > 1 ? ` +${selectedGroups.length - 1}` : ''}
               </ChoicePicker.Trigger>
-              <ChoicePicker.Content>
-                <div className="p-2 pb-0">
-                  <Searchbox.Root>
-                    <ChoicePicker.Input aria-label={`Search groups for ${member.name}`} placeholder="Search groups…" />
-                  </Searchbox.Root>
-                </div>
-                <ChoicePicker.Empty>Empty.</ChoicePicker.Empty>
-                <ChoicePicker.List>{(option) => <ChoicePicker.Item key={option.id} value={option} />}</ChoicePicker.List>
-              </ChoicePicker.Content>
+              {open ? (
+                <ChoicePicker.Content align="start">
+                  <div className="p-2 pb-0">
+                    <Searchbox.Root>
+                      <ChoicePicker.Input aria-label={`Search groups for ${member.name}`} placeholder="Search groups…" />
+                    </Searchbox.Root>
+                  </div>
+                  <ChoicePicker.Empty>Empty.</ChoicePicker.Empty>
+                  <ChoicePicker.List>{(option) => <ChoicePicker.Item key={option.id} value={option} />}</ChoicePicker.List>
+                </ChoicePicker.Content>
+              ) : null}
             </ChoicePicker.Root>
           </Form.Root>
         ) : null
@@ -503,22 +548,68 @@ function MemberAvatar({ member }: { member: SettingsMember }) {
   )
 }
 
+const MemberRow = memo(function MemberRow({ member }: { member: SettingsMember }) {
+  const currentMemberId = useSettings((s) => s.currentMemberId)
+  return (
+    <Table.Row className="h-14 border-0">
+      <Table.Cell column="name" className="pl-0">
+        <div className="flex items-center gap-2.5 py-1">
+          <MemberAvatar member={member} />
+          <span className="relative min-w-0 pr-3 text-xsm font-medium">
+            <span className="block truncate">{member.name}</span>
+            {member.id === currentMemberId ? (
+              <Tooltip.Control content="This is you">
+                <button
+                  type="button"
+                  aria-label="This is you"
+                  className="absolute -top-1 right-0 rounded text-foreground focus-visible:outline-ring"
+                >
+                  <ArrowDownLeftIcon weight="bold" className="size-2.5" aria-hidden="true" />
+                </button>
+              </Tooltip.Control>
+            ) : null}
+          </span>
+        </div>
+      </Table.Cell>
+      <Table.Cell column="email" className="text-muted-foreground">
+        <MemberEmail key={member.email} email={member.email} name={member.name} />
+      </Table.Cell>
+      <Table.Cell column="role">
+        <PermissionRequest actions={['role.read']}>
+          {(allowed) => (allowed ? <MemberRoles member={member} /> : null)}
+        </PermissionRequest>
+      </Table.Cell>
+      <Table.Cell column="groups">
+        <MemberGroups member={member} />
+      </Table.Cell>
+      <Table.Cell column="joined">
+        <DirectoryDate value={member.joinedAt} />
+      </Table.Cell>
+      <Table.Cell column="actions" className="px-0">
+        <MemberActions member={member} />
+      </Table.Cell>
+    </Table.Row>
+  )
+})
+
+const memberKey = (member: SettingsMember) => member.id
+const renderMember = (member: SettingsMember) => <MemberRow member={member} />
+
 function MemberRows({
   label,
   members,
   complete,
   open,
   onOpenChange,
-  children,
+  paging,
 }: {
   label: string
   members: SettingsMember[]
   complete: boolean
   open: boolean
   onOpenChange(open: boolean): void
-  children?: ReactNode
+  paging: import('../../components/collection-types').CollectionPaging
 }) {
-  const currentMemberId = useSettings((s) => s.currentMemberId)
   return (
     <Table.Category
       variant="directory"
@@ -527,48 +618,12 @@ function MemberRows({
       onOpenChange={onOpenChange}
       columns={6}
       count={complete || members.length ? `${members.length}${complete ? '' : ' shown'}` : undefined}
+      items={members}
+      getKey={memberKey}
+      estimateSize={56}
+      paging={paging}
     >
-      {members.map((member) => (
-        <Table.Row key={member.id} className="h-14 border-0">
-          <Table.Cell column="name" className="pl-0">
-            <div className="flex items-center gap-2.5 py-1">
-              <MemberAvatar member={member} />
-              <span className="relative min-w-0 pr-3 text-xsm font-medium">
-                <span className="block truncate">{member.name}</span>
-                {member.id === currentMemberId ? (
-                  <Tooltip.Control content="This is you">
-                    <button
-                      type="button"
-                      aria-label="This is you"
-                      className="absolute -top-1 right-0 rounded text-foreground focus-visible:outline-ring"
-                    >
-                      <ArrowDownLeftIcon weight="bold" className="size-2.5" aria-hidden="true" />
-                    </button>
-                  </Tooltip.Control>
-                ) : null}
-              </span>
-            </div>
-          </Table.Cell>
-          <Table.Cell column="email" className="text-muted-foreground">
-            <MemberEmail key={member.email} email={member.email} name={member.name} />
-          </Table.Cell>
-          <Table.Cell column="role">
-            <PermissionRequest actions={['role.read']}>
-              {(allowed) => (allowed ? <MemberRoles member={member} /> : null)}
-            </PermissionRequest>
-          </Table.Cell>
-          <Table.Cell column="groups">
-            <MemberGroups member={member} />
-          </Table.Cell>
-          <Table.Cell column="joined">
-            <DirectoryDate value={member.joinedAt} />
-          </Table.Cell>
-          <Table.Cell column="actions" className="px-0">
-            <MemberActions member={member} />
-          </Table.Cell>
-        </Table.Row>
-      ))}
-      {children}
+      {renderMember}
     </Table.Category>
   )
 }
@@ -641,6 +696,15 @@ function MemberFilters() {
   )
 }
 
+const memberColumns = [
+  { id: 'name' },
+  { id: 'email' },
+  { id: 'role', className: 'w-1/6', visibilityClassName: 'hidden md:table-cell' },
+  { id: 'groups', className: 'w-1/6 lg:w-[calc(100%/6-1.5rem)]', visibilityClassName: 'hidden md:table-cell' },
+  { id: 'joined', className: 'w-26', visibilityClassName: 'hidden lg:table-cell' },
+  { id: 'actions', className: 'w-12' },
+]
+
 export function MembersSettings() {
   const c = useSettingsController()
   const members = useSettings((s) => s.members)
@@ -649,17 +713,13 @@ export function MembersSettings() {
   const loading = useSettings((s) => s.membersLoading)
   const next = useSettings((s) => s.membersHasNextPage)
   const failed = useSettings((s) => s.membersLoadError ?? false)
-  const [root, setRoot] = useState<HTMLElement | null>(null)
-  const attachTable = useCallback((element: HTMLDivElement | null) => {
-    setRoot(element?.closest<HTMLElement>('[aria-label="Settings content"]') ?? null)
-  }, [])
   const [activeOpen, setActiveOpen] = useState(true)
   const [inactiveOpen, setInactiveOpen] = useState(true)
   const invitations = useSettings((s) => s.invitations.length)
   const confirmedComplete = useSettings((s) => s.membersComplete !== false)
   const complete = confirmedComplete && !loading && !next
-  const active = members.filter((member) => member.available !== false)
-  const inactive = members.filter((member) => member.available === false)
+  const active = useMemo(() => members.filter((member) => member.available !== false), [members])
+  const inactive = useMemo(() => members.filter((member) => member.available === false), [members])
   const descending = order === 'DESC_NULLS_LAST'
   return (
     <SettingsContent wide className="flex min-h-full flex-col pt-16 pb-6">
@@ -686,7 +746,7 @@ export function MembersSettings() {
         ) : null}
       </div>
       <Table.Root
-        ref={attachTable}
+        forms={c.pages.members.forms}
         className="overflow-visible
 [&_[data-slot=table-category-header]>td]:rounded-none [&_[data-slot=table-category-header]>td]:bg-transparent
 [&_[data-slot=table-category-header]>td]:before:pointer-events-none
@@ -700,14 +760,7 @@ export function MembersSettings() {
           className="border-separate border-spacing-0"
           aria-label="Organization members"
           aria-busy={loading}
-          columns={[
-            { id: 'name' },
-            { id: 'email' },
-            { id: 'role', className: 'w-1/6', visibilityClassName: 'hidden md:table-cell' },
-            { id: 'groups', className: 'w-1/6 lg:w-[calc(100%/6-1.5rem)]', visibilityClassName: 'hidden md:table-cell' },
-            { id: 'joined', className: 'w-26', visibilityClassName: 'hidden lg:table-cell' },
-            { id: 'actions', className: 'w-12' },
-          ]}
+          columns={memberColumns}
         >
           <Table.Header className="sticky top-0 z-20 bg-surface">
             <Table.Row className="border-0">
@@ -732,21 +785,21 @@ export function MembersSettings() {
               </Table.Head>
             </Table.Row>
           </Table.Header>
-          <Invitations root={root} />
+          <Invitations />
           {active.length || !inactive.length ? (
-            <MemberRows label="Active" members={active} complete={complete} open={activeOpen} onOpenChange={setActiveOpen}>
-              {!inactive.length ? (
-                <LoadMoreRows
-                  root={root}
-                  loading={loading}
-                  more={next}
-                  failed={failed}
-                  disabled={!activeOpen}
-                  onLoadMore={() => c.pages.members.loadMore?.()}
-                  label="members"
-                />
-              ) : null}
-            </MemberRows>
+            <MemberRows
+              label="Active"
+              members={active}
+              complete={complete}
+              open={activeOpen}
+              onOpenChange={setActiveOpen}
+              paging={{
+                hasMore: next && !inactive.length,
+                loading,
+                error: failed,
+                onLoadMore: () => c.pages.members.loadMore?.(),
+              }}
+            />
           ) : null}
           {inactive.length ? (
             <MemberRows
@@ -755,17 +808,8 @@ export function MembersSettings() {
               complete={complete}
               open={inactiveOpen}
               onOpenChange={setInactiveOpen}
-            >
-              <LoadMoreRows
-                root={root}
-                loading={loading}
-                more={next}
-                failed={failed}
-                disabled={!inactiveOpen}
-                onLoadMore={() => c.pages.members.loadMore?.()}
-                label="members"
-              />
-            </MemberRows>
+              paging={{ hasMore: next, loading, error: failed, onLoadMore: () => c.pages.members.loadMore?.() }}
+            />
           ) : null}
         </Table.Content>
       </Table.Root>

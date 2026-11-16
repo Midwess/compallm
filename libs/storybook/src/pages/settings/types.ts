@@ -247,6 +247,7 @@ export interface SettingsPageControllers {
   profile: ProfileController
   organization: OrganizationController
   members: {
+    forms: import('../../components/collection-forms').CollectionForms
     setMemberGroups?(memberId: string, groupIds: string[]): Promise<string[] | false>
     search?(query: string): void
     setMemberRole(memberId: string, roleId: string): void | false | Promise<void | false>

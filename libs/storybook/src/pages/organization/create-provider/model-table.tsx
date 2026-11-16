@@ -130,8 +130,8 @@ export function ProviderModels() {
               </Table.Head>
             </Table.Row>
           </Table.Header>
-          <Table.Body>
-            {visible.map((model) => (
+          <Table.Body items={visible} getKey={(model) => model.id}>
+            {(model) => (
               <Table.Row key={model.id} className="h-12 border-b border-divider last:border-b-0">
                 <Table.Cell className="p-0 text-left">
                   <Checkbox
@@ -192,7 +192,7 @@ disabled:opacity-50"
                   ) : null}
                 </Table.Cell>
               </Table.Row>
-            ))}
+            )}
           </Table.Body>
         </Table.Content>
         {!visible.length ? (

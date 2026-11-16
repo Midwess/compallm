@@ -24,8 +24,9 @@ export function usePermissionChecks(
   useEffect(() => {
     void controller.evaluate(JSON.parse(serialized))
   }, [controller, serialized, statuses])
-  return checks.map((check, index) => {
-    const status = statuses.split(',')[index]
+  const values = statuses.split(',')
+  return checks.map((_check, index) => {
+    const status = values[index]
     return status === 'unchecked' ? 'denied' : (status as PermissionStatus)
   })
 }

@@ -14,7 +14,7 @@ import { useController } from 'react-hook-form'
 import { useSyncExternalStoreWithSelector } from 'use-sync-external-store/shim/with-selector'
 import { cloneFormValue as cloneDeep } from './form-model'
 import isEqual from 'lodash-es/isEqual.js'
-import { FormContext } from '../context'
+import { FormContext, CollectionRowContext } from '../context'
 import { Button } from './buttons'
 import type { FormModel, FormScope, FormOptions, FormStore } from './form-model'
 export { createForm, createFormStore, FormModel } from './form-model'
@@ -132,7 +132,7 @@ export function useFormStore<T extends object, V>(
     subscribe,
     store.getState,
     store.getInitialState,
-    (state) => cloneDeep(selector(state)),
+    (state) => (key ? cloneDeep(selector(state)) : selector(state)),
     isEqual,
   )
 }
@@ -151,11 +151,13 @@ export function contractResult<T>(
         })),
       }
 }
-export function useManagedForm<T extends object>(initial: T, options: FormOptions<T>) {
-  const [form] = useState(() => new Model(initial, options))
+export function useManagedForm<T extends object>(initial: T, options: FormOptions<T>, key = 'default') {
+  const row = useContext(CollectionRowContext)
+  const [form] = useState(() => (row ? row.forms.get(`${row.key}:${key}`, initial, options) : new Model(initial, options)))
   useEffect(() => {
     form.configure(options)
   })
+  useEffect(() => row?.forms.attach(`${row.key}:${key}`, form), [row?.forms, row?.key, key, form])
   return form
 }
 import { FormModel as Model } from './form-model'

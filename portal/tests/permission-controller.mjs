@@ -131,3 +131,29 @@ test('checks awaiting older member facts settle against current facts before ret
     cedarWorker.request = request
   }
 })
+
+test('member permission bursts share one worker request and publish one complete result snapshot', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => reply())
+  const batches = []
+  t.mock.method(cedarWorker, 'request', async (operation, args) => {
+    if (operation === 'clearPermissions') return true
+    if (!args[1].length) return []
+    batches.push(args[1])
+    return args[1].map((check) => (check.resourceId === '12' ? 'denied' : 'allowed'))
+  })
+  const controller = new PermissionController()
+  controller.start()
+  t.after(controller.stop)
+  let publications = 0
+  const stop = controller.store.subscribe(() => publications++)
+  t.after(stop)
+  const checks = Array.from({ length: 100 }, (_, index) => role(String(index + 11)))
+  await Promise.all(checks.map((check) => controller.evaluate([check, check])))
+  assert.equal(batches.length, 1)
+  assert.equal(batches[0].length, 100)
+  assert.equal(publications, 1)
+  assert.equal(controller.store.getState().entries[permissionKey(role('11'))].status, 'allowed')
+  assert.equal(controller.store.getState().entries[permissionKey(role('12'))].status, 'denied')
+  await controller.evaluate(checks)
+  assert.equal(batches.length, 1)
+})

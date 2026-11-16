@@ -4,7 +4,13 @@ import { reducedMotion } from './motion'
 
 const minimumVisible = 500
 const completionSpeed = 100
-const template = '<div class="bar absolute inset-y-0 left-0 bg-primary"></div>'
+const completionGrace = 200
+const template = `<div class="bar absolute inset-y-0 left-0 bg-primary">
+<span data-progress-glow aria-hidden="true" class="absolute top-full right-0 h-4 w-160 max-w-full"
+style="background:radial-gradient(ellipse at 100% 0%,
+color-mix(in srgb,var(--primary) 85%,transparent) 0%,
+color-mix(in srgb,var(--primary) 35%,transparent) 30%,transparent 75%)"></span>
+</div>`
 
 export function PageProgress({ active }: { active: boolean }) {
   const host = useRef<HTMLDivElement>(null)
@@ -14,15 +20,7 @@ export function PageProgress({ active }: { active: boolean }) {
   useLayoutEffect(() => {
     const element = host.current
     if (!element) return
-    const promote = (event?: Event) => {
-      if (event && (event.target === element || (event as ToggleEvent).newState !== 'open')) return
-      if (element.matches(':popover-open')) element.hidePopover()
-      element.showPopover()
-    }
-    promote()
-    document.addEventListener('toggle', promote, true)
     return () => {
-      document.removeEventListener('toggle', promote, true)
       if (element.matches(':popover-open')) element.hidePopover()
       clearTimeout(completion.current)
       BProgress.configure({ trickle: false })
@@ -33,37 +31,58 @@ export function PageProgress({ active }: { active: boolean }) {
   }, [])
 
   useLayoutEffect(() => {
+    const element = host.current
+    if (!active || !element) return
+    const promote = (event?: Event) => {
+      if (event && (event.target === element || (event as ToggleEvent).newState !== 'open')) return
+      if (event && element.matches(':popover-open')) element.hidePopover()
+      if (!element.matches(':popover-open')) element.showPopover()
+    }
+    promote()
+    document.addEventListener('toggle', promote, true)
+    return () => document.removeEventListener('toggle', promote, true)
+  }, [active])
+
+  useLayoutEffect(() => {
     if (!host.current) return
     clearTimeout(completion.current)
-    const reduced = reducedMotion()
-    BProgress.configure({
-      parent: host.current,
-      template,
-      showSpinner: false,
-      trickle: false,
-      easing: 'linear',
-      positionUsing: 'width',
-      minimum: 0.08,
-      maximum: 1,
-      indeterminate: false,
-      speed: reduced ? 0 : minimumVisible,
-    })
-    if (active) {
-      if (startedAt.current === null || !BProgress.isStarted()) {
-        BProgress.remove()
-        startedAt.current = performance.now()
-        BProgress.start()
-        BProgress.set(reduced ? 0.35 : 0.9)
+    let frame = requestAnimationFrame(() => {
+      if (!host.current) return
+      const reduced = reducedMotion()
+      BProgress.configure({
+        parent: host.current,
+        template,
+        showSpinner: false,
+        trickle: false,
+        easing: 'linear',
+        positionUsing: 'width',
+        minimum: 0.08,
+        maximum: 1,
+        indeterminate: false,
+        speed: reduced ? 0 : minimumVisible,
+      })
+      if (active) {
+        if (startedAt.current === null || !BProgress.isStarted()) {
+          BProgress.remove()
+          startedAt.current = performance.now()
+          BProgress.start()
+          BProgress.set(reduced ? 0.35 : 0.9)
+        }
+      } else if (startedAt.current !== null) {
+        const remaining = Math.max(completionGrace, minimumVisible - (performance.now() - startedAt.current))
+        completion.current = setTimeout(() => {
+          frame = requestAnimationFrame(() => {
+            BProgress.configure({ speed: reduced ? 0 : completionSpeed })
+            BProgress.done()
+            startedAt.current = null
+          })
+        }, remaining)
       }
-    } else if (startedAt.current !== null) {
-      const remaining = Math.max(0, minimumVisible - (performance.now() - startedAt.current))
-      completion.current = setTimeout(() => {
-        BProgress.configure({ speed: reduced ? 0 : completionSpeed })
-        BProgress.done()
-        startedAt.current = null
-      }, remaining)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      clearTimeout(completion.current)
     }
-    return () => clearTimeout(completion.current)
   }, [active])
 
   return (
@@ -72,7 +91,7 @@ export function PageProgress({ active }: { active: boolean }) {
       popover="manual"
       data-ui="page-progress"
       className="pointer-events-none fixed inset-x-0 top-0 bottom-auto z-50 m-0 h-0.5 w-screen max-w-none
-origin-top scale-y-[1.15] overflow-hidden border-0 bg-transparent p-0"
+origin-top scale-y-[0.9775] overflow-visible border-0 bg-transparent p-0"
       role="progressbar"
       aria-label="Loading requests"
       aria-hidden={!active}

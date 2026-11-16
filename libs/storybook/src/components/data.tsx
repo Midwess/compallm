@@ -52,7 +52,17 @@ export function ProjectTableRow({
     </Table.Row>
   )
 }
-export function ProjectTable({ children, label }: { children: ReactNode; label: string }) {
+export function ProjectTable<T>({
+  children,
+  label,
+  items,
+  getKey,
+}: {
+  children: ReactNode | ((item: T) => ReactNode)
+  label: string
+  items?: readonly T[]
+  getKey?(item: T): string
+}) {
   return (
     <Table.Root tabIndex={0} role="region" aria-label={label}>
       <Table.Content
@@ -70,7 +80,16 @@ export function ProjectTable({ children, label }: { children: ReactNode; label: 
   [&_td]:py-1
 `}
       >
-        {children}
+        {items && getKey && typeof children === 'function' ? (
+          <>
+            <ProjectTableHeader />
+            <Table.Body items={items} getKey={getKey}>
+              {children}
+            </Table.Body>
+          </>
+        ) : (
+          (children as ReactNode)
+        )}
       </Table.Content>
     </Table.Root>
   )

@@ -181,6 +181,7 @@ test('group changes submit explicit deltas and deselecting all removes confirmed
 test('role selection replaces one required role through one mutation without changing groups', async () => {
   const original = globalThis.fetch,
     writes = []
+  let reads = 0
   let currentRole = { id: 'member', name: 'Member', description: '', color: '', owner: false }
   globalThis.fetch = async (_url, init) => {
     if (JSON.parse(init.body).query.includes('invitations'))
@@ -194,6 +195,7 @@ test('role selection replaces one required role through one mutation without cha
       currentRole = { id: 'admin', name: 'Admin', description: '', color: '', owner: false }
       return Response.json({ data: { roleAssign: { node: currentRole } } })
     }
+    reads++
     const result = page('target')
     result.data.members.edges[0].node.role = currentRole
     return Response.json(result)
@@ -203,16 +205,82 @@ test('role selection replaces one required role through one mutation without cha
   try {
     controller.start()
     await tick()
+    const other = { ...store.getState().members[0], id: 'other' }
+    store.setState((state) => ({
+      members: [...state.members, other],
+      membersEndCursor: 'loaded-page-two',
+      membersHasNextPage: true,
+    }))
+    const readCount = reads
     await controller.setMemberRole('target', 'admin')
     await tick()
     assert.equal(store.getState().members[0].role.id, 'admin')
     assert.equal(store.getState().members[0].groups.length, 2)
+    assert.equal(store.getState().members[1], other)
+    assert.equal(store.getState().membersEndCursor, 'loaded-page-two')
+    assert.equal(store.getState().membersHasNextPage, true)
+    assert.equal(reads, readCount)
     assert.equal(writes.length, 1)
     assert.ok(writes[0].query.includes('roleAssign'))
   } finally {
     controller.cancel()
     globalThis.fetch = original
   }
+})
+
+test('ownership changes reconcile owners and member ancestry without reloading other pages', async (t) => {
+  const { createPermissionStore, permissionKey } = await server.ssrLoadModule('../libs/storybook/src/permission.ts')
+  const permissionStore = createPermissionStore()
+  const facts = []
+  const permissions = {
+    store: permissionStore,
+    async evaluate(checks) {
+      permissionStore.setState((state) => ({
+        entries: {
+          ...state.entries,
+          ...Object.fromEntries(checks.map((check) => [permissionKey(check), { check, status: 'allowed' }])),
+        },
+      }))
+    },
+    setFacts: (next) => facts.push(...next),
+  }
+  let reads = 0
+  t.mock.method(globalThis, 'fetch', async (_url, init) => {
+    const { query, variables } = JSON.parse(init.body)
+    if (query.includes('invitations'))
+      return Response.json({ data: { invitations: { edges: [], pageInfo: { endCursor: null, hasNextPage: false } } } })
+    if (query.includes('roleAssign')) {
+      const owner = Object.values(variables).includes('owner')
+      return Response.json({
+        data: { roleAssign: { node: { id: owner ? 'owner' : 'admin', name: owner ? 'Owner' : 'Admin', owner } } },
+      })
+    }
+    reads++
+    const result = page('target')
+    result.data.me.node.organizationOwner = true
+    result.data.organization = { node: { ownerMemberIds: ['current'] } }
+    return Response.json(result)
+  })
+  const store = createSettingsStore({
+    groups: [{ id: 'research', name: 'Research', description: '', roleIds: ['inherited'], memberIds: ['target'], color: '' }],
+  })
+  const controller = new MembersController(store, permissions)
+  controller.start()
+  t.after(controller.cancel)
+  await tick()
+  const readCount = reads
+  await controller.setMemberRole('target', 'owner')
+  assert.deepEqual(store.getState().ownerMemberIds, ['current', 'target'])
+  assert.deepEqual(facts.at(-1), {
+    resourceType: 'Member',
+    id: 'target',
+    groupIds: ['research', 'design'],
+    roleIds: ['owner', 'inherited'],
+  })
+  await controller.setMemberRole('target', 'admin')
+  assert.deepEqual(store.getState().ownerMemberIds, ['current'])
+  assert.deepEqual(facts.at(-1).roleIds, ['admin', 'inherited'])
+  assert.equal(reads, readCount)
 })
 
 test('failed or obsolete role writes retain confirmed member data without replay', async () => {

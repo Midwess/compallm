@@ -115,8 +115,8 @@ export function MemberLimitSettings() {
               {columns.includes('used') ? <Table.Head>Limit used</Table.Head> : null}
             </Table.Row>
           </Table.Header>
-          <Table.Body>
-            {visible.map((m) => (
+          <Table.Body items={visible} getKey={(m) => m.id}>
+            {(m) => (
               <Table.Row key={m.id}>
                 <Table.Cell>
                   <span className="block text-xsm font-medium">{m.name}</span>
@@ -141,7 +141,7 @@ export function MemberLimitSettings() {
                   </Table.Cell>
                 ) : null}
               </Table.Row>
-            ))}
+            )}
           </Table.Body>
         </Table.Content>
       </Table.Root>
@@ -195,8 +195,8 @@ export function UsageExplorerSettings() {
                 <Table.Head>Provider cost</Table.Head>
               </Table.Row>
             </Table.Header>
-            <Table.Body>
-              {data.map((row) => (
+            <Table.Body items={data} getKey={(row) => row.id}>
+              {(row) => (
                 <Table.Row key={row.id}>
                   <Table.Cell>{row.model}</Table.Cell>
                   <Table.Cell>{row.requests}</Table.Cell>
@@ -204,7 +204,7 @@ export function UsageExplorerSettings() {
                   <Table.Cell>{row.outputTokens}</Table.Cell>
                   <Table.Cell>{row.providerCost}</Table.Cell>
                 </Table.Row>
-              ))}
+              )}
             </Table.Body>
           </Table.Content>
         </Table.Root>
@@ -253,15 +253,15 @@ export function AuditSettings() {
               ))}
             </Table.Row>
           </Table.Header>
-          <Table.Body>
-            {visible.map((e) => (
+          <Table.Body items={visible} getKey={(e) => e.id}>
+            {(e) => (
               <Table.Row key={e.id}>
                 <Table.Cell>{e.actor}</Table.Cell>
                 <Table.Cell>{e.action}</Table.Cell>
                 <Table.Cell>{e.resource}</Table.Cell>
                 <Table.Cell>{e.result}</Table.Cell>
               </Table.Row>
-            ))}
+            )}
           </Table.Body>
         </Table.Content>
       </Table.Root>

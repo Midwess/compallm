@@ -1,3 +1,4 @@
+import { useRowRetention } from './collection'
 import { animated, overlay } from './motion'
 import {
   createContext,
@@ -43,6 +44,7 @@ export interface DialogRootProps extends OpenStateProps {
 
 function Root({ children, open: controlledOpen, defaultOpen = false, onOpenChange }: DialogRootProps) {
   const [open, setOpen] = useControllableState(controlledOpen, defaultOpen, onOpenChange)
+  useRowRetention(open)
   const onClose = () => setOpen(false)
   const titleId = useId(),
     descriptionId = useId()

@@ -13,7 +13,7 @@ import type {
   UserPreferenceValues,
 } from '../../../src/pages/settings'
 import { DemoSettingsController } from './demo-controller'
-import { advancedSource, modelOperatorSource } from './fixtures'
+import { advancedSource, modelOperatorSource, initialSettings } from './fixtures'
 
 function Demo({
   page = 'general',
@@ -570,6 +570,38 @@ export const RecentInvitationDates: Story = {
           status: 'pending',
           issuedAt: Math.floor(Date.now() / 1000) - age,
           expiresAt: Math.floor(Date.now() / 1000) - age + 604800,
+        })),
+      }}
+    />
+  ),
+}
+
+export const MembersRenderingBatches: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      initial={{
+        members: Array.from({ length: 20 }, (_, index) => ({
+          ...initialSettings.members![1],
+          id: `batch-${index}`,
+          name: `Member ${index}`,
+          email: `member${index}@example.com`,
+        })),
+      }}
+    />
+  ),
+}
+
+export const MembersRoleUpdates: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      initial={{
+        members: Array.from({ length: 1000 }, (_, index) => ({
+          ...initialSettings.members![1],
+          id: `editable-${index}`,
+          name: `Member ${index}`,
+          email: `member${index}@example.com`,
         })),
       }}
     />

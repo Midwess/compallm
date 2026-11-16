@@ -1,3 +1,5 @@
+import { useRowRetention } from './collection'
+import { useState } from 'react'
 import { useContext, type ReactNode, type ComponentPropsWithRef } from 'react'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
@@ -28,6 +30,8 @@ export interface SelectRootProps extends OpenStateProps {
 }
 
 function SelectRoot(props: SelectRootProps) {
+  const [observedOpen, setObservedOpen] = useState(false)
+  useRowRetention(props.open ?? observedOpen)
   const field = useFormField<string>(props.name)
   return (
     <BaseSelect.Root
@@ -38,6 +42,7 @@ function SelectRoot(props: SelectRootProps) {
         else props.onValueChange?.(value)
       }}
       onOpenChange={(open) => {
+        setObservedOpen(open)
         if (!open) field?.blur()
         props.onOpenChange?.(open)
       }}

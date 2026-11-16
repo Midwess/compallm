@@ -1,7 +1,8 @@
+import { useProgressiveRows } from '../../components/progressive-rows'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { ArrowDownLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowDownLeft'
 import { Tooltip } from '../../components/feedback'
-import { memo, useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import useInfiniteScroll from 'react-infinite-scroll-hook'
 import { EyeIcon } from '@phosphor-icons/react/dist/csr/Eye'
 import { EyeSlashIcon } from '@phosphor-icons/react/dist/csr/EyeSlash'
@@ -176,7 +177,9 @@ function LoadMoreRows({
 function Invitations({ root }: { root: HTMLElement | null }) {
   const [open, setOpen] = useState(true)
   const c = useSettingsController()
-  const invitations = useSettings((s) => s.invitations.filter((invitation) => invitation.status === 'pending'))
+  const confirmed = useSettings((s) => s.invitations)
+  const invitations = useMemo(() => confirmed.filter((invitation) => invitation.status === 'pending'), [confirmed])
+  const visible = useProgressiveRows(invitations)
   const loading = useSettings((s) => s.invitationsLoading)
   const more = useSettings((s) => s.invitationsHasNextPage)
   const failed = useSettings((s) => s.invitationsLoadError ?? false)
@@ -191,7 +194,7 @@ function Invitations({ root }: { root: HTMLElement | null }) {
       open={open}
       onOpenChange={setOpen}
     >
-      {invitations.map((row) => (
+      {visible.rows.map((row) => (
         <Table.Row key={row.id} className="h-14 border-0">
           <Table.Cell column="name" className="pl-0">
             <div className="flex items-center gap-2.5 py-1">
@@ -239,7 +242,7 @@ border-border text-ui-11 text-muted-foreground"
       ))}
       <LoadMoreRows
         root={root}
-        loading={loading || busy}
+        loading={loading || busy || visible.revealing}
         more={more}
         failed={failed}
         disabled={!open}
@@ -728,6 +731,7 @@ const memberColumns = [
 export function MembersSettings() {
   const c = useSettingsController()
   const members = useSettings((s) => s.members)
+  const visible = useProgressiveRows(members)
   const query = useSettings((s) => s.query)
   const order = useSettings((s) => s.memberOrder)
   const loading = useSettings((s) => s.membersLoading)
@@ -741,9 +745,9 @@ export function MembersSettings() {
   const [inactiveOpen, setInactiveOpen] = useState(true)
   const invitations = useSettings((s) => s.invitations.length)
   const confirmedComplete = useSettings((s) => s.membersComplete !== false)
-  const complete = confirmedComplete && !loading && !next
-  const active = members.filter((member) => member.available !== false)
-  const inactive = members.filter((member) => member.available === false)
+  const complete = confirmedComplete && !loading && !next && !visible.revealing
+  const active = visible.rows.filter((member) => member.available !== false)
+  const inactive = visible.rows.filter((member) => member.available === false)
   const descending = order === 'DESC_NULLS_LAST'
   return (
     <SettingsContent wide className="flex min-h-full flex-col pt-16 pb-6">
@@ -783,7 +787,7 @@ export function MembersSettings() {
         <Table.Content
           className="border-separate border-spacing-0"
           aria-label="Organization members"
-          aria-busy={loading}
+          aria-busy={loading || visible.revealing}
           columns={memberColumns}
         >
           <Table.Header className="sticky top-0 z-20 bg-surface">
@@ -815,7 +819,7 @@ export function MembersSettings() {
               {!inactive.length ? (
                 <LoadMoreRows
                   root={root}
-                  loading={loading}
+                  loading={loading || visible.revealing}
                   more={next}
                   failed={failed}
                   disabled={!activeOpen}
@@ -835,7 +839,7 @@ export function MembersSettings() {
             >
               <LoadMoreRows
                 root={root}
-                loading={loading}
+                loading={loading || visible.revealing}
                 more={next}
                 failed={failed}
                 disabled={!inactiveOpen}

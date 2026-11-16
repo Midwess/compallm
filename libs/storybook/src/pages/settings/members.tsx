@@ -1,3 +1,4 @@
+import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { ArrowDownLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowDownLeft'
 import { Tooltip } from '../../components/feedback'
 import { memo, useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
@@ -250,7 +251,33 @@ border-border text-ui-11 text-muted-foreground"
 }
 
 function MemberRoles({ member }: { member: SettingsMember }) {
-  const [open, setOpen] = useState(false)
+  const [activated, setActivated] = useState(false)
+  const current = useSettings((state) => state.currentMemberId)
+  const owner = useSettings((state) => state.actorIsOwner)
+  const owners = useSettings((state) => state.ownerMemberIds ?? [])
+  if (member.id === current || (member.role?.owner && (!owner || owners.length <= 1)))
+    return (
+      <span className="line-clamp-2 whitespace-normal wrap-break-word text-left text-xs">
+        {member.role?.name ?? 'Unavailable'}
+      </span>
+    )
+  if (activated) return <MemberRolePicker member={member} />
+  return (
+    <Button
+      variant="neutral"
+      aria-label={`Roles for ${member.name}`}
+      aria-haspopup="listbox"
+      className="h-auto min-h-6 w-full max-w-30 justify-between rounded-lg px-2 py-0.5 text-left text-xs"
+      onClick={() => setActivated(true)}
+    >
+      <span className="line-clamp-2 min-w-0 flex-1 whitespace-normal text-left">{member.role?.name ?? 'Unavailable'}</span>
+      <CaretDownIcon size={10} aria-hidden="true" />
+    </Button>
+  )
+}
+
+function MemberRolePicker({ member }: { member: SettingsMember }) {
+  const [open, setOpen] = useState(true)
   const roles = useSettings((s) => s.roles)
   const actorIsOwner = useSettings((s) => s.actorIsOwner)
   const currentMemberId = useSettings((s) => s.currentMemberId)
@@ -397,7 +424,33 @@ function MemberRoles({ member }: { member: SettingsMember }) {
 }
 
 function MemberGroups({ member }: { member: SettingsMember }) {
-  const [open, setOpen] = useState(false)
+  const [activated, setActivated] = useState(false)
+  if (activated) return <MemberGroupPicker member={member} />
+  const groups = member.groups ?? []
+  return (
+    <PermissionRequest actions={['group.read']}>
+      {(allowed) =>
+        allowed ? (
+          <Button
+            variant="neutral"
+            aria-label={`Groups for ${member.name}`}
+            aria-haspopup="listbox"
+            className="h-auto min-h-6 justify-start rounded-full px-2 py-0.5 text-left text-xs"
+            onClick={() => setActivated(true)}
+          >
+            <span className="line-clamp-2 whitespace-normal text-left">
+              {groups[0]?.name ?? 'None'}
+              {groups.length > 1 ? ` +${groups.length - 1}` : ''}
+            </span>
+          </Button>
+        ) : null
+      }
+    </PermissionRequest>
+  )
+}
+
+function MemberGroupPicker({ member }: { member: SettingsMember }) {
+  const [open, setOpen] = useState(true)
   const c = useSettingsController()
   const catalog = useSettings((s) => s.groups)
   const confirmed = member.groups ?? catalog.filter((group) => group.memberIds.includes(member.id))

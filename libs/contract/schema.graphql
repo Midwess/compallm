@@ -250,6 +250,7 @@ normalization, application validation, or email ownership checks.
 input EmailInput {
   "Trimmed and ASCII-lowercased using the shared Rust email policy."
   email: String!
+  invitation: Boolean = false
   "Cookie delivery is the default; token delivery must be requested explicitly."
   delivery: CredentialDelivery = COOKIE
 }

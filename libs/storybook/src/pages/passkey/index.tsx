@@ -6,7 +6,7 @@ import { Button } from '../../components/buttons'
 import { TextField, CodeEntry } from '../../components/fields'
 import { Form, useManagedForm, contractResult } from '../../components/form'
 import { Dialog } from '../../components/dialog'
-import { PasskeyRegistrationInput, EmailReauthenticationInput } from '@compallm/contract/validation'
+import { PasskeyRegistrationInput, EmailCodeInput } from '@compallm/contract/validation'
 import { Section, Rows, Row, Empty } from '../settings/shared'
 import { Popup } from '../../components/popup'
 import { SettingsDivider } from '../../components/settings'
@@ -227,7 +227,7 @@ function PasskeyDialogContent() {
         const state = controller.store.getState()
         if (state.reauthentication)
           return state.emailSent
-            ? contractResult(EmailReauthenticationInput.pick({ code: true }).safeParse({ code: values.code }), values)
+            ? contractResult(EmailCodeInput.pick({ code: true }).safeParse({ code: values.code }), values)
             : { values }
         return state.dialog?.kind === 'add' && state.enrollment === 'name'
           ? contractResult(PasskeyRegistrationInput.safeParse({ name: values.name }), values)

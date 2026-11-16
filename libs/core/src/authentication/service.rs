@@ -38,6 +38,81 @@ pub struct AuthService {
 }
 
 impl AuthService {
+    pub fn verify_passkey_change(
+        &self,
+        token: &str,
+        session: &Session,
+    ) -> Result<super::PasskeyChangeToken, AuthError> {
+        AccessToken::decode_passkey_change(token, &self.jwt_secret, session)
+    }
+    pub(crate) fn issue_passkey_change(
+        &self,
+        session: &Session,
+    ) -> Result<super::IssuedPasskeyChange, AuthError> {
+        let claims = super::PasskeyChangeToken::new(session)?;
+        let token = AccessToken::PasskeyChange(claims.clone()).encode(
+            &self.jwt_secret,
+            Duration::from_secs(super::PasskeyChangeToken::TTL_SECONDS),
+        )?;
+        Ok(super::IssuedPasskeyChange { token, claims })
+    }
+    #[db_context::root]
+    pub async fn passkey_change_email(
+        &self,
+        actor: &UserAccessToken,
+        email: &str,
+    ) -> Result<IssuedEmailOtp, AuthError> {
+        if !self.validate_access(actor).await? {
+            return Err(AuthError::InvalidSession);
+        }
+        let user = self
+            .users
+            .find_by_id(actor.session.user_id)
+            .await?
+            .ok_or(AuthError::UserNotFound)?;
+        if user.status != UserStatus::Active {
+            return Err(AuthError::UserDisabled);
+        }
+        if user.email != compallm_utils::email::normalize_email(email) {
+            return Err(AuthError::InvalidEmail);
+        }
+        let mut claims = EmailOtpAccessToken::new(user.email)?;
+        claims.purpose = super::AuthenticationPurpose::PasskeyChange;
+        claims.session = Some(actor.session.clone());
+        claims.validity =
+            super::TokenValidity::new(Duration::from_secs(super::PasskeyChangeToken::TTL_SECONDS))?;
+        self.issue_email_otp(claims).await
+    }
+    #[db_context::root]
+    pub async fn passkey_change_confirm(
+        &self,
+        actor: &UserAccessToken,
+        otp: &EmailOtpAccessToken,
+        code: &str,
+    ) -> Result<super::IssuedPasskeyChange, AuthError> {
+        if !self.validate_access(actor).await? {
+            return Err(AuthError::InvalidSession);
+        }
+        otp.verify_code(code, unix_timestamp())?;
+        if otp.purpose != super::AuthenticationPurpose::PasskeyChange
+            || !otp
+                .session
+                .as_ref()
+                .is_some_and(|session| session.has_same_identity(&actor.session))
+        {
+            return Err(AuthError::WrongTokenVariant);
+        }
+        let user = self
+            .users
+            .find_by_id(actor.session.user_id)
+            .await?
+            .ok_or(AuthError::UserNotFound)?;
+        if user.status != UserStatus::Active || user.email != otp.email {
+            return Err(AuthError::UserDisabled);
+        }
+        self.issue_passkey_change(&actor.session)
+    }
+
     pub fn with_passkey_repository(
         mut self,
         repository: &'static dyn crate::persistent::passkey::PasskeyRepository,
@@ -178,20 +253,18 @@ impl AuthService {
         let token = self
             .encrypt_token(
                 AccessToken::EmailOtp(claims.clone()),
-                Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),
+                Duration::from_secs(claims.ttl_seconds()),
             )
             .await?;
         let sender = self.email.as_ref().ok_or(EmailError::Unavailable)?;
         #[cfg(debug_assertions)]
         let debug_code = claims.code.clone();
+        let ttl = claims.ttl_seconds();
         sender
             .send(EmailRequest {
                 to: compallm_utils::email::normalize_email(&claims.email),
                 subject: "Your Compallm verification code".into(),
-                text: EmailTemplate::OtpCode(OtpCode::new(
-                    claims.code,
-                    Duration::from_secs(EmailOtpAccessToken::TTL_SECONDS),
-                )),
+                text: EmailTemplate::OtpCode(OtpCode::new(claims.code, Duration::from_secs(ttl))),
             })
             .await?;
         #[cfg(debug_assertions)]
@@ -208,7 +281,7 @@ impl AuthService {
         claims: &EmailOtpAccessToken,
         code: &str,
     ) -> Result<UserTokens, AuthError> {
-        if claims.invitation_id.is_some() {
+        if claims.invitation_id.is_some() || claims.purpose != super::AuthenticationPurpose::Login {
             return Err(AuthError::InvalidInvitation);
         }
         claims.verify_code(code, unix_timestamp())?;
@@ -235,7 +308,7 @@ impl AuthService {
         claims: &EmailOtpAccessToken,
         code: &str,
     ) -> Result<UserTokens, AuthError> {
-        if claims.invitation_id.is_some() {
+        if claims.invitation_id.is_some() || claims.purpose != super::AuthenticationPurpose::Login {
             return Err(AuthError::InvalidInvitation);
         }
         claims.verify_code(code, unix_timestamp())?;
@@ -251,7 +324,8 @@ impl AuthService {
                 .find_first_membership(user.id)
                 .await?
                 .ok_or(AuthError::OrganizationAccessDenied)?;
-            self.start_session(user.id, membership, dictionary).await
+            self.start_enrollment_session(user.id, membership, dictionary)
+                .await
         })
     }
 
@@ -343,6 +417,17 @@ impl AuthService {
             .await
     }
 
+    pub(crate) async fn start_enrollment_session(
+        &self,
+        user_id: u64,
+        membership: OrganizationMember,
+        dictionary: &DCompression,
+    ) -> Result<UserTokens, AuthError> {
+        let mut tokens = self.start_session(user_id, membership, dictionary).await?;
+        let actor = self.authenticate_access(&tokens.access_token).await?;
+        tokens.passkey_change = Some(self.issue_passkey_change(&actor.session)?);
+        Ok(tokens)
+    }
     #[db_context::current]
     pub(crate) async fn start_session_with_method(
         &self,
@@ -392,6 +477,7 @@ impl AuthService {
         let refresh_lifetime =
             Duration::from_secs(refresh.validity.expires_at.saturating_sub(unix_timestamp()));
         Ok(UserTokens {
+            passkey_change: None,
             access_validity,
             refresh_validity: refresh.validity.clone(),
             access_token: AccessToken::User(user)

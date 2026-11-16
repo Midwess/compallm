@@ -1,19 +1,19 @@
 export default {
   scalars: [
-    7, 16, 18, 24, 25, 32, 33, 36, 38, 68, 69, 72, 73, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110,
+    5, 8, 17, 19, 24, 25, 32, 33, 36, 38, 68, 69, 72, 73, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110,
     111, 113, 119, 145, 147, 156,
   ],
   types: {
     AccessibilityPatchInput: {
-      pointerCursors: [7],
-      reduceMotion: [7],
-      underlineLinks: [7],
+      pointerCursors: [8],
+      reduceMotion: [8],
+      underlineLinks: [8],
       __typename: [145],
     },
     AccessibilityPreferences: {
-      pointerCursors: [7],
-      reduceMotion: [7],
-      underlineLinks: [7],
+      pointerCursors: [8],
+      reduceMotion: [8],
+      underlineLinks: [8],
       __typename: [145],
     },
     AnalyticUserProfile: {
@@ -30,6 +30,7 @@ export default {
       value: [145],
       __typename: [145],
     },
+    AuthenticationPurpose: {},
     AvatarUpload: {
       expiresAt: [145],
       fields: [153],
@@ -37,12 +38,12 @@ export default {
       __typename: [145],
     },
     AvatarUploadPayload: {
-      node: [5],
+      node: [6],
       __typename: [145],
     },
     Boolean: {},
     BooleanPayload: {
-      node: [7],
+      node: [8],
       __typename: [145],
     },
     CalendarPatchInput: {
@@ -59,12 +60,12 @@ export default {
       __typename: [145],
     },
     CodeAppearancePatchInput: {
-      font: [14],
+      font: [15],
       theme: [100],
       __typename: [145],
     },
     CodeAppearancePreferences: {
-      font: [15],
+      font: [16],
       theme: [100],
       __typename: [145],
     },
@@ -90,23 +91,20 @@ export default {
       __typename: [145],
     },
     EmailChallengePayload: {
-      node: [19],
+      node: [20],
       __typename: [145],
     },
     EmailCodeInput: {
       code: [145],
-      delivery: [18],
+      delivery: [19],
+      purpose: [5],
       __typename: [145],
     },
     EmailInput: {
-      delivery: [18],
+      delivery: [19],
       email: [145],
-      invitation: [7],
-      __typename: [145],
-    },
-    EmailReauthenticationInput: {
-      code: [145],
-      token: [145],
+      invitation: [8],
+      purpose: [5],
       __typename: [145],
     },
     FilterIs: {},
@@ -189,7 +187,7 @@ export default {
       expiresAt: [25],
       organizationId: [33],
       organizationName: [145],
-      signup: [7],
+      signup: [8],
       __typename: [145],
     },
     InvitationContextPayload: {
@@ -206,7 +204,7 @@ export default {
       __typename: [145],
     },
     InvitationIssued: {
-      emailAdmitted: [7],
+      emailAdmitted: [8],
       invitation: [39],
       url: [145],
       __typename: [145],
@@ -234,7 +232,7 @@ export default {
       cedarSource: [145],
       id: [33],
       organizationId: [33],
-      organizationOwner: [7],
+      organizationOwner: [8],
       sessionId: [33],
       __typename: [145],
     },
@@ -243,7 +241,7 @@ export default {
       __typename: [145],
     },
     Member: {
-      available: [7],
+      available: [8],
       displayName: [145],
       effectiveRoleIds: [33],
       email: [145],
@@ -291,12 +289,12 @@ export default {
       __typename: [145],
     },
     MessageCompositionPatchInput: {
-      convertEmoticons: [7],
+      convertEmoticons: [8],
       sendShortcut: [104],
       __typename: [145],
     },
     MessageCompositionPreferences: {
-      convertEmoticons: [7],
+      convertEmoticons: [8],
       sendShortcut: [104],
       __typename: [145],
     },
@@ -307,45 +305,38 @@ export default {
           input: [4, 'AnalyticUserProfilePutInput!'],
         },
       ],
-      emailReauthenticationConfirm: [
-        8,
-        {
-          input: [23, 'EmailReauthenticationInput!'],
-        },
-      ],
-      emailReauthenticationRequest: [85],
       emailSigninConfirm: [
         136,
         {
-          input: [21, 'EmailCodeInput!'],
+          input: [22, 'EmailCodeInput!'],
         },
       ],
       emailSigninRequest: [
-        20,
+        21,
         {
-          input: [22, 'EmailInput!'],
+          input: [23, 'EmailInput!'],
         },
       ],
       emailSignupConfirm: [
         136,
         {
-          input: [21, 'EmailCodeInput!'],
+          input: [22, 'EmailCodeInput!'],
         },
       ],
       emailSignupRequest: [
-        20,
+        21,
         {
-          input: [22, 'EmailInput!'],
+          input: [23, 'EmailInput!'],
         },
       ],
       generateOrgAvatarUrl: [
-        6,
+        7,
         {
           input: [37, 'ImageUploadInput!'],
         },
       ],
       generateUrlAvatarUrl: [
-        6,
+        7,
         {
           input: [37, 'ImageUploadInput!'],
         },
@@ -357,7 +348,7 @@ export default {
         },
       ],
       groupDelete: [
-        8,
+        9,
         {
           id: [33, 'ID!'],
         },
@@ -390,14 +381,14 @@ export default {
       onboardingAdvance: [
         67,
         {
-          back: [7, 'Boolean!'],
+          back: [8, 'Boolean!'],
         },
       ],
       onboardingComplete: [67],
       onboardingPresent: [
         67,
         {
-          manual: [7, 'Boolean!'],
+          manual: [8, 'Boolean!'],
         },
       ],
       organizationOnboardingSettingsUpdate: [
@@ -418,14 +409,12 @@ export default {
           input: [88, 'PasskeyFinishInput!'],
         },
       ],
-      passkeyAuthenticationStart: [85],
-      passkeyReauthenticationFinish: [
-        8,
+      passkeyAuthenticationStart: [
+        85,
         {
-          input: [88, 'PasskeyFinishInput!'],
+          purpose: [5, 'AuthenticationPurpose!'],
         },
       ],
-      passkeyReauthenticationStart: [85],
       passkeyRegistrationFinish: [
         94,
         {
@@ -461,7 +450,7 @@ export default {
         },
       ],
       roleDelete: [
-        8,
+        9,
         {
           id: [33, 'ID!'],
         },
@@ -474,7 +463,7 @@ export default {
         },
       ],
       sessionRefresh: [136],
-      sessionRevoke: [8],
+      sessionRevoke: [9],
       userPreferencesReset: [
         159,
         {
@@ -505,10 +494,10 @@ export default {
     },
     OnboardingContext: {
       flow: [69],
-      hasBeenPresented: [7],
-      required: [7],
+      hasBeenPresented: [8],
+      required: [8],
       settings: [75],
-      shouldPresent: [7],
+      shouldPresent: [8],
       step: [72],
       __typename: [145],
     },
@@ -532,7 +521,7 @@ export default {
     OrderByDirection: {},
     Organization: {
       avatarUrl: [145],
-      canUpdateProfile: [7],
+      canUpdateProfile: [8],
       id: [33],
       name: [145],
       ownerMemberIds: [33],
@@ -542,8 +531,8 @@ export default {
       artworkColor: [145],
       destination: [68],
       links: [70],
-      requireAvatar: [7],
-      requireFullName: [7],
+      requireAvatar: [8],
+      requireFullName: [8],
       welcome: [145],
       __typename: [145],
     },
@@ -551,8 +540,8 @@ export default {
       artworkColor: [145],
       destination: [68],
       links: [71],
-      requireAvatar: [7],
-      requireFullName: [7],
+      requireAvatar: [8],
+      requireFullName: [8],
       welcome: [145],
       __typename: [145],
     },
@@ -565,7 +554,7 @@ export default {
       __typename: [145],
     },
     OrganizationProfileUpdateInput: {
-      avatarUploaded: [7],
+      avatarUploaded: [8],
       name: [145],
       __typename: [145],
     },
@@ -580,8 +569,8 @@ export default {
     },
     PageInfo: {
       endCursor: [145],
-      hasNextPage: [7],
-      hasPreviousPage: [7],
+      hasNextPage: [8],
+      hasPreviousPage: [8],
       startCursor: [145],
       __typename: [145],
     },
@@ -611,17 +600,18 @@ export default {
       __typename: [145],
     },
     PasskeyExtensions: {
-      credProps: [7],
+      credProps: [8],
       credentialProtectionPolicy: [145],
-      enforceCredentialProtectionPolicy: [7],
+      enforceCredentialProtectionPolicy: [8],
       __typename: [145],
     },
     PasskeyFinishInput: {
       attestationObject: [145],
       authenticatorData: [145],
       clientDataJson: [145],
-      delivery: [18],
+      delivery: [19],
       id: [145],
+      purpose: [5],
       rawId: [145],
       signature: [145],
       token: [145],
@@ -745,9 +735,9 @@ export default {
       capabilities: [119],
       catalogRef: [114],
       effortMapping: [116],
-      enabled: [7],
+      enabled: [8],
       inputPrice: [145],
-      maxContextTokens: [16],
+      maxContextTokens: [17],
       name: [145],
       outputPrice: [145],
       path: [145],
@@ -814,7 +804,7 @@ export default {
         {
           after: [145],
           before: [145],
-          currentUserFirst: [7],
+          currentUserFirst: [8],
           filter: [58],
           first: [38],
           last: [38],
@@ -837,13 +827,13 @@ export default {
         132,
         {
           id: [33, 'ID!'],
-          includeUnseen: [7, 'Boolean!'],
+          includeUnseen: [8, 'Boolean!'],
         },
       ],
       roles: [
         129,
         {
-          includeUnseen: [7, 'Boolean!'],
+          includeUnseen: [8, 'Boolean!'],
         },
       ],
       session: [137],
@@ -866,7 +856,7 @@ export default {
       description: [145],
       id: [33],
       name: [145],
-      owner: [7],
+      owner: [8],
       __typename: [145],
     },
     RoleConnection: {
@@ -907,6 +897,9 @@ export default {
     SessionCredentials: {
       accessLifetime: [150],
       accessToken: [145],
+      passkeyChangeLifetime: [150],
+      passkeyChangeToken: [145],
+      purpose: [5],
       refreshLifetime: [150],
       refreshToken: [145],
       __typename: [145],
@@ -1021,8 +1014,8 @@ export default {
     UserPreferenceGroup: {},
     UserPreferences: {
       accessibility: [1],
-      calendar: [10],
-      codeAppearance: [13],
+      calendar: [11],
+      codeAppearance: [14],
       memberDisplay: [56],
       messageComposition: [62],
       navigation: [65],
@@ -1033,8 +1026,8 @@ export default {
     },
     UserPreferencesPatchInput: {
       accessibility: [0],
-      calendar: [9],
-      codeAppearance: [12],
+      calendar: [10],
+      codeAppearance: [13],
       memberDisplay: [55],
       messageComposition: [61],
       navigation: [64],
@@ -1048,7 +1041,7 @@ export default {
       __typename: [145],
     },
     UserProfileUpdateInput: {
-      avatarUploaded: [7],
+      avatarUploaded: [8],
       displayName: [145],
       username: [145],
       __typename: [145],

@@ -3262,7 +3262,7 @@ async fn invalid_authorization_clears_cookies_without_revoking_session() {
         .iter()
         .map(|value| value.to_str().unwrap().to_owned())
         .collect();
-    assert_eq!(headers.len(), 2);
+    assert_eq!(headers.len(), 4);
     assert!(headers.iter().all(|value| value.contains("Max-Age=0")));
     assert_eq!(
         graphql_body(response).await["errors"][0]["extensions"]["code"],
@@ -4401,7 +4401,7 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
         true,
     )
     .await;
-    assert_eq!(response.headers().get_all("set-cookie").iter().count(), 2);
+    assert_eq!(response.headers().get_all("set-cookie").iter().count(), 4);
     assert_eq!(
         graphql_body(response).await["data"]["sessionRevoke"]["node"],
         true
@@ -5650,6 +5650,13 @@ async fn explicit_invitation_request_without_cookie_never_falls_back_to_signin()
     assert!(fixture.repo.0.lock().unwrap().logins.is_empty());
 }
 
+fn management_grant(actor: &UserAccessToken) -> String {
+    use compallm_core::authentication::{AccessToken, PasskeyChangeToken};
+    AccessToken::PasskeyChange(PasskeyChangeToken::new(&actor.session).unwrap())
+        .encode(SECRET, std::time::Duration::from_secs(180))
+        .unwrap()
+}
+
 #[path = "support/passkeys.rs"]
 mod passkey_support;
 
@@ -5678,10 +5685,11 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
         .authenticate_access(&tokens.access_token)
         .await
         .unwrap();
+    let grant = management_grant(&actor);
     let origin = url::Url::parse("http://localhost").unwrap();
     let mut authenticator =
         WebauthnAuthenticator::new(passkey_support::ResidentAuthenticator::new());
-    let start = service.registration_start(&actor).await.unwrap();
+    let start = service.registration_start(&actor, &grant).await.unwrap();
     assert_eq!(
         start.options["publicKey"]["authenticatorSelection"]["residentKey"],
         "required"
@@ -5701,12 +5709,12 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
         )
         .unwrap();
     let record = service
-        .registration_finish(&actor, &start.token, response.clone(), "Laptop")
+        .registration_finish(&actor, &grant, &start.token, response.clone(), "Laptop")
         .await
         .unwrap();
     assert!(
         service
-            .registration_finish(&actor, &start.token, response, "Laptop")
+            .registration_finish(&actor, &grant, &start.token, response, "Laptop")
             .await
             .is_err()
     );
@@ -5716,7 +5724,7 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
     );
 
     let renamed = service
-        .rename(&actor, record.id, "Work Macbook")
+        .rename(&actor, &grant, record.id, "Work Macbook")
         .await
         .unwrap();
     assert_eq!(renamed.name, "Work Macbook");
@@ -5796,10 +5804,18 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
             .await
             .is_err()
     );
-    service
+    let renewed_grant = service
         .reauthentication_finish(&actor, &reauth.token, assertion)
         .await
         .unwrap();
+    assert!(
+        auth.verify_passkey_change(&renewed_grant.token, &actor.session)
+            .is_ok()
+    );
+    assert!(
+        auth.verify_passkey_change(&renewed_grant.token, &login_actor.session)
+            .is_err()
+    );
     let pending = service.authentication_start().await.unwrap();
     let pending_assertion = authenticator
         .do_authentication(
@@ -5807,7 +5823,7 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
             serde_json::from_value(pending.options).unwrap(),
         )
         .unwrap();
-    service.remove(&actor, record.id).await.unwrap();
+    service.remove(&actor, &grant, record.id).await.unwrap();
     assert!(
         repository
             .list(actor.session.user_id)
@@ -5836,7 +5852,7 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
 }
 
 #[tokio::test]
-async fn passkey_management_requires_recent_evidence_and_rejects_foreign_or_expired_ceremonies() {
+async fn passkey_management_requires_grant_and_rejects_foreign_or_expired_ceremonies() {
     use compallm_core::authentication::passkey::PasskeyService;
     use webauthn_authenticator_rs::WebauthnAuthenticator;
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
@@ -5858,14 +5874,15 @@ async fn passkey_management_requires_recent_evidence_and_rejects_foreign_or_expi
         .authenticate_access(&tokens.access_token)
         .await
         .unwrap();
+    let grant = String::new();
     repository.state.lock().unwrap().evidence.clear();
     assert!(matches!(
-        service.registration_start(&actor).await,
+        service.registration_start(&actor, &grant).await,
         Err(AuthError::ReauthenticationRequired)
     ));
     assert!(repository.state.lock().unwrap().challenges.is_empty());
     assert!(matches!(
-        service.remove(&actor, 1).await,
+        service.remove(&actor, &grant, 1).await,
         Err(AuthError::ReauthenticationRequired)
     ));
     let _ = auth.refresh(&tokens.refresh_token).await.unwrap();
@@ -5874,7 +5891,8 @@ async fn passkey_management_requires_recent_evidence_and_rejects_foreign_or_expi
         (actor.session.id, "email_code".into()),
         compallm_utils::time::unix_timestamp(),
     );
-    let start = service.registration_start(&actor).await.unwrap();
+    let grant = management_grant(&actor);
+    let start = service.registration_start(&actor, &grant).await.unwrap();
     let mut authenticator =
         WebauthnAuthenticator::new(passkey_support::ResidentAuthenticator::new());
     let response = authenticator
@@ -5887,7 +5905,7 @@ async fn passkey_management_requires_recent_evidence_and_rejects_foreign_or_expi
     foreign.session.user_id += 1;
     assert!(
         service
-            .registration_finish(&foreign, &start.token, response.clone(), "Laptop")
+            .registration_finish(&foreign, &grant, &start.token, response.clone(), "Laptop")
             .await
             .is_err()
     );
@@ -5896,7 +5914,7 @@ async fn passkey_management_requires_recent_evidence_and_rejects_foreign_or_expi
     }
     assert!(
         service
-            .registration_finish(&actor, &start.token, response, "Laptop")
+            .registration_finish(&actor, &grant, &start.token, response, "Laptop")
             .await
             .is_err()
     );
@@ -5904,8 +5922,7 @@ async fn passkey_management_requires_recent_evidence_and_rejects_foreign_or_expi
 }
 
 #[tokio::test]
-async fn email_reauthentication_is_session_bound_single_use_and_has_five_attempts() {
-    use compallm_core::authentication::passkey::PasskeyService;
+async fn email_passkey_change_is_purpose_bound_session_bound_and_preserves_login() {
     struct Email(Arc<Mutex<String>>);
     #[async_trait::async_trait]
     impl compallm_core::mail::EmailService for Email {
@@ -5941,56 +5958,66 @@ async fn email_reauthentication_is_session_bound_single_use_and_has_five_attempt
             )
             .with_passkey_repository(repository),
     ));
-    let service = PasskeyService::new(
-        repository,
-        auth,
-        SECRET.into(),
-        "localhost",
-        "http://localhost",
-    )
-    .unwrap();
     let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
     let tokens = auth.signin(&otp, &otp.code).await.unwrap();
     let actor = auth
         .authenticate_access(&tokens.access_token)
         .await
         .unwrap();
-    repository.state.lock().unwrap().evidence.clear();
-    let challenge = service.email_request(&actor).await.unwrap();
+    let challenge = auth.passkey_change_email(&actor, &otp.email).await.unwrap();
+    let proof: EmailOtpAccessToken = auth
+        .authenticate_token(&challenge.token)
+        .await
+        .unwrap()
+        .try_into()
+        .unwrap();
     let code = email.lock().unwrap().clone();
-    let wrong = if code == "000000" { "111111" } else { "000000" };
-    for _ in 0..5 {
-        assert!(matches!(
-            service.email_confirm(&actor, &challenge.token, wrong).await,
-            Err(AuthError::IncorrectCode)
-        ));
-    }
+    assert!(auth.signin(&proof, &code).await.is_err());
     assert!(
-        service
-            .email_confirm(&actor, &challenge.token, &code)
+        auth.passkey_change_confirm(&actor, &otp, &otp.code)
             .await
             .is_err()
     );
-    assert!(repository.state.lock().unwrap().evidence.is_empty());
-    let challenge = service.email_request(&actor).await.unwrap();
-    let code = email.lock().unwrap().clone();
-    service
-        .email_confirm(&actor, &challenge.token, &code)
+    let mut other = actor.clone();
+    other.session.id += 1;
+    assert!(
+        auth.passkey_change_confirm(&other, &proof, &code)
+            .await
+            .is_err()
+    );
+    let wrong = if code == "000000" { "111111" } else { "000000" };
+    assert!(
+        auth.passkey_change_confirm(&actor, &proof, wrong)
+            .await
+            .is_err()
+    );
+    let grant = auth
+        .passkey_change_confirm(&actor, &proof, &code)
         .await
         .unwrap();
-    assert!(
-        service
-            .email_confirm(&actor, &challenge.token, &code)
-            .await
-            .is_err()
+    assert_eq!(
+        grant.claims.validity.expires_at - grant.claims.validity.issued_at,
+        180
     );
     assert!(
-        repository
-            .state
-            .lock()
+        auth.verify_passkey_change(&grant.token, &actor.session)
+            .is_ok()
+    );
+    assert!(
+        auth.verify_passkey_change(&grant.token, &actor.session)
+            .is_ok()
+    );
+    assert!(
+        auth.verify_passkey_change(&grant.token, &other.session)
+            .is_err()
+    );
+    assert!(auth.authenticate_access(&grant.token).await.is_err());
+    assert!(
+        auth.refresh(&tokens.refresh_token)
+            .await
             .unwrap()
-            .evidence
-            .contains_key(&(actor.session.id, "email_code".into()))
+            .passkey_change
+            .is_none()
     );
     assert!(auth.validate_access(&actor).await.unwrap());
 }
@@ -6032,7 +6059,8 @@ async fn discoverable_passkey_ceremony_accepts_either_account_without_an_email_b
         let otp = EmailOtpAccessToken::new(account.email.clone()).unwrap();
         let login = auth.signin(&otp, &otp.code).await.unwrap();
         let actor = auth.authenticate_access(&login.access_token).await.unwrap();
-        let enrollment = service.registration_start(&actor).await.unwrap();
+        let grant = management_grant(&actor);
+        let enrollment = service.registration_start(&actor, &grant).await.unwrap();
         let response = authenticators[index]
             .do_registration(
                 origin.clone(),
@@ -6040,7 +6068,7 @@ async fn discoverable_passkey_ceremony_accepts_either_account_without_an_email_b
             )
             .unwrap();
         service
-            .registration_finish(&actor, &enrollment.token, response, "Macbook")
+            .registration_finish(&actor, &grant, &enrollment.token, response, "Macbook")
             .await
             .unwrap();
     }
@@ -6066,4 +6094,71 @@ async fn discoverable_passkey_ceremony_accepts_either_account_without_an_email_b
         let actor = auth.authenticate_access(&login.access_token).await.unwrap();
         assert_eq!(actor.session.user_id, account.id);
     }
+}
+
+#[tokio::test]
+async fn graphql_passkey_change_cookie_preserves_login_and_cannot_authorize_session() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let auth = fixture.service();
+    let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
+    let tokens = auth.signin(&otp, &otp.code).await.unwrap();
+    let router = fixture.graphql();
+    let cookies = format!(
+        "compallm-access={}; compallm-refresh={}",
+        tokens.access_token, tokens.refresh_token
+    );
+    let response = graphql_operation(&router,
+        "mutation($input:EmailInput!){emailSigninRequest(input:$input){node{token lifetime{expiresInSeconds}}}}",
+        serde_json::json!({"input":{"email":otp.email,"purpose":"PASSKEY_CHANGE"}}), None, Some(&cookies), true).await;
+    let issued = response_cookies(&response);
+    assert!(issued.starts_with("compallm-passkey-otp="));
+    assert!(!issued.contains("compallm-access="));
+    assert!(!issued.contains("compallm-refresh="));
+    let proof_token = issued.strip_prefix("compallm-passkey-otp=").unwrap();
+    let proof = EmailOtpAccessToken::try_from(decode_token(proof_token, SECRET).unwrap()).unwrap();
+    assert_eq!(
+        graphql_body(response).await["data"]["emailSigninRequest"]["node"]["token"],
+        serde_json::Value::Null
+    );
+    let response = graphql_operation(&router,
+        "mutation($input:EmailCodeInput!){emailSigninConfirm(input:$input){node{purpose accessToken refreshToken passkeyChangeToken passkeyChangeLifetime{expiresInSeconds}}}}",
+        serde_json::json!({"input":{"code":proof.code,"purpose":"PASSKEY_CHANGE"}}), None, Some(&format!("{cookies}; {issued}")), true).await;
+    let headers = response
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .map(|v| v.to_str().unwrap().to_owned())
+        .collect::<Vec<_>>();
+    let grant_cookie = headers
+        .iter()
+        .find(|v| v.starts_with("compallm-passkey-change="))
+        .unwrap();
+    assert!(grant_cookie.contains("HttpOnly") && grant_cookie.contains("Max-Age=180"));
+    assert!(
+        headers
+            .iter()
+            .all(|v| !v.starts_with("compallm-access=") && !v.starts_with("compallm-refresh="))
+    );
+    let grant = grant_cookie
+        .split(';')
+        .next()
+        .unwrap()
+        .strip_prefix("compallm-passkey-change=")
+        .unwrap()
+        .to_owned();
+    let body = graphql_body(response).await;
+    let result = &body["data"]["emailSigninConfirm"]["node"];
+    assert_eq!(result["purpose"], "PASSKEY_CHANGE");
+    assert!(
+        result["accessToken"].is_null()
+            && result["refreshToken"].is_null()
+            && result["passkeyChangeToken"].is_null()
+    );
+    assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
+    assert_graphql_denial(
+        graphql_request(&router, Some(&grant), None, false).await,
+        401,
+    )
+    .await;
+    assert_eq!(graphql_body(graphql_request(&router, None, Some(&cookies), true).await).await["data"]["first"]["node"]["id"].as_str().unwrap(), auth.authenticate_access(&tokens.access_token).await.unwrap().session.id.to_string());
 }

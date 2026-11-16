@@ -123,3 +123,39 @@ test('cancel discards the pending credential response and expired naming require
   assert.equal(controller.registration, undefined)
   assert.equal(controller.store.getState().dialog, null)
 })
+
+test('rename denial opens verification and email proof uses PASSKEY_CHANGE without replaying the rename', async (t) => {
+  const { controller, stop } = setup()
+  t.after(stop)
+  let renames = 0
+  t.mock.method(globalThis, 'fetch', async (_url, init) => {
+    const { query, variables } = JSON.parse(init.body)
+    if (query.includes('passkeyUpdate')) {
+      renames++
+      return Response.json({
+        data: null,
+        errors: [{ message: 'Verify your identity', extensions: { code: 'REAUTHENTICATION_REQUIRED', status: 401 } }],
+      })
+    }
+    if (query.includes('userProfile')) return reply({ userProfile: { node: { email: 'owner@example.com' } } })
+    const input = Object.values(variables).find((v) => v?.purpose)
+    assert.equal(input.purpose, 'PASSKEY_CHANGE')
+    if (query.includes('emailSigninRequest')) {
+      assert.equal(input.email, 'owner@example.com')
+      return reply({ emailSigninRequest: { node: { lifetime: { expiresAt: '180' } } } })
+    }
+    assert.ok(query.includes('emailSigninConfirm'))
+    assert.equal(input.code, '123456')
+    return reply({ emailSigninConfirm: { node: { purpose: 'PASSKEY_CHANGE' } } })
+  })
+  controller.edit('1')
+  assert.equal(await controller.rename('1', 'Work'), false)
+  assert.equal(controller.store.getState().reauthentication, true)
+  assert.equal(controller.store.getState().dialog.kind, 'verify')
+  assert.equal(await controller.sendEmail(), true)
+  assert.equal(controller.store.getState().emailSent, true)
+  assert.equal(await controller.verifyEmail('123456'), true)
+  assert.equal(controller.store.getState().dialog, null)
+  assert.equal(controller.store.getState().editingId, '1')
+  assert.equal(renames, 1)
+})

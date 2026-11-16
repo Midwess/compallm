@@ -15,3 +15,5 @@ pub use token::{
 pub use token::{EmailOtpChallenge, IssuedEmailOtp, UserTokens};
 
 pub mod passkey;
+
+pub use token::{AuthenticationPurpose, IssuedPasskeyChange, PasskeyChangeToken};

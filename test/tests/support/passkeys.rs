@@ -140,15 +140,6 @@ impl PasskeyRepository for MemoryPasskeys {
             .insert((session.id, method.into()), at);
         Ok(())
     }
-    async fn recently_verified(&self, session: &Session, since: u64) -> Result<bool, AuthError> {
-        Ok(self
-            .state
-            .lock()
-            .unwrap()
-            .evidence
-            .iter()
-            .any(|((s, _), at)| *s == session.id && *at > since))
-    }
     async fn ensure_email_identity(&self, _: u64) -> Result<(), AuthError> {
         Ok(())
     }

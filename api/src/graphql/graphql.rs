@@ -223,73 +223,56 @@ pub struct Mutation;
 #[graphql_object(context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Mutation {
     async fn passkey_registration_start(
+        #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
     ) -> Result<Payload<authentication::passkey::PasskeyCeremony>, Error> {
-        authentication::passkey::mutation::registration_start(user, service).await
+        authentication::passkey::mutation::registration_start(user, identity, service).await
     }
     async fn passkey_registration_finish(
         input: authentication::passkey::input::PasskeyFinishInput,
         name: authentication::passkey::input::PasskeyRegistrationInput,
+        #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
     ) -> Result<Payload<authentication::passkey::PasskeySummary>, Error> {
-        authentication::passkey::mutation::registration_finish(input, name, user, service).await
+        authentication::passkey::mutation::registration_finish(input, name, user, identity, service)
+            .await
     }
     async fn passkey_update(
         id: ID,
         input: authentication::passkey::input::PasskeyRegistrationInput,
+        #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
     ) -> Result<Payload<authentication::passkey::PasskeySummary>, Error> {
-        authentication::passkey::mutation::update(id, input, user, service).await
+        authentication::passkey::mutation::update(id, input, user, identity, service).await
     }
     async fn passkey_authentication_start(
+        #[graphql(default = authentication::input::AuthenticationPurpose::Login)]
+        purpose: authentication::input::AuthenticationPurpose,
+        #[graphql(context)] user: &UserContext,
         #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
     ) -> Result<Payload<authentication::passkey::PasskeyCeremony>, Error> {
-        authentication::passkey::mutation::authentication_start(service).await
+        authentication::passkey::mutation::authentication_start(purpose, user, service).await
     }
     async fn passkey_authentication_finish(
+        #[graphql(context)] user: &UserContext,
         input: authentication::passkey::input::PasskeyFinishInput,
         #[graphql(context)] cookies: &CookieDelivery,
         #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
     ) -> Result<Payload<authentication::SessionCredentials>, Error> {
-        authentication::passkey::mutation::authentication_finish(input, cookies, service).await
-    }
-    async fn passkey_reauthentication_start(
-        #[graphql(context)] user: &UserContext,
-        #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
-    ) -> Result<Payload<authentication::passkey::PasskeyCeremony>, Error> {
-        authentication::passkey::mutation::reauthentication_start(user, service).await
-    }
-    async fn passkey_reauthentication_finish(
-        input: authentication::passkey::input::PasskeyFinishInput,
-        #[graphql(context)] user: &UserContext,
-        #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
-    ) -> Result<Payload<bool>, Error> {
-        authentication::passkey::mutation::reauthentication_finish(input, user, service).await
+        authentication::passkey::mutation::authentication_finish(input, user, cookies, service)
+            .await
     }
     async fn passkey_remove(
         id: ID,
+        #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
     ) -> Result<Payload<ID>, Error> {
-        authentication::passkey::mutation::remove(id, user, service).await
+        authentication::passkey::mutation::remove(id, user, identity, service).await
     }
-    async fn email_reauthentication_request(
-        #[graphql(context)] user: &UserContext,
-        #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
-    ) -> Result<Payload<authentication::passkey::PasskeyCeremony>, Error> {
-        authentication::passkey::mutation::email_request(user, service).await
-    }
-    async fn email_reauthentication_confirm(
-        input: authentication::passkey::input::EmailReauthenticationInput,
-        #[graphql(context)] user: &UserContext,
-        #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
-    ) -> Result<Payload<bool>, Error> {
-        authentication::passkey::mutation::email_confirm(input, user, service).await
-    }
-
     async fn analytic_user_profile_put(
         input: super::analytics::input::AnalyticUserProfilePutInput,
         #[graphql(context)] user: &UserContext,
@@ -442,25 +425,41 @@ impl Mutation {
     /// Request a signin email challenge for an existing active account.
     async fn email_signin_request(
         input: authentication::input::EmailInput,
+        #[graphql(context)] user: &UserContext,
         #[graphql(context)] auth: &AuthService,
         #[graphql(context)] invitations: &InvitationService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<Payload<authentication::EmailChallenge>, Error> {
-        authentication::mutation::signin_email_request(input, auth, invitations, identity, cookies)
-            .await
+        authentication::mutation::signin_email_request(
+            input,
+            auth,
+            invitations,
+            identity,
+            cookies,
+            user,
+        )
+        .await
     }
 
     /// Confirm the verified signin challenge and create a scoped session.
     async fn email_signin_confirm(
         input: authentication::input::EmailCodeInput,
+        #[graphql(context)] user: &UserContext,
         #[graphql(context)] auth: &AuthService,
         #[graphql(context)] invitations: &InvitationService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<Payload<authentication::SessionCredentials>, Error> {
-        authentication::mutation::signin_email_confirm(input, auth, invitations, identity, cookies)
-            .await
+        authentication::mutation::signin_email_confirm(
+            input,
+            auth,
+            invitations,
+            identity,
+            cookies,
+            user,
+        )
+        .await
     }
 
     /// Refresh using explicit refresh Bearer authority; leave browser cookies unchanged.
@@ -610,7 +609,6 @@ impl GraphQLValueAsync for RegisteredQuery {
 struct Inputs {
     passkey_registration: authentication::passkey::input::PasskeyRegistrationInput,
     passkey_finish: authentication::passkey::input::PasskeyFinishInput,
-    email_reauthentication: authentication::passkey::input::EmailReauthenticationInput,
     analytic_user_profile_put: super::analytics::input::AnalyticUserProfilePutInput,
     onboarding_link: super::onboarding::input::OnboardingLinkInput,
     organization_onboarding_settings: super::onboarding::input::OrganizationOnboardingSettingsInput,

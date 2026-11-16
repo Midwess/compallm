@@ -9,9 +9,6 @@
     "passkey_finish": {
       "$ref": "#/$defs/PasskeyFinishInput"
     },
-    "email_reauthentication": {
-      "$ref": "#/$defs/EmailReauthenticationInput"
-    },
     "analytic_user_profile_put": {
       "$ref": "#/$defs/AnalyticUserProfilePutInput"
     },
@@ -94,7 +91,6 @@
   "required": [
     "passkey_registration",
     "passkey_finish",
-    "email_reauthentication",
     "analytic_user_profile_put",
     "onboarding_link",
     "organization_onboarding_settings",
@@ -146,6 +142,18 @@
     "PasskeyFinishInput": {
       "type": "object",
       "properties": {
+        "purpose": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthenticationPurpose"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "LOGIN",
+          "x-compallm-non-null": true
+        },
         "token": {
           "type": "string",
           "minLength": 1,
@@ -225,6 +233,13 @@
       ],
       "x-compallm-input": true
     },
+    "AuthenticationPurpose": {
+      "type": "string",
+      "enum": [
+        "LOGIN",
+        "PASSKEY_CHANGE"
+      ]
+    },
     "CredentialDelivery": {
       "description": "How the request delivers credentials; this is never stored in signed claims.",
       "oneOf": [
@@ -239,28 +254,6 @@
           "const": "TOKEN"
         }
       ]
-    },
-    "EmailReauthenticationInput": {
-      "type": "object",
-      "properties": {
-        "token": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 2048
-        },
-        "code": {
-          "type": "string",
-          "x-compallm-trim": true,
-          "minLength": 6,
-          "maxLength": 6
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "token",
-        "code"
-      ],
-      "x-compallm-input": true
     },
     "AnalyticUserProfilePutInput": {
       "type": "object",
@@ -1711,6 +1704,18 @@
       "description": "Shared input for requesting either a signup or a signin email challenge.\n\nCall `validify()` before Core execution. GraphQL parsing alone does not run\nnormalization, application validation, or email ownership checks.",
       "type": "object",
       "properties": {
+        "purpose": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthenticationPurpose"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "LOGIN",
+          "x-compallm-non-null": true
+        },
         "email": {
           "description": "Trimmed and ASCII-lowercased using the shared Rust email policy.",
           "type": "string",
@@ -1765,6 +1770,18 @@
       "description": "Shared input for confirming a signup or signin email challenge.\n\nThe verified encrypted challenge comes from request context, never this input.\nThe adapter calls `validify()` before Core verifies the code and challenge.",
       "type": "object",
       "properties": {
+        "purpose": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthenticationPurpose"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "LOGIN",
+          "x-compallm-non-null": true
+        },
         "code": {
           "description": "Exactly six ASCII digits after trimming surrounding whitespace.",
           "type": "string",

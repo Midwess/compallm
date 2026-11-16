@@ -2,7 +2,7 @@ import { createStore } from 'zustand/vanilla'
 import type { PasskeyController as Contract, PasskeyState } from '@compallm/storybook'
 import type { AuthController } from '@compallm/storybook'
 import type { MutationGenqlSelection, QueryGenqlSelection, PasskeyFinishInput as FinishInput } from '@compallm/contract/graphql'
-import { PasskeyRegistrationInput, PasskeyFinishInput, EmailReauthenticationInput } from '@compallm/contract/validation'
+import { PasskeyRegistrationInput, PasskeyFinishInput, EmailInput, EmailCodeInput } from '@compallm/contract/validation'
 import { graphql, ApiError } from '../graphql-client'
 import { apiErrorMessage, notify } from '../notifications/toast'
 import { credential, ceremonySelection, passkeySelection } from './browser'
@@ -23,7 +23,6 @@ export class PasskeyController implements Contract {
   private read?: AbortController
   private operation?: AbortController
   private registration?: { input: FinishInput; expiresAt: number }
-  private emailToken?: string
   private pendingCredential?: string
   private pendingRemoval?: string
   private readonly auth: Pick<AuthController, 'store'>
@@ -48,7 +47,6 @@ export class PasskeyController implements Contract {
     this.scope = new AbortController()
     this.read?.abort()
     this.operation?.abort()
-    this.emailToken = undefined
     this.registration = undefined
     this.pendingCredential = undefined
     this.pendingRemoval = undefined
@@ -106,7 +104,6 @@ export class PasskeyController implements Contract {
   close = () => {
     this.read?.abort()
     this.operation?.abort()
-    this.emailToken = undefined
     this.registration = undefined
     this.store.setState({ dialog: null, busy: false, error: null, reauthentication: false, emailSent: false })
   }
@@ -122,7 +119,7 @@ export class PasskeyController implements Contract {
     } catch (error) {
       if (!signal.aborted) {
         if (error instanceof ApiError && error.code === 'REAUTHENTICATION_REQUIRED')
-          this.store.setState({ reauthentication: true })
+          this.store.setState((s) => ({ reauthentication: true, dialog: s.dialog ?? { kind: 'verify' } }))
         else {
           this.store.setState({
             error:
@@ -233,37 +230,49 @@ export class PasskeyController implements Contract {
   verifyPasskey = () =>
     this.run(async (signal) => {
       const {
-        passkeyReauthenticationStart: { node: ceremony },
+        passkeyAuthenticationStart: { node: ceremony },
       } = await graphql(signal).mutation({
-        passkeyReauthenticationStart: { node: ceremonySelection },
+        passkeyAuthenticationStart: { __args: { purpose: 'PASSKEY_CHANGE' }, node: ceremonySelection },
       } satisfies MutationGenqlSelection)
-      const input = PasskeyFinishInput.parse(await credential(ceremony.options, ceremony.token, false, signal))
+      const input = PasskeyFinishInput.parse({
+        ...(await credential(ceremony.options, ceremony.token, false, signal)),
+        purpose: 'PASSKEY_CHANGE',
+      })
       await graphql(signal).mutation({
-        passkeyReauthenticationFinish: { __args: { input }, node: true },
+        passkeyAuthenticationFinish: { __args: { input }, node: { purpose: true } },
       } satisfies MutationGenqlSelection)
-      if (!signal.aborted) this.store.setState({ reauthentication: false, emailSent: false })
+      if (!signal.aborted)
+        this.store.setState((s) => ({
+          reauthentication: false,
+          emailSent: false,
+          dialog: s.dialog?.kind === 'verify' ? null : s.dialog,
+        }))
     })
   sendEmail = () =>
     this.run(async (signal) => {
-      const {
-        emailReauthenticationRequest: { node },
-      } = await graphql(signal).mutation({
-        emailReauthenticationRequest: { node: { token: true } },
+      const user = this.auth.store.getState().currentUser
+      if (!user) return
+      const profile = await graphql(signal).query({
+        userProfile: { __args: { id: user.userId }, node: { email: true } },
+      } satisfies QueryGenqlSelection)
+      const input = EmailInput.parse({ email: profile.userProfile?.node.email, purpose: 'PASSKEY_CHANGE' })
+      await graphql(signal).mutation({
+        emailSigninRequest: { __args: { input }, node: { lifetime: { expiresAt: true } } },
       } satisfies MutationGenqlSelection)
-      if (!signal.aborted) {
-        this.emailToken = node.token
-        this.store.setState({ emailSent: true })
-      }
+      if (!signal.aborted) this.store.setState({ emailSent: true })
     })
   verifyEmail = (code: string) =>
     this.run(async (signal) => {
-      const input = EmailReauthenticationInput.parse({ token: this.emailToken, code })
+      const input = EmailCodeInput.parse({ code, purpose: 'PASSKEY_CHANGE' })
       await graphql(signal).mutation({
-        emailReauthenticationConfirm: { __args: { input }, node: true },
+        emailSigninConfirm: { __args: { input }, node: { purpose: true } },
       } satisfies MutationGenqlSelection)
       if (!signal.aborted) {
-        this.emailToken = undefined
-        this.store.setState({ reauthentication: false, emailSent: false })
+        this.store.setState((s) => ({
+          reauthentication: false,
+          emailSent: false,
+          dialog: s.dialog?.kind === 'verify' ? null : s.dialog,
+        }))
       }
     })
 }

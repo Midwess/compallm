@@ -24,6 +24,11 @@ input AnalyticUserProfilePutInput {
   value: String!
 }
 
+enum AuthenticationPurpose {
+  LOGIN
+  PASSKEY_CHANGE
+}
+
 type AvatarUpload {
   """
   Expiration as Unix seconds, encoded as a string.
@@ -126,6 +131,7 @@ input EmailCodeInput {
   Cookie delivery is the default; token delivery must be requested explicitly.
   """
   delivery: CredentialDelivery = COOKIE
+  purpose: AuthenticationPurpose = LOGIN
 }
 
 """
@@ -145,11 +151,7 @@ input EmailInput {
   """
   email: String!
   invitation: Boolean = false
-}
-
-input EmailReauthenticationInput {
-  code: String!
-  token: String!
+  purpose: AuthenticationPurpose = LOGIN
 }
 
 enum FilterIs {
@@ -373,10 +375,6 @@ type Mutation {
   analyticUserProfilePut(
     input: AnalyticUserProfilePutInput!
   ): AnalyticUserProfilePayload!
-  emailReauthenticationConfirm(
-    input: EmailReauthenticationInput!
-  ): BooleanPayload!
-  emailReauthenticationRequest: PasskeyCeremonyPayload!
 
   """
   Confirm the verified signin challenge and create a scoped session.
@@ -427,9 +425,9 @@ type Mutation {
   passkeyAuthenticationFinish(
     input: PasskeyFinishInput!
   ): SessionCredentialsPayload!
-  passkeyAuthenticationStart: PasskeyCeremonyPayload!
-  passkeyReauthenticationFinish(input: PasskeyFinishInput!): BooleanPayload!
-  passkeyReauthenticationStart: PasskeyCeremonyPayload!
+  passkeyAuthenticationStart(
+    purpose: AuthenticationPurpose! = LOGIN
+  ): PasskeyCeremonyPayload!
   passkeyRegistrationFinish(
     input: PasskeyFinishInput!
     name: PasskeyRegistrationInput!
@@ -628,6 +626,7 @@ input PasskeyFinishInput {
   clientDataJson: String!
   delivery: CredentialDelivery = COOKIE
   id: String!
+  purpose: AuthenticationPurpose = LOGIN
   rawId: String!
   signature: String
   token: String!
@@ -1106,9 +1105,12 @@ type Session {
 Timing is always returned; credential values exist only in explicit TOKEN delivery.
 """
 type SessionCredentials {
-  accessLifetime: TokenLifetime!
+  accessLifetime: TokenLifetime
   accessToken: String
-  refreshLifetime: TokenLifetime!
+  passkeyChangeLifetime: TokenLifetime
+  passkeyChangeToken: String
+  purpose: AuthenticationPurpose!
+  refreshLifetime: TokenLifetime
   refreshToken: String
 }
 

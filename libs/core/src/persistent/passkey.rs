@@ -29,7 +29,6 @@ pub trait PasskeyRepository: Send + Sync {
         at: u64,
         credential_id: Option<u64>,
     ) -> Result<(), AuthError>;
-    async fn recently_verified(&self, session: &Session, since: u64) -> Result<bool, AuthError>;
     async fn ensure_email_identity(&self, user_id: u64) -> Result<(), AuthError>;
     async fn cleanup(&self, now: u64) -> Result<(), AuthError>;
 }

@@ -1,4 +1,6 @@
-use super::super::input::{CredentialDelivery, cookie_delivery};
+use super::super::input::{
+    AuthenticationPurpose, CredentialDelivery, cookie_delivery, login_purpose,
+};
 use compallm_validation_derive::ExportValidation;
 use juniper::GraphQLInputObject;
 use validify::Validify;
@@ -18,6 +20,10 @@ pub struct PasskeyRegistrationInput {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[validate(Self::validate_delivery)]
 pub struct PasskeyFinishInput {
+    #[graphql(default = login_purpose())]
+    #[serde(default = "login_purpose")]
+    #[schemars(extend("x-compallm-non-null" = true))]
+    pub purpose: Option<AuthenticationPurpose>,
     #[validate(length(min = 1, max = 2048))]
     pub token: String,
     #[validate(length(min = 1, max = 2048))]
@@ -42,7 +48,8 @@ pub struct PasskeyFinishInput {
 }
 impl PasskeyFinishInput {
     fn validate_delivery(value: &Self) -> Result<(), validify::ValidationErrors> {
-        super::super::input::require_delivery(value.delivery)
+        super::super::input::require_delivery(value.delivery)?;
+        super::super::input::require_purpose(value.purpose)
     }
     fn validate_delivery_contract() -> serde_json::Value {
         serde_json::json!({})
@@ -57,13 +64,4 @@ impl From<&PasskeyFinishInput> for serde_json::Value {
         };
         serde_json::json!({"id":input.id,"rawId":input.raw_id,"type":"public-key","response":response,"extensions":{}})
     }
-}
-#[derive(GraphQLInputObject, Validify, ExportValidation)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct EmailReauthenticationInput {
-    #[validate(length(min = 1, max = 2048))]
-    pub token: String,
-    #[modify(trim)]
-    #[validate(length(equal = 6))]
-    pub code: String,
 }

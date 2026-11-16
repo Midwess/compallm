@@ -114,11 +114,6 @@ async fn session_evidence_upgrade_preserves_otp_and_restores_passkey_reads() -> 
             .await?;
         assert!(
             context
-                .scope(repository.recently_verified(&actor, now.saturating_sub(300)))
-                .await?
-        );
-        assert!(
-            context
                 .scope(repository.session_passkey(&actor))
                 .await?
                 .is_none()

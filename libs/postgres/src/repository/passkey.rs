@@ -330,18 +330,6 @@ impl Repository for PasskeyRepository {
         .map_err(|error| AuthError::PasskeyPersistence(error.into()))?;
         Ok(())
     }
-    async fn recently_verified(&self, session: &Session, since: u64) -> Result<bool, AuthError> {
-        let context = DbContext::current()?;
-        let db = PostgresConnection::from_context(&context)?;
-        Ok(methods::Entity::find()
-            .filter(methods::Column::SessionId.eq(id(session.id)?))
-            .filter(methods::Column::AuthenticatedAt.gt(id(since)?))
-            .filter(methods::Column::Method.is_in(["email_code", "passkey"]))
-            .one(db)
-            .await
-            .map_err(|error| AuthError::PasskeyPersistence(error.into()))?
-            .is_some())
-    }
     async fn ensure_email_identity(&self, user_id: u64) -> Result<(), AuthError> {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;

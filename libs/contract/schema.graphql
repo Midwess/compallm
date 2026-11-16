@@ -3,6 +3,11 @@ schema {
   mutation: Mutation
 }
 
+enum AuthenticationPurpose {
+  LOGIN
+  PASSKEY_CHANGE
+}
+
 "How the request delivers credentials; this is never stored in signed claims."
 enum CredentialDelivery {
   "Set HttpOnly cookies and return metadata without credential values."
@@ -235,6 +240,7 @@ The verified encrypted challenge comes from request context, never this input.
 The adapter calls `validify()` before Core verifies the code and challenge.
 """
 input EmailCodeInput {
+  purpose: AuthenticationPurpose = LOGIN
   "Exactly six ASCII digits after trimming surrounding whitespace."
   code: String!
   "Cookie delivery is the default; token delivery must be requested explicitly."
@@ -248,16 +254,12 @@ Call `validify()` before Core execution. GraphQL parsing alone does not run
 normalization, application validation, or email ownership checks.
 """
 input EmailInput {
+  purpose: AuthenticationPurpose = LOGIN
   "Trimmed and ASCII-lowercased using the shared Rust email policy."
   email: String!
   invitation: Boolean = false
   "Cookie delivery is the default; token delivery must be requested explicitly."
   delivery: CredentialDelivery = COOKIE
-}
-
-input EmailReauthenticationInput {
-  token: String!
-  code: String!
 }
 
 input GroupCreateInput {
@@ -357,6 +359,7 @@ input PalettePatchInput {
 }
 
 input PasskeyFinishInput {
+  purpose: AuthenticationPurpose = LOGIN
   token: String!
   id: String!
   rawId: String!
@@ -739,13 +742,9 @@ type Mutation {
   passkeyRegistrationStart: PasskeyCeremonyPayload!
   passkeyRegistrationFinish(input: PasskeyFinishInput!, name: PasskeyRegistrationInput!): PasskeySummaryPayload!
   passkeyUpdate(id: ID!, input: PasskeyRegistrationInput!): PasskeySummaryPayload!
-  passkeyAuthenticationStart: PasskeyCeremonyPayload!
+  passkeyAuthenticationStart(purpose: AuthenticationPurpose! = LOGIN): PasskeyCeremonyPayload!
   passkeyAuthenticationFinish(input: PasskeyFinishInput!): SessionCredentialsPayload!
-  passkeyReauthenticationStart: PasskeyCeremonyPayload!
-  passkeyReauthenticationFinish(input: PasskeyFinishInput!): BooleanPayload!
   passkeyRemove(id: ID!): IDPayload!
-  emailReauthenticationRequest: PasskeyCeremonyPayload!
-  emailReauthenticationConfirm(input: EmailReauthenticationInput!): BooleanPayload!
   analyticUserProfilePut(input: AnalyticUserProfilePutInput!): AnalyticUserProfilePayload!
   organizationOnboardingSettingsUpdate(input: OrganizationOnboardingSettingsInput!): OrganizationOnboardingSettingsPayload!
   onboardingAdvance(back: Boolean! = false): OnboardingContextPayload!
@@ -1003,8 +1002,11 @@ type Session {
 
 "Timing is always returned; credential values exist only in explicit TOKEN delivery."
 type SessionCredentials {
-  accessLifetime: TokenLifetime!
-  refreshLifetime: TokenLifetime!
+  purpose: AuthenticationPurpose!
+  accessLifetime: TokenLifetime
+  refreshLifetime: TokenLifetime
+  passkeyChangeLifetime: TokenLifetime
+  passkeyChangeToken: String
   accessToken: String
   refreshToken: String
 }

@@ -30,6 +30,8 @@ export interface AnalyticUserProfilePayload {
   __typename: 'AnalyticUserProfilePayload'
 }
 
+export type AuthenticationPurpose = 'LOGIN' | 'PASSKEY_CHANGE'
+
 export interface AvatarUpload {
   /** Expiration as Unix seconds, encoded as a string. */
   expiresAt: Scalars['String']
@@ -240,8 +242,6 @@ export interface MessageCompositionPreferences {
 
 export interface Mutation {
   analyticUserProfilePut: AnalyticUserProfilePayload
-  emailReauthenticationConfirm: BooleanPayload
-  emailReauthenticationRequest: PasskeyCeremonyPayload
   /** Confirm the verified signin challenge and create a scoped session. */
   emailSigninConfirm: SessionCredentialsPayload
   /** Request a signin email challenge for an existing active account. */
@@ -267,8 +267,6 @@ export interface Mutation {
   organizationProfileUpdate: OrganizationPayload
   passkeyAuthenticationFinish: SessionCredentialsPayload
   passkeyAuthenticationStart: PasskeyCeremonyPayload
-  passkeyReauthenticationFinish: BooleanPayload
-  passkeyReauthenticationStart: PasskeyCeremonyPayload
   passkeyRegistrationFinish: PasskeySummaryPayload
   passkeyRegistrationStart: PasskeyCeremonyPayload
   passkeyRemove: IDPayload
@@ -591,9 +589,12 @@ export interface Session {
 
 /** Timing is always returned; credential values exist only in explicit TOKEN delivery. */
 export interface SessionCredentials {
-  accessLifetime: TokenLifetime
+  accessLifetime: TokenLifetime | null
   accessToken: Scalars['String'] | null
-  refreshLifetime: TokenLifetime
+  passkeyChangeLifetime: TokenLifetime | null
+  passkeyChangeToken: Scalars['String'] | null
+  purpose: AuthenticationPurpose
+  refreshLifetime: TokenLifetime | null
   refreshToken: Scalars['String'] | null
   __typename: 'SessionCredentials'
 }
@@ -826,6 +827,7 @@ export interface EmailCodeInput {
   code: Scalars['String']
   /** Cookie delivery is the default; token delivery must be requested explicitly. */
   delivery?: CredentialDelivery | null
+  purpose?: AuthenticationPurpose | null
 }
 
 /**
@@ -840,11 +842,7 @@ export interface EmailInput {
   /** Trimmed and ASCII-lowercased using the shared Rust email policy. */
   email: Scalars['String']
   invitation?: Scalars['Boolean'] | null
-}
-
-export interface EmailReauthenticationInput {
-  code: Scalars['String']
-  token: Scalars['String']
+  purpose?: AuthenticationPurpose | null
 }
 
 export interface GroupGenqlSelection {
@@ -1082,8 +1080,6 @@ export interface MessageCompositionPreferencesGenqlSelection {
 
 export interface MutationGenqlSelection {
   analyticUserProfilePut?: AnalyticUserProfilePayloadGenqlSelection & { __args: { input: AnalyticUserProfilePutInput } }
-  emailReauthenticationConfirm?: BooleanPayloadGenqlSelection & { __args: { input: EmailReauthenticationInput } }
-  emailReauthenticationRequest?: PasskeyCeremonyPayloadGenqlSelection
   /** Confirm the verified signin challenge and create a scoped session. */
   emailSigninConfirm?: SessionCredentialsPayloadGenqlSelection & { __args: { input: EmailCodeInput } }
   /** Request a signin email challenge for an existing active account. */
@@ -1110,9 +1106,7 @@ export interface MutationGenqlSelection {
   }
   organizationProfileUpdate?: OrganizationPayloadGenqlSelection & { __args: { input: OrganizationProfileUpdateInput } }
   passkeyAuthenticationFinish?: SessionCredentialsPayloadGenqlSelection & { __args: { input: PasskeyFinishInput } }
-  passkeyAuthenticationStart?: PasskeyCeremonyPayloadGenqlSelection
-  passkeyReauthenticationFinish?: BooleanPayloadGenqlSelection & { __args: { input: PasskeyFinishInput } }
-  passkeyReauthenticationStart?: PasskeyCeremonyPayloadGenqlSelection
+  passkeyAuthenticationStart?: PasskeyCeremonyPayloadGenqlSelection & { __args?: { purpose?: AuthenticationPurpose } }
   passkeyRegistrationFinish?: PasskeySummaryPayloadGenqlSelection & {
     __args: { input: PasskeyFinishInput; name: PasskeyRegistrationInput }
   }
@@ -1291,6 +1285,7 @@ export interface PasskeyFinishInput {
   clientDataJson: Scalars['String']
   delivery?: CredentialDelivery | null
   id: Scalars['String']
+  purpose?: AuthenticationPurpose | null
   rawId: Scalars['String']
   signature?: Scalars['String'] | null
   token: Scalars['String']
@@ -1591,6 +1586,9 @@ export interface SessionGenqlSelection {
 export interface SessionCredentialsGenqlSelection {
   accessLifetime?: TokenLifetimeGenqlSelection
   accessToken?: boolean | number
+  passkeyChangeLifetime?: TokenLifetimeGenqlSelection
+  passkeyChangeToken?: boolean | number
+  purpose?: boolean | number
   refreshLifetime?: TokenLifetimeGenqlSelection
   refreshToken?: boolean | number
   __typename?: boolean | number
@@ -2235,6 +2233,11 @@ const UserPreferencesPayload_possibleTypes: string[] = ['UserPreferencesPayload'
 export const isUserPreferencesPayload = (obj?: { __typename?: any } | null): obj is UserPreferencesPayload => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isUserPreferencesPayload"')
   return UserPreferencesPayload_possibleTypes.includes(obj.__typename)
+}
+
+export const enumAuthenticationPurpose = {
+  LOGIN: 'LOGIN' as const,
+  PASSKEY_CHANGE: 'PASSKEY_CHANGE' as const,
 }
 
 export const enumCredentialDelivery = {

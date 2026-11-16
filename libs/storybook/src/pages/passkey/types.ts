@@ -3,7 +3,7 @@ import type { PasskeySummary } from '@compallm/contract/graphql'
 export interface PasskeyState {
   records: Pick<PasskeySummary, 'id' | 'name' | 'registeredAt' | 'lastUsedAt'>[]
   status: 'loading' | 'ready' | 'denied' | 'error'
-  dialog: { kind: 'add' } | { kind: 'remove'; id: string } | null
+  dialog: { kind: 'verify' } | { kind: 'add' } | { kind: 'remove'; id: string } | null
   enrollment: 'device' | 'name'
   editingId: string | null
   currentPasskeyId: string | null

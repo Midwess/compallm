@@ -151,7 +151,7 @@ impl PasskeyService {
         }
         Ok(user)
     }
-    async fn actor(&self, actor: &UserAccessToken, recent: bool) -> Result<(), AuthError> {
+    async fn actor(&self, actor: &UserAccessToken) -> Result<(), AuthError> {
         if !self.auth.validate_access(actor).await? {
             return Err(AuthError::InvalidSession);
         }
@@ -161,17 +161,6 @@ impl PasskeyService {
             .find_membership(actor.session.organization_id, actor.session.user_id)
             .await?
             .ok_or(AuthError::OrganizationAccessDenied)?;
-        if recent
-            && !self
-                .repository
-                .recently_verified(
-                    &actor.session,
-                    unix_timestamp().saturating_sub(CEREMONY_SECONDS),
-                )
-                .await?
-        {
-            return Err(AuthError::ReauthenticationRequired);
-        }
         Ok(())
     }
     async fn store(
@@ -228,12 +217,20 @@ impl PasskeyService {
         }
         Ok((ceremony, binding))
     }
+    fn require_change(&self, actor: &UserAccessToken, token: &str) -> Result<(), AuthError> {
+        self.auth
+            .verify_passkey_change(token, &actor.session)
+            .map_err(|_| AuthError::ReauthenticationRequired)?;
+        Ok(())
+    }
     #[db_context::root]
     pub async fn registration_start(
         &self,
         actor: &UserAccessToken,
+        grant: &str,
     ) -> Result<CeremonyStart, AuthError> {
-        self.actor(actor, true).await?;
+        self.require_change(actor, grant)?;
+        self.actor(actor).await?;
         let user = self.active_user(actor.session.user_id).await?;
         crate::transaction!(db, {
             let handle = self.repository.lock_user(user.id).await?;
@@ -293,19 +290,22 @@ impl PasskeyService {
     pub async fn registration_finish(
         &self,
         actor: &UserAccessToken,
+        grant: &str,
         token: &str,
         response: RegisterPublicKeyCredential,
         name: &str,
     ) -> Result<PasskeyRecord, AuthError> {
+        self.require_change(actor, grant)?;
         let name = name.trim();
         if name.is_empty() || name.chars().count() > 64 {
             return Err(AuthError::InvalidPasskey);
         }
-        self.actor(actor, true).await?;
+        self.actor(actor).await?;
         let id = hero::distributed_id::try_gen_id().await?;
         crate::transaction!(db, {
             self.repository.lock_user(actor.session.user_id).await?;
-            self.actor(actor, true).await?;
+            self.require_change(actor, grant)?;
+            self.actor(actor).await?;
             let (ceremony, binding) = self.load(token, "registration", Some(actor)).await?;
             let state: RegistrationState = serde_json::from_value(binding.verification)?;
             let credential = self
@@ -360,7 +360,7 @@ impl PasskeyService {
         &self,
         actor: &UserAccessToken,
     ) -> Result<CeremonyStart, AuthError> {
-        self.actor(actor, false).await?;
+        self.actor(actor).await?;
         self.start_authentication(actor.session.user_id, Some(actor.session.clone()))
             .await
     }
@@ -431,7 +431,7 @@ impl PasskeyService {
         let (ceremony, binding) = self.load(token, purpose, actor).await?;
         self.active_user(user_id).await?;
         if let Some(actor) = actor {
-            self.actor(actor, false).await?;
+            self.actor(actor).await?;
         }
         let records = self.repository.list(user_id).await?;
         let mut record = records
@@ -508,8 +508,8 @@ impl PasskeyService {
         actor: &UserAccessToken,
         token: &str,
         response: PublicKeyCredential,
-    ) -> Result<(), AuthError> {
-        self.actor(actor, false).await?;
+    ) -> Result<super::IssuedPasskeyChange, AuthError> {
+        self.actor(actor).await?;
         crate::transaction!(db, {
             let (_, ceremony, credential_id) =
                 self.verify_assertion(token, &response, Some(actor)).await?;
@@ -524,24 +524,27 @@ impl PasskeyService {
             if !self.repository.delete_challenge(ceremony).await? {
                 return Err(AuthError::InvalidToken);
             }
-            Ok(())
+            self.auth.issue_passkey_change(&actor.session)
         })
     }
     #[db_context::root]
     pub async fn rename(
         &self,
         actor: &UserAccessToken,
+        grant: &str,
         id: u64,
         name: &str,
     ) -> Result<PasskeyRecord, AuthError> {
-        self.actor(actor, false).await?;
+        self.require_change(actor, grant)?;
+        self.actor(actor).await?;
         let name = name.trim();
         if name.is_empty() || name.chars().count() > 64 {
             return Err(AuthError::InvalidPasskey);
         }
         crate::transaction!(db, {
             self.repository.lock_user(actor.session.user_id).await?;
-            self.actor(actor, false).await?;
+            self.require_change(actor, grant)?;
+            self.actor(actor).await?;
             let mut record = self
                 .repository
                 .list(actor.session.user_id)
@@ -557,116 +560,23 @@ impl PasskeyService {
         })
     }
     #[db_context::root]
-    pub async fn remove(&self, actor: &UserAccessToken, id: u64) -> Result<u64, AuthError> {
-        self.actor(actor, true).await?;
+    pub async fn remove(
+        &self,
+        actor: &UserAccessToken,
+        grant: &str,
+        id: u64,
+    ) -> Result<u64, AuthError> {
+        self.require_change(actor, grant)?;
+        self.actor(actor).await?;
         crate::transaction!(db, {
             self.repository.lock_user(actor.session.user_id).await?;
-            self.actor(actor, true).await?;
+            self.require_change(actor, grant)?;
+            self.actor(actor).await?;
             if !self.repository.remove(actor.session.user_id, id).await? {
                 return Err(AuthError::InvalidPasskey);
             }
             Ok(id)
         })
-    }
-    #[db_context::root]
-    pub async fn email_request(&self, actor: &UserAccessToken) -> Result<CeremonyStart, AuthError> {
-        if db.postgres().is_transaction() {
-            return Err(AuthError::InvalidSession);
-        }
-        self.actor(actor, false).await?;
-        let user = self.active_user(actor.session.user_id).await?;
-        let claims = super::EmailOtpAccessToken::new(user.email.clone())?;
-        let mut mac = Hmac::<Sha256>::new_from_slice(self.secret.as_bytes())
-            .map_err(|_| AuthError::InvalidConfiguration)?;
-        let id = Uuid::new_v4();
-        mac.update(id.as_bytes());
-        mac.update(claims.code.as_bytes());
-        let hash = URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes());
-        let expires_at = unix_timestamp() + CEREMONY_SECONDS;
-        self.auth
-            .email
-            .ok_or(crate::mail::EmailError::Unavailable)?
-            .send(crate::mail::EmailRequest {
-                to: user.email,
-                subject: "Verify your Compallm security change".into(),
-                text: crate::mail::EmailTemplate::OtpCode(crate::mail::OtpCode::new(
-                    claims.code,
-                    std::time::Duration::from_secs(CEREMONY_SECONDS),
-                )),
-            })
-            .await?;
-        let ticket = Ticket {
-            id,
-            purpose: "email_reauthentication".into(),
-            expires_at,
-        };
-        let token = self.sign(&ticket)?;
-        self.repository
-            .insert_challenge(Ceremony {
-                id,
-                purpose: ticket.purpose,
-                expires_at,
-                state: serde_json::to_value(Binding {
-                    user_id: Some(user.id),
-                    session: Some(actor.session.clone()),
-                    verification: serde_json::json!(hash),
-                    attempts: 0,
-                })?,
-            })
-            .await?;
-        Ok(CeremonyStart {
-            token,
-            options: serde_json::json!({}),
-            expires_at,
-        })
-    }
-    #[db_context::root]
-    pub async fn email_confirm(
-        &self,
-        actor: &UserAccessToken,
-        token: &str,
-        code: &str,
-    ) -> Result<(), AuthError> {
-        self.actor(actor, false).await?;
-        let accepted = crate::transaction!(db, {
-            self.repository.lock_user(actor.session.user_id).await?;
-            self.actor(actor, false).await?;
-            let (mut ceremony, mut binding) = self
-                .load(token, "email_reauthentication", Some(actor))
-                .await?;
-            let signature = binding
-                .verification
-                .as_str()
-                .ok_or(AuthError::InvalidToken)?;
-            let mut mac = Hmac::<Sha256>::new_from_slice(self.secret.as_bytes())
-                .map_err(|_| AuthError::InvalidConfiguration)?;
-            mac.update(ceremony.id.as_bytes());
-            mac.update(code.as_bytes());
-            if mac
-                .verify_slice(&URL_SAFE_NO_PAD.decode(signature)?)
-                .is_err()
-            {
-                binding.attempts += 1;
-                if binding.attempts >= 5 {
-                    self.repository.delete_challenge(ceremony.id).await?;
-                } else {
-                    ceremony.state = serde_json::to_value(binding)?;
-                    self.repository.update_challenge(ceremony).await?;
-                }
-                Ok::<bool, AuthError>(false)
-            } else {
-                self.repository
-                    .record_method(&actor.session, "email_code", unix_timestamp(), None)
-                    .await?;
-                self.repository.delete_challenge(ceremony.id).await?;
-                Ok(true)
-            }
-        })?;
-        if accepted {
-            Ok(())
-        } else {
-            Err(AuthError::IncorrectCode)
-        }
     }
     #[db_context::root]
     pub async fn cleanup(&self) -> Result<(), AuthError> {

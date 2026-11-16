@@ -1,6 +1,6 @@
 use super::{
     EmailChallenge, SessionCredentials,
-    input::{CredentialDelivery, EmailCodeInput, EmailInput},
+    input::{AuthenticationPurpose, CredentialDelivery, EmailCodeInput, EmailInput},
 };
 use crate::{
     graphql::{base_type::Payload, error::Error},
@@ -21,6 +21,9 @@ pub(crate) async fn signup_email_request(
 ) -> Result<Payload<EmailChallenge>, Error> {
     let mut input = input;
     input.validify()?;
+    if input.purpose != Some(AuthenticationPurpose::Login) {
+        return Err(Error::invalid_input());
+    }
     let mode = input.delivery.unwrap_or_default();
     if mode == CredentialDelivery::Cookie {
         cookies.validate_origin()?;
@@ -63,12 +66,28 @@ pub(crate) async fn signin_email_request(
     invitations: &InvitationService,
     identity: &AuthenticationContext,
     cookies: &CookieDelivery,
+    user: &UserContext,
 ) -> Result<Payload<EmailChallenge>, Error> {
     let mut input = input;
     input.validify()?;
     let mode = input.delivery.unwrap_or_default();
     if mode == CredentialDelivery::Cookie {
         cookies.validate_origin()?;
+    }
+    if input.purpose == Some(AuthenticationPurpose::PasskeyChange) {
+        if input.invitation.unwrap_or(false) {
+            return Err(Error::invalid_input());
+        }
+        let challenge = identity
+            .execute(auth.passkey_change_email(user.require().await?.access(), &input.email))
+            .await?;
+        return EmailChallenge::try_from((
+            challenge,
+            mode,
+            cookies,
+            AuthenticationPurpose::PasskeyChange,
+        ))
+        .map(Into::into);
     }
     (
         match if input.invitation.unwrap_or(false) {
@@ -111,6 +130,9 @@ pub(crate) async fn signup_email_confirm(
 ) -> Result<Payload<SessionCredentials>, Error> {
     let mut input = input;
     input.validify()?;
+    if input.purpose != Some(AuthenticationPurpose::Login) {
+        return Err(Error::invalid_input());
+    }
     let mode = input.delivery.unwrap_or_default();
     if mode == CredentialDelivery::Cookie {
         cookies.validate_origin()?;
@@ -159,11 +181,22 @@ pub(crate) async fn signin_email_confirm(
     invitations: &InvitationService,
     identity: &AuthenticationContext,
     cookies: &CookieDelivery,
+    user: &UserContext,
 ) -> Result<Payload<SessionCredentials>, Error> {
     input.validify()?;
     let mode = input.delivery.unwrap_or_default();
     if mode == CredentialDelivery::Cookie {
         cookies.validate_origin()?;
+    }
+    if input.purpose == Some(AuthenticationPurpose::PasskeyChange) {
+        let grant = identity
+            .execute(auth.passkey_change_confirm(
+                user.require().await?.access(),
+                identity.passkey_otp().await?,
+                &input.code,
+            ))
+            .await?;
+        return SessionCredentials::try_from((grant, mode, cookies)).map(Into::into);
     }
     (
         match if identity.otp().await?.invitation_id.is_some() {

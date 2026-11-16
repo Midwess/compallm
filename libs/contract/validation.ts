@@ -48,6 +48,9 @@ export const AnalyticUserProfilePutInput = z
   .strict()
 export type AnalyticUserProfilePutInputFormInput = z.input<typeof AnalyticUserProfilePutInput>
 export type AnalyticUserProfilePutInputFormOutput = z.output<typeof AnalyticUserProfilePutInput>
+export const AuthenticationPurpose = z.enum(['LOGIN', 'PASSKEY_CHANGE'])
+export type AuthenticationPurposeFormInput = z.input<typeof AuthenticationPurpose>
+export type AuthenticationPurposeFormOutput = z.output<typeof AuthenticationPurpose>
 export const PreferenceWeekday = z.enum(['MONDAY', 'SUNDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'])
 export type PreferenceWeekdayFormInput = z.input<typeof PreferenceWeekday>
 export type PreferenceWeekdayFormOutput = z.output<typeof PreferenceWeekday>
@@ -146,6 +149,7 @@ The verified encrypted challenge comes from request context, never this input.
 The adapter calls `validify()` before Core verifies the code and challenge. */
 export const EmailCodeInput = z
   .object({
+    purpose: AuthenticationPurpose.default('LOGIN'),
     code: inputString({
       minLength: 6,
       maxLength: 6,
@@ -198,6 +202,7 @@ Call `validify()` before Core execution. GraphQL parsing alone does not run
 normalization, application validation, or email ownership checks. */
 export const EmailInput = z
   .object({
+    purpose: AuthenticationPurpose.default('LOGIN'),
     email: inputString({
       messages: {
         'x-compallm-format': 'Enter a valid email address, such as name@example.com.',
@@ -231,22 +236,6 @@ export const EmailInput = z
   )
 export type EmailInputFormInput = z.input<typeof EmailInput>
 export type EmailInputFormOutput = z.output<typeof EmailInput>
-export const EmailReauthenticationInputConstraints = {
-  token: { minLength: 1, maxLength: 2048 },
-  code: { minLength: 6, maxLength: 6, trim: true },
-} as const
-export const EmailReauthenticationInputInput = {
-  token: stringInput(EmailReauthenticationInputConstraints['token']),
-  code: stringInput(EmailReauthenticationInputConstraints['code']),
-}
-export const EmailReauthenticationInput = z
-  .object({
-    token: inputString({ minLength: 1, maxLength: 2048 }),
-    code: inputString({ minLength: 6, maxLength: 6, trim: true }),
-  })
-  .strict()
-export type EmailReauthenticationInputFormInput = z.input<typeof EmailReauthenticationInput>
-export type EmailReauthenticationInputFormOutput = z.output<typeof EmailReauthenticationInput>
 export const FilterIs = z.enum(['NULL', 'NOT_NULL'])
 export type FilterIsFormInput = z.input<typeof FilterIs>
 export type FilterIsFormOutput = z.output<typeof FilterIs>
@@ -715,6 +704,7 @@ export const PasskeyFinishInputInput = {
 }
 export const PasskeyFinishInput = z
   .object({
+    purpose: AuthenticationPurpose.default('LOGIN'),
     token: inputString({ minLength: 1, maxLength: 2048 }),
     id: inputString({ minLength: 1, maxLength: 2048 }),
     rawId: inputString({ minLength: 1, maxLength: 2048 }),

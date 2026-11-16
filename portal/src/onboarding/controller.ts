@@ -14,7 +14,7 @@ import {
   ImageUploadInput,
 } from '@compallm/contract/validation'
 import { graphql, ApiError } from '../graphql-client'
-import { notify } from '../notifications/toast'
+import { notify, apiErrorMessage } from '../notifications/toast'
 import { beginRequest } from '../request-activity'
 import { userPreferenceController } from '../preference/user/controller'
 import { requirePermissions } from '../permission/controller'
@@ -22,7 +22,6 @@ import { organizationRoot } from '../organization/paths'
 
 export const onboardingSelection = {
   required: true,
-  shouldPresent: true,
   hasBeenPresented: true,
   flow: true,
   step: true,
@@ -57,6 +56,7 @@ export class OnboardingController implements Contract {
   private read?: AbortController
   private uploaded?: File
   private current?: Context
+  private reminder?: ReturnType<typeof setTimeout>
   private manual = false
   private stopIdentity?: () => void
   private readonly auth: AuthController
@@ -80,6 +80,7 @@ export class OnboardingController implements Contract {
     return this.stop
   }
   stop = () => {
+    clearTimeout(this.reminder)
     this.scope.abort()
     this.read?.abort()
     this.stopIdentity?.()
@@ -98,10 +99,12 @@ export class OnboardingController implements Contract {
     }))
   }
   load = async (manual: boolean) => {
+    clearTimeout(this.reminder)
     this.read?.abort()
     const read = new AbortController()
     this.read = read
     const signal = AbortSignal.any([this.scope.signal, read.signal])
+    const reminderKey = this.reminderKey
     try {
       const selection = {
         onboardingContext: { node: onboardingSelection },
@@ -111,7 +114,14 @@ export class OnboardingController implements Contract {
       const result = await graphql(signal).query(selection)
       if (signal.aborted || this.read !== read) return
       const context = result.onboardingContext?.node
-      if (!manual && !context?.shouldPresent) return
+      if (!context?.required) {
+        this.clearReminder(reminderKey)
+        if (!manual) {
+          this.store.setState({ visible: false, completed: true })
+          return
+        }
+      }
+      if (!manual && this.deferReminder(reminderKey)) return
       const presented = await graphql(signal).mutation({
         onboardingPresent: { __args: { manual }, node: onboardingSelection },
       } satisfies MutationGenqlSelection)
@@ -139,11 +149,47 @@ export class OnboardingController implements Contract {
   reopen = () => {
     void this.load(true)
   }
-  dismiss = () => this.store.setState({ visible: false })
+  private get reminderKey() {
+    return `compallm:onboarding:defer:${this.user.userId}:${this.user.organizationId}`
+  }
+  private clearReminder(key: string) {
+    clearTimeout(this.reminder)
+    try {
+      globalThis.localStorage?.removeItem(key)
+    } catch {
+      // Browser storage may be unavailable; server completion remains authoritative.
+    }
+  }
+  private deferReminder(key: string) {
+    let until = 0
+    try {
+      until = Number(globalThis.localStorage?.getItem(key))
+    } catch {
+      return false
+    }
+    if (!Number.isFinite(until) || until <= Date.now()) {
+      this.clearReminder(key)
+      return false
+    }
+    clearTimeout(this.reminder)
+    this.reminder = setTimeout(() => void this.load(false), Math.min(until - Date.now(), 12 * 60 * 60 * 1000))
+    return true
+  }
+  dismiss = () => {
+    this.store.setState({ visible: false })
+    if (!this.current?.required) return
+    const key = this.reminderKey
+    try {
+      globalThis.localStorage?.setItem(key, String(Date.now() + 12 * 60 * 60 * 1000))
+    } catch {
+      return
+    }
+    this.deferReminder(key)
+  }
   dismissError = () => this.store.setState({ error: null })
   private transition = async (back: boolean) => {
     if (this.store.getState().pending) return
-    this.store.setState({ pending: true })
+    this.store.setState({ pending: true, error: null })
     try {
       if (this.manual && !this.current?.required) {
         const steps = ['introduction', 'ready'] as const
@@ -155,7 +201,7 @@ export class OnboardingController implements Contract {
       const { onboardingAdvance } = await graphql(this.scope.signal).mutation(selection)
       if (!this.scope.signal.aborted) this.apply(onboardingAdvance.node)
     } catch (error) {
-      if (!this.scope.signal.aborted) notify.error(error)
+      if (!this.scope.signal.aborted) this.store.setState({ error: apiErrorMessage(error) })
     } finally {
       if (!this.scope.signal.aborted) this.store.setState({ pending: false })
     }
@@ -167,7 +213,7 @@ export class OnboardingController implements Contract {
   }
   finish = async () => {
     if (this.store.getState().pending) return
-    this.store.setState({ pending: true })
+    this.store.setState({ pending: true, error: null })
     try {
       if (this.current?.required) {
         const result = await graphql(this.scope.signal).mutation({
@@ -187,24 +233,25 @@ export class OnboardingController implements Contract {
         }
       }
       if (this.scope.signal.aborted) return
+      this.clearReminder(this.reminderKey)
       this.store.setState({ visible: false, completed: true })
       this.url.navigate(`${organizationRoot(this.user)}/${destination.toLowerCase()}`)
     } catch (error) {
-      if (!this.scope.signal.aborted) notify.error(error)
+      if (!this.scope.signal.aborted) this.store.setState({ error: apiErrorMessage(error) })
     } finally {
       if (!this.scope.signal.aborted) this.store.setState({ pending: false })
     }
   }
   private save = async (signal: AbortSignal, operation: (signal: AbortSignal) => Promise<void>) => {
     if (this.store.getState().pending) return false
-    this.store.setState({ pending: true })
+    this.store.setState({ pending: true, error: null })
     const scope = this.scope
     const combined = AbortSignal.any([signal, scope.signal])
     try {
       await operation(combined)
       return !combined.aborted
     } catch (error) {
-      if (!combined.aborted) notify.error(error)
+      if (!combined.aborted) this.store.setState({ error: apiErrorMessage(error) })
       return false
     } finally {
       if (!scope.signal.aborted && this.scope === scope) this.store.setState({ pending: false })

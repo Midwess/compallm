@@ -31,7 +31,7 @@ function PreviewCanvas() {
   useEffect(() => {
     const element = viewport.current
     if (!element) return
-    const observer = new ResizeObserver(([entry]) => setScale(entry.contentRect.width / 768))
+    const observer = new ResizeObserver(([entry]) => setScale(entry.contentRect.width / 672))
     observer.observe(element)
     return () => observer.disconnect()
   }, [])
@@ -49,10 +49,10 @@ p-3 shadow-menu ring-1 ring-border"
           backgroundSize: '16px 16px',
         }}
       >
-        <div ref={viewport} className="relative aspect-8/5 w-full">
+        <div ref={viewport} className="relative aspect-21/13 w-full">
           <div
-            className="absolute top-0 left-0 w-3xl origin-top-left rounded-3xl shadow-menu
-ring-1 ring-border [&_main]:min-h-120"
+            className="absolute top-0 left-0 w-168 origin-top-left rounded-3xl shadow-menu
+ring-1 ring-border [&_main]:min-h-104"
             style={{ transform: `scale(${scale})` }}
           >
             <OnboardingPage />

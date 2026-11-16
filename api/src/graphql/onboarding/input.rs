@@ -13,21 +13,28 @@ pub enum OnboardingDestination {
 #[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct OnboardingLinkInput {
-    #[validate(length(min = 1, max = 128))]
+    #[validate(length(
+        min = 1,
+        max = 128,
+        message = "Enter a link label of 1 to 128 characters."
+    ))]
     pub label: String,
-    #[validate(custom(function = compallm_utils::input::web_url), length(max = 2048))]
+    #[validate(custom(function = compallm_utils::input::web_url, message = "Enter a valid HTTP or HTTPS link."), length(max = 2048, message = "Link must be 2048 characters or fewer."))]
     pub href: String,
 }
 #[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct OrganizationOnboardingSettingsInput {
-    #[validate(length(max = 4096))]
+    #[validate(length(
+        max = 4096,
+        message = "Welcome message must be 4096 characters or fewer."
+    ))]
     pub welcome: String,
-    #[validate(length(max = 20))]
+    #[validate(length(max = 20, message = "Use no more than 20 links."))]
     #[validify]
     pub links: Vec<OnboardingLinkInput>,
     pub destination: OnboardingDestination,
-    #[validate(custom(function = compallm_utils::input::hex_color))]
+    #[validate(custom(function = compallm_utils::input::hex_color, message = "Enter a six-digit hex color, such as #5588cc."))]
     pub artwork_color: Option<String>,
     pub require_full_name: bool,
     pub require_avatar: bool,

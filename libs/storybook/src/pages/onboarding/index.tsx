@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Dialog } from '../../components/dialog'
 import { Button } from '../../components/buttons'
 import { Checkbox } from '../../components/selection'
@@ -52,7 +53,10 @@ export function OnboardingPage() {
           ? 'Find a little inspiration for what comes next.'
           : 'A workspace for your ideas, conversations, and AI models.\nLet’s make it yours.'
   return (
-    <div data-theme={appearance === 'SYSTEM' ? undefined : appearance === 'LIGHT' ? 'basic-white' : 'basic-dark'}>
+    <div
+      className="relative"
+      data-theme={appearance === 'SYSTEM' ? undefined : appearance === 'LIGHT' ? 'basic-white' : 'basic-dark'}
+    >
       {['welcome', 'profile', 'workspace', 'work', 'preferences'].includes(step) && !completed ? (
         <PersonalSetup key={step} step={step} />
       ) : (
@@ -114,11 +118,7 @@ export function OnboardingPage() {
           )}
         </OnboardingLayout>
       )}
-      {error ? (
-        <div className="fixed right-4 bottom-4 z-50 max-w-[calc(100%-2rem)]">
-          <Toast tone="error" message={error} onDismiss={controller.dismissError} />
-        </div>
-      ) : null}
+      {error ? <OnboardingToast message={error} onDismiss={controller.dismissError} /> : null}
     </div>
   )
 }
@@ -139,7 +139,7 @@ export function OnboardingDialog({
       <Dialog.Content
         onCancel={(event) => event.preventDefault()}
         className={[
-          'w-3xl max-w-[calc(100%-2rem)] rounded-3xl border-0 bg-transparent',
+          'w-168 max-w-[calc(100%-2rem)] rounded-3xl border-0 bg-transparent',
           firstPresentation ? 'backdrop:bg-background' : 'backdrop:bg-transparent',
         ].join(' ')}
       >
@@ -150,5 +150,26 @@ export function OnboardingDialog({
         </Button>
       </Dialog.Content>
     </Dialog.Root>
+  )
+}
+
+function OnboardingToast({ message, onDismiss }: { message: string; onDismiss(): void }) {
+  const host = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const element = host.current
+    const frame = requestAnimationFrame(() => element?.showPopover())
+    return () => {
+      cancelAnimationFrame(frame)
+      element?.hidePopover()
+    }
+  }, [])
+  return (
+    <div
+      ref={host}
+      popover="manual"
+      className="fixed inset-auto top-4 right-4 m-0 max-w-[calc(100%-2rem)] border-0 bg-transparent p-0 text-foreground"
+    >
+      <Toast tone="error" message={message} onDismiss={onDismiss} />
+    </div>
   )
 }

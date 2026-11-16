@@ -7,7 +7,7 @@ use validify::Validify;
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct OrganizationSettingsUpdateInput {
     #[modify(trim)]
-    #[validate(length(min = 1))]
+    #[validate(length(min = 1, message = "Enter a name."))]
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -61,7 +61,7 @@ fn present<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(
 #[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SpendingLimitInput {
-    #[validate(custom(function = spending_amount))]
+    #[validate(custom(function = spending_amount, message = "Enter a nonnegative amount."))]
     pub amount: Option<String>,
 }
 
@@ -100,6 +100,7 @@ pub struct OrganizationProfileUpdateInput {
         deserialize_with = "crate::graphql::user::input::deserialize_nullable"
     )]
     #[schemars(with = "Option<String>", extend("x-compallm-non-null" = true, "x-compallm-trim" = true, "minLength" = 1, "maxLength" = 63, "pattern" = "^[A-Za-z0-9-]+$"))]
+    #[schemars(extend("x-compallm-messages" = serde_json::json!({"minLength":"Enter a workspace name.","maxLength":"Workspace name must be 63 characters or fewer.","pattern":"Use only letters, numbers, and hyphens for the workspace name."})))]
     pub name: juniper::Nullable<String>,
     #[serde(
         default,

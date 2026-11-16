@@ -1,3 +1,4 @@
+import { ImageUploadInput } from '@compallm/contract/validation'
 import { DisabledTooltip } from '../../../components/feedback'
 import { PermissionRequest, usePermission } from '../../../components/permission'
 import { ProviderPatchInput } from '@compallm/contract/validation'
@@ -206,7 +207,11 @@ export function ProviderConfiguration() {
           if (field === 'name' || field === 'baseUrl' || field === 'apiKey')
             controller.onConnectionChanged(field, String(value))
           if (field === 'models' || field.startsWith('models[')) controller.onModelsChanged(controller.store.getState().models)
-          if (field === 'avatarFile') controller.onAvatarChanged?.(value as File | null)
+          if (field === 'avatarFile') {
+            const file = value as File | null
+            if (!file || avatarInput(file).success) controller.onAvatarChanged?.(file)
+            form.blur(field)
+          }
           if (field === 'headers' || field.startsWith('headers.'))
             controller.onHeadersChanged?.(controller.store.getState().headers)
           if (field === 'modelDraft.path') controller.onModelDraftChanged({ path: '/' + String(value).replace(/^\/+/, '') })
@@ -219,6 +224,11 @@ export function ProviderConfiguration() {
             })
         },
         parse: (values, names) => {
+          if (values.avatarFile) {
+            const image = avatarInput(values.avatarFile)
+            if (!image.success) return { issues: image.error.issues.map((issue) => ({ ...issue, path: ['avatarFile'] })) }
+          }
+          if (names.length === 1 && names[0] === 'avatarFile') return { values }
           if (names.length === 1 && ['name', 'baseUrl', 'apiKey'].includes(names[0])) {
             const name = names[0] as 'name' | 'baseUrl' | 'apiKey'
             const patch =
@@ -282,4 +292,11 @@ export function ProviderConfiguration() {
       </fieldset>
     </Form.Root>
   )
+}
+
+function avatarInput(file: File) {
+  return ImageUploadInput.safeParse({
+    size: file.size,
+    mediaType: ({ 'image/jpeg': 'JPEG', 'image/png': 'PNG', 'image/webp': 'WEBP' } as Record<string, string>)[file.type],
+  })
 }

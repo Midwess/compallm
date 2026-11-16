@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { after, test } from 'node:test'
+import { after, beforeEach, test } from 'node:test'
 import { createServer } from 'vite'
 const server = await createServer({
   root: new URL('..', import.meta.url).pathname,
@@ -12,6 +12,22 @@ after(() => server.close())
 const { OnboardingController } = await server.ssrLoadModule('/src/onboarding/controller.ts')
 const { OrganizationOnboardingController } = await server.ssrLoadModule('/src/settings/onboarding/controller.ts')
 const { createAuthStore } = await server.ssrLoadModule('../libs/storybook/src/pages/auth/store.ts')
+beforeEach((t) => {
+  const items = new Map()
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  t.after(() => {
+    if (original) Object.defineProperty(globalThis, 'localStorage', original)
+    else delete globalThis.localStorage
+  })
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key) => items.get(key) ?? null,
+      setItem: (key, value) => items.set(key, value),
+      removeItem: (key) => items.delete(key),
+    },
+  })
+})
 const context = (patch = {}) => ({
   required: true,
   hasBeenPresented: false,
@@ -55,7 +71,7 @@ function setup() {
   const controller = new OnboardingController(auth, url)
   return { controller, paths, stop: controller.start() }
 }
-test('dismissal retains pending state and reload respects the session reminder', async (t) => {
+test('only explicit dismissal defers unfinished onboarding for twelve hours', async (t) => {
   let presented = false
   let presents = 0
   t.mock.method(globalThis, 'fetch', async (_url, init) => {
@@ -75,15 +91,23 @@ test('dismissal retains pending state and reload respects the session reminder',
   t.after(f.stop)
   await until(() => f.controller.store.getState().visible)
   assert.equal(f.controller.store.getState().firstPresentation, true)
+  await f.controller.load(false)
+  assert.equal(presents, 2)
   f.controller.dismiss()
   assert.equal(f.controller.store.getState().visible, false)
   await f.controller.load(false)
   assert.equal(f.controller.store.getState().visible, false)
-  assert.equal(presents, 1)
+  assert.equal(presents, 2)
   f.controller.reopen()
   await until(() => f.controller.store.getState().visible)
-  assert.equal(presents, 2)
+  assert.equal(presents, 3)
   assert.equal(f.controller.store.getState().firstPresentation, false)
+  f.controller.dismiss()
+  const now = Date.now()
+  t.mock.method(Date, 'now', () => now + 12 * 60 * 60 * 1000 + 1)
+  await f.controller.load(false)
+  assert.equal(f.controller.store.getState().visible, true)
+  assert.equal(presents, 4)
 })
 test('unchanged generated workspace name and skipped work send no profile or analytics write', async (t) => {
   const writes = []
@@ -167,6 +191,77 @@ test('invited new accounts receive the full-background first presentation and re
   await until(() => f.controller.store.getState().visible)
   assert.equal(f.controller.store.getState().firstPresentation, true)
   f.controller.dismiss()
-  await f.controller.load(false)
+  await f.controller.load(true)
   assert.equal(f.controller.store.getState().firstPresentation, false)
+})
+
+test('profile conflict is visible inside onboarding and retry advances with the retained avatar upload', async (t) => {
+  const file = new File(['image'], 'avatar.png', { type: 'image/png' })
+  let uploads = 0
+  let updates = 0
+  const saved = { ...profile, username: 'available', displayName: 'Alex Morgan', avatarUrl: '/avatar.png' }
+  t.mock.method(globalThis, 'fetch', async (url, init) => {
+    if (url === 'https://storage.example/upload') {
+      uploads++
+      return new Response(null, { status: 204 })
+    }
+    const { query } = JSON.parse(init.body)
+    if (query.includes('onboardingPresent')) return response({ onboardingPresent: { node: context() } })
+    if (query.includes('generateUrlAvatarUrl'))
+      return response({ generateUrlAvatarUrl: { node: { url: 'https://storage.example/upload', fields: [] } } })
+    if (query.includes('userProfileUpdate')) {
+      updates++
+      if (updates === 1)
+        return Response.json({
+          data: null,
+          errors: [{ message: 'Username is already in use', extensions: { code: 'USERNAME_TAKEN', status: 409 } }],
+        })
+      return response({ userProfileUpdate: { node: saved } })
+    }
+    if (query.includes('onboardingAdvance')) return response({ onboardingAdvance: { node: context({ step: 'WORKSPACE' }) } })
+    return response({ onboardingContext: { node: context() }, userProfile: { node: profile }, analyticUserProfile: null })
+  })
+  const f = setup()
+  t.after(f.stop)
+  await until(() => f.controller.store.getState().visible)
+  const signal = new AbortController().signal
+  assert.equal(await f.controller.saveProfile({ username: 'taken', displayName: 'Alex Morgan' }, file, signal), false)
+  assert.ok(f.controller.store.getState().error)
+  assert.equal(f.controller.store.getState().step, 'profile')
+  assert.equal(f.controller.store.getState().pending, false)
+  assert.deepEqual(await f.controller.saveProfile({ username: 'available', displayName: 'Alex Morgan' }, file, signal), saved)
+  await f.controller.next()
+  assert.equal(f.controller.store.getState().step, 'workspace')
+  assert.equal(f.controller.store.getState().error, null)
+  assert.equal(uploads, 1)
+})
+
+test('backend completion clears only this account and workspace deferral even before its deadline', async (t) => {
+  let completed = false
+  let presents = 0
+  t.mock.method(globalThis, 'fetch', async (_url, init) => {
+    const { query } = JSON.parse(init.body)
+    if (query.includes('onboardingPresent')) {
+      presents++
+      return response({ onboardingPresent: { node: context() } })
+    }
+    return response({
+      onboardingContext: { node: context({ required: !completed }) },
+      userProfile: { node: profile },
+      analyticUserProfile: null,
+    })
+  })
+  const f = setup()
+  t.after(f.stop)
+  await until(() => f.controller.store.getState().visible)
+  f.controller.dismiss()
+  const key = 'compallm:onboarding:defer:1:org'
+  assert.ok(localStorage.getItem(key))
+  localStorage.setItem('compallm:onboarding:defer:other:org', 'other-user')
+  completed = true
+  await f.controller.load(false)
+  assert.equal(localStorage.getItem(key), null)
+  assert.equal(localStorage.getItem('compallm:onboarding:defer:other:org'), 'other-user')
+  assert.equal(f.controller.store.getState().visible, false)
+  assert.equal(presents, 1)
 })

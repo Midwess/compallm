@@ -62,6 +62,17 @@ export function Button({
     >
       {asChild ? (
         children
+      ) : size === 'authentication' ? (
+        <span className="relative inline-flex items-center justify-center gap-1">
+          {children}
+          <span aria-hidden="true" className="absolute left-full ml-2 inline-flex size-3.5 items-center justify-center">
+            {loading ? (
+              <LoadingMotion>
+                <CircleNotchIcon size={14} />
+              </LoadingMotion>
+            ) : null}
+          </span>
+        </span>
       ) : (
         <>
           {loading ? (

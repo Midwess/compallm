@@ -16,10 +16,10 @@ pub use crate::persistent::storage::AvatarMediaType;
 #[derive(Default, Validify)]
 pub struct ProfilePatch {
     #[modify(trim)]
-    #[validate(length(max = 256))]
+    #[validate(length(max = 256, message = "Full name must be 256 characters or fewer."))]
     pub display_name: Option<String>,
     #[modify(trim, custom(str::make_ascii_lowercase))]
-    #[validate(length(min = 1, max = 256), custom(function = User::validate_username_characters))]
+    #[validate(length(min = 1, message = "Enter your username."), length(max = 256, message = "Username must be 256 characters or fewer."), custom(function = User::validate_username_characters, message = "Use a valid username without leading, trailing, or consecutive dots."))]
     pub username: Option<String>,
     pub avatar_uploaded: bool,
 }

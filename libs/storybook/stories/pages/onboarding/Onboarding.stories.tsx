@@ -74,9 +74,9 @@ export const CustomArtwork: Story = {
   render: () => <Demo initial={{ step: 'introduction', invited: true, artworkColor: '#9b5de5', organization }} />,
 }
 
-function PopupDemo({ firstPresentation = false }: { firstPresentation?: boolean }) {
+function PopupDemo({ firstPresentation = false, error = null }: { firstPresentation?: boolean; error?: string | null }) {
   const [open, setOpen] = useState(true)
-  const [controller] = useState(() => new DemoOnboardingController({ embedded: true, step: 'profile' }))
+  const [controller] = useState(() => new DemoOnboardingController({ embedded: true, step: 'profile', error }))
   return (
     <OnboardingControllerContext value={controller}>
       <Button onClick={() => setOpen(true)}>Open onboarding</Button>
@@ -87,3 +87,7 @@ function PopupDemo({ firstPresentation = false }: { firstPresentation?: boolean 
 export const Popup: Story = { render: () => <PopupDemo /> }
 
 export const FirstSignup: Story = { render: () => <PopupDemo firstPresentation /> }
+
+export const PopupSaveFailure: Story = { render: () => <PopupDemo firstPresentation error="Username is already in use" /> }
+
+export const SavingProfile: Story = { render: () => <Demo initial={{ step: 'profile', pending: true }} /> }

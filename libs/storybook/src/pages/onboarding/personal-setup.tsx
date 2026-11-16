@@ -15,7 +15,7 @@ import { Select } from '../../components/dropdowns'
 import { Form, useManagedForm, useFormValue } from '../../components/form'
 import { ChoiceCard } from '../../components/selection'
 import { useSystemLight } from '../../components/code-appearance'
-import { useOnboardingController } from './controller'
+import { useOnboarding, useOnboardingController } from './controller'
 import { OnboardingLayout } from './layout'
 import type { OnboardingStep } from './types'
 
@@ -23,6 +23,7 @@ const workOptions = ['Engineering', 'Product', 'Design', 'Research', 'Writing & 
 
 export function PersonalSetup({ step }: { step: OnboardingStep }) {
   const controller = useOnboardingController()
+  const saving = useOnboarding((state) => state.pending)
   const initial = controller.store.getState()
   const id = useId()
   const systemLight = useSystemLight()
@@ -59,11 +60,11 @@ export function PersonalSetup({ step }: { step: OnboardingStep }) {
             if (!requiredName.success)
               return { issues: requiredName.error.issues.map((issue) => ({ ...issue, path: ['displayName'] })) }
           }
-          if (values.photo) {
+          if (values.photo || (initial.requireAvatar && !initial.profile.avatarUrl)) {
             const image = ImageUploadInput.safeParse({
-              size: values.photo.size,
+              size: values.photo?.size ?? 0,
               mediaType: ({ 'image/jpeg': 'JPEG', 'image/png': 'PNG', 'image/webp': 'WEBP' } as Record<string, string>)[
-                values.photo.type
+                values.photo?.type ?? 'image/jpeg'
               ],
             })
             if (!image.success) return { issues: image.error.issues.map((issue) => ({ ...issue, path: ['photo'] })) }
@@ -145,13 +146,19 @@ export function PersonalSetup({ step }: { step: OnboardingStep }) {
         }
         progress={profile ? 0.28 : workspace ? 0.4 : work ? 0.58 : 0.75}
         action={
-          <Button type="submit" variant="primary" size="authentication" loading={pending} className="h-12 w-full text-base">
+          <Button
+            type="submit"
+            variant="primary"
+            size="authentication"
+            loading={pending || saving}
+            className="h-12 w-full text-base"
+          >
             Continue
           </Button>
         }
       >
         {profile ? (
-          <div className="grid gap-3">
+          <div className="grid gap-2">
             <div className="flex items-end gap-3">
               <div className="grid min-w-0 flex-1 gap-2">
                 <label htmlFor={`${id}-username`} className="text-sm text-muted-foreground">
@@ -162,6 +169,8 @@ export function PersonalSetup({ step }: { step: OnboardingStep }) {
               </div>
               <Button
                 variant="ghost"
+                data-form-field="photo"
+                data-ui="avatar-input"
                 aria-label="Upload profile photo"
                 className="group relative size-9 mb-0.5 shrink-0 overflow-hidden rounded-full p-0"
                 onClick={() => fileInput.current?.click()}
@@ -237,14 +246,14 @@ bg-overlay/60 text-on-overlay opacity-0 group-hover:opacity-100 group-focus-visi
             ) : null}
           </div>
         ) : (
-          <fieldset className="grid gap-3">
+          <fieldset className="grid gap-2">
             <legend className="sr-only">Appearance</legend>
             {PreferenceAppearanceMode.options.map((value) => (
               <ChoiceCard
                 key={value}
                 name="appearance"
                 value={value}
-                className="min-h-13 w-full gap-2 px-4 [&_strong]:text-base"
+                className="min-h-10 w-full gap-2 px-4 [&_strong]:text-base"
               >
                 {value === 'SYSTEM' ? 'Use system setting' : value === 'LIGHT' ? 'Light' : 'Dark'}
               </ChoiceCard>

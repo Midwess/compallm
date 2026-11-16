@@ -13,7 +13,7 @@ pub struct UserProfileUpdateInput {
         serialize_with = "serialize_nullable",
         deserialize_with = "deserialize_nullable"
     )]
-    #[schemars(with = "Option<String>", extend("x-compallm-non-null" = true, "x-compallm-trim" = true, "minLength" = 0, "maxLength" = 256))]
+    #[schemars(with = "Option<String>", extend("x-compallm-non-null" = true, "x-compallm-trim" = true, "minLength" = 0, "maxLength" = 256, "x-compallm-messages" = serde_json::json!({"maxLength":"Full name must be 256 characters or fewer."})))]
     pub display_name: juniper::Nullable<String>,
     #[serde(
         default,
@@ -22,6 +22,7 @@ pub struct UserProfileUpdateInput {
         deserialize_with = "deserialize_nullable"
     )]
     #[schemars(with = "Option<String>", extend("x-compallm-non-null" = true, "x-compallm-trim" = true, "x-compallm-ascii-lowercase" = true, "minLength" = 1, "maxLength" = 256, "pattern" = r"^(?!\.)(?!.*\.\.)(?!.*\.$)[A-Za-z0-9.!#$%&'*+/=?^_`{|}~\-]+$"))]
+    #[schemars(extend("x-compallm-messages" = serde_json::json!({"minLength":"Enter your username.","maxLength":"Username must be 256 characters or fewer.","pattern":"Use a valid username without leading, trailing, or consecutive dots."})))]
     pub username: juniper::Nullable<String>,
     #[serde(
         default,
@@ -80,7 +81,7 @@ impl TryFrom<UserProfileUpdateInput> for compallm_core::user::ProfilePatch {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProfileUpdateInput {
     #[modify(trim)]
-    #[validate(length(min = 1))]
+    #[validate(length(min = 1, message = "Enter your full name."))]
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -89,7 +90,7 @@ pub struct ProfileUpdateInput {
     #[schemars(extend("x-compallm-non-null" = true))]
     pub name: Option<String>,
     #[modify(trim)]
-    #[validate(length(min = 1))]
+    #[validate(length(min = 1, message = "Enter your username."))]
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -134,8 +135,12 @@ impl From<ImageMediaType> for compallm_core::user::AvatarMediaType {
 #[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ImageUploadInput {
+    #[schemars(extend("x-compallm-messages" = serde_json::json!({"enum":"Choose a JPEG, PNG, or WebP image."})))]
     pub media_type: ImageMediaType,
-    #[validate(range(min = 1.0, max = 5242880.0))]
+    #[validate(
+        range(min = 1.0, message = "Choose a profile photo that is not empty."),
+        range(max = 5242880.0, message = "Profile photos must be 5 MiB or smaller.")
+    )]
     pub size: i32,
 }
 
@@ -143,6 +148,6 @@ pub struct ImageUploadInput {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CredentialCreateInput {
     #[modify(trim)]
-    #[validate(length(min = 1))]
+    #[validate(length(min = 1, message = "Enter your full name."))]
     pub name: String,
 }

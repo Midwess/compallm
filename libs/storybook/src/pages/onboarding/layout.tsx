@@ -40,11 +40,11 @@ export function OnboardingLayout({
               canBack ? '' : 'invisible',
             ].join(' ')}
           >
-            <Button variant="ghost" className="text-disabled" onClick={controller.back} loading={pending}>
+            <Button variant="ghost" className="text-disabled" onClick={controller.back} disabled={pending}>
               Back
             </Button>
             {step === 'work' ? (
-              <Button variant="ghost" className="text-disabled" onClick={controller.skip} loading={pending}>
+              <Button variant="ghost" className="text-disabled" onClick={controller.skip} disabled={pending}>
                 I don’t want to share
               </Button>
             ) : null}

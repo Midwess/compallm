@@ -25,15 +25,26 @@ export const AccessibilityPatchInput = z
 export type AccessibilityPatchInputFormInput = z.input<typeof AccessibilityPatchInput>
 export type AccessibilityPatchInputFormOutput = z.output<typeof AccessibilityPatchInput>
 export const AnalyticUserProfilePutInputConstraints = {
-  key: { minLength: 1, maxLength: 64 },
-  value: { maxLength: 256 },
+  key: {
+    minLength: 1,
+    maxLength: 64,
+    messages: { minLength: 'Enter a key of 1 to 64 characters.', maxLength: 'Enter a key of 1 to 64 characters.' },
+  },
+  value: { maxLength: 256, messages: { maxLength: 'Value must be 256 characters or fewer.' } },
 } as const
 export const AnalyticUserProfilePutInputInput = {
   key: stringInput(AnalyticUserProfilePutInputConstraints['key']),
   value: stringInput(AnalyticUserProfilePutInputConstraints['value']),
 }
 export const AnalyticUserProfilePutInput = z
-  .object({ key: inputString({ minLength: 1, maxLength: 64 }), value: inputString({ maxLength: 256 }) })
+  .object({
+    key: inputString({
+      minLength: 1,
+      maxLength: 64,
+      messages: { minLength: 'Enter a key of 1 to 64 characters.', maxLength: 'Enter a key of 1 to 64 characters.' },
+    }),
+    value: inputString({ maxLength: 256, messages: { maxLength: 'Value must be 256 characters or fewer.' } }),
+  })
   .strict()
 export type AnalyticUserProfilePutInputFormInput = z.input<typeof AnalyticUserProfilePutInput>
 export type AnalyticUserProfilePutInputFormOutput = z.output<typeof AnalyticUserProfilePutInput>
@@ -46,15 +57,26 @@ export const CalendarPatchInput = z.object({ firstDay: PreferenceWeekday.optiona
 export type CalendarPatchInputFormInput = z.input<typeof CalendarPatchInput>
 export type CalendarPatchInputFormOutput = z.output<typeof CalendarPatchInput>
 export const ChatCreateInputConstraints = {
-  message: { minLength: 1, format: 'nonblank' },
-  modelId: { minLength: 1 },
+  message: {
+    minLength: 1,
+    messages: { minLength: 'Enter a message.', 'x-compallm-format': 'Enter a message.' },
+    format: 'nonblank',
+  },
+  modelId: { minLength: 1, messages: { minLength: 'Choose a model.' } },
 } as const
 export const ChatCreateInputInput = {
   message: stringInput(ChatCreateInputConstraints['message']),
   modelId: stringInput(ChatCreateInputConstraints['modelId']),
 }
 export const ChatCreateInput = z
-  .object({ message: inputString({ minLength: 1, format: 'nonblank' }), modelId: inputString({ minLength: 1 }) })
+  .object({
+    message: inputString({
+      minLength: 1,
+      messages: { minLength: 'Enter a message.', 'x-compallm-format': 'Enter a message.' },
+      format: 'nonblank',
+    }),
+    modelId: inputString({ minLength: 1, messages: { minLength: 'Choose a model.' } }),
+  })
   .strict()
 export type ChatCreateInputFormInput = z.input<typeof ChatCreateInput>
 export type ChatCreateInputFormOutput = z.output<typeof ChatCreateInput>
@@ -89,9 +111,13 @@ export const ContextTokens = z
   .describe('Positive u32 context size, encoded as an exact JSON number (1–4294967295).')
 export type ContextTokensFormInput = z.input<typeof ContextTokens>
 export type ContextTokensFormOutput = z.output<typeof ContextTokens>
-export const CredentialCreateInputConstraints = { name: { minLength: 1, trim: true } } as const
+export const CredentialCreateInputConstraints = {
+  name: { minLength: 1, messages: { minLength: 'Enter your full name.' }, trim: true },
+} as const
 export const CredentialCreateInputInput = { name: stringInput(CredentialCreateInputConstraints['name']) }
-export const CredentialCreateInput = z.object({ name: inputString({ minLength: 1, trim: true }) }).strict()
+export const CredentialCreateInput = z
+  .object({ name: inputString({ minLength: 1, messages: { minLength: 'Enter your full name.' }, trim: true }) })
+  .strict()
 export type CredentialCreateInputFormInput = z.input<typeof CredentialCreateInput>
 export type CredentialCreateInputFormOutput = z.output<typeof CredentialCreateInput>
 /** How the request delivers credentials; this is never stored in signed claims. */
@@ -101,7 +127,17 @@ export const CredentialDelivery = z
 export type CredentialDeliveryFormInput = z.input<typeof CredentialDelivery>
 export type CredentialDeliveryFormOutput = z.output<typeof CredentialDelivery>
 export const EmailCodeInputConstraints = {
-  code: { minLength: 6, maxLength: 6, pattern: '^[0-9]*$', trim: true },
+  code: {
+    minLength: 6,
+    maxLength: 6,
+    pattern: '^[0-9]*$',
+    messages: {
+      minLength: 'Enter the six-digit verification code.',
+      maxLength: 'Enter the six-digit verification code.',
+      pattern: 'Use digits only for the verification code.',
+    },
+    trim: true,
+  },
 } as const
 export const EmailCodeInputInput = { code: stringInput(EmailCodeInputConstraints['code']) }
 /** Shared input for confirming a signup or signin email challenge.
@@ -110,9 +146,17 @@ The verified encrypted challenge comes from request context, never this input.
 The adapter calls `validify()` before Core verifies the code and challenge. */
 export const EmailCodeInput = z
   .object({
-    code: inputString({ minLength: 6, maxLength: 6, pattern: '^[0-9]*$', trim: true }).describe(
-      'Exactly six ASCII digits after trimming surrounding whitespace.',
-    ),
+    code: inputString({
+      minLength: 6,
+      maxLength: 6,
+      pattern: '^[0-9]*$',
+      messages: {
+        minLength: 'Enter the six-digit verification code.',
+        maxLength: 'Enter the six-digit verification code.',
+        pattern: 'Use digits only for the verification code.',
+      },
+      trim: true,
+    }).describe('Exactly six ASCII digits after trimming surrounding whitespace.'),
     delivery: CredentialDelivery.default('COOKIE').describe(
       'Cookie delivery is the default; token delivery must be requested explicitly.',
     ),
@@ -125,6 +169,10 @@ export type EmailCodeInputFormInput = z.input<typeof EmailCodeInput>
 export type EmailCodeInputFormOutput = z.output<typeof EmailCodeInput>
 export const EmailInputConstraints = {
   email: {
+    messages: {
+      'x-compallm-format': 'Enter a valid email address, such as name@example.com.',
+      'x-compallm-email-policy': 'Enter a valid email address, such as name@example.com.',
+    },
     format: 'emailAddress',
     trim: true,
     asciiLowercase: true,
@@ -151,6 +199,10 @@ normalization, application validation, or email ownership checks. */
 export const EmailInput = z
   .object({
     email: inputString({
+      messages: {
+        'x-compallm-format': 'Enter a valid email address, such as name@example.com.',
+        'x-compallm-email-policy': 'Enter a valid email address, such as name@example.com.',
+      },
       format: 'emailAddress',
       trim: true,
       asciiLowercase: true,
@@ -182,21 +234,39 @@ export const FilterIs = z.enum(['NULL', 'NOT_NULL'])
 export type FilterIsFormInput = z.input<typeof FilterIs>
 export type FilterIsFormOutput = z.output<typeof FilterIs>
 export const GroupCreateInputConstraints = {
-  name: { minLength: 1, maxLength: 128, trim: true },
+  name: {
+    minLength: 1,
+    maxLength: 128,
+    messages: {
+      minLength: 'Group name must contain 1 to 128 characters.',
+      maxLength: 'Group name must contain 1 to 128 characters.',
+    },
+    trim: true,
+  },
   description: { maxLength: 128, messages: { maxLength: 'Description must be 128 characters or fewer.' } },
+  roleIds: { messages: { maxItems: 'Choose no more than 32 roles.' } },
 } as const
 export const GroupCreateInputInput = {
   name: stringInput(GroupCreateInputConstraints['name']),
   description: stringInput(GroupCreateInputConstraints['description']),
+  roleIds: stringInput(GroupCreateInputConstraints['roleIds']),
 }
 export const GroupCreateInput = z
   .object({
-    name: inputString({ minLength: 1, maxLength: 128, trim: true }),
+    name: inputString({
+      minLength: 1,
+      maxLength: 128,
+      messages: {
+        minLength: 'Group name must contain 1 to 128 characters.',
+        maxLength: 'Group name must contain 1 to 128 characters.',
+      },
+      trim: true,
+    }),
     description: inputString({
       maxLength: 128,
       messages: { maxLength: 'Description must be 128 characters or fewer.' },
     }),
-    roleIds: z.array(inputString({})).max(32),
+    roleIds: z.array(inputString({})).max(32, { message: 'Choose no more than 32 roles.' }),
   })
   .strict()
 export type GroupCreateInputFormInput = z.input<typeof GroupCreateInput>
@@ -209,10 +279,18 @@ export const GroupUpdateInputConstraints = {
     trim: true,
   },
   description: { maxLength: 128, messages: { maxLength: 'Description must be 128 characters or fewer.' } },
+  addMemberIds: { messages: { maxItems: 'Add no more than 100 members at a time.' } },
+  removeMemberIds: { messages: { maxItems: 'Remove no more than 100 members at a time.' } },
+  addRoleIds: { messages: { maxItems: 'Add no more than 32 roles at a time.' } },
+  removeRoleIds: { messages: { maxItems: 'Remove no more than 32 roles at a time.' } },
 } as const
 export const GroupUpdateInputInput = {
   name: stringInput(GroupUpdateInputConstraints['name']),
   description: stringInput(GroupUpdateInputConstraints['description']),
+  addMemberIds: stringInput(GroupUpdateInputConstraints['addMemberIds']),
+  removeMemberIds: stringInput(GroupUpdateInputConstraints['removeMemberIds']),
+  addRoleIds: stringInput(GroupUpdateInputConstraints['addRoleIds']),
+  removeRoleIds: stringInput(GroupUpdateInputConstraints['removeRoleIds']),
 }
 export const GroupUpdateInput = z
   .object({
@@ -230,10 +308,26 @@ export const GroupUpdateInput = z
     })
       .nullable()
       .optional(),
-    addMemberIds: z.array(inputString({})).max(100).nullable().optional(),
-    removeMemberIds: z.array(inputString({})).max(100).nullable().optional(),
-    addRoleIds: z.array(inputString({})).max(32).nullable().optional(),
-    removeRoleIds: z.array(inputString({})).max(32).nullable().optional(),
+    addMemberIds: z
+      .array(inputString({}))
+      .max(100, { message: 'Add no more than 100 members at a time.' })
+      .nullable()
+      .optional(),
+    removeMemberIds: z
+      .array(inputString({}))
+      .max(100, { message: 'Remove no more than 100 members at a time.' })
+      .nullable()
+      .optional(),
+    addRoleIds: z
+      .array(inputString({}))
+      .max(32, { message: 'Add no more than 32 roles at a time.' })
+      .nullable()
+      .optional(),
+    removeRoleIds: z
+      .array(inputString({}))
+      .max(32, { message: 'Remove no more than 32 roles at a time.' })
+      .nullable()
+      .optional(),
   })
   .strict()
 export type GroupUpdateInputFormInput = z.input<typeof GroupUpdateInput>
@@ -249,13 +343,36 @@ export type IDFilterFormOutput = z.output<typeof IDFilter>
 export const ImageMediaType = z.enum(['JPEG', 'PNG', 'WEBP'])
 export type ImageMediaTypeFormInput = z.input<typeof ImageMediaType>
 export type ImageMediaTypeFormOutput = z.output<typeof ImageMediaType>
-export const ImageUploadInputConstraints = {} as const
-export const ImageUploadInputInput = { size: integerInput({ minimum: 1, maximum: 5242880 }) }
-export const ImageUploadInput = z.object({ mediaType: ImageMediaType, size: z.int().min(1).max(5242880) }).strict()
+export const ImageUploadInputConstraints = {
+  mediaType: { messages: { enum: 'Choose a JPEG, PNG, or WebP image.' } },
+  size: {
+    messages: {
+      minimum: 'Choose a profile photo that is not empty.',
+      maximum: 'Profile photos must be 5 MiB or smaller.',
+    },
+  },
+} as const
+export const ImageUploadInputInput = {
+  mediaType: stringInput(ImageUploadInputConstraints['mediaType']),
+  size: stringInput(ImageUploadInputConstraints['size']),
+}
+export const ImageUploadInput = z
+  .object({
+    mediaType: z.enum(ImageMediaType.options, { error: 'Choose a JPEG, PNG, or WebP image.' }),
+    size: z
+      .int()
+      .min(1, { message: 'Choose a profile photo that is not empty.' })
+      .max(5242880, { message: 'Profile photos must be 5 MiB or smaller.' }),
+  })
+  .strict()
 export type ImageUploadInputFormInput = z.input<typeof ImageUploadInput>
 export type ImageUploadInputFormOutput = z.output<typeof ImageUploadInput>
 export const InvitationCreateInputConstraints = {
   email: {
+    messages: {
+      'x-compallm-format': 'Enter a valid email address, such as name@example.com.',
+      'x-compallm-email-policy': 'Enter a valid email address, such as name@example.com.',
+    },
     format: 'emailAddress',
     trim: true,
     asciiLowercase: true,
@@ -278,6 +395,10 @@ export const InvitationCreateInputInput = { email: stringInput(InvitationCreateI
 export const InvitationCreateInput = z
   .object({
     email: inputString({
+      messages: {
+        'x-compallm-format': 'Enter a valid email address, such as name@example.com.',
+        'x-compallm-email-policy': 'Enter a valid email address, such as name@example.com.',
+      },
       format: 'emailAddress',
       trim: true,
       asciiLowercase: true,
@@ -299,10 +420,24 @@ export const InvitationCreateInput = z
   .strict()
 export type InvitationCreateInputFormInput = z.input<typeof InvitationCreateInput>
 export type InvitationCreateInputFormOutput = z.output<typeof InvitationCreateInput>
-export const InvitationBatchCreateInputConstraints = {} as const
-export const InvitationBatchCreateInputInput = {}
+export const InvitationBatchCreateInputConstraints = {
+  invitations: {
+    messages: {
+      minItems: 'Invite between 1 and 100 people at a time.',
+      maxItems: 'Invite between 1 and 100 people at a time.',
+    },
+  },
+} as const
+export const InvitationBatchCreateInputInput = {
+  invitations: stringInput(InvitationBatchCreateInputConstraints['invitations']),
+}
 export const InvitationBatchCreateInput = z
-  .object({ invitations: z.array(InvitationCreateInput).min(1).max(100) })
+  .object({
+    invitations: z
+      .array(InvitationCreateInput)
+      .min(1, { message: 'Invite between 1 and 100 people at a time.' })
+      .max(100, { message: 'Invite between 1 and 100 people at a time.' }),
+  })
   .strict()
 export type InvitationBatchCreateInputFormInput = z.input<typeof InvitationBatchCreateInput>
 export type InvitationBatchCreateInputFormOutput = z.output<typeof InvitationBatchCreateInput>
@@ -400,8 +535,22 @@ export const OnboardingDestination = z.enum(['CHAT', 'MODELS', 'PROVIDERS'])
 export type OnboardingDestinationFormInput = z.input<typeof OnboardingDestination>
 export type OnboardingDestinationFormOutput = z.output<typeof OnboardingDestination>
 export const OnboardingLinkInputConstraints = {
-  label: { minLength: 1, maxLength: 128 },
-  href: { maxLength: 2048, format: 'webUrl' },
+  label: {
+    minLength: 1,
+    maxLength: 128,
+    messages: {
+      minLength: 'Enter a link label of 1 to 128 characters.',
+      maxLength: 'Enter a link label of 1 to 128 characters.',
+    },
+  },
+  href: {
+    maxLength: 2048,
+    messages: {
+      'x-compallm-format': 'Enter a valid HTTP or HTTPS link.',
+      maxLength: 'Link must be 2048 characters or fewer.',
+    },
+    format: 'webUrl',
+  },
 } as const
 export const OnboardingLinkInputInput = {
   label: stringInput(OnboardingLinkInputConstraints['label']),
@@ -409,26 +558,53 @@ export const OnboardingLinkInputInput = {
 }
 export const OnboardingLinkInput = z
   .object({
-    label: inputString({ minLength: 1, maxLength: 128 }),
-    href: inputString({ maxLength: 2048, format: 'webUrl' }),
+    label: inputString({
+      minLength: 1,
+      maxLength: 128,
+      messages: {
+        minLength: 'Enter a link label of 1 to 128 characters.',
+        maxLength: 'Enter a link label of 1 to 128 characters.',
+      },
+    }),
+    href: inputString({
+      maxLength: 2048,
+      messages: {
+        'x-compallm-format': 'Enter a valid HTTP or HTTPS link.',
+        maxLength: 'Link must be 2048 characters or fewer.',
+      },
+      format: 'webUrl',
+    }),
   })
   .strict()
 export type OnboardingLinkInputFormInput = z.input<typeof OnboardingLinkInput>
 export type OnboardingLinkInputFormOutput = z.output<typeof OnboardingLinkInput>
 export const OrganizationOnboardingSettingsInputConstraints = {
-  welcome: { maxLength: 4096 },
-  artworkColor: { pattern: '^#[0-9a-fA-F]{6}$' },
+  welcome: { maxLength: 4096, messages: { maxLength: 'Welcome message must be 4096 characters or fewer.' } },
+  links: { messages: { maxItems: 'Use no more than 20 links.' } },
+  artworkColor: {
+    pattern: '^#[0-9a-fA-F]{6}$',
+    messages: { pattern: 'Enter a six-digit hex color, such as #5588cc.' },
+  },
 } as const
 export const OrganizationOnboardingSettingsInputInput = {
   welcome: stringInput(OrganizationOnboardingSettingsInputConstraints['welcome']),
+  links: stringInput(OrganizationOnboardingSettingsInputConstraints['links']),
   artworkColor: stringInput(OrganizationOnboardingSettingsInputConstraints['artworkColor']),
 }
 export const OrganizationOnboardingSettingsInput = z
   .object({
-    welcome: inputString({ maxLength: 4096 }),
-    links: z.array(OnboardingLinkInput).max(20),
+    welcome: inputString({
+      maxLength: 4096,
+      messages: { maxLength: 'Welcome message must be 4096 characters or fewer.' },
+    }),
+    links: z.array(OnboardingLinkInput).max(20, { message: 'Use no more than 20 links.' }),
     destination: OnboardingDestination,
-    artworkColor: inputString({ pattern: '^#[0-9a-fA-F]{6}$' }).nullable().optional(),
+    artworkColor: inputString({
+      pattern: '^#[0-9a-fA-F]{6}$',
+      messages: { pattern: 'Enter a six-digit hex color, such as #5588cc.' },
+    })
+      .nullable()
+      .optional(),
     requireFullName: z.boolean(),
     requireAvatar: z.boolean(),
   })
@@ -436,26 +612,48 @@ export const OrganizationOnboardingSettingsInput = z
 export type OrganizationOnboardingSettingsInputFormInput = z.input<typeof OrganizationOnboardingSettingsInput>
 export type OrganizationOnboardingSettingsInputFormOutput = z.output<typeof OrganizationOnboardingSettingsInput>
 export const OrganizationProfileUpdateInputConstraints = {
-  name: { minLength: 1, maxLength: 63, pattern: '^[A-Za-z0-9-]+$', trim: true },
+  name: {
+    minLength: 1,
+    maxLength: 63,
+    pattern: '^[A-Za-z0-9-]+$',
+    messages: {
+      minLength: 'Enter a workspace name.',
+      maxLength: 'Workspace name must be 63 characters or fewer.',
+      pattern: 'Use only letters, numbers, and hyphens for the workspace name.',
+    },
+    trim: true,
+  },
 } as const
 export const OrganizationProfileUpdateInputInput = {
   name: stringInput(OrganizationProfileUpdateInputConstraints['name']),
 }
 export const OrganizationProfileUpdateInput = z
   .object({
-    name: inputString({ minLength: 1, maxLength: 63, pattern: '^[A-Za-z0-9-]+$', trim: true }).optional(),
+    name: inputString({
+      minLength: 1,
+      maxLength: 63,
+      pattern: '^[A-Za-z0-9-]+$',
+      messages: {
+        minLength: 'Enter a workspace name.',
+        maxLength: 'Workspace name must be 63 characters or fewer.',
+        pattern: 'Use only letters, numbers, and hyphens for the workspace name.',
+      },
+      trim: true,
+    }).optional(),
     avatarUploaded: z.boolean().default(false),
   })
   .strict()
 export type OrganizationProfileUpdateInputFormInput = z.input<typeof OrganizationProfileUpdateInput>
 export type OrganizationProfileUpdateInputFormOutput = z.output<typeof OrganizationProfileUpdateInput>
-export const OrganizationSettingsUpdateInputConstraints = { name: { minLength: 1, trim: true } } as const
+export const OrganizationSettingsUpdateInputConstraints = {
+  name: { minLength: 1, messages: { minLength: 'Enter a name.' }, trim: true },
+} as const
 export const OrganizationSettingsUpdateInputInput = {
   name: stringInput(OrganizationSettingsUpdateInputConstraints['name']),
 }
 export const OrganizationSettingsUpdateInput = z
   .object({
-    name: inputString({ minLength: 1, trim: true }).optional(),
+    name: inputString({ minLength: 1, messages: { minLength: 'Enter a name.' }, trim: true }).optional(),
     slug: inputString({}).optional(),
     fiscalMonth: inputString({}).optional(),
     welcome: inputString({}).optional(),
@@ -494,8 +692,8 @@ export const PreferenceSidebarVisibility = z.enum(['ALWAYS', 'WHEN_BADGED', 'HID
 export type PreferenceSidebarVisibilityFormInput = z.input<typeof PreferenceSidebarVisibility>
 export type PreferenceSidebarVisibilityFormOutput = z.output<typeof PreferenceSidebarVisibility>
 export const ProfileUpdateInputConstraints = {
-  name: { minLength: 1, trim: true },
-  username: { minLength: 1, trim: true },
+  name: { minLength: 1, messages: { minLength: 'Enter your full name.' }, trim: true },
+  username: { minLength: 1, messages: { minLength: 'Enter your username.' }, trim: true },
 } as const
 export const ProfileUpdateInputInput = {
   name: stringInput(ProfileUpdateInputConstraints['name']),
@@ -503,8 +701,8 @@ export const ProfileUpdateInputInput = {
 }
 export const ProfileUpdateInput = z
   .object({
-    name: inputString({ minLength: 1, trim: true }).optional(),
-    username: inputString({ minLength: 1, trim: true }).optional(),
+    name: inputString({ minLength: 1, messages: { minLength: 'Enter your full name.' }, trim: true }).optional(),
+    username: inputString({ minLength: 1, messages: { minLength: 'Enter your username.' }, trim: true }).optional(),
   })
   .strict()
 export type ProfileUpdateInputFormInput = z.input<typeof ProfileUpdateInput>
@@ -519,8 +717,15 @@ export const ProviderCatalogRef = z
 export type ProviderCatalogRefFormInput = z.input<typeof ProviderCatalogRef>
 export type ProviderCatalogRefFormOutput = z.output<typeof ProviderCatalogRef>
 export const ProviderHeaderConstraints = {
-  key: { maxLength: 128, pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$" },
-  value: { pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$' },
+  key: {
+    maxLength: 128,
+    pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$",
+    messages: { pattern: 'Enter a valid HTTP header name.', maxLength: 'Header name must be 128 characters or fewer.' },
+  },
+  value: {
+    pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$',
+    messages: { pattern: 'Header values cannot contain newlines or unsupported characters.' },
+  },
 } as const
 export const ProviderHeaderInput = {
   key: stringInput(ProviderHeaderConstraints['key']),
@@ -528,13 +733,21 @@ export const ProviderHeaderInput = {
 }
 export const ProviderHeader = z
   .object({
-    key: inputString({ maxLength: 128, pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$" }),
-    value: inputString({ pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$' }).describe(
-      'Write-only header content; never returned by management reads.',
-    ),
+    key: inputString({
+      maxLength: 128,
+      pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$",
+      messages: {
+        pattern: 'Enter a valid HTTP header name.',
+        maxLength: 'Header name must be 128 characters or fewer.',
+      },
+    }),
+    value: inputString({
+      pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$',
+      messages: { pattern: 'Header values cannot contain newlines or unsupported characters.' },
+    }).describe('Write-only header content; never returned by management reads.'),
   })
   .strict()
-  .refine(headerObject, { message: 'Invalid input' })
+  .refine(headerObject, { message: 'Enter a valid Authorization header value.' })
 export type ProviderHeaderFormInput = z.input<typeof ProviderHeader>
 export type ProviderHeaderFormOutput = z.output<typeof ProviderHeader>
 /** Text operation determining the upstream request and response format. */
@@ -544,11 +757,56 @@ export const TextModelProtocol = z
 export type TextModelProtocolFormInput = z.input<typeof TextModelProtocol>
 export type TextModelProtocolFormOutput = z.output<typeof TextModelProtocol>
 export const ProviderEffortMappingConstraints = {
-  low: { minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' },
-  medium: { minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' },
-  high: { minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' },
-  xhigh: { minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' },
-  max: { minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' },
+  low: {
+    minLength: 1,
+    maxLength: 25,
+    pattern: '^[A-Za-z0-9_-]+$',
+    messages: {
+      minLength: 'Enter an effort value of 1 to 25 characters.',
+      maxLength: 'Enter an effort value of 1 to 25 characters.',
+      pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+    },
+  },
+  medium: {
+    minLength: 1,
+    maxLength: 25,
+    pattern: '^[A-Za-z0-9_-]+$',
+    messages: {
+      minLength: 'Enter an effort value of 1 to 25 characters.',
+      maxLength: 'Enter an effort value of 1 to 25 characters.',
+      pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+    },
+  },
+  high: {
+    minLength: 1,
+    maxLength: 25,
+    pattern: '^[A-Za-z0-9_-]+$',
+    messages: {
+      minLength: 'Enter an effort value of 1 to 25 characters.',
+      maxLength: 'Enter an effort value of 1 to 25 characters.',
+      pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+    },
+  },
+  xhigh: {
+    minLength: 1,
+    maxLength: 25,
+    pattern: '^[A-Za-z0-9_-]+$',
+    messages: {
+      minLength: 'Enter an effort value of 1 to 25 characters.',
+      maxLength: 'Enter an effort value of 1 to 25 characters.',
+      pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+    },
+  },
+  max: {
+    minLength: 1,
+    maxLength: 25,
+    pattern: '^[A-Za-z0-9_-]+$',
+    messages: {
+      minLength: 'Enter an effort value of 1 to 25 characters.',
+      maxLength: 'Enter an effort value of 1 to 25 characters.',
+      pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+    },
+  },
 } as const
 export const ProviderEffortMappingInput = {
   low: stringInput(ProviderEffortMappingConstraints['low']),
@@ -560,11 +818,56 @@ export const ProviderEffortMappingInput = {
 /** Empty object means no configured effort levels. Configured values cannot be empty. */
 export const ProviderEffortMapping = z
   .object({
-    low: inputString({ minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' }).optional(),
-    medium: inputString({ minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' }).optional(),
-    high: inputString({ minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' }).optional(),
-    xhigh: inputString({ minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' }).optional(),
-    max: inputString({ minLength: 1, maxLength: 25, pattern: '^[A-Za-z0-9_-]+$' }).optional(),
+    low: inputString({
+      minLength: 1,
+      maxLength: 25,
+      pattern: '^[A-Za-z0-9_-]+$',
+      messages: {
+        minLength: 'Enter an effort value of 1 to 25 characters.',
+        maxLength: 'Enter an effort value of 1 to 25 characters.',
+        pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+      },
+    }).optional(),
+    medium: inputString({
+      minLength: 1,
+      maxLength: 25,
+      pattern: '^[A-Za-z0-9_-]+$',
+      messages: {
+        minLength: 'Enter an effort value of 1 to 25 characters.',
+        maxLength: 'Enter an effort value of 1 to 25 characters.',
+        pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+      },
+    }).optional(),
+    high: inputString({
+      minLength: 1,
+      maxLength: 25,
+      pattern: '^[A-Za-z0-9_-]+$',
+      messages: {
+        minLength: 'Enter an effort value of 1 to 25 characters.',
+        maxLength: 'Enter an effort value of 1 to 25 characters.',
+        pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+      },
+    }).optional(),
+    xhigh: inputString({
+      minLength: 1,
+      maxLength: 25,
+      pattern: '^[A-Za-z0-9_-]+$',
+      messages: {
+        minLength: 'Enter an effort value of 1 to 25 characters.',
+        maxLength: 'Enter an effort value of 1 to 25 characters.',
+        pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+      },
+    }).optional(),
+    max: inputString({
+      minLength: 1,
+      maxLength: 25,
+      pattern: '^[A-Za-z0-9_-]+$',
+      messages: {
+        minLength: 'Enter an effort value of 1 to 25 characters.',
+        maxLength: 'Enter an effort value of 1 to 25 characters.',
+        pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+      },
+    }).optional(),
   })
   .strict()
   .describe('Empty object means no configured effort levels. Configured values cannot be empty.')
@@ -590,11 +893,48 @@ export const ProviderModelCapability = z
 export type ProviderModelCapabilityFormInput = z.input<typeof ProviderModelCapability>
 export type ProviderModelCapabilityFormOutput = z.output<typeof ProviderModelCapability>
 export const ProviderModelConfigurationConstraints = {
-  name: { minLength: 1, maxLength: 40, pattern: '^[A-Za-z0-9_-]+$' },
-  path: { maxLength: 40, pattern: '^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$' },
-  inputPrice: { pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$', inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$' },
-  outputPrice: { pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$', inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$' },
-  cachedPrice: { pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$', inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$' },
+  name: {
+    minLength: 1,
+    maxLength: 40,
+    pattern: '^[A-Za-z0-9_-]+$',
+    messages: {
+      minLength: 'Model name must contain 1 to 40 characters.',
+      maxLength: 'Model name must contain 1 to 40 characters.',
+      pattern: 'Use letters, numbers, hyphens, or underscores for the model name.',
+    },
+  },
+  path: {
+    maxLength: 40,
+    pattern: '^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$',
+    messages: {
+      pattern: 'Enter a path beginning with / using letters, numbers, hyphens, underscores, and slashes.',
+      maxLength: 'Path must be 40 characters or fewer.',
+    },
+  },
+  inputPrice: {
+    pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$',
+    messages: {
+      pattern: 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+      'x-compallm-input-pattern': 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+    },
+    inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$',
+  },
+  outputPrice: {
+    pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$',
+    messages: {
+      pattern: 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+      'x-compallm-input-pattern': 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+    },
+    inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$',
+  },
+  cachedPrice: {
+    pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$',
+    messages: {
+      pattern: 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+      'x-compallm-input-pattern': 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+    },
+    inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$',
+  },
 } as const
 export const ProviderModelConfigurationInput = {
   name: stringInput(ProviderModelConfigurationConstraints['name']),
@@ -607,9 +947,25 @@ export const ProviderModelConfigurationInput = {
 /** Complete configured text-model values. Decimal prices are USD per million tokens. */
 export const ProviderModelConfiguration = z
   .object({
-    name: inputString({ minLength: 1, maxLength: 40, pattern: '^[A-Za-z0-9_-]+$' }),
+    name: inputString({
+      minLength: 1,
+      maxLength: 40,
+      pattern: '^[A-Za-z0-9_-]+$',
+      messages: {
+        minLength: 'Model name must contain 1 to 40 characters.',
+        maxLength: 'Model name must contain 1 to 40 characters.',
+        pattern: 'Use letters, numbers, hyphens, or underscores for the model name.',
+      },
+    }),
     protocol: TextModelProtocol,
-    path: inputString({ maxLength: 40, pattern: '^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$' }),
+    path: inputString({
+      maxLength: 40,
+      pattern: '^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$',
+      messages: {
+        pattern: 'Enter a path beginning with / using letters, numbers, hyphens, underscores, and slashes.',
+        maxLength: 'Path must be 40 characters or fewer.',
+      },
+    }),
     maxContextTokens: ContextTokens,
     enabled: z.boolean().default(true),
     effortMapping: ProviderEffortMapping.optional(),
@@ -617,14 +973,26 @@ export const ProviderModelConfiguration = z
     catalogRef: ProviderCatalogRef.optional(),
     inputPrice: inputString({
       pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$',
+      messages: {
+        pattern: 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+        'x-compallm-input-pattern': 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+      },
       inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$',
     }),
     outputPrice: inputString({
       pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$',
+      messages: {
+        pattern: 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+        'x-compallm-input-pattern': 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+      },
       inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$',
     }),
     cachedPrice: inputString({
       pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$',
+      messages: {
+        pattern: 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+        'x-compallm-input-pattern': 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+      },
       inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$',
     }),
   })
@@ -632,12 +1000,28 @@ export const ProviderModelConfiguration = z
   .describe('Complete configured text-model values. Decimal prices are USD per million tokens.')
 export type ProviderModelConfigurationFormInput = z.input<typeof ProviderModelConfiguration>
 export type ProviderModelConfigurationFormOutput = z.output<typeof ProviderModelConfiguration>
-export const ProviderModelWriteConstraints = { id: { pattern: '^[1-9][0-9]*$', format: 'resourceId' } } as const
+export const ProviderModelWriteConstraints = {
+  id: {
+    pattern: '^[1-9][0-9]*$',
+    messages: {
+      pattern: 'Choose a valid resource identity.',
+      'x-compallm-format': 'Choose a valid resource identity.',
+    },
+    format: 'resourceId',
+  },
+} as const
 export const ProviderModelWriteInput = { id: stringInput(ProviderModelWriteConstraints['id']) }
 /** Persisted identity is omitted for new models and forbidden during provider creation. */
 export const ProviderModelWrite = z
   .object({
-    id: inputString({ pattern: '^[1-9][0-9]*$', format: 'resourceId' })
+    id: inputString({
+      pattern: '^[1-9][0-9]*$',
+      messages: {
+        pattern: 'Choose a valid resource identity.',
+        'x-compallm-format': 'Choose a valid resource identity.',
+      },
+      format: 'resourceId',
+    })
       .describe('Omit for a new model; supplied IDs must belong to this connection.')
       .optional(),
     configuration: ProviderModelConfiguration.describe(
@@ -649,32 +1033,105 @@ export const ProviderModelWrite = z
 export type ProviderModelWriteFormInput = z.input<typeof ProviderModelWrite>
 export type ProviderModelWriteFormOutput = z.output<typeof ProviderModelWrite>
 export const ProviderCreateInputConstraints = {
-  name: { minLength: 1, maxLength: 120, format: 'nonblank', trim: true },
-  baseUrl: { maxLength: 512, format: 'baseUrl' },
-  apiKey: { minLength: 1, maxLength: 512, pattern: '^[^\\s]+$' },
+  name: {
+    minLength: 1,
+    maxLength: 120,
+    messages: {
+      minLength: 'Connection name must contain 1 to 120 characters.',
+      maxLength: 'Connection name must contain 1 to 120 characters.',
+      'x-compallm-format': 'Enter a connection name.',
+    },
+    format: 'nonblank',
+    trim: true,
+  },
+  baseUrl: {
+    maxLength: 512,
+    messages: {
+      maxLength: 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+      'x-compallm-format': 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+    },
+    format: 'baseUrl',
+  },
+  apiKey: {
+    minLength: 1,
+    maxLength: 512,
+    pattern: '^[^\\s]+$',
+    messages: {
+      minLength: 'Enter an API key of 1 to 512 characters.',
+      maxLength: 'Enter an API key of 1 to 512 characters.',
+      pattern: 'API keys cannot contain whitespace.',
+    },
+  },
+  headers: { messages: { 'x-compallm-array-rule': 'Header names must be unique, ignoring case.' } },
+  models: {
+    messages: {
+      minItems: 'Add at least one enabled model and use unique model names and IDs.',
+      'x-compallm-array-rule': 'Add at least one enabled model and use unique model names and IDs.',
+    },
+  },
 } as const
 export const ProviderCreateInputInput = {
   name: stringInput(ProviderCreateInputConstraints['name']),
   baseUrl: stringInput(ProviderCreateInputConstraints['baseUrl']),
   apiKey: stringInput(ProviderCreateInputConstraints['apiKey']),
+  headers: stringInput(ProviderCreateInputConstraints['headers']),
+  models: stringInput(ProviderCreateInputConstraints['models']),
 }
 /** New connection definition; credentials and header values are write-only. */
 export const ProviderCreateInput = z
   .object({
-    name: inputString({ minLength: 1, maxLength: 120, format: 'nonblank', trim: true }),
-    baseUrl: inputString({ maxLength: 512, format: 'baseUrl' }),
-    apiKey: inputString({ minLength: 1, maxLength: 512, pattern: '^[^\\s]+$' }),
-    headers: z.array(ProviderHeader).refine((entries) => headersObject({ entries }), { message: 'Invalid input' }),
-    models: z.array(ProviderModelWrite).min(1).refine(modelWritesArray, { message: 'Invalid input' }),
+    name: inputString({
+      minLength: 1,
+      maxLength: 120,
+      messages: {
+        minLength: 'Connection name must contain 1 to 120 characters.',
+        maxLength: 'Connection name must contain 1 to 120 characters.',
+        'x-compallm-format': 'Enter a connection name.',
+      },
+      format: 'nonblank',
+      trim: true,
+    }),
+    baseUrl: inputString({
+      maxLength: 512,
+      messages: {
+        maxLength: 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+        'x-compallm-format': 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+      },
+      format: 'baseUrl',
+    }),
+    apiKey: inputString({
+      minLength: 1,
+      maxLength: 512,
+      pattern: '^[^\\s]+$',
+      messages: {
+        minLength: 'Enter an API key of 1 to 512 characters.',
+        maxLength: 'Enter an API key of 1 to 512 characters.',
+        pattern: 'API keys cannot contain whitespace.',
+      },
+    }),
+    headers: z
+      .array(ProviderHeader)
+      .refine((entries) => headersObject({ entries }), { message: 'Header names must be unique, ignoring case.' }),
+    models: z
+      .array(ProviderModelWrite)
+      .min(1, { message: 'Add at least one enabled model and use unique model names and IDs.' })
+      .refine(modelWritesArray, { message: 'Add at least one enabled model and use unique model names and IDs.' }),
   })
   .strict()
-  .refine(createProviderObject, { message: 'Invalid input' })
+  .refine(createProviderObject, { message: 'New models must not include a saved model identity.' })
   .describe('New connection definition; credentials and header values are write-only.')
 export type ProviderCreateInputFormInput = z.input<typeof ProviderCreateInput>
 export type ProviderCreateInputFormOutput = z.output<typeof ProviderCreateInput>
 export const ProviderHeaderUpdateConstraints = {
-  key: { maxLength: 128, pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$" },
-  value: { pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$' },
+  key: {
+    maxLength: 128,
+    pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$",
+    messages: { pattern: 'Enter a valid HTTP header name.', maxLength: 'Header name must be 128 characters or fewer.' },
+  },
+  value: {
+    pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$',
+    messages: { pattern: 'Header values cannot contain newlines or unsupported characters.' },
+  },
 } as const
 export const ProviderHeaderUpdateInput = {
   key: stringInput(ProviderHeaderUpdateConstraints['key']),
@@ -683,67 +1140,206 @@ export const ProviderHeaderUpdateInput = {
 /** Omit value to retain an existing header secret; new names require a value. */
 export const ProviderHeaderUpdate = z
   .object({
-    key: inputString({ maxLength: 128, pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$" }),
-    value: inputString({ pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$' })
+    key: inputString({
+      maxLength: 128,
+      pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$",
+      messages: {
+        pattern: 'Enter a valid HTTP header name.',
+        maxLength: 'Header name must be 128 characters or fewer.',
+      },
+    }),
+    value: inputString({
+      pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$',
+      messages: { pattern: 'Header values cannot contain newlines or unsupported characters.' },
+    })
       .describe('Omit to preserve the saved value for this header name. New names require a value.')
       .optional(),
   })
   .strict()
-  .refine(headerUpdateObject, { message: 'Invalid input' })
+  .refine(headerUpdateObject, { message: 'Enter a valid Authorization header value.' })
   .describe('Omit value to retain an existing header secret; new names require a value.')
 export type ProviderHeaderUpdateFormInput = z.input<typeof ProviderHeaderUpdate>
 export type ProviderHeaderUpdateFormOutput = z.output<typeof ProviderHeaderUpdate>
 export const ProviderPatchInputConstraints = {
-  name: { minLength: 1, maxLength: 120, format: 'nonblank', trim: true },
-  baseUrl: { maxLength: 512, format: 'baseUrl' },
-  apiKey: { minLength: 1, maxLength: 512, pattern: '^[^\\s]+$' },
+  name: {
+    minLength: 1,
+    maxLength: 120,
+    messages: {
+      minLength: 'Connection name must contain 1 to 120 characters.',
+      maxLength: 'Connection name must contain 1 to 120 characters.',
+      'x-compallm-format': 'Enter a connection name.',
+    },
+    format: 'nonblank',
+    trim: true,
+  },
+  baseUrl: {
+    maxLength: 512,
+    messages: {
+      maxLength: 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+      'x-compallm-format': 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+    },
+    format: 'baseUrl',
+  },
+  apiKey: {
+    minLength: 1,
+    maxLength: 512,
+    pattern: '^[^\\s]+$',
+    messages: {
+      minLength: 'Enter an API key of 1 to 512 characters.',
+      maxLength: 'Enter an API key of 1 to 512 characters.',
+      pattern: 'API keys cannot contain whitespace.',
+    },
+  },
+  headers: { messages: { 'x-compallm-array-rule': 'Header names must be unique, ignoring case.' } },
+  models: {
+    messages: {
+      minItems: 'Add at least one enabled model and use unique model names and IDs.',
+      'x-compallm-array-rule': 'Add at least one enabled model and use unique model names and IDs.',
+    },
+  },
 } as const
 export const ProviderPatchInputInput = {
   name: stringInput(ProviderPatchInputConstraints['name']),
   baseUrl: stringInput(ProviderPatchInputConstraints['baseUrl']),
   apiKey: stringInput(ProviderPatchInputConstraints['apiKey']),
+  headers: stringInput(ProviderPatchInputConstraints['headers']),
+  models: stringInput(ProviderPatchInputConstraints['models']),
 }
 /** Partial update. Omitted fields are unchanged; explicit null is rejected. */
 export const ProviderPatchInput = z
   .object({
-    name: inputString({ minLength: 1, maxLength: 120, format: 'nonblank', trim: true }).optional(),
-    baseUrl: inputString({ maxLength: 512, format: 'baseUrl' }).optional(),
-    apiKey: inputString({ minLength: 1, maxLength: 512, pattern: '^[^\\s]+$' })
+    name: inputString({
+      minLength: 1,
+      maxLength: 120,
+      messages: {
+        minLength: 'Connection name must contain 1 to 120 characters.',
+        maxLength: 'Connection name must contain 1 to 120 characters.',
+        'x-compallm-format': 'Enter a connection name.',
+      },
+      format: 'nonblank',
+      trim: true,
+    }).optional(),
+    baseUrl: inputString({
+      maxLength: 512,
+      messages: {
+        maxLength: 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+        'x-compallm-format': 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+      },
+      format: 'baseUrl',
+    }).optional(),
+    apiKey: inputString({
+      minLength: 1,
+      maxLength: 512,
+      pattern: '^[^\\s]+$',
+      messages: {
+        minLength: 'Enter an API key of 1 to 512 characters.',
+        maxLength: 'Enter an API key of 1 to 512 characters.',
+        pattern: 'API keys cannot contain whitespace.',
+      },
+    })
       .describe('Omit to preserve the current credential. Empty strings and null are invalid.')
       .optional(),
     headers: z
       .array(ProviderHeaderUpdate)
-      .refine((entries) => headersObject({ entries }), { message: 'Invalid input' })
+      .refine((entries) => headersObject({ entries }), { message: 'Header names must be unique, ignoring case.' })
       .optional(),
-    models: z.array(ProviderModelWrite).min(1).refine(modelWritesArray, { message: 'Invalid input' }).optional(),
+    models: z
+      .array(ProviderModelWrite)
+      .min(1, { message: 'Add at least one enabled model and use unique model names and IDs.' })
+      .refine(modelWritesArray, { message: 'Add at least one enabled model and use unique model names and IDs.' })
+      .optional(),
   })
   .strict()
-  .refine(providerPatchObject, { message: 'Invalid input' })
+  .refine(providerPatchObject, { message: 'Change at least one connection field.' })
   .describe('Partial update. Omitted fields are unchanged; explicit null is rejected.')
 export type ProviderPatchInputFormInput = z.input<typeof ProviderPatchInput>
 export type ProviderPatchInputFormOutput = z.output<typeof ProviderPatchInput>
 export const ProviderReplaceInputConstraints = {
-  name: { minLength: 1, maxLength: 120, format: 'nonblank', trim: true },
-  baseUrl: { maxLength: 512, format: 'baseUrl' },
-  apiKey: { minLength: 1, maxLength: 512, pattern: '^[^\\s]+$' },
+  name: {
+    minLength: 1,
+    maxLength: 120,
+    messages: {
+      minLength: 'Connection name must contain 1 to 120 characters.',
+      maxLength: 'Connection name must contain 1 to 120 characters.',
+      'x-compallm-format': 'Enter a connection name.',
+    },
+    format: 'nonblank',
+    trim: true,
+  },
+  baseUrl: {
+    maxLength: 512,
+    messages: {
+      maxLength: 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+      'x-compallm-format': 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+    },
+    format: 'baseUrl',
+  },
+  apiKey: {
+    minLength: 1,
+    maxLength: 512,
+    pattern: '^[^\\s]+$',
+    messages: {
+      minLength: 'Enter an API key of 1 to 512 characters.',
+      maxLength: 'Enter an API key of 1 to 512 characters.',
+      pattern: 'API keys cannot contain whitespace.',
+    },
+  },
+  headers: { messages: { 'x-compallm-array-rule': 'Header names must be unique, ignoring case.' } },
+  models: {
+    messages: {
+      minItems: 'Add at least one enabled model and use unique model names and IDs.',
+      'x-compallm-array-rule': 'Add at least one enabled model and use unique model names and IDs.',
+    },
+  },
 } as const
 export const ProviderReplaceInputInput = {
   name: stringInput(ProviderReplaceInputConstraints['name']),
   baseUrl: stringInput(ProviderReplaceInputConstraints['baseUrl']),
   apiKey: stringInput(ProviderReplaceInputConstraints['apiKey']),
+  headers: stringInput(ProviderReplaceInputConstraints['headers']),
+  models: stringInput(ProviderReplaceInputConstraints['models']),
 }
 /** Full non-secret replacement. Omitting apiKey preserves the saved credential. */
 export const ProviderReplaceInput = z
   .object({
-    name: inputString({ minLength: 1, maxLength: 120, format: 'nonblank', trim: true }),
-    baseUrl: inputString({ maxLength: 512, format: 'baseUrl' }),
-    apiKey: inputString({ minLength: 1, maxLength: 512, pattern: '^[^\\s]+$' })
+    name: inputString({
+      minLength: 1,
+      maxLength: 120,
+      messages: {
+        minLength: 'Connection name must contain 1 to 120 characters.',
+        maxLength: 'Connection name must contain 1 to 120 characters.',
+        'x-compallm-format': 'Enter a connection name.',
+      },
+      format: 'nonblank',
+      trim: true,
+    }),
+    baseUrl: inputString({
+      maxLength: 512,
+      messages: {
+        maxLength: 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+        'x-compallm-format': 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+      },
+      format: 'baseUrl',
+    }),
+    apiKey: inputString({
+      minLength: 1,
+      maxLength: 512,
+      pattern: '^[^\\s]+$',
+      messages: {
+        minLength: 'Enter an API key of 1 to 512 characters.',
+        maxLength: 'Enter an API key of 1 to 512 characters.',
+        pattern: 'API keys cannot contain whitespace.',
+      },
+    })
       .describe('Omit to preserve the current credential. Empty strings and null are invalid.')
       .optional(),
     headers: z
       .array(ProviderHeaderUpdate)
-      .refine((entries) => headersObject({ entries }), { message: 'Invalid input' }),
-    models: z.array(ProviderModelWrite).min(1).refine(modelWritesArray, { message: 'Invalid input' }),
+      .refine((entries) => headersObject({ entries }), { message: 'Header names must be unique, ignoring case.' }),
+    models: z
+      .array(ProviderModelWrite)
+      .min(1, { message: 'Add at least one enabled model and use unique model names and IDs.' })
+      .refine(modelWritesArray, { message: 'Add at least one enabled model and use unique model names and IDs.' }),
   })
   .strict()
   .describe('Full non-secret replacement. Omitting apiKey preserves the saved credential.')
@@ -755,7 +1351,7 @@ export const ProvidersCreateInputInput = {}
 export const ProvidersCreateInput = z
   .object({ providers: z.array(ProviderCreateInput) })
   .strict()
-  .refine(createProvidersObject, { message: 'Invalid input' })
+  .refine(createProvidersObject, { message: 'Add at least one connection and use unique connection names.' })
   .describe('Atomic batch of new provider connections for the verified organization.')
 export type ProvidersCreateInputFormInput = z.input<typeof ProvidersCreateInput>
 export type ProvidersCreateInputFormOutput = z.output<typeof ProvidersCreateInput>
@@ -771,8 +1367,12 @@ export const RoleCreateInputConstraints = {
     messages: { minLength: 'Name is required.', maxLength: 'Name must be 64 characters or fewer.' },
     trim: true,
   },
-  description: { maxLength: 128 },
-  cedarSource: { maxLength: 10192, cedarCompact: true },
+  description: { maxLength: 128, messages: { maxLength: 'Description is too long.' } },
+  cedarSource: {
+    maxLength: 10192,
+    messages: { maxLength: 'Policy must be 10192 characters or fewer.' },
+    cedarCompact: true,
+  },
 } as const
 export const RoleCreateInputInput = {
   name: stringInput(RoleCreateInputConstraints['name']),
@@ -787,10 +1387,12 @@ export const RoleCreateInput = z
       messages: { minLength: 'Name is required.', maxLength: 'Name must be 64 characters or fewer.' },
       trim: true,
     }),
-    description: inputString({ maxLength: 128 }),
-    cedarSource: inputString({ maxLength: 10192, cedarCompact: true }).describe(
-      'Comments and unnecessary whitespace are removed before the length limit is checked.',
-    ),
+    description: inputString({ maxLength: 128, messages: { maxLength: 'Description is too long.' } }),
+    cedarSource: inputString({
+      maxLength: 10192,
+      messages: { maxLength: 'Policy must be 10192 characters or fewer.' },
+      cedarCompact: true,
+    }).describe('Comments and unnecessary whitespace are removed before the length limit is checked.'),
   })
   .strict()
 export type RoleCreateInputFormInput = z.input<typeof RoleCreateInput>
@@ -802,8 +1404,12 @@ export const RoleUpdateInputConstraints = {
     messages: { minLength: 'Name is required.', maxLength: 'Name must be 64 characters or fewer.' },
     trim: true,
   },
-  description: { maxLength: 128 },
-  cedarSource: { maxLength: 10192, cedarCompact: true },
+  description: { maxLength: 128, messages: { maxLength: 'Description is too long.' } },
+  cedarSource: {
+    maxLength: 10192,
+    messages: { maxLength: 'Policy must be 10192 characters or fewer.' },
+    cedarCompact: true,
+  },
 } as const
 export const RoleUpdateInputInput = {
   name: stringInput(RoleUpdateInputConstraints['name']),
@@ -820,8 +1426,14 @@ export const RoleUpdateInput = z
     })
       .nullable()
       .optional(),
-    description: inputString({ maxLength: 128 }).nullable().optional(),
-    cedarSource: inputString({ maxLength: 10192, cedarCompact: true })
+    description: inputString({ maxLength: 128, messages: { maxLength: 'Description is too long.' } })
+      .nullable()
+      .optional(),
+    cedarSource: inputString({
+      maxLength: 10192,
+      messages: { maxLength: 'Policy must be 10192 characters or fewer.' },
+      cedarCompact: true,
+    })
       .nullable()
       .describe('Comments and unnecessary whitespace are removed before the length limit is checked.')
       .optional(),
@@ -857,10 +1469,16 @@ export const SidebarPatchInput = z
   .describe('Order replaces ordering while preserving visibility; visibility patches are keyed by destination.')
 export type SidebarPatchInputFormInput = z.input<typeof SidebarPatchInput>
 export type SidebarPatchInputFormOutput = z.output<typeof SidebarPatchInput>
-export const SpendingLimitInputConstraints = { amount: { pattern: '^[0-9]+(?:\\.[0-9]+)?$' } } as const
+export const SpendingLimitInputConstraints = {
+  amount: { pattern: '^[0-9]+(?:\\.[0-9]+)?$', messages: { pattern: 'Enter a nonnegative amount.' } },
+} as const
 export const SpendingLimitInputInput = { amount: stringInput(SpendingLimitInputConstraints['amount']) }
 export const SpendingLimitInput = z
-  .object({ amount: inputString({ pattern: '^[0-9]+(?:\\.[0-9]+)?$' }).nullable().optional() })
+  .object({
+    amount: inputString({ pattern: '^[0-9]+(?:\\.[0-9]+)?$', messages: { pattern: 'Enter a nonnegative amount.' } })
+      .nullable()
+      .optional(),
+  })
   .strict()
 export type SpendingLimitInputFormInput = z.input<typeof SpendingLimitInput>
 export type SpendingLimitInputFormOutput = z.output<typeof SpendingLimitInput>
@@ -898,11 +1516,21 @@ export const UserPreferencesPatchInput = z
 export type UserPreferencesPatchInputFormInput = z.input<typeof UserPreferencesPatchInput>
 export type UserPreferencesPatchInputFormOutput = z.output<typeof UserPreferencesPatchInput>
 export const UserProfileUpdateInputConstraints = {
-  displayName: { minLength: 0, maxLength: 256, trim: true },
+  displayName: {
+    minLength: 0,
+    maxLength: 256,
+    messages: { maxLength: 'Full name must be 256 characters or fewer.' },
+    trim: true,
+  },
   username: {
     minLength: 1,
     maxLength: 256,
     pattern: "^(?!\\.)(?!.*\\.\\.)(?!.*\\.$)[A-Za-z0-9.!#$%&'*+/=?^_`{|}~\\-]+$",
+    messages: {
+      minLength: 'Enter your username.',
+      maxLength: 'Username must be 256 characters or fewer.',
+      pattern: 'Use a valid username without leading, trailing, or consecutive dots.',
+    },
     trim: true,
     asciiLowercase: true,
   },
@@ -913,11 +1541,21 @@ export const UserProfileUpdateInputInput = {
 }
 export const UserProfileUpdateInput = z
   .object({
-    displayName: inputString({ minLength: 0, maxLength: 256, trim: true }).optional(),
+    displayName: inputString({
+      minLength: 0,
+      maxLength: 256,
+      messages: { maxLength: 'Full name must be 256 characters or fewer.' },
+      trim: true,
+    }).optional(),
     username: inputString({
       minLength: 1,
       maxLength: 256,
       pattern: "^(?!\\.)(?!.*\\.\\.)(?!.*\\.$)[A-Za-z0-9.!#$%&'*+/=?^_`{|}~\\-]+$",
+      messages: {
+        minLength: 'Enter your username.',
+        maxLength: 'Username must be 256 characters or fewer.',
+        pattern: 'Use a valid username without leading, trailing, or consecutive dots.',
+      },
       trim: true,
       asciiLowercase: true,
     }).optional(),

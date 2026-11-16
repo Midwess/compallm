@@ -22,8 +22,8 @@ export function OnboardingPanel({
   return (
     <main
       aria-labelledby={id}
-      className="relative isolate flex min-h-112 w-full max-w-3xl flex-col overflow-hidden
-rounded-3xl bg-card px-6 pt-6 pb-4 font-sans text-foreground ring-1 ring-border ring-inset md:min-h-120 md:px-6"
+      className="relative isolate flex min-h-104 w-full max-w-168 flex-col overflow-hidden
+rounded-3xl bg-card px-6 pt-6 pb-4 font-sans text-foreground ring-1 ring-border ring-inset md:min-h-104"
     >
       <div
         aria-hidden="true"
@@ -60,7 +60,7 @@ opacity-15 md:w-[45.833333%] md:opacity-25 dark:md:opacity-100"
         />
       </div>
       <header className="relative mt-4 w-full max-w-110">
-        <h1 id={id} className="flex min-h-11 items-center text-2xl leading-tight font-medium">
+        <h1 id={id} className="flex min-h-8 items-center text-2xl leading-tight font-medium">
           {title}
         </h1>
         {description ? (
@@ -72,7 +72,7 @@ leading-6 text-muted-foreground"
           </p>
         ) : null}
       </header>
-      <div className="relative mt-8 flex w-full max-w-96 flex-1 flex-col justify-start">{children}</div>
+      <div className="relative mt-6 flex w-full max-w-96 flex-1 flex-col justify-start">{children}</div>
       <footer className="relative mt-auto w-full max-w-96 pt-4">
         {action}
         {footer}

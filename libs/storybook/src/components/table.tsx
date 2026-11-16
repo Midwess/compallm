@@ -4,6 +4,7 @@ import { animated, animation, transition, useTransition } from './motion'
 import {
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useContext,
@@ -105,8 +106,9 @@ function Content({
       window.removeEventListener('resize', update)
     }
   }, [columns, children])
+  const context = useMemo(() => ({ columns, visibleCount }), [columns, visibleCount])
   return (
-    <ColumnsContext value={{ columns, visibleCount }}>
+    <ColumnsContext value={context}>
       <table
         ref={composeRefs(ref, forwardedRef)}
         data-slot="table"

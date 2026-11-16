@@ -1,6 +1,6 @@
 import { ArrowDownLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowDownLeft'
 import { Tooltip } from '../../components/feedback'
-import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 import useInfiniteScroll from 'react-infinite-scroll-hook'
 import { EyeIcon } from '@phosphor-icons/react/dist/csr/Eye'
 import { EyeSlashIcon } from '@phosphor-icons/react/dist/csr/EyeSlash'
@@ -503,6 +503,50 @@ function MemberAvatar({ member }: { member: SettingsMember }) {
   )
 }
 
+const MemberRow = memo(function MemberRow({ member }: { member: SettingsMember }) {
+  const currentMemberId = useSettings((s) => s.currentMemberId)
+  return (
+    <Table.Row className="h-14 border-0">
+      <Table.Cell column="name" className="pl-0">
+        <div className="flex items-center gap-2.5 py-1">
+          <MemberAvatar member={member} />
+          <span className="relative min-w-0 pr-3 text-xsm font-medium">
+            <span className="block truncate">{member.name}</span>
+            {member.id === currentMemberId ? (
+              <Tooltip.Control content="This is you">
+                <button
+                  type="button"
+                  aria-label="This is you"
+                  className="absolute -top-1 right-0 rounded text-foreground focus-visible:outline-ring"
+                >
+                  <ArrowDownLeftIcon weight="bold" className="size-2.5" aria-hidden="true" />
+                </button>
+              </Tooltip.Control>
+            ) : null}
+          </span>
+        </div>
+      </Table.Cell>
+      <Table.Cell column="email" className="text-muted-foreground">
+        <MemberEmail key={member.email} email={member.email} name={member.name} />
+      </Table.Cell>
+      <Table.Cell column="role">
+        <PermissionRequest actions={['role.read']}>
+          {(allowed) => (allowed ? <MemberRoles member={member} /> : null)}
+        </PermissionRequest>
+      </Table.Cell>
+      <Table.Cell column="groups">
+        <MemberGroups member={member} />
+      </Table.Cell>
+      <Table.Cell column="joined">
+        <DirectoryDate value={member.joinedAt} />
+      </Table.Cell>
+      <Table.Cell column="actions" className="px-0">
+        <MemberActions member={member} />
+      </Table.Cell>
+    </Table.Row>
+  )
+})
+
 function MemberRows({
   label,
   members,
@@ -518,7 +562,6 @@ function MemberRows({
   onOpenChange(open: boolean): void
   children?: ReactNode
 }) {
-  const currentMemberId = useSettings((s) => s.currentMemberId)
   return (
     <Table.Category
       variant="directory"
@@ -529,44 +572,7 @@ function MemberRows({
       count={complete || members.length ? `${members.length}${complete ? '' : ' shown'}` : undefined}
     >
       {members.map((member) => (
-        <Table.Row key={member.id} className="h-14 border-0">
-          <Table.Cell column="name" className="pl-0">
-            <div className="flex items-center gap-2.5 py-1">
-              <MemberAvatar member={member} />
-              <span className="relative min-w-0 pr-3 text-xsm font-medium">
-                <span className="block truncate">{member.name}</span>
-                {member.id === currentMemberId ? (
-                  <Tooltip.Control content="This is you">
-                    <button
-                      type="button"
-                      aria-label="This is you"
-                      className="absolute -top-1 right-0 rounded text-foreground focus-visible:outline-ring"
-                    >
-                      <ArrowDownLeftIcon weight="bold" className="size-2.5" aria-hidden="true" />
-                    </button>
-                  </Tooltip.Control>
-                ) : null}
-              </span>
-            </div>
-          </Table.Cell>
-          <Table.Cell column="email" className="text-muted-foreground">
-            <MemberEmail key={member.email} email={member.email} name={member.name} />
-          </Table.Cell>
-          <Table.Cell column="role">
-            <PermissionRequest actions={['role.read']}>
-              {(allowed) => (allowed ? <MemberRoles member={member} /> : null)}
-            </PermissionRequest>
-          </Table.Cell>
-          <Table.Cell column="groups">
-            <MemberGroups member={member} />
-          </Table.Cell>
-          <Table.Cell column="joined">
-            <DirectoryDate value={member.joinedAt} />
-          </Table.Cell>
-          <Table.Cell column="actions" className="px-0">
-            <MemberActions member={member} />
-          </Table.Cell>
-        </Table.Row>
+        <MemberRow key={member.id} member={member} />
       ))}
       {children}
     </Table.Category>
@@ -641,6 +647,15 @@ function MemberFilters() {
   )
 }
 
+const memberColumns = [
+  { id: 'name' },
+  { id: 'email' },
+  { id: 'role', className: 'w-1/6', visibilityClassName: 'hidden md:table-cell' },
+  { id: 'groups', className: 'w-1/6 lg:w-[calc(100%/6-1.5rem)]', visibilityClassName: 'hidden md:table-cell' },
+  { id: 'joined', className: 'w-26', visibilityClassName: 'hidden lg:table-cell' },
+  { id: 'actions', className: 'w-12' },
+]
+
 export function MembersSettings() {
   const c = useSettingsController()
   const members = useSettings((s) => s.members)
@@ -700,14 +715,7 @@ export function MembersSettings() {
           className="border-separate border-spacing-0"
           aria-label="Organization members"
           aria-busy={loading}
-          columns={[
-            { id: 'name' },
-            { id: 'email' },
-            { id: 'role', className: 'w-1/6', visibilityClassName: 'hidden md:table-cell' },
-            { id: 'groups', className: 'w-1/6 lg:w-[calc(100%/6-1.5rem)]', visibilityClassName: 'hidden md:table-cell' },
-            { id: 'joined', className: 'w-26', visibilityClassName: 'hidden lg:table-cell' },
-            { id: 'actions', className: 'w-12' },
-          ]}
+          columns={memberColumns}
         >
           <Table.Header className="sticky top-0 z-20 bg-surface">
             <Table.Row className="border-0">

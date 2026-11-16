@@ -24,6 +24,8 @@ pub enum Relation {
     ModelUsageLimit,
     #[sea_orm(has_many = "super::organization_group_members::Entity")]
     OrganizationGroupMembers,
+    #[sea_orm(has_one = "super::organization_member_onboarding::Entity")]
+    OrganizationMemberOnboarding,
     #[sea_orm(
         belongs_to = "super::organization_roles::Entity",
         from = "(Column::OrganizationId, Column::RoleId)",
@@ -71,6 +73,12 @@ impl Related<super::model_usage_limit::Entity> for Entity {
 impl Related<super::organization_group_members::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OrganizationGroupMembers.def()
+    }
+}
+
+impl Related<super::organization_member_onboarding::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::OrganizationMemberOnboarding.def()
     }
 }
 

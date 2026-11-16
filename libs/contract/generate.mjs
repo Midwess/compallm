@@ -100,7 +100,7 @@ function visit(name) {
   ordered.push(name)
 }
 Object.keys(definitions).sort().forEach(visit)
-const formats = new Set(['baseUrl', 'nonblank', 'authorization', 'emailAddress', 'resourceId'])
+const formats = new Set(['baseUrl', 'webUrl', 'nonblank', 'authorization', 'emailAddress', 'resourceId'])
 const objectRules = {
   header: 'headerObject',
   headerUpdate: 'headerUpdateObject',
@@ -214,8 +214,11 @@ function nullable(schema) {
 function render(schema) {
   const value = unwrapped(schema)
   let result
-  if (value.$ref) result = value.$ref.split('/').at(-1)
-  else if (value.oneOf?.every((variant) => typeof variant.const === 'string'))
+  if (value.$ref) {
+    const reference = value.$ref.split('/').at(-1)
+    const message = value['x-compallm-messages']?.enum
+    result = message ? `z.enum(${reference}.options, {error: ${JSON.stringify(message)}})` : reference
+  } else if (value.oneOf?.every((variant) => typeof variant.const === 'string'))
     result = `z.enum(${JSON.stringify(value.oneOf.map((variant) => variant.const))})`
   else if (value.enum) result = `z.enum(${JSON.stringify(value.enum)})`
   else if (value.const !== undefined) result = `z.literal(${JSON.stringify(value.const)})`

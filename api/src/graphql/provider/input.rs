@@ -54,7 +54,16 @@ fn present<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
 }
 fn invalid(code: &'static str) -> ValidationErrors {
     let mut errors = ValidationErrors::new();
-    errors.add(ValidationError::new_schema(code));
+    let message = match code {
+        "new_model_id" => "New models must not include a saved model identity.",
+        "missing_provider" | "duplicate_provider" => {
+            "Add at least one connection and use unique connection names."
+        }
+        "authorization" => "Enter a valid Authorization header value.",
+        "empty_patch" => "Change at least one connection field.",
+        _ => "Check the connection fields and try again.",
+    };
+    errors.add(ValidationError::new_schema(code).with_message(message.into()));
     errors
 }
 
@@ -76,7 +85,7 @@ pub struct ProviderEffortMapping {
         deserialize_with = "present"
     )]
     #[schemars(extend("x-compallm-non-null" = true))]
-    #[validate(length(min = 1, max = 25), custom(function = input::effort_value))]
+    #[validate(length(min = 1, max = 25, message = "Enter an effort value of 1 to 25 characters."), custom(function = input::effort_value, message = "Use letters, numbers, hyphens, or underscores for effort values."))]
     pub low: Option<String>,
     #[serde(
         default,
@@ -84,7 +93,7 @@ pub struct ProviderEffortMapping {
         deserialize_with = "present"
     )]
     #[schemars(extend("x-compallm-non-null" = true))]
-    #[validate(length(min = 1, max = 25), custom(function = input::effort_value))]
+    #[validate(length(min = 1, max = 25, message = "Enter an effort value of 1 to 25 characters."), custom(function = input::effort_value, message = "Use letters, numbers, hyphens, or underscores for effort values."))]
     pub medium: Option<String>,
     #[serde(
         default,
@@ -92,7 +101,7 @@ pub struct ProviderEffortMapping {
         deserialize_with = "present"
     )]
     #[schemars(extend("x-compallm-non-null" = true))]
-    #[validate(length(min = 1, max = 25), custom(function = input::effort_value))]
+    #[validate(length(min = 1, max = 25, message = "Enter an effort value of 1 to 25 characters."), custom(function = input::effort_value, message = "Use letters, numbers, hyphens, or underscores for effort values."))]
     pub high: Option<String>,
     #[serde(
         default,
@@ -100,7 +109,7 @@ pub struct ProviderEffortMapping {
         deserialize_with = "present"
     )]
     #[schemars(extend("x-compallm-non-null" = true))]
-    #[validate(length(min = 1, max = 25), custom(function = input::effort_value))]
+    #[validate(length(min = 1, max = 25, message = "Enter an effort value of 1 to 25 characters."), custom(function = input::effort_value, message = "Use letters, numbers, hyphens, or underscores for effort values."))]
     pub xhigh: Option<String>,
     #[serde(
         default,
@@ -108,7 +117,7 @@ pub struct ProviderEffortMapping {
         deserialize_with = "present"
     )]
     #[schemars(extend("x-compallm-non-null" = true))]
-    #[validate(length(min = 1, max = 25), custom(function = input::effort_value))]
+    #[validate(length(min = 1, max = 25, message = "Enter an effort value of 1 to 25 characters."), custom(function = input::effort_value, message = "Use letters, numbers, hyphens, or underscores for effort values."))]
     pub max: Option<String>,
 }
 
@@ -116,10 +125,10 @@ pub struct ProviderEffortMapping {
 #[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProviderModelConfiguration {
-    #[validate(length(min = 1, max = 40), custom(function = input::model_name))]
+    #[validate(length(min = 1, max = 40, message = "Model name must contain 1 to 40 characters."), custom(function = input::model_name, message = "Use letters, numbers, hyphens, or underscores for the model name."))]
     pub name: String,
     pub protocol: TextModelProtocol,
-    #[validate(custom(function = input::endpoint_path), length(max = 40))]
+    #[validate(custom(function = input::endpoint_path, message = "Enter a path beginning with / using letters, numbers, hyphens, underscores, and slashes."), length(max = 40, message = "Path must be 40 characters or fewer."))]
     pub path: String,
     pub max_context_tokens: ContextTokens,
     #[graphql(default = true)]
@@ -144,11 +153,11 @@ pub struct ProviderModelConfiguration {
     #[schemars(extend("x-compallm-non-null" = true))]
     #[validify]
     pub catalog_ref: Option<ProviderCatalogRef>,
-    #[validate(custom(function = input::price))]
+    #[validate(custom(function = input::price, message = "Enter a nonnegative price with at most 12 integer and 8 decimal digits."))]
     pub input_price: String,
-    #[validate(custom(function = input::price))]
+    #[validate(custom(function = input::price, message = "Enter a nonnegative price with at most 12 integer and 8 decimal digits."))]
     pub output_price: String,
-    #[validate(custom(function = input::price))]
+    #[validate(custom(function = input::price, message = "Enter a nonnegative price with at most 12 integer and 8 decimal digits."))]
     pub cached_price: String,
 }
 fn enabled() -> bool {
@@ -165,7 +174,7 @@ pub struct ProviderModelWrite {
         deserialize_with = "present"
     )]
     #[schemars(extend("x-compallm-non-null" = true))]
-    #[validate(custom(function = input::resource_id))]
+    #[validate(custom(function = input::resource_id, message = "Choose a valid resource identity."))]
     /// Omit for a new model; supplied IDs must belong to this connection.
     #[schemars(with = "Option<String>")]
     pub id: Option<ID>,
@@ -215,16 +224,16 @@ fn unique_headers<'a>(keys: impl Iterator<Item = &'a str>) -> Result<(), Validat
 #[validate(validate_create)]
 pub struct ProviderCreateInput {
     #[modify(trim)]
-    #[validate(length(min = 1, max = 120), custom(function = input::nonblank))]
+    #[validate(length(min = 1, max = 120, message = "Connection name must contain 1 to 120 characters."), custom(function = input::nonblank, message = "Enter a connection name."))]
     pub name: String,
-    #[validate(custom(function = input::base_url))]
+    #[validate(custom(function = input::base_url, message = "Enter an HTTP or HTTPS server URL without credentials, query, or fragment."))]
     pub base_url: String,
-    #[validate(length(min = 1, max = 512), custom(function = input::api_key))]
+    #[validate(length(min = 1, max = 512, message = "Enter an API key of 1 to 512 characters."), custom(function = input::api_key, message = "API keys cannot contain whitespace."))]
     pub api_key: String,
-    #[validate(custom(function = header_entries))]
+    #[validate(custom(function = header_entries, message = "Header names must be unique, ignoring case."))]
     #[validify]
     pub headers: Vec<ProviderHeader>,
-    #[validate(custom(function = model_writes))]
+    #[validate(custom(function = model_writes, message = "Add at least one enabled model and use unique model names and IDs."))]
     #[validify]
     pub models: Vec<ProviderModelWrite>,
 }
@@ -235,7 +244,7 @@ fn validate_create(value: &ProviderCreateInput) -> Result<(), ValidationErrors> 
     Ok(())
 }
 fn validate_create_contract() -> Value {
-    json!({"x-compallm-object-rule": "createProvider"})
+    json!({"x-compallm-object-rule": "createProvider", "x-compallm-messages": {"x-compallm-object-rule": "New models must not include a saved model identity."}})
 }
 
 /// Atomic batch of new provider connections for the verified organization.
@@ -259,7 +268,7 @@ fn validate_create_batch(value: &ProvidersCreateInput) -> Result<(), ValidationE
     Ok(())
 }
 fn validate_create_batch_contract() -> Value {
-    json!({"x-compallm-object-rule": "createProviders"})
+    json!({"x-compallm-object-rule": "createProviders", "x-compallm-messages": {"x-compallm-object-rule": "Add at least one connection and use unique connection names."}})
 }
 
 /// Omit value to retain an existing header secret; new names require a value.
@@ -267,7 +276,7 @@ fn validate_create_batch_contract() -> Value {
 #[serde(deny_unknown_fields)]
 #[validate(validate_header_update)]
 pub struct ProviderHeaderUpdate {
-    #[validate(custom(function = input::header_name), length(max = 128))]
+    #[validate(custom(function = input::header_name, message = "Enter a valid HTTP header name."), length(max = 128, message = "Header name must be 128 characters or fewer."))]
     pub key: String,
     #[serde(
         default,
@@ -275,7 +284,7 @@ pub struct ProviderHeaderUpdate {
         deserialize_with = "present"
     )]
     #[schemars(extend("x-compallm-non-null" = true))]
-    #[validate(custom(function = input::header_value))]
+    #[validate(custom(function = input::header_value, message = "Header values cannot contain newlines or unsupported characters."))]
     /// Omit to preserve the saved value for this header name. New names require a value.
     pub value: Option<String>,
 }
@@ -288,7 +297,7 @@ fn validate_header_update(value: &ProviderHeaderUpdate) -> Result<(), Validation
     Ok(())
 }
 fn validate_header_update_contract() -> Value {
-    json!({"x-compallm-object-rule": "headerUpdate"})
+    json!({"x-compallm-object-rule": "headerUpdate", "x-compallm-messages": {"x-compallm-object-rule": "Enter a valid Authorization header value."}})
 }
 
 fn header_updates(entries: &[ProviderHeaderUpdate]) -> Result<(), ValidationError> {
@@ -303,9 +312,9 @@ fn header_updates_contract() -> Value {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProviderReplaceInput {
     #[modify(trim)]
-    #[validate(length(min = 1, max = 120), custom(function = input::nonblank))]
+    #[validate(length(min = 1, max = 120, message = "Connection name must contain 1 to 120 characters."), custom(function = input::nonblank, message = "Enter a connection name."))]
     pub name: String,
-    #[validate(custom(function = input::base_url))]
+    #[validate(custom(function = input::base_url, message = "Enter an HTTP or HTTPS server URL without credentials, query, or fragment."))]
     pub base_url: String,
     #[serde(
         default,
@@ -313,13 +322,13 @@ pub struct ProviderReplaceInput {
         deserialize_with = "present"
     )]
     #[schemars(extend("x-compallm-non-null" = true))]
-    #[validate(length(min = 1, max = 512), custom(function = input::api_key))]
+    #[validate(length(min = 1, max = 512, message = "Enter an API key of 1 to 512 characters."), custom(function = input::api_key, message = "API keys cannot contain whitespace."))]
     /// Omit to preserve the current credential. Empty strings and null are invalid.
     pub api_key: Option<String>,
-    #[validate(custom(function = header_updates))]
+    #[validate(custom(function = header_updates, message = "Header names must be unique, ignoring case."))]
     #[validify]
     pub headers: Vec<ProviderHeaderUpdate>,
-    #[validate(custom(function = model_writes))]
+    #[validate(custom(function = model_writes, message = "Add at least one enabled model and use unique model names and IDs."))]
     #[validify]
     pub models: Vec<ProviderModelWrite>,
 }
@@ -336,7 +345,7 @@ pub struct ProviderPatchInput {
     )]
     #[schemars(extend("x-compallm-non-null" = true))]
     #[modify(trim)]
-    #[validate(length(min = 1, max = 120), custom(function = input::nonblank))]
+    #[validate(length(min = 1, max = 120, message = "Connection name must contain 1 to 120 characters."), custom(function = input::nonblank, message = "Enter a connection name."))]
     pub name: Option<String>,
     #[serde(
         default,
@@ -344,7 +353,7 @@ pub struct ProviderPatchInput {
         deserialize_with = "present"
     )]
     #[schemars(extend("x-compallm-non-null" = true))]
-    #[validate(custom(function = input::base_url))]
+    #[validate(custom(function = input::base_url, message = "Enter an HTTP or HTTPS server URL without credentials, query, or fragment."))]
     pub base_url: Option<String>,
     #[serde(
         default,
@@ -352,7 +361,7 @@ pub struct ProviderPatchInput {
         deserialize_with = "present"
     )]
     #[schemars(extend("x-compallm-non-null" = true))]
-    #[validate(length(min = 1, max = 512), custom(function = input::api_key))]
+    #[validate(length(min = 1, max = 512, message = "Enter an API key of 1 to 512 characters."), custom(function = input::api_key, message = "API keys cannot contain whitespace."))]
     /// Omit to preserve the current credential. Empty strings and null are invalid.
     pub api_key: Option<String>,
     #[serde(
@@ -361,7 +370,7 @@ pub struct ProviderPatchInput {
         deserialize_with = "present"
     )]
     #[schemars(extend("x-compallm-non-null" = true))]
-    #[validate(custom(function = header_updates))]
+    #[validate(custom(function = header_updates, message = "Header names must be unique, ignoring case."))]
     #[validify]
     pub headers: Option<Vec<ProviderHeaderUpdate>>,
     #[serde(
@@ -370,7 +379,7 @@ pub struct ProviderPatchInput {
         deserialize_with = "present"
     )]
     #[schemars(extend("x-compallm-non-null" = true))]
-    #[validate(custom(function = model_writes))]
+    #[validate(custom(function = model_writes, message = "Add at least one enabled model and use unique model names and IDs."))]
     #[validify]
     pub models: Option<Vec<ProviderModelWrite>>,
 }
@@ -386,17 +395,17 @@ fn validate_patch(value: &ProviderPatchInput) -> Result<(), ValidationErrors> {
     Ok(())
 }
 fn validate_patch_contract() -> Value {
-    json!({"x-compallm-object-rule": "providerPatch"})
+    json!({"x-compallm-object-rule": "providerPatch", "x-compallm-messages": {"x-compallm-object-rule": "Change at least one connection field."}})
 }
 
 #[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[validate(validate_header)]
 pub struct ProviderHeader {
-    #[validate(custom(function = input::header_name), length(max = 128))]
+    #[validate(custom(function = input::header_name, message = "Enter a valid HTTP header name."), length(max = 128, message = "Header name must be 128 characters or fewer."))]
     pub key: String,
     /// Write-only header content; never returned by management reads.
-    #[validate(custom(function = input::header_value))]
+    #[validate(custom(function = input::header_value, message = "Header values cannot contain newlines or unsupported characters."))]
     pub value: String,
 }
 
@@ -411,5 +420,5 @@ fn validate_header(header: &ProviderHeader) -> Result<(), validify::ValidationEr
     Ok(())
 }
 fn validate_header_contract() -> serde_json::Value {
-    serde_json::json!({"x-compallm-object-rule": "header"})
+    serde_json::json!({"x-compallm-object-rule": "header", "x-compallm-messages": {"x-compallm-object-rule": "Enter a valid Authorization header value."}})
 }

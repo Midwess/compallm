@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { redirect, type LoaderFunctionArgs } from 'react-router'
 import { useLoaderData } from 'react-router'
-import { SettingsControllerContext } from '@compallm/storybook/context'
+import { OnboardingControllerContext, SettingsControllerContext } from '@compallm/storybook/context'
 import { SettingsPage, type SettingsDestination } from '@compallm/storybook/pages/settings'
 import { useUrlController } from '../url/use-url-controller'
 import { useAuthController } from '../auth/use-auth-controller'
@@ -22,9 +22,15 @@ export function Component() {
   const url = useUrlController()
   const auth = useAuthController()
   const permissions = usePermissionController()
+  const onboarding = useContext(OnboardingControllerContext)
   const preferences = useUserPreferenceController()
   const organization = useOrganizationController().getCurrentOrganization()!
-  const [controller] = useState(() => new SettingsController(organization.name, url, auth, page, preferences, permissions))
+  const [controller] = useState(
+    () =>
+      new SettingsController(organization.name, url, auth, page, preferences, permissions, () => {
+        void onboarding?.reopen?.()
+      }),
+  )
   useEffect(() => {
     let disposed = false
     let stop: (() => void) | undefined

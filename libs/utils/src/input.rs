@@ -127,3 +127,21 @@ pub fn resource_id(value: &str) -> Result<(), ValidationError> {
 pub fn resource_id_contract() -> Value {
     json!({"pattern": "^[1-9][0-9]*$", "x-compallm-format": "resourceId"})
 }
+
+pub fn web_url(value: &str) -> Result<(), ValidationError> {
+    let valid = !value.chars().any(char::is_whitespace)
+        && !value.contains('\\')
+        && url::Url::parse(value).is_ok_and(|url| {
+            matches!(url.scheme(), "http" | "https")
+                && url.has_host()
+                && url.username().is_empty()
+                && url.password().is_none()
+        });
+    valid
+        .then_some(())
+        .ok_or_else(|| ValidationError::new_field("web_url"))
+}
+pub fn web_url_contract() -> Value {
+    json!({"x-compallm-format":"webUrl"})
+}
+pattern_rule!(hex_color, hex_color_contract, r"^#[0-9a-fA-F]{6}$");

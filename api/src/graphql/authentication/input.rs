@@ -26,7 +26,7 @@ pub enum CredentialDelivery {
 pub struct EmailInput {
     /// Trimmed and ASCII-lowercased using the shared Rust email policy.
     #[modify(trim, custom(str::make_ascii_lowercase))]
-    #[validate(custom(function = email::validate_email))]
+    #[validate(custom(function = email::validate_email, message = "Enter a valid email address, such as name@example.com."))]
     pub email: String,
     /// Cookie delivery is the default; token delivery must be requested explicitly.
     #[graphql(default = cookie_delivery())]
@@ -45,7 +45,7 @@ pub struct EmailInput {
 pub struct EmailCodeInput {
     /// Exactly six ASCII digits after trimming surrounding whitespace.
     #[modify(trim)]
-    #[validate(length(equal = 6), custom(function = Self::ascii_digits))]
+    #[validate(length(equal = 6, message = "Enter the six-digit verification code."), custom(function = Self::ascii_digits, message = "Use digits only for the verification code."))]
     pub code: String,
     /// Cookie delivery is the default; token delivery must be requested explicitly.
     #[graphql(default = cookie_delivery())]

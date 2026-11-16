@@ -24,6 +24,32 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
+    async fn analytic_user_profile(
+        key: String,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::analytics::AnalyticsRepository,
+        >,
+    ) -> Result<Option<Payload<super::analytics::AnalyticUserProfile>>, Error> {
+        super::analytics::query::get(key, user, repository.as_ref()).await
+    }
+    async fn onboarding_context(
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::onboarding::OnboardingRepository,
+        >,
+    ) -> Result<Option<Payload<super::onboarding::OnboardingContext>>, Error> {
+        super::onboarding::query::context(user, repository.as_ref()).await
+    }
+    async fn organization_onboarding_settings(
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::onboarding::OnboardingRepository,
+        >,
+    ) -> Result<Payload<super::onboarding::OrganizationOnboardingSettings>, Error> {
+        super::onboarding::query::settings(authority, repository.as_ref()).await
+    }
+
     async fn invitation_context(
         #[graphql(context)] service: &InvitationService,
         #[graphql(context)] identity: &AuthenticationContext,
@@ -186,6 +212,41 @@ pub struct Mutation;
 
 #[graphql_object(context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Mutation {
+    async fn analytic_user_profile_put(
+        input: super::analytics::input::AnalyticUserProfilePutInput,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::analytics::AnalyticsService,
+    ) -> Result<Payload<super::analytics::AnalyticUserProfile>, Error> {
+        super::analytics::mutation::put(input, user, service).await
+    }
+    async fn organization_onboarding_settings_update(
+        input: super::onboarding::input::OrganizationOnboardingSettingsInput,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] service: &compallm_core::onboarding::OnboardingService,
+    ) -> Result<Payload<super::onboarding::OrganizationOnboardingSettings>, Error> {
+        super::onboarding::mutation::settings(input, authority, service).await
+    }
+    async fn onboarding_advance(
+        #[graphql(default = false)] back: bool,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::onboarding::OnboardingService,
+    ) -> Result<Payload<super::onboarding::OnboardingContext>, Error> {
+        super::onboarding::mutation::advance(back, user, service).await
+    }
+    async fn onboarding_complete(
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::onboarding::OnboardingService,
+    ) -> Result<Payload<super::onboarding::OnboardingContext>, Error> {
+        super::onboarding::mutation::complete(user, service).await
+    }
+    async fn onboarding_present(
+        #[graphql(default = false)] manual: bool,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::onboarding::OnboardingService,
+    ) -> Result<Payload<super::onboarding::OnboardingContext>, Error> {
+        super::onboarding::mutation::present(manual, user, service).await
+    }
+
     async fn invitation_create_many(
         input: organization::invitation::input::InvitationBatchCreateInput,
         #[graphql(context)] service: &InvitationService,
@@ -469,6 +530,9 @@ impl GraphQLValueAsync for RegisteredQuery {
 #[derive(JsonSchema)]
 #[allow(dead_code)]
 struct Inputs {
+    analytic_user_profile_put: super::analytics::input::AnalyticUserProfilePutInput,
+    onboarding_link: super::onboarding::input::OnboardingLinkInput,
+    organization_onboarding_settings: super::onboarding::input::OrganizationOnboardingSettingsInput,
     invitation_batch_create: organization::invitation::input::InvitationBatchCreateInput,
     invitation_create: organization::invitation::input::InvitationCreateInput,
     user_preferences_patch: super::preference::user::input::UserPreferencesPatchInput,

@@ -40,7 +40,16 @@ export class InvitationController {
         invitationContext: { node: { organizationName: true, email: true, expiresAt: true, signup: true } },
       } satisfies QueryGenqlSelection
       const result = await graphql(request.signal).query(selection)
-      if (!request.signal.aborted) this.store.setState({ context: result.invitationContext.node, loading: false })
+      if (!request.signal.aborted)
+        this.store.setState({
+          context: result.invitationContext.node,
+          loading: false,
+          step: this.confirmed
+            ? 'confirmed'
+            : new URLSearchParams(urlController.store.getState().search).get('step') === 'code'
+              ? 'code'
+              : 'continue',
+        })
     } catch (error) {
       if (!request.signal.aborted) this.store.setState({ loading: false, error: apiErrorMessage(error) })
     }
@@ -61,7 +70,10 @@ export class InvitationController {
         await client.mutation({
           emailSigninRequest: { __args: { input }, node: { lifetime: { expiresInSeconds: true } } },
         } satisfies MutationGenqlSelection)
-      if (!request.signal.aborted) this.store.setState({ step: 'code' })
+      if (!request.signal.aborted) {
+        this.store.setState({ step: 'code' })
+        urlController.navigate('/invitation?step=code', { replace: true })
+      }
       return true
     } catch (error) {
       if (!request.signal.aborted) this.store.setState({ error: apiErrorMessage(error) })

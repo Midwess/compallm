@@ -195,10 +195,26 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         .await?
         .unwrap()
         .0;
+    let existing_email = format!("existing-{suffix}@example.com");
+    let existing_challenge = EmailOtpAccessToken::new(existing_email.clone())?;
+    let existing_login = auth
+        .signup(&existing_challenge, &existing_challenge.code)
+        .await?;
+    let existing_account = auth
+        .authenticate_access(&existing_login.access_token)
+        .await?;
+    let original_membership = root
+        .scope(OrganizationRepository.find_membership(
+            existing_account.session.organization_id,
+            existing_account.session.user_id,
+        ))
+        .await?
+        .unwrap()
+        .0;
     let existing = invitations
         .send_invitation(
             &member_permission(&other_membership),
-            "owner@compallm.com",
+            &existing_email,
             LINK_PREFIX,
         )
         .await?;
@@ -222,6 +238,15 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         .0;
     assert_eq!(after.role, owner.role);
 
+    let retained_membership = root
+        .scope(OrganizationRepository.find_membership(
+            existing_account.session.organization_id,
+            existing_account.session.user_id,
+        ))
+        .await?
+        .unwrap()
+        .0;
+    assert_eq!(retained_membership.role, original_membership.role);
     let rotate = invitations
         .send_invitation(
             &permission,

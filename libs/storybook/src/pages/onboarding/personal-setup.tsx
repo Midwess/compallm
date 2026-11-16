@@ -1,4 +1,11 @@
-import { UserProfileUpdateInput, OrganizationProfileUpdateInput, PreferenceAppearanceMode } from '@compallm/contract/validation'
+import {
+  UserProfileUpdateInput,
+  ProfileUpdateInput,
+  ImageUploadInput,
+  AnalyticUserProfilePutInput,
+  OrganizationProfileUpdateInput,
+  PreferenceAppearanceMode,
+} from '@compallm/contract/validation'
 import { useId, useSyncExternalStore, useState, useEffect, useRef } from 'react'
 import { Button } from '../../components/buttons'
 import { Avatar } from '../../components/content'
@@ -8,7 +15,7 @@ import { Select } from '../../components/dropdowns'
 import { Form, useManagedForm, useFormValue } from '../../components/form'
 import { ChoiceCard } from '../../components/selection'
 import { useSystemLight } from '../../components/code-appearance'
-import { useOnboardingController } from './controller'
+import { useOnboarding, useOnboardingController } from './controller'
 import { OnboardingLayout } from './layout'
 import type { OnboardingStep } from './types'
 
@@ -16,6 +23,7 @@ const workOptions = ['Engineering', 'Product', 'Design', 'Research', 'Writing & 
 
 export function PersonalSetup({ step }: { step: OnboardingStep }) {
   const controller = useOnboardingController()
+  const saving = useOnboarding((state) => state.pending)
   const initial = controller.store.getState()
   const id = useId()
   const systemLight = useSystemLight()
@@ -36,6 +44,7 @@ export function PersonalSetup({ step }: { step: OnboardingStep }) {
     {
       photo: null as File | null,
       username: initial.profile.username,
+      displayName: initial.profile.displayName,
       workspaceName: initial.organization.name,
       workType: initial.workType ? (knownWork ? initial.workType : 'other') : 'engineering',
       otherWorkType: knownWork ? '' : initial.workType,
@@ -46,10 +55,32 @@ export function PersonalSetup({ step }: { step: OnboardingStep }) {
       command: true,
       parse: (values) => {
         if (profile) {
-          const user = UserProfileUpdateInput.safeParse({ username: values.username })
+          if (initial.requireFullName) {
+            const requiredName = ProfileUpdateInput.shape.name.unwrap().safeParse(values.displayName)
+            if (!requiredName.success)
+              return { issues: requiredName.error.issues.map((issue) => ({ ...issue, path: ['displayName'] })) }
+          }
+          if (values.photo || (initial.requireAvatar && !initial.profile.avatarUrl)) {
+            const image = ImageUploadInput.safeParse({
+              size: values.photo?.size ?? 0,
+              mediaType: ({ 'image/jpeg': 'JPEG', 'image/png': 'PNG', 'image/webp': 'WEBP' } as Record<string, string>)[
+                values.photo?.type ?? 'image/jpeg'
+              ],
+            })
+            if (!image.success) return { issues: image.error.issues.map((issue) => ({ ...issue, path: ['photo'] })) }
+          }
+          const user = UserProfileUpdateInput.safeParse({
+            username: values.username,
+            ...(initial.requireFullName ? { displayName: values.displayName } : {}),
+          })
           return user.success ? { values: { ...values, username: user.data.username! } } : { issues: user.error.issues }
         }
-        if (!workspace) return { values }
+        if (work) {
+          const value = values.workType === 'other' ? values.otherWorkType.trim() || 'other' : values.workType
+          const answer = AnalyticUserProfilePutInput.safeParse({ key: 'work', value })
+          if (!answer.success) return { issues: answer.error.issues.map((issue) => ({ ...issue, path: ['otherWorkType'] })) }
+        }
+        if (!workspace || values.workspaceName === initial.organization.name) return { values }
         const org = OrganizationProfileUpdateInput.safeParse({ name: values.workspaceName })
         return org.success
           ? { values: { ...values, workspaceName: org.data.name! } }
@@ -57,7 +88,14 @@ export function PersonalSetup({ step }: { step: OnboardingStep }) {
       },
       submit: async (values, _patch, signal) => {
         let accepted = false
-        if (profile) accepted = Boolean(await controller.saveProfile({ username: values.username }, values.photo, signal))
+        if (profile)
+          accepted = Boolean(
+            await controller.saveProfile(
+              { username: values.username, ...(initial.requireFullName ? { displayName: values.displayName } : {}) },
+              values.photo,
+              signal,
+            ),
+          )
         if (workspace) accepted = await controller.saveWorkspaceName(values.workspaceName, signal)
         if (work)
           accepted = await controller.saveWorkType(
@@ -66,7 +104,7 @@ export function PersonalSetup({ step }: { step: OnboardingStep }) {
           )
         if (step === 'preferences') accepted = await controller.saveAppearance(values.appearance, signal)
         if (!accepted || signal.aborted) return false
-        controller.next()
+        await controller.next()
         return values
       },
     },
@@ -82,6 +120,7 @@ export function PersonalSetup({ step }: { step: OnboardingStep }) {
   const light = step === 'preferences' && (appearance === 'LIGHT' || (appearance === 'SYSTEM' && systemLight))
   return (
     <Form.Root
+      key={step}
       model={form}
       aria-label="Personal setup"
       data-theme={step === 'preferences' ? (light ? 'basic-white' : 'basic-dark') : undefined}
@@ -107,13 +146,19 @@ export function PersonalSetup({ step }: { step: OnboardingStep }) {
         }
         progress={profile ? 0.28 : workspace ? 0.4 : work ? 0.58 : 0.75}
         action={
-          <Button type="submit" variant="primary" size="authentication" loading={pending} className="h-12 w-full text-base">
+          <Button
+            type="submit"
+            variant="primary"
+            size="authentication"
+            loading={pending || saving}
+            className="h-12 w-full text-base"
+          >
             Continue
           </Button>
         }
       >
         {profile ? (
-          <div className="grid gap-3">
+          <div className="grid gap-2">
             <div className="flex items-end gap-3">
               <div className="grid min-w-0 flex-1 gap-2">
                 <label htmlFor={`${id}-username`} className="text-sm text-muted-foreground">
@@ -124,6 +169,8 @@ export function PersonalSetup({ step }: { step: OnboardingStep }) {
               </div>
               <Button
                 variant="ghost"
+                data-form-field="photo"
+                data-ui="avatar-input"
                 aria-label="Upload profile photo"
                 className="group relative size-9 mb-0.5 shrink-0 overflow-hidden rounded-full p-0"
                 onClick={() => fileInput.current?.click()}
@@ -139,7 +186,9 @@ bg-overlay/60 text-on-overlay opacity-0 group-hover:opacity-100 group-focus-visi
               </Button>
               <input
                 ref={fileInput}
+                name="photo"
                 type="file"
+                required={initial.requireAvatar && !initial.profile.avatarUrl}
                 accept="image/jpeg,image/png,image/webp"
                 aria-label="Profile photo"
                 className="sr-only"
@@ -151,10 +200,17 @@ bg-overlay/60 text-on-overlay opacity-0 group-hover:opacity-100 group-focus-visi
                   localPhoto.current = URL.createObjectURL(file)
                   setPreview(localPhoto.current)
                   form.change('photo', file)
-                  event.target.value = ''
                 }}
               />
+              <Form.Error name="photo" />
             </div>
+            {initial.requireFullName ? (
+              <label className="grid gap-2 text-sm text-muted-foreground">
+                Full name
+                <TextField name="displayName" className="h-10 text-base" required />
+                <Form.Error name="displayName" />
+              </label>
+            ) : null}
           </div>
         ) : workspace ? (
           <div className="grid gap-2">
@@ -185,18 +241,19 @@ bg-overlay/60 text-on-overlay opacity-0 group-hover:opacity-100 group-focus-visi
               <label className="grid gap-2 text-sm text-muted-foreground">
                 Let us know
                 <TextField name="otherWorkType" placeholder="Tell us about your work" className="h-10 text-base" />
+                <Form.Error name="otherWorkType" />
               </label>
             ) : null}
           </div>
         ) : (
-          <fieldset className="grid gap-3">
+          <fieldset className="grid gap-2">
             <legend className="sr-only">Appearance</legend>
             {PreferenceAppearanceMode.options.map((value) => (
               <ChoiceCard
                 key={value}
                 name="appearance"
                 value={value}
-                className="min-h-13 w-full gap-2 px-4 [&_strong]:text-base"
+                className="min-h-10 w-full gap-2 px-4 [&_strong]:text-base"
               >
                 {value === 'SYSTEM' ? 'Use system setting' : value === 'LIGHT' ? 'Light' : 'Dark'}
               </ChoiceCard>

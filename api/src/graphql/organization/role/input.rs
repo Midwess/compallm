@@ -9,11 +9,11 @@ pub struct RoleCreateInput {
         length(max = 64, message = "Name must be 64 characters or fewer.")
     )]
     pub name: String,
-    #[validate(length(max = 128))]
+    #[validate(length(max = 128, message = "Description is too long."))]
     pub description: String,
     /// Comments and unnecessary whitespace are removed before the length limit is checked.
     #[modify(custom(compallm_core::authorization::policy::compact_policy_input))]
-    #[validate(length(max = 10192))]
+    #[validate(length(max = 10192, message = "Policy must be 10192 characters or fewer."))]
     pub cedar_source: String,
 }
 
@@ -28,10 +28,10 @@ pub struct RoleUpdateInput {
         length(max = 64, message = "Name must be 64 characters or fewer.")
     )]
     pub name: Option<String>,
-    #[validate(length(max = 128))]
+    #[validate(length(max = 128, message = "Description is too long."))]
     pub description: Option<String>,
     /// Comments and unnecessary whitespace are removed before the length limit is checked.
     #[modify(custom(compallm_core::authorization::policy::compact_policy_input))]
-    #[validate(length(max = 10192))]
+    #[validate(length(max = 10192, message = "Policy must be 10192 characters or fewer."))]
     pub cedar_source: Option<String>,
 }

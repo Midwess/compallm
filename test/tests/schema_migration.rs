@@ -7,7 +7,10 @@ async fn creates_application_schema_with_scoped_usage_and_global_templates() {
     let migrations = Migrator::migrations();
     let db = MockDatabase::new(DbBackend::Postgres)
         .append_exec_results((0..migrations.len() * 8).map(|_| MockExecResult::default()))
-        .append_query_results([Vec::<std::collections::BTreeMap<String, sea_orm::Value>>::new()])
+        .append_query_results([
+            Vec::<std::collections::BTreeMap<String, sea_orm::Value>>::new(),
+            Vec::new(),
+        ])
         .into_connection();
     for migration in migrations.iter().filter(|m| {
         !m.name().ends_with("seed_testing_workspace")

@@ -8,3 +8,6 @@ pub mod user;
 pub mod preference;
 
 pub mod invitation;
+
+pub mod analytics;
+pub mod onboarding;

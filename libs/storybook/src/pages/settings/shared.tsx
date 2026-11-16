@@ -170,6 +170,8 @@ export function AvatarUploadControl({
   const timing = useTransition('interaction')
   return (
     <motion.label
+      data-form-field={field}
+      data-ui="avatar-input"
       initial="rest"
       whileHover={disabled ? 'rest' : 'active'}
       whileFocus={disabled ? 'rest' : 'active'}

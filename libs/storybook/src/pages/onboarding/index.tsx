@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react'
+import { Dialog } from '../../components/dialog'
 import { Button } from '../../components/buttons'
 import { Checkbox } from '../../components/selection'
 import { SectionSurface } from '../../components/surfaces'
@@ -27,6 +29,7 @@ export function OnboardingPage() {
   const appearance = useOnboarding((s) => s.appearance)
   const error = useOnboarding((s) => s.error)
   const completed = useOnboarding((s) => s.completed)
+  const pending = useOnboarding((s) => s.pending)
   const ready = step === 'ready' || completed
   const organization = step === 'organization' || (ready && invited)
   const introduction = step === 'introduction'
@@ -50,9 +53,12 @@ export function OnboardingPage() {
           ? 'Find a little inspiration for what comes next.'
           : 'A workspace for your ideas, conversations, and AI models.\nLet’s make it yours.'
   return (
-    <div data-theme={appearance === 'SYSTEM' ? undefined : appearance === 'LIGHT' ? 'basic-white' : 'basic-dark'}>
+    <div
+      className="relative"
+      data-theme={appearance === 'SYSTEM' ? undefined : appearance === 'LIGHT' ? 'basic-white' : 'basic-dark'}
+    >
       {['welcome', 'profile', 'workspace', 'work', 'preferences'].includes(step) && !completed ? (
-        <PersonalSetup step={step} />
+        <PersonalSetup key={step} step={step} />
       ) : (
         <OnboardingLayout
           title={title}
@@ -60,6 +66,7 @@ export function OnboardingPage() {
           progress={ready ? 1 : organization ? (existingUser ? 0.65 : 0.8) : introduction ? 0.9 : explore ? 0.58 : 0.28}
           action={
             <Button
+              loading={pending}
               variant="primary"
               size="authentication"
               className="h-12 w-full text-base"
@@ -111,11 +118,58 @@ export function OnboardingPage() {
           )}
         </OnboardingLayout>
       )}
-      {error ? (
-        <div className="fixed right-4 bottom-4 z-50 max-w-[calc(100%-2rem)]">
-          <Toast tone="error" message={error} onDismiss={controller.dismissError} />
-        </div>
-      ) : null}
+      {error ? <OnboardingToast message={error} onDismiss={controller.dismissError} /> : null}
+    </div>
+  )
+}
+
+export { OnboardingPreviewController } from './preview-controller'
+
+export function OnboardingDialog({
+  open,
+  onOpenChange,
+  firstPresentation = false,
+}: {
+  open: boolean
+  onOpenChange(open: boolean): void
+  firstPresentation?: boolean
+}) {
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Content
+        onCancel={(event) => event.preventDefault()}
+        className={[
+          'w-2xl max-w-[calc(100%-2rem)] rounded-3xl border-0 bg-transparent',
+          firstPresentation ? 'backdrop:bg-background' : 'backdrop:bg-transparent',
+        ].join(' ')}
+      >
+        <Dialog.Title className="sr-only">Welcome to your workspace</Dialog.Title>
+        <OnboardingPage />
+        <Button variant="ghost" className="absolute top-9 right-6" onClick={() => onOpenChange(false)}>
+          Close
+        </Button>
+      </Dialog.Content>
+    </Dialog.Root>
+  )
+}
+
+function OnboardingToast({ message, onDismiss }: { message: string; onDismiss(): void }) {
+  const host = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const element = host.current
+    const frame = requestAnimationFrame(() => element?.showPopover())
+    return () => {
+      cancelAnimationFrame(frame)
+      element?.hidePopover()
+    }
+  }, [])
+  return (
+    <div
+      ref={host}
+      popover="manual"
+      className="fixed inset-auto top-4 right-4 m-0 max-w-[calc(100%-2rem)] border-0 bg-transparent p-0 text-foreground"
+    >
+      <Toast tone="error" message={message} onDismiss={onDismiss} />
     </div>
   )
 }

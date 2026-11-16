@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { OnboardingPage, type OnboardingState } from '../../../src/pages/onboarding'
+import { OnboardingDialog, OnboardingPage, type OnboardingState } from '../../../src/pages/onboarding'
+import { Button } from '../../../src/components/buttons'
 import { OnboardingControllerContext } from '../../../src/context'
 import { DemoOnboardingController } from './demo-controller'
 
@@ -65,3 +66,28 @@ export const OtherWork: Story = { render: () => <Demo initial={{ step: 'work', w
 export const WorkspaceName: Story = { render: () => <Demo initial={{ step: 'workspace' }} /> }
 
 export const Celebration: Story = { name: 'Workspace opening celebration', render: () => <Demo initial={{ step: 'ready' }} /> }
+
+export const RequiredInvitedProfile: Story = {
+  render: () => <Demo initial={{ step: 'profile', invited: true, requireFullName: true, requireAvatar: true, organization }} />,
+}
+export const CustomArtwork: Story = {
+  render: () => <Demo initial={{ step: 'introduction', invited: true, artworkColor: '#9b5de5', organization }} />,
+}
+
+function PopupDemo({ firstPresentation = false, error = null }: { firstPresentation?: boolean; error?: string | null }) {
+  const [open, setOpen] = useState(true)
+  const [controller] = useState(() => new DemoOnboardingController({ embedded: true, step: 'profile', error }))
+  return (
+    <OnboardingControllerContext value={controller}>
+      <Button onClick={() => setOpen(true)}>Open onboarding</Button>
+      <OnboardingDialog open={open} onOpenChange={setOpen} firstPresentation={firstPresentation} />
+    </OnboardingControllerContext>
+  )
+}
+export const Popup: Story = { render: () => <PopupDemo /> }
+
+export const FirstSignup: Story = { render: () => <PopupDemo firstPresentation /> }
+
+export const PopupSaveFailure: Story = { render: () => <PopupDemo firstPresentation error="Username is already in use" /> }
+
+export const SavingProfile: Story = { render: () => <Demo initial={{ step: 'profile', pending: true }} /> }

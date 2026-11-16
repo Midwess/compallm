@@ -33,6 +33,7 @@ export const settingsPages = [
 ] as const satisfies readonly SettingsDestination[]
 
 export class SettingsController implements Controller {
+  reopenOnboarding?: () => void
   private readonly permissions?: PermissionController
   readonly store = createSettingsStore({ readonly: true, codeExamples })
   readonly pages: ReturnType<typeof createSettingsPages>
@@ -82,6 +83,7 @@ export class SettingsController implements Controller {
       controller.abort()
       this.role.cancel()
       this.group.cancel()
+      this.pages.onboarding.cancel()
       this.pages.members.cancel()
       if (this.request === controller) this.request = undefined
       this.generation += 1
@@ -183,7 +185,9 @@ export class SettingsController implements Controller {
     page: SettingsDestination,
     preferences: UserPreferenceController,
     permissions?: PermissionController,
+    reopenOnboarding?: () => void,
   ) {
+    this.reopenOnboarding = reopenOnboarding
     this.permissions = permissions
     this.pages = createSettingsPages(
       this.store,
@@ -204,6 +208,8 @@ export class SettingsController implements Controller {
     this.group = this.pages.group
     this.url = url
     this.auth = auth
+    this.store.form.set('organization.name', organizationName)
+    this.store.setState({ organizationSavedName: organizationName })
     this.initialName = organizationName
     this.setPage(page)
   }

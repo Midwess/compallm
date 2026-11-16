@@ -10,9 +10,9 @@ pub struct Model {
     pub id: i64,
     #[sea_orm(column_type = "Text")]
     pub name: String,
+    pub status: OrganizationStatus,
     #[sea_orm(column_type = "Text", nullable)]
     pub avatar_path: Option<String>,
-    pub status: OrganizationStatus,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -27,6 +27,8 @@ pub enum Relation {
     OrganizationMemberInvitations,
     #[sea_orm(has_many = "super::organization_members::Entity")]
     OrganizationMembers,
+    #[sea_orm(has_one = "super::organization_onboarding_settings::Entity")]
+    OrganizationOnboardingSettings,
     #[sea_orm(has_many = "super::organization_roles::Entity")]
     OrganizationRoles,
     #[sea_orm(has_many = "super::providers::Entity")]
@@ -56,6 +58,12 @@ impl Related<super::organization_groups::Entity> for Entity {
 impl Related<super::organization_member_invitations::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OrganizationMemberInvitations.def()
+    }
+}
+
+impl Related<super::organization_onboarding_settings::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::OrganizationOnboardingSettings.def()
     }
 }
 

@@ -1,3 +1,5 @@
+#[path = "support/onboarding.rs"]
+mod onboarding_support;
 use compallm_core::{
     organization::{
         CreationService, Organization, OrganizationCreationError, OrganizationMember,
@@ -243,7 +245,7 @@ impl Fixture {
             context,
             database,
             state,
-            service: CreationService::new(repository),
+            service: CreationService::new(repository, onboarding_support::repository()),
         }
     }
     fn user() -> User {

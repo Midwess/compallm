@@ -1,3 +1,4 @@
+import { OrganizationOnboardingController } from './onboarding/controller'
 import type { SettingsPageControllers, SettingsState, UserPreferenceController } from '@compallm/storybook/pages/settings'
 import type { FormStore } from '@compallm/storybook'
 import { ProfileController, type ProfileAuth } from './profile/controller'
@@ -19,6 +20,7 @@ export function createSettingsPages(
   permissions?: PermissionController,
 ) {
   return {
+    onboarding: new OrganizationOnboardingController(),
     group: new GroupController(store, permissions),
     role: new RoleController(store, permissions),
     search: new SearchController(store),

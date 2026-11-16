@@ -10,6 +10,20 @@ type AccessibilityPreferences {
   underlineLinks: Boolean!
 }
 
+type AnalyticUserProfile {
+  key: String!
+  value: String!
+}
+
+type AnalyticUserProfilePayload {
+  node: AnalyticUserProfile!
+}
+
+input AnalyticUserProfilePutInput {
+  key: String!
+  value: String!
+}
+
 type AvatarUpload {
   """
   Expiration as Unix seconds, encoded as a string.
@@ -346,6 +360,10 @@ type MessageCompositionPreferences {
 }
 
 type Mutation {
+  analyticUserProfilePut(
+    input: AnalyticUserProfilePutInput!
+  ): AnalyticUserProfilePayload!
+
   """
   Confirm the verified signin challenge and create a scoped session.
   """
@@ -383,6 +401,12 @@ type Mutation {
     input: InvitationBatchCreateInput!
   ): InvitationIssuedConnection!
   invitationRevoke(id: ID!): InvitationPayload!
+  onboardingAdvance(back: Boolean! = false): OnboardingContextPayload!
+  onboardingComplete: OnboardingContextPayload!
+  onboardingPresent(manual: Boolean! = false): OnboardingContextPayload!
+  organizationOnboardingSettingsUpdate(
+    input: OrganizationOnboardingSettingsInput!
+  ): OrganizationOnboardingSettingsPayload!
   organizationProfileUpdate(
     input: OrganizationProfileUpdateInput!
   ): OrganizationPayload!
@@ -431,6 +455,50 @@ type NavigationPreferences {
   home: PreferenceDestination!
 }
 
+type OnboardingContext {
+  flow: OnboardingFlow!
+  hasBeenPresented: Boolean!
+  required: Boolean!
+  settings: OrganizationOnboardingSettings!
+  shouldPresent: Boolean!
+  step: OnboardingStep!
+}
+
+type OnboardingContextPayload {
+  node: OnboardingContext!
+}
+
+enum OnboardingDestination {
+  CHAT
+  MODELS
+  PROVIDERS
+}
+
+enum OnboardingFlow {
+  INVITED_EXISTING
+  INVITED_NEW
+  PERSONAL
+}
+
+type OnboardingLink {
+  href: String!
+  label: String!
+}
+
+input OnboardingLinkInput {
+  href: String!
+  label: String!
+}
+
+enum OnboardingStep {
+  INTRODUCTION
+  PREFERENCES
+  PROFILE
+  READY
+  WORK
+  WORKSPACE
+}
+
 enum OrderByDirection {
   AscNullsFirst
   AscNullsLast
@@ -444,6 +512,28 @@ type Organization {
   id: ID!
   name: String!
   ownerMemberIds: [ID!]!
+}
+
+type OrganizationOnboardingSettings {
+  artworkColor: String
+  destination: OnboardingDestination!
+  links: [OnboardingLink!]!
+  requireAvatar: Boolean!
+  requireFullName: Boolean!
+  welcome: String!
+}
+
+input OrganizationOnboardingSettingsInput {
+  artworkColor: String
+  destination: OnboardingDestination!
+  links: [OnboardingLinkInput!]!
+  requireAvatar: Boolean!
+  requireFullName: Boolean!
+  welcome: String!
+}
+
+type OrganizationOnboardingSettingsPayload {
+  node: OrganizationOnboardingSettings!
 }
 
 type OrganizationPayload {
@@ -766,6 +856,8 @@ input ProvidersCreateInput {
 }
 
 type Query {
+  analyticUserProfile(key: String!): AnalyticUserProfilePayload
+
   """
   Find visible group metadata in the active organization.
   """
@@ -788,11 +880,13 @@ type Query {
     offset: Int
     orderBy: [MemberOrderInput!]
   ): MemberConnection!
+  onboardingContext: OnboardingContextPayload
 
   """
   Return the active organization from verified user authority.
   """
   organization: OrganizationPayload!
+  organizationOnboardingSettings: OrganizationOnboardingSettingsPayload!
 
   """
   Return the system-owned organization policy action catalog.

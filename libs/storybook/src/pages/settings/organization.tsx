@@ -1,9 +1,9 @@
+import { OrganizationOnboardingEditor } from './onboarding/page'
 import { usePermission } from '../../components/permission'
 import { FormError } from '../../components/form'
 import { useSyncExternalStore } from 'react'
 import { Button } from '../../components/buttons'
 import { TextField, UrlPreview } from '../../components/fields'
-import { Select } from '../../components/dropdowns'
 import { SettingsContent, Heading, Section, Rows, Row, Empty, AvatarUploadControl } from './shared'
 import { useSettings, useSettingsController } from './controller'
 
@@ -101,33 +101,13 @@ export function OrganizationSettings() {
 }
 
 export function OrganizationOnboarding() {
-  const org = useSettings((s) => s.organization, ['organization'])
-  return (
-    <SettingsContent>
-      <Heading description="Onboarding updates are not available yet.">Onboarding</Heading>
-      <Section title="Member onboarding" description="Configure the experience for your members.">
-        <Rows>
-          <Row label="Welcome message">
-            <Button variant="ghost" disabled title="Onboarding updates are not available yet.">
-              Edit
-            </Button>
-          </Row>
-          <Row label="Announcements">
-            <Button variant="ghost" disabled title="Onboarding updates are not available yet.">
-              Edit
-            </Button>
-          </Row>
-          <Row label="Default home view" last>
-            <Select.Control
-              aria-label="Organization default home view"
-              className="w-44"
-              value={org.home}
-              disabled
-              options={['Chat', 'Models', 'Providers'].map((label) => ({ label, value: label }))}
-            />
-          </Row>
-        </Rows>
-      </Section>
-    </SettingsContent>
-  )
+  const controller = useSettingsController().pages.onboarding
+  if (!controller)
+    return (
+      <SettingsContent>
+        <Heading>Onboarding</Heading>
+        <Empty title="Onboarding unavailable"> </Empty>
+      </SettingsContent>
+    )
+  return <OrganizationOnboardingEditor />
 }

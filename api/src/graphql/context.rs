@@ -141,3 +141,31 @@ impl FromContext<GraphqlContext>
         juniper::FromContext::from(context.di)
     }
 }
+
+impl FromContext<GraphqlContext> for compallm_core::analytics::AnalyticsService {
+    fn from(context: &GraphqlContext) -> &Self {
+        juniper::FromContext::from(context.di)
+    }
+}
+
+impl FromContext<GraphqlContext> for compallm_core::onboarding::OnboardingService {
+    fn from(context: &GraphqlContext) -> &Self {
+        juniper::FromContext::from(context.di)
+    }
+}
+
+impl FromContext<GraphqlContext>
+    for Box<dyn compallm_core::persistent::analytics::AnalyticsRepository>
+{
+    fn from(context: &GraphqlContext) -> &Self {
+        juniper::FromContext::from(context.di)
+    }
+}
+
+impl FromContext<GraphqlContext>
+    for Box<dyn compallm_core::persistent::onboarding::OnboardingRepository>
+{
+    fn from(context: &GraphqlContext) -> &Self {
+        juniper::FromContext::from(context.di)
+    }
+}

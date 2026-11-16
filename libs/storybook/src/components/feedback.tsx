@@ -445,12 +445,11 @@ focus-visible:outline-offset-2 focus-visible:outline-destructive"
             <WarningIcon weight="fill" aria-hidden="true" className="size-3" />
           </BaseTooltip.Trigger>
           <BaseTooltip.Portal container={container}>
-            <BaseTooltip.Positioner side="right" align="center" sideOffset={-20} collisionPadding={8} className="z-40">
+            <BaseTooltip.Positioner side="top" align="start" sideOffset={8} collisionPadding={8} className="z-50">
               <BaseTooltip.Popup
                 render={<FieldErrorMotion />}
-                className="min-h-5 max-w-xs origin-left rounded-full bg-error-background py-1 pr-1 pl-6
-text-xs leading-3 text-error-foreground shadow-floating
-data-[side=left]:origin-right data-[side=left]:pr-6 data-[side=left]:pl-1"
+                className="min-h-5 max-w-xs origin-bottom-left rounded-full bg-error-background px-2 py-1
+text-xs leading-3 text-error-foreground shadow-floating data-[side=bottom]:origin-top-left"
               >
                 {message}
               </BaseTooltip.Popup>
@@ -482,8 +481,9 @@ function attachFieldError(
     const node = getBadge()
     if (!node) return
     const rect = anchor.getBoundingClientRect()
-    node.style.top = `${rect.top + Math.min(6, Math.max(0, (rect.height - 20) / 2))}px`
-    node.style.left = `${rect.right - 26}px`
+    const avatar = anchor.matches('[data-ui="avatar-input"]')
+    node.style.top = `${avatar ? rect.top - 4 : rect.top + Math.min(6, Math.max(0, (rect.height - 20) / 2))}px`
+    node.style.left = `${rect.right - (avatar ? 16 : 26)}px`
     node.style.visibility = rect.width && rect.height && rect.bottom > 0 && rect.top < window.innerHeight ? 'visible' : 'hidden'
   }
   update()

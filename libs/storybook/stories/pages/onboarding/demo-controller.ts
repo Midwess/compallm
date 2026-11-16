@@ -32,7 +32,7 @@ export class DemoOnboardingController implements OnboardingController {
   }
   next = () => {
     const steps = this.steps(),
-      step = this.store.getState().step
+      step = this.store.getState().step === 'profile' ? 'welcome' : this.store.getState().step
     this.store.setState({ step: steps[Math.min(steps.indexOf(step) + 1, steps.length - 1)], error: null })
   }
   back = () => {

@@ -85,3 +85,5 @@ function DialogProgress() {
   )
 }
 export const AboveDialog: Story = { render: () => <DialogProgress /> }
+
+export const Light: Story = { args: { active: true }, globals: { theme: 'BASIC_WHITE' } }

@@ -510,3 +510,17 @@ export function CelebrationMotion({ active }: { active: boolean }) {
     />
   ) : null
 }
+
+export function progressWave(host: HTMLElement) {
+  const wave = host.querySelector<HTMLElement>('[data-progress-wave]')
+  if (!wave || reducedMotion()) return
+  return animate(
+    wave,
+    { backgroundPositionX: ['0rem', '40rem'] },
+    {
+      duration: 2.4,
+      ease: 'linear',
+      repeat: Infinity,
+    },
+  )
+}

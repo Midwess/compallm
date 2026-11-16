@@ -19,15 +19,7 @@ export function PageProgress({ active }: { active: boolean }) {
   useLayoutEffect(() => {
     const element = host.current
     if (!element) return
-    const promote = (event?: Event) => {
-      if (event && (event.target === element || (event as ToggleEvent).newState !== 'open')) return
-      if (element.matches(':popover-open')) element.hidePopover()
-      element.showPopover()
-    }
-    promote()
-    document.addEventListener('toggle', promote, true)
     return () => {
-      document.removeEventListener('toggle', promote, true)
       if (element.matches(':popover-open')) element.hidePopover()
       clearTimeout(completion.current)
       BProgress.configure({ trickle: false })
@@ -36,6 +28,19 @@ export function PageProgress({ active }: { active: boolean }) {
       startedAt.current = null
     }
   }, [])
+
+  useLayoutEffect(() => {
+    const element = host.current
+    if (!active || !element) return
+    const promote = (event?: Event) => {
+      if (event && (event.target === element || (event as ToggleEvent).newState !== 'open')) return
+      if (element.matches(':popover-open')) element.hidePopover()
+      element.showPopover()
+    }
+    promote()
+    document.addEventListener('toggle', promote, true)
+    return () => document.removeEventListener('toggle', promote, true)
+  }, [active])
 
   useLayoutEffect(() => {
     if (!host.current) return

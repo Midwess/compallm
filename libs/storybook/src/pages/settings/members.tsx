@@ -1,6 +1,6 @@
 import { ArrowDownLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowDownLeft'
 import { Tooltip } from '../../components/feedback'
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 import useInfiniteScroll from 'react-infinite-scroll-hook'
 import { EyeIcon } from '@phosphor-icons/react/dist/csr/Eye'
 import { EyeSlashIcon } from '@phosphor-icons/react/dist/csr/EyeSlash'
@@ -630,7 +630,10 @@ export function MembersSettings() {
   const loading = useSettings((s) => s.membersLoading)
   const next = useSettings((s) => s.membersHasNextPage)
   const failed = useSettings((s) => s.membersLoadError ?? false)
-  const [root, setRoot] = useState<HTMLDivElement | null>(null)
+  const [root, setRoot] = useState<HTMLElement | null>(null)
+  const attachTable = useCallback((element: HTMLDivElement | null) => {
+    setRoot(element?.closest<HTMLElement>('[aria-label="Settings content"]') ?? null)
+  }, [])
   const [activeOpen, setActiveOpen] = useState(true)
   const [inactiveOpen, setInactiveOpen] = useState(true)
   const invitations = useSettings((s) => s.invitations.length)
@@ -640,7 +643,7 @@ export function MembersSettings() {
   const inactive = members.filter((member) => member.available === false)
   const descending = order === 'DESC_NULLS_LAST'
   return (
-    <SettingsContent wide className="flex h-full min-h-0 flex-col pt-16 pb-0">
+    <SettingsContent wide className="flex min-h-full flex-col pt-16 pb-6">
       <Heading className="shrink-0">Members</Heading>
       <div className="-mt-7 mb-5 flex min-w-0 shrink-0 flex-wrap items-center gap-2">
         <SearchField
@@ -663,7 +666,7 @@ export function MembersSettings() {
           </PermissionRequest>
         ) : null}
       </div>
-      <Table.Root ref={setRoot} className="min-h-0 flex-1 overflow-auto">
+      <Table.Root ref={attachTable} className="overflow-visible">
         <Table.Content
           className="border-separate border-spacing-0"
           aria-label="Organization members"

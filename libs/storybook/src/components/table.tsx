@@ -250,7 +250,7 @@ function Category({
       ref={body}
       data-state={expanded ? 'open' : 'closed'}
       data-slot="table-category"
-      className={directory ? undefined : '[&:not(:first-of-type)>tr:first-child]:table-row'}
+      className="[&:not(:first-of-type)>tr:first-child]:table-row"
     >
       <tr aria-hidden="true" className="hidden h-2">
         <td colSpan={columns} className="h-2 p-0" />

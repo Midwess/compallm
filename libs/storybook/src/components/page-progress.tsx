@@ -4,6 +4,7 @@ import { reducedMotion } from './motion'
 
 const minimumVisible = 500
 const completionSpeed = 100
+const completionGrace = 200
 const template = `<div class="bar absolute inset-y-0 left-0 bg-primary">
 <span data-progress-glow aria-hidden="true" class="absolute top-full right-0 h-4 w-160 max-w-full"
 style="background:radial-gradient(ellipse at 100% 0%,
@@ -34,8 +35,8 @@ export function PageProgress({ active }: { active: boolean }) {
     if (!active || !element) return
     const promote = (event?: Event) => {
       if (event && (event.target === element || (event as ToggleEvent).newState !== 'open')) return
-      if (element.matches(':popover-open')) element.hidePopover()
-      element.showPopover()
+      if (event && element.matches(':popover-open')) element.hidePopover()
+      if (!element.matches(':popover-open')) element.showPopover()
     }
     promote()
     document.addEventListener('toggle', promote, true)
@@ -68,7 +69,7 @@ export function PageProgress({ active }: { active: boolean }) {
           BProgress.set(reduced ? 0.35 : 0.9)
         }
       } else if (startedAt.current !== null) {
-        const remaining = Math.max(0, minimumVisible - (performance.now() - startedAt.current))
+        const remaining = Math.max(completionGrace, minimumVisible - (performance.now() - startedAt.current))
         completion.current = setTimeout(() => {
           frame = requestAnimationFrame(() => {
             BProgress.configure({ speed: reduced ? 0 : completionSpeed })

@@ -34,6 +34,14 @@ function RequestDemo() {
         >
           Start overlapping requests
         </Button>
+        <Button
+          onClick={() => {
+            request(800)
+            timers.current.push(setTimeout(() => request(800), 950))
+          }}
+        >
+          Start consecutive requests
+        </Button>
         <Button onClick={() => request(50)}>Fast request</Button>
         <Button onClick={() => request(50, true)}>Failed request</Button>
         {result ? (

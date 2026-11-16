@@ -32,6 +32,7 @@ export function InvitationPage() {
   const form = useManagedForm(
     { code: '' },
     {
+      command: true,
       resolver: zodResolver(EmailCodeInput.pick({ code: true })),
       submit: async (values) => ((await controller.confirm(values.code)) ? values : false),
     },

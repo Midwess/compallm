@@ -270,7 +270,7 @@ function MemberRoles({ member }: { member: SettingsMember }) {
       variant="neutral"
       aria-label={`Roles for ${member.name}`}
       aria-haspopup="listbox"
-      className="h-auto min-h-6 w-full max-w-30 justify-between rounded-lg px-2 py-0.5 text-left text-xs"
+      className="h-auto min-h-6 w-fit max-w-full justify-between rounded-lg px-2 py-0.5 text-left text-xs"
       onClick={() => setActivated(true)}
     >
       <span className="line-clamp-2 min-w-0 flex-1 whitespace-normal text-left">{member.role?.name ?? 'Unavailable'}</span>
@@ -352,7 +352,7 @@ function MemberRolePicker({ member }: { member: SettingsMember }) {
       >
         <Select.Trigger
           aria-label={`Roles for ${member.name}`}
-          className="h-auto min-h-6 w-full max-w-30 rounded-lg px-2 py-0.5 text-left text-xs"
+          className="h-auto min-h-6 w-fit max-w-full rounded-lg px-2 py-0.5 text-left text-xs"
         >
           <Select.Value>
             {selected === (first?.id ?? '') ? label : (roles.find((r) => r.id === selected)?.name ?? 'Unavailable')}
@@ -503,7 +503,7 @@ function MemberGroupPicker({ member }: { member: SettingsMember }) {
                 {selectedGroups.length > 1 ? ` +${selectedGroups.length - 1}` : ''}
               </ChoicePicker.Trigger>
               {open ? (
-                <ChoicePicker.Content>
+                <ChoicePicker.Content align="start">
                   <div className="p-2 pb-0">
                     <Searchbox.Root>
                       <ChoicePicker.Input aria-label={`Search groups for ${member.name}`} placeholder="Search groups…" />

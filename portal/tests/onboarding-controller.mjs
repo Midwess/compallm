@@ -151,7 +151,7 @@ test('settings preview uses confirmed values and cancelled responses cannot repl
   assert.equal(controller.store.form.get('draft.welcome'), 'Local draft')
 })
 
-test('invited new accounts receive the black first presentation and reminders use a popup', async (t) => {
+test('invited new accounts receive the full-background first presentation and reminders use a popup', async (t) => {
   let seen = false
   t.mock.method(globalThis, 'fetch', async (_url, init) => {
     const { query } = JSON.parse(init.body)

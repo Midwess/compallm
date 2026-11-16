@@ -139,7 +139,7 @@ export function OnboardingDialog({
       <Dialog.Content
         className={[
           'w-3xl max-w-[calc(100%-2rem)] rounded-3xl border-0 bg-transparent',
-          firstPresentation ? 'backdrop:bg-overlay' : 'backdrop:bg-transparent',
+          firstPresentation ? 'backdrop:bg-background' : 'backdrop:bg-transparent',
         ].join(' ')}
       >
         <Dialog.Title className="sr-only">Welcome to your workspace</Dialog.Title>

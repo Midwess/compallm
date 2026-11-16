@@ -39,28 +39,38 @@ export function InvitationPage() {
   const context = state.context
   const code = state.step === 'code'
   const unavailable = !state.loading && !context
-  const title = unavailable
-    ? 'This invitation is unavailable'
-    : code
-      ? context?.signup
-        ? 'Let’s us create your new account'
-        : 'Check your email'
-      : state.step === 'confirmed'
-        ? 'You’re ready to join'
-        : 'You’re invited'
+  const title = unavailable ? (
+    'This invitation is unavailable'
+  ) : code ? (
+    context?.signup ? (
+      'Let’s us create your new account'
+    ) : (
+      'Check your email'
+    )
+  ) : state.step === 'confirmed' ? (
+    'You’re ready to join'
+  ) : context ? (
+    <span className="grid gap-2">
+      <span>You’re invited by</span>
+      <span className="flex min-w-0 items-center gap-3">
+        <span className="line-clamp-2 min-w-0">{context.organizationName}</span>
+        <Avatar name={context.organizationName} size={32} />
+      </span>
+    </span>
+  ) : (
+    'You’re invited by'
+  )
   const description = unavailable ? (
     'Ask your team for a fresh invitation.\nWe’ll keep a place for you.'
   ) : code ? (
     <span>
       We sent a six-digit code to <span className="text-on-overlay">{context?.email}</span>.
     </span>
-  ) : (
-    'A new space, and a team to explore it with.\nLet’s get you settled in.'
-  )
+  ) : null
   return (
     <div
       data-theme="basic-dark"
-      className="dark grid min-h-dvh place-items-center bg-overlay p-4 font-sans text-foreground sm:p-8"
+      className="dark grid min-h-dvh place-items-center bg-background p-4 font-sans text-foreground sm:p-8"
     >
       <Form.Root model={form} className="w-full max-w-3xl">
         <OnboardingPanel
@@ -118,10 +128,6 @@ export function InvitationPage() {
               </div>
             ) : (
               <div className="grid gap-6">
-                <div className="flex min-w-0 items-center gap-3">
-                  <Avatar name={context.organizationName} size={40} />
-                  <p className="line-clamp-2 min-w-0 text-lg font-medium">{context.organizationName}</p>
-                </div>
                 <div className="grid gap-2">
                   <label htmlFor="invitation-recipient" className="text-sm text-muted-foreground">
                     Your email

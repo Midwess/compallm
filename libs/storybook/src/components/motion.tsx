@@ -1,6 +1,8 @@
 import {
   createElement,
   useCallback,
+  useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -29,6 +31,7 @@ export const animation = {
   pressScale: 0.98,
   switchTravel: 10,
   indicatorScale: 0.8,
+  celebration: { count: 100, ticks: 180, durationMs: 3800, spread: 90, startVelocity: 22 },
 } as const
 
 export function CubeGridMotion({ stopped = false }: { stopped?: boolean }) {
@@ -435,4 +438,75 @@ export function FieldErrorMotion({ children, ...props }: HTMLMotionProps<'div'> 
       {children}
     </motion.div>
   )
+}
+
+export function CelebrationMotion({ active }: { active: boolean }) {
+  const canvas = useRef<HTMLCanvasElement>(null)
+  const id = useId()
+  const reduced = useReducedMotion()
+  useEffect(() => {
+    const node = canvas.current
+    if (!active || reduced || !node || reducedMotion()) return
+    let disposed = false
+    let stop: (() => void) | undefined
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const cancel = () => {
+      disposed = true
+      if (timer) clearTimeout(timer)
+      stop?.()
+    }
+    preference.addEventListener('change', cancel)
+    const launch = async () => {
+      const { confetti } = await import('@tsparticles/confetti')
+      if (disposed) return
+      const sample = document.createElement('canvas').getContext('2d')
+      if (!sample) return
+      const style = getComputedStyle(node)
+      const colors = ['--primary', '--ring', '--foreground', '--warning', '--success'].map((key) => {
+        sample.clearRect(0, 0, 1, 1)
+        sample.fillStyle = style.getPropertyValue(key).trim()
+        sample.fillRect(0, 0, 1, 1)
+        return (
+          '#' +
+          [...sample.getImageData(0, 0, 1, 1).data]
+            .slice(0, 3)
+            .map((channel) => channel.toString(16).padStart(2, '0'))
+            .join('')
+        )
+      })
+      const preset = animation.celebration
+      const fire = await confetti.create(node, { count: 0, disableForReducedMotion: true })
+      const container = await fire({
+        count: disposed ? 0 : preset.count,
+        colors,
+        angle: 90,
+        spread: preset.spread,
+        startVelocity: preset.startVelocity,
+        ticks: preset.ticks,
+        position: { x: 50, y: 80 },
+        scalar: 0.8,
+        disableForReducedMotion: true,
+      })
+      stop = () => container?.destroy()
+      if (disposed) {
+        stop()
+        return
+      }
+      timer = setTimeout(stop, preset.durationMs)
+    }
+    void launch().catch(cancel)
+    return () => {
+      cancel()
+      preference.removeEventListener('change', cancel)
+    }
+  }, [active, id, reduced])
+  return active && !reduced ? (
+    <canvas
+      ref={canvas}
+      id={`celebration-${id}`}
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 size-full"
+    />
+  ) : null
 }

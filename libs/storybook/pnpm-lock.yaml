@@ -46,6 +46,9 @@ importers:
       react-hook-form:
         specifier: ^7.92.0
         version: 7.92.0(@types/react@19.3.0)(react@19.3.1)
+      react-infinite-scroll-hook:
+        specifier: 6.0.1
+        version: 6.0.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       shiki:
         specifier: ^4.6.0
         version: 4.6.0
@@ -2367,6 +2370,18 @@ packages:
       '@types/react':
         optional: true
 
+  react-infinite-scroll-hook@6.0.1:
+    resolution: { integrity: sha512-5FtJnor4Zyd3uafHCzOlXFCuhFJ2ZzLm3d9XTKbvAN6A/SH+XNFo5IOFk/T1hV5AYy+vOZYoXeH4jkufFB2JVA== }
+    peerDependencies:
+      react: '>=19'
+      react-dom: '>=19'
+
+  react-intersection-observer-hook@4.0.2:
+    resolution: { integrity: sha512-Zvlb6EL2yUZx9VZSoCdUYqGB0ie6HOiFoxo4aaHHsuzHvDm2Y69Nu+2/xYI/m7cL3BorUx+Fwi3bFrLazHL2LQ== }
+    peerDependencies:
+      react: '>=19'
+      react-dom: '>=19'
+
   react-is@17.0.2:
     resolution: { integrity: sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w== }
 
@@ -4670,6 +4685,17 @@ snapshots:
       react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
+
+  react-infinite-scroll-hook@6.0.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+    dependencies:
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
+      react-intersection-observer-hook: 4.0.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+
+  react-intersection-observer-hook@4.0.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+    dependencies:
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
 
   react-is@17.0.2: {}
 

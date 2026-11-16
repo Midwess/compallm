@@ -26,6 +26,34 @@ export class DemoSettingsController implements SettingsController {
     profile: new DemoProfileController(this.store, (file) => this.avatarUrl(file)),
     organization: new DemoOrganizationController(this.store, (file) => this.avatarUrl(file)),
     members: {
+      loadMore: async () => {
+        const state = this.store.getState()
+        if (!state.membersHasNextPage || state.membersLoading) return
+        this.store.setState({ membersLoading: true, membersLoadError: false })
+        await new Promise((resolve) => setTimeout(resolve, 400))
+        this.store.setState((state) => ({
+          members: [
+            ...state.members,
+            ...state.members.slice(0, 20).map((row, index) => ({ ...row, id: `more-${index}`, name: `More ${row.name}` })),
+          ],
+          membersLoading: false,
+          membersHasNextPage: false,
+          membersComplete: true,
+        }))
+      },
+      loadMoreInvitations: async () => {
+        if (this.store.getState().invitationsLoading) return
+        this.store.setState({ invitationsLoading: true, invitationsLoadError: false })
+        await new Promise((resolve) => setTimeout(resolve, 400))
+        this.store.setState((state) => ({
+          invitations: [
+            ...state.invitations,
+            { id: 'more-invite', email: 'more@example.com', status: 'pending', expiresAt: 2000000000 },
+          ],
+          invitationsLoading: false,
+          invitationsHasNextPage: false,
+        }))
+      },
       setMemberRole: async (id, roleId) => {
         if (this.store.getState().readonly || id === this.store.getState().currentMemberId) return false
         await new Promise((resolve) => setTimeout(resolve, 300))
@@ -325,7 +353,7 @@ export class DemoSettingsController implements SettingsController {
     members.sort((a, b) => a.name.localeCompare(b.name) * (this.store.getState().memberOrder === 'DESC_NULLS_LAST' ? -1 : 1))
     const current = this.store.getState().currentMemberId
     members.sort((a, b) => Number(b.id === current) - Number(a.id === current))
-    this.store.setState({ members, membersPage: 1 })
+    this.store.setState({ members })
   }
   copy = (value: string) => {
     void navigator.clipboard

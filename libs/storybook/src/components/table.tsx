@@ -210,7 +210,7 @@ function Category({
   columns = visibleCount || columns
   const directory = variant === 'directory'
   const timing = useTransition('disclosure')
-  const [expanded, setExpanded] = useControllableState(directory ? true : open, defaultOpen, onOpenChange)
+  const [expanded, setExpanded] = useControllableState(open, defaultOpen, onOpenChange)
   const body = useRef<HTMLTableSectionElement>(null)
   const previous = useRef(expanded)
   useLayoutEffect(() => {
@@ -265,35 +265,27 @@ translate-y-(--category-offset,0px)`,
             directory && 'rounded-lg bg-inset',
           )}
         >
-          {directory ? (
-            <div className="flex h-8 items-center gap-1.5 px-2 text-xs text-muted-foreground">
-              <span>{label}</span>
-              {count !== undefined ? <span>{count}</span> : null}
-            </div>
-          ) : (
-            <animated.button
-              type="button"
-              aria-expanded={expanded}
-              aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label}`}
-              className="flex min-h-10 w-full cursor-pointer items-center gap-2 px-2 text-left
-focus-visible:outline-2 focus-visible:outline-ring"
-              onClick={() => {
-                const next = !expanded
-                setExpanded(next)
-              }}
+          <animated.button
+            type="button"
+            aria-expanded={expanded}
+            aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label}`}
+            className={cx(
+              'flex w-full cursor-pointer items-center gap-2 px-2 text-left focus-visible:outline-2 focus-visible:outline-ring',
+              directory ? 'h-8 text-xs text-muted-foreground' : 'min-h-10',
+            )}
+            onClick={() => setExpanded(!expanded)}
+          >
+            <motion.span
+              initial={false}
+              animate={{ rotate: expanded ? 0 : animation.collapsedRotation }}
+              transition={timing}
+              className="inline-flex size-2 shrink-0"
             >
-              <motion.span
-                initial={false}
-                animate={{ rotate: expanded ? 0 : animation.collapsedRotation }}
-                transition={timing}
-                className="inline-flex size-2 shrink-0"
-              >
-                <CaretDownIcon weight="fill" aria-hidden="true" className="size-2" />
-              </motion.span>
-              <span className="min-w-0 text-xsm font-medium">{label}</span>
-              {count !== undefined ? <span className="text-xs font-normal text-muted-foreground">{count}</span> : null}
-            </animated.button>
-          )}
+              <CaretDownIcon weight="fill" aria-hidden="true" className="size-2" />
+            </motion.span>
+            <span className={directory ? 'min-w-0' : 'min-w-0 text-xsm font-medium'}>{label}</span>
+            {count !== undefined ? <span className="text-xs font-normal text-muted-foreground">{count}</span> : null}
+          </animated.button>
         </td>
         {action ? (
           <td

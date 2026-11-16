@@ -24,6 +24,7 @@ import { appearanceController } from './appearance/controller'
 import { ScrollMotion } from '@compallm/storybook/components/scroll'
 
 import { startCedarWorker } from './workers/cedar-client'
+import './request-compression'
 
 onInvalidAuthorization(authController.invalidAuthorization)
 void startCedarWorker().catch(() => undefined)

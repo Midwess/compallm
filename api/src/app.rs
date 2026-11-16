@@ -102,6 +102,13 @@ impl Hooks for App {
         #[cfg(debug_assertions)]
         let app = app.merge(dev_server.router(["/"]));
 
+        let app = app.layer(
+            tower_http::compression::CompressionLayer::new()
+                .no_deflate()
+                .no_zstd()
+                .quality(tower_http::CompressionLevel::Precise(4)),
+        );
+
         #[cfg(debug_assertions)]
         {
             tokio::select! {
@@ -216,7 +223,18 @@ impl Hooks for App {
                     di.authentication().clone(),
                     AuthenticationMiddleware::handle,
                 ))
-                .layer(DefaultBodyLimit::max(di.max_request_body_bytes())),
+                .layer::<_, std::convert::Infallible>(DefaultBodyLimit::max(
+                    di.max_request_body_bytes(),
+                ))
+                .layer::<_, std::convert::Infallible>(
+                    tower_http::decompression::RequestDecompressionLayer::new()
+                        .no_br()
+                        .no_deflate()
+                        .no_zstd(),
+                )
+                .layer(tower_http::limit::RequestBodyLimitLayer::new(
+                    di.max_request_body_bytes(),
+                )),
         );
         router = router.route(
             "/api/invitations/open",

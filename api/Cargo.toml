@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 socket2 = { version = "0.6", default-features = false }
+tower-http = { workspace = true, features = ["compression-br", "compression-gzip", "decompression-gzip", "limit"] }
 schemars.workspace = true
 compallm-validation-derive.workspace = true
 juniper.workspace = true

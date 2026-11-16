@@ -48,11 +48,15 @@ export function InvitationPage() {
       : state.step === 'confirmed'
         ? 'You’re ready to join'
         : 'You’re invited'
-  const description = unavailable
-    ? 'Ask your team for a fresh invitation.\nWe’ll keep a place for you.'
-    : code
-      ? `We sent a six-digit code to ${context?.email}.\nEnter it below to join your team.`
-      : 'A new space, and a team to explore it with.\nLet’s get you settled in.'
+  const description = unavailable ? (
+    'Ask your team for a fresh invitation.\nWe’ll keep a place for you.'
+  ) : code ? (
+    <span>
+      We sent a six-digit code to <span className="text-on-overlay">{context?.email}</span>.
+    </span>
+  ) : (
+    'A new space, and a team to explore it with.\nLet’s get you settled in.'
+  )
   return (
     <div
       data-theme="basic-dark"

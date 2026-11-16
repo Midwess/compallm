@@ -11,7 +11,7 @@ export function OnboardingPanel({
   artworkColor,
 }: {
   title: string
-  description: string
+  description: ReactNode
   progress: number
   children: ReactNode
   action: ReactNode

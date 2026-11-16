@@ -28,6 +28,10 @@ pub struct EmailInput {
     #[modify(trim, custom(str::make_ascii_lowercase))]
     #[validate(custom(function = email::validate_email, message = "Enter a valid email address, such as name@example.com."))]
     pub email: String,
+    #[graphql(default = ordinary_authentication())]
+    #[serde(default = "ordinary_authentication")]
+    #[schemars(extend("x-compallm-non-null" = true))]
+    pub invitation: Option<bool>,
     /// Cookie delivery is the default; token delivery must be requested explicitly.
     #[graphql(default = cookie_delivery())]
     #[serde(default = "cookie_delivery")]
@@ -74,7 +78,13 @@ fn cookie_delivery() -> Option<CredentialDelivery> {
 
 impl EmailInput {
     fn validate_delivery(value: &Self) -> Result<(), ValidationErrors> {
-        require_delivery(value.delivery)
+        require_delivery(value.delivery)?;
+        if value.invitation.is_none() {
+            let mut errors = ValidationErrors::new();
+            errors.add(ValidationError::new_field("invitation"));
+            return Err(errors);
+        }
+        Ok(())
     }
     fn validate_delivery_contract() -> serde_json::Value {
         serde_json::json!({})
@@ -97,4 +107,8 @@ fn require_delivery(value: Option<CredentialDelivery>) -> Result<(), ValidationE
     let mut errors = ValidationErrors::new();
     errors.add(ValidationError::new_field("delivery"));
     Err(errors)
+}
+
+fn ordinary_authentication() -> Option<bool> {
+    Some(false)
 }

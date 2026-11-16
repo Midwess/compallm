@@ -27,6 +27,7 @@ test('landing waits for Continue and confirmed acceptance retries identity witho
         },
       })
     if (query.includes('emailSignupRequest')) {
+      assert.ok(Object.values(JSON.parse(init.body).variables).some((value) => value?.invitation === true))
       writes++
       return Response.json({ data: { emailSignupRequest: { node: { lifetime: { expiresInSeconds: 600 } } } } })
     }

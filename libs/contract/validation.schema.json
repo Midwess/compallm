@@ -1582,6 +1582,14 @@
             "x-compallm-email-policy": "Enter a valid email address, such as name@example.com."
           }
         },
+        "invitation": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "default": false,
+          "x-compallm-non-null": true
+        },
         "delivery": {
           "description": "Cookie delivery is the default; token delivery must be requested explicitly.",
           "anyOf": [

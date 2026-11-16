@@ -754,7 +754,7 @@ async fn verify_browser_flow(
         serde_json::from_slice(&axum::body::to_bytes(response.into_body(), 65536).await?)?;
     assert!(body.get("errors").is_some());
     let query = format!(
-        "mutation {{ emailSignupRequest(input: {{ email: \"{email}\" }}) {{ node {{ lifetime {{ expiresInSeconds }} }} }} }}"
+        "mutation {{ emailSignupRequest(input: {{ invitation: true, email: \"{email}\" }}) {{ node {{ lifetime {{ expiresInSeconds }} }} }} }}"
     );
     let response = graph(&router, &query, invitation_cookie, true).await?;
     let updated = cookie_values(&response);

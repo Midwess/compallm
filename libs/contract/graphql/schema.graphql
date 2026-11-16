@@ -144,6 +144,7 @@ input EmailInput {
   Trimmed and ASCII-lowercased using the shared Rust email policy.
   """
   email: String!
+  invitation: Boolean = false
 }
 
 enum FilterIs {

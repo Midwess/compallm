@@ -1,6 +1,7 @@
 import { ArrowDownLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowDownLeft'
 import { Tooltip } from '../../components/feedback'
-import { useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
+import useInfiniteScroll from 'react-infinite-scroll-hook'
 import { EyeIcon } from '@phosphor-icons/react/dist/csr/Eye'
 import { EyeSlashIcon } from '@phosphor-icons/react/dist/csr/EyeSlash'
 import { UserPlusIcon } from '@phosphor-icons/react/dist/csr/UserPlus'
@@ -100,26 +101,85 @@ function InviteMember() {
 }
 
 function DirectoryDate({ value }: { value?: number | null }) {
-  const [year] = useState(() => new Date().getUTCFullYear())
+  const [now, setNow] = useState(() => Date.now())
+  const age = value ? Math.max(0, Math.floor(now / 1000) - value) : 86400
+  const recent = age < 86400
+  useEffect(() => {
+    if (!recent) return
+    const timer = setInterval(() => setNow(Date.now()), 60000)
+    return () => clearInterval(timer)
+  }, [value, recent])
   if (!value) return <span className="text-muted-foreground">—</span>
   const date = new Date(value * 1000)
-  const sameYear = date.getUTCFullYear() === year
+  const sameYear = date.getUTCFullYear() === new Date(now).getUTCFullYear()
+  const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'always' })
+  const label =
+    age < 60
+      ? 'Just now'
+      : age < 3600
+        ? relative.format(-Math.floor(age / 60), 'minute')
+        : age < 86400
+          ? relative.format(-Math.floor(age / 3600), 'hour')
+          : date.toLocaleDateString(
+              undefined,
+              sameYear ? { month: 'short', day: 'numeric' } : { month: 'short', year: 'numeric' },
+            )
   return (
     <time
       dateTime={date.toISOString()}
-      title={date.toLocaleDateString()}
+      title={date.toLocaleString()}
       className="whitespace-nowrap text-xs text-muted-foreground"
     >
-      {date.toLocaleDateString(undefined, sameYear ? { month: 'short', day: 'numeric' } : { month: 'short', year: 'numeric' })}
+      {label}
     </time>
   )
 }
 
-function Invitations() {
+function LoadMoreRows({
+  root,
+  loading,
+  more,
+  failed,
+  onLoadMore,
+  label,
+  disabled = false,
+}: {
+  root: HTMLElement | null
+  loading: boolean
+  more: boolean
+  failed: boolean
+  onLoadMore(): void
+  label: string
+  disabled?: boolean
+}) {
+  const [sentry, { rootRef }] = useInfiniteScroll({
+    loading,
+    hasNextPage: more,
+    onLoadMore,
+    disabled: disabled || failed || !root,
+    rootMargin: '0px 0px 160px 0px',
+  })
+  useEffect(() => rootRef(root), [root, rootRef])
+  if (!more) return null
+  return (
+    <Table.Row className="h-8 border-0">
+      <Table.Cell colSpan={6}>
+        <div ref={sentry} className="flex h-8 items-center justify-center" aria-busy={loading}>
+          {failed ? <Button onClick={onLoadMore}>Retry {label}</Button> : <span className="sr-only">{label}</span>}
+        </div>
+      </Table.Cell>
+    </Table.Row>
+  )
+}
+
+function Invitations({ root }: { root: HTMLElement | null }) {
+  const [open, setOpen] = useState(true)
   const c = useSettingsController()
   const invitations = useSettings((s) => s.invitations.filter((invitation) => invitation.status === 'pending'))
   const loading = useSettings((s) => s.invitationsLoading)
   const more = useSettings((s) => s.invitationsHasNextPage)
+  const failed = useSettings((s) => s.invitationsLoadError ?? false)
+  const busy = useSettings((s) => s.invitationBusy)
   if (!invitations.length) return null
   return (
     <Table.Category
@@ -127,7 +187,8 @@ function Invitations() {
       label="Invited"
       count={`${invitations.length}${more ? ' shown' : ''}`}
       columns={6}
-      defaultOpen={invitations.length > 0}
+      open={open}
+      onOpenChange={setOpen}
     >
       {invitations.map((row) => (
         <Table.Row key={row.id} className="h-14 border-0">
@@ -175,15 +236,15 @@ border-border text-ui-11 text-muted-foreground"
           </Table.Cell>
         </Table.Row>
       ))}
-      {more ? (
-        <Table.Row className="border-0">
-          <Table.Cell colSpan={6} className="px-4 py-2 lg:px-13">
-            <Button aria-busy={loading} onClick={() => c.pages.members.loadMoreInvitations?.()}>
-              More invitations
-            </Button>
-          </Table.Cell>
-        </Table.Row>
-      ) : null}
+      <LoadMoreRows
+        root={root}
+        loading={loading || busy}
+        more={more}
+        failed={failed}
+        disabled={!open}
+        onLoadMore={() => c.pages.members.loadMoreInvitations?.()}
+        label="invitations"
+      />
     </Table.Category>
   )
 }
@@ -442,12 +503,28 @@ function MemberAvatar({ member }: { member: SettingsMember }) {
   )
 }
 
-function MemberRows({ label, members, complete }: { label: string; members: SettingsMember[]; complete: boolean }) {
+function MemberRows({
+  label,
+  members,
+  complete,
+  open,
+  onOpenChange,
+  children,
+}: {
+  label: string
+  members: SettingsMember[]
+  complete: boolean
+  open: boolean
+  onOpenChange(open: boolean): void
+  children?: ReactNode
+}) {
   const currentMemberId = useSettings((s) => s.currentMemberId)
   return (
     <Table.Category
       variant="directory"
       label={label}
+      open={open}
+      onOpenChange={onOpenChange}
       columns={6}
       count={complete || members.length ? `${members.length}${complete ? '' : ' shown'}` : undefined}
     >
@@ -491,6 +568,7 @@ function MemberRows({ label, members, complete }: { label: string; members: Sett
           </Table.Cell>
         </Table.Row>
       ))}
+      {children}
     </Table.Category>
   )
 }
@@ -570,16 +648,21 @@ export function MembersSettings() {
   const order = useSettings((s) => s.memberOrder)
   const loading = useSettings((s) => s.membersLoading)
   const next = useSettings((s) => s.membersHasNextPage)
-  const previous = useSettings((s) => s.membersHasPreviousPage)
-  const page = useSettings((s) => s.membersPage)
+  const failed = useSettings((s) => s.membersLoadError ?? false)
+  const [root, setRoot] = useState<HTMLElement | null>(null)
+  const attachTable = useCallback((element: HTMLDivElement | null) => {
+    setRoot(element?.closest<HTMLElement>('[aria-label="Settings content"]') ?? null)
+  }, [])
+  const [activeOpen, setActiveOpen] = useState(true)
+  const [inactiveOpen, setInactiveOpen] = useState(true)
   const invitations = useSettings((s) => s.invitations.length)
   const confirmedComplete = useSettings((s) => s.membersComplete !== false)
-  const complete = confirmedComplete && !loading && !next && !previous && page === 1
+  const complete = confirmedComplete && !loading && !next
   const active = members.filter((member) => member.available !== false)
   const inactive = members.filter((member) => member.available === false)
   const descending = order === 'DESC_NULLS_LAST'
   return (
-    <SettingsContent wide className="flex h-full min-h-0 flex-col pt-16 pb-0">
+    <SettingsContent wide className="flex min-h-full flex-col pt-16 pb-6">
       <Heading className="shrink-0">Members</Heading>
       <div className="-mt-7 mb-5 flex min-w-0 shrink-0 flex-wrap items-center gap-2">
         <SearchField
@@ -602,7 +685,17 @@ export function MembersSettings() {
           </PermissionRequest>
         ) : null}
       </div>
-      <Table.Root className="min-h-0 flex-1 overflow-auto">
+      <Table.Root
+        ref={attachTable}
+        className="overflow-visible
+[&_[data-slot=table-category-header]>td]:rounded-none [&_[data-slot=table-category-header]>td]:bg-transparent
+[&_[data-slot=table-category-header]>td]:before:pointer-events-none
+[&_[data-slot=table-category-header]>td]:before:absolute [&_[data-slot=table-category-header]>td]:before:inset-y-0
+[&_[data-slot=table-category-header]>td]:before:-inset-x-4 lg:[&_[data-slot=table-category-header]>td]:before:-inset-x-12
+[&_[data-slot=table-category-header]>td]:before:rounded-lg
+[&_[data-slot=table-category-header]>td]:before:bg-inset [&_[data-slot=table-category-header]>td]:before:content-['']
+[&_[data-slot=table-category-header]_button]:relative"
+      >
         <Table.Content
           className="border-separate border-spacing-0"
           aria-label="Organization members"
@@ -611,8 +704,8 @@ export function MembersSettings() {
             { id: 'name' },
             { id: 'email' },
             { id: 'role', className: 'w-1/6', visibilityClassName: 'hidden md:table-cell' },
-            { id: 'groups', className: 'w-1/6', visibilityClassName: 'hidden md:table-cell' },
-            { id: 'joined', className: 'w-20', visibilityClassName: 'hidden lg:table-cell' },
+            { id: 'groups', className: 'w-1/6 lg:w-[calc(100%/6-1.5rem)]', visibilityClassName: 'hidden md:table-cell' },
+            { id: 'joined', className: 'w-26', visibilityClassName: 'hidden lg:table-cell' },
             { id: 'actions', className: 'w-12' },
           ]}
         >
@@ -633,23 +726,50 @@ export function MembersSettings() {
                 Role
               </Table.Head>
               <Table.Head column="groups">Groups</Table.Head>
-              <Table.Head column="joined">Joined</Table.Head>
+              <Table.Head column="joined">Time</Table.Head>
               <Table.Head column="actions">
                 <span className="sr-only">Actions</span>
               </Table.Head>
             </Table.Row>
           </Table.Header>
-          <Invitations key={invitations ? 'populated' : 'empty'} />
-          {active.length || !inactive.length ? <MemberRows label="Active" members={active} complete={complete} /> : null}
-          {inactive.length ? <MemberRows label="Inactive" members={inactive} complete={complete} /> : null}
+          <Invitations root={root} />
+          {active.length || !inactive.length ? (
+            <MemberRows label="Active" members={active} complete={complete} open={activeOpen} onOpenChange={setActiveOpen}>
+              {!inactive.length ? (
+                <LoadMoreRows
+                  root={root}
+                  loading={loading}
+                  more={next}
+                  failed={failed}
+                  disabled={!activeOpen}
+                  onLoadMore={() => c.pages.members.loadMore?.()}
+                  label="members"
+                />
+              ) : null}
+            </MemberRows>
+          ) : null}
+          {inactive.length ? (
+            <MemberRows
+              label="Inactive"
+              members={inactive}
+              complete={complete}
+              open={inactiveOpen}
+              onOpenChange={setInactiveOpen}
+            >
+              <LoadMoreRows
+                root={root}
+                loading={loading}
+                more={next}
+                failed={failed}
+                disabled={!inactiveOpen}
+                onLoadMore={() => c.pages.members.loadMore?.()}
+                label="members"
+              />
+            </MemberRows>
+          ) : null}
         </Table.Content>
       </Table.Root>
       {!members.length && !loading ? <Table.Empty>No members match your search.</Table.Empty> : null}
-      <div className="flex shrink-0 items-center gap-2 py-4">
-        {next || previous ? <span className="text-xs text-muted-foreground">Page {page}</span> : null}
-        {previous ? <Button onClick={() => c.pages.members.previousPage?.()}>Previous page</Button> : null}
-        {next ? <Button onClick={() => c.pages.members.nextPage?.()}>Next page</Button> : null}
-      </div>
     </SettingsContent>
   )
 }

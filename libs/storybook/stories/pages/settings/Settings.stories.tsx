@@ -538,3 +538,40 @@ export const MembershipInvitations: Story = {
 }
 
 export const InviteDialog: Story = { render: () => <Demo page="members" initial={{ invitationsOpen: true }} /> }
+
+export const MembersScrollFailure: Story = {
+  render: () => <Demo page="members" initial={{ membersHasNextPage: true, membersComplete: false, membersLoadError: true }} />,
+}
+export const InvitationsScroll: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      initial={{
+        invitations: Array.from({ length: 20 }, (_, index) => ({
+          id: `invite-${index}`,
+          email: `person${index}@example.com`,
+          status: 'pending',
+          expiresAt: 2000000000,
+        })),
+        invitationsHasNextPage: true,
+      }}
+    />
+  ),
+}
+
+export const RecentInvitationDates: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      initial={{
+        invitations: [30, 300, 3600, 7200, 90000].map((age, index) => ({
+          id: `recent-${index}`,
+          email: `person${index}@example.com`,
+          status: 'pending',
+          issuedAt: Math.floor(Date.now() / 1000) - age,
+          expiresAt: Math.floor(Date.now() / 1000) - age + 604800,
+        })),
+      }}
+    />
+  ),
+}

@@ -59,7 +59,7 @@ test('member pages use server search and discard obsolete reads while retaining 
     assert.equal(requests[0].variables.v1, 20)
     assert.equal(store.getState().members[0].role.id, 'member')
     assert.equal(store.getState().members[0].groups.length, 2)
-    controller.nextPage()
+    controller.loadMore()
     await tick()
     assert.ok(JSON.stringify(requests[1]).includes('cursor-first'))
     store.setState({ query: 'new' })
@@ -76,7 +76,6 @@ test('member pages use server search and discard obsolete reads while retaining 
     requests[1].resolve(Response.json(page('old')))
     await tick()
     assert.equal(store.getState().members[0].id, 'new')
-    assert.equal(store.getState().membersPage, 1)
     store.setState({ query: 'unsubmitted', filters: { memberRole: '123' } })
     await tick()
     assert.ok(JSON.stringify(requests[3]).includes('123'))
@@ -92,7 +91,7 @@ test('member pages use server search and discard obsolete reads while retaining 
   }
 })
 
-test('failed page reads retain rows and pagination position and cancel after leaving', async () => {
+test('failed append retains rows and its confirmed cursor for retry and cancellation', async () => {
   const original = globalThis.fetch
   let requests = 0,
     pending
@@ -113,13 +112,13 @@ test('failed page reads retain rows and pagination position and cancel after lea
   try {
     controller.start()
     await tick()
-    controller.nextPage()
+    controller.loadMore()
     await tick()
     assert.equal(store.getState().members[0].id, 'confirmed')
-    assert.equal(store.getState().membersPage, 1)
-    assert.equal(store.getState().membersHasPreviousPage, false)
     assert.equal(store.getState().membersLoading, false)
-    controller.nextPage()
+    assert.equal(store.getState().membersLoadError, true)
+    assert.equal(store.getState().membersEndCursor, 'cursor-confirmed')
+    controller.loadMore()
     await tick()
     controller.cancel()
     assert.equal(pending.signal.aborted, true)
@@ -453,4 +452,92 @@ test('invitation text splits all supported separators and rejects invalid recipi
   assert.equal(result.invitations.length, 5)
   assert.equal(result.invitations[0].email, 'one@example.com')
   assert.equal(invitationTextSchema.safeParse({ email: 'valid@example.com;broken' }).success, false)
+})
+
+test('scroll appends deduplicate rows, gate concurrent reads, and reset on ordering changes', async (t) => {
+  const requests = []
+  t.mock.method(globalThis, 'fetch', (_url, init) => {
+    const body = JSON.parse(init.body)
+    if (body.query.includes('invitations'))
+      return Promise.resolve(
+        Response.json({ data: { invitations: { edges: [], pageInfo: { hasNextPage: false, endCursor: null } } } }),
+      )
+    return new Promise((resolve) => requests.push({ ...body, resolve, signal: init.signal }))
+  })
+  const store = createSettingsStore()
+  const controller = new MembersController(store)
+  t.after(controller.cancel)
+  controller.start()
+  await tick()
+  requests[0].resolve(Response.json(page('first', true)))
+  await tick()
+  controller.loadMore()
+  controller.loadMore()
+  await tick()
+  assert.equal(requests.length, 2)
+  const second = page('second')
+  second.data.members.edges.unshift(page('first').data.members.edges[0])
+  requests[1].resolve(Response.json(second))
+  await tick()
+  assert.deepEqual(
+    store.getState().members.map((row) => row.id),
+    ['first', 'second'],
+  )
+  assert.equal(store.getState().membersComplete, true)
+  controller.loadMore()
+  await tick()
+  assert.equal(requests.length, 2)
+  controller.setOrder('DESC_NULLS_LAST')
+  await tick()
+  assert.ok(!JSON.stringify(requests[2].variables).includes('cursor-'))
+  requests[2].resolve(Response.json(page('sorted')))
+  await tick()
+  assert.deepEqual(
+    store.getState().members.map((row) => row.id),
+    ['sorted'],
+  )
+})
+
+test('invitation scrolling has an independent cursor, one active read, and recoverable append failure', async (t) => {
+  const requests = []
+  t.mock.method(globalThis, 'fetch', (_url, init) => {
+    const body = JSON.parse(init.body)
+    if (!body.query.includes('invitations')) return Promise.resolve(Response.json(page('member')))
+    return new Promise((resolve, reject) => requests.push({ ...body, resolve, reject }))
+  })
+  const invitePage = (id, next) =>
+    Response.json({
+      data: {
+        invitations: {
+          edges: [{ node: { id, email: id + '@example.com', status: 'pending', expiresAt: 2000000000 } }],
+          pageInfo: { endCursor: 'invite-' + id, hasNextPage: next },
+        },
+      },
+    })
+  const store = createSettingsStore()
+  const controller = new MembersController(store)
+  t.after(controller.cancel)
+  controller.start()
+  await tick()
+  requests[0].resolve(invitePage('first', true))
+  await tick()
+  controller.loadMoreInvitations()
+  controller.loadMoreInvitations()
+  await tick()
+  assert.equal(requests.length, 2)
+  requests[1].reject(new Error('offline'))
+  await tick()
+  assert.equal(store.getState().invitationsLoadError, true)
+  assert.equal(store.getState().invitations[0].id, 'first')
+  controller.loadMoreInvitations()
+  await tick()
+  assert.ok(JSON.stringify(requests[2].variables).includes('invite-first'))
+  requests[2].resolve(invitePage('second', false))
+  await tick()
+  assert.deepEqual(
+    store.getState().invitations.map((row) => row.id),
+    ['first', 'second'],
+  )
+  assert.equal(store.getState().invitationsLoadError, false)
+  assert.equal(store.getState().members[0].id, 'member')
 })

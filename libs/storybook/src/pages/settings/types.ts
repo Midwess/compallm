@@ -172,11 +172,11 @@ export interface SettingsState {
   currentMemberId?: string
   membersComplete?: boolean
   invitationsOpen?: boolean
+  membersLoadError?: boolean
+  invitationsLoadError?: boolean
   membersLoading: boolean
   membersHasNextPage: boolean
-  membersHasPreviousPage: boolean
   membersEndCursor: string | null
-  membersPage: number
   memberOrder: 'ASC_NULLS_LAST' | 'DESC_NULLS_LAST'
   invitations: (Pick<Invitation, 'id' | 'email' | 'status' | 'expiresAt'> & Partial<Pick<Invitation, 'issuedAt'>>)[]
   invitationsLoading: boolean
@@ -250,8 +250,7 @@ export interface SettingsPageControllers {
     setMemberGroups?(memberId: string, groupIds: string[]): Promise<string[] | false>
     search?(query: string): void
     setMemberRole(memberId: string, roleId: string): void | false | Promise<void | false>
-    nextPage?(): void
-    previousPage?(): void
+    loadMore?(): void
     setOrder?(value: SettingsState['memberOrder']): void
     invite?(email: string): Promise<boolean>
     resend?(id: string): Promise<boolean>

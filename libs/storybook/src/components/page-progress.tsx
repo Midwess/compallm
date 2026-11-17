@@ -1,38 +1,121 @@
-import { BProgress } from '@bprogress/core'
-import { useLayoutEffect, useRef } from 'react'
-import { reducedMotion } from './motion'
-
-const minimumVisible = 500
-const completionSpeed = 100
-const completionGrace = 200
-const template = `<div class="bar absolute inset-y-0 left-0 bg-primary">
-<span data-progress-glow aria-hidden="true" class="absolute top-full right-0 h-4 w-160 max-w-full"
-style="background:radial-gradient(ellipse at 100% 0%,
-color-mix(in srgb,var(--primary) 85%,transparent) 0%,
-color-mix(in srgb,var(--primary) 35%,transparent) 30%,transparent 75%)"></span>
-</div>`
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
+import { animation } from './motion'
+import type { ProgressMessage, ProgressPhase } from './progress-shader'
 
 export function PageProgress({ active }: { active: boolean }) {
   const host = useRef<HTMLDivElement>(null)
+  const surface = useRef<HTMLDivElement>(null)
+  const worker = useRef<Worker | null>(null)
   const startedAt = useRef<number | null>(null)
-  const completion = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-
+  const [phase, setPhase] = useState<ProgressPhase>('idle')
+  const [ready, setReady] = useState(false)
+  const reduced = useReducedMotion()
+  const current = useRef({ phase, reduced: !!reduced })
   useLayoutEffect(() => {
-    const element = host.current
-    if (!element) return
+    current.current = { phase, reduced: !!reduced }
+  }, [phase, reduced])
+
+  useEffect(() => {
+    const element = surface.current
+    if (!element || !HTMLCanvasElement.prototype.transferControlToOffscreen || typeof Worker === 'undefined') return
+    const canvas = document.createElement('canvas')
+    canvas.className = 'absolute inset-x-0 top-0 h-10 w-full'
+    element.append(canvas)
+    let instance: Worker
+    try {
+      instance = new Worker(new URL('./progress-shader.ts', import.meta.url), { type: 'module' })
+      worker.current = instance
+      const offscreen = canvas.transferControlToOffscreen()
+      instance.postMessage({ type: 'init', canvas: offscreen } satisfies ProgressMessage, [offscreen])
+    } catch {
+      worker.current?.terminate()
+      worker.current = null
+      canvas.remove()
+      return
+    }
+    const send = (message: ProgressMessage) => instance.postMessage(message)
+    const state = () => send({ type: 'state', ...current.current, hidden: document.hidden })
+    const fail = () => {
+      setReady(false)
+      instance.terminate()
+      if (worker.current === instance) worker.current = null
+      canvas.remove()
+    }
+    instance.onerror = fail
+    instance.onmessage = (event: MessageEvent<{ type: string }>) => {
+      if (event.data.type === 'ready') {
+        setReady(true)
+        state()
+      } else fail()
+    }
+    const sample = document.createElement('canvas').getContext('2d', { willReadFrequently: true })
+    const theme = () => {
+      if (!sample) return
+      sample.clearRect(0, 0, 1, 1)
+      sample.fillStyle = getComputedStyle(element).getPropertyValue('--primary').trim()
+      sample.fillRect(0, 0, 1, 1)
+      send({
+        type: 'theme',
+        color: Array.from(sample.getImageData(0, 0, 1, 1).data)
+          .slice(0, 3)
+          .map((v) => v / 255),
+      })
+    }
+    const resize = new ResizeObserver(([entry]) =>
+      send({ type: 'resize', width: Math.max(1, Math.round(entry.contentRect.width)) }),
+    )
+    resize.observe(element)
+    const observer = new MutationObserver(theme)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'data-theme', 'data-appearance'],
+    })
+    document.addEventListener('visibilitychange', state)
+    theme()
+    state()
     return () => {
-      if (element.matches(':popover-open')) element.hidePopover()
-      clearTimeout(completion.current)
-      BProgress.configure({ trickle: false })
-      BProgress.set(1)
-      BProgress.remove()
-      startedAt.current = null
+      instance.terminate()
+      worker.current = null
+      resize.disconnect()
+      observer.disconnect()
+      document.removeEventListener('visibilitychange', state)
+      canvas.remove()
     }
   }, [])
 
+  useEffect(() => {
+    worker.current?.postMessage({ type: 'state', phase, reduced: !!reduced, hidden: document.hidden } satisfies ProgressMessage)
+  }, [phase, reduced])
+
+  useLayoutEffect(() => {
+    let finish: ReturnType<typeof setTimeout> | undefined
+    let hide: ReturnType<typeof setTimeout> | undefined
+    if (active) {
+      startedAt.current ??= performance.now()
+      const frame = requestAnimationFrame(() => setPhase('loading'))
+      return () => cancelAnimationFrame(frame)
+    } else if (startedAt.current !== null) {
+      finish = setTimeout(
+        () => {
+          setPhase('finishing')
+          hide = setTimeout(() => {
+            setPhase('idle')
+            startedAt.current = null
+          }, animation.progress.fade)
+        },
+        Math.max(animation.progress.grace, animation.progress.minimumVisible - (performance.now() - startedAt.current)),
+      )
+    }
+    return () => {
+      clearTimeout(finish)
+      clearTimeout(hide)
+    }
+  }, [active])
+
   useLayoutEffect(() => {
     const element = host.current
-    if (!active || !element) return
+    if (!element || phase === 'idle') return
     const promote = (event?: Event) => {
       if (event && (event.target === element || (event as ToggleEvent).newState !== 'open')) return
       if (event && element.matches(':popover-open')) element.hidePopover()
@@ -40,61 +123,37 @@ export function PageProgress({ active }: { active: boolean }) {
     }
     promote()
     document.addEventListener('toggle', promote, true)
-    return () => document.removeEventListener('toggle', promote, true)
-  }, [active])
-
-  useLayoutEffect(() => {
-    if (!host.current) return
-    clearTimeout(completion.current)
-    let frame = requestAnimationFrame(() => {
-      if (!host.current) return
-      const reduced = reducedMotion()
-      BProgress.configure({
-        parent: host.current,
-        template,
-        showSpinner: false,
-        trickle: false,
-        easing: 'linear',
-        positionUsing: 'width',
-        minimum: 0.08,
-        maximum: 1,
-        indeterminate: false,
-        speed: reduced ? 0 : minimumVisible,
-      })
-      if (active) {
-        if (startedAt.current === null || !BProgress.isStarted()) {
-          BProgress.remove()
-          startedAt.current = performance.now()
-          BProgress.start()
-          BProgress.set(reduced ? 0.35 : 0.9)
-        }
-      } else if (startedAt.current !== null) {
-        const remaining = Math.max(completionGrace, minimumVisible - (performance.now() - startedAt.current))
-        completion.current = setTimeout(() => {
-          frame = requestAnimationFrame(() => {
-            BProgress.configure({ speed: reduced ? 0 : completionSpeed })
-            BProgress.done()
-            startedAt.current = null
-          })
-        }, remaining)
-      }
-    })
     return () => {
-      cancelAnimationFrame(frame)
-      clearTimeout(completion.current)
+      document.removeEventListener('toggle', promote, true)
+      if (element.matches(':popover-open')) element.hidePopover()
     }
-  }, [active])
+  }, [phase])
 
   return (
     <div
       ref={host}
       popover="manual"
       data-ui="page-progress"
-      className="pointer-events-none fixed inset-x-0 top-0 bottom-auto z-50 m-0 h-0.5 w-screen max-w-none
-origin-top scale-y-[0.9775] overflow-visible border-0 bg-transparent p-0"
+      className="pointer-events-none fixed inset-x-0 top-0 bottom-auto z-50 m-0 h-10 w-screen max-w-none
+      overflow-hidden border-0 bg-transparent p-0"
       role="progressbar"
       aria-label="Loading requests"
-      aria-hidden={!active}
-    />
+      aria-hidden={phase === 'idle'}
+    >
+      <div ref={surface} className="absolute inset-0" hidden={phase === 'idle' || !ready} />
+      <motion.div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-0.5 origin-left bg-primary will-change-transform"
+        initial={false}
+        hidden={ready}
+        animate={{ scaleX: phase === 'idle' ? 0 : phase === 'finishing' ? 1 : 0.9, opacity: phase === 'idle' ? 0 : 1 }}
+        transition={{
+          duration: reduced
+            ? 0
+            : (phase === 'finishing' ? animation.progress.finish : animation.progress.minimumVisible) / 1000,
+          ease: [...animation.progress.ease],
+        }}
+      />
+    </div>
   )
 }

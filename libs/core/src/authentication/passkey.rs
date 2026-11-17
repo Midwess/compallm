@@ -475,6 +475,7 @@ impl PasskeyService {
         &self,
         token: &str,
         response: PublicKeyCredential,
+        metadata: super::SessionMetadata,
     ) -> Result<UserTokens, AuthError> {
         self.auth.latest_dictionary().await?;
         crate::transaction!(db, {
@@ -494,6 +495,7 @@ impl PasskeyService {
                     self.auth.latest_dictionary().await?,
                     "passkey",
                     Some(credential_id),
+                    metadata,
                 )
                 .await?;
             if !self.repository.delete_challenge(ceremony).await? {

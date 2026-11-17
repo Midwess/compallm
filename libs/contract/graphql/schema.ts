@@ -577,11 +577,17 @@ export interface Session {
   avatarUrl: Scalars['String'] | null
   /** Login session identity, serialized as a string without numeric precision loss. */
   id: Scalars['ID']
+  /** IP observed by the API connection at sign-in; it may belong to a proxy or VPN. */
+  ipAddress: Scalars['String'] | null
+  /** Approximate sign-in location from IP geolocation, never device GPS. */
+  location: Scalars['String'] | null
   /** Organization selected for this verified session. */
   organizationId: Scalars['ID']
   /** Current organization name. */
   organizationName: Scalars['String']
   passkey: PasskeySummary | null
+  /** User-Agent captured at sign-in, used only for session recognition. */
+  userAgent: Scalars['String'] | null
   /** User owning this verified session. */
   userId: Scalars['ID']
   __typename: 'Session'
@@ -1571,11 +1577,17 @@ export interface SessionGenqlSelection {
   avatarUrl?: boolean | number
   /** Login session identity, serialized as a string without numeric precision loss. */
   id?: boolean | number
+  /** IP observed by the API connection at sign-in; it may belong to a proxy or VPN. */
+  ipAddress?: boolean | number
+  /** Approximate sign-in location from IP geolocation, never device GPS. */
+  location?: boolean | number
   /** Organization selected for this verified session. */
   organizationId?: boolean | number
   /** Current organization name. */
   organizationName?: boolean | number
   passkey?: PasskeySummaryGenqlSelection
+  /** User-Agent captured at sign-in, used only for session recognition. */
+  userAgent?: boolean | number
   /** User owning this verified session. */
   userId?: boolean | number
   __typename?: boolean | number

@@ -1085,6 +1085,16 @@ type Session {
   id: ID!
 
   """
+  IP observed by the API connection at sign-in; it may belong to a proxy or VPN.
+  """
+  ipAddress: String
+
+  """
+  Approximate sign-in location from IP geolocation, never device GPS.
+  """
+  location: String
+
+  """
   Organization selected for this verified session.
   """
   organizationId: ID!
@@ -1094,6 +1104,11 @@ type Session {
   """
   organizationName: String!
   passkey: PasskeySummary
+
+  """
+  User-Agent captured at sign-in, used only for session recognition.
+  """
+  userAgent: String
 
   """
   User owning this verified session.

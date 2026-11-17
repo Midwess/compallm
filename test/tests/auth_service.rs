@@ -1215,7 +1215,14 @@ impl Fixture {
             Box<dyn compallm_core::persistent::storage::org_space::OrganizationStorage>,
         >,
     ) -> axum::Router {
-        self.graphql_with_org_repository(db_context, storage, profile_storage, org_storage, false)
+        self.graphql_with_org_repository(
+            db_context,
+            storage,
+            profile_storage,
+            org_storage,
+            false,
+            None,
+        )
     }
 
     fn graphql_with_org_repository(
@@ -1229,6 +1236,7 @@ impl Fixture {
             Box<dyn compallm_core::persistent::storage::org_space::OrganizationStorage>,
         >,
         real_organizations: bool,
+        geolocation: Option<compallm_api::geolocation::LocationClient>,
     ) -> axum::Router {
         use axum::{
             Extension, Json, Router,
@@ -1298,7 +1306,8 @@ impl Fixture {
                 public_origin: "http://localhost".into(),
             },
         )
-        .unwrap();
+        .unwrap()
+        .with_geolocation(Arc::new(geolocation.unwrap_or_default()));
         Router::new().route(
             "/api/graphql",
             post(
@@ -1436,7 +1445,10 @@ impl Fixture {
         claims: &EmailOtpAccessToken,
         code: &str,
     ) -> Result<UserTokens, AuthError> {
-        self.repo.1.scope(self.service().signin(claims, code)).await
+        self.repo
+            .1
+            .scope(self.service().signin(claims, code, Default::default()))
+            .await
     }
 
     async fn signup_in_transaction(
@@ -1444,7 +1456,9 @@ impl Fixture {
         claims: &EmailOtpAccessToken,
         code: &str,
     ) -> Result<UserTokens, AuthError> {
-        self.service().signup(claims, code).await
+        self.service()
+            .signup(claims, code, Default::default())
+            .await
     }
 
     async fn register(&self, email: &str) -> Result<User, compallm_core::user::RegistrationError> {
@@ -4276,7 +4290,45 @@ fn response_cookies(response: &axum::response::Response) -> String {
 #[tokio::test]
 async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let router = fixture.graphql();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let database = Arc::new(
+        compallm_geolocation::CityDatabase::open(std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/GeoIP2-City-Test.mmdb"
+        )))
+        .unwrap(),
+    );
+    let location_server = tokio::spawn(async move {
+        axum::serve(listener, compallm_geolocation::router(database))
+            .await
+            .unwrap();
+    });
+    let location_client =
+        compallm_api::geolocation::LocationClient::new(&format!("http://{address}")).unwrap();
+    let router = fixture
+        .graphql_with_org_repository(
+            fixture.repo.1.clone(),
+            None,
+            None,
+            None,
+            false,
+            Some(location_client),
+        )
+        .layer(axum::middleware::from_fn(
+            |mut request: axum::extract::Request, next: axum::middleware::Next| async move {
+                request.extensions_mut().insert(axum::extract::ConnectInfo(
+                    "81.2.69.160:12345".parse::<std::net::SocketAddr>().unwrap(),
+                ));
+                request
+                    .headers_mut()
+                    .insert("user-agent", "recognizable-test-browser".parse().unwrap());
+                request
+                    .headers_mut()
+                    .insert("x-forwarded-for", "198.51.100.1".parse().unwrap());
+                next.run(request).await
+            },
+        ));
     let response = graphql_operation(&router,
         "mutation($input:EmailInput!){emailSigninRequest(input:$input){node{token lifetime{expiresInSeconds}}}}",
         serde_json::json!({"input":{"email":"james@midwess.com","delivery":"TOKEN"}}),Some("invalid-bearer"),None,false).await;
@@ -4298,12 +4350,55 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     let access = tokens["accessToken"].as_str().unwrap();
     let refresh = tokens["refreshToken"].as_str().unwrap();
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
+    let signed = UserAccessToken::try_from(decode_token(access, SECRET).unwrap()).unwrap();
+    let metadata = signed.session.metadata.clone();
+    assert_eq!(metadata.location.as_deref(), Some("London, United Kingdom"));
+    assert_eq!(metadata.ip_address, Some("81.2.69.160".parse().unwrap()));
+    assert_eq!(
+        metadata.user_agent.as_deref(),
+        Some("recognizable-test-browser")
+    );
+    assert_eq!(
+        fixture.repo.0.lock().unwrap().sessions[&signed.session.id].metadata,
+        metadata
+    );
+    assert_eq!(
+        RefreshToken::try_from(decode_token(refresh, SECRET).unwrap())
+            .unwrap()
+            .session
+            .metadata,
+        metadata
+    );
+    let info = graphql_body(
+        graphql_operation(
+            &router,
+            "{session{node{ipAddress userAgent location}}}",
+            serde_json::json!({}),
+            Some(access),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(info["data"]["session"]["node"]["ipAddress"], "81.2.69.160");
+    assert_eq!(
+        info["data"]["session"]["node"]["location"],
+        "London, United Kingdom"
+    );
+    assert_eq!(
+        info["data"]["session"]["node"]["userAgent"],
+        "recognizable-test-browser"
+    );
+
     assert_eq!(
         graphql_request(&router, Some(access), None, false)
             .await
             .status(),
         200
     );
+    location_server.abort();
+    let _ = location_server.await;
     let response = graphql_operation(
         &router,
         "mutation{sessionRefresh{node{accessToken refreshToken}}}",
@@ -4315,10 +4410,61 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     .await;
     assert!(!response.headers().contains_key("set-cookie"));
     let renewed = graphql_body(response).await;
+    let renewed_refresh = renewed["data"]["sessionRefresh"]["node"]["refreshToken"]
+        .as_str()
+        .unwrap();
+    assert_eq!(
+        RefreshToken::try_from(decode_token(renewed_refresh, SECRET).unwrap())
+            .unwrap()
+            .session
+            .metadata,
+        metadata
+    );
     let access = renewed["data"]["sessionRefresh"]["node"]["accessToken"]
         .as_str()
         .unwrap();
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
+    let signed = UserAccessToken::try_from(decode_token(access, SECRET).unwrap()).unwrap();
+    let metadata = signed.session.metadata.clone();
+    assert_eq!(metadata.location.as_deref(), Some("London, United Kingdom"));
+    assert_eq!(metadata.ip_address, Some("81.2.69.160".parse().unwrap()));
+    assert_eq!(
+        metadata.user_agent.as_deref(),
+        Some("recognizable-test-browser")
+    );
+    assert_eq!(
+        fixture.repo.0.lock().unwrap().sessions[&signed.session.id].metadata,
+        metadata
+    );
+    assert_eq!(
+        RefreshToken::try_from(decode_token(refresh, SECRET).unwrap())
+            .unwrap()
+            .session
+            .metadata,
+        metadata
+    );
+    let info = graphql_body(
+        graphql_operation(
+            &router,
+            "{session{node{ipAddress userAgent location}}}",
+            serde_json::json!({}),
+            Some(access),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(info["data"]["session"]["node"]["ipAddress"], "81.2.69.160");
+    assert_eq!(
+        info["data"]["session"]["node"]["location"],
+        "London, United Kingdom"
+    );
+    assert_eq!(
+        info["data"]["session"]["node"]["userAgent"],
+        "recognizable-test-browser"
+    );
+
     let response = graphql_operation(
         &router,
         "mutation{sessionRevoke{node}}",
@@ -4827,7 +4973,7 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
             .await
             .is_err()
     );
-    let router = fixture.graphql_with_org_repository(db.clone(), None, None, None, true);
+    let router = fixture.graphql_with_org_repository(db.clone(), None, None, None, true, None);
     let policy = format!(
         r#"permit(principal, action == Compallm::Action::"model.read", resource == Compallm::Organization::"{}");"#,
         organization.id
@@ -5680,7 +5826,10 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
     )
     .unwrap();
     let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
-    let tokens = auth.signin(&otp, &otp.code).await.unwrap();
+    let tokens = auth
+        .signin(&otp, &otp.code, Default::default())
+        .await
+        .unwrap();
     let actor = auth
         .authenticate_access(&tokens.access_token)
         .await
@@ -5753,7 +5902,7 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
     missing_handle.response.user_handle = None;
     assert!(
         service
-            .authentication_finish(&start.token, missing_handle)
+            .authentication_finish(&start.token, missing_handle, Default::default())
             .await
             .is_err()
     );
@@ -5761,7 +5910,7 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
     wrong_handle.response.user_handle = Some(uuid::Uuid::new_v4().as_bytes().to_vec().into());
     assert!(
         service
-            .authentication_finish(&start.token, wrong_handle)
+            .authentication_finish(&start.token, wrong_handle, Default::default())
             .await
             .is_err()
     );
@@ -5769,17 +5918,17 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
     unknown_credential.raw_id = vec![1, 2, 3, 4].into();
     assert!(
         service
-            .authentication_finish(&start.token, unknown_credential)
+            .authentication_finish(&start.token, unknown_credential, Default::default())
             .await
             .is_err()
     );
     let login = service
-        .authentication_finish(&start.token, assertion.clone())
+        .authentication_finish(&start.token, assertion.clone(), Default::default())
         .await
         .unwrap();
     assert!(
         service
-            .authentication_finish(&start.token, assertion)
+            .authentication_finish(&start.token, assertion, Default::default())
             .await
             .is_err()
     );
@@ -5800,7 +5949,7 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
         .unwrap();
     assert!(
         service
-            .authentication_finish(&reauth.token, assertion.clone())
+            .authentication_finish(&reauth.token, assertion.clone(), Default::default())
             .await
             .is_err()
     );
@@ -5845,7 +5994,7 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
     );
     assert!(
         service
-            .authentication_finish(&pending.token, pending_assertion)
+            .authentication_finish(&pending.token, pending_assertion, Default::default())
             .await
             .is_err()
     );
@@ -5869,7 +6018,10 @@ async fn passkey_management_requires_grant_and_rejects_foreign_or_expired_ceremo
     )
     .unwrap();
     let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
-    let tokens = auth.signin(&otp, &otp.code).await.unwrap();
+    let tokens = auth
+        .signin(&otp, &otp.code, Default::default())
+        .await
+        .unwrap();
     let actor = auth
         .authenticate_access(&tokens.access_token)
         .await
@@ -5959,7 +6111,10 @@ async fn email_passkey_change_is_purpose_bound_session_bound_and_preserves_login
             .with_passkey_repository(repository),
     ));
     let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
-    let tokens = auth.signin(&otp, &otp.code).await.unwrap();
+    let tokens = auth
+        .signin(&otp, &otp.code, Default::default())
+        .await
+        .unwrap();
     let actor = auth
         .authenticate_access(&tokens.access_token)
         .await
@@ -5972,7 +6127,11 @@ async fn email_passkey_change_is_purpose_bound_session_bound_and_preserves_login
         .try_into()
         .unwrap();
     let code = email.lock().unwrap().clone();
-    assert!(auth.signin(&proof, &code).await.is_err());
+    assert!(
+        auth.signin(&proof, &code, Default::default())
+            .await
+            .is_err()
+    );
     assert!(
         auth.passkey_change_confirm(&actor, &otp, &otp.code)
             .await
@@ -6057,7 +6216,10 @@ async fn discoverable_passkey_ceremony_accepts_either_account_without_an_email_b
             }
         }
         let otp = EmailOtpAccessToken::new(account.email.clone()).unwrap();
-        let login = auth.signin(&otp, &otp.code).await.unwrap();
+        let login = auth
+            .signin(&otp, &otp.code, Default::default())
+            .await
+            .unwrap();
         let actor = auth.authenticate_access(&login.access_token).await.unwrap();
         let grant = management_grant(&actor);
         let enrollment = service.registration_start(&actor, &grant).await.unwrap();
@@ -6088,7 +6250,7 @@ async fn discoverable_passkey_ceremony_accepts_either_account_without_an_email_b
             )
             .unwrap();
         let login = service
-            .authentication_finish(&start.token, assertion)
+            .authentication_finish(&start.token, assertion, Default::default())
             .await
             .unwrap();
         let actor = auth.authenticate_access(&login.access_token).await.unwrap();
@@ -6101,7 +6263,10 @@ async fn graphql_passkey_change_cookie_preserves_login_and_cannot_authorize_sess
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let auth = fixture.service();
     let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
-    let tokens = auth.signin(&otp, &otp.code).await.unwrap();
+    let tokens = auth
+        .signin(&otp, &otp.code, Default::default())
+        .await
+        .unwrap();
     let router = fixture.graphql();
     let cookies = format!(
         "compallm-access={}; compallm-refresh={}",
@@ -6161,4 +6326,50 @@ async fn graphql_passkey_change_cookie_preserves_login_and_cannot_authorize_sess
     )
     .await;
     assert_eq!(graphql_body(graphql_request(&router, None, Some(&cookies), true).await).await["data"]["first"]["node"]["id"].as_str().unwrap(), auth.authenticate_access(&tokens.access_token).await.unwrap().session.id.to_string());
+}
+
+#[tokio::test]
+async fn signin_succeeds_when_configured_location_service_is_unavailable() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    drop(listener);
+    let client =
+        compallm_api::geolocation::LocationClient::new(&format!("http://{address}")).unwrap();
+    let router = fixture
+        .graphql_with_org_repository(
+            fixture.repo.1.clone(),
+            None,
+            None,
+            None,
+            false,
+            Some(client),
+        )
+        .layer(axum::middleware::from_fn(
+            |mut request: axum::extract::Request, next: axum::middleware::Next| async move {
+                request.extensions_mut().insert(axum::extract::ConnectInfo(
+                    "81.2.69.160:12345".parse::<std::net::SocketAddr>().unwrap(),
+                ));
+                next.run(request).await
+            },
+        ));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let body = graphql_body(graphql_operation(&router,
+        "mutation($input:EmailCodeInput!){emailSigninConfirm(input:$input){node{accessToken refreshToken}}}",
+        serde_json::json!({"input":{"code":challenge.code,"delivery":"TOKEN"}}),Some(&challenge.access_token),None,false).await).await;
+    assert!(body["errors"].is_null(), "{body}");
+    let access = body["data"]["emailSigninConfirm"]["node"]["accessToken"]
+        .as_str()
+        .unwrap();
+    let actor = UserAccessToken::try_from(decode_token(access, SECRET).unwrap()).unwrap();
+    assert!(actor.session.metadata.location.is_none());
+    assert!(
+        fixture
+            .repo
+            .0
+            .lock()
+            .unwrap()
+            .sessions
+            .contains_key(&actor.session.id)
+    );
 }

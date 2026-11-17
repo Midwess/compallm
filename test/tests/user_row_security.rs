@@ -54,6 +54,7 @@ async fn authenticated_profiles_and_preferences_enforce_database_ownership() -> 
                 organization_id: 1,
                 authorization_version: 1,
                 revoked_at: None,
+            metadata: Default::default(),
             },
             PolicySnapshot::new(&member)?,
             Duration::from_secs(60),

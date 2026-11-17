@@ -90,6 +90,7 @@ async fn session_evidence_upgrade_preserves_otp_and_restores_passkey_reads() -> 
             organization_id: 2,
             authorization_version: 1,
             revoked_at: None,
+            metadata: Default::default(),
         };
         assert!(matches!(
             context

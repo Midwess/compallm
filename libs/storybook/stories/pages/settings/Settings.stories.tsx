@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { SettingsControllerContext, UserPreferenceControllerContext } from '../../../src/context'
+import { AuthControllerContext, SettingsControllerContext, UserPreferenceControllerContext } from '../../../src/context'
 import { userPreferenceDefaults } from '@compallm/contract/preference'
 import { loadedPreferenceDraft } from '../../../src/pages/settings'
 import { SettingsPage } from '../../../src/pages/settings'
@@ -12,6 +12,8 @@ import type {
   UserPreferenceState,
   UserPreferenceValues,
 } from '../../../src/pages/settings'
+import { DemoAuthController } from '../demo-auth-controller'
+import type { AuthUser } from '../../../src/pages/auth/types'
 import { DemoSettingsController } from './demo-controller'
 import { advancedSource, modelOperatorSource, initialSettings } from './fixtures'
 
@@ -25,6 +27,7 @@ function Demo({
   pagedGroup = false,
   preferenceStatus,
   savedPreferences,
+  session,
 }: {
   page?: SettingsDestination
   id?: string
@@ -35,7 +38,22 @@ function Demo({
   pagedGroup?: boolean
   preferenceStatus?: UserPreferenceState['status']
   savedPreferences?: UserPreferenceValues
+  session?: Partial<AuthUser>
 }) {
+  const [auth] = useState(() => {
+    const auth = new DemoAuthController('signin')
+    auth.store.setState({
+      status: 'authenticated',
+      currentUser: {
+        id: 'session',
+        userId: 'alex',
+        organizationId: 'workspace',
+        organizationName: 'Workspace',
+        ...session,
+      },
+    })
+    return auth
+  })
   const [controller] = useState(() => {
     const controller = new DemoSettingsController({ location: { page, id }, ...initial }, failure)
     const user = controller.pages.preferences.user
@@ -77,11 +95,13 @@ function Demo({
     })
   }, [controller, pagedGroup])
   return (
-    <SettingsControllerContext value={controller}>
-      <UserPreferenceControllerContext value={controller.pages.preferences.user}>
-        <SettingsPage />
-      </UserPreferenceControllerContext>
-    </SettingsControllerContext>
+    <AuthControllerContext value={auth}>
+      <SettingsControllerContext value={controller}>
+        <UserPreferenceControllerContext value={controller.pages.preferences.user}>
+          <SettingsPage />
+        </UserPreferenceControllerContext>
+      </SettingsControllerContext>
+    </AuthControllerContext>
   )
 }
 const meta = {
@@ -166,7 +186,36 @@ export const ProfileWithPhoto: Story = {
     />
   ),
 }
-export const Access: Story = { render: () => <Demo page="access" /> }
+export const Access: Story = {
+  render: () => (
+    <Demo
+      page="access"
+      session={{
+        ipAddress: '203.0.113.42',
+        location: 'Vietnam',
+        userAgent:
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ' +
+          'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+      }}
+    />
+  ),
+}
+export const AccessUnknownSession: Story = { render: () => <Demo page="access" /> }
+export const AccessMobileSession: Story = {
+  render: () => (
+    <Demo
+      page="access"
+      session={{
+        ipAddress: '2001:db8::42',
+        location: 'Ho Chi Minh City, Vietnam',
+        userAgent:
+          'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) ' +
+          'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
+      }}
+    />
+  ),
+}
+export const AccessLight: Story = { ...Access, globals: { theme: 'BASIC_WHITE' } }
 export const Security: Story = { render: () => <Demo page="security" /> }
 export const AccessPopulated: Story = {
   render: () => (

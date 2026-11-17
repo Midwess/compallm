@@ -91,6 +91,7 @@ async fn role_filter_includes_inherited_members_before_paging_and_binds_cursors(
             organization_id: ORG,
             authorization_version: 1,
             revoked_at: None,
+            metadata: Default::default(),
         },
         PolicySnapshot::new(&owner)?,
         Duration::from_secs(600),

@@ -48,7 +48,13 @@ fn renewal_preserves_the_session_and_extends_token_validity() {
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), LIFETIME).unwrap();
     token.validity.issued_at -= 29 * 24 * 60 * 60;
     token.validity.expires_at -= 29 * 24 * 60 * 60;
-    let session = token.session.clone();
+    let mut session = token.session.clone();
+    session.metadata = compallm_core::authentication::SessionMetadata::new(
+        Some("203.0.113.42".parse().unwrap()),
+        Some("Mozilla/5.0 test browser"),
+    );
+    session.metadata.location = Some("Vietnam".into());
+    token.session = session.clone();
     let renewed = session.refresh(&token, LIFETIME).unwrap();
     assert_eq!(renewed.session, session);
     assert!(renewed.validity.expires_at > token.validity.expires_at);
@@ -154,6 +160,39 @@ fn serialized_session_requires_its_version_and_version_is_not_identity() {
     assert_eq!(value["v"], 42);
     value.as_object_mut().unwrap().remove("v");
     assert!(serde_json::from_value::<compallm_core::authentication::Session>(value).is_err());
+}
+
+#[test]
+fn recognition_metadata_does_not_grant_session_authority() {
+    let mut stored = stored_session(1, 7, 84, "Research team");
+    stored.metadata = compallm_core::authentication::SessionMetadata::new(
+        Some("203.0.113.42".parse().unwrap()),
+        Some("Original browser"),
+    );
+    let mut presented = stored.clone();
+    presented.metadata = Default::default();
+    let credential = RefreshToken::from_session(&presented, LIFETIME).unwrap();
+    assert_eq!(
+        stored
+            .refresh(&credential, LIFETIME)
+            .unwrap()
+            .session
+            .metadata,
+        stored.metadata
+    );
+
+    presented.user_id = 2;
+    presented.metadata = stored.metadata.clone();
+    let foreign = RefreshToken::from_session(&presented, LIFETIME).unwrap();
+    assert!(matches!(
+        stored.refresh(&foreign, LIFETIME),
+        Err(AuthError::InvalidSession)
+    ));
+    stored.revoke();
+    assert!(matches!(
+        stored.refresh(&credential, LIFETIME),
+        Err(AuthError::InvalidSession)
+    ));
 }
 
 fn empty_snapshot() -> compallm_core::authorization::PolicySnapshot {

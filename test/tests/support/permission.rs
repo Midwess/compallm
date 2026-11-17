@@ -43,6 +43,7 @@ pub fn from_source(organization_id: u64, source: &str) -> MemberPermission {
                 organization_id,
                 authorization_version: 1,
                 revoked_at: None,
+                metadata: Default::default(),
             },
             PolicySnapshot::new(&member).unwrap(),
             Duration::from_secs(60),

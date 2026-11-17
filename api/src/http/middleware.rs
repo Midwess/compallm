@@ -43,6 +43,7 @@ impl AuthorizationMiddleware {
 
 #[derive(Clone)]
 pub struct AuthenticationMiddleware {
+    geolocation: Arc<crate::geolocation::LocationClient>,
     db: &'static DbContext,
     auth: &'static AuthService,
     settings: AuthenticationSettings,
@@ -57,6 +58,7 @@ impl AuthenticationMiddleware {
     ) -> Result<Self, AuthError> {
         settings.validate()?;
         Ok(Self {
+            geolocation: Arc::new(crate::geolocation::LocationClient::default()),
             db,
             auth,
             settings,
@@ -73,12 +75,29 @@ impl AuthenticationMiddleware {
         Ok(middleware)
     }
 
+    pub fn with_geolocation(
+        mut self,
+        geolocation: Arc<crate::geolocation::LocationClient>,
+    ) -> Self {
+        self.geolocation = geolocation;
+        self
+    }
+
     pub async fn handle(
         State(middleware): State<Self>,
         mut request: Request,
         next: Next,
     ) -> Response {
         let headers = request.headers().clone();
+        let metadata = compallm_core::authentication::SessionMetadata::new(
+            request
+                .extensions()
+                .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
+                .map(|peer| peer.0.ip()),
+            headers
+                .get(axum::http::header::USER_AGENT)
+                .and_then(|value| value.to_str().ok()),
+        );
         let Ok(context_db) = middleware.db.fresh() else {
             return no_store(RequestError::Internal.into_response());
         };
@@ -97,6 +116,8 @@ impl AuthenticationMiddleware {
                     trusted_db,
                     middleware.settings,
                     headers,
+                    metadata,
+                    middleware.geolocation,
                 );
                 let user = UserContext(context.clone());
                 if middleware.strict {

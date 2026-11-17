@@ -51,7 +51,10 @@ async fn signup_invitation_snapshots_requirements_and_analytics_are_scoped() -> 
     di.initialize_services()?;
     let suffix = hero::distributed_id::try_gen_id().await?;
     let otp = EmailOtpAccessToken::new(format!("onboard-owner-{suffix}@example.com"))?;
-    let credentials = di.auth_service().signup(&otp, &otp.code).await?;
+    let credentials = di
+        .auth_service()
+        .signup(&otp, &otp.code, Default::default())
+        .await?;
     let owner = di
         .auth_service()
         .authenticate_access(&credentials.access_token)
@@ -127,7 +130,7 @@ async fn signup_invitation_snapshots_requirements_and_analytics_are_scoped() -> 
     otp.invitation_id = Some(invitation.invitation_id);
     let credentials = di
         .invitation_service()
-        .invitation_confirm(&invitation, &otp, &otp.code, true)
+        .invitation_confirm(&invitation, &otp, &otp.code, true, Default::default())
         .await?;
     let actor = di
         .auth_service()
@@ -212,7 +215,7 @@ async fn signup_invitation_snapshots_requirements_and_analytics_are_scoped() -> 
     let another_otp = EmailOtpAccessToken::new(signed_user.email)?;
     let another_login = di
         .auth_service()
-        .signin(&another_otp, &another_otp.code)
+        .signin(&another_otp, &another_otp.code, Default::default())
         .await?;
     let another = di
         .auth_service()
@@ -378,7 +381,7 @@ async fn signup_invitation_snapshots_requirements_and_analytics_are_scoped() -> 
     otp.invitation_id = Some(invitation.invitation_id);
     let credentials = di
         .invitation_service()
-        .invitation_confirm(&invitation, &otp, &otp.code, false)
+        .invitation_confirm(&invitation, &otp, &otp.code, false, Default::default())
         .await?;
     let existing = di
         .auth_service()

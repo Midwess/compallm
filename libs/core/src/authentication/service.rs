@@ -280,6 +280,7 @@ impl AuthService {
         &self,
         claims: &EmailOtpAccessToken,
         code: &str,
+        metadata: super::SessionMetadata,
     ) -> Result<UserTokens, AuthError> {
         if claims.invitation_id.is_some() || claims.purpose != super::AuthenticationPurpose::Login {
             return Err(AuthError::InvalidInvitation);
@@ -299,7 +300,8 @@ impl AuthService {
             .await?
             .ok_or(AuthError::OrganizationAccessDenied)?;
         let dictionary = self.latest_dictionary().await?;
-        self.start_session(user.id, membership, dictionary).await
+        self.start_session(user.id, membership, dictionary, metadata)
+            .await
     }
 
     #[db_context::root]
@@ -307,6 +309,7 @@ impl AuthService {
         &self,
         claims: &EmailOtpAccessToken,
         code: &str,
+        metadata: super::SessionMetadata,
     ) -> Result<UserTokens, AuthError> {
         if claims.invitation_id.is_some() || claims.purpose != super::AuthenticationPurpose::Login {
             return Err(AuthError::InvalidInvitation);
@@ -324,7 +327,7 @@ impl AuthService {
                 .find_first_membership(user.id)
                 .await?
                 .ok_or(AuthError::OrganizationAccessDenied)?;
-            self.start_enrollment_session(user.id, membership, dictionary)
+            self.start_enrollment_session(user.id, membership, dictionary, metadata)
                 .await
         })
     }
@@ -412,9 +415,17 @@ impl AuthService {
         user_id: u64,
         membership: OrganizationMember,
         dictionary: &DCompression,
+        metadata: super::SessionMetadata,
     ) -> Result<UserTokens, AuthError> {
-        self.start_session_with_method(user_id, membership, dictionary, "email_code", None)
-            .await
+        self.start_session_with_method(
+            user_id,
+            membership,
+            dictionary,
+            "email_code",
+            None,
+            metadata,
+        )
+        .await
     }
 
     pub(crate) async fn start_enrollment_session(
@@ -422,8 +433,11 @@ impl AuthService {
         user_id: u64,
         membership: OrganizationMember,
         dictionary: &DCompression,
+        metadata: super::SessionMetadata,
     ) -> Result<UserTokens, AuthError> {
-        let mut tokens = self.start_session(user_id, membership, dictionary).await?;
+        let mut tokens = self
+            .start_session(user_id, membership, dictionary, metadata)
+            .await?;
         let actor = self.authenticate_access(&tokens.access_token).await?;
         tokens.passkey_change = Some(self.issue_passkey_change(&actor.session)?);
         Ok(tokens)
@@ -436,8 +450,10 @@ impl AuthService {
         dictionary: &DCompression,
         method: &str,
         credential_id: Option<u64>,
+        metadata: super::SessionMetadata,
     ) -> Result<UserTokens, AuthError> {
-        let session = Session::new(user_id, membership.organization_id).await?;
+        let mut session = Session::new(user_id, membership.organization_id).await?;
+        session.metadata = metadata;
         let refresh = RefreshToken::from_session(&session, self.lifetimes.refresh)?;
         let tokens = self
             .issue_tokens(&refresh, PolicySnapshot::new(&membership)?, dictionary)

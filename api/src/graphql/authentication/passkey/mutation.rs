@@ -69,6 +69,7 @@ pub async fn authentication_finish(
     user: &UserContext,
     cookies: &CookieDelivery,
     service: &PasskeyService,
+    identity: &AuthenticationContext,
 ) -> Result<Payload<SessionCredentials>, Error> {
     input.validify()?;
     let mode = input.delivery.ok_or_else(Error::invalid_input)?;
@@ -84,7 +85,7 @@ pub async fn authentication_finish(
         return Ok(SessionCredentials::try_from((grant, mode, cookies))?.into());
     }
     let tokens = service
-        .authentication_finish(&input.token, response)
+        .authentication_finish(&input.token, response, identity.session_metadata().await)
         .await?;
     Ok(SessionCredentials::try_from((tokens, mode, cookies))?.into())
 }

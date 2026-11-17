@@ -67,6 +67,8 @@ mod m20261116_000041_onboarding;
 mod m20261116_000042_passkeys;
 mod m20261116_000043_session_passkey_evidence;
 
+mod m20261117_000044_session_metadata;
+
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -117,6 +119,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261116_000041_onboarding::Migration),
             Box::new(m20261116_000042_passkeys::Migration),
             Box::new(m20261116_000043_session_passkey_evidence::Migration),
+            Box::new(m20261117_000044_session_metadata::Migration),
             // inject-above (do not remove this comment)
         ]
     }

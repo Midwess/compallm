@@ -10,6 +10,7 @@ publish = false
 workspace = true
 
 [dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 socket2 = { version = "0.6", default-features = false }
 tower-http = { workspace = true, features = ["compression-br", "compression-gzip", "decompression-gzip", "limit"] }
 schemars.workspace = true

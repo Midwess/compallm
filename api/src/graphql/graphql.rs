@@ -261,9 +261,12 @@ impl Mutation {
         input: authentication::passkey::input::PasskeyFinishInput,
         #[graphql(context)] cookies: &CookieDelivery,
         #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
+        #[graphql(context)] identity: &AuthenticationContext,
     ) -> Result<Payload<authentication::SessionCredentials>, Error> {
-        authentication::passkey::mutation::authentication_finish(input, user, cookies, service)
-            .await
+        authentication::passkey::mutation::authentication_finish(
+            input, user, cookies, service, identity,
+        )
+        .await
     }
     async fn passkey_remove(
         id: ID,

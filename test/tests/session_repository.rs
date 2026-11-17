@@ -27,6 +27,9 @@ impl Fixture {
             organization_id: 84,
             authorization_version: 1,
             revoked_at: None,
+            ip_address: None,
+            user_agent: None,
+            location: None,
         }
     }
     fn organization() -> OrganizationSchema {

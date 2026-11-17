@@ -13,5 +13,6 @@ pub fn stored_session(
         organization_id,
         authorization_version: 1,
         revoked_at: None,
+        metadata: Default::default(),
     }
 }

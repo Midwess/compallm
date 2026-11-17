@@ -1,5 +1,5 @@
 [workspace]
-members = ["libs/db-context", "libs/query-derive", "libs/query", "libs/validation-derive", "api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "libs/storage", "test", "router", "sec"]
+members = ["geolocation", "libs/db-context", "libs/query-derive", "libs/query", "libs/validation-derive", "api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "libs/storage", "test", "router", "sec"]
 resolver = "3"
 
 [workspace.package]

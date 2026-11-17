@@ -25,6 +25,7 @@ fn member_permission(member: &compallm_core::organization::OrganizationMember) -
                 organization_id: member.organization_id,
                 authorization_version: 1,
                 revoked_at: None,
+                metadata: Default::default(),
             },
             PolicySnapshot::new(member).unwrap(),
             Duration::from_secs(1800),
@@ -153,6 +154,7 @@ async fn role_assignment_replaces_direct_grants_preserves_groups_and_invalidates
         organization_id: org,
         authorization_version: 1,
         revoked_at: None,
+        metadata: Default::default(),
     };
     root.scope(SessionRepository.create(session.clone()))
         .await?;
@@ -206,7 +208,10 @@ async fn role_assignment_replaces_direct_grants_preserves_groups_and_invalidates
     );
     let otp = EmailOtpAccessToken::new("owner@compallm.com".into())?;
     let login = root
-        .scope(di.auth_service().signin(&otp, &otp.code))
+        .scope(
+            di.auth_service()
+                .signin(&otp, &otp.code, Default::default()),
+        )
         .await?;
     let bearer = di
         .auth_service()
@@ -323,7 +328,10 @@ async fn role_assignment_replaces_direct_grants_preserves_groups_and_invalidates
         .unwrap();
     let target_otp = EmailOtpAccessToken::new(target_user.email)?;
     let target_login = root
-        .scope(di.auth_service().signin(&target_otp, &target_otp.code))
+        .scope(
+            di.auth_service()
+                .signin(&target_otp, &target_otp.code, Default::default()),
+        )
         .await?;
     let target_bearer = di
         .auth_service()
@@ -332,7 +340,10 @@ async fn role_assignment_replaces_direct_grants_preserves_groups_and_invalidates
         .access_token;
     let fresh_otp = EmailOtpAccessToken::new("owner@compallm.com".into())?;
     let fresh_login = root
-        .scope(di.auth_service().signin(&fresh_otp, &fresh_otp.code))
+        .scope(
+            di.auth_service()
+                .signin(&fresh_otp, &fresh_otp.code, Default::default()),
+        )
         .await?;
     let bearer = di
         .auth_service()

@@ -455,6 +455,8 @@ export class AuthController implements SignupController, SigninController {
             avatarUrl: true,
             ipAddress: true,
             userAgent: true,
+            signedInAt: true,
+            lastSeenAt: true,
           },
         },
       } satisfies QueryGenqlSelection

@@ -12,6 +12,8 @@ use compallm_core::{
 fn access(organization_id: u64, member: &OrganizationMember) -> UserAccessToken {
     UserAccessToken::new(
         Session {
+            expires_at: compallm_utils::time::unix_timestamp() + 30 * 86400,
+            last_seen_at: compallm_utils::time::unix_timestamp(),
             id: 1,
             user_id: member.user_id,
             organization_id,

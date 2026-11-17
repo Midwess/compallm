@@ -204,6 +204,11 @@ impl Di {
 
     /// Supply an existing service before the container reaches its permanent address.
     /// All request projections then borrow this same instance.
+    pub fn with_session_repository(mut self, repository: Box<dyn SessionRepository>) -> Self {
+        self.sessions = repository;
+        self
+    }
+
     pub fn with_auth_service(mut self, auth: AuthService) -> Self {
         self.auth = OnceLock::from(Box::new(auth));
         self
@@ -646,5 +651,11 @@ impl juniper::FromContext<Di> for compallm_core::authentication::passkey::Passke
 impl juniper::FromContext<Di> for Box<dyn compallm_core::persistent::passkey::PasskeyRepository> {
     fn from(di: &Di) -> &Self {
         &di.passkey_repository
+    }
+}
+
+impl juniper::FromContext<Di> for Box<dyn SessionRepository> {
+    fn from(di: &Di) -> &Self {
+        &di.sessions
     }
 }

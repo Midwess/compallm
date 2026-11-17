@@ -1025,6 +1025,87 @@ async fn profile_service_upload_authorization_uses_the_actor_and_core_limits() {
 
 #[async_trait::async_trait]
 impl SessionRepository for Repository {
+    async fn list_owned(
+        &self,
+        user_id: u64,
+        pagination: compallm_query::Pagination,
+    ) -> Result<compallm_query::Connection<Session>, SessionRepositoryError> {
+        let boundary = pagination
+            .after
+            .as_ref()
+            .map(|cursor| cursor.decode(&format!("test-sessions:{user_id}")))
+            .transpose()
+            .map_err(anyhow::Error::from)?
+            .and_then(|values| {
+                Some((
+                    values[0].as_ref()?.parse::<u64>().ok()?,
+                    values[1].as_ref()?.parse::<u64>().ok()?,
+                ))
+            });
+        let state = self.0.lock().unwrap();
+        let mut nodes: Vec<_> = state
+            .sessions
+            .values()
+            .filter(|session| {
+                session.user_id == user_id
+                    && session.revoked_at.is_none()
+                    && session.expires_at > compallm_utils::time::unix_timestamp()
+                    && boundary.is_none_or(|key| (session.last_seen_at, session.id) < key)
+            })
+            .cloned()
+            .collect();
+        nodes.sort_by_key(|session| std::cmp::Reverse((session.last_seen_at, session.id)));
+        let size = pagination.page_size(50).map_err(anyhow::Error::from)? as usize;
+        let has_next_page = nodes.len() > size;
+        nodes.truncate(size);
+        let edges: Vec<_> = nodes
+            .into_iter()
+            .map(|node| {
+                Ok(compallm_query::Edge {
+                    cursor: compallm_query::Cursor::encode(
+                        vec![
+                            Some(node.last_seen_at.to_string()),
+                            Some(node.id.to_string()),
+                        ],
+                        &format!("test-sessions:{user_id}"),
+                    )
+                    .map_err(anyhow::Error::from)?
+                    .0,
+                    node,
+                })
+            })
+            .collect::<Result<_, SessionRepositoryError>>()?;
+        Ok(compallm_query::Connection {
+            page_info: compallm_query::PageInfo {
+                start_cursor: edges.first().map(|e| e.cursor.clone()),
+                end_cursor: edges.last().map(|e| e.cursor.clone()),
+                has_next_page,
+                has_previous_page: boundary.is_some(),
+            },
+            edges,
+        })
+    }
+    async fn revoke_owned(
+        &self,
+        user_id: u64,
+        current_session_id: u64,
+        target_id: Option<u64>,
+    ) -> Result<u64, SessionRepositoryError> {
+        let mut state = self.0.lock().unwrap();
+        let mut changed = 0;
+        for session in state.sessions.values_mut() {
+            if session.user_id == user_id
+                && session.id != current_session_id
+                && session.revoked_at.is_none()
+                && target_id.is_none_or(|id| id == session.id)
+            {
+                session.revoke();
+                changed += 1;
+            }
+        }
+        Ok(changed)
+    }
+
     async fn authorization_version(
         &self,
         presented: &Session,
@@ -1166,6 +1247,15 @@ impl SessionRepository for Repository {
         if session.organization_id != previous.organization_id {
             current.organization_id = session.organization_id;
         }
+        if session.expires_at != previous.expires_at
+            || session.last_seen_at != previous.last_seen_at
+        {
+            if current.expires_at <= compallm_utils::time::unix_timestamp() {
+                return Ok(false);
+            }
+            current.expires_at = current.expires_at.max(session.expires_at);
+            current.last_seen_at = current.last_seen_at.max(session.last_seen_at);
+        }
         current.revoked_at = session.revoked_at;
         Ok(true)
     }
@@ -1271,6 +1361,7 @@ impl Fixture {
             None,
         )
         .with_auth_service(service)
+        .with_session_repository(Box::new(self.repo.clone()))
         .with_onboarding_repository(Box::new(onboarding_support::MemoryOnboarding::default()))
         .with_user_repository(Box::new(self.repo.clone()));
         if !real_organizations {
@@ -2380,7 +2471,7 @@ async fn refresh_without_selection_keeps_the_session_organization() {
 }
 
 #[tokio::test]
-async fn original_and_renewed_refresh_tokens_remain_usable_without_database_writes() {
+async fn renewal_requires_persistence_and_preserves_unexpired_prior_credentials() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let original = AccessToken::Refresh(
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
@@ -2391,11 +2482,19 @@ async fn original_and_renewed_refresh_tokens_remain_usable_without_database_writ
     fixture.remember(&original);
     let before = fixture.repo.0.lock().unwrap().sessions[&7].clone();
     fixture.repo.0.lock().unwrap().fail_rotation = true;
+    assert!(matches!(
+        fixture.refresh(&original).await,
+        Err(AuthError::InvalidSession)
+    ));
+    assert_eq!(fixture.repo.0.lock().unwrap().sessions[&7], before);
+    fixture.repo.0.lock().unwrap().fail_rotation = false;
     let replacement = fixture.refresh(&original).await.unwrap();
     assert!(fixture.refresh(&original).await.is_ok());
     assert!(fixture.refresh(&replacement.refresh_token).await.is_ok());
     let stored = fixture.repo.0.lock().unwrap().sessions[&7].clone();
-    assert_eq!(stored, before);
+    assert!(stored.has_same_identity(&before));
+    assert!(stored.expires_at >= before.expires_at);
+    assert!(stored.last_seen_at >= before.last_seen_at);
     assert!(
         fixture
             .db
@@ -2555,7 +2654,7 @@ async fn invalid_signature_cannot_revoke_a_valid_session() {
 }
 
 #[tokio::test]
-async fn read_only_refresh_uses_root_with_an_enclosing_transaction() {
+async fn refresh_persists_activity_in_an_enclosing_root_transaction() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let token = AccessToken::Refresh(
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
@@ -6282,4 +6381,175 @@ async fn graphql_passkey_change_cookie_preserves_login_and_cannot_authorize_sess
     )
     .await;
     assert_eq!(graphql_body(graphql_request(&router, None, Some(&cookies), true).await).await["data"]["first"]["node"]["id"].as_str().unwrap(), auth.authenticate_access(&tokens.access_token).await.unwrap().session.id.to_string());
+}
+
+#[tokio::test]
+async fn account_sessions_list_both_logins_and_revoke_only_the_owned_target() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let first = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let second = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let actor =
+        UserAccessToken::try_from(decode_token(&first.access_token, SECRET).unwrap()).unwrap();
+    let other =
+        UserAccessToken::try_from(decode_token(&second.access_token, SECRET).unwrap()).unwrap();
+    {
+        let mut state = fixture.repo.0.lock().unwrap();
+        let mut foreign = actor.session.clone();
+        foreign.id += 100;
+        foreign.user_id += 1;
+        state.sessions.insert(foreign.id, foreign);
+        let mut revoked = actor.session.clone();
+        revoked.id += 101;
+        revoked.revoke();
+        state.sessions.insert(revoked.id, revoked);
+    }
+    let router = fixture.graphql();
+    let query = "{sessions(first:1){edges{node{id}}pageInfo{hasNextPage endCursor}}}";
+    let page = graphql_body(
+        graphql_operation(
+            &router,
+            query,
+            serde_json::json!({}),
+            Some(&first.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(page["errors"].is_null(), "{page}");
+    assert_eq!(
+        page["data"]["sessions"]["edges"].as_array().unwrap().len(),
+        1
+    );
+    assert_eq!(page["data"]["sessions"]["pageInfo"]["hasNextPage"], true);
+    let cursor = page["data"]["sessions"]["pageInfo"]["endCursor"]
+        .as_str()
+        .unwrap();
+    let next = graphql_body(graphql_operation(&router,
+        "query($after:String!){sessions(first:1,after:$after){edges{node{id}}pageInfo{hasNextPage}}}",
+        serde_json::json!({"after":cursor}), Some(&first.access_token), None,false).await).await;
+    assert!(next["errors"].is_null(), "{next}");
+    let ids = [
+        page["data"]["sessions"]["edges"][0]["node"]["id"]
+            .as_str()
+            .unwrap(),
+        next["data"]["sessions"]["edges"][0]["node"]["id"]
+            .as_str()
+            .unwrap(),
+    ];
+    assert!(ids.contains(&actor.session.id.to_string().as_str()));
+    assert!(ids.contains(&other.session.id.to_string().as_str()));
+    let denied = graphql_body(
+        graphql_operation(
+            &router,
+            "mutation($id:ID!){sessionRevokeOther(id:$id){node}}",
+            serde_json::json!({"id":(actor.session.id+100).to_string()}),
+            Some(&first.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(denied["data"]["sessionRevokeOther"]["node"], false);
+    let done = graphql_body(
+        graphql_operation(
+            &router,
+            "mutation($id:ID!){sessionRevokeOther(id:$id){node}}",
+            serde_json::json!({"id":other.session.id.to_string()}),
+            Some(&first.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(done["data"]["sessionRevokeOther"]["node"], true);
+    assert!(fixture.service().validate_access(&actor).await.is_ok());
+    assert!(fixture.service().validate_access(&other).await.is_err());
+    assert!(fixture.refresh(&second.refresh_token).await.is_err());
+}
+
+#[tokio::test]
+async fn revoke_other_sessions_preserves_current_and_foreign_accounts() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let actor =
+        UserAccessToken::try_from(decode_token(&tokens.access_token, SECRET).unwrap()).unwrap();
+    {
+        let mut state = fixture.repo.0.lock().unwrap();
+        for offset in [1, 2] {
+            let mut other = actor.session.clone();
+            other.id += offset;
+            other.organization_id += offset;
+            state.sessions.insert(other.id, other);
+        }
+        let mut foreign = actor.session.clone();
+        foreign.id += 3;
+        foreign.user_id += 1;
+        state.sessions.insert(foreign.id, foreign);
+    }
+    assert_eq!(
+        fixture
+            .service()
+            .revoke_other_sessions(&actor, None)
+            .await
+            .unwrap(),
+        2
+    );
+    let state = fixture.repo.0.lock().unwrap();
+    assert!(state.sessions[&actor.session.id].revoked_at.is_none());
+    assert!(state.sessions[&(actor.session.id + 3)].revoked_at.is_none());
+}
+
+#[tokio::test]
+async fn session_activity_changes_only_on_renewal_and_expiry_blocks_access_and_refresh() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let mut stored = stored_session(1, 7, 84, "Workspace");
+    stored.last_seen_at -= 3600;
+    stored.expires_at -= 3600;
+    let refresh = RefreshToken::from_session(&stored, REFRESH_LIFETIME).unwrap();
+    let token = AccessToken::Refresh(refresh)
+        .encode_compressed(SECRET, REFRESH_LIFETIME)
+        .unwrap();
+    fixture.remember(&token);
+    let actor = fixture.access_for_session(stored.clone());
+    assert!(fixture.service().validate_access(&actor).await.unwrap());
+    assert_eq!(fixture.repo.0.lock().unwrap().sessions[&7], stored);
+    let renewed = fixture.service().refresh(&token).await.unwrap();
+    let credential =
+        RefreshToken::try_from(decode_token(&renewed.refresh_token, SECRET).unwrap()).unwrap();
+    let current = fixture.repo.0.lock().unwrap().sessions[&7].clone();
+    assert_eq!(current.expires_at, credential.validity.expires_at);
+    assert_eq!(current.last_seen_at, credential.validity.issued_at);
+    assert!(current.last_seen_at > stored.last_seen_at);
+    fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .get_mut(&7)
+        .unwrap()
+        .expires_at = compallm_utils::time::unix_timestamp();
+    assert!(matches!(
+        fixture.service().validate_access(&actor).await,
+        Err(AuthError::InvalidSession)
+    ));
+    assert!(matches!(
+        fixture.service().refresh(&token).await,
+        Err(AuthError::InvalidSession)
+    ));
 }

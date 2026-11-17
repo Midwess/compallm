@@ -775,7 +775,11 @@ type Mutation {
   emailSigninConfirm(input: EmailCodeInput!): SessionCredentialsPayload!
   "Refresh using explicit refresh Bearer authority; leave browser cookies unchanged."
   sessionRefresh: SessionCredentialsPayload!
-  "Revoke the verified session and clear its browser cookies after success."
+  "Revoke one other session belonging to the authenticated account."
+  sessionRevokeOther(id: ID!): BooleanPayload!
+  "Revoke all other account sessions, retaining this login."
+  sessionRevokeOthers: BooleanPayload!
+  "Revoke the current session and clear its cookies after success."
   sessionRevoke: BooleanPayload!
   "Create a role in the verified active organization."
   roleCreate(input: RoleCreateInput!): RolePayload!
@@ -949,6 +953,7 @@ type Query {
   organizationPolicyActions: PolicyActionConnection!
   "Return the verified current session identity."
   session: SessionPayload!
+  sessions(first: Int, after: String): SessionConnection!
   "Return the active organization from verified user authority."
   organization: OrganizationPayload!
   members(currentUserFirst: Boolean, filter: MemberFilterInput, orderBy: [MemberOrderInput!], first: Int, last: Int, before: String, after: String, offset: Int): MemberConnection!
@@ -987,6 +992,9 @@ type RolePayload {
 }
 
 type Session {
+  expiresAt: String!
+  lastSeenAt: String!
+  signedInAt: String!
   "IP observed by the API connection at sign-in; it may belong to a proxy or VPN."
   ipAddress: String
   "User-Agent captured at sign-in, used only for session recognition."
@@ -1000,8 +1008,13 @@ type Session {
   userId: ID!
   "Organization selected for this verified session."
   organizationId: ID!
-  "Current organization name."
+  "Current name of this login's organization, resolved only when selected."
   organizationName: String!
+}
+
+type SessionConnection {
+  edges: [SessionEdge!]!
+  pageInfo: PageInfo!
 }
 
 "Timing is always returned; credential values exist only in explicit TOKEN delivery."
@@ -1017,6 +1030,11 @@ type SessionCredentials {
 
 type SessionCredentialsPayload {
   node: SessionCredentials!
+}
+
+type SessionEdge {
+  cursor: String!
+  node: Session!
 }
 
 type SessionPayload {

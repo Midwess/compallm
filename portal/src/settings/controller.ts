@@ -2,6 +2,7 @@ import { permissionKey, type PermissionController } from '@compallm/storybook'
 import { requirePermissions } from '../permission/controller'
 import {
   createSettingsStore,
+  describeSessionBrowser,
   type SettingsController as Controller,
   type SettingsDestination,
   type UserPreferenceController,
@@ -45,6 +46,9 @@ export class SettingsController implements Controller {
   private readonly initialName: string
   private stopOrganization?: () => void
   private locationRequest?: AbortController
+  private sessionsRequest?: AbortController
+  private sessionsCursor: string | null = null
+  private readonly revokedSessions = new Set<string>()
 
   private get base() {
     return `/${encodeURIComponent(this.auth.store?.getState().currentUser?.organizationName ?? this.initialName)}`
@@ -78,7 +82,10 @@ export class SettingsController implements Controller {
     const location = this.store.getState().location
     if (location.page === 'organization') this.stopOrganization = this.pages.organization.start()
     if (location.page === 'profile') this.stopProfile = this.pages.profile.start()
-    if (location.page === 'access' || location.page === 'security') void this.loadSessionLocation()
+    if (location.page === 'access' || location.page === 'security') {
+      void this.loadSessionLocation()
+      void this.loadSessions()
+    }
     if (location.page === 'role' && location.id) void this.role.load(location.id)
     if (location.page === 'group' && location.id) void this.group.load(location.id)
     return () => {
@@ -87,6 +94,8 @@ export class SettingsController implements Controller {
       this.stopOrganization?.()
       this.stopOrganization = undefined
       controller.abort()
+      this.sessionsRequest?.abort()
+      this.sessionsRequest = undefined
       this.locationRequest?.abort()
       this.locationRequest = undefined
       this.store.setState({ sessionLocation: null })
@@ -212,6 +221,7 @@ export class SettingsController implements Controller {
       this.organizationRenamed,
       this.groupDeleted,
       permissions,
+      this.revokeOtherSessions,
     )
     this.role = this.pages.role
     this.group = this.pages.group
@@ -262,9 +272,104 @@ export class SettingsController implements Controller {
     this.locationRequest = undefined
   }
 
+  reloadSessions = () => {
+    void this.loadSessions()
+  }
+  loadMoreSessions = () => {
+    if (this.store.getState().sessionsHasNextPage && !this.store.getState().sessionsLoading) void this.loadSessions(true)
+  }
+  private loadSessions = async (append = false) => {
+    const user = this.auth.store?.getState().currentUser
+    if (!user) return
+    this.sessionsRequest?.abort()
+    const request = new AbortController()
+    this.sessionsRequest = request
+    if (!append) this.sessionsCursor = null
+    this.store.setState({ sessionsLoading: true, sessionsError: false })
+    try {
+      const selection = {
+        sessions: {
+          __args: { first: 20, ...(append && this.sessionsCursor ? { after: this.sessionsCursor } : {}) },
+          edges: { node: { id: true, ipAddress: true, userAgent: true, signedInAt: true, lastSeenAt: true } },
+          pageInfo: { endCursor: true, hasNextPage: true },
+        },
+      } satisfies QueryGenqlSelection
+      const result = await graphql(request.signal).query(selection)
+      if (request.signal.aborted || this.sessionsRequest !== request || this.auth.store?.getState().currentUser?.id !== user.id)
+        return
+      const records = result.sessions.edges
+        .filter(({ node }) => node.id !== user.id && !this.revokedSessions.has(node.id))
+        .map(({ node }) => {
+          return {
+            id: node.id,
+            ipAddress: node.ipAddress ?? null,
+            browser: describeSessionBrowser(node.userAgent),
+            signedInAt: node.signedInAt,
+            lastSeenAt: node.lastSeenAt,
+            location: null,
+          }
+        })
+      this.sessionsCursor = result.sessions.pageInfo.endCursor ?? null
+      this.store.setState((state) => ({
+        otherSessions: append
+          ? [...state.otherSessions, ...records.filter((record) => !state.otherSessions.some((s) => s.id === record.id))]
+          : records,
+        sessionsHasNextPage: result.sessions.pageInfo.hasNextPage,
+        sessionsLoading: false,
+      }))
+      for (let index = 0; index < records.length; index += 3) {
+        if (request.signal.aborted) break
+        await Promise.all(
+          records.slice(index, index + 3).map(async (record) => {
+            if (!record.ipAddress) return
+            const location = await lookupSessionLocation(record.ipAddress, request.signal)
+            if (!location || request.signal.aborted || this.auth.store?.getState().currentUser?.id !== user.id) return
+            this.store.setState((state) => ({
+              otherSessions: state.otherSessions.map((s) => (s.id === record.id ? { ...s, location } : s)),
+            }))
+          }),
+        )
+      }
+    } catch {
+      if (!request.signal.aborted && this.sessionsRequest === request)
+        this.store.setState({ sessionsLoading: false, sessionsError: true })
+    }
+  }
+
+  revokeSession = (id: string) => {
+    const user = this.auth.store?.getState().currentUser
+    if (!user || id === user.id) return
+    void (async () => {
+      try {
+        const selection = { sessionRevokeOther: { __args: { id }, node: true } } satisfies MutationGenqlSelection
+        await graphql().mutation(selection)
+        if (this.auth.store?.getState().currentUser?.id !== user.id) return
+        this.revokedSessions.add(id)
+        this.store.setState((state) => ({ otherSessions: state.otherSessions.filter((s) => s.id !== id) }))
+      } catch (error) {
+        notify.error(error)
+      }
+    })()
+  }
+
+  private revokeOtherSessions = async () => {
+    const user = this.auth.store?.getState().currentUser
+    if (!user) return
+    const selection = { sessionRevokeOthers: { node: true } } satisfies MutationGenqlSelection
+    await graphql().mutation(selection)
+    if (this.auth.store?.getState().currentUser?.id !== user.id) return
+    this.sessionsRequest?.abort()
+    this.sessionsRequest = undefined
+    this.sessionsCursor = null
+    this.store.setState({ otherSessions: [], sessionsHasNextPage: false, sessionsLoading: false })
+  }
+
   setPage = (page: SettingsDestination, id?: string) => {
     this.locationRequest?.abort()
     this.locationRequest = undefined
+    this.sessionsRequest?.abort()
+    this.sessionsRequest = undefined
+    if (page !== 'access' && page !== 'security') this.store.setState({ sessionsLoading: false })
     if (page !== 'organization') {
       this.stopOrganization?.()
       this.stopOrganization = undefined
@@ -281,7 +386,10 @@ export class SettingsController implements Controller {
     if (page === 'organization' && this.request && !this.stopOrganization)
       this.stopOrganization = this.pages.organization.start()
     if (page === 'profile' && this.request && !this.stopProfile) this.stopProfile = this.pages.profile.start()
-    if ((page === 'access' || page === 'security') && this.request) void this.loadSessionLocation()
+    if ((page === 'access' || page === 'security') && this.request) {
+      void this.loadSessionLocation()
+      void this.loadSessions()
+    }
     if (page === 'members' && this.request) this.pages.members.start()
     if (page === 'role' && id && this.request) void this.role.load(id)
     if (page === 'group' && id && this.request) void this.group.load(id)

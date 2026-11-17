@@ -130,9 +130,34 @@ impl Query {
     async fn session(
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
+        #[graphql(context)] sessions: &Box<
+            dyn compallm_core::persistent::session::SessionRepository,
+        >,
         #[graphql(context)] identity: &AuthenticationContext,
     ) -> Result<Payload<authentication::Session>, Error> {
-        authentication::query::session(user, repository.as_ref(), identity).await
+        authentication::query::session(user, repository.as_ref(), sessions.as_ref(), identity).await
+    }
+
+    async fn sessions(
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::session::SessionRepository,
+        >,
+        #[graphql(context)] identity: &AuthenticationContext,
+        first: Option<i32>,
+        after: Option<String>,
+    ) -> Result<Collection<authentication::Session>, Error> {
+        authentication::query::sessions(
+            user,
+            repository,
+            identity,
+            compallm_query::Pagination {
+                first: Some(first.unwrap_or(20)),
+                after: after.map(compallm_query::Cursor),
+                ..Default::default()
+            },
+        )
+        .await
     }
 
     /// Return the active organization from verified user authority.
@@ -473,7 +498,25 @@ impl Mutation {
     ) -> Result<Payload<authentication::SessionCredentials>, Error> {
         authentication::mutation::session_refresh(auth, identity, cookies).await
     }
-    /// Revoke the verified session and clear its browser cookies after success.
+    /// Revoke one other session belonging to the authenticated account.
+    async fn session_revoke_other(
+        id: ID,
+        #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] identity: &AuthenticationContext,
+        #[graphql(context)] user: &UserContext,
+    ) -> Result<Payload<bool>, Error> {
+        authentication::mutation::session_revoke_other(id, auth, identity, user).await
+    }
+    /// Revoke all other account sessions, retaining this login.
+    async fn session_revoke_others(
+        #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] identity: &AuthenticationContext,
+        #[graphql(context)] user: &UserContext,
+    ) -> Result<Payload<bool>, Error> {
+        authentication::mutation::session_revoke_others(auth, identity, user).await
+    }
+
+    /// Revoke the current session and clear its cookies after success.
     async fn session_revoke(
         #[graphql(context)] auth: &AuthService,
         #[graphql(context)] identity: &AuthenticationContext,

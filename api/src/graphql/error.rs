@@ -32,6 +32,9 @@ impl From<AuthError> for Error {
             AuthError::PasskeyUnavailable => {
                 ("PASSKEY_UNAVAILABLE", 503, "Passkeys are not configured")
             }
+            AuthError::SessionPersistence(
+                compallm_core::persistent::session::SessionRepositoryError::InvalidQuery,
+            ) => ("BAD_USER_INPUT", 400, "Invalid session collection query"),
             AuthError::InvalidInvitation => (
                 "INVITATION_UNAVAILABLE",
                 410,

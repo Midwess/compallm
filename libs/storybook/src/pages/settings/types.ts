@@ -171,7 +171,8 @@ export interface SettingsSession {
   id: string
   browser: string
   location: string | null
-  lastSeen?: string
+  signedInAt?: string
+  lastSeenAt?: string
 }
 
 export interface SettingsState {
@@ -217,6 +218,9 @@ export interface SettingsState {
   passkeys: SettingsCredential[]
   applications: SettingsApplication[]
   apiKeys: SettingsApiKey[]
+  sessionsLoading: boolean
+  sessionsHasNextPage: boolean
+  sessionsError: boolean
   otherSessions: SettingsSession[]
   hasOtherSessions: boolean
   organizationLimitUsd: string | null
@@ -241,6 +245,8 @@ export interface SettingsController {
   pages: SettingsPageControllers
   navigate(page: SettingsDestination, id?: string): void
   setNavigationQuery(value: string): void
+  loadMoreSessions?(): void
+  reloadSessions?(): void
   revokeSession?(id: string): void
   signOut(): void
   leaveSettings(): void

@@ -453,9 +453,19 @@ type Mutation {
   sessionRefresh: SessionCredentialsPayload!
 
   """
-  Revoke the verified session and clear its browser cookies after success.
+  Revoke the current session and clear its cookies after success.
   """
   sessionRevoke: BooleanPayload!
+
+  """
+  Revoke one other session belonging to the authenticated account.
+  """
+  sessionRevokeOther(id: ID!): BooleanPayload!
+
+  """
+  Revoke all other account sessions, retaining this login.
+  """
+  sessionRevokeOthers: BooleanPayload!
 
   """
   Restore selected preference groups, or ALL alone, to Core defaults.
@@ -1013,6 +1023,7 @@ type Query {
   Return the verified current session identity.
   """
   session: SessionPayload!
+  sessions(after: String, first: Int): SessionConnection!
 
   """
   Return the signed-in user's personal preferences; missing rows use Core defaults without a write.
@@ -1078,6 +1089,7 @@ type Session {
   Public avatar for this user; clients show a fallback while absent or loading.
   """
   avatarUrl: String
+  expiresAt: String!
 
   """
   Login session identity, serialized as a string without numeric precision loss.
@@ -1088,6 +1100,7 @@ type Session {
   IP observed by the API connection at sign-in; it may belong to a proxy or VPN.
   """
   ipAddress: String
+  lastSeenAt: String!
 
   """
   Organization selected for this verified session.
@@ -1095,10 +1108,11 @@ type Session {
   organizationId: ID!
 
   """
-  Current organization name.
+  Current name of this login's organization, resolved only when selected.
   """
   organizationName: String!
   passkey: PasskeySummary
+  signedInAt: String!
 
   """
   User-Agent captured at sign-in, used only for session recognition.
@@ -1109,6 +1123,11 @@ type Session {
   User owning this verified session.
   """
   userId: ID!
+}
+
+type SessionConnection {
+  edges: [SessionEdge!]!
+  pageInfo: PageInfo!
 }
 
 """
@@ -1126,6 +1145,11 @@ type SessionCredentials {
 
 type SessionCredentialsPayload {
   node: SessionCredentials!
+}
+
+type SessionEdge {
+  cursor: String!
+  node: Session!
 }
 
 type SessionPayload {

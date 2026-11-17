@@ -37,6 +37,10 @@ impl TryFrom<UserSessionSchema> for MappedSession {
             model.user_agent.as_deref(),
         );
         Ok(Self(Session {
+            expires_at: u64::try_from(model.expires_at.timestamp())
+                .context("invalid session expiry")?,
+            last_seen_at: u64::try_from(model.last_seen_at.timestamp())
+                .context("invalid session activity")?,
             metadata,
             id,
             user_id,

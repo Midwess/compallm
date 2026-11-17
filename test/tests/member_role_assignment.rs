@@ -20,6 +20,8 @@ fn member_permission(member: &compallm_core::organization::OrganizationMember) -
     MemberPermission::try_from(
         UserAccessToken::new(
             Session {
+                expires_at: compallm_utils::time::unix_timestamp() + 30 * 86400,
+                last_seen_at: compallm_utils::time::unix_timestamp(),
                 id: 1,
                 user_id: member.user_id,
                 organization_id: member.organization_id,
@@ -149,6 +151,8 @@ async fn role_assignment_replaces_direct_grants_preserves_groups_and_invalidates
     ))
     .await?;
     let session = Session {
+        expires_at: compallm_utils::time::unix_timestamp() + 30 * 86400,
+        last_seen_at: compallm_utils::time::unix_timestamp(),
         id: hero::distributed_id::try_gen_id().await?,
         user_id: target,
         organization_id: org,

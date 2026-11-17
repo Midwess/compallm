@@ -1,5 +1,5 @@
-import { useContext, useMemo } from 'react'
-import Bowser from 'bowser'
+import { useContext, useEffect, useMemo, useState } from 'react'
+import { describeSessionBrowser } from './session-browser'
 import { SessionBrowserIcon } from './session-browser-icon'
 import { List } from '../../components/list'
 import { useFormStore } from '../../components/form'
@@ -86,53 +86,88 @@ export function ProfileSettings() {
     </SettingsContent>
   )
 }
+const sessionDateFormatter = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' })
+const sessionYearFormatter = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+const sessionTimeFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'full', timeStyle: 'short' })
+
+function SessionTime({ label, timestamp }: { label: string; timestamp: string }) {
+  const [now, setNow] = useState(() => Date.now())
+  const seconds = Number(timestamp)
+  const age = Math.max(0, Math.floor(now / 1000) - seconds)
+  const recent = age < 86400
+  useEffect(() => {
+    if (!recent) return
+    const timer = setInterval(() => setNow(Date.now()), 60000)
+    return () => clearInterval(timer)
+  }, [timestamp, recent])
+  const date = new Date(seconds * 1000)
+  if (!Number.isFinite(date.getTime())) return null
+  const text =
+    age < 60
+      ? 'Just now'
+      : age < 3600
+        ? `${Math.floor(age / 60)}m ago`
+        : recent
+          ? `${Math.floor(age / 3600)}h ago`
+          : (date.getFullYear() === new Date(now).getFullYear() ? sessionDateFormatter : sessionYearFormatter).format(date)
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 whitespace-nowrap"
+      title={`${label}: ${sessionTimeFormatter.format(date)}`}
+    >
+      <span>{label}</span>
+      <time dateTime={date.toISOString()}>{text}</time>
+    </span>
+  )
+}
+
 function SessionItem({
   browser,
   location,
   current = false,
-  lastSeen,
+  lastSeenAt,
+  signedInAt,
   ipAddress,
   onRevoke,
 }: {
   browser: string
   location: string | null
   current?: boolean
-  lastSeen?: string
+  lastSeenAt?: string
+  signedInAt?: string
   ipAddress?: string | null
   onRevoke?: () => void
 }) {
   return (
-    <div className="flex min-h-16 items-center justify-between gap-3 p-4">
-      <div className="flex min-w-0 items-center gap-4">
-        <span className="grid size-8 shrink-0 place-items-center rounded-md bg-elevated text-muted-foreground">
-          <SessionBrowserIcon browser={browser} />
-        </span>
-        <div className="grid min-w-0 gap-0.5">
-          <span className="truncate text-xsm leading-tight font-medium">{browser}</span>
-          <div className="flex min-w-0 flex-wrap items-center gap-x-1 text-xs leading-tight text-muted-foreground">
-            {current ? (
-              <>
-                <span className="inline-flex shrink-0 items-center gap-1 text-success">
-                  <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
-                  Current session
-                </span>
-                <span aria-hidden="true">·</span>
-              </>
-            ) : null}
-            <span className="truncate" title={location ? `Approximate location: ${location}` : undefined}>
-              {location ?? ipAddress ?? 'Location unavailable'}
+    <div className="flex items-start gap-3 px-4 py-5 sm:items-center sm:gap-4">
+      <span className="grid size-8 shrink-0 place-items-center rounded-md bg-elevated text-muted-foreground" aria-hidden="true">
+        <SessionBrowserIcon browser={browser} />
+      </span>
+      <div className="grid min-w-0 flex-1 gap-1.5">
+        <div className="grid min-w-0 gap-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <span
+              className={`truncate text-xsm leading-5 font-medium${current ? ' text-[oklch(from_var(--ring)_l_c_250)]' : ''}`}
+              aria-label={current ? `${browser}, current session` : undefined}
+            >
+              {browser}
             </span>
-            {!current && lastSeen ? (
-              <>
-                <span aria-hidden="true">·</span>
-                <span>Last seen {lastSeen}</span>
-              </>
-            ) : null}
           </div>
+        </div>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-xs leading-4 text-muted-foreground">
+          <span className="truncate" title={location ? `Approximate location: ${location}` : undefined}>
+            {location ?? (ipAddress ? `IP address ${ipAddress}` : 'Location unavailable')}
+          </span>
+          {signedInAt || lastSeenAt ? (
+            <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              {lastSeenAt ? <SessionTime label="Last active" timestamp={lastSeenAt} /> : null}
+              {signedInAt ? <SessionTime label="Signed in" timestamp={signedInAt} /> : null}
+            </span>
+          ) : null}
         </div>
       </div>
       {onRevoke ? (
-        <Button variant="ghost" className="px-3" onClick={onRevoke}>
+        <Button variant="ghost" className="shrink-0 px-2 text-muted-foreground" onClick={onRevoke}>
           {current ? 'Log out' : 'Revoke'}
         </Button>
       ) : null}
@@ -144,24 +179,45 @@ function CurrentSession({ controller }: { controller: AuthController }) {
   const userAgent = useFormStore(controller.store, (state) => state.currentUser?.userAgent)
   const ipAddress = useFormStore(controller.store, (state) => state.currentUser?.ipAddress)
   const sessionId = useFormStore(controller.store, (state) => state.currentUser?.id)
+  const signedInAt = useFormStore(controller.store, (state) => state.currentUser?.signedInAt)
+  const lastSeenAt = useFormStore(controller.store, (state) => state.currentUser?.lastSeenAt)
   const saved = useSettings((state) => state.sessionLocation)
   const settings = useSettingsController()
   const location = saved && saved.sessionId === sessionId && saved.ipAddress === ipAddress ? saved.location : null
-  const browser = useMemo(() => {
-    if (!userAgent) return 'Unknown browser'
-    const { browser, os } = Bowser.parse(userAgent)
-    return [browser.name || 'Unknown browser', os.name].filter(Boolean).join(' on ')
-  }, [userAgent])
-  return <SessionItem browser={browser} location={location} ipAddress={ipAddress} current onRevoke={settings.signOut} />
+  const browser = useMemo(() => describeSessionBrowser(userAgent), [userAgent])
+  return (
+    <SessionItem
+      browser={browser}
+      location={location}
+      ipAddress={ipAddress}
+      signedInAt={signedInAt}
+      lastSeenAt={lastSeenAt}
+      current
+      onRevoke={settings.signOut}
+    />
+  )
 }
 
 function SessionSettings() {
   const controller = useContext(AuthControllerContext)
   const settings = useSettingsController()
   const otherSessions = useSettings((state) => state.otherSessions)
+  const loading = useSettings((state) => state.sessionsLoading)
+  const hasMore = useSettings((state) => state.sessionsHasNextPage)
+  const error = useSettings((state) => state.sessionsError)
   const location = useSettings((state) => state.sessionLocation)
   return (
-    <Section title="Sessions" description="Devices logged into your account">
+    <Section
+      title="Sessions"
+      description="Devices logged into your account"
+      action={
+        settings.reloadSessions ? (
+          <Button variant="ghost" onClick={settings.reloadSessions}>
+            Refresh
+          </Button>
+        ) : undefined
+      }
+    >
       <div className="grid gap-3">
         <Rows className="shadow-control">
           {controller ? (
@@ -175,13 +231,19 @@ function SessionSettings() {
             <div className="flex min-h-16 items-center justify-between gap-4 border-b border-border p-4">
               <span className="text-xsm font-medium">
                 {otherSessions.length} other {otherSessions.length === 1 ? 'session' : 'sessions'}
+                {hasMore ? ' shown' : ''}
               </span>
               <Button variant="ghost" className="px-3" onClick={() => settings.pages.dialogs.openDialog('revoke-sessions')}>
                 Revoke all
               </Button>
             </div>
             <List.Root>
-              <List.Items items={otherSessions} getKey={(session) => session.id} className="m-0 list-none p-0">
+              <List.Items
+                items={otherSessions}
+                getKey={(session) => session.id}
+                className="m-0 list-none p-0"
+                paging={{ hasMore, loading, error, onLoadMore: () => settings.loadMoreSessions?.() }}
+              >
                 {(session) => (
                   <div
                     className={
@@ -194,7 +256,8 @@ function SessionSettings() {
                       browser={session.browser}
                       location={session.location}
                       ipAddress={session.ipAddress}
-                      lastSeen={session.lastSeen}
+                      lastSeenAt={session.lastSeenAt}
+                      signedInAt={session.signedInAt}
                       onRevoke={settings.revokeSession ? () => settings.revokeSession!(session.id) : undefined}
                     />
                   </div>
@@ -202,6 +265,24 @@ function SessionSettings() {
               </List.Items>
             </List.Root>
           </Rows>
+        ) : null}
+        {loading ? (
+          <p role="status" className="px-4 text-xs text-muted-foreground">
+            Loading sessions…
+          </p>
+        ) : null}
+        {error ? (
+          <div className="flex items-center justify-between gap-3 px-4 text-xs text-muted-foreground">
+            Couldn’t load sessions.
+            <Button variant="ghost" onClick={() => settings.reloadSessions?.()}>
+              Retry
+            </Button>
+          </div>
+        ) : null}
+        {hasMore && !loading && !error ? (
+          <Button variant="ghost" onClick={() => settings.loadMoreSessions?.()}>
+            Load more sessions
+          </Button>
         ) : null}
         {location || otherSessions.some((session) => session.location) ? (
           <a

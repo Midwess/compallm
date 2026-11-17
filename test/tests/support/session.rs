@@ -8,6 +8,8 @@ pub fn stored_session(
     _name: impl Into<String>,
 ) -> Session {
     Session {
+        expires_at: compallm_utils::time::unix_timestamp() + 30 * 86400,
+        last_seen_at: compallm_utils::time::unix_timestamp(),
         id,
         user_id,
         organization_id,

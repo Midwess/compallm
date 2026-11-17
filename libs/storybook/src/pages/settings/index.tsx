@@ -239,3 +239,5 @@ export type {
   OrganizationOnboardingState,
   OnboardingSettingsValues,
 } from './onboarding/controller'
+
+export { describeSessionBrowser } from './session-browser'

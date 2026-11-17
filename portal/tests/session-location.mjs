@@ -23,15 +23,12 @@ test('location display sends only IP without credentials and silently ignores fa
     let requests = 0
     globalThis.fetch = async (url, init) => {
       requests++
-      assert.equal(url, 'https://location.example/v1/locations')
+      assert.equal(url, 'https://compallm-geolocation-production.up.railway.app/v1/locations')
       assert.equal(init.credentials, 'omit')
       assert.deepEqual(JSON.parse(init.body), { ip: '8.8.8.8' })
       return Response.json({ location: 'Mountain View, United States', attribution: 'https://db-ip.com' })
     }
-    assert.equal(
-      await lookupSessionLocation('8.8.8.8', new AbortController().signal, 'https://location.example'),
-      'Mountain View, United States',
-    )
+    assert.equal(await lookupSessionLocation('8.8.8.8', new AbortController().signal), 'Mountain View, United States')
     for (const response of [
       () => {
         throw new Error('offline')
@@ -41,11 +38,11 @@ test('location display sends only IP without credentials and silently ignores fa
       () => Response.json({ location: { unexpected: true } }),
     ]) {
       globalThis.fetch = response
-      assert.equal(await lookupSessionLocation('8.8.8.8', new AbortController().signal, 'https://location.example'), null)
+      assert.equal(await lookupSessionLocation('8.8.8.8', new AbortController().signal), null)
     }
     const abort = new AbortController()
     abort.abort()
-    assert.equal(await lookupSessionLocation('8.8.8.8', abort.signal, 'https://location.example'), null)
+    assert.equal(await lookupSessionLocation('8.8.8.8', abort.signal), null)
     assert.equal(requests, 1)
   } finally {
     globalThis.fetch = original

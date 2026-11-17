@@ -17,6 +17,8 @@ import { DemoUserPreferenceController } from './preferences/user/demo-controller
 import { DemoOrganizationController } from './organization/demo-controller'
 
 export class DemoSettingsController implements SettingsController {
+  revokeSession = (id: string) =>
+    this.store.setState((state) => ({ otherSessions: state.otherSessions.filter((session) => session.id !== id) }))
   store = createSettingsStore(structuredClone(initialSettings))
   pages: SettingsController['pages'] = {
     onboarding: new DemoOrganizationOnboardingController(),
@@ -300,7 +302,7 @@ export class DemoSettingsController implements SettingsController {
       if (d.kind === 'application')
         this.store.setState((p) => ({ applications: p.applications.filter((app) => app.id !== id) }))
       if (d.kind === 'revoke-key') this.store.setState((p) => ({ apiKeys: p.apiKeys.filter((key) => key.id !== id) }))
-      if (d.kind === 'revoke-sessions') this.store.setState({ hasOtherSessions: false })
+      if (d.kind === 'revoke-sessions') this.store.setState({ hasOtherSessions: false, otherSessions: [] })
       if (d.kind === 'delete-role') {
         this.role.store.setState({ draft: null })
         this.group.store.setState({ draft: null })

@@ -166,6 +166,14 @@ export interface SettingsDialog {
   phrase: string
   revealedKey?: string
 }
+export interface SettingsSession {
+  ipAddress?: string | null
+  id: string
+  browser: string
+  location: string | null
+  lastSeen?: string
+}
+
 export interface SettingsState {
   sessionLocation: { sessionId: string; ipAddress: string; location: string } | null
   actorIsOwner?: boolean
@@ -209,6 +217,7 @@ export interface SettingsState {
   passkeys: SettingsCredential[]
   applications: SettingsApplication[]
   apiKeys: SettingsApiKey[]
+  otherSessions: SettingsSession[]
   hasOtherSessions: boolean
   organizationLimitUsd: string | null
   memberDefaultLimitUsd: string | null
@@ -232,6 +241,7 @@ export interface SettingsController {
   pages: SettingsPageControllers
   navigate(page: SettingsDestination, id?: string): void
   setNavigationQuery(value: string): void
+  revokeSession?(id: string): void
   signOut(): void
   leaveSettings(): void
   apiError(error: unknown, retry?: () => void): void

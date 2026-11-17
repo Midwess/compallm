@@ -1,13 +1,9 @@
-const publicEndpoint = 'https://compallm-geolocation-production.up.railway.app'
+const endpoint = 'https://compallm-geolocation-production.up.railway.app/v1/locations'
 
-export async function lookupSessionLocation(
-  ipAddress: string,
-  signal: AbortSignal,
-  endpoint = import.meta.env.VITE_GEOLOCATION_URL ?? publicEndpoint,
-): Promise<string | null> {
-  if (!endpoint || signal.aborted) return null
+export async function lookupSessionLocation(ipAddress: string, signal: AbortSignal): Promise<string | null> {
+  if (signal.aborted) return null
   try {
-    const response = await fetch(`${endpoint.replace(/\/$/, '')}/v1/locations`, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ip: ipAddress }),

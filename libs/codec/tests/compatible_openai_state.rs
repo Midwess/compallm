@@ -6,7 +6,7 @@ use codec::llm::text::copenai::request::CompatibleOpenAIRequestDecoder;
 fn emits_components_across_arbitrary_chunks() {
     let body = br#"{"model":"provider/model","messages":[{"content":"hello\n\uD83D\uDE00","role":"user"},{"role":"assistant","content":"yes"}],"stream":true}"#;
     for size in 1..=body.len() {
-        let mut decoder = CompatibleOpenAIRequestDecoder::new();
+        let mut decoder = CompatibleOpenAIRequestDecoder::new(codec::json::JsonDecoder::new());
         let mut components = Vec::new();
         for chunk in body.chunks(size) {
             let mut input = chunk;
@@ -57,7 +57,7 @@ fn emits_components_across_arbitrary_chunks() {
 
 #[test]
 fn returns_early_and_rejects_invalid_or_incomplete_requests() {
-    let mut decoder = CompatibleOpenAIRequestDecoder::new();
+    let mut decoder = CompatibleOpenAIRequestDecoder::new(codec::json::JsonDecoder::new());
     let mut input = &br#"{"model":"x","messages":[]}"#[..];
     assert_eq!(
         decoder.next(&mut input, false).unwrap(),
@@ -74,7 +74,7 @@ fn returns_early_and_rejects_invalid_or_incomplete_requests() {
         &br#"{"model":"x","messages":[{"role":"user","content":"x",}]}"#[..],
         &br#"{"model":"x","messages":[{"role":"user","content":"x"}]} {}"#[..],
     ] {
-        let mut decoder = CompatibleOpenAIRequestDecoder::new();
+        let mut decoder = CompatibleOpenAIRequestDecoder::new(codec::json::JsonDecoder::new());
         let mut input = body;
         loop {
             match decoder.next(&mut input, false) {
@@ -84,7 +84,7 @@ fn returns_early_and_rejects_invalid_or_incomplete_requests() {
             }
         }
     }
-    let mut decoder = CompatibleOpenAIRequestDecoder::new();
+    let mut decoder = CompatibleOpenAIRequestDecoder::new(codec::json::JsonDecoder::new());
     let mut input = &br#"{"model":"x""#[..];
     assert!(matches!(
         decoder.next(&mut input, false),

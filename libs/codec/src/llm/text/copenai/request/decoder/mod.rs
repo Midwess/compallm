@@ -7,7 +7,7 @@ use serde::de::DeserializeOwned;
 use serde_json::Value;
 use value::ValueBuilder;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct CompatibleOpenAIRequestDecoder {
     json: JsonDecoder,
     phase: Phase,
@@ -81,10 +81,14 @@ impl CompatibleOpenAIRequestDecoder {
         }))
     }
 
-    pub fn new() -> Self {
+    pub fn new(json: JsonDecoder) -> Self {
         Self {
-            json: JsonDecoder::new(),
-            ..Self::default()
+            json,
+            phase: Phase::Start,
+            field: "",
+            fields: 0,
+            value: ValueBuilder::default(),
+            message_count: 0,
         }
     }
 }

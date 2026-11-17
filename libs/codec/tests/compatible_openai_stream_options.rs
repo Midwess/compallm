@@ -33,7 +33,8 @@ fn preserves_stream_options_across_chunks() {
                 format!(r#"{{"model":"x",{messages},"stream_options":{value}}}"#)
             };
             for size in 1..=body.len() {
-                let mut decoder = CompatibleOpenAIRequestDecoder::new();
+                let mut decoder =
+                    CompatibleOpenAIRequestDecoder::new(codec::json::JsonDecoder::new());
                 let mut options = Vec::new();
                 for chunk in body.as_bytes().chunks(size) {
                     let mut input = chunk;

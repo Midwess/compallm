@@ -6,7 +6,7 @@ use codec::llm::text::copenai::request::CompatibleOpenAIRequestDecoder;
 fn assembles_calls_and_results_across_chunks() {
     let body = br#"{"model":"x","messages":[{"tool_calls":[{"function":{"arguments":"{\"city\":\"Paris\"}","name":"weather"},"type":"function","id":"a"},{"id":"b","type":"function","function":{"name":"clock","arguments":""}}],"role":"assistant","content":null},{"content":"sunny","tool_call_id":"a","role":"tool"},{"role":"assistant","tool_calls":[{"id":"c","type":"function","function":{"name":"clock","arguments":"{}"}}]}]}"#;
     for size in 1..=body.len() {
-        let mut decoder = CompatibleOpenAIRequestDecoder::new();
+        let mut decoder = CompatibleOpenAIRequestDecoder::new(codec::json::JsonDecoder::new());
         let mut messages = Vec::new();
         for chunk in body.chunks(size) {
             let mut input = chunk;

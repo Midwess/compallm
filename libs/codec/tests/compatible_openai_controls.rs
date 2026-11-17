@@ -9,7 +9,7 @@ fn emits_controls_in_source_order_across_chunks() {
             r#"{{"model":"x","parallel_tool_calls":false,"top_p":5e-1,"top_k":0,"messages":[{{"role":"user","content":"hi"}}],"{limit}":32768,"stream":true}}"#
         );
         for size in 1..=body.len() {
-            let mut decoder = CompatibleOpenAIRequestDecoder::new();
+            let mut decoder = CompatibleOpenAIRequestDecoder::new(codec::json::JsonDecoder::new());
             let mut components = Vec::new();
             for chunk in body.as_bytes().chunks(size) {
                 let mut input = chunk;

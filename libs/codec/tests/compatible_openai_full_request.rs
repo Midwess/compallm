@@ -90,7 +90,7 @@ fn decodes_full_request_with_16_byte_input_buffer() {
   }
 }"#;
 
-    let mut decoder = CompatibleOpenAIRequestDecoder::new();
+    let mut decoder = CompatibleOpenAIRequestDecoder::new(codec::json::JsonDecoder::new());
     let mut components = Vec::new();
     let mut buffer = [0_u8; 16];
     for chunk in request.as_bytes().chunks(buffer.len()) {

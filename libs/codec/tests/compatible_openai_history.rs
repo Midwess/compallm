@@ -6,7 +6,7 @@ use codec::llm::text::copenai::request::CompatibleOpenAIRequestDecoder;
 fn assembles_tool_and_reasoning_history_across_chunks() {
     let body = br#"{"model":"x","messages":[{"tool_calls":[{"function":{"arguments":"{\"x\":1}","name":"lookup"},"id":"call1","type":"function"}],"reasoning":"","reasoning_details":[{"summary":"plan","type":"reasoning.summary"},{"type":"reasoning.text","text":"think\n","signature":null,"id":null,"format":"opaque","index":0},{"type":"reasoning.encrypted","data":"secret"}],"content":null,"role":"assistant"},{"tool_call_id":"call1","content":"done","role":"tool"},{"role":"assistant","reasoning_content":"answer"}]}"#;
     for size in 1..=body.len() {
-        let mut decoder = CompatibleOpenAIRequestDecoder::new();
+        let mut decoder = CompatibleOpenAIRequestDecoder::new(codec::json::JsonDecoder::new());
         let mut messages = Vec::new();
         for chunk in body.chunks(size) {
             let mut input = chunk;

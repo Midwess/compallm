@@ -987,8 +987,6 @@ type RolePayload {
 }
 
 type Session {
-  "Approximate sign-in location from IP geolocation, never device GPS."
-  location: String
   "IP observed by the API connection at sign-in; it may belong to a proxy or VPN."
   ipAddress: String
   "User-Agent captured at sign-in, used only for session recognition."

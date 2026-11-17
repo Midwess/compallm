@@ -1,5 +1,7 @@
 import { useContext, useMemo } from 'react'
 import Bowser from 'bowser'
+import { SessionBrowserIcon } from './session-browser-icon'
+import { List } from '../../components/list'
 import { useFormStore } from '../../components/form'
 import type { AuthController } from '../auth/types'
 import { AuthControllerContext, PasskeyControllerContext } from '../../context'
@@ -84,62 +86,146 @@ export function ProfileSettings() {
     </SettingsContent>
   )
 }
-function RecognizedSession({ controller }: { controller: AuthController }) {
+function SessionItem({
+  browser,
+  location,
+  current = false,
+  lastSeen,
+  ipAddress,
+  onRevoke,
+}: {
+  browser: string
+  location: string | null
+  current?: boolean
+  lastSeen?: string
+  ipAddress?: string | null
+  onRevoke?: () => void
+}) {
+  return (
+    <div className="flex min-h-16 items-center justify-between gap-3 p-4">
+      <div className="flex min-w-0 items-center gap-4">
+        <span className="grid size-8 shrink-0 place-items-center rounded-md bg-elevated text-muted-foreground">
+          <SessionBrowserIcon browser={browser} />
+        </span>
+        <div className="grid min-w-0 gap-0.5">
+          <span className="truncate text-xsm leading-tight font-medium">{browser}</span>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-1 text-xs leading-tight text-muted-foreground">
+            {current ? (
+              <>
+                <span className="inline-flex shrink-0 items-center gap-1 text-success">
+                  <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
+                  Current session
+                </span>
+                <span aria-hidden="true">·</span>
+              </>
+            ) : null}
+            <span className="truncate" title={location ? `Approximate location: ${location}` : undefined}>
+              {location ?? ipAddress ?? 'Location unavailable'}
+            </span>
+            {!current && lastSeen ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <span>Last seen {lastSeen}</span>
+              </>
+            ) : null}
+          </div>
+        </div>
+      </div>
+      {onRevoke ? (
+        <Button variant="ghost" className="px-3" onClick={onRevoke}>
+          {current ? 'Log out' : 'Revoke'}
+        </Button>
+      ) : null}
+    </div>
+  )
+}
+
+function CurrentSession({ controller }: { controller: AuthController }) {
   const userAgent = useFormStore(controller.store, (state) => state.currentUser?.userAgent)
   const ipAddress = useFormStore(controller.store, (state) => state.currentUser?.ipAddress)
-  const location = useFormStore(controller.store, (state) => state.currentUser?.location)
-  const label = useMemo(() => {
+  const sessionId = useFormStore(controller.store, (state) => state.currentUser?.id)
+  const saved = useSettings((state) => state.sessionLocation)
+  const settings = useSettingsController()
+  const location = saved && saved.sessionId === sessionId && saved.ipAddress === ipAddress ? saved.location : null
+  const browser = useMemo(() => {
     if (!userAgent) return 'Unknown browser'
     const { browser, os } = Bowser.parse(userAgent)
     return [browser.name || 'Unknown browser', os.name].filter(Boolean).join(' on ')
   }, [userAgent])
-  return (
-    <span className="block min-w-0">
-      <span className="block truncate">{label}</span>
-      <span className="line-clamp-2" title={location ? `Approximate sign-in location: ${location}` : undefined}>
-        {location ? `Near ${location}` : 'Location unavailable'}
-      </span>
-      <span className="block truncate">{ipAddress ? `Sign-in IP: ${ipAddress}` : 'Sign-in IP unavailable'}</span>
-      {location ? (
-        <a href="https://db-ip.com" target="_blank" rel="noreferrer" className="underline underline-offset-2">
-          IP Geolocation by DB-IP
-        </a>
-      ) : null}
-    </span>
-  )
+  return <SessionItem browser={browser} location={location} ipAddress={ipAddress} current onRevoke={settings.signOut} />
 }
 
-function CurrentSessionDescription() {
+function SessionSettings() {
   const controller = useContext(AuthControllerContext)
-  return controller ? <RecognizedSession controller={controller} /> : <>Session information unavailable.</>
+  const settings = useSettingsController()
+  const otherSessions = useSettings((state) => state.otherSessions)
+  const location = useSettings((state) => state.sessionLocation)
+  return (
+    <Section title="Sessions" description="Devices logged into your account">
+      <div className="grid gap-3">
+        <Rows className="shadow-control">
+          {controller ? (
+            <CurrentSession controller={controller} />
+          ) : (
+            <SessionItem browser="Unknown browser" location={null} current onRevoke={settings.signOut} />
+          )}
+        </Rows>
+        {otherSessions.length ? (
+          <Rows className="shadow-control">
+            <div className="flex min-h-16 items-center justify-between gap-4 border-b border-border p-4">
+              <span className="text-xsm font-medium">
+                {otherSessions.length} other {otherSessions.length === 1 ? 'session' : 'sessions'}
+              </span>
+              <Button variant="ghost" className="px-3" onClick={() => settings.pages.dialogs.openDialog('revoke-sessions')}>
+                Revoke all
+              </Button>
+            </div>
+            <List.Root>
+              <List.Items items={otherSessions} getKey={(session) => session.id} className="m-0 list-none p-0">
+                {(session) => (
+                  <div
+                    className={
+                      session.id === otherSessions[0].id
+                        ? undefined
+                        : 'relative before:absolute before:inset-x-4 before:top-0 before:border-t before:border-border'
+                    }
+                  >
+                    <SessionItem
+                      browser={session.browser}
+                      location={session.location}
+                      ipAddress={session.ipAddress}
+                      lastSeen={session.lastSeen}
+                      onRevoke={settings.revokeSession ? () => settings.revokeSession!(session.id) : undefined}
+                    />
+                  </div>
+                )}
+              </List.Items>
+            </List.Root>
+          </Rows>
+        ) : null}
+        {location || otherSessions.some((session) => session.location) ? (
+          <a
+            href="https://db-ip.com"
+            target="_blank"
+            rel="noreferrer"
+            className="justify-self-end px-4 text-xs text-muted-foreground hover:text-foreground"
+          >
+            IP Geolocation by DB-IP
+          </a>
+        ) : null}
+      </div>
+    </Section>
+  )
 }
 
 export function AccessSettings() {
   const c = useSettingsController(),
     apps = useSettings((s) => s.applications)
-  const others = useSettings((s) => s.hasOtherSessions)
   return (
     <SettingsContent>
       <Heading description="Manage your sessions and authorized applications.">Access</Heading>
       <div className="grid gap-12">
-        <Section title="Sessions" description="Review and revoke access to your account.">
-          <Rows>
-            <Row label="Current session" description={<CurrentSessionDescription />}>
-              <span className="text-xs">Current</span>
-            </Row>
-            <Row
-              label="Other sessions"
-              description={others ? 'Sign out of your other active sessions.' : 'No other active sessions.'}
-              last
-            >
-              {others ? (
-                <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('revoke-sessions')}>
-                  Revoke all
-                </Button>
-              ) : null}
-            </Row>
-          </Rows>
-        </Section>
+        <SessionSettings />
         <Section title="Authorized applications" description="Review applications that can access your account.">
           {apps.length ? (
             <Rows>
@@ -169,15 +255,7 @@ export function SecuritySettings() {
     <SettingsContent>
       <Heading>Security &amp; access</Heading>
       <div className="grid gap-12">
-        <Section title="Sessions" description="Devices logged into your account">
-          <Rows>
-            <Row label="Current session" description={<CurrentSessionDescription />} last>
-              <Button variant="ghost" onClick={c.signOut}>
-                Log out
-              </Button>
-            </Row>
-          </Rows>
-        </Section>
+        <SessionSettings />
         {passkeys ? (
           <PasskeySettings />
         ) : (

@@ -15,11 +15,6 @@ use juniper::{ID, graphql_object};
 
 #[graphql_object(context = crate::graphql::GraphqlContext)]
 impl Session {
-    /// Approximate sign-in location from IP geolocation, never device GPS.
-    fn location(&self) -> Option<&str> {
-        self.0.metadata.location.as_deref()
-    }
-
     /// IP observed by the API connection at sign-in; it may belong to a proxy or VPN.
     fn ip_address(&self) -> Option<String> {
         self.0.metadata.ip_address.map(|ip| ip.to_string())

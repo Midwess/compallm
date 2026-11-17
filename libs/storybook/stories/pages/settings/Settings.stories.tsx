@@ -190,9 +190,9 @@ export const Access: Story = {
   render: () => (
     <Demo
       page="access"
+      initial={{ sessionLocation: { sessionId: 'session', ipAddress: '203.0.113.42', location: 'Vietnam' } }}
       session={{
         ipAddress: '203.0.113.42',
-        location: 'Vietnam',
         userAgent:
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ' +
           'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
@@ -205,9 +205,9 @@ export const AccessMobileSession: Story = {
   render: () => (
     <Demo
       page="access"
+      initial={{ sessionLocation: { sessionId: 'session', ipAddress: '2001:db8::42', location: 'Ho Chi Minh City, Vietnam' } }}
       session={{
         ipAddress: '2001:db8::42',
-        location: 'Ho Chi Minh City, Vietnam',
         userAgent:
           'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) ' +
           'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
@@ -216,6 +216,35 @@ export const AccessMobileSession: Story = {
   ),
 }
 export const AccessLight: Story = { ...Access, globals: { theme: 'BASIC_WHITE' } }
+export const SessionIpFallback: Story = {
+  render: () => (
+    <Demo
+      page="access"
+      session={{
+        ipAddress: '203.0.113.42',
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36',
+      }}
+    />
+  ),
+}
+export const SessionsReference: Story = {
+  render: () => (
+    <Demo
+      page="security"
+      session={{
+        ipAddress: '203.0.113.42',
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36',
+      }}
+      initial={{
+        sessionLocation: { sessionId: 'session', ipAddress: '203.0.113.42', location: 'Ho Chi Minh City, 61, VN' },
+        otherSessions: [
+          { id: 'arc', browser: 'Arc on macOS', location: 'Quận Mười, 61, VN', lastSeen: 'about 18 hours ago' },
+          { id: 'brave', browser: 'Brave on macOS', location: 'Quận Mười, 61, VN', lastSeen: '4 days ago' },
+        ],
+      }}
+    />
+  ),
+}
 export const Security: Story = { render: () => <Demo page="security" /> }
 export const AccessPopulated: Story = {
   render: () => (

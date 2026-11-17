@@ -47,6 +47,8 @@ export function createSettingsStore(initial: Partial<SettingsState> = {}) {
       applications: [],
       apiKeys: [],
       hasOtherSessions: false,
+      otherSessions: [],
+      sessionLocation: null,
       organizationLimitUsd: null,
       memberDefaultLimitUsd: null,
       resetFrequency: 'Monthly',

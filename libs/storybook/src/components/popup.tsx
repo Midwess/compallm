@@ -1,5 +1,3 @@
-import { useRowRetention } from './collection'
-import { useState } from 'react'
 import { useFormField } from './form'
 import { useContext, type ReactNode, type ComponentPropsWithRef } from 'react'
 import { Menu } from '@base-ui/react/menu'
@@ -20,13 +18,10 @@ export interface PopupRootProps extends OpenStateProps {
 }
 
 function Root({ children, onOpenChange, ...props }: PopupRootProps) {
-  const [observedOpen, setObservedOpen] = useState(false)
-  useRowRetention(props.open ?? observedOpen)
   return (
     <Menu.Root
       {...props}
       onOpenChange={(open) => {
-        setObservedOpen(open)
         onOpenChange?.(open)
       }}
       modal={false}

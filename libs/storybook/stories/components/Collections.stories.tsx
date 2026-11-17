@@ -102,7 +102,7 @@ function Demo({ grouped = false, variable = false }: { grouped?: boolean; variab
                 </Table.Category>
               ))
             ) : (
-              <Table.Body items={items} getKey={(row) => row.id} estimateSize={48}>
+              <Table.Body items={items} getKey={(row) => row.id}>
                 {(row) => (
                   <Table.Row className={variable && Number(row.id.slice(4)) % 4 === 0 ? 'h-24' : undefined}>
                     <Table.Cell>{row.name}</Table.Cell>

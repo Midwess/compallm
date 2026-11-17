@@ -453,6 +453,7 @@ export class AuthController implements SignupController, SigninController {
             organizationId: true,
             organizationName: true,
             avatarUrl: true,
+            location: true,
             ipAddress: true,
             userAgent: true,
           },

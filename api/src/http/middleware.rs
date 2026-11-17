@@ -43,6 +43,7 @@ impl AuthorizationMiddleware {
 
 #[derive(Clone)]
 pub struct AuthenticationMiddleware {
+    geolocation: Arc<crate::geolocation::LocationClient>,
     db: &'static DbContext,
     auth: &'static AuthService,
     settings: AuthenticationSettings,
@@ -57,6 +58,7 @@ impl AuthenticationMiddleware {
     ) -> Result<Self, AuthError> {
         settings.validate()?;
         Ok(Self {
+            geolocation: Arc::new(crate::geolocation::LocationClient::default()),
             db,
             auth,
             settings,
@@ -71,6 +73,14 @@ impl AuthenticationMiddleware {
         let mut middleware = Self::optional(db, auth, settings)?;
         middleware.strict = true;
         Ok(middleware)
+    }
+
+    pub fn with_geolocation(
+        mut self,
+        geolocation: Arc<crate::geolocation::LocationClient>,
+    ) -> Self {
+        self.geolocation = geolocation;
+        self
     }
 
     pub async fn handle(
@@ -107,6 +117,7 @@ impl AuthenticationMiddleware {
                     middleware.settings,
                     headers,
                     metadata,
+                    middleware.geolocation,
                 );
                 let user = UserContext(context.clone());
                 if middleware.strict {

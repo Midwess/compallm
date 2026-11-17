@@ -889,6 +889,7 @@ export default {
       avatarUrl: [145],
       id: [33],
       ipAddress: [145],
+      location: [145],
       organizationId: [33],
       organizationName: [145],
       passkey: [91],

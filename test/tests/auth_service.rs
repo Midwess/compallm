@@ -1215,7 +1215,14 @@ impl Fixture {
             Box<dyn compallm_core::persistent::storage::org_space::OrganizationStorage>,
         >,
     ) -> axum::Router {
-        self.graphql_with_org_repository(db_context, storage, profile_storage, org_storage, false)
+        self.graphql_with_org_repository(
+            db_context,
+            storage,
+            profile_storage,
+            org_storage,
+            false,
+            None,
+        )
     }
 
     fn graphql_with_org_repository(
@@ -1229,6 +1236,7 @@ impl Fixture {
             Box<dyn compallm_core::persistent::storage::org_space::OrganizationStorage>,
         >,
         real_organizations: bool,
+        geolocation: Option<compallm_api::geolocation::LocationClient>,
     ) -> axum::Router {
         use axum::{
             Extension, Json, Router,
@@ -1298,7 +1306,8 @@ impl Fixture {
                 public_origin: "http://localhost".into(),
             },
         )
-        .unwrap();
+        .unwrap()
+        .with_geolocation(Arc::new(geolocation.unwrap_or_default()));
         Router::new().route(
             "/api/graphql",
             post(
@@ -4281,22 +4290,45 @@ fn response_cookies(response: &axum::response::Response) -> String {
 #[tokio::test]
 async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let router = fixture.graphql().layer(axum::middleware::from_fn(
-        |mut request: axum::extract::Request, next: axum::middleware::Next| async move {
-            request.extensions_mut().insert(axum::extract::ConnectInfo(
-                "203.0.113.42:12345"
-                    .parse::<std::net::SocketAddr>()
-                    .unwrap(),
-            ));
-            request
-                .headers_mut()
-                .insert("user-agent", "recognizable-test-browser".parse().unwrap());
-            request
-                .headers_mut()
-                .insert("x-forwarded-for", "198.51.100.1".parse().unwrap());
-            next.run(request).await
-        },
-    ));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let database = Arc::new(
+        compallm_geolocation::CityDatabase::open(std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/GeoIP2-City-Test.mmdb"
+        )))
+        .unwrap(),
+    );
+    let location_server = tokio::spawn(async move {
+        axum::serve(listener, compallm_geolocation::router(database))
+            .await
+            .unwrap();
+    });
+    let location_client =
+        compallm_api::geolocation::LocationClient::new(&format!("http://{address}")).unwrap();
+    let router = fixture
+        .graphql_with_org_repository(
+            fixture.repo.1.clone(),
+            None,
+            None,
+            None,
+            false,
+            Some(location_client),
+        )
+        .layer(axum::middleware::from_fn(
+            |mut request: axum::extract::Request, next: axum::middleware::Next| async move {
+                request.extensions_mut().insert(axum::extract::ConnectInfo(
+                    "81.2.69.160:12345".parse::<std::net::SocketAddr>().unwrap(),
+                ));
+                request
+                    .headers_mut()
+                    .insert("user-agent", "recognizable-test-browser".parse().unwrap());
+                request
+                    .headers_mut()
+                    .insert("x-forwarded-for", "198.51.100.1".parse().unwrap());
+                next.run(request).await
+            },
+        ));
     let response = graphql_operation(&router,
         "mutation($input:EmailInput!){emailSigninRequest(input:$input){node{token lifetime{expiresInSeconds}}}}",
         serde_json::json!({"input":{"email":"james@midwess.com","delivery":"TOKEN"}}),Some("invalid-bearer"),None,false).await;
@@ -4320,7 +4352,8 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
     let signed = UserAccessToken::try_from(decode_token(access, SECRET).unwrap()).unwrap();
     let metadata = signed.session.metadata.clone();
-    assert_eq!(metadata.ip_address, Some("203.0.113.42".parse().unwrap()));
+    assert_eq!(metadata.location.as_deref(), Some("London, United Kingdom"));
+    assert_eq!(metadata.ip_address, Some("81.2.69.160".parse().unwrap()));
     assert_eq!(
         metadata.user_agent.as_deref(),
         Some("recognizable-test-browser")
@@ -4339,7 +4372,7 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     let info = graphql_body(
         graphql_operation(
             &router,
-            "{session{node{ipAddress userAgent}}}",
+            "{session{node{ipAddress userAgent location}}}",
             serde_json::json!({}),
             Some(access),
             None,
@@ -4348,7 +4381,11 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
         .await,
     )
     .await;
-    assert_eq!(info["data"]["session"]["node"]["ipAddress"], "203.0.113.42");
+    assert_eq!(info["data"]["session"]["node"]["ipAddress"], "81.2.69.160");
+    assert_eq!(
+        info["data"]["session"]["node"]["location"],
+        "London, United Kingdom"
+    );
     assert_eq!(
         info["data"]["session"]["node"]["userAgent"],
         "recognizable-test-browser"
@@ -4360,6 +4397,8 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
             .status(),
         200
     );
+    location_server.abort();
+    let _ = location_server.await;
     let response = graphql_operation(
         &router,
         "mutation{sessionRefresh{node{accessToken refreshToken}}}",
@@ -4387,7 +4426,8 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
     let signed = UserAccessToken::try_from(decode_token(access, SECRET).unwrap()).unwrap();
     let metadata = signed.session.metadata.clone();
-    assert_eq!(metadata.ip_address, Some("203.0.113.42".parse().unwrap()));
+    assert_eq!(metadata.location.as_deref(), Some("London, United Kingdom"));
+    assert_eq!(metadata.ip_address, Some("81.2.69.160".parse().unwrap()));
     assert_eq!(
         metadata.user_agent.as_deref(),
         Some("recognizable-test-browser")
@@ -4406,7 +4446,7 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     let info = graphql_body(
         graphql_operation(
             &router,
-            "{session{node{ipAddress userAgent}}}",
+            "{session{node{ipAddress userAgent location}}}",
             serde_json::json!({}),
             Some(access),
             None,
@@ -4415,7 +4455,11 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
         .await,
     )
     .await;
-    assert_eq!(info["data"]["session"]["node"]["ipAddress"], "203.0.113.42");
+    assert_eq!(info["data"]["session"]["node"]["ipAddress"], "81.2.69.160");
+    assert_eq!(
+        info["data"]["session"]["node"]["location"],
+        "London, United Kingdom"
+    );
     assert_eq!(
         info["data"]["session"]["node"]["userAgent"],
         "recognizable-test-browser"
@@ -4929,7 +4973,7 @@ permit(principal, action in [Compallm::Action::"group.member.add", Compallm::Act
             .await
             .is_err()
     );
-    let router = fixture.graphql_with_org_repository(db.clone(), None, None, None, true);
+    let router = fixture.graphql_with_org_repository(db.clone(), None, None, None, true, None);
     let policy = format!(
         r#"permit(principal, action == Compallm::Action::"model.read", resource == Compallm::Organization::"{}");"#,
         organization.id
@@ -6282,4 +6326,50 @@ async fn graphql_passkey_change_cookie_preserves_login_and_cannot_authorize_sess
     )
     .await;
     assert_eq!(graphql_body(graphql_request(&router, None, Some(&cookies), true).await).await["data"]["first"]["node"]["id"].as_str().unwrap(), auth.authenticate_access(&tokens.access_token).await.unwrap().session.id.to_string());
+}
+
+#[tokio::test]
+async fn signin_succeeds_when_configured_location_service_is_unavailable() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    drop(listener);
+    let client =
+        compallm_api::geolocation::LocationClient::new(&format!("http://{address}")).unwrap();
+    let router = fixture
+        .graphql_with_org_repository(
+            fixture.repo.1.clone(),
+            None,
+            None,
+            None,
+            false,
+            Some(client),
+        )
+        .layer(axum::middleware::from_fn(
+            |mut request: axum::extract::Request, next: axum::middleware::Next| async move {
+                request.extensions_mut().insert(axum::extract::ConnectInfo(
+                    "81.2.69.160:12345".parse::<std::net::SocketAddr>().unwrap(),
+                ));
+                next.run(request).await
+            },
+        ));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let body = graphql_body(graphql_operation(&router,
+        "mutation($input:EmailCodeInput!){emailSigninConfirm(input:$input){node{accessToken refreshToken}}}",
+        serde_json::json!({"input":{"code":challenge.code,"delivery":"TOKEN"}}),Some(&challenge.access_token),None,false).await).await;
+    assert!(body["errors"].is_null(), "{body}");
+    let access = body["data"]["emailSigninConfirm"]["node"]["accessToken"]
+        .as_str()
+        .unwrap();
+    let actor = UserAccessToken::try_from(decode_token(access, SECRET).unwrap()).unwrap();
+    assert!(actor.session.metadata.location.is_none());
+    assert!(
+        fixture
+            .repo
+            .0
+            .lock()
+            .unwrap()
+            .sessions
+            .contains_key(&actor.session.id)
+    );
 }

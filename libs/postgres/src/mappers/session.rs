@@ -28,7 +28,7 @@ impl TryFrom<UserSessionSchema> for MappedSession {
             .map(|at| u64::try_from(at.timestamp()))
             .transpose()
             .context("invalid session revocation timestamp")?;
-        let metadata = compallm_core::authentication::SessionMetadata::new(
+        let mut metadata = compallm_core::authentication::SessionMetadata::new(
             model
                 .ip_address
                 .map(|ip| ip.parse())
@@ -36,6 +36,7 @@ impl TryFrom<UserSessionSchema> for MappedSession {
                 .context("invalid session IP address")?,
             model.user_agent.as_deref(),
         );
+        metadata.location = model.location;
         Ok(Self(Session {
             metadata,
             id,

@@ -53,6 +53,7 @@ fn renewal_preserves_the_session_and_extends_token_validity() {
         Some("203.0.113.42".parse().unwrap()),
         Some("Mozilla/5.0 test browser"),
     );
+    session.metadata.location = Some("Vietnam".into());
     token.session = session.clone();
     let renewed = session.refresh(&token, LIFETIME).unwrap();
     assert_eq!(renewed.session, session);

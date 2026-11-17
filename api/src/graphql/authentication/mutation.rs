@@ -158,7 +158,7 @@ pub(crate) async fn signup_email_confirm(
                         identity.otp().await?,
                         &input.code,
                         true,
-                        identity.session_metadata(),
+                        identity.session_metadata().await,
                     ))
                     .await?
             }
@@ -167,7 +167,7 @@ pub(crate) async fn signup_email_confirm(
                     .execute(auth.signup(
                         identity.otp().await?,
                         &input.code,
-                        identity.session_metadata(),
+                        identity.session_metadata().await,
                     ))
                     .await?
             }
@@ -224,7 +224,7 @@ pub(crate) async fn signin_email_confirm(
                         identity.otp().await?,
                         &input.code,
                         false,
-                        identity.session_metadata(),
+                        identity.session_metadata().await,
                     ))
                     .await?
             }
@@ -233,7 +233,7 @@ pub(crate) async fn signin_email_confirm(
                     .execute(auth.signin(
                         identity.otp().await?,
                         &input.code,
-                        identity.session_metadata(),
+                        identity.session_metadata().await,
                     ))
                     .await?
             }

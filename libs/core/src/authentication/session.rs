@@ -7,6 +7,8 @@ use std::time::Duration;
 /// Sign-in request hints used only to help the account owner recognize a login.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SessionMetadata {
+    #[serde(rename = "l", default)]
+    pub location: Option<String>,
     #[serde(rename = "p")]
     pub ip_address: Option<std::net::IpAddr>,
     #[serde(rename = "a")]
@@ -16,6 +18,7 @@ pub struct SessionMetadata {
 impl SessionMetadata {
     pub fn new(ip_address: Option<std::net::IpAddr>, user_agent: Option<&str>) -> Self {
         Self {
+            location: None,
             ip_address,
             user_agent: user_agent
                 .filter(|value| !value.is_empty() && value.len() <= 512)

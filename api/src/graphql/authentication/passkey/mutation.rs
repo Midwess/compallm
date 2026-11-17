@@ -85,7 +85,7 @@ pub async fn authentication_finish(
         return Ok(SessionCredentials::try_from((grant, mode, cookies))?.into());
     }
     let tokens = service
-        .authentication_finish(&input.token, response, identity.session_metadata())
+        .authentication_finish(&input.token, response, identity.session_metadata().await)
         .await?;
     Ok(SessionCredentials::try_from((tokens, mode, cookies))?.into())
 }

@@ -20,6 +20,11 @@ impl MigrationTrait for Migration {
                             .string_len(512)
                             .null(),
                     )
+                    .add_column(
+                        ColumnDef::new(UserSessions::Location)
+                            .string_len(256)
+                            .null(),
+                    )
                     .to_owned(),
             )
             .await
@@ -30,6 +35,7 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(UserSessions::Table)
+                    .drop_column(UserSessions::Location)
                     .drop_column(UserSessions::UserAgent)
                     .drop_column(UserSessions::IpAddress)
                     .to_owned(),
@@ -43,4 +49,5 @@ enum UserSessions {
     Table,
     IpAddress,
     UserAgent,
+    Location,
 }

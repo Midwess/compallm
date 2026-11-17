@@ -10,3 +10,5 @@ pub mod workers;
 pub mod generation;
 
 pub mod storage;
+
+pub mod geolocation;

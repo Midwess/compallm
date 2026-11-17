@@ -10,6 +10,7 @@ pub struct Model {
     pub user_id: i64,
     pub ip_address: Option<String>,
     pub user_agent: Option<String>,
+    pub location: Option<String>,
     pub organization_id: i64,
     pub revoked_at: Option<DateTimeWithTimeZone>,
     pub authorization_version: i64,

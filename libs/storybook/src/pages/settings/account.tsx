@@ -87,6 +87,7 @@ export function ProfileSettings() {
 function RecognizedSession({ controller }: { controller: AuthController }) {
   const userAgent = useFormStore(controller.store, (state) => state.currentUser?.userAgent)
   const ipAddress = useFormStore(controller.store, (state) => state.currentUser?.ipAddress)
+  const location = useFormStore(controller.store, (state) => state.currentUser?.location)
   const label = useMemo(() => {
     if (!userAgent) return 'Unknown browser'
     const { browser, os } = Bowser.parse(userAgent)
@@ -95,7 +96,15 @@ function RecognizedSession({ controller }: { controller: AuthController }) {
   return (
     <span className="block min-w-0">
       <span className="block truncate">{label}</span>
+      <span className="line-clamp-2" title={location ? `Approximate sign-in location: ${location}` : undefined}>
+        {location ? `Near ${location}` : 'Location unavailable'}
+      </span>
       <span className="block truncate">{ipAddress ? `Sign-in IP: ${ipAddress}` : 'Sign-in IP unavailable'}</span>
+      {location ? (
+        <a href="https://db-ip.com" target="_blank" rel="noreferrer" className="underline underline-offset-2">
+          IP Geolocation by DB-IP
+        </a>
+      ) : null}
     </span>
   )
 }

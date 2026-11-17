@@ -1,0 +1,16 @@
+[package]
+name = "compallm-geolocation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Internal REST server for approximate DB-IP City lookups"
+
+[lints]
+workspace = true
+
+[dependencies]
+axum = { workspace = true, features = ["http1", "json", "tokio"] }
+maxminddb = { version = "0.33", features = ["mmap"] }
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "signal"] }

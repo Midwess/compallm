@@ -579,6 +579,8 @@ export interface Session {
   id: Scalars['ID']
   /** IP observed by the API connection at sign-in; it may belong to a proxy or VPN. */
   ipAddress: Scalars['String'] | null
+  /** Approximate sign-in location from IP geolocation, never device GPS. */
+  location: Scalars['String'] | null
   /** Organization selected for this verified session. */
   organizationId: Scalars['ID']
   /** Current organization name. */
@@ -1577,6 +1579,8 @@ export interface SessionGenqlSelection {
   id?: boolean | number
   /** IP observed by the API connection at sign-in; it may belong to a proxy or VPN. */
   ipAddress?: boolean | number
+  /** Approximate sign-in location from IP geolocation, never device GPS. */
+  location?: boolean | number
   /** Organization selected for this verified session. */
   organizationId?: boolean | number
   /** Current organization name. */

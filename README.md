@@ -22,6 +22,15 @@ docker compose up -d
 cargo run -p compallm-api -- start
 ```
 
+For optional approximate city labels on new sign-ins, start the separate DB-IP location server in another terminal:
+
+```bash
+./geolocation/download-dbip.sh
+cargo run -p compallm-geolocation
+```
+
+The server and API development settings both use `http://127.0.0.1:41869`. Location-service failures leave location unknown and do not block sign-in. See [browser sessions](https://github.com/Midwess/compallm/wiki/Login-session) for deployment and data-update configuration.
+
 Compose starts the backing services, including PostgreSQL on port `7887`. Debug builds start the backend and Vite with frontend hot reload. Use `cargo run -r -p compallm-api -- start` to serve prebuilt `portal/dist` assets without Vite; build the Portal assets first. Vite uses internal port `41868` with strict binding; browse through the API origin. Open the URL logged by the API server: it prefers port `3000`, reuses recently closed addresses on restart, and chooses the next available port when another listener occupies it. `PORT` or the server CLI port option sets the starting point, within `1–50100`. The API listens on all IPv4/IPv6 interfaces in development and production; deployment port mappings must match the selected port.
 
 In the development environment, open `/api/graphiql` on the API server to browse the schema and run GraphQL requests. It uses `/api/graphql`; protected operations require a valid login cookie or an Authorization header.

@@ -49,9 +49,7 @@ use serde::de::{DeserializeOwned, Error};
 use serde_json::{Map, Value};
 
 type Result<T> = std::result::Result<T, serde_json::Error>;
-struct ComponentDeserializer;
-
-impl ComponentDeserializer {
+trait ComponentDeserializeHelper {
     fn invalid() -> serde_json::Error {
         serde_json::Error::custom("invalid request component")
     }
@@ -93,18 +91,4 @@ impl ComponentDeserializer {
     }
 }
 
-macro_rules! deserialize {
-    ($ty:ty, $value:ident, $body:block) => {
-        impl<'de> serde::Deserialize<'de> for $ty {
-            fn deserialize<D: serde::Deserializer<'de>>(
-                deserializer: D,
-            ) -> std::result::Result<Self, D::Error> {
-                let $value = <serde_json::Value as serde::Deserialize>::deserialize(deserializer)?;
-                let parse = || -> super::Result<Self> { $body };
-                parse().map_err(<D::Error as serde::de::Error>::custom)
-            }
-        }
-    };
-}
-
-pub(super) use deserialize;
+impl ComponentDeserializeHelper for TextRequestComponent {}

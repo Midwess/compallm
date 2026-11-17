@@ -1,7 +1,8 @@
-use super::{ComponentDeserializer, ToolType, deserialize};
+use super::{ComponentDeserializeHelper, ToolType};
 use serde_json::Value;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize)]
+#[serde(try_from = "serde_json::Value")]
 pub enum ToolChoice {
     Auto,
     None,
@@ -9,22 +10,26 @@ pub enum ToolChoice {
     Function(String),
 }
 
-deserialize!(ToolChoice, value, {
-    if let Value::String(choice) = value {
-        return match choice.as_str() {
-            "auto" => Ok(Self::Auto),
-            "none" => Ok(Self::None),
-            "required" => Ok(Self::Required),
-            _ => Err(ComponentDeserializer::invalid()),
-        };
+impl TryFrom<Value> for ToolChoice {
+    type Error = serde_json::Error;
+
+    fn try_from(value: Value) -> super::Result<Self> {
+        if let Value::String(choice) = value {
+            return match choice.as_str() {
+                "auto" => Ok(Self::Auto),
+                "none" => Ok(Self::None),
+                "required" => Ok(Self::Required),
+                _ => Err(Self::invalid()),
+            };
+        }
+        let mut map = Self::object(value)?;
+        let _: ToolType = Self::required(&mut map, "type")?;
+        let mut function = Self::object(Self::required(&mut map, "function")?)?;
+        let name = Self::nonempty(Self::required(&mut function, "name")?)?;
+        Self::done(function)?;
+        Self::done(map)?;
+        Ok(Self::Function(name))
     }
-    let mut map = ComponentDeserializer::object(value)?;
-    let _: ToolType = ComponentDeserializer::required(&mut map, "type")?;
-    let mut function =
-        ComponentDeserializer::object(ComponentDeserializer::required(&mut map, "function")?)?;
-    let name =
-        ComponentDeserializer::nonempty(ComponentDeserializer::required(&mut function, "name")?)?;
-    ComponentDeserializer::done(function)?;
-    ComponentDeserializer::done(map)?;
-    Ok(Self::Function(name))
-});
+}
+
+impl ComponentDeserializeHelper for ToolChoice {}

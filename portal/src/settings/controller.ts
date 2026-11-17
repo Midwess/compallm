@@ -13,6 +13,7 @@ import { graphql } from '../graphql-client'
 import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
 import { RoleCreateInput, GroupCreateInput } from '@compallm/contract/validation'
 import { createSettingsPages } from './pages'
+import { lookupSessionLocation } from './session-location'
 
 export const settingsPages = [
   'blank',
@@ -43,6 +44,7 @@ export class SettingsController implements Controller {
   private readonly auth: Pick<AuthController, 'signOut'> & Partial<Pick<AuthController, 'store'>>
   private readonly initialName: string
   private stopOrganization?: () => void
+  private locationRequest?: AbortController
 
   private get base() {
     return `/${encodeURIComponent(this.auth.store?.getState().currentUser?.organizationName ?? this.initialName)}`
@@ -66,6 +68,9 @@ export class SettingsController implements Controller {
     const controller = new AbortController()
     this.request?.abort()
     this.request = controller
+    this.locationRequest?.abort()
+    this.locationRequest = undefined
+    this.store.setState({ sessionLocation: null })
     const generation = ++this.generation
     this.store.setState({ roles: [], groups: [] })
     if (this.store.getState().location.page === 'members') this.pages.members.start()
@@ -73,6 +78,7 @@ export class SettingsController implements Controller {
     const location = this.store.getState().location
     if (location.page === 'organization') this.stopOrganization = this.pages.organization.start()
     if (location.page === 'profile') this.stopProfile = this.pages.profile.start()
+    if (location.page === 'access' || location.page === 'security') void this.loadSessionLocation()
     if (location.page === 'role' && location.id) void this.role.load(location.id)
     if (location.page === 'group' && location.id) void this.group.load(location.id)
     return () => {
@@ -81,6 +87,9 @@ export class SettingsController implements Controller {
       this.stopOrganization?.()
       this.stopOrganization = undefined
       controller.abort()
+      this.locationRequest?.abort()
+      this.locationRequest = undefined
+      this.store.setState({ sessionLocation: null })
       this.role.cancel()
       this.group.cancel()
       this.pages.onboarding.cancel()
@@ -227,7 +236,35 @@ export class SettingsController implements Controller {
     }
   }
 
+  private loadSessionLocation = async () => {
+    const user = this.auth.store?.getState().currentUser
+    this.locationRequest?.abort()
+    this.locationRequest = undefined
+    if (!user?.ipAddress) {
+      this.store.setState({ sessionLocation: null })
+      return
+    }
+    const saved = this.store.getState().sessionLocation
+    if (saved?.sessionId === user.id && saved.ipAddress === user.ipAddress) return
+    this.store.setState({ sessionLocation: null })
+    const request = new AbortController()
+    this.locationRequest = request
+    const location = await lookupSessionLocation(user.ipAddress, request.signal)
+    const current = this.auth.store?.getState().currentUser
+    if (
+      request.signal.aborted ||
+      this.locationRequest !== request ||
+      current?.id !== user.id ||
+      current.ipAddress !== user.ipAddress
+    )
+      return
+    if (location) this.store.setState({ sessionLocation: { sessionId: user.id, ipAddress: user.ipAddress, location } })
+    this.locationRequest = undefined
+  }
+
   setPage = (page: SettingsDestination, id?: string) => {
+    this.locationRequest?.abort()
+    this.locationRequest = undefined
     if (page !== 'organization') {
       this.stopOrganization?.()
       this.stopOrganization = undefined
@@ -244,6 +281,7 @@ export class SettingsController implements Controller {
     if (page === 'organization' && this.request && !this.stopOrganization)
       this.stopOrganization = this.pages.organization.start()
     if (page === 'profile' && this.request && !this.stopProfile) this.stopProfile = this.pages.profile.start()
+    if ((page === 'access' || page === 'security') && this.request) void this.loadSessionLocation()
     if (page === 'members' && this.request) this.pages.members.start()
     if (page === 'role' && id && this.request) void this.role.load(id)
     if (page === 'group' && id && this.request) void this.group.load(id)

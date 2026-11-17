@@ -87,7 +87,9 @@ export function ProfileSettings() {
 function RecognizedSession({ controller }: { controller: AuthController }) {
   const userAgent = useFormStore(controller.store, (state) => state.currentUser?.userAgent)
   const ipAddress = useFormStore(controller.store, (state) => state.currentUser?.ipAddress)
-  const location = useFormStore(controller.store, (state) => state.currentUser?.location)
+  const sessionId = useFormStore(controller.store, (state) => state.currentUser?.id)
+  const saved = useSettings((state) => state.sessionLocation)
+  const location = saved && saved.sessionId === sessionId && saved.ipAddress === ipAddress ? saved.location : null
   const label = useMemo(() => {
     if (!userAgent) return 'Unknown browser'
     const { browser, os } = Bowser.parse(userAgent)

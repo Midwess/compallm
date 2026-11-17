@@ -29,7 +29,6 @@ impl Fixture {
             revoked_at: None,
             ip_address: None,
             user_agent: None,
-            location: None,
         }
     }
     fn organization() -> OrganizationSchema {

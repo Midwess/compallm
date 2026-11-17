@@ -1090,11 +1090,6 @@ type Session {
   ipAddress: String
 
   """
-  Approximate sign-in location from IP geolocation, never device GPS.
-  """
-  location: String
-
-  """
   Organization selected for this verified session.
   """
   organizationId: ID!

@@ -260,7 +260,7 @@ fn ids_round_trip_as_u64_in_access_and_refresh_sessions() {
     assert_eq!(first.session.organization_id, 84);
     assert_eq!(
         json["u"]["s"]["m"],
-        serde_json::json!({"p": null, "a": null, "l": null})
+        serde_json::json!({"p": null, "a": null})
     );
 }
 

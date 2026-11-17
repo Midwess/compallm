@@ -1,5 +1,4 @@
 settings:
-  geolocation_url: "<%= get_env(name="GEOLOCATION_URL", default="") %>"
   smtp:
     concurrency: <%= get_env(name="SMTP_CONCURRENCY", default="10") %>
     queue_capacity: <%= get_env(name="SMTP_QUEUE_CAPACITY", default="1024") %>

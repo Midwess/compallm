@@ -44,7 +44,6 @@ pub struct AuthenticationContext {
     settings: AuthenticationSettings,
     headers: HeaderMap,
     metadata: compallm_core::authentication::SessionMetadata,
-    geolocation: Arc<crate::geolocation::LocationClient>,
     selected: OnceCell<Result<SelectedToken, RequestError>>,
     passkey_otp: OnceCell<Result<EmailOtpAccessToken, RequestError>>,
     user: OnceCell<Result<VerifiedUser, RequestError>>,
@@ -60,7 +59,6 @@ impl AuthenticationContext {
         settings: AuthenticationSettings,
         headers: HeaderMap,
         metadata: compallm_core::authentication::SessionMetadata,
-        geolocation: Arc<crate::geolocation::LocationClient>,
     ) -> Arc<Self> {
         Arc::new(Self {
             auth,
@@ -68,20 +66,14 @@ impl AuthenticationContext {
             settings,
             headers,
             metadata,
-            geolocation,
             selected: OnceCell::new(),
             passkey_otp: OnceCell::new(),
             user: OnceCell::new(),
         })
     }
 
-    pub async fn session_metadata(&self) -> compallm_core::authentication::SessionMetadata {
-        let mut metadata = self.metadata.clone();
-        metadata.location = match metadata.ip_address {
-            Some(ip) => self.geolocation.location(ip).await,
-            None => None,
-        };
-        metadata
+    pub fn session_metadata(&self) -> compallm_core::authentication::SessionMetadata {
+        self.metadata.clone()
     }
 
     pub async fn execute<T, E: From<compallm_core::persistent::ConnectionError>>(

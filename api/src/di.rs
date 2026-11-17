@@ -60,8 +60,6 @@ pub struct AuthSettings {
 struct Settings {
     auth: AuthSettings,
     #[serde(default)]
-    geolocation_url: String,
-    #[serde(default)]
     graphql: GraphqlSettings,
     #[serde(default)]
     smtp: Option<compallm_mailing::SmtpSettings>,
@@ -71,7 +69,6 @@ struct Settings {
 
 /// Own all application dependencies in one permanent container.
 pub struct Di {
-    geolocation: std::sync::Arc<crate::geolocation::LocationClient>,
     db: Box<DbContext>,
     storage: Option<Box<dyn compallm_core::persistent::storage::user_space::UserStorageSpace>>,
     s3: Option<std::sync::Arc<compallm_storage::S3Storage>>,
@@ -136,12 +133,6 @@ impl Di {
                     .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
                 let mut di = Self::new(db, settings.auth, settings.graphql, None);
                 di.mailing = mailing.map(Box::new);
-                if !settings.geolocation_url.is_empty() {
-                    match crate::geolocation::LocationClient::new(&settings.geolocation_url) {
-                        Ok(client) => di.geolocation = std::sync::Arc::new(client),
-                        Err(error) => tracing::warn!(%error, "Location enrichment unavailable"),
-                    }
-                }
                 if let Some(settings) = settings.s3.filter(|settings| settings.enabled) {
                     let s3 = std::sync::Arc::new(
                         compallm_storage::S3Storage::new(settings)
@@ -169,7 +160,6 @@ impl Di {
             compallm_postgres::repository::dictionary::DictionaryRepository::new(db.clone())
                 .expect("application dictionary connection must be committed");
         Self {
-            geolocation: std::sync::Arc::new(crate::geolocation::LocationClient::default()),
             db: Box::new(db),
             storage: None,
             org_storage: None,
@@ -304,8 +294,7 @@ impl Di {
                     cookie_secure: settings.cookie_secure,
                     public_origin: settings.public_origin.clone(),
                 },
-            )?
-            .with_geolocation(self.geolocation.clone());
+            )?;
             let _ = self.authentication.set(authentication);
         }
         self.graphql.get_or_init(|| {

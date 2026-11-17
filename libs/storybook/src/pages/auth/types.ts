@@ -14,7 +14,7 @@ export type AuthOperation = 'request' | 'verify' | 'resend' | 'passkey'
 export type AuthError = AuthFailureReason | 'invalid-email'
 
 export type AuthUser = Pick<Session, 'id' | 'userId' | 'organizationId' | 'organizationName'> &
-  Partial<Pick<Session, 'avatarUrl' | 'ipAddress' | 'userAgent' | 'location'>>
+  Partial<Pick<Session, 'avatarUrl' | 'ipAddress' | 'userAgent'>>
 
 export interface AuthState {
   verificationActive?: boolean

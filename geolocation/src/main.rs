@@ -3,8 +3,11 @@ use std::{net::SocketAddr, path::Path, sync::Arc};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let default_bind = std::env::var("PORT")
+        .map(|port| format!("0.0.0.0:{port}"))
+        .unwrap_or_else(|_| "127.0.0.1:41869".into());
     let bind: SocketAddr = std::env::var("GEOLOCATION_BIND")
-        .unwrap_or_else(|_| "127.0.0.1:41869".into())
+        .unwrap_or(default_bind)
         .parse()?;
     let path = std::env::var("DBIP_DATABASE")
         .unwrap_or_else(|_| "artifacts/geoip/dbip-city-lite.mmdb".into());

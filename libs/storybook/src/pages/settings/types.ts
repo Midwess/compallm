@@ -167,6 +167,7 @@ export interface SettingsDialog {
   revealedKey?: string
 }
 export interface SettingsState {
+  sessionLocation: { sessionId: string; ipAddress: string; location: string } | null
   actorIsOwner?: boolean
   ownerMemberIds?: string[]
   currentMemberId?: string

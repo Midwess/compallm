@@ -446,7 +446,17 @@ export class AuthController implements SignupController, SigninController {
   private async fetchCurrentUser(requestSignal: AbortSignal, generation: number, redirectAnonymous: boolean) {
     try {
       const selection = {
-        session: { node: { id: true, userId: true, organizationId: true, organizationName: true, avatarUrl: true } },
+        session: {
+          node: {
+            id: true,
+            userId: true,
+            organizationId: true,
+            organizationName: true,
+            avatarUrl: true,
+            ipAddress: true,
+            userAgent: true,
+          },
+        },
       } satisfies QueryGenqlSelection
       const {
         session: { node: user },

@@ -1,5 +1,8 @@
-import { useContext } from 'react'
-import { PasskeyControllerContext } from '../../context'
+import { useContext, useMemo } from 'react'
+import Bowser from 'bowser'
+import { useFormStore } from '../../components/form'
+import type { AuthController } from '../auth/types'
+import { AuthControllerContext, PasskeyControllerContext } from '../../context'
 import { PasskeySettings } from '../passkey'
 import { FormError } from '../../components/form'
 import { Button } from '../../components/buttons'
@@ -81,6 +84,27 @@ export function ProfileSettings() {
     </SettingsContent>
   )
 }
+function RecognizedSession({ controller }: { controller: AuthController }) {
+  const userAgent = useFormStore(controller.store, (state) => state.currentUser?.userAgent)
+  const ipAddress = useFormStore(controller.store, (state) => state.currentUser?.ipAddress)
+  const label = useMemo(() => {
+    if (!userAgent) return 'Unknown browser'
+    const { browser, os } = Bowser.parse(userAgent)
+    return [browser.name || 'Unknown browser', os.name].filter(Boolean).join(' on ')
+  }, [userAgent])
+  return (
+    <span className="block min-w-0">
+      <span className="block truncate">{label}</span>
+      <span className="block truncate">{ipAddress ? `Sign-in IP: ${ipAddress}` : 'Sign-in IP unavailable'}</span>
+    </span>
+  )
+}
+
+function CurrentSessionDescription() {
+  const controller = useContext(AuthControllerContext)
+  return controller ? <RecognizedSession controller={controller} /> : <>Session information unavailable.</>
+}
+
 export function AccessSettings() {
   const c = useSettingsController(),
     apps = useSettings((s) => s.applications)
@@ -91,7 +115,7 @@ export function AccessSettings() {
       <div className="grid gap-12">
         <Section title="Sessions" description="Review and revoke access to your account.">
           <Rows>
-            <Row label="Current session" description="You are signed in to Compallm.">
+            <Row label="Current session" description={<CurrentSessionDescription />}>
               <span className="text-xs">Current</span>
             </Row>
             <Row
@@ -138,7 +162,7 @@ export function SecuritySettings() {
       <div className="grid gap-12">
         <Section title="Sessions" description="Devices logged into your account">
           <Rows>
-            <Row label="Current session" description="You are signed in to Compallm." last>
+            <Row label="Current session" description={<CurrentSessionDescription />} last>
               <Button variant="ghost" onClick={c.signOut}>
                 Log out
               </Button>

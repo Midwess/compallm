@@ -1436,7 +1436,10 @@ impl Fixture {
         claims: &EmailOtpAccessToken,
         code: &str,
     ) -> Result<UserTokens, AuthError> {
-        self.repo.1.scope(self.service().signin(claims, code)).await
+        self.repo
+            .1
+            .scope(self.service().signin(claims, code, Default::default()))
+            .await
     }
 
     async fn signup_in_transaction(
@@ -1444,7 +1447,9 @@ impl Fixture {
         claims: &EmailOtpAccessToken,
         code: &str,
     ) -> Result<UserTokens, AuthError> {
-        self.service().signup(claims, code).await
+        self.service()
+            .signup(claims, code, Default::default())
+            .await
     }
 
     async fn register(&self, email: &str) -> Result<User, compallm_core::user::RegistrationError> {
@@ -4276,7 +4281,22 @@ fn response_cookies(response: &axum::response::Response) -> String {
 #[tokio::test]
 async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let router = fixture.graphql();
+    let router = fixture.graphql().layer(axum::middleware::from_fn(
+        |mut request: axum::extract::Request, next: axum::middleware::Next| async move {
+            request.extensions_mut().insert(axum::extract::ConnectInfo(
+                "203.0.113.42:12345"
+                    .parse::<std::net::SocketAddr>()
+                    .unwrap(),
+            ));
+            request
+                .headers_mut()
+                .insert("user-agent", "recognizable-test-browser".parse().unwrap());
+            request
+                .headers_mut()
+                .insert("x-forwarded-for", "198.51.100.1".parse().unwrap());
+            next.run(request).await
+        },
+    ));
     let response = graphql_operation(&router,
         "mutation($input:EmailInput!){emailSigninRequest(input:$input){node{token lifetime{expiresInSeconds}}}}",
         serde_json::json!({"input":{"email":"james@midwess.com","delivery":"TOKEN"}}),Some("invalid-bearer"),None,false).await;
@@ -4298,6 +4318,42 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     let access = tokens["accessToken"].as_str().unwrap();
     let refresh = tokens["refreshToken"].as_str().unwrap();
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
+    let signed = UserAccessToken::try_from(decode_token(access, SECRET).unwrap()).unwrap();
+    let metadata = signed.session.metadata.clone();
+    assert_eq!(metadata.ip_address, Some("203.0.113.42".parse().unwrap()));
+    assert_eq!(
+        metadata.user_agent.as_deref(),
+        Some("recognizable-test-browser")
+    );
+    assert_eq!(
+        fixture.repo.0.lock().unwrap().sessions[&signed.session.id].metadata,
+        metadata
+    );
+    assert_eq!(
+        RefreshToken::try_from(decode_token(refresh, SECRET).unwrap())
+            .unwrap()
+            .session
+            .metadata,
+        metadata
+    );
+    let info = graphql_body(
+        graphql_operation(
+            &router,
+            "{session{node{ipAddress userAgent}}}",
+            serde_json::json!({}),
+            Some(access),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(info["data"]["session"]["node"]["ipAddress"], "203.0.113.42");
+    assert_eq!(
+        info["data"]["session"]["node"]["userAgent"],
+        "recognizable-test-browser"
+    );
+
     assert_eq!(
         graphql_request(&router, Some(access), None, false)
             .await
@@ -4315,10 +4371,56 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     .await;
     assert!(!response.headers().contains_key("set-cookie"));
     let renewed = graphql_body(response).await;
+    let renewed_refresh = renewed["data"]["sessionRefresh"]["node"]["refreshToken"]
+        .as_str()
+        .unwrap();
+    assert_eq!(
+        RefreshToken::try_from(decode_token(renewed_refresh, SECRET).unwrap())
+            .unwrap()
+            .session
+            .metadata,
+        metadata
+    );
     let access = renewed["data"]["sessionRefresh"]["node"]["accessToken"]
         .as_str()
         .unwrap();
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
+    let signed = UserAccessToken::try_from(decode_token(access, SECRET).unwrap()).unwrap();
+    let metadata = signed.session.metadata.clone();
+    assert_eq!(metadata.ip_address, Some("203.0.113.42".parse().unwrap()));
+    assert_eq!(
+        metadata.user_agent.as_deref(),
+        Some("recognizable-test-browser")
+    );
+    assert_eq!(
+        fixture.repo.0.lock().unwrap().sessions[&signed.session.id].metadata,
+        metadata
+    );
+    assert_eq!(
+        RefreshToken::try_from(decode_token(refresh, SECRET).unwrap())
+            .unwrap()
+            .session
+            .metadata,
+        metadata
+    );
+    let info = graphql_body(
+        graphql_operation(
+            &router,
+            "{session{node{ipAddress userAgent}}}",
+            serde_json::json!({}),
+            Some(access),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(info["data"]["session"]["node"]["ipAddress"], "203.0.113.42");
+    assert_eq!(
+        info["data"]["session"]["node"]["userAgent"],
+        "recognizable-test-browser"
+    );
+
     let response = graphql_operation(
         &router,
         "mutation{sessionRevoke{node}}",
@@ -5680,7 +5782,10 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
     )
     .unwrap();
     let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
-    let tokens = auth.signin(&otp, &otp.code).await.unwrap();
+    let tokens = auth
+        .signin(&otp, &otp.code, Default::default())
+        .await
+        .unwrap();
     let actor = auth
         .authenticate_access(&tokens.access_token)
         .await
@@ -5753,7 +5858,7 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
     missing_handle.response.user_handle = None;
     assert!(
         service
-            .authentication_finish(&start.token, missing_handle)
+            .authentication_finish(&start.token, missing_handle, Default::default())
             .await
             .is_err()
     );
@@ -5761,7 +5866,7 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
     wrong_handle.response.user_handle = Some(uuid::Uuid::new_v4().as_bytes().to_vec().into());
     assert!(
         service
-            .authentication_finish(&start.token, wrong_handle)
+            .authentication_finish(&start.token, wrong_handle, Default::default())
             .await
             .is_err()
     );
@@ -5769,17 +5874,17 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
     unknown_credential.raw_id = vec![1, 2, 3, 4].into();
     assert!(
         service
-            .authentication_finish(&start.token, unknown_credential)
+            .authentication_finish(&start.token, unknown_credential, Default::default())
             .await
             .is_err()
     );
     let login = service
-        .authentication_finish(&start.token, assertion.clone())
+        .authentication_finish(&start.token, assertion.clone(), Default::default())
         .await
         .unwrap();
     assert!(
         service
-            .authentication_finish(&start.token, assertion)
+            .authentication_finish(&start.token, assertion, Default::default())
             .await
             .is_err()
     );
@@ -5800,7 +5905,7 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
         .unwrap();
     assert!(
         service
-            .authentication_finish(&reauth.token, assertion.clone())
+            .authentication_finish(&reauth.token, assertion.clone(), Default::default())
             .await
             .is_err()
     );
@@ -5845,7 +5950,7 @@ async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_ses
     );
     assert!(
         service
-            .authentication_finish(&pending.token, pending_assertion)
+            .authentication_finish(&pending.token, pending_assertion, Default::default())
             .await
             .is_err()
     );
@@ -5869,7 +5974,10 @@ async fn passkey_management_requires_grant_and_rejects_foreign_or_expired_ceremo
     )
     .unwrap();
     let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
-    let tokens = auth.signin(&otp, &otp.code).await.unwrap();
+    let tokens = auth
+        .signin(&otp, &otp.code, Default::default())
+        .await
+        .unwrap();
     let actor = auth
         .authenticate_access(&tokens.access_token)
         .await
@@ -5959,7 +6067,10 @@ async fn email_passkey_change_is_purpose_bound_session_bound_and_preserves_login
             .with_passkey_repository(repository),
     ));
     let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
-    let tokens = auth.signin(&otp, &otp.code).await.unwrap();
+    let tokens = auth
+        .signin(&otp, &otp.code, Default::default())
+        .await
+        .unwrap();
     let actor = auth
         .authenticate_access(&tokens.access_token)
         .await
@@ -5972,7 +6083,11 @@ async fn email_passkey_change_is_purpose_bound_session_bound_and_preserves_login
         .try_into()
         .unwrap();
     let code = email.lock().unwrap().clone();
-    assert!(auth.signin(&proof, &code).await.is_err());
+    assert!(
+        auth.signin(&proof, &code, Default::default())
+            .await
+            .is_err()
+    );
     assert!(
         auth.passkey_change_confirm(&actor, &otp, &otp.code)
             .await
@@ -6057,7 +6172,10 @@ async fn discoverable_passkey_ceremony_accepts_either_account_without_an_email_b
             }
         }
         let otp = EmailOtpAccessToken::new(account.email.clone()).unwrap();
-        let login = auth.signin(&otp, &otp.code).await.unwrap();
+        let login = auth
+            .signin(&otp, &otp.code, Default::default())
+            .await
+            .unwrap();
         let actor = auth.authenticate_access(&login.access_token).await.unwrap();
         let grant = management_grant(&actor);
         let enrollment = service.registration_start(&actor, &grant).await.unwrap();
@@ -6088,7 +6206,7 @@ async fn discoverable_passkey_ceremony_accepts_either_account_without_an_email_b
             )
             .unwrap();
         let login = service
-            .authentication_finish(&start.token, assertion)
+            .authentication_finish(&start.token, assertion, Default::default())
             .await
             .unwrap();
         let actor = auth.authenticate_access(&login.access_token).await.unwrap();
@@ -6101,7 +6219,10 @@ async fn graphql_passkey_change_cookie_preserves_login_and_cannot_authorize_sess
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let auth = fixture.service();
     let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
-    let tokens = auth.signin(&otp, &otp.code).await.unwrap();
+    let tokens = auth
+        .signin(&otp, &otp.code, Default::default())
+        .await
+        .unwrap();
     let router = fixture.graphql();
     let cookies = format!(
         "compallm-access={}; compallm-refresh={}",

@@ -62,6 +62,7 @@ impl Fixture {
                 organization_id,
                 authorization_version: 1,
                 revoked_at: None,
+                metadata: Default::default(),
             },
             PolicySnapshot::new(&membership).unwrap(),
             Duration::from_secs(60),

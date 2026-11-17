@@ -228,6 +228,8 @@ impl CoreSessionRepository for SessionRepository {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
         let model = SessionActiveModel {
+            ip_address: Set(session.metadata.ip_address.map(|ip| ip.to_string())),
+            user_agent: Set(session.metadata.user_agent.clone()),
             id: Set(Self::id(session.id)?),
             user_id: Set(Self::id(session.user_id)?),
             organization_id: Set(Self::id(session.organization_id)?),

@@ -15,6 +15,16 @@ use juniper::{ID, graphql_object};
 
 #[graphql_object(context = crate::graphql::GraphqlContext)]
 impl Session {
+    /// IP observed by the API connection at sign-in; it may belong to a proxy or VPN.
+    fn ip_address(&self) -> Option<String> {
+        self.0.metadata.ip_address.map(|ip| ip.to_string())
+    }
+
+    /// User-Agent captured at sign-in, used only for session recognition.
+    fn user_agent(&self) -> Option<&str> {
+        self.0.metadata.user_agent.as_deref()
+    }
+
     async fn passkey(
         &self,
         #[graphql(context)] user: &crate::http::authentication::UserContext,

@@ -43,6 +43,7 @@ pub struct AuthenticationContext {
     trusted: DbContext,
     settings: AuthenticationSettings,
     headers: HeaderMap,
+    metadata: compallm_core::authentication::SessionMetadata,
     selected: OnceCell<Result<SelectedToken, RequestError>>,
     passkey_otp: OnceCell<Result<EmailOtpAccessToken, RequestError>>,
     user: OnceCell<Result<VerifiedUser, RequestError>>,
@@ -57,16 +58,22 @@ impl AuthenticationContext {
         trusted: DbContext,
         settings: AuthenticationSettings,
         headers: HeaderMap,
+        metadata: compallm_core::authentication::SessionMetadata,
     ) -> Arc<Self> {
         Arc::new(Self {
             auth,
             trusted,
             settings,
             headers,
+            metadata,
             selected: OnceCell::new(),
             passkey_otp: OnceCell::new(),
             user: OnceCell::new(),
         })
+    }
+
+    pub fn session_metadata(&self) -> compallm_core::authentication::SessionMetadata {
+        self.metadata.clone()
     }
 
     pub async fn execute<T, E: From<compallm_core::persistent::ConnectionError>>(

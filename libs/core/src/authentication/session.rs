@@ -4,9 +4,31 @@ use super::{AuthError, RefreshToken};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+/// Sign-in request hints used only to help the account owner recognize a login.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SessionMetadata {
+    #[serde(rename = "p")]
+    pub ip_address: Option<std::net::IpAddr>,
+    #[serde(rename = "a")]
+    pub user_agent: Option<String>,
+}
+
+impl SessionMetadata {
+    pub fn new(ip_address: Option<std::net::IpAddr>, user_agent: Option<&str>) -> Self {
+        Self {
+            ip_address,
+            user_agent: user_agent
+                .filter(|value| !value.is_empty() && value.len() <= 512)
+                .map(str::to_owned),
+        }
+    }
+}
+
 /// A persisted login. CWTs own expiry; ordinary renewal does not change this record.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Session {
+    #[serde(rename = "m")]
+    pub metadata: SessionMetadata,
     #[serde(rename = "i")]
     pub id: u64,
     #[serde(rename = "u")]
@@ -23,6 +45,7 @@ pub struct Session {
 impl Session {
     pub async fn new(user_id: u64, organization_id: u64) -> Result<Self, DistributedIdError> {
         Ok(Self {
+            metadata: SessionMetadata::default(),
             id: try_gen_id().await?,
             user_id,
             organization_id,

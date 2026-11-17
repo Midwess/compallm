@@ -888,9 +888,11 @@ export default {
     Session: {
       avatarUrl: [145],
       id: [33],
+      ipAddress: [145],
       organizationId: [33],
       organizationName: [145],
       passkey: [91],
+      userAgent: [145],
       userId: [33],
       __typename: [145],
     },

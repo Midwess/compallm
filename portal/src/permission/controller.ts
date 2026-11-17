@@ -18,6 +18,7 @@ export class PermissionController implements Contract {
   private authority?: Promise<Authority>
   private pending = new Map<string, Promise<void>>()
   private facts = new Map<string, PermissionFacts>()
+  private batch?: { checks: Map<string, PermissionCheck>; operation: Promise<void>; generation: number }
   private generation = 0
   private active = true
   evaluate = async (checks: PermissionCheck[]) => {
@@ -33,32 +34,55 @@ export class PermissionController implements Contract {
         continue
       }
       if (this.store.getState().entries[key]) continue
-      this.store.setState((state) => ({ entries: { ...state.entries, [key]: { check, status: 'denied' } } }))
-      const scope = this.scope
-      const generation = this.generation
-      const operation = (this.authority ?? Promise.reject(new Error('Permissions are unavailable.')))
-        .then(async (authority) => {
-          const [result] = await cedarWorker.request(
-            'evaluatePermissions',
-            [authority, [check], [...this.facts.values()]],
-            scope.signal,
-          )
-          if (!scope.signal.aborted && this.active && (generation === this.generation || check.resourceType === 'Organization'))
-            this.store.setState((state) => ({ entries: { ...state.entries, [key]: { check, status: result } } }))
-        })
-        .catch(() => {
-          if (!scope.signal.aborted && this.active && (generation === this.generation || check.resourceType === 'Organization'))
-            this.store.setState((state) => ({ entries: { ...state.entries, [key]: { check, status: 'error' } } }))
-        })
-        .finally(() => {
-          if (this.pending.get(key) === operation) this.pending.delete(key)
-        })
+      const operation = this.enqueue(check)
       this.pending.set(key, operation)
       waits.push(operation)
     }
     await Promise.all(waits)
     if (this.active && this.scope === scope && !scope.signal.aborted && generation !== this.generation)
       await this.evaluate(checks)
+  }
+  private enqueue(check: PermissionCheck) {
+    const generation = this.generation
+    if (this.batch?.generation === generation) {
+      this.batch.checks.set(permissionKey(check), check)
+      return this.batch.operation
+    }
+    const scope = this.scope
+    const checks = new Map([[permissionKey(check), check]])
+    const authority = this.authority
+    const operation = Promise.resolve()
+      .then(async () => {
+        if (this.batch?.operation === operation) this.batch = undefined
+        const requested = [...checks.values()]
+        let results: CedarOperations['evaluatePermissions']['result']
+        try {
+          if (!authority) throw new Error('Permissions are unavailable.')
+          const verified = await authority
+          if (scope.signal.aborted || !this.active) return
+          results = await cedarWorker.request(
+            'evaluatePermissions',
+            [verified, requested, [...this.facts.values()]],
+            scope.signal,
+          )
+        } catch {
+          results = requested.map(() => 'error')
+        }
+        if (scope.signal.aborted || !this.active || this.scope !== scope) return
+        const entries = Object.fromEntries(
+          requested.flatMap((check, index) =>
+            generation === this.generation || check.resourceType === 'Organization'
+              ? [[permissionKey(check), { check, status: results[index] ?? 'error' }]]
+              : [],
+          ),
+        )
+        if (Object.keys(entries).length) this.store.setState((state) => ({ entries: { ...state.entries, ...entries } }))
+      })
+      .finally(() => {
+        for (const key of checks.keys()) if (this.pending.get(key) === operation) this.pending.delete(key)
+      })
+    this.batch = { checks, operation, generation }
+    return operation
   }
   setFacts = (facts: PermissionFacts[]) => {
     let changed = false
@@ -70,6 +94,7 @@ export class PermissionController implements Contract {
     }
     if (changed) {
       this.generation++
+      this.batch = undefined
       this.pending.clear()
       publishPermissions(
         this,
@@ -107,6 +132,7 @@ export class PermissionController implements Contract {
     this.scope = new AbortController()
     this.authority = undefined
     void cedarWorker.request('clearPermissions', []).catch(() => undefined)
+    this.batch = undefined
     this.pending.clear()
     this.facts.clear()
     this.generation++

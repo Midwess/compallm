@@ -54,7 +54,7 @@ export { CreateProviderControllerContext } from './context'
 export { Dialog, AlertDialog } from './components/dialog'
 export { Popup } from './components/popup'
 export { Table } from './components/table'
-export type { TableColumn } from './components/table'
+export type { TableColumn, TableItemsProps } from './components/table'
 export { FormField } from './components/form-field'
 export { FormSection } from './components/form-section'
 
@@ -93,3 +93,13 @@ export { InvitationPage } from './pages/invitation'
 export { OnboardingPage } from './pages/onboarding'
 export type { OnboardingController, OnboardingState, OnboardingStep, OnboardingProfile } from './pages/onboarding'
 export { OnboardingControllerContext } from './context'
+
+export { CollectionForms } from './components/collection-forms'
+export { yieldToBrowser, processInSlices } from './components/scheduling'
+export { List } from './components/list'
+export type { CollectionPaging } from './components/collection-types'
+
+export * from './pages/passkey'
+export { PasskeyControllerContext } from './context'
+
+export { AuthVerificationHost } from './pages/auth/access-panel'

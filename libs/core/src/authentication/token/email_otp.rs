@@ -10,6 +10,13 @@ use subtle::ConstantTimeEq;
 pub struct EmailOtpAccessToken {
     #[serde(rename = "e")]
     pub email: String,
+    #[serde(
+        default,
+        skip_serializing_if = "super::AuthenticationPurpose::is_login"
+    )]
+    pub purpose: super::AuthenticationPurpose,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session: Option<crate::authentication::Session>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub invitation_id: Option<u64>,
     #[serde(rename = "c")]
@@ -27,15 +34,30 @@ impl EmailOtpAccessToken {
         email::validate_email(&email).map_err(|_| AuthError::InvalidEmail)?;
         Ok(Self {
             invitation_id: None,
+            purpose: super::AuthenticationPurpose::Login,
+            session: None,
             email,
             code: format!("{:06}", rand::rng().random_range(0..1_000_000)),
             validity: TokenValidity::new(std::time::Duration::from_secs(Self::TTL_SECONDS))?,
         })
     }
 
+    pub fn ttl_seconds(&self) -> u64 {
+        if self.purpose == super::AuthenticationPurpose::PasskeyChange {
+            super::PasskeyChangeToken::TTL_SECONDS
+        } else {
+            Self::TTL_SECONDS
+        }
+    }
     pub fn validate(&self, now: u64) -> Result<(), AuthError> {
         self.validity.validate(now)?;
-        if self.validity.expires_at - self.validity.issued_at != Self::TTL_SECONDS
+        match (self.purpose, &self.session) {
+            (super::AuthenticationPurpose::Login, None) => {}
+            (super::AuthenticationPurpose::PasskeyChange, Some(_))
+                if self.invitation_id.is_none() => {}
+            _ => return Err(AuthError::InvalidToken),
+        }
+        if self.validity.expires_at - self.validity.issued_at != self.ttl_seconds()
             || self.code.len() != 6
             || !self.code.bytes().all(|b| b.is_ascii_digit())
             || email::validate_email(&self.email).is_err()

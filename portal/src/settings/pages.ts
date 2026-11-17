@@ -1,3 +1,4 @@
+import { OrganizationOnboardingController } from './onboarding/controller'
 import type { SettingsPageControllers, SettingsState, UserPreferenceController } from '@compallm/storybook/pages/settings'
 import type { FormStore } from '@compallm/storybook'
 import { ProfileController, type ProfileAuth } from './profile/controller'
@@ -17,8 +18,10 @@ export function createSettingsPages(
   renamed: (name: string) => void = () => {},
   groupDeleted: (id: string) => void = () => {},
   permissions?: PermissionController,
+  revokeOtherSessions?: () => Promise<void>,
 ) {
   return {
+    onboarding: new OrganizationOnboardingController(),
     group: new GroupController(store, permissions),
     role: new RoleController(store, permissions),
     search: new SearchController(store),
@@ -26,6 +29,6 @@ export function createSettingsPages(
     profile: new ProfileController(store, auth),
     organization: new OrganizationController(store, auth, renamed, permissions),
     members: new MembersController(store, permissions, auth),
-    dialogs: new DialogsController(store, roleDeleted, groupDeleted),
+    dialogs: new DialogsController(store, roleDeleted, groupDeleted, revokeOtherSessions),
   } satisfies SettingsPageControllers
 }

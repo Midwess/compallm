@@ -166,17 +166,27 @@ export interface SettingsDialog {
   phrase: string
   revealedKey?: string
 }
+export interface SettingsSession {
+  ipAddress?: string | null
+  id: string
+  browser: string
+  location: string | null
+  signedInAt?: string
+  lastSeenAt?: string
+}
+
 export interface SettingsState {
+  sessionLocation: { sessionId: string; ipAddress: string; location: string } | null
   actorIsOwner?: boolean
   ownerMemberIds?: string[]
   currentMemberId?: string
   membersComplete?: boolean
   invitationsOpen?: boolean
+  membersLoadError?: boolean
+  invitationsLoadError?: boolean
   membersLoading: boolean
   membersHasNextPage: boolean
-  membersHasPreviousPage: boolean
   membersEndCursor: string | null
-  membersPage: number
   memberOrder: 'ASC_NULLS_LAST' | 'DESC_NULLS_LAST'
   invitations: (Pick<Invitation, 'id' | 'email' | 'status' | 'expiresAt'> & Partial<Pick<Invitation, 'issuedAt'>>)[]
   invitationsLoading: boolean
@@ -208,6 +218,10 @@ export interface SettingsState {
   passkeys: SettingsCredential[]
   applications: SettingsApplication[]
   apiKeys: SettingsApiKey[]
+  sessionsLoading: boolean
+  sessionsHasNextPage: boolean
+  sessionsError: boolean
+  otherSessions: SettingsSession[]
   hasOtherSessions: boolean
   organizationLimitUsd: string | null
   memberDefaultLimitUsd: string | null
@@ -227,9 +241,13 @@ export interface SettingsController {
   store: FormStore<SettingsState>
   role: RoleController
   group: GroupController
+  reopenOnboarding?(): void
   pages: SettingsPageControllers
   navigate(page: SettingsDestination, id?: string): void
   setNavigationQuery(value: string): void
+  loadMoreSessions?(): void
+  reloadSessions?(): void
+  revokeSession?(id: string): void
   signOut(): void
   leaveSettings(): void
   apiError(error: unknown, retry?: () => void): void
@@ -238,6 +256,7 @@ export interface SettingsController {
 }
 
 export interface SettingsPageControllers {
+  onboarding?: import('./onboarding/controller').OrganizationOnboardingController
   group: GroupController
   role: RoleController
   search: { setQuery(value: string): void; setFilter(key: string, value: string): void }
@@ -245,11 +264,11 @@ export interface SettingsPageControllers {
   profile: ProfileController
   organization: OrganizationController
   members: {
+    forms: import('../../components/collection-forms').CollectionForms
     setMemberGroups?(memberId: string, groupIds: string[]): Promise<string[] | false>
     search?(query: string): void
     setMemberRole(memberId: string, roleId: string): void | false | Promise<void | false>
-    nextPage?(): void
-    previousPage?(): void
+    loadMore?(): void
     setOrder?(value: SettingsState['memberOrder']): void
     invite?(email: string): Promise<boolean>
     resend?(id: string): Promise<boolean>

@@ -62,6 +62,17 @@ mod m20261114_000037_seed_testing_workspace;
 mod m20261114_000038_member_invitations;
 mod m20261115_000040_single_member_role;
 
+mod m20261116_000041_onboarding;
+
+mod m20261116_000042_passkeys;
+mod m20261116_000043_session_passkey_evidence;
+
+mod m20261117_000044_session_metadata;
+
+mod m20261117_000045_drop_session_location;
+
+mod m20261117_000046_session_lifetime;
+
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -109,6 +120,12 @@ impl MigratorTrait for Migrator {
             Box::new(m20261114_000037_seed_testing_workspace::Migration),
             Box::new(m20261114_000038_member_invitations::Migration),
             Box::new(m20261115_000040_single_member_role::Migration),
+            Box::new(m20261116_000041_onboarding::Migration),
+            Box::new(m20261116_000042_passkeys::Migration),
+            Box::new(m20261116_000043_session_passkey_evidence::Migration),
+            Box::new(m20261117_000044_session_metadata::Migration),
+            Box::new(m20261117_000045_drop_session_location::Migration),
+            Box::new(m20261117_000046_session_lifetime::Migration),
             // inject-above (do not remove this comment)
         ]
     }

@@ -12,17 +12,19 @@ pub struct Model {
     pub email: String,
     #[sea_orm(column_type = "Text")]
     pub display_name: String,
-    #[sea_orm(column_type = "Text")]
-    pub username: String,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub avatar_path: Option<String>,
     pub status: UserStatus,
     pub email_verified_at: DateTimeWithTimeZone,
     pub last_login_at: Option<DateTimeWithTimeZone>,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub avatar_path: Option<String>,
+    #[sea_orm(column_type = "Text", unique)]
+    pub username: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_many = "super::analytic_users_profile::Entity")]
+    AnalyticUsersProfile,
     #[sea_orm(has_many = "super::model_usage::Entity")]
     ModelUsage,
     #[sea_orm(has_many = "super::organization_members::Entity")]
@@ -31,6 +33,12 @@ pub enum Relation {
     UserPreferences,
     #[sea_orm(has_many = "super::user_sessions::Entity")]
     UserSessions,
+}
+
+impl Related<super::analytic_users_profile::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::AnalyticUsersProfile.def()
+    }
 }
 
 impl Related<super::model_usage::Entity> for Entity {

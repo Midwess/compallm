@@ -51,6 +51,10 @@ export function modelsObject(value: { entries: Array<{ name: string }> }): boole
 
 const formats: Record<string, (value: string, constraints: StringConstraints) => boolean> = {
   baseUrl,
+  webUrl: (value) => {
+    if (hasWhitespace.test(value) || value.includes('\\')) return false
+    try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) && !!url.hostname && !url.username && !url.password } catch { return false }
+  },
   resourceId: (value) => /^[1-9][0-9]*$/.test(value) && BigInt(value) <= 18446744073709551615n,
   nonblank: (value) => trimInput(value) !== '',
   authorization,
@@ -94,6 +98,7 @@ const inputFormats: Record<string, (value: string) => boolean> = {
   baseUrl: (value) => !hasWhitespace.test(value) && !/[?#\\]/.test(value),
   authorization: authorizationInput,
   emailAddress: () => true,
+  webUrl: (value) => !hasWhitespace.test(value) && !value.includes('\\'),
 }
 
 // Entry guards use exported limits and character rules, allowing deletion and

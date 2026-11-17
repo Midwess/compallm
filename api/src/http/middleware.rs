@@ -79,6 +79,15 @@ impl AuthenticationMiddleware {
         next: Next,
     ) -> Response {
         let headers = request.headers().clone();
+        let metadata = compallm_core::authentication::SessionMetadata::new(
+            request
+                .extensions()
+                .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
+                .map(|peer| peer.0.ip()),
+            headers
+                .get(axum::http::header::USER_AGENT)
+                .and_then(|value| value.to_str().ok()),
+        );
         let Ok(context_db) = middleware.db.fresh() else {
             return no_store(RequestError::Internal.into_response());
         };
@@ -97,6 +106,7 @@ impl AuthenticationMiddleware {
                     trusted_db,
                     middleware.settings,
                     headers,
+                    metadata,
                 );
                 let user = UserContext(context.clone());
                 if middleware.strict {

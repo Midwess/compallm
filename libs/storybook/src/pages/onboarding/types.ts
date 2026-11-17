@@ -19,15 +19,21 @@ export interface OnboardingState {
   workType: string
   appearance: PreferenceAppearanceMode
   organization: OnboardingOrganization
+  artworkColor?: string | null
+  requireFullName?: boolean
+  requireAvatar?: boolean
+  embedded?: boolean
+  pending?: boolean
   completed: boolean
   error: string | null
 }
 export interface OnboardingController {
   store: StoreApi<OnboardingState>
-  next(): void
-  back(): void
+  reopen?(): void
+  next(): void | Promise<void>
+  back(): void | Promise<void>
   skip(): void
-  finish(): void
+  finish(): void | Promise<void>
   dismissError(): void
   saveProfile(
     values: Pick<UserProfileUpdateInputFormOutput, 'displayName' | 'username'>,

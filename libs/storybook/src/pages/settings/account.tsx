@@ -1,3 +1,11 @@
+import { useContext, useEffect, useMemo, useState } from 'react'
+import { describeSessionBrowser } from './session-browser'
+import { SessionBrowserIcon } from './session-browser-icon'
+import { List } from '../../components/list'
+import { useFormStore } from '../../components/form'
+import type { AuthController } from '../auth/types'
+import { AuthControllerContext, PasskeyControllerContext } from '../../context'
+import { PasskeySettings } from '../passkey'
 import { FormError } from '../../components/form'
 import { Button } from '../../components/buttons'
 import { TextField } from '../../components/fields'
@@ -78,32 +86,227 @@ export function ProfileSettings() {
     </SettingsContent>
   )
 }
+const sessionDateFormatter = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' })
+const sessionYearFormatter = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+const sessionTimeFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'full', timeStyle: 'short' })
+
+function SessionTime({ label, timestamp }: { label: string; timestamp: string }) {
+  const [now, setNow] = useState(() => Date.now())
+  const seconds = Number(timestamp)
+  const age = Math.max(0, Math.floor(now / 1000) - seconds)
+  const recent = age < 86400
+  useEffect(() => {
+    if (!recent) return
+    const timer = setInterval(() => setNow(Date.now()), 60000)
+    return () => clearInterval(timer)
+  }, [timestamp, recent])
+  const date = new Date(seconds * 1000)
+  if (!Number.isFinite(date.getTime())) return null
+  const text =
+    age < 60
+      ? 'Just now'
+      : age < 3600
+        ? `${Math.floor(age / 60)}m ago`
+        : recent
+          ? `${Math.floor(age / 3600)}h ago`
+          : (date.getFullYear() === new Date(now).getFullYear() ? sessionDateFormatter : sessionYearFormatter).format(date)
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 whitespace-nowrap"
+      title={`${label}: ${sessionTimeFormatter.format(date)}`}
+    >
+      <span>{label}</span>
+      <time dateTime={date.toISOString()}>{text}</time>
+    </span>
+  )
+}
+
+function SessionItem({
+  browser,
+  location,
+  current = false,
+  lastSeenAt,
+  signedInAt,
+  ipAddress,
+  onRevoke,
+}: {
+  browser: string
+  location: string | null
+  current?: boolean
+  lastSeenAt?: string
+  signedInAt?: string
+  ipAddress?: string | null
+  onRevoke?: () => void
+}) {
+  return (
+    <div className="flex items-start gap-3 px-4 py-5 sm:items-center sm:gap-4">
+      <span className="grid size-8 shrink-0 place-items-center rounded-md bg-elevated text-muted-foreground" aria-hidden="true">
+        <SessionBrowserIcon browser={browser} />
+      </span>
+      <div className="grid min-w-0 flex-1 gap-1.5">
+        <div className="grid min-w-0 gap-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <span
+              className={`truncate text-xsm leading-5 font-medium${current ? ' text-[oklch(from_var(--ring)_l_c_250)]' : ''}`}
+              aria-label={current ? `${browser}, current session` : undefined}
+            >
+              {browser}
+            </span>
+          </div>
+        </div>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-xs leading-4 text-muted-foreground">
+          <span className="truncate" title={location ? `Approximate location: ${location}` : undefined}>
+            {location ?? (ipAddress ? `IP address ${ipAddress}` : 'Location unavailable')}
+          </span>
+          {signedInAt || lastSeenAt ? (
+            <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              {lastSeenAt ? <SessionTime label="Last active" timestamp={lastSeenAt} /> : null}
+              {signedInAt ? <SessionTime label="Signed in" timestamp={signedInAt} /> : null}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      {onRevoke ? (
+        <Button variant="ghost" className="shrink-0 px-2 text-muted-foreground" onClick={onRevoke}>
+          {current ? 'Log out' : 'Revoke'}
+        </Button>
+      ) : null}
+    </div>
+  )
+}
+
+function CurrentSession({ controller }: { controller: AuthController }) {
+  const userAgent = useFormStore(controller.store, (state) => state.currentUser?.userAgent)
+  const ipAddress = useFormStore(controller.store, (state) => state.currentUser?.ipAddress)
+  const sessionId = useFormStore(controller.store, (state) => state.currentUser?.id)
+  const signedInAt = useFormStore(controller.store, (state) => state.currentUser?.signedInAt)
+  const lastSeenAt = useFormStore(controller.store, (state) => state.currentUser?.lastSeenAt)
+  const saved = useSettings((state) => state.sessionLocation)
+  const settings = useSettingsController()
+  const location = saved && saved.sessionId === sessionId && saved.ipAddress === ipAddress ? saved.location : null
+  const browser = useMemo(() => describeSessionBrowser(userAgent), [userAgent])
+  return (
+    <SessionItem
+      browser={browser}
+      location={location}
+      ipAddress={ipAddress}
+      signedInAt={signedInAt}
+      lastSeenAt={lastSeenAt}
+      current
+      onRevoke={settings.signOut}
+    />
+  )
+}
+
+function SessionSettings() {
+  const controller = useContext(AuthControllerContext)
+  const settings = useSettingsController()
+  const otherSessions = useSettings((state) => state.otherSessions)
+  const loading = useSettings((state) => state.sessionsLoading)
+  const hasMore = useSettings((state) => state.sessionsHasNextPage)
+  const error = useSettings((state) => state.sessionsError)
+  const location = useSettings((state) => state.sessionLocation)
+  return (
+    <Section
+      title="Sessions"
+      description="Devices logged into your account"
+      action={
+        settings.reloadSessions ? (
+          <Button variant="ghost" onClick={settings.reloadSessions}>
+            Refresh
+          </Button>
+        ) : undefined
+      }
+    >
+      <div className="grid gap-3">
+        <Rows className="shadow-control">
+          {controller ? (
+            <CurrentSession controller={controller} />
+          ) : (
+            <SessionItem browser="Unknown browser" location={null} current onRevoke={settings.signOut} />
+          )}
+        </Rows>
+        {otherSessions.length ? (
+          <Rows className="shadow-control">
+            <div className="flex min-h-16 items-center justify-between gap-4 border-b border-border p-4">
+              <span className="text-xsm font-medium">
+                {otherSessions.length} other {otherSessions.length === 1 ? 'session' : 'sessions'}
+                {hasMore ? ' shown' : ''}
+              </span>
+              <Button variant="ghost" className="px-3" onClick={() => settings.pages.dialogs.openDialog('revoke-sessions')}>
+                Revoke all
+              </Button>
+            </div>
+            <List.Root>
+              <List.Items
+                items={otherSessions}
+                getKey={(session) => session.id}
+                className="m-0 list-none p-0"
+                paging={{ hasMore, loading, error, onLoadMore: () => settings.loadMoreSessions?.() }}
+              >
+                {(session) => (
+                  <div
+                    className={
+                      session.id === otherSessions[0].id
+                        ? undefined
+                        : 'relative before:absolute before:inset-x-4 before:top-0 before:border-t before:border-border'
+                    }
+                  >
+                    <SessionItem
+                      browser={session.browser}
+                      location={session.location}
+                      ipAddress={session.ipAddress}
+                      lastSeenAt={session.lastSeenAt}
+                      signedInAt={session.signedInAt}
+                      onRevoke={settings.revokeSession ? () => settings.revokeSession!(session.id) : undefined}
+                    />
+                  </div>
+                )}
+              </List.Items>
+            </List.Root>
+          </Rows>
+        ) : null}
+        {loading ? (
+          <p role="status" className="px-4 text-xs text-muted-foreground">
+            Loading sessions…
+          </p>
+        ) : null}
+        {error ? (
+          <div className="flex items-center justify-between gap-3 px-4 text-xs text-muted-foreground">
+            Couldn’t load sessions.
+            <Button variant="ghost" onClick={() => settings.reloadSessions?.()}>
+              Retry
+            </Button>
+          </div>
+        ) : null}
+        {hasMore && !loading && !error ? (
+          <Button variant="ghost" onClick={() => settings.loadMoreSessions?.()}>
+            Load more sessions
+          </Button>
+        ) : null}
+        {location || otherSessions.some((session) => session.location) ? (
+          <a
+            href="https://db-ip.com"
+            target="_blank"
+            rel="noreferrer"
+            className="justify-self-end px-4 text-xs text-muted-foreground hover:text-foreground"
+          >
+            IP Geolocation by DB-IP
+          </a>
+        ) : null}
+      </div>
+    </Section>
+  )
+}
+
 export function AccessSettings() {
   const c = useSettingsController(),
     apps = useSettings((s) => s.applications)
-  const others = useSettings((s) => s.hasOtherSessions)
   return (
     <SettingsContent>
       <Heading description="Manage your sessions and authorized applications.">Access</Heading>
       <div className="grid gap-12">
-        <Section title="Sessions" description="Review and revoke access to your account.">
-          <Rows>
-            <Row label="Current session" description="You are signed in to Compallm.">
-              <span className="text-xs">Current</span>
-            </Row>
-            <Row
-              label="Other sessions"
-              description={others ? 'Sign out of your other active sessions.' : 'No other active sessions.'}
-              last
-            >
-              {others ? (
-                <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('revoke-sessions')}>
-                  Revoke all
-                </Button>
-              ) : null}
-            </Row>
-          </Rows>
-        </Section>
+        <SessionSettings />
         <Section title="Authorized applications" description="Review applications that can access your account.">
           {apps.length ? (
             <Rows>
@@ -124,47 +327,83 @@ export function AccessSettings() {
   )
 }
 export function SecuritySettings() {
-  const c = useSettingsController(),
-    passkeys = useSettings((s) => s.passkeys)
+  const c = useSettingsController()
+  const passkeys = useContext(PasskeyControllerContext)
+  const previewPasskeys = useSettings((state) => state.passkeys)
+  const applications = useSettings((state) => state.applications)
+  const keys = useSettings((state) => state.apiKeys)
   return (
     <SettingsContent>
-      <Heading description="Manage your sign-in methods and API access.">Security</Heading>
+      <Heading>Security &amp; access</Heading>
       <div className="grid gap-12">
-        <Section
-          title="Passkeys"
-          description="Sign in with your fingerprint, face, or security key."
-          action={
-            passkeys.length ? (
-              <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('add-passkey')}>
-                Add passkey
+        <SessionSettings />
+        {passkeys ? (
+          <PasskeySettings />
+        ) : (
+          <Section
+            title="Passkeys"
+            description="Passkeys are a secure way to sign in to your Compallm account."
+            action={
+              previewPasskeys.length ? (
+                <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('add-passkey')}>
+                  New passkey
+                </Button>
+              ) : undefined
+            }
+          >
+            {previewPasskeys.length ? (
+              <Rows>
+                {previewPasskeys.map((key, index) => (
+                  <Row key={key.id} label={key.name} last={index === previewPasskeys.length - 1}>
+                    <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('remove-passkey', key.id)}>
+                      Revoke
+                    </Button>
+                  </Row>
+                ))}
+              </Rows>
+            ) : (
+              <Empty
+                title="No passkeys registered"
+                action={<Button onClick={() => c.pages.dialogs.openDialog('add-passkey')}>New passkey</Button>}
+              >
+                Add a passkey for a simpler sign-in experience.
+              </Empty>
+            )}
+          </Section>
+        )}
+        <Section title="Personal API keys" description="Use API keys to connect your tools to Compallm.">
+          <Rows>
+            <Row
+              label={keys.length ? `${keys.length} API keys` : 'No API keys created'}
+              description="Review your personal API access."
+              last
+            >
+              <Button variant="ghost" onClick={() => c.navigate('api-keys')}>
+                Manage API keys
               </Button>
-            ) : null
-          }
-        >
-          {passkeys.length ? (
+            </Row>
+          </Rows>
+        </Section>
+        <Section title="Authorized applications" description="Applications you’ve approved">
+          {applications.length ? (
             <Rows>
-              {passkeys.map((key, i) => (
-                <Row key={key.id} label={key.name} description="Use this passkey to sign in." last={i === passkeys.length - 1}>
-                  <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('remove-passkey', key.id)}>
-                    Remove
+              {applications.map((app, index) => (
+                <Row
+                  key={app.id}
+                  label={app.name}
+                  description={`Granted access: ${app.scope}`}
+                  last={index === applications.length - 1}
+                >
+                  <Button variant="ghost" onClick={() => c.pages.dialogs.openDialog('application', app.id)}>
+                    Review
                   </Button>
                 </Row>
               ))}
             </Rows>
           ) : (
-            <Empty
-              title="No passkeys yet"
-              action={<Button onClick={() => c.pages.dialogs.openDialog('add-passkey')}>Add passkey</Button>}
-            >
-              Add a passkey for a simpler sign-in experience.
-            </Empty>
+            <Empty title="No authorized applications">Applications you authorize will appear here.</Empty>
           )}
         </Section>
-        <div className="px-4">
-          <Button variant="ghost" onClick={() => c.navigate('api-keys')}>
-            Manage API keys
-          </Button>
-        </div>
       </div>
     </SettingsContent>
   )

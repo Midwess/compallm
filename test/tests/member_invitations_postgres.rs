@@ -26,11 +26,14 @@ fn member_permission(member: &compallm_core::organization::OrganizationMember) -
     MemberPermission::try_from(
         UserAccessToken::new(
             Session {
+                expires_at: compallm_utils::time::unix_timestamp() + 30 * 86400,
+                last_seen_at: compallm_utils::time::unix_timestamp(),
                 id: 1,
                 user_id: member.user_id,
                 organization_id: member.organization_id,
                 authorization_version: 1,
                 revoked_at: None,
+                metadata: Default::default(),
             },
             PolicySnapshot::new(member).unwrap(),
             Duration::from_secs(1800),
@@ -117,16 +120,32 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     let challenge = otp(&claims);
     assert!(matches!(
         invitations
-            .invitation_confirm(&claims, &challenge, "wrong", true)
+            .invitation_confirm(&claims, &challenge, "wrong", true, Default::default())
             .await,
         Err(AuthError::IncorrectCode)
     ));
-    assert!(auth.signup(&challenge, &challenge.code).await.is_err());
+    assert!(
+        auth.signup(&challenge, &challenge.code, Default::default())
+            .await
+            .is_err()
+    );
     type Orgs = <compallm_postgres::OrganizationSchema as ModelTrait>::Entity;
     let org_count = Orgs::find().count(pool.as_ref()).await?;
     let (a, b) = tokio::join!(
-        invitations.invitation_confirm(&claims, &challenge, &challenge.code, true),
-        invitations.invitation_confirm(&claims, &challenge, &challenge.code, true)
+        invitations.invitation_confirm(
+            &claims,
+            &challenge,
+            &challenge.code,
+            true,
+            Default::default()
+        ),
+        invitations.invitation_confirm(
+            &claims,
+            &challenge,
+            &challenge.code,
+            true,
+            Default::default()
+        )
     );
     assert_eq!(usize::from(a.is_ok()) + usize::from(b.is_ok()), 1);
     let tokens = a.or(b)?;
@@ -195,10 +214,30 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         .await?
         .unwrap()
         .0;
+    let existing_email = format!("existing-{suffix}@example.com");
+    let existing_challenge = EmailOtpAccessToken::new(existing_email.clone())?;
+    let existing_login = auth
+        .signup(
+            &existing_challenge,
+            &existing_challenge.code,
+            Default::default(),
+        )
+        .await?;
+    let existing_account = auth
+        .authenticate_access(&existing_login.access_token)
+        .await?;
+    let original_membership = root
+        .scope(OrganizationRepository.find_membership(
+            existing_account.session.organization_id,
+            existing_account.session.user_id,
+        ))
+        .await?
+        .unwrap()
+        .0;
     let existing = invitations
         .send_invitation(
             &member_permission(&other_membership),
-            "owner@compallm.com",
+            &existing_email,
             LINK_PREFIX,
         )
         .await?;
@@ -206,7 +245,13 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         InvitationToken::try_from(auth.authenticate_token(&existing.token).await?)?;
     let existing_otp = otp(&existing_claims);
     let tokens = invitations
-        .invitation_confirm(&existing_claims, &existing_otp, &existing_otp.code, false)
+        .invitation_confirm(
+            &existing_claims,
+            &existing_otp,
+            &existing_otp.code,
+            false,
+            Default::default(),
+        )
         .await?;
     assert_eq!(
         auth.authenticate_access(&tokens.access_token)
@@ -222,6 +267,15 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         .0;
     assert_eq!(after.role, owner.role);
 
+    let retained_membership = root
+        .scope(OrganizationRepository.find_membership(
+            existing_account.session.organization_id,
+            existing_account.session.user_id,
+        ))
+        .await?
+        .unwrap()
+        .0;
+    assert_eq!(retained_membership.role, original_membership.role);
     let rotate = invitations
         .send_invitation(
             &permission,
@@ -285,6 +339,7 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
             &preserved_otp,
             &preserved_otp.code,
             false,
+            Default::default(),
         )
         .await?;
     assert_eq!(
@@ -319,7 +374,13 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
         .await?;
     let lost_otp = otp(&lost_claims);
     invitations
-        .invitation_confirm(&lost_claims, &lost_otp, &lost_otp.code, true)
+        .invitation_confirm(
+            &lost_claims,
+            &lost_otp,
+            &lost_otp.code,
+            true,
+            Default::default(),
+        )
         .await?;
     let current_owner = root
         .scope(OrganizationRepository.find_membership(ORG, OWNER))
@@ -348,7 +409,13 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     let expired_otp = otp(&expired_claims);
     assert!(
         invitations
-            .invitation_confirm(&expired_claims, &expired_otp, &expired_otp.code, true)
+            .invitation_confirm(
+                &expired_claims,
+                &expired_otp,
+                &expired_otp.code,
+                true,
+                Default::default()
+            )
             .await
             .is_err()
     );
@@ -385,7 +452,13 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
     let disabled_otp = otp(&disabled_claims);
     assert!(
         invitations
-            .invitation_confirm(&disabled_claims, &disabled_otp, &disabled_otp.code, false)
+            .invitation_confirm(
+                &disabled_claims,
+                &disabled_otp,
+                &disabled_otp.code,
+                false,
+                Default::default()
+            )
             .await
             .is_err()
     );
@@ -421,7 +494,8 @@ async fn invitations_accept_once_without_personal_org_preserve_grants_and_enforc
                 &disabled_org_claims,
                 &disabled_org_otp,
                 &disabled_org_otp.code,
-                true
+                true,
+                Default::default()
             )
             .await
             .is_err()
@@ -729,7 +803,7 @@ async fn verify_browser_flow(
         serde_json::from_slice(&axum::body::to_bytes(response.into_body(), 65536).await?)?;
     assert!(body.get("errors").is_some());
     let query = format!(
-        "mutation {{ emailSignupRequest(input: {{ email: \"{email}\" }}) {{ node {{ lifetime {{ expiresInSeconds }} }} }} }}"
+        "mutation {{ emailSignupRequest(input: {{ invitation: true, email: \"{email}\" }}) {{ node {{ lifetime {{ expiresInSeconds }} }} }} }}"
     );
     let response = graph(&router, &query, invitation_cookie, true).await?;
     let updated = cookie_values(&response);

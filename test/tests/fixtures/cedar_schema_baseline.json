@@ -48,6 +48,26 @@
               "User"
             ]
           }
+        },
+        "organization.onboarding.read": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
+        },
+        "organization.onboarding.update": {
+          "appliesTo": {
+            "resourceTypes": [
+              "Organization"
+            ],
+            "principalTypes": [
+              "User"
+            ]
+          }
         }
       }
     }

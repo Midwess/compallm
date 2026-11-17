@@ -1,3 +1,5 @@
+#[path = "support/onboarding.rs"]
+mod onboarding_support;
 #[path = "support/permission.rs"]
 mod organization_permission_fixture;
 #[path = "support/roles.rs"]
@@ -1023,6 +1025,87 @@ async fn profile_service_upload_authorization_uses_the_actor_and_core_limits() {
 
 #[async_trait::async_trait]
 impl SessionRepository for Repository {
+    async fn list_owned(
+        &self,
+        user_id: u64,
+        pagination: compallm_query::Pagination,
+    ) -> Result<compallm_query::Connection<Session>, SessionRepositoryError> {
+        let boundary = pagination
+            .after
+            .as_ref()
+            .map(|cursor| cursor.decode(&format!("test-sessions:{user_id}")))
+            .transpose()
+            .map_err(anyhow::Error::from)?
+            .and_then(|values| {
+                Some((
+                    values[0].as_ref()?.parse::<u64>().ok()?,
+                    values[1].as_ref()?.parse::<u64>().ok()?,
+                ))
+            });
+        let state = self.0.lock().unwrap();
+        let mut nodes: Vec<_> = state
+            .sessions
+            .values()
+            .filter(|session| {
+                session.user_id == user_id
+                    && session.revoked_at.is_none()
+                    && session.expires_at > compallm_utils::time::unix_timestamp()
+                    && boundary.is_none_or(|key| (session.last_seen_at, session.id) < key)
+            })
+            .cloned()
+            .collect();
+        nodes.sort_by_key(|session| std::cmp::Reverse((session.last_seen_at, session.id)));
+        let size = pagination.page_size(50).map_err(anyhow::Error::from)? as usize;
+        let has_next_page = nodes.len() > size;
+        nodes.truncate(size);
+        let edges: Vec<_> = nodes
+            .into_iter()
+            .map(|node| {
+                Ok(compallm_query::Edge {
+                    cursor: compallm_query::Cursor::encode(
+                        vec![
+                            Some(node.last_seen_at.to_string()),
+                            Some(node.id.to_string()),
+                        ],
+                        &format!("test-sessions:{user_id}"),
+                    )
+                    .map_err(anyhow::Error::from)?
+                    .0,
+                    node,
+                })
+            })
+            .collect::<Result<_, SessionRepositoryError>>()?;
+        Ok(compallm_query::Connection {
+            page_info: compallm_query::PageInfo {
+                start_cursor: edges.first().map(|e| e.cursor.clone()),
+                end_cursor: edges.last().map(|e| e.cursor.clone()),
+                has_next_page,
+                has_previous_page: boundary.is_some(),
+            },
+            edges,
+        })
+    }
+    async fn revoke_owned(
+        &self,
+        user_id: u64,
+        current_session_id: u64,
+        target_id: Option<u64>,
+    ) -> Result<u64, SessionRepositoryError> {
+        let mut state = self.0.lock().unwrap();
+        let mut changed = 0;
+        for session in state.sessions.values_mut() {
+            if session.user_id == user_id
+                && session.id != current_session_id
+                && session.revoked_at.is_none()
+                && target_id.is_none_or(|id| id == session.id)
+            {
+                session.revoke();
+                changed += 1;
+            }
+        }
+        Ok(changed)
+    }
+
     async fn authorization_version(
         &self,
         presented: &Session,
@@ -1164,6 +1247,15 @@ impl SessionRepository for Repository {
         if session.organization_id != previous.organization_id {
             current.organization_id = session.organization_id;
         }
+        if session.expires_at != previous.expires_at
+            || session.last_seen_at != previous.last_seen_at
+        {
+            if current.expires_at <= compallm_utils::time::unix_timestamp() {
+                return Ok(false);
+            }
+            current.expires_at = current.expires_at.max(session.expires_at);
+            current.last_seen_at = current.last_seen_at.max(session.last_seen_at);
+        }
         current.revoked_at = session.revoked_at;
         Ok(true)
     }
@@ -1269,6 +1361,8 @@ impl Fixture {
             None,
         )
         .with_auth_service(service)
+        .with_session_repository(Box::new(self.repo.clone()))
+        .with_onboarding_repository(Box::new(onboarding_support::MemoryOnboarding::default()))
         .with_user_repository(Box::new(self.repo.clone()));
         if !real_organizations {
             di = di.with_organization_repository(Box::new(OrganizationRepositoryStub(
@@ -1394,7 +1488,10 @@ impl Fixture {
         let organizations = Box::leak(Box::new(Box::new(OrganizationRepositoryStub(
             self.repo.0.clone(),
         )) as Box<dyn OrganizationRepository>));
-        let creation = Box::leak(Box::new(CreationService::new(organizations)));
+        let creation = Box::leak(Box::new(CreationService::new(
+            organizations,
+            onboarding_support::repository(),
+        )));
         let registration = Box::leak(Box::new(RegistrationService::new(users, creation)));
         let dictionaries = Box::leak(Box::new(dictionary));
         AuthService::new(
@@ -1430,7 +1527,10 @@ impl Fixture {
         claims: &EmailOtpAccessToken,
         code: &str,
     ) -> Result<UserTokens, AuthError> {
-        self.repo.1.scope(self.service().signin(claims, code)).await
+        self.repo
+            .1
+            .scope(self.service().signin(claims, code, Default::default()))
+            .await
     }
 
     async fn signup_in_transaction(
@@ -1438,7 +1538,9 @@ impl Fixture {
         claims: &EmailOtpAccessToken,
         code: &str,
     ) -> Result<UserTokens, AuthError> {
-        self.service().signup(claims, code).await
+        self.service()
+            .signup(claims, code, Default::default())
+            .await
     }
 
     async fn register(&self, email: &str) -> Result<User, compallm_core::user::RegistrationError> {
@@ -1473,7 +1575,10 @@ impl Fixture {
         let organizations = Box::leak(Box::new(Box::new(OrganizationRepositoryStub(
             self.repo.0.clone(),
         )) as Box<dyn OrganizationRepository>));
-        let creation = Box::leak(Box::new(CreationService::new(organizations)));
+        let creation = Box::leak(Box::new(CreationService::new(
+            organizations,
+            onboarding_support::repository(),
+        )));
         RegistrationService::new(users, creation)
     }
 
@@ -2366,7 +2471,7 @@ async fn refresh_without_selection_keeps_the_session_organization() {
 }
 
 #[tokio::test]
-async fn original_and_renewed_refresh_tokens_remain_usable_without_database_writes() {
+async fn renewal_requires_persistence_and_preserves_unexpired_prior_credentials() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let original = AccessToken::Refresh(
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
@@ -2377,11 +2482,19 @@ async fn original_and_renewed_refresh_tokens_remain_usable_without_database_writ
     fixture.remember(&original);
     let before = fixture.repo.0.lock().unwrap().sessions[&7].clone();
     fixture.repo.0.lock().unwrap().fail_rotation = true;
+    assert!(matches!(
+        fixture.refresh(&original).await,
+        Err(AuthError::InvalidSession)
+    ));
+    assert_eq!(fixture.repo.0.lock().unwrap().sessions[&7], before);
+    fixture.repo.0.lock().unwrap().fail_rotation = false;
     let replacement = fixture.refresh(&original).await.unwrap();
     assert!(fixture.refresh(&original).await.is_ok());
     assert!(fixture.refresh(&replacement.refresh_token).await.is_ok());
     let stored = fixture.repo.0.lock().unwrap().sessions[&7].clone();
-    assert_eq!(stored, before);
+    assert!(stored.has_same_identity(&before));
+    assert!(stored.expires_at >= before.expires_at);
+    assert!(stored.last_seen_at >= before.last_seen_at);
     assert!(
         fixture
             .db
@@ -2541,7 +2654,7 @@ async fn invalid_signature_cannot_revoke_a_valid_session() {
 }
 
 #[tokio::test]
-async fn read_only_refresh_uses_root_with_an_enclosing_transaction() {
+async fn refresh_persists_activity_in_an_enclosing_root_transaction() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
     let token = AccessToken::Refresh(
         RefreshToken::from_session(&stored_session(1, 7, 84, "Research team"), REFRESH_LIFETIME)
@@ -3253,7 +3366,7 @@ async fn invalid_authorization_clears_cookies_without_revoking_session() {
         .iter()
         .map(|value| value.to_str().unwrap().to_owned())
         .collect();
-    assert_eq!(headers.len(), 2);
+    assert_eq!(headers.len(), 4);
     assert!(headers.iter().all(|value| value.contains("Max-Age=0")));
     assert_eq!(
         graphql_body(response).await["errors"][0]["extensions"]["code"],
@@ -4267,7 +4380,22 @@ fn response_cookies(response: &axum::response::Response) -> String {
 #[tokio::test]
 async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
-    let router = fixture.graphql();
+    let router = fixture.graphql().layer(axum::middleware::from_fn(
+        |mut request: axum::extract::Request, next: axum::middleware::Next| async move {
+            request.extensions_mut().insert(axum::extract::ConnectInfo(
+                "203.0.113.42:12345"
+                    .parse::<std::net::SocketAddr>()
+                    .unwrap(),
+            ));
+            request
+                .headers_mut()
+                .insert("user-agent", "recognizable-test-browser".parse().unwrap());
+            request
+                .headers_mut()
+                .insert("x-forwarded-for", "198.51.100.1".parse().unwrap());
+            next.run(request).await
+        },
+    ));
     let response = graphql_operation(&router,
         "mutation($input:EmailInput!){emailSigninRequest(input:$input){node{token lifetime{expiresInSeconds}}}}",
         serde_json::json!({"input":{"email":"james@midwess.com","delivery":"TOKEN"}}),Some("invalid-bearer"),None,false).await;
@@ -4289,6 +4417,42 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     let access = tokens["accessToken"].as_str().unwrap();
     let refresh = tokens["refreshToken"].as_str().unwrap();
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
+    let signed = UserAccessToken::try_from(decode_token(access, SECRET).unwrap()).unwrap();
+    let metadata = signed.session.metadata.clone();
+    assert_eq!(metadata.ip_address, Some("203.0.113.42".parse().unwrap()));
+    assert_eq!(
+        metadata.user_agent.as_deref(),
+        Some("recognizable-test-browser")
+    );
+    assert_eq!(
+        fixture.repo.0.lock().unwrap().sessions[&signed.session.id].metadata,
+        metadata
+    );
+    assert_eq!(
+        RefreshToken::try_from(decode_token(refresh, SECRET).unwrap())
+            .unwrap()
+            .session
+            .metadata,
+        metadata
+    );
+    let info = graphql_body(
+        graphql_operation(
+            &router,
+            "{session{node{ipAddress userAgent}}}",
+            serde_json::json!({}),
+            Some(access),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(info["data"]["session"]["node"]["ipAddress"], "203.0.113.42");
+    assert_eq!(
+        info["data"]["session"]["node"]["userAgent"],
+        "recognizable-test-browser"
+    );
+
     assert_eq!(
         graphql_request(&router, Some(access), None, false)
             .await
@@ -4306,10 +4470,56 @@ async fn graphql_token_signin_refresh_and_revoke_preserve_session_authority() {
     .await;
     assert!(!response.headers().contains_key("set-cookie"));
     let renewed = graphql_body(response).await;
+    let renewed_refresh = renewed["data"]["sessionRefresh"]["node"]["refreshToken"]
+        .as_str()
+        .unwrap();
+    assert_eq!(
+        RefreshToken::try_from(decode_token(renewed_refresh, SECRET).unwrap())
+            .unwrap()
+            .session
+            .metadata,
+        metadata
+    );
     let access = renewed["data"]["sessionRefresh"]["node"]["accessToken"]
         .as_str()
         .unwrap();
     assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
+    let signed = UserAccessToken::try_from(decode_token(access, SECRET).unwrap()).unwrap();
+    let metadata = signed.session.metadata.clone();
+    assert_eq!(metadata.ip_address, Some("203.0.113.42".parse().unwrap()));
+    assert_eq!(
+        metadata.user_agent.as_deref(),
+        Some("recognizable-test-browser")
+    );
+    assert_eq!(
+        fixture.repo.0.lock().unwrap().sessions[&signed.session.id].metadata,
+        metadata
+    );
+    assert_eq!(
+        RefreshToken::try_from(decode_token(refresh, SECRET).unwrap())
+            .unwrap()
+            .session
+            .metadata,
+        metadata
+    );
+    let info = graphql_body(
+        graphql_operation(
+            &router,
+            "{session{node{ipAddress userAgent}}}",
+            serde_json::json!({}),
+            Some(access),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(info["data"]["session"]["node"]["ipAddress"], "203.0.113.42");
+    assert_eq!(
+        info["data"]["session"]["node"]["userAgent"],
+        "recognizable-test-browser"
+    );
+
     let response = graphql_operation(
         &router,
         "mutation{sessionRevoke{node}}",
@@ -4392,7 +4602,7 @@ async fn graphql_cookie_signup_and_signout_reject_combined_authentication_before
         true,
     )
     .await;
-    assert_eq!(response.headers().get_all("set-cookie").iter().count(), 2);
+    assert_eq!(response.headers().get_all("set-cookie").iter().count(), 4);
     assert_eq!(
         graphql_body(response).await["data"]["sessionRevoke"]["node"],
         true
@@ -5599,4 +5809,747 @@ async fn graphql_me_returns_only_the_verified_users_effective_cedar() {
         anonymous["errors"][0]["extensions"]["code"],
         "UNAUTHENTICATED"
     );
+}
+
+#[tokio::test]
+async fn ordinary_signin_ignores_stale_invitation_cookie_and_clears_it() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let router = fixture.graphql();
+    let response = graphql_operation(&router,
+        "mutation($input:EmailInput!){emailSigninRequest(input:$input){node{lifetime{expiresInSeconds}}}}",
+        serde_json::json!({"input":{"email":"james@midwess.com"}}), None,
+        Some("compallm-invitation=stale"), true).await;
+    let cookies = response_cookies(&response);
+    let body = graphql_body(response).await;
+    assert!(body.get("errors").is_none(), "{body}");
+    assert!(cookies.contains("compallm-invitation="));
+    let challenge = cookies
+        .split(';')
+        .find_map(|value| value.trim().strip_prefix("compallm-access="))
+        .unwrap();
+    let claims = EmailOtpAccessToken::try_from(decode_token(challenge, SECRET).unwrap()).unwrap();
+    assert!(claims.invitation_id.is_none());
+    let response = graphql_operation(&router,
+        "mutation($input:EmailCodeInput!){emailSigninConfirm(input:$input){node{accessLifetime{expiresInSeconds}}}}",
+        serde_json::json!({"input":{"code":claims.code}}), None,
+        Some(&format!("compallm-access={challenge}; compallm-invitation=stale")), true).await;
+    let body = graphql_body(response).await;
+    assert!(body.get("errors").is_none(), "{body}");
+    assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
+}
+
+#[tokio::test]
+async fn explicit_invitation_request_without_cookie_never_falls_back_to_signin() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let router = fixture.graphql();
+    let response = graphql_operation(&router,
+        "mutation($input:EmailInput!){emailSigninRequest(input:$input){node{lifetime{expiresInSeconds}}}}",
+        serde_json::json!({"input":{"email":"james@midwess.com","invitation":true}}), None, None, true).await;
+    assert!(!response.headers().contains_key("set-cookie"));
+    let body = graphql_body(response).await;
+    assert!(body.get("errors").is_some());
+    assert!(fixture.repo.0.lock().unwrap().logins.is_empty());
+}
+
+fn management_grant(actor: &UserAccessToken) -> String {
+    use compallm_core::authentication::{AccessToken, PasskeyChangeToken};
+    AccessToken::PasskeyChange(PasskeyChangeToken::new(&actor.session).unwrap())
+        .encode(SECRET, std::time::Duration::from_secs(180))
+        .unwrap()
+}
+
+#[path = "support/passkeys.rs"]
+mod passkey_support;
+
+#[tokio::test]
+async fn passkey_enrollment_signin_reauthentication_and_removal_use_verified_session_evidence() {
+    use compallm_core::{
+        authentication::passkey::PasskeyService, persistent::passkey::PasskeyRepository,
+    };
+    use webauthn_authenticator_rs::WebauthnAuthenticator;
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let repository = Box::leak(Box::new(passkey_support::MemoryPasskeys::default()));
+    let auth = Box::leak(Box::new(
+        fixture.service().with_passkey_repository(repository),
+    ));
+    let service = PasskeyService::new(
+        repository,
+        auth,
+        SECRET.into(),
+        "localhost",
+        "http://localhost",
+    )
+    .unwrap();
+    let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
+    let tokens = auth
+        .signin(&otp, &otp.code, Default::default())
+        .await
+        .unwrap();
+    let actor = auth
+        .authenticate_access(&tokens.access_token)
+        .await
+        .unwrap();
+    let grant = management_grant(&actor);
+    let origin = url::Url::parse("http://localhost").unwrap();
+    let mut authenticator =
+        WebauthnAuthenticator::new(passkey_support::ResidentAuthenticator::new());
+    let start = service.registration_start(&actor, &grant).await.unwrap();
+    assert_eq!(
+        start.options["publicKey"]["authenticatorSelection"]["residentKey"],
+        "required"
+    );
+    assert_eq!(start.options["publicKey"]["user"]["name"], otp.email);
+    assert!(
+        repository
+            .list(actor.session.user_id)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    let response = authenticator
+        .do_registration(
+            origin.clone(),
+            serde_json::from_value(start.options).unwrap(),
+        )
+        .unwrap();
+    let record = service
+        .registration_finish(&actor, &grant, &start.token, response.clone(), "Laptop")
+        .await
+        .unwrap();
+    assert!(
+        service
+            .registration_finish(&actor, &grant, &start.token, response, "Laptop")
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        repository.list(actor.session.user_id).await.unwrap().len(),
+        1
+    );
+
+    let renamed = service
+        .rename(&actor, &grant, record.id, "Work Macbook")
+        .await
+        .unwrap();
+    assert_eq!(renamed.name, "Work Macbook");
+    assert_eq!(
+        repository
+            .session_passkey(&actor.session)
+            .await
+            .unwrap()
+            .unwrap()
+            .id,
+        record.id
+    );
+    let start = service.authentication_start().await.unwrap();
+    assert!(
+        start.options["publicKey"]["allowCredentials"]
+            .as_array()
+            .is_some_and(|a| a.is_empty())
+    );
+    let assertion = authenticator
+        .do_authentication(
+            origin.clone(),
+            serde_json::from_value(start.options).unwrap(),
+        )
+        .unwrap();
+    let mut missing_handle = assertion.clone();
+    missing_handle.response.user_handle = None;
+    assert!(
+        service
+            .authentication_finish(&start.token, missing_handle, Default::default())
+            .await
+            .is_err()
+    );
+    let mut wrong_handle = assertion.clone();
+    wrong_handle.response.user_handle = Some(uuid::Uuid::new_v4().as_bytes().to_vec().into());
+    assert!(
+        service
+            .authentication_finish(&start.token, wrong_handle, Default::default())
+            .await
+            .is_err()
+    );
+    let mut unknown_credential = assertion.clone();
+    unknown_credential.raw_id = vec![1, 2, 3, 4].into();
+    assert!(
+        service
+            .authentication_finish(&start.token, unknown_credential, Default::default())
+            .await
+            .is_err()
+    );
+    let login = service
+        .authentication_finish(&start.token, assertion.clone(), Default::default())
+        .await
+        .unwrap();
+    assert!(
+        service
+            .authentication_finish(&start.token, assertion, Default::default())
+            .await
+            .is_err()
+    );
+    let login_actor = auth.authenticate_access(&login.access_token).await.unwrap();
+    assert_ne!(actor.session.id, login_actor.session.id);
+    assert_eq!(actor.session.user_id, login_actor.session.user_id);
+    assert!(
+        repository
+            .state
+            .lock()
+            .unwrap()
+            .evidence
+            .contains_key(&(login_actor.session.id, "passkey".into()))
+    );
+    let reauth = service.reauthentication_start(&actor).await.unwrap();
+    let assertion = authenticator
+        .do_authentication(origin, serde_json::from_value(reauth.options).unwrap())
+        .unwrap();
+    assert!(
+        service
+            .authentication_finish(&reauth.token, assertion.clone(), Default::default())
+            .await
+            .is_err()
+    );
+    let renewed_grant = service
+        .reauthentication_finish(&actor, &reauth.token, assertion)
+        .await
+        .unwrap();
+    assert!(
+        auth.verify_passkey_change(&renewed_grant.token, &actor.session)
+            .is_ok()
+    );
+    assert!(
+        auth.verify_passkey_change(&renewed_grant.token, &login_actor.session)
+            .is_err()
+    );
+    let pending = service.authentication_start().await.unwrap();
+    let pending_assertion = authenticator
+        .do_authentication(
+            url::Url::parse("http://localhost").unwrap(),
+            serde_json::from_value(pending.options).unwrap(),
+        )
+        .unwrap();
+    service.remove(&actor, &grant, record.id).await.unwrap();
+    assert!(
+        repository
+            .list(actor.session.user_id)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+
+    assert!(auth.validate_access(&actor).await.unwrap());
+    assert!(auth.validate_access(&login_actor).await.unwrap());
+    assert!(
+        repository
+            .state
+            .lock()
+            .unwrap()
+            .challenges
+            .values()
+            .any(|c| c.purpose == "authentication")
+    );
+    assert!(
+        service
+            .authentication_finish(&pending.token, pending_assertion, Default::default())
+            .await
+            .is_err()
+    );
+}
+
+#[tokio::test]
+async fn passkey_management_requires_grant_and_rejects_foreign_or_expired_ceremonies() {
+    use compallm_core::authentication::passkey::PasskeyService;
+    use webauthn_authenticator_rs::WebauthnAuthenticator;
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let repository = Box::leak(Box::new(passkey_support::MemoryPasskeys::default()));
+    let auth = Box::leak(Box::new(
+        fixture.service().with_passkey_repository(repository),
+    ));
+    let service = PasskeyService::new(
+        repository,
+        auth,
+        SECRET.into(),
+        "localhost",
+        "http://localhost",
+    )
+    .unwrap();
+    let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
+    let tokens = auth
+        .signin(&otp, &otp.code, Default::default())
+        .await
+        .unwrap();
+    let actor = auth
+        .authenticate_access(&tokens.access_token)
+        .await
+        .unwrap();
+    let grant = String::new();
+    repository.state.lock().unwrap().evidence.clear();
+    assert!(matches!(
+        service.registration_start(&actor, &grant).await,
+        Err(AuthError::ReauthenticationRequired)
+    ));
+    assert!(repository.state.lock().unwrap().challenges.is_empty());
+    assert!(matches!(
+        service.remove(&actor, &grant, 1).await,
+        Err(AuthError::ReauthenticationRequired)
+    ));
+    let _ = auth.refresh(&tokens.refresh_token).await.unwrap();
+    assert!(repository.state.lock().unwrap().evidence.is_empty());
+    repository.state.lock().unwrap().evidence.insert(
+        (actor.session.id, "email_code".into()),
+        compallm_utils::time::unix_timestamp(),
+    );
+    let grant = management_grant(&actor);
+    let start = service.registration_start(&actor, &grant).await.unwrap();
+    let mut authenticator =
+        WebauthnAuthenticator::new(passkey_support::ResidentAuthenticator::new());
+    let response = authenticator
+        .do_registration(
+            url::Url::parse("http://localhost").unwrap(),
+            serde_json::from_value(start.options).unwrap(),
+        )
+        .unwrap();
+    let mut foreign = actor.clone();
+    foreign.session.user_id += 1;
+    assert!(
+        service
+            .registration_finish(&foreign, &grant, &start.token, response.clone(), "Laptop")
+            .await
+            .is_err()
+    );
+    for ceremony in repository.state.lock().unwrap().challenges.values_mut() {
+        ceremony.expires_at = 0;
+    }
+    assert!(
+        service
+            .registration_finish(&actor, &grant, &start.token, response, "Laptop")
+            .await
+            .is_err()
+    );
+    assert!(repository.state.lock().unwrap().records.is_empty());
+}
+
+#[tokio::test]
+async fn email_passkey_change_is_purpose_bound_session_bound_and_preserves_login() {
+    struct Email(Arc<Mutex<String>>);
+    #[async_trait::async_trait]
+    impl compallm_core::mail::EmailService for Email {
+        async fn send(
+            &self,
+            request: compallm_core::mail::EmailRequest,
+        ) -> Result<(), compallm_core::mail::EmailError> {
+            if let compallm_core::mail::EmailTemplate::OtpCode(code) = request.text {
+                *self.0.lock().unwrap() = code.code;
+            }
+            Ok(())
+        }
+    }
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let repository = Box::leak(Box::new(passkey_support::MemoryPasskeys::default()));
+    let email = Arc::new(Mutex::new(String::new()));
+    let sender = Box::leak(Box::new(
+        Box::new(Email(email.clone())) as Box<dyn compallm_core::mail::EmailService>
+    ));
+    let auth = Box::leak(Box::new(
+        fixture
+            .service_with_dependencies(
+                Box::new(TestDictionary {
+                    dictionary: compallm_core::compression::DCompression::new(
+                        compallm_core::compression::DictionaryType::AccessToken,
+                        1,
+                        "passkey session user policy",
+                    )
+                    .unwrap(),
+                    newer: None,
+                }),
+                Some(sender),
+            )
+            .with_passkey_repository(repository),
+    ));
+    let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
+    let tokens = auth
+        .signin(&otp, &otp.code, Default::default())
+        .await
+        .unwrap();
+    let actor = auth
+        .authenticate_access(&tokens.access_token)
+        .await
+        .unwrap();
+    let challenge = auth.passkey_change_email(&actor, &otp.email).await.unwrap();
+    let proof: EmailOtpAccessToken = auth
+        .authenticate_token(&challenge.token)
+        .await
+        .unwrap()
+        .try_into()
+        .unwrap();
+    let code = email.lock().unwrap().clone();
+    assert!(
+        auth.signin(&proof, &code, Default::default())
+            .await
+            .is_err()
+    );
+    assert!(
+        auth.passkey_change_confirm(&actor, &otp, &otp.code)
+            .await
+            .is_err()
+    );
+    let mut other = actor.clone();
+    other.session.id += 1;
+    assert!(
+        auth.passkey_change_confirm(&other, &proof, &code)
+            .await
+            .is_err()
+    );
+    let wrong = if code == "000000" { "111111" } else { "000000" };
+    assert!(
+        auth.passkey_change_confirm(&actor, &proof, wrong)
+            .await
+            .is_err()
+    );
+    let grant = auth
+        .passkey_change_confirm(&actor, &proof, &code)
+        .await
+        .unwrap();
+    assert_eq!(
+        grant.claims.validity.expires_at - grant.claims.validity.issued_at,
+        180
+    );
+    assert!(
+        auth.verify_passkey_change(&grant.token, &actor.session)
+            .is_ok()
+    );
+    assert!(
+        auth.verify_passkey_change(&grant.token, &actor.session)
+            .is_ok()
+    );
+    assert!(
+        auth.verify_passkey_change(&grant.token, &other.session)
+            .is_err()
+    );
+    assert!(auth.authenticate_access(&grant.token).await.is_err());
+    assert!(
+        auth.refresh(&tokens.refresh_token)
+            .await
+            .unwrap()
+            .passkey_change
+            .is_none()
+    );
+    assert!(auth.validate_access(&actor).await.unwrap());
+}
+
+#[tokio::test]
+async fn discoverable_passkey_ceremony_accepts_either_account_without_an_email_binding() {
+    use compallm_core::authentication::passkey::PasskeyService;
+    use webauthn_authenticator_rs::WebauthnAuthenticator;
+    let first = Fixture::user(UserStatus::Active);
+    let fixture = Fixture::new(Some(first.clone()));
+    let repository = Box::leak(Box::new(passkey_support::MemoryPasskeys::default()));
+    let auth = Box::leak(Box::new(
+        fixture.service().with_passkey_repository(repository),
+    ));
+    let service = PasskeyService::new(
+        repository,
+        auth,
+        SECRET.into(),
+        "localhost",
+        "http://localhost",
+    )
+    .unwrap();
+    let origin = url::Url::parse("http://localhost").unwrap();
+    let mut authenticators = [
+        WebauthnAuthenticator::new(passkey_support::ResidentAuthenticator::new()),
+        WebauthnAuthenticator::new(passkey_support::ResidentAuthenticator::new()),
+    ];
+    let mut second = first.clone();
+    second.id += 1;
+    second.email = "second@example.com".into();
+    for (index, account) in [first.clone(), second.clone()].into_iter().enumerate() {
+        {
+            let mut state = fixture.repo.0.lock().unwrap();
+            state.user = Some(account.clone());
+            for membership in &mut state.memberships {
+                membership.user_id = account.id;
+            }
+        }
+        let otp = EmailOtpAccessToken::new(account.email.clone()).unwrap();
+        let login = auth
+            .signin(&otp, &otp.code, Default::default())
+            .await
+            .unwrap();
+        let actor = auth.authenticate_access(&login.access_token).await.unwrap();
+        let grant = management_grant(&actor);
+        let enrollment = service.registration_start(&actor, &grant).await.unwrap();
+        let response = authenticators[index]
+            .do_registration(
+                origin.clone(),
+                serde_json::from_value(enrollment.options).unwrap(),
+            )
+            .unwrap();
+        service
+            .registration_finish(&actor, &grant, &enrollment.token, response, "Macbook")
+            .await
+            .unwrap();
+    }
+    for (index, account) in [first, second].into_iter().enumerate() {
+        let start = service.authentication_start().await.unwrap();
+        {
+            let mut state = fixture.repo.0.lock().unwrap();
+            state.user = Some(account.clone());
+            for membership in &mut state.memberships {
+                membership.user_id = account.id;
+            }
+        }
+        let assertion = authenticators[index]
+            .do_authentication(
+                origin.clone(),
+                serde_json::from_value(start.options).unwrap(),
+            )
+            .unwrap();
+        let login = service
+            .authentication_finish(&start.token, assertion, Default::default())
+            .await
+            .unwrap();
+        let actor = auth.authenticate_access(&login.access_token).await.unwrap();
+        assert_eq!(actor.session.user_id, account.id);
+    }
+}
+
+#[tokio::test]
+async fn graphql_passkey_change_cookie_preserves_login_and_cannot_authorize_session() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let auth = fixture.service();
+    let otp = EmailOtpAccessToken::new(Fixture::user(UserStatus::Active).email).unwrap();
+    let tokens = auth
+        .signin(&otp, &otp.code, Default::default())
+        .await
+        .unwrap();
+    let router = fixture.graphql();
+    let cookies = format!(
+        "compallm-access={}; compallm-refresh={}",
+        tokens.access_token, tokens.refresh_token
+    );
+    let response = graphql_operation(&router,
+        "mutation($input:EmailInput!){emailSigninRequest(input:$input){node{token lifetime{expiresInSeconds}}}}",
+        serde_json::json!({"input":{"email":otp.email,"purpose":"PASSKEY_CHANGE"}}), None, Some(&cookies), true).await;
+    let issued = response_cookies(&response);
+    assert!(issued.starts_with("compallm-passkey-otp="));
+    assert!(!issued.contains("compallm-access="));
+    assert!(!issued.contains("compallm-refresh="));
+    let proof_token = issued.strip_prefix("compallm-passkey-otp=").unwrap();
+    let proof = EmailOtpAccessToken::try_from(decode_token(proof_token, SECRET).unwrap()).unwrap();
+    assert_eq!(
+        graphql_body(response).await["data"]["emailSigninRequest"]["node"]["token"],
+        serde_json::Value::Null
+    );
+    let response = graphql_operation(&router,
+        "mutation($input:EmailCodeInput!){emailSigninConfirm(input:$input){node{purpose accessToken refreshToken passkeyChangeToken passkeyChangeLifetime{expiresInSeconds}}}}",
+        serde_json::json!({"input":{"code":proof.code,"purpose":"PASSKEY_CHANGE"}}), None, Some(&format!("{cookies}; {issued}")), true).await;
+    let headers = response
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .map(|v| v.to_str().unwrap().to_owned())
+        .collect::<Vec<_>>();
+    let grant_cookie = headers
+        .iter()
+        .find(|v| v.starts_with("compallm-passkey-change="))
+        .unwrap();
+    assert!(grant_cookie.contains("HttpOnly") && grant_cookie.contains("Max-Age=180"));
+    assert!(
+        headers
+            .iter()
+            .all(|v| !v.starts_with("compallm-access=") && !v.starts_with("compallm-refresh="))
+    );
+    let grant = grant_cookie
+        .split(';')
+        .next()
+        .unwrap()
+        .strip_prefix("compallm-passkey-change=")
+        .unwrap()
+        .to_owned();
+    let body = graphql_body(response).await;
+    let result = &body["data"]["emailSigninConfirm"]["node"];
+    assert_eq!(result["purpose"], "PASSKEY_CHANGE");
+    assert!(
+        result["accessToken"].is_null()
+            && result["refreshToken"].is_null()
+            && result["passkeyChangeToken"].is_null()
+    );
+    assert_eq!(fixture.repo.0.lock().unwrap().logins.len(), 1);
+    assert_graphql_denial(
+        graphql_request(&router, Some(&grant), None, false).await,
+        401,
+    )
+    .await;
+    assert_eq!(graphql_body(graphql_request(&router, None, Some(&cookies), true).await).await["data"]["first"]["node"]["id"].as_str().unwrap(), auth.authenticate_access(&tokens.access_token).await.unwrap().session.id.to_string());
+}
+
+#[tokio::test]
+async fn account_sessions_list_both_logins_and_revoke_only_the_owned_target() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let first = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let second = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let actor =
+        UserAccessToken::try_from(decode_token(&first.access_token, SECRET).unwrap()).unwrap();
+    let other =
+        UserAccessToken::try_from(decode_token(&second.access_token, SECRET).unwrap()).unwrap();
+    {
+        let mut state = fixture.repo.0.lock().unwrap();
+        let mut foreign = actor.session.clone();
+        foreign.id += 100;
+        foreign.user_id += 1;
+        state.sessions.insert(foreign.id, foreign);
+        let mut revoked = actor.session.clone();
+        revoked.id += 101;
+        revoked.revoke();
+        state.sessions.insert(revoked.id, revoked);
+    }
+    let router = fixture.graphql();
+    let query = "{sessions(first:1){edges{node{id}}pageInfo{hasNextPage endCursor}}}";
+    let page = graphql_body(
+        graphql_operation(
+            &router,
+            query,
+            serde_json::json!({}),
+            Some(&first.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(page["errors"].is_null(), "{page}");
+    assert_eq!(
+        page["data"]["sessions"]["edges"].as_array().unwrap().len(),
+        1
+    );
+    assert_eq!(page["data"]["sessions"]["pageInfo"]["hasNextPage"], true);
+    let cursor = page["data"]["sessions"]["pageInfo"]["endCursor"]
+        .as_str()
+        .unwrap();
+    let next = graphql_body(graphql_operation(&router,
+        "query($after:String!){sessions(first:1,after:$after){edges{node{id}}pageInfo{hasNextPage}}}",
+        serde_json::json!({"after":cursor}), Some(&first.access_token), None,false).await).await;
+    assert!(next["errors"].is_null(), "{next}");
+    let ids = [
+        page["data"]["sessions"]["edges"][0]["node"]["id"]
+            .as_str()
+            .unwrap(),
+        next["data"]["sessions"]["edges"][0]["node"]["id"]
+            .as_str()
+            .unwrap(),
+    ];
+    assert!(ids.contains(&actor.session.id.to_string().as_str()));
+    assert!(ids.contains(&other.session.id.to_string().as_str()));
+    let denied = graphql_body(
+        graphql_operation(
+            &router,
+            "mutation($id:ID!){sessionRevokeOther(id:$id){node}}",
+            serde_json::json!({"id":(actor.session.id+100).to_string()}),
+            Some(&first.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(denied["data"]["sessionRevokeOther"]["node"], false);
+    let done = graphql_body(
+        graphql_operation(
+            &router,
+            "mutation($id:ID!){sessionRevokeOther(id:$id){node}}",
+            serde_json::json!({"id":other.session.id.to_string()}),
+            Some(&first.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(done["data"]["sessionRevokeOther"]["node"], true);
+    assert!(fixture.service().validate_access(&actor).await.is_ok());
+    assert!(fixture.service().validate_access(&other).await.is_err());
+    assert!(fixture.refresh(&second.refresh_token).await.is_err());
+}
+
+#[tokio::test]
+async fn revoke_other_sessions_preserves_current_and_foreign_accounts() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET).unwrap();
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await
+        .unwrap();
+    let actor =
+        UserAccessToken::try_from(decode_token(&tokens.access_token, SECRET).unwrap()).unwrap();
+    {
+        let mut state = fixture.repo.0.lock().unwrap();
+        for offset in [1, 2] {
+            let mut other = actor.session.clone();
+            other.id += offset;
+            other.organization_id += offset;
+            state.sessions.insert(other.id, other);
+        }
+        let mut foreign = actor.session.clone();
+        foreign.id += 3;
+        foreign.user_id += 1;
+        state.sessions.insert(foreign.id, foreign);
+    }
+    assert_eq!(
+        fixture
+            .service()
+            .revoke_other_sessions(&actor, None)
+            .await
+            .unwrap(),
+        2
+    );
+    let state = fixture.repo.0.lock().unwrap();
+    assert!(state.sessions[&actor.session.id].revoked_at.is_none());
+    assert!(state.sessions[&(actor.session.id + 3)].revoked_at.is_none());
+}
+
+#[tokio::test]
+async fn session_activity_changes_only_on_renewal_and_expiry_blocks_access_and_refresh() {
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let mut stored = stored_session(1, 7, 84, "Workspace");
+    stored.last_seen_at -= 3600;
+    stored.expires_at -= 3600;
+    let refresh = RefreshToken::from_session(&stored, REFRESH_LIFETIME).unwrap();
+    let token = AccessToken::Refresh(refresh)
+        .encode_compressed(SECRET, REFRESH_LIFETIME)
+        .unwrap();
+    fixture.remember(&token);
+    let actor = fixture.access_for_session(stored.clone());
+    assert!(fixture.service().validate_access(&actor).await.unwrap());
+    assert_eq!(fixture.repo.0.lock().unwrap().sessions[&7], stored);
+    let renewed = fixture.service().refresh(&token).await.unwrap();
+    let credential =
+        RefreshToken::try_from(decode_token(&renewed.refresh_token, SECRET).unwrap()).unwrap();
+    let current = fixture.repo.0.lock().unwrap().sessions[&7].clone();
+    assert_eq!(current.expires_at, credential.validity.expires_at);
+    assert_eq!(current.last_seen_at, credential.validity.issued_at);
+    assert!(current.last_seen_at > stored.last_seen_at);
+    fixture
+        .repo
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .get_mut(&7)
+        .unwrap()
+        .expires_at = compallm_utils::time::unix_timestamp();
+    assert!(matches!(
+        fixture.service().validate_access(&actor).await,
+        Err(AuthError::InvalidSession)
+    ));
+    assert!(matches!(
+        fixture.service().refresh(&token).await,
+        Err(AuthError::InvalidSession)
+    ));
 }

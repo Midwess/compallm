@@ -135,3 +135,21 @@ Follow [Form ownership](https://github.com/Midwess/compallm/wiki/Portal-form) an
 - For subscription changes, inspect a large form: native typing must not rerender the form root or unrelated fields, broadcast
   through workflow stores, or validate unrelated boundaries. Describe measured behavior accurately; RHF can still check its
   internal observers. Verify reset, SSR, stale responses, failure recovery, and repeated field commits when affected.
+
+## Bounded collection rendering
+
+- Growing tables use data-driven `Table.Body` or `Table.Category` with `items`, stable `getKey`, and a row-render function.
+  These parts virtualize automatically. Growing lists use `List.Root` and `List.Items`. Do not eagerly map all records to JSX.
+- Preserve the existing design and vertical scroll owner. Shared collection primitives own viewport observation, measured row
+  heights, spacers, two-row overscan, sticky/category layout, accessibility positions, keyboard boundaries, and load detection.
+- Feature controllers own confirmed data and cursor/request state. Editable virtual rows use a controller-owned CollectionForms
+  registry passed to Table.Root; use distinct useManagedForm keys for multiple forms in one row. Do not discard dirty drafts or
+  cancel pending saves just because a row scrolls offscreen. Dispose registries when the feature/identity ends.
+- Base controls retain focused rows and open editors automatically. Keep option content and option-specific permission checks
+  lazy. Memoize stable rows and column definitions; do not broadcast unrelated drafts or permissions through collection roots.
+- Reconcile confirmed mutations in place, preserving unchanged record references and loaded cursors. Workflow selectors must
+  preserve those references; clone snapshots only for declared editable form paths. Do not reload a directory after a row edit.
+- Use yieldToBrowser/processInSlices for cancellable application work; never add feature-specific timer or frame loops for row
+  mounting. Shared row reveal uses batches of at most three; processing slices start at four milliseconds.
+- Profile the same loading/scroll interaction. Target no collection task above 50ms and incremental rendering p95 below 5ms;
+  these are review budgets, not guarantees that JavaScript can interrupt React commits. Keep profiling UI out of product flows.

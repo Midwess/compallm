@@ -16,7 +16,11 @@ export function AuthDemo({
   scenario?: AuthDemoScenario
   initialState?: AuthInitialState
 }) {
-  const [controller] = useState(() => new DemoAuthController(mode, scenario, initialState))
+  const [controller] = useState(() => {
+    const result = new DemoAuthController(mode, scenario, initialState)
+    if (scenario === 'pending') result.store.setState({ pending: initialState?.step === 'code' ? 'verify' : 'request' })
+    return result
+  })
   useEffect(() => controller.start(), [controller])
   const Page = mode === 'signup' ? SignupPage : SigninPage
   return (

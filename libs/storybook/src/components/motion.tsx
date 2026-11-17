@@ -14,6 +14,9 @@ import { animate, type Transition } from 'motion'
 import { motion, useReducedMotion, type HTMLMotionProps } from 'motion/react'
 
 export const animation = {
+  progress: { minimumVisible: 500, grace: 0, finish: 100, fade: 180, ease: [0.333333, 0, 0.666667, 1] },
+  textEntrance: { duration: 1.1, ease: [0.12, 1, 0.18, 1], stagger: 0.1, delay: 0.3, distance: 20 },
+  cascade: { duration: 1.5, ease: [0.12, 1, 0.18, 1], stagger: 0.14, delay: 0.3, distance: 128 },
   interaction: { duration: 0.12, ease: 'easeOut' },
   enter: { duration: 0.15, ease: 'easeOut' },
   exit: { duration: 0.1, ease: 'easeIn' },
@@ -84,6 +87,34 @@ export function LoadingMotion({ children }: { children: React.ReactNode }) {
     >
       {children}
     </motion.span>
+  )
+}
+
+export function EntranceMotion({
+  order = 0,
+  subtle = false,
+  ...props
+}: HTMLMotionProps<'div'> & {
+  order?: number
+  subtle?: boolean
+}) {
+  const reduced = useReducedMotion()
+  const preset = subtle ? animation.textEntrance : animation.cascade
+  return (
+    <motion.div
+      {...props}
+      initial={reduced ? false : { opacity: 0, y: preset.distance }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={
+        reduced
+          ? { duration: 0 }
+          : {
+              duration: preset.duration,
+              ease: [...preset.ease],
+              delay: preset.delay + order * preset.stagger,
+            }
+      }
+    />
   )
 }
 

@@ -22,6 +22,7 @@ mod compress_token;
 mod email_otp;
 mod encrypted;
 mod invitation;
+mod passkey_change;
 mod refresh;
 mod user;
 pub mod validity;
@@ -30,6 +31,7 @@ pub use compress_token::CompressedToken;
 pub use email_otp::EmailOtpAccessToken;
 pub use encrypted::{EncryptedAccessToken, EncryptedToken};
 pub use invitation::InvitationToken;
+pub use passkey_change::{AuthenticationPurpose, IssuedPasskeyChange, PasskeyChangeToken};
 pub use refresh::RefreshToken;
 pub use user::UserAccessToken;
 pub use validity::TokenValidity;
@@ -50,6 +52,8 @@ pub enum AccessToken {
     Invitation(InvitationToken),
     #[serde(rename = "r")]
     Refresh(RefreshToken),
+    #[serde(rename = "k")]
+    PasskeyChange(PasskeyChangeToken),
 }
 
 impl AccessToken {
@@ -79,6 +83,7 @@ impl AccessToken {
             Self::Invitation(token) => token.validate(now),
             Self::User(token) => token.validate(now),
             Self::Refresh(token) => token.validate(now),
+            Self::PasskeyChange(token) => token.validate(now),
             Self::Encrypted(token) => token.validate(),
         }
     }
@@ -114,7 +119,7 @@ impl AccessToken {
         if secret.len() < 32 || lifetime.as_secs() == 0 {
             return Err(AuthError::InvalidConfiguration);
         }
-        if !matches!(self, Self::Compressed(_)) {
+        if !matches!(self, Self::Compressed(_) | Self::PasskeyChange(_)) {
             return Err(AuthError::WrongTokenVariant);
         }
         self.validate(unix_timestamp())?;
@@ -156,11 +161,7 @@ impl AccessToken {
     }
 
     /// Verify COSE authentication and CWT expiry before decompressing inner claims.
-    pub async fn decode(
-        encoded: &str,
-        secret: &str,
-        dictionaries: &dyn DictionaryRepository,
-    ) -> Result<Self, AuthError> {
+    fn decode_envelope(encoded: &str, secret: &str) -> Result<Self, AuthError> {
         if secret.len() < 32 {
             return Err(AuthError::InvalidConfiguration);
         }
@@ -220,6 +221,25 @@ impl AccessToken {
             return Err(AuthError::InvalidToken);
         }
         token.validate(unix_timestamp())?;
+        Ok(token)
+    }
+
+    pub fn decode_passkey_change(
+        encoded: &str,
+        secret: &str,
+        session: &super::Session,
+    ) -> Result<PasskeyChangeToken, AuthError> {
+        let claims = PasskeyChangeToken::try_from(Self::decode_envelope(encoded, secret)?)?;
+        claims.authorize(session)?;
+        Ok(claims)
+    }
+
+    pub async fn decode(
+        encoded: &str,
+        secret: &str,
+        dictionaries: &dyn DictionaryRepository,
+    ) -> Result<Self, AuthError> {
+        let token = Self::decode_envelope(encoded, secret)?;
         let token = match token {
             Self::Compressed(payload) => {
                 let version = payload.dictionary_version;
@@ -337,4 +357,15 @@ pub struct UserTokens {
     pub refresh_token: String,
     pub access_validity: TokenValidity,
     pub refresh_validity: TokenValidity,
+    pub passkey_change: Option<IssuedPasskeyChange>,
+}
+
+impl TryFrom<AccessToken> for PasskeyChangeToken {
+    type Error = AuthError;
+    fn try_from(token: AccessToken) -> Result<Self, AuthError> {
+        match token {
+            AccessToken::PasskeyChange(token) => Ok(token),
+            _ => Err(AuthError::WrongTokenVariant),
+        }
+    }
 }

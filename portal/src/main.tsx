@@ -1,3 +1,6 @@
+import { PasskeyControllerContext } from '@compallm/storybook/context'
+import { PasskeyDialogs } from '@compallm/storybook'
+import { passkeyController } from './passkey/instance'
 import { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router/dom'
@@ -21,26 +24,31 @@ import { appearanceController } from './appearance/controller'
 import { ScrollMotion } from '@compallm/storybook/components/scroll'
 
 import { startCedarWorker } from './workers/cedar-client'
+import './request-compression'
 
 onInvalidAuthorization(authController.invalidAuthorization)
 void startCedarWorker().catch(() => undefined)
 
 function App() {
+  useEffect(() => passkeyController.start(), [])
   useEffect(() => appearanceController.start(), [])
   useEffect(() => userPreferenceController.start(authController), [])
   return (
     <UrlControllerContext value={urlController}>
       <AuthControllerContext value={authController}>
-        <UserPreferenceControllerContext value={userPreferenceController}>
-          <AppControllerContext value={appController}>
-            <AppLoading>
-              <ScrollMotion />
-              <RouterProvider router={router} />
-              <RequestProgress />
-              <Toaster position="top-right" theme="dark" />
-            </AppLoading>
-          </AppControllerContext>
-        </UserPreferenceControllerContext>
+        <PasskeyControllerContext value={passkeyController}>
+          <UserPreferenceControllerContext value={userPreferenceController}>
+            <AppControllerContext value={appController}>
+              <AppLoading>
+                <ScrollMotion />
+                <RouterProvider router={router} />
+                <PasskeyDialogs />
+                <RequestProgress />
+                <Toaster position="top-right" theme="dark" />
+              </AppLoading>
+            </AppControllerContext>
+          </UserPreferenceControllerContext>
+        </PasskeyControllerContext>
       </AuthControllerContext>
     </UrlControllerContext>
   )

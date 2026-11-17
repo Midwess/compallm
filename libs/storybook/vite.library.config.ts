@@ -17,6 +17,7 @@ const families = [
   'popup',
   'rich-message',
   'table',
+  'list',
   'form-field',
   'form-section',
   'content',
@@ -68,7 +69,6 @@ export default defineConfig({
       external: (id) =>
         [
           '@compallm/contract',
-          '@bprogress/core',
           'react',
           'react-dom',
           '@base-ui/react',

@@ -19,7 +19,13 @@ export interface PopupRootProps extends OpenStateProps {
 
 function Root({ children, onOpenChange, ...props }: PopupRootProps) {
   return (
-    <Menu.Root {...props} onOpenChange={(open) => onOpenChange?.(open)} modal={false}>
+    <Menu.Root
+      {...props}
+      onOpenChange={(open) => {
+        onOpenChange?.(open)
+      }}
+      modal={false}
+    >
       {children}
     </Menu.Root>
   )

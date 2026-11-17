@@ -63,7 +63,8 @@ async fn role_deletion_blocks_new_group_links_and_invalidates_existing_assignees
                 );
                 CREATE TABLE user_sessions (
                     id bigint PRIMARY KEY, organization_id bigint, user_id bigint,
-                    authorization_version bigint NOT NULL, revoked_at timestamptz
+                    authorization_version bigint NOT NULL, revoked_at timestamptz, ip_address varchar(45), user_agent varchar(512),
+                    expires_at timestamptz NOT NULL, last_seen_at timestamptz NOT NULL
                 );
                 CREATE TYPE user_status AS ENUM ('active','disabled');
                 CREATE TYPE organization_status AS ENUM ('active','disabled');
@@ -78,7 +79,7 @@ async fn role_deletion_blocks_new_group_links_and_invalidates_existing_assignees
                 INSERT INTO organizations VALUES (1,'Team','active',NULL);
                 INSERT INTO organization_roles (organization_id,id,name,description,cedar_source,org_owner) VALUES (1,10,'Reports','','',false), (1,11,'Member','','',false);
                 INSERT INTO organization_members VALUES (1,42,'active',11);
-                INSERT INTO user_sessions VALUES (100,1,42,1,NULL);",
+                INSERT INTO user_sessions (id,organization_id,user_id,authorization_version,revoked_at,expires_at,last_seen_at) VALUES (100,1,42,1,NULL,now() + interval '30 days',now());",
             )
             .await?;
         competing

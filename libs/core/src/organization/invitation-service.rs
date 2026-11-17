@@ -30,6 +30,7 @@ pub struct InvitationContext {
 }
 
 pub struct InvitationService {
+    onboarding: &'static dyn crate::persistent::onboarding::OnboardingRepository,
     invitations: &'static dyn InvitationRepository,
     organizations: &'static Box<dyn OrganizationRepository>,
     users: &'static Box<dyn UserRepository>,
@@ -41,6 +42,7 @@ pub struct InvitationService {
 
 impl InvitationService {
     pub fn new(
+        onboarding: &'static dyn crate::persistent::onboarding::OnboardingRepository,
         invitations: &'static dyn InvitationRepository,
         organizations: &'static Box<dyn OrganizationRepository>,
         users: &'static Box<dyn UserRepository>,
@@ -50,6 +52,7 @@ impl InvitationService {
         auth: &'static AuthService,
     ) -> Self {
         Self {
+            onboarding,
             invitations,
             organizations,
             users,
@@ -315,8 +318,12 @@ impl InvitationService {
         otp: &EmailOtpAccessToken,
         code: &str,
         signup: bool,
+        metadata: crate::authentication::SessionMetadata,
     ) -> Result<UserTokens, AuthError> {
         otp.verify_code(code, unix_timestamp())?;
+        if otp.purpose != crate::authentication::AuthenticationPurpose::Login {
+            return Err(AuthError::WrongTokenVariant);
+        }
         if otp.invitation_id != Some(invitation.invitation_id) || otp.email != invitation.email {
             return Err(AuthError::InvalidInvitation);
         }
@@ -380,6 +387,29 @@ impl InvitationService {
                         .await?
                 }
             };
+            {
+                let onboarding = self.onboarding;
+                let settings = onboarding
+                    .settings(invitation.organization_id)
+                    .await
+                    .map_err(|e| AuthError::Unexpected(e.into()))?
+                    .unwrap_or_default();
+                onboarding
+                    .initialize(
+                        invitation.organization_id,
+                        user.id,
+                        crate::onboarding::Progress::new(
+                            if signup {
+                                crate::onboarding::Flow::InvitedNew
+                            } else {
+                                crate::onboarding::Flow::InvitedExisting
+                            },
+                            settings,
+                        ),
+                    )
+                    .await
+                    .map_err(|e| AuthError::Unexpected(e.into()))?;
+            }
             repository
                 .accept(
                     invitation.organization_id,
@@ -389,7 +419,7 @@ impl InvitationService {
                 )
                 .await?;
             self.auth
-                .start_session(user.id, membership, dictionary)
+                .start_enrollment_session(user.id, membership, dictionary, metadata)
                 .await
         })
     }

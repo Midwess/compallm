@@ -19,6 +19,19 @@ export interface AccessibilityPreferences {
   __typename: 'AccessibilityPreferences'
 }
 
+export interface AnalyticUserProfile {
+  key: Scalars['String']
+  value: Scalars['String']
+  __typename: 'AnalyticUserProfile'
+}
+
+export interface AnalyticUserProfilePayload {
+  node: AnalyticUserProfile
+  __typename: 'AnalyticUserProfilePayload'
+}
+
+export type AuthenticationPurpose = 'LOGIN' | 'PASSKEY_CHANGE'
+
 export interface AvatarUpload {
   /** Expiration as Unix seconds, encoded as a string. */
   expiresAt: Scalars['String']
@@ -98,6 +111,11 @@ export interface GroupPayload {
 }
 
 export type HomeDestination = 'CHAT' | 'MODELS' | 'PROVIDERS'
+
+export interface IDPayload {
+  node: Scalars['ID']
+  __typename: 'IDPayload'
+}
 
 export type ImageMediaType = 'JPEG' | 'PNG' | 'WEBP'
 
@@ -223,6 +241,7 @@ export interface MessageCompositionPreferences {
 }
 
 export interface Mutation {
+  analyticUserProfilePut: AnalyticUserProfilePayload
   /** Confirm the verified signin challenge and create a scoped session. */
   emailSigninConfirm: SessionCredentialsPayload
   /** Request a signin email challenge for an existing active account. */
@@ -241,7 +260,17 @@ export interface Mutation {
   invitationCreate: InvitationIssuedPayload
   invitationCreateMany: InvitationIssuedConnection
   invitationRevoke: InvitationPayload
+  onboardingAdvance: OnboardingContextPayload
+  onboardingComplete: OnboardingContextPayload
+  onboardingPresent: OnboardingContextPayload
+  organizationOnboardingSettingsUpdate: OrganizationOnboardingSettingsPayload
   organizationProfileUpdate: OrganizationPayload
+  passkeyAuthenticationFinish: SessionCredentialsPayload
+  passkeyAuthenticationStart: PasskeyCeremonyPayload
+  passkeyRegistrationFinish: PasskeySummaryPayload
+  passkeyRegistrationStart: PasskeyCeremonyPayload
+  passkeyRemove: IDPayload
+  passkeyUpdate: PasskeySummaryPayload
   roleAssign: RolePayload
   /** Create a role in the verified active organization. */
   roleCreate: RolePayload
@@ -249,8 +278,12 @@ export interface Mutation {
   roleUpdate: RolePayload
   /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
   sessionRefresh: SessionCredentialsPayload
-  /** Revoke the verified session and clear its browser cookies after success. */
+  /** Revoke the current session and clear its cookies after success. */
   sessionRevoke: BooleanPayload
+  /** Revoke one other session belonging to the authenticated account. */
+  sessionRevokeOther: BooleanPayload
+  /** Revoke all other account sessions, retaining this login. */
+  sessionRevokeOthers: BooleanPayload
   /** Restore selected preference groups, or ALL alone, to Core defaults. */
   userPreferencesReset: UserPreferencesPayload
   /** Atomically patch the signed-in user's preferences, preserving omitted fields. */
@@ -265,6 +298,33 @@ export interface NavigationPreferences {
   __typename: 'NavigationPreferences'
 }
 
+export interface OnboardingContext {
+  flow: OnboardingFlow
+  hasBeenPresented: Scalars['Boolean']
+  required: Scalars['Boolean']
+  settings: OrganizationOnboardingSettings
+  shouldPresent: Scalars['Boolean']
+  step: OnboardingStep
+  __typename: 'OnboardingContext'
+}
+
+export interface OnboardingContextPayload {
+  node: OnboardingContext
+  __typename: 'OnboardingContextPayload'
+}
+
+export type OnboardingDestination = 'CHAT' | 'MODELS' | 'PROVIDERS'
+
+export type OnboardingFlow = 'INVITED_EXISTING' | 'INVITED_NEW' | 'PERSONAL'
+
+export interface OnboardingLink {
+  href: Scalars['String']
+  label: Scalars['String']
+  __typename: 'OnboardingLink'
+}
+
+export type OnboardingStep = 'INTRODUCTION' | 'PREFERENCES' | 'PROFILE' | 'READY' | 'WORK' | 'WORKSPACE'
+
 export type OrderByDirection = 'AscNullsFirst' | 'AscNullsLast' | 'DescNullsFirst' | 'DescNullsLast'
 
 export interface Organization {
@@ -274,6 +334,21 @@ export interface Organization {
   name: Scalars['String']
   ownerMemberIds: Scalars['ID'][]
   __typename: 'Organization'
+}
+
+export interface OrganizationOnboardingSettings {
+  artworkColor: Scalars['String'] | null
+  destination: OnboardingDestination
+  links: OnboardingLink[]
+  requireAvatar: Scalars['Boolean']
+  requireFullName: Scalars['Boolean']
+  welcome: Scalars['String']
+  __typename: 'OrganizationOnboardingSettings'
+}
+
+export interface OrganizationOnboardingSettingsPayload {
+  node: OrganizationOnboardingSettings
+  __typename: 'OrganizationOnboardingSettingsPayload'
 }
 
 export interface OrganizationPayload {
@@ -293,6 +368,73 @@ export interface PalettePreferences {
   dark: PreferenceDarkPalette
   light: PreferenceLightPalette
   __typename: 'PalettePreferences'
+}
+
+export interface PasskeyCeremony {
+  expiresAt: Scalars['String']
+  options: PasskeyOptions
+  token: Scalars['String']
+  __typename: 'PasskeyCeremony'
+}
+
+export interface PasskeyCeremonyPayload {
+  node: PasskeyCeremony
+  __typename: 'PasskeyCeremonyPayload'
+}
+
+export interface PasskeyDescriptor {
+  id: Scalars['String']
+  transports: Scalars['String'][]
+  __typename: 'PasskeyDescriptor'
+}
+
+export interface PasskeyExtensions {
+  credProps: Scalars['Boolean'] | null
+  credentialProtectionPolicy: Scalars['String'] | null
+  enforceCredentialProtectionPolicy: Scalars['Boolean'] | null
+  __typename: 'PasskeyExtensions'
+}
+
+export interface PasskeyOptions {
+  algorithms: Scalars['Int'][]
+  challenge: Scalars['String']
+  credentials: PasskeyDescriptor[]
+  extensions: PasskeyExtensions
+  residentKey: Scalars['String'] | null
+  rpId: Scalars['String']
+  rpName: Scalars['String'] | null
+  timeout: Scalars['Int']
+  userDisplayName: Scalars['String'] | null
+  userId: Scalars['String'] | null
+  userName: Scalars['String'] | null
+  userVerification: Scalars['String']
+  __typename: 'PasskeyOptions'
+}
+
+export interface PasskeySummary {
+  credentialId: Scalars['String']
+  id: Scalars['ID']
+  lastUsedAt: Scalars['String'] | null
+  name: Scalars['String']
+  registeredAt: Scalars['String']
+  __typename: 'PasskeySummary'
+}
+
+export interface PasskeySummaryConnection {
+  edges: PasskeySummaryEdge[]
+  pageInfo: PageInfo
+  __typename: 'PasskeySummaryConnection'
+}
+
+export interface PasskeySummaryEdge {
+  cursor: Scalars['String']
+  node: PasskeySummary
+  __typename: 'PasskeySummaryEdge'
+}
+
+export interface PasskeySummaryPayload {
+  node: PasskeySummary
+  __typename: 'PasskeySummaryPayload'
 }
 
 export interface PolicyAction {
@@ -376,6 +518,7 @@ export interface ProviderTemplate {
 }
 
 export interface Query {
+  analyticUserProfile: AnalyticUserProfilePayload | null
   /** Find visible group metadata in the active organization. */
   group: GroupPayload | null
   /** Return the complete visible group metadata collection, ordered by ID. */
@@ -384,17 +527,21 @@ export interface Query {
   invitations: InvitationConnection
   me: MePayload
   members: MemberConnection
+  onboardingContext: OnboardingContextPayload | null
   /** Return the active organization from verified user authority. */
   organization: OrganizationPayload
+  organizationOnboardingSettings: OrganizationOnboardingSettingsPayload
   /** Return the system-owned organization policy action catalog. */
   organizationPolicyActions: PolicyActionConnection
   organizationProfile: OrganizationPayload | null
+  passkeys: PasskeySummaryConnection
   /** Find visible role metadata in the active organization. */
   role: RolePayload | null
   /** Return the complete visible role metadata collection, ordered by ID. */
   roles: RoleConnection
   /** Return the verified current session identity. */
   session: SessionPayload
+  sessions: SessionConnection
   /** Return the signed-in user's personal preferences; missing rows use Core defaults without a write. */
   userPreferences: UserPreferencesPayload
   /** Read an active user profile using verified user identity. */
@@ -433,22 +580,39 @@ export interface RolePayload {
 export interface Session {
   /** Public avatar for this user; clients show a fallback while absent or loading. */
   avatarUrl: Scalars['String'] | null
+  expiresAt: Scalars['String']
   /** Login session identity, serialized as a string without numeric precision loss. */
   id: Scalars['ID']
+  /** IP observed by the API connection at sign-in; it may belong to a proxy or VPN. */
+  ipAddress: Scalars['String'] | null
+  lastSeenAt: Scalars['String']
   /** Organization selected for this verified session. */
   organizationId: Scalars['ID']
-  /** Current organization name. */
+  /** Current name of this login's organization, resolved only when selected. */
   organizationName: Scalars['String']
+  passkey: PasskeySummary | null
+  signedInAt: Scalars['String']
+  /** User-Agent captured at sign-in, used only for session recognition. */
+  userAgent: Scalars['String'] | null
   /** User owning this verified session. */
   userId: Scalars['ID']
   __typename: 'Session'
 }
 
+export interface SessionConnection {
+  edges: SessionEdge[]
+  pageInfo: PageInfo
+  __typename: 'SessionConnection'
+}
+
 /** Timing is always returned; credential values exist only in explicit TOKEN delivery. */
 export interface SessionCredentials {
-  accessLifetime: TokenLifetime
+  accessLifetime: TokenLifetime | null
   accessToken: Scalars['String'] | null
-  refreshLifetime: TokenLifetime
+  passkeyChangeLifetime: TokenLifetime | null
+  passkeyChangeToken: Scalars['String'] | null
+  purpose: AuthenticationPurpose
+  refreshLifetime: TokenLifetime | null
   refreshToken: Scalars['String'] | null
   __typename: 'SessionCredentials'
 }
@@ -456,6 +620,12 @@ export interface SessionCredentials {
 export interface SessionCredentialsPayload {
   node: SessionCredentials
   __typename: 'SessionCredentialsPayload'
+}
+
+export interface SessionEdge {
+  cursor: Scalars['String']
+  node: Session
+  __typename: 'SessionEdge'
 }
 
 export interface SessionPayload {
@@ -574,6 +744,24 @@ export interface AccessibilityPreferencesGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface AnalyticUserProfileGenqlSelection {
+  key?: boolean | number
+  value?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface AnalyticUserProfilePayloadGenqlSelection {
+  node?: AnalyticUserProfileGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface AnalyticUserProfilePutInput {
+  key: Scalars['String']
+  value: Scalars['String']
+}
+
 export interface AvatarUploadGenqlSelection {
   /** Expiration as Unix seconds, encoded as a string. */
   expiresAt?: boolean | number
@@ -663,6 +851,7 @@ export interface EmailCodeInput {
   code: Scalars['String']
   /** Cookie delivery is the default; token delivery must be requested explicitly. */
   delivery?: CredentialDelivery | null
+  purpose?: AuthenticationPurpose | null
 }
 
 /**
@@ -676,6 +865,8 @@ export interface EmailInput {
   delivery?: CredentialDelivery | null
   /** Trimmed and ASCII-lowercased using the shared Rust email policy. */
   email: Scalars['String']
+  invitation?: Scalars['Boolean'] | null
+  purpose?: AuthenticationPurpose | null
 }
 
 export interface GroupGenqlSelection {
@@ -725,6 +916,12 @@ export interface GroupUpdateInput {
 
 export interface IDFilter {
   eq?: Scalars['ID'] | null
+}
+
+export interface IDPayloadGenqlSelection {
+  node?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
 }
 
 export interface ImageUploadInput {
@@ -906,6 +1103,7 @@ export interface MessageCompositionPreferencesGenqlSelection {
 }
 
 export interface MutationGenqlSelection {
+  analyticUserProfilePut?: AnalyticUserProfilePayloadGenqlSelection & { __args: { input: AnalyticUserProfilePutInput } }
   /** Confirm the verified signin challenge and create a scoped session. */
   emailSigninConfirm?: SessionCredentialsPayloadGenqlSelection & { __args: { input: EmailCodeInput } }
   /** Request a signin email challenge for an existing active account. */
@@ -924,7 +1122,23 @@ export interface MutationGenqlSelection {
   invitationCreate?: InvitationIssuedPayloadGenqlSelection & { __args: { input: InvitationCreateInput } }
   invitationCreateMany?: InvitationIssuedConnectionGenqlSelection & { __args: { input: InvitationBatchCreateInput } }
   invitationRevoke?: InvitationPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  onboardingAdvance?: OnboardingContextPayloadGenqlSelection & { __args?: { back?: Scalars['Boolean'] } }
+  onboardingComplete?: OnboardingContextPayloadGenqlSelection
+  onboardingPresent?: OnboardingContextPayloadGenqlSelection & { __args?: { manual?: Scalars['Boolean'] } }
+  organizationOnboardingSettingsUpdate?: OrganizationOnboardingSettingsPayloadGenqlSelection & {
+    __args: { input: OrganizationOnboardingSettingsInput }
+  }
   organizationProfileUpdate?: OrganizationPayloadGenqlSelection & { __args: { input: OrganizationProfileUpdateInput } }
+  passkeyAuthenticationFinish?: SessionCredentialsPayloadGenqlSelection & { __args: { input: PasskeyFinishInput } }
+  passkeyAuthenticationStart?: PasskeyCeremonyPayloadGenqlSelection & { __args?: { purpose?: AuthenticationPurpose } }
+  passkeyRegistrationFinish?: PasskeySummaryPayloadGenqlSelection & {
+    __args: { input: PasskeyFinishInput; name: PasskeyRegistrationInput }
+  }
+  passkeyRegistrationStart?: PasskeyCeremonyPayloadGenqlSelection
+  passkeyRemove?: IDPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  passkeyUpdate?: PasskeySummaryPayloadGenqlSelection & {
+    __args: { id: Scalars['ID']; input: PasskeyRegistrationInput }
+  }
   roleAssign?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; memberId: Scalars['ID'] } }
   /** Create a role in the verified active organization. */
   roleCreate?: RolePayloadGenqlSelection & { __args: { input: RoleCreateInput } }
@@ -932,8 +1146,12 @@ export interface MutationGenqlSelection {
   roleUpdate?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; input: RoleUpdateInput } }
   /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
   sessionRefresh?: SessionCredentialsPayloadGenqlSelection
-  /** Revoke the verified session and clear its browser cookies after success. */
+  /** Revoke the current session and clear its cookies after success. */
   sessionRevoke?: BooleanPayloadGenqlSelection
+  /** Revoke one other session belonging to the authenticated account. */
+  sessionRevokeOther?: BooleanPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  /** Revoke all other account sessions, retaining this login. */
+  sessionRevokeOthers?: BooleanPayloadGenqlSelection
   /** Restore selected preference groups, or ALL alone, to Core defaults. */
   userPreferencesReset?: UserPreferencesPayloadGenqlSelection & { __args: { groups: UserPreferenceGroup[] } }
   /** Atomically patch the signed-in user's preferences, preserving omitted fields. */
@@ -954,12 +1172,67 @@ export interface NavigationPreferencesGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface OnboardingContextGenqlSelection {
+  flow?: boolean | number
+  hasBeenPresented?: boolean | number
+  required?: boolean | number
+  settings?: OrganizationOnboardingSettingsGenqlSelection
+  shouldPresent?: boolean | number
+  step?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface OnboardingContextPayloadGenqlSelection {
+  node?: OnboardingContextGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface OnboardingLinkGenqlSelection {
+  href?: boolean | number
+  label?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface OnboardingLinkInput {
+  href: Scalars['String']
+  label: Scalars['String']
+}
+
 export interface OrganizationGenqlSelection {
   avatarUrl?: boolean | number
   canUpdateProfile?: boolean | number
   id?: boolean | number
   name?: boolean | number
   ownerMemberIds?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface OrganizationOnboardingSettingsGenqlSelection {
+  artworkColor?: boolean | number
+  destination?: boolean | number
+  links?: OnboardingLinkGenqlSelection
+  requireAvatar?: boolean | number
+  requireFullName?: boolean | number
+  welcome?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface OrganizationOnboardingSettingsInput {
+  artworkColor?: Scalars['String'] | null
+  destination: OnboardingDestination
+  links: OnboardingLinkInput[]
+  requireAvatar: Scalars['Boolean']
+  requireFullName: Scalars['Boolean']
+  welcome: Scalars['String']
+}
+
+export interface OrganizationOnboardingSettingsPayloadGenqlSelection {
+  node?: OrganizationOnboardingSettingsGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -1001,6 +1274,100 @@ export interface PalettePatchInput {
 export interface PalettePreferencesGenqlSelection {
   dark?: boolean | number
   light?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeyCeremonyGenqlSelection {
+  expiresAt?: boolean | number
+  options?: PasskeyOptionsGenqlSelection
+  token?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeyCeremonyPayloadGenqlSelection {
+  node?: PasskeyCeremonyGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeyDescriptorGenqlSelection {
+  id?: boolean | number
+  transports?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeyExtensionsGenqlSelection {
+  credProps?: boolean | number
+  credentialProtectionPolicy?: boolean | number
+  enforceCredentialProtectionPolicy?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeyFinishInput {
+  attestationObject?: Scalars['String'] | null
+  authenticatorData?: Scalars['String'] | null
+  clientDataJson: Scalars['String']
+  delivery?: CredentialDelivery | null
+  id: Scalars['String']
+  purpose?: AuthenticationPurpose | null
+  rawId: Scalars['String']
+  signature?: Scalars['String'] | null
+  token: Scalars['String']
+  transports?: Scalars['String'][] | null
+  userHandle?: Scalars['String'] | null
+}
+
+export interface PasskeyOptionsGenqlSelection {
+  algorithms?: boolean | number
+  challenge?: boolean | number
+  credentials?: PasskeyDescriptorGenqlSelection
+  extensions?: PasskeyExtensionsGenqlSelection
+  residentKey?: boolean | number
+  rpId?: boolean | number
+  rpName?: boolean | number
+  timeout?: boolean | number
+  userDisplayName?: boolean | number
+  userId?: boolean | number
+  userName?: boolean | number
+  userVerification?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeyRegistrationInput {
+  name: Scalars['String']
+}
+
+export interface PasskeySummaryGenqlSelection {
+  credentialId?: boolean | number
+  id?: boolean | number
+  lastUsedAt?: boolean | number
+  name?: boolean | number
+  registeredAt?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeySummaryConnectionGenqlSelection {
+  edges?: PasskeySummaryEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeySummaryEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: PasskeySummaryGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PasskeySummaryPayloadGenqlSelection {
+  node?: PasskeySummaryGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -1133,6 +1500,7 @@ export interface ProvidersCreateInput {
 }
 
 export interface QueryGenqlSelection {
+  analyticUserProfile?: AnalyticUserProfilePayloadGenqlSelection & { __args: { key: Scalars['String'] } }
   /** Find visible group metadata in the active organization. */
   group?: GroupPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Return the complete visible group metadata collection, ordered by ID. */
@@ -1154,17 +1522,23 @@ export interface QueryGenqlSelection {
       orderBy?: MemberOrderInput[] | null
     }
   }
+  onboardingContext?: OnboardingContextPayloadGenqlSelection
   /** Return the active organization from verified user authority. */
   organization?: OrganizationPayloadGenqlSelection
+  organizationOnboardingSettings?: OrganizationOnboardingSettingsPayloadGenqlSelection
   /** Return the system-owned organization policy action catalog. */
   organizationPolicyActions?: PolicyActionConnectionGenqlSelection
   organizationProfile?: OrganizationPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  passkeys?: PasskeySummaryConnectionGenqlSelection
   /** Find visible role metadata in the active organization. */
   role?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; includeUnseen?: Scalars['Boolean'] } }
   /** Return the complete visible role metadata collection, ordered by ID. */
   roles?: RoleConnectionGenqlSelection & { __args?: { includeUnseen?: Scalars['Boolean'] } }
   /** Return the verified current session identity. */
   session?: SessionPayloadGenqlSelection
+  sessions?: SessionConnectionGenqlSelection & {
+    __args?: { after?: Scalars['String'] | null; first?: Scalars['Int'] | null }
+  }
   /** Return the signed-in user's personal preferences; missing rows use Core defaults without a write. */
   userPreferences?: UserPreferencesPayloadGenqlSelection
   /** Read an active user profile using verified user identity. */
@@ -1226,14 +1600,29 @@ export interface RoleUpdateInput {
 export interface SessionGenqlSelection {
   /** Public avatar for this user; clients show a fallback while absent or loading. */
   avatarUrl?: boolean | number
+  expiresAt?: boolean | number
   /** Login session identity, serialized as a string without numeric precision loss. */
   id?: boolean | number
+  /** IP observed by the API connection at sign-in; it may belong to a proxy or VPN. */
+  ipAddress?: boolean | number
+  lastSeenAt?: boolean | number
   /** Organization selected for this verified session. */
   organizationId?: boolean | number
-  /** Current organization name. */
+  /** Current name of this login's organization, resolved only when selected. */
   organizationName?: boolean | number
+  passkey?: PasskeySummaryGenqlSelection
+  signedInAt?: boolean | number
+  /** User-Agent captured at sign-in, used only for session recognition. */
+  userAgent?: boolean | number
   /** User owning this verified session. */
   userId?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface SessionConnectionGenqlSelection {
+  edges?: SessionEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -1242,6 +1631,9 @@ export interface SessionGenqlSelection {
 export interface SessionCredentialsGenqlSelection {
   accessLifetime?: TokenLifetimeGenqlSelection
   accessToken?: boolean | number
+  passkeyChangeLifetime?: TokenLifetimeGenqlSelection
+  passkeyChangeToken?: boolean | number
+  purpose?: boolean | number
   refreshLifetime?: TokenLifetimeGenqlSelection
   refreshToken?: boolean | number
   __typename?: boolean | number
@@ -1250,6 +1642,13 @@ export interface SessionCredentialsGenqlSelection {
 
 export interface SessionCredentialsPayloadGenqlSelection {
   node?: SessionCredentialsGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface SessionEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: SessionGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -1426,6 +1825,18 @@ export const isAccessibilityPreferences = (obj?: { __typename?: any } | null): o
   return AccessibilityPreferences_possibleTypes.includes(obj.__typename)
 }
 
+const AnalyticUserProfile_possibleTypes: string[] = ['AnalyticUserProfile']
+export const isAnalyticUserProfile = (obj?: { __typename?: any } | null): obj is AnalyticUserProfile => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isAnalyticUserProfile"')
+  return AnalyticUserProfile_possibleTypes.includes(obj.__typename)
+}
+
+const AnalyticUserProfilePayload_possibleTypes: string[] = ['AnalyticUserProfilePayload']
+export const isAnalyticUserProfilePayload = (obj?: { __typename?: any } | null): obj is AnalyticUserProfilePayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isAnalyticUserProfilePayload"')
+  return AnalyticUserProfilePayload_possibleTypes.includes(obj.__typename)
+}
+
 const AvatarUpload_possibleTypes: string[] = ['AvatarUpload']
 export const isAvatarUpload = (obj?: { __typename?: any } | null): obj is AvatarUpload => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isAvatarUpload"')
@@ -1496,6 +1907,12 @@ const GroupPayload_possibleTypes: string[] = ['GroupPayload']
 export const isGroupPayload = (obj?: { __typename?: any } | null): obj is GroupPayload => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isGroupPayload"')
   return GroupPayload_possibleTypes.includes(obj.__typename)
+}
+
+const IDPayload_possibleTypes: string[] = ['IDPayload']
+export const isIDPayload = (obj?: { __typename?: any } | null): obj is IDPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isIDPayload"')
+  return IDPayload_possibleTypes.includes(obj.__typename)
 }
 
 const Invitation_possibleTypes: string[] = ['Invitation']
@@ -1614,10 +2031,44 @@ export const isNavigationPreferences = (obj?: { __typename?: any } | null): obj 
   return NavigationPreferences_possibleTypes.includes(obj.__typename)
 }
 
+const OnboardingContext_possibleTypes: string[] = ['OnboardingContext']
+export const isOnboardingContext = (obj?: { __typename?: any } | null): obj is OnboardingContext => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isOnboardingContext"')
+  return OnboardingContext_possibleTypes.includes(obj.__typename)
+}
+
+const OnboardingContextPayload_possibleTypes: string[] = ['OnboardingContextPayload']
+export const isOnboardingContextPayload = (obj?: { __typename?: any } | null): obj is OnboardingContextPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isOnboardingContextPayload"')
+  return OnboardingContextPayload_possibleTypes.includes(obj.__typename)
+}
+
+const OnboardingLink_possibleTypes: string[] = ['OnboardingLink']
+export const isOnboardingLink = (obj?: { __typename?: any } | null): obj is OnboardingLink => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isOnboardingLink"')
+  return OnboardingLink_possibleTypes.includes(obj.__typename)
+}
+
 const Organization_possibleTypes: string[] = ['Organization']
 export const isOrganization = (obj?: { __typename?: any } | null): obj is Organization => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isOrganization"')
   return Organization_possibleTypes.includes(obj.__typename)
+}
+
+const OrganizationOnboardingSettings_possibleTypes: string[] = ['OrganizationOnboardingSettings']
+export const isOrganizationOnboardingSettings = (
+  obj?: { __typename?: any } | null,
+): obj is OrganizationOnboardingSettings => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isOrganizationOnboardingSettings"')
+  return OrganizationOnboardingSettings_possibleTypes.includes(obj.__typename)
+}
+
+const OrganizationOnboardingSettingsPayload_possibleTypes: string[] = ['OrganizationOnboardingSettingsPayload']
+export const isOrganizationOnboardingSettingsPayload = (
+  obj?: { __typename?: any } | null,
+): obj is OrganizationOnboardingSettingsPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isOrganizationOnboardingSettingsPayload"')
+  return OrganizationOnboardingSettingsPayload_possibleTypes.includes(obj.__typename)
 }
 
 const OrganizationPayload_possibleTypes: string[] = ['OrganizationPayload']
@@ -1636,6 +2087,60 @@ const PalettePreferences_possibleTypes: string[] = ['PalettePreferences']
 export const isPalettePreferences = (obj?: { __typename?: any } | null): obj is PalettePreferences => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isPalettePreferences"')
   return PalettePreferences_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeyCeremony_possibleTypes: string[] = ['PasskeyCeremony']
+export const isPasskeyCeremony = (obj?: { __typename?: any } | null): obj is PasskeyCeremony => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeyCeremony"')
+  return PasskeyCeremony_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeyCeremonyPayload_possibleTypes: string[] = ['PasskeyCeremonyPayload']
+export const isPasskeyCeremonyPayload = (obj?: { __typename?: any } | null): obj is PasskeyCeremonyPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeyCeremonyPayload"')
+  return PasskeyCeremonyPayload_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeyDescriptor_possibleTypes: string[] = ['PasskeyDescriptor']
+export const isPasskeyDescriptor = (obj?: { __typename?: any } | null): obj is PasskeyDescriptor => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeyDescriptor"')
+  return PasskeyDescriptor_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeyExtensions_possibleTypes: string[] = ['PasskeyExtensions']
+export const isPasskeyExtensions = (obj?: { __typename?: any } | null): obj is PasskeyExtensions => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeyExtensions"')
+  return PasskeyExtensions_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeyOptions_possibleTypes: string[] = ['PasskeyOptions']
+export const isPasskeyOptions = (obj?: { __typename?: any } | null): obj is PasskeyOptions => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeyOptions"')
+  return PasskeyOptions_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeySummary_possibleTypes: string[] = ['PasskeySummary']
+export const isPasskeySummary = (obj?: { __typename?: any } | null): obj is PasskeySummary => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeySummary"')
+  return PasskeySummary_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeySummaryConnection_possibleTypes: string[] = ['PasskeySummaryConnection']
+export const isPasskeySummaryConnection = (obj?: { __typename?: any } | null): obj is PasskeySummaryConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeySummaryConnection"')
+  return PasskeySummaryConnection_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeySummaryEdge_possibleTypes: string[] = ['PasskeySummaryEdge']
+export const isPasskeySummaryEdge = (obj?: { __typename?: any } | null): obj is PasskeySummaryEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeySummaryEdge"')
+  return PasskeySummaryEdge_possibleTypes.includes(obj.__typename)
+}
+
+const PasskeySummaryPayload_possibleTypes: string[] = ['PasskeySummaryPayload']
+export const isPasskeySummaryPayload = (obj?: { __typename?: any } | null): obj is PasskeySummaryPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPasskeySummaryPayload"')
+  return PasskeySummaryPayload_possibleTypes.includes(obj.__typename)
 }
 
 const PolicyAction_possibleTypes: string[] = ['PolicyAction']
@@ -1698,6 +2203,12 @@ export const isSession = (obj?: { __typename?: any } | null): obj is Session => 
   return Session_possibleTypes.includes(obj.__typename)
 }
 
+const SessionConnection_possibleTypes: string[] = ['SessionConnection']
+export const isSessionConnection = (obj?: { __typename?: any } | null): obj is SessionConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isSessionConnection"')
+  return SessionConnection_possibleTypes.includes(obj.__typename)
+}
+
 const SessionCredentials_possibleTypes: string[] = ['SessionCredentials']
 export const isSessionCredentials = (obj?: { __typename?: any } | null): obj is SessionCredentials => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isSessionCredentials"')
@@ -1708,6 +2219,12 @@ const SessionCredentialsPayload_possibleTypes: string[] = ['SessionCredentialsPa
 export const isSessionCredentialsPayload = (obj?: { __typename?: any } | null): obj is SessionCredentialsPayload => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isSessionCredentialsPayload"')
   return SessionCredentialsPayload_possibleTypes.includes(obj.__typename)
+}
+
+const SessionEdge_possibleTypes: string[] = ['SessionEdge']
+export const isSessionEdge = (obj?: { __typename?: any } | null): obj is SessionEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isSessionEdge"')
+  return SessionEdge_possibleTypes.includes(obj.__typename)
 }
 
 const SessionPayload_possibleTypes: string[] = ['SessionPayload']
@@ -1782,6 +2299,11 @@ export const isUserPreferencesPayload = (obj?: { __typename?: any } | null): obj
   return UserPreferencesPayload_possibleTypes.includes(obj.__typename)
 }
 
+export const enumAuthenticationPurpose = {
+  LOGIN: 'LOGIN' as const,
+  PASSKEY_CHANGE: 'PASSKEY_CHANGE' as const,
+}
+
 export const enumCredentialDelivery = {
   COOKIE: 'COOKIE' as const,
   TOKEN: 'TOKEN' as const,
@@ -1802,6 +2324,27 @@ export const enumImageMediaType = {
   JPEG: 'JPEG' as const,
   PNG: 'PNG' as const,
   WEBP: 'WEBP' as const,
+}
+
+export const enumOnboardingDestination = {
+  CHAT: 'CHAT' as const,
+  MODELS: 'MODELS' as const,
+  PROVIDERS: 'PROVIDERS' as const,
+}
+
+export const enumOnboardingFlow = {
+  INVITED_EXISTING: 'INVITED_EXISTING' as const,
+  INVITED_NEW: 'INVITED_NEW' as const,
+  PERSONAL: 'PERSONAL' as const,
+}
+
+export const enumOnboardingStep = {
+  INTRODUCTION: 'INTRODUCTION' as const,
+  PREFERENCES: 'PREFERENCES' as const,
+  PROFILE: 'PROFILE' as const,
+  READY: 'READY' as const,
+  WORK: 'WORK' as const,
+  WORKSPACE: 'WORKSPACE' as const,
 }
 
 export const enumOrderByDirection = {

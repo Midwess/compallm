@@ -16,6 +16,35 @@ pub enum CredentialDelivery {
     Token,
 }
 
+#[derive(Clone, Copy, Default, GraphQLEnum, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AuthenticationPurpose {
+    #[default]
+    Login,
+    PasskeyChange,
+}
+impl From<AuthenticationPurpose> for compallm_core::authentication::AuthenticationPurpose {
+    fn from(value: AuthenticationPurpose) -> Self {
+        match value {
+            AuthenticationPurpose::Login => Self::Login,
+            AuthenticationPurpose::PasskeyChange => Self::PasskeyChange,
+        }
+    }
+}
+pub(crate) fn login_purpose() -> Option<AuthenticationPurpose> {
+    Some(AuthenticationPurpose::Login)
+}
+pub(crate) fn require_purpose(
+    value: Option<AuthenticationPurpose>,
+) -> Result<(), ValidationErrors> {
+    if value.is_some() {
+        return Ok(());
+    }
+    let mut errors = ValidationErrors::new();
+    errors.add(ValidationError::new_field("purpose"));
+    Err(errors)
+}
+
 /// Shared input for requesting either a signup or a signin email challenge.
 ///
 /// Call `validify()` before Core execution. GraphQL parsing alone does not run
@@ -24,10 +53,18 @@ pub enum CredentialDelivery {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[validate(Self::validate_delivery)]
 pub struct EmailInput {
+    #[graphql(default = login_purpose())]
+    #[serde(default = "login_purpose")]
+    #[schemars(extend("x-compallm-non-null" = true))]
+    pub purpose: Option<AuthenticationPurpose>,
     /// Trimmed and ASCII-lowercased using the shared Rust email policy.
     #[modify(trim, custom(str::make_ascii_lowercase))]
-    #[validate(custom(function = email::validate_email))]
+    #[validate(custom(function = email::validate_email, message = "Enter a valid email address, such as name@example.com."))]
     pub email: String,
+    #[graphql(default = ordinary_authentication())]
+    #[serde(default = "ordinary_authentication")]
+    #[schemars(extend("x-compallm-non-null" = true))]
+    pub invitation: Option<bool>,
     /// Cookie delivery is the default; token delivery must be requested explicitly.
     #[graphql(default = cookie_delivery())]
     #[serde(default = "cookie_delivery")]
@@ -43,9 +80,13 @@ pub struct EmailInput {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[validate(Self::validate_delivery)]
 pub struct EmailCodeInput {
+    #[graphql(default = login_purpose())]
+    #[serde(default = "login_purpose")]
+    #[schemars(extend("x-compallm-non-null" = true))]
+    pub purpose: Option<AuthenticationPurpose>,
     /// Exactly six ASCII digits after trimming surrounding whitespace.
     #[modify(trim)]
-    #[validate(length(equal = 6), custom(function = Self::ascii_digits))]
+    #[validate(length(equal = 6, message = "Enter the six-digit verification code."), custom(function = Self::ascii_digits, message = "Use digits only for the verification code."))]
     pub code: String,
     /// Cookie delivery is the default; token delivery must be requested explicitly.
     #[graphql(default = cookie_delivery())]
@@ -68,13 +109,20 @@ impl EmailCodeInput {
     }
 }
 
-fn cookie_delivery() -> Option<CredentialDelivery> {
+pub(crate) fn cookie_delivery() -> Option<CredentialDelivery> {
     Some(CredentialDelivery::Cookie)
 }
 
 impl EmailInput {
     fn validate_delivery(value: &Self) -> Result<(), ValidationErrors> {
-        require_delivery(value.delivery)
+        require_delivery(value.delivery)?;
+        require_purpose(value.purpose)?;
+        if value.invitation.is_none() {
+            let mut errors = ValidationErrors::new();
+            errors.add(ValidationError::new_field("invitation"));
+            return Err(errors);
+        }
+        Ok(())
     }
     fn validate_delivery_contract() -> serde_json::Value {
         serde_json::json!({})
@@ -83,6 +131,7 @@ impl EmailInput {
 
 impl EmailCodeInput {
     fn validate_delivery(value: &Self) -> Result<(), ValidationErrors> {
+        require_purpose(value.purpose)?;
         require_delivery(value.delivery)
     }
     fn validate_delivery_contract() -> serde_json::Value {
@@ -90,11 +139,15 @@ impl EmailCodeInput {
     }
 }
 
-fn require_delivery(value: Option<CredentialDelivery>) -> Result<(), ValidationErrors> {
+pub(crate) fn require_delivery(value: Option<CredentialDelivery>) -> Result<(), ValidationErrors> {
     if value.is_some() {
         return Ok(());
     }
     let mut errors = ValidationErrors::new();
     errors.add(ValidationError::new_field("delivery"));
     Err(errors)
+}
+
+fn ordinary_authentication() -> Option<bool> {
+    Some(false)
 }

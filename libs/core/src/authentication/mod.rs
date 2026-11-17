@@ -7,9 +7,13 @@ pub mod token;
 
 pub use error::AuthError;
 pub use service::{AuthService, TokenLifetimes};
-pub use session::Session;
+pub use session::{Session, SessionMetadata};
 pub use token::{
     AccessToken, EmailOtpAccessToken, EncryptedAccessToken, EncryptedToken, RefreshToken,
     TokenValidity, UserAccessToken,
 };
 pub use token::{EmailOtpChallenge, IssuedEmailOtp, UserTokens};
+
+pub mod passkey;
+
+pub use token::{AuthenticationPurpose, IssuedPasskeyChange, PasskeyChangeToken};

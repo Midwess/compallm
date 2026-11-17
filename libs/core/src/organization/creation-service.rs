@@ -8,11 +8,18 @@ use super::{Organization, OrganizationCreationError, OrganizationMember, Role};
 
 pub struct CreationService {
     organizations: &'static Box<dyn OrganizationRepository>,
+    onboarding: &'static dyn crate::persistent::onboarding::OnboardingRepository,
 }
 
 impl CreationService {
-    pub fn new(organizations: &'static Box<dyn OrganizationRepository>) -> Self {
-        Self { organizations }
+    pub fn new(
+        organizations: &'static Box<dyn OrganizationRepository>,
+        onboarding: &'static dyn crate::persistent::onboarding::OnboardingRepository,
+    ) -> Self {
+        Self {
+            organizations,
+            onboarding,
+        }
     }
 
     /// Create the organization and its owner membership atomically.
@@ -47,6 +54,19 @@ impl CreationService {
                     groups: Vec::new(),
                 })
                 .await?;
+            self.onboarding
+                .initialize(
+                    organization.id,
+                    user.id,
+                    crate::onboarding::Progress::new(
+                        crate::onboarding::Flow::Personal,
+                        Default::default(),
+                    ),
+                )
+                .await
+                .map_err(|e| {
+                    crate::persistent::organization::OrganizationRepositoryError::database(e)
+                })?;
             Ok(organization)
         })
     }

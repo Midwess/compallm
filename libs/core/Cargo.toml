@@ -38,3 +38,9 @@ tokio = { workspace = true, features = ["rt"] }
 sha2 = { workspace = true, features = ["std"] }
 subtle = { workspace = true, features = ["std"] }
 thiserror = { workspace = true, features = ["std"] }
+
+webauthn-rs.workspace = true
+uuid.workspace = true
+url.workspace = true
+
+webauthn-rs-core.workspace = true

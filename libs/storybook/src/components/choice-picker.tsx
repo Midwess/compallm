@@ -116,11 +116,21 @@ function Trigger({ asChild = false, children, ...props }: ComponentPropsWithRef<
     </Combobox.Trigger>
   )
 }
-function Content({ className, ...props }: ComponentPropsWithRef<'div'>) {
+function Content({
+  className,
+  align = 'end',
+  ...props
+}: ComponentPropsWithRef<'div'> & { align?: 'start' | 'center' | 'end' }) {
   const container = useContext(FloatingContainerContext)
   return (
     <Combobox.Portal container={container}>
-      <Combobox.Positioner sideOffset={6} align="end" positionMethod="fixed" collisionPadding={8} className="z-50 outline-none">
+      <Combobox.Positioner
+        sideOffset={6}
+        align={align}
+        positionMethod="fixed"
+        collisionPadding={8}
+        className="z-50 outline-none"
+      >
         <Combobox.Popup
           {...props}
           render={<FloatingMotion />}

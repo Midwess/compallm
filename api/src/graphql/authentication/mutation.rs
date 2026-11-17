@@ -1,6 +1,6 @@
 use super::{
     EmailChallenge, SessionCredentials,
-    input::{CredentialDelivery, EmailCodeInput, EmailInput},
+    input::{AuthenticationPurpose, CredentialDelivery, EmailCodeInput, EmailInput},
 };
 use crate::{
     graphql::{base_type::Payload, error::Error},
@@ -21,12 +21,27 @@ pub(crate) async fn signup_email_request(
 ) -> Result<Payload<EmailChallenge>, Error> {
     let mut input = input;
     input.validify()?;
+    if input.purpose != Some(AuthenticationPurpose::Login) {
+        return Err(Error::invalid_input());
+    }
     let mode = input.delivery.unwrap_or_default();
     if mode == CredentialDelivery::Cookie {
         cookies.validate_origin()?;
     }
     (
-        match identity.invitation().await? {
+        match if input.invitation.unwrap_or(false) {
+            Some(
+                identity
+                    .invitation()
+                    .await?
+                    .ok_or(compallm_core::authentication::AuthError::InvalidInvitation)?,
+            )
+        } else {
+            if mode == CredentialDelivery::Cookie {
+                cookies.clear_invitation()?;
+            }
+            None
+        } {
             Some(invitation) => {
                 if mode != CredentialDelivery::Cookie {
                     return Err(Error::invalid_input());
@@ -51,6 +66,7 @@ pub(crate) async fn signin_email_request(
     invitations: &InvitationService,
     identity: &AuthenticationContext,
     cookies: &CookieDelivery,
+    user: &UserContext,
 ) -> Result<Payload<EmailChallenge>, Error> {
     let mut input = input;
     input.validify()?;
@@ -58,8 +74,35 @@ pub(crate) async fn signin_email_request(
     if mode == CredentialDelivery::Cookie {
         cookies.validate_origin()?;
     }
+    if input.purpose == Some(AuthenticationPurpose::PasskeyChange) {
+        if input.invitation.unwrap_or(false) {
+            return Err(Error::invalid_input());
+        }
+        let challenge = identity
+            .execute(auth.passkey_change_email(user.require().await?.access(), &input.email))
+            .await?;
+        return EmailChallenge::try_from((
+            challenge,
+            mode,
+            cookies,
+            AuthenticationPurpose::PasskeyChange,
+        ))
+        .map(Into::into);
+    }
     (
-        match identity.invitation().await? {
+        match if input.invitation.unwrap_or(false) {
+            Some(
+                identity
+                    .invitation()
+                    .await?
+                    .ok_or(compallm_core::authentication::AuthError::InvalidInvitation)?,
+            )
+        } else {
+            if mode == CredentialDelivery::Cookie {
+                cookies.clear_invitation()?;
+            }
+            None
+        } {
             Some(invitation) => {
                 if mode != CredentialDelivery::Cookie {
                     return Err(Error::invalid_input());
@@ -87,12 +130,24 @@ pub(crate) async fn signup_email_confirm(
 ) -> Result<Payload<SessionCredentials>, Error> {
     let mut input = input;
     input.validify()?;
+    if input.purpose != Some(AuthenticationPurpose::Login) {
+        return Err(Error::invalid_input());
+    }
     let mode = input.delivery.unwrap_or_default();
     if mode == CredentialDelivery::Cookie {
         cookies.validate_origin()?;
     }
     (
-        match identity.invitation().await? {
+        match if identity.otp().await?.invitation_id.is_some() {
+            Some(
+                identity
+                    .invitation()
+                    .await?
+                    .ok_or(compallm_core::authentication::AuthError::InvalidInvitation)?,
+            )
+        } else {
+            None
+        } {
             Some(invitation) => {
                 if mode != CredentialDelivery::Cookie {
                     return Err(Error::invalid_input());
@@ -103,12 +158,17 @@ pub(crate) async fn signup_email_confirm(
                         identity.otp().await?,
                         &input.code,
                         true,
+                        identity.session_metadata(),
                     ))
                     .await?
             }
             None => {
                 identity
-                    .execute(auth.signup(identity.otp().await?, &input.code))
+                    .execute(auth.signup(
+                        identity.otp().await?,
+                        &input.code,
+                        identity.session_metadata(),
+                    ))
                     .await?
             }
         },
@@ -126,14 +186,34 @@ pub(crate) async fn signin_email_confirm(
     invitations: &InvitationService,
     identity: &AuthenticationContext,
     cookies: &CookieDelivery,
+    user: &UserContext,
 ) -> Result<Payload<SessionCredentials>, Error> {
     input.validify()?;
     let mode = input.delivery.unwrap_or_default();
     if mode == CredentialDelivery::Cookie {
         cookies.validate_origin()?;
     }
+    if input.purpose == Some(AuthenticationPurpose::PasskeyChange) {
+        let grant = identity
+            .execute(auth.passkey_change_confirm(
+                user.require().await?.access(),
+                identity.passkey_otp().await?,
+                &input.code,
+            ))
+            .await?;
+        return SessionCredentials::try_from((grant, mode, cookies)).map(Into::into);
+    }
     (
-        match identity.invitation().await? {
+        match if identity.otp().await?.invitation_id.is_some() {
+            Some(
+                identity
+                    .invitation()
+                    .await?
+                    .ok_or(compallm_core::authentication::AuthError::InvalidInvitation)?,
+            )
+        } else {
+            None
+        } {
             Some(invitation) => {
                 if mode != CredentialDelivery::Cookie {
                     return Err(Error::invalid_input());
@@ -144,12 +224,17 @@ pub(crate) async fn signin_email_confirm(
                         identity.otp().await?,
                         &input.code,
                         false,
+                        identity.session_metadata(),
                     ))
                     .await?
             }
             None => {
                 identity
-                    .execute(auth.signin(identity.otp().await?, &input.code))
+                    .execute(auth.signin(
+                        identity.otp().await?,
+                        &input.code,
+                        identity.session_metadata(),
+                    ))
                     .await?
             }
         },
@@ -188,5 +273,30 @@ pub(crate) async fn session_revoke(
         .execute(auth.signout(user.require().await?.access()))
         .await?;
     cookies.clear()?;
+    Ok(true.into())
+}
+
+pub(crate) async fn session_revoke_other(
+    id: juniper::ID,
+    auth: &AuthService,
+    identity: &AuthenticationContext,
+    user: &UserContext,
+) -> Result<Payload<bool>, Error> {
+    let target = id.parse::<u64>().map_err(|_| Error::invalid_input())?;
+    let actor = user.require().await?.access();
+    Ok((identity
+        .execute(auth.revoke_other_sessions(actor, Some(target)))
+        .await?
+        > 0)
+    .into())
+}
+pub(crate) async fn session_revoke_others(
+    auth: &AuthService,
+    identity: &AuthenticationContext,
+    user: &UserContext,
+) -> Result<Payload<bool>, Error> {
+    identity
+        .execute(auth.revoke_other_sessions(user.require().await?.access(), None))
+        .await?;
     Ok(true.into())
 }

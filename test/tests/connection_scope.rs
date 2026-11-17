@@ -57,11 +57,14 @@ impl Fixture {
         };
         let access = UserAccessToken::new(
             Session {
+                expires_at: compallm_utils::time::unix_timestamp() + 30 * 86400,
+                last_seen_at: compallm_utils::time::unix_timestamp(),
                 id: 1,
                 user_id,
                 organization_id,
                 authorization_version: 1,
                 revoked_at: None,
+                metadata: Default::default(),
             },
             PolicySnapshot::new(&membership).unwrap(),
             Duration::from_secs(60),

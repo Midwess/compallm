@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { SettingsControllerContext, UserPreferenceControllerContext } from '../../../src/context'
+import { AuthControllerContext, SettingsControllerContext, UserPreferenceControllerContext } from '../../../src/context'
 import { userPreferenceDefaults } from '@compallm/contract/preference'
 import { loadedPreferenceDraft } from '../../../src/pages/settings'
 import { SettingsPage } from '../../../src/pages/settings'
@@ -12,8 +12,10 @@ import type {
   UserPreferenceState,
   UserPreferenceValues,
 } from '../../../src/pages/settings'
+import { DemoAuthController } from '../demo-auth-controller'
+import type { AuthUser } from '../../../src/pages/auth/types'
 import { DemoSettingsController } from './demo-controller'
-import { advancedSource, modelOperatorSource } from './fixtures'
+import { advancedSource, modelOperatorSource, initialSettings } from './fixtures'
 
 function Demo({
   page = 'general',
@@ -25,6 +27,7 @@ function Demo({
   pagedGroup = false,
   preferenceStatus,
   savedPreferences,
+  session,
 }: {
   page?: SettingsDestination
   id?: string
@@ -35,7 +38,22 @@ function Demo({
   pagedGroup?: boolean
   preferenceStatus?: UserPreferenceState['status']
   savedPreferences?: UserPreferenceValues
+  session?: Partial<AuthUser>
 }) {
+  const [auth] = useState(() => {
+    const auth = new DemoAuthController('signin')
+    auth.store.setState({
+      status: 'authenticated',
+      currentUser: {
+        id: 'session',
+        userId: 'alex',
+        organizationId: 'workspace',
+        organizationName: 'Workspace',
+        ...session,
+      },
+    })
+    return auth
+  })
   const [controller] = useState(() => {
     const controller = new DemoSettingsController({ location: { page, id }, ...initial }, failure)
     const user = controller.pages.preferences.user
@@ -77,11 +95,13 @@ function Demo({
     })
   }, [controller, pagedGroup])
   return (
-    <SettingsControllerContext value={controller}>
-      <UserPreferenceControllerContext value={controller.pages.preferences.user}>
-        <SettingsPage />
-      </UserPreferenceControllerContext>
-    </SettingsControllerContext>
+    <AuthControllerContext value={auth}>
+      <SettingsControllerContext value={controller}>
+        <UserPreferenceControllerContext value={controller.pages.preferences.user}>
+          <SettingsPage />
+        </UserPreferenceControllerContext>
+      </SettingsControllerContext>
+    </AuthControllerContext>
   )
 }
 const meta = {
@@ -166,7 +186,81 @@ export const ProfileWithPhoto: Story = {
     />
   ),
 }
-export const Access: Story = { render: () => <Demo page="access" /> }
+export const Access: Story = {
+  render: () => (
+    <Demo
+      page="access"
+      initial={{ sessionLocation: { sessionId: 'session', ipAddress: '203.0.113.42', location: 'Vietnam' } }}
+      session={{
+        ipAddress: '203.0.113.42',
+        userAgent:
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ' +
+          'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+      }}
+    />
+  ),
+}
+export const AccessUnknownSession: Story = { render: () => <Demo page="access" /> }
+export const AccessMobileSession: Story = {
+  render: () => (
+    <Demo
+      page="access"
+      initial={{ sessionLocation: { sessionId: 'session', ipAddress: '2001:db8::42', location: 'Ho Chi Minh City, Vietnam' } }}
+      session={{
+        ipAddress: '2001:db8::42',
+        userAgent:
+          'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) ' +
+          'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
+      }}
+    />
+  ),
+}
+export const AccessLight: Story = { ...Access, globals: { theme: 'BASIC_WHITE' } }
+export const SessionIpFallback: Story = {
+  render: () => (
+    <Demo
+      page="access"
+      session={{
+        ipAddress: '203.0.113.42',
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36',
+      }}
+    />
+  ),
+}
+export const SessionsLoading: Story = { render: () => <Demo page="access" initial={{ sessionsLoading: true }} /> }
+export const SessionsLoadFailure: Story = { render: () => <Demo page="access" initial={{ sessionsError: true }} /> }
+export const SessionsReference: Story = {
+  render: () => (
+    <Demo
+      page="security"
+      session={{
+        ipAddress: '203.0.113.42',
+        signedInAt: '1794000000',
+        lastSeenAt: '1794877200',
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36',
+      }}
+      initial={{
+        sessionLocation: { sessionId: 'session', ipAddress: '203.0.113.42', location: 'Ho Chi Minh City, 61, VN' },
+        otherSessions: [
+          {
+            id: 'arc',
+            browser: 'Arc on macOS',
+            location: 'Quận Mười, 61, VN',
+            lastSeenAt: '1794812400',
+            signedInAt: '1794000000',
+          },
+          {
+            id: 'brave',
+            browser: 'Brave on macOS',
+            location: 'Quận Mười, 61, VN',
+            lastSeenAt: '1794531600',
+            signedInAt: '1793000000',
+          },
+        ],
+      }}
+    />
+  ),
+}
 export const Security: Story = { render: () => <Demo page="security" /> }
 export const AccessPopulated: Story = {
   render: () => (
@@ -203,6 +297,7 @@ export const OrganizationLoadFailure: Story = {
   render: () => <Demo page="organization" initial={{ organizationProfileStatus: 'error' }} />,
 }
 export const OrganizationOnboarding: Story = { render: () => <Demo page="organization-onboarding" /> }
+export const OrganizationOnboardingLight: Story = { ...OrganizationOnboarding, globals: { theme: 'BASIC_WHITE' } }
 
 export const Members: Story = { render: () => <Demo page="members" /> }
 export const EditGroup: Story = { render: () => <Demo page="group" id="research" /> }
@@ -537,3 +632,119 @@ export const MembershipInvitations: Story = {
 }
 
 export const InviteDialog: Story = { render: () => <Demo page="members" initial={{ invitationsOpen: true }} /> }
+
+export const MembersScrollFailure: Story = {
+  render: () => <Demo page="members" initial={{ membersHasNextPage: true, membersComplete: false, membersLoadError: true }} />,
+}
+export const InvitationsScroll: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      initial={{
+        invitations: Array.from({ length: 20 }, (_, index) => ({
+          id: `invite-${index}`,
+          email: `person${index}@example.com`,
+          status: 'pending',
+          expiresAt: 2000000000,
+        })),
+        invitationsHasNextPage: true,
+      }}
+    />
+  ),
+}
+
+export const RecentInvitationDates: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      initial={{
+        invitations: [30, 300, 3600, 7200, 90000].map((age, index) => ({
+          id: `recent-${index}`,
+          email: `person${index}@example.com`,
+          status: 'pending',
+          issuedAt: Math.floor(Date.now() / 1000) - age,
+          expiresAt: Math.floor(Date.now() / 1000) - age + 604800,
+        })),
+      }}
+    />
+  ),
+}
+
+export const MembersRenderingBatches: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      initial={{
+        members: Array.from({ length: 20 }, (_, index) => ({
+          ...initialSettings.members![1],
+          id: `batch-${index}`,
+          name: `Member ${index}`,
+          email: `member${index}@example.com`,
+        })),
+      }}
+    />
+  ),
+}
+
+export const MembersRoleUpdates: Story = {
+  render: () => (
+    <Demo
+      page="members"
+      initial={{
+        members: Array.from({ length: 1000 }, (_, index) => ({
+          ...initialSettings.members![1],
+          id: `editable-${index}`,
+          name: `Member ${index}`,
+          email: `member${index}@example.com`,
+        })),
+      }}
+    />
+  ),
+}
+
+export const SessionsMinimalMobile: Story = {
+  ...SessionsReference,
+  parameters: { viewport: { options: { sessionMobile: { name: 'Mobile', styles: { width: '390px', height: '844px' } } } } },
+  globals: { viewport: { value: 'sessionMobile', isRotated: false } },
+}
+
+export const SessionsMinimalLight: Story = {
+  ...SessionsReference,
+  globals: { theme: 'BASIC_WHITE' },
+}
+
+export const SessionsRecentActivity: Story = {
+  render: () => {
+    const now = Math.floor(Date.now() / 1000)
+    return (
+      <Demo
+        page="access"
+        session={{
+          ipAddress: '203.0.113.42',
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36',
+          signedInAt: String(now - 7200),
+          lastSeenAt: String(now - 60),
+        }}
+        initial={{
+          otherSessions: [
+            {
+              id: 'recent',
+              browser: 'Firefox on macOS',
+              location: 'Ho Chi Minh City, VN',
+              lastSeenAt: String(now - 3600),
+              signedInAt: String(now - 86400 * 3),
+            },
+            {
+              id: 'older',
+              browser: 'Safari on iOS',
+              location: null,
+              ipAddress: '203.0.113.43',
+              lastSeenAt: String(now - 86400),
+              signedInAt: String(now - 86400 * 7),
+            },
+          ],
+        }}
+      />
+    )
+  },
+}

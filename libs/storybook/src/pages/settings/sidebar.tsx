@@ -24,7 +24,7 @@ const personal = [
 const account = [
   { page: 'profile', label: 'Profile', Icon: UserIcon },
   { page: 'access', label: 'Access', Icon: KeyIcon },
-  { page: 'security', label: 'Security', Icon: ShieldCheckIcon },
+  { page: 'security', label: 'Security & access', Icon: ShieldCheckIcon },
 ] as const
 const organization = [
   { page: 'organization', label: 'Info', Icon: InfoIcon },
@@ -148,7 +148,13 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
 }
 
 function NavigationPermission({ page, children }: { page: SettingsDestination; children: React.ReactNode }) {
-  if (page === 'organization' || page === 'organization-onboarding')
+  if (page === 'organization-onboarding')
+    return (
+      <PermissionRequest actions={['organization.onboarding.read']}>
+        {(allowed) => (allowed ? <>{children}</> : null)}
+      </PermissionRequest>
+    )
+  if (page === 'organization')
     return (
       <PermissionRequest actions={['organization.settings.read']}>
         {(allowed) => (allowed ? <>{children}</> : null)}

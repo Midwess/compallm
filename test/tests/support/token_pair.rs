@@ -17,6 +17,7 @@ pub fn new(
     let refresh = RefreshToken::from_session(session, refresh_ttl)?;
     let user = UserAccessToken::new(session.clone(), snapshot, user_ttl)?;
     Ok(UserTokens {
+        passkey_change: None,
         access_validity: user.validity.clone(),
         refresh_validity: refresh.validity.clone(),
         access_token: test_codec::encode(&AccessToken::User(user), secret, user_ttl)?,

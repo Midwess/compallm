@@ -172,6 +172,8 @@ actions! {
     RoleUnassign => ("role.unassign", "Remove role assignments", "Remove a role from a member or group.", EntityType::Role, EntityType::Role, None),
     OrganizationSettingsRead => ("organization.settings.read", "View organization settings", "View organization configuration.", EntityType::Organization, EntityType::Organization, None),
     OrganizationSettingsUpdate => ("organization.settings.update", "Edit organization settings", "Change organization configuration.", EntityType::Organization, EntityType::Organization, None),
+    OrganizationOnboardingRead => ("organization.onboarding.read", "View onboarding", "View organization onboarding settings.", EntityType::Organization, EntityType::Organization, None),
+    OrganizationOnboardingUpdate => ("organization.onboarding.update", "Edit onboarding", "Change organization onboarding settings.", EntityType::Organization, EntityType::Organization, None),
     OrganizationDelete => ("organization.delete", "Delete organization", "Delete the organization.", EntityType::Organization, EntityType::Organization, None),
     GroupRead => ("group.read", "View groups", "View organization group details.", EntityType::Group, EntityType::Organization, None),
     GroupCreate => ("group.create", "Create groups", "Create groups in the organization.", EntityType::Group, EntityType::Organization, None),

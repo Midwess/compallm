@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 socket2 = { version = "0.6", default-features = false }
+tower-http = { workspace = true, features = ["compression-br", "compression-gzip", "decompression-gzip", "limit"] }
 schemars.workspace = true
 compallm-validation-derive.workspace = true
 juniper.workspace = true
@@ -33,3 +34,7 @@ serde_json = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "signal", "sync", "io-util", "time"] }
 tracing = { workspace = true, features = ["std"] }
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt", "ansi", "tracing-log"] }
+
+hero.workspace = true
+
+base64.workspace = true

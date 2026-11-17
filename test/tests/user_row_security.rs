@@ -49,11 +49,14 @@ async fn authenticated_profiles_and_preferences_enforce_database_ownership() -> 
             } };
         let actor = UserAccessToken::new(
             Session {
+                expires_at: compallm_utils::time::unix_timestamp() + 30 * 86400,
+                last_seen_at: compallm_utils::time::unix_timestamp(),
                 id: 1,
                 user_id: first,
                 organization_id: 1,
                 authorization_version: 1,
                 revoked_at: None,
+            metadata: Default::default(),
             },
             PolicySnapshot::new(&member)?,
             Duration::from_secs(60),

@@ -1,9 +1,14 @@
+import { CollectionContext, CollectionRowContext } from '../context'
+import { CollectionContent, CollectionRecord, useCollectionOwner, useCollectionRows, useCollectionLoadMore } from './collection'
+import type { CollectionPaging } from './collection-types'
+import type { CollectionForms } from './collection-forms'
 import { animate } from 'motion'
 import { motion } from 'motion/react'
 import { animated, animation, transition, useTransition } from './motion'
 import {
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useContext,
@@ -34,7 +39,15 @@ function useColumn(id?: string) {
   return id ? columns.find((column) => column.id === id)?.visibilityClassName : undefined
 }
 
-function Root({ className, ref: forwardedRef, ...props }: ComponentPropsWithRef<'div'>) {
+function Root({
+  className,
+  ref: forwardedRef,
+  forms,
+  scrollElement,
+  ...props
+}: ComponentPropsWithRef<'div'> & { forms?: CollectionForms; scrollElement?: HTMLElement | null }) {
+  const collection = useCollectionOwner(scrollElement)
+  const scope = useMemo(() => ({ ...collection.scope, forms: forms ?? collection.scope.forms }), [collection.scope, forms])
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const root = ref.current
@@ -67,12 +80,14 @@ function Root({ className, ref: forwardedRef, ...props }: ComponentPropsWithRef<
     }
   }, [])
   return (
-    <div
-      ref={composeRefs(ref, forwardedRef)}
-      data-slot="table-container"
-      {...props}
-      className={cx('min-w-0 w-full max-w-full overflow-x-auto', className)}
-    />
+    <CollectionContext value={scope}>
+      <div
+        ref={composeRefs(ref, forwardedRef, collection.attach)}
+        data-slot="table-container"
+        {...props}
+        className={cx('min-w-0 w-full max-w-full overflow-x-auto', className)}
+      />
+    </CollectionContext>
   )
 }
 function Content({
@@ -105,8 +120,9 @@ function Content({
       window.removeEventListener('resize', update)
     }
   }, [columns, children])
+  const context = useMemo(() => ({ columns, visibleCount }), [columns, visibleCount])
   return (
-    <ColumnsContext value={{ columns, visibleCount }}>
+    <ColumnsContext value={context}>
       <table
         ref={composeRefs(ref, forwardedRef)}
         data-slot="table"
@@ -138,11 +154,111 @@ function Content({
 function Header({ className, ...props }: ComponentPropsWithRef<'tbody'>) {
   return <thead data-slot="table-header" {...props} className={cx('h-8 text-muted-foreground [&>tr]:h-8', className)} />
 }
-function Body(props: ComponentPropsWithRef<'tbody'>) {
+export interface TableItemsProps<T> {
+  items: readonly T[]
+  getKey(item: T): string
+  paging?: CollectionPaging
+  children(item: T): ReactNode
+}
+function Body<T>(
+  props: ComponentPropsWithRef<'tbody'> | (Omit<ComponentPropsWithRef<'tbody'>, 'children'> & TableItemsProps<T>),
+) {
+  if ('items' in props) return <DataBody {...props} />
   return <tbody data-slot="table-body" {...props} />
 }
-function Row({ className, ...props }: ComponentPropsWithRef<'tr'>) {
-  return <tr data-slot="table-row" {...props} className={cx('h-12 border-b border-divider last:border-b-0', className)} />
+function DataBody<T>({
+  items,
+  getKey,
+  paging,
+  children,
+  ...props
+}: Omit<ComponentPropsWithRef<'tbody'>, 'children'> & TableItemsProps<T>) {
+  const rows = useCollectionRows(items, getKey)
+  return (
+    <tbody {...props} data-slot="table-body" aria-busy={paging?.loading}>
+      <DataRows collection={rows} count={items.length} render={children} paging={paging} />
+    </tbody>
+  )
+}
+function DataRows<T>({
+  collection,
+  count,
+  render,
+  paging,
+  disabled = false,
+}: {
+  collection: ReturnType<typeof useCollectionRows<T>>
+  count: number
+  render(item: T): ReactNode
+  paging?: CollectionPaging
+  disabled?: boolean
+}) {
+  const { visibleCount, columns } = useContext(ColumnsContext)
+  const span = visibleCount ?? (columns.length || 1)
+  const loadMoreRef = useCollectionLoadMore(disabled ? undefined : paging, collection.scrollElement)
+  return (
+    <>
+      {collection.rows.map((row) =>
+        collection.forms ? (
+          <CollectionRecord
+            key={row.key}
+            index={row.index}
+            rowKey={row.key}
+            forms={collection.forms}
+            item={row.item}
+            render={render}
+          />
+        ) : (
+          <CollectionContent key={row.key} item={row.item} render={render} />
+        ),
+      )}
+      {paging ? <LoadMore ref={loadMoreRef} {...paging} /> : null}
+      <tr className="sr-only">
+        <td colSpan={span} aria-live="polite">
+          {count} rows loaded
+        </td>
+      </tr>
+    </>
+  )
+}
+
+function LoadMore({
+  ref,
+  hasMore,
+  loading,
+  error,
+  onLoadMore,
+}: CollectionPaging & { ref?: (element: HTMLTableRowElement | null) => void }) {
+  const { visibleCount, columns } = useContext(ColumnsContext)
+  if (!hasMore) return null
+  return (
+    <tr ref={ref}>
+      <td colSpan={visibleCount ?? (columns.length || 1)} className="h-8 p-0 text-center">
+        <button
+          type="button"
+          disabled={loading}
+          onClick={onLoadMore}
+          className={error ? 'text-xs text-muted-foreground' : 'sr-only focus:not-sr-only'}
+        >
+          {error ? 'Retry loading' : 'Load more rows'}
+        </button>
+      </td>
+    </tr>
+  )
+}
+
+function Row({ className, ref, ...props }: ComponentPropsWithRef<'tr'>) {
+  const scope = useContext(CollectionRowContext)
+  return (
+    <tr
+      ref={ref}
+      data-index={scope?.index}
+      data-collection-key={scope?.key}
+      data-slot="table-row"
+      {...props}
+      className={cx('h-12 border-b border-divider last:border-b-0', className)}
+    />
+  )
 }
 function Head({ className, column, children, ...props }: ComponentPropsWithRef<'th'> & { column?: string }) {
   const visibility = useColumn(column)
@@ -195,7 +311,7 @@ export interface TableCategoryProps {
   children: ReactNode
 }
 
-function Category({
+function Category<T>({
   variant = 'default',
   label,
   count,
@@ -205,15 +321,25 @@ function Category({
   defaultOpen = true,
   onOpenChange,
   children,
-}: TableCategoryProps) {
+  items,
+  getKey,
+  paging,
+}: Omit<TableCategoryProps, 'children'> & {
+  children: ReactNode | ((item: T) => ReactNode)
+  items?: readonly T[]
+  getKey?: (item: T) => string
+  paging?: CollectionPaging
+}) {
   const { visibleCount } = useContext(ColumnsContext)
   columns = visibleCount || columns
   const directory = variant === 'directory'
   const timing = useTransition('disclosure')
-  const [expanded, setExpanded] = useControllableState(directory ? true : open, defaultOpen, onOpenChange)
+  const [expanded, setExpanded] = useControllableState(open, defaultOpen, onOpenChange)
+  const data = useCollectionRows(expanded ? (items ?? []) : [], getKey ?? (() => 'row'))
   const body = useRef<HTMLTableSectionElement>(null)
   const previous = useRef(expanded)
   useLayoutEffect(() => {
+    if (items) return
     const rows = [...(body.current?.querySelectorAll<HTMLTableRowElement>('tr[data-slot="table-row"]') ?? [])]
     const changed = previous.current !== expanded
     previous.current = expanded
@@ -244,13 +370,13 @@ function Category({
       active = false
       animations.forEach((control) => control.stop())
     }
-  }, [expanded, children])
+  }, [expanded, children, items])
   return (
     <tbody
       ref={body}
       data-state={expanded ? 'open' : 'closed'}
       data-slot="table-category"
-      className={directory ? undefined : '[&:not(:first-of-type)>tr:first-child]:table-row'}
+      className="[&:not(:first-of-type)>tr:first-child]:table-row"
     >
       <tr aria-hidden="true" className="hidden h-2">
         <td colSpan={columns} className="h-2 p-0" />
@@ -265,35 +391,27 @@ translate-y-(--category-offset,0px)`,
             directory && 'rounded-lg bg-inset',
           )}
         >
-          {directory ? (
-            <div className="flex h-8 items-center gap-1.5 px-2 text-xs text-muted-foreground">
-              <span>{label}</span>
-              {count !== undefined ? <span>{count}</span> : null}
-            </div>
-          ) : (
-            <animated.button
-              type="button"
-              aria-expanded={expanded}
-              aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label}`}
-              className="flex min-h-10 w-full cursor-pointer items-center gap-2 px-2 text-left
-focus-visible:outline-2 focus-visible:outline-ring"
-              onClick={() => {
-                const next = !expanded
-                setExpanded(next)
-              }}
+          <animated.button
+            type="button"
+            aria-expanded={expanded}
+            aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label}`}
+            className={cx(
+              'flex w-full cursor-pointer items-center gap-2 px-2 text-left focus-visible:outline-2 focus-visible:outline-ring',
+              directory ? 'h-8 text-xs text-muted-foreground' : 'min-h-10',
+            )}
+            onClick={() => setExpanded(!expanded)}
+          >
+            <motion.span
+              initial={false}
+              animate={{ rotate: expanded ? 0 : animation.collapsedRotation }}
+              transition={timing}
+              className="inline-flex size-2 shrink-0"
             >
-              <motion.span
-                initial={false}
-                animate={{ rotate: expanded ? 0 : animation.collapsedRotation }}
-                transition={timing}
-                className="inline-flex size-2 shrink-0"
-              >
-                <CaretDownIcon weight="fill" aria-hidden="true" className="size-2" />
-              </motion.span>
-              <span className="min-w-0 text-xsm font-medium">{label}</span>
-              {count !== undefined ? <span className="text-xs font-normal text-muted-foreground">{count}</span> : null}
-            </animated.button>
-          )}
+              <CaretDownIcon weight="fill" aria-hidden="true" className="size-2" />
+            </motion.span>
+            <span className={directory ? 'min-w-0' : 'min-w-0 text-xsm font-medium'}>{label}</span>
+            {count !== undefined ? <span className="text-xs font-normal text-muted-foreground">{count}</span> : null}
+          </animated.button>
         </td>
         {action ? (
           <td
@@ -304,9 +422,17 @@ translate-y-(--category-offset,0px)"
           </td>
         ) : null}
       </tr>
-      {children}
+      {items && getKey && typeof children === 'function' ? (
+        expanded ? (
+          <>
+            <DataRows collection={data} count={items.length} render={children} paging={paging} />
+          </>
+        ) : null
+      ) : (
+        (children as ReactNode)
+      )}
     </tbody>
   )
 }
 
-export const Table = { Root, Content, Header, Body, Row, Head, Cell, Empty, Category }
+export const Table = { Root, Content, Header, Body, Row, Head, Cell, Empty, Category, LoadMore }

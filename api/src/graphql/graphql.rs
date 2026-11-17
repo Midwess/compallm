@@ -24,6 +24,42 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
+    async fn passkeys(
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] identity: &AuthenticationContext,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::passkey::PasskeyRepository,
+        >,
+    ) -> Result<Collection<authentication::passkey::PasskeySummary>, Error> {
+        authentication::passkey::query::list(user, identity, repository.as_ref()).await
+    }
+
+    async fn analytic_user_profile(
+        key: String,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::analytics::AnalyticsRepository,
+        >,
+    ) -> Result<Option<Payload<super::analytics::AnalyticUserProfile>>, Error> {
+        super::analytics::query::get(key, user, repository.as_ref()).await
+    }
+    async fn onboarding_context(
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::onboarding::OnboardingRepository,
+        >,
+    ) -> Result<Option<Payload<super::onboarding::OnboardingContext>>, Error> {
+        super::onboarding::query::context(user, repository.as_ref()).await
+    }
+    async fn organization_onboarding_settings(
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::onboarding::OnboardingRepository,
+        >,
+    ) -> Result<Payload<super::onboarding::OrganizationOnboardingSettings>, Error> {
+        super::onboarding::query::settings(authority, repository.as_ref()).await
+    }
+
     async fn invitation_context(
         #[graphql(context)] service: &InvitationService,
         #[graphql(context)] identity: &AuthenticationContext,
@@ -94,9 +130,34 @@ impl Query {
     async fn session(
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] repository: &Box<dyn OrganizationRepository>,
+        #[graphql(context)] sessions: &Box<
+            dyn compallm_core::persistent::session::SessionRepository,
+        >,
         #[graphql(context)] identity: &AuthenticationContext,
     ) -> Result<Payload<authentication::Session>, Error> {
-        authentication::query::session(user, repository.as_ref(), identity).await
+        authentication::query::session(user, repository.as_ref(), sessions.as_ref(), identity).await
+    }
+
+    async fn sessions(
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::session::SessionRepository,
+        >,
+        #[graphql(context)] identity: &AuthenticationContext,
+        first: Option<i32>,
+        after: Option<String>,
+    ) -> Result<Collection<authentication::Session>, Error> {
+        authentication::query::sessions(
+            user,
+            repository,
+            identity,
+            compallm_query::Pagination {
+                first: Some(first.unwrap_or(20)),
+                after: after.map(compallm_query::Cursor),
+                ..Default::default()
+            },
+        )
+        .await
     }
 
     /// Return the active organization from verified user authority.
@@ -186,6 +247,95 @@ pub struct Mutation;
 
 #[graphql_object(context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Mutation {
+    async fn passkey_registration_start(
+        #[graphql(context)] identity: &AuthenticationContext,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
+    ) -> Result<Payload<authentication::passkey::PasskeyCeremony>, Error> {
+        authentication::passkey::mutation::registration_start(user, identity, service).await
+    }
+    async fn passkey_registration_finish(
+        input: authentication::passkey::input::PasskeyFinishInput,
+        name: authentication::passkey::input::PasskeyRegistrationInput,
+        #[graphql(context)] identity: &AuthenticationContext,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
+    ) -> Result<Payload<authentication::passkey::PasskeySummary>, Error> {
+        authentication::passkey::mutation::registration_finish(input, name, user, identity, service)
+            .await
+    }
+    async fn passkey_update(
+        id: ID,
+        input: authentication::passkey::input::PasskeyRegistrationInput,
+        #[graphql(context)] identity: &AuthenticationContext,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
+    ) -> Result<Payload<authentication::passkey::PasskeySummary>, Error> {
+        authentication::passkey::mutation::update(id, input, user, identity, service).await
+    }
+    async fn passkey_authentication_start(
+        #[graphql(default = authentication::input::AuthenticationPurpose::Login)]
+        purpose: authentication::input::AuthenticationPurpose,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
+    ) -> Result<Payload<authentication::passkey::PasskeyCeremony>, Error> {
+        authentication::passkey::mutation::authentication_start(purpose, user, service).await
+    }
+    async fn passkey_authentication_finish(
+        #[graphql(context)] user: &UserContext,
+        input: authentication::passkey::input::PasskeyFinishInput,
+        #[graphql(context)] cookies: &CookieDelivery,
+        #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
+        #[graphql(context)] identity: &AuthenticationContext,
+    ) -> Result<Payload<authentication::SessionCredentials>, Error> {
+        authentication::passkey::mutation::authentication_finish(
+            input, user, cookies, service, identity,
+        )
+        .await
+    }
+    async fn passkey_remove(
+        id: ID,
+        #[graphql(context)] identity: &AuthenticationContext,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::authentication::passkey::PasskeyService,
+    ) -> Result<Payload<ID>, Error> {
+        authentication::passkey::mutation::remove(id, user, identity, service).await
+    }
+    async fn analytic_user_profile_put(
+        input: super::analytics::input::AnalyticUserProfilePutInput,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::analytics::AnalyticsService,
+    ) -> Result<Payload<super::analytics::AnalyticUserProfile>, Error> {
+        super::analytics::mutation::put(input, user, service).await
+    }
+    async fn organization_onboarding_settings_update(
+        input: super::onboarding::input::OrganizationOnboardingSettingsInput,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] service: &compallm_core::onboarding::OnboardingService,
+    ) -> Result<Payload<super::onboarding::OrganizationOnboardingSettings>, Error> {
+        super::onboarding::mutation::settings(input, authority, service).await
+    }
+    async fn onboarding_advance(
+        #[graphql(default = false)] back: bool,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::onboarding::OnboardingService,
+    ) -> Result<Payload<super::onboarding::OnboardingContext>, Error> {
+        super::onboarding::mutation::advance(back, user, service).await
+    }
+    async fn onboarding_complete(
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::onboarding::OnboardingService,
+    ) -> Result<Payload<super::onboarding::OnboardingContext>, Error> {
+        super::onboarding::mutation::complete(user, service).await
+    }
+    async fn onboarding_present(
+        #[graphql(default = false)] manual: bool,
+        #[graphql(context)] user: &UserContext,
+        #[graphql(context)] service: &compallm_core::onboarding::OnboardingService,
+    ) -> Result<Payload<super::onboarding::OnboardingContext>, Error> {
+        super::onboarding::mutation::present(manual, user, service).await
+    }
+
     async fn invitation_create_many(
         input: organization::invitation::input::InvitationBatchCreateInput,
         #[graphql(context)] service: &InvitationService,
@@ -303,25 +453,41 @@ impl Mutation {
     /// Request a signin email challenge for an existing active account.
     async fn email_signin_request(
         input: authentication::input::EmailInput,
+        #[graphql(context)] user: &UserContext,
         #[graphql(context)] auth: &AuthService,
         #[graphql(context)] invitations: &InvitationService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<Payload<authentication::EmailChallenge>, Error> {
-        authentication::mutation::signin_email_request(input, auth, invitations, identity, cookies)
-            .await
+        authentication::mutation::signin_email_request(
+            input,
+            auth,
+            invitations,
+            identity,
+            cookies,
+            user,
+        )
+        .await
     }
 
     /// Confirm the verified signin challenge and create a scoped session.
     async fn email_signin_confirm(
         input: authentication::input::EmailCodeInput,
+        #[graphql(context)] user: &UserContext,
         #[graphql(context)] auth: &AuthService,
         #[graphql(context)] invitations: &InvitationService,
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] cookies: &CookieDelivery,
     ) -> Result<Payload<authentication::SessionCredentials>, Error> {
-        authentication::mutation::signin_email_confirm(input, auth, invitations, identity, cookies)
-            .await
+        authentication::mutation::signin_email_confirm(
+            input,
+            auth,
+            invitations,
+            identity,
+            cookies,
+            user,
+        )
+        .await
     }
 
     /// Refresh using explicit refresh Bearer authority; leave browser cookies unchanged.
@@ -332,7 +498,25 @@ impl Mutation {
     ) -> Result<Payload<authentication::SessionCredentials>, Error> {
         authentication::mutation::session_refresh(auth, identity, cookies).await
     }
-    /// Revoke the verified session and clear its browser cookies after success.
+    /// Revoke one other session belonging to the authenticated account.
+    async fn session_revoke_other(
+        id: ID,
+        #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] identity: &AuthenticationContext,
+        #[graphql(context)] user: &UserContext,
+    ) -> Result<Payload<bool>, Error> {
+        authentication::mutation::session_revoke_other(id, auth, identity, user).await
+    }
+    /// Revoke all other account sessions, retaining this login.
+    async fn session_revoke_others(
+        #[graphql(context)] auth: &AuthService,
+        #[graphql(context)] identity: &AuthenticationContext,
+        #[graphql(context)] user: &UserContext,
+    ) -> Result<Payload<bool>, Error> {
+        authentication::mutation::session_revoke_others(auth, identity, user).await
+    }
+
+    /// Revoke the current session and clear its cookies after success.
     async fn session_revoke(
         #[graphql(context)] auth: &AuthService,
         #[graphql(context)] identity: &AuthenticationContext,
@@ -469,6 +653,11 @@ impl GraphQLValueAsync for RegisteredQuery {
 #[derive(JsonSchema)]
 #[allow(dead_code)]
 struct Inputs {
+    passkey_registration: authentication::passkey::input::PasskeyRegistrationInput,
+    passkey_finish: authentication::passkey::input::PasskeyFinishInput,
+    analytic_user_profile_put: super::analytics::input::AnalyticUserProfilePutInput,
+    onboarding_link: super::onboarding::input::OnboardingLinkInput,
+    organization_onboarding_settings: super::onboarding::input::OrganizationOnboardingSettingsInput,
     invitation_batch_create: organization::invitation::input::InvitationBatchCreateInput,
     invitation_create: organization::invitation::input::InvitationCreateInput,
     user_preferences_patch: super::preference::user::input::UserPreferencesPatchInput,

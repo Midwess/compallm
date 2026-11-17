@@ -16,3 +16,8 @@ pub use db_context::{DbContext, PermissionError, PermissionLoader};
 pub mod preference;
 
 pub mod storage;
+
+pub mod analytics;
+pub mod onboarding;
+
+pub mod passkey;

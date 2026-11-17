@@ -20,6 +20,17 @@ impl CookieDelivery {
         self.settings.validate_origin(&self.request)
     }
 
+    pub fn clear_invitation(&self) -> Result<(), RequestError> {
+        let mut headers = HeaderMap::new();
+        self.settings.append_cookie(
+            &mut headers,
+            self.settings.invitation_name(),
+            String::new(),
+            0,
+        )?;
+        self.replace(headers)
+    }
+
     pub fn set_otp(&self, token: String, seconds: u64) -> Result<(), RequestError> {
         let mut headers = HeaderMap::new();
         let names = self.settings.names();
@@ -31,6 +42,7 @@ impl CookieDelivery {
     }
 
     pub fn set_user(&self, tokens: UserTokens) -> Result<(), RequestError> {
+        let has_change = tokens.passkey_change.is_some();
         let mut headers = self.settings.replacement_headers(tokens)?;
         self.settings.append_cookie(
             &mut headers,
@@ -38,9 +50,56 @@ impl CookieDelivery {
             String::new(),
             0,
         )?;
+        self.settings.append_cookie(
+            &mut headers,
+            self.settings.passkey_otp_name(),
+            String::new(),
+            0,
+        )?;
+        if !has_change {
+            self.settings.append_cookie(
+                &mut headers,
+                self.settings.passkey_change_name(),
+                String::new(),
+                0,
+            )?;
+        }
         self.replace(headers)
     }
 
+    pub fn set_passkey_otp(&self, token: String, seconds: u64) -> Result<(), RequestError> {
+        let mut headers = HeaderMap::new();
+        self.settings.append_cookie(
+            &mut headers,
+            self.settings.passkey_otp_name(),
+            token,
+            seconds,
+        )?;
+        self.replace(headers)
+    }
+    pub fn set_passkey_change(
+        &self,
+        issued: compallm_core::authentication::IssuedPasskeyChange,
+    ) -> Result<(), RequestError> {
+        let mut headers = HeaderMap::new();
+        self.settings.append_cookie(
+            &mut headers,
+            self.settings.passkey_change_name(),
+            issued.token,
+            issued
+                .claims
+                .validity
+                .expires_at
+                .saturating_sub(compallm_utils::time::unix_timestamp()),
+        )?;
+        self.settings.append_cookie(
+            &mut headers,
+            self.settings.passkey_otp_name(),
+            String::new(),
+            0,
+        )?;
+        self.replace(headers)
+    }
     pub fn invitation_url(&self, token: &str) -> Result<String, RequestError> {
         let origin = if self.settings.public_origin.is_empty() {
             self.request
@@ -130,6 +189,20 @@ impl AuthenticationSettings {
         Ok(())
     }
 
+    pub(super) fn passkey_change_name(&self) -> &'static str {
+        if self.cookie_secure {
+            "__Host-passkey-change"
+        } else {
+            "compallm-passkey-change"
+        }
+    }
+    pub(super) fn passkey_otp_name(&self) -> &'static str {
+        if self.cookie_secure {
+            "__Host-passkey-otp"
+        } else {
+            "compallm-passkey-otp"
+        }
+    }
     pub(super) fn invitation_name(&self) -> &'static str {
         if self.cookie_secure {
             "__Host-invitation"
@@ -218,6 +291,18 @@ impl AuthenticationSettings {
         tokens: UserTokens,
     ) -> Result<HeaderMap, RequestError> {
         let mut headers = HeaderMap::new();
+        if let Some(grant) = &tokens.passkey_change {
+            self.append_cookie(
+                &mut headers,
+                self.passkey_change_name(),
+                grant.token.clone(),
+                grant
+                    .claims
+                    .validity
+                    .expires_at
+                    .saturating_sub(compallm_utils::time::unix_timestamp()),
+            )?;
+        }
         let names = self.names();
         let now = compallm_utils::time::unix_timestamp();
         self.append_cookie(
@@ -240,6 +325,8 @@ impl AuthenticationSettings {
         let names = self.names();
         self.append_cookie(&mut headers, names.0, String::new(), 0)?;
         self.append_cookie(&mut headers, names.1, String::new(), 0)?;
+        self.append_cookie(&mut headers, self.passkey_change_name(), String::new(), 0)?;
+        self.append_cookie(&mut headers, self.passkey_otp_name(), String::new(), 0)?;
         Ok(headers)
     }
 }

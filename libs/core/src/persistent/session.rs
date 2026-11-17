@@ -4,6 +4,8 @@ use crate::organization::OrganizationMember;
 
 #[derive(Debug, thiserror::Error)]
 pub enum SessionRepositoryError {
+    #[error("invalid session collection query")]
+    InvalidQuery,
     #[error("session database operation failed")]
     Database(#[from] anyhow::Error),
 }
@@ -16,7 +18,20 @@ impl From<ConnectionError> for SessionRepositoryError {
 
 #[async_trait::async_trait]
 pub trait SessionRepository: Send + Sync {
-    /// One primary projection scoped by organization, user and session; None if revoked/missing.
+    async fn list_owned(
+        &self,
+        user_id: u64,
+        pagination: compallm_query::Pagination,
+    ) -> Result<compallm_query::Connection<Session>, SessionRepositoryError>;
+
+    async fn revoke_owned(
+        &self,
+        user_id: u64,
+        current_session_id: u64,
+        target_id: Option<u64>,
+    ) -> Result<u64, SessionRepositoryError>;
+
+    /// One primary projection scoped by organization, user and session; None if revoked, expired or missing.
     async fn authorization_version(
         &self,
         session: &Session,
@@ -43,7 +58,8 @@ pub trait SessionRepository: Send + Sync {
     async fn find(&self, session: &Session) -> Result<Option<Session>, SessionRepositoryError>;
 
     /// Persist changed fields using the previous state for concurrency checks.
-    /// Preserve identity and creation time; revocation is irreversible.
+    /// Preserve identity and permission version; revocation is irreversible.
+    /// Renewal timestamps advance monotonically and cannot revive expired sessions.
     /// Return false on a conflict or missing row. Do not overwrite unchanged fields.
     async fn update(
         &self,

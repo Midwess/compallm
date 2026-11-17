@@ -46,7 +46,7 @@ export function TextField({ variant = 'default', className, onChange, onBlur, on
         }
       }}
       className={cx(
-        `block h-8 w-full min-w-0 rounded-lg border-(length:--border-hairline) border-input bg-inset px-1.5
+        `block h-8 w-full min-w-0 rounded-xl border-(length:--border-hairline) border-input bg-inset px-1.5
 py-1 text-left text-sm leading-5.5 text-foreground placeholder:text-muted-foreground placeholder:opacity-100
 focus:border-muted-foreground/60 focus:outline-none aria-invalid:border-destructive disabled:cursor-not-allowed
 disabled:opacity-50`,
@@ -122,7 +122,7 @@ export function MultilineField({ className, value, onChange, onBlur, onKeyDown, 
         }
       }}
       className={cx(
-        `block w-full min-w-0 rounded-lg border-(length:--border-hairline) border-input bg-inset px-1.5
+        `block w-full min-w-0 rounded-xl border-(length:--border-hairline) border-input bg-inset px-1.5
 py-1 text-left text-sm leading-5.5 text-foreground placeholder:text-muted-foreground placeholder:opacity-100
 focus:border-muted-foreground/60 focus:outline-none aria-invalid:border-destructive disabled:cursor-not-allowed
 disabled:opacity-50
@@ -257,7 +257,7 @@ export function CodeField({ className, ...props }: TextFieldProps) {
       pattern={otpPattern}
       maxLength={1}
       {...props}
-      className={cx('h-14 w-13 p-0 text-center text-ui-20', className)}
+      className={cx('aspect-square h-auto w-13 p-0 text-center text-ui-20', className)}
     />
   )
 }

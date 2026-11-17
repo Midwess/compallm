@@ -5,6 +5,7 @@ import type { GroupDraft } from '../types'
 
 export interface GroupState {
   loading?: boolean
+  membersLoadError?: boolean
   membersLoading?: boolean
   members?: { id: string; name: string; email: string; available: boolean }[]
   roles?: import('../types').SettingsRole[]

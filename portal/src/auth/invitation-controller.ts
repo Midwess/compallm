@@ -4,7 +4,6 @@ import type { QueryGenqlSelection, MutationGenqlSelection, InvitationContext } f
 import { graphql } from '../graphql-client'
 import { authController } from '../auth/controller'
 import { urlController } from '../url/controller'
-import { organizationRoot } from '../organization/paths'
 import { apiErrorMessage } from '../notifications/toast'
 
 type Context = Pick<InvitationContext, 'organizationName' | 'email' | 'expiresAt' | 'signup'>
@@ -40,7 +39,16 @@ export class InvitationController {
         invitationContext: { node: { organizationName: true, email: true, expiresAt: true, signup: true } },
       } satisfies QueryGenqlSelection
       const result = await graphql(request.signal).query(selection)
-      if (!request.signal.aborted) this.store.setState({ context: result.invitationContext.node, loading: false })
+      if (!request.signal.aborted)
+        this.store.setState({
+          context: result.invitationContext.node,
+          loading: false,
+          step: this.confirmed
+            ? 'confirmed'
+            : new URLSearchParams(urlController.store.getState().search).get('step') === 'code'
+              ? 'code'
+              : 'continue',
+        })
     } catch (error) {
       if (!request.signal.aborted) this.store.setState({ loading: false, error: apiErrorMessage(error) })
     }
@@ -51,7 +59,11 @@ export class InvitationController {
     if (!request || !context || this.store.getState().busy) return false
     this.store.setState({ busy: true, error: null })
     try {
-      const input = emailRequestSchema(context.signup ? 'signup' : 'signin').parse({ email: context.email, delivery: 'COOKIE' })
+      const input = emailRequestSchema(context.signup ? 'signup' : 'signin').parse({
+        email: context.email,
+        delivery: 'COOKIE',
+        invitation: true,
+      })
       const client = graphql(request.signal)
       if (context.signup)
         await client.mutation({
@@ -61,7 +73,10 @@ export class InvitationController {
         await client.mutation({
           emailSigninRequest: { __args: { input }, node: { lifetime: { expiresInSeconds: true } } },
         } satisfies MutationGenqlSelection)
-      if (!request.signal.aborted) this.store.setState({ step: 'code' })
+      if (!request.signal.aborted) {
+        this.store.setState({ step: 'code' })
+        urlController.navigate('/invitation?step=code', { replace: true })
+      }
       return true
     } catch (error) {
       if (!request.signal.aborted) this.store.setState({ error: apiErrorMessage(error) })
@@ -91,7 +106,10 @@ export class InvitationController {
         this.store.setState({ step: 'confirmed' })
       }
       const user = await authController.refreshCurrentUser(request.signal, false)
-      if (user && !request.signal.aborted) urlController.navigate(organizationRoot(user), { replace: true })
+      if (user && !request.signal.aborted) {
+        authController.securityOfferSession = user.id
+        urlController.navigate('/security', { replace: true })
+      }
       return true
     } catch (error) {
       if (!request.signal.aborted) this.store.setState({ error: apiErrorMessage(error) })

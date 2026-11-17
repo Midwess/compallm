@@ -1,3 +1,4 @@
+import { CollectionForms } from '@compallm/storybook'
 import { type PermissionCheck, permissionKey, type PermissionController, type FormStore } from '@compallm/storybook'
 import type { SettingsState } from '@compallm/storybook/pages/settings'
 import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
@@ -13,13 +14,12 @@ const pageInfo = { endCursor: true, hasNextPage: true } as const
 const issuedNode = { invitation: invitationNode, url: true, emailAdmitted: true } as const
 
 export class MembersController {
+  readonly forms = new CollectionForms()
   private request?: AbortController
   private invitationsRequest?: AbortController
   private stop?: () => void
   private appliedQuery = ''
-  private cursor?: string
   private invitationCursor?: string
-  private history: (string | undefined)[] = []
   private lifecycle?: AbortController
   private readonly store: FormStore<SettingsState>
   private readonly permissions?: PermissionController
@@ -133,8 +133,32 @@ export class MembersController {
       if (owner.signal.aborted || this.lifecycle !== owner) return false
       this.store.setState((state) => ({
         members: state.members.map((row) => (row.id === memberId ? { ...row, role } : row)),
+        ...(Boolean(member.role?.owner) !== role.owner
+          ? {
+              ownerMemberIds: role.owner
+                ? [...new Set([...(state.ownerMemberIds ?? []), memberId])]
+                : state.ownerMemberIds?.filter((id) => id !== memberId),
+            }
+          : {}),
       }))
-      void this.load()
+      const updated = this.store.getState().members.find((row) => row.id === memberId)
+      if (updated?.groups)
+        this.permissions?.setFacts?.([
+          {
+            resourceType: 'Member',
+            id: memberId,
+            groupIds: updated.groups.map((group) => group.id),
+            roleIds: [
+              ...new Set([
+                role.id,
+                ...this.store
+                  .getState()
+                  .groups.filter((group) => updated.groups?.some(({ id }) => id === group.id))
+                  .flatMap((group) => group.roleIds),
+              ]),
+            ],
+          },
+        ])
     } catch (error) {
       if (!owner.signal.aborted) notify.error(error)
       return false
@@ -147,18 +171,12 @@ export class MembersController {
     this.lifecycle = new AbortController()
     this.appliedQuery = this.store.getState().query.trim()
     this.store.setState({ invitationBusy: false })
-    this.cursor = undefined
-    this.history = []
     this.invitationCursor = undefined
     this.stop = this.store.subscribe((next, previous) => {
       if (next.memberOrder !== previous.memberOrder || next.filters.memberRole !== previous.filters.memberRole) {
-        this.cursor = undefined
-        this.history = []
         this.store.setState({
           membersHasNextPage: false,
-          membersHasPreviousPage: false,
           membersEndCursor: null,
-          membersPage: 1,
         })
         void this.load()
       }
@@ -168,6 +186,7 @@ export class MembersController {
     return this.cancel
   }
   cancel = () => {
+    this.forms.dispose()
     this.lifecycle?.abort()
     this.request?.abort()
     this.invitationsRequest?.abort()
@@ -177,38 +196,27 @@ export class MembersController {
   }
   search = (query: string) => {
     this.appliedQuery = query.trim()
-    this.cursor = undefined
-    this.history = []
     this.store.setState({
       query,
       membersHasNextPage: false,
-      membersHasPreviousPage: false,
       membersEndCursor: null,
-      membersPage: 1,
     })
     void this.load()
   }
   setOrder = (memberOrder: SettingsState['memberOrder']) => this.store.setState({ memberOrder })
-  nextPage = () => {
-    if (!this.store.getState().membersHasNextPage || this.store.getState().membersLoading) return
-    const rollback = { cursor: this.cursor, history: [...this.history] }
-    this.history.push(this.cursor)
-    this.cursor = this.store.getState().membersEndCursor ?? undefined
-    void this.load(rollback)
+  loadMore = () => {
+    const state = this.store.getState()
+    if (!state.membersHasNextPage || state.membersLoading) return
+    void this.load(true)
   }
-  previousPage = () => {
-    if (!this.history.length || this.store.getState().membersLoading) return
-    const rollback = { cursor: this.cursor, history: [...this.history] }
-    this.cursor = this.history.pop()
-    void this.load(rollback)
-  }
-  private async load(rollback?: { cursor: string | undefined; history: (string | undefined)[] }) {
+  private async load(append = false) {
     const owner = this.lifecycle
     if (!owner) return
     this.request?.abort()
     const request = new AbortController()
     this.request = request
-    this.store.setState({ membersLoading: true, membersComplete: false })
+    this.store.setState({ membersLoading: true, membersLoadError: false, ...(!append ? { membersComplete: false } : {}) })
+    const after = append ? (this.store.getState().membersEndCursor ?? undefined) : undefined
     try {
       if (this.permissions)
         await requirePermissions(this.permissions, [{ action: 'member.read', resourceType: 'Organization' }])
@@ -236,7 +244,7 @@ export class MembersController {
         me: { node: { id: true, organizationOwner: true } },
         organization: { node: { ownerMemberIds: true } },
         members: {
-          __args: { first: 20, after: this.cursor, filter, currentUserFirst: true, orderBy: [{ displayName: direction }] },
+          __args: { first: 20, after, filter, currentUserFirst: true, orderBy: [{ displayName: direction }] },
           edges: {
             node: {
               id: true,
@@ -268,41 +276,38 @@ export class MembersController {
             : [],
         ),
       )
-      this.store.setState({
+      this.store.setState((state) => ({
         actorIsOwner: result.me?.node.organizationOwner ?? false,
         currentMemberId: result.me?.node.id ?? this.auth.store?.getState().currentUser?.userId,
         ownerMemberIds: result.organization?.node.ownerMemberIds ?? [],
-        members: result.members.edges.map(({ node }) => ({
-          id: node.id,
-          name: node.displayName || 'Member',
-          email: node.email,
-          role: node.role && 'id' in node.role && 'name' in node.role && 'description' in node.role ? node.role : null,
-          groups: node.groups,
-          available: node.available,
-          joinedAt: node.joinedAt,
-          limitUsd: null,
-          currentUsageUsd: null,
-          previousUsageUsd: null,
-        })),
-        membersComplete: !result.members.pageInfo.hasNextPage && this.history.length === 0,
+        members: [
+          ...new Map(
+            [
+              ...(append ? state.members : []),
+              ...result.members.edges.map(({ node }) => ({
+                id: node.id,
+                name: node.displayName || 'Member',
+                email: node.email,
+                role: node.role && 'id' in node.role && 'name' in node.role && 'description' in node.role ? node.role : null,
+                groups: node.groups,
+                available: node.available,
+                joinedAt: node.joinedAt,
+                limitUsd: null,
+                currentUsageUsd: null,
+                previousUsageUsd: null,
+              })),
+            ].map((member) => [member.id, member]),
+          ).values(),
+        ],
+        membersComplete: !result.members.pageInfo.hasNextPage,
         membersEndCursor: result.members.pageInfo.endCursor,
         membersHasNextPage: result.members.pageInfo.hasNextPage,
-        membersHasPreviousPage: this.history.length > 0,
-        membersPage: this.history.length + 1,
-      })
+      }))
     } catch (error) {
       if (!request.signal.aborted && !owner.signal.aborted && this.request === request) {
-        const target = { cursor: this.cursor, history: [...this.history] }
-        if (rollback) {
-          this.cursor = rollback.cursor
-          this.history = rollback.history
-        }
+        this.store.setState({ membersLoadError: true })
         notify.apiError(error, () => {
-          if (this.request === request) {
-            this.cursor = target.cursor
-            this.history = target.history
-            void this.load(rollback)
-          }
+          if (this.request === request) void this.load(append)
         })
       }
     } finally {
@@ -310,7 +315,8 @@ export class MembersController {
     }
   }
   loadMoreInvitations = () => {
-    if (this.store.getState().invitationsHasNextPage) void this.loadInvitations(true)
+    const state = this.store.getState()
+    if (state.invitationsHasNextPage && !state.invitationsLoading && !state.invitationBusy) void this.loadInvitations(true)
   }
   private async loadInvitations(append: boolean) {
     const owner = this.lifecycle
@@ -318,7 +324,7 @@ export class MembersController {
     this.invitationsRequest?.abort()
     const request = new AbortController()
     this.invitationsRequest = request
-    this.store.setState({ invitationsLoading: true })
+    this.store.setState({ invitationsLoading: true, invitationsLoadError: false })
     try {
       if (this.permissions)
         await requirePermissions(this.permissions, [{ action: 'member.read', resourceType: 'Organization' }])
@@ -334,14 +340,23 @@ export class MembersController {
       if (this.invitationsRequest !== request || request.signal.aborted || owner.signal.aborted) return
       this.invitationCursor = result.invitations.pageInfo.endCursor ?? undefined
       this.store.setState((state) => ({
-        invitations: [...(append ? state.invitations : []), ...result.invitations.edges.map(({ node }) => node)],
+        invitations: [
+          ...new Map(
+            [...(append ? state.invitations : []), ...result.invitations.edges.map(({ node }) => node)].map((row) => [
+              row.id,
+              row,
+            ]),
+          ).values(),
+        ],
         invitationsHasNextPage: result.invitations.pageInfo.hasNextPage,
       }))
     } catch (error) {
-      if (!request.signal.aborted && !owner.signal.aborted)
+      if (!request.signal.aborted && !owner.signal.aborted && this.invitationsRequest === request) {
+        this.store.setState({ invitationsLoadError: true })
         notify.apiError(error, () => {
           if (this.invitationsRequest === request) void this.loadInvitations(append)
         })
+      }
     } finally {
       if (this.invitationsRequest === request) this.store.setState({ invitationsLoading: false })
     }

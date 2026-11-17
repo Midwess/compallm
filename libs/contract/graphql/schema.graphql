@@ -10,6 +10,25 @@ type AccessibilityPreferences {
   underlineLinks: Boolean!
 }
 
+type AnalyticUserProfile {
+  key: String!
+  value: String!
+}
+
+type AnalyticUserProfilePayload {
+  node: AnalyticUserProfile!
+}
+
+input AnalyticUserProfilePutInput {
+  key: String!
+  value: String!
+}
+
+enum AuthenticationPurpose {
+  LOGIN
+  PASSKEY_CHANGE
+}
+
 type AvatarUpload {
   """
   Expiration as Unix seconds, encoded as a string.
@@ -112,6 +131,7 @@ input EmailCodeInput {
   Cookie delivery is the default; token delivery must be requested explicitly.
   """
   delivery: CredentialDelivery = COOKIE
+  purpose: AuthenticationPurpose = LOGIN
 }
 
 """
@@ -130,6 +150,8 @@ input EmailInput {
   Trimmed and ASCII-lowercased using the shared Rust email policy.
   """
   email: String!
+  invitation: Boolean = false
+  purpose: AuthenticationPurpose = LOGIN
 }
 
 enum FilterIs {
@@ -182,6 +204,10 @@ enum HomeDestination {
 
 input IDFilter {
   eq: ID
+}
+
+type IDPayload {
+  node: ID!
 }
 
 enum ImageMediaType {
@@ -346,6 +372,10 @@ type MessageCompositionPreferences {
 }
 
 type Mutation {
+  analyticUserProfilePut(
+    input: AnalyticUserProfilePutInput!
+  ): AnalyticUserProfilePayload!
+
   """
   Confirm the verified signin challenge and create a scoped session.
   """
@@ -383,9 +413,31 @@ type Mutation {
     input: InvitationBatchCreateInput!
   ): InvitationIssuedConnection!
   invitationRevoke(id: ID!): InvitationPayload!
+  onboardingAdvance(back: Boolean! = false): OnboardingContextPayload!
+  onboardingComplete: OnboardingContextPayload!
+  onboardingPresent(manual: Boolean! = false): OnboardingContextPayload!
+  organizationOnboardingSettingsUpdate(
+    input: OrganizationOnboardingSettingsInput!
+  ): OrganizationOnboardingSettingsPayload!
   organizationProfileUpdate(
     input: OrganizationProfileUpdateInput!
   ): OrganizationPayload!
+  passkeyAuthenticationFinish(
+    input: PasskeyFinishInput!
+  ): SessionCredentialsPayload!
+  passkeyAuthenticationStart(
+    purpose: AuthenticationPurpose! = LOGIN
+  ): PasskeyCeremonyPayload!
+  passkeyRegistrationFinish(
+    input: PasskeyFinishInput!
+    name: PasskeyRegistrationInput!
+  ): PasskeySummaryPayload!
+  passkeyRegistrationStart: PasskeyCeremonyPayload!
+  passkeyRemove(id: ID!): IDPayload!
+  passkeyUpdate(
+    id: ID!
+    input: PasskeyRegistrationInput!
+  ): PasskeySummaryPayload!
   roleAssign(id: ID!, memberId: ID!): RolePayload!
 
   """
@@ -401,9 +453,19 @@ type Mutation {
   sessionRefresh: SessionCredentialsPayload!
 
   """
-  Revoke the verified session and clear its browser cookies after success.
+  Revoke the current session and clear its cookies after success.
   """
   sessionRevoke: BooleanPayload!
+
+  """
+  Revoke one other session belonging to the authenticated account.
+  """
+  sessionRevokeOther(id: ID!): BooleanPayload!
+
+  """
+  Revoke all other account sessions, retaining this login.
+  """
+  sessionRevokeOthers: BooleanPayload!
 
   """
   Restore selected preference groups, or ALL alone, to Core defaults.
@@ -431,6 +493,50 @@ type NavigationPreferences {
   home: PreferenceDestination!
 }
 
+type OnboardingContext {
+  flow: OnboardingFlow!
+  hasBeenPresented: Boolean!
+  required: Boolean!
+  settings: OrganizationOnboardingSettings!
+  shouldPresent: Boolean!
+  step: OnboardingStep!
+}
+
+type OnboardingContextPayload {
+  node: OnboardingContext!
+}
+
+enum OnboardingDestination {
+  CHAT
+  MODELS
+  PROVIDERS
+}
+
+enum OnboardingFlow {
+  INVITED_EXISTING
+  INVITED_NEW
+  PERSONAL
+}
+
+type OnboardingLink {
+  href: String!
+  label: String!
+}
+
+input OnboardingLinkInput {
+  href: String!
+  label: String!
+}
+
+enum OnboardingStep {
+  INTRODUCTION
+  PREFERENCES
+  PROFILE
+  READY
+  WORK
+  WORKSPACE
+}
+
 enum OrderByDirection {
   AscNullsFirst
   AscNullsLast
@@ -444,6 +550,28 @@ type Organization {
   id: ID!
   name: String!
   ownerMemberIds: [ID!]!
+}
+
+type OrganizationOnboardingSettings {
+  artworkColor: String
+  destination: OnboardingDestination!
+  links: [OnboardingLink!]!
+  requireAvatar: Boolean!
+  requireFullName: Boolean!
+  welcome: String!
+}
+
+input OrganizationOnboardingSettingsInput {
+  artworkColor: String
+  destination: OnboardingDestination!
+  links: [OnboardingLinkInput!]!
+  requireAvatar: Boolean!
+  requireFullName: Boolean!
+  welcome: String!
+}
+
+type OrganizationOnboardingSettingsPayload {
+  node: OrganizationOnboardingSettings!
 }
 
 type OrganizationPayload {
@@ -479,6 +607,82 @@ input PalettePatchInput {
 type PalettePreferences {
   dark: PreferenceDarkPalette!
   light: PreferenceLightPalette!
+}
+
+type PasskeyCeremony {
+  expiresAt: String!
+  options: PasskeyOptions!
+  token: String!
+}
+
+type PasskeyCeremonyPayload {
+  node: PasskeyCeremony!
+}
+
+type PasskeyDescriptor {
+  id: String!
+  transports: [String!]!
+}
+
+type PasskeyExtensions {
+  credProps: Boolean
+  credentialProtectionPolicy: String
+  enforceCredentialProtectionPolicy: Boolean
+}
+
+input PasskeyFinishInput {
+  attestationObject: String
+  authenticatorData: String
+  clientDataJson: String!
+  delivery: CredentialDelivery = COOKIE
+  id: String!
+  purpose: AuthenticationPurpose = LOGIN
+  rawId: String!
+  signature: String
+  token: String!
+  transports: [String!]
+  userHandle: String
+}
+
+type PasskeyOptions {
+  algorithms: [Int!]!
+  challenge: String!
+  credentials: [PasskeyDescriptor!]!
+  extensions: PasskeyExtensions!
+  residentKey: String
+  rpId: String!
+  rpName: String
+  timeout: Int!
+  userDisplayName: String
+  userId: String
+  userName: String
+  userVerification: String!
+}
+
+input PasskeyRegistrationInput {
+  name: String!
+}
+
+type PasskeySummary {
+  credentialId: String!
+  id: ID!
+  lastUsedAt: String
+  name: String!
+  registeredAt: String!
+}
+
+type PasskeySummaryConnection {
+  edges: [PasskeySummaryEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PasskeySummaryEdge {
+  cursor: String!
+  node: PasskeySummary!
+}
+
+type PasskeySummaryPayload {
+  node: PasskeySummary!
 }
 
 type PolicyAction {
@@ -766,6 +970,8 @@ input ProvidersCreateInput {
 }
 
 type Query {
+  analyticUserProfile(key: String!): AnalyticUserProfilePayload
+
   """
   Find visible group metadata in the active organization.
   """
@@ -788,17 +994,20 @@ type Query {
     offset: Int
     orderBy: [MemberOrderInput!]
   ): MemberConnection!
+  onboardingContext: OnboardingContextPayload
 
   """
   Return the active organization from verified user authority.
   """
   organization: OrganizationPayload!
+  organizationOnboardingSettings: OrganizationOnboardingSettingsPayload!
 
   """
   Return the system-owned organization policy action catalog.
   """
   organizationPolicyActions: PolicyActionConnection!
   organizationProfile(id: ID!): OrganizationPayload
+  passkeys: PasskeySummaryConnection!
 
   """
   Find visible role metadata in the active organization.
@@ -814,6 +1023,7 @@ type Query {
   Return the verified current session identity.
   """
   session: SessionPayload!
+  sessions(after: String, first: Int): SessionConnection!
 
   """
   Return the signed-in user's personal preferences; missing rows use Core defaults without a write.
@@ -879,6 +1089,7 @@ type Session {
   Public avatar for this user; clients show a fallback while absent or loading.
   """
   avatarUrl: String
+  expiresAt: String!
 
   """
   Login session identity, serialized as a string without numeric precision loss.
@@ -886,14 +1097,27 @@ type Session {
   id: ID!
 
   """
+  IP observed by the API connection at sign-in; it may belong to a proxy or VPN.
+  """
+  ipAddress: String
+  lastSeenAt: String!
+
+  """
   Organization selected for this verified session.
   """
   organizationId: ID!
 
   """
-  Current organization name.
+  Current name of this login's organization, resolved only when selected.
   """
   organizationName: String!
+  passkey: PasskeySummary
+  signedInAt: String!
+
+  """
+  User-Agent captured at sign-in, used only for session recognition.
+  """
+  userAgent: String
 
   """
   User owning this verified session.
@@ -901,18 +1125,31 @@ type Session {
   userId: ID!
 }
 
+type SessionConnection {
+  edges: [SessionEdge!]!
+  pageInfo: PageInfo!
+}
+
 """
 Timing is always returned; credential values exist only in explicit TOKEN delivery.
 """
 type SessionCredentials {
-  accessLifetime: TokenLifetime!
+  accessLifetime: TokenLifetime
   accessToken: String
-  refreshLifetime: TokenLifetime!
+  passkeyChangeLifetime: TokenLifetime
+  passkeyChangeToken: String
+  purpose: AuthenticationPurpose!
+  refreshLifetime: TokenLifetime
   refreshToken: String
 }
 
 type SessionCredentialsPayload {
   node: SessionCredentials!
+}
+
+type SessionEdge {
+  cursor: String!
+  node: Session!
 }
 
 type SessionPayload {

@@ -43,7 +43,9 @@ pub struct AuthenticationContext {
     trusted: DbContext,
     settings: AuthenticationSettings,
     headers: HeaderMap,
+    metadata: compallm_core::authentication::SessionMetadata,
     selected: OnceCell<Result<SelectedToken, RequestError>>,
+    passkey_otp: OnceCell<Result<EmailOtpAccessToken, RequestError>>,
     user: OnceCell<Result<VerifiedUser, RequestError>>,
 }
 
@@ -56,15 +58,22 @@ impl AuthenticationContext {
         trusted: DbContext,
         settings: AuthenticationSettings,
         headers: HeaderMap,
+        metadata: compallm_core::authentication::SessionMetadata,
     ) -> Arc<Self> {
         Arc::new(Self {
             auth,
             trusted,
             settings,
             headers,
+            metadata,
             selected: OnceCell::new(),
+            passkey_otp: OnceCell::new(),
             user: OnceCell::new(),
         })
+    }
+
+    pub fn session_metadata(&self) -> compallm_core::authentication::SessionMetadata {
+        self.metadata.clone()
     }
 
     pub async fn execute<T, E: From<compallm_core::persistent::ConnectionError>>(
@@ -108,6 +117,48 @@ impl AuthenticationContext {
             .map_err(|error| *error)
     }
 
+    pub fn passkey_change(&self) -> Result<String, AuthError> {
+        let encoded = if self.headers.contains_key(AUTHORIZATION) {
+            self.headers
+                .get("x-passkey-change")
+                .and_then(|h| h.to_str().ok())
+                .map(str::to_owned)
+        } else {
+            self.settings
+                .validate_origin(&self.headers)
+                .map_err(|_| AuthError::InvalidToken)?;
+            header::cookie(&self.headers, self.settings.passkey_change_name())
+                .map_err(|_| AuthError::InvalidToken)?
+        };
+        encoded.ok_or(AuthError::ReauthenticationRequired)
+    }
+    pub async fn passkey_otp(&self) -> Result<&EmailOtpAccessToken, RequestError> {
+        self.passkey_otp
+            .get_or_init(|| async {
+                let encoded = if self.headers.contains_key(AUTHORIZATION) {
+                    self.headers
+                        .get("x-passkey-otp")
+                        .and_then(|h| h.to_str().ok())
+                        .map(str::to_owned)
+                } else {
+                    self.settings.validate_origin(&self.headers)?;
+                    header::cookie(&self.headers, self.settings.passkey_otp_name())?
+                }
+                .ok_or(RequestError::Unauthenticated)?;
+                let claims = EmailOtpAccessToken::try_from(
+                    self.execute(self.auth.authenticate_token(&encoded)).await?,
+                )?;
+                if claims.purpose
+                    != compallm_core::authentication::AuthenticationPurpose::PasskeyChange
+                {
+                    return Err(RequestError::Unauthenticated);
+                }
+                Ok(claims)
+            })
+            .await
+            .as_ref()
+            .map_err(|e| *e)
+    }
     pub async fn invitation(
         &self,
     ) -> Result<Option<compallm_core::authentication::token::InvitationToken>, RequestError> {

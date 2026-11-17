@@ -28,7 +28,7 @@ export function ProviderAvatar({
       <animated.input
         ref={input}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+        accept="image/png,image/jpeg,image/webp"
         className="sr-only"
         tabIndex={-1}
         aria-label="Provider avatar image"
@@ -41,6 +41,8 @@ export function ProviderAvatar({
       />
       <Popup.Root>
         <Popup.Trigger
+          data-form-field={name}
+          data-ui="avatar-input"
           aria-label="Change provider avatar"
           title="Change provider avatar"
           disabled={disabled || !change}

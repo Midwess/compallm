@@ -15,7 +15,7 @@ async function checkSession(refresh = false) {
 
 export async function guestOnly() {
   // A user-only identity check would clear an in-progress OTP cookie.
-  if (authController.store.getState().step === 'code') return null
+  if (['code', 'passkey'].includes(authController.store.getState().step)) return null
   const user = await checkSession(true)
   return user ? redirect(organizationRoot(user)) : null
 }

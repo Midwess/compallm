@@ -57,7 +57,7 @@ export function ProviderChooser() {
               <Table.Head className="text-center">Choose</Table.Head>
             </Table.Row>
           </Table.Header>
-          <Table.Body items={filtered} getKey={(provider) => provider.id} estimateSize={56}>
+          <Table.Body items={filtered} getKey={(provider) => provider.id}>
             {(provider) => (
               <Table.Row
                 key={provider.id}

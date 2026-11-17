@@ -262,7 +262,6 @@ export function PolicyTable() {
                   key={category}
                   items={matched}
                   getKey={(action) => action.id}
-                  estimateSize={48}
                   label={category}
                   count={selected + ' / ' + all.length}
                   open={open}

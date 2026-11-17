@@ -25,7 +25,7 @@ export function OrganizationCatalogPage({ kind }: { kind: 'models' | 'providers'
             </header>
             {items.length ? (
               <List.Root>
-                <List.Items items={items} getKey={(item) => item.id} estimateSize={52} className="rounded-lg bg-inset px-4">
+                <List.Items items={items} getKey={(item) => item.id} className="rounded-lg bg-inset px-4">
                   {(item) => <div className="border-b border-divider px-4 py-4 text-xsm">{item.name}</div>}
                 </List.Items>
               </List.Root>

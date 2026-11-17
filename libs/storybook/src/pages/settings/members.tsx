@@ -156,7 +156,6 @@ function Invitations() {
       onOpenChange={setOpen}
       items={invitations}
       getKey={(row) => row.id}
-      estimateSize={56}
       paging={{
         hasMore: more,
         loading: loading || busy,
@@ -620,7 +619,6 @@ function MemberRows({
       count={complete || members.length ? `${members.length}${complete ? '' : ' shown'}` : undefined}
       items={members}
       getKey={memberKey}
-      estimateSize={56}
       paging={paging}
     >
       {renderMember}

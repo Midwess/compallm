@@ -1,8 +1,7 @@
 import { CollectionContext, CollectionRowContext } from '../context'
-import { CollectionContent, CollectionRow, useCollectionOwner, useCollectionRows, useCollectionLoadMore } from './collection'
+import { CollectionContent, CollectionRecord, useCollectionOwner, useCollectionRows, useCollectionLoadMore } from './collection'
 import type { CollectionPaging } from './collection-types'
 import type { CollectionForms } from './collection-forms'
-import { Fragment } from 'react'
 import { animate } from 'motion'
 import { motion } from 'motion/react'
 import { animated, animation, transition, useTransition } from './motion'
@@ -158,7 +157,6 @@ function Header({ className, ...props }: ComponentPropsWithRef<'tbody'>) {
 export interface TableItemsProps<T> {
   items: readonly T[]
   getKey(item: T): string
-  estimateSize?: number
   paging?: CollectionPaging
   children(item: T): ReactNode
 }
@@ -168,48 +166,18 @@ function Body<T>(
   if ('items' in props) return <DataBody {...props} />
   return <tbody data-slot="table-body" {...props} />
 }
-// Collection snapshots contain callback refs; they are passed to React rather than read during render.
-/* eslint-disable react-hooks/refs */
 function DataBody<T>({
   items,
   getKey,
-  estimateSize = 48,
   paging,
   children,
   ...props
 }: Omit<ComponentPropsWithRef<'tbody'>, 'children'> & TableItemsProps<T>) {
-  const rows = useCollectionRows(items, getKey, estimateSize)
+  const rows = useCollectionRows(items, getKey)
   return (
-    <tbody
-      {...props}
-      ref={rows.attach}
-      onKeyDown={rows.onKeyDown}
-      onFocusCapture={rows.onFocus}
-      data-slot="table-body"
-      aria-busy={rows.revealing || paging?.loading}
-    >
-      <Entry collection={rows} backwards={false} />
+    <tbody {...props} data-slot="table-body" aria-busy={paging?.loading}>
       <DataRows collection={rows} count={items.length} render={children} paging={paging} />
-      <Entry collection={rows} backwards />
     </tbody>
-  )
-}
-/* eslint-enable react-hooks/refs */
-function Entry<T>({ collection, backwards }: { collection: ReturnType<typeof useCollectionRows<T>>; backwards: boolean }) {
-  const { visibleCount, columns } = useContext(ColumnsContext)
-  if (!collection.rows.length) return null
-  return (
-    <tr role="presentation">
-      <td className="h-0 border-0 p-0" colSpan={visibleCount ?? (columns.length || 1)}>
-        <button
-          type="button"
-          className="sr-only"
-          onFocus={(event) => collection.enter(backwards, event.relatedTarget)}
-          data-collection-entry
-          aria-label={backwards ? 'Last row' : 'First row'}
-        />
-      </td>
-    </tr>
   )
 }
 function DataRows<T>({
@@ -227,46 +195,24 @@ function DataRows<T>({
 }) {
   const { visibleCount, columns } = useContext(ColumnsContext)
   const span = visibleCount ?? (columns.length || 1)
-  const virtual = collection.virtualizer
-  const bottom = (virtual.scrollOffset ?? 0) + (virtual.scrollRect?.height ?? 0) - virtual.options.scrollMargin
-  useCollectionLoadMore(paging, collection.total - bottom, disabled || collection.revealing)
-  const last = collection.rows.at(-1)
-  const end = last ? last.start + last.size : 0
+  const loadMoreRef = useCollectionLoadMore(disabled ? undefined : paging, collection.scrollElement)
   return (
     <>
-      {collection.rows.map((row, index) => {
-        const previous = collection.rows[index - 1]
-        const gap = Math.max(0, row.start - (previous ? previous.start + previous.size : 0))
-        const content = <CollectionContent item={row.item} render={render} />
-        return (
-          <Fragment key={row.key}>
-            {gap > 0 ? (
-              <tr aria-hidden="true">
-                <td colSpan={span} className="p-0 border-0" style={{ height: gap }} />
-              </tr>
-            ) : null}
-            {collection.forms ? (
-              <CollectionRow
-                index={row.index}
-                measure={collection.measure}
-                rowKey={row.key}
-                retain={collection.retain}
-                forms={collection.forms}
-              >
-                {content}
-              </CollectionRow>
-            ) : (
-              content
-            )}
-          </Fragment>
-        )
-      })}
-      {collection.total > end ? (
-        <tr aria-hidden="true">
-          <td colSpan={span} className="p-0 border-0" style={{ height: collection.total - end }} />
-        </tr>
-      ) : null}
-      {paging ? <LoadMore {...paging} /> : null}
+      {collection.rows.map((row) =>
+        collection.forms ? (
+          <CollectionRecord
+            key={row.key}
+            index={row.index}
+            rowKey={row.key}
+            forms={collection.forms}
+            item={row.item}
+            render={render}
+          />
+        ) : (
+          <CollectionContent key={row.key} item={row.item} render={render} />
+        ),
+      )}
+      {paging ? <LoadMore ref={loadMoreRef} {...paging} /> : null}
       <tr className="sr-only">
         <td colSpan={span} aria-live="polite">
           {count} rows loaded
@@ -276,11 +222,17 @@ function DataRows<T>({
   )
 }
 
-function LoadMore({ hasMore, loading, error, onLoadMore }: CollectionPaging) {
+function LoadMore({
+  ref,
+  hasMore,
+  loading,
+  error,
+  onLoadMore,
+}: CollectionPaging & { ref?: (element: HTMLTableRowElement | null) => void }) {
   const { visibleCount, columns } = useContext(ColumnsContext)
   if (!hasMore) return null
   return (
-    <tr>
+    <tr ref={ref}>
       <td colSpan={visibleCount ?? (columns.length || 1)} className="h-8 p-0 text-center">
         <button
           type="button"
@@ -295,26 +247,13 @@ function LoadMore({ hasMore, loading, error, onLoadMore }: CollectionPaging) {
   )
 }
 
-function Row({ className, ref, onFocusCapture, onBlurCapture, ...props }: ComponentPropsWithRef<'tr'>) {
+function Row({ className, ref, ...props }: ComponentPropsWithRef<'tr'>) {
   const scope = useContext(CollectionRowContext)
-  const release = useRef<(() => void) | undefined>(undefined)
-  useEffect(() => () => release.current?.(), [])
   return (
     <tr
-      ref={composeRefs(ref, scope?.measure)}
+      ref={ref}
       data-index={scope?.index}
       data-collection-key={scope?.key}
-      onFocusCapture={(event) => {
-        onFocusCapture?.(event)
-        release.current ??= scope?.retain({})
-      }}
-      onBlurCapture={(event) => {
-        onBlurCapture?.(event)
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          release.current?.()
-          release.current = undefined
-        }
-      }}
       data-slot="table-row"
       {...props}
       className={cx('h-12 border-b border-divider last:border-b-0', className)}
@@ -384,13 +323,11 @@ function Category<T>({
   children,
   items,
   getKey,
-  estimateSize = 56,
   paging,
 }: Omit<TableCategoryProps, 'children'> & {
   children: ReactNode | ((item: T) => ReactNode)
   items?: readonly T[]
   getKey?: (item: T) => string
-  estimateSize?: number
   paging?: CollectionPaging
 }) {
   const { visibleCount } = useContext(ColumnsContext)
@@ -398,7 +335,7 @@ function Category<T>({
   const directory = variant === 'directory'
   const timing = useTransition('disclosure')
   const [expanded, setExpanded] = useControllableState(open, defaultOpen, onOpenChange)
-  const data = useCollectionRows(expanded ? (items ?? []) : [], getKey ?? (() => 'row'), estimateSize, 40)
+  const data = useCollectionRows(expanded ? (items ?? []) : [], getKey ?? (() => 'row'))
   const body = useRef<HTMLTableSectionElement>(null)
   const previous = useRef(expanded)
   useLayoutEffect(() => {
@@ -436,9 +373,7 @@ function Category<T>({
   }, [expanded, children, items])
   return (
     <tbody
-      ref={composeRefs(body, data.attach)}
-      onKeyDown={data.onKeyDown}
-      onFocusCapture={data.onFocus}
+      ref={body}
       data-state={expanded ? 'open' : 'closed'}
       data-slot="table-category"
       className="[&:not(:first-of-type)>tr:first-child]:table-row"
@@ -490,9 +425,7 @@ translate-y-(--category-offset,0px)"
       {items && getKey && typeof children === 'function' ? (
         expanded ? (
           <>
-            <Entry collection={data} backwards={false} />
             <DataRows collection={data} count={items.length} render={children} paging={paging} />
-            <Entry collection={data} backwards />
           </>
         ) : null
       ) : (

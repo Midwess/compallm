@@ -69,7 +69,6 @@ export default defineConfig({
       external: (id) =>
         [
           '@compallm/contract',
-          '@bprogress/core',
           'react',
           'react-dom',
           '@base-ui/react',

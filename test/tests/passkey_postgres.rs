@@ -85,6 +85,8 @@ async fn session_evidence_upgrade_preserves_otp_and_restores_passkey_reads() -> 
         let context = DbContext::new(Arc::new(PostgresConnection::new(pool.clone())));
         let repository = PasskeyRepository;
         let actor = Session {
+            expires_at: compallm_utils::time::unix_timestamp() + 30 * 86400,
+            last_seen_at: compallm_utils::time::unix_timestamp(),
             id: 3,
             user_id: 1,
             organization_id: 2,

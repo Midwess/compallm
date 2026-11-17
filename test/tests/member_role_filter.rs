@@ -86,6 +86,8 @@ async fn role_filter_includes_inherited_members_before_paging_and_binds_cursors(
     .await?;
     let permission = Arc::new(MemberPermission::try_from(UserAccessToken::new(
         Session {
+            expires_at: compallm_utils::time::unix_timestamp() + 30 * 86400,
+            last_seen_at: compallm_utils::time::unix_timestamp(),
             id: 1,
             user_id: ORG + 100,
             organization_id: ORG,

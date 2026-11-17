@@ -174,6 +174,21 @@ impl AuthService {
         Ok(())
     }
 
+    #[db_context::root]
+    pub async fn revoke_other_sessions(
+        &self,
+        actor: &UserAccessToken,
+        target_id: Option<u64>,
+    ) -> Result<u64, AuthError> {
+        if !self.validate_access(actor).await? {
+            return Err(AuthError::InvalidSession);
+        }
+        Ok(self
+            .sessions
+            .revoke_owned(actor.session.user_id, actor.session.id, target_id)
+            .await?)
+    }
+
     pub fn new(
         users: &'static Box<dyn UserRepository>,
         organizations: &'static Box<dyn OrganizationRepository>,
@@ -343,7 +358,7 @@ impl AuthService {
         UserAccessToken::try_from(self.authenticate_token(token).await?)
     }
 
-    /// Read-only renewal: validates CWT/session state and never consumes the credential.
+    /// Renew credentials and persist their deadline without consuming the prior credential.
     #[db_context::root]
     pub async fn refresh(&self, refresh_token: &str) -> Result<UserTokens, AuthError> {
         let claims = RefreshToken::try_from(self.authenticate_token(refresh_token).await?)?;
@@ -362,7 +377,11 @@ impl AuthService {
         let snapshot = PolicySnapshot::new(&membership)?;
         let renewed = session.refresh(&claims, self.lifetimes.refresh)?;
         let dictionary = self.latest_dictionary().await?;
-        self.issue_tokens(&renewed, snapshot, dictionary).await
+        let tokens = self.issue_tokens(&renewed, snapshot, dictionary).await?;
+        if !self.sessions.update(&renewed.session, &session).await? {
+            return Err(AuthError::InvalidSession);
+        }
+        Ok(tokens)
     }
 
     #[db_context::root]
@@ -398,7 +417,10 @@ impl AuthService {
         session.switch_organization(&claims, organization_id)?;
 
         let dictionary = self.latest_dictionary().await?;
-        let refresh = RefreshToken::from_session(&session, self.lifetimes.refresh)?;
+        let mut refresh = RefreshToken::from_session(&session, self.lifetimes.refresh)?;
+        refresh.session.last_seen_at = refresh.validity.issued_at;
+        refresh.session.expires_at = refresh.validity.expires_at;
+        session = refresh.session.clone();
         let tokens = self
             .issue_tokens(&refresh, PolicySnapshot::new(&membership)?, dictionary)
             .await?;
@@ -454,7 +476,10 @@ impl AuthService {
     ) -> Result<UserTokens, AuthError> {
         let mut session = Session::new(user_id, membership.organization_id).await?;
         session.metadata = metadata;
-        let refresh = RefreshToken::from_session(&session, self.lifetimes.refresh)?;
+        let mut refresh = RefreshToken::from_session(&session, self.lifetimes.refresh)?;
+        refresh.session.last_seen_at = refresh.validity.issued_at;
+        refresh.session.expires_at = refresh.validity.expires_at;
+        session = refresh.session.clone();
         let tokens = self
             .issue_tokens(&refresh, PolicySnapshot::new(&membership)?, dictionary)
             .await?;

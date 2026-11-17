@@ -278,8 +278,12 @@ export interface Mutation {
   roleUpdate: RolePayload
   /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
   sessionRefresh: SessionCredentialsPayload
-  /** Revoke the verified session and clear its browser cookies after success. */
+  /** Revoke the current session and clear its cookies after success. */
   sessionRevoke: BooleanPayload
+  /** Revoke one other session belonging to the authenticated account. */
+  sessionRevokeOther: BooleanPayload
+  /** Revoke all other account sessions, retaining this login. */
+  sessionRevokeOthers: BooleanPayload
   /** Restore selected preference groups, or ALL alone, to Core defaults. */
   userPreferencesReset: UserPreferencesPayload
   /** Atomically patch the signed-in user's preferences, preserving omitted fields. */
@@ -537,6 +541,7 @@ export interface Query {
   roles: RoleConnection
   /** Return the verified current session identity. */
   session: SessionPayload
+  sessions: SessionConnection
   /** Return the signed-in user's personal preferences; missing rows use Core defaults without a write. */
   userPreferences: UserPreferencesPayload
   /** Read an active user profile using verified user identity. */
@@ -575,20 +580,29 @@ export interface RolePayload {
 export interface Session {
   /** Public avatar for this user; clients show a fallback while absent or loading. */
   avatarUrl: Scalars['String'] | null
+  expiresAt: Scalars['String']
   /** Login session identity, serialized as a string without numeric precision loss. */
   id: Scalars['ID']
   /** IP observed by the API connection at sign-in; it may belong to a proxy or VPN. */
   ipAddress: Scalars['String'] | null
+  lastSeenAt: Scalars['String']
   /** Organization selected for this verified session. */
   organizationId: Scalars['ID']
-  /** Current organization name. */
+  /** Current name of this login's organization, resolved only when selected. */
   organizationName: Scalars['String']
   passkey: PasskeySummary | null
+  signedInAt: Scalars['String']
   /** User-Agent captured at sign-in, used only for session recognition. */
   userAgent: Scalars['String'] | null
   /** User owning this verified session. */
   userId: Scalars['ID']
   __typename: 'Session'
+}
+
+export interface SessionConnection {
+  edges: SessionEdge[]
+  pageInfo: PageInfo
+  __typename: 'SessionConnection'
 }
 
 /** Timing is always returned; credential values exist only in explicit TOKEN delivery. */
@@ -606,6 +620,12 @@ export interface SessionCredentials {
 export interface SessionCredentialsPayload {
   node: SessionCredentials
   __typename: 'SessionCredentialsPayload'
+}
+
+export interface SessionEdge {
+  cursor: Scalars['String']
+  node: Session
+  __typename: 'SessionEdge'
 }
 
 export interface SessionPayload {
@@ -1126,8 +1146,12 @@ export interface MutationGenqlSelection {
   roleUpdate?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; input: RoleUpdateInput } }
   /** Refresh using explicit refresh Bearer authority; leave browser cookies unchanged. */
   sessionRefresh?: SessionCredentialsPayloadGenqlSelection
-  /** Revoke the verified session and clear its browser cookies after success. */
+  /** Revoke the current session and clear its cookies after success. */
   sessionRevoke?: BooleanPayloadGenqlSelection
+  /** Revoke one other session belonging to the authenticated account. */
+  sessionRevokeOther?: BooleanPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  /** Revoke all other account sessions, retaining this login. */
+  sessionRevokeOthers?: BooleanPayloadGenqlSelection
   /** Restore selected preference groups, or ALL alone, to Core defaults. */
   userPreferencesReset?: UserPreferencesPayloadGenqlSelection & { __args: { groups: UserPreferenceGroup[] } }
   /** Atomically patch the signed-in user's preferences, preserving omitted fields. */
@@ -1512,6 +1536,9 @@ export interface QueryGenqlSelection {
   roles?: RoleConnectionGenqlSelection & { __args?: { includeUnseen?: Scalars['Boolean'] } }
   /** Return the verified current session identity. */
   session?: SessionPayloadGenqlSelection
+  sessions?: SessionConnectionGenqlSelection & {
+    __args?: { after?: Scalars['String'] | null; first?: Scalars['Int'] | null }
+  }
   /** Return the signed-in user's personal preferences; missing rows use Core defaults without a write. */
   userPreferences?: UserPreferencesPayloadGenqlSelection
   /** Read an active user profile using verified user identity. */
@@ -1573,19 +1600,29 @@ export interface RoleUpdateInput {
 export interface SessionGenqlSelection {
   /** Public avatar for this user; clients show a fallback while absent or loading. */
   avatarUrl?: boolean | number
+  expiresAt?: boolean | number
   /** Login session identity, serialized as a string without numeric precision loss. */
   id?: boolean | number
   /** IP observed by the API connection at sign-in; it may belong to a proxy or VPN. */
   ipAddress?: boolean | number
+  lastSeenAt?: boolean | number
   /** Organization selected for this verified session. */
   organizationId?: boolean | number
-  /** Current organization name. */
+  /** Current name of this login's organization, resolved only when selected. */
   organizationName?: boolean | number
   passkey?: PasskeySummaryGenqlSelection
+  signedInAt?: boolean | number
   /** User-Agent captured at sign-in, used only for session recognition. */
   userAgent?: boolean | number
   /** User owning this verified session. */
   userId?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface SessionConnectionGenqlSelection {
+  edges?: SessionEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -1605,6 +1642,13 @@ export interface SessionCredentialsGenqlSelection {
 
 export interface SessionCredentialsPayloadGenqlSelection {
   node?: SessionCredentialsGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface SessionEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: SessionGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -2159,6 +2203,12 @@ export const isSession = (obj?: { __typename?: any } | null): obj is Session => 
   return Session_possibleTypes.includes(obj.__typename)
 }
 
+const SessionConnection_possibleTypes: string[] = ['SessionConnection']
+export const isSessionConnection = (obj?: { __typename?: any } | null): obj is SessionConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isSessionConnection"')
+  return SessionConnection_possibleTypes.includes(obj.__typename)
+}
+
 const SessionCredentials_possibleTypes: string[] = ['SessionCredentials']
 export const isSessionCredentials = (obj?: { __typename?: any } | null): obj is SessionCredentials => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isSessionCredentials"')
@@ -2169,6 +2219,12 @@ const SessionCredentialsPayload_possibleTypes: string[] = ['SessionCredentialsPa
 export const isSessionCredentialsPayload = (obj?: { __typename?: any } | null): obj is SessionCredentialsPayload => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isSessionCredentialsPayload"')
   return SessionCredentialsPayload_possibleTypes.includes(obj.__typename)
+}
+
+const SessionEdge_possibleTypes: string[] = ['SessionEdge']
+export const isSessionEdge = (obj?: { __typename?: any } | null): obj is SessionEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isSessionEdge"')
+  return SessionEdge_possibleTypes.includes(obj.__typename)
 }
 
 const SessionPayload_possibleTypes: string[] = ['SessionPayload']

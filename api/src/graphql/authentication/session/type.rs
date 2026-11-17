@@ -3,11 +3,17 @@ use compallm_core::authentication::Session as CoreSession;
 /// Session identity projected only after authenticating the selected credential.
 ///
 /// Token material, permission source, and internal freshness state are omitted.
-pub struct Session(pub(super) CoreSession, pub(super) String);
+pub struct Session(pub(super) CoreSession, pub(super) Option<String>);
 
 impl From<(CoreSession, String)> for Session {
     fn from((session, name): (CoreSession, String)) -> Self {
-        Self(session, name)
+        Self(session, Some(name))
+    }
+}
+
+impl From<CoreSession> for Session {
+    fn from(session: CoreSession) -> Self {
+        Self(session, None)
     }
 }
 
@@ -15,6 +21,18 @@ use juniper::{ID, graphql_object};
 
 #[graphql_object(context = crate::graphql::GraphqlContext)]
 impl Session {
+    fn expires_at(&self) -> String {
+        self.0.expires_at.to_string()
+    }
+
+    fn last_seen_at(&self) -> String {
+        self.0.last_seen_at.to_string()
+    }
+
+    fn signed_in_at(&self) -> String {
+        (hero::distributed_id::id_to_unix_timestamp(self.0.id) / 1000).to_string()
+    }
+
     /// IP observed by the API connection at sign-in; it may belong to a proxy or VPN.
     fn ip_address(&self) -> Option<String> {
         self.0.metadata.ip_address.map(|ip| ip.to_string())
@@ -69,8 +87,26 @@ impl Session {
         ID::new(self.0.organization_id.to_string())
     }
 
-    /// Current organization name.
-    fn organization_name(&self) -> &str {
-        &self.1
+    /// Current name of this login's organization, resolved only when selected.
+    async fn organization_name(
+        &self,
+        #[graphql(context)] user: &crate::http::authentication::UserContext,
+        #[graphql(context)] identity: &crate::http::authentication::AuthenticationContext,
+        #[graphql(context)] repository: &Box<
+            dyn compallm_core::persistent::organization::OrganizationRepository,
+        >,
+    ) -> Result<String, crate::graphql::error::Error> {
+        if user.require().await?.access().session.user_id != self.0.user_id {
+            return Err(compallm_core::authentication::AuthError::InvalidSession.into());
+        }
+        if let Some(name) = &self.1 {
+            return Ok(name.clone());
+        }
+        let organization = identity
+            .execute(repository.find_by_id(self.0.organization_id))
+            .await
+            .map_err(compallm_core::authentication::AuthError::from)?
+            .ok_or_else(crate::graphql::error::Error::internal)?;
+        Ok(organization.name)
     }
 }

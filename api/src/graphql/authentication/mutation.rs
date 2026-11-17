@@ -275,3 +275,28 @@ pub(crate) async fn session_revoke(
     cookies.clear()?;
     Ok(true.into())
 }
+
+pub(crate) async fn session_revoke_other(
+    id: juniper::ID,
+    auth: &AuthService,
+    identity: &AuthenticationContext,
+    user: &UserContext,
+) -> Result<Payload<bool>, Error> {
+    let target = id.parse::<u64>().map_err(|_| Error::invalid_input())?;
+    let actor = user.require().await?.access();
+    Ok((identity
+        .execute(auth.revoke_other_sessions(actor, Some(target)))
+        .await?
+        > 0)
+    .into())
+}
+pub(crate) async fn session_revoke_others(
+    auth: &AuthService,
+    identity: &AuthenticationContext,
+    user: &UserContext,
+) -> Result<Payload<bool>, Error> {
+    identity
+        .execute(auth.revoke_other_sessions(user.require().await?.access(), None))
+        .await?;
+    Ok(true.into())
+}

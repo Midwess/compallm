@@ -182,3 +182,11 @@ impl FromContext<GraphqlContext>
         juniper::FromContext::from(context.di)
     }
 }
+
+impl FromContext<GraphqlContext>
+    for Box<dyn compallm_core::persistent::session::SessionRepository>
+{
+    fn from(context: &GraphqlContext) -> &Self {
+        <Self as FromContext<Di>>::from(context.di)
+    }
+}

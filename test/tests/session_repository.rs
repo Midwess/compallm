@@ -26,6 +26,18 @@ impl Fixture {
             user_id: 42,
             organization_id: 84,
             authorization_version: 1,
+            expires_at: sea_orm::prelude::DateTimeUtc::from_timestamp(
+                (compallm_utils::time::unix_timestamp() + 30 * 86400) as i64,
+                0,
+            )
+            .unwrap()
+            .fixed_offset(),
+            last_seen_at: sea_orm::prelude::DateTimeUtc::from_timestamp(
+                compallm_utils::time::unix_timestamp() as i64,
+                0,
+            )
+            .unwrap()
+            .fixed_offset(),
             revoked_at: None,
             ip_address: None,
             user_agent: None,
@@ -453,4 +465,211 @@ async fn freshness_lookup_projects_only_scoped_non_revoked_version() {
     );
     assert!(sql.contains("SELECT \"user_sessions\".\"authorization_version\""));
     assert!(sql.contains("organization_id") && sql.contains("user_id") && sql.contains("IS NULL"));
+}
+
+#[tokio::test]
+#[ignore = "requires COMPALLM_TEST_DATABASE_URL; creates a disposable database"]
+async fn account_session_pages_and_revocation_preserve_ownership() -> anyhow::Result<()> {
+    use sea_orm::sea_query::{Alias, ColumnDef, Table};
+    use sea_orm::{ConnectionTrait, Database};
+    use sea_orm_migration::SchemaManager;
+    let url = std::env::var("COMPALLM_TEST_DATABASE_URL")?;
+    let name = format!(
+        "session_directory_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_nanos()
+    );
+    let admin = Database::connect(&url).await?;
+    admin
+        .execute_unprepared(&format!("CREATE DATABASE {name}"))
+        .await?;
+    let result = async {
+        let (base, parameters) = url.split_once('?').unwrap_or((&url, ""));
+        let (server, _) = base
+            .rsplit_once('/')
+            .ok_or_else(|| anyhow::anyhow!("database URL"))?;
+        let pool = Arc::new(Database::connect(format!("{server}/{name}?{parameters}")).await?);
+        SchemaManager::new(pool.as_ref())
+            .create_table(
+                Table::create()
+                    .table(Alias::new("user_sessions"))
+                    .col(ColumnDef::new(Alias::new("id")).big_integer().primary_key())
+                    .col(
+                        ColumnDef::new(Alias::new("user_id"))
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Alias::new("organization_id"))
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Alias::new("authorization_version"))
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Alias::new("expires_at"))
+                            .timestamp_with_time_zone()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Alias::new("last_seen_at"))
+                            .timestamp_with_time_zone()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Alias::new("revoked_at"))
+                            .timestamp_with_time_zone()
+                            .null(),
+                    )
+                    .col(
+                        ColumnDef::new(Alias::new("ip_address"))
+                            .string_len(45)
+                            .null(),
+                    )
+                    .col(
+                        ColumnDef::new(Alias::new("user_agent"))
+                            .string_len(512)
+                            .null(),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+        let context = DbContext::new(Arc::new(PostgresConnection::new(pool.clone())));
+        let user_id = 42;
+        let organization_id = 84;
+        let mut current = stored_session(user_id, 100, organization_id, "Team");
+        current.metadata = compallm_core::authentication::SessionMetadata::new(
+            Some("203.0.113.42".parse()?),
+            Some("Browser one"),
+        );
+        let mut second = stored_session(user_id, 101, organization_id, "Team");
+        current.last_seen_at -= 600;
+        second.metadata = compallm_core::authentication::SessionMetadata::new(
+            Some("203.0.113.43".parse()?),
+            Some("Browser two"),
+        );
+        context
+            .scope(SessionRepository.create(current.clone()))
+            .await?;
+        context
+            .scope(SessionRepository.create(second.clone()))
+            .await?;
+        let mut expired = stored_session(user_id, 999, organization_id, "Team");
+        expired.expires_at = compallm_utils::time::unix_timestamp() - 1;
+        context
+            .scope(SessionRepository.create(expired.clone()))
+            .await?;
+        assert!(
+            context
+                .scope(SessionRepository.authorization_version(&expired))
+                .await?
+                .is_none()
+        );
+        let mut attempted = expired.clone();
+        attempted.expires_at += 86400;
+        assert!(
+            !context
+                .scope(SessionRepository.update(&attempted, &expired))
+                .await?
+        );
+        let page = context
+            .scope(SessionRepository.list_owned(
+                user_id,
+                compallm_query::Pagination {
+                    first: Some(1),
+                    ..Default::default()
+                },
+            ))
+            .await?;
+        assert_eq!(page.edges[0].node.id, second.id);
+        assert!(page.page_info.has_next_page);
+        let next = context
+            .scope(SessionRepository.list_owned(
+                user_id,
+                compallm_query::Pagination {
+                    first: Some(1),
+                    after: page.page_info.end_cursor.map(compallm_query::Cursor),
+                    ..Default::default()
+                },
+            ))
+            .await?;
+        assert_eq!(next.edges[0].node.id, current.id);
+        let mut renewed = current.clone();
+        renewed.last_seen_at = second.last_seen_at + 1;
+        renewed.expires_at += 3600;
+        assert!(
+            context
+                .scope(SessionRepository.update(&renewed, &current))
+                .await?
+        );
+        let mut late = current.clone();
+        late.last_seen_at += 1;
+        late.expires_at += 1;
+        assert!(
+            context
+                .scope(SessionRepository.update(&late, &current))
+                .await?
+        );
+        let reordered = context
+            .scope(SessionRepository.list_owned(
+                user_id,
+                compallm_query::Pagination {
+                    first: Some(10),
+                    ..Default::default()
+                },
+            ))
+            .await?;
+        assert_eq!(reordered.edges.len(), 2);
+        assert_eq!(reordered.edges[0].node.id, current.id);
+        assert_eq!(reordered.edges[0].node.expires_at, renewed.expires_at);
+        assert_eq!(reordered.edges[0].node.last_seen_at, renewed.last_seen_at);
+
+        assert_eq!(
+            context
+                .scope(SessionRepository.revoke_owned(user_id + 1, current.id, Some(second.id)))
+                .await?,
+            0
+        );
+        assert_eq!(
+            context
+                .scope(SessionRepository.revoke_owned(user_id, current.id, Some(current.id)))
+                .await?,
+            0
+        );
+        assert_eq!(
+            context
+                .scope(SessionRepository.revoke_owned(user_id, current.id, Some(second.id)))
+                .await?,
+            1
+        );
+        assert!(
+            context
+                .scope(SessionRepository.authorization_version(&current))
+                .await?
+                .is_some()
+        );
+        assert!(
+            context
+                .scope(SessionRepository.authorization_version(&second))
+                .await?
+                .is_none()
+        );
+        drop(context);
+        Arc::try_unwrap(pool)
+            .expect("database handles released")
+            .close()
+            .await?;
+        Ok::<_, anyhow::Error>(())
+    }
+    .await;
+    admin
+        .execute_unprepared(&format!("DROP DATABASE {name} WITH (FORCE)"))
+        .await?;
+    admin.close().await?;
+    result
 }

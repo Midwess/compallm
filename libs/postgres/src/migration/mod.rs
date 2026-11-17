@@ -71,6 +71,8 @@ mod m20261117_000044_session_metadata;
 
 mod m20261117_000045_drop_session_location;
 
+mod m20261117_000046_session_lifetime;
+
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -123,6 +125,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261116_000043_session_passkey_evidence::Migration),
             Box::new(m20261117_000044_session_metadata::Migration),
             Box::new(m20261117_000045_drop_session_location::Migration),
+            Box::new(m20261117_000046_session_lifetime::Migration),
             // inject-above (do not remove this comment)
         ]
     }

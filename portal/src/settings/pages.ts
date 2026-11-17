@@ -18,6 +18,7 @@ export function createSettingsPages(
   renamed: (name: string) => void = () => {},
   groupDeleted: (id: string) => void = () => {},
   permissions?: PermissionController,
+  revokeOtherSessions?: () => Promise<void>,
 ) {
   return {
     onboarding: new OrganizationOnboardingController(),
@@ -28,6 +29,6 @@ export function createSettingsPages(
     profile: new ProfileController(store, auth),
     organization: new OrganizationController(store, auth, renamed, permissions),
     members: new MembersController(store, permissions, auth),
-    dialogs: new DialogsController(store, roleDeleted, groupDeleted),
+    dialogs: new DialogsController(store, roleDeleted, groupDeleted, revokeOtherSessions),
   } satisfies SettingsPageControllers
 }

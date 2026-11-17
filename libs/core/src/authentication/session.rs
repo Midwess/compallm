@@ -24,9 +24,13 @@ impl SessionMetadata {
     }
 }
 
-/// A persisted login. CWTs own expiry; ordinary renewal does not change this record.
+/// A persisted login with a server-enforced renewal deadline.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Session {
+    #[serde(rename = "e")]
+    pub expires_at: u64,
+    #[serde(rename = "l")]
+    pub last_seen_at: u64,
     #[serde(rename = "m")]
     pub metadata: SessionMetadata,
     #[serde(rename = "i")]
@@ -45,6 +49,8 @@ pub struct Session {
 impl Session {
     pub async fn new(user_id: u64, organization_id: u64) -> Result<Self, DistributedIdError> {
         Ok(Self {
+            expires_at: 0,
+            last_seen_at: compallm_utils::time::unix_timestamp(),
             metadata: SessionMetadata::default(),
             id: try_gen_id().await?,
             user_id,
@@ -62,7 +68,9 @@ impl Session {
     }
 
     pub fn is_active(&self, session: &Self) -> bool {
-        self.has_same_identity(session) && self.revoked_at.is_none()
+        self.has_same_identity(session)
+            && self.revoked_at.is_none()
+            && self.expires_at > compallm_utils::time::unix_timestamp()
     }
 
     pub fn validate_credential(&self, presented: &RefreshToken) -> Result<(), AuthError> {
@@ -73,14 +81,17 @@ impl Session {
         Ok(())
     }
 
-    /// Renew CWT validity while preserving the database session.
+    /// Renew credentials and record the corresponding activity and deadline.
     pub fn refresh(
         &self,
         presented: &RefreshToken,
         lifetime: Duration,
     ) -> Result<RefreshToken, AuthError> {
         self.validate_credential(presented)?;
-        RefreshToken::from_session(self, lifetime)
+        let mut token = RefreshToken::from_session(self, lifetime)?;
+        token.session.last_seen_at = token.validity.issued_at;
+        token.session.expires_at = token.validity.expires_at;
+        Ok(token)
     }
 
     pub fn switch_organization(

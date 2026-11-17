@@ -88,3 +88,70 @@ test('settings discard late location responses and never persist them into authe
   }
   assert.equal(controller.store.getState().sessionLocation, null)
 })
+
+test('account sessions load across pages and confirmed revocation removes only its row', async () => {
+  const original = globalThis.fetch
+  const auth = {
+    signOut() {},
+    store: createStore(() => ({
+      currentUser: {
+        id: 'current',
+        userId: 'user',
+        organizationId: 'org',
+        organizationName: 'Workspace',
+      },
+    })),
+  }
+  let writes = 0
+  globalThis.fetch = async (_url, init) => {
+    const { query } = JSON.parse(init.body)
+    if (query.includes('sessionRevokeOther')) {
+      writes++
+      return Response.json({ data: { sessionRevokeOther: { node: true } } })
+    }
+    if (query.includes('sessions')) {
+      const more = query.includes('after')
+      return Response.json({
+        data: {
+          sessions: {
+            edges: (more
+              ? [{ id: 'second', userAgent: 'Mozilla/5.0 Chrome/131.0.0.0' }]
+              : [{ id: 'current' }, { id: 'first', userAgent: 'Mozilla/5.0 Firefox/132.0' }]
+            ).map((node) => ({ node })),
+            pageInfo: { endCursor: more ? 'end' : 'next', hasNextPage: !more },
+          },
+        },
+      })
+    }
+    return Response.json({
+      data: { me: { node: { id: 'user', organizationOwner: false } }, roles: { edges: [] }, groups: { edges: [] } },
+    })
+  }
+  const controller = new SettingsController('Workspace', { navigate() {} }, auth, 'access', new UserPreferenceController())
+  const stop = controller.start()
+  try {
+    await tick()
+    assert.deepEqual(
+      controller.store.getState().otherSessions.map((s) => s.id),
+      ['first'],
+    )
+    assert.equal(controller.store.getState().sessionsHasNextPage, true)
+    controller.loadMoreSessions()
+    await tick()
+    assert.deepEqual(
+      controller.store.getState().otherSessions.map((s) => s.id),
+      ['first', 'second'],
+    )
+    controller.revokeSession('first')
+    await tick()
+    assert.equal(writes, 1)
+    assert.deepEqual(
+      controller.store.getState().otherSessions.map((s) => s.id),
+      ['second'],
+    )
+    assert.equal(auth.store.getState().currentUser.id, 'current')
+  } finally {
+    stop()
+    globalThis.fetch = original
+  }
+})

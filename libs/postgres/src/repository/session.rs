@@ -51,6 +51,86 @@ impl SessionRepository {
 
 #[async_trait::async_trait]
 impl CoreSessionRepository for SessionRepository {
+    async fn list_owned(
+        &self,
+        user_id: u64,
+        pagination: compallm_query::Pagination,
+    ) -> Result<compallm_query::Connection<Session>, SessionRepositoryError> {
+        use crate::query::IntoSeaQuery;
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let page = Box::new(compallm_query::Query::new())
+            .plan_page(
+                Sessions::find()
+                    .filter(SessionColumn::UserId.eq(Self::id(user_id)?))
+                    .filter(SessionColumn::RevokedAt.is_null())
+                    .filter(
+                        SessionColumn::ExpiresAt
+                            .gt(Self::timestamp(compallm_utils::time::unix_timestamp())?),
+                    ),
+                pagination,
+                vec![
+                    compallm_query::OrderBy {
+                        field: "last_seen_at".into(),
+                        direction: compallm_query::OrderByDirection::DescNullsLast,
+                    },
+                    compallm_query::OrderBy {
+                        field: "id".into(),
+                        direction: compallm_query::OrderByDirection::DescNullsLast,
+                    },
+                ],
+                50,
+                &format!("sessions:{user_id}:unexpired:last-seen"),
+            )
+            .map_err(|_| SessionRepositoryError::InvalidQuery)?
+            .fetch(db)
+            .await
+            .map_err(anyhow::Error::from)?;
+        Ok(compallm_query::Connection {
+            page_info: page.page_info,
+            edges: page
+                .edges
+                .into_iter()
+                .map(|edge| {
+                    Ok(compallm_query::Edge {
+                        cursor: edge.cursor,
+                        node: crate::mappers::session::MappedSession::try_from(edge.node)?.into(),
+                    })
+                })
+                .collect::<Result<_, SessionRepositoryError>>()?,
+        })
+    }
+
+    async fn revoke_owned(
+        &self,
+        user_id: u64,
+        current_session_id: u64,
+        target_id: Option<u64>,
+    ) -> Result<u64, SessionRepositoryError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let mut update = Sessions::update_many()
+            .filter(SessionColumn::UserId.eq(Self::id(user_id)?))
+            .filter(SessionColumn::Id.ne(Self::id(current_session_id)?))
+            .filter(SessionColumn::RevokedAt.is_null())
+            .filter(
+                SessionColumn::ExpiresAt
+                    .gt(Self::timestamp(compallm_utils::time::unix_timestamp())?),
+            )
+            .col_expr(
+                SessionColumn::RevokedAt,
+                Expr::value(Self::timestamp(compallm_utils::time::unix_timestamp())?),
+            );
+        if let Some(id) = target_id {
+            update = update.filter(SessionColumn::Id.eq(Self::id(id)?));
+        }
+        Ok(update
+            .exec(db)
+            .await
+            .map_err(anyhow::Error::from)?
+            .rows_affected)
+    }
+
     async fn authorization_version(
         &self,
         session: &Session,
@@ -64,6 +144,10 @@ impl CoreSessionRepository for SessionRepository {
             .filter(SessionColumn::UserId.eq(Self::id(session.user_id)?))
             .filter(SessionColumn::Id.eq(Self::id(session.id)?))
             .filter(SessionColumn::RevokedAt.is_null())
+            .filter(
+                SessionColumn::ExpiresAt
+                    .gt(Self::timestamp(compallm_utils::time::unix_timestamp())?),
+            )
             .into_tuple::<i64>()
             .one(db)
             .await
@@ -163,7 +247,11 @@ impl CoreSessionRepository for SessionRepository {
             .filter(SessionColumn::OrganizationId.eq(Self::id(session.organization_id)?))
             .filter(SessionColumn::UserId.eq(Self::id(session.user_id)?))
             .filter(SessionColumn::Id.eq(Self::id(session.id)?))
-            .filter(SessionColumn::RevokedAt.is_null());
+            .filter(SessionColumn::RevokedAt.is_null())
+            .filter(
+                SessionColumn::ExpiresAt
+                    .gt(Self::timestamp(compallm_utils::time::unix_timestamp())?),
+            );
         QueryTrait::query(&mut query).join_lateral(
             JoinType::LeftJoin,
             direct.into_query(),
@@ -218,6 +306,10 @@ impl CoreSessionRepository for SessionRepository {
             .filter(SessionColumn::OrganizationId.eq(organization_id))
             .filter(SessionColumn::UserId.is_in(user_ids))
             .filter(SessionColumn::RevokedAt.is_null())
+            .filter(
+                SessionColumn::ExpiresAt
+                    .gt(Self::timestamp(compallm_utils::time::unix_timestamp())?),
+            )
             .exec(db)
             .await
             .map_err(anyhow::Error::from)?
@@ -228,6 +320,8 @@ impl CoreSessionRepository for SessionRepository {
         let context = DbContext::current()?;
         let db = PostgresConnection::from_context(&context)?;
         let model = SessionActiveModel {
+            expires_at: Set(Self::timestamp(session.expires_at)?),
+            last_seen_at: Set(Self::timestamp(session.last_seen_at)?),
             ip_address: Set(session.metadata.ip_address.map(|ip| ip.to_string())),
             user_agent: Set(session.metadata.user_agent.clone()),
             id: Set(Self::id(session.id)?),
@@ -289,6 +383,27 @@ impl CoreSessionRepository for SessionRepository {
                 Expr::value(Self::id(session.organization_id)?),
             );
         }
+        if session.expires_at != previous.expires_at
+            || session.last_seen_at != previous.last_seen_at
+        {
+            update = update
+                .col_expr(
+                    SessionColumn::ExpiresAt,
+                    sea_orm::sea_query::Func::greatest([
+                        Expr::col(SessionColumn::ExpiresAt),
+                        Expr::value(Self::timestamp(session.expires_at)?),
+                    ])
+                    .into(),
+                )
+                .col_expr(
+                    SessionColumn::LastSeenAt,
+                    sea_orm::sea_query::Func::greatest([
+                        Expr::col(SessionColumn::LastSeenAt),
+                        Expr::value(Self::timestamp(session.last_seen_at)?),
+                    ])
+                    .into(),
+                );
+        }
         // Setting the existing value also gives no-op updates a real row check.
         update = update.col_expr(
             SessionColumn::RevokedAt,
@@ -296,7 +411,10 @@ impl CoreSessionRepository for SessionRepository {
         );
         update = match previous.revoked_at {
             Some(at) => update.filter(SessionColumn::RevokedAt.eq(Self::timestamp(at)?)),
-            None => update.filter(SessionColumn::RevokedAt.is_null()),
+            None => update.filter(SessionColumn::RevokedAt.is_null()).filter(
+                SessionColumn::ExpiresAt
+                    .gt(Self::timestamp(compallm_utils::time::unix_timestamp())?),
+            ),
         };
         Ok(update
             .exec(db)

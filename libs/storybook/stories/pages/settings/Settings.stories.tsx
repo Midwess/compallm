@@ -227,19 +227,35 @@ export const SessionIpFallback: Story = {
     />
   ),
 }
+export const SessionsLoading: Story = { render: () => <Demo page="access" initial={{ sessionsLoading: true }} /> }
+export const SessionsLoadFailure: Story = { render: () => <Demo page="access" initial={{ sessionsError: true }} /> }
 export const SessionsReference: Story = {
   render: () => (
     <Demo
       page="security"
       session={{
         ipAddress: '203.0.113.42',
+        signedInAt: '1794000000',
+        lastSeenAt: '1794877200',
         userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36',
       }}
       initial={{
         sessionLocation: { sessionId: 'session', ipAddress: '203.0.113.42', location: 'Ho Chi Minh City, 61, VN' },
         otherSessions: [
-          { id: 'arc', browser: 'Arc on macOS', location: 'Quận Mười, 61, VN', lastSeen: 'about 18 hours ago' },
-          { id: 'brave', browser: 'Brave on macOS', location: 'Quận Mười, 61, VN', lastSeen: '4 days ago' },
+          {
+            id: 'arc',
+            browser: 'Arc on macOS',
+            location: 'Quận Mười, 61, VN',
+            lastSeenAt: '1794812400',
+            signedInAt: '1794000000',
+          },
+          {
+            id: 'brave',
+            browser: 'Brave on macOS',
+            location: 'Quận Mười, 61, VN',
+            lastSeenAt: '1794531600',
+            signedInAt: '1793000000',
+          },
         ],
       }}
     />
@@ -684,4 +700,51 @@ export const MembersRoleUpdates: Story = {
       }}
     />
   ),
+}
+
+export const SessionsMinimalMobile: Story = {
+  ...SessionsReference,
+  parameters: { viewport: { options: { sessionMobile: { name: 'Mobile', styles: { width: '390px', height: '844px' } } } } },
+  globals: { viewport: { value: 'sessionMobile', isRotated: false } },
+}
+
+export const SessionsMinimalLight: Story = {
+  ...SessionsReference,
+  globals: { theme: 'BASIC_WHITE' },
+}
+
+export const SessionsRecentActivity: Story = {
+  render: () => {
+    const now = Math.floor(Date.now() / 1000)
+    return (
+      <Demo
+        page="access"
+        session={{
+          ipAddress: '203.0.113.42',
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36',
+          signedInAt: String(now - 7200),
+          lastSeenAt: String(now - 60),
+        }}
+        initial={{
+          otherSessions: [
+            {
+              id: 'recent',
+              browser: 'Firefox on macOS',
+              location: 'Ho Chi Minh City, VN',
+              lastSeenAt: String(now - 3600),
+              signedInAt: String(now - 86400 * 3),
+            },
+            {
+              id: 'older',
+              browser: 'Safari on iOS',
+              location: null,
+              ipAddress: '203.0.113.43',
+              lastSeenAt: String(now - 86400),
+              signedInAt: String(now - 86400 * 7),
+            },
+          ],
+        }}
+      />
+    )
+  },
 }

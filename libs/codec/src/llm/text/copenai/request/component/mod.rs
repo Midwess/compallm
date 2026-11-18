@@ -160,7 +160,11 @@ impl ComponentDeserializeHelper for CompatibleOpenAIRequestComponent {}
 impl CompatibleOpenAIRequestComponent {
     pub fn parse(json: &[u8]) -> Result<Self, DecoderError> {
         let component: Self = serde_json::from_slice(json).map_err(|_| Self::invalid())?;
-        match &component {
+        component.validate()
+    }
+
+    pub(super) fn validate(self) -> Result<Self, DecoderError> {
+        match &self {
             Self::Model(model) if model.is_empty() => return Err(Self::invalid()),
             Self::MaxCompletionTokens(0) => return Err(Self::invalid()),
             Self::TopP(p) if !p.is_finite() || !(0.0..=1.0).contains(p) => {
@@ -168,7 +172,7 @@ impl CompatibleOpenAIRequestComponent {
             }
             _ => {}
         }
-        Ok(component)
+        Ok(self)
     }
 }
 

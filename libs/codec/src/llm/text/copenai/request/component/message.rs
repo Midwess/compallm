@@ -44,13 +44,57 @@ pub(super) struct MessageFields {
     reasoning_details: Option<Vec<Decoded<ReasoningDetail>>>,
 }
 
-#[derive(Deserialize)]
-#[serde(untagged)]
 pub(super) enum ContentFields {
     Null,
     Text(String),
-    Object(#[serde(with = "ObjectFields")] ObjectMessage),
+    Object(ObjectMessage),
     Array(Vec<Decoded<ObjectMessage>>),
+}
+
+impl<'de> Deserialize<'de> for ContentFields {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct ContentVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for ContentVisitor {
+            type Value = ContentFields;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                formatter.write_str("null, text, a content object, or an array")
+            }
+
+            fn visit_unit<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+                Ok(ContentFields::Null)
+            }
+
+            fn visit_str<E: serde::de::Error>(self, text: &str) -> Result<Self::Value, E> {
+                Ok(ContentFields::Text(text.to_owned()))
+            }
+
+            fn visit_string<E: serde::de::Error>(self, text: String) -> Result<Self::Value, E> {
+                Ok(ContentFields::Text(text))
+            }
+
+            fn visit_map<A: serde::de::MapAccess<'de>>(
+                self,
+                map: A,
+            ) -> Result<Self::Value, A::Error> {
+                ObjectFields::deserialize(serde::de::value::MapAccessDeserializer::new(map))
+                    .map(ContentFields::Object)
+            }
+
+            fn visit_seq<A: serde::de::SeqAccess<'de>>(
+                self,
+                sequence: A,
+            ) -> Result<Self::Value, A::Error> {
+                Vec::<Decoded<ObjectMessage>>::deserialize(
+                    serde::de::value::SeqAccessDeserializer::new(sequence),
+                )
+                .map(ContentFields::Array)
+            }
+        }
+
+        deserializer.deserialize_any(ContentVisitor)
+    }
 }
 
 impl From<ContentFields> for Content {

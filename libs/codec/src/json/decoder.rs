@@ -2,11 +2,55 @@ use super::state::JsonState;
 use super::{JsonDecodeError, JsonToken};
 use crate::decoder::{Decoder, DecoderStatus};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct JsonDecoder {
     state: JsonState,
     bytes: Vec<u8>,
     decoded: String,
+    object: Vec<u8>,
+    nesting: Vec<u8>,
+    quoted: bool,
+    escaped: bool,
+    object_active: bool,
+    object_string: bool,
+    object_container: bool,
+    member_phase: MemberPhase,
+    expand_member: bool,
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+enum MemberPhase {
+    #[default]
+    Start,
+    KeyOrEnd,
+    Key,
+    Colon,
+    Value,
+    Array,
+    Element,
+    ElementValue,
+    ElementEnd,
+    End,
+    Closed,
+}
+
+impl Default for JsonDecoder {
+    fn default() -> Self {
+        Self {
+            state: JsonState::default(),
+            bytes: Vec::new(),
+            decoded: String::new(),
+            object: Vec::with_capacity(64),
+            nesting: Vec::new(),
+            quoted: false,
+            escaped: false,
+            object_active: false,
+            object_string: false,
+            object_container: false,
+            member_phase: MemberPhase::default(),
+            expand_member: false,
+        }
+    }
 }
 
 impl Decoder for JsonDecoder {
@@ -18,7 +62,7 @@ impl Decoder for JsonDecoder {
         input: &mut &'input [u8],
         eof: bool,
     ) -> Result<DecoderStatus<Self::Component<'a>>, Self::Error> {
-        if matches!(self.state, JsonState::Failed | JsonState::Finished) {
+        if self.object_active || matches!(self.state, JsonState::Failed | JsonState::Finished) {
             return Err(JsonDecodeError::InvalidState);
         }
         if matches!(self.state, JsonState::Idle) {
@@ -139,6 +183,9 @@ impl Decoder for JsonDecoder {
     }
 
     fn finish(self) -> Result<(), Self::Error> {
+        if self.object_active {
+            return Err(JsonDecodeError::IncompleteToken);
+        }
         match self.state {
             JsonState::Idle | JsonState::Finished => Ok(()),
             JsonState::Scalar | JsonState::String { .. } => Err(JsonDecodeError::IncompleteToken),
@@ -148,6 +195,228 @@ impl Decoder for JsonDecoder {
 }
 
 impl JsonDecoder {
+    pub fn next_member<'a, 'input: 'a>(
+        &'a mut self,
+        input: &mut &'input [u8],
+        eof: bool,
+        select: impl FnMut(&str) -> Result<bool, JsonDecodeError>,
+    ) -> Result<DecoderStatus<&'a [u8]>, JsonDecodeError> {
+        let result = self.collect_member(input, eof, select);
+        match result {
+            Ok(DecoderStatus::Component(value)) => {
+                Ok(DecoderStatus::Component(value.unwrap_or(&self.object)))
+            }
+            Ok(DecoderStatus::NeedInput) => Ok(DecoderStatus::NeedInput),
+            Ok(DecoderStatus::Finished) => Ok(DecoderStatus::Finished),
+            Err(error) => {
+                self.state = JsonState::Failed;
+                Err(error)
+            }
+        }
+    }
+
+    fn collect_member<'input>(
+        &mut self,
+        input: &mut &'input [u8],
+        eof: bool,
+        mut select: impl FnMut(&str) -> Result<bool, JsonDecodeError>,
+    ) -> Result<DecoderStatus<Option<&'input [u8]>>, JsonDecodeError> {
+        use JsonToken as T;
+        use MemberPhase as P;
+        loop {
+            if matches!(self.member_phase, P::Array | P::Element) {
+                while input
+                    .first()
+                    .is_some_and(|b| matches!(b, b' ' | b'\t' | b'\n' | b'\r'))
+                {
+                    *input = &input[1..];
+                }
+                match input.first() {
+                    Some(b']') if matches!(self.member_phase, P::Array) => {}
+                    Some(_) => self.member_phase = P::ElementValue,
+                    None if eof => return Err(JsonDecodeError::IncompleteToken),
+                    None => return Ok(DecoderStatus::NeedInput),
+                }
+            }
+            if matches!(self.member_phase, P::ElementValue)
+                || (matches!(self.member_phase, P::Value) && !self.expand_member)
+            {
+                match self.collect_object(input, eof)? {
+                    DecoderStatus::Component(value) => {
+                        self.member_phase = if matches!(self.member_phase, P::ElementValue) {
+                            P::ElementEnd
+                        } else {
+                            P::End
+                        };
+                        return Ok(DecoderStatus::Component(value));
+                    }
+                    DecoderStatus::NeedInput => return Ok(DecoderStatus::NeedInput),
+                    DecoderStatus::Finished => return Err(JsonDecodeError::IncompleteToken),
+                }
+            }
+            let phase = self.member_phase;
+            let expand = self.expand_member;
+            let token = match self.next(input, eof)? {
+                DecoderStatus::Component(token) => token,
+                DecoderStatus::NeedInput => return Ok(DecoderStatus::NeedInput),
+                DecoderStatus::Finished if matches!(phase, P::Closed) => {
+                    return Ok(DecoderStatus::Finished);
+                }
+                DecoderStatus::Finished => return Err(JsonDecodeError::IncompleteToken),
+            };
+            match (phase, token) {
+                (P::Start, T::ObjectStart) => self.member_phase = P::KeyOrEnd,
+                (P::KeyOrEnd | P::Key, T::String(key)) => {
+                    self.expand_member = select(key)?;
+                    self.member_phase = P::Colon;
+                }
+                (P::Colon, T::Colon) => self.member_phase = P::Value,
+                (P::Value, T::ArrayStart) if expand => self.member_phase = P::Array,
+                (P::Array | P::ElementEnd, T::ArrayEnd) => self.member_phase = P::End,
+                (P::ElementEnd, T::Comma) => self.member_phase = P::Element,
+                (P::End, T::Comma) => self.member_phase = P::Key,
+                (P::KeyOrEnd | P::End, T::ObjectEnd) => self.member_phase = P::Closed,
+                _ => return Err(JsonDecodeError::InvalidToken),
+            }
+        }
+    }
+
+    fn collect_object<'input>(
+        &mut self,
+        input: &mut &'input [u8],
+        eof: bool,
+    ) -> Result<DecoderStatus<Option<&'input [u8]>>, JsonDecodeError> {
+        if !self.object_active {
+            while input.first().is_some_and(u8::is_ascii_whitespace) {
+                *input = &input[1..];
+            }
+            let Some(&first) = input.first() else {
+                return if eof {
+                    Err(JsonDecodeError::IncompleteToken)
+                } else {
+                    Ok(DecoderStatus::NeedInput)
+                };
+            };
+            if !matches!(
+                first,
+                b'{' | b'[' | b'"' | b'-' | b'0'..=b'9' | b't' | b'f' | b'n'
+            ) {
+                return Err(JsonDecodeError::InvalidToken);
+            }
+            if matches!(first, b'"' | b'{' | b'[') {
+                let source = *input;
+                let mut values = serde_json::Deserializer::from_slice(source)
+                    .into_iter::<&serde_json::value::RawValue>();
+                if let Some(Ok(value)) = values.next() {
+                    let bytes = value.get().as_bytes();
+                    Self::validate_depth(bytes)?;
+                    *input = &source[values.byte_offset()..];
+                    return Ok(DecoderStatus::Component(Some(bytes)));
+                }
+            }
+            self.object.clear();
+            self.nesting.clear();
+            self.quoted = false;
+            self.escaped = false;
+            self.object_string = first == b'"';
+            self.object_container = matches!(first, b'{' | b'[');
+            self.object_active = true;
+        }
+        while let Some(&byte) = input.first() {
+            if !self.object_container
+                && !self.object_string
+                && (byte.is_ascii_whitespace()
+                    || matches!(byte, b',' | b']' | b'}' | b':' | b'[' | b'{' | b'"'))
+            {
+                return self.complete_object();
+            }
+            *input = &input[1..];
+            self.object.push(byte);
+            if self.quoted {
+                if self.escaped {
+                    self.escaped = false;
+                } else if byte == b'\\' {
+                    self.escaped = true;
+                } else if byte == b'"' {
+                    self.quoted = false;
+                    if self.object_string {
+                        return self.complete_object();
+                    }
+                }
+            } else {
+                match byte {
+                    b'"' => self.quoted = true,
+                    b'{' | b'[' => {
+                        if self.nesting.len() >= 64 {
+                            return Err(JsonDecodeError::InvalidToken);
+                        }
+                        self.nesting.push(byte);
+                    }
+                    b'}' | b']' => {
+                        let expected = if byte == b'}' { b'{' } else { b'[' };
+                        if self.nesting.pop() != Some(expected) {
+                            return Err(JsonDecodeError::InvalidToken);
+                        }
+                        if self.nesting.is_empty() {
+                            return self.complete_object();
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        if eof {
+            if self.object_container || self.quoted {
+                return Err(JsonDecodeError::IncompleteToken);
+            }
+            self.complete_object()
+        } else {
+            Ok(DecoderStatus::NeedInput)
+        }
+    }
+
+    fn complete_object<'input>(
+        &mut self,
+    ) -> Result<DecoderStatus<Option<&'input [u8]>>, JsonDecodeError> {
+        let mut deserializer = serde_json::Deserializer::from_slice(&self.object);
+        serde::Deserialize::deserialize(&mut deserializer)
+            .map(|_: serde::de::IgnoredAny| ())
+            .map_err(|_| JsonDecodeError::InvalidToken)?;
+        deserializer
+            .end()
+            .map_err(|_| JsonDecodeError::InvalidToken)?;
+        self.object_active = false;
+        Ok(DecoderStatus::Component(None))
+    }
+
+    fn validate_depth(bytes: &[u8]) -> Result<(), JsonDecodeError> {
+        let (mut depth, mut quoted, mut escaped) = (0_u8, false, false);
+        for &byte in bytes {
+            if quoted {
+                if escaped {
+                    escaped = false;
+                } else if byte == b'\\' {
+                    escaped = true;
+                } else if byte == b'"' {
+                    quoted = false;
+                }
+            } else {
+                match byte {
+                    b'"' => quoted = true,
+                    b'{' | b'[' => {
+                        if depth == 64 {
+                            return Err(JsonDecodeError::InvalidToken);
+                        }
+                        depth += 1;
+                    }
+                    b'}' | b']' => depth -= 1,
+                    _ => {}
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn new() -> Self {
         Self::default()
     }

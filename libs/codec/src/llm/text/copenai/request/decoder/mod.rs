@@ -1,21 +1,44 @@
-mod state;
-
+use super::component::CompatibleOpenAIRequestComponent as Component;
 use crate::decoder::{Decoder, DecoderError, DecoderStatus};
-use crate::json::JsonDecoder;
+use crate::json::{JsonDecodeError, JsonDecoder};
 use crate::llm::text::component::TextRequestComponent;
-use state::RequestState;
+use serde::Deserialize;
+
+const FIELDS: &[&str] = &[
+    "model",
+    "messages",
+    "tools",
+    "tool_choice",
+    "parallel_tool_calls",
+    "max_completion_tokens",
+    "top_p",
+    "top_k",
+    "stop",
+    "response_format",
+    "provider",
+    "stream",
+    "stream_options",
+];
 
 #[derive(Debug)]
 pub struct CompatibleOpenAIRequestDecoder {
     json: JsonDecoder,
-    state: RequestState,
+    fields: u16,
+    field: &'static str,
+    has_message: bool,
+    finished: bool,
+    failed: bool,
 }
 
 impl CompatibleOpenAIRequestDecoder {
     pub fn new(json: JsonDecoder) -> Self {
         Self {
             json,
-            state: RequestState::default(),
+            fields: 0,
+            field: "",
+            has_message: false,
+            finished: false,
+            failed: false,
         }
     }
 }
@@ -29,33 +52,89 @@ impl Decoder for CompatibleOpenAIRequestDecoder {
         input: &mut &'input [u8],
         eof: bool,
     ) -> Result<DecoderStatus<Self::Component<'a>>, Self::Error> {
-        self.state.ensure_active()?;
+        if self.failed || self.finished {
+            return Err(DecoderError::InvalidState);
+        }
         let result = (|| loop {
-            match self
-                .json
-                .next(input, eof)
-                .map_err(|_| RequestState::invalid())?
-            {
-                DecoderStatus::Component(token) => {
-                    if let Some(component) = self.state.accept(token)? {
-                        return Ok(DecoderStatus::Component(component));
+            let mut selection_error = None;
+            let status = self.json.next_member(input, eof, |key| {
+                let key = if key == "max_tokens" {
+                    "max_completion_tokens"
+                } else {
+                    key
+                };
+                let result = FIELDS
+                    .iter()
+                    .position(|field| *field == key)
+                    .ok_or(DecoderError::Unsupported("request field"))
+                    .and_then(|index| {
+                        let bit = 1_u16 << index;
+                        if self.fields & bit != 0 {
+                            return Err(DecoderError::InvalidInput("duplicate request field"));
+                        }
+                        self.fields |= bit;
+                        let field = FIELDS[index];
+                        self.field = if field == "messages" {
+                            "message"
+                        } else {
+                            field
+                        };
+                        Ok(field == "messages")
+                    });
+                result.map_err(|error| {
+                    selection_error = Some(error);
+                    JsonDecodeError::InvalidToken
+                })
+            });
+            let status = status.map_err(|_| {
+                selection_error.unwrap_or(DecoderError::InvalidInput("invalid request JSON"))
+            })?;
+            match status {
+                DecoderStatus::Component(value) => {
+                    if self.field == "top_p" && value == b"null" {
+                        continue;
                     }
+                    let value: &serde_json::value::RawValue = serde_json::from_slice(value)
+                        .map_err(|_| DecoderError::InvalidInput("invalid request value"))?;
+                    let deserializer =
+                        serde::de::value::MapDeserializer::<_, serde_json::Error>::new(
+                            std::iter::once((self.field, value)),
+                        );
+                    let component = Component::deserialize(
+                        serde::de::value::MapAccessDeserializer::new(deserializer),
+                    )
+                    .map_err(|_| DecoderError::InvalidInput("invalid request component"))?
+                    .validate()?;
+                    self.has_message |= matches!(component, Component::Message(_));
+                    return Ok(DecoderStatus::Component(component.into()));
                 }
                 DecoderStatus::NeedInput => return Ok(DecoderStatus::NeedInput),
                 DecoderStatus::Finished => {
-                    self.state.finish()?;
+                    if self.fields & 3 != 3 || !self.has_message {
+                        return Err(DecoderError::InvalidInput(
+                            "model and messages are required",
+                        ));
+                    }
+                    self.finished = true;
                     return Ok(DecoderStatus::Finished);
                 }
             }
         })();
         if result.is_err() {
-            self.state.fail();
+            self.failed = true;
         }
         result
     }
 
     fn finish(self) -> Result<(), Self::Error> {
-        self.state.ensure_complete()?;
-        self.json.finish().map_err(|_| RequestState::invalid())
+        if self.failed {
+            return Err(DecoderError::InvalidState);
+        }
+        if !self.finished {
+            return Err(DecoderError::IncompleteInput);
+        }
+        self.json
+            .finish()
+            .map_err(|_| DecoderError::IncompleteInput)
     }
 }

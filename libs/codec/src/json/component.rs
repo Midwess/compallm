@@ -1,25 +1,13 @@
 #[derive(Debug, PartialEq)]
 pub enum JsonToken<'a> {
-    /// Opens a JSON object: `{`.
-    ObjectStart,
-    /// Closes a JSON object: `}`.
+    ValueObject(Option<&'a str>),
     ObjectEnd,
-    /// Opens a JSON array: `[`.
-    ArrayStart,
-    /// Closes a JSON array: `]`.
+    ValueArray(Option<&'a str>),
     ArrayEnd,
-    /// Separates an object key from its value: `:`.
-    Colon,
-    /// Separates object members or array elements: `,`.
-    Comma,
-    /// Decoded string content, borrowed from input or decoder scratch; also used for object keys.
-    String(&'a str),
-    /// Validated JSON number text, borrowed without conversion to a numeric type.
-    Number(&'a str),
-    /// A JSON `true` or `false` value.
-    Boolean(bool),
-    /// A JSON `null` value.
-    Null,
+    ValueString(Option<&'a str>, &'a str),
+    ValueNumber(Option<&'a str>, &'a str),
+    ValueBoolean(Option<&'a str>, bool),
+    ValueNull(Option<&'a str>),
 }
 
 #[derive(Debug, PartialEq)]

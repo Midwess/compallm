@@ -1,4 +1,5 @@
 mod message;
+pub(super) use message::MessageFields;
 mod provider;
 mod response_format;
 mod stop;
@@ -11,11 +12,12 @@ use crate::llm::text::component::{
     Content, Message, Provider, ResponseFormat, Stop, StreamOptions, TextRequestComponent,
     ToolChoice, ToolDefinition,
 };
-use message::{ContentFields, MessageFields};
+use message::ContentFields;
 use serde::Deserialize;
 use serde_json::value::RawValue;
 
-struct Decoded<T>(T);
+#[derive(Debug)]
+pub(super) struct Decoded<T>(T);
 
 impl<'de> Deserialize<'de> for Decoded<StreamOptions> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {

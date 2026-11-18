@@ -27,21 +27,21 @@ impl<'de> Deserialize<'de> for Decoded<ReasoningDetail> {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct MessageFields {
+pub(in super::super) struct MessageFields {
     #[serde(with = "RoleFields")]
-    role: Role,
+    pub(in super::super) role: Role,
     #[serde(
         default,
         deserialize_with = "CompatibleOpenAIRequestComponent::content"
     )]
-    content: Option<Content>,
-    tool_calls: Option<Vec<Decoded<ToolCall>>>,
-    tool_call_id: Option<String>,
-    reasoning: Option<String>,
-    reasoning_content: Option<String>,
-    reasoning_details: Option<Vec<Decoded<ReasoningDetail>>>,
+    pub(in super::super) content: Option<Content>,
+    pub(in super::super) tool_calls: Option<Vec<Decoded<ToolCall>>>,
+    pub(in super::super) tool_call_id: Option<String>,
+    pub(in super::super) reasoning: Option<String>,
+    pub(in super::super) reasoning_content: Option<String>,
+    pub(in super::super) reasoning_details: Option<Vec<Decoded<ReasoningDetail>>>,
 }
 
 pub(super) enum ContentFields {

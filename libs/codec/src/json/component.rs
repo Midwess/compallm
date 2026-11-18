@@ -5,7 +5,7 @@ pub enum JsonToken<'a> {
     ValueArray(Option<&'a str>),
     ArrayEnd,
     ValueString(Option<&'a str>, &'a str),
-    ValueNumber(Option<&'a str>, &'a str),
+    ValueNumber(Option<&'a str>, serde_json::Number),
     ValueBoolean(Option<&'a str>, bool),
     ValueNull(Option<&'a str>),
 }

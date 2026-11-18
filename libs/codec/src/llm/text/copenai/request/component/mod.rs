@@ -17,7 +17,7 @@ use serde::Deserialize;
 use serde_json::value::RawValue;
 
 #[derive(Debug)]
-pub(super) struct Decoded<T>(T);
+pub(super) struct Decoded<T>(pub(super) T);
 
 impl<'de> Deserialize<'de> for Decoded<StreamOptions> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {

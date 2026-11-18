@@ -3,11 +3,10 @@ use super::token::{JsonToken, TokenDecoder};
 use super::{JsonDecodeError, JsonToken as Event};
 use crate::decoder::{Decoder, DecoderStatus};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct JsonDecoder {
     tokens: TokenDecoder,
     grammar: Grammar,
-    key: String,
     failed: bool,
 }
 
@@ -15,17 +14,6 @@ enum Prepared {
     Value,
     ObjectEnd,
     ArrayEnd,
-}
-
-impl Default for JsonDecoder {
-    fn default() -> Self {
-        Self {
-            tokens: TokenDecoder::default(),
-            grammar: Grammar::default(),
-            key: String::with_capacity(64),
-            failed: false,
-        }
-    }
 }
 
 impl JsonDecoder {
@@ -56,10 +44,6 @@ impl JsonDecoder {
             };
             self.grammar.accept(&token)?;
             match token {
-                JsonToken::String(key) => {
-                    self.key.clear();
-                    self.key.push_str(key);
-                }
                 JsonToken::ObjectEnd => return Ok(DecoderStatus::Component(Prepared::ObjectEnd)),
                 JsonToken::ArrayEnd => return Ok(DecoderStatus::Component(Prepared::ArrayEnd)),
                 _ => {}
@@ -95,21 +79,18 @@ impl Decoder for JsonDecoder {
                 return Err(error);
             }
         }
-        let key = if self.grammar.depth > 0
+        let has_key = self.grammar.depth > 0
             && matches!(
                 self.grammar.stack[self.grammar.depth - 1],
                 Position::ObjectValue
-            ) {
-            Some(self.key.as_str())
-        } else {
-            None
-        };
+            );
         match self.tokens.next(input, eof) {
             Ok(DecoderStatus::Component(token)) => {
                 if let Err(error) = self.grammar.accept(&token) {
                     self.failed = true;
                     return Err(error);
                 }
+                let key = if has_key { self.grammar.key() } else { None };
                 let event = match token {
                     JsonToken::String(value) => Event::ValueString(key, value),
                     JsonToken::Number(value) => Event::ValueNumber(key, value),

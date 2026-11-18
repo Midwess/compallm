@@ -1,4 +1,7 @@
-use super::super::component::{CompatibleOpenAIRequestComponent, MessageFields};
+use super::super::component::{CompatibleOpenAIRequestComponent, Decoded, MessageFields};
+use super::content::ContentState;
+use super::reasoning::ReasoningState;
+use super::tool_calls::ToolCallsState;
 use crate::decoder::DecoderError;
 use crate::json::JsonToken;
 use crate::llm::text::component::{Content, Message, Role};
@@ -6,8 +9,8 @@ use crate::llm::text::component::{Content, Message, Role};
 #[derive(Debug, Default)]
 pub(super) struct MessageState {
     pub(super) active: bool,
-    current: Option<MessageDraft>,
     has_message: bool,
+    current: Option<MessageDraft>,
 }
 
 impl MessageState {
@@ -23,17 +26,14 @@ impl MessageState {
             self.has_message = false;
             return Ok(None);
         }
-        if self.current.is_some() {
-            if matches!(token, JsonToken::ObjectEnd) {
-                let message = self.current.take().ok_or(DecoderError::InvalidState)?;
-                let component = CompatibleOpenAIRequestComponent::try_from(message)?;
+        if let Some(draft) = &mut self.current {
+            if matches!(token, JsonToken::ObjectEnd) && !draft.nested() {
+                let draft = self.current.take().ok_or(DecoderError::InvalidState)?;
+                let component = CompatibleOpenAIRequestComponent::try_from(draft)?;
                 self.has_message = true;
                 return Ok(Some(component));
             }
-            self.current
-                .as_mut()
-                .ok_or(DecoderError::InvalidState)?
-                .proceed(token)?;
+            draft.proceed(token)?;
             return Ok(None);
         }
         match token {
@@ -61,6 +61,9 @@ struct MessageDraft {
     has_tool_call_id: bool,
     has_reasoning: bool,
     has_reasoning_content: bool,
+    content: ContentState,
+    tool_calls: ToolCallsState,
+    reasoning_details: ReasoningState,
 }
 
 impl Default for MessageDraft {
@@ -80,13 +83,59 @@ impl Default for MessageDraft {
             has_tool_call_id: false,
             has_reasoning: false,
             has_reasoning_content: false,
+            content: ContentState::default(),
+            tool_calls: ToolCallsState::default(),
+            reasoning_details: ReasoningState::default(),
         }
     }
 }
 
 impl MessageDraft {
+    fn nested(&self) -> bool {
+        self.content.active || self.tool_calls.active || self.reasoning_details.active
+    }
+
     fn proceed(&mut self, token: JsonToken<'_>) -> Result<(), DecoderError> {
+        if self.tool_calls.active {
+            if let Some(calls) = self.tool_calls.proceed(token)? {
+                self.fields.tool_calls = Some(calls.into_iter().map(Decoded).collect());
+            }
+            return Ok(());
+        }
+        if self.reasoning_details.active {
+            if let Some(details) = self.reasoning_details.proceed(token)? {
+                self.fields.reasoning_details = Some(details.into_iter().map(Decoded).collect());
+            }
+            return Ok(());
+        }
+        if self.content.active {
+            if let Some(content) = self
+                .content
+                .proceed(token)
+                .map_err(|_| DecoderError::InvalidInput("invalid message content"))?
+            {
+                self.fields.content = Some(content);
+            }
+            return Ok(());
+        }
         match token {
+            token @ JsonToken::ValueArray(Some("tool_calls")) => {
+                self.tool_calls.proceed(token)?;
+            }
+            token @ JsonToken::ValueArray(Some("reasoning_details")) => {
+                self.reasoning_details.proceed(token)?;
+            }
+            JsonToken::ValueNull(Some("tool_calls" | "reasoning_details")) => {}
+            token @ (JsonToken::ValueObject(Some("content"))
+            | JsonToken::ValueArray(Some("content"))) => {
+                if self.has_content {
+                    return Err(DecoderError::InvalidInput("duplicate message content"));
+                }
+                self.has_content = true;
+                self.content
+                    .proceed(token)
+                    .map_err(|_| DecoderError::InvalidInput("invalid message content"))?;
+            }
             JsonToken::ValueString(Some("role"), role) => {
                 if self.has_role {
                     return Err(DecoderError::InvalidInput("duplicate message field"));

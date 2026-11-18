@@ -11,7 +11,7 @@ pub(super) enum JsonToken<'a> {
     Colon,
     Comma,
     String(&'a str),
-    Number(&'a str),
+    Number(serde_json::Number),
     Boolean(bool),
     Null,
 }
@@ -184,13 +184,9 @@ impl TokenDecoder {
             b"true" => Ok(JsonToken::Boolean(true)),
             b"false" => Ok(JsonToken::Boolean(false)),
             b"null" => Ok(JsonToken::Null),
-            _ => {
-                serde_json::from_slice::<serde_json::Number>(bytes)
-                    .map_err(|_| JsonDecodeError::InvalidToken)?;
-                Ok(JsonToken::Number(
-                    std::str::from_utf8(bytes).map_err(|_| JsonDecodeError::InvalidToken)?,
-                ))
-            }
+            _ => serde_json::from_slice::<serde_json::Number>(bytes)
+                .map(JsonToken::Number)
+                .map_err(|_| JsonDecodeError::InvalidToken),
         }
     }
 }

@@ -60,7 +60,7 @@ impl CompatibleOpenAIRequestDecoder {
         }
     }
 
-    fn proceed(
+    fn proceed_token(
         &mut self,
         token: JsonToken<'_>,
     ) -> Result<Option<CompatibleOpenAIRequestComponent>, DecoderError> {
@@ -219,7 +219,7 @@ impl Decoder for CompatibleOpenAIRequestDecoder {
         let mut json = self.json.take().ok_or(DecoderError::InvalidState)?;
         let result = loop {
             match json.next(input, eof) {
-                Ok(DecoderStatus::Component(token)) => match self.proceed(token) {
+                Ok(DecoderStatus::Component(token)) => match self.proceed_token(token) {
                     Ok(Some(component)) => break Ok(DecoderStatus::Component(component.into())),
                     Ok(None) => continue,
                     Err(error) => {

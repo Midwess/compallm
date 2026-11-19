@@ -6,4 +6,6 @@ pub enum JsonDecodeError {
     IncompleteToken,
     #[error("invalid JSON decoder state")]
     InvalidState,
+    #[error("JSON value deserialization failed: {0}")]
+    Deserialize(#[source] serde_json::Error),
 }

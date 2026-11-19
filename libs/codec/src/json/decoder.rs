@@ -1,10 +1,17 @@
 use super::grammar::{Grammar, Position};
+use super::state::ParseState;
 use super::token::{JsonToken, TokenDecoder};
 use super::{JsonDecodeError, JsonToken as Event};
 use crate::decoder::{Decoder, DecoderStatus};
 
 #[derive(Debug, Default)]
 pub struct JsonDecoder {
+    reader: JsonReader,
+    parse: ParseState,
+}
+
+#[derive(Debug, Default)]
+struct JsonReader {
     tokens: TokenDecoder,
     grammar: Grammar,
     failed: bool,
@@ -21,6 +28,59 @@ impl JsonDecoder {
         Self::default()
     }
 
+    pub fn parse_next<T: serde::de::DeserializeOwned>(
+        &mut self,
+        input: &mut &[u8],
+        eof: bool,
+    ) -> Result<Option<T>, JsonDecodeError> {
+        if self.reader.failed {
+            return Err(JsonDecodeError::InvalidState);
+        }
+        if !self.parse.active {
+            // Exclude parent keys and separators from the captured value.
+            match self.reader.prepare(input, eof) {
+                Ok(DecoderStatus::Component(Prepared::Value)) => self.parse.active = true,
+                Ok(DecoderStatus::NeedInput) => return Ok(None),
+                Ok(_) => {
+                    self.reader.failed = true;
+                    return Err(JsonDecodeError::InvalidState);
+                }
+                Err(error) => {
+                    self.reader.failed = true;
+                    return Err(error);
+                }
+            }
+        }
+        let source = *input;
+        loop {
+            match self.reader.next(input, eof)? {
+                DecoderStatus::Component(token) => {
+                    let complete = self
+                        .parse
+                        .push(token)
+                        .inspect_err(|_| self.reader.failed = true)?;
+                    if complete {
+                        return self
+                            .parse
+                            .deserialize(&source[..source.len() - input.len()])
+                            .map(Some)
+                            .inspect_err(|_| self.reader.failed = true);
+                    }
+                }
+                DecoderStatus::NeedInput => {
+                    self.parse.buffer(&source[..source.len() - input.len()]);
+                    return Ok(None);
+                }
+                DecoderStatus::Finished => {
+                    self.reader.failed = true;
+                    return Err(JsonDecodeError::IncompleteToken);
+                }
+            }
+        }
+    }
+}
+
+impl JsonReader {
     fn prepare(
         &mut self,
         input: &mut &[u8],
@@ -53,6 +113,32 @@ impl JsonDecoder {
 }
 
 impl Decoder for JsonDecoder {
+    type Component<'a> = Event<'a>;
+    type Error = JsonDecodeError;
+
+    fn next<'a, 'input: 'a>(
+        &'a mut self,
+        input: &mut &'input [u8],
+        eof: bool,
+    ) -> Result<DecoderStatus<Event<'a>>, JsonDecodeError> {
+        if self.parse.active {
+            return Err(JsonDecodeError::InvalidState);
+        }
+        self.reader.next(input, eof)
+    }
+
+    fn finish(self) -> Result<(), JsonDecodeError> {
+        if self.reader.failed {
+            return Err(JsonDecodeError::InvalidState);
+        }
+        if self.parse.active {
+            return Err(JsonDecodeError::IncompleteToken);
+        }
+        self.reader.finish()
+    }
+}
+
+impl Decoder for JsonReader {
     type Component<'a> = Event<'a>;
     type Error = JsonDecodeError;
 

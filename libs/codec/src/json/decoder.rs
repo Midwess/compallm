@@ -8,6 +8,7 @@ use crate::decoder::{Decoder, DecoderStatus};
 pub struct JsonDecoder {
     reader: JsonReader,
     parse: ParseState,
+    container_start: Option<bool>,
 }
 
 #[derive(Debug, Default)]
@@ -24,6 +25,32 @@ enum Prepared {
 }
 
 impl JsonDecoder {
+    pub(super) fn container_start(&self) -> Result<bool, JsonDecodeError> {
+        self.container_start.ok_or(JsonDecodeError::InvalidState)
+    }
+
+    pub(super) fn enter_value(&mut self, array: bool) -> Result<(), JsonDecodeError> {
+        self.enter_container(array)?;
+        if array {
+            self.parse.active = true;
+            self.parse.push(Event::ArrayStart(None))?;
+            self.parse.buffer(b"[");
+        }
+        Ok(())
+    }
+    pub(super) fn enter_container(&mut self, array: bool) -> Result<(), JsonDecodeError> {
+        if self.reader.failed || self.parse.active || self.container_start != Some(array) {
+            return Err(JsonDecodeError::InvalidState);
+        }
+        self.container_start = None;
+        if !array {
+            self.parse.active = true;
+            self.parse.push(Event::ObjectStart(None))?;
+            self.parse.buffer(b"{");
+        }
+        Ok(())
+    }
+
     pub fn new() -> Self {
         Self::default()
     }
@@ -32,15 +59,19 @@ impl JsonDecoder {
         &mut self,
         input: &mut &[u8],
         eof: bool,
-    ) -> Result<Option<T>, JsonDecodeError> {
+    ) -> Result<DecoderStatus<T>, JsonDecodeError> {
         if self.reader.failed {
             return Err(JsonDecodeError::InvalidState);
         }
+        self.container_start = None;
         if !self.parse.active {
             // Exclude parent keys and separators from the captured value.
             match self.reader.prepare(input, eof) {
                 Ok(DecoderStatus::Component(Prepared::Value)) => self.parse.active = true,
-                Ok(DecoderStatus::NeedInput) => return Ok(None),
+                Ok(DecoderStatus::NeedInput) => return Ok(DecoderStatus::NeedInput),
+                Ok(DecoderStatus::Component(Prepared::ArrayEnd)) => {
+                    return Ok(DecoderStatus::Finished);
+                }
                 Ok(_) => {
                     self.reader.failed = true;
                     return Err(JsonDecodeError::InvalidState);
@@ -63,13 +94,13 @@ impl JsonDecoder {
                         return self
                             .parse
                             .deserialize(&source[..source.len() - input.len()])
-                            .map(Some)
+                            .map(DecoderStatus::Component)
                             .inspect_err(|_| self.reader.failed = true);
                     }
                 }
                 DecoderStatus::NeedInput => {
                     self.parse.buffer(&source[..source.len() - input.len()]);
-                    return Ok(None);
+                    return Ok(DecoderStatus::NeedInput);
                 }
                 DecoderStatus::Finished => {
                     self.reader.failed = true;
@@ -124,7 +155,14 @@ impl Decoder for JsonDecoder {
         if self.parse.active {
             return Err(JsonDecodeError::InvalidState);
         }
-        self.reader.next(input, eof)
+        self.container_start = None;
+        let status = self.reader.next(input, eof)?;
+        self.container_start = match status {
+            DecoderStatus::Component(Event::ObjectStart(_)) => Some(false),
+            DecoderStatus::Component(Event::ArrayStart(_)) => Some(true),
+            _ => None,
+        };
+        Ok(status)
     }
 
     fn finish(self) -> Result<(), JsonDecodeError> {
@@ -182,8 +220,8 @@ impl Decoder for JsonReader {
                     JsonToken::Number(value) => Event::ValueNumber(key, value),
                     JsonToken::Boolean(value) => Event::ValueBoolean(key, value),
                     JsonToken::Null => Event::ValueNull(key),
-                    JsonToken::ObjectStart => Event::ValueObject(key),
-                    JsonToken::ArrayStart => Event::ValueArray(key),
+                    JsonToken::ObjectStart => Event::ObjectStart(key),
+                    JsonToken::ArrayStart => Event::ArrayStart(key),
                     JsonToken::ObjectEnd => Event::ObjectEnd,
                     JsonToken::ArrayEnd => Event::ArrayEnd,
                     _ => {

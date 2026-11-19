@@ -5,22 +5,32 @@ use crate::llm::text::component::{
 };
 use serde::Deserialize;
 
+impl<'de> Deserialize<'de> for Decoded<Message> {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        use serde::de::Error;
+        CompatibleOpenAIMessage::deserialize(deserializer)?
+            .try_into()
+            .map(Self)
+            .map_err(D::Error::custom)
+    }
+}
+
 impl<'de> Deserialize<'de> for Decoded<ObjectMessage> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        ObjectFields::deserialize(deserializer).map(Self)
+        CompatibleOpenAIObjectMessage::deserialize(deserializer).map(Self)
     }
 }
 
 impl<'de> Deserialize<'de> for Decoded<ToolCall> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        CallFields::deserialize(deserializer).map(Self)
+        CompatibleOpenAIToolCall::deserialize(deserializer).map(Self)
     }
 }
 
 impl<'de> Deserialize<'de> for Decoded<ReasoningDetail> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         use serde::de::Error;
-        ReasoningFields::deserialize(deserializer)?
+        CompatibleOpenAIReasoningDetail::deserialize(deserializer)?
             .try_into()
             .map(Self)
             .map_err(D::Error::custom)
@@ -29,81 +39,45 @@ impl<'de> Deserialize<'de> for Decoded<ReasoningDetail> {
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(in super::super) struct MessageFields {
-    #[serde(with = "RoleFields")]
-    pub(in super::super) role: Role,
+struct CompatibleOpenAIMessage {
+    #[serde(with = "CompatibleOpenAIRole")]
+    role: Role,
     #[serde(
         default,
         deserialize_with = "CompatibleOpenAIRequestComponent::content"
     )]
-    pub(in super::super) content: Option<Content>,
-    pub(in super::super) tool_calls: Option<Vec<Decoded<ToolCall>>>,
-    pub(in super::super) tool_call_id: Option<String>,
-    pub(in super::super) reasoning: Option<String>,
-    pub(in super::super) reasoning_content: Option<String>,
-    pub(in super::super) reasoning_details: Option<Vec<Decoded<ReasoningDetail>>>,
+    content: Option<Content>,
+    #[serde(
+        default,
+        deserialize_with = "CompatibleOpenAIRequestComponent::decode::<_, Option<Vec<ToolCall>>>"
+    )]
+    tool_calls: Option<Vec<ToolCall>>,
+    tool_call_id: Option<String>,
+    reasoning: Option<String>,
+    reasoning_content: Option<String>,
+    #[serde(
+        default,
+        deserialize_with = "CompatibleOpenAIRequestComponent::decode::<_, Option<Vec<ReasoningDetail>>>"
+    )]
+    reasoning_details: Option<Vec<ReasoningDetail>>,
 }
 
-pub(super) enum ContentFields {
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub(super) enum CompatibleOpenAIContent {
     Null,
     Text(String),
-    Object(ObjectMessage),
+    Object(#[serde(with = "CompatibleOpenAIObjectMessage")] ObjectMessage),
     Array(Vec<Decoded<ObjectMessage>>),
 }
 
-impl<'de> Deserialize<'de> for ContentFields {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct ContentVisitor;
-
-        impl<'de> serde::de::Visitor<'de> for ContentVisitor {
-            type Value = ContentFields;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                formatter.write_str("null, text, a content object, or an array")
-            }
-
-            fn visit_unit<E: serde::de::Error>(self) -> Result<Self::Value, E> {
-                Ok(ContentFields::Null)
-            }
-
-            fn visit_str<E: serde::de::Error>(self, text: &str) -> Result<Self::Value, E> {
-                Ok(ContentFields::Text(text.to_owned()))
-            }
-
-            fn visit_string<E: serde::de::Error>(self, text: String) -> Result<Self::Value, E> {
-                Ok(ContentFields::Text(text))
-            }
-
-            fn visit_map<A: serde::de::MapAccess<'de>>(
-                self,
-                map: A,
-            ) -> Result<Self::Value, A::Error> {
-                ObjectFields::deserialize(serde::de::value::MapAccessDeserializer::new(map))
-                    .map(ContentFields::Object)
-            }
-
-            fn visit_seq<A: serde::de::SeqAccess<'de>>(
-                self,
-                sequence: A,
-            ) -> Result<Self::Value, A::Error> {
-                Vec::<Decoded<ObjectMessage>>::deserialize(
-                    serde::de::value::SeqAccessDeserializer::new(sequence),
-                )
-                .map(ContentFields::Array)
-            }
-        }
-
-        deserializer.deserialize_any(ContentVisitor)
-    }
-}
-
-impl From<ContentFields> for Content {
-    fn from(value: ContentFields) -> Self {
+impl From<CompatibleOpenAIContent> for Content {
+    fn from(value: CompatibleOpenAIContent) -> Self {
         match value {
-            ContentFields::Null => Self::Null,
-            ContentFields::Text(text) => Self::Text(text),
-            ContentFields::Object(object) => Self::Object(object),
-            ContentFields::Array(parts) => {
+            CompatibleOpenAIContent::Null => Self::Null,
+            CompatibleOpenAIContent::Text(text) => Self::Text(text),
+            CompatibleOpenAIContent::Object(object) => Self::Object(object),
+            CompatibleOpenAIContent::Array(parts) => {
                 Self::Array(parts.into_iter().map(|Decoded(part)| part).collect())
             }
         }
@@ -117,24 +91,24 @@ impl From<ContentFields> for Content {
     rename_all = "snake_case",
     deny_unknown_fields
 )]
-enum ObjectFields {
+enum CompatibleOpenAIObjectMessage {
     Text { text: String },
 }
 
 #[derive(Deserialize)]
 #[serde(remote = "ToolCall", deny_unknown_fields)]
-struct CallFields {
+struct CompatibleOpenAIToolCall {
     #[serde(deserialize_with = "CompatibleOpenAIRequestComponent::nonempty")]
     id: String,
-    #[serde(rename = "type", with = "super::tools::ToolTypeFields")]
+    #[serde(rename = "type", with = "super::tools::CompatibleOpenAIToolType")]
     kind: ToolType,
-    #[serde(with = "FunctionFields")]
+    #[serde(with = "CompatibleOpenAIFunctionCall")]
     function: FunctionCall,
 }
 
 #[derive(Deserialize)]
 #[serde(remote = "FunctionCall", deny_unknown_fields)]
-struct FunctionFields {
+struct CompatibleOpenAIFunctionCall {
     #[serde(deserialize_with = "CompatibleOpenAIRequestComponent::nonempty")]
     name: String,
     arguments: String,
@@ -142,7 +116,7 @@ struct FunctionFields {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct ReasoningFields {
+struct CompatibleOpenAIReasoningDetail {
     #[serde(rename = "type")]
     kind: String,
     #[serde(
@@ -162,7 +136,7 @@ struct ReasoningFields {
     data: Option<String>,
     #[serde(
         default,
-        deserialize_with = "CompatibleOpenAIRequestComponent::present_signature"
+        deserialize_with = "CompatibleOpenAIRequestComponent::present"
     )]
     signature: Option<Option<String>>,
     id: Option<String>,
@@ -172,7 +146,7 @@ struct ReasoningFields {
 
 #[derive(Deserialize)]
 #[serde(remote = "Role", rename_all = "snake_case")]
-enum RoleFields {
+enum CompatibleOpenAIRole {
     System,
     Developer,
     User,
@@ -180,11 +154,11 @@ enum RoleFields {
     Tool,
 }
 
-impl TryFrom<MessageFields> for Message {
+impl TryFrom<CompatibleOpenAIMessage> for Message {
     type Error = &'static str;
 
-    fn try_from(value: MessageFields) -> Result<Self, Self::Error> {
-        let MessageFields {
+    fn try_from(value: CompatibleOpenAIMessage) -> Result<Self, Self::Error> {
+        let CompatibleOpenAIMessage {
             role,
             content,
             tool_calls,
@@ -193,10 +167,6 @@ impl TryFrom<MessageFields> for Message {
             reasoning_content,
             reasoning_details,
         } = value;
-        let tool_calls: Option<Vec<ToolCall>> =
-            tool_calls.map(|calls| calls.into_iter().map(|Decoded(call)| call).collect());
-        let reasoning_details: Option<Vec<ReasoningDetail>> = reasoning_details
-            .map(|details| details.into_iter().map(|Decoded(detail)| detail).collect());
         let history = tool_calls.as_ref().is_some_and(|calls| !calls.is_empty())
             || reasoning.is_some()
             || reasoning_content.is_some()
@@ -231,11 +201,11 @@ impl TryFrom<MessageFields> for Message {
     }
 }
 
-impl TryFrom<ReasoningFields> for ReasoningDetail {
+impl TryFrom<CompatibleOpenAIReasoningDetail> for ReasoningDetail {
     type Error = &'static str;
 
-    fn try_from(value: ReasoningFields) -> Result<Self, Self::Error> {
-        let ReasoningFields {
+    fn try_from(value: CompatibleOpenAIReasoningDetail) -> Result<Self, Self::Error> {
+        let CompatibleOpenAIReasoningDetail {
             kind,
             summary,
             text,

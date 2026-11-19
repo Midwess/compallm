@@ -5,7 +5,7 @@ use serde::Deserialize;
 impl<'de> Deserialize<'de> for Decoded<Stop> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         use serde::de::Error;
-        StopFields::deserialize(deserializer)?
+        CompatibleOpenAIStop::deserialize(deserializer)?
             .try_into()
             .map(Self)
             .map_err(D::Error::custom)
@@ -14,22 +14,22 @@ impl<'de> Deserialize<'de> for Decoded<Stop> {
 
 #[derive(serde::Deserialize)]
 #[serde(untagged)]
-pub(super) enum StopFields {
+pub(super) enum CompatibleOpenAIStop {
     Null,
     Text(String),
     Array(Vec<String>),
 }
 
-impl TryFrom<StopFields> for Stop {
+impl TryFrom<CompatibleOpenAIStop> for Stop {
     type Error = &'static str;
 
-    fn try_from(value: StopFields) -> Result<Self, Self::Error> {
+    fn try_from(value: CompatibleOpenAIStop) -> Result<Self, Self::Error> {
         match value {
-            StopFields::Null => Ok(Self::Null),
-            StopFields::Text(text) if !text.is_empty() && text.len() <= 4096 => {
+            CompatibleOpenAIStop::Null => Ok(Self::Null),
+            CompatibleOpenAIStop::Text(text) if !text.is_empty() && text.len() <= 4096 => {
                 Ok(Self::Text(text))
             }
-            StopFields::Array(stops)
+            CompatibleOpenAIStop::Array(stops)
                 if stops.len() <= 4
                     && stops.iter().all(|text| !text.is_empty())
                     && stops.iter().map(String::len).sum::<usize>() <= 4096 =>

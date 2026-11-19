@@ -1,12 +1,14 @@
 use super::Decoded;
-use super::{CompatibleOpenAIRequestComponent, ComponentDeserializeHelper, tools::ToolTypeFields};
+use super::{
+    CompatibleOpenAIRequestComponent, ComponentDeserializeHelper, tools::CompatibleOpenAIToolType,
+};
 use crate::llm::text::component::{ToolChoice, ToolType};
 use serde::Deserialize;
 
 impl<'de> Deserialize<'de> for Decoded<ToolChoice> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         use serde::de::Error;
-        ChoiceFields::deserialize(deserializer)?
+        CompatibleOpenAIToolChoice::deserialize(deserializer)?
             .try_into()
             .map(Self)
             .map_err(D::Error::custom)
@@ -15,10 +17,10 @@ impl<'de> Deserialize<'de> for Decoded<ToolChoice> {
 
 #[derive(serde::Deserialize)]
 #[serde(untagged, deny_unknown_fields)]
-pub(super) enum ChoiceFields {
+pub(super) enum CompatibleOpenAIToolChoice {
     Name(String),
     Function {
-        #[serde(rename = "type", with = "ToolTypeFields")]
+        #[serde(rename = "type", with = "CompatibleOpenAIToolType")]
         kind: ToolType,
         function: FunctionName,
     },
@@ -31,18 +33,18 @@ pub(super) struct FunctionName {
     name: String,
 }
 
-impl TryFrom<ChoiceFields> for ToolChoice {
+impl TryFrom<CompatibleOpenAIToolChoice> for ToolChoice {
     type Error = &'static str;
 
-    fn try_from(value: ChoiceFields) -> Result<Self, Self::Error> {
+    fn try_from(value: CompatibleOpenAIToolChoice) -> Result<Self, Self::Error> {
         match value {
-            ChoiceFields::Name(value) => match value.as_str() {
+            CompatibleOpenAIToolChoice::Name(value) => match value.as_str() {
                 "auto" => Ok(Self::Auto),
                 "none" => Ok(Self::None),
                 "required" => Ok(Self::Required),
                 _ => Err("invalid tool choice"),
             },
-            ChoiceFields::Function {
+            CompatibleOpenAIToolChoice::Function {
                 kind: ToolType::Function,
                 function,
             } => Ok(Self::Function(function.name)),

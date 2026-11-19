@@ -1,5 +1,4 @@
 mod message;
-pub(super) use message::MessageFields;
 mod provider;
 mod response_format;
 mod stop;
@@ -12,7 +11,7 @@ use crate::llm::text::component::{
     Content, Message, Provider, ResponseFormat, Stop, StreamOptions, TextRequestComponent,
     ToolChoice, ToolDefinition,
 };
-use message::ContentFields;
+use message::CompatibleOpenAIContent;
 use serde::Deserialize;
 use serde_json::value::RawValue;
 
@@ -21,7 +20,7 @@ pub(super) struct Decoded<T>(pub(super) T);
 
 impl<'de> Deserialize<'de> for Decoded<StreamOptions> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        stream_options::StreamFields::deserialize(deserializer).map(Self)
+        stream_options::CompatibleOpenAIStreamOptions::deserialize(deserializer).map(Self)
     }
 }
 
@@ -81,10 +80,7 @@ trait ComponentDeserializeHelper {
     fn deserialize_message<'de, D: serde::Deserializer<'de>>(
         deserializer: D,
     ) -> Result<Message, D::Error> {
-        use serde::de::Error;
-        MessageFields::deserialize(deserializer)?
-            .try_into()
-            .map_err(D::Error::custom)
+        Self::decode::<_, Message>(deserializer)
     }
 
     fn nonempty<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
@@ -105,13 +101,7 @@ trait ComponentDeserializeHelper {
     fn content<'de, D: serde::Deserializer<'de>>(
         deserializer: D,
     ) -> Result<Option<Content>, D::Error> {
-        ContentFields::deserialize(deserializer).map(|content| Some(content.into()))
-    }
-
-    fn present_signature<'de, D: serde::Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<Option<Option<String>>, D::Error> {
-        Option::<String>::deserialize(deserializer).map(Some)
+        CompatibleOpenAIContent::deserialize(deserializer).map(|content| Some(content.into()))
     }
 }
 
@@ -175,6 +165,48 @@ impl CompatibleOpenAIRequestComponent {
             _ => {}
         }
         Ok(self)
+    }
+}
+
+impl From<Decoded<Message>> for TextRequestComponent {
+    fn from(Decoded(value): Decoded<Message>) -> Self {
+        Self::Message(value)
+    }
+}
+
+impl From<Decoded<Provider>> for TextRequestComponent {
+    fn from(Decoded(value): Decoded<Provider>) -> Self {
+        Self::Provider(value)
+    }
+}
+
+impl From<Decoded<ResponseFormat>> for TextRequestComponent {
+    fn from(Decoded(value): Decoded<ResponseFormat>) -> Self {
+        Self::ResponseFormat(value)
+    }
+}
+
+impl From<Decoded<StreamOptions>> for TextRequestComponent {
+    fn from(Decoded(value): Decoded<StreamOptions>) -> Self {
+        Self::StreamOptions(Some(value))
+    }
+}
+
+impl From<Decoded<ToolChoice>> for TextRequestComponent {
+    fn from(Decoded(value): Decoded<ToolChoice>) -> Self {
+        Self::ToolChoice(value)
+    }
+}
+
+impl From<Decoded<Vec<ToolDefinition>>> for TextRequestComponent {
+    fn from(Decoded(value): Decoded<Vec<ToolDefinition>>) -> Self {
+        Self::Tools(value)
+    }
+}
+
+impl From<Decoded<Stop>> for TextRequestComponent {
+    fn from(Decoded(value): Decoded<Stop>) -> Self {
+        Self::Stop(value)
     }
 }
 

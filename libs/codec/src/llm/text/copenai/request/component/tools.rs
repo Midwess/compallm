@@ -4,16 +4,16 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 #[serde(remote = "ToolDefinition", deny_unknown_fields)]
-struct ToolFields {
-    #[serde(rename = "type", with = "ToolTypeFields")]
+struct CompatibleOpenAITool {
+    #[serde(rename = "type", with = "CompatibleOpenAIToolType")]
     kind: ToolType,
-    #[serde(with = "FunctionFields")]
+    #[serde(with = "CompatibleOpenAIFunctionDefinition")]
     function: FunctionDefinition,
 }
 
 #[derive(Deserialize)]
 #[serde(remote = "FunctionDefinition", deny_unknown_fields)]
-struct FunctionFields {
+struct CompatibleOpenAIFunctionDefinition {
     #[serde(deserialize_with = "CompatibleOpenAIRequestComponent::nonempty")]
     name: String,
     description: Option<String>,
@@ -27,12 +27,12 @@ struct FunctionFields {
 
 #[derive(Deserialize)]
 #[serde(remote = "ToolType", rename_all = "snake_case")]
-pub(super) enum ToolTypeFields {
+pub(super) enum CompatibleOpenAIToolType {
     Function,
 }
 
 impl<'de> Deserialize<'de> for Decoded<ToolDefinition> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        ToolFields::deserialize(deserializer).map(Self)
+        CompatibleOpenAITool::deserialize(deserializer).map(Self)
     }
 }

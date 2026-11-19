@@ -22,7 +22,7 @@ pub(super) struct ParseState {
 impl ParseState {
     pub(super) fn push(&mut self, token: JsonToken<'_>) -> Result<bool, JsonDecodeError> {
         match token {
-            JsonToken::ValueObject(_) | JsonToken::ValueArray(_) => self.depth += 1,
+            JsonToken::ObjectStart(_) | JsonToken::ArrayStart(_) => self.depth += 1,
             JsonToken::ObjectEnd | JsonToken::ArrayEnd => {
                 self.depth = self
                     .depth

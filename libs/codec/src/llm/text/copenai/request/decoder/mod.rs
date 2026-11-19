@@ -1,38 +1,75 @@
-mod content;
-mod message;
-mod provider;
-mod reasoning;
-mod response_format;
-mod schema;
-mod stop;
-mod stream_options;
-mod tool_calls;
-mod tool_choice;
-mod tools;
-
-use super::component::CompatibleOpenAIRequestComponent;
+use super::component::Decoded;
 use crate::decoder::{Decoder, DecoderError, DecoderStatus};
-use crate::json::{JsonDecoder, JsonToken};
-use crate::llm::text::component::{Stop, TextRequestComponent, ToolChoice};
-use message::MessageState;
-use provider::ProviderState;
-use response_format::ResponseFormatState;
-use stop::StopState;
-use stream_options::StreamOptionsState;
-use tool_choice::ToolChoiceState;
-use tools::ToolsState;
+use crate::json::{JsonContainer, JsonDecoder, JsonToken};
+use crate::llm::text::component::{
+    Message, Provider, ResponseFormat, Stop, StreamOptions, TextRequestComponent, ToolChoice,
+    ToolDefinition,
+};
+type RequestJson = JsonContainer;
+
+#[derive(Debug, Clone, Copy)]
+enum Field {
+    Messages,
+    Provider,
+    ResponseFormat,
+    StreamOptions,
+    ToolChoice,
+    Tools,
+    Stop,
+}
+
+impl Field {
+    fn parse(
+        self,
+        json: &mut RequestJson,
+        input: &mut &[u8],
+        eof: bool,
+    ) -> Result<DecoderStatus<TextRequestComponent>, DecoderError> {
+        Ok(match self {
+            Self::Messages => match json.parse_next::<Decoded<Message>>(input, eof)? {
+                DecoderStatus::Component(value) => DecoderStatus::Component(value.into()),
+                DecoderStatus::NeedInput => DecoderStatus::NeedInput,
+                DecoderStatus::Finished => DecoderStatus::Finished,
+            },
+            Self::Provider => match json.parse_next::<Decoded<Provider>>(input, eof)? {
+                DecoderStatus::Component(value) => DecoderStatus::Component(value.into()),
+                DecoderStatus::NeedInput => DecoderStatus::NeedInput,
+                DecoderStatus::Finished => DecoderStatus::Finished,
+            },
+            Self::ResponseFormat => match json.parse_next::<Decoded<ResponseFormat>>(input, eof)? {
+                DecoderStatus::Component(value) => DecoderStatus::Component(value.into()),
+                DecoderStatus::NeedInput => DecoderStatus::NeedInput,
+                DecoderStatus::Finished => DecoderStatus::Finished,
+            },
+            Self::StreamOptions => match json.parse_next::<Decoded<StreamOptions>>(input, eof)? {
+                DecoderStatus::Component(value) => DecoderStatus::Component(value.into()),
+                DecoderStatus::NeedInput => DecoderStatus::NeedInput,
+                DecoderStatus::Finished => DecoderStatus::Finished,
+            },
+            Self::ToolChoice => match json.parse_next::<Decoded<ToolChoice>>(input, eof)? {
+                DecoderStatus::Component(value) => DecoderStatus::Component(value.into()),
+                DecoderStatus::NeedInput => DecoderStatus::NeedInput,
+                DecoderStatus::Finished => DecoderStatus::Finished,
+            },
+            Self::Tools => match json.parse_next::<Decoded<Vec<ToolDefinition>>>(input, eof)? {
+                DecoderStatus::Component(value) => DecoderStatus::Component(value.into()),
+                DecoderStatus::NeedInput => DecoderStatus::NeedInput,
+                DecoderStatus::Finished => DecoderStatus::Finished,
+            },
+            Self::Stop => match json.parse_next::<Decoded<Stop>>(input, eof)? {
+                DecoderStatus::Component(value) => DecoderStatus::Component(value.into()),
+                DecoderStatus::NeedInput => DecoderStatus::NeedInput,
+                DecoderStatus::Finished => DecoderStatus::Finished,
+            },
+        })
+    }
+}
 
 #[derive(Debug)]
 pub struct CompatibleOpenAIRequestDecoder {
-    json: Option<JsonDecoder>,
+    json: Option<RequestJson>,
+    field: Option<Field>,
     failed: bool,
-    messages: MessageState,
-    stop: StopState,
-    provider: ProviderState,
-    stream_options: StreamOptionsState,
-    tool_choice: ToolChoiceState,
-    tools: ToolsState,
-    response_format: ResponseFormatState,
     started: bool,
     closed: bool,
     has_model: bool,
@@ -43,15 +80,9 @@ pub struct CompatibleOpenAIRequestDecoder {
 impl CompatibleOpenAIRequestDecoder {
     pub fn new(json: JsonDecoder) -> Self {
         Self {
-            json: Some(json),
+            json: Some(RequestJson::new(json)),
+            field: None,
             failed: false,
-            messages: MessageState::default(),
-            stop: StopState::default(),
-            provider: ProviderState::default(),
-            stream_options: StreamOptionsState::default(),
-            tool_choice: ToolChoiceState::default(),
-            tools: ToolsState::default(),
-            response_format: ResponseFormatState::default(),
             started: false,
             closed: false,
             has_model: false,
@@ -60,147 +91,75 @@ impl CompatibleOpenAIRequestDecoder {
         }
     }
 
-    fn proceed_token(
+    fn proceed_scalar(
         &mut self,
         token: JsonToken<'_>,
-    ) -> Result<Option<CompatibleOpenAIRequestComponent>, DecoderError> {
-        if self.messages.active {
-            return self.messages.proceed(token);
-        }
-        if self.stop.active {
-            return self.stop.proceed(token);
-        }
-        if self.provider.active {
-            return self.provider.proceed(token);
-        }
-        if self.stream_options.active {
-            return self.stream_options.proceed(token);
-        }
-        if self.tool_choice.active {
-            return self.tool_choice.proceed(token);
-        }
-        if self.tools.active {
-            return self.tools.proceed(token);
-        }
-        if self.response_format.active {
-            return self.response_format.proceed(token);
-        }
-        let (key, value) = match token {
-            JsonToken::ValueString(key, value) => (key, JsonToken::ValueString(None, value)),
-            JsonToken::ValueNumber(key, value) => (key, JsonToken::ValueNumber(None, value)),
-            JsonToken::ValueBoolean(key, value) => (key, JsonToken::ValueBoolean(None, value)),
-            JsonToken::ValueNull(key) => (key, JsonToken::ValueNull(None)),
-            JsonToken::ValueObject(key) => (key, JsonToken::ValueObject(None)),
-            JsonToken::ValueArray(key) => (key, JsonToken::ValueArray(None)),
-            JsonToken::ObjectEnd => {
-                if !self.started || !self.has_model || !self.has_messages {
-                    return Err(DecoderError::InvalidInput(
-                        "model and messages are required",
-                    ));
+    ) -> Result<Option<TextRequestComponent>, DecoderError> {
+        let component = match token {
+            JsonToken::ValueBoolean(Some("stream"), value) => TextRequestComponent::Stream(value),
+            JsonToken::ValueNull(Some("stream_options")) => {
+                TextRequestComponent::StreamOptions(None)
+            }
+            JsonToken::ValueBoolean(Some("parallel_tool_calls"), value) => {
+                TextRequestComponent::ParallelToolCalls(value)
+            }
+            JsonToken::ValueNumber(Some("max_completion_tokens" | "max_tokens"), value) => {
+                if self.has_token_limit {
+                    return Err(DecoderError::InvalidInput("conflicting token limits"));
                 }
-                self.closed = true;
-                return Ok(None);
+                let limit = value
+                    .as_u64()
+                    .and_then(|value| u32::try_from(value).ok())
+                    .ok_or(DecoderError::InvalidInput("invalid token limit"))?;
+                self.has_token_limit = true;
+                if limit == 0 {
+                    return Err(DecoderError::InvalidInput("invalid token limit"));
+                }
+                TextRequestComponent::MaxCompletionTokens(limit)
             }
-            JsonToken::ArrayEnd => return Err(DecoderError::Unsupported("request array")),
-        };
-        let component = match (key, value) {
-            (Some("messages"), value) => {
-                self.has_messages = true;
-                return self.messages.proceed(value);
+            JsonToken::ValueNumber(Some("top_p"), value) => {
+                let value = value
+                    .as_f64()
+                    .ok_or(DecoderError::InvalidInput("invalid top_p"))?;
+                if !value.is_finite() || !(0.0..=1.0).contains(&value) {
+                    return Err(DecoderError::InvalidInput("invalid top_p"));
+                }
+                TextRequestComponent::TopP(value)
             }
-            (Some("tools"), value @ JsonToken::ValueArray(None)) => {
-                return self.tools.proceed(value);
+            JsonToken::ValueNull(Some("top_p")) => return Ok(None),
+            JsonToken::ValueNumber(Some("top_k"), value) => {
+                let value = value
+                    .as_u64()
+                    .and_then(|value| u32::try_from(value).ok())
+                    .ok_or(DecoderError::InvalidInput("invalid top_k"))?;
+                TextRequestComponent::TopK(value)
             }
-            (Some("tools"), _) => return Err(DecoderError::InvalidInput("tools must be an array")),
-            (Some("tool_choice"), value @ JsonToken::ValueObject(None)) => {
-                return self.tool_choice.proceed(value);
-            }
-            (Some("stop"), value @ JsonToken::ValueArray(None)) => {
-                return self.stop.proceed(value);
-            }
-            (Some("response_format"), value @ JsonToken::ValueObject(None)) => {
-                return self.response_format.proceed(value);
-            }
-            (Some("response_format"), _) => {
-                return Err(DecoderError::InvalidInput(
-                    "response format must be an object",
-                ));
-            }
-            (Some("provider"), value @ JsonToken::ValueObject(None)) => {
-                return self.provider.proceed(value);
-            }
-            (Some("provider"), _) => {
-                return Err(DecoderError::InvalidInput("provider must be an object"));
-            }
-            (Some("stream_options"), value @ JsonToken::ValueObject(None)) => {
-                return self.stream_options.proceed(value);
-            }
-            (Some("model"), JsonToken::ValueString(None, value)) => {
-                self.has_model = true;
-                CompatibleOpenAIRequestComponent::Model(value.to_owned())
-            }
-            (Some("tool_choice"), JsonToken::ValueString(None, value)) => {
+            JsonToken::ValueString(Some("tool_choice"), value) => {
                 let choice = match value {
                     "auto" => ToolChoice::Auto,
                     "none" => ToolChoice::None,
                     "required" => ToolChoice::Required,
                     _ => return Err(DecoderError::InvalidInput("invalid tool choice")),
                 };
-                CompatibleOpenAIRequestComponent::ToolChoice(choice)
+                TextRequestComponent::ToolChoice(choice)
             }
-            (Some("parallel_tool_calls"), JsonToken::ValueBoolean(None, value)) => {
-                CompatibleOpenAIRequestComponent::ParallelToolCalls(value)
-            }
-            (Some("max_completion_tokens" | "max_tokens"), JsonToken::ValueNumber(None, value)) => {
-                if self.has_token_limit {
-                    return Err(DecoderError::InvalidInput("conflicting token limits"));
-                }
-                self.has_token_limit = true;
-                CompatibleOpenAIRequestComponent::MaxCompletionTokens(
-                    value
-                        .as_u64()
-                        .and_then(|value| u32::try_from(value).ok())
-                        .ok_or(DecoderError::InvalidInput("invalid token limit"))?,
-                )
-            }
-            (Some("top_p"), JsonToken::ValueNumber(None, value)) => {
-                CompatibleOpenAIRequestComponent::TopP(
-                    value
-                        .as_f64()
-                        .ok_or(DecoderError::InvalidInput("invalid top_p"))?,
-                )
-            }
-            (Some("top_p"), JsonToken::ValueNull(None)) => return Ok(None),
-            (Some("top_k"), JsonToken::ValueNumber(None, value)) => {
-                CompatibleOpenAIRequestComponent::TopK(
-                    value
-                        .as_u64()
-                        .and_then(|value| u32::try_from(value).ok())
-                        .ok_or(DecoderError::InvalidInput("invalid top_k"))?,
-                )
-            }
-            (Some("stop"), JsonToken::ValueString(None, value)) => {
+            JsonToken::ValueString(Some("stop"), value) => {
                 if value.is_empty() || value.len() > 4096 {
                     return Err(DecoderError::InvalidInput("invalid stop sequence"));
                 }
-                CompatibleOpenAIRequestComponent::Stop(Stop::Text(value.to_owned()))
+                TextRequestComponent::Stop(Stop::Text(value.to_owned()))
             }
-            (Some("stop"), JsonToken::ValueNull(None)) => {
-                CompatibleOpenAIRequestComponent::Stop(Stop::Null)
-            }
-            (Some("stream"), JsonToken::ValueBoolean(None, value)) => {
-                CompatibleOpenAIRequestComponent::Stream(value)
-            }
-            (Some("stream_options"), JsonToken::ValueNull(None)) => {
-                CompatibleOpenAIRequestComponent::StreamOptions(None)
-            }
-            (None, JsonToken::ValueObject(None)) if !self.started => {
-                self.started = true;
-                return Ok(None);
+            JsonToken::ValueNull(Some("stop")) => TextRequestComponent::Stop(Stop::Null),
+            JsonToken::ValueString(Some("model"), model) => {
+                if model.is_empty() {
+                    return Err(DecoderError::InvalidInput("invalid model"));
+                }
+                self.has_model = true;
+                TextRequestComponent::Model(model.to_owned())
             }
             _ => return Err(DecoderError::Unsupported("request field")),
         };
-        Ok(Some(component.validate()?))
+        Ok(Some(component))
     }
 }
 
@@ -218,24 +177,99 @@ impl Decoder for CompatibleOpenAIRequestDecoder {
         }
         let mut json = self.json.take().ok_or(DecoderError::InvalidState)?;
         let result = loop {
-            match json.next(input, eof) {
-                Ok(DecoderStatus::Component(token)) => match self.proceed_token(token) {
-                    Ok(Some(component)) => break Ok(DecoderStatus::Component(component.into())),
-                    Ok(None) => continue,
-                    Err(error) => {
-                        break Err(error);
+            if let Some(field) = self.field {
+                match field.parse(&mut json, input, eof) {
+                    Ok(DecoderStatus::Component(component)) => {
+                        if !matches!(field, Field::Messages) {
+                            self.field = None;
+                        }
+                        break Ok(DecoderStatus::Component(component));
                     }
+                    Ok(DecoderStatus::NeedInput) => break Ok(DecoderStatus::NeedInput),
+                    Ok(DecoderStatus::Finished) => {
+                        self.field = None;
+                        continue;
+                    }
+                    Err(error) => break Err(error),
+                }
+            }
+            match json.next(input, eof) {
+                Ok(DecoderStatus::Component(
+                    token @ (JsonToken::ValueString(..)
+                    | JsonToken::ValueNumber(..)
+                    | JsonToken::ValueBoolean(..)
+                    | JsonToken::ValueNull(..)),
+                )) => match self.proceed_scalar(token) {
+                    Ok(Some(component)) => break Ok(DecoderStatus::Component(component)),
+                    Ok(None) => continue,
+                    Err(error) => break Err(error),
                 },
+                Ok(DecoderStatus::Component(JsonToken::ObjectStart(None))) if !self.started => {
+                    self.started = true;
+                }
+                Ok(DecoderStatus::Component(JsonToken::ArrayStart(Some("messages")))) => {
+                    json = match json.enter() {
+                        Ok(array) => array.nonempty(),
+                        Err(error) => {
+                            self.failed = true;
+                            return Err(error.into());
+                        }
+                    };
+                    self.has_messages = true;
+                    self.field = Some(Field::Messages);
+                }
+                Ok(DecoderStatus::Component(JsonToken::ObjectStart(Some(key)))) => {
+                    let field = match key {
+                        "provider" => Field::Provider,
+                        "response_format" => Field::ResponseFormat,
+                        "stream_options" => Field::StreamOptions,
+                        "tool_choice" => Field::ToolChoice,
+                        _ => break Err(DecoderError::Unsupported("request object")),
+                    };
+                    json = match json.enter() {
+                        Ok(object) => object,
+                        Err(error) => {
+                            self.failed = true;
+                            return Err(error.into());
+                        }
+                    };
+                    self.field = Some(field);
+                }
+                Ok(DecoderStatus::Component(JsonToken::ArrayStart(Some(key)))) => {
+                    let field = match key {
+                        "tools" => Field::Tools,
+                        "stop" => Field::Stop,
+                        _ => break Err(DecoderError::Unsupported("request array")),
+                    };
+                    json = match json.enter_value() {
+                        Ok(array) => array,
+                        Err(error) => {
+                            self.failed = true;
+                            return Err(error.into());
+                        }
+                    };
+                    self.field = Some(field);
+                }
+                Ok(DecoderStatus::Component(JsonToken::ObjectEnd)) => {
+                    if !self.started || !self.has_model || !self.has_messages {
+                        break Err(DecoderError::InvalidInput(
+                            "model and messages are required",
+                        ));
+                    }
+                    self.closed = true;
+                }
+                Ok(DecoderStatus::Component(_)) => {
+                    break Err(DecoderError::Unsupported("request container"));
+                }
                 Ok(DecoderStatus::NeedInput) => break Ok(DecoderStatus::NeedInput),
                 Ok(DecoderStatus::Finished) => {
-                    if !self.closed {
-                        break Err(DecoderError::IncompleteInput);
-                    }
-                    break Ok(DecoderStatus::Finished);
+                    break if self.closed {
+                        Ok(DecoderStatus::Finished)
+                    } else {
+                        Err(DecoderError::IncompleteInput)
+                    };
                 }
-                Err(_) => {
-                    break Err(DecoderError::InvalidInput("invalid request JSON"));
-                }
+                Err(error) => break Err(error.into()),
             }
         };
         self.json = Some(json);

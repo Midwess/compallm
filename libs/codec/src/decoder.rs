@@ -34,3 +34,13 @@ pub enum DecoderError {
     #[error("invalid decoder state")]
     InvalidState,
 }
+
+impl From<crate::json::JsonDecodeError> for DecoderError {
+    fn from(error: crate::json::JsonDecodeError) -> Self {
+        match error {
+            crate::json::JsonDecodeError::InvalidState => Self::InvalidState,
+            crate::json::JsonDecodeError::IncompleteToken => Self::IncompleteInput,
+            _ => Self::InvalidInput("invalid request JSON"),
+        }
+    }
+}

@@ -4,19 +4,19 @@ use serde::Deserialize;
 
 impl<'de> Deserialize<'de> for Decoded<Provider> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        ProviderFields::deserialize(deserializer).map(|value| Self(value.into()))
+        CompatibleOpenAIProvider::deserialize(deserializer).map(|value| Self(value.into()))
     }
 }
 
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct ProviderFields {
+pub(super) struct CompatibleOpenAIProvider {
     #[serde(alias = "require_parameters")]
     require_parameter: bool,
 }
 
-impl From<ProviderFields> for Provider {
-    fn from(value: ProviderFields) -> Self {
+impl From<CompatibleOpenAIProvider> for Provider {
+    fn from(value: CompatibleOpenAIProvider) -> Self {
         Self::RequireParameter(value.require_parameter)
     }
 }

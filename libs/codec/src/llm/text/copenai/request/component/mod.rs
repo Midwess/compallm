@@ -7,6 +7,7 @@ mod tool_choice;
 mod tools;
 
 use crate::decoder::DecoderError;
+use crate::decoder::DecoderStatus;
 use crate::llm::text::component::{
     Content, Message, Provider, ResponseFormat, Stop, StreamOptions, TextRequestComponent,
     ToolChoice, ToolDefinition,
@@ -17,6 +18,19 @@ use serde_json::value::RawValue;
 
 #[derive(Debug)]
 pub(super) struct Decoded<T>(pub(super) T);
+
+impl<T> From<DecoderStatus<Decoded<T>>> for DecoderStatus<TextRequestComponent>
+where
+    Decoded<T>: Into<TextRequestComponent>,
+{
+    fn from(status: DecoderStatus<Decoded<T>>) -> Self {
+        match status {
+            DecoderStatus::Component(value) => Self::Component(value.into()),
+            DecoderStatus::NeedInput => Self::NeedInput,
+            DecoderStatus::Finished => Self::Finished,
+        }
+    }
+}
 
 impl<'de> Deserialize<'de> for Decoded<StreamOptions> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {

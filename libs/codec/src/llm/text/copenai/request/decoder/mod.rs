@@ -18,53 +18,6 @@ enum Field {
     Stop,
 }
 
-impl Field {
-    fn parse(
-        self,
-        json: &mut RequestJson,
-        input: &mut &[u8],
-        eof: bool,
-    ) -> Result<DecoderStatus<TextRequestComponent>, DecoderError> {
-        Ok(match self {
-            Self::Messages => match json.parse_next::<Decoded<Message>>(input, eof)? {
-                DecoderStatus::Component(value) => DecoderStatus::Component(value.into()),
-                DecoderStatus::NeedInput => DecoderStatus::NeedInput,
-                DecoderStatus::Finished => DecoderStatus::Finished,
-            },
-            Self::Provider => match json.parse_next::<Decoded<Provider>>(input, eof)? {
-                DecoderStatus::Component(value) => DecoderStatus::Component(value.into()),
-                DecoderStatus::NeedInput => DecoderStatus::NeedInput,
-                DecoderStatus::Finished => DecoderStatus::Finished,
-            },
-            Self::ResponseFormat => match json.parse_next::<Decoded<ResponseFormat>>(input, eof)? {
-                DecoderStatus::Component(value) => DecoderStatus::Component(value.into()),
-                DecoderStatus::NeedInput => DecoderStatus::NeedInput,
-                DecoderStatus::Finished => DecoderStatus::Finished,
-            },
-            Self::StreamOptions => match json.parse_next::<Decoded<StreamOptions>>(input, eof)? {
-                DecoderStatus::Component(value) => DecoderStatus::Component(value.into()),
-                DecoderStatus::NeedInput => DecoderStatus::NeedInput,
-                DecoderStatus::Finished => DecoderStatus::Finished,
-            },
-            Self::ToolChoice => match json.parse_next::<Decoded<ToolChoice>>(input, eof)? {
-                DecoderStatus::Component(value) => DecoderStatus::Component(value.into()),
-                DecoderStatus::NeedInput => DecoderStatus::NeedInput,
-                DecoderStatus::Finished => DecoderStatus::Finished,
-            },
-            Self::Tools => match json.parse_next::<Decoded<Vec<ToolDefinition>>>(input, eof)? {
-                DecoderStatus::Component(value) => DecoderStatus::Component(value.into()),
-                DecoderStatus::NeedInput => DecoderStatus::NeedInput,
-                DecoderStatus::Finished => DecoderStatus::Finished,
-            },
-            Self::Stop => match json.parse_next::<Decoded<Stop>>(input, eof)? {
-                DecoderStatus::Component(value) => DecoderStatus::Component(value.into()),
-                DecoderStatus::NeedInput => DecoderStatus::NeedInput,
-                DecoderStatus::Finished => DecoderStatus::Finished,
-            },
-        })
-    }
-}
-
 #[derive(Debug)]
 pub struct CompatibleOpenAIRequestDecoder {
     json: Option<RequestJson>,
@@ -178,7 +131,28 @@ impl Decoder for CompatibleOpenAIRequestDecoder {
         let mut json = self.json.take().ok_or(DecoderError::InvalidState)?;
         let result = loop {
             if let Some(field) = self.field {
-                match field.parse(&mut json, input, eof) {
+                let status = match field {
+                    Field::Messages => json
+                        .parse_next::<Decoded<Message>>(input, eof)
+                        .map(Into::into),
+                    Field::Provider => json
+                        .parse_next::<Decoded<Provider>>(input, eof)
+                        .map(Into::into),
+                    Field::ResponseFormat => json
+                        .parse_next::<Decoded<ResponseFormat>>(input, eof)
+                        .map(Into::into),
+                    Field::StreamOptions => json
+                        .parse_next::<Decoded<StreamOptions>>(input, eof)
+                        .map(Into::into),
+                    Field::ToolChoice => json
+                        .parse_next::<Decoded<ToolChoice>>(input, eof)
+                        .map(Into::into),
+                    Field::Tools => json
+                        .parse_next::<Decoded<Vec<ToolDefinition>>>(input, eof)
+                        .map(Into::into),
+                    Field::Stop => json.parse_next::<Decoded<Stop>>(input, eof).map(Into::into),
+                };
+                match status {
                     Ok(DecoderStatus::Component(component)) => {
                         if !matches!(field, Field::Messages) {
                             self.field = None;
@@ -190,7 +164,7 @@ impl Decoder for CompatibleOpenAIRequestDecoder {
                         self.field = None;
                         continue;
                     }
-                    Err(error) => break Err(error),
+                    Err(error) => break Err(error.into()),
                 }
             }
             match json.next(input, eof) {

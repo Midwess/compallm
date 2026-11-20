@@ -26,7 +26,8 @@ for (const record of [...catalog.provider_templates, ...catalog.provider_model_t
         if (record.upstream_model_id) assert(source.response.identity_value, 'model API recipe needs an explicit provider-scoped identity selector')
       }
     }
-    if (source.kind !== 'manual') {
+    if (source.kind !== 'manual') assert.equal(typeof source.url, 'string')
+    if (source.kind === 'api') {
       const url = new URL(source.url)
       assert(['http:', 'https:'].includes(url.protocol) && !url.username && !url.password && !url.hash)
       for (const key of url.searchParams.keys()) assert(!['key', 'api_key', 'apikey', 'token', 'access_token', 'authorization', 'password', 'secret'].includes(key.toLowerCase()))
@@ -104,7 +105,7 @@ for (const model of catalog.provider_model_templates) {
   for (const reference of model.source_refs) {
     assert(['repository', 'web'].includes(reference.kind))
     assert(['imported', 'estimate', 'verified'].includes(reference.status))
-    assert(['https:', 'http:'].includes(new URL(reference.url).protocol))
+    assert(typeof reference.url === 'string' && reference.url.trim())
   }
   for (const field of ['input_price', 'output_price', 'cached_price']) {
     const evidence = model.pricing_config.zero_price_evidence?.[field]

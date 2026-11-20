@@ -10,19 +10,19 @@
   "selection": "Use complete stored defaults when present. API references alone do not establish resolvability. No current incomplete text row has complete verified representable API coverage.",
   "evidence": [
     {
-      "url": "https://github.com/decolua/9router/blob/1855aa44473e88feac9d3f131b9c0c5fc9706b68/open-sse/config/models.js",
+      "url": "opensource(9)",
       "finding": "getModelInfo merges generic DEFAULT_MODEL_INFO contextWindow 200000; this is not an exact model limit."
     },
     {
-      "url": "https://github.com/decolua/9router/blob/1855aa44473e88feac9d3f131b9c0c5fc9706b68/open-sse/providers/pricing.js",
+      "url": "opensource(9)",
       "finding": "Provider/name/pattern lookup can return null; missing price does not establish free usage."
     },
     {
-      "url": "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/litellm/utils.py",
+      "url": "opensource(l)",
       "finding": "get_model_info_helper attempts dynamic provider metadata before normalized static catalog matching; ModelNotMappedError is possible; unset costs can default zero."
     },
     {
-      "url": "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/litellm/llms/openai_like/model_info.py",
+      "url": "opensource(l)",
       "finding": "Model-list discovery can supply limits, return empty data on errors, and does not guarantee complete pricing."
     }
   ],

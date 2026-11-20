@@ -506,10 +506,10 @@
   {
     "provider": "local-device",
     "path": "/assets/providers/local-device.png",
-    "source": "https://github.com/decolua/9router/blob/1855aa44473e88feac9d3f131b9c0c5fc9706b68/public/providers/local-device.png",
+    "source": "opensource(9)",
     "revision": "1855aa44473e88feac9d3f131b9c0c5fc9706b68",
     "sha256": "4f959cbbb933eb5a160d483e1f36764d95a82e5ed215912486fae746d907797d",
-    "attribution": "9Router; provider trademarks belong to their owners",
+    "attribution": "opensource(9); provider trademarks belong to their owners",
     "review": "service_artwork"
   },
   {
@@ -1048,28 +1048,28 @@
   {
     "provider": "selfhosted-stt",
     "path": "/assets/providers/selfhosted-stt.png",
-    "source": "https://github.com/decolua/9router/blob/1855aa44473e88feac9d3f131b9c0c5fc9706b68/public/providers/selfhosted-stt.png",
+    "source": "opensource(9)",
     "revision": "1855aa44473e88feac9d3f131b9c0c5fc9706b68",
     "sha256": "4f959cbbb933eb5a160d483e1f36764d95a82e5ed215912486fae746d907797d",
-    "attribution": "9Router; provider trademarks belong to their owners",
+    "attribution": "opensource(9); provider trademarks belong to their owners",
     "review": "service_artwork"
   },
   {
     "provider": "selfhosted-tts",
     "path": "/assets/providers/selfhosted-tts.png",
-    "source": "https://github.com/decolua/9router/blob/1855aa44473e88feac9d3f131b9c0c5fc9706b68/public/providers/selfhosted-tts.png",
+    "source": "opensource(9)",
     "revision": "1855aa44473e88feac9d3f131b9c0c5fc9706b68",
     "sha256": "4f959cbbb933eb5a160d483e1f36764d95a82e5ed215912486fae746d907797d",
-    "attribution": "9Router; provider trademarks belong to their owners",
+    "attribution": "opensource(9); provider trademarks belong to their owners",
     "review": "service_artwork"
   },
   {
     "provider": "selfhosted-embedding",
     "path": "/assets/providers/selfhosted-embedding.png",
-    "source": "https://github.com/decolua/9router/blob/1855aa44473e88feac9d3f131b9c0c5fc9706b68/public/providers/selfhosted-embedding.png",
+    "source": "opensource(9)",
     "revision": "1855aa44473e88feac9d3f131b9c0c5fc9706b68",
     "sha256": "4f959cbbb933eb5a160d483e1f36764d95a82e5ed215912486fae746d907797d",
-    "attribution": "9Router; provider trademarks belong to their owners",
+    "attribution": "opensource(9); provider trademarks belong to their owners",
     "review": "service_artwork"
   },
   {

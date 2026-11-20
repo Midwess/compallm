@@ -166,7 +166,15 @@ impl TryFrom<serde_json::Value> for ModelInfoSources {
                         return Err("manual source cannot declare a remote request");
                     }
                 }
-                _ => {
+                SourceKind::Repository | SourceKind::Documentation => {
+                    if source.url.as_deref().is_none_or(|value| value.trim().is_empty()) {
+                        return Err("source reference is required");
+                    }
+                    if source.access == SourceAccess::Manual {
+                        return Err("reference source cannot have manual access");
+                    }
+                }
+                SourceKind::Api => {
                     let url =
                         url::Url::parse(source.url.as_deref().ok_or("source URL is required")?)
                             .map_err(|_| "invalid source URL")?;

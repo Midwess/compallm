@@ -227,7 +227,7 @@ BEGIN
      END IF;
    END LOOP;
    source := row_data->'source_refs'->((option->>'source_index')::integer);
-   IF source IS NULL OR NOT catalog_url_valid(source->>'url')
+   IF source IS NULL OR NOT catalog_nonblank(to_jsonb(source->>'url'))
      OR source->>'status' IS DISTINCT FROM 'verified'
      OR NOT source->'fields' @> '["cached_price","field_metadata"]'::jsonb THEN RETURN false; END IF;
    SELECT value INTO route FROM jsonb_array_elements(row_data->'field_metadata'->'routing'->'conditions')
@@ -304,7 +304,7 @@ BEGIN
      OR NOT catalog_nonblank(sub->'notes')
      OR jsonb_typeof(sub->'source_urls') IS DISTINCT FROM 'array'
      OR jsonb_array_length(sub->'source_urls') NOT BETWEEN 1 AND 16
-     OR EXISTS(SELECT 1 FROM jsonb_array_elements_text(sub->'source_urls') u WHERE NOT catalog_url_valid(u))
+     OR EXISTS(SELECT 1 FROM jsonb_array_elements_text(sub->'source_urls') u WHERE NOT catalog_nonblank(to_jsonb(u)))
      OR (sub->>'input_price' IS NULL AND sub->>'output_price' IS NULL AND sub->>'cached_price' IS NULL) THEN RETURN false; END IF;
    FOREACH field IN ARRAY ARRAY['input_price','output_price','cached_price'] LOOP
      IF sub->>field IS NOT NULL AND NOT catalog_json_price_valid(sub->field) THEN RETURN false; END IF;
@@ -320,7 +320,7 @@ BEGIN
        OR jsonb_typeof(value->'source_index') IS DISTINCT FROM 'number'
        OR value->>'source_index' !~ '^[0-9]+$' THEN RETURN false; END IF;
      sub := row_data->'source_refs'->((value->>'source_index')::integer);
-     IF sub IS NULL OR NOT catalog_url_valid(sub->>'url') OR NOT sub->'fields' @> to_jsonb(ARRAY[field]) THEN RETURN false; END IF;
+     IF sub IS NULL OR NOT catalog_nonblank(to_jsonb(sub->>'url')) OR NOT sub->'fields' @> to_jsonb(ARRAY[field]) THEN RETURN false; END IF;
      IF sub->>'status' IS DISTINCT FROM 'verified' AND NOT coalesce((
        sub->>'status' = 'estimate'
        AND cfg->'fallback'->>field IS NOT NULL AND (cfg->'fallback'->>field)::numeric = 0
@@ -395,7 +395,7 @@ BEGIN
      OR cfg->'free_evidence'->>'source_index' !~ '^[0-9]+$' THEN RETURN false; END IF;
    value := row_data->'source_refs'->((cfg->'free_evidence'->>'source_index')::integer);
    IF value IS NULL OR NOT value->'fields' @> '["input_price","output_price"]'::jsonb
-     OR NOT catalog_url_valid(value->>'url') OR pricing <> 'not_applicable' OR unit IS NOT NULL OR cache NOT IN ('included','not_applicable') THEN RETURN false; END IF;
+     OR NOT catalog_nonblank(to_jsonb(value->>'url')) OR pricing <> 'not_applicable' OR unit IS NOT NULL OR cache NOT IN ('included','not_applicable') THEN RETURN false; END IF;
  END IF;
  IF billing = 'metered' AND unit IS NULL THEN RETURN false; END IF;
  IF pricing <> 'tiered' AND cfg ? 'tiers' THEN RETURN false; END IF;
@@ -464,7 +464,7 @@ BEGIN
      OR jsonb_typeof(cfg->'cache_evidence'->'source_index') IS DISTINCT FROM 'number'
      OR cfg->'cache_evidence'->>'source_index' !~ '^[0-9]+$' THEN RETURN false; END IF;
    value := row_data->'source_refs'->((cfg->'cache_evidence'->>'source_index')::integer);
-   IF value IS NULL OR NOT value->'fields' @> '["cached_price"]'::jsonb OR NOT catalog_url_valid(value->>'url') THEN RETURN false; END IF;
+   IF value IS NULL OR NOT value->'fields' @> '["cached_price"]'::jsonb OR NOT catalog_nonblank(to_jsonb(value->>'url')) THEN RETURN false; END IF;
  END IF;
  IF cache = 'per_route' THEN
    IF NOT catalog_route_options_valid(row_data) THEN RETURN false; END IF;

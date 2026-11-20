@@ -84,14 +84,14 @@ export function Sidebar({
       ref={root}
       style={{ ...style, width: constrain(width) }}
       className={cx(
-        'group/sidebar relative flex h-full min-h-0 shrink-0 flex-col bg-sidebar px-3 py-1 select-none',
+        'group/sidebar relative z-20 flex h-full min-h-0 shrink-0 flex-col bg-sidebar px-3 py-1 select-none',
         '[&_input]:select-text [&_textarea]:select-text **:[[contenteditable=true]]:select-text',
         className,
       )}
     >
       <nav
         aria-label={navigationLabel}
-        className="flex min-h-0 min-w-0 flex-1 flex-col gap-2.5 overflow-x-hidden overflow-y-auto overscroll-none"
+        className="-mx-0.5 flex min-h-0 min-w-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-none px-0.5"
       >
         {children}
       </nav>
@@ -357,9 +357,9 @@ export function SidebarFolder({
           aria-controls={id}
           className={cx(
             `
--mx-0.5 flex h-7 cursor-pointer list-none items-center gap-1.5 rounded-xl border-y border-transparent bg-clip-padding
+relative -mx-0.5 flex h-7 cursor-pointer list-none items-center gap-1.5 rounded-xl border-y border-transparent bg-clip-padding
 px-2.5 pr-7.5 text-xsm font-normal leading-4 text-muted-foreground
-hover:bg-hover marker:hidden [&::-webkit-details-marker]:hidden
+hover:z-10 hover:bg-hover marker:hidden [&::-webkit-details-marker]:hidden
 `,
             focus,
           )}
@@ -419,8 +419,8 @@ export function SidebarItem({
       title={label}
       className={cx(
         `
--mx-0.5 flex h-7 min-w-0 items-center gap-1.5 rounded-xl border-y border-transparent bg-clip-padding px-2.5
-text-xsm font-medium leading-4.25 text-muted-foreground hover:bg-hover hover:text-foreground
+relative -mx-0.5 flex h-7 min-w-0 items-center gap-1.5 rounded-xl border-y border-transparent bg-clip-padding px-2.5
+text-xsm font-medium leading-4.25 text-muted-foreground hover:z-10 hover:bg-hover hover:text-foreground
 aria-[current=page]:bg-selection aria-[current=page]:text-selection-foreground
 `,
         focus,

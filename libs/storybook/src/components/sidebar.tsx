@@ -357,8 +357,8 @@ export function SidebarFolder({
           aria-controls={id}
           className={cx(
             `
-flex h-7 cursor-pointer list-none items-center gap-1.5 rounded-xl border-y border-transparent bg-clip-padding
-px-2 pr-7 text-xsm font-normal leading-4 text-muted-foreground
+-mx-0.5 flex h-7 cursor-pointer list-none items-center gap-1.5 rounded-xl border-y border-transparent bg-clip-padding
+px-2.5 pr-7.5 text-xsm font-normal leading-4 text-muted-foreground
 hover:bg-hover marker:hidden [&::-webkit-details-marker]:hidden
 `,
             focus,
@@ -419,7 +419,7 @@ export function SidebarItem({
       title={label}
       className={cx(
         `
-flex h-7 min-w-0 items-center gap-1.5 rounded-xl border-y border-transparent bg-clip-padding px-2
+-mx-0.5 flex h-7 min-w-0 items-center gap-1.5 rounded-xl border-y border-transparent bg-clip-padding px-2.5
 text-xsm font-medium leading-4.25 text-muted-foreground hover:bg-hover hover:text-foreground
 aria-[current=page]:bg-selection aria-[current=page]:text-selection-foreground
 `,

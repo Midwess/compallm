@@ -799,3 +799,25 @@ async fn catalog_refresh_round_trips_and_preserves_concurrent_edits() {
             .unwrap();
     }
 }
+
+#[test]
+fn catalog_sources_accept_plain_reference_names() {
+    use compallm_postgres::catalog::model_info::ModelInfoSources;
+
+    for name in ["opensource(l)", "opensource(9)"] {
+        let reference = serde_json::json!([{
+            "kind": "repository",
+            "url": name,
+            "access": "public",
+            "status": "reference",
+            "fields": ["description"],
+            "revision": "catalog-revision",
+            "notes": "Catalog source reference"
+        }]);
+        assert!(ModelInfoSources::try_from(reference.clone()).is_ok());
+        let mut api = reference;
+        api[0]["kind"] = serde_json::json!("api");
+        api[0]["request"] = serde_json::json!({"method": "GET", "authentication": "none"});
+        assert!(ModelInfoSources::try_from(api).is_err());
+    }
+}

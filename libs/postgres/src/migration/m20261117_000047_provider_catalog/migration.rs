@@ -205,12 +205,12 @@
 //!
 //! Start with the opensource(9) repository for provider identities, model definitions, adapters,
 //! endpoint construction, authentication, pricing, capabilities, effort variants, and artwork.
-//! The initial source is https://github.com/decolua/9router at commit
+//! The initial source is opensource(9) at commit
 //! 1855aa44473e88feac9d3f131b9c0c5fc9706b68. Supplemental exact-match metadata comes from
 //! https://github.com/anomalyco/models.dev at 5c40e591a65246bcbf2e6a890d90516086ba72de.
 //! opensource(l) adds exact-match prices and separate input/output limits at
-//! https://github.com/BerriAI/litellm commit 60d05972aeeadc3fb21476f586ce3f4747887c9d.
-//! litellm-comparison.json records candidate providers, source conflicts, and filled fields.
+//! opensource(l) commit 60d05972aeeadc3fb21476f586ce3f4747887c9d.
+//! opensource-l-comparison.json records candidate providers, source conflicts, and filled fields.
 //! Its gateway endpoint table describes adapter support, not proof of a vendor-native protocol.
 //! Verify and complete imported facts using official provider API/model/pricing documentation.
 //! Official documentation takes precedence when sources conflict. Keep unknown facts explicit.

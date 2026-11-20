@@ -540,7 +540,7 @@
           "reference_provider": "Google Vertex AI",
           "reference_model": "gemini-2.0-flash",
           "source_urls": [
-            "https://models.litellm.ai/models/gemini-2.0-flash"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Bluesminds fallback to Google's official Vertex AI pricing."
@@ -555,7 +555,7 @@
           "reference_provider": "Google Vertex AI",
           "reference_model": "gemini-2.0-flash",
           "source_urls": [
-            "https://models.litellm.ai/models/gemini-2.0-flash"
+            "opensource(l)"
           ],
           "confidence": "medium",
           "notes": "Experimental models are typically free previews; paid equivalent falls back to the base Gemini 2.0 Flash commercial rate."
@@ -570,7 +570,7 @@
           "reference_provider": "OpenAI",
           "reference_model": "gpt-4.1-mini",
           "source_urls": [
-            "https://models.litellm.ai/models/gpt-4.1-nano"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Estimated using OpenAI's list price. Prompt caching rate unknown/unstated for this specific model, so using full input rate as conservative estimate."
@@ -585,7 +585,7 @@
           "reference_provider": "OpenAI",
           "reference_model": "gpt-4.1-nano",
           "source_urls": [
-            "https://models.litellm.ai/models/gpt-4.1-nano"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Estimated using OpenAI's list price."
@@ -712,7 +712,7 @@
           "reference_model": "glm-5.1",
           "source_urls": [
             "https://tokencost.app/models/glm-5-1",
-            "https://models.litellm.ai/models/glm-5.1"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "CodeBuddy does not publish a standalone token rate card; estimated using the official upstream Z.ai list price."
@@ -742,7 +742,7 @@
           "reference_provider": "Z.ai (Zhipu)",
           "reference_model": "glm-5.3",
           "source_urls": [
-            "https://models.litellm.ai/models/glm-5.3"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "CodeBuddy fallback to Z.ai's standard API rate for GLM 5.3."
@@ -757,7 +757,7 @@
           "reference_provider": "Z.ai (Zhipu)",
           "reference_model": "glm-5.3-flash",
           "source_urls": [
-            "https://models.litellm.ai/models/glm-5.3-flash"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "CodeBuddy fallback to Z.ai's standard API rate for GLM 5.3 Flash."
@@ -818,7 +818,7 @@
           "reference_provider": "Moonshot AI",
           "reference_model": "kimi-k3.1",
           "source_urls": [
-            "https://models.litellm.ai/models/kimi-k3.1-pro"
+            "opensource(l)"
           ],
           "confidence": "medium",
           "notes": "CodeBuddy fallback to Moonshot AI's standard K3.1 rate. Cache read is unstated for the base model (unlike the Pro variant), so it is conservatively set to the full input price."
@@ -833,7 +833,7 @@
           "reference_provider": "MiniMax",
           "reference_model": "minimax-m3",
           "source_urls": [
-            "https://models.litellm.ai/models/minimax-m3"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "CodeBuddy fallback to MiniMax's standard API rate."
@@ -879,7 +879,7 @@
           "reference_provider": "Z.ai (Zhipu)",
           "reference_model": "glm-5-turbo",
           "source_urls": [
-            "https://models.litellm.ai/models/glm-5.3-flash"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "CodeBuddy fallback to Z.ai's GLM 5 Turbo pricing. Cache read rate is unstated, conservatively set to full input price."
@@ -954,7 +954,7 @@
           "reference_provider": "Moonshot AI",
           "reference_model": "kimi-k2.7",
           "source_urls": [
-            "https://models.litellm.ai/models/kimi-k3.1-pro"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "CodeBuddy fallback to Moonshot's rate for Kimi K2.7. Cache read rate is unstated, conservatively set to full input price."
@@ -969,7 +969,7 @@
           "reference_provider": "MiniMax",
           "reference_model": "minimax-m2.7",
           "source_urls": [
-            "https://models.litellm.ai/models/minimax-m3"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "CodeBuddy fallback to MiniMax's standard rate. Cache read rate is unstated, conservatively set to full input price."
@@ -984,7 +984,7 @@
           "reference_provider": "MiniMax",
           "reference_model": "minimax-m3",
           "source_urls": [
-            "https://models.litellm.ai/models/minimax-m3"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "CodeBuddy fallback to MiniMax's standard rate for M3."
@@ -999,7 +999,7 @@
           "reference_provider": "Cohere",
           "reference_model": "c4ai-aya-expanse-32b",
           "source_urls": [
-            "https://models.litellm.ai/providers/cohere",
+            "opensource(l)",
             "https://www.respan.ai/models/c4ai-aya-expanse-32b"
           ],
           "confidence": "high",
@@ -1021,7 +1021,7 @@
           "reference_provider": "Cohere",
           "reference_model": "c4ai-aya-vision-32b",
           "source_urls": [
-            "https://models.litellm.ai/models/c4ai-aya-vision-32b"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Verified directly from Cohere API list prices. Cache read rate is unstated, conservatively set to full input price."
@@ -1142,7 +1142,7 @@
           "reference_provider": "Cohere",
           "reference_model": "command-r7b-12-2024",
           "source_urls": [
-            "https://models.litellm.ai/models/command-r7b"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Verified Cohere target list price. Caching unstated, set to full input price."
@@ -1308,7 +1308,7 @@
           "reference_provider": "Fireworks AI",
           "reference_model": "llama-v3p3-70b-instruct",
           "source_urls": [
-            "https://models.litellm.ai/models/llama-v3p3-70b-instruct"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Verified directly on Fireworks AI standard endpoint pricing. Cache read rate is unstated, conservatively set to full input price."
@@ -1329,7 +1329,7 @@
           "reference_provider": "Fireworks AI",
           "reference_model": "qwen3-235b-a22b",
           "source_urls": [
-            "https://models.litellm.ai/models/qwen3-235b-a22b",
+            "opensource(l)",
             "https://futureagi.com/llm-cost-calculator/fireworks-ai/accounts-fireworks-models-qwen3-235b-a22b/"
           ],
           "confidence": "high",
@@ -1345,7 +1345,7 @@
           "reference_provider": "Google AI Studio",
           "reference_model": "gemma-4-26b-a4b-it",
           "source_urls": [
-            "https://models.litellm.ai/models/gemma-4-26b-a4b-it"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Verified target price; this specific model is listed as free to use ($0.00) natively on Google AI Studio via the Gemini API."
@@ -1360,7 +1360,7 @@
           "reference_provider": "Google AI Studio",
           "reference_model": "gemma-4-31b-it",
           "source_urls": [
-            "https://models.litellm.ai/models/gemma-4-31b-it"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Verified target price; this specific model is listed as free to use ($0.00) natively on Google AI Studio via the Gemini API."
@@ -1392,7 +1392,7 @@
           "reference_model": "llama-prompt-guard-2-22m",
           "source_urls": [
             "https://console.groq.com/docs/model/meta-llama/llama-prompt-guard-2-22m",
-            "https://models.litellm.ai/models/llama-prompt-guard-2-22m"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Verified directly from Groq's official API documentation. Cache read unstated, conservatively set to full input price."
@@ -1408,7 +1408,7 @@
           "reference_model": "llama-prompt-guard-2-86m",
           "source_urls": [
             "https://console.groq.com/docs/model/meta-llama/llama-prompt-guard-2-86m",
-            "https://models.litellm.ai/models/llama-prompt-guard-2-86m"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Verified directly from Groq's official API documentation. Cache read unstated, conservatively set to full input price."
@@ -1424,7 +1424,7 @@
           "reference_model": "qwen3.8-27b",
           "source_urls": [
             "https://qai.io/models/alibaba/qwen3.8-27b",
-            "https://models.litellm.ai/models/qwen3.8-27b"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Verified directly from Groq endpoint pricing. Cache read unstated, conservatively set to full input price."
@@ -1456,7 +1456,7 @@
           "reference_model": "QwQ-32B",
           "source_urls": [
             "https://cloudprice.net/models/alibaba-qwq-32b",
-            "https://docs.litellm.ai/docs/providers/hyperbolic"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Verified target price for Hyperbolic. Caching unstated, set to full input price."
@@ -1487,7 +1487,7 @@
           "reference_provider": "Hyperbolic",
           "reference_model": "Qwen2.5-Coder-32B-Instruct",
           "source_urls": [
-            "https://docs.litellm.ai/docs/providers/hyperbolic",
+            "opensource(l)",
             "https://ai-pricing.info/hyperbolic"
           ],
           "confidence": "high",
@@ -1503,7 +1503,7 @@
           "reference_provider": "Hyperbolic",
           "reference_model": "DeepSeek-R1",
           "source_urls": [
-            "https://models.litellm.ai/models/deepseek-r1",
+            "opensource(l)",
             "https://cloudprice.net/models/deepseek-r1"
           ],
           "confidence": "high",
@@ -1520,7 +1520,7 @@
           "reference_model": "DeepSeek-V3",
           "source_urls": [
             "https://cloudprice.net/models/deepseek-v3",
-            "https://models.litellm.ai/models/deepseek-v3"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Verified target price for Hyperbolic. Caching unstated, set to full input price."
@@ -1550,7 +1550,7 @@
           "reference_provider": "Hyperbolic",
           "reference_model": "Llama-3.3-70B-Instruct",
           "source_urls": [
-            "https://models.litellm.ai/models/llama-3.3-70b-instruct"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Verified target price for Hyperbolic. Caching unstated, set to full input price."
@@ -3520,10 +3520,10 @@
           "reference_provider": "Perplexity",
           "reference_model": "gpt-5.4-mini",
           "source_urls": [
-            "https://models.litellm.ai/models/gpt-5.4-mini"
+            "opensource(l)"
           ],
           "confidence": "high",
-          "notes": "Verified API token pricing for the Perplexity routing endpoint via LiteLLM logs."
+          "notes": "Verified API token pricing for the Perplexity routing endpoint via opensource(l) logs."
         },
         {
           "provider": "perplexity-agent",
@@ -3535,7 +3535,7 @@
           "reference_provider": "Perplexity",
           "reference_model": "glm-5.2",
           "source_urls": [
-            "https://models.litellm.ai/models/glm-5.2"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Verified API input token pricing directly for the Perplexity endpoint. Output and cache rates fallback to the standard upstream Z.ai list price."
@@ -3550,7 +3550,7 @@
           "reference_provider": "Perplexity",
           "reference_model": "grok-4.20-reasoning",
           "source_urls": [
-            "https://models.litellm.ai/models/grok-4.20-reasoning",
+            "opensource(l)",
             "https://mytokentracker.io/models/perplexity/xai/grok-4.20-reasoning"
           ],
           "confidence": "high",
@@ -3864,7 +3864,7 @@
           "reference_provider": "Together AI",
           "reference_model": "Llama-4-Maverick-17B-128E-Instruct",
           "source_urls": [
-            "https://models.litellm.ai/models"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Verified API pricing mapped through third-party aggregation logs for this exact endpoint on Together AI. Cache read rate is unstated, conservatively set to full input price."
@@ -4175,7 +4175,7 @@
           "reference_provider": "Alibaba Cloud Model Studio",
           "reference_model": "qwen3-next-80b-a3b-instruct",
           "source_urls": [
-            "https://models.litellm.ai/models/qwen3-next-80b-a3b-instruct"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Venice pricing unlisted for this model. Estimated fallback utilizes the native list pricing directly from Alibaba Cloud Model Studio. Cache read price is unstated, conservatively set to full input price."
@@ -4221,7 +4221,7 @@
           "reference_model": "grok-3",
           "source_urls": [
             "https://mixroute.ai/models/grok-3",
-            "https://models.litellm.ai/models/grok-3"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Verified native API token pricing for the base Grok-3 model directly from xAI integrations and cost calculators."
@@ -4237,7 +4237,7 @@
           "reference_model": "grok-4-fast-reasoning",
           "source_urls": [
             "https://flowlyn.com/tools/grok-api-pricing-calculator",
-            "https://models.litellm.ai/models/grok-4-fast-reasoning"
+            "opensource(l)"
           ],
           "confidence": "high",
           "notes": "Verified API token pricing directly from xAI cost estimators. Cache read price is unstated, conservatively set to full input price."
@@ -4440,7 +4440,7 @@
           "reference_provider": "OpenRouter / Nebius AI",
           "reference_model": "meta-llama/llama-guard-3-8b",
           "source_urls": [
-            "https://models.litellm.ai/models/llama-guard-3-8b"
+            "opensource(l)"
           ],
           "confidence": "low",
           "notes": "Nemotron 3.5 Content Safety is a free endpoint. Compute proxy uses Llama Guard 3 8B, a comparable lightweight content safety model with an established market rate."
@@ -4455,7 +4455,7 @@
           "reference_provider": "Z.ai (Zhipu)",
           "reference_model": "glm-5.3-flash",
           "source_urls": [
-            "https://models.litellm.ai/models/glm-5.3-flash"
+            "opensource(l)"
           ],
           "confidence": "low",
           "notes": "Target model is offered in a \u00a50/free public beta with no official commercial token rate. Fallback proxy leverages the standard rate for Z.ai's GLM-5.3-Flash as a comparable Chinese foundation model in the 'Flash' class."
@@ -4470,7 +4470,7 @@
           "reference_provider": "Z.ai (Zhipu)",
           "reference_model": "glm-5.3-flash",
           "source_urls": [
-            "https://models.litellm.ai/models/glm-5.3-flash"
+            "opensource(l)"
           ],
           "confidence": "low",
           "notes": "Target model is currently on a free API tier. Compute estimate leverages Zhipu's GLM-5.3-Flash as a comparable baseline for this weight class."
@@ -4485,7 +4485,7 @@
           "reference_provider": "Z.ai (Zhipu)",
           "reference_model": "glm-5.3-flash",
           "source_urls": [
-            "https://models.litellm.ai/models/glm-5.3-flash"
+            "opensource(l)"
           ],
           "confidence": "low",
           "notes": "International endpoint lacks a published paid tariff. Fallback proxies the established market rate of a comparable domestic model (GLM-5.3-Flash)."
@@ -4500,7 +4500,7 @@
           "reference_provider": "Z.ai (Zhipu)",
           "reference_model": "glm-5.3-flash",
           "source_urls": [
-            "https://models.litellm.ai/models/glm-5.3-flash"
+            "opensource(l)"
           ],
           "confidence": "low",
           "notes": "International endpoint lacks a published paid tariff. Fallback proxies the established market rate of a comparable domestic model (GLM-5.3-Flash)."
@@ -4875,7 +4875,7 @@
         "reference_model": "claude-sonnet-4-5",
         "source_urls": [
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/anthropic/models/claude-sonnet-4-5.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 2 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -5101,7 +5101,7 @@
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/opencode-go/models/glm-5.3.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json",
+          "opensource(l)",
           "https://opencode.ai/inference/go/v1/models",
           "https://opencode.ai/zen/go/v1/models"
         ],
@@ -5124,7 +5124,7 @@
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/opencode-go/models/glm-5.3-flash.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json",
+          "opensource(l)",
           "https://opencode.ai/inference/go/v1/models",
           "https://opencode.ai/zen/go/v1/models"
         ],
@@ -5168,7 +5168,7 @@
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/opencode-go/models/hy4-preview.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json",
+          "opensource(l)",
           "https://opencode.ai/inference/go/v1/models",
           "https://opencode.ai/zen/go/v1/models"
         ],
@@ -5438,7 +5438,7 @@
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/opencode-go/models/glm-5.3-flash.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json",
+          "opensource(l)",
           "https://opencode.ai/inference/go/v1/models",
           "https://opencode.ai/zen/go/v1/models"
         ],
@@ -5500,7 +5500,7 @@
         "reference_model": "gemma-4-31B-it",
         "source_urls": [
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/sambanova/models/gemma-4-31B-it.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json",
+          "opensource(l)",
           "https://api.sambanova.ai/v1/models"
         ],
         "confidence": "medium",
@@ -5744,7 +5744,7 @@
         "reference_model": "auto",
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
-          "https://github.com/decolua/9router/blob/1855aa44473e88feac9d3f131b9c0c5fc9706b68/open-sse/providers/pricing.js"
+          "opensource(9)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 2 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -5827,9 +5827,9 @@
         "reference_model": "deepseek-v4.1-flash",
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
-          "https://github.com/decolua/9router/blob/1855aa44473e88feac9d3f131b9c0c5fc9706b68/open-sse/providers/pricing.js",
+          "opensource(9)",
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/opencode-go/models/deepseek-v4.1-flash.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json",
+          "opensource(l)",
           "https://opencode.ai/inference/go/v1/models",
           "https://opencode.ai/zen/go/v1/models"
         ],
@@ -5893,7 +5893,7 @@
         "reference_model": "step-5-preview",
         "source_urls": [
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/opencode-go/models/step-5-preview.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json",
+          "opensource(l)",
           "https://opencode.ai/inference/go/v1/models",
           "https://opencode.ai/zen/go/v1/models"
         ],
@@ -5936,7 +5936,7 @@
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/opencode-go/models/glm-5.3-flash.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json",
+          "opensource(l)",
           "https://opencode.ai/inference/go/v1/models",
           "https://opencode.ai/zen/go/v1/models"
         ],
@@ -6282,8 +6282,8 @@
         "reference_model": "deepseek-chat",
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
-          "https://github.com/decolua/9router/blob/1855aa44473e88feac9d3f131b9c0c5fc9706b68/open-sse/providers/pricing.js",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(9)",
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 3 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6345,7 +6345,7 @@
         "reference_model": "gemini-3.1-flash-image",
         "source_urls": [
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/google/models/gemini-3.1-flash-image.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6365,7 +6365,7 @@
         "reference_model": "gemini-3.1-flash-lite-image",
         "source_urls": [
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/google/models/gemini-3.1-flash-lite-image.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6385,7 +6385,7 @@
         "reference_model": "gemini-nano-banana-2.1",
         "source_urls": [
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/google/models/gemini-nano-banana-2.1.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 2 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6405,7 +6405,7 @@
         "reference_model": "@cf/meta/llama-3.2-1b-instruct",
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6425,7 +6425,7 @@
         "reference_model": "@cf/meta/llama-3.2-3b-instruct",
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 2 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6445,7 +6445,7 @@
         "reference_model": "@cf/mistralai/mistral-small-3.1-24b-instruct",
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6465,7 +6465,7 @@
         "reference_model": "kimi-k2",
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
-          "https://github.com/decolua/9router/blob/1855aa44473e88feac9d3f131b9c0c5fc9706b68/open-sse/providers/pricing.js"
+          "opensource(9)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 3 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6486,7 +6486,7 @@
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/morph/models/morph-v3-fast.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6507,7 +6507,7 @@
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/morph/models/morph-v3-large.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6527,7 +6527,7 @@
         "reference_model": "nvidia/nemotron-3-super-120b-a12b",
         "source_urls": [
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/nebius/models/nvidia/nemotron-3-super-120b-a12b.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 2 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6547,7 +6547,7 @@
         "reference_model": "gpt-4",
         "source_urls": [
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/openai/models/gpt-4.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6567,7 +6567,7 @@
         "reference_model": "gpt-4o-2024-05-13",
         "source_urls": [
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/openai/models/gpt-4o-2024-05-13.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6587,7 +6587,7 @@
         "reference_model": "gpt-5-pro",
         "source_urls": [
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/openai/models/gpt-5-pro.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6607,7 +6607,7 @@
         "reference_model": "gpt-5.2-pro",
         "source_urls": [
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/openai/models/gpt-5.2-pro.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6627,7 +6627,7 @@
         "reference_model": "gpt-audio",
         "source_urls": [
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/openai/models/gpt-audio.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6647,7 +6647,7 @@
         "reference_model": "gpt-audio-mini",
         "source_urls": [
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/openai/models/gpt-audio-mini.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6668,7 +6668,7 @@
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/openai/models/o3-pro.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6688,7 +6688,7 @@
         "reference_model": "auto",
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
-          "https://github.com/decolua/9router/blob/1855aa44473e88feac9d3f131b9c0c5fc9706b68/open-sse/providers/pricing.js"
+          "opensource(9)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 3 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6709,7 +6709,7 @@
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/perplexity/models/sonar.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 2 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6729,7 +6729,7 @@
         "reference_model": "sonar-deep-research",
         "source_urls": [
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/perplexity/models/sonar-deep-research.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6750,7 +6750,7 @@
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/perplexity/models/sonar-pro.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6770,7 +6770,7 @@
         "reference_model": "sonar-reasoning-pro",
         "source_urls": [
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/perplexity/models/sonar-reasoning-pro.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -6950,9 +6950,9 @@
         "reference_model": "deepseek-flash",
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
-          "https://github.com/decolua/9router/blob/1855aa44473e88feac9d3f131b9c0c5fc9706b68/open-sse/providers/pricing.js",
+          "opensource(9)",
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/deepseek/models/deepseek-flash.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json",
+          "opensource(l)",
           "https://api-docs.deepseek.com/quick_start/pricing"
         ],
         "confidence": "medium",
@@ -7036,7 +7036,7 @@
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/opencode-go/models/glm-5.3.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json",
+          "opensource(l)",
           "https://opencode.ai/inference/go/v1/models",
           "https://opencode.ai/zen/go/v1/models"
         ],
@@ -7058,9 +7058,9 @@
         "reference_model": "kimi-k3",
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
-          "https://github.com/decolua/9router/blob/1855aa44473e88feac9d3f131b9c0c5fc9706b68/open-sse/providers/pricing.js",
+          "opensource(9)",
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/opencode-go/models/kimi-k3.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json",
+          "opensource(l)",
           "https://opencode.ai/inference/go/v1/models",
           "https://opencode.ai/zen/go/v1/models"
         ],
@@ -7082,9 +7082,9 @@
         "reference_model": "deepseek-v4.1-flash",
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
-          "https://github.com/decolua/9router/blob/1855aa44473e88feac9d3f131b9c0c5fc9706b68/open-sse/providers/pricing.js",
+          "opensource(9)",
           "https://github.com/anomalyco/models.dev/blob/5c40e591a65246bcbf2e6a890d90516086ba72de/providers/opencode-go/models/deepseek-v4.1-flash.toml",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json",
+          "opensource(l)",
           "https://opencode.ai/inference/go/v1/models",
           "https://opencode.ai/zen/go/v1/models"
         ],
@@ -7145,7 +7145,7 @@
         "reference_model": "llama-3.3-70b",
         "source_urls": [
           "https://github.com/Midwess/compallm/blob/8fd8e10f742cee025ef5fd0f99bd6cf557921d48/libs/postgres/src/migration/m20261106_000018_seed_provider_templates.rs",
-          "https://github.com/BerriAI/litellm/blob/60d05972aeeadc3fb21476f586ce3f4747887c9d/model_prices_and_context_window.json"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Estimated fallback from a matching model identifier at another provider; provider namespace prefix is excluded for matching, variant suffixes retained. Selected a donor nearest the median input rate among 1 priced matches with imported/estimated provenance. Target pricing, availability and cache support are not established. Cache estimate uses donor positive cache rate when available, otherwise full donor input rate. Gemini review is pending."
@@ -7475,7 +7475,7 @@
         "reference_provider": "Google Vertex AI",
         "reference_model": "gemini-2.0-flash",
         "source_urls": [
-          "https://models.litellm.ai/models/gemini-2.0-flash"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: same_model_other_provider. Cache fallback uses full input rate until target-provider cache billing is known. Bluesminds fallback to Google's official Vertex AI pricing."
@@ -7498,7 +7498,7 @@
         "reference_provider": "Google Vertex AI",
         "reference_model": "gemini-2.0-flash",
         "source_urls": [
-          "https://models.litellm.ai/models/gemini-2.0-flash"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: related_model. Cache fallback uses full input rate until target-provider cache billing is known. Experimental models are typically free previews; paid equivalent falls back to the base Gemini 2.0 Flash commercial rate."
@@ -7680,7 +7680,7 @@
         "reference_provider": "Moonshot AI",
         "reference_model": "kimi-k3.1",
         "source_urls": [
-          "https://models.litellm.ai/models/kimi-k3.1-pro"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: same_model_other_provider. Cache fallback uses full input rate until target-provider cache billing is known. CodeBuddy fallback to Moonshot AI's standard K3.1 rate. Cache read is unstated for the base model (unlike the Pro variant), so it is conservatively set to the full input price."
@@ -7758,7 +7758,7 @@
         "reference_provider": "Z.ai (Zhipu)",
         "reference_model": "glm-5-turbo",
         "source_urls": [
-          "https://models.litellm.ai/models/glm-5.3-flash"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: same_model_other_provider. Cache fallback uses full input rate until target-provider cache billing is known. CodeBuddy fallback to Z.ai's GLM 5 Turbo pricing. Cache read rate is unstated, conservatively set to full input price."
@@ -7837,7 +7837,7 @@
         "reference_provider": "Cohere",
         "reference_model": "c4ai-aya-expanse-32b",
         "source_urls": [
-          "https://models.litellm.ai/providers/cohere",
+          "opensource(l)",
           "https://www.respan.ai/models/c4ai-aya-expanse-32b"
         ],
         "confidence": "low",
@@ -7861,7 +7861,7 @@
         "reference_provider": "Cohere",
         "reference_model": "c4ai-aya-vision-32b",
         "source_urls": [
-          "https://models.litellm.ai/models/c4ai-aya-vision-32b"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: verified_target. Cache fallback uses full input rate until target-provider cache billing is known. Verified directly from Cohere API list prices. Cache read rate is unstated, conservatively set to full input price."
@@ -8087,7 +8087,7 @@
         "reference_provider": "Fireworks AI",
         "reference_model": "llama-v3p3-70b-instruct",
         "source_urls": [
-          "https://models.litellm.ai/models/llama-v3p3-70b-instruct"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: verified_target. Cache fallback uses full input rate until target-provider cache billing is known. Verified directly on Fireworks AI standard endpoint pricing. Cache read rate is unstated, conservatively set to full input price."
@@ -8135,7 +8135,7 @@
         "reference_model": "llama-prompt-guard-2-22m",
         "source_urls": [
           "https://console.groq.com/docs/model/meta-llama/llama-prompt-guard-2-22m",
-          "https://models.litellm.ai/models/llama-prompt-guard-2-22m"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: verified_target. Cache fallback uses full input rate until target-provider cache billing is known. Verified directly from Groq's official API documentation. Cache read unstated, conservatively set to full input price."
@@ -8159,7 +8159,7 @@
         "reference_model": "llama-prompt-guard-2-86m",
         "source_urls": [
           "https://console.groq.com/docs/model/meta-llama/llama-prompt-guard-2-86m",
-          "https://models.litellm.ai/models/llama-prompt-guard-2-86m"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: verified_target. Cache fallback uses full input rate until target-provider cache billing is known. Verified directly from Groq's official API documentation. Cache read unstated, conservatively set to full input price."
@@ -9826,7 +9826,7 @@
         "reference_provider": "Perplexity",
         "reference_model": "grok-4.20-reasoning",
         "source_urls": [
-          "https://models.litellm.ai/models/grok-4.20-reasoning",
+          "opensource(l)",
           "https://mytokentracker.io/models/perplexity/xai/grok-4.20-reasoning"
         ],
         "confidence": "low",
@@ -10046,7 +10046,7 @@
         "reference_provider": "Together AI",
         "reference_model": "Llama-4-Maverick-17B-128E-Instruct",
         "source_urls": [
-          "https://models.litellm.ai/models"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: verified_target. Cache fallback uses full input rate until target-provider cache billing is known. Verified API pricing mapped through third-party aggregation logs for this exact endpoint on Together AI. Cache read rate is unstated, conservatively set to full input price."
@@ -10382,7 +10382,7 @@
         "reference_provider": "Alibaba Cloud Model Studio",
         "reference_model": "qwen3-next-80b-a3b-instruct",
         "source_urls": [
-          "https://models.litellm.ai/models/qwen3-next-80b-a3b-instruct"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: same_model_other_provider. Cache fallback uses full input rate until target-provider cache billing is known. Venice pricing unlisted for this model. Estimated fallback utilizes the native list pricing directly from Alibaba Cloud Model Studio. Cache read price is unstated, conservatively set to full input price."
@@ -10452,7 +10452,7 @@
         "reference_model": "grok-3",
         "source_urls": [
           "https://mixroute.ai/models/grok-3",
-          "https://models.litellm.ai/models/grok-3"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: verified_target. Cache fallback uses full input rate until target-provider cache billing is known. Verified native API token pricing for the base Grok-3 model directly from xAI integrations and cost calculators."
@@ -10476,7 +10476,7 @@
         "reference_model": "grok-4-fast-reasoning",
         "source_urls": [
           "https://flowlyn.com/tools/grok-api-pricing-calculator",
-          "https://models.litellm.ai/models/grok-4-fast-reasoning"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: verified_target. Cache fallback uses full input rate until target-provider cache billing is known. Verified API token pricing directly from xAI cost estimators. Cache read price is unstated, conservatively set to full input price."
@@ -10754,7 +10754,7 @@
         "reference_provider": "OpenRouter / Nebius AI",
         "reference_model": "meta-llama/llama-guard-3-8b",
         "source_urls": [
-          "https://models.litellm.ai/models/llama-guard-3-8b"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: related_model. Cache fallback uses full input rate until target-provider cache billing is known. Nemotron 3.5 Content Safety is a free endpoint. Compute proxy uses Llama Guard 3 8B, a comparable lightweight content safety model with an established market rate."
@@ -10777,7 +10777,7 @@
         "reference_provider": "Z.ai (Zhipu)",
         "reference_model": "glm-5.3-flash",
         "source_urls": [
-          "https://models.litellm.ai/models/glm-5.3-flash"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: related_model. Cache fallback uses full input rate until target-provider cache billing is known. Target model is offered in a \u00a50/free public beta with no official commercial token rate. Fallback proxy leverages the standard rate for Z.ai's GLM-5.3-Flash as a comparable Chinese foundation model in the 'Flash' class."
@@ -10800,7 +10800,7 @@
         "reference_provider": "Z.ai (Zhipu)",
         "reference_model": "glm-5.3-flash",
         "source_urls": [
-          "https://models.litellm.ai/models/glm-5.3-flash"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: related_model. Cache fallback uses full input rate until target-provider cache billing is known. Target model is currently on a free API tier. Compute estimate leverages Zhipu's GLM-5.3-Flash as a comparable baseline for this weight class."
@@ -10823,7 +10823,7 @@
         "reference_provider": "Z.ai (Zhipu)",
         "reference_model": "glm-5.3-flash",
         "source_urls": [
-          "https://models.litellm.ai/models/glm-5.3-flash"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: related_model. Cache fallback uses full input rate until target-provider cache billing is known. International endpoint lacks a published paid tariff. Fallback proxies the established market rate of a comparable domestic model (GLM-5.3-Flash)."
@@ -10846,7 +10846,7 @@
         "reference_provider": "Z.ai (Zhipu)",
         "reference_model": "glm-5.3-flash",
         "source_urls": [
-          "https://models.litellm.ai/models/glm-5.3-flash"
+          "opensource(l)"
         ],
         "confidence": "low",
         "notes": "Gemini research estimate; cited claims are not independently verified. Original basis: related_model. Cache fallback uses full input rate until target-provider cache billing is known. International endpoint lacks a published paid tariff. Fallback proxies the established market rate of a comparable domestic model (GLM-5.3-Flash)."
@@ -11380,9 +11380,9 @@
       "bytes_captured": 538101,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/gpt-4.1-nano": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/gpt-4.1-nano",
+      "final_url": "opensource(l)",
       "sha256": "d65990086044d25463b3931ac6a91e8101771c7e17f8aca0fcf631b2792ef43f",
       "bytes_captured": 41407,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -11436,9 +11436,9 @@
       "bytes_captured": 612649,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/gemini-2.0-flash": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/gemini-2.0-flash",
+      "final_url": "opensource(l)",
       "sha256": "7684f10e03e275c2560ec54c99bd8978b3cbba5bef969287e3bcdc17b0ac93c6",
       "bytes_captured": 35685,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -11492,23 +11492,23 @@
       "bytes_captured": 55419,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/glm-5.3-flash": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/glm-5.3-flash",
+      "final_url": "opensource(l)",
       "sha256": "8e3094e9f829c824f1a473010d067bb0b1551fc7f74ecc6a8e70ba1ec8b1be5a",
       "bytes_captured": 46570,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/minimax-m3": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/minimax-m3",
+      "final_url": "opensource(l)",
       "sha256": "7053be48fad72be7956a736f14d736ff62358800da474cd8fa6d90ba7ce98c64",
       "bytes_captured": 43834,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/glm-5.1": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/glm-5.1",
+      "final_url": "opensource(l)",
       "sha256": "e91c867043c698ec2e473f11df1837e2a6ab24482fbc3fba7915b1b21ab193c9",
       "bytes_captured": 41980,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -11534,16 +11534,16 @@
       "bytes_captured": 100308,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/kimi-k3.1-pro": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/kimi-k3.1-pro",
+      "final_url": "opensource(l)",
       "sha256": "d2f6ce67692300334c5c87e5c471df905f72e9c27a541a25aacaafe211f021bd",
       "bytes_captured": 41761,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/providers/cohere": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/providers/cohere",
+      "final_url": "opensource(l)",
       "sha256": "ce8fca5e909ffca9ff425b29065c97f7d02a7fa193ae59f69707ce1fca72f451",
       "bytes_captured": 34432,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -11569,9 +11569,9 @@
       "bytes_captured": 317558,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/glm-5.3": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/glm-5.3",
+      "final_url": "opensource(l)",
       "sha256": "01c35cbf7a72a2898ad9dc9e6fbfdb75c51d257ea433d963334633e69fdd75e9",
       "bytes_captured": 47669,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -11650,16 +11650,16 @@
       "bytes_captured": 29676,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/llama-v3p3-70b-instruct": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/llama-v3p3-70b-instruct",
+      "final_url": "opensource(l)",
       "sha256": "89005a34cee5960be936be2e589b407ed926c098a88d5a37b229c3ba926f13fa",
       "bytes_captured": 35853,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/c4ai-aya-vision-32b": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/c4ai-aya-vision-32b",
+      "final_url": "opensource(l)",
       "sha256": "120558b55090ca2b0d854311468847980d6c2b7eba823687a95ce818f8c4abc5",
       "bytes_captured": 29085,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -11689,9 +11689,9 @@
       "bytes_captured": 75419,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/command-r7b": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/command-r7b",
+      "final_url": "opensource(l)",
       "sha256": "529fea3464c4782e6618bf51dc9fc43f42e7b14c09354d98eb34f6a64cc94f6a",
       "bytes_captured": 35132,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -11742,23 +11742,23 @@
       "bytes_captured": 439847,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/gemma-4-31b-it": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/gemma-4-31b-it",
+      "final_url": "opensource(l)",
       "sha256": "d3f8174b53a372649a64015382b557cf0370fff91aa47678f3dffc7fa251b5f7",
       "bytes_captured": 37458,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/deepseek-r1": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/deepseek-r1",
+      "final_url": "opensource(l)",
       "sha256": "74b2250200f1db2c5e67b66466eb864558204121bf5b8331954060396206ebf8",
       "bytes_captured": 46380,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/qwen3.8-27b": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/qwen3.8-27b",
+      "final_url": "opensource(l)",
       "sha256": "9f09aeb64a12c529c4512cc6e89311d76ab904126bd78a801e70aa24384bb9ef",
       "bytes_captured": 41255,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -11806,9 +11806,9 @@
       "bytes_captured": 772635,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/qwen3-235b-a22b": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/qwen3-235b-a22b",
+      "final_url": "opensource(l)",
       "sha256": "cf3639443816ee716c2ff72a7855acb051785977141c823ce58e4746c1bb8681",
       "bytes_captured": 37961,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -11838,16 +11838,16 @@
       "bytes_captured": 439173,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/llama-prompt-guard-2-86m": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/llama-prompt-guard-2-86m",
+      "final_url": "opensource(l)",
       "sha256": "e09eea9d83fce1a6ba80903a02a7f7caf8bfc26487e95130587e8fd70ba649c9",
       "bytes_captured": 35572,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://docs.litellm.ai/docs/providers/hyperbolic": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://docs.litellm.ai/docs/providers/hyperbolic",
+      "final_url": "opensource(l)",
       "sha256": "6afa241859ac6839da81d8df53a513f04723c2c2f024747304dbd8bece61ed29",
       "bytes_captured": 153557,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -11866,16 +11866,16 @@
       "bytes_captured": 64975,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/gemma-4-26b-a4b-it": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/gemma-4-26b-a4b-it",
+      "final_url": "opensource(l)",
       "sha256": "20278eccd8341ef8104e8df6689fe1dbb269f1e5a4ef83ee56f0358e3eba71d9",
       "bytes_captured": 36571,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/llama-3.3-70b-instruct": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/llama-3.3-70b-instruct",
+      "final_url": "opensource(l)",
       "sha256": "d4533a9ca4d50119c2af08984d42ecc0ad681e01c5161cf22fe87024ad2c922d",
       "bytes_captured": 44399,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -11895,16 +11895,16 @@
       "error": "HTTP Error 503: Service Unavailable",
       "verification": "not retrieved"
     },
-    "https://models.litellm.ai/models/deepseek-v3": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/deepseek-v3",
+      "final_url": "opensource(l)",
       "sha256": "f4b75e38bca83161ccd5da1f145e9c2ca67ff2a6044919c89506a85492eb9833",
       "bytes_captured": 46214,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/llama-prompt-guard-2-22m": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/llama-prompt-guard-2-22m",
+      "final_url": "opensource(l)",
       "sha256": "1443cc01500b1fd3086be02475d8d33c67b2d822762a7ca48ab693cb8b2514a5",
       "bytes_captured": 35504,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -12649,9 +12649,9 @@
       "bytes_captured": 178300,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/glm-5.2": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/glm-5.2",
+      "final_url": "opensource(l)",
       "sha256": "4e16760bbad382046bef8e793eb0a91584eebb9e24fe5e8fa37a2754678fd619",
       "bytes_captured": 46556,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -12677,9 +12677,9 @@
       "bytes_captured": 650145,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/gpt-5.4-mini": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/gpt-5.4-mini",
+      "final_url": "opensource(l)",
       "sha256": "5e326b020c5123d6cb72e2d330fbe8bd6e32e863f83d9a42d27cba227def541d",
       "bytes_captured": 42880,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -12712,9 +12712,9 @@
       "bytes_captured": 44896,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models",
+      "final_url": "opensource(l)",
       "sha256": "843f6d6b29f879bbeab46e25b54a5fcca561d9dc6ba4b8c2c144b27e1326c1d7",
       "bytes_captured": 473287,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -12733,9 +12733,9 @@
       "bytes_captured": 2297736,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/grok-4-fast-reasoning": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/grok-4-fast-reasoning",
+      "final_url": "opensource(l)",
       "sha256": "3103fe9a17f3d386ec22e5a8ee0878413a05966794919e31378d871402d8ef6a",
       "bytes_captured": 35637,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -12747,16 +12747,16 @@
       "bytes_captured": 615860,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/grok-4.20-reasoning": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/grok-4.20-reasoning",
+      "final_url": "opensource(l)",
       "sha256": "b02b79d1b2c0d846dcc899fbd0438bf2321d2fa53629645534def0ee21ed4bd6",
       "bytes_captured": 41359,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/grok-3": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/grok-3",
+      "final_url": "opensource(l)",
       "sha256": "bab4d1c0ef7105dfc05688078ec1092905e5c3f2bf2087c725f7d76d6efebd9e",
       "bytes_captured": 36709,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -12796,9 +12796,9 @@
       "bytes_captured": 848969,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/qwen3-next-80b-a3b-instruct": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/qwen3-next-80b-a3b-instruct",
+      "final_url": "opensource(l)",
       "sha256": "4abf2ade035bc0957da5a45328f0675e68bf16436a807fb815e7a3aac7f5a591",
       "bytes_captured": 46711,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -12951,9 +12951,9 @@
       "error": "HTTP Error 404: Not Found",
       "verification": "not retrieved"
     },
-    "https://models.litellm.ai/models/llama-guard-3-8b": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/llama-guard-3-8b",
+      "final_url": "opensource(l)",
       "sha256": "05e87ab45c6dac97cb4958d2cf5e6c4e6f99a07bf3e39c35350f5c481a04a55e",
       "bytes_captured": 37372,
       "verification": "URL reachability only; numeric price claims remain estimates"

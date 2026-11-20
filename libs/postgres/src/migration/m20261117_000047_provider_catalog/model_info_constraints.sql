@@ -48,8 +48,10 @@ BEGIN
                OR coalesce(item->'revision', 'null'::jsonb) <> 'null'::jsonb THEN RETURN false; END IF;
         ELSE
             IF jsonb_typeof(item->'url') IS DISTINCT FROM 'string'
-               OR (item->>'url') !~ '^https?://[^/?#@[:space:]]+([/?][^#[:space:]]*)?$'
+               OR length(btrim(item->>'url')) = 0
+               OR (item->>'kind' = 'api' AND ((item->>'url') !~ '^https?://[^/?#@[:space:]]+([/?][^#[:space:]]*)?$'
                OR (item->>'url') ~* '[?&](key|api_key|apikey|token|access_token|authorization|password|secret)='
+               ))
                OR item->>'access' = 'manual' THEN RETURN false; END IF;
         END IF;
         IF coalesce(item->'revision','null'::jsonb) <> 'null'::jsonb AND jsonb_typeof(item->'revision') IS DISTINCT FROM 'string' THEN RETURN false; END IF;

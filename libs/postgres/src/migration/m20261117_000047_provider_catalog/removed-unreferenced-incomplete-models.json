@@ -1,8 +1,8 @@
 {
-  "rule": "Remove models absent from literal/naming-variant mentions in both pinned 9Router/LiteLLM checkouts AND missing applicable context/billing/pricing/cache data. Evaluated across the full catalog, preserving complete estimates and intentional inapplicable billing fields.",
+  "rule": "Remove models absent from literal/naming-variant mentions in both pinned opensource(9)/opensource(l) checkouts AND missing applicable context/billing/pricing/cache data. Evaluated across the full catalog, preserving complete estimates and intentional inapplicable billing fields.",
   "source_revisions": {
-    "9router": "1855aa44473e88feac9d3f131b9c0c5fc9706b68",
-    "litellm": "65a926600a92b11f1464433a3a60a2c25cb93574"
+    "opensource(9)": "1855aa44473e88feac9d3f131b9c0c5fc9706b68",
+    "opensource(l)": "65a926600a92b11f1464433a3a60a2c25cb93574"
   },
   "comparison_limitations": "Absence from these pinned checkouts is not proof that the upstream model does not exist.",
   "counts_by_provider": {

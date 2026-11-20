@@ -224,7 +224,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/models/kimi-k2.6",
+            "opensource(l)",
             "https://orq.ai/models/moonshotai-kimi-k2.6"
           ],
           "notes": "Volcengine's Coding Plan is subscription-billed. Token cost proxy relies on Moonshot AI's official native token pricing for Kimi-K2.6."
@@ -313,7 +313,7 @@
           },
           "source_urls": [
             "https://wiki.agnes-ai.com/en/docs/agnes-25-pro",
-            "https://models.litellm.ai/models/agnes-2.5-pro"
+            "opensource(l)"
           ],
           "notes": "Verified directly from Agnes documentation. Features advanced coding, reasoning, and image understanding."
         },
@@ -766,7 +766,7 @@
           },
           "source_urls": [
             "https://www.layer3labs.io/guides/gemini-4-argon-limits",
-            "https://models.litellm.ai/models/gemini-4-argon"
+            "opensource(l)"
           ],
           "notes": "Antigravity operates on a subscription billing model. The token cost is an estimate based on Google API introductory rates for Gemini 4 Argon, which can output up to 1M tokens with long decode."
         },
@@ -793,7 +793,7 @@
           },
           "source_urls": [
             "https://www.layer3labs.io/guides/gemini-4-argon-limits",
-            "https://models.litellm.ai/models/gemini-4-argon"
+            "opensource(l)"
           ],
           "notes": "Antigravity operates on a subscription billing model. The token cost is an estimate based on Google API introductory rates for Gemini 4 Argon, which can output up to 1M tokens with long decode."
         }
@@ -1008,7 +1008,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/models/claude-fable-5",
+            "opensource(l)",
             "https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-fable-5.html"
           ],
           "notes": "Verified target limits and cross-region pricing. The US cross-region Bedrock endpoint applies a slight markup over global/baseline."
@@ -1035,7 +1035,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/models/claude-opus-4-1"
+            "opensource(l)"
           ],
           "notes": "Verified exact target pricing and context limits on Amazon Bedrock. Deprecation is scheduled for January 8, 2027."
         },
@@ -1062,7 +1062,7 @@
           },
           "source_urls": [
             "https://custom.typingmind.com/tools/estimate-llm-usage-costs/amazon-bedrock/anthropic-claude-opus-4-5-20251101-v1-0",
-            "https://models.litellm.ai/models/claude-opus-4-5"
+            "opensource(l)"
           ],
           "notes": "Verified limits and pricing natively for Bedrock's US cross-region deployment."
         },
@@ -1088,7 +1088,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/models/claude-opus-4-7",
+            "opensource(l)",
             "https://custom.typingmind.com/tools/estimate-llm-usage-costs/amazon-bedrock/us-anthropic-claude-opus-4-7"
           ],
           "notes": "Verified target pricing and limits natively for Bedrock's US cross-region deployment."
@@ -2021,7 +2021,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/models/gpt-5.3-codex",
+            "opensource(l)",
             "https://gate.ai/blog/gpt-5-3-codex-openai-specs-pricing-api-access-use-cases"
           ],
           "notes": "Proxy cost models OpenAI's native API list price. Context limit follows OpenAI's effective 272K bound for typical gateway operations."
@@ -2076,7 +2076,7 @@
           },
           "source_urls": [
             "https://developers.cloudflare.com/workers-ai/platform/pricing/",
-            "https://models.litellm.ai/providers/cloudflare"
+            "opensource(l)"
           ],
           "notes": "Exact target pricing verified from Cloudflare documentation. Prompt caching rate is unlisted, using full input rate as an estimate."
         },
@@ -2103,7 +2103,7 @@
           },
           "source_urls": [
             "https://developers.cloudflare.com/workers-ai/platform/pricing/",
-            "https://models.litellm.ai/providers/cloudflare"
+            "opensource(l)"
           ],
           "notes": "Exact target pricing verified from Cloudflare documentation. Fast/FP8 configurations on CF traditionally run constrained contexts (24K)."
         },
@@ -2182,7 +2182,7 @@
           },
           "source_urls": [
             "https://developers.cloudflare.com/workers-ai/platform/pricing/",
-            "https://models.litellm.ai/providers/cloudflare"
+            "opensource(l)"
           ],
           "notes": "Exact target pricing verified from Cloudflare documentation."
         },
@@ -2209,7 +2209,7 @@
           },
           "source_urls": [
             "https://developers.cloudflare.com/workers-ai/platform/pricing/",
-            "https://models.litellm.ai/providers/cloudflare"
+            "opensource(l)"
           ],
           "notes": "Exact target pricing verified from Cloudflare documentation."
         },
@@ -2391,9 +2391,9 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/providers/cloudflare"
+            "opensource(l)"
           ],
-          "notes": "Exact target pricing verified from Cloudflare documentation / LiteLLM integration index."
+          "notes": "Exact target pricing verified from Cloudflare documentation / opensource(l) integration index."
         }
       ]
     },
@@ -2475,7 +2475,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/models/glm-5.3-flash"
+            "opensource(l)"
           ],
           "notes": "CodeBuddy fallback to Z.ai's GLM 5 Turbo pricing and limits. Cache read rate is unstated, conservatively set to full input price."
         },
@@ -2501,7 +2501,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/models/kimi-k3.1-pro"
+            "opensource(l)"
           ],
           "notes": "CodeBuddy fallback to Moonshot's official token rate and capacity for Kimi K2.7. Cache read rate is unstated, conservatively set to full input price."
         },
@@ -2787,7 +2787,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/models/gpt-daybreak-blue"
+            "opensource(l)"
           ],
           "notes": "Pricing and token context specifications extracted from the upstream OpenAI API for the gpt-daybreak-blue model class."
         },
@@ -4533,7 +4533,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/models/gemini-4-argon"
+            "opensource(l)"
           ],
           "notes": "GitHub API models generally map to standard partner rates. The proxy cost utilizes Google AI Studio's introductory rate for Gemini 4 Argon, supporting up to 1M tokens of long decode output."
         },
@@ -5455,7 +5455,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/providers/hyperbolic"
+            "opensource(l)"
           ],
           "notes": "Verified exact native API token pricing and context boundaries for Hyperbolic."
         },
@@ -6085,7 +6085,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/models/kimi-k3.1-pro"
+            "opensource(l)"
           ],
           "notes": "Kimchi API proxy estimates utilize Moonshot's native list pricing for Kimi-K2.7. Prompt caching rate unstated, conservatively set to full input price."
         }
@@ -7538,7 +7538,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/models/mistral-moderation",
+            "opensource(l)",
             "https://docs.mistral.ai/models/mistral-moderation-26-03"
           ],
           "notes": "Verified explicitly via Mistral documentation; the moderation endpoint operates completely free of charge ($0.00 per token)."
@@ -7884,7 +7884,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/models/llama-guard-3-8b"
+            "opensource(l)"
           ],
           "notes": "Pricing on NVIDIA NIM is unlisted/unresolved for Llama Guard 4. Proxy uses the standard established market rate (e.g. via DeepInfra) for the similar Llama Guard 3 8B safety model."
         },
@@ -8334,7 +8334,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/providers/cloudflare"
+            "opensource(l)"
           ],
           "notes": "Ollama is a local runtime, so execution is inherently free. For platforms proxying local models via token pricing, the proxy estimate defaults to Cloudflare's commercial rate for GLM 4.7 Flash."
         },
@@ -8360,7 +8360,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/models/glm-5.0"
+            "opensource(l)"
           ],
           "notes": "Ollama is a local execution engine. To provide a defensible compute metric for this parameter class, costs are mapped directly to Zhipu's official API pricing for the GLM-5.0 baseline."
         },
@@ -8703,7 +8703,7 @@
             "structured_output": false
           },
           "source_urls": [
-            "https://models.litellm.ai/models/gpt-transcribe",
+            "opensource(l)",
             "https://www.cekura.ai/blogs/whisper-api-pricing"
           ],
           "notes": "This speech-to-text API explicitly bills by audio duration processed ($0.0045 per minute). It does not bill via text tokens, rendering token limits and pricing arrays inapplicable."
@@ -8730,7 +8730,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/models/omni-moderation",
+            "opensource(l)",
             "https://community.openai.com/t/rate-limits-for-omni-moderation-based-on-tier/1377984"
           ],
           "notes": "Verified exact capabilities and rate natively. OpenAI provides the Omni Moderation endpoint entirely free of charge ($0.00 per token)."
@@ -11212,7 +11212,7 @@
             "structured_output": true
           },
           "source_urls": [
-            "https://models.litellm.ai/models/grok-4.20-reasoning"
+            "opensource(l)"
           ],
           "notes": "Verified API token pricing directly for the Perplexity routing endpoint."
         },
@@ -15143,7 +15143,7 @@
         "reference_provider": "Moonshot AI",
         "reference_model": "kimi-k2.6",
         "source_urls": [
-          "https://models.litellm.ai/models/kimi-k2.6",
+          "opensource(l)",
           "https://orq.ai/models/moonshotai-kimi-k2.6"
         ],
         "confidence": "low",
@@ -38035,9 +38035,9 @@
       "bytes_captured": 147687,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/claude-opus-4-1": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/claude-opus-4-1",
+      "final_url": "opensource(l)",
       "sha256": "aecaad54e8fead3d657364b912a45ab335d2f66d752c67eb579e7deb0a034c58",
       "bytes_captured": 39965,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -38084,9 +38084,9 @@
       "bytes_captured": 443660,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/agnes-2.5-pro": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/agnes-2.5-pro",
+      "final_url": "opensource(l)",
       "sha256": "8bc1c1d1b6ad1a002c6f902be652a6395b1a4ccfe53af4c3d25a33a99d01dcfc",
       "bytes_captured": 35251,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -38154,9 +38154,9 @@
       "bytes_captured": 96002,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/kimi-k2.6": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/kimi-k2.6",
+      "final_url": "opensource(l)",
       "sha256": "b2dbc63a017ef3c34de293d9e45ee9c77a0a40f9d133a89346521d1bfdc9352a",
       "bytes_captured": 43226,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -38168,9 +38168,9 @@
       "bytes_captured": 1299483,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/claude-opus-4-5": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/claude-opus-4-5",
+      "final_url": "opensource(l)",
       "sha256": "cfdb0c9b7c8da4ca5273a164eb0a837606e5730f4301afa00003d5085ef26a3f",
       "bytes_captured": 44381,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -38203,16 +38203,16 @@
       "bytes_captured": 650149,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/claude-fable-5": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/claude-fable-5",
+      "final_url": "opensource(l)",
       "sha256": "abd0d407e2c4a7743990aaf64d656a90607018d7894734e6f753c34de131c266",
       "bytes_captured": 46337,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/gemini-4-argon": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/gemini-4-argon",
+      "final_url": "opensource(l)",
       "sha256": "08b164dd1c4fce132245d3f3f31c298b27626fcf45ce223aa54f420e7fa2c678",
       "bytes_captured": 43546,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -38340,9 +38340,9 @@
       "error": "HTTP Error 403: Blocked",
       "verification": "not retrieved"
     },
-    "https://models.litellm.ai/models/claude-opus-4-7": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/claude-opus-4-7",
+      "final_url": "opensource(l)",
       "sha256": "af5be5e4a12cc635fa418540fff5e643cc6623bf32558c58be0068b41fd31ab6",
       "bytes_captured": 46198,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -38389,9 +38389,9 @@
       "bytes_captured": 1538106,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/kimi-k3.1-pro": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/kimi-k3.1-pro",
+      "final_url": "opensource(l)",
       "sha256": "d2f6ce67692300334c5c87e5c471df905f72e9c27a541a25aacaafe211f021bd",
       "bytes_captured": 41761,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -38480,9 +38480,9 @@
       "bytes_captured": 1067044,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/providers/cloudflare": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/providers/cloudflare",
+      "final_url": "opensource(l)",
       "sha256": "bd4f86a391d6211b5e5d9d69dde47b5f37f799a714dda9686d489cf0dc83ad1d",
       "bytes_captured": 36013,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -38522,9 +38522,9 @@
       "bytes_captured": 129637,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/gpt-5.3-codex": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/gpt-5.3-codex",
+      "final_url": "opensource(l)",
       "sha256": "e602794b0b3ced5bd492d528c5de02c10d614b7d82a1ccabe52d22649a5c097e",
       "bytes_captured": 41107,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -38550,9 +38550,9 @@
       "bytes_captured": 175709,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/glm-5.3-flash": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/glm-5.3-flash",
+      "final_url": "opensource(l)",
       "sha256": "8e3094e9f829c824f1a473010d067bb0b1551fc7f74ecc6a8e70ba1ec8b1be5a",
       "bytes_captured": 46570,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -38599,9 +38599,9 @@
       "bytes_captured": 499521,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/gpt-daybreak-blue": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/gpt-daybreak-blue",
+      "final_url": "opensource(l)",
       "sha256": "23beab9c1caccbad92d47bda26f2981712183441593d81cc9b9804b534990abf",
       "bytes_captured": 37596,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -38836,9 +38836,9 @@
       "bytes_captured": 240788,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/providers/hyperbolic": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/providers/hyperbolic",
+      "final_url": "opensource(l)",
       "sha256": "ad1998e53abbe9042f1dc3cd8d4b707abc937a69d34aa4536e4c1367b9742166",
       "bytes_captured": 29020,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -39071,9 +39071,9 @@
       "bytes_captured": 36907,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/mistral-moderation": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/mistral-moderation",
+      "final_url": "opensource(l)",
       "sha256": "e06b1ebd52ad34afb58eb93222563a573cc26410ed74a255dac60a56b8ab5b34",
       "bytes_captured": 31466,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -39222,9 +39222,9 @@
       "bytes_captured": 954107,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/llama-guard-3-8b": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/llama-guard-3-8b",
+      "final_url": "opensource(l)",
       "sha256": "05e87ab45c6dac97cb4958d2cf5e6c4e6f99a07bf3e39c35350f5c481a04a55e",
       "bytes_captured": 37372,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -39261,7 +39261,7 @@
       "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
       "verification": "not retrieved"
     },
-    "https://models.litellm.ai/models/glm-5.0": {
+    "opensource(l)": {
       "error": "HTTP Error 404: Not Found",
       "verification": "not retrieved"
     },
@@ -39363,9 +39363,9 @@
       "bytes_captured": 249188,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/gpt-transcribe": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/gpt-transcribe",
+      "final_url": "opensource(l)",
       "sha256": "f60da9bf245680d3138142f46a69238934de2d89081db78ddd6ef67b73e0c002",
       "bytes_captured": 31076,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -39391,9 +39391,9 @@
       "bytes_captured": 75273,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/omni-moderation": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/omni-moderation",
+      "final_url": "opensource(l)",
       "sha256": "38f9e1bd11cbbb4491852e61b48dcbe2163199a9be77a7d2a429b94dcf11a0ea",
       "bytes_captured": 30808,
       "verification": "URL reachability only; numeric price claims remain estimates"
@@ -39549,9 +39549,9 @@
       "bytes_captured": 703614,
       "verification": "URL reachability only; numeric price claims remain estimates"
     },
-    "https://models.litellm.ai/models/grok-4.20-reasoning": {
+    "opensource(l)": {
       "status": 200,
-      "final_url": "https://models.litellm.ai/models/grok-4.20-reasoning",
+      "final_url": "opensource(l)",
       "sha256": "b02b79d1b2c0d846dcc899fbd0438bf2321d2fa53629645534def0ee21ed4bd6",
       "bytes_captured": 41359,
       "verification": "URL reachability only; numeric price claims remain estimates"

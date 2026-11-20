@@ -9,6 +9,7 @@ const workspace = fileURLToPath(new URL('..', import.meta.url))
 const config: StorybookConfig = {
   stories: ['../stories/**/*.stories.@(ts|tsx)'],
   framework: '@storybook/react-vite',
+  staticDirs: [{ from: '../../../portal/public/assets/providers', to: '/assets/providers' }],
   addons: ['@storybook/addon-docs', '@storybook/addon-a11y', '@storybook/addon-mcp'],
   core: { disableTelemetry: true },
   features: { componentsManifest: true },

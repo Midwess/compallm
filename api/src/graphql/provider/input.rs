@@ -124,13 +124,41 @@ pub struct ProviderEffortMapping {
 /// Complete configured text-model values. Decimal prices are USD per million tokens.
 #[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[validate(validate_model_configuration)]
 pub struct ProviderModelConfiguration {
-    #[validate(length(min = 1, max = 40, message = "Model name must contain 1 to 40 characters."), custom(function = input::model_name, message = "Use letters, numbers, hyphens, or underscores for the model name."))]
+    #[validate(length(min = 1, max = 512, message = "Model identifier must contain 1 to 512 characters."), custom(function = input::upstream_model_id, message = "Use the exact upstream model identifier without spaces or control characters."))]
     pub name: String,
     pub protocol: TextModelProtocol,
     #[validate(custom(function = input::endpoint_path, message = "Enter a path beginning with / using letters, numbers, hyphens, underscores, and slashes."), length(max = 40, message = "Path must be 40 characters or fewer."))]
     pub path: String,
     pub max_context_tokens: ContextTokens,
+    #[graphql(default = true)]
+    #[serde(default = "enabled")]
+    pub context_limit_enabled: bool,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present"
+    )]
+    #[schemars(extend("x-compallm-non-null" = true))]
+    pub max_input_tokens: Option<ContextTokens>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present"
+    )]
+    #[schemars(extend("x-compallm-non-null" = true))]
+    pub max_output_tokens: Option<ContextTokens>,
+    #[graphql(default)]
+    #[serde(default)]
+    #[validate(custom(function = header_entries, message = "Header names must be unique, ignoring case."))]
+    #[validify]
+    pub headers: Vec<ProviderHeader>,
+    #[graphql(default)]
+    #[serde(default)]
+    #[validate(custom(function = body_entries, message = "Body field names must be unique."))]
+    #[validify]
+    pub body_defaults: Vec<ProviderBodyDefault>,
     #[graphql(default = true)]
     #[serde(default = "enabled")]
     pub enabled: bool,
@@ -153,12 +181,143 @@ pub struct ProviderModelConfiguration {
     #[schemars(extend("x-compallm-non-null" = true))]
     #[validify]
     pub catalog_ref: Option<ProviderCatalogRef>,
-    #[validate(custom(function = input::price, message = "Enter a nonnegative price with at most 12 integer and 8 decimal digits."))]
+    #[validate(custom(function = model_price, message = "Enter a price between $0 and $10,000 per 1M tokens."))]
     pub input_price: String,
-    #[validate(custom(function = input::price, message = "Enter a nonnegative price with at most 12 integer and 8 decimal digits."))]
+    #[validate(custom(function = model_price, message = "Enter a price between $0 and $10,000 per 1M tokens."))]
     pub output_price: String,
-    #[validate(custom(function = input::price, message = "Enter a nonnegative price with at most 12 integer and 8 decimal digits."))]
+    #[validate(custom(function = model_price, message = "Enter a price between $0 and $10,000 per 1M tokens."))]
     pub cached_price: String,
+    #[graphql(default = true)]
+    #[serde(default = "enabled")]
+    pub input_price_enabled: bool,
+    #[graphql(default = true)]
+    #[serde(default = "enabled")]
+    pub output_price_enabled: bool,
+    #[graphql(default = true)]
+    #[serde(default = "enabled")]
+    pub cached_price_enabled: bool,
+}
+
+fn model_price(value: &str) -> Result<(), ValidationError> {
+    input::price(value)?;
+    let (whole, fraction) = value.split_once('.').unwrap_or((value, ""));
+    let whole = whole.trim_start_matches('0');
+    let integer = if whole.is_empty() { "0" } else { whole }
+        .parse::<u64>()
+        .map_err(|_| ValidationError::new_field("model_price"))?;
+    if integer > 10_000 || (integer == 10_000 && fraction.bytes().any(|digit| digit != b'0')) {
+        return Err(ValidationError::new_field("model_price"));
+    }
+    Ok(())
+}
+fn model_price_contract() -> Value {
+    let mut metadata = input::price_contract();
+    metadata["x-compallm-format"] = json!("modelPrice");
+    metadata
+}
+
+fn validate_model_configuration(
+    value: &ProviderModelConfiguration,
+) -> Result<(), ValidationErrors> {
+    for limit in [&value.max_input_tokens, &value.max_output_tokens]
+        .into_iter()
+        .flatten()
+    {
+        if limit.get() < 100
+            || limit.get() > 1_000_000
+            || limit.get() > value.max_context_tokens.get()
+        {
+            let mut errors = ValidationErrors::new();
+            errors.add(ValidationError::new_schema("model_limits").with_message(
+                "Enabled limits must be between 100 and 1,000,000 tokens and cannot exceed the context window.".into(),
+            ));
+            return Err(errors);
+        }
+    }
+    Ok(())
+}
+
+fn validate_model_configuration_contract() -> Value {
+    json!({"x-compallm-object-rule": "modelLimits", "x-compallm-messages": {"x-compallm-object-rule": "Enabled limits must be between 100 and 1,000,000 tokens and cannot exceed the context window."}})
+}
+
+#[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[validate(validate_body_default)]
+pub struct ProviderBodyDefault {
+    #[validate(length(min = 1, max = 128, message = "Body field names must contain 1 to 128 characters."), custom(function = body_key, message = "Use a body field name other than model, messages, input, or stream."))]
+    pub key: String,
+    #[validate(length(min = 1, max = 16384, message = "Enter a JSON value of at most 16,384 characters."), custom(function = body_value, message = "Enter a valid JSON value."))]
+    pub value: String,
+}
+
+fn validate_body_default(value: &ProviderBodyDefault) -> Result<(), ValidationErrors> {
+    let Ok(parsed) = serde_json::from_str::<Value>(&value.value) else {
+        return Ok(());
+    };
+    let matches = match value.key.as_str() {
+        "temperature" | "top_p" | "presence_penalty" | "frequency_penalty" => parsed.is_number(),
+        "max_completion_tokens" => parsed.as_f64().is_some_and(|value| {
+            value > 0.0 && value <= 9_007_199_254_740_991.0 && value.fract() == 0.0
+        }),
+        "seed" => parsed
+            .as_f64()
+            .is_some_and(|value| value.abs() <= 9_007_199_254_740_991.0 && value.fract() == 0.0),
+        "parallel_tool_calls" => parsed.is_boolean(),
+        "response_format" => parsed.is_object(),
+        "stop" => {
+            parsed.is_string()
+                || parsed
+                    .as_array()
+                    .is_some_and(|items| items.iter().all(Value::is_string))
+        }
+        _ => true,
+    };
+    if matches {
+        return Ok(());
+    }
+    let mut errors = ValidationErrors::new();
+    errors.add(
+        ValidationError::new_schema("body_type")
+            .with_message("Use the JSON value type required by the selected body field.".into()),
+    );
+    Err(errors)
+}
+fn validate_body_default_contract() -> Value {
+    json!({"x-compallm-object-rule": "bodyDefault", "x-compallm-messages": {"x-compallm-object-rule": "Use the JSON value type required by the selected body field."}})
+}
+
+fn body_key(value: &str) -> Result<(), ValidationError> {
+    if value.is_empty()
+        || !value
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'-' | b'.'))
+        || matches!(value, "model" | "messages" | "input" | "stream")
+    {
+        return Err(ValidationError::new_field("body_key"));
+    }
+    Ok(())
+}
+fn body_key_contract() -> Value {
+    json!({"x-compallm-format": "bodyDefaultKey", "x-compallm-input-pattern": "^[A-Za-z0-9_.-]*$"})
+}
+fn body_value(value: &str) -> Result<(), ValidationError> {
+    serde_json::from_str::<Value>(value)
+        .map(|_| ())
+        .map_err(|_| ValidationError::new_field("json_value"))
+}
+fn body_value_contract() -> Value {
+    json!({"x-compallm-format": "jsonValue"})
+}
+fn body_entries(entries: &[ProviderBodyDefault]) -> Result<(), ValidationError> {
+    let mut keys = std::collections::HashSet::new();
+    if entries.iter().any(|entry| !keys.insert(&entry.key)) {
+        return Err(ValidationError::new_field("duplicate_body_field"));
+    }
+    Ok(())
+}
+fn body_entries_contract() -> Value {
+    json!({"x-compallm-array-rule": "bodyDefaults"})
 }
 fn enabled() -> bool {
     true

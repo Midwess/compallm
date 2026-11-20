@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { KeyValueEditor, type KeyValueEntry } from '../../src/components/key-value-editor'
 import { EffortMapping, type EffortValues } from '../../src/components/effort-mapping'
 import { ProviderAvatar } from '../../src/components/provider-avatar'
+import { RangeSlider } from '../../src/components/range-slider'
 import { Preview, Sample } from './Preview'
 
 const meta = { title: 'Components/Provider controls', parameters: { layout: 'fullscreen' } } satisfies Meta
@@ -16,9 +17,19 @@ function HeaderDemo({ initial = [] }: { initial?: KeyValueEntry[] }) {
     </KeyValueEditor.Root>
   )
 }
-function EffortDemo({ initial = {}, focused }: { initial?: EffortValues; focused?: 'low' }) {
+function EffortDemo({
+  initial = {},
+  focused,
+  compact = false,
+}: {
+  initial?: EffortValues
+  focused?: 'low'
+  compact?: boolean
+}) {
   const [value, change] = useState(initial)
-  return <EffortMapping value={value} onValueChange={change} defaultFocused={focused} />
+  return (
+    <EffortMapping value={value} onValueChange={change} defaultFocused={focused} variant={compact ? 'compact' : 'default'} />
+  )
 }
 function AvatarDemo() {
   const [src, setSrc] = useState<string | null>(null)
@@ -81,6 +92,41 @@ export const Avatar: Story = {
     <Preview>
       <Sample label="Provider avatar">
         <AvatarDemo />
+      </Sample>
+    </Preview>
+  ),
+}
+export const CompactEfforts: Story = {
+  render: () => (
+    <Preview>
+      <Sample label="Compact efforts with growing glow" wide>
+        <EffortDemo compact initial={{ low: 'low', medium: 'medium', high: 'high', xhigh: 'xhigh', max: 'max' }} />
+      </Sample>
+    </Preview>
+  ),
+}
+
+function TokenRulerDemo() {
+  const [value, change] = useState(262144)
+  return (
+    <div className="grid gap-2">
+      <output className="text-right text-xs text-muted-foreground">{value.toLocaleString()} tokens</output>
+      <RangeSlider
+        label="Context capacity"
+        min={100}
+        max={1000000}
+        value={value}
+        onValueChange={change}
+        className="text-muted-foreground"
+      />
+    </div>
+  )
+}
+export const TokenCapacityRuler: Story = {
+  render: () => (
+    <Preview>
+      <Sample label="Token ruler with tick feedback" wide>
+        <TokenRulerDemo />
       </Sample>
     </Preview>
   ),

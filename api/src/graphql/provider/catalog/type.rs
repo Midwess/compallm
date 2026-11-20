@@ -10,6 +10,8 @@ pub struct ProviderTemplate {
     pub protocol: ProviderApiProtocol,
     /// Unknown and account-specific addresses remain null.
     pub base_url: Option<String>,
+    /// Root-relative path to locally served provider artwork.
+    pub logo_path: String,
 }
 
 /// Public catalog defaults; selecting a template creates no configured provider.
@@ -29,5 +31,8 @@ impl ProviderTemplate {
     /// Unknown and account-specific addresses remain null.
     fn base_url(&self) -> Option<&str> {
         self.base_url.as_deref()
+    }
+    fn logo_path(&self) -> &str {
+        &self.logo_path
     }
 }

@@ -181,7 +181,19 @@ export function providerBrand(value: string | null | undefined): ProviderBrand |
     (name.includes('google') ? 'gemini' : undefined)
   )
 }
-export function ProviderIcon({ provider, ...props }: SVGProps<SVGSVGElement> & { provider?: string | null }) {
+export function ProviderIcon({
+  provider,
+  logoPath,
+  ...props
+}: SVGProps<SVGSVGElement> & { provider?: string | null; logoPath?: string }) {
+  if (logoPath)
+    return (
+      <img
+        src={logoPath}
+        alt={props['aria-label'] ?? ''}
+        className={cx('size-4 shrink-0 rounded-sm bg-primary-foreground object-contain', props.className)}
+      />
+    )
   const brand = providerBrand(provider)
   const Icon = brand ? logos[brand] : ImageSquareIcon
   return (

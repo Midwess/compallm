@@ -17,6 +17,7 @@ import {
 } from '../../../../src/pages/organization/create-provider/validation'
 import {
   joinModelEndpoint,
+  initializeModelDraft,
   modelPath,
   modelProtocol,
   textModelOptions,
@@ -27,7 +28,7 @@ type Scenario =
   | 'choose'
   | 'preset'
   | 'custom'
-  | 'dialog'
+  | 'model-add'
   | 'passed'
   | 'failed'
   | 'testing'
@@ -39,11 +40,15 @@ type Scenario =
   | 'changed'
   | 'clone'
   | 'headers'
-  | 'response-dialog'
-  | 'anthropic-dialog'
+  | 'model-response'
+  | 'model-anthropic'
   | 'filtered'
   | 'capabilities'
   | 'long-model-name'
+  | 'model-settings'
+  | 'model-limit-error'
+  | 'model-empty'
+  | 'model-pricing-defaults'
 export type { Scenario }
 const paths: Record<EndpointMode, string> = {
   chat_completions: '/chat/completions',
@@ -71,7 +76,7 @@ export class DemoCreateProviderController implements CreateProviderController {
       if (scenario === 'no-results') this.store.setState({ providerQuery: 'No matching provider' })
       return
     }
-    if (scenario === 'custom' || scenario === 'dialog') this.onUseCustomProvider()
+    if (scenario === 'custom' || scenario === 'model-add') this.onUseCustomProvider()
     else {
       this.configureSelectedProvider()
       this.store.setState({
@@ -87,9 +92,35 @@ export class DemoCreateProviderController implements CreateProviderController {
       if (scenario === 'changed') this.onConnectionChanged('name', 'OpenAI production updated')
       if (scenario === 'clone') this.onCloneProvider()
     }
-    if (scenario === 'dialog') this.onAddModel()
-    if (scenario === 'response-dialog') this.onAddModel('openai_responses')
-    if (scenario === 'anthropic-dialog') this.onAddModel('anthropic_messages')
+    if (scenario === 'model-add') this.onAddModel()
+    if (scenario === 'model-empty') this.onAddModel()
+    if (scenario === 'model-settings' || scenario === 'model-limit-error' || scenario === 'model-pricing-defaults') {
+      const model = this.store.getState().models[0]
+      this.onEditModel(model.id)
+      this.onModelDraftChanged({
+        maxContextTokens: scenario === 'model-limit-error' ? '16384' : '1048576',
+        maxOutputTokens: '32768',
+        contextLimitEnabled: true,
+        inputLimitEnabled: false,
+        outputLimitEnabled: true,
+        effortMapping: { low: 'low', medium: 'medium', high: 'high', xhigh: 'xhigh', max: 'max' },
+        capabilities: ['text', 'vision', 'tool_call', 'structured_output'],
+        headers: [{ id: 'project', key: 'OpenAI-Project', value: 'proj_example' }],
+        bodyDefaults: [
+          { id: 'temperature', key: 'temperature', value: '0.7' },
+          { id: 'top-p', key: 'top_p', value: '0.9' },
+          { id: 'output-tokens', key: 'max_completion_tokens', value: '4096' },
+        ],
+      })
+      if (scenario === 'model-pricing-defaults')
+        this.onModelDraftChanged({
+          inputPriceEnabled: false,
+          outputPriceEnabled: false,
+          cachedPriceEnabled: false,
+        })
+    }
+    if (scenario === 'model-response') this.onAddModel('openai_responses')
+    if (scenario === 'model-anthropic') this.onAddModel('anthropic_messages')
     if (scenario === 'headers')
       this.onHeadersChanged([
         { id: 'client', key: 'X-Client', value: 'Compallm' },
@@ -218,7 +249,7 @@ export class DemoCreateProviderController implements CreateProviderController {
     this.endpoint()
   }
   private emptyModel(id: string, protocol: TextModelProtocol = 'openai_chat_completions'): ModelDraft {
-    return {
+    return initializeModelDraft({
       id,
       name: '',
       maxContextTokens: '250000',
@@ -230,7 +261,7 @@ export class DemoCreateProviderController implements CreateProviderController {
       inputPrice: '',
       outputPrice: '',
       cachedPrice: '',
-    }
+    })
   }
   onAddModel = (protocol: TextModelProtocol = 'openai_chat_completions') =>
     this.store.setState({ editingModelId: null, modelDraft: this.emptyModel(`custom-${++this.nextModelId}`, protocol) })
@@ -259,19 +290,23 @@ export class DemoCreateProviderController implements CreateProviderController {
     this.store.setState({ modelStatusFilter: 'all', modelProtocolFilter: 'all', modelCapabilityFilter: [] })
   onEditModel = (id: string) => {
     const model = this.store.getState().models.find((model) => model.id === id)
-    if (model) this.store.setState({ editingModelId: id, modelDraft: { ...model, thinkingLevels: [...model.thinkingLevels] } })
+    if (model) this.store.setState({ editingModelId: id, modelDraft: initializeModelDraft(model) })
   }
-  onModelDraftChanged = (patch: Partial<ModelDraft>) =>
-    this.store.setState((state) => ({ modelDraft: state.modelDraft ? { ...state.modelDraft, ...patch } : null }))
+  onModelDraftChanged = (patch: Partial<ModelDraft>) => {
+    const draft = this.store.getState().modelDraft
+    if (!draft) return
+    for (const [key, value] of Object.entries(patch))
+      if (!Object.is(draft[key as keyof ModelDraft], value)) this.store.form.set(`modelDraft.${key}`, value)
+  }
   onCancelModel = () => this.store.setState({ modelDraft: null, editingModelId: null })
-  onSaveModel = (draft: ModelDraft) => {
+  onSaveModel = (draft: ModelDraft): ModelDraft | false => {
     const { models, editingModelId } = this.store.getState()
     if (
       !draft ||
       !isValidModelDraft(draft) ||
       models.some((model) => model.id !== editingModelId && model.name.trim() === draft.name.trim())
     )
-      return
+      return false
     this.invalidateTest()
     const previous = models.find((model) => model.id === editingModelId)
     const model: ProviderModel = {
@@ -289,11 +324,11 @@ export class DemoCreateProviderController implements CreateProviderController {
     }
     this.store.setState({
       models: previous ? models.map((item) => (item.id === editingModelId ? model : item)) : [...models, model],
-      modelDraft: null,
-      editingModelId: null,
+      editingModelId: model.id,
     })
     this.endpoint()
     this.report('Model saved in preview')
+    return model
   }
   onTestConnection = () => {
     const state = this.store.getState()

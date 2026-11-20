@@ -812,6 +812,11 @@ enum ProviderApiProtocol {
   PROVIDER_SPECIFIC
 }
 
+input ProviderBodyDefault {
+  key: String!
+  value: String!
+}
+
 """
 Opaque registry identity, independent of an edited upstream model name.
 """
@@ -885,15 +890,23 @@ enum ProviderModelCapability {
 Complete configured text-model values. Decimal prices are USD per million tokens.
 """
 input ProviderModelConfiguration {
+  bodyDefaults: [ProviderBodyDefault!]! = []
   cachedPrice: String!
+  cachedPriceEnabled: Boolean! = true
   capabilities: [ProviderModelCapability!]! = []
   catalogRef: ProviderCatalogRef
+  contextLimitEnabled: Boolean! = true
   effortMapping: ProviderEffortMapping
   enabled: Boolean! = true
+  headers: [ProviderHeader!]! = []
   inputPrice: String!
+  inputPriceEnabled: Boolean! = true
   maxContextTokens: ContextTokens!
+  maxInputTokens: ContextTokens
+  maxOutputTokens: ContextTokens
   name: String!
   outputPrice: String!
+  outputPriceEnabled: Boolean! = true
   path: String!
   protocol: TextModelProtocol!
 }
@@ -954,6 +967,7 @@ type ProviderTemplate {
   Global opaque catalog identity, independent of organization resource IDs.
   """
   id: ID!
+  logoPath: String!
   name: String!
 
   """

@@ -1,5 +1,6 @@
 import { FunnelIcon } from '@phosphor-icons/react/dist/csr/Funnel'
 import { Popup } from '../../../components/popup'
+import { CapabilityIcon } from '../../../components/capability-icon'
 import { capabilityOptions, textModelOptions } from './model-options'
 import { useController, useProvider } from './controller'
 import type { ModelStatusFilter, TextModelProtocol } from './types'
@@ -61,6 +62,7 @@ export function ModelFilters() {
                   })
                 }
               >
+                <CapabilityIcon capability={option.value} className="size-3.5" />
                 {option.label}
               </Popup.CheckboxItem>
             ))}

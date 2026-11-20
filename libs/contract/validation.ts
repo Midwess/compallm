@@ -9,6 +9,9 @@ import {
   headersObject,
   headerUpdateObject,
   modelWritesArray,
+  modelLimitsObject,
+  bodyDefaultsArray,
+  bodyDefaultObject,
   createProviderObject,
   createProvidersObject,
   providerPatchObject,
@@ -777,6 +780,63 @@ export const ProfileUpdateInput = z
   .strict()
 export type ProfileUpdateInputFormInput = z.input<typeof ProfileUpdateInput>
 export type ProfileUpdateInputFormOutput = z.output<typeof ProfileUpdateInput>
+export const ProviderBodyDefaultConstraints = {
+  key: {
+    minLength: 1,
+    maxLength: 128,
+    messages: {
+      minLength: 'Body field names must contain 1 to 128 characters.',
+      maxLength: 'Body field names must contain 1 to 128 characters.',
+      'x-compallm-format': 'Use a body field name other than model, messages, input, or stream.',
+      'x-compallm-input-pattern': 'Use a body field name other than model, messages, input, or stream.',
+    },
+    inputPattern: '^[A-Za-z0-9_.-]*$',
+    format: 'bodyDefaultKey',
+  },
+  value: {
+    minLength: 1,
+    maxLength: 16384,
+    messages: {
+      minLength: 'Enter a JSON value of at most 16,384 characters.',
+      maxLength: 'Enter a JSON value of at most 16,384 characters.',
+      'x-compallm-format': 'Enter a valid JSON value.',
+    },
+    format: 'jsonValue',
+  },
+} as const
+export const ProviderBodyDefaultInput = {
+  key: stringInput(ProviderBodyDefaultConstraints['key']),
+  value: stringInput(ProviderBodyDefaultConstraints['value']),
+}
+export const ProviderBodyDefault = z
+  .object({
+    key: inputString({
+      minLength: 1,
+      maxLength: 128,
+      messages: {
+        minLength: 'Body field names must contain 1 to 128 characters.',
+        maxLength: 'Body field names must contain 1 to 128 characters.',
+        'x-compallm-format': 'Use a body field name other than model, messages, input, or stream.',
+        'x-compallm-input-pattern': 'Use a body field name other than model, messages, input, or stream.',
+      },
+      inputPattern: '^[A-Za-z0-9_.-]*$',
+      format: 'bodyDefaultKey',
+    }),
+    value: inputString({
+      minLength: 1,
+      maxLength: 16384,
+      messages: {
+        minLength: 'Enter a JSON value of at most 16,384 characters.',
+        maxLength: 'Enter a JSON value of at most 16,384 characters.',
+        'x-compallm-format': 'Enter a valid JSON value.',
+      },
+      format: 'jsonValue',
+    }),
+  })
+  .strict()
+  .refine(bodyDefaultObject, { message: 'Use the JSON value type required by the selected body field.' })
+export type ProviderBodyDefaultFormInput = z.input<typeof ProviderBodyDefault>
+export type ProviderBodyDefaultFormOutput = z.output<typeof ProviderBodyDefault>
 export const ProviderCatalogRefConstraints = {} as const
 export const ProviderCatalogRefInput = {}
 /** Opaque registry identity, independent of an edited upstream model name. */
@@ -965,12 +1025,12 @@ export type ProviderModelCapabilityFormOutput = z.output<typeof ProviderModelCap
 export const ProviderModelConfigurationConstraints = {
   name: {
     minLength: 1,
-    maxLength: 40,
-    pattern: '^[A-Za-z0-9_-]+$',
+    maxLength: 512,
+    pattern: '^[\\x21-\\x7e]{1,512}$',
     messages: {
-      minLength: 'Model name must contain 1 to 40 characters.',
-      maxLength: 'Model name must contain 1 to 40 characters.',
-      pattern: 'Use letters, numbers, hyphens, or underscores for the model name.',
+      minLength: 'Model identifier must contain 1 to 512 characters.',
+      maxLength: 'Model identifier must contain 1 to 512 characters.',
+      pattern: 'Use the exact upstream model identifier without spaces or control characters.',
     },
   },
   path: {
@@ -981,35 +1041,45 @@ export const ProviderModelConfigurationConstraints = {
       maxLength: 'Path must be 40 characters or fewer.',
     },
   },
+  headers: { messages: { 'x-compallm-array-rule': 'Header names must be unique, ignoring case.' } },
+  bodyDefaults: { messages: { 'x-compallm-array-rule': 'Body field names must be unique.' } },
   inputPrice: {
-    pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$',
+    pattern: '^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$',
     messages: {
-      pattern: 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
-      'x-compallm-input-pattern': 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+      pattern: 'Enter a price between $0 and $10,000 per 1M tokens.',
+      'x-compallm-input-pattern': 'Enter a price between $0 and $10,000 per 1M tokens.',
+      'x-compallm-format': 'Enter a price between $0 and $10,000 per 1M tokens.',
     },
-    inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$',
+    inputPattern: '^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$',
+    format: 'modelPrice',
   },
   outputPrice: {
-    pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$',
+    pattern: '^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$',
     messages: {
-      pattern: 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
-      'x-compallm-input-pattern': 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+      pattern: 'Enter a price between $0 and $10,000 per 1M tokens.',
+      'x-compallm-input-pattern': 'Enter a price between $0 and $10,000 per 1M tokens.',
+      'x-compallm-format': 'Enter a price between $0 and $10,000 per 1M tokens.',
     },
-    inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$',
+    inputPattern: '^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$',
+    format: 'modelPrice',
   },
   cachedPrice: {
-    pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$',
+    pattern: '^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$',
     messages: {
-      pattern: 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
-      'x-compallm-input-pattern': 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+      pattern: 'Enter a price between $0 and $10,000 per 1M tokens.',
+      'x-compallm-input-pattern': 'Enter a price between $0 and $10,000 per 1M tokens.',
+      'x-compallm-format': 'Enter a price between $0 and $10,000 per 1M tokens.',
     },
-    inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$',
+    inputPattern: '^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$',
+    format: 'modelPrice',
   },
 } as const
 export const ProviderModelConfigurationInput = {
   name: stringInput(ProviderModelConfigurationConstraints['name']),
   path: stringInput(ProviderModelConfigurationConstraints['path']),
   maxContextTokens: integerInput({ minimum: 1, maximum: 4294967295 }),
+  headers: stringInput(ProviderModelConfigurationConstraints['headers']),
+  bodyDefaults: stringInput(ProviderModelConfigurationConstraints['bodyDefaults']),
   inputPrice: stringInput(ProviderModelConfigurationConstraints['inputPrice']),
   outputPrice: stringInput(ProviderModelConfigurationConstraints['outputPrice']),
   cachedPrice: stringInput(ProviderModelConfigurationConstraints['cachedPrice']),
@@ -1019,12 +1089,12 @@ export const ProviderModelConfiguration = z
   .object({
     name: inputString({
       minLength: 1,
-      maxLength: 40,
-      pattern: '^[A-Za-z0-9_-]+$',
+      maxLength: 512,
+      pattern: '^[\\x21-\\x7e]{1,512}$',
       messages: {
-        minLength: 'Model name must contain 1 to 40 characters.',
-        maxLength: 'Model name must contain 1 to 40 characters.',
-        pattern: 'Use letters, numbers, hyphens, or underscores for the model name.',
+        minLength: 'Model identifier must contain 1 to 512 characters.',
+        maxLength: 'Model identifier must contain 1 to 512 characters.',
+        pattern: 'Use the exact upstream model identifier without spaces or control characters.',
       },
     }),
     protocol: TextModelProtocol,
@@ -1037,36 +1107,59 @@ export const ProviderModelConfiguration = z
       },
     }),
     maxContextTokens: ContextTokens,
+    contextLimitEnabled: z.boolean().default(true),
+    maxInputTokens: ContextTokens.optional(),
+    maxOutputTokens: ContextTokens.optional(),
+    headers: z
+      .array(ProviderHeader)
+      .refine((entries) => headersObject({ entries }), { message: 'Header names must be unique, ignoring case.' })
+      .default([]),
+    bodyDefaults: z
+      .array(ProviderBodyDefault)
+      .refine(bodyDefaultsArray, { message: 'Body field names must be unique.' })
+      .default([]),
     enabled: z.boolean().default(true),
     effortMapping: ProviderEffortMapping.optional(),
     capabilities: z.array(ProviderModelCapability).default([]),
     catalogRef: ProviderCatalogRef.optional(),
     inputPrice: inputString({
-      pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$',
+      pattern: '^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$',
       messages: {
-        pattern: 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
-        'x-compallm-input-pattern': 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+        pattern: 'Enter a price between $0 and $10,000 per 1M tokens.',
+        'x-compallm-input-pattern': 'Enter a price between $0 and $10,000 per 1M tokens.',
+        'x-compallm-format': 'Enter a price between $0 and $10,000 per 1M tokens.',
       },
-      inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$',
+      inputPattern: '^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$',
+      format: 'modelPrice',
     }),
     outputPrice: inputString({
-      pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$',
+      pattern: '^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$',
       messages: {
-        pattern: 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
-        'x-compallm-input-pattern': 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+        pattern: 'Enter a price between $0 and $10,000 per 1M tokens.',
+        'x-compallm-input-pattern': 'Enter a price between $0 and $10,000 per 1M tokens.',
+        'x-compallm-format': 'Enter a price between $0 and $10,000 per 1M tokens.',
       },
-      inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$',
+      inputPattern: '^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$',
+      format: 'modelPrice',
     }),
     cachedPrice: inputString({
-      pattern: '^0*[0-9]{1,12}(?:\\.[0-9]{1,8})?$',
+      pattern: '^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$',
       messages: {
-        pattern: 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
-        'x-compallm-input-pattern': 'Enter a nonnegative price with at most 12 integer and 8 decimal digits.',
+        pattern: 'Enter a price between $0 and $10,000 per 1M tokens.',
+        'x-compallm-input-pattern': 'Enter a price between $0 and $10,000 per 1M tokens.',
+        'x-compallm-format': 'Enter a price between $0 and $10,000 per 1M tokens.',
       },
-      inputPattern: '^0*[0-9]{0,12}(?:\\.[0-9]{0,8})?$',
+      inputPattern: '^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$',
+      format: 'modelPrice',
     }),
+    inputPriceEnabled: z.boolean().default(true),
+    outputPriceEnabled: z.boolean().default(true),
+    cachedPriceEnabled: z.boolean().default(true),
   })
   .strict()
+  .refine(modelLimitsObject, {
+    message: 'Enabled limits must be between 100 and 1,000,000 tokens and cannot exceed the context window.',
+  })
   .describe('Complete configured text-model values. Decimal prices are USD per million tokens.')
 export type ProviderModelConfigurationFormInput = z.input<typeof ProviderModelConfiguration>
 export type ProviderModelConfigurationFormOutput = z.output<typeof ProviderModelConfiguration>
@@ -1079,8 +1172,17 @@ export const ProviderModelWriteConstraints = {
     },
     format: 'resourceId',
   },
+  configuration: {
+    messages: {
+      'x-compallm-object-rule':
+        'Enabled limits must be between 100 and 1,000,000 tokens and cannot exceed the context window.',
+    },
+  },
 } as const
-export const ProviderModelWriteInput = { id: stringInput(ProviderModelWriteConstraints['id']) }
+export const ProviderModelWriteInput = {
+  id: stringInput(ProviderModelWriteConstraints['id']),
+  configuration: stringInput(ProviderModelWriteConstraints['configuration']),
+}
 /** Persisted identity is omitted for new models and forbidden during provider creation. */
 export const ProviderModelWrite = z
   .object({

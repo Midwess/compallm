@@ -327,7 +327,7 @@
                 "protocol": "OPENAI_RESPONSES",
                 "path": "/responses",
                 "maxContextTokens": 250000,
-                "inputPrice": "0.123456789",
+                "inputPrice": "0.1234567890123456789",
                 "outputPrice": "0",
                 "cachedPrice": "0",
                 "effortMapping": {

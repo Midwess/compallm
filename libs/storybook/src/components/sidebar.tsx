@@ -1,4 +1,4 @@
-import { useId, type HTMLAttributes, type ReactNode } from 'react'
+import { useId, useRef, type HTMLAttributes, type ReactNode, type PointerEvent } from 'react'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGlass'
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
@@ -6,20 +6,85 @@ import { ToolbarAction } from './navigation'
 import { cx } from './shared'
 import { animated, useDisclosure } from './motion'
 import { Popup } from './popup'
+import { useControllableState } from './composition'
+import { interactionFeedback, type InteractionFeedback } from './interaction-feedback'
 
 const focus = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
+
+export interface SidebarProps extends HTMLAttributes<HTMLElement> {
+  navigationLabel?: string
+  resizable?: boolean
+  width?: number
+  defaultWidth?: number
+  minWidth?: number
+  maxWidth?: number
+  onWidthChange?(width: number): void
+  onResizeFeedback?(kind: InteractionFeedback, width: number): void
+}
 
 export function Sidebar({
   children,
   className,
+  id: suppliedId,
   navigationLabel = 'Workspace navigation',
+  resizable = true,
+  width: suppliedWidth,
+  defaultWidth = 244,
+  minWidth = 200,
+  maxWidth = 400,
+  onWidthChange,
+  onResizeFeedback,
+  style,
   ...props
-}: HTMLAttributes<HTMLElement> & { navigationLabel?: string }) {
+}: SidebarProps) {
+  const generatedId = useId()
+  const id = suppliedId ?? generatedId
+  const root = useRef<HTMLElement>(null)
+  const grip = useRef<HTMLDivElement>(null)
+  const drag = useRef<{ pointer: number; startX: number; startWidth: number; width: number } | null>(null)
+  const [width, changeWidth] = useControllableState(suppliedWidth, defaultWidth, onWidthChange)
+  const minimum = Math.max(160, minWidth)
+  const maximum = Math.max(minimum, maxWidth)
+  const constrain = (next: number) => Math.round(Math.max(minimum, Math.min(maximum, next)))
+  const feedback = (kind: InteractionFeedback, next: number) => {
+    if (onResizeFeedback) onResizeFeedback(kind, next)
+    else interactionFeedback(kind)
+  }
+  const paint = (next: number) => {
+    if (root.current) root.current.style.width = `${next}px`
+    grip.current?.setAttribute('aria-valuenow', String(next))
+    grip.current?.setAttribute('aria-valuetext', `${next} pixels`)
+  }
+  const finish = (cancel = false) => {
+    const current = drag.current
+    if (!current) return
+    drag.current = null
+    root.current?.removeAttribute('data-resizing')
+    const next = cancel ? current.startWidth : current.width
+    paint(next)
+    if (!cancel) {
+      changeWidth(next)
+      if (next !== current.startWidth) feedback('commit', next)
+    }
+  }
+  const move = (event: PointerEvent<HTMLDivElement>) => {
+    const current = drag.current
+    if (!current || current.pointer !== event.pointerId) return
+    const raw = constrain(current.startWidth + event.clientX - current.startX)
+    const snap = [minimum, constrain(defaultWidth), maximum].find((point) => Math.abs(raw - point) <= 6) ?? null
+    const next = snap ?? raw
+    if (snap !== null && next !== current.width) feedback('snap', next)
+    current.width = next
+    paint(next)
+  }
   return (
     <aside
       {...props}
+      id={id}
+      ref={root}
+      style={{ ...style, width: constrain(width) }}
       className={cx(
-        'flex h-full min-h-0 w-61 shrink-0 flex-col overflow-x-hidden bg-sidebar px-3 py-1 select-none',
+        'group/sidebar relative flex h-full min-h-0 shrink-0 flex-col border-r border-divider bg-sidebar px-3 py-1 select-none',
         '[&_input]:select-text [&_textarea]:select-text **:[[contenteditable=true]]:select-text',
         className,
       )}
@@ -30,6 +95,89 @@ export function Sidebar({
       >
         {children}
       </nav>
+      {resizable ? (
+        <div
+          ref={grip}
+          role="separator"
+          aria-label="Resize sidebar"
+          aria-orientation="vertical"
+          aria-controls={id}
+          aria-describedby={`${id}-resize-hint`}
+          aria-valuemin={minimum}
+          aria-valuemax={maximum}
+          aria-valuenow={constrain(width)}
+          aria-valuetext={`${constrain(width)} pixels`}
+          tabIndex={0}
+          title="Drag to resize. Double-click to reset."
+          className="group/grip absolute inset-y-0 -right-1 z-20 flex w-2 touch-none cursor-col-resize
+          items-center justify-center outline-none"
+          onPointerDown={(event) => {
+            if (event.button !== 0 || !root.current) return
+            event.preventDefault()
+            event.currentTarget.focus({ preventScroll: true })
+            const current = root.current.getBoundingClientRect().width
+            drag.current = { pointer: event.pointerId, startX: event.clientX, startWidth: current, width: current }
+            root.current.dataset.resizing = ''
+            event.currentTarget.setPointerCapture(event.pointerId)
+          }}
+          onPointerMove={move}
+          onPointerUp={(event) => {
+            if (drag.current?.pointer !== event.pointerId) return
+            finish()
+            event.currentTarget.releasePointerCapture(event.pointerId)
+          }}
+          onPointerCancel={() => finish(true)}
+          onLostPointerCapture={() => finish(true)}
+          onDoubleClick={() => {
+            const next = constrain(defaultWidth)
+            paint(next)
+            changeWidth(next)
+            feedback('snap', next)
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && drag.current) {
+              event.preventDefault()
+              const pointer = drag.current.pointer
+              finish(true)
+              if (event.currentTarget.hasPointerCapture(pointer)) event.currentTarget.releasePointerCapture(pointer)
+              return
+            }
+            const current = root.current?.getBoundingClientRect().width ?? width
+            const step = event.shiftKey ? 24 : 8
+            const next =
+              event.key === 'ArrowLeft'
+                ? current - step
+                : event.key === 'ArrowRight'
+                  ? current + step
+                  : event.key === 'Home'
+                    ? minimum
+                    : event.key === 'End'
+                      ? maximum
+                      : event.key === 'Enter'
+                        ? defaultWidth
+                        : null
+            if (next === null) return
+            event.preventDefault()
+            const bounded = constrain(next)
+            paint(bounded)
+            changeWidth(bounded)
+            if (bounded !== current) feedback('snap', bounded)
+          }}
+        >
+          <span
+            aria-hidden="true"
+            className="pointer-events-none h-10 w-0.5 rounded-full bg-divider
+            group-hover/grip:bg-muted-foreground/60 group-focus-visible/grip:bg-ring
+            group-data-resizing/sidebar:bg-ring"
+          />
+        </div>
+      ) : null}
+      {resizable ? (
+        <span id={`${id}-resize-hint`} className="sr-only">
+          Drag to resize, or use Left and Right arrow keys. Shift moves faster. Home and End select the limits. Enter or
+          double-click resets the width. Escape cancels a drag.
+        </span>
+      ) : null}
     </aside>
   )
 }

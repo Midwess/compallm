@@ -381,6 +381,11 @@ input ProfileUpdateInput {
   username: String
 }
 
+input ProviderBodyDefault {
+  key: String!
+  value: String!
+}
+
 "Opaque registry identity, independent of an edited upstream model name."
 input ProviderCatalogRef {
   provider: String!
@@ -424,6 +429,11 @@ input ProviderModelConfiguration {
   protocol: TextModelProtocol!
   path: String!
   maxContextTokens: ContextTokens!
+  contextLimitEnabled: Boolean! = true
+  maxInputTokens: ContextTokens
+  maxOutputTokens: ContextTokens
+  headers: [ProviderHeader!]! = []
+  bodyDefaults: [ProviderBodyDefault!]! = []
   enabled: Boolean! = true
   effortMapping: ProviderEffortMapping
   capabilities: [ProviderModelCapability!]! = []
@@ -431,6 +441,9 @@ input ProviderModelConfiguration {
   inputPrice: String!
   outputPrice: String!
   cachedPrice: String!
+  inputPriceEnabled: Boolean! = true
+  outputPriceEnabled: Boolean! = true
+  cachedPriceEnabled: Boolean! = true
 }
 
 "Persisted identity is omitted for new models and forbidden during provider creation."
@@ -934,6 +947,7 @@ type ProviderTemplate {
   protocol: ProviderApiProtocol!
   "Unknown and account-specific addresses remain null."
   baseUrl: String
+  logoPath: String!
 }
 
 type Query {

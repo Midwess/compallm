@@ -49,11 +49,34 @@ export function modelsObject(value: { entries: Array<{ name: string }> }): boole
   return value.entries.length > 0 && new Set(value.entries.map((model) => model.name)).size === value.entries.length
 }
 
+function modelPrice(value: string): boolean {
+  const [whole = '', fraction = ''] = value.split('.')
+  if (!/^[0-9]+$/.test(whole)) return false
+  const integer = BigInt(whole)
+  return integer < 10000n || (integer === 10000n && /^0*$/.test(fraction))
+}
+
 const formats: Record<string, (value: string, constraints: StringConstraints) => boolean> = {
+  modelPrice,
+  bodyDefaultKey: (value) =>
+    /^[A-Za-z0-9_.-]+$/.test(value) && !['model', 'messages', 'input', 'stream'].includes(value),
+  jsonValue: (value) => {
+    try {
+      JSON.parse(value)
+      return true
+    } catch {
+      return false
+    }
+  },
   baseUrl,
   webUrl: (value) => {
     if (hasWhitespace.test(value) || value.includes('\\')) return false
-    try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) && !!url.hostname && !url.username && !url.password } catch { return false }
+    try {
+      const url = new URL(value)
+      return ['http:', 'https:'].includes(url.protocol) && !!url.hostname && !url.username && !url.password
+    } catch {
+      return false
+    }
   },
   resourceId: (value) => /^[1-9][0-9]*$/.test(value) && BigInt(value) <= 18446744073709551615n,
   nonblank: (value) => trimInput(value) !== '',
@@ -93,6 +116,9 @@ export function authorizationInput(value: string): boolean {
 }
 
 const inputFormats: Record<string, (value: string) => boolean> = {
+  modelPrice: (value) => modelPrice(value.startsWith('.') ? `0${value}` : value),
+  bodyDefaultKey: (value) => /^[A-Za-z0-9_.-]*$/.test(value),
+  jsonValue: () => true,
   resourceId: (value) => /^[1-9][0-9]*$/.test(value) && BigInt(value) <= 18446744073709551615n,
   nonblank: () => true,
   baseUrl: (value) => !hasWhitespace.test(value) && !/[?#\\]/.test(value),
@@ -184,6 +210,18 @@ export function modelWritesArray(
     new Set(ids).size === ids.length
   )
 }
+export function modelLimitsObject(value: {
+  maxContextTokens: number
+  maxInputTokens?: number
+  maxOutputTokens?: number
+}): boolean {
+  return [value.maxInputTokens, value.maxOutputTokens].every(
+    (limit) => limit === undefined || (limit >= 100 && limit <= 1000000 && limit <= value.maxContextTokens),
+  )
+}
+export function bodyDefaultsArray(entries: Array<{ key: string }>): boolean {
+  return new Set(entries.map((entry) => entry.key)).size === entries.length
+}
 export function createProviderObject(value: { models: Array<{ id?: string }> }): boolean {
   return value.models.every((model) => model.id === undefined)
 }
@@ -195,4 +233,32 @@ export function createProvidersObject(value: { providers: Array<{ name: string }
 }
 export function providerPatchObject(value: Record<string, unknown>): boolean {
   return Object.values(value).some((field) => field !== undefined)
+}
+
+export function bodyDefaultObject(value: { key: string; value: string }): boolean {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value.value)
+  } catch {
+    return true
+  }
+  switch (value.key) {
+    case 'temperature':
+    case 'top_p':
+    case 'presence_penalty':
+    case 'frequency_penalty':
+      return typeof parsed === 'number'
+    case 'max_completion_tokens':
+      return typeof parsed === 'number' && Number.isSafeInteger(parsed) && parsed > 0
+    case 'seed':
+      return typeof parsed === 'number' && Number.isSafeInteger(parsed)
+    case 'parallel_tool_calls':
+      return typeof parsed === 'boolean'
+    case 'response_format':
+      return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
+    case 'stop':
+      return typeof parsed === 'string' || (Array.isArray(parsed) && parsed.every((item) => typeof item === 'string'))
+    default:
+      return true
+  }
 }

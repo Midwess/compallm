@@ -1,7 +1,7 @@
 import { FormError } from './form'
 import { animated } from './motion'
 import { createContext, useContext, useId, type ReactNode, type ComponentPropsWithRef } from 'react'
-import { TextField, type TextFieldProps } from './fields'
+import { TextField, PrefixedTextField, type TextFieldProps, type PrefixedTextFieldProps } from './fields'
 import { cx } from './shared'
 const FieldContext = createContext<string | null>(null)
 function useFieldId() {
@@ -36,4 +36,8 @@ function Input(props: TextFieldProps) {
 function Hint(props: ComponentPropsWithRef<'p'>) {
   return <p {...props} className={cx('text-xs text-muted-foreground', props.className)} />
 }
-export const FormField = { Root, Label, Input, Hint, Error: FormError }
+function PrefixedInput(props: PrefixedTextFieldProps) {
+  const id = useFieldId()
+  return <PrefixedTextField {...props} id={id} />
+}
+export const FormField = { Root, Label, Input, PrefixedInput, Hint, Error: FormError }

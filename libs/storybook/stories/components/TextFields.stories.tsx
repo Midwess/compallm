@@ -51,6 +51,27 @@ export const UrlPreview: Story = {
     </Preview>
   ),
 }
+export const PrefixedTextField: Story = {
+  render: () => (
+    <Preview>
+      <Sample label="Inherited prefix · editable path" wide>
+        <Fields.PrefixedTextField
+          aria-label="Endpoint path"
+          defaultValue="/chat/completions"
+          prefix={<span className="px-2 font-mono text-ui-11">{'{{base_url}}'}</span>}
+        />
+      </Sample>
+      <Sample label="Disabled prefix field" wide>
+        <Fields.PrefixedTextField
+          aria-label="Disabled endpoint path"
+          defaultValue="/messages"
+          disabled
+          prefix={<span className="px-2 font-mono text-ui-11">{'{{base_url}}'}</span>}
+        />
+      </Sample>
+    </Preview>
+  ),
+}
 export const MultilineField: Story = {
   render: () => (
     <Preview>

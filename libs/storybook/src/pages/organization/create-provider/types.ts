@@ -23,6 +23,7 @@ export type ThinkingLevel = keyof EffortMapping
 export type ProviderPreset = Pick<ProviderTemplate, 'id' | 'name'> & {
   protocol: ApiProtocol
   baseUrl?: ProviderTemplate['baseUrl']
+  logoPath?: ProviderTemplate['logoPath']
 }
 export interface ModelDraft {
   /** Persisted API identity; UI draft IDs and catalog IDs never substitute for it. */
@@ -31,7 +32,14 @@ export interface ModelDraft {
   id: string
   name: string
   maxContextTokens: string
+  providerContextTokens?: string
   maxOutputTokens?: string
+  maxInputTokens?: string
+  contextLimitEnabled?: boolean
+  inputLimitEnabled?: boolean
+  outputLimitEnabled?: boolean
+  headers?: HeaderEntry[]
+  bodyDefaults?: HeaderEntry[]
   protocol?: TextModelProtocol
   path?: string
   effortMapping?: EffortMapping
@@ -40,6 +48,11 @@ export interface ModelDraft {
   inputPrice: string
   outputPrice: string
   cachedPrice: string
+  inputPriceEnabled?: boolean
+  outputPriceEnabled?: boolean
+  cachedPriceEnabled?: boolean
+  templatePrices?: Pick<ModelDraft, 'inputPrice' | 'outputPrice' | 'cachedPrice'>
+  defaults?: Omit<ModelDraft, 'defaults'>
 }
 export interface ProviderModel extends ModelDraft {
   enabled: boolean
@@ -110,7 +123,7 @@ export interface CreateProviderController {
   onClearModelFilters?(): void
   onEditModel(id: string): void
   onModelDraftChanged(patch: Partial<ModelDraft>): void
-  onSaveModel(draft: ModelDraft): void
+  onSaveModel(draft: ModelDraft): ModelDraft | false
   onCancelModel(): void
   onTestConnection(): void | Promise<void>
   onCreateProvider(

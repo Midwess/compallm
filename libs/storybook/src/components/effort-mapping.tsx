@@ -1,17 +1,18 @@
 import { useFormField } from './form'
 import { animated } from './motion'
 import { ProviderInputRules, ProviderInputRulesInput, ProviderInputRulesConstraints } from '@compallm/contract/provider'
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { CaretLeftIcon } from '@phosphor-icons/react/dist/csr/CaretLeft'
 import { CaretRightIcon } from '@phosphor-icons/react/dist/csr/CaretRight'
 import { TextField } from './fields'
-import { FieldHelp } from './feedback'
+import { FieldHelp, DisabledTooltip } from './feedback'
 import { cx } from './shared'
 
 export const effortLevels = ['low', 'medium', 'high', 'xhigh', 'max'] as const
 export type EffortLevel = (typeof effortLevels)[number]
 export type EffortValues = Partial<Record<EffortLevel, string>>
 export interface EffortMappingProps {
+  variant?: 'default' | 'compact'
   name?: string
   value?: EffortValues
   onValueChange?(value: EffortValues): void
@@ -19,7 +20,7 @@ export interface EffortMappingProps {
   defaultSelected?: EffortLevel
   defaultFocused?: EffortLevel
 }
-export function EffortMapping({
+function DefaultEffortMapping({
   name,
   value: suppliedValue,
   onValueChange: suppliedChange,
@@ -227,5 +228,137 @@ focus-visible:outline-muted-foreground
         />
       </div>
     </fieldset>
+  )
+}
+
+export function EffortMapping({ variant = 'default', ...props }: EffortMappingProps) {
+  return variant === 'compact' ? <CompactEffortMapping {...props} /> : <DefaultEffortMapping {...props} />
+}
+
+function CompactEffortMapping({
+  name,
+  value: suppliedValue,
+  onValueChange: suppliedChange,
+  disabled = false,
+  defaultSelected = 'low',
+  defaultFocused,
+}: EffortMappingProps) {
+  const field = useFormField<EffortValues>(name)
+  const values = field?.value ?? suppliedValue ?? {}
+  const [selection, select] = useState(effortLevels.indexOf(defaultFocused ?? defaultSelected))
+  const inputs = useRef<Array<HTMLInputElement | null>>([])
+  const pendingFocus = useRef(false)
+  const last = effortLevels.length - 1
+  const active = selection
+  useEffect(() => {
+    if (!pendingFocus.current) return
+    inputs.current[active]?.focus()
+    pendingFocus.current = false
+  }, [active])
+  const choose = (next: number) => {
+    pendingFocus.current = true
+    select(Math.max(0, Math.min(last, next)))
+  }
+  const change = (level: EffortLevel, value: string) => {
+    if (!ProviderInputRulesInput.effortValue(value)) return
+    const next = { ...values }
+    if (value) next[level] = value
+    else for (const later of effortLevels.slice(effortLevels.indexOf(level))) delete next[later]
+    if (field) field.change(next)
+    else suppliedChange?.(next)
+  }
+  return (
+    <div
+      className="flex h-9 min-w-0 items-stretch gap-1"
+      data-form-field={name}
+      aria-invalid={field?.invalid || undefined}
+      aria-describedby={name ? `${name}-error` : undefined}
+    >
+      <DisabledTooltip disabled={disabled || active === 0} reason="This is the first effort level.">
+        <animated.button
+          type="button"
+          aria-label="Previous effort level"
+          disabled={disabled || active === 0}
+          onClick={() => choose(active - 1)}
+          className="flex w-3 shrink-0 cursor-pointer items-center text-foreground
+          disabled:text-muted-foreground/40 focus-visible:outline-ring"
+        >
+          <svg viewBox="0 0 12 30" className="h-full w-full fill-current" aria-hidden="true">
+            <path d="M10 1.5Q12 0 12 2.5V27.5Q12 30 10 28.5L1 17Q-0.5 15 1 13Z" />
+          </svg>
+        </animated.button>
+      </DisabledTooltip>
+      <div className="relative grid min-w-0 flex-1 grid-cols-5 gap-1 overflow-hidden rounded-lg bg-inset px-3 pb-1">
+        <div
+          aria-hidden="true"
+          data-effort-glow
+          className="pointer-events-none absolute inset-x-0 bottom-0
+          bg-linear-to-r from-(--effort-low) via-(--effort-medium) to-(--effort-high) blur-sm"
+          style={{ height: 4 + active * 0.5, opacity: 0.24 + active * 0.025 }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-1
+          bg-linear-to-r from-(--effort-low) via-(--effort-medium) to-(--effort-high) opacity-90"
+        />
+        {effortLevels.map((level, index) => (
+          <div key={level} className="relative z-1 flex min-w-0 items-center justify-center">
+            {index === active ? (
+              <TextField
+                ref={(element) => {
+                  inputs.current[index] = element
+                }}
+                aria-label={`${level} effort mapping`}
+                value={values[level] ?? ''}
+                placeholder={level}
+                autoFocus={defaultFocused === level}
+                disabled={disabled}
+                maxLength={ProviderInputRulesConstraints.effortValue.maxLength}
+                className="h-6 w-full rounded-md border-ring/60 px-1 text-center text-xs"
+                onChange={(event) => change(level, event.target.value)}
+                onBlur={field?.blur}
+                onKeyDown={(event) => {
+                  if (event.key === 'ArrowLeft' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault()
+                    choose(active - 1)
+                  }
+                  if (event.key === 'ArrowRight' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault()
+                    choose(active + 1)
+                  }
+                }}
+              />
+            ) : (
+              <DisabledTooltip disabled={disabled} reason="Editing thinking efforts is unavailable.">
+                <animated.button
+                  type="button"
+                  disabled={disabled}
+                  aria-label={`Edit ${level} effort mapping`}
+                  onClick={() => choose(index)}
+                  className="h-6 w-full min-w-0 truncate rounded-md text-xs text-muted-foreground hover:bg-hover
+                disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-ring"
+                >
+                  {values[level] || '\u00a0'}
+                </animated.button>
+              </DisabledTooltip>
+            )}
+          </div>
+        ))}
+      </div>
+      <DisabledTooltip disabled={disabled || active === last} reason="Configure this effort before adding the next level.">
+        <animated.button
+          type="button"
+          aria-label="Next effort level"
+          disabled={disabled || active === last}
+          onClick={() => choose(active + 1)}
+          className="flex w-3 shrink-0 cursor-pointer items-center text-foreground
+          disabled:text-muted-foreground/40 focus-visible:outline-ring"
+        >
+          <svg viewBox="0 0 12 30" className="h-full w-full fill-current" aria-hidden="true">
+            <path d="M2 1.5Q0 0 0 2.5V27.5Q0 30 2 28.5L11 17Q12.5 15 11 13Z" />
+          </svg>
+        </animated.button>
+      </DisabledTooltip>
+    </div>
   )
 }

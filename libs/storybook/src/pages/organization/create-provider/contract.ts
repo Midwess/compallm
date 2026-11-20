@@ -6,7 +6,7 @@ import {
 } from '@compallm/contract/validation'
 import type { ProviderModelConfiguration, ProviderModelWrite } from '@compallm/contract/graphql'
 import { contextTokensFromText } from '@compallm/contract/provider'
-import { modelPath, modelProtocol } from './model-options'
+import { modelPath, modelProtocol, effectiveContextTokens, effectiveModelPrice } from './model-options'
 import type { CreateProviderState, ProviderModel } from './types'
 
 export function modelConfiguration(model: ProviderModel): ProviderModelConfiguration {
@@ -14,7 +14,14 @@ export function modelConfiguration(model: ProviderModel): ProviderModelConfigura
     name: model.name,
     protocol: TextModelProtocol.parse(modelProtocol(model).toUpperCase()),
     path: modelPath(model),
-    maxContextTokens: contextTokensFromText(model.maxContextTokens),
+    maxContextTokens: contextTokensFromText(effectiveContextTokens(model)),
+    contextLimitEnabled: model.contextLimitEnabled ?? true,
+    ...((model.inputLimitEnabled ?? false) ? { maxInputTokens: contextTokensFromText(model.maxInputTokens ?? '') } : {}),
+    ...((model.outputLimitEnabled ?? !!model.maxOutputTokens)
+      ? { maxOutputTokens: contextTokensFromText(model.maxOutputTokens ?? '') }
+      : {}),
+    headers: (model.headers ?? []).map(({ key, value }) => ({ key, value })),
+    bodyDefaults: (model.bodyDefaults ?? []).map(({ key, value }) => ({ key, value })),
     enabled: model.enabled,
     effortMapping: Object.fromEntries(
       Object.entries(model.effortMapping ?? Object.fromEntries(model.thinkingLevels.map((level) => [level, level]))).filter(
@@ -23,9 +30,12 @@ export function modelConfiguration(model: ProviderModel): ProviderModelConfigura
     ),
     capabilities: (model.capabilities ?? []).map((value) => ProviderModelCapability.parse(value.toUpperCase())),
     ...(model.catalogRef ? { catalogRef: model.catalogRef } : {}),
-    inputPrice: model.inputPrice,
-    outputPrice: model.outputPrice,
-    cachedPrice: model.cachedPrice,
+    inputPrice: effectiveModelPrice(model, 'inputPrice'),
+    outputPrice: effectiveModelPrice(model, 'outputPrice'),
+    cachedPrice: effectiveModelPrice(model, 'cachedPrice'),
+    inputPriceEnabled: model.inputPriceEnabled ?? true,
+    outputPriceEnabled: model.outputPriceEnabled ?? true,
+    cachedPriceEnabled: model.cachedPriceEnabled ?? true,
   }
 }
 

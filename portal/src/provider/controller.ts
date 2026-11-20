@@ -2,6 +2,7 @@ import {
   createCreateProviderStore,
   isValidModelDraft,
   providerSnapshot,
+  initializeModelDraft,
   type CreateProviderController as Controller,
   type ApiProtocol,
   type EndpointMode,
@@ -43,6 +44,15 @@ export class CreateProviderController implements Controller {
       this.applying = true
       const projection = readProviderUrl(this.url.store.getState())
       const previous = this.store.getState()
+      projection.models = projection.models?.map((model) => {
+        const retained = previous.models.find((item) => item.id === model.id)
+        return { ...model, headers: retained?.headers, bodyDefaults: retained?.bodyDefaults, defaults: retained?.defaults }
+      })
+      if (projection.modelDraft && previous.modelDraft?.id === projection.modelDraft.id) {
+        projection.modelDraft.headers = previous.modelDraft.headers
+        projection.modelDraft.bodyDefaults = previous.modelDraft.bodyDefaults
+        projection.modelDraft.defaults = previous.modelDraft.defaults
+      }
       if (JSON.stringify(projection.models) === JSON.stringify(previous.models)) projection.models = previous.models
       if (
         projection.modelDraft &&
@@ -93,7 +103,15 @@ export class CreateProviderController implements Controller {
     this.unsubscribe?.()
     this.unblock?.()
     window.removeEventListener('beforeunload', this.beforeUnload)
-    this.store.setState({ apiKey: '', headers: [], avatarUrl: null, avatarFile: null })
+    this.store.setState((state) => ({
+      apiKey: '',
+      headers: [],
+      avatarUrl: null,
+      avatarFile: null,
+      modelDraft: null,
+      editingModelId: null,
+      models: state.models.map((model) => ({ ...model, headers: [], bodyDefaults: [], defaults: undefined })),
+    }))
     if (this.avatarObjectUrl) URL.revokeObjectURL(this.avatarObjectUrl)
   }
   private beforeUnload = (event: BeforeUnloadEvent) => {
@@ -236,25 +254,28 @@ export class CreateProviderController implements Controller {
   onEditModel = (id: string) => {
     const model = this.store.getState().models.find((model) => model.id === id)
     if (!model) return
-    this.store.setState({ editingModelId: id, modelDraft: { ...model, thinkingLevels: [...model.thinkingLevels] } })
+    this.store.setState({ editingModelId: id, modelDraft: initializeModelDraft(model) })
     this.persist(false)
   }
   onModelDraftChanged = (patch: Partial<ModelDraft>) => {
-    this.store.setState((state) => ({ modelDraft: state.modelDraft ? { ...state.modelDraft, ...patch } : null }))
+    const draft = this.store.getState().modelDraft
+    if (!draft) return
+    for (const [key, value] of Object.entries(patch))
+      if (!Object.is(draft[key as keyof ModelDraft], value)) this.store.form.set(`modelDraft.${key}`, value)
     this.persist()
   }
   onCancelModel = () => {
     this.store.setState({ modelDraft: null, editingModelId: null })
     this.persist(true, true)
   }
-  onSaveModel = (draft: ModelDraft) => {
+  onSaveModel = (draft: ModelDraft): ModelDraft | false => {
     const { models, editingModelId } = this.store.getState()
     if (
       !draft ||
       !isValidModelDraft(draft) ||
       models.some((model) => model.id !== editingModelId && model.name.trim() === draft.name.trim())
     )
-      return
+      return false
     this.invalidateTest()
     const previous = models.find((model) => model.id === editingModelId)
     const model: ProviderModel = {
@@ -272,11 +293,11 @@ export class CreateProviderController implements Controller {
     }
     this.store.setState({
       models: previous ? models.map((item) => (item.id === editingModelId ? model : item)) : [...models, model],
-      modelDraft: null,
-      editingModelId: null,
+      editingModelId: model.id,
     })
     this.endpoint()
     this.persist(true, true)
+    return model
   }
   onHeadersChanged = (headers: HeaderEntry[]) => {
     this.invalidateTest()

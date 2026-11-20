@@ -7,7 +7,7 @@ use validify::ValidationError;
 
 pub const BASE_URL_MAX_LENGTH: usize = 512;
 pub const PRICE_INTEGER_DIGITS: u32 = 12;
-pub const PRICE_SCALE: u32 = 8;
+pub const PRICE_SCALE: u32 = 18;
 
 macro_rules! pattern_rule {
     ($validate:ident, $contract:ident, $pattern:literal) => {
@@ -20,6 +20,11 @@ macro_rules! pattern_rule {
 }
 
 pattern_rule!(model_name, model_name_contract, r"^[A-Za-z0-9_-]+$");
+pattern_rule!(
+    upstream_model_id,
+    upstream_model_id_contract,
+    r"^[\x21-\x7e]{1,512}$"
+);
 pattern_rule!(effort_value, effort_value_contract, r"^[A-Za-z0-9_-]+$");
 pattern_rule!(
     endpoint_path,
@@ -38,7 +43,8 @@ pattern_rule!(
     r"^[\t\x20-\x7e\x80-\xff]*$"
 );
 fn price_pattern() -> String {
-    format!(r"^0*[0-9]{{1,{PRICE_INTEGER_DIGITS}}}(?:\.[0-9]{{1,{PRICE_SCALE}}})?$")
+    r"^0*(?:[0-9]{1,10}(?:\.[0-9]{1,18})?|[0-9]{11}(?:\.[0-9]{1,17})?|[0-9]{12}(?:\.[0-9]{1,16})?)$"
+        .into()
 }
 pub fn price(value: &str) -> Result<(), ValidationError> {
     static PATTERN: LazyLock<Regex> = LazyLock::new(|| Regex::new(&price_pattern()).unwrap());
@@ -50,7 +56,7 @@ pub fn price(value: &str) -> Result<(), ValidationError> {
 pub fn price_contract() -> Value {
     json!({
         "pattern": price_pattern(),
-        "x-compallm-input-pattern": format!(r"^0*[0-9]{{0,{PRICE_INTEGER_DIGITS}}}(?:\.[0-9]{{0,{PRICE_SCALE}}})?$")
+        "x-compallm-input-pattern": r"^0*(?:[0-9]{0,10}(?:\.[0-9]{0,18})?|[0-9]{11}(?:\.[0-9]{0,17})?|[0-9]{12}(?:\.[0-9]{0,16})?)$"
     })
 }
 

@@ -29,6 +29,16 @@ import { useController, useProvider } from './controller'
 import { ProviderModels } from './model-table'
 import { parseProvider } from './validation'
 import { acceptsHeaderInput } from './validation'
+export const modelDraftRules = {
+  'modelDraft.path': { accepts: (value: unknown) => ProviderModelFieldsInput.path('/' + String(value).replace(/^\/+/, '')) },
+  'modelDraft.name': { accepts: (value: unknown) => ProviderModelFieldsInput.name(String(value)) },
+  'modelDraft.maxContextTokens': { accepts: (value: unknown) => ProviderModelFieldsInput.maxContextTokens(String(value)) },
+  'modelDraft.maxInputTokens': { accepts: (value: unknown) => ProviderModelFieldsInput.maxContextTokens(String(value)) },
+  'modelDraft.maxOutputTokens': { accepts: (value: unknown) => ProviderModelFieldsInput.maxContextTokens(String(value)) },
+  'modelDraft.inputPrice': { accepts: (value: unknown) => ProviderModelFieldsInput.inputPrice(String(value)) },
+  'modelDraft.outputPrice': { accepts: (value: unknown) => ProviderModelFieldsInput.inputPrice(String(value)) },
+  'modelDraft.cachedPrice': { accepts: (value: unknown) => ProviderModelFieldsInput.inputPrice(String(value)) },
+}
 function ConnectionFields() {
   const [keyVisible, setKeyVisible] = useState(false)
   const controller = useController()
@@ -187,72 +197,6 @@ export function ProviderConfiguration() {
   const busy = submitting || (intent === 'edit' && !edit.allowed)
   const error = useProvider((state) => state.error)
   const form = controller.store.form
-  useEffect(
-    () =>
-      form.configure({
-        mode: 'button',
-        command: true,
-        fields: {
-          name: { accepts: (value) => ProviderFieldsInput.name(String(value)) },
-          baseUrl: { accepts: (value) => ProviderFieldsInput.baseUrl(String(value)) },
-          apiKey: { accepts: (value) => ProviderFieldsInput.apiKey(String(value)) },
-          'modelDraft.path': { accepts: (value) => ProviderModelFieldsInput.path('/' + String(value).replace(/^\/+/, '')) },
-          'modelDraft.name': { accepts: (value) => ProviderModelFieldsInput.name(String(value)) },
-          'modelDraft.maxContextTokens': { accepts: (value) => ProviderModelFieldsInput.maxContextTokens(String(value)) },
-          'modelDraft.inputPrice': { accepts: (value) => ProviderModelFieldsInput.inputPrice(String(value)) },
-          'modelDraft.outputPrice': { accepts: (value) => ProviderModelFieldsInput.inputPrice(String(value)) },
-          'modelDraft.cachedPrice': { accepts: (value) => ProviderModelFieldsInput.inputPrice(String(value)) },
-        },
-        changed: (field, value) => {
-          if (field === 'name' || field === 'baseUrl' || field === 'apiKey')
-            controller.onConnectionChanged(field, String(value))
-          if (field === 'models' || field.startsWith('models[')) controller.onModelsChanged(controller.store.getState().models)
-          if (field === 'avatarFile') {
-            const file = value as File | null
-            if (!file || avatarInput(file).success) controller.onAvatarChanged?.(file)
-            form.blur(field)
-          }
-          if (field === 'headers' || field.startsWith('headers.'))
-            controller.onHeadersChanged?.(controller.store.getState().headers)
-          if (field === 'modelDraft.path') controller.onModelDraftChanged({ path: '/' + String(value).replace(/^\/+/, '') })
-          else if (field.startsWith('modelDraft.'))
-            controller.onModelDraftChanged({
-              [field.slice(11)]: value,
-              ...(field === 'modelDraft.effortMapping'
-                ? { thinkingLevels: Object.keys(value as object) as import('./types').ThinkingLevel[] }
-                : {}),
-            })
-        },
-        parse: (values, names) => {
-          if (values.avatarFile) {
-            const image = avatarInput(values.avatarFile)
-            if (!image.success) return { issues: image.error.issues.map((issue) => ({ ...issue, path: ['avatarFile'] })) }
-          }
-          if (names.length === 1 && names[0] === 'avatarFile') return { values }
-          if (names.length === 1 && ['name', 'baseUrl', 'apiKey'].includes(names[0])) {
-            const name = names[0] as 'name' | 'baseUrl' | 'apiKey'
-            const patch =
-              name === 'apiKey' && !values.apiKey && controller.store.getState().intent === 'edit'
-                ? {}
-                : { [name]: values[name] }
-            if (!Object.keys(patch).length) return { values }
-            const result = ProviderPatchInput.safeParse(patch)
-            return contractResult(result, result.success ? { ...values, [name]: result.data[name] } : values)
-          }
-          const state = { ...controller.store.getState(), ...values }
-          const result = parseProvider(state)
-          return result.issues ? result : { values: { ...values, ...result.values } }
-        },
-        submit: async (values) => {
-          const result =
-            controller.store.getState().intent === 'edit'
-              ? await controller.onSaveProvider(values)
-              : await controller.onCreateProvider(values)
-          return result && typeof result === 'object' ? result : false
-        },
-      }),
-    [controller, form],
-  )
   return (
     <Form.Root model={form} className="mx-auto grid min-w-0 w-full max-w-4xl gap-6 px-4 py-8">
       {intent === 'edit' && !edit.allowed ? (
@@ -299,4 +243,70 @@ function avatarInput(file: File) {
     size: file.size,
     mediaType: ({ 'image/jpeg': 'JPEG', 'image/png': 'PNG', 'image/webp': 'WEBP' } as Record<string, string>)[file.type],
   })
+}
+
+export function useProviderForm() {
+  const controller = useController()
+  const form = controller.store.form
+  useEffect(
+    () =>
+      form.configure({
+        mode: 'button',
+        command: true,
+        fields: {
+          name: { accepts: (value) => ProviderFieldsInput.name(String(value)) },
+          baseUrl: { accepts: (value) => ProviderFieldsInput.baseUrl(String(value)) },
+          apiKey: { accepts: (value) => ProviderFieldsInput.apiKey(String(value)) },
+          ...modelDraftRules,
+        },
+        changed: (field, value) => {
+          if (field === 'name' || field === 'baseUrl' || field === 'apiKey')
+            controller.onConnectionChanged(field, String(value))
+          if (field === 'models' || field.startsWith('models[')) controller.onModelsChanged(controller.store.getState().models)
+          if (field === 'avatarFile') {
+            const file = value as File | null
+            if (!file || avatarInput(file).success) controller.onAvatarChanged?.(file)
+            form.blur(field)
+          }
+          if (field === 'headers' || field.startsWith('headers.'))
+            controller.onHeadersChanged?.(controller.store.getState().headers)
+          if (field === 'modelDraft.path') controller.onModelDraftChanged({ path: '/' + String(value).replace(/^\/+/, '') })
+          else if (field.startsWith('modelDraft.'))
+            controller.onModelDraftChanged({
+              ...(controller.store.form.get('modelDraft') as import('./types').ModelDraft),
+              ...(field === 'modelDraft.effortMapping'
+                ? { thinkingLevels: Object.keys(value as object) as import('./types').ThinkingLevel[] }
+                : {}),
+            })
+        },
+        parse: (values, names) => {
+          if (values.avatarFile) {
+            const image = avatarInput(values.avatarFile)
+            if (!image.success) return { issues: image.error.issues.map((issue) => ({ ...issue, path: ['avatarFile'] })) }
+          }
+          if (names.length === 1 && names[0] === 'avatarFile') return { values }
+          if (names.length === 1 && ['name', 'baseUrl', 'apiKey'].includes(names[0])) {
+            const name = names[0] as 'name' | 'baseUrl' | 'apiKey'
+            const patch =
+              name === 'apiKey' && !values.apiKey && controller.store.getState().intent === 'edit'
+                ? {}
+                : { [name]: values[name] }
+            if (!Object.keys(patch).length) return { values }
+            const result = ProviderPatchInput.safeParse(patch)
+            return contractResult(result, result.success ? { ...values, [name]: result.data[name] } : values)
+          }
+          const state = { ...controller.store.getState(), ...values }
+          const result = parseProvider(state)
+          return result.issues ? result : { values: { ...values, ...result.values } }
+        },
+        submit: async (values) => {
+          const result =
+            controller.store.getState().intent === 'edit'
+              ? await controller.onSaveProvider(values)
+              : await controller.onCreateProvider(values)
+          return result && typeof result === 'object' ? result : false
+        },
+      }),
+    [controller, form],
+  )
 }

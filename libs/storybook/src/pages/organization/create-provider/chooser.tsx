@@ -74,7 +74,7 @@ export function ProviderChooser() {
                     }}
                   >
                     <span className="flex items-center gap-3">
-                      <ProviderIcon provider={provider.id} className="size-5" />
+                      <ProviderIcon provider={provider.id} logoPath={provider.logoPath} className="size-5" />
                       <span>
                         <span className="block truncate text-sm font-medium">{provider.name}</span>
                         <span className="mt-1 block text-xs text-muted-foreground">{provider.id}</span>

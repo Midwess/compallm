@@ -1,4 +1,8 @@
-import { capabilityOptions } from '@compallm/storybook/pages/organization/create-provider'
+import {
+  capabilityOptions,
+  initializeModelDraft,
+  modelDraftFingerprint,
+} from '@compallm/storybook/pages/organization/create-provider'
 import type {
   CreateProviderState,
   ModelDraft,
@@ -49,6 +53,15 @@ const owned = [
   'model_capabilities',
   'model_protocol',
   'provider_protocol',
+  'input_tokens',
+  'context_limit_enabled',
+  'input_limit_enabled',
+  'output_limit_enabled',
+  'provider_context_tokens',
+  'input_price_enabled',
+  'output_price_enabled',
+  'cached_price_enabled',
+  'template_prices',
 ]
 const text = (value: unknown) => (typeof value === 'string' ? value : '')
 const levels = (value: unknown): ThinkingLevel[] =>
@@ -68,11 +81,20 @@ function draft(value: Record<string, unknown>): ModelDraft {
   const protocol =
     (value.protocol as TextModelProtocol | undefined) ??
     (Array.isArray(value.modes) && value.modes.includes('messages') ? 'anthropic_messages' : 'openai_chat_completions')
+  const template =
+    value.templatePrices && typeof value.templatePrices === 'object' && !Array.isArray(value.templatePrices)
+      ? (value.templatePrices as Record<string, unknown>)
+      : value
   return {
     id: text(value.id),
     protocol,
     path: typeof value.path === 'string' ? value.path : endpointPaths[protocol],
     maxOutputTokens: text(value.maxOutputTokens),
+    maxInputTokens: text(value.maxInputTokens),
+    contextLimitEnabled: value.contextLimitEnabled !== false,
+    inputLimitEnabled: value.inputLimitEnabled === true,
+    outputLimitEnabled:
+      value.outputLimitEnabled === undefined ? !!text(value.maxOutputTokens) : value.outputLimitEnabled === true,
     effortMapping: value.effortMapping
       ? effort(value.effortMapping)
       : Object.fromEntries(levels(value.thinkingLevels).map((key) => [key, key])),
@@ -81,10 +103,19 @@ function draft(value: Record<string, unknown>): ModelDraft {
       .map((option) => option.value),
     name: text(value.name),
     maxContextTokens: text(value.maxContextTokens),
+    providerContextTokens: text(value.providerContextTokens) || text(value.maxContextTokens),
     thinkingLevels: levels(value.thinkingLevels),
     inputPrice: text(value.inputPrice),
     outputPrice: text(value.outputPrice),
     cachedPrice: text(value.cachedPrice),
+    inputPriceEnabled: value.inputPriceEnabled !== false,
+    outputPriceEnabled: value.outputPriceEnabled !== false,
+    cachedPriceEnabled: value.cachedPriceEnabled !== false,
+    templatePrices: {
+      inputPrice: text(template.inputPrice),
+      outputPrice: text(template.outputPrice),
+      cachedPrice: text(template.cachedPrice),
+    },
   }
 }
 function decodeModels(raw: string | null): ProviderModel[] {
@@ -106,7 +137,7 @@ function decodeModels(raw: string | null): ProviderModel[] {
   })
 }
 export function emptyModel(id: string, protocol: TextModelProtocol = 'openai_chat_completions'): ModelDraft {
-  return {
+  return initializeModelDraft({
     id,
     protocol,
     path: endpointPaths[protocol],
@@ -118,10 +149,10 @@ export function emptyModel(id: string, protocol: TextModelProtocol = 'openai_cha
     inputPrice: '',
     outputPrice: '',
     cachedPrice: '',
-  }
+  })
 }
 export function modelFingerprint(model: ModelDraft) {
-  return JSON.stringify(draft(model as unknown as Record<string, unknown>))
+  return modelDraftFingerprint(model)
 }
 export function readProviderUrl(location: UrlState): Partial<CreateProviderState> {
   const q = new URLSearchParams(location.search)
@@ -151,6 +182,12 @@ export function readProviderUrl(location: UrlState): Partial<CreateProviderState
         path: q.get('model_path') ?? base.path,
         protocol: modelProtocols.find((value) => value === q.get('draft_protocol')) ?? base.protocol,
         maxOutputTokens: q.get('output_tokens') ?? base.maxOutputTokens,
+        maxInputTokens: q.get('input_tokens') ?? base.maxInputTokens,
+        contextLimitEnabled: q.has('context_limit_enabled')
+          ? q.get('context_limit_enabled') === 'true'
+          : base.contextLimitEnabled,
+        inputLimitEnabled: q.has('input_limit_enabled') ? q.get('input_limit_enabled') === 'true' : base.inputLimitEnabled,
+        outputLimitEnabled: q.has('output_limit_enabled') ? q.get('output_limit_enabled') === 'true' : base.outputLimitEnabled,
         effortMapping: q.has('effort_mapping')
           ? (() => {
               try {
@@ -162,10 +199,23 @@ export function readProviderUrl(location: UrlState): Partial<CreateProviderState
             })()
           : base.effortMapping,
         maxContextTokens: q.get('context_tokens') ?? base.maxContextTokens,
+        providerContextTokens: q.get('provider_context_tokens') ?? base.providerContextTokens ?? base.maxContextTokens,
         thinkingLevels: q.has('thinking') ? levels(q.get('thinking')?.split(',')) : base.thinkingLevels,
         inputPrice: q.get('input_price') ?? base.inputPrice,
         outputPrice: q.get('output_price') ?? base.outputPrice,
         cachedPrice: q.get('cached_price') ?? base.cachedPrice,
+        inputPriceEnabled: q.has('input_price_enabled') ? q.get('input_price_enabled') === 'true' : base.inputPriceEnabled,
+        outputPriceEnabled: q.has('output_price_enabled') ? q.get('output_price_enabled') === 'true' : base.outputPriceEnabled,
+        cachedPriceEnabled: q.has('cached_price_enabled') ? q.get('cached_price_enabled') === 'true' : base.cachedPriceEnabled,
+        templatePrices: q.has('template_prices')
+          ? (() => {
+              try {
+                return draft({ ...base, templatePrices: JSON.parse(q.get('template_prices')!) }).templatePrices
+              } catch {
+                return base.templatePrices
+              }
+            })()
+          : base.templatePrices,
       }
     }
   }
@@ -225,12 +275,27 @@ export function writeProviderUrl(state: CreateProviderState) {
       model_path: state.modelDraft.path ?? endpointPaths[state.modelDraft.protocol ?? 'openai_chat_completions'],
       draft_protocol: state.modelDraft.protocol ?? 'openai_chat_completions',
       output_tokens: state.modelDraft.maxOutputTokens ?? '',
+      input_tokens: state.modelDraft.maxInputTokens ?? '',
+      context_limit_enabled: String(state.modelDraft.contextLimitEnabled ?? true),
+      input_limit_enabled: String(state.modelDraft.inputLimitEnabled ?? false),
+      output_limit_enabled: String(state.modelDraft.outputLimitEnabled ?? !!state.modelDraft.maxOutputTokens),
       effort_mapping: JSON.stringify(state.modelDraft.effortMapping ?? {}),
       context_tokens: state.modelDraft.maxContextTokens,
+      provider_context_tokens: state.modelDraft.providerContextTokens ?? state.modelDraft.maxContextTokens,
       thinking: state.modelDraft.thinkingLevels.join(','),
       input_price: state.modelDraft.inputPrice,
       output_price: state.modelDraft.outputPrice,
       cached_price: state.modelDraft.cachedPrice,
+      input_price_enabled: String(state.modelDraft.inputPriceEnabled ?? true),
+      output_price_enabled: String(state.modelDraft.outputPriceEnabled ?? true),
+      cached_price_enabled: String(state.modelDraft.cachedPriceEnabled ?? true),
+      template_prices: JSON.stringify(
+        state.modelDraft.templatePrices ?? {
+          inputPrice: state.modelDraft.inputPrice,
+          outputPrice: state.modelDraft.outputPrice,
+          cachedPrice: state.modelDraft.cachedPrice,
+        },
+      ),
     })
   return patch
 }

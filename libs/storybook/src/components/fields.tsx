@@ -1,11 +1,11 @@
 import { animated } from './motion'
 import { otpLength, otpPattern, otpCharacters } from '@compallm/contract/auth'
-import { useEffect, useRef, useState, type ComponentPropsWithRef, type TextareaHTMLAttributes } from 'react'
+import { useEffect, useRef, useState, type ComponentPropsWithRef, type TextareaHTMLAttributes, type ReactNode } from 'react'
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGlass'
 import { CopyIcon } from '@phosphor-icons/react/dist/csr/Copy'
 import { LinkIcon } from '@phosphor-icons/react/dist/csr/Link'
 import { cx, composeRefs } from './shared'
-import { useFormField, useNativeFormField } from './form'
+import { useFormField, useNativeFormField, useFormInvalid } from './form'
 import { IconButton, TextLink } from './buttons'
 
 export type TextFieldProps = ComponentPropsWithRef<'input'> & { variant?: 'default' | 'constant' }
@@ -56,6 +56,36 @@ disabled:opacity-50`,
 disabled:cursor-default disabled:opacity-100`,
       )}
     />
+  )
+}
+
+export type PrefixedTextFieldProps = Omit<TextFieldProps, 'prefix'> & {
+  prefix: ReactNode
+  inputClassName?: string
+}
+
+export function PrefixedTextField({ prefix, className, inputClassName, ...props }: PrefixedTextFieldProps) {
+  const invalid = useFormInvalid(props.name)
+  return (
+    <div
+      data-form-field={props.name}
+      aria-invalid={invalid || props['aria-invalid']}
+      className={cx(
+        `flex h-8 w-full min-w-0 overflow-hidden rounded-lg
+        border-(length:--border-hairline) border-input bg-inset focus-within:border-muted-foreground/60
+        aria-invalid:border-destructive has-disabled:opacity-50`,
+        className,
+      )}
+    >
+      <span className="flex shrink-0 items-center border-r border-divider bg-elevated/40 text-xs text-muted-foreground">
+        {prefix}
+      </span>
+      <TextField
+        {...props}
+        aria-invalid={invalid || props['aria-invalid']}
+        className={cx('h-full min-w-0 flex-1 rounded-none border-0 bg-transparent focus:border-transparent', inputClassName)}
+      />
+    </div>
   )
 }
 

@@ -26,7 +26,11 @@ type Story = StoryObj<typeof meta>
 export const ChooseProvider: Story = { render: () => <Demo /> }
 export const ConfigurePreset: Story = { render: () => <Demo scenario="preset" /> }
 export const CustomProvider: Story = { render: () => <Demo scenario="custom" /> }
-export const AddModel: Story = { render: () => <Demo scenario="dialog" /> }
+export const AddModel: Story = { render: () => <Demo scenario="model-add" /> }
+export const ModelSettings: Story = { render: () => <Demo scenario="model-settings" /> }
+export const ModelLimitError: Story = { render: () => <Demo scenario="model-limit-error" /> }
+export const ModelSettingsEmpty: Story = { render: () => <Demo scenario="model-empty" /> }
+export const ModelPricingDefaults: Story = { render: () => <Demo scenario="model-pricing-defaults" /> }
 export const CheckPassed: Story = { render: () => <Demo scenario="passed" /> }
 export const CheckFailed: Story = { render: () => <Demo scenario="failed" /> }
 export const Testing: Story = { render: () => <Demo scenario="testing" /> }
@@ -39,8 +43,8 @@ export const UnsavedChanges: Story = { render: () => <Demo scenario="changed" />
 export const CloneProvider: Story = { render: () => <Demo scenario="clone" /> }
 
 export const ConfigureHeaders: Story = { render: () => <Demo scenario="headers" /> }
-export const OpenAIResponse: Story = { render: () => <Demo scenario="response-dialog" /> }
-export const Anthropic: Story = { render: () => <Demo scenario="anthropic-dialog" /> }
+export const OpenAIResponse: Story = { render: () => <Demo scenario="model-response" /> }
+export const Anthropic: Story = { render: () => <Demo scenario="model-anthropic" /> }
 export const EnabledFilter: Story = { render: () => <Demo scenario="filtered" /> }
 
 export const CapabilityFilter: Story = { render: () => <Demo scenario="capabilities" /> }

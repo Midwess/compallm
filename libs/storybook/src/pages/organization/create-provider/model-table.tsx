@@ -5,9 +5,10 @@ import { Searchbox } from '../../../components/fields'
 import { Checkbox } from '../../../components/selection'
 import { Popup } from '../../../components/popup'
 import { ProviderIcon } from '../../../components/provider-icons'
+import { CapabilityIndicator } from '../../../components/capability-icon'
 import { useController, useProvider } from './controller'
 import { hasValidModelPrices } from './validation'
-import { capabilityOptions, modelTypeLabels, textModelOptions } from './model-options'
+import { capabilityOptions, modelTypeLabels, textModelOptions, effectiveModelPrice } from './model-options'
 import { ModelFilters } from './filters'
 
 function price(value: string) {
@@ -93,7 +94,7 @@ export function ProviderModels() {
           columns={[
             { id: 'enabled', className: 'w-10' },
             { id: 'name' },
-            { id: 'capabilities', className: 'w-1/4', visibilityClassName: 'hidden xl:table-cell' },
+            { id: 'capabilities', className: 'w-28', visibilityClassName: 'hidden xl:table-cell' },
             { id: 'context', className: 'w-20', visibilityClassName: 'hidden lg:table-cell' },
             { id: 'input', className: 'w-20', visibilityClassName: 'hidden md:table-cell' },
             { id: 'output', className: 'w-20', visibilityClassName: 'hidden md:table-cell' },
@@ -149,16 +150,12 @@ export function ProviderModels() {
                     {modelTypeLabels(model).join(' · ') || model.description || 'Not declared'}
                   </span>
                 </Table.Cell>
-                <Table.Cell column="capabilities" className="px-1 py-2 text-left">
-                  <div className="flex flex-wrap gap-1">
+                <Table.Cell column="capabilities" className="px-1 py-1 text-left">
+                  <div className="flex min-w-0 flex-wrap items-center gap-0.5">
                     {model.capabilities?.length ? (
                       capabilityOptions
                         .filter((option) => model.capabilities?.includes(option.value))
-                        .map((option) => (
-                          <span key={option.value} className="rounded bg-elevated px-1 py-0.5 text-muted-foreground">
-                            {option.label}
-                          </span>
-                        ))
+                        .map((option) => <CapabilityIndicator key={option.value} capability={option.value} />)
                     ) : (
                       <span className="text-muted-foreground">Not declared</span>
                     )}
@@ -167,15 +164,17 @@ export function ProviderModels() {
                 <Table.Cell column="context" className="whitespace-nowrap px-1 text-left text-muted-foreground">
                   {model.maxContextTokens ? Number(model.maxContextTokens).toLocaleString('en-US') : 'Not set'}
                 </Table.Cell>
-                {[model.inputPrice, model.outputPrice, model.cachedPrice].map((value, index) => (
-                  <Table.Cell
-                    column={['input', 'output', 'cached'][index]}
-                    key={index}
-                    className="whitespace-nowrap px-1 text-left text-muted-foreground"
-                  >
-                    {price(value)}
-                  </Table.Cell>
-                ))}
+                {(['inputPrice', 'outputPrice', 'cachedPrice'] as const)
+                  .map((key) => effectiveModelPrice(model, key))
+                  .map((value, index) => (
+                    <Table.Cell
+                      column={['input', 'output', 'cached'][index]}
+                      key={index}
+                      className="whitespace-nowrap px-1 text-left text-muted-foreground"
+                    >
+                      {price(value)}
+                    </Table.Cell>
+                  ))}
                 <Table.Cell className="p-0 text-left">
                   {supported(model) ? (
                     <button

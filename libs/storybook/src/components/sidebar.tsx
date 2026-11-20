@@ -84,7 +84,7 @@ export function Sidebar({
       ref={root}
       style={{ ...style, width: constrain(width) }}
       className={cx(
-        'group/sidebar relative flex h-full min-h-0 shrink-0 flex-col border-r border-divider bg-sidebar px-3 py-1 select-none',
+        'group/sidebar relative flex h-full min-h-0 shrink-0 flex-col bg-sidebar px-3 py-1 select-none',
         '[&_input]:select-text [&_textarea]:select-text **:[[contenteditable=true]]:select-text',
         className,
       )}

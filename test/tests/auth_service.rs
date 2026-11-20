@@ -6628,12 +6628,12 @@ async fn graphql_template_reads_require_membership_and_return_complete_model_def
     assert!(detail["errors"].is_null(), "{detail}");
     let models = &detail["data"]["providerTemplate"]["node"]["models"];
     assert_eq!(models["pageInfo"]["hasNextPage"], false);
-    let aliased = graphql_body(graphql_operation(&router, "{ providerTemplate(id: \"openai\") { node { models { entries: edges { item: node { id context: maxContextTokens pricing { currency } } } } } } }", serde_json::json!({}), Some(&tokens.access_token), None, false).await).await;
+    let aliased = graphql_body(graphql_operation(&router, "{ providerTemplate(id: \"openai\") { node { models { entries: edges { item: node { id context: maxContextTokens inputPrice outputPrice } } } } } }", serde_json::json!({}), Some(&tokens.access_token), None, false).await).await;
     assert!(aliased["errors"].is_null(), "{aliased}");
     let id = models["edges"][0]["node"]["id"]
         .as_str()
         .expect("eligible OpenAI model");
-    let model = graphql_body(graphql_operation(&router, "query($id: ID!) { modelTemplate(providerTemplateId: \"openai\", id: $id) { node { id upstreamModelId maxContextTokens maxInputTokens maxOutputTokens effortMapping { level value } inputPrice outputPrice cachedPrice pricing { currency fallback { basis confidence } } sources { reference } modelInfoSources { kind url reference access } } } }", serde_json::json!({"id": id}), Some(&tokens.access_token), None, false).await).await;
+    let model = graphql_body(graphql_operation(&router, "query($id: ID!) { modelTemplate(providerTemplateId: \"openai\", id: $id) { node { id upstreamModelId maxContextTokens maxInputTokens maxOutputTokens effortMapping { level value } inputPrice outputPrice cachedPrice billingModel pricingMode cacheBilling } } }", serde_json::json!({"id": id}), Some(&tokens.access_token), None, false).await).await;
     assert!(model["errors"].is_null(), "{model}");
     assert_eq!(model["data"]["modelTemplate"]["node"]["id"], id);
     let missing = graphql_body(graphql_operation(&router, "{ modelTemplate(providerTemplateId: \"absent\", id: \"absent\") { node { id } } providerTemplate(id: \"absent\") { node { id } } }", serde_json::json!({}), Some(&tokens.access_token), None, false).await).await;

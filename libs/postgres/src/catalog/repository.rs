@@ -60,6 +60,7 @@ impl CatalogRepository {
         let db = PostgresConnection::from_context(&context)
             .map_err(|_| DbErr::Custom("catalog connection unavailable".into()))?;
         Providers::find_by_id(id)
+            .into_partial_model::<super::defaults::ProviderDefaultsRow>()
             .one(db)
             .await?
             .map(TryInto::try_into)
@@ -130,6 +131,7 @@ impl CatalogRepository {
             .filter(M::ProviderTemplateId.eq(provider))
             .filter(M::Id.is_in(ids))
             .filter(M::Id.in_subquery(eligible))
+            .into_partial_model::<super::defaults::ModelDefaultsRow>()
             .all(db)
             .await?
             .into_iter()
@@ -153,6 +155,7 @@ impl CatalogRepository {
                         .into_query(),
                 ),
             )
+            .into_partial_model::<super::defaults::ModelDefaultsRow>()
             .one(db)
             .await?
             .map(TryInto::try_into)

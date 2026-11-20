@@ -1,4 +1,4 @@
-use super::{model_info::ModelInfoSource, semantics::*};
+use super::semantics::*;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -109,73 +109,12 @@ pub use crate::provider::Capability;
 pub use crate::provider::EffortLevel;
 
 pub type Operations = BTreeMap<TextOperation, String>;
-pub type Authentication = BTreeMap<AuthenticationMethod, AuthConfig>;
+pub type Authentication = BTreeMap<AuthenticationMethod, AuthenticationDefaults>;
 pub type Capabilities = BTreeMap<Capability, Option<bool>>;
 pub type EffortMapping = BTreeMap<EffortLevel, String>;
 pub type Headers = BTreeMap<String, String>;
-pub type FieldMetadata = BTreeMap<String, FieldStatus>;
-pub type ResolutionPlan = BTreeMap<String, FieldResolution>;
 pub type UnresolvedFields = BTreeMap<String, UnresolvedField>;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct SourceReference {
-    pub kind: ReferenceKind,
-    pub reference: String,
-    pub revision: Option<String>,
-    pub fields: Vec<String>,
-    pub status: ReferenceStatus,
-    pub note: Option<String>,
-}
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ReferenceKind {
-    Repository,
-    Web,
-}
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ReferenceStatus {
-    Imported,
-    Estimate,
-    Verified,
-}
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct FieldStatus {
-    pub status: FieldStatusKind,
-    pub reason: String,
-    pub source_url: Option<String>,
-    pub base_url: Option<String>,
-    pub source_units: Option<serde_json::Value>,
-    pub conditions: Option<serde_json::Value>,
-}
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum FieldStatusKind {
-    Unknown,
-    AccountSpecific,
-    SubscriptionBased,
-    Variable,
-    UnsupportedPrecision,
-    StandardInputRate,
-    Conditional,
-    RequiresAuthentication,
-    Unconfigured,
-    NotApplicable,
-    Unpublished,
-    NoPublicEndpoint,
-    MigrationRequired,
-    CreditBased,
-    Deprecated,
-    ClientRestricted,
-}
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct TemplateResearch {
-    pub metadata: FieldMetadata,
-    pub original_order: Vec<String>,
-}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ProviderTemplate {
     pub id: String,
@@ -185,13 +124,10 @@ pub struct ProviderTemplate {
     pub protocol: ProtocolFamily,
     pub base_url: Option<String>,
     pub headers: Headers,
-    pub source_refs: Vec<SourceReference>,
     pub authentication: Authentication,
-    pub endpoint_config: EndpointConfig,
+    pub endpoint_config: EndpointDefaults,
     pub endpoint_mode: EndpointMode,
     pub readiness: Readiness,
-    pub field_metadata: FieldMetadata,
-    pub model_info_sources: Vec<ModelInfoSource>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ModelTemplate {
@@ -212,17 +148,12 @@ pub struct ModelTemplate {
     pub output_price: Option<Decimal>,
     #[serde(with = "rust_decimal::serde::str_option")]
     pub cached_price: Option<Decimal>,
-    pub source_refs: Vec<SourceReference>,
-    pub field_metadata: FieldMetadata,
-    pub model_info_sources: Vec<ModelInfoSource>,
     pub service_kind: ServiceKind,
     pub billing_model: BillingModel,
     pub billing_unit: Option<BillingUnit>,
     pub pricing_mode: PricingMode,
     pub cache_billing: CacheBilling,
     pub specification_mode: SpecificationMode,
-    pub pricing_config: PricingConfig,
-    pub resolution_plan: ResolutionPlan,
     pub unresolved_fields: UnresolvedFields,
     pub readiness: Readiness,
 }
@@ -290,4 +221,23 @@ impl From<&ProviderTemplate> for ProviderTemplateSummary {
             readiness: v.readiness,
         }
     }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AuthenticationDefaults {
+    pub status: AuthStatus,
+    pub placements: Option<Vec<CredentialPlacement>>,
+    pub flow: Option<OAuthFlow>,
+    pub authorization_url: Option<String>,
+    pub token_url: Option<String>,
+    pub device_authorization_url: Option<String>,
+    pub scopes: Option<Vec<String>>,
+    pub required_inputs: Option<Vec<RequiredInput>>,
+    pub reason: Option<String>,
+    pub adapter: Option<String>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EndpointDefaults {
+    pub required_inputs: Option<Vec<RequiredInput>>,
+    pub reason: Option<String>,
 }

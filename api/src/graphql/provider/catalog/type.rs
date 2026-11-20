@@ -95,24 +95,6 @@ pub struct TemplateEffort {
     pub value: String,
 }
 #[derive(GraphQLObject)]
-pub struct TemplateFieldStatus {
-    pub field: String,
-    pub status: TemplateFieldStatusKind,
-    pub reason: String,
-    pub source_reference: Option<String>,
-    pub conditions_json: Option<String>,
-    pub source_units_json: Option<String>,
-}
-#[derive(GraphQLObject)]
-pub struct TemplateSource {
-    pub kind: TemplateReferenceKind,
-    pub reference: String,
-    pub revision: Option<String>,
-    pub fields: Vec<String>,
-    pub status: TemplateReferenceStatus,
-    pub note: Option<String>,
-}
-#[derive(GraphQLObject)]
 pub struct TemplateAuthentication {
     pub method: TemplateAuthenticationMethod,
     pub configuration: super::output::TemplateAuthConfig,
@@ -127,33 +109,7 @@ pub struct TemplateUnresolved {
     pub field: String,
     pub requirement: super::output::TemplateUnresolvedField,
 }
-impl From<(&String, &domain::FieldStatus)> for TemplateFieldStatus {
-    fn from((field, value): (&String, &domain::FieldStatus)) -> Self {
-        Self {
-            field: field.clone(),
-            status: value.status.into(),
-            reason: value.reason.clone(),
-            source_reference: value.source_url.clone(),
-            conditions_json: value.conditions.as_ref().map(serde_json::Value::to_string),
-            source_units_json: value
-                .source_units
-                .as_ref()
-                .map(serde_json::Value::to_string),
-        }
-    }
-}
-impl From<&domain::SourceReference> for TemplateSource {
-    fn from(value: &domain::SourceReference) -> Self {
-        Self {
-            kind: value.kind.into(),
-            reference: value.reference.clone(),
-            revision: value.revision.clone(),
-            fields: value.fields.clone(),
-            status: value.status.into(),
-            note: value.note.clone(),
-        }
-    }
-}
+
 #[derive(GraphQLEnum)]
 pub enum TemplateEffortLevel {
     Low,
@@ -307,22 +263,6 @@ impl ProviderTemplate {
     fn readiness(&self) -> TemplateReadiness {
         self.0.readiness.into()
     }
-    async fn field_statuses(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Vec<TemplateFieldStatus>, Error> {
-        let detail = self.detail(repository, authority).await?;
-        Ok(detail.field_metadata.iter().map(Into::into).collect())
-    }
-    async fn sources(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Vec<TemplateSource>, Error> {
-        let detail = self.detail(repository, authority).await?;
-        Ok(detail.source_refs.iter().map(Into::into).collect())
-    }
     async fn endpoint(
         &self,
         #[graphql(context)] repository: &CatalogRepository,
@@ -347,20 +287,6 @@ impl ProviderTemplate {
                 method: (*method).into(),
                 configuration: v.clone().into(),
             })
-            .collect())
-    }
-    async fn model_info_sources(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Vec<super::output::TemplateModelInfoSource>, Error> {
-        Ok(self
-            .detail(repository, authority)
-            .await?
-            .model_info_sources
-            .clone()
-            .into_iter()
-            .map(Into::into)
             .collect())
     }
     async fn models(
@@ -585,36 +511,6 @@ impl ModelTemplate {
     fn readiness(&self) -> TemplateReadiness {
         TemplateReadiness::Ready
     }
-    async fn field_statuses(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Vec<TemplateFieldStatus>, Error> {
-        let detail = self.detail(repository, authority).await?;
-        Ok(detail.field_metadata.iter().map(Into::into).collect())
-    }
-    async fn sources(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Vec<TemplateSource>, Error> {
-        let detail = self.detail(repository, authority).await?;
-        Ok(detail.source_refs.iter().map(Into::into).collect())
-    }
-    async fn model_info_sources(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Vec<super::output::TemplateModelInfoSource>, Error> {
-        Ok(self
-            .detail(repository, authority)
-            .await?
-            .model_info_sources
-            .clone()
-            .into_iter()
-            .map(Into::into)
-            .collect())
-    }
     async fn service_kind(
         &self,
         #[graphql(context)] repository: &CatalogRepository,
@@ -636,32 +532,6 @@ impl ModelTemplate {
             .await?
             .specification_mode
             .into())
-    }
-    async fn pricing(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<super::output::TemplatePricingConfig, Error> {
-        Ok(self
-            .detail(repository, authority)
-            .await?
-            .pricing_config
-            .clone()
-            .into())
-    }
-    async fn resolution_plan(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Vec<TemplateResolution>, Error> {
-        Ok(self
-            .detail(repository, authority)
-            .await?
-            .resolution_plan
-            .clone()
-            .into_iter()
-            .map(Into::into)
-            .collect())
     }
     async fn unresolved_fields(
         &self,
@@ -831,64 +701,6 @@ impl From<domain::ServiceKind> for TemplateServiceKind {
     }
 }
 
-#[derive(GraphQLEnum)]
-pub enum TemplateFieldStatusKind {
-    Unknown,
-    AccountSpecific,
-    SubscriptionBased,
-    Variable,
-    UnsupportedPrecision,
-    StandardInputRate,
-    Conditional,
-    RequiresAuthentication,
-    Unconfigured,
-    NotApplicable,
-    Unpublished,
-    NoPublicEndpoint,
-    MigrationRequired,
-    CreditBased,
-    Deprecated,
-    ClientRestricted,
-}
-impl From<domain::FieldStatusKind> for TemplateFieldStatusKind {
-    fn from(v: domain::FieldStatusKind) -> Self {
-        match v {
-            domain::FieldStatusKind::Unknown => Self::Unknown,
-            domain::FieldStatusKind::AccountSpecific => Self::AccountSpecific,
-            domain::FieldStatusKind::SubscriptionBased => Self::SubscriptionBased,
-            domain::FieldStatusKind::Variable => Self::Variable,
-            domain::FieldStatusKind::UnsupportedPrecision => Self::UnsupportedPrecision,
-            domain::FieldStatusKind::StandardInputRate => Self::StandardInputRate,
-            domain::FieldStatusKind::Conditional => Self::Conditional,
-            domain::FieldStatusKind::RequiresAuthentication => Self::RequiresAuthentication,
-            domain::FieldStatusKind::Unconfigured => Self::Unconfigured,
-            domain::FieldStatusKind::NotApplicable => Self::NotApplicable,
-            domain::FieldStatusKind::Unpublished => Self::Unpublished,
-            domain::FieldStatusKind::NoPublicEndpoint => Self::NoPublicEndpoint,
-            domain::FieldStatusKind::MigrationRequired => Self::MigrationRequired,
-            domain::FieldStatusKind::CreditBased => Self::CreditBased,
-            domain::FieldStatusKind::Deprecated => Self::Deprecated,
-            domain::FieldStatusKind::ClientRestricted => Self::ClientRestricted,
-        }
-    }
-}
-
-#[derive(GraphQLEnum)]
-pub enum TemplateReferenceStatus {
-    Imported,
-    Estimate,
-    Verified,
-}
-impl From<domain::ReferenceStatus> for TemplateReferenceStatus {
-    fn from(v: domain::ReferenceStatus) -> Self {
-        match v {
-            domain::ReferenceStatus::Imported => Self::Imported,
-            domain::ReferenceStatus::Estimate => Self::Estimate,
-            domain::ReferenceStatus::Verified => Self::Verified,
-        }
-    }
-}
-
 impl From<domain::Capability> for ProviderModelCapability {
     fn from(v: domain::Capability) -> Self {
         match v {
@@ -904,51 +716,6 @@ impl From<domain::Capability> for ProviderModelCapability {
             domain::Capability::ToolCall => Self::ToolCall,
             domain::Capability::ForcedToolChoice => Self::ForcedToolChoice,
             domain::Capability::StructuredOutput => Self::StructuredOutput,
-        }
-    }
-}
-
-#[derive(GraphQLObject)]
-pub struct TemplateResolution {
-    pub field: String,
-    pub method: TemplateResolutionMethod,
-    pub source_index: Option<String>,
-    pub required_inputs: Vec<super::output::CatalogRequiredInput>,
-}
-#[derive(GraphQLEnum)]
-pub enum TemplateResolutionMethod {
-    Api,
-    Account,
-}
-impl From<(String, domain::semantics::FieldResolution)> for TemplateResolution {
-    fn from((field, value): (String, domain::semantics::FieldResolution)) -> Self {
-        match value {
-            domain::semantics::FieldResolution::Api { source_index } => Self {
-                field,
-                method: TemplateResolutionMethod::Api,
-                source_index: Some(source_index.to_string()),
-                required_inputs: vec![],
-            },
-            domain::semantics::FieldResolution::Account { required_inputs } => Self {
-                field,
-                method: TemplateResolutionMethod::Account,
-                source_index: None,
-                required_inputs: required_inputs.into_iter().map(Into::into).collect(),
-            },
-        }
-    }
-}
-
-#[derive(GraphQLEnum)]
-pub enum TemplateReferenceKind {
-    Repository,
-    Web,
-}
-impl From<domain::ReferenceKind> for TemplateReferenceKind {
-    fn from(v: domain::ReferenceKind) -> Self {
-        match v {
-            domain::ReferenceKind::Repository => Self::Repository,
-            domain::ReferenceKind::Web => Self::Web,
         }
     }
 }

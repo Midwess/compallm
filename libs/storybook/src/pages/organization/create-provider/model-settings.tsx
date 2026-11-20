@@ -167,7 +167,7 @@ export function ModelSettingsPage() {
           if (event.key === 'Escape' && !event.defaultPrevented && event.target === event.currentTarget) close()
         }}
       >
-        <PageHeader>
+        <PageHeader className="rounded-t-xl">
           <ModelBreadcrumb onBack={close} />
           <Functions>
             <Popup.Root>

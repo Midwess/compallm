@@ -72,6 +72,7 @@ mod m20261117_000044_session_metadata;
 mod m20261117_000045_drop_session_location;
 
 mod m20261117_000046_session_lifetime;
+mod m20261117_000047_provider_catalog;
 
 pub struct Migrator;
 
@@ -126,6 +127,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261117_000044_session_metadata::Migration),
             Box::new(m20261117_000045_drop_session_location::Migration),
             Box::new(m20261117_000046_session_lifetime::Migration),
+            Box::new(m20261117_000047_provider_catalog::Migration),
             // inject-above (do not remove this comment)
         ]
     }

@@ -1,0 +1,428 @@
+{
+  "origin": "Gemini revised follow-up supplied by the user",
+  "verification": "unverified_suggestion_except_separately_sourced_changes",
+  "suggestions": [
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "deepseek-ai/deepseek-v4.1-flash",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text, Image -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "1,000,000",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown (default usually 4,096)"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "google/diffusiongemma-26b-a4b-it",
+      "hosted_status_claim": "Deprecated",
+      "modality_or_service_claim": "Text, Image, Video -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "262,144",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "google/gemma-4-31b-it",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text, Image, Video -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "262,144",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "google/google-paligemma",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Image, Text -> Text (Vision QA)",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "8,192",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "1,024"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "meta/llama-3.2-11b-vision-instruct",
+      "hosted_status_claim": "Deprecated",
+      "modality_or_service_claim": "Text, Image -> Text (Vision)",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "131,072",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "meta/llama-3.2-90b-vision-instruct",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text, Image -> Text (Vision)",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "131,072",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "meta/llama-3.3-70b-instruct",
+      "hosted_status_claim": "Deprecated",
+      "modality_or_service_claim": "Text -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "131,072",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "meta/llama-guard-4-12b",
+      "hosted_status_claim": "Deprecating Soon",
+      "modality_or_service_claim": "Text, Image -> Text (Safety)",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "163,840",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "meta/muse-glimmer-30b",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text, Image -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "131,072",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "minimaxai/minimax-m2.7",
+      "hosted_status_claim": "Deprecated",
+      "modality_or_service_claim": "Text -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "205,000",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "minimaxai/minimax-m3",
+      "hosted_status_claim": "Unavailable",
+      "modality_or_service_claim": "Unknown",
+      "endpoint_claim": "Unknown",
+      "context_label_claim": "Unknown",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "minimaxai/minimax-m3.1-flash",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text, Image, Video -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "262,144",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/active-speaker-detection",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Video, Audio -> Labels (Perception)",
+      "endpoint_claim": "Custom Upload API",
+      "context_label_claim": "Unknown",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/bevformer",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Multi-Camera -> Labels (Perception)",
+      "endpoint_claim": "Custom Container",
+      "context_label_claim": "Unknown",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/llama-3.1-nemotron-safety-guard-8b-v3",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text -> Text (Safety)",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "Unknown",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text, Image, Audio, Video -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "262,144",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/nemotron-3-ultra-550b-a55b",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "1,000,000",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/nemotron-3.5-bolt-e4b",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "66,000",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/nemotron-3.5-content-safety",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text, Image -> Text (Safety)",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "128,000",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    },
+    {
+      "origin": "Gemini revised follow-up supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "1,000,000",
+      "source_urls_supplied": [
+        "https://build.nvidia.com/<provider>/<model-name>/apireference"
+      ],
+      "output_limit_claim": "Unknown"
+    }
+  ],
+  "official_changes": [
+    {
+      "model": "google/google-paligemma",
+      "field": "max_output_tokens",
+      "previous": 8192,
+      "value": 1024,
+      "default": 1024,
+      "source": {
+        "name": "paligemma-api",
+        "model": "google/google-paligemma",
+        "url": "https://build.nvidia.com/google/google-paligemma/apireference.md",
+        "status": 200,
+        "sha256": "ae6613d06a8389ed383477003175f00fd50a9b79400e7d9efa981e83c33aef1e",
+        "bytes": 18242
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3.5-bolt-e4b",
+      "field": "max_output_tokens",
+      "previous": 65536,
+      "value": 65536,
+      "default": 1024,
+      "source": {
+        "name": "bolt-api",
+        "model": "nvidia/nemotron-3.5-bolt-e4b",
+        "url": "https://build.nvidia.com/nvidia/nemotron-3.5-bolt-e4b/apireference.md",
+        "status": 200,
+        "sha256": "77f461a7cfd12a9be53f69e138d373e03dc271809d92dfe193552c629aa99789",
+        "bytes": 22869
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3.5-content-safety",
+      "field": "max_output_tokens",
+      "previous": 8192,
+      "value": 4096,
+      "default": 512,
+      "source": {
+        "name": "safety-api",
+        "model": "nvidia/nemotron-3.5-content-safety",
+        "url": "https://build.nvidia.com/nvidia/nemotron-3.5-content-safety/apireference.md",
+        "status": 200,
+        "sha256": "6189dfb018730a28c9fd8a070d8248a963cd910ac1b780ac38ed95fe6b856375",
+        "bytes": 21541
+      }
+    },
+    {
+      "model": "minimaxai/minimax-m3.1-flash",
+      "field": "max_output_tokens",
+      "previous": 262144,
+      "value": 65536,
+      "default": 16384,
+      "source": {
+        "name": "minimax-api",
+        "model": "minimaxai/minimax-m3.1-flash",
+        "url": "https://build.nvidia.com/minimaxai/minimax-m3.1-flash/apireference.md",
+        "status": 200,
+        "sha256": "b342233b53e451e7f58023b50e26d436200f18a269bb9e8d9f59ee6acdcb1d3d",
+        "bytes": 25564
+      }
+    },
+    {
+      "model": "google/google-paligemma",
+      "field": "max_context_tokens",
+      "value": 8192,
+      "url": "https://build.nvidia.com/google/google-paligemma.md",
+      "sha256": "a7b34965b2f8ec3cd2e7f94f7f66b26dbd4212ab0e5de7b5710ade1b04b3c0f4"
+    },
+    {
+      "model": "meta/llama-guard-4-12b",
+      "field": "max_context_tokens",
+      "value": 163840,
+      "url": "https://build.nvidia.com/meta/llama-guard-4-12b.md",
+      "sha256": "82b070da9355ed0b9393c7cf9b65362dc6e0699f8b9dc2a39b791518215b8a7b"
+    },
+    {
+      "model": "nvidia/nemotron-3.5-content-safety",
+      "field": "max_context_tokens",
+      "value": 131072,
+      "url": "https://build.nvidia.com/nvidia/nemotron-3.5-content-safety.md",
+      "sha256": "b00d9da6c8fd0851cf8a6c03e9af54ac898b8b4bb9c70aa488652427214795b9"
+    }
+  ],
+  "sources": [
+    {
+      "name": "paligemma-api",
+      "model": "google/google-paligemma",
+      "url": "https://build.nvidia.com/google/google-paligemma/apireference.md",
+      "status": 200,
+      "sha256": "ae6613d06a8389ed383477003175f00fd50a9b79400e7d9efa981e83c33aef1e",
+      "bytes": 18242
+    },
+    {
+      "name": "guard-api",
+      "url": "https://build.nvidia.com/meta/llama-guard-4-12b/apireference.md",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "safety-api",
+      "model": "nvidia/nemotron-3.5-content-safety",
+      "url": "https://build.nvidia.com/nvidia/nemotron-3.5-content-safety/apireference.md",
+      "status": 200,
+      "sha256": "6189dfb018730a28c9fd8a070d8248a963cd910ac1b780ac38ed95fe6b856375",
+      "bytes": 21541
+    },
+    {
+      "name": "bolt-api",
+      "model": "nvidia/nemotron-3.5-bolt-e4b",
+      "url": "https://build.nvidia.com/nvidia/nemotron-3.5-bolt-e4b/apireference.md",
+      "status": 200,
+      "sha256": "77f461a7cfd12a9be53f69e138d373e03dc271809d92dfe193552c629aa99789",
+      "bytes": 22869
+    },
+    {
+      "name": "minimax-api",
+      "model": "minimaxai/minimax-m3.1-flash",
+      "url": "https://build.nvidia.com/minimaxai/minimax-m3.1-flash/apireference.md",
+      "status": 200,
+      "sha256": "b342233b53e451e7f58023b50e26d436200f18a269bb9e8d9f59ee6acdcb1d3d",
+      "bytes": 25564
+    },
+    {
+      "name": "gemma-api",
+      "model": "google/gemma-4-31b-it",
+      "url": "https://build.nvidia.com/google/gemma-4-31b-it/apireference.md",
+      "status": 200,
+      "sha256": "fc0d80631d0ba451fa5c91227379d553df901f77599cf0b50827ee65aa9eb9c0",
+      "bytes": 11896
+    },
+    {
+      "url": "https://docs.api.nvidia.com/nim/docs/product",
+      "sha256": "fb93abd0181d4e6821189e72c0fea3cbea3f1211fdda150bb52ef3822fd94ff5",
+      "excerpt": "Members of the NVIDIA Developer Program have free access to NIM API endpoints for prototyping"
+    }
+  ],
+  "free_development_ids": [
+    "google/gemma-4-31b-it",
+    "meta/muse-glimmer-30b",
+    "minimaxai/minimax-m3.1-flash",
+    "nvidia/llama-3.1-nemotron-safety-guard-8b-v3",
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+    "nvidia/nemotron-3-ultra-550b-a55b",
+    "nvidia/nemotron-3.5-bolt-e4b",
+    "nvidia/nemotron-3.5-content-safety",
+    "nvidia/nemotron-3.5-lightning-30b-a3b"
+  ],
+  "limitations": [
+    "Gemini credit-system removal timing and 40-RPM claim remain unverified.",
+    "No hosted cache configuration documentation is not proof of unsupported caching.",
+    "Approximate labels are not expanded into exact context counts.",
+    "A general model-card capability/context is not automatically an endpoint deployment cap.",
+    "Missing public-list IDs are not automatically declared deprecated."
+  ],
+  "nim_text_readiness": {
+    "ready": 10,
+    "incomplete": 23
+  },
+  "all_text_readiness": {
+    "ready": 787,
+    "incomplete": 435,
+    "needs_configuration": 64
+  }
+}

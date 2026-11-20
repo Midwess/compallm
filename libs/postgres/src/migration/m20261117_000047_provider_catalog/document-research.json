@@ -1,0 +1,1166 @@
+{
+  "sources": [
+    {
+      "name": "agnes-pricing",
+      "url": "https://wiki.agnes-ai.com/en/docs/pricing",
+      "resolved_url": "https://wiki.agnes-ai.com/en/docs/pricing",
+      "status": 200,
+      "sha256": "1bf4878e5aa2d0596bc63f46882d1bde849188995386236c4525e2356ed09950",
+      "bytes": 157170
+    },
+    {
+      "name": "agnes-models-doc",
+      "url": "https://wiki.agnes-ai.com/en/docs/models",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "hyperbolic-pricing",
+      "url": "https://hyperbolic.online/inference",
+      "resolved_url": "https://hyperbolic.online/inference",
+      "status": 200,
+      "sha256": "db46713717bba18d689f04ad5387fadaad7fc9fe2fa78d0ea61fb1a2bdb413d9",
+      "bytes": 179053
+    },
+    {
+      "name": "cerebras-pricing",
+      "url": "https://www.cerebras.ai/pricing",
+      "resolved_url": "https://www.cerebras.ai/pricing",
+      "status": 200,
+      "sha256": "c437b5202021ff9c1ffce3a34f5cd84b54a6d890b269c7904ba347abfdb720c3",
+      "bytes": 245328
+    },
+    {
+      "name": "cerebras-models-doc",
+      "url": "https://inference-docs.cerebras.ai/models/overview",
+      "resolved_url": "https://inference-docs.cerebras.ai/models/overview",
+      "status": 200,
+      "sha256": "f4410a095881e6cbdbd3e632c915f392074c1dfb42f63acdcfcb11ea17b59fca",
+      "bytes": 231857
+    },
+    {
+      "name": "cohere-pricing",
+      "url": "https://cohere.com/pricing",
+      "resolved_url": "https://cohere.com/pricing",
+      "status": 200,
+      "sha256": "4c07e1cc786fba1c1ad5d92bbf20d177b2aa4421fb9262c4455296f491e353d3",
+      "bytes": 599311
+    },
+    {
+      "name": "siliconflow-pricing",
+      "url": "https://www.siliconflow.com/pricing",
+      "resolved_url": "https://www.siliconflow.com/pricing",
+      "status": 200,
+      "sha256": "74219c83c4ffeeed010e2f82509ddd413f75f6376836e282985a75dea97c51ef",
+      "bytes": 1311572
+    },
+    {
+      "name": "siliconflow-cache",
+      "url": "https://www.siliconflow.com/blog/siliconflow-prompt-caching-api-costs",
+      "resolved_url": "https://www.siliconflow.com/blog/siliconflow-prompt-caching-api-costs",
+      "status": 200,
+      "sha256": "1a0e857c78d7aa9169f3e2472aeb3ccb0e997814a8a3e634f6f246cec975f5e9",
+      "bytes": 388760
+    },
+    {
+      "name": "sambanova-pricing",
+      "url": "https://sambanova.ai/pricing",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "nvidia-faq",
+      "url": "https://docs.api.nvidia.com/nim/docs/product",
+      "resolved_url": "https://docs.api.nvidia.com/nim/docs/product",
+      "status": 200,
+      "sha256": "6db53bec4ade405a3198b4f97f6799399decbc05b887f9a8e0c556ef203a7bfd",
+      "bytes": 674103
+    },
+    {
+      "name": "alibaba-international-models",
+      "url": "https://www.alibabacloud.com/help/en/model-studio/models",
+      "resolved_url": "https://www.alibabacloud.com/help/en/model-studio/models",
+      "status": 200,
+      "sha256": "1fbb195915244a5e741b3cfd6c8d99d0062734b00eb0726ac0f0c167af86d357",
+      "bytes": 47409
+    },
+    {
+      "name": "runcrate-pricing",
+      "url": "https://www.runcrate.ai/inference/pricing",
+      "resolved_url": "https://www.runcrate.ai/inference/pricing",
+      "status": 200,
+      "sha256": "ec752e27ae3acc050cef3e74eab93aab2292076d8afea01f2fd0db754aa8011c",
+      "bytes": 524799
+    },
+    {
+      "name": "morph-pricing",
+      "url": "https://morphllm.com/pricing",
+      "resolved_url": "https://www.morphllm.com/pricing",
+      "status": 200,
+      "sha256": "0350b455de415ebbb4e5b25d155c2e9530d85255d2ccac49845012d24b8bd668",
+      "bytes": 159116
+    },
+    {
+      "name": "codebuddy-pricing",
+      "url": "https://www.codebuddy.ai/pricing/",
+      "resolved_url": "https://www.codebuddy.ai/pricing/",
+      "status": 200,
+      "sha256": "086dd6e662e89a7ae56d5a02e292aa78446d7fd9590300149f0605feff576403",
+      "bytes": 9177
+    },
+    {
+      "name": "blackbox-pricing",
+      "url": "https://www.blackbox.ai/pricing",
+      "resolved_url": "https://www.blackbox.ai/pricing",
+      "status": 200,
+      "sha256": "d2fb03dc6858690effa0f401ce9085a0e0089a4771da91e317a5dfe5890001f0",
+      "bytes": 279431
+    },
+    {
+      "name": "sensenova-pricing",
+      "url": "https://platform.sensenova.cn/product/APIService/pricing",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "tokenharbor-pricing",
+      "url": "https://tokenharbor.ai/pricing",
+      "resolved_url": "https://tokenharbor.ai/pricing",
+      "status": 200,
+      "sha256": "fbb64e8a8ef8eb20bfd6db94deeee84926725f8cd4a4b7fb054d3ec8f69abcd2",
+      "bytes": 109135
+    },
+    {
+      "name": "kimchi-pricing",
+      "url": "https://kimchi.dev/pricing",
+      "resolved_url": "https://kimchi.dev/pricing",
+      "status": 200,
+      "sha256": "9a5f16974fce2e71417f7415a57bcd4ab17f13fc7b190ca11f7bc0219aa7e38f",
+      "bytes": 140787
+    },
+    {
+      "name": "nous-models-doc",
+      "url": "https://portal.nousresearch.com/models",
+      "resolved_url": "https://portal.nousresearch.com/models",
+      "status": 200,
+      "sha256": "d40d36c58fcef2f595be659213d81a7e26e01cb173e0b43438ff4d8d362b073f",
+      "bytes": 397260
+    },
+    {
+      "name": "bluesminds-pricing",
+      "url": "https://bluesminds.com/pricing",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "atria-docs",
+      "url": "https://atria-asi.ai/docs",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "hyperbolic-flux-models",
+      "url": "https://api.hyperbolic.ai/inference/v1/models",
+      "error": "HTTP Error 401: Unauthorized"
+    },
+    {
+      "name": "kimchi-inference",
+      "url": "https://kimchi.dev/inference",
+      "resolved_url": "https://kimchi.dev/inference",
+      "status": 200,
+      "sha256": "f1d2203071a80f8e1a2a686e86fdd22030067a23b56588e739b7ce21ffaa0596",
+      "bytes": 126528
+    },
+    {
+      "name": "sambanova-pricing-current",
+      "url": "https://cloud.sambanova.ai/plans/pricing",
+      "resolved_url": "https://cloud.sambanova.ai/plans/pricing",
+      "status": 200,
+      "sha256": "65574d8b10bc08263647269b6dd0829fcd5f6db58e48046bbc27b94291e8d3b8",
+      "bytes": 150933
+    },
+    {
+      "name": "tokenharbor-models-page",
+      "url": "https://tokenharbor.ai/models",
+      "error": "The read operation timed out"
+    },
+    {
+      "name": "nvidia-models-doc",
+      "url": "https://build.nvidia.com/models",
+      "resolved_url": "https://build.nvidia.com/models",
+      "status": 200,
+      "sha256": "6d6dd88ba8fe3c03006c1a8cb18f94a210b4188f6b7188054692ba94b0e37fde",
+      "bytes": 505380
+    },
+    {
+      "name": "agnes-index",
+      "url": "https://wiki.agnes-ai.com/llms.txt",
+      "resolved_url": "https://wiki.agnes-ai.com/llms.txt",
+      "status": 200,
+      "sha256": "317c0443717ce63a0c408758cf274701282a2e042bc19321617ac2d1dca37d16",
+      "bytes": 5084
+    },
+    {
+      "name": "siliconflow-models-page",
+      "url": "https://www.siliconflow.com/models",
+      "resolved_url": "https://www.siliconflow.com/models",
+      "status": 200,
+      "sha256": "9962f09b28554abb6186f146729970f071bf859cb3cf99b44f55a3379ed943f3",
+      "bytes": 1525819
+    },
+    {
+      "name": "blackbox-models-page",
+      "url": "https://www.blackbox.ai/models",
+      "resolved_url": "https://www.blackbox.ai/models",
+      "status": 200,
+      "sha256": "980290fa92a87496b390de841a7420fdda121672c9bbeb976b4d6ecb3f62d82b",
+      "bytes": 851929
+    },
+    {
+      "name": "agnes-25-flash",
+      "url": "https://wiki.agnes-ai.com/en/docs/agnes-25-flash.md",
+      "status": 200,
+      "sha256": "c263888484f0624a4a5295de7d2f5057d4fd616a34039419d24f215816f7c646",
+      "bytes": 19400
+    },
+    {
+      "name": "agnes-25-pro",
+      "url": "https://wiki.agnes-ai.com/en/docs/agnes-25-pro.md",
+      "status": 200,
+      "sha256": "2d7c3bb01432052954d1674ed4bd8bf57ef9dd5f96e51a2941da1f140752d0b3",
+      "bytes": 15988
+    },
+    {
+      "name": "agnes-25-pro-beta",
+      "url": "https://wiki.agnes-ai.com/en/docs/agnes-25-pro-beta.md",
+      "status": 200,
+      "sha256": "509e2ef6976f5fd538d9054c57863c3bf4d5d545b616d58083f0c556d1cef1fd",
+      "bytes": 15973
+    },
+    {
+      "name": "agnes-30-flash",
+      "url": "https://wiki.agnes-ai.com/en/docs/agnes-30-flash.md",
+      "status": 200,
+      "sha256": "c1db561c45ee10b4a03fb5f2b0ccf340cc0b4e739d8b32102c70c72931a2b947",
+      "bytes": 11108
+    },
+    {
+      "name": "cerebras-public-models",
+      "url": "https://api.cerebras.ai/public/v1/models",
+      "resolved_url": "https://api.cerebras.ai/public/v1/models",
+      "status": 200,
+      "sha256": "212f0f8c5a2ec790216a9327d1b1c44ec9a3f8b5f8fbc26418f71cde1fce3395",
+      "bytes": 2310
+    },
+    {
+      "name": "cerebras-cache",
+      "url": "https://inference-docs.cerebras.ai/capabilities/prompt-caching",
+      "resolved_url": "https://inference-docs.cerebras.ai/capabilities/prompt-caching",
+      "status": 200,
+      "sha256": "d6b56b82971b9ff3bf17be2ce446428abced5abb19b552ac68a5aec2a3e72966",
+      "bytes": 554490
+    },
+    {
+      "name": "cohere-billing-doc",
+      "url": "https://docs.cohere.com/v2/docs/how-does-cohere-pricing-work",
+      "resolved_url": "https://docs.cohere.com/v2/docs/how-does-cohere-pricing-work",
+      "status": 200,
+      "sha256": "7619abf5be1ca11239409530aca99046515454ad1c4959f7b13fd33874d87a96",
+      "bytes": 180788
+    },
+    {
+      "name": "xai-models-doc",
+      "url": "https://docs.x.ai/docs/models",
+      "resolved_url": "https://docs.x.ai/developers/models",
+      "status": 200,
+      "sha256": "976a53eadac5936b447e6d900162053696589461bddf9fcdc73d9c9ec936d6eb",
+      "bytes": 395990
+    },
+    {
+      "name": "google-pricing",
+      "url": "https://ai.google.dev/gemini-api/docs/pricing",
+      "resolved_url": "https://aistudio.google.com/docs/pricing",
+      "status": 200,
+      "sha256": "7ff0760d92ac625c0ec9708ef9777a61b3781091ec53322643ccf58b381bb70b",
+      "bytes": 149290
+    },
+    {
+      "name": "google-gemma",
+      "url": "https://ai.google.dev/gemma/docs/core",
+      "resolved_url": "https://gemma.ai/models/gemma-4/",
+      "status": 200,
+      "sha256": "431a96da7d6e5f5460f8136a4fa8a23af1ff37cc9bb05cc74df78267e9b0a111",
+      "bytes": 108337
+    },
+    {
+      "name": "bluesminds-docs",
+      "url": "https://doc.bluesminds.com/docs/bluesminds-api",
+      "resolved_url": "https://doc.bluesminds.com/docs/bluesminds-api",
+      "status": 200,
+      "sha256": "102d83187058be75c10116bcd0dd9d953180159b81feab539c65b1201242830d",
+      "bytes": 141876
+    },
+    {
+      "name": "bluesminds-api-pricing",
+      "url": "https://api.bluesminds.com/pricing",
+      "resolved_url": "https://api.bluesminds.com/pricing",
+      "status": 200,
+      "sha256": "b97eb0e322a8d3ba86c6cfa15a83bfd75207cc667bb6b764c06432abceb4790e",
+      "bytes": 1166
+    },
+    {
+      "name": "tencent-pricing",
+      "url": "https://www.tencentcloud.com/document/product/1155/97731",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "tencent-models",
+      "url": "https://cloud.tencent.com/document/product/1729/104753",
+      "resolved_url": "https://cloud.tencent.com/document/product/1729/104753",
+      "status": 200,
+      "sha256": "c0c0e3e50ac9a3380799a1774c0c0a34799e9daf089b7135227e54adf3d228d8",
+      "bytes": 55804
+    },
+    {
+      "name": "sensenova-docs",
+      "url": "https://platform.sensenova.ai/docs",
+      "resolved_url": "https://platform.sensenova.ai/docs",
+      "status": 200,
+      "sha256": "54337b3f2c083e466637ee02385c18fca6aac8096cff8e75abe8a6f092f437b8",
+      "bytes": 11717
+    },
+    {
+      "name": "xiaomi-pricing-english",
+      "url": "https://mimo.mi.com/docs/en-US/pricing",
+      "resolved_url": "https://mimo.mi.com/docs/en-US/pricing",
+      "status": 200,
+      "sha256": "b50ef2cbd76c58465302c194c654c2111bb4e4a6fc814d59d8343e88b9953b65",
+      "bytes": 13475
+    },
+    {
+      "name": "fireworks-pricing-doc",
+      "url": "https://docs.fireworks.ai/serverless/pricing",
+      "resolved_url": "https://docs.fireworks.ai/serverless/pricing",
+      "status": 200,
+      "sha256": "9870dce74fb028e8944031dbf298ce8f7caf56c787602c3bb19aa80bf2d74f92",
+      "bytes": 513982
+    },
+    {
+      "name": "kimchi-docs-models",
+      "url": "https://docs.kimchi.dev/models",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "gpt-5-pro",
+      "url": "https://developers.openai.com/api/docs/models/gpt-5-pro",
+      "status": 200,
+      "sha256": "581db229a8ee706f18c9a5de3f32600f5b670ef819697bdb23d06925102a0333",
+      "bytes": 476504
+    },
+    {
+      "name": "gpt-5.2-pro",
+      "url": "https://developers.openai.com/api/docs/models/gpt-5.2-pro",
+      "status": 200,
+      "sha256": "a2e8a2669d127e695f58e46445d4dba9d8e4944d6167a2029fa65d61e8fa2efc",
+      "bytes": 478093
+    },
+    {
+      "name": "gpt-5.4-pro",
+      "url": "https://developers.openai.com/api/docs/models/gpt-5.4-pro",
+      "status": 200,
+      "sha256": "4278ef7572295a19020eddaeb5741ca9f647903d8a724ff7963bf70954840bef",
+      "bytes": 495902
+    },
+    {
+      "name": "gpt-5.5-pro",
+      "url": "https://developers.openai.com/api/docs/models/gpt-5.5-pro",
+      "status": 200,
+      "sha256": "35a58ddcd0b82474719f5dedc6a7f1b952794a0fdec874a8b8178668bd48fb9b",
+      "bytes": 495062
+    },
+    {
+      "name": "gpt-audio-1.5",
+      "url": "https://developers.openai.com/api/docs/models/gpt-audio-1.5",
+      "status": 200,
+      "sha256": "031a84309f716258779535e36b19b668e36099e582b2a7c45b9eed55f969f060",
+      "bytes": 470463
+    },
+    {
+      "name": "o3-pro",
+      "url": "https://developers.openai.com/api/docs/models/o3-pro",
+      "status": 200,
+      "sha256": "27dbfffc309b7ee7e1283f5bc2649a97e04b212427ac1695398bb75939dabbba",
+      "bytes": 477086
+    },
+    {
+      "name": "o1-mini",
+      "url": "https://developers.openai.com/api/docs/models/o1-mini",
+      "status": 200,
+      "sha256": "f033eb94e9bfe24523e252685356b2c6625b9ae23bb4d49d9f5e1bf8ace22856",
+      "bytes": 478027
+    },
+    {
+      "name": "agnes-pro-alpha",
+      "url": "https://wiki.agnes-ai.com/en/docs/agnes-25-pro-alpha.md",
+      "status": 200,
+      "sha256": "2651d6626fba9d2b40b90853b322e2b4f4afa90206c48f687e4919f53aeeee22",
+      "bytes": 18204
+    },
+    {
+      "name": "sensenova-doc-script",
+      "url": "https://platform.sensenova.ai/_next/static/chunks/app/(public)/docs/page-a1b8adbbf5925c6c.js",
+      "status": 200,
+      "sha256": "7e64f4ec114074a73baff565f85f39f36eff91252d41bdb41b3b2833a015035a",
+      "bytes": 134100
+    },
+    {
+      "name": "xiaomi-pricing-md",
+      "url": "https://mimo.mi.com/docs/en-US/pricing.md",
+      "status": 200,
+      "sha256": "b50ef2cbd76c58465302c194c654c2111bb4e4a6fc814d59d8343e88b9953b65",
+      "bytes": 13475
+    },
+    {
+      "name": "xiaomi-llms",
+      "url": "https://mimo.mi.com/llms.txt",
+      "status": 200,
+      "sha256": "59995cefd47fc9e35d16e539e1799c0ee31909240c1af7e5d6ea9370805f7937",
+      "bytes": 10620
+    },
+    {
+      "name": "bluesminds-ui-script",
+      "url": "https://api.bluesminds.com/static/js/index.1259bebe92.js",
+      "status": 200,
+      "sha256": "584123ae27bddf497807c84de974d73e6a18f58c5491d3e768aab865b5d7b350",
+      "bytes": 3331257
+    },
+    {
+      "name": "sensenova-china-pricing",
+      "url": "https://www.sensenova.cn/en/pricing",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "blackbox-public-models",
+      "url": "https://api.blackbox.ai/models",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "kimchi-models-doc",
+      "url": "https://docs.kimchi.dev/inference/models",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "nvidia-skip-cache",
+      "url": "https://docs.api.nvidia.com/nim/docs/prompt-caching",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "bluesminds-pricing-api",
+      "url": "https://api.bluesminds.com/api/pricing",
+      "status": 200,
+      "sha256": "352175f042afbc97418fa26c7edbf96667be227aadcb97d8c030ac1e17fbf790",
+      "bytes": 9662
+    },
+    {
+      "name": "bluesminds-models-api",
+      "url": "https://api.bluesminds.com/api/models",
+      "error": "HTTP Error 401: Unauthorized"
+    },
+    {
+      "name": "bluesminds-status",
+      "url": "https://api.bluesminds.com/api/status",
+      "status": 200,
+      "sha256": "4702c47758b80ca9a77cd1d48edbfedb1b046139f5043ba06a7dd23d43f4c4fc",
+      "bytes": 3855
+    },
+    {
+      "name": "tokenrouter-pricing-api",
+      "url": "https://tokenrouter-backend-api.tokenrouter.com/backend-api/api/pricing",
+      "status": 200,
+      "sha256": "64ed068439d8e788a3fd205f876aacd13b8814f6c9e47cbc4491c6a99eb04ab6",
+      "bytes": 72956
+    },
+    {
+      "name": "xiaomi-model-specs",
+      "url": "https://mimo.mi.com/static/docs/api/guidance/model-hyperparameters.md",
+      "status": 200,
+      "sha256": "e7fc5fdcc56d8b583112fd972dc8995cb072045f8ac4ae4ee644f1bc5fe7e716",
+      "bytes": 2293
+    },
+    {
+      "name": "xiaomi-models-overview",
+      "url": "https://mimo.mi.com/static/docs/quick-start/summary/model.md",
+      "status": 200,
+      "sha256": "7a27a2c6726e9c966ab7272dfc887b30a570fa8d57c508748bbc70f13021ac96",
+      "bytes": 9248
+    },
+    {
+      "name": "xiaomi-pricing-static",
+      "url": "https://mimo.mi.com/static/docs/price/pay-as-you-go.md",
+      "status": 200,
+      "sha256": "3aa9c9bd5b91dd86247f1f40324b72af75bfad74f458d64593762cbebaecf141",
+      "bytes": 10854
+    },
+    {
+      "name": "tencent-domestic-price",
+      "url": "https://cloud.tencent.com/document/product/1729/97731",
+      "status": 200,
+      "sha256": "e3b38c7605f21e57d13deea9608abd587f355a3cefaae3827878c0c8f640dc42",
+      "bytes": 49772
+    },
+    {
+      "name": "baidu-pricing",
+      "url": "https://cloud.baidu.com/doc/qianfan/s/hlqofqe7w",
+      "status": 200,
+      "sha256": "8ed1f1c0ca9fc84157151fe2cc0018ef7928c7add32e4981a242173753348d6c",
+      "bytes": 435693
+    },
+    {
+      "name": "sensenova-models-cn",
+      "url": "https://platform.sensenova.cn/doc?path=/pricing",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "tokenharbor-models-retry",
+      "url": "https://tokenharbor.ai/models",
+      "status": 200,
+      "sha256": "a958e2464d1f4de3ba47a68ff302c1746b5e71db4c35053095b39da76a0954c3",
+      "bytes": 319372
+    },
+    {
+      "name": "dahl-models-doc",
+      "url": "https://dahl.global/inference",
+      "status": 200,
+      "sha256": "0d88cdd15ffa9d2ee5fa259e3bd353f68cc832da2cd50297238d75c8c9775af0",
+      "bytes": 272337
+    },
+    {
+      "name": "nebius-pricing",
+      "url": "https://nebius.com/prices",
+      "status": 200,
+      "sha256": "0b95cf798dcbefa228312cdcef8a21e0d121ce1022a8876aa42427f0d66551bb",
+      "bytes": 280263
+    },
+    {
+      "name": "perplexity-models-doc",
+      "url": "https://docs.perplexity.ai/guides/model-cards",
+      "status": 200,
+      "sha256": "b1cfeb67b3614d66b5b22528365d9ec686d6ac9d6a07a00b275982fc9ecb7fbe",
+      "bytes": 544509
+    },
+    {
+      "name": "sensenova-llms",
+      "url": "https://platform.sensenova.ai/llms.txt",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "kimchi-inference-doc-index",
+      "url": "https://docs.kimchi.dev/llms.txt",
+      "status": 200,
+      "sha256": "2fd8b3f70a6d8515ff950cf7ebf615fd3bf2f5562b22975d4259dbac64da00de",
+      "bytes": 1257
+    },
+    {
+      "name": "morph-model-index",
+      "url": "https://morphllm.com/llms.txt",
+      "status": 200,
+      "sha256": "1ae157fff01bf31ee893991f2267b86d6440501a68cd8e00a0e82d70280c593c",
+      "bytes": 5193
+    },
+    {
+      "name": "fireworks-model-index",
+      "url": "https://docs.fireworks.ai/llms.txt",
+      "status": 200,
+      "sha256": "b12b394f83347f2b596e20c22e589f69097d98da22e7c4667ccc5e2db95e6208",
+      "bytes": 68864
+    },
+    {
+      "name": "bluesminds-doc-index",
+      "url": "https://doc.bluesminds.com/llms.txt",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "cerebras-deprecations",
+      "url": "https://inference-docs.cerebras.ai/support/deprecation",
+      "status": 200,
+      "sha256": "c44e1c118613048cf7c4f0b821fa1da33cab397c6b481f2edea322e0196b3201",
+      "bytes": 234252
+    },
+    {
+      "name": "groq-deprecations",
+      "url": "https://console.groq.com/docs/deprecations",
+      "status": 200,
+      "sha256": "a5fcae9ae66c5d2df5ea80733d57d119bb0d2ca9a6783e24b989da397958b4f6",
+      "bytes": 506113
+    },
+    {
+      "name": "kimchi-doc-index",
+      "url": "https://docs.kimchi.dev/docs/kimchi-inference/llms.txt",
+      "status": 200,
+      "sha256": "b10bd28ccd114ded02aa6c1be8444d8985df507468221b188dccb022b530fe0c",
+      "bytes": 3588
+    },
+    {
+      "name": "together-current-models",
+      "url": "https://docs.together.ai/docs/serverless-models",
+      "status": 200,
+      "sha256": "524f3f9ab8f4cf03b4b99b9269681d3a312dc4f585196d415d6281abf212a273",
+      "bytes": 370314
+    },
+    {
+      "name": "hyperbolic-doc-index",
+      "url": "https://docs.hyperbolic.xyz/llms.txt",
+      "status": 200,
+      "sha256": "92fda37e763c3a270216d479890c71ec3d779430e9e636fb296cc51fcf7ad9c7",
+      "bytes": 212608
+    }
+  ],
+  "siliconflow_exact_pricing_labels": {
+    "DeepSeek-V4.1-Flash": [
+      "0.15",
+      "0.003",
+      "0.6"
+    ],
+    "1049K": [
+      "0.15",
+      "0.003",
+      "0.6"
+    ],
+    "$": [
+      "0.15",
+      "0.003",
+      "0.6"
+    ],
+    "0.15": [
+      "0.15",
+      "0.003",
+      "0.6"
+    ],
+    "0.003": [
+      "0.15",
+      "0.003",
+      "0.6"
+    ],
+    "0.6": [
+      "0.15",
+      "0.003",
+      "0.6"
+    ],
+    "Details": [
+      "0.15",
+      "0.003",
+      "0.6"
+    ],
+    "DeepSeek-V4-Flash-Vision-Exp": [
+      "0.44",
+      "0.028",
+      "1.32"
+    ],
+    "0.44": [
+      "0.44",
+      "0.028",
+      "1.32"
+    ],
+    "0.028": [
+      "0.44",
+      "0.028",
+      "1.32"
+    ],
+    "1.32": [
+      "0.44",
+      "0.028",
+      "1.32"
+    ],
+    "DeepSeek-V4-Pro-0813": [
+      "1.32",
+      "0.044",
+      "3.96"
+    ],
+    "0.044": [
+      "1.32",
+      "0.044",
+      "3.96"
+    ],
+    "3.96": [
+      "1.32",
+      "0.044",
+      "3.96"
+    ],
+    "DeepSeek-V4-Flash-0731": [
+      "0.22",
+      "0.014",
+      "0.66"
+    ],
+    "0.22": [
+      "0.22",
+      "0.014",
+      "0.66"
+    ],
+    "0.014": [
+      "0.22",
+      "0.014",
+      "0.66"
+    ],
+    "0.66": [
+      "0.22",
+      "0.014",
+      "0.66"
+    ],
+    "DeepSeek-V4-Pro": [
+      "1.50162",
+      "0.135",
+      "3.135"
+    ],
+    "1.50162": [
+      "1.50162",
+      "0.135",
+      "3.135"
+    ],
+    "0.135": [
+      "1.50162",
+      "0.135",
+      "3.135"
+    ],
+    "3.135": [
+      "1.50162",
+      "0.135",
+      "3.135"
+    ],
+    "Qwen3.8-2.4T-A95B": [
+      "2.0",
+      "0.25",
+      "6.0"
+    ],
+    "2.0": [
+      "2.0",
+      "0.25",
+      "6.0"
+    ],
+    "0.25": [
+      "2.0",
+      "0.25",
+      "6.0"
+    ],
+    "6.0": [
+      "2.0",
+      "0.25",
+      "6.0"
+    ],
+    "Qwen3.6-27B": [
+      "0.3",
+      "3.2"
+    ],
+    "262K": [
+      "0.3",
+      "3.2"
+    ],
+    "0.3": [
+      "0.3",
+      "3.2"
+    ],
+    "3.2": [
+      "0.3",
+      "3.2"
+    ],
+    "Qwen3.6-35B-A3B": [
+      "0.24",
+      "0.15",
+      "1.8"
+    ],
+    "0.24": [
+      "0.24",
+      "0.15",
+      "1.8"
+    ],
+    "1.8": [
+      "0.24",
+      "0.15",
+      "1.8"
+    ],
+    "Qwen3.5-9B": [
+      "0.1",
+      "0.15"
+    ],
+    "0.1": [
+      "0.1",
+      "0.15"
+    ],
+    "Qwen3.5-122B-A10B": [
+      "0.26",
+      "2.08"
+    ],
+    "0.26": [
+      "0.26",
+      "2.08"
+    ],
+    "2.08": [
+      "0.26",
+      "2.08"
+    ],
+    "GLM-5.3": [
+      "1.4",
+      "0.26",
+      "4.4"
+    ],
+    "1.4": [
+      "1.4",
+      "0.26",
+      "4.4"
+    ],
+    "4.4": [
+      "1.4",
+      "0.26",
+      "4.4"
+    ],
+    "GLM-5.3-Flash": [
+      "0.15",
+      "0.03",
+      "0.5"
+    ],
+    "0.03": [
+      "0.15",
+      "0.03",
+      "0.5"
+    ],
+    "0.5": [
+      "0.15",
+      "0.03",
+      "0.5"
+    ],
+    "GLM-5.2": [
+      "1.302",
+      "0.26",
+      "4.092"
+    ],
+    "1.302": [
+      "1.302",
+      "0.26",
+      "4.092"
+    ],
+    "4.092": [
+      "1.302",
+      "0.26",
+      "4.092"
+    ],
+    "GLM-5.1": [
+      "1.19",
+      "0.6",
+      "3.74"
+    ],
+    "205K": [
+      "1.19",
+      "0.6",
+      "3.74"
+    ],
+    "1.19": [
+      "1.19",
+      "0.6",
+      "3.74"
+    ],
+    "3.74": [
+      "1.19",
+      "0.6",
+      "3.74"
+    ],
+    "GLM-5": [
+      "0.95",
+      "0.2",
+      "2.55"
+    ],
+    "0.95": [
+      "0.95",
+      "0.2",
+      "2.55"
+    ],
+    "0.2": [
+      "0.95",
+      "0.2",
+      "2.55"
+    ],
+    "2.55": [
+      "0.95",
+      "0.2",
+      "2.55"
+    ],
+    "Kimi-K2.5": [
+      "0.45",
+      "0.07",
+      "2.25"
+    ],
+    "0.45": [
+      "0.45",
+      "0.07",
+      "2.25"
+    ],
+    "0.07": [
+      "0.45",
+      "0.07",
+      "2.25"
+    ],
+    "2.25": [
+      "0.45",
+      "0.07",
+      "2.25"
+    ],
+    "Kimi-K2.6": [
+      "0.77",
+      "0.14",
+      "3.4"
+    ],
+    "0.77": [
+      "0.77",
+      "0.14",
+      "3.4"
+    ],
+    "0.14": [
+      "0.77",
+      "0.14",
+      "3.4"
+    ],
+    "3.4": [
+      "0.77",
+      "0.14",
+      "3.4"
+    ],
+    "Kimi-K2.7-Code": [
+      "0.85916",
+      "0.17993",
+      "3.8"
+    ],
+    "0.85916": [
+      "0.85916",
+      "0.17993",
+      "3.8"
+    ],
+    "0.17993": [
+      "0.85916",
+      "0.17993",
+      "3.8"
+    ],
+    "3.8": [
+      "0.85916",
+      "0.17993",
+      "3.8"
+    ],
+    "Kimi-K3": [
+      "2.7",
+      "0.27",
+      "13.5"
+    ],
+    "2.7": [
+      "2.7",
+      "0.27",
+      "13.5"
+    ],
+    "0.27": [
+      "2.7",
+      "0.27",
+      "13.5"
+    ],
+    "13.5": [
+      "2.7",
+      "0.27",
+      "13.5"
+    ],
+    "MiniMax-M3": [
+      "0.3",
+      "0.06",
+      "1.2"
+    ],
+    "0.06": [
+      "0.3",
+      "0.06",
+      "1.2"
+    ],
+    "1.2": [
+      "0.3",
+      "0.06",
+      "1.2"
+    ],
+    "gpt-oss-120b": [
+      "0.05",
+      "0.075",
+      "0.45"
+    ],
+    "131K": [
+      "0.05",
+      "0.075",
+      "0.45"
+    ],
+    "0.05": [
+      "0.05",
+      "0.075",
+      "0.45"
+    ],
+    "0.075": [
+      "0.05",
+      "0.075",
+      "0.45"
+    ],
+    "gpt-oss-20b": [
+      "0.04",
+      "0.18"
+    ],
+    "0.04": [
+      "0.04",
+      "0.18"
+    ],
+    "0.18": [
+      "0.04",
+      "0.18"
+    ],
+    "gemma-4-12B-it": [
+      "0.1",
+      "0.3"
+    ],
+    "gemma-4-26B-A4B-it": [
+      "0.14",
+      "0.05",
+      "0.4"
+    ],
+    "0.4": [
+      "0.14",
+      "0.05",
+      "0.4"
+    ],
+    "gemma-4-31B-it": [
+      "0.75",
+      "0.25",
+      "1.0"
+    ],
+    "0.75": [
+      "0.75",
+      "0.25",
+      "1.0"
+    ],
+    "1.0": [
+      "0.75",
+      "0.25",
+      "1.0"
+    ],
+    "Hunyuan-A13B-Instruct": [
+      "0.14",
+      "0.57"
+    ],
+    "0.57": [
+      "0.14",
+      "0.57"
+    ],
+    "Hy3": [
+      "0.132",
+      "0.033",
+      "0.528"
+    ],
+    "0.132": [
+      "0.132",
+      "0.033",
+      "0.528"
+    ],
+    "0.033": [
+      "0.132",
+      "0.033",
+      "0.528"
+    ],
+    "0.528": [
+      "0.132",
+      "0.033",
+      "0.528"
+    ],
+    "FLUX 1.1 [pro]": [
+      "0.04",
+      "0.04",
+      "0.04"
+    ],
+    "Model Name": [
+      "0.04",
+      "0.04",
+      "0.04"
+    ],
+    "Price (": [
+      "0.04",
+      "0.04",
+      "0.04"
+    ],
+    ")": [
+      "0.04",
+      "0.04",
+      "0.04"
+    ],
+    "/ Image": [
+      "0.04",
+      "0.04",
+      "0.04"
+    ],
+    "FLUX 1.1 [pro] Ultra": [
+      "0.06",
+      "0.06",
+      "0.06"
+    ],
+    "FLUX.1 Kontext [max]": [
+      "0.08",
+      "0.08",
+      "0.08"
+    ],
+    "0.08": [
+      "0.08",
+      "0.08",
+      "0.08"
+    ],
+    "FLUX.1 Kontext [pro]": [
+      "0.04",
+      "0.04",
+      "0.04"
+    ],
+    "FLUX.1-dev": [
+      "0.014",
+      "0.014",
+      "0.014"
+    ],
+    "Wan2.2-I2V-A14B": [
+      "0.29",
+      "0.29",
+      "0.29"
+    ],
+    "0.29": [
+      "0.29",
+      "0.29",
+      "0.29"
+    ],
+    "/ Video": [
+      "0.29",
+      "0.29",
+      "0.29"
+    ],
+    "Wan2.2-T2V-A14B": [
+      "0.29",
+      "0.29",
+      "0.29"
+    ],
+    "Fish-Speech-1.5": [
+      "15.0",
+      "15.0",
+      "15.0"
+    ],
+    "15.0": [
+      "15.0",
+      "15.0",
+      "15.0"
+    ],
+    "/ M UTF-8 bytes": [
+      "15.0",
+      "15.0",
+      "15.0"
+    ],
+    "FunAudioLLM/CosyVoice2-0.5B": [
+      "7.15",
+      "7.15",
+      "7.15"
+    ],
+    "7.15": [
+      "7.15",
+      "7.15",
+      "7.15"
+    ],
+    "IndexTTS-2": [
+      "7.15",
+      "7.15",
+      "7.15"
+    ]
+  },
+  "note": "Official page rows are exact model/product matches. Approximate K/M context labels are retained at the source rather than converted by assumption."
+}

@@ -1,0 +1,1388 @@
+{
+  "revision": "60d05972aeeadc3fb21476f586ce3f4747887c9d",
+  "entries": 6076,
+  "enriched_existing_models": 361,
+  "filled_fields": {
+    "max_input_tokens": 258,
+    "max_output_tokens": 37,
+    "input_price": 39,
+    "output_price": 39,
+    "cached_price": 12
+  },
+  "conflicts": [
+    {
+      "provider": "cerebras",
+      "model": "gpt-oss-120b",
+      "field": "max_output_tokens",
+      "retained": 40960,
+      "opensource(l)": 32768
+    },
+    {
+      "provider": "cloudflare-ai",
+      "model": "@cf/moonshotai/kimi-k2.6",
+      "field": "input_price",
+      "retained": "1.00000000",
+      "opensource(l)": "0.95000000"
+    },
+    {
+      "provider": "cloudflare-ai",
+      "model": "@cf/moonshotai/kimi-k2.6",
+      "field": "cached_price",
+      "retained": "0.50000000",
+      "opensource(l)": "0.16000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "field": "input_price",
+      "retained": "0.14000000",
+      "opensource(l)": "0.28000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "field": "output_price",
+      "retained": "0.28000000",
+      "opensource(l)": "0.42000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "field": "cached_price",
+      "retained": "0.00280000",
+      "opensource(l)": "0.028000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-reasoner",
+      "field": "input_price",
+      "retained": "0.14000000",
+      "opensource(l)": "0.28000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-reasoner",
+      "field": "output_price",
+      "retained": "0.28000000",
+      "opensource(l)": "0.42000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-reasoner",
+      "field": "cached_price",
+      "retained": "0.00280000",
+      "opensource(l)": "0.028000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "field": "input_price",
+      "retained": "0.30000000",
+      "opensource(l)": "0.3000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "field": "output_price",
+      "retained": "1.20000000",
+      "opensource(l)": "1.2000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "field": "cached_price",
+      "retained": "0.00600000",
+      "opensource(l)": "0.006000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash-vision-exp",
+      "field": "input_price",
+      "retained": "0.30000000",
+      "opensource(l)": "0.3000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash-vision-exp",
+      "field": "output_price",
+      "retained": "1.20000000",
+      "opensource(l)": "1.2000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash-vision-exp",
+      "field": "cached_price",
+      "retained": "0.00600000",
+      "opensource(l)": "0.006000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "field": "cached_price",
+      "retained": "0.04400000",
+      "opensource(l)": "0.044000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-v4.1-flash",
+      "field": "input_price",
+      "retained": "0.30000000",
+      "opensource(l)": "0.3000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-v4.1-flash",
+      "field": "output_price",
+      "retained": "1.20000000",
+      "opensource(l)": "1.2000000"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-v4.1-flash",
+      "field": "cached_price",
+      "retained": "0.00600000",
+      "opensource(l)": "0.006000000"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-2.5-flash-image",
+      "field": "cached_price",
+      "retained": "0.07500000",
+      "opensource(l)": "0.03000000"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-3.5-live-translate-preview",
+      "field": "max_output_tokens",
+      "retained": 16384,
+      "opensource(l)": 65536
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-4-argon",
+      "field": "max_output_tokens",
+      "retained": 32768,
+      "opensource(l)": 1048576
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-4-carbon",
+      "field": "max_output_tokens",
+      "retained": 32768,
+      "opensource(l)": 1048576
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-4-hydrogen",
+      "field": "max_output_tokens",
+      "retained": 65536,
+      "opensource(l)": 1048576
+    },
+    {
+      "provider": "gemini",
+      "model": "lyria-3-clip-preview",
+      "field": "max_output_tokens",
+      "retained": 65536,
+      "opensource(l)": 8192
+    },
+    {
+      "provider": "gemini",
+      "model": "lyria-3-pro-preview",
+      "field": "max_output_tokens",
+      "retained": 65536,
+      "opensource(l)": 8192
+    },
+    {
+      "provider": "minimax",
+      "model": "MiniMax-M2",
+      "field": "max_output_tokens",
+      "retained": 131072,
+      "opensource(l)": 8192
+    },
+    {
+      "provider": "minimax",
+      "model": "MiniMax-M2.1",
+      "field": "max_output_tokens",
+      "retained": 131072,
+      "opensource(l)": 8192
+    },
+    {
+      "provider": "minimax",
+      "model": "MiniMax-M2.5",
+      "field": "max_output_tokens",
+      "retained": 131072,
+      "opensource(l)": 8192
+    },
+    {
+      "provider": "minimax",
+      "model": "MiniMax-M3",
+      "field": "max_output_tokens",
+      "retained": 524288,
+      "opensource(l)": 128000
+    },
+    {
+      "provider": "mistral",
+      "model": "codestral-2508",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "opensource(l)": 128000
+    },
+    {
+      "provider": "mistral",
+      "model": "codestral-latest",
+      "field": "max_output_tokens",
+      "retained": 4096,
+      "opensource(l)": 128000
+    },
+    {
+      "provider": "mistral",
+      "model": "deepseek-v4-1-flash-1017",
+      "field": "max_output_tokens",
+      "retained": 128000,
+      "opensource(l)": 131072
+    },
+    {
+      "provider": "mistral",
+      "model": "devstral-latest",
+      "field": "max_output_tokens",
+      "retained": 262144,
+      "opensource(l)": 256000
+    },
+    {
+      "provider": "mistral",
+      "model": "devstral-medium-latest",
+      "field": "max_output_tokens",
+      "retained": 262144,
+      "opensource(l)": 256000
+    },
+    {
+      "provider": "mistral",
+      "model": "labs-leanstral-1-5-1",
+      "field": "max_output_tokens",
+      "retained": 128000,
+      "opensource(l)": 131072
+    },
+    {
+      "provider": "mistral",
+      "model": "magistral-medium-latest",
+      "field": "max_output_tokens",
+      "retained": 16384,
+      "opensource(l)": 262144
+    },
+    {
+      "provider": "mistral",
+      "model": "magistral-medium-latest",
+      "field": "input_price",
+      "retained": "2.00000000",
+      "opensource(l)": "1.5000000"
+    },
+    {
+      "provider": "mistral",
+      "model": "magistral-medium-latest",
+      "field": "output_price",
+      "retained": "5.00000000",
+      "opensource(l)": "7.5000000"
+    },
+    {
+      "provider": "mistral",
+      "model": "ministral-3b-latest",
+      "field": "max_output_tokens",
+      "retained": 128000,
+      "opensource(l)": 131072
+    },
+    {
+      "provider": "mistral",
+      "model": "ministral-8b-latest",
+      "field": "max_output_tokens",
+      "retained": 128000,
+      "opensource(l)": 262144
+    },
+    {
+      "provider": "mistral",
+      "model": "mistral-large-4",
+      "field": "max_output_tokens",
+      "retained": 262144,
+      "opensource(l)": 1048576
+    },
+    {
+      "provider": "mistral",
+      "model": "mistral-large-latest",
+      "field": "input_price",
+      "retained": "0.70000000",
+      "opensource(l)": "0.5000000"
+    },
+    {
+      "provider": "mistral",
+      "model": "mistral-large-latest",
+      "field": "output_price",
+      "retained": "2.10000000",
+      "opensource(l)": "1.5000000"
+    },
+    {
+      "provider": "mistral",
+      "model": "mistral-large-latest",
+      "field": "cached_price",
+      "retained": "0.07000000",
+      "opensource(l)": "0.05000000"
+    },
+    {
+      "provider": "mistral",
+      "model": "mistral-small-2603",
+      "field": "max_output_tokens",
+      "retained": 256000,
+      "opensource(l)": 262144
+    },
+    {
+      "provider": "mistral",
+      "model": "mistral-small-latest",
+      "field": "max_output_tokens",
+      "retained": 256000,
+      "opensource(l)": 262144
+    },
+    {
+      "provider": "mistral",
+      "model": "open-mistral-nemo",
+      "field": "input_price",
+      "retained": "0.15000000",
+      "opensource(l)": "0.3000000"
+    },
+    {
+      "provider": "mistral",
+      "model": "open-mistral-nemo",
+      "field": "output_price",
+      "retained": "0.15000000",
+      "opensource(l)": "0.3000000"
+    },
+    {
+      "provider": "mistral",
+      "model": "voxtral-small-2507",
+      "field": "max_output_tokens",
+      "retained": 32000,
+      "opensource(l)": 32768
+    },
+    {
+      "provider": "mistral",
+      "model": "voxtral-small-latest",
+      "field": "max_output_tokens",
+      "retained": 32000,
+      "opensource(l)": 32768
+    },
+    {
+      "provider": "nebius",
+      "model": "NousResearch/Hermes-4-405B",
+      "field": "max_input_tokens",
+      "retained": 120000,
+      "opensource(l)": 131072
+    },
+    {
+      "provider": "nebius",
+      "model": "NousResearch/Hermes-4-405B",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "opensource(l)": 131072
+    },
+    {
+      "provider": "nebius",
+      "model": "NousResearch/Hermes-4-405B",
+      "field": "cached_price",
+      "retained": "1.00000000",
+      "opensource(l)": "0.2000000"
+    },
+    {
+      "provider": "nebius",
+      "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "opensource(l)": 262144
+    },
+    {
+      "provider": "nebius",
+      "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "field": "cached_price",
+      "retained": "0.20000000",
+      "opensource(l)": "0.05000000"
+    },
+    {
+      "provider": "nebius",
+      "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "opensource(l)": 262144
+    },
+    {
+      "provider": "nebius",
+      "model": "google/gemma-3-27b-it",
+      "field": "max_input_tokens",
+      "retained": 100000,
+      "opensource(l)": 110000
+    },
+    {
+      "provider": "nebius",
+      "model": "google/gemma-3-27b-it",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "opensource(l)": 110000
+    },
+    {
+      "provider": "nebius",
+      "model": "google/gemma-3-27b-it",
+      "field": "cached_price",
+      "retained": "0.10000000",
+      "opensource(l)": "0.04000000"
+    },
+    {
+      "provider": "nebius",
+      "model": "moonshotai/Kimi-K3",
+      "field": "max_output_tokens",
+      "retained": 8000,
+      "opensource(l)": 1024000
+    },
+    {
+      "provider": "nebius",
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "field": "cached_price",
+      "retained": "0.06000000",
+      "opensource(l)": "0.03000000"
+    },
+    {
+      "provider": "nebius",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "field": "max_output_tokens",
+      "retained": 32768,
+      "opensource(l)": 262144
+    },
+    {
+      "provider": "nebius",
+      "model": "openai/gpt-oss-120b",
+      "field": "max_input_tokens",
+      "retained": 124000,
+      "opensource(l)": 131072
+    },
+    {
+      "provider": "nebius",
+      "model": "openai/gpt-oss-120b",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "opensource(l)": 131072
+    },
+    {
+      "provider": "nebius",
+      "model": "openai/gpt-oss-120b",
+      "field": "cached_price",
+      "retained": "0.15000000",
+      "opensource(l)": "0.1000000"
+    },
+    {
+      "provider": "nebius",
+      "model": "reflection/beam",
+      "field": "max_output_tokens",
+      "retained": 131072,
+      "opensource(l)": 1048576
+    },
+    {
+      "provider": "openai",
+      "model": "chat-latest",
+      "field": "max_input_tokens",
+      "retained": 272000,
+      "opensource(l)": 400000
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "opensource(l)": 4096
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-pro",
+      "field": "max_input_tokens",
+      "retained": 272000,
+      "opensource(l)": 400000
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-search-api",
+      "field": "max_output_tokens",
+      "retained": 100000,
+      "opensource(l)": 128000
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5.4",
+      "field": "max_input_tokens",
+      "retained": 922000,
+      "opensource(l)": 1050000
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5.4-pro",
+      "field": "max_input_tokens",
+      "retained": 922000,
+      "opensource(l)": 1050000
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5.5",
+      "field": "max_input_tokens",
+      "retained": 922000,
+      "opensource(l)": 1050000
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5.5-pro",
+      "field": "max_input_tokens",
+      "retained": 922000,
+      "opensource(l)": 1050000
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-realtime-2.1",
+      "field": "max_input_tokens",
+      "retained": 96000,
+      "opensource(l)": 128000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-pro",
+      "field": "input_price",
+      "retained": "0.66000000",
+      "opensource(l)": "1.32000000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-pro",
+      "field": "output_price",
+      "retained": "1.98000000",
+      "opensource(l)": "3.96000000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-pro",
+      "field": "cached_price",
+      "retained": "0.02200000",
+      "opensource(l)": "0.044000000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4.1-flash",
+      "field": "input_price",
+      "retained": "0.15000000",
+      "opensource(l)": "0.3000000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4.1-flash",
+      "field": "output_price",
+      "retained": "0.60000000",
+      "opensource(l)": "1.2000000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4.1-flash",
+      "field": "cached_price",
+      "retained": "0.00300000",
+      "opensource(l)": "0.006000000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "kimi-k3",
+      "field": "max_output_tokens",
+      "retained": 1048576,
+      "opensource(l)": 131072
+    },
+    {
+      "provider": "opencode-go",
+      "model": "kimi-k3.1-pro",
+      "field": "max_output_tokens",
+      "retained": 1048576,
+      "opensource(l)": 131072
+    },
+    {
+      "provider": "perplexity",
+      "model": "sonar",
+      "field": "max_output_tokens",
+      "retained": 4096,
+      "opensource(l)": 128000
+    },
+    {
+      "provider": "perplexity",
+      "model": "sonar-deep-research",
+      "field": "max_output_tokens",
+      "retained": 32768,
+      "opensource(l)": 128000
+    },
+    {
+      "provider": "perplexity",
+      "model": "sonar-pro",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "opensource(l)": 8000
+    },
+    {
+      "provider": "perplexity",
+      "model": "sonar-reasoning-pro",
+      "field": "max_output_tokens",
+      "retained": 4096,
+      "opensource(l)": 128000
+    },
+    {
+      "provider": "vertex",
+      "model": "gemini-3-flash-preview",
+      "field": "cached_price",
+      "retained": "0.03000000",
+      "opensource(l)": "0.05000000"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4.20-0309-non-reasoning",
+      "field": "max_output_tokens",
+      "retained": 30000,
+      "opensource(l)": 1000000
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4.20-0309-reasoning",
+      "field": "max_output_tokens",
+      "retained": 30000,
+      "opensource(l)": 1000000
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4.20-multi-agent-0309",
+      "field": "max_output_tokens",
+      "retained": 30000,
+      "opensource(l)": 1000000
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4.3",
+      "field": "max_output_tokens",
+      "retained": 30000,
+      "opensource(l)": 1000000
+    },
+    {
+      "provider": "xai",
+      "model": "grok-code-fast-1",
+      "field": "input_price",
+      "retained": "0.50000000",
+      "opensource(l)": "1.000000"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-code-fast-1",
+      "field": "cached_price",
+      "retained": "0.25000000",
+      "opensource(l)": "0.2000000"
+    },
+    {
+      "provider": "sambanova",
+      "model": "Meta-Llama-3.3-70B-Instruct",
+      "field": "max_output_tokens",
+      "retained": 3072,
+      "opensource(l)": 131072
+    },
+    {
+      "provider": "sambanova",
+      "model": "MiniMax-M2.7",
+      "field": "input_price",
+      "retained": "0.50000000",
+      "opensource(l)": "0.6000000"
+    },
+    {
+      "provider": "sambanova",
+      "model": "MiniMax-M2.7",
+      "field": "output_price",
+      "retained": "2.00000000",
+      "opensource(l)": "2.4000000"
+    },
+    {
+      "provider": "morph",
+      "model": "morph-v3-fast",
+      "field": "max_output_tokens",
+      "retained": 131072,
+      "opensource(l)": 16000
+    },
+    {
+      "provider": "morph",
+      "model": "morph-v3-large",
+      "field": "max_output_tokens",
+      "retained": 131072,
+      "opensource(l)": 16000
+    }
+  ],
+  "additional_openai_like_candidates": [
+    {
+      "id": "publicai",
+      "base_url": "https://api.publicai.co/v1",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        },
+        "special_handling": {
+          "convert_content_list_to_string": true
+        }
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "helicone",
+      "base_url": "https://ai-gateway.helicone.ai/",
+      "adapter_requirements": {},
+      "source": "opensource(l)"
+    },
+    {
+      "id": "scaleway",
+      "base_url": "https://api.scaleway.ai/v1",
+      "adapter_requirements": {},
+      "source": "opensource(l)"
+    },
+    {
+      "id": "apertis",
+      "base_url": "https://api.stima.tech/v1",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        }
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "nano-gpt",
+      "base_url": "https://nano-gpt.com/api/v1",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        }
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "poe",
+      "base_url": "https://api.poe.com/v1",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        }
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "zerogpu",
+      "base_url": "https://api.zerogpu.ai/v1",
+      "adapter_requirements": {
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "abliteration",
+      "base_url": "https://api.abliteration.ai/v1",
+      "adapter_requirements": {},
+      "source": "opensource(l)"
+    },
+    {
+      "id": "llamagate",
+      "base_url": "https://api.llamagate.dev/v1",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        }
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "gmi",
+      "base_url": "https://api.gmi-serving.com/v1",
+      "adapter_requirements": {},
+      "source": "opensource(l)"
+    },
+    {
+      "id": "sarvam",
+      "base_url": "https://api.sarvam.ai/v1",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        }
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "charity_engine",
+      "base_url": "https://api.charityengine.services/remotejobs/v2/inference",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        }
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "aihubmix",
+      "base_url": "https://aihubmix.com/v1",
+      "adapter_requirements": {},
+      "source": "opensource(l)"
+    },
+    {
+      "id": "aiand",
+      "base_url": "https://api.aiand.com/v1",
+      "adapter_requirements": {
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses",
+          "/v1/messages"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "crusoe",
+      "base_url": "https://api.inference.crusoecloud.com/v1",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        }
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "darkbloom",
+      "base_url": "https://api.darkbloom.dev/v1",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        }
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "neosantara",
+      "base_url": "https://api.neosantara.xyz/v1",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        },
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "tensormesh",
+      "base_url": "https://serverless.tensormesh.ai/v1",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        },
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "parasail",
+      "base_url": "https://api.parasail.io/v1",
+      "adapter_requirements": {
+        "special_handling": {
+          "force_store_false": true
+        },
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "libertai",
+      "base_url": "https://api.libertai.io/v1",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        }
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "empiriolabs",
+      "base_url": "https://api.empiriolabs.ai/v1",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        },
+        "special_handling": {
+          "web_search_requests_from_tool_usage": true
+        },
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses",
+          "/v1/embeddings"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "cognition",
+      "base_url": "https://api.cognition.ai/v1",
+      "adapter_requirements": {},
+      "source": "opensource(l)"
+    },
+    {
+      "id": "coralbricks",
+      "base_url": "https://inference.coralbricks.ai/v1",
+      "adapter_requirements": {
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses",
+          "/v1/messages"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "cortecs",
+      "base_url": "https://api.cortecs.ai/v1",
+      "adapter_requirements": {
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses",
+          "/v1/messages"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "pinstripes",
+      "base_url": "https://pinstripes.io/v1",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        },
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "scx-ai",
+      "base_url": "https://api.scx.ai/v1",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        },
+        "supported_endpoints": [
+          "/v1/chat/completions"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "prism",
+      "base_url": "https://api.prisminference.com/v1",
+      "adapter_requirements": {
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses",
+          "/v1/messages"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "hostinger_router",
+      "base_url": "https://router.hostinger.com/v1",
+      "adapter_requirements": {
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/embeddings"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "sail",
+      "base_url": "https://api.sailresearch.com/v1",
+      "adapter_requirements": {
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses",
+          "/v1/messages"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "reka",
+      "base_url": "https://api.reka.ai/v1",
+      "adapter_requirements": {},
+      "source": "opensource(l)"
+    },
+    {
+      "id": "openinfer",
+      "base_url": "https://api.openinfer.ai/v1",
+      "adapter_requirements": {
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses",
+          "/v1/messages"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "inferenceapis",
+      "base_url": "https://api.inferenceapis.com/v1",
+      "adapter_requirements": {
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses",
+          "/v1/messages"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "refuseless",
+      "base_url": "https://api.refuseless.com/v1",
+      "adapter_requirements": {
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/responses"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "kyma",
+      "base_url": "https://kymaapi.com/v1",
+      "adapter_requirements": {},
+      "source": "opensource(l)"
+    },
+    {
+      "id": "streamlake",
+      "base_url": "https://vanchin.streamlake.ai/api/gateway/v1/endpoints",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_tokens": "max_completion_tokens"
+        },
+        "special_handling": {
+          "preserve_cache_control": true
+        },
+        "supported_endpoints": [
+          "/v1/chat/completions"
+        ]
+      },
+      "source": "opensource(l)"
+    },
+    {
+      "id": "wally",
+      "base_url": "https://inference.runanywhere.ai/v1",
+      "adapter_requirements": {},
+      "source": "opensource(l)"
+    },
+    {
+      "id": "vispark",
+      "base_url": "https://api.lab.vispark.in/v1",
+      "adapter_requirements": {
+        "param_mappings": {
+          "max_completion_tokens": "max_tokens"
+        },
+        "supported_endpoints": [
+          "/v1/chat/completions",
+          "/v1/completions"
+        ]
+      },
+      "source": "opensource(l)"
+    }
+  ],
+  "note": "Candidates require brand, endpoint, and adapter review before insertion. Provider identifiers include aliases and transport families; gateway endpoint support does not prove native vendor protocol support.",
+  "metadata_provider_identifiers": [
+    "abliteration",
+    "agentcore",
+    "ai21",
+    "aiand",
+    "aihubmix",
+    "aiml",
+    "amazon_nova",
+    "anthropic",
+    "anyscale",
+    "apiserpent",
+    "assemblyai",
+    "aws_polly",
+    "azure",
+    "azure_ai",
+    "azure_text",
+    "baseten",
+    "bedrock",
+    "bedrock_converse",
+    "bedrock_mantle",
+    "bespoke",
+    "bigmodel",
+    "bing_grounding",
+    "black_forest_labs",
+    "cerebras",
+    "chatgpt",
+    "clf_ai_gateway",
+    "cloudflare",
+    "codestral",
+    "cognition",
+    "cohere",
+    "cohere_chat",
+    "coralbricks",
+    "crusoe",
+    "darkbloom",
+    "dashscope",
+    "databricks",
+    "dataforseo",
+    "deepgram",
+    "deepinfra",
+    "deepseek",
+    "duckduckgo",
+    "elevenlabs",
+    "empiriolabs",
+    "eu_jev",
+    "exa_ai",
+    "fal_ai",
+    "featherless_ai",
+    "firecrawl",
+    "fireworks_ai",
+    "fireworks_ai-embedding-models",
+    "friendliai",
+    "gemini",
+    "gigachat",
+    "github_copilot",
+    "gmi",
+    "google_pse",
+    "gradient_ai",
+    "groq",
+    "heroku",
+    "hostinger_router",
+    "hyperbolic",
+    "inception",
+    "inferenceapis",
+    "jina_ai",
+    "kyma",
+    "lambda_ai",
+    "laya",
+    "lemonade",
+    "libertai",
+    "linkup",
+    "llamagate",
+    "meta",
+    "meta_llama",
+    "microsoft_365_copilot",
+    "minimax",
+    "mistral",
+    "moonshot",
+    "morph",
+    "nace",
+    "nebius",
+    "nimble",
+    "nlp_cloud",
+    "novita",
+    "nscale",
+    "nvidia_nim",
+    "oci",
+    "ollama",
+    "openai",
+    "opencode_go",
+    "openinfer",
+    "ovhcloud",
+    "parallel_ai",
+    "perplexity",
+    "pinstripes",
+    "prism",
+    "publicai",
+    "qwen_ai_platform",
+    "qwencloud",
+    "recraft",
+    "reducto",
+    "refuseless",
+    "replicate",
+    "runwayml",
+    "sagemaker",
+    "sail",
+    "sambanova",
+    "sarvam",
+    "scaledown",
+    "scaleway",
+    "scx-ai",
+    "searxng",
+    "serper",
+    "snowflake",
+    "soniox",
+    "stability",
+    "strands_decider",
+    "streamlake",
+    "tavily",
+    "tencent",
+    "tensormesh",
+    "text-completion-codestral",
+    "text-completion-inception",
+    "text-completion-openai",
+    "tinyfish",
+    "together_ai",
+    "transcribe",
+    "typesafe",
+    "v0",
+    "vercel_ai_gateway",
+    "vertex_ai",
+    "vertex_ai-ai21_models",
+    "vertex_ai-anthropic_models",
+    "vertex_ai-deepseek_models",
+    "vertex_ai-embedding-models",
+    "vertex_ai-language-models",
+    "vertex_ai-llama_models",
+    "vertex_ai-minimax_models",
+    "vertex_ai-mistral_models",
+    "vertex_ai-moonshot_models",
+    "vertex_ai-openai_models",
+    "vertex_ai-qwen_models",
+    "vertex_ai-text-models",
+    "vertex_ai-video-models",
+    "vertex_ai-zai_models",
+    "vispark",
+    "volcengine",
+    "voyage",
+    "wally",
+    "wandb",
+    "watsonx",
+    "webiq",
+    "xai",
+    "xiaomi_mimo",
+    "you_com",
+    "zai",
+    "zerogpu"
+  ],
+  "additional_metadata_provider_identifiers": [
+    "abliteration",
+    "agentcore",
+    "ai21",
+    "aiand",
+    "aihubmix",
+    "aiml",
+    "amazon_nova",
+    "anyscale",
+    "apiserpent",
+    "azure_ai",
+    "azure_text",
+    "baseten",
+    "bedrock_converse",
+    "bedrock_mantle",
+    "bespoke",
+    "bigmodel",
+    "bing_grounding",
+    "chatgpt",
+    "clf_ai_gateway",
+    "codestral",
+    "cognition",
+    "cohere_chat",
+    "coralbricks",
+    "crusoe",
+    "darkbloom",
+    "dashscope",
+    "databricks",
+    "dataforseo",
+    "deepinfra",
+    "duckduckgo",
+    "empiriolabs",
+    "eu_jev",
+    "fireworks_ai-embedding-models",
+    "friendliai",
+    "gigachat",
+    "github_copilot",
+    "gmi",
+    "gradient_ai",
+    "heroku",
+    "hostinger_router",
+    "inception",
+    "inferenceapis",
+    "kyma",
+    "lambda_ai",
+    "laya",
+    "lemonade",
+    "libertai",
+    "llamagate",
+    "meta_llama",
+    "microsoft_365_copilot",
+    "moonshot",
+    "nimble",
+    "nlp_cloud",
+    "novita",
+    "nscale",
+    "oci",
+    "openinfer",
+    "ovhcloud",
+    "parallel_ai",
+    "pinstripes",
+    "prism",
+    "publicai",
+    "qwen_ai_platform",
+    "qwencloud",
+    "reducto",
+    "refuseless",
+    "replicate",
+    "sagemaker",
+    "sail",
+    "sarvam",
+    "scaledown",
+    "scaleway",
+    "scx-ai",
+    "snowflake",
+    "soniox",
+    "strands_decider",
+    "streamlake",
+    "tensormesh",
+    "text-completion-codestral",
+    "text-completion-inception",
+    "text-completion-openai",
+    "transcribe",
+    "typesafe",
+    "v0",
+    "vertex_ai-ai21_models",
+    "vertex_ai-deepseek_models",
+    "vertex_ai-embedding-models",
+    "vertex_ai-language-models",
+    "vertex_ai-llama_models",
+    "vertex_ai-minimax_models",
+    "vertex_ai-mistral_models",
+    "vertex_ai-moonshot_models",
+    "vertex_ai-openai_models",
+    "vertex_ai-qwen_models",
+    "vertex_ai-text-models",
+    "vertex_ai-video-models",
+    "vertex_ai-zai_models",
+    "vispark",
+    "volcengine",
+    "wally",
+    "wandb",
+    "watsonx",
+    "webiq",
+    "zai",
+    "zerogpu"
+  ],
+  "reviewed_additional_provider_examples": [
+    "deepinfra",
+    "novita",
+    "baseten",
+    "scaleway",
+    "publicai",
+    "poe",
+    "nano-gpt",
+    "parasail",
+    "replicate",
+    "databricks",
+    "snowflake",
+    "watsonx",
+    "oci"
+  ]
+}

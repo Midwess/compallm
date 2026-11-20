@@ -1,0 +1,7299 @@
+{
+  "price_fields": [
+    {
+      "provider": "alims-intl",
+      "model": "qwen3-coder-next",
+      "field": "input_price",
+      "value": "0.12"
+    },
+    {
+      "provider": "alims-intl",
+      "model": "qwen3-coder-next",
+      "field": "output_price",
+      "value": "0.8"
+    },
+    {
+      "provider": "alims-intl",
+      "model": "qwen3-coder-next",
+      "field": "cached_price",
+      "value": "0.07"
+    },
+    {
+      "provider": "alims-intl",
+      "model": "qwen3.5-plus",
+      "field": "cached_price",
+      "value": "0.02"
+    },
+    {
+      "provider": "atria",
+      "model": "Atria-Dawn-Preview",
+      "field": "input_price",
+      "value": "1.4000"
+    },
+    {
+      "provider": "atria",
+      "model": "Atria-Dawn-Preview",
+      "field": "output_price",
+      "value": "4.4000"
+    },
+    {
+      "provider": "atria",
+      "model": "Atria-Dawn-Preview",
+      "field": "cached_price",
+      "value": "1.4000"
+    },
+    {
+      "provider": "baidu",
+      "model": "glm-5.1",
+      "field": "input_price",
+      "value": "1.3"
+    },
+    {
+      "provider": "baidu",
+      "model": "glm-5.1",
+      "field": "output_price",
+      "value": "4.3"
+    },
+    {
+      "provider": "baidu",
+      "model": "glm-5.1",
+      "field": "cached_price",
+      "value": "0.26"
+    },
+    {
+      "provider": "baidu",
+      "model": "glm-5.2",
+      "field": "input_price",
+      "value": "1.4"
+    },
+    {
+      "provider": "baidu",
+      "model": "glm-5.2",
+      "field": "output_price",
+      "value": "4.4"
+    },
+    {
+      "provider": "baidu",
+      "model": "glm-5.2",
+      "field": "cached_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "baidu",
+      "model": "qwen3.5-27b",
+      "field": "input_price",
+      "value": "0.25"
+    },
+    {
+      "provider": "baidu",
+      "model": "qwen3.5-27b",
+      "field": "output_price",
+      "value": "2"
+    },
+    {
+      "provider": "baidu",
+      "model": "qwen3.5-27b",
+      "field": "cached_price",
+      "value": "0.25"
+    },
+    {
+      "provider": "baidu",
+      "model": "qwen3.5-397b-a17b",
+      "field": "input_price",
+      "value": "0.45"
+    },
+    {
+      "provider": "baidu",
+      "model": "qwen3.5-397b-a17b",
+      "field": "output_price",
+      "value": "3"
+    },
+    {
+      "provider": "baidu",
+      "model": "qwen3.5-397b-a17b",
+      "field": "cached_price",
+      "value": "0.22"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "glm-5.1",
+      "field": "input_price",
+      "value": "1.3"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "glm-5.1",
+      "field": "output_price",
+      "value": "4.3"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "glm-5.1",
+      "field": "cached_price",
+      "value": "0.26"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gpt-5.4-nano",
+      "field": "input_price",
+      "value": "0.2"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gpt-5.4-nano",
+      "field": "output_price",
+      "value": "1.25"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gpt-5.4-nano",
+      "field": "cached_price",
+      "value": "0.02"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "mimo-v2.5",
+      "field": "input_price",
+      "value": "0.4"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "mimo-v2.5",
+      "field": "output_price",
+      "value": "2"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "mimo-v2.5",
+      "field": "cached_price",
+      "value": "0.08"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "mimo-v2.5-pro",
+      "field": "input_price",
+      "value": "0.435"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "mimo-v2.5-pro",
+      "field": "output_price",
+      "value": "0.87"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "mimo-v2.5-pro",
+      "field": "cached_price",
+      "value": "0.0036"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "minimax-m2.7",
+      "field": "input_price",
+      "value": "0.3"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "minimax-m2.7",
+      "field": "output_price",
+      "value": "1.2"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "minimax-m2.7",
+      "field": "cached_price",
+      "value": "0.06"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "nemotron-3-super-120b-a12b",
+      "field": "input_price",
+      "value": "0.075"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "nemotron-3-super-120b-a12b",
+      "field": "output_price",
+      "value": "0.4"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "nemotron-3-super-120b-a12b",
+      "field": "cached_price",
+      "value": "0.075"
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/openai/gpt-5.4-pro",
+      "field": "cached_price",
+      "value": "30"
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/openai/gpt-5.5",
+      "field": "input_price",
+      "value": "5"
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/openai/gpt-5.5",
+      "field": "output_price",
+      "value": "30"
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/openai/gpt-5.5",
+      "field": "cached_price",
+      "value": "0.5"
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/x-ai/grok-4.3",
+      "field": "input_price",
+      "value": "1.125"
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/x-ai/grok-4.3",
+      "field": "output_price",
+      "value": "2.25"
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/x-ai/grok-4.3",
+      "field": "cached_price",
+      "value": "0.18"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "claude-haiku-4-5",
+      "field": "input_price",
+      "value": "1"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "claude-haiku-4-5",
+      "field": "output_price",
+      "value": "5"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "claude-haiku-4-5",
+      "field": "cached_price",
+      "value": "0.1"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "claude-opus-4-5",
+      "field": "input_price",
+      "value": "5"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "claude-opus-4-5",
+      "field": "output_price",
+      "value": "25"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "claude-opus-4-5",
+      "field": "cached_price",
+      "value": "0.5"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "claude-sonnet-4-5",
+      "field": "input_price",
+      "value": "3"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "claude-sonnet-4-5",
+      "field": "output_price",
+      "value": "15"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "claude-sonnet-4-5",
+      "field": "cached_price",
+      "value": "0.3"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gemini-2.0-flash",
+      "field": "input_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gemini-2.0-flash",
+      "field": "output_price",
+      "value": "0.6000"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gemini-2.0-flash",
+      "field": "cached_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gemini-2.0-flash-exp",
+      "field": "input_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gemini-2.0-flash-exp",
+      "field": "output_price",
+      "value": "0.6000"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gemini-2.0-flash-exp",
+      "field": "cached_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gpt-4.1-mini",
+      "field": "input_price",
+      "value": "0.4"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gpt-4.1-mini",
+      "field": "output_price",
+      "value": "1.6"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gpt-4.1-mini",
+      "field": "cached_price",
+      "value": "0.1"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gpt-4.1-nano",
+      "field": "input_price",
+      "value": "0.1"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gpt-4.1-nano",
+      "field": "output_price",
+      "value": "0.4"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gpt-4.1-nano",
+      "field": "cached_price",
+      "value": "0.03"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "qwen-turbo",
+      "field": "input_price",
+      "value": "0.0500"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "qwen-turbo",
+      "field": "output_price",
+      "value": "0.2000"
+    },
+    {
+      "provider": "bluesminds",
+      "model": "qwen-turbo",
+      "field": "cached_price",
+      "value": "0.0500"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/glm-5.2",
+      "field": "input_price",
+      "value": "1.4"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/glm-5.2",
+      "field": "output_price",
+      "value": "4.4"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/glm-5.2",
+      "field": "cached_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/mimo-v2.5",
+      "field": "input_price",
+      "value": "0.4"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/mimo-v2.5",
+      "field": "output_price",
+      "value": "2"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/mimo-v2.5",
+      "field": "cached_price",
+      "value": "0.08"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/mimo-v2.5-pro",
+      "field": "input_price",
+      "value": "0.435"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/mimo-v2.5-pro",
+      "field": "output_price",
+      "value": "0.87"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/mimo-v2.5-pro",
+      "field": "cached_price",
+      "value": "0.0036"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/minimax-m3",
+      "field": "input_price",
+      "value": "0.3"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/minimax-m3",
+      "field": "output_price",
+      "value": "1.2"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/minimax-m3",
+      "field": "cached_price",
+      "value": "0.06"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/qwen3.7-max",
+      "field": "input_price",
+      "value": "1.475"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/qwen3.7-max",
+      "field": "output_price",
+      "value": "4.425"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/qwen3.7-max",
+      "field": "cached_price",
+      "value": "0.295"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/qwen3.7-plus",
+      "field": "input_price",
+      "value": "0.4"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/qwen3.7-plus",
+      "field": "output_price",
+      "value": "1.6"
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/qwen3.7-plus",
+      "field": "cached_price",
+      "value": "0.08"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.1",
+      "field": "input_price",
+      "value": "1.3"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.1",
+      "field": "output_price",
+      "value": "4.3"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.1",
+      "field": "cached_price",
+      "value": "0.26"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.2",
+      "field": "input_price",
+      "value": "1.4"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.2",
+      "field": "output_price",
+      "value": "4.4"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.2",
+      "field": "cached_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.3",
+      "field": "input_price",
+      "value": "1.4"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.3",
+      "field": "output_price",
+      "value": "4.4"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.3",
+      "field": "cached_price",
+      "value": "0.26"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.3-flash",
+      "field": "input_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.3-flash",
+      "field": "output_price",
+      "value": "0.5"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.3-flash",
+      "field": "cached_price",
+      "value": "0.03"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "hy3",
+      "field": "input_price",
+      "value": "0.132"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "hy3",
+      "field": "output_price",
+      "value": "0.528"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "hy3",
+      "field": "cached_price",
+      "value": "0.033"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "hy4-preview",
+      "field": "input_price",
+      "value": "0.834"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "hy4-preview",
+      "field": "output_price",
+      "value": "2.501"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "hy4-preview",
+      "field": "cached_price",
+      "value": "0.042"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "kimi-k2.8-preview",
+      "field": "input_price",
+      "value": "1.0000"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "kimi-k2.8-preview",
+      "field": "output_price",
+      "value": "4.1500"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "kimi-k2.8-preview",
+      "field": "cached_price",
+      "value": "1.0000"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "kimi-k3-1",
+      "field": "input_price",
+      "value": "4.4000"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "kimi-k3-1",
+      "field": "output_price",
+      "value": "22.0000"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "kimi-k3-1",
+      "field": "cached_price",
+      "value": "4.4000"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "minimax-m3",
+      "field": "input_price",
+      "value": "0.3"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "minimax-m3",
+      "field": "output_price",
+      "value": "1.2"
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "minimax-m3",
+      "field": "cached_price",
+      "value": "0.06"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "deepseek-v3-2-volc",
+      "field": "input_price",
+      "value": "0.1400"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "deepseek-v3-2-volc",
+      "field": "output_price",
+      "value": "0.2800"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "deepseek-v3-2-volc",
+      "field": "cached_price",
+      "value": "0.1400"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.0",
+      "field": "input_price",
+      "value": "1.0000"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.0",
+      "field": "output_price",
+      "value": "3.2000"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.0",
+      "field": "cached_price",
+      "value": "1.0000"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.0-turbo",
+      "field": "input_price",
+      "value": "1.2000"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.0-turbo",
+      "field": "output_price",
+      "value": "4.0000"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.0-turbo",
+      "field": "cached_price",
+      "value": "1.2000"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.1",
+      "field": "input_price",
+      "value": "1.3"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.1",
+      "field": "output_price",
+      "value": "4.3"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.1",
+      "field": "cached_price",
+      "value": "0.26"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.2",
+      "field": "input_price",
+      "value": "1.4"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.2",
+      "field": "output_price",
+      "value": "4.4"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.2",
+      "field": "cached_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5v-turbo",
+      "field": "input_price",
+      "value": "1.2"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5v-turbo",
+      "field": "output_price",
+      "value": "4"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5v-turbo",
+      "field": "cached_price",
+      "value": "0.24"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "hy3-preview",
+      "field": "input_price",
+      "value": "0.18"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "hy3-preview",
+      "field": "output_price",
+      "value": "0.6"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "hy3-preview",
+      "field": "cached_price",
+      "value": "0.06"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "kimi-k2.7",
+      "field": "input_price",
+      "value": "0.95"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "kimi-k2.7",
+      "field": "output_price",
+      "value": "4"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "kimi-k2.7",
+      "field": "cached_price",
+      "value": "0.19"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "minimax-m2.7",
+      "field": "input_price",
+      "value": "0.3"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "minimax-m2.7",
+      "field": "output_price",
+      "value": "1.2"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "minimax-m2.7",
+      "field": "cached_price",
+      "value": "0.06"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "minimax-m3",
+      "field": "input_price",
+      "value": "0.3"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "minimax-m3",
+      "field": "output_price",
+      "value": "1.2"
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "minimax-m3",
+      "field": "cached_price",
+      "value": "0.06"
+    },
+    {
+      "provider": "cohere",
+      "model": "c4ai-aya-expanse-32b",
+      "field": "cached_price",
+      "value": "0.5"
+    },
+    {
+      "provider": "cohere",
+      "model": "c4ai-aya-vision-32b",
+      "field": "input_price",
+      "value": "0.5000"
+    },
+    {
+      "provider": "cohere",
+      "model": "c4ai-aya-vision-32b",
+      "field": "output_price",
+      "value": "1.5000"
+    },
+    {
+      "provider": "cohere",
+      "model": "c4ai-aya-vision-32b",
+      "field": "cached_price",
+      "value": "0.5000"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-a-03-2025",
+      "field": "cached_price",
+      "value": "2.5"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-a-plus-05-2026",
+      "field": "cached_price",
+      "value": "2.5"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-a-reasoning-08-2025",
+      "field": "cached_price",
+      "value": "2.5"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-a-translate-08-2025",
+      "field": "cached_price",
+      "value": "2.5"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-a-vision-07-2025",
+      "field": "cached_price",
+      "value": "2.5"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-r-08-2024",
+      "field": "cached_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-r-plus-08-2024",
+      "field": "cached_price",
+      "value": "2.5"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-r7b-12-2024",
+      "field": "cached_price",
+      "value": "0.0375"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-r7b-arabic-02-2025",
+      "field": "cached_price",
+      "value": "0.0375"
+    },
+    {
+      "provider": "cohere",
+      "model": "north-mini-code-1-0",
+      "field": "input_price",
+      "value": "0.0375"
+    },
+    {
+      "provider": "cohere",
+      "model": "north-mini-code-1-0",
+      "field": "output_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "cohere",
+      "model": "north-mini-code-1-0",
+      "field": "cached_price",
+      "value": "0.0375"
+    },
+    {
+      "provider": "cohere",
+      "model": "north-small-translate-09-2026",
+      "field": "input_price",
+      "value": "0.0375"
+    },
+    {
+      "provider": "cohere",
+      "model": "north-small-translate-09-2026",
+      "field": "output_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "cohere",
+      "model": "north-small-translate-09-2026",
+      "field": "cached_price",
+      "value": "0.0375"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-earth",
+      "field": "input_price",
+      "value": "0.0375"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-earth",
+      "field": "output_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-earth",
+      "field": "cached_price",
+      "value": "0.0375"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-fire",
+      "field": "input_price",
+      "value": "0.0375"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-fire",
+      "field": "output_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-fire",
+      "field": "cached_price",
+      "value": "0.0375"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-global",
+      "field": "input_price",
+      "value": "0.0375"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-global",
+      "field": "output_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-global",
+      "field": "cached_price",
+      "value": "0.0375"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-water",
+      "field": "input_price",
+      "value": "0.0375"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-water",
+      "field": "output_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-water",
+      "field": "cached_price",
+      "value": "0.0375"
+    },
+    {
+      "provider": "dahl",
+      "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+      "field": "input_price",
+      "value": "0.06"
+    },
+    {
+      "provider": "dahl",
+      "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+      "field": "output_price",
+      "value": "0.18"
+    },
+    {
+      "provider": "dahl",
+      "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+      "field": "cached_price",
+      "value": "0.015"
+    },
+    {
+      "provider": "dahl",
+      "model": "zai-org/GLM-5.3-Flash",
+      "field": "input_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "dahl",
+      "model": "zai-org/GLM-5.3-Flash",
+      "field": "output_price",
+      "value": "0.5"
+    },
+    {
+      "provider": "dahl",
+      "model": "zai-org/GLM-5.3-Flash",
+      "field": "cached_price",
+      "value": "0.03"
+    },
+    {
+      "provider": "fireworks",
+      "model": "accounts/fireworks/models/deepseek-v3p1",
+      "field": "cached_price",
+      "value": "0.56"
+    },
+    {
+      "provider": "fireworks",
+      "model": "accounts/fireworks/models/llama-v3p3-70b-instruct",
+      "field": "cached_price",
+      "value": "0.9"
+    },
+    {
+      "provider": "fireworks",
+      "model": "accounts/fireworks/models/qwen3-235b-a22b",
+      "field": "cached_price",
+      "value": "0.35"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemma-4-26b-a4b-it",
+      "field": "input_price",
+      "value": "0.0765"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemma-4-26b-a4b-it",
+      "field": "output_price",
+      "value": "0.255"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemma-4-31b-it",
+      "field": "input_price",
+      "value": "0.38"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemma-4-31b-it",
+      "field": "output_price",
+      "value": "1.15"
+    },
+    {
+      "provider": "groq",
+      "model": "allam-2-7b",
+      "field": "input_price",
+      "value": "0.0500"
+    },
+    {
+      "provider": "groq",
+      "model": "allam-2-7b",
+      "field": "output_price",
+      "value": "0.0800"
+    },
+    {
+      "provider": "groq",
+      "model": "allam-2-7b",
+      "field": "cached_price",
+      "value": "0.0500"
+    },
+    {
+      "provider": "groq",
+      "model": "meta-llama/llama-prompt-guard-2-22m",
+      "field": "cached_price",
+      "value": "0.03"
+    },
+    {
+      "provider": "groq",
+      "model": "meta-llama/llama-prompt-guard-2-86m",
+      "field": "cached_price",
+      "value": "0.04"
+    },
+    {
+      "provider": "groq",
+      "model": "qwen/qwen3.8-27b",
+      "field": "cached_price",
+      "value": "0.059"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "NousResearch/Hermes-3-Llama-3.1-70B",
+      "field": "cached_price",
+      "value": "0.12"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "Qwen/QwQ-32B",
+      "field": "cached_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "Qwen/Qwen2.5-72B-Instruct",
+      "field": "cached_price",
+      "value": "0.59"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "Qwen/Qwen2.5-Coder-32B-Instruct",
+      "field": "cached_price",
+      "value": "0.18"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "deepseek-ai/DeepSeek-R1",
+      "field": "cached_price",
+      "value": "0.5"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "deepseek-ai/DeepSeek-V3",
+      "field": "cached_price",
+      "value": "0.25"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "meta-llama/Llama-3.2-3B-Instruct",
+      "field": "cached_price",
+      "value": "0.0509"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "meta-llama/Llama-3.3-70B-Instruct",
+      "field": "cached_price",
+      "value": "0.71"
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "kilo-auto/balanced",
+      "field": "input_price",
+      "value": "0.3300"
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "kilo-auto/balanced",
+      "field": "output_price",
+      "value": "2.0000"
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "kilo-auto/balanced",
+      "field": "cached_price",
+      "value": "0.3300"
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "kilo-auto/frontier",
+      "field": "input_price",
+      "value": "5.0000"
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "kilo-auto/frontier",
+      "field": "output_price",
+      "value": "25.0000"
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "kilo-auto/frontier",
+      "field": "cached_price",
+      "value": "5.0000"
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "kwaipilot/kat-coder-pro-v2.5:free",
+      "field": "input_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "kwaipilot/kat-coder-pro-v2.5:free",
+      "field": "output_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "kwaipilot/kat-coder-pro-v2.5:free",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "field": "input_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "field": "output_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "kimchi",
+      "model": "minimax-m2.7",
+      "field": "input_price",
+      "value": "0.3"
+    },
+    {
+      "provider": "kimchi",
+      "model": "minimax-m2.7",
+      "field": "output_price",
+      "value": "1.2"
+    },
+    {
+      "provider": "kimchi",
+      "model": "minimax-m2.7",
+      "field": "cached_price",
+      "value": "0.06"
+    },
+    {
+      "provider": "kimchi",
+      "model": "nemotron-3-ultra-fp4",
+      "field": "cached_price",
+      "value": "0.6"
+    },
+    {
+      "provider": "llm7",
+      "model": "gpt-5.5",
+      "field": "input_price",
+      "value": "5"
+    },
+    {
+      "provider": "llm7",
+      "model": "gpt-5.5",
+      "field": "output_price",
+      "value": "30"
+    },
+    {
+      "provider": "llm7",
+      "model": "gpt-5.5",
+      "field": "cached_price",
+      "value": "0.5"
+    },
+    {
+      "provider": "llm7",
+      "model": "grok-4.5",
+      "field": "input_price",
+      "value": "2"
+    },
+    {
+      "provider": "llm7",
+      "model": "grok-4.5",
+      "field": "output_price",
+      "value": "6"
+    },
+    {
+      "provider": "llm7",
+      "model": "grok-4.5",
+      "field": "cached_price",
+      "value": "0.3"
+    },
+    {
+      "provider": "morph",
+      "model": "auto",
+      "field": "cached_price",
+      "value": "1"
+    },
+    {
+      "provider": "morph",
+      "model": "morph-minimax27-230b",
+      "field": "input_price",
+      "value": "0.3000"
+    },
+    {
+      "provider": "morph",
+      "model": "morph-minimax27-230b",
+      "field": "output_price",
+      "value": "1.2000"
+    },
+    {
+      "provider": "morph",
+      "model": "morph-minimax27-230b",
+      "field": "cached_price",
+      "value": "0.3000"
+    },
+    {
+      "provider": "morph",
+      "model": "morph-qwen35-397b",
+      "field": "input_price",
+      "value": "0.6000"
+    },
+    {
+      "provider": "morph",
+      "model": "morph-qwen35-397b",
+      "field": "output_price",
+      "value": "3.6000"
+    },
+    {
+      "provider": "morph",
+      "model": "morph-qwen35-397b",
+      "field": "cached_price",
+      "value": "0.6000"
+    },
+    {
+      "provider": "morph",
+      "model": "morph-qwen36-27b",
+      "field": "input_price",
+      "value": "0.6000"
+    },
+    {
+      "provider": "morph",
+      "model": "morph-qwen36-27b",
+      "field": "output_price",
+      "value": "3.6000"
+    },
+    {
+      "provider": "morph",
+      "model": "morph-qwen36-27b",
+      "field": "cached_price",
+      "value": "0.6000"
+    },
+    {
+      "provider": "morph",
+      "model": "morph-v3-fast",
+      "field": "cached_price",
+      "value": "0.8"
+    },
+    {
+      "provider": "morph",
+      "model": "morph-v3-large",
+      "field": "cached_price",
+      "value": "0.9"
+    },
+    {
+      "provider": "nebius",
+      "model": "meta-llama/Llama-3.3-70B-Instruct",
+      "field": "cached_price",
+      "value": "0.71"
+    },
+    {
+      "provider": "nous",
+      "model": "meituan/longcat-2.0:free",
+      "field": "input_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "meituan/longcat-2.0:free",
+      "field": "output_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "meituan/longcat-2.0:free",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "meituan/longcat-2.5-preview:free",
+      "field": "input_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "meituan/longcat-2.5-preview:free",
+      "field": "output_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "meituan/longcat-2.5-preview:free",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "poolside/laguna-s-2.1:free",
+      "field": "input_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "poolside/laguna-s-2.1:free",
+      "field": "output_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "poolside/laguna-s-2.1:free",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "poolside/laguna-xs-2.1:free",
+      "field": "input_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "poolside/laguna-xs-2.1:free",
+      "field": "output_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "poolside/laguna-xs-2.1:free",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "stealth/missingno",
+      "field": "input_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "stealth/missingno",
+      "field": "output_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "stealth/missingno",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "stepfun/step-5-preview:free",
+      "field": "input_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "stepfun/step-5-preview:free",
+      "field": "output_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nous",
+      "model": "stepfun/step-5-preview:free",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "nvidia",
+      "model": "deepseek-ai/deepseek-v4.1-flash",
+      "field": "input_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "nvidia",
+      "model": "deepseek-ai/deepseek-v4.1-flash",
+      "field": "output_price",
+      "value": "0.6"
+    },
+    {
+      "provider": "nvidia",
+      "model": "deepseek-ai/deepseek-v4.1-flash",
+      "field": "cached_price",
+      "value": "0.003"
+    },
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-3.3-70b-instruct",
+      "field": "input_price",
+      "value": "0.71"
+    },
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-3.3-70b-instruct",
+      "field": "output_price",
+      "value": "0.71"
+    },
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-3.3-70b-instruct",
+      "field": "cached_price",
+      "value": "0.71"
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "field": "input_price",
+      "value": "0.2645"
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "field": "output_price",
+      "value": "1.5900"
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "field": "cached_price",
+      "value": "0.2645"
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/riva-translate-4b-instruct-v2",
+      "field": "input_price",
+      "value": "0.0500"
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/riva-translate-4b-instruct-v2",
+      "field": "output_price",
+      "value": "0.3300"
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/riva-translate-4b-instruct-v2",
+      "field": "cached_price",
+      "value": "0.0500"
+    },
+    {
+      "provider": "nvidia",
+      "model": "openai/gpt-oss-20b",
+      "field": "input_price",
+      "value": "0.018"
+    },
+    {
+      "provider": "nvidia",
+      "model": "openai/gpt-oss-20b",
+      "field": "output_price",
+      "value": "0.09"
+    },
+    {
+      "provider": "nvidia",
+      "model": "openai/gpt-oss-20b",
+      "field": "cached_price",
+      "value": "0.009"
+    },
+    {
+      "provider": "nvidia",
+      "model": "poolside/laguna-xs-2.1",
+      "field": "input_price",
+      "value": "0.0600"
+    },
+    {
+      "provider": "nvidia",
+      "model": "poolside/laguna-xs-2.1",
+      "field": "output_price",
+      "value": "0.1200"
+    },
+    {
+      "provider": "nvidia",
+      "model": "poolside/laguna-xs-2.1",
+      "field": "cached_price",
+      "value": "0.0600"
+    },
+    {
+      "provider": "nvidia",
+      "model": "stepfun-ai/step-5-preview",
+      "field": "input_price",
+      "value": "1"
+    },
+    {
+      "provider": "nvidia",
+      "model": "stepfun-ai/step-5-preview",
+      "field": "output_price",
+      "value": "2.7"
+    },
+    {
+      "provider": "nvidia",
+      "model": "stepfun-ai/step-5-preview",
+      "field": "cached_price",
+      "value": "0.1"
+    },
+    {
+      "provider": "nvidia",
+      "model": "z-ai/glm-5.2",
+      "field": "input_price",
+      "value": "1.4"
+    },
+    {
+      "provider": "nvidia",
+      "model": "z-ai/glm-5.2",
+      "field": "output_price",
+      "value": "4.4"
+    },
+    {
+      "provider": "nvidia",
+      "model": "z-ai/glm-5.2",
+      "field": "cached_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "nvidia",
+      "model": "z-ai/glm-5.3-flash",
+      "field": "input_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "nvidia",
+      "model": "z-ai/glm-5.3-flash",
+      "field": "output_price",
+      "value": "0.5"
+    },
+    {
+      "provider": "nvidia",
+      "model": "z-ai/glm-5.3-flash",
+      "field": "cached_price",
+      "value": "0.03"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-pro",
+      "field": "cached_price",
+      "value": "15"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5.2-pro",
+      "field": "cached_price",
+      "value": "21"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5.4-pro",
+      "field": "cached_price",
+      "value": "30"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-audio-1.5",
+      "field": "cached_price",
+      "value": "2.5"
+    },
+    {
+      "provider": "openai",
+      "model": "o3-pro",
+      "field": "cached_price",
+      "value": "20"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-flash-vision-exp",
+      "field": "input_price",
+      "value": "0.44"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-flash-vision-exp",
+      "field": "output_price",
+      "value": "1.32"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-flash-vision-exp",
+      "field": "cached_price",
+      "value": "0.014"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "glm-5.1",
+      "field": "input_price",
+      "value": "1.3"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "glm-5.1",
+      "field": "output_price",
+      "value": "4.3"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "glm-5.1",
+      "field": "cached_price",
+      "value": "0.26"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "grok-4.5",
+      "field": "input_price",
+      "value": "2"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "grok-4.5",
+      "field": "output_price",
+      "value": "6"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "grok-4.5",
+      "field": "cached_price",
+      "value": "0.3"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "grok-4.6",
+      "field": "input_price",
+      "value": "2"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "grok-4.6",
+      "field": "output_price",
+      "value": "6"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "grok-4.6",
+      "field": "cached_price",
+      "value": "0.5"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "hy3-preview",
+      "field": "input_price",
+      "value": "0.18"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "hy3-preview",
+      "field": "output_price",
+      "value": "0.6"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "hy3-preview",
+      "field": "cached_price",
+      "value": "0.06"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "mimo-v2-omni",
+      "field": "input_price",
+      "value": "0.4000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "mimo-v2-omni",
+      "field": "output_price",
+      "value": "2.0000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "mimo-v2-omni",
+      "field": "cached_price",
+      "value": "0.4000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "mimo-v2-pro",
+      "field": "input_price",
+      "value": "1.0000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "mimo-v2-pro",
+      "field": "output_price",
+      "value": "3.0000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "mimo-v2-pro",
+      "field": "cached_price",
+      "value": "1.0000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "omen-alpha",
+      "field": "input_price",
+      "value": "0.2000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "omen-alpha",
+      "field": "output_price",
+      "value": "0.6600"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "omen-alpha",
+      "field": "cached_price",
+      "value": "0.2000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.5-plus",
+      "field": "input_price",
+      "value": "0.2"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.5-plus",
+      "field": "output_price",
+      "value": "1.2"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.5-plus",
+      "field": "cached_price",
+      "value": "0.02"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.6-plus",
+      "field": "input_price",
+      "value": "0.26"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.6-plus",
+      "field": "output_price",
+      "value": "1.56"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.6-plus",
+      "field": "cached_price",
+      "value": "0.0224"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.7-max",
+      "field": "input_price",
+      "value": "1.475"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.7-max",
+      "field": "output_price",
+      "value": "4.425"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.7-max",
+      "field": "cached_price",
+      "value": "0.295"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "space-bunny-free",
+      "field": "input_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "space-bunny-free",
+      "field": "output_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "space-bunny-free",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "openrouter",
+      "model": "aion-labs/aion-rp-llama-3.1-8b",
+      "field": "cached_price",
+      "value": "0.8"
+    },
+    {
+      "provider": "openrouter",
+      "model": "amazon/nova-2-lite-v1",
+      "field": "cached_price",
+      "value": "0.3"
+    },
+    {
+      "provider": "openrouter",
+      "model": "amazon/nova-lite-v1",
+      "field": "cached_price",
+      "value": "0.06"
+    },
+    {
+      "provider": "openrouter",
+      "model": "amazon/nova-micro-v1",
+      "field": "cached_price",
+      "value": "0.035"
+    },
+    {
+      "provider": "openrouter",
+      "model": "amazon/nova-pro-v1",
+      "field": "cached_price",
+      "value": "0.8"
+    },
+    {
+      "provider": "openrouter",
+      "model": "bytedance-seed/seed-2-1-turbo",
+      "field": "cached_price",
+      "value": "0.125"
+    },
+    {
+      "provider": "openrouter",
+      "model": "cognitivecomputations/dolphin-mistral-24b-venice-edition",
+      "field": "cached_price",
+      "value": "0.2"
+    },
+    {
+      "provider": "openrouter",
+      "model": "cohere/command-a",
+      "field": "cached_price",
+      "value": "2.5"
+    },
+    {
+      "provider": "openrouter",
+      "model": "cohere/command-r-08-2024",
+      "field": "cached_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "openrouter",
+      "model": "cohere/command-r-plus-08-2024",
+      "field": "cached_price",
+      "value": "2.5"
+    },
+    {
+      "provider": "openrouter",
+      "model": "cohere/command-r7b-12-2024",
+      "field": "cached_price",
+      "value": "0.0375"
+    },
+    {
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-chat",
+      "field": "cached_price",
+      "value": "0.0028"
+    },
+    {
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-v3.1-terminus",
+      "field": "cached_price",
+      "value": "0.27"
+    },
+    {
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-v3.2-exp",
+      "field": "cached_price",
+      "value": "0.27"
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.1-flash-image",
+      "field": "cached_price",
+      "value": "0.5"
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.1-flash-image-preview",
+      "field": "cached_price",
+      "value": "0.5"
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.1-flash-lite-image",
+      "field": "cached_price",
+      "value": "0.25"
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-nano-banana-2.1",
+      "field": "cached_price",
+      "value": "1.5"
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-omni-1.2-flash",
+      "field": "cached_price",
+      "value": "1.5"
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemma-2-27b-it",
+      "field": "cached_price",
+      "value": "0.65"
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta-llama/llama-3.1-70b-instruct",
+      "field": "cached_price",
+      "value": "0.72"
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta-llama/llama-3.2-1b-instruct",
+      "field": "cached_price",
+      "value": "0.027"
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta-llama/llama-3.2-3b-instruct",
+      "field": "cached_price",
+      "value": "0.0509"
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta-llama/llama-4-scout",
+      "field": "cached_price",
+      "value": "0.1"
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta-llama/llama-guard-4-12b",
+      "field": "cached_price",
+      "value": "0.18"
+    },
+    {
+      "provider": "openrouter",
+      "model": "microsoft/phi-4",
+      "field": "cached_price",
+      "value": "0.07"
+    },
+    {
+      "provider": "openrouter",
+      "model": "mistralai/mistral-medium-3-5",
+      "field": "cached_price",
+      "value": "1.5"
+    },
+    {
+      "provider": "openrouter",
+      "model": "mistralai/mistral-small-24b-instruct-2501",
+      "field": "cached_price",
+      "value": "0.05"
+    },
+    {
+      "provider": "openrouter",
+      "model": "mistralai/mistral-small-3.1-24b-instruct",
+      "field": "cached_price",
+      "value": "0.351"
+    },
+    {
+      "provider": "openrouter",
+      "model": "moondream/moondream3-preview",
+      "field": "cached_price",
+      "value": "0.3"
+    },
+    {
+      "provider": "openrouter",
+      "model": "moondream/moondream3.1-9b-a2b",
+      "field": "cached_price",
+      "value": "0.3"
+    },
+    {
+      "provider": "openrouter",
+      "model": "moonshotai/kimi-k2",
+      "field": "cached_price",
+      "value": "0.5"
+    },
+    {
+      "provider": "openrouter",
+      "model": "moonshotai/kimi-k2-0905",
+      "field": "cached_price",
+      "value": "0.6"
+    },
+    {
+      "provider": "openrouter",
+      "model": "morph/morph-v3-fast",
+      "field": "cached_price",
+      "value": "0.8"
+    },
+    {
+      "provider": "openrouter",
+      "model": "morph/morph-v3-large",
+      "field": "cached_price",
+      "value": "0.9"
+    },
+    {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "field": "cached_price",
+      "value": "0.06"
+    },
+    {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3.5-content-safety",
+      "field": "cached_price",
+      "value": "0.2"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-3.5-turbo-0613",
+      "field": "cached_price",
+      "value": "1"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-3.5-turbo-16k",
+      "field": "cached_price",
+      "value": "3"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-4",
+      "field": "cached_price",
+      "value": "30"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-2024-05-13",
+      "field": "cached_price",
+      "value": "5"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-5-pro",
+      "field": "cached_price",
+      "value": "15"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-5.2-pro",
+      "field": "cached_price",
+      "value": "21"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-audio",
+      "field": "cached_price",
+      "value": "2.5"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-audio-mini",
+      "field": "cached_price",
+      "value": "0.6"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/o3-pro",
+      "field": "cached_price",
+      "value": "20"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/auto",
+      "field": "input_price",
+      "value": "2"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/auto",
+      "field": "output_price",
+      "value": "8"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/auto",
+      "field": "cached_price",
+      "value": "1"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/bodybuilder",
+      "field": "input_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/bodybuilder",
+      "field": "output_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/bodybuilder",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/free",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/pareto-code",
+      "field": "input_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/pareto-code",
+      "field": "output_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/pareto-code",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "openrouter",
+      "model": "perceptron/perceptron-mk1",
+      "field": "cached_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "openrouter",
+      "model": "perceptron/perceptron-mk1.5",
+      "field": "cached_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/sonar",
+      "field": "cached_price",
+      "value": "1"
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/sonar-deep-research",
+      "field": "cached_price",
+      "value": "2"
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/sonar-pro",
+      "field": "cached_price",
+      "value": "3"
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/sonar-pro-search",
+      "field": "cached_price",
+      "value": "3"
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/sonar-reasoning-pro",
+      "field": "cached_price",
+      "value": "2"
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "field": "cached_price",
+      "value": "0.36"
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen-2.5-coder-32b-instruct",
+      "field": "cached_price",
+      "value": "0.66"
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3-14b",
+      "field": "cached_price",
+      "value": "0.07"
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3-235b-a22b-thinking-2507",
+      "field": "cached_price",
+      "value": "0.13"
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3-30b-a3b",
+      "field": "cached_price",
+      "value": "0.09"
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3-coder-30b-a3b-instruct",
+      "field": "cached_price",
+      "value": "0.07"
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3-vl-30b-a3b-instruct",
+      "field": "cached_price",
+      "value": "0.29"
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3.5-flash-02-23",
+      "field": "cached_price",
+      "value": "0.065"
+    },
+    {
+      "provider": "openrouter",
+      "model": "rekaai/reka-edge",
+      "field": "cached_price",
+      "value": "0.1"
+    },
+    {
+      "provider": "openrouter",
+      "model": "rekaai/reka-flash-3",
+      "field": "cached_price",
+      "value": "0.1"
+    },
+    {
+      "provider": "openrouter",
+      "model": "relace/relace-apply-3",
+      "field": "cached_price",
+      "value": "0.85"
+    },
+    {
+      "provider": "openrouter",
+      "model": "relace/relace-search",
+      "field": "cached_price",
+      "value": "1"
+    },
+    {
+      "provider": "openrouter",
+      "model": "sao10k/l3-lunaris-8b",
+      "field": "cached_price",
+      "value": "0.04"
+    },
+    {
+      "provider": "openrouter",
+      "model": "sao10k/l3.1-euryale-70b",
+      "field": "cached_price",
+      "value": "0.85"
+    },
+    {
+      "provider": "openrouter",
+      "model": "scaledown/extract",
+      "field": "cached_price",
+      "value": "0.0400"
+    },
+    {
+      "provider": "openrouter",
+      "model": "scaledown/summarize",
+      "field": "cached_price",
+      "value": "0.0400"
+    },
+    {
+      "provider": "openrouter",
+      "model": "tencent/hy-mt2-1.8b",
+      "field": "cached_price",
+      "value": "0.044"
+    },
+    {
+      "provider": "openrouter",
+      "model": "tencent/hy-mt2-30b-a3b",
+      "field": "cached_price",
+      "value": "0.074"
+    },
+    {
+      "provider": "openrouter",
+      "model": "tencent/hy-mt2-7b",
+      "field": "cached_price",
+      "value": "0.074"
+    },
+    {
+      "provider": "openrouter",
+      "model": "thedrummer/unslopnemo-12b",
+      "field": "cached_price",
+      "value": "0.4"
+    },
+    {
+      "provider": "openrouter",
+      "model": "typesafe/jev-router",
+      "field": "input_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "openrouter",
+      "model": "typesafe/jev-router",
+      "field": "output_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "openrouter",
+      "model": "typesafe/jev-router",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "openrouter",
+      "model": "writer/palmyra-x5",
+      "field": "cached_price",
+      "value": "0.6"
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-opus-4-8",
+      "field": "input_price",
+      "value": "5"
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-opus-4-8",
+      "field": "output_price",
+      "value": "25"
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-opus-4-8",
+      "field": "cached_price",
+      "value": "0.5"
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "openai/gpt-5.4-mini",
+      "field": "input_price",
+      "value": "0.75"
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "openai/gpt-5.4-mini",
+      "field": "output_price",
+      "value": "4.5"
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "openai/gpt-5.4-mini",
+      "field": "cached_price",
+      "value": "0.075"
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "perplexity/glm-5.2",
+      "field": "input_price",
+      "value": "1.4"
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "perplexity/glm-5.2",
+      "field": "output_price",
+      "value": "4.4"
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "perplexity/glm-5.2",
+      "field": "cached_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "xai/grok-4.20-reasoning",
+      "field": "input_price",
+      "value": "1.2500"
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "xai/grok-4.20-reasoning",
+      "field": "output_price",
+      "value": "2.5000"
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "xai/grok-4.20-reasoning",
+      "field": "cached_price",
+      "value": "1.2500"
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-m.1",
+      "field": "input_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-m.1",
+      "field": "output_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-m.1",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-s-2.1",
+      "field": "input_price",
+      "value": "0.0900"
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-s-2.1",
+      "field": "output_price",
+      "value": "0.1800"
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-s-2.1",
+      "field": "cached_price",
+      "value": "0.0900"
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-xs-2.1",
+      "field": "input_price",
+      "value": "0.0600"
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-xs-2.1",
+      "field": "output_price",
+      "value": "0.1200"
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-xs-2.1",
+      "field": "cached_price",
+      "value": "0.0600"
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-flash",
+      "field": "input_price",
+      "value": "0.3"
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-flash",
+      "field": "output_price",
+      "value": "1.2"
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-flash",
+      "field": "cached_price",
+      "value": "0.006"
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-v4-flash",
+      "field": "input_price",
+      "value": "0.138"
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-v4-flash",
+      "field": "output_price",
+      "value": "0.275"
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-v4-flash",
+      "field": "cached_price",
+      "value": "0.028"
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-v4-pro",
+      "field": "input_price",
+      "value": "1.50162"
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-v4-pro",
+      "field": "output_price",
+      "value": "3.135"
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-v4-pro",
+      "field": "cached_price",
+      "value": "0.135"
+    },
+    {
+      "provider": "sensenova",
+      "model": "glm-5.2",
+      "field": "input_price",
+      "value": "1.4"
+    },
+    {
+      "provider": "sensenova",
+      "model": "glm-5.2",
+      "field": "output_price",
+      "value": "4.4"
+    },
+    {
+      "provider": "sensenova",
+      "model": "glm-5.2",
+      "field": "cached_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "sensenova",
+      "model": "glm-5.3",
+      "field": "input_price",
+      "value": "1.4"
+    },
+    {
+      "provider": "sensenova",
+      "model": "glm-5.3",
+      "field": "output_price",
+      "value": "4.4"
+    },
+    {
+      "provider": "sensenova",
+      "model": "glm-5.3",
+      "field": "cached_price",
+      "value": "0.26"
+    },
+    {
+      "provider": "sensenova",
+      "model": "kimi-k3",
+      "field": "input_price",
+      "value": "3"
+    },
+    {
+      "provider": "sensenova",
+      "model": "kimi-k3",
+      "field": "output_price",
+      "value": "15"
+    },
+    {
+      "provider": "sensenova",
+      "model": "kimi-k3",
+      "field": "cached_price",
+      "value": "0.3"
+    },
+    {
+      "provider": "sensenova",
+      "model": "sensenova-6.8-flash",
+      "field": "input_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "sensenova",
+      "model": "sensenova-6.8-flash",
+      "field": "output_price",
+      "value": "0.5000"
+    },
+    {
+      "provider": "sensenova",
+      "model": "sensenova-6.8-flash",
+      "field": "cached_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "sensenova",
+      "model": "sensenova-6.8-flash-lite",
+      "field": "input_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "sensenova",
+      "model": "sensenova-6.8-flash-lite",
+      "field": "output_price",
+      "value": "0.5000"
+    },
+    {
+      "provider": "sensenova",
+      "model": "sensenova-6.8-flash-lite",
+      "field": "cached_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "sensenova-intl",
+      "model": "sensenova-6.7-flash-lite",
+      "field": "input_price",
+      "value": "0.1000"
+    },
+    {
+      "provider": "sensenova-intl",
+      "model": "sensenova-6.7-flash-lite",
+      "field": "output_price",
+      "value": "0.1000"
+    },
+    {
+      "provider": "sensenova-intl",
+      "model": "sensenova-6.7-flash-lite",
+      "field": "cached_price",
+      "value": "0.1000"
+    },
+    {
+      "provider": "sensenova-intl",
+      "model": "sensenova-6.8-flash",
+      "field": "input_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "sensenova-intl",
+      "model": "sensenova-6.8-flash",
+      "field": "output_price",
+      "value": "0.5000"
+    },
+    {
+      "provider": "sensenova-intl",
+      "model": "sensenova-6.8-flash",
+      "field": "cached_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "sensenova-intl",
+      "model": "sensenova-6.8-flash-lite",
+      "field": "input_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "sensenova-intl",
+      "model": "sensenova-6.8-flash-lite",
+      "field": "output_price",
+      "value": "0.5000"
+    },
+    {
+      "provider": "sensenova-intl",
+      "model": "sensenova-6.8-flash-lite",
+      "field": "cached_price",
+      "value": "0.1500"
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:deepseek-ai/DeepSeek-V4.1-Flash",
+      "field": "input_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:deepseek-ai/DeepSeek-V4.1-Flash",
+      "field": "output_price",
+      "value": "0.6"
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:deepseek-ai/DeepSeek-V4.1-Flash",
+      "field": "cached_price",
+      "value": "0.003"
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4",
+      "field": "input_price",
+      "value": "0.0750"
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4",
+      "field": "output_price",
+      "value": "0.4000"
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4",
+      "field": "cached_price",
+      "value": "0.0750"
+    },
+    {
+      "provider": "tencent",
+      "model": "hunyuan-t1-latest",
+      "field": "input_price",
+      "value": "0.4500"
+    },
+    {
+      "provider": "tencent",
+      "model": "hunyuan-t1-latest",
+      "field": "output_price",
+      "value": "1.3400"
+    },
+    {
+      "provider": "tencent",
+      "model": "hunyuan-t1-latest",
+      "field": "cached_price",
+      "value": "0.4500"
+    },
+    {
+      "provider": "tencent",
+      "model": "hunyuan-turbos-latest",
+      "field": "input_price",
+      "value": "0.4500"
+    },
+    {
+      "provider": "tencent",
+      "model": "hunyuan-turbos-latest",
+      "field": "output_price",
+      "value": "1.3400"
+    },
+    {
+      "provider": "tencent",
+      "model": "hunyuan-turbos-latest",
+      "field": "cached_price",
+      "value": "0.4500"
+    },
+    {
+      "provider": "together",
+      "model": "Qwen/Qwen3-235B-A22B",
+      "field": "input_price",
+      "value": "0.35"
+    },
+    {
+      "provider": "together",
+      "model": "Qwen/Qwen3-235B-A22B",
+      "field": "output_price",
+      "value": "1.42"
+    },
+    {
+      "provider": "together",
+      "model": "Qwen/Qwen3-235B-A22B",
+      "field": "cached_price",
+      "value": "0.35"
+    },
+    {
+      "provider": "together",
+      "model": "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
+      "field": "input_price",
+      "value": "0.3500"
+    },
+    {
+      "provider": "together",
+      "model": "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
+      "field": "output_price",
+      "value": "1.1500"
+    },
+    {
+      "provider": "together",
+      "model": "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
+      "field": "cached_price",
+      "value": "0.3500"
+    },
+    {
+      "provider": "tokenharbor",
+      "model": "deepseek-v4.1-flash:free",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "moonshotai/kimi-k3-free",
+      "field": "input_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "moonshotai/kimi-k3-free",
+      "field": "output_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "moonshotai/kimi-k3-free",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.4-pro",
+      "field": "cached_price",
+      "value": "30"
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "z-ai/glm-5.3-free",
+      "field": "input_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "z-ai/glm-5.3-free",
+      "field": "output_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "z-ai/glm-5.3-free",
+      "field": "cached_price",
+      "value": "0.0000"
+    },
+    {
+      "provider": "venice",
+      "model": "google-gemma-3-27b-it",
+      "field": "cached_price",
+      "value": "0.12"
+    },
+    {
+      "provider": "venice",
+      "model": "hermes-3-llama-3.1-405b",
+      "field": "input_price",
+      "value": "1.0000"
+    },
+    {
+      "provider": "venice",
+      "model": "hermes-3-llama-3.1-405b",
+      "field": "output_price",
+      "value": "3.0000"
+    },
+    {
+      "provider": "venice",
+      "model": "hermes-3-llama-3.1-405b",
+      "field": "cached_price",
+      "value": "1.0000"
+    },
+    {
+      "provider": "venice",
+      "model": "llama-3.2-3b",
+      "field": "cached_price",
+      "value": "0.15"
+    },
+    {
+      "provider": "venice",
+      "model": "llama-3.3-70b",
+      "field": "cached_price",
+      "value": "0.85"
+    },
+    {
+      "provider": "venice",
+      "model": "mistral-small-3-2-24b-instruct",
+      "field": "cached_price",
+      "value": "0.09375"
+    },
+    {
+      "provider": "venice",
+      "model": "nvidia-nemotron-3-nano-30b-a3b",
+      "field": "cached_price",
+      "value": "0.075"
+    },
+    {
+      "provider": "venice",
+      "model": "openai-gpt-54-pro",
+      "field": "cached_price",
+      "value": "30"
+    },
+    {
+      "provider": "venice",
+      "model": "openai-gpt-55-pro",
+      "field": "cached_price",
+      "value": "30"
+    },
+    {
+      "provider": "venice",
+      "model": "openai-gpt-oss-120b",
+      "field": "cached_price",
+      "value": "0.07"
+    },
+    {
+      "provider": "venice",
+      "model": "qwen-3-8-27b",
+      "field": "cached_price",
+      "value": "0.45"
+    },
+    {
+      "provider": "venice",
+      "model": "qwen3-235b-a22b-instruct-2507",
+      "field": "cached_price",
+      "value": "0.0945"
+    },
+    {
+      "provider": "venice",
+      "model": "qwen3-235b-a22b-thinking-2507",
+      "field": "cached_price",
+      "value": "0.45"
+    },
+    {
+      "provider": "venice",
+      "model": "qwen3-5-397b-a17b",
+      "field": "cached_price",
+      "value": "0.75"
+    },
+    {
+      "provider": "venice",
+      "model": "qwen3-6-27b",
+      "field": "cached_price",
+      "value": "0.325"
+    },
+    {
+      "provider": "venice",
+      "model": "qwen3-6-35b-a3b",
+      "field": "cached_price",
+      "value": "0.1"
+    },
+    {
+      "provider": "venice",
+      "model": "qwen3-next-80b",
+      "field": "cached_price",
+      "value": "0.35"
+    },
+    {
+      "provider": "venice",
+      "model": "venice-uncensored-1-2",
+      "field": "cached_price",
+      "value": "0.2"
+    },
+    {
+      "provider": "venice",
+      "model": "venice-uncensored-role-play",
+      "field": "cached_price",
+      "value": "0.5"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-3",
+      "field": "input_price",
+      "value": "3.0000"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-3",
+      "field": "output_price",
+      "value": "15.0000"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-3",
+      "field": "cached_price",
+      "value": "3.0000"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4-fast-reasoning",
+      "field": "input_price",
+      "value": "0.2000"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4-fast-reasoning",
+      "field": "output_price",
+      "value": "0.5000"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4-fast-reasoning",
+      "field": "cached_price",
+      "value": "0.2000"
+    },
+    {
+      "provider": "xiaomi-mimo",
+      "model": "mimo-v2-flash",
+      "field": "input_price",
+      "value": "0.1000"
+    },
+    {
+      "provider": "xiaomi-mimo",
+      "model": "mimo-v2-flash",
+      "field": "output_price",
+      "value": "0.3000"
+    },
+    {
+      "provider": "xiaomi-mimo",
+      "model": "mimo-v2-flash",
+      "field": "cached_price",
+      "value": "0.1000"
+    },
+    {
+      "provider": "xiaomi-mimo",
+      "model": "mimo-v2-omni",
+      "field": "input_price",
+      "value": "0.4000"
+    },
+    {
+      "provider": "xiaomi-mimo",
+      "model": "mimo-v2-omni",
+      "field": "output_price",
+      "value": "2.0000"
+    },
+    {
+      "provider": "xiaomi-mimo",
+      "model": "mimo-v2-omni",
+      "field": "cached_price",
+      "value": "0.4000"
+    }
+  ],
+  "limit_fields": [
+    {
+      "provider": "alicode",
+      "model": "MiniMax-M2.5",
+      "field": "max_input_tokens",
+      "value": 196601
+    },
+    {
+      "provider": "alicode",
+      "model": "qwen3.5-plus",
+      "field": "max_input_tokens",
+      "value": 991808
+    },
+    {
+      "provider": "alicode-intl",
+      "model": "qwen3.5-plus",
+      "field": "max_input_tokens",
+      "value": 991808
+    },
+    {
+      "provider": "alims-intl",
+      "model": "MiniMax-M2.5",
+      "field": "max_context_tokens",
+      "value": 196608
+    },
+    {
+      "provider": "alims-intl",
+      "model": "MiniMax-M2.5",
+      "field": "max_input_tokens",
+      "value": 196601
+    },
+    {
+      "provider": "alims-intl",
+      "model": "MiniMax-M2.5",
+      "field": "max_output_tokens",
+      "value": 24576
+    },
+    {
+      "provider": "alims-intl",
+      "model": "glm-4.7",
+      "field": "max_context_tokens",
+      "value": 202752
+    },
+    {
+      "provider": "alims-intl",
+      "model": "glm-4.7",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "alims-intl",
+      "model": "qwen3-coder-next",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "alims-intl",
+      "model": "qwen3-coder-next",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "alitp-intl",
+      "model": "deepseek-v4-pro",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "alitp-intl",
+      "model": "glm-5.2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "alitp-intl",
+      "model": "qwen3.6-flash",
+      "field": "max_input_tokens",
+      "value": 983616
+    },
+    {
+      "provider": "alitp-intl",
+      "model": "qwen3.7-max",
+      "field": "max_input_tokens",
+      "value": 983616
+    },
+    {
+      "provider": "alitp-intl",
+      "model": "qwen3.7-plus",
+      "field": "max_input_tokens",
+      "value": 983616
+    },
+    {
+      "provider": "api-airforce",
+      "model": "gpt-oss-120b",
+      "field": "max_input_tokens",
+      "value": 124000
+    },
+    {
+      "provider": "api-airforce",
+      "model": "gpt-oss-20b",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "api-airforce",
+      "model": "kimi-k2.7-code",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "api-airforce",
+      "model": "kimi-k2.7-code",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "baidu",
+      "model": "deepseek-v4-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "baidu",
+      "model": "deepseek-v4-flash",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "baidu",
+      "model": "deepseek-v4-pro",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "baidu",
+      "model": "deepseek-v4-pro",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "baidu",
+      "model": "glm-5.1",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "baidu",
+      "model": "glm-5.2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "baidu",
+      "model": "glm-5.2",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "baidu",
+      "model": "kimi-k2.6",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "baidu",
+      "model": "kimi-k2.6",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "baidu",
+      "model": "qwen3.5-27b",
+      "field": "max_output_tokens",
+      "value": 81920
+    },
+    {
+      "provider": "baidu",
+      "model": "qwen3.5-397b-a17b",
+      "field": "max_output_tokens",
+      "value": 81920
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "claude-haiku-4.5",
+      "field": "max_output_tokens",
+      "value": 64000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "claude-opus-4.7",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "claude-sonnet-4.6",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gemini-3-flash-preview",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gemini-3-flash-preview",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gemini-3.1-flash-lite-preview",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gemini-3.1-flash-lite-preview",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gemini-3.1-pro-preview",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gemini-3.1-pro-preview",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "glm-5",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "glm-5.1",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gpt-5.4",
+      "field": "max_input_tokens",
+      "value": 922000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gpt-5.4",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gpt-5.4-mini",
+      "field": "max_input_tokens",
+      "value": 272000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gpt-5.4-mini",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gpt-5.4-nano",
+      "field": "max_input_tokens",
+      "value": 272000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gpt-5.4-nano",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gpt-5.5",
+      "field": "max_input_tokens",
+      "value": 922000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gpt-5.5",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "grok-4.20",
+      "field": "max_output_tokens",
+      "value": 1800000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "grok-4.3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "grok-4.3",
+      "field": "max_output_tokens",
+      "value": 30000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "kimi-k2.5",
+      "field": "max_output_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "kimi-k2.6",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "kimi-k2.6",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "mimo-v2.5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "mimo-v2.5",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "mimo-v2.5-pro",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "mimo-v2.5-pro",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "minimax-m2.5",
+      "field": "max_input_tokens",
+      "value": 196601
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "minimax-m2.5",
+      "field": "max_output_tokens",
+      "value": 24576
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "minimax-m2.7",
+      "field": "max_input_tokens",
+      "value": 196608
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "minimax-m2.7",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "minimax-m3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "minimax-m3",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "nemotron-3-super-120b-a12b",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "nemotron-3-super-120b-a12b",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "qwen3.6-plus",
+      "field": "max_input_tokens",
+      "value": 983616
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "qwen3.6-plus",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/anthropic/claude-fable-5",
+      "field": "max_context_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/anthropic/claude-fable-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/anthropic/claude-fable-5",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/deepseek/deepseek-v4-flash",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/deepseek/deepseek-v4-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/deepseek/deepseek-v4-flash",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/openai/gpt-5.3-codex",
+      "field": "max_input_tokens",
+      "value": 272000
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/openai/gpt-5.4",
+      "field": "max_input_tokens",
+      "value": 922000
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/openai/gpt-5.4-nano",
+      "field": "max_input_tokens",
+      "value": 272000
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/openai/gpt-5.4-pro",
+      "field": "max_input_tokens",
+      "value": 922000
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/openai/gpt-5.5",
+      "field": "max_context_tokens",
+      "value": 1050000
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/openai/gpt-5.5",
+      "field": "max_input_tokens",
+      "value": 922000
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/openai/gpt-5.5",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/x-ai/grok-4.3",
+      "field": "max_context_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/x-ai/grok-4.3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "blackbox",
+      "model": "blackboxai/x-ai/grok-4.3",
+      "field": "max_output_tokens",
+      "value": 30000
+    },
+    {
+      "provider": "bluesminds",
+      "model": "claude-haiku-4-5",
+      "field": "max_input_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "bluesminds",
+      "model": "claude-haiku-4-5",
+      "field": "max_output_tokens",
+      "value": 64000
+    },
+    {
+      "provider": "bluesminds",
+      "model": "claude-opus-4-5",
+      "field": "max_input_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "bluesminds",
+      "model": "claude-opus-4-5",
+      "field": "max_output_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "bluesminds",
+      "model": "claude-sonnet-4-5",
+      "field": "max_input_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "bluesminds",
+      "model": "claude-sonnet-4-5",
+      "field": "max_output_tokens",
+      "value": 64000
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gemini-2.5-pro",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gemini-2.5-pro",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "bluesminds",
+      "model": "glm-4.7",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gpt-4.1",
+      "field": "max_input_tokens",
+      "value": 1047576
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gpt-4.1",
+      "field": "max_output_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gpt-4.1-mini",
+      "field": "max_input_tokens",
+      "value": 1047576
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gpt-4.1-mini",
+      "field": "max_output_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gpt-4.1-nano",
+      "field": "max_input_tokens",
+      "value": 1047576
+    },
+    {
+      "provider": "bluesminds",
+      "model": "gpt-4.1-nano",
+      "field": "max_output_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "bluesminds",
+      "model": "kimi-k2",
+      "field": "max_output_tokens",
+      "value": 98304
+    },
+    {
+      "provider": "bluesminds",
+      "model": "kimi-k2-thinking",
+      "field": "max_output_tokens",
+      "value": 98304
+    },
+    {
+      "provider": "bluesminds",
+      "model": "minimax-m2.5",
+      "field": "max_input_tokens",
+      "value": 196601
+    },
+    {
+      "provider": "bluesminds",
+      "model": "minimax-m2.5",
+      "field": "max_output_tokens",
+      "value": 24576
+    },
+    {
+      "provider": "chutes",
+      "model": "Qwen/Qwen3.8-Max-0902",
+      "field": "max_input_tokens",
+      "value": 983616
+    },
+    {
+      "provider": "chutes",
+      "model": "deepseek-ai/DeepSeek-V4-Pro-0813",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "chutes",
+      "model": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "chutes",
+      "model": "moonshotai/Kimi-K2.7-Code",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "chutes",
+      "model": "tencent/Hy4",
+      "field": "max_input_tokens",
+      "value": 983010
+    },
+    {
+      "provider": "chutes",
+      "model": "zai-org/GLM-5.3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/deepseek-v4-flash",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/deepseek-v4-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/deepseek-v4-flash",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/deepseek-v4-pro",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/deepseek-v4-pro",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/deepseek-v4-pro",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/glm-5.2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/glm-5.2",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/kimi-k2.6",
+      "field": "max_context_tokens",
+      "value": 256000
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/kimi-k2.6",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/kimi-k2.6",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/kimi-k2.7-code",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/kimi-k2.7-code",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/mimo-v2.5",
+      "field": "max_context_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/mimo-v2.5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/mimo-v2.5",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/mimo-v2.5-pro",
+      "field": "max_context_tokens",
+      "value": 1024000
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/mimo-v2.5-pro",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/mimo-v2.5-pro",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/minimax-m3",
+      "field": "max_context_tokens",
+      "value": 512000
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/minimax-m3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/minimax-m3",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/qwen3.7-max",
+      "field": "max_context_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/qwen3.7-max",
+      "field": "max_input_tokens",
+      "value": 983616
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/qwen3.7-max",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/qwen3.7-plus",
+      "field": "max_context_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/qwen3.7-plus",
+      "field": "max_input_tokens",
+      "value": 983616
+    },
+    {
+      "provider": "clinepass",
+      "model": "cline-pass/qwen3.7-plus",
+      "field": "max_output_tokens",
+      "value": 64000
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "deepseek-v4-pro",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "deepseek-v4-pro",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "deepseek-v4.1-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "deepseek-v4.1-flash",
+      "field": "max_output_tokens",
+      "value": 384000
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.1",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.2",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.3",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.3-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "glm-5.3-flash",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "hy3",
+      "field": "max_input_tokens",
+      "value": 192000
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "hy3",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "hy4-preview",
+      "field": "max_input_tokens",
+      "value": 1024000
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "hy4-preview",
+      "field": "max_output_tokens",
+      "value": 64000
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "minimax-m3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "codebuddy-cn",
+      "model": "minimax-m3",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "deepseek-v4-pro",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "deepseek-v4-pro",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "deepseek-v4-pro",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "deepseek-v4.1-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "deepseek-v4.1-flash",
+      "field": "max_output_tokens",
+      "value": 384000
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-4.7",
+      "field": "max_context_tokens",
+      "value": 202752
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-4.7",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.1",
+      "field": "max_context_tokens",
+      "value": 198000
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.1",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5.2",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5v-turbo",
+      "field": "max_context_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "glm-5v-turbo",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "hy3-preview",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "hy3-preview",
+      "field": "max_output_tokens",
+      "value": 235929
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "kimi-k2.5",
+      "field": "max_context_tokens",
+      "value": 256000
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "kimi-k2.5",
+      "field": "max_output_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "kimi-k2.6",
+      "field": "max_context_tokens",
+      "value": 256000
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "kimi-k2.6",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "kimi-k2.6",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "minimax-m2.7",
+      "field": "max_context_tokens",
+      "value": 196608
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "minimax-m2.7",
+      "field": "max_input_tokens",
+      "value": 196608
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "minimax-m2.7",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "minimax-m3",
+      "field": "max_context_tokens",
+      "value": 512000
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "minimax-m3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "codebuddy-intl",
+      "model": "minimax-m3",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "dahl",
+      "model": "MiniMaxAI/MiniMax-M2.7",
+      "field": "max_context_tokens",
+      "value": 196608
+    },
+    {
+      "provider": "dahl",
+      "model": "MiniMaxAI/MiniMax-M2.7",
+      "field": "max_input_tokens",
+      "value": 196608
+    },
+    {
+      "provider": "dahl",
+      "model": "MiniMaxAI/MiniMax-M2.7",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "dahl",
+      "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+      "field": "max_context_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "dahl",
+      "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+      "field": "max_output_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "dahl",
+      "model": "zai-org/GLM-5.3-Flash",
+      "field": "max_context_tokens",
+      "value": 524288
+    },
+    {
+      "provider": "dahl",
+      "model": "zai-org/GLM-5.3-Flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "dahl",
+      "model": "zai-org/GLM-5.3-Flash",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "featherless",
+      "model": "deepseek-ai/DeepSeek-V4-Flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "featherless",
+      "model": "deepseek-ai/DeepSeek-V4-Flash",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "featherless",
+      "model": "deepseek-ai/DeepSeek-V4-Pro",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "featherless",
+      "model": "deepseek-ai/DeepSeek-V4-Pro",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "featherless",
+      "model": "moonshotai/Kimi-K2.5",
+      "field": "max_output_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "featherless",
+      "model": "moonshotai/Kimi-K2.6",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "featherless",
+      "model": "moonshotai/Kimi-K2.6",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "featherless",
+      "model": "moonshotai/Kimi-K2.7-Code",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "featherless",
+      "model": "moonshotai/Kimi-K2.7-Code",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "featherless",
+      "model": "zai-org/GLM-5.1",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "featherless",
+      "model": "zai-org/GLM-5.2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "featherless",
+      "model": "zai-org/GLM-5.2",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "fireworks",
+      "model": "accounts/fireworks/models/qwen3-235b-a22b",
+      "field": "max_context_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "glm",
+      "model": "glm-4.6v",
+      "field": "max_output_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "glm",
+      "model": "glm-5",
+      "field": "max_context_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "glm",
+      "model": "glm-5",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "glm",
+      "model": "glm-5.1",
+      "field": "max_context_tokens",
+      "value": 198000
+    },
+    {
+      "provider": "glm",
+      "model": "glm-5.1",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "glm",
+      "model": "glm-5.3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-4.5-air",
+      "field": "max_context_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-4.5-air",
+      "field": "max_output_tokens",
+      "value": 98304
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-4.6",
+      "field": "max_context_tokens",
+      "value": 204800
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-4.6",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-4.7",
+      "field": "max_context_tokens",
+      "value": 202752
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-4.7",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5",
+      "field": "max_context_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5-turbo",
+      "field": "max_context_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5-turbo",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5.1",
+      "field": "max_context_tokens",
+      "value": 198000
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5.1",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5.2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5.2",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5.3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5.3-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "groq",
+      "model": "qwen/qwen3-32b",
+      "field": "max_context_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "groq",
+      "model": "qwen/qwen3-32b",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "Qwen/QwQ-32B",
+      "field": "max_context_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "Qwen/Qwen2.5-72B-Instruct",
+      "field": "max_context_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "Qwen/Qwen2.5-Coder-32B-Instruct",
+      "field": "max_context_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "deepseek-ai/DeepSeek-R1",
+      "field": "max_context_tokens",
+      "value": 163839
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "deepseek-ai/DeepSeek-V3",
+      "field": "max_context_tokens",
+      "value": 164000
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "meta-llama/Llama-3.2-3B-Instruct",
+      "field": "max_context_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "meta-llama/Llama-3.3-70B-Instruct",
+      "field": "max_context_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "kilo-auto/free",
+      "field": "max_input_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "kimchi",
+      "model": "claude-opus-4-6",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "kimchi",
+      "model": "claude-opus-4-6",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "kimchi",
+      "model": "claude-sonnet-4-6",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "kimchi",
+      "model": "claude-sonnet-4-6",
+      "field": "max_output_tokens",
+      "value": 64000
+    },
+    {
+      "provider": "kimchi",
+      "model": "kimi-k2.5",
+      "field": "max_context_tokens",
+      "value": 256000
+    },
+    {
+      "provider": "kimchi",
+      "model": "kimi-k2.5",
+      "field": "max_output_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "kimchi",
+      "model": "kimi-k2.6",
+      "field": "max_context_tokens",
+      "value": 256000
+    },
+    {
+      "provider": "kimchi",
+      "model": "kimi-k2.6",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "kimchi",
+      "model": "kimi-k2.6",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "kimchi",
+      "model": "minimax-m2.7",
+      "field": "max_context_tokens",
+      "value": 196608
+    },
+    {
+      "provider": "kimchi",
+      "model": "minimax-m2.7",
+      "field": "max_input_tokens",
+      "value": 196608
+    },
+    {
+      "provider": "kimchi",
+      "model": "minimax-m2.7",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "kimchi",
+      "model": "minimax-m3",
+      "field": "max_context_tokens",
+      "value": 512000
+    },
+    {
+      "provider": "kimchi",
+      "model": "minimax-m3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "kimchi",
+      "model": "minimax-m3",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k2.5",
+      "field": "max_context_tokens",
+      "value": 256000
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k2.5",
+      "field": "max_output_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k2.6",
+      "field": "max_context_tokens",
+      "value": 256000
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k2.6",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k2.6",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k2.7-code",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k2.7-code",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k2.7-code-highspeed",
+      "field": "max_output_tokens",
+      "value": 262000
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k3",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k3",
+      "field": "max_output_tokens",
+      "value": 8000
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-latest",
+      "field": "max_context_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-latest",
+      "field": "max_output_tokens",
+      "value": 943718
+    },
+    {
+      "provider": "llm7",
+      "model": "claude-opus-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "llm7",
+      "model": "claude-opus-5",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "llm7",
+      "model": "deepseek-v4-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "llm7",
+      "model": "deepseek-v4-flash",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "llm7",
+      "model": "gpt-5.5",
+      "field": "max_input_tokens",
+      "value": 922000
+    },
+    {
+      "provider": "llm7",
+      "model": "gpt-5.5",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "llm7",
+      "model": "grok-4.5",
+      "field": "max_input_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "llm7",
+      "model": "grok-4.5",
+      "field": "max_output_tokens",
+      "value": 450000
+    },
+    {
+      "provider": "llm7",
+      "model": "kimi-k3",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "llm7",
+      "model": "kimi-k3",
+      "field": "max_output_tokens",
+      "value": 8000
+    },
+    {
+      "provider": "minimax-cn",
+      "model": "MiniMax-M3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "minimax-cn",
+      "model": "MiniMax-M3.1-Flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "muse",
+      "model": "muse-spark-1.1",
+      "field": "max_context_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "muse",
+      "model": "muse-spark-1.2",
+      "field": "max_context_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "muse",
+      "model": "muse-spark-1.2-contributor",
+      "field": "max_context_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "muse",
+      "model": "muse-spark-1.3",
+      "field": "max_context_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "muse",
+      "model": "muse-spark-1.3-contributor",
+      "field": "max_context_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "nebius",
+      "model": "meta-llama/Llama-3.3-70B-Instruct",
+      "field": "max_context_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "nvidia",
+      "model": "deepseek-ai/deepseek-v4-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "nvidia",
+      "model": "deepseek-ai/deepseek-v4-flash",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "nvidia",
+      "model": "deepseek-ai/deepseek-v4-pro",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "nvidia",
+      "model": "deepseek-ai/deepseek-v4-pro",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "nvidia",
+      "model": "deepseek-ai/deepseek-v4.1-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "nvidia",
+      "model": "google/gemma-4-31b-it",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-3.3-70b-instruct",
+      "field": "max_context_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-3.3-70b-instruct",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-3.3-70b-instruct",
+      "field": "max_output_tokens",
+      "value": 115200
+    },
+    {
+      "provider": "nvidia",
+      "model": "minimaxai/minimax-m3.1-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "nvidia",
+      "model": "openai/gpt-oss-20b",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "nvidia",
+      "model": "z-ai/glm-5.2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "nvidia",
+      "model": "z-ai/glm-5.2",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "nvidia",
+      "model": "z-ai/glm-5.3-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-flash",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-flash",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-flash",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-flash-vision-exp",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-flash-vision-exp",
+      "field": "max_output_tokens",
+      "value": 384000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "glm-5",
+      "field": "max_context_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "glm-5",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "opencode-go",
+      "model": "glm-5.1",
+      "field": "max_context_tokens",
+      "value": 198000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "glm-5.1",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "opencode-go",
+      "model": "grok-4.5",
+      "field": "max_context_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "grok-4.5",
+      "field": "max_input_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "grok-4.5",
+      "field": "max_output_tokens",
+      "value": 450000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "grok-4.6",
+      "field": "max_context_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "grok-4.6",
+      "field": "max_input_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "grok-4.6",
+      "field": "max_output_tokens",
+      "value": 450000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "hy3-preview",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "opencode-go",
+      "model": "hy3-preview",
+      "field": "max_output_tokens",
+      "value": 235929
+    },
+    {
+      "provider": "opencode-go",
+      "model": "kimi-k2.5",
+      "field": "max_context_tokens",
+      "value": 256000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "kimi-k2.5",
+      "field": "max_output_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "opencode-go",
+      "model": "kimi-k2.6",
+      "field": "max_context_tokens",
+      "value": 256000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "kimi-k2.6",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "opencode-go",
+      "model": "kimi-k2.6",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "opencode-go",
+      "model": "minimax-m2.5",
+      "field": "max_context_tokens",
+      "value": 196608
+    },
+    {
+      "provider": "opencode-go",
+      "model": "minimax-m2.5",
+      "field": "max_input_tokens",
+      "value": 196601
+    },
+    {
+      "provider": "opencode-go",
+      "model": "minimax-m2.5",
+      "field": "max_output_tokens",
+      "value": 24576
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.5-plus",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.5-plus",
+      "field": "max_input_tokens",
+      "value": 991808
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.5-plus",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.6-plus",
+      "field": "max_context_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.6-plus",
+      "field": "max_input_tokens",
+      "value": 983616
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.6-plus",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.7-max",
+      "field": "max_context_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.7-max",
+      "field": "max_input_tokens",
+      "value": 983616
+    },
+    {
+      "provider": "opencode-go",
+      "model": "qwen3.7-max",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "opencode-go",
+      "model": "space-bunny-free",
+      "field": "max_input_tokens",
+      "value": 524288
+    },
+    {
+      "provider": "opencode-go",
+      "model": "space-bunny-free",
+      "field": "max_output_tokens",
+      "value": 524288
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "beam-free",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "claude-fable-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "claude-fable-5-1",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "claude-fable-5-2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "claude-haiku-4-5",
+      "field": "max_input_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "claude-haiku-5-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "claude-opus-4-5",
+      "field": "max_input_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "claude-opus-4-6",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "claude-opus-4-7",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "claude-opus-4-8",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "claude-opus-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "claude-opus-5-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "claude-sonnet-4-5",
+      "field": "max_input_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "claude-sonnet-4-6",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "claude-sonnet-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "claude-sonnet-5-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "deepseek-v4-pro",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "deepseek-v4.1-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "gemini-3.5-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "gemini-3.5-flash-lite",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "gemini-3.6-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "gemini-3.7-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "gemini-3.8-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "gemini-4-argon",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "gemini-4-carbon",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "gemini-4-hydrogen",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "glm-5.2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "glm-5.3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "glm-5.3-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "grok-4.5",
+      "field": "max_input_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "grok-4.6",
+      "field": "max_input_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "grok-4.7",
+      "field": "max_input_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "grok-build-0.1",
+      "field": "max_input_tokens",
+      "value": 256000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "kimi-k2.6",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "kimi-k2.7-code",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "kimi-k3",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "minimax-m2.5",
+      "field": "max_input_tokens",
+      "value": 196601
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "minimax-m2.7",
+      "field": "max_input_tokens",
+      "value": 196608
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "minimax-m3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mistral-large-4",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "muse-spark-1.2",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "muse-spark-1.3",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "qwen3.5-plus",
+      "field": "max_input_tokens",
+      "value": 991808
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "qwen3.6-plus",
+      "field": "max_input_tokens",
+      "value": 983616
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "qwen3.8-flash",
+      "field": "max_input_tokens",
+      "value": 983616
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "qwen3.8-max",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "anthropic/claude-fable-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "anthropic/claude-opus-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "anthropic/claude-sonnet-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "cohere/command-r-08-2024",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "openrouter",
+      "model": "cohere/command-r-plus-08-2024",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "openrouter",
+      "model": "cohere/command-r7b-12-2024",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-chat",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-v4-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-v4-flash-vision-exp",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-v4-pro",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-v4-pro-0813",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-v4.1-flash-1017",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-2.5-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-2.5-flash-image",
+      "field": "max_input_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-2.5-flash-lite",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-2.5-pro",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3-flash-preview",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3-pro-image",
+      "field": "max_input_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.1-flash-image",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.1-flash-lite",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.1-flash-lite-image",
+      "field": "max_input_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.1-flash-lite-preview",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.1-pro-preview",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.1-pro-preview-customtools",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.5-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.5-flash-lite",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.6-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.7-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.8-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-4-argon",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-4-carbon",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-4-hydrogen",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-nano-banana-2.1",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemma-3-27b-it",
+      "field": "max_input_tokens",
+      "value": 100000
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemma-4-26b-a4b-it",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/lyria-3-clip-preview",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/lyria-3-pro-preview",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "openrouter",
+      "model": "meituan/longcat-2.0",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta-llama/llama-3.2-1b-instruct",
+      "field": "max_input_tokens",
+      "value": 60000
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta-llama/llama-3.2-3b-instruct",
+      "field": "max_input_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta-llama/llama-3.3-70b-instruct",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta/muse-spark-1.1",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta/muse-spark-1.2",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta/muse-spark-1.2-contributor",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta/muse-spark-1.3",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta/muse-spark-1.3-contributor",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta/muse-spark-open",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "minimax/minimax-m2.5",
+      "field": "max_input_tokens",
+      "value": 196601
+    },
+    {
+      "provider": "openrouter",
+      "model": "minimax/minimax-m2.7",
+      "field": "max_input_tokens",
+      "value": 196608
+    },
+    {
+      "provider": "openrouter",
+      "model": "minimax/minimax-m3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "minimax/minimax-m3.1-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "mistralai/codestral-2508",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "openrouter",
+      "model": "mistralai/ministral-14b-2512",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "openrouter",
+      "model": "mistralai/ministral-3b-2512",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "openrouter",
+      "model": "mistralai/ministral-8b-2512",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "openrouter",
+      "model": "mistralai/mistral-large-2512",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "openrouter",
+      "model": "mistralai/mistral-small-2603",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "openrouter",
+      "model": "mistralai/mistral-small-3.1-24b-instruct",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "openrouter",
+      "model": "moonshotai/kimi-k2.6",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "openrouter",
+      "model": "moonshotai/kimi-k2.7-code",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "openrouter",
+      "model": "moonshotai/kimi-k3",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "moonshotai/kimi-k3.1-pro",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "morph/morph-v3-fast",
+      "field": "max_input_tokens",
+      "value": 16000
+    },
+    {
+      "provider": "openrouter",
+      "model": "morph/morph-v3-large",
+      "field": "max_input_tokens",
+      "value": 16000
+    },
+    {
+      "provider": "openrouter",
+      "model": "nousresearch/hermes-4-405b",
+      "field": "max_input_tokens",
+      "value": 120000
+    },
+    {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3.5-super-vl",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-4",
+      "field": "max_input_tokens",
+      "value": 8192
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-4.1",
+      "field": "max_input_tokens",
+      "value": 1047576
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-4.1-mini",
+      "field": "max_input_tokens",
+      "value": 1047576
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-4.1-nano",
+      "field": "max_input_tokens",
+      "value": 1047576
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-4o",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-2024-05-13",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-2024-08-06",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-2024-11-20",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-mini",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-audio",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-audio-mini",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-oss-120b",
+      "field": "max_input_tokens",
+      "value": 124000
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-oss-20b",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-oss-safeguard-20b",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/o3",
+      "field": "max_input_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/o3-pro",
+      "field": "max_input_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/auto",
+      "field": "max_output_tokens",
+      "value": 32000
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/free",
+      "field": "max_output_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/sonar",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/sonar-deep-research",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/sonar-pro",
+      "field": "max_input_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/sonar-reasoning-pro",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3-30b-a3b-instruct-2507",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3.8-27b",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "openrouter",
+      "model": "tencent/hy4-preview",
+      "field": "max_input_tokens",
+      "value": 1024000
+    },
+    {
+      "provider": "openrouter",
+      "model": "thinkingmachines/inkling-2-small",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "x-ai/grok-4.3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "x-ai/grok-4.5",
+      "field": "max_input_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "openrouter",
+      "model": "x-ai/grok-4.6",
+      "field": "max_input_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "openrouter",
+      "model": "x-ai/grok-4.7",
+      "field": "max_input_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "openrouter",
+      "model": "x-ai/grok-build-0.1",
+      "field": "max_input_tokens",
+      "value": 256000
+    },
+    {
+      "provider": "openrouter",
+      "model": "xiaomi/mimo-v2.5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "xiaomi/mimo-v2.5-pro",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "xiaomi/mimo-v2.6-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "xiaomi/mimo-v2.6-pro",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "z-ai/glm-5.2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "z-ai/glm-5.3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "z-ai/glm-5.3-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "openrouter",
+      "model": "~google/gemini-flash-latest",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "openrouter",
+      "model": "~google/gemini-pro-latest",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-fable-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-fable-5-1",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-haiku-4-5",
+      "field": "max_input_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-haiku-5-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-opus-4-5",
+      "field": "max_input_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-opus-4-6",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-opus-4-7",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-opus-4-8",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-opus-4-8",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-opus-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-opus-5-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-sonnet-4-5",
+      "field": "max_input_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-sonnet-4-6",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-sonnet-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "anthropic/claude-sonnet-5-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "google/gemini-3-flash-preview",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "google/gemini-3.1-pro-preview",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "google/gemini-3.6-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "google/gemini-3.7-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "google/gemini-3.8-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "google/gemini-4-argon",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "openai/gpt-5.4-mini",
+      "field": "max_context_tokens",
+      "value": 400000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "openai/gpt-5.4-mini",
+      "field": "max_input_tokens",
+      "value": 272000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "openai/gpt-5.4-mini",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "perplexity/deepseek-v4-pro-0813",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "perplexity/glm-5.2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "perplexity/glm-5.2",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "perplexity/glm-5.3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "perplexity/glm-5.3-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "perplexity/kimi-k2.7-code",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "perplexity/kimi-k2.7-code",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "perplexity/kimi-k3",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "perplexity/sonar",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "xai/grok-4.5",
+      "field": "max_input_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "xai/grok-4.6",
+      "field": "max_input_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "perplexity-agent",
+      "model": "xai/grok-4.7",
+      "field": "max_input_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "runcrate",
+      "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "runcrate",
+      "model": "Qwen/Qwen3.8-Flash",
+      "field": "max_input_tokens",
+      "value": 983616
+    },
+    {
+      "provider": "runcrate",
+      "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "runcrate",
+      "model": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "runcrate",
+      "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "runcrate",
+      "model": "moonshotai/Kimi-K2.6",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "runcrate",
+      "model": "openai/gpt-oss-120b",
+      "field": "max_input_tokens",
+      "value": 124000
+    },
+    {
+      "provider": "runcrate",
+      "model": "zai-org/GLM-5.3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "runcrate",
+      "model": "zai-org/GLM-5.3-Flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "sambanova",
+      "model": "GLM-5.3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "sambanova",
+      "model": "MiniMax-M3.1-Flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-v4-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-v4-pro",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "sensenova",
+      "model": "glm-5.2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "sensenova",
+      "model": "glm-5.3",
+      "field": "max_context_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "sensenova",
+      "model": "glm-5.3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "sensenova",
+      "model": "glm-5.3",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "sensenova",
+      "model": "kimi-k3",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "sensenova-intl",
+      "model": "sensenova-6.8-flash-lite",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "sensenova-intl",
+      "model": "sensenova-6.8-flash-lite",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "siliconflow",
+      "model": "MiniMaxAI/MiniMax-M3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "siliconflow",
+      "model": "Qwen/Qwen2.5-72B-Instruct",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "siliconflow",
+      "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "siliconflow",
+      "model": "Qwen/Qwen3-VL-30B-A3B-Instruct",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "siliconflow",
+      "model": "Qwen/Qwen3-VL-8B-Instruct",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "siliconflow",
+      "model": "deepseek-ai/DeepSeek-R1",
+      "field": "max_input_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "siliconflow",
+      "model": "deepseek-ai/DeepSeek-V3",
+      "field": "max_input_tokens",
+      "value": 32768
+    },
+    {
+      "provider": "siliconflow",
+      "model": "deepseek-ai/DeepSeek-V4-Flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "siliconflow",
+      "model": "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "siliconflow",
+      "model": "deepseek-ai/DeepSeek-V4-Pro",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "siliconflow",
+      "model": "deepseek-ai/DeepSeek-V4-Pro-0813",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "siliconflow",
+      "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+      "field": "max_context_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "siliconflow",
+      "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "siliconflow",
+      "model": "google/gemma-4-26B-A4B-it",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "siliconflow",
+      "model": "google/gemma-4-31B-it",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "siliconflow",
+      "model": "meituan-longcat/LongCat-2.0",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "siliconflow",
+      "model": "moonshotai/Kimi-K2.5",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "siliconflow",
+      "model": "moonshotai/Kimi-K2.6",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "siliconflow",
+      "model": "moonshotai/Kimi-K2.7-Code",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "siliconflow",
+      "model": "moonshotai/Kimi-K3",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "siliconflow",
+      "model": "openai/gpt-oss-120b",
+      "field": "max_input_tokens",
+      "value": 124000
+    },
+    {
+      "provider": "siliconflow",
+      "model": "openai/gpt-oss-20b",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "siliconflow",
+      "model": "tencent/Hy4-preview",
+      "field": "max_context_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "siliconflow",
+      "model": "tencent/Hy4-preview",
+      "field": "max_input_tokens",
+      "value": 1024000
+    },
+    {
+      "provider": "siliconflow",
+      "model": "zai-org/GLM-4.5-Air",
+      "field": "max_context_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "siliconflow",
+      "model": "zai-org/GLM-5.2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "siliconflow",
+      "model": "zai-org/GLM-5.3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "siliconflow",
+      "model": "zai-org/GLM-5.3-Flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:Qwen/Qwen3.8-27B",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:deepseek-ai/DeepSeek-V4.1-Flash",
+      "field": "max_context_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:deepseek-ai/DeepSeek-V4.1-Flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:deepseek-ai/DeepSeek-V4.1-Flash",
+      "field": "max_output_tokens",
+      "value": 384000
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:deepseek-ai/DeepSeek-V4.1-Flash-1017",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:moonshotai/Kimi-K3",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:moonshotai/Kimi-K3.1-Pro",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:openai/gpt-oss-120b",
+      "field": "max_input_tokens",
+      "value": 124000
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:zai-org/GLM-4.7-Flash",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:zai-org/GLM-5.3",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "synthetic",
+      "model": "hf:zai-org/GLM-5.3-Flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "together",
+      "model": "Qwen/Qwen3-235B-A22B",
+      "field": "max_context_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "together",
+      "model": "Qwen/Qwen3-235B-A22B",
+      "field": "max_input_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "together",
+      "model": "Qwen/Qwen3-235B-A22B",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "tokenharbor",
+      "model": "claude-sonnet-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "tokenharbor",
+      "model": "gpt-6-astra",
+      "field": "max_input_tokens",
+      "value": 922000
+    },
+    {
+      "provider": "tokenharbor",
+      "model": "gpt-6-sol",
+      "field": "max_input_tokens",
+      "value": 922000
+    },
+    {
+      "provider": "tokenharbor",
+      "model": "grok-4.7",
+      "field": "max_input_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "anthropic/claude-haiku-4.5",
+      "field": "max_context_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "anthropic/claude-haiku-4.5",
+      "field": "max_output_tokens",
+      "value": 64000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "anthropic/claude-opus-4.8",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "anthropic/claude-sonnet-4.6",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "deepseek/deepseek-v4-flash",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "deepseek/deepseek-v4-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "deepseek/deepseek-v4-flash",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "deepseek/deepseek-v4-pro",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "deepseek/deepseek-v4-pro",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "deepseek/deepseek-v4-pro",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "google/gemini-3.5-flash",
+      "field": "max_context_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "google/gemini-3.5-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "google/gemini-3.5-flash",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "google/gemini-3.6-flash",
+      "field": "max_context_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "google/gemini-3.6-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "google/gemini-3.6-flash",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "moonshotai/kimi-k2.7-code",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "moonshotai/kimi-k2.7-code",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.4",
+      "field": "max_context_tokens",
+      "value": 1050000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.4",
+      "field": "max_input_tokens",
+      "value": 922000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.4",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.4-mini",
+      "field": "max_context_tokens",
+      "value": 400000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.4-mini",
+      "field": "max_input_tokens",
+      "value": 272000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.4-mini",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.4-pro",
+      "field": "max_context_tokens",
+      "value": 1050000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.4-pro",
+      "field": "max_input_tokens",
+      "value": 922000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.4-pro",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.5",
+      "field": "max_context_tokens",
+      "value": 1050000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.5",
+      "field": "max_input_tokens",
+      "value": 922000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.5",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.6-sol",
+      "field": "max_context_tokens",
+      "value": 272000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.6-sol",
+      "field": "max_input_tokens",
+      "value": 922000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "openai/gpt-5.6-sol",
+      "field": "max_output_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "qwen/qwen3-coder-next",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "qwen/qwen3-coder-next",
+      "field": "max_output_tokens",
+      "value": 65536
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "qwen/qwen3.7-max",
+      "field": "max_context_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "qwen/qwen3.7-max",
+      "field": "max_input_tokens",
+      "value": 983616
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "qwen/qwen3.7-max",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "qwen/qwen3.8-max",
+      "field": "max_context_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "qwen/qwen3.8-max",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "qwen/qwen3.8-max",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "x-ai/grok-4.5",
+      "field": "max_context_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "x-ai/grok-4.5",
+      "field": "max_input_tokens",
+      "value": 500000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "x-ai/grok-4.5",
+      "field": "max_output_tokens",
+      "value": 450000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "z-ai/glm-5-turbo",
+      "field": "max_context_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "z-ai/glm-5-turbo",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "z-ai/glm-5.2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "z-ai/glm-5.2",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "venice",
+      "model": "claude-fable-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "venice",
+      "model": "claude-fable-5-1",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "venice",
+      "model": "claude-fable-5-2",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "venice",
+      "model": "claude-haiku-5-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "venice",
+      "model": "claude-opus-4-5",
+      "field": "max_input_tokens",
+      "value": 200000
+    },
+    {
+      "provider": "venice",
+      "model": "claude-opus-4-6",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "venice",
+      "model": "claude-opus-4-7",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "venice",
+      "model": "claude-opus-4-8",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "venice",
+      "model": "claude-opus-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "venice",
+      "model": "claude-opus-5-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "venice",
+      "model": "claude-sonnet-4-6",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "venice",
+      "model": "claude-sonnet-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "venice",
+      "model": "claude-sonnet-5-5",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "venice",
+      "model": "deepseek-v4-1-flash-1017",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "venice",
+      "model": "deepseek-v4-flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "venice",
+      "model": "deepseek-v4-pro",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "venice",
+      "model": "deepseek-v4-pro-0813",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "venice",
+      "model": "gemini-3-flash-preview",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "venice",
+      "model": "gemini-4-argon",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "venice",
+      "model": "gemini-4-carbon",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "venice",
+      "model": "gemini-4-hydrogen",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "venice",
+      "model": "hy4-preview",
+      "field": "max_input_tokens",
+      "value": 1024000
+    },
+    {
+      "provider": "venice",
+      "model": "kimi-k3",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "venice",
+      "model": "llama-3.3-70b",
+      "field": "max_input_tokens",
+      "value": 128000
+    },
+    {
+      "provider": "venice",
+      "model": "muse-spark-open",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "venice",
+      "model": "qwen3-235b-a22b-instruct-2507",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "volcengine-ark",
+      "model": "DeepSeek-V4-Flash",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "volcengine-ark",
+      "model": "DeepSeek-V4-Pro",
+      "field": "max_input_tokens",
+      "value": 1000000
+    },
+    {
+      "provider": "volcengine-ark",
+      "model": "GLM-5.1",
+      "field": "max_context_tokens",
+      "value": 198000
+    },
+    {
+      "provider": "volcengine-ark",
+      "model": "GLM-5.1",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "volcengine-ark",
+      "model": "Kimi-K2.6",
+      "field": "max_context_tokens",
+      "value": 256000
+    },
+    {
+      "provider": "volcengine-ark",
+      "model": "Kimi-K2.6",
+      "field": "max_input_tokens",
+      "value": 262144
+    },
+    {
+      "provider": "volcengine-ark",
+      "model": "Kimi-K2.6",
+      "field": "max_output_tokens",
+      "value": 16384
+    },
+    {
+      "provider": "volcengine-ark",
+      "model": "MiniMax-M2.7",
+      "field": "max_context_tokens",
+      "value": 196608
+    },
+    {
+      "provider": "volcengine-ark",
+      "model": "MiniMax-M2.7",
+      "field": "max_input_tokens",
+      "value": 196608
+    },
+    {
+      "provider": "volcengine-ark",
+      "model": "MiniMax-M2.7",
+      "field": "max_output_tokens",
+      "value": 131072
+    },
+    {
+      "provider": "xiaomi-tokenplan",
+      "model": "mimo-v2.6-flash",
+      "field": "max_input_tokens",
+      "value": 1048576
+    },
+    {
+      "provider": "xiaomi-tokenplan",
+      "model": "mimo-v2.6-pro",
+      "field": "max_input_tokens",
+      "value": 1048576
+    }
+  ],
+  "zero_estimate_models": [
+    [
+      "kilo-gateway",
+      "kwaipilot/kat-coder-pro-v2.5:free"
+    ],
+    [
+      "kilo-gateway",
+      "nvidia/nemotron-3-super-120b-a12b:free"
+    ],
+    [
+      "kilo-gateway",
+      "nvidia/nemotron-3-ultra-550b-a55b:free"
+    ],
+    [
+      "nous",
+      "meituan/longcat-2.0:free"
+    ],
+    [
+      "nous",
+      "meituan/longcat-2.5-preview:free"
+    ],
+    [
+      "nous",
+      "poolside/laguna-s-2.1:free"
+    ],
+    [
+      "nous",
+      "poolside/laguna-xs-2.1:free"
+    ],
+    [
+      "nous",
+      "stealth/missingno"
+    ],
+    [
+      "nous",
+      "stepfun/step-5-preview:free"
+    ],
+    [
+      "opencode-go",
+      "space-bunny-free"
+    ],
+    [
+      "openrouter",
+      "openrouter/bodybuilder"
+    ],
+    [
+      "openrouter",
+      "openrouter/free"
+    ],
+    [
+      "openrouter",
+      "openrouter/pareto-code"
+    ],
+    [
+      "openrouter",
+      "scaledown/extract"
+    ],
+    [
+      "openrouter",
+      "scaledown/summarize"
+    ],
+    [
+      "openrouter",
+      "typesafe/jev-router"
+    ],
+    [
+      "poolside",
+      "poolside/laguna-m.1"
+    ],
+    [
+      "tokenharbor",
+      "deepseek-v4.1-flash:free"
+    ],
+    [
+      "tokenrouter",
+      "moonshotai/kimi-k3-free"
+    ],
+    [
+      "tokenrouter",
+      "z-ai/glm-5.3-free"
+    ]
+  ],
+  "before_selectable_null_counts": {
+    "input_price": 301,
+    "output_price": 301,
+    "cached_price": 469,
+    "max_context_tokens": 154,
+    "max_input_tokens": 938,
+    "max_output_tokens": 224
+  },
+  "after_selectable_null_counts": {
+    "input_price": 170,
+    "output_price": 170,
+    "cached_price": 209,
+    "max_context_tokens": 55,
+    "max_input_tokens": 528,
+    "max_output_tokens": 56
+  },
+  "interpretation": "Ordinary scalar columns contain explicit estimated defaults where previously null. Provenance remains estimate/conditional; source recipes and unresolved exact-provider facts are preserved. Unknown cache billing may retain a numeric estimate without establishing caching support."
+}

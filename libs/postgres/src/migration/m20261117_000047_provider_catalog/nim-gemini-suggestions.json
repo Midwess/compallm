@@ -1,0 +1,465 @@
+{
+  "origin": "Gemini suggestion supplied by the user",
+  "verification": "unverified_suggestion",
+  "suggestions": [
+    {
+      "model_id": "deepseek-ai/deepseek-v4.1-flash",
+      "context_label": "1M tokens",
+      "input_pricing_claim": "~$0.05",
+      "output_pricing_claim": "~$0.20",
+      "capabilities": [
+        "text",
+        "vision"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "google/diffusiongemma-26b-a4b-it",
+      "context_label": "262K tokens",
+      "input_pricing_claim": "Varies / Open-weight",
+      "output_pricing_claim": null,
+      "capabilities": [
+        "text",
+        "vision"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "google/gemma-4-31b-it",
+      "context_label": "262K tokens",
+      "input_pricing_claim": "~$0.08",
+      "output_pricing_claim": "~$0.13",
+      "capabilities": [
+        "text",
+        "vision"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "google/google-paligemma",
+      "context_label": "8K - 14K tokens",
+      "input_pricing_claim": "Free / Google AI",
+      "output_pricing_claim": null,
+      "capabilities": [
+        "text",
+        "vision"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "meta/llama-3.2-11b-vision-instruct",
+      "context_label": "128K tokens",
+      "input_pricing_claim": "~$0.05",
+      "output_pricing_claim": "~$0.05",
+      "capabilities": [
+        "text",
+        "vision"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "meta/llama-3.2-90b-vision-instruct",
+      "context_label": "128K tokens",
+      "input_pricing_claim": "~$0.80",
+      "output_pricing_claim": "~$0.80",
+      "capabilities": [
+        "text",
+        "vision"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "meta/llama-guard-4-12b",
+      "context_label": "128K tokens",
+      "input_pricing_claim": "~$0.20",
+      "output_pricing_claim": "~$0.20",
+      "capabilities": [
+        "text",
+        "safety"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "meta/muse-glimmer-30b",
+      "context_label": "131K tokens",
+      "input_pricing_claim": "~$0.30",
+      "output_pricing_claim": "~$1.20",
+      "capabilities": [
+        "text",
+        "vision"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "minimaxai/minimax-m3.1-flash",
+      "context_label": "1M tokens",
+      "input_pricing_claim": "~$0.15",
+      "output_pricing_claim": "~$0.60",
+      "capabilities": [
+        "text",
+        "vision",
+        "video"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "nvidia/llama-3.1-nemotron-safety-guard-8b-v3",
+      "context_label": "8K tokens",
+      "input_pricing_claim": "Free (NVIDIA NIM)",
+      "output_pricing_claim": null,
+      "capabilities": [
+        "text",
+        "safety"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "context_label": "1M tokens",
+      "input_pricing_claim": "Varies by provider",
+      "output_pricing_claim": null,
+      "capabilities": [
+        "text"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "nvidia/nemotron-3-ultra-550b-a55b",
+      "context_label": "1M tokens",
+      "input_pricing_claim": "Varies by provider",
+      "output_pricing_claim": null,
+      "capabilities": [
+        "text"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "nvidia/nemotron-3.5-content-safety",
+      "context_label": "128K tokens",
+      "input_pricing_claim": "Free (NVIDIA NIM)",
+      "output_pricing_claim": null,
+      "capabilities": [
+        "text",
+        "safety"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "context_label": "1M tokens",
+      "input_pricing_claim": "~$0.025",
+      "output_pricing_claim": "~$0.12",
+      "capabilities": [
+        "text"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "context_label": "128K tokens",
+      "input_pricing_claim": "Varies by provider",
+      "output_pricing_claim": null,
+      "capabilities": [
+        "text",
+        "vision"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "openai/gpt-oss-20b",
+      "context_label": "128K tokens",
+      "input_pricing_claim": "Open weights",
+      "output_pricing_claim": null,
+      "capabilities": [
+        "text"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "poolside/laguna-xs-2.1",
+      "context_label": "128K tokens",
+      "input_pricing_claim": "Varies / Poolside API",
+      "output_pricing_claim": null,
+      "capabilities": [
+        "text",
+        "coding"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "stepfun-ai/step-5-preview",
+      "context_label": "200K tokens",
+      "input_pricing_claim": "Varies by provider",
+      "output_pricing_claim": null,
+      "capabilities": [
+        "text"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    },
+    {
+      "model_id": "z-ai/glm-5.3-flash",
+      "context_label": "1M tokens",
+      "input_pricing_claim": "~$0.01",
+      "output_pricing_claim": "~$0.10",
+      "capabilities": [
+        "text"
+      ],
+      "pricing_unit": "USD per million tokens when a numeric price is supplied",
+      "source": "Gemini suggestion supplied by the user",
+      "verification": "unverified_suggestion"
+    }
+  ],
+  "updated_models": [
+    "deepseek-ai/deepseek-v4.1-flash",
+    "google/diffusiongemma-26b-a4b-it",
+    "google/gemma-4-31b-it",
+    "google/google-paligemma",
+    "meta/llama-3.2-11b-vision-instruct",
+    "meta/llama-3.2-90b-vision-instruct",
+    "meta/llama-guard-4-12b",
+    "meta/muse-glimmer-30b",
+    "minimaxai/minimax-m3.1-flash",
+    "nvidia/llama-3.1-nemotron-safety-guard-8b-v3",
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+    "nvidia/nemotron-3-ultra-550b-a55b",
+    "nvidia/nemotron-3.5-content-safety",
+    "nvidia/nemotron-3.5-lightning-30b-a3b",
+    "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "openai/gpt-oss-20b",
+    "poolside/laguna-xs-2.1",
+    "stepfun-ai/step-5-preview",
+    "z-ai/glm-5.3-flash"
+  ],
+  "authoritative_columns_changed": [],
+  "official_source_research": [
+    {
+      "name": "model-0",
+      "url": "https://build.nvidia.com/deepseek-ai/deepseek-v4.1-flash.md",
+      "model": "deepseek-ai/deepseek-v4.1-flash",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 12612,
+      "sha256": "de82915c8c9ac68cd2eead639ffd55a4c7dfef0462aa80aac94d87955bf640d9"
+    },
+    {
+      "name": "model-1",
+      "url": "https://build.nvidia.com/google/diffusiongemma-26b-a4b-it.md",
+      "model": "google/diffusiongemma-26b-a4b-it",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 14548,
+      "sha256": "f36eaea18056ffcf10ec4278b3ca9fd86c2a8dde735853b4faf4f0806d81984b"
+    },
+    {
+      "name": "model-2",
+      "url": "https://build.nvidia.com/google/gemma-4-31b-it.md",
+      "model": "google/gemma-4-31b-it",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 14248,
+      "sha256": "ce3f8281670c99ac9177150cb43f01e270a380c539253b0999eccb7011996be0"
+    },
+    {
+      "name": "model-3",
+      "url": "https://build.nvidia.com/google/google-paligemma.md",
+      "model": "google/google-paligemma",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 3809,
+      "sha256": "a7b34965b2f8ec3cd2e7f94f7f66b26dbd4212ab0e5de7b5710ade1b04b3c0f4"
+    },
+    {
+      "name": "model-4",
+      "url": "https://build.nvidia.com/meta/llama-3.2-11b-vision-instruct.md",
+      "model": "meta/llama-3.2-11b-vision-instruct",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 24616,
+      "sha256": "3f291baf3e47d3ce155eedd51e80a21eba9259232da5c2ebf3d49ba430b2bcb1"
+    },
+    {
+      "name": "model-5",
+      "url": "https://build.nvidia.com/meta/llama-3.2-90b-vision-instruct.md",
+      "model": "meta/llama-3.2-90b-vision-instruct",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 24616,
+      "sha256": "0aec682081ff076f81b709c27de41b2c19b89a51c69331d7c347e6a627feda28"
+    },
+    {
+      "name": "model-6",
+      "url": "https://build.nvidia.com/meta/llama-guard-4-12b.md",
+      "model": "meta/llama-guard-4-12b",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 19176,
+      "sha256": "82b070da9355ed0b9393c7cf9b65362dc6e0699f8b9dc2a39b791518215b8a7b"
+    },
+    {
+      "name": "model-7",
+      "url": "https://build.nvidia.com/meta/muse-glimmer-30b.md",
+      "model": "meta/muse-glimmer-30b",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 13146,
+      "sha256": "e21a79ea56dddb226b58e9a328d8d6f5f9a0f6d97c080cd2491bc6e9601fead9"
+    },
+    {
+      "name": "model-8",
+      "url": "https://build.nvidia.com/minimaxai/minimax-m3.1-flash.md",
+      "model": "minimaxai/minimax-m3.1-flash",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 13107,
+      "sha256": "9bee80a038367f32f7b562cf869328deca653e6897cf9f962c924139415ba7fb"
+    },
+    {
+      "name": "model-9",
+      "url": "https://build.nvidia.com/nvidia/llama-3.1-nemotron-safety-guard-8b-v3.md",
+      "model": "nvidia/llama-3.1-nemotron-safety-guard-8b-v3",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "model-10",
+      "url": "https://build.nvidia.com/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning.md",
+      "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 58950,
+      "sha256": "ca646d632a39d8c4dd6a4517810f1cb586ffefe60d2138c13557b76850c2de78"
+    },
+    {
+      "name": "model-11",
+      "url": "https://build.nvidia.com/nvidia/nemotron-3-ultra-550b-a55b.md",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 92942,
+      "sha256": "777e223d662c5038be65b9d67f4a1e4f1a2f863bca7855b3c341ab895f791f46"
+    },
+    {
+      "name": "model-12",
+      "url": "https://build.nvidia.com/nvidia/nemotron-3.5-content-safety.md",
+      "model": "nvidia/nemotron-3.5-content-safety",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 33814,
+      "sha256": "b00d9da6c8fd0851cf8a6c03e9af54ac898b8b4bb9c70aa488652427214795b9"
+    },
+    {
+      "name": "model-13",
+      "url": "https://build.nvidia.com/nvidia/nemotron-3.5-lightning-30b-a3b.md",
+      "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 81228,
+      "sha256": "a9dbc364a520ff6e4f97ed7d722372522f8508e338b1b2e0110ba9119c2ce30b"
+    },
+    {
+      "name": "model-14",
+      "url": "https://build.nvidia.com/nvidia/nemotron-3.5-super-vl-120b-a12b.md",
+      "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 92359,
+      "sha256": "0d878097e6ddbf9eae5308116259ba39a6ca1f23e01cb92f55b1ce4d36615033"
+    },
+    {
+      "name": "model-15",
+      "url": "https://build.nvidia.com/openai/gpt-oss-20b.md",
+      "model": "openai/gpt-oss-20b",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 11983,
+      "sha256": "1a54a27adf2aaa989133bed28eba9bbe3caad45b79d603c0d7c15087eddcfa36"
+    },
+    {
+      "name": "model-16",
+      "url": "https://build.nvidia.com/poolside/laguna-xs-2.1.md",
+      "model": "poolside/laguna-xs-2.1",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 8472,
+      "sha256": "d66ead3cc926bad7f4dc929d81ea01158164d69635271c986823c01404a00327"
+    },
+    {
+      "name": "model-17",
+      "url": "https://build.nvidia.com/stepfun-ai/step-5-preview.md",
+      "model": "stepfun-ai/step-5-preview",
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 10046,
+      "sha256": "e8085efd7864fac1d16582aee523c652956073356b1cc7de491a288fa07b0094"
+    },
+    {
+      "name": "model-18",
+      "url": "https://build.nvidia.com/z-ai/glm-5.3-flash.md",
+      "model": "z-ai/glm-5.3-flash",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "nim-api-models",
+      "url": "https://integrate.api.nvidia.com/v1/models",
+      "model": null,
+      "status": 200,
+      "content_type": "application/json",
+      "bytes": 3241,
+      "sha256": "713a9e8364fd9086df7b4ae5e07d049094e5c431e30d9fb85ee3fa3df361b81e"
+    },
+    {
+      "name": "nim-faq",
+      "url": "https://docs.api.nvidia.com/nim/docs/product",
+      "model": null,
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 670521,
+      "sha256": "fb93abd0181d4e6821189e72c0fea3cbea3f1211fdda150bb52ef3822fd94ff5"
+    },
+    {
+      "name": "nim-faq2",
+      "url": "https://build.nvidia.com/explore/discover",
+      "model": null,
+      "status": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 1038,
+      "sha256": "aa11f2381b2e88ae80bb0d19155475d5894ab7c7fa5d3e1211cc87d0fc62f744"
+    }
+  ],
+  "scope": "Suggestions and retrieval references are recorded separately from authoritative values. Approximate prices, rounded limits, deployment differences and license terms are not converted into exact NIM facts."
+}

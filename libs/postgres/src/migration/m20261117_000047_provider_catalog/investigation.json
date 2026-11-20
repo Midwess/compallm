@@ -1,0 +1,381 @@
+{
+  "public_catalogs_and_fetches": [
+    {
+      "provider": "bazaarlink",
+      "source": {
+        "kind": "web",
+        "url": "https://api.bazaarlink.ai/v1/models",
+        "revision": "sha256:90dd58a23b850baa409dc4818d4b048fdf8d08e8916d3dfa90bf1e670b187b03",
+        "fields": [],
+        "status": "verified"
+      },
+      "matched_models": 14,
+      "filled_fields": {
+        "input_price": 10,
+        "output_price": 11,
+        "cached_price": 10
+      }
+    },
+    {
+      "provider": "featherless",
+      "source": {
+        "kind": "web",
+        "url": "https://api.featherless.ai/v1/models",
+        "revision": "sha256:e0d8f45aee071c1f521b43e2634c0d0731d1b0f12fb448c31d51211c3e86b300",
+        "fields": [],
+        "status": "verified"
+      },
+      "matched_models": 7,
+      "filled_fields": {
+        "max_context_tokens": 7,
+        "input_price": 7,
+        "output_price": 7,
+        "cached_price": 7
+      }
+    },
+    {
+      "name": "openrouter-caching",
+      "url": "https://openrouter.ai/docs/guides/best-practices/prompt-caching",
+      "resolved_url": "https://openrouter.ai/docs/guides/best-practices/prompt-caching",
+      "status": 200,
+      "bytes": 578741,
+      "sha256": "6bc2c6ca25ca3d2879d4e2aebeeea23a9fb5f5298cc094e6898433562bcac716",
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "name": "opencode-go",
+      "url": "https://opencode.ai/docs/console/go/",
+      "resolved_url": "https://opencode.ai/docs/console/go/",
+      "status": 200,
+      "bytes": 64616,
+      "sha256": "19c5e71d4d349cd88f3648ba9dd7a4f07013c781a50bb15bae44851e1e5974c8",
+      "content_type": "text/html"
+    },
+    {
+      "name": "opencode-models",
+      "url": "https://opencode.ai/go/v1/models",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "featherless-models",
+      "url": "https://api.featherless.ai/v1/models",
+      "resolved_url": "https://api.featherless.ai/v1/models",
+      "status": 200,
+      "bytes": 16446,
+      "sha256": "e0d8f45aee071c1f521b43e2634c0d0731d1b0f12fb448c31d51211c3e86b300",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "name": "featherless-pricing",
+      "url": "https://featherless.ai/docs/request-pricing-and-credits",
+      "resolved_url": "https://featherless.ai/docs/request-pricing-and-credits",
+      "status": 200,
+      "bytes": 1068992,
+      "sha256": "8157ba16d0879a23363d5f9ece8973d5d8198a0f93fb7d1c152f71f0ff3fcff7",
+      "content_type": "text/html;charset=utf-8"
+    },
+    {
+      "name": "featherless-limits",
+      "url": "https://featherless.ai/docs/models-model-compatibility",
+      "resolved_url": "https://featherless.ai/docs/models-model-compatibility",
+      "status": 200,
+      "bytes": 1372101,
+      "sha256": "4153ef2702c38682323a6de7eae1a8790f705d5ce246c0236e2317a1f8655196",
+      "content_type": "text/html;charset=utf-8"
+    },
+    {
+      "name": "nvidia-models",
+      "url": "https://integrate.api.nvidia.com/v1/models",
+      "resolved_url": "https://integrate.api.nvidia.com/v1/models",
+      "status": 200,
+      "bytes": 3106,
+      "sha256": "e2742faf7eaf45fd9f582754334d0d463cc2cc8cd3974b88d87a1f3c1eeda7ff",
+      "content_type": "application/json"
+    },
+    {
+      "name": "siliconflow-models",
+      "url": "https://api.siliconflow.com/v1/models",
+      "error": "HTTP Error 401: Unauthorized"
+    },
+    {
+      "name": "bazaarlink-models",
+      "url": "https://api.bazaarlink.ai/v1/models",
+      "resolved_url": "https://api.bazaarlink.ai/v1/models",
+      "status": 200,
+      "bytes": 91831,
+      "sha256": "90dd58a23b850baa409dc4818d4b048fdf8d08e8916d3dfa90bf1e670b187b03",
+      "content_type": "application/json"
+    },
+    {
+      "name": "xiaomi-pricing",
+      "url": "https://mimo.mi.com/docs/price",
+      "resolved_url": "https://mimo.mi.com/docs/price",
+      "status": 200,
+      "bytes": 13475,
+      "sha256": "b50ef2cbd76c58465302c194c654c2111bb4e4a6fc814d59d8343e88b9953b65",
+      "content_type": "text/html"
+    },
+    {
+      "name": "xiaomi-tokenplan",
+      "url": "https://mimo.mi.com/docs/tokenplan/subscription",
+      "resolved_url": "https://mimo.mi.com/docs/tokenplan/subscription",
+      "status": 200,
+      "bytes": 13475,
+      "sha256": "b50ef2cbd76c58465302c194c654c2111bb4e4a6fc814d59d8343e88b9953b65",
+      "content_type": "text/html"
+    },
+    {
+      "name": "xiaomi-models",
+      "url": "https://api.xiaomimimo.com/v1/models",
+      "error": "HTTP Error 401: Unauthorized"
+    },
+    {
+      "name": "cohere-caching",
+      "url": "https://docs.cohere.com/docs/prompt-caching",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "groq-models",
+      "url": "https://console.groq.com/docs/models",
+      "resolved_url": "https://console.groq.com/docs/models",
+      "status": 200,
+      "bytes": 374362,
+      "sha256": "ca16c25b54234c7ef758bbf4541d3c247f261aab91f10e98e57e04597444f0ba",
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "name": "nvidia-pricing",
+      "url": "https://docs.api.nvidia.com/nim/docs/pricing",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "together-models",
+      "url": "https://api.together.xyz/v1/models",
+      "error": "HTTP Error 401: Unauthorized"
+    },
+    {
+      "name": "fireworks-models",
+      "url": "https://api.fireworks.ai/inference/v1/models",
+      "error": "HTTP Error 401: Unauthorized"
+    },
+    {
+      "name": "tokenrouter-models",
+      "url": "https://api.tokenrouter.com/v1/models",
+      "error": "HTTP Error 401: Unauthorized"
+    },
+    {
+      "name": "tokenrouter-site",
+      "url": "https://www.tokenrouter.com/models/",
+      "resolved_url": "https://www.tokenrouter.com/models/",
+      "status": 200,
+      "bytes": 42897,
+      "sha256": "477b13a18f1bbef77eeea28cb267251a7c724bd945c1b3cd05c1794bcb2a3cd6"
+    },
+    {
+      "name": "kimi-models",
+      "url": "https://www.kimi.com/code/docs/en/kimi-code/models.html",
+      "resolved_url": "https://www.kimi.com/code/docs/en/kimi-code/models.html",
+      "status": 200,
+      "bytes": 82895,
+      "sha256": "410ed6b05c7fb5f5b5dba1b02f2bcdf3b23e8b6ee0a68ee21e69aceb3f1025d0"
+    },
+    {
+      "name": "alibaba-plan",
+      "url": "https://www.alibabacloud.com/help/en/model-studio/coding-plan",
+      "resolved_url": "https://www.alibabacloud.com/help/en/model-studio/coding-plan",
+      "status": 200,
+      "bytes": 25478,
+      "sha256": "493b8ad9fa1139fe2448d320b2acba7d2380fbb7b89c6733f61081b2900260a6"
+    },
+    {
+      "name": "featherless-model-docs",
+      "url": "https://featherless.ai/docs/api-reference-models",
+      "resolved_url": "https://featherless.ai/docs/api-reference-models",
+      "status": 200,
+      "bytes": 1081751,
+      "sha256": "5908fca972bcba18421cd4458c5aafa217479e2e26c7eda8f3eefce1be809717"
+    },
+    {
+      "name": "bazaarlink-model-docs",
+      "url": "https://bazaarlink.ai/en/docs/models-api",
+      "resolved_url": "https://bazaarlink.ai/en/docs/models-api",
+      "status": 200,
+      "bytes": 918764,
+      "sha256": "de88f7df548f8603c7615b145734bf33ca654c918f3bd1d68cab39eeb7c6a78e"
+    },
+    {
+      "name": "opencode-console-models",
+      "url": "https://opencode.ai/inference/go/models",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "opencode-console-v1-models",
+      "url": "https://opencode.ai/inference/go/v1/models",
+      "resolved_url": "https://opencode.ai/inference/go/v1/models",
+      "status": 200,
+      "bytes": 42141,
+      "sha256": "c5a9f4e83d4bf4dd25ea7654a26da8fb0c792948b6af2b28fe488d08af5a70a8"
+    },
+    {
+      "name": "opencode-legacy-models",
+      "url": "https://opencode.ai/zen/go/v1/models",
+      "resolved_url": "https://opencode.ai/zen/go/v1/models",
+      "status": 200,
+      "bytes": 42141,
+      "sha256": "c5a9f4e83d4bf4dd25ea7654a26da8fb0c792948b6af2b28fe488d08af5a70a8"
+    },
+    {
+      "name": "tokenrouter-public-models",
+      "url": "https://api.tokenrouter.com/api/models",
+      "error": "HTTP Error 401: Unauthorized"
+    },
+    {
+      "name": "tokenrouter-script",
+      "url": "https://www.tokenrouter.com/assets/index-6BLzhYi3.js",
+      "resolved_url": "https://www.tokenrouter.com/assets/index-6BLzhYi3.js",
+      "status": 200,
+      "bytes": 2186654,
+      "sha256": "0542bf3ed57fc9799074315d0f784d39448b303390897f5cf78aa8bd56b5adac"
+    },
+    {
+      "name": "featherless-pricing-models",
+      "url": "https://api.featherless.ai/v1/models?include_pricing=true",
+      "resolved_url": "https://api.featherless.ai/v1/models?include_pricing=true",
+      "status": 200,
+      "bytes": 16446,
+      "sha256": "e0d8f45aee071c1f521b43e2634c0d0731d1b0f12fb448c31d51211c3e86b300"
+    },
+    {
+      "name": "deepseek-models",
+      "url": "https://api.deepseek.com/models",
+      "error": "HTTP Error 401: Unauthorized"
+    },
+    {
+      "name": "featherless-detail-0",
+      "url": "https://api.featherless.ai/v1/models/deepseek-ai/DeepSeek-V4-Flash",
+      "resolved_url": "https://api.featherless.ai/v1/models/deepseek-ai/DeepSeek-V4-Flash",
+      "status": 200,
+      "bytes": 831,
+      "sha256": "78b13ee93366c1a7c06f05b7789bb5102a495057d2741dc8610e10e453eb378e"
+    },
+    {
+      "name": "featherless-detail-1",
+      "url": "https://api.featherless.ai/v1/models/deepseek-ai/DeepSeek-V4-Pro",
+      "resolved_url": "https://api.featherless.ai/v1/models/deepseek-ai/DeepSeek-V4-Pro",
+      "status": 200,
+      "bytes": 825,
+      "sha256": "253c628c018a7dd26ce263eca599f49aa9dd459951bf2c6b8d590afdfbf461b2"
+    },
+    {
+      "name": "featherless-detail-2",
+      "url": "https://api.featherless.ai/v1/models/moonshotai/Kimi-K2.5",
+      "resolved_url": "https://api.featherless.ai/v1/models/moonshotai/Kimi-K2.5",
+      "status": 200,
+      "bytes": 891,
+      "sha256": "0cc72e70cbadf90b4a0d947c2033be369712168775ed85e5700e1adc733d1746"
+    },
+    {
+      "name": "featherless-detail-3",
+      "url": "https://api.featherless.ai/v1/models/moonshotai/Kimi-K2.6",
+      "resolved_url": "https://api.featherless.ai/v1/models/moonshotai/Kimi-K2.6",
+      "status": 200,
+      "bytes": 884,
+      "sha256": "a743baeacf1958622abc7186bdedf2710c4ced6566fe9c6701276d52fdfa0cd6"
+    },
+    {
+      "name": "featherless-detail-4",
+      "url": "https://api.featherless.ai/v1/models/moonshotai/Kimi-K2.7-Code",
+      "resolved_url": "https://api.featherless.ai/v1/models/moonshotai/Kimi-K2.7-Code",
+      "status": 200,
+      "bytes": 889,
+      "sha256": "ea1cbe5adb01a2b761f16c7080237f8ec40b1bf0a4477053a776623facb819d7"
+    },
+    {
+      "name": "featherless-detail-5",
+      "url": "https://api.featherless.ai/v1/models/zai-org/GLM-5.1",
+      "resolved_url": "https://api.featherless.ai/v1/models/zai-org/GLM-5.1",
+      "status": 200,
+      "bytes": 825,
+      "sha256": "28749a8cb0454dc61a9a9d651b300c876b2284745a8207e3003adc16655ca1aa"
+    },
+    {
+      "name": "featherless-detail-6",
+      "url": "https://api.featherless.ai/v1/models/zai-org/GLM-5.2",
+      "resolved_url": "https://api.featherless.ai/v1/models/zai-org/GLM-5.2",
+      "status": 200,
+      "bytes": 825,
+      "sha256": "1b8aed69a51a4cf077588897141a0f2c8ddee992a8128d0de58d9ce9e9541df7"
+    },
+    {
+      "name": "featherless-page-0",
+      "url": "https://featherless.ai/models/deepseek-ai/DeepSeek-V4-Flash",
+      "resolved_url": "https://featherless.ai/models/deepseek-ai/DeepSeek-V4-Flash",
+      "status": 200,
+      "bytes": 344051,
+      "sha256": "f03797603ad21fde97d2ef2626d331181d1d21da394681343a7c376ff4502494"
+    },
+    {
+      "name": "featherless-page-1",
+      "url": "https://featherless.ai/models/deepseek-ai/DeepSeek-V4-Pro",
+      "resolved_url": "https://featherless.ai/models/deepseek-ai/DeepSeek-V4-Pro",
+      "status": 200,
+      "bytes": 344989,
+      "sha256": "e2fb2558393a56e1f2b13407a6849f48a2a5fcc5fbbc8f37336dddae202040db"
+    },
+    {
+      "name": "featherless-page-2",
+      "url": "https://featherless.ai/models/moonshotai/Kimi-K2.5",
+      "resolved_url": "https://featherless.ai/models/moonshotai/Kimi-K2.5",
+      "status": 200,
+      "bytes": 377605,
+      "sha256": "1d830b4ebb10761a5cfa99aa34ed036fa57cc4406ed0c96dbe750ada8c21cf19"
+    },
+    {
+      "name": "featherless-page-3",
+      "url": "https://featherless.ai/models/moonshotai/Kimi-K2.6",
+      "resolved_url": "https://featherless.ai/models/moonshotai/Kimi-K2.6",
+      "status": 200,
+      "bytes": 365789,
+      "sha256": "540605805498e5e07281eac583f6eb48a11702614c8ff7e780e307ecc041317a"
+    },
+    {
+      "name": "featherless-page-4",
+      "url": "https://featherless.ai/models/moonshotai/Kimi-K2.7-Code",
+      "resolved_url": "https://featherless.ai/models/moonshotai/Kimi-K2.7-Code",
+      "status": 200,
+      "bytes": 339681,
+      "sha256": "71d1393d70b10528fc6d85bfd61fde0e368f4c897f16b7645a49dffc00a32874"
+    },
+    {
+      "name": "featherless-page-5",
+      "url": "https://featherless.ai/models/zai-org/GLM-5.1",
+      "resolved_url": "https://featherless.ai/models/zai-org/GLM-5.1",
+      "status": 200,
+      "bytes": 341667,
+      "sha256": "22671baf37ed1d2cbac0329091414d62eb9754f1b0b906638f985dbe02225e35"
+    },
+    {
+      "name": "featherless-page-6",
+      "url": "https://featherless.ai/models/zai-org/GLM-5.2",
+      "resolved_url": "https://featherless.ai/models/zai-org/GLM-5.2",
+      "status": 200,
+      "bytes": 332310,
+      "sha256": "13b9f2ce926677bf009baea1fb52e8e6d8d130691b34ed40549cac77a07cc353"
+    }
+  ],
+  "provider_aliases": {
+    "alicode": "alibaba-coding-plan-cn",
+    "alicode-intl": "alibaba-coding-plan",
+    "alims-intl": "alibaba",
+    "alitp-intl": "alibaba-token-plan",
+    "xiaomi-mimo": "xiaomi",
+    "xiaomi-tokenplan": "xiaomi-token-plan-sgp",
+    "volcengine-ark": "volcengine-coding-plan",
+    "glm": "zai-coding-plan",
+    "glm-cn": "zhipuai-coding-plan",
+    "fireworks": "fireworks-ai",
+    "together": "togetherai",
+    "kimi": "kimi-code-plan-cn"
+  },
+  "note": "Only exact provider/model or explicitly published alias matches are applied. Source failures and unresolved fields remain visible."
+}

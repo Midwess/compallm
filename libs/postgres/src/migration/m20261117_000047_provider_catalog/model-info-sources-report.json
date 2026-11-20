@@ -1,0 +1,24 @@
+{
+  "provider_templates": {
+    "rows": 145,
+    "source_kinds": {
+      "repository": 144,
+      "api": 89
+    },
+    "rows_with_observed_api": 18,
+    "rows_with_credential_requirement": 25,
+    "rows_with_manual_completion": 0
+  },
+  "provider_model_templates": {
+    "rows": 2416,
+    "source_kinds": {
+      "repository": 4589,
+      "api": 2800,
+      "manual": 2053,
+      "documentation": 318
+    },
+    "rows_with_observed_api": 813,
+    "rows_with_credential_requirement": 422,
+    "rows_with_manual_completion": 2014
+  }
+}

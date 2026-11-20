@@ -1,0 +1,598 @@
+{
+  "origin": "Gemini batch of 20 supplied by user",
+  "suggestions": [
+    {
+      "model": "deepseek-ai/deepseek-v4.1-flash",
+      "hosted_status_claim": "hosted",
+      "service_claim": "text",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": []
+    },
+    {
+      "model": "google/diffusiongemma-26b-a4b-it",
+      "hosted_status_claim": "deprecated",
+      "service_claim": "multimodal text",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": []
+    },
+    {
+      "model": "meta/llama-3.2-11b-vision-instruct",
+      "hosted_status_claim": "deprecated",
+      "service_claim": "vision language",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": []
+    },
+    {
+      "model": "meta/llama-3.2-90b-vision-instruct",
+      "hosted_status_claim": "deprecated",
+      "service_claim": "vision language",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": []
+    },
+    {
+      "model": "meta/llama-3.3-70b-instruct",
+      "hosted_status_claim": "deprecated",
+      "service_claim": "text",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": [],
+      "context_tokens": 131072
+    },
+    {
+      "model": "meta/llama-guard-4-12b",
+      "hosted_status_claim": "deprecated",
+      "service_claim": "safety",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": []
+    },
+    {
+      "model": "minimaxai/minimax-m2.7",
+      "hosted_status_claim": "deprecated",
+      "service_claim": "text",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": []
+    },
+    {
+      "model": "minimaxai/minimax-m3",
+      "hosted_status_claim": "deprecated",
+      "service_claim": "multimodal text",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": []
+    },
+    {
+      "model": "nvidia/active-speaker-detection",
+      "hosted_status_claim": "hosted",
+      "service_claim": "active speaker tracking",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": [],
+      "max_upload_claim": "100 MB",
+      "token_limit_claim": "not applicable"
+    },
+    {
+      "model": "nvidia/bevformer",
+      "hosted_status_claim": "hosted",
+      "service_claim": "3D perception",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": []
+    },
+    {
+      "model": "nvidia/nemotron-3.5-bolt-e4b",
+      "hosted_status_claim": "hosted",
+      "service_claim": "text",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": [],
+      "context_tokens": 65536
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "hosted_status_claim": "hosted",
+      "service_claim": "multimodal text",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": []
+    },
+    {
+      "model": "nvidia/nemotron-voicechat",
+      "hosted_status_claim": "hosted",
+      "service_claim": "audio pipeline",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": []
+    },
+    {
+      "model": "nvidia/riva-translate-4b-instruct-v2",
+      "hosted_status_claim": "hosted",
+      "service_claim": "translation",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": [],
+      "max_characters_claim": 1932,
+      "token_limit_claim": "not applicable"
+    },
+    {
+      "model": "nvidia/sparsedrive",
+      "hosted_status_claim": "hosted",
+      "service_claim": "autonomous driving",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": []
+    },
+    {
+      "model": "nvidia/streampetr",
+      "hosted_status_claim": "hosted",
+      "service_claim": "3D detection",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": []
+    },
+    {
+      "model": "nvidia/synthetic-video-detector",
+      "hosted_status_claim": "hosted",
+      "service_claim": "video forensics",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": [],
+      "max_upload_claim": "100 MB",
+      "token_limit_claim": "not applicable"
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "hosted_status_claim": "hosted",
+      "service_claim": "text",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": [],
+      "endpoint_claims": [
+        "https://integrate.api.nvidia.com/v1/responses",
+        "https://integrate.api.nvidia.com/v1/chat/completions"
+      ]
+    },
+    {
+      "model": "openai/whisper-large-v3",
+      "hosted_status_claim": "hosted",
+      "service_claim": "speech recognition",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": []
+    },
+    {
+      "model": "poolside/laguna-xs-2.1",
+      "hosted_status_claim": "trial",
+      "service_claim": "coding text",
+      "verification": "unverified_suggestion",
+      "billing_claim": "free hosted development access",
+      "cache_claim": "undocumented; not user configurable",
+      "source_urls_supplied": []
+    }
+  ],
+  "verified_changes": [
+    {
+      "model": "deepseek-ai/deepseek-v4.1-flash",
+      "field": "max_context_tokens",
+      "before": 1000000,
+      "after": 1048576
+    },
+    {
+      "model": "google/diffusiongemma-26b-a4b-it",
+      "field": "max_context_tokens",
+      "before": 250000,
+      "after": 262144
+    },
+    {
+      "model": "google/diffusiongemma-26b-a4b-it",
+      "field": "hosted_text_selection",
+      "after": "deprecated"
+    },
+    {
+      "model": "meta/llama-3.2-11b-vision-instruct",
+      "field": "max_context_tokens",
+      "before": 128000,
+      "after": 131072
+    },
+    {
+      "model": "meta/llama-3.2-11b-vision-instruct",
+      "field": "hosted_text_selection",
+      "after": "deprecated"
+    },
+    {
+      "model": "meta/llama-3.2-90b-vision-instruct",
+      "field": "max_context_tokens",
+      "before": 128000,
+      "after": 131072
+    },
+    {
+      "model": "meta/llama-3.2-90b-vision-instruct",
+      "field": "hosted_text_selection",
+      "after": "deprecated"
+    },
+    {
+      "model": "meta/llama-guard-4-12b",
+      "field": "max_context_tokens",
+      "before": 163840,
+      "after": 163840
+    },
+    {
+      "model": "meta/llama-guard-4-12b",
+      "field": "hosted_text_selection",
+      "after": "deprecated"
+    },
+    {
+      "model": "minimaxai/minimax-m2.7",
+      "field": "max_context_tokens",
+      "before": 200000,
+      "after": 204800
+    },
+    {
+      "model": "minimaxai/minimax-m2.7",
+      "field": "hosted_text_selection",
+      "after": "deprecated"
+    },
+    {
+      "model": "minimaxai/minimax-m3",
+      "field": "max_context_tokens",
+      "before": 512000,
+      "after": 1048576
+    },
+    {
+      "model": "minimaxai/minimax-m3",
+      "field": "hosted_text_selection",
+      "after": "deprecated"
+    },
+    {
+      "model": "nvidia/active-speaker-detection",
+      "field": "service_kind_and_text_selection",
+      "after": "video"
+    },
+    {
+      "model": "nvidia/bevformer",
+      "field": "service_kind_and_text_selection",
+      "after": "image"
+    },
+    {
+      "model": "nvidia/nemotron-3.5-bolt-e4b",
+      "field": "max_context_tokens",
+      "before": null,
+      "after": 65536
+    },
+    {
+      "model": "nvidia/nemotron-voicechat",
+      "field": "service_kind_and_text_selection",
+      "after": "audio"
+    },
+    {
+      "model": "nvidia/sparsedrive",
+      "field": "service_kind_and_text_selection",
+      "after": "video"
+    },
+    {
+      "model": "nvidia/streampetr",
+      "field": "service_kind_and_text_selection",
+      "after": "video"
+    },
+    {
+      "model": "nvidia/synthetic-video-detector",
+      "field": "service_kind_and_text_selection",
+      "after": "video"
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "field": "max_context_tokens",
+      "before": 131072,
+      "after": 131072
+    },
+    {
+      "model": "openai/whisper-large-v3",
+      "field": "service_kind_and_text_selection",
+      "after": "audio"
+    },
+    {
+      "model": "poolside/laguna-xs-2.1",
+      "field": "max_context_tokens",
+      "before": 262144,
+      "after": 262144
+    }
+  ],
+  "fetches": [
+    {
+      "model": "deepseek-ai/deepseek-v4.1-flash",
+      "url": "https://build.nvidia.com/deepseek-ai/deepseek-v4.1-flash.md",
+      "file": "deepseek-ai__deepseek-v4.1-flash.md",
+      "sha256": "de82915c8c9ac68cd2eead639ffd55a4c7dfef0462aa80aac94d87955bf640d9",
+      "specification_excerpts": [
+        "- **Context Length:** 1,048,576 tokens",
+        "- **Input:** Text, Image",
+        "- **Output:** Text"
+      ]
+    },
+    {
+      "model": "google/diffusiongemma-26b-a4b-it",
+      "url": "https://build.nvidia.com/google/diffusiongemma-26b-a4b-it.md",
+      "file": "google__diffusiongemma-26b-a4b-it.md",
+      "sha256": "f36eaea18056ffcf10ec4278b3ca9fd86c2a8dde735853b4faf4f0806d81984b",
+      "specification_excerpts": [
+        "- **Context Length:** 262,144 tokens",
+        "- **Input:** Text, Image, Video",
+        "- **Output:** Text",
+        "invoke_url = \"https://integrate.api.nvidia.com/v1/chat/completions\""
+      ]
+    },
+    {
+      "model": "meta/llama-3.2-11b-vision-instruct",
+      "url": "https://build.nvidia.com/meta/llama-3.2-11b-vision-instruct.md",
+      "file": "meta__llama-3.2-11b-vision-instruct.md",
+      "sha256": "3f291baf3e47d3ce155eedd51e80a21eba9259232da5c2ebf3d49ba430b2bcb1",
+      "specification_excerpts": [
+        "- **Context Length:** 131,072 tokens",
+        "- **Input:** Text, Image",
+        "- **Output:** Text",
+        "invoke_url = \"https://integrate.api.nvidia.com/v1/chat/completions\""
+      ]
+    },
+    {
+      "model": "meta/llama-3.2-90b-vision-instruct",
+      "url": "https://build.nvidia.com/meta/llama-3.2-90b-vision-instruct.md",
+      "file": "meta__llama-3.2-90b-vision-instruct.md",
+      "sha256": "0aec682081ff076f81b709c27de41b2c19b89a51c69331d7c347e6a627feda28",
+      "specification_excerpts": [
+        "- **Context Length:** 131,072 tokens",
+        "- **Input:** Text, Image",
+        "- **Output:** Text",
+        "invoke_url = \"https://integrate.api.nvidia.com/v1/chat/completions\""
+      ]
+    },
+    {
+      "model": "meta/llama-3.3-70b-instruct",
+      "url": "https://build.nvidia.com/meta/llama-3.3-70b-instruct.md",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "model": "meta/llama-guard-4-12b",
+      "url": "https://build.nvidia.com/meta/llama-guard-4-12b.md",
+      "file": "meta__llama-guard-4-12b.md",
+      "sha256": "82b070da9355ed0b9393c7cf9b65362dc6e0699f8b9dc2a39b791518215b8a7b",
+      "specification_excerpts": [
+        "- **Context Length:** 163,840 tokens",
+        "- **Input:** Text, Image",
+        "- **Output:** Text",
+        "invoke_url = \"https://integrate.api.nvidia.com/v1/chat/completions\""
+      ]
+    },
+    {
+      "model": "minimaxai/minimax-m2.7",
+      "url": "https://build.nvidia.com/minimaxai/minimax-m2.7.md",
+      "file": "minimaxai__minimax-m2.7.md",
+      "sha256": "e7ff6ffd32c5c0528e5b05c4a87fab092c2bb377d5ce58d46d2ca846358c2381",
+      "specification_excerpts": [
+        "- **Context Length:** 204,800 tokens",
+        "- **Input:** Text",
+        "- **Output:** Text",
+        "invoke_url='https://integrate.api.nvidia.com/v1/chat/completions'"
+      ]
+    },
+    {
+      "model": "minimaxai/minimax-m3",
+      "url": "https://build.nvidia.com/minimaxai/minimax-m3.md",
+      "file": "minimaxai__minimax-m3.md",
+      "sha256": "eb2529d1d206830792a41991bfe30ea32917f911f9b5c0b953fce85c65661e7d",
+      "specification_excerpts": [
+        "- **Context Length:** 1,048,576 tokens",
+        "- **Input:** Text, Image, Video",
+        "- **Output:** Text",
+        "invoke_url = \"https://integrate.api.nvidia.com/v1/chat/completions\""
+      ]
+    },
+    {
+      "model": "nvidia/active-speaker-detection",
+      "url": "https://build.nvidia.com/nvidia/active-speaker-detection.md",
+      "file": "nvidia__active-speaker-detection.md",
+      "sha256": "35dbae911ed08fb9f6890ecedfbf610d9dc1cb9816edadbc0a9e3604a40d5a09",
+      "specification_excerpts": []
+    },
+    {
+      "model": "nvidia/bevformer",
+      "url": "https://build.nvidia.com/nvidia/bevformer.md",
+      "file": "nvidia__bevformer.md",
+      "sha256": "e5d7a385f49ddb48627f886f9ea6b0246af1b977904b670a3b2938fc66b01bb9",
+      "specification_excerpts": []
+    },
+    {
+      "model": "nvidia/nemotron-3.5-bolt-e4b",
+      "url": "https://build.nvidia.com/nvidia/nemotron-3.5-bolt-e4b.md",
+      "file": "nvidia__nemotron-3.5-bolt-e4b.md",
+      "sha256": "c8e73b77d97a977a0b9e4e3f78968dfd339a0537fa664bd10722d13921e188c3",
+      "specification_excerpts": [
+        "- **Context Length:** 65,536 tokens",
+        "- **Input:** Text",
+        "- **Output:** Text",
+        "invoke_url = \"https://integrate.api.nvidia.com/v1/chat/completions\""
+      ]
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "url": "https://build.nvidia.com/nvidia/nemotron-3.5-super-vl-120b-a12b.md",
+      "file": "nvidia__nemotron-3.5-super-vl-120b-a12b.md",
+      "sha256": "0d878097e6ddbf9eae5308116259ba39a6ca1f23e01cb92f55b1ce4d36615033",
+      "specification_excerpts": [
+        "- **Context Length:** 262,144 tokens",
+        "- **Input:** Text, Image, Video",
+        "- **Output:** Text",
+        "invoke_url='https://integrate.api.nvidia.com/v1/chat/completions'"
+      ]
+    },
+    {
+      "model": "nvidia/nemotron-voicechat",
+      "url": "https://build.nvidia.com/nvidia/nemotron-voicechat.md",
+      "file": "nvidia__nemotron-voicechat.md",
+      "sha256": "cbf2baa076475a818cd0db3bc0c98278b9d83c9d4063b6262e037cb527ca4ada",
+      "specification_excerpts": []
+    },
+    {
+      "model": "nvidia/riva-translate-4b-instruct-v2",
+      "url": "https://build.nvidia.com/nvidia/riva-translate-4b-instruct-v2.md",
+      "file": "nvidia__riva-translate-4b-instruct-v2.md",
+      "sha256": "4eec4e9019ad7dd9b5d5ec1e0c0e54b1fba08bc05eaf5e018112d34146beb8f7",
+      "specification_excerpts": [
+        "This model was developed based on Transformer architecture originally presented in \"Attention Is All You Need\" paper [1]. It is a fine-tuned version of a 4B Base model that was pruned and distilled from nvidia/Mistral-NeMo-Minitron-8B-Base using our LLM compression technique. The model was trained using a multi-stage CPT and SFT. It uses tiktoken [2] as the tokenizer. The model supports a context length of 8K tokens. The model has 4,179,704,832, parameters.",
+        "**Other Input Properties:** This model supports a context length of 8K.",
+        "**Other Output Properties:** This model supports a context length of 8K.",
+        "invoke_url='https://integrate.api.nvidia.com/v1/chat/completions'"
+      ]
+    },
+    {
+      "model": "nvidia/sparsedrive",
+      "url": "https://build.nvidia.com/nvidia/sparsedrive.md",
+      "file": "nvidia__sparsedrive.md",
+      "sha256": "a04d075b728f52b040e56beda19fa4a9ad1eddf8644f5c26a9e657d06b578250",
+      "specification_excerpts": []
+    },
+    {
+      "model": "nvidia/streampetr",
+      "url": "https://build.nvidia.com/nvidia/streampetr.md",
+      "file": "nvidia__streampetr.md",
+      "sha256": "95974479fa6e491cdf3ce74f388c82992a3707585624c309e048ee6a5fc88675",
+      "specification_excerpts": []
+    },
+    {
+      "model": "nvidia/synthetic-video-detector",
+      "url": "https://build.nvidia.com/nvidia/synthetic-video-detector.md",
+      "file": "nvidia__synthetic-video-detector.md",
+      "sha256": "869a3742727f1832593789c2eb14df31a79eb7078a70039b315acb66c8434bd5",
+      "specification_excerpts": []
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "url": "https://build.nvidia.com/openai/gpt-oss-20b.md",
+      "file": "openai__gpt-oss-20b.md",
+      "sha256": "1a54a27adf2aaa989133bed28eba9bbe3caad45b79d603c0d7c15087eddcfa36",
+      "specification_excerpts": [
+        "- **Context Length:** 131,072 tokens",
+        "- **Input:** Text",
+        "- **Output:** Text"
+      ]
+    },
+    {
+      "model": "openai/whisper-large-v3",
+      "url": "https://build.nvidia.com/openai/whisper-large-v3.md",
+      "file": "openai__whisper-large-v3.md",
+      "sha256": "bf04ad9eed25d23dbfd71efa6cd3890630236c1851108d5a71220afaf8ed1226",
+      "specification_excerpts": []
+    },
+    {
+      "model": "poolside/laguna-xs-2.1",
+      "url": "https://build.nvidia.com/poolside/laguna-xs-2.1.md",
+      "file": "poolside__laguna-xs-2.1.md",
+      "sha256": "d66ead3cc926bad7f4dc929d81ea01158164d69635271c986823c01404a00327",
+      "specification_excerpts": [
+        "- **Context Length:** 262,144 tokens",
+        "- **Input:** Text",
+        "- **Output:** Text",
+        "invoke_url='https://integrate.api.nvidia.com/v1/chat/completions'"
+      ]
+    }
+  ],
+  "lifecycle": [
+    {
+      "model": "google/diffusiongemma-26b-a4b-it",
+      "sha256": "02d2734ba9217734c624628f23df2cd5478066bd9620d37d86a79d467fa6f296",
+      "deprecation_excerpts": [
+        "ted Use Policy\\u003c/a\\u003e\\\\n\\\",\\\"deprecationNotice\\\":\\\"This API will be deprecated on 11/11/2026. It will no longer be supported after 11/12/2026. Please transition to another model to avoid any service interruptions. For more models information, visit our \\u003ca href='https://docs.api.nvidia.com/nim/reference/llm-apis' target='_blank'\\u003eAPI Reference\\u003c/a\\u003e.\\\",\\\"show"
+      ]
+    },
+    {
+      "model": "meta/llama-3.2-11b-vision-instruct",
+      "sha256": "be321e558849aff8c93cb9a54ec4881a7885d0753b2248ea6209565983465274",
+      "deprecation_excerpts": [
+        "Agreement. Built with Llama.\\\\n\\\",\\\"deprecationNotice\\\":\\\"This API will be deprecated on 11/04/2026. It will no longer be supported after 11/05/2026. Please transition to another model to avoid any service interruptions. For more models information, visit our \\u003ca href='https://docs.api.nvidia.com/nim/reference/llm-apis' target='_blank'\\u003eAPI Reference\\u003c/a\\u003e.\\\",\\\"show"
+      ]
+    },
+    {
+      "model": "meta/llama-3.2-90b-vision-instruct",
+      "sha256": "ee31927ce4db1d8d060ddea8a8a5e607cbc8c254c898284795d1a3383efc4f75",
+      "deprecation_excerpts": [
+        "Agreement. Built with Llama.\\\\n\\\",\\\"deprecationNotice\\\":\\\"This API will be deprecated on 11/15/2026. It will no longer be supported after 11/16/2026. Please transition to another model to avoid any service interruptions. For more models information, visit our \\u003ca href='https://docs.api.nvidia.com/nim/reference/llm-apis' target='_blank'\\u003eAPI Reference\\u003c/a\\u003e.\\\",\\\"show"
+      ]
+    },
+    {
+      "model": "meta/llama-3.3-70b-instruct",
+      "sha256": "d1ebbade7ad511e11b6fadf276333ba2be26c56e089ec9acc824f2065363df3f",
+      "deprecation_excerpts": []
+    },
+    {
+      "model": "meta/llama-guard-4-12b",
+      "sha256": "b0a6cbee8322b7fb28fcd393c6ce5f711d4036732ee56e0e0bb4c21a97cc1299",
+      "deprecation_excerpts": [
+        "lass=\"nv-status-message-header\" data-testid=\"nv-status-message-header\"><div class=\"nv-status-message-heading\" data-testid=\"nv-status-message-heading\">This NIM Endpoint has been deprecated</div><div class=\"nv-status-message-subheading\" data-testid=\"nv-status-message-subheading\">Please transition to another model to avoid any service interruptions.</div></div><div class=\"nv-status-messa",
+        "atus-message-heading\">This NIM Endpoint has been deprecated</div><div class=\"nv-status-message-subheading\" data-testid=\"nv-status-message-subheading\">Please transition to another model to avoid any service interruptions.</div></div><div class=\"nv-status-message-footer\" data-testid=\"nv-status-message-footer\"><a target=\"_blank\" href=\"https://docs.api.nvidia.com/nim/reference/meta-lla",
+        "c/a\\u003e. Built with Llama.\\\\n\\\",\\\"deprecationNotice\\\":\\\"This API will be deprecated on 11/15/2026. It will no longer be supported after 11/16/2026. Please transition to another model to avoid any service interruptions. For more models information, visit our \\u003ca href='https://docs.api.nvidia.com/nim/reference/llm-apis' target='_blank'\\u003eAPI Reference\\u003c/a\\u003e.\\\",\\\"show"
+      ]
+    },
+    {
+      "model": "minimaxai/minimax-m2.7",
+      "sha256": "5329e196c55b69cb2367eef6e60687840c18946ef759be90e69942c694d28eed",
+      "deprecation_excerpts": [
+        "ht \\u0026copy; 2026 MiniMax.\\\\n\\\",\\\"deprecationNotice\\\":\\\"This API will be deprecated on 07/27/2026. It will no longer be supported after 07/27/2026. Please transition to another model to avoid any service interruptions. For more models information, visit our \\u003ca href='https://docs.api.nvidia.com/nim/reference/minimaxai-minimax-m2.7' target='_blank'\\u003eAPI Reference\\u003c/a\\u"
+      ]
+    },
+    {
+      "model": "minimaxai/minimax-m3",
+      "sha256": "4948efe46f112ad3362d1bf79076c88952534d3773be998307427d8f7c505f48",
+      "deprecation_excerpts": [
+        "ht \\u0026copy; 2026 MiniMax.\\\\n\\\",\\\"deprecationNotice\\\":\\\"This API will be deprecated on 09/08/2026. It will no longer be supported after 09/08/2026. Please transition to another model to avoid any service interruptions. For more models information, visit our \\u003ca href='https://docs.api.nvidia.com/nim/reference/multimodal-apis' target='_blank'\\u003eAPI Reference\\u003c/a\\u003e.\\\""
+      ]
+    }
+  ],
+  "limitations": [
+    "Fresh FAQ fetch returned 403; previous captured official FAQ retained as dated source evidence.",
+    "Missing hosted-list identity does not prove deprecation.",
+    "100 MB upload and 1932-character claims not verified.",
+    "No cache documentation does not prove unsupported caching."
+  ],
+  "corrections_to_suggestions": [
+    "DeepSeek card explicitly lists image input; text-only claim is contradicted.",
+    "Riva Translate uses Chat Completions and explicitly describes 8K token context; token-limit exclusion is contradicted.",
+    "Bolt card provides an explicit 65536 Context Length integer, independently supporting the suggestion.",
+    "The exact meta/llama-3.3-70b-instruct markdown returned 404; deprecation and numeric context are not independently confirmed."
+  ],
+  "live_summary": {
+    "selectable_text": 1273,
+    "ready": 794,
+    "needs_configuration": 67,
+    "incomplete": 412,
+    "nvidia_selectable_text": 20,
+    "nvidia_ready": 11,
+    "nvidia_incomplete": 9,
+    "deprecations_verified": 6,
+    "nontext_reclassifications": 7,
+    "context_values_changed": 7,
+    "context_values_reconfirmed": 3
+  }
+}

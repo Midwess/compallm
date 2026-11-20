@@ -17,6 +17,8 @@ mod organization_onboarding_settings;
 mod organization_roles;
 mod organizations;
 mod provider_audio_usage;
+mod provider_catalog_auth_readiness;
+mod provider_catalog_readiness;
 mod provider_image_usage;
 mod provider_model_templates;
 mod provider_models;
@@ -62,3 +64,15 @@ pub use self::sea_orm_active_enums::UserStatus as UserStatusSchema;
 pub use self::user_preferences::Model as UserPreferenceSchema;
 pub use self::user_sessions::Model as UserSessionSchema;
 pub use self::users::Model as UserSchema;
+
+pub use self::provider_catalog_readiness::Model as ProviderCatalogReadinessSchema;
+pub use self::sea_orm_active_enums::CatalogBillingModel as CatalogBillingModelSchema;
+pub use self::sea_orm_active_enums::CatalogBillingUnit as CatalogBillingUnitSchema;
+pub use self::sea_orm_active_enums::CatalogCacheBilling as CatalogCacheBillingSchema;
+pub use self::sea_orm_active_enums::CatalogEndpointMode as CatalogEndpointModeSchema;
+pub use self::sea_orm_active_enums::CatalogPricingMode as CatalogPricingModeSchema;
+pub use self::sea_orm_active_enums::CatalogReadiness as CatalogReadinessSchema;
+pub use self::sea_orm_active_enums::CatalogServiceKind as CatalogServiceKindSchema;
+pub use self::sea_orm_active_enums::CatalogSpecificationMode as CatalogSpecificationModeSchema;
+
+pub use self::provider_catalog_auth_readiness::Model as ProviderCatalogAuthReadinessSchema;

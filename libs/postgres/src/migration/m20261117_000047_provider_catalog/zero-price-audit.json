@@ -1,0 +1,4200 @@
+{
+  "removed_unverified_zero_fields": 260,
+  "affected_models": 108,
+  "affected_selectable_models": 32,
+  "retained_zero_fields_with_verified_provenance": 117,
+  "removed": [
+    {
+      "provider": "agnes",
+      "model": "agnes-2.0-flash",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "agnes",
+      "model": "agnes-2.0-flash",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "cohere",
+      "model": "north-mini-code-1-0",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "cohere",
+      "model": "north-mini-code-1-0",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "cohere",
+      "model": "north-small-translate-09-2026",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "cohere",
+      "model": "north-small-translate-09-2026",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-embedding-001",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "gemini",
+      "model": "gemma-4-26b-a4b-it",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "gemini",
+      "model": "gemma-4-26b-a4b-it",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "gemini",
+      "model": "gemma-4-31b-it",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "gemini",
+      "model": "gemma-4-31b-it",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "gemini",
+      "model": "lyria-3-clip-preview",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "gemini",
+      "model": "lyria-3-clip-preview",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "gemini",
+      "model": "lyria-3-pro-preview",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "gemini",
+      "model": "lyria-3-pro-preview",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "gemini",
+      "model": "lyria-3.5",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "gemini",
+      "model": "lyria-3.5",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "groq",
+      "model": "allam-2-7b",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "groq",
+      "model": "allam-2-7b",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "mistral",
+      "model": "labs-devstral-small-2512",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "mistral",
+      "model": "labs-devstral-small-2512",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "mistral",
+      "model": "labs-leanstral-1-5-1",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "mistral",
+      "model": "labs-leanstral-1-5-1",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "mistral",
+      "model": "mistral-embed",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "mistral",
+      "model": "mistral-moderation-2603",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "mistral",
+      "model": "mistral-moderation-2603",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "deepseek-ai/deepseek-v4.1-flash",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "deepseek-ai/deepseek-v4.1-flash",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "google/diffusiongemma-26b-a4b-it",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "google/diffusiongemma-26b-a4b-it",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "google/gemma-3-12b-it",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "google/gemma-3-12b-it",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "google/gemma-3-4b-it",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "google/gemma-3-4b-it",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "google/google-paligemma",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "google/google-paligemma",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-3.2-11b-vision-instruct",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-3.2-11b-vision-instruct",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-3.2-90b-vision-instruct",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-3.2-90b-vision-instruct",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-guard-4-12b",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "meta/llama-guard-4-12b",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "mistralai/magistral-small-2506",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "mistralai/magistral-small-2506",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "mistralai/mistral-7b-instruct-v0.3",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "mistralai/mistral-7b-instruct-v0.3",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "mistralai/mistral-medium-3-instruct",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "mistralai/mistral-medium-3-instruct",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "moonshotai/kimi-k2.6",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "moonshotai/kimi-k2.6",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "moonshotai/kimi-k3",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "moonshotai/kimi-k3",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/active-speaker-detection",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/active-speaker-detection",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/bevformer",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/bevformer",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/cosmos-reason2-8b",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/cosmos-reason2-8b",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/llama-3.1-nemotron-70b-instruct",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/llama-3.1-nemotron-70b-instruct",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-voicechat",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-voicechat",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/riva-translate-4b-instruct-v1.1",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/riva-translate-4b-instruct-v1.1",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/sparsedrive",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/sparsedrive",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/streampetr",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/streampetr",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/synthetic-video-detector",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/synthetic-video-detector",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/usdcode",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/usdcode",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/usdvalidate",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/usdvalidate",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "openai/gpt-oss-20b",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "openai/gpt-oss-20b",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "openai/whisper-large-v3",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "openai/whisper-large-v3",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "poolside/laguna-xs-2.1",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "poolside/laguna-xs-2.1",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "stepfun-ai/step-5-preview",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "stepfun-ai/step-5-preview",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "z-ai/glm-5.3",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "z-ai/glm-5.3",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "z-ai/glm-5.3-flash",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "nvidia",
+      "model": "z-ai/glm-5.3-flash",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-3.5-turbo",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "openai",
+      "model": "omni-moderation-latest",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "openai",
+      "model": "omni-moderation-latest",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "openai",
+      "model": "text-embedding-3-large",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "openai",
+      "model": "text-embedding-3-small",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "openai",
+      "model": "text-embedding-ada-002",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode",
+      "model": "muse-spark-1.2-contributor-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode",
+      "model": "muse-spark-1.2-contributor-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode",
+      "model": "muse-spark-1.2-contributor-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode",
+      "model": "muse-spark-1.3-contributor-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode",
+      "model": "muse-spark-1.3-contributor-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode",
+      "model": "muse-spark-1.3-contributor-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-go",
+      "model": "cat-jam-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-go",
+      "model": "cat-jam-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-go",
+      "model": "cat-jam-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-go",
+      "model": "crouton-alpha-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-go",
+      "model": "crouton-alpha-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-go",
+      "model": "crouton-alpha-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-go",
+      "model": "longcat-2.5-preview-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-go",
+      "model": "longcat-2.5-preview-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-go",
+      "model": "longcat-2.5-preview-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-go",
+      "model": "minimax-m3.1-flash-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-go",
+      "model": "minimax-m3.1-flash-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-go",
+      "model": "minimax-m3.1-flash-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-go",
+      "model": "step-5-preview-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-go",
+      "model": "step-5-preview-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-go",
+      "model": "step-5-preview-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "cat-jam-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "cat-jam-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "cat-jam-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "crouton-alpha-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "crouton-alpha-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "crouton-alpha-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "deepseek-v4-flash-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "deepseek-v4-flash-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "deepseek-v4-flash-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "exo-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "exo-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "fledge-alpha-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "fledge-alpha-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "glm-4.7-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "glm-4.7-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "glm-4.7-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "glm-5-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "glm-5-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "glm-5-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "grok-code",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "grok-code",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "grok-code",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "hy3-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "hy3-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "hy3-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "hy3-preview-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "hy3-preview-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "hy3-preview-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "kimi-k2.5-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "kimi-k2.5-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "kimi-k2.5-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "laguna-s-2.1-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "laguna-s-2.1-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "laguna-s-2.1-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ling-2.6-flash-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ling-2.6-flash-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ling-3.0-flash-fin-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ling-3.0-flash-fin-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ling-3.0-flash-fin-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ling-3.0-flash-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ling-3.0-flash-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ling-3.0-flash-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ling-3.0-tiny-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ling-3.0-tiny-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ling-3.1-flash-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ling-3.1-flash-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ling-3.1-flash-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ll-alpha-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ll-alpha-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ll-alpha-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "longcat-2.0-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "longcat-2.0-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "longcat-2.0-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "longcat-2.5-preview-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "longcat-2.5-preview-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "longcat-2.5-preview-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mimo-v2-flash-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mimo-v2-flash-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mimo-v2-flash-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mimo-v2-omni-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mimo-v2-omni-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mimo-v2-omni-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mimo-v2-pro-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mimo-v2-pro-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mimo-v2-pro-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mimo-v2.5-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mimo-v2.5-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mimo-v2.5-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "minimax-m2.1-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "minimax-m2.1-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "minimax-m2.1-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "minimax-m2.5-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "minimax-m2.5-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "minimax-m2.5-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "minimax-m3-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "minimax-m3-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "minimax-m3-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "minimax-m3.1-flash-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "minimax-m3.1-flash-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "minimax-m3.1-flash-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "muse-spark-1.2-contributor-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "muse-spark-1.2-contributor-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "muse-spark-1.2-contributor-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "muse-spark-1.3-contributor-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "muse-spark-1.3-contributor-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "muse-spark-1.3-contributor-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "nemotron-3-super-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "nemotron-3-super-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "nemotron-3-super-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "nemotron-3-ultra-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "nemotron-3-ultra-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "nemotron-3-ultra-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "north-mini-code-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "north-mini-code-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "pulse-alpha-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "pulse-alpha-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "pulse-alpha-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "qwen3.6-plus-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "qwen3.6-plus-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "qwen3.6-plus-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ring-2.6-1t-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "ring-2.6-1t-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "space-bunny-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "space-bunny-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "space-bunny-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "step-5-preview-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "step-5-preview-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "step-5-preview-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "trinity-large-preview-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "trinity-large-preview-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "x-preview-f-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "x-preview-f-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "x-preview-f-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-m.1",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-m.1",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-m.1",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-s-2.1",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-s-2.1",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-s-2.1",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-xs-2.1",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-xs-2.1",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "poolside",
+      "model": "poolside/laguna-xs-2.1",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-flash",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-flash",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-flash",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-v4-flash",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-v4-flash",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-v4-flash",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-v4-pro",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-v4-pro",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "deepseek-v4-pro",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "glm-5.2",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "glm-5.2",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "glm-5.2",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "kimi-k3",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "kimi-k3",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "kimi-k3",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "sensenova-6.8-flash-lite",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "sensenova-6.8-flash-lite",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "sensenova",
+      "model": "sensenova-6.8-flash-lite",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "z-ai/glm-5.3-free",
+      "field": "input_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "z-ai/glm-5.3-free",
+      "field": "output_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    },
+    {
+      "provider": "tokenrouter",
+      "model": "z-ai/glm-5.3-free",
+      "field": "cached_price",
+      "previous": "0",
+      "reason": "Imported/estimated zero has no verified field-level source provenance."
+    }
+  ],
+  "retained": [
+    {
+      "provider": "bazaarlink",
+      "model": "auto:free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://api.bazaarlink.ai/v1/models",
+        "revision": "sha256:90dd58a23b850baa409dc4818d4b048fdf8d08e8916d3dfa90bf1e670b187b03",
+        "fields": [
+          "display_name",
+          "description",
+          "input_price",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider model identifier or explicit catalog alias. Prices are converted from USD/token to USD/million; unrepresentable precision remains flagged."
+      }
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "auto:free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://api.bazaarlink.ai/v1/models",
+        "revision": "sha256:90dd58a23b850baa409dc4818d4b048fdf8d08e8916d3dfa90bf1e670b187b03",
+        "fields": [
+          "display_name",
+          "description",
+          "input_price",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider model identifier or explicit catalog alias. Prices are converted from USD/token to USD/million; unrepresentable precision remains flagged."
+      }
+    },
+    {
+      "provider": "gemini",
+      "model": "gemma-4-26b-a4b-it",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "revision": "sha256:7ff0760d92ac625c0ec9708ef9777a61b3781091ec53322643ccf58b381bb70b",
+        "fields": [
+          "cached_price",
+          "field_metadata"
+        ],
+        "status": "verified",
+        "note": "Gemma 4 free-tier context caching is free of charge. Paid-tier availability is not inferred."
+      }
+    },
+    {
+      "provider": "gemini",
+      "model": "gemma-4-31b-it",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "revision": "sha256:7ff0760d92ac625c0ec9708ef9777a61b3781091ec53322643ccf58b381bb70b",
+        "fields": [
+          "cached_price",
+          "field_metadata"
+        ],
+        "status": "verified",
+        "note": "Gemma 4 free-tier context caching is free of charge. Paid-tier availability is not inferred."
+      }
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "kilo-auto/free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://api.kilo.ai/api/gateway/models",
+        "revision": "sha256:7e34620182c2a8c8c598c05529014184aff119e91f0792b6ad7828cec59c9665",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "kilo-auto/free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://api.kilo.ai/api/gateway/models",
+        "revision": "sha256:7e34620182c2a8c8c598c05529014184aff119e91f0792b6ad7828cec59c9665",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "kilo-auto/free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://api.kilo.ai/api/gateway/models",
+        "revision": "sha256:7e34620182c2a8c8c598c05529014184aff119e91f0792b6ad7828cec59c9665",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://api.kilo.ai/api/gateway/models",
+        "revision": "sha256:7e34620182c2a8c8c598c05529014184aff119e91f0792b6ad7828cec59c9665",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "kilo-gateway",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://api.kilo.ai/api/gateway/models",
+        "revision": "sha256:7e34620182c2a8c8c598c05529014184aff119e91f0792b6ad7828cec59c9665",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "nous",
+      "model": "stepfun/step-3.7-flash:free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://inference-api.nousresearch.com/v1/models",
+        "revision": "sha256:220c1935d329821866a6155b3ebe0029040b21824a9bf4fc8bc71af108993688",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "nous",
+      "model": "stepfun/step-3.7-flash:free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://inference-api.nousresearch.com/v1/models",
+        "revision": "sha256:220c1935d329821866a6155b3ebe0029040b21824a9bf4fc8bc71af108993688",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "nous",
+      "model": "stepfun/step-3.7-flash:free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://inference-api.nousresearch.com/v1/models",
+        "revision": "sha256:220c1935d329821866a6155b3ebe0029040b21824a9bf4fc8bc71af108993688",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "nous",
+      "model": "upstage/solar-mini4:free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://inference-api.nousresearch.com/v1/models",
+        "revision": "sha256:220c1935d329821866a6155b3ebe0029040b21824a9bf4fc8bc71af108993688",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "nous",
+      "model": "upstage/solar-mini4:free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://inference-api.nousresearch.com/v1/models",
+        "revision": "sha256:220c1935d329821866a6155b3ebe0029040b21824a9bf4fc8bc71af108993688",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "nous",
+      "model": "upstage/solar-mini4:free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://inference-api.nousresearch.com/v1/models",
+        "revision": "sha256:220c1935d329821866a6155b3ebe0029040b21824a9bf4fc8bc71af108993688",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-go",
+      "model": "beam-free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/go/v1/models",
+        "revision": "sha256:a0b7df08901ca1aea95d49b6395cfa924467a3b2feaf00548cf394a34678eb8a",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-go",
+      "model": "beam-free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/go/v1/models",
+        "revision": "sha256:a0b7df08901ca1aea95d49b6395cfa924467a3b2feaf00548cf394a34678eb8a",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-go",
+      "model": "beam-free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/go/v1/models",
+        "revision": "sha256:a0b7df08901ca1aea95d49b6395cfa924467a3b2feaf00548cf394a34678eb8a",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-go",
+      "model": "hy4-flash-free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/go/v1/models",
+        "revision": "sha256:a0b7df08901ca1aea95d49b6395cfa924467a3b2feaf00548cf394a34678eb8a",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-go",
+      "model": "hy4-flash-free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/go/v1/models",
+        "revision": "sha256:a0b7df08901ca1aea95d49b6395cfa924467a3b2feaf00548cf394a34678eb8a",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-go",
+      "model": "hy4-flash-free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/go/v1/models",
+        "revision": "sha256:a0b7df08901ca1aea95d49b6395cfa924467a3b2feaf00548cf394a34678eb8a",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-go",
+      "model": "iceman-contributor-free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/go/v1/models",
+        "revision": "sha256:a0b7df08901ca1aea95d49b6395cfa924467a3b2feaf00548cf394a34678eb8a",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-go",
+      "model": "iceman-contributor-free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/go/v1/models",
+        "revision": "sha256:a0b7df08901ca1aea95d49b6395cfa924467a3b2feaf00548cf394a34678eb8a",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-go",
+      "model": "iceman-contributor-free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/go/v1/models",
+        "revision": "sha256:a0b7df08901ca1aea95d49b6395cfa924467a3b2feaf00548cf394a34678eb8a",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-go",
+      "model": "longcat-2.5-free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/go/v1/models",
+        "revision": "sha256:a0b7df08901ca1aea95d49b6395cfa924467a3b2feaf00548cf394a34678eb8a",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-go",
+      "model": "longcat-2.5-free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/go/v1/models",
+        "revision": "sha256:a0b7df08901ca1aea95d49b6395cfa924467a3b2feaf00548cf394a34678eb8a",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-go",
+      "model": "longcat-2.5-free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/go/v1/models",
+        "revision": "sha256:a0b7df08901ca1aea95d49b6395cfa924467a3b2feaf00548cf394a34678eb8a",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "beam-free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "beam-free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "beam-free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "big-pickle",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "big-pickle",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "big-pickle",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "deepseek-v4.1-flash-free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "deepseek-v4.1-flash-free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "deepseek-v4.1-flash-free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "flint-40b-free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "flint-40b-free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "flint-40b-free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "glm-5.3-flash-free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "glm-5.3-flash-free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "glm-5.3-flash-free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "hy4-flash-free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "hy4-flash-free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "hy4-flash-free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "iceman-free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "iceman-free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "iceman-free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "inkling-2-small-free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "inkling-2-small-free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "inkling-2-small-free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "longcat-2.5-free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "longcat-2.5-free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "longcat-2.5-free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mimo-v2.6-flash-free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mimo-v2.6-flash-free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "mimo-v2.6-flash-free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "nemotron-3.5-lightning-free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "nemotron-3.5-lightning-free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "nemotron-3.5-lightning-free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "nemotron-3.5-super-vl-free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "nemotron-3.5-super-vl-free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "opencode-zen",
+      "model": "nemotron-3.5-super-vl-free",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://opencode.ai/zen/v1/models",
+        "revision": "sha256:6316c926ddde1c235b840cd6445f70ba15e2f3c764db2751e85893097a8e0544",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price",
+          "cached_price"
+        ],
+        "status": "verified",
+        "note": "Exact provider/model match in its official public catalog. Values retain their published units; non-fixed prices remain classified."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "baseten/elephant-1",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/baseten/elephant-1/endpoints",
+        "revision": "sha256:208247282a1d69a264aa256fd5cfd80b76c545dc917e3848fd7bd583bd2a31ef",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "baseten/joey-1",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/baseten/joey-1/endpoints",
+        "revision": "sha256:abec99f1cbcccdc4e0037342dfe8cc15456882c7fc555b3c4f4414e9dc7eca6f",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "baseten/mammoth-1",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/baseten/mammoth-1/endpoints",
+        "revision": "sha256:f742a719ec9578650cf37a2010344bfab756bb8557075169d60d05796d2e3f98",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "cloudflare/clairic",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/cloudflare/clairic/endpoints",
+        "revision": "sha256:b0cf38102a38d09450b4711a6b19b7572426db08915ee3ec2f2557ea525c5612",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "cloudflare/clef",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/cloudflare/clef/endpoints",
+        "revision": "sha256:03c909c66c5046480148ed11636ee40023020a89743ad6b12f7fe72d5c567f9f",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "cloudflare/clef-flash",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/cloudflare/clef-flash/endpoints",
+        "revision": "sha256:f59296c339c186985fd7b67ec17c4882113608187b05ce67e219c174c3c056dd",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "cloudflare/clef-omni",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/cloudflare/clef-omni/endpoints",
+        "revision": "sha256:d8ab72a1251cb527b85df6c1815bb6549fb19526be31212cbe99b3e0a5ab316a",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/lyria-3-clip-preview",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models",
+        "revision": "sha256:eae1d4b46c243b0088ddba5d3d0bf18c5a13f2a47a17906603b21e6a1059c03e",
+        "fields": [
+          "cached_price",
+          "capabilities",
+          "description",
+          "display_name",
+          "effort_mapping",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "output_price",
+          "paths",
+          "protocols"
+        ],
+        "status": "verified",
+        "note": "Exact public model-list identifier. Token rates are USD per token in the source, converted exactly to USD per million. Context pricing overrides remain structured tiers; endpoint differences stay explicit."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/lyria-3-clip-preview",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models",
+        "revision": "sha256:eae1d4b46c243b0088ddba5d3d0bf18c5a13f2a47a17906603b21e6a1059c03e",
+        "fields": [
+          "cached_price",
+          "capabilities",
+          "description",
+          "display_name",
+          "effort_mapping",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "output_price",
+          "paths",
+          "protocols"
+        ],
+        "status": "verified",
+        "note": "Exact public model-list identifier. Token rates are USD per token in the source, converted exactly to USD per million. Context pricing overrides remain structured tiers; endpoint differences stay explicit."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/lyria-3-pro-preview",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models",
+        "revision": "sha256:eae1d4b46c243b0088ddba5d3d0bf18c5a13f2a47a17906603b21e6a1059c03e",
+        "fields": [
+          "cached_price",
+          "capabilities",
+          "description",
+          "display_name",
+          "effort_mapping",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "output_price",
+          "paths",
+          "protocols"
+        ],
+        "status": "verified",
+        "note": "Exact public model-list identifier. Token rates are USD per token in the source, converted exactly to USD per million. Context pricing overrides remain structured tiers; endpoint differences stay explicit."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/lyria-3-pro-preview",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models",
+        "revision": "sha256:eae1d4b46c243b0088ddba5d3d0bf18c5a13f2a47a17906603b21e6a1059c03e",
+        "fields": [
+          "cached_price",
+          "capabilities",
+          "description",
+          "display_name",
+          "effort_mapping",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "output_price",
+          "paths",
+          "protocols"
+        ],
+        "status": "verified",
+        "note": "Exact public model-list identifier. Token rates are USD per token in the source, converted exactly to USD per million. Context pricing overrides remain structured tiers; endpoint differences stay explicit."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "heygen/heygen-decision-1",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/heygen/heygen-decision-1/endpoints",
+        "revision": "sha256:c94d34ed14f922c169dc3319f0149bfe444f37d51c5bd046da0556c7a8401017",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "heygen/heygen-decision-1-turbo",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/heygen/heygen-decision-1-turbo/endpoints",
+        "revision": "sha256:4b5d84c39e477c8eef7f097515160317bc942e34ffa629db3d812cb0536d2d13",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "jaredpalmer/kev-4b",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/jaredpalmer/kev-4b/endpoints",
+        "revision": "sha256:d6065bbdc72b545c0ad60e31c8a4d53bfe420c04cb5a18e38cffd7fa9a63cc0e",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "liquid/d1-ultra",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/liquid/d1-ultra/endpoints",
+        "revision": "sha256:be0a6259e09561d048a281446a602bba27bda4cf588b0437910eba5b39aa1804",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "liquid/d1.1",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/liquid/d1.1/endpoints",
+        "revision": "sha256:5d5343547c45e1dbe0b2d483a428b2a5fab0e95328a48aad14c7130071fb5e49",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "liquid/d1.2",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/liquid/d1.2/endpoints",
+        "revision": "sha256:cad9cfbc20b8751381fed88e1b4fdd18c836e3b09af44a591edc53baf034044f",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "liquid/d1.2-ultra",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/liquid/d1.2-ultra/endpoints",
+        "revision": "sha256:e0fa5c7f58bba9e3948299ad82af98845efc8c9fd82931dc13f5839eff992ced",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "microsoft/microsoft-decision-1",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/microsoft/microsoft-decision-1/endpoints",
+        "revision": "sha256:a3748cefb9601f855ed4f42aa385ecfe61cceeb2d58fe24acb65e5d27057e133",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "morph/reflex",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/morph/reflex/endpoints",
+        "revision": "sha256:7e2d88194f63cf1a0c717731b03f25b55be103d04e5f1304850ea7793bff4394",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "nace-ai/drex-max",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/nace-ai/drex-max/endpoints",
+        "revision": "sha256:acaa04410b97c54618a63e6579d2efc63855b51d194fb67982bb2e3942cf31f2",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "nace-ai/drex-max-finance",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/nace-ai/drex-max-finance/endpoints",
+        "revision": "sha256:8001a7e3202425793ecb4e13c9abe968322a56659e9e08d94bccd0d336b44979",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-6-luna-decisions",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/openai/gpt-6-luna-decisions/endpoints",
+        "revision": "sha256:efdeed0992ee8fed414d27a0108429ffdbd7287ea3b1b2fce0c29ddde2b6febf",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-6-luna-decisions",
+      "field": "cached_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/openai/gpt-6-luna-decisions/endpoints",
+        "revision": "sha256:efdeed0992ee8fed414d27a0108429ffdbd7287ea3b1b2fce0c29ddde2b6febf",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models",
+        "revision": "sha256:eae1d4b46c243b0088ddba5d3d0bf18c5a13f2a47a17906603b21e6a1059c03e",
+        "fields": [
+          "cached_price",
+          "capabilities",
+          "description",
+          "display_name",
+          "effort_mapping",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "output_price",
+          "paths",
+          "protocols"
+        ],
+        "status": "verified",
+        "note": "Exact public model-list identifier. Token rates are USD per token in the source, converted exactly to USD per million. Context pricing overrides remain structured tiers; endpoint differences stay explicit."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models",
+        "revision": "sha256:eae1d4b46c243b0088ddba5d3d0bf18c5a13f2a47a17906603b21e6a1059c03e",
+        "fields": [
+          "cached_price",
+          "capabilities",
+          "description",
+          "display_name",
+          "effort_mapping",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "output_price",
+          "paths",
+          "protocols"
+        ],
+        "status": "verified",
+        "note": "Exact public model-list identifier. Token rates are USD per token in the source, converted exactly to USD per million. Context pricing overrides remain structured tiers; endpoint differences stay explicit."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "parallel/decisions-fast",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/parallel/decisions-fast/endpoints",
+        "revision": "sha256:238c875b88c6dc70d7923cc4204c59c42d94ae66c507d3a466b706fcf01edb89",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "parallel/decisions-fast",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/parallel/decisions-fast/endpoints",
+        "revision": "sha256:238c875b88c6dc70d7923cc4204c59c42d94ae66c507d3a466b706fcf01edb89",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/pplx-decider-flash-v1.2",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/perplexity/pplx-decider-flash-v1.2/endpoints",
+        "revision": "sha256:fca07b90b10d1b5f0dcd1b18882450b37a19cde27dc1d6f7bfed222e64346a55",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/pplx-decider-flash-v1.3:free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/perplexity/pplx-decider-flash-v1.3:free/endpoints",
+        "revision": "sha256:451df79682a79cf9f17d5660737dedbb6c7f47ddc8a18b4fde1d0c843f2e2a15",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/pplx-decider-flash-v1.3:free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/perplexity/pplx-decider-flash-v1.3:free/endpoints",
+        "revision": "sha256:451df79682a79cf9f17d5660737dedbb6c7f47ddc8a18b4fde1d0c843f2e2a15",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/pplx-decider-v1.2",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/perplexity/pplx-decider-v1.2/endpoints",
+        "revision": "sha256:a7bded1d7eedd1c93c262544f8748e6e73b45050d915b682a348046987a75054",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/pplx-decider-v1.3:free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/perplexity/pplx-decider-v1.3:free/endpoints",
+        "revision": "sha256:02beaf383b8c174442b3f6898ee35057876061ff19b2b51f2e82a7d9ba5cd034",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/pplx-decider-v1.3:free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/perplexity/pplx-decider-v1.3:free/endpoints",
+        "revision": "sha256:02beaf383b8c174442b3f6898ee35057876061ff19b2b51f2e82a7d9ba5cd034",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "respan/span-01",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/respan/span-01/endpoints",
+        "revision": "sha256:0da4555ad1187342679216b10254728199f9c4067b323c97e1e1d686063a9a18",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "respan/span-01-lite",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/respan/span-01-lite/endpoints",
+        "revision": "sha256:60e3918c7491cebab4c481f51bb39fe9412f0f411940046878e2b110463a5352",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "respan/span-01-lite",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/respan/span-01-lite/endpoints",
+        "revision": "sha256:60e3918c7491cebab4c481f51bb39fe9412f0f411940046878e2b110463a5352",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "respan/span-01-lite:free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/respan/span-01-lite:free/endpoints",
+        "revision": "sha256:232d658c0f8dfd300d37bc3a3560edfdd8b02b0b3ccfbb38b70bb6d363427589",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "respan/span-01-lite:free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/respan/span-01-lite:free/endpoints",
+        "revision": "sha256:232d658c0f8dfd300d37bc3a3560edfdd8b02b0b3ccfbb38b70bb6d363427589",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "respan/span-02",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/respan/span-02/endpoints",
+        "revision": "sha256:b49a26ac9ef15670ada33d57644e6b9a90187cfb5cc13019059dc7ea99fec432",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "scaledown/classify-1",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/scaledown/classify-1/endpoints",
+        "revision": "sha256:cf35e588d5583337aea50c9e697687da7628927a3e9c554e7f1b848f5de820d3",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "scaledown/extract",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models",
+        "revision": "sha256:eae1d4b46c243b0088ddba5d3d0bf18c5a13f2a47a17906603b21e6a1059c03e",
+        "fields": [
+          "cached_price",
+          "capabilities",
+          "description",
+          "display_name",
+          "effort_mapping",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "output_price",
+          "paths",
+          "protocols"
+        ],
+        "status": "verified",
+        "note": "Exact public model-list identifier. Token rates are USD per token in the source, converted exactly to USD per million. Context pricing overrides remain structured tiers; endpoint differences stay explicit."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "scaledown/summarize",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models",
+        "revision": "sha256:eae1d4b46c243b0088ddba5d3d0bf18c5a13f2a47a17906603b21e6a1059c03e",
+        "fields": [
+          "cached_price",
+          "capabilities",
+          "description",
+          "display_name",
+          "effort_mapping",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "output_price",
+          "paths",
+          "protocols"
+        ],
+        "status": "verified",
+        "note": "Exact public model-list identifier. Token rates are USD per token in the source, converted exactly to USD per million. Context pricing overrides remain structured tiers; endpoint differences stay explicit."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "togethercomputer/tev1-4b-experimental",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/togethercomputer/tev1-4b-experimental/endpoints",
+        "revision": "sha256:bd9954ce715eed4cf76e261438dde4c52545f24ff86a6079d9264f6a1e372e20",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "upstage/solar-decide",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/upstage/solar-decide/endpoints",
+        "revision": "sha256:1a9f1166c3f1b30c04b1b76bf41c8dfcb0bae8c7e032c923b96095a0d6de2747",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "upstage/solar-decide-flash",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/upstage/solar-decide-flash/endpoints",
+        "revision": "sha256:79ed192ff4b3a503c2ace1fa1b4a24c23a1455650c881e5ceb706f23b1cce8f7",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "~liquid/d1-latest",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/~liquid/d1-latest/endpoints",
+        "revision": "sha256:e975729a60b14bd048a801eb13fe7f2ecb3e635c956d30b2ec63cb42f31ed1ac",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "~liquid/d1-ultra-latest",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/~liquid/d1-ultra-latest/endpoints",
+        "revision": "sha256:617a80b747253a95b1dfbd8f3d195d445716492a7868ffcbc3112300f64a8132",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "~perplexity/pplx-decider-flash-latest",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/~perplexity/pplx-decider-flash-latest/endpoints",
+        "revision": "sha256:10e434d417f22e20a4744c4fd8e8c268b3c4648b8f445f0bda75e575e5f0c71b",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "openrouter",
+      "model": "~perplexity/pplx-decider-latest",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://openrouter.ai/api/v1/models/~perplexity/pplx-decider-latest/endpoints",
+        "revision": "sha256:f6eb951cf5a679f270277bbbab06ccf8be4dd3a0efbd2b1992055ed9820a4a3f",
+        "fields": [
+          "cached_price",
+          "field_metadata",
+          "input_price",
+          "max_context_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact model/variant endpoint response. Explicit caching support remains independent from implicit caching."
+      }
+    },
+    {
+      "provider": "siliconflow",
+      "model": "tencent/Hunyuan-MT-7B",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://www.siliconflow.com/models/hunyuan-mt-7b",
+        "revision": "sha256:1d9b172478d335987788880f8eb9fcbbc7b3f2a7cf8e2329ecdb587443ca29db",
+        "fields": [
+          "upstream_model_id",
+          "display_name",
+          "description",
+          "protocols",
+          "paths",
+          "capabilities",
+          "max_context_tokens",
+          "max_output_tokens",
+          "effort_mapping",
+          "input_price",
+          "output_price",
+          "cached_price",
+          "field_metadata",
+          "service_kind",
+          "billing_model",
+          "billing_unit",
+          "pricing_mode",
+          "cache_billing"
+        ],
+        "status": "verified",
+        "note": "Complete public CMS collection behind Load More; matched exact api_model_name and api_endpoint. Status and KV-cache flags are explicit stored facts. Rounded K context labels are retained without expansion; output maxima come from form_schema."
+      }
+    },
+    {
+      "provider": "siliconflow",
+      "model": "tencent/Hunyuan-MT-7B",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://www.siliconflow.com/models/hunyuan-mt-7b",
+        "revision": "sha256:1d9b172478d335987788880f8eb9fcbbc7b3f2a7cf8e2329ecdb587443ca29db",
+        "fields": [
+          "upstream_model_id",
+          "display_name",
+          "description",
+          "protocols",
+          "paths",
+          "capabilities",
+          "max_context_tokens",
+          "max_output_tokens",
+          "effort_mapping",
+          "input_price",
+          "output_price",
+          "cached_price",
+          "field_metadata",
+          "service_kind",
+          "billing_model",
+          "billing_unit",
+          "pricing_mode",
+          "cache_billing"
+        ],
+        "status": "verified",
+        "note": "Complete public CMS collection behind Load More; matched exact api_model_name and api_endpoint. Status and KV-cache flags are explicit stored facts. Rounded K context labels are retained without expansion; output maxima come from form_schema."
+      }
+    },
+    {
+      "provider": "tokenharbor",
+      "model": "deepseek-v4.1-flash:free",
+      "field": "input_price",
+      "source": {
+        "kind": "web",
+        "url": "https://tokenharbor.ai/models",
+        "revision": "sha256:a958e2464d1f4de3ba47a68ff302c1746b5e71db4c35053095b39da76a0954c3",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact API surface/model record embedded in the official catalog. Base USD/million rates; pass discounts, fast modes, and long-context tiers are distinct conditions."
+      }
+    },
+    {
+      "provider": "tokenharbor",
+      "model": "deepseek-v4.1-flash:free",
+      "field": "output_price",
+      "source": {
+        "kind": "web",
+        "url": "https://tokenharbor.ai/models",
+        "revision": "sha256:a958e2464d1f4de3ba47a68ff302c1746b5e71db4c35053095b39da76a0954c3",
+        "fields": [
+          "max_context_tokens",
+          "max_output_tokens",
+          "input_price",
+          "output_price"
+        ],
+        "status": "verified",
+        "note": "Exact API surface/model record embedded in the official catalog. Base USD/million rates; pass discounts, fast modes, and long-context tiers are distinct conditions."
+      }
+    }
+  ],
+  "scope": "Only unverified zero-valued scalar defaults are cleared. Original claims/source URLs remain in per-model metadata; verified zero provenance is explicit. No configured organization provider or price is changed."
+}

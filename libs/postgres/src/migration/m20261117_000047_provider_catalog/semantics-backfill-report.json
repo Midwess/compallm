@@ -1,0 +1,95 @@
+{
+  "restored_exact_prices": [
+    {
+      "provider": "bazaarlink",
+      "model": "gemini-3-flash-preview",
+      "field": "input_price",
+      "value": "0.45000000000000003"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gemini-3.1-pro-preview",
+      "field": "input_price",
+      "value": "1.8000000000000001"
+    },
+    {
+      "provider": "morph",
+      "model": "morph-dsv4flash",
+      "field": "input_price",
+      "value": "0.141953125"
+    },
+    {
+      "provider": "venice",
+      "model": "qwen-4-max",
+      "field": "cached_price",
+      "value": "0.07500000000000001"
+    }
+  ],
+  "service_kinds": {
+    "text": 1992,
+    "image": 125,
+    "unknown": 222,
+    "audio": 53,
+    "embedding": 15,
+    "rerank": 3,
+    "video": 6
+  },
+  "billing_models": {
+    "metered": 1927,
+    "subscription": 70,
+    "unknown": 396,
+    "free": 23
+  },
+  "pricing_modes": {
+    "fixed": 1432,
+    "not_applicable": 93,
+    "tiered": 74,
+    "unknown": 802,
+    "account_specific": 13,
+    "scheduled": 2
+  },
+  "cache_billing": {
+    "unknown": 658,
+    "separate_rate": 1137,
+    "included": 93,
+    "not_applicable": 424,
+    "standard_input_rate": 3,
+    "per_route": 12,
+    "unsupported": 89
+  },
+  "scope": "Catalog requirements and derived readiness only. Credentials, account entitlements, provider access and runtime integration remain separate.",
+  "effective_readiness": {
+    "incomplete": 1565,
+    "ready": 787,
+    "needs_configuration": 64
+  },
+  "selectable_text_readiness": {
+    "ready": 787,
+    "incomplete": 435,
+    "needs_configuration": 64
+  },
+  "model_readiness": {
+    "incomplete": 1536,
+    "ready": 839,
+    "needs_configuration": 41
+  },
+  "provider_readiness": {
+    "ready": 62,
+    "incomplete": 82,
+    "needs_configuration": 1
+  },
+  "openrouter_text_readiness": {
+    "ready": 261,
+    "incomplete": 114,
+    "needs_configuration": 12
+  },
+  "latest_source_pass": "nim-gemini-revision.json",
+  "siliconflow_text_readiness": {
+    "incomplete": 13,
+    "ready": 43
+  },
+  "nim_text_readiness": {
+    "ready": 10,
+    "incomplete": 23
+  }
+}

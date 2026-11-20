@@ -1,3 +1,4 @@
+pub mod catalog;
 #[cfg(feature = "cli")]
 pub mod codegen;
 pub mod connection;

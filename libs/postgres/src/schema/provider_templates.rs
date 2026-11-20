@@ -10,13 +10,27 @@ pub struct Model {
     pub name: String,
     #[sea_orm(column_type = "Text", nullable)]
     pub description: Option<String>,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub icon_key: Option<String>,
+    #[sea_orm(column_type = "Text")]
+    pub logo_path: String,
     #[sea_orm(column_type = "Text")]
     pub protocol: String,
     pub base_url: Option<String>,
     #[sea_orm(column_type = "JsonBinary")]
     pub headers: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub source_refs: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub auth_methods: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub auth_config: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub endpoint_config: Json,
+    pub endpoint_mode: super::sea_orm_active_enums::CatalogEndpointMode,
+    pub readiness: super::sea_orm_active_enums::CatalogReadiness,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub field_metadata: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub model_info_sources: Json,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

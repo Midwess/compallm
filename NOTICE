@@ -10,6 +10,21 @@ Third-party components retain their respective licenses and notices.
 Provider template catalog metadata: Copyright (c) 2024-2026 decolua and contributors.
 Licensed under the MIT License; see libs/postgres/LICENSE-provider-templates.
 
+Supplemental model metadata: Copyright (c) 2025 models.dev. Licensed under MIT;
+see libs/postgres/src/migration/m20261117_000047_provider_catalog/LICENSE-models-dev.
+
+Supplemental model metadata: Copyright (c) 2023 Berri AI. Licensed under MIT;
+see libs/postgres/src/migration/m20261117_000047_provider_catalog/LICENSE-LiteLLM.
+
+Supplemental public catalog facts: LLM Gateway (https://llmgateway.io/models)
+and Artificial Analysis (https://artificialanalysis.ai/models). Exact source URLs,
+response hashes, applicability checks, and imported facts are recorded in the
+provider catalog migration's three-catalog-investigation.json and source references.
+
+Provider artwork: see portal/public/assets/providers/manifest.json for sources,
+attribution, and checksums, and LICENSE-9Router and LICENSE-LobeHub in that directory.
+Provider names and logos remain the trademarks of their respective owners.
+
 Cedar syntax grammar: Copyright Cedar Contributors. Licensed under Apache-2.0;
 see libs/storybook/src/assets/cedar/LICENSE, NOTICE, and source.json.
 

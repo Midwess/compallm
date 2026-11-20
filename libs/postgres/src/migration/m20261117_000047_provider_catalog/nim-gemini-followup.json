@@ -1,0 +1,240 @@
+{
+  "origin": "Gemini follow-up answer supplied by the user",
+  "verification": "unverified_suggestion",
+  "platform_claims": {
+    "origin": "Gemini follow-up answer supplied by the user",
+    "verification": "unverified_suggestion",
+    "source_urls_supplied": [],
+    "hosted_api": "https://integrate.api.nvidia.com",
+    "pricing_claim": "Free, credit-based trial for prototyping, evaluation, and development. Typically 1,000 free credits. No paid/subscription/pay-as-you-go hosted tiers; production uses self-hosted NIM or a paid third-party partner.",
+    "cache_claim": "Prompt caching features and cached-token tariffs are not documented for the free hosted API.",
+    "output_limit_claim": "Generally no separate hard output caps beyond model-specific max_tokens defaults and the total context constraint.",
+    "limitations": [
+      "A typical initial credit quantity is not an account entitlement guarantee.",
+      "No published caching feature is not proof of unsupported caching.",
+      "No paid tier is an absence claim requiring current official evidence.",
+      "A self-hosted NIM limit or license does not establish hosted endpoint behavior."
+    ]
+  },
+  "models": [
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "deepseek-ai/deepseek-v4.1-flash",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text, Image -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "1M",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "google/diffusiongemma-26b-a4b-it",
+      "hosted_status_claim": "Deprecated",
+      "modality_or_service_claim": "Text, Image, Video -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "262K",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "google/gemma-4-31b-it",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text, Image, Video -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "262K (card notes 256K Input Sequence Length)",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "google/google-paligemma",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Image, Text -> Text (Vision QA)",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "Unknown (not published)",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "meta/llama-3.2-11b-vision-instruct",
+      "hosted_status_claim": "Deprecated",
+      "modality_or_service_claim": "Text, Image -> Text (Vision)",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "131K",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "meta/llama-3.2-90b-vision-instruct",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text, Image -> Text (Vision)",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "Unknown (not explicitly published; likely 131K)",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "meta/llama-3.3-70b-instruct",
+      "hosted_status_claim": "Deprecated",
+      "modality_or_service_claim": "Text -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "131K",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "meta/llama-guard-4-12b",
+      "hosted_status_claim": "Deprecating Soon",
+      "modality_or_service_claim": "Text, Image -> Text (Safety)",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "Unknown (not published)",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "meta/muse-glimmer-30b",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text, Image -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "131K",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "minimaxai/minimax-m2.7",
+      "hosted_status_claim": "Deprecated",
+      "modality_or_service_claim": "Text -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "205K",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "minimaxai/minimax-m3",
+      "hosted_status_claim": "Unknown",
+      "modality_or_service_claim": "Unknown",
+      "endpoint_claim": "Unknown",
+      "context_label_claim": "Unknown (model page not actively indexed on build.nvidia.com)",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "minimaxai/minimax-m3.1-flash",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text, Image, Video -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "262K",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/active-speaker-detection",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Video, Audio -> Labels (Perception)",
+      "endpoint_claim": "Custom Upload API",
+      "context_label_claim": "Unknown (not published)",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/bevformer",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Multi-Camera -> Labels (Perception)",
+      "endpoint_claim": "Custom Container",
+      "context_label_claim": "Resolution: 450x800; token length unknown",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/llama-3.1-nemotron-safety-guard-8b-v3",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text -> Text (Safety)",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "Unknown (not published)",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text, Image, Audio, Video -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "262K",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/nemotron-3-ultra-550b-a55b",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "1M",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/nemotron-3.5-bolt-e4b",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "66K (WCE endpoint restricted to 64K)",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/nemotron-3.5-content-safety",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text, Image -> Text (Safety)",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "128K",
+      "source_urls_supplied": []
+    },
+    {
+      "origin": "Gemini follow-up answer supplied by the user",
+      "verification": "unverified_suggestion",
+      "model_id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "hosted_status_claim": "Available",
+      "modality_or_service_claim": "Text -> Text",
+      "endpoint_claim": "/v1/chat/completions",
+      "context_label_claim": "1M",
+      "source_urls_supplied": []
+    }
+  ],
+  "known_official_source_conflicts": [
+    {
+      "model_id": "google/google-paligemma",
+      "field": "context_limit",
+      "gemini_claim": "Unknown (not published)",
+      "official_source": "https://build.nvidia.com/google/google-paligemma.md",
+      "official_excerpt": "Context Length: 8,192 tokens",
+      "note": "The retrieved official page contains an explicit count; keep input/total-context scope distinct."
+    },
+    {
+      "model_id": "meta/llama-guard-4-12b",
+      "field": "context_limit",
+      "gemini_claim": "Unknown (not published)",
+      "official_source": "https://build.nvidia.com/meta/llama-guard-4-12b.md",
+      "official_excerpt": "Context Length: 163,840 tokens"
+    }
+  ],
+  "authoritative_columns_changed": [],
+  "scope": "Suggestion provenance only. Reported deprecation/absence does not automatically disable records; rounded limits and no-cache-documentation claims do not satisfy exact-value or unsupported-cache constraints."
+}

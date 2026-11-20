@@ -200,7 +200,9 @@ focus-visible:outline-ring
             </div>
           </div>
         ))}
-        <div className="ml-10 min-w-0 rounded-lg bg-elevated p-1">{selector()}</div>
+        <div className="ml-10 grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_1.75rem] gap-1 rounded-lg bg-elevated p-1">
+          <div className="min-w-0">{selector()}</div>
+        </div>
         {custom ? (
           <div className="ml-10 flex min-w-0 items-center gap-2">
             <TextField

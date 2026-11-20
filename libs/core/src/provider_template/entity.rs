@@ -159,47 +159,6 @@ pub struct ModelTemplate {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ModelTemplateSummary {
-    pub provider_template_id: String,
-    pub id: String,
-    pub upstream_model_id: String,
-    pub display_name: Option<String>,
-    pub description: Option<String>,
-    pub operations: Operations,
-    pub capabilities: Capabilities,
-    pub max_context_tokens: Option<u32>,
-    pub max_input_tokens: Option<u32>,
-    pub max_output_tokens: Option<u32>,
-    #[serde(with = "rust_decimal::serde::str_option")]
-    pub input_price: Option<Decimal>,
-    #[serde(with = "rust_decimal::serde::str_option")]
-    pub output_price: Option<Decimal>,
-    #[serde(with = "rust_decimal::serde::str_option")]
-    pub cached_price: Option<Decimal>,
-    pub effort_mapping: EffortMapping,
-}
-impl From<&ModelTemplate> for ModelTemplateSummary {
-    fn from(v: &ModelTemplate) -> Self {
-        Self {
-            provider_template_id: v.provider_template_id.clone(),
-            id: v.id.clone(),
-            upstream_model_id: v.upstream_model_id.clone(),
-            display_name: v.display_name.clone(),
-            description: v.description.clone(),
-            operations: v.operations.clone(),
-            capabilities: v.capabilities.clone(),
-            max_context_tokens: v.max_context_tokens,
-            max_input_tokens: v.max_input_tokens,
-            max_output_tokens: v.max_output_tokens,
-            input_price: v.input_price,
-            output_price: v.output_price,
-            cached_price: v.cached_price,
-            effort_mapping: v.effort_mapping.clone(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ProviderTemplateSummary {
     pub id: String,
     pub name: String,

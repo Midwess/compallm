@@ -44,21 +44,10 @@ impl ProviderTemplate {
     }
 }
 #[derive(Clone, Debug)]
-pub struct ModelTemplate(
-    pub domain::ModelTemplateSummary,
-    std::sync::Arc<tokio::sync::OnceCell<domain::ModelTemplate>>,
-);
-impl From<domain::ModelTemplateSummary> for ModelTemplate {
-    fn from(v: domain::ModelTemplateSummary) -> Self {
-        Self(v, Default::default())
-    }
-}
+pub struct ModelTemplate(pub domain::ModelTemplate);
 impl From<domain::ModelTemplate> for ModelTemplate {
     fn from(value: domain::ModelTemplate) -> Self {
-        Self(
-            domain::ModelTemplateSummary::from(&value),
-            std::sync::Arc::new(tokio::sync::OnceCell::new_with(Some(value))),
-        )
+        Self(value)
     }
 }
 
@@ -139,23 +128,7 @@ impl From<domain::TextOperation> for TextModelProtocol {
     }
 }
 impl ModelTemplate {
-    async fn detail(
-        &self,
-        repository: &CatalogRepository,
-        authority: &AuthorizationContext,
-    ) -> Result<&domain::ModelTemplate, Error> {
-        authority.member_permission().await?;
-        self.1
-            .get_or_try_init(|| async {
-                repository
-                    .model(&self.0.provider_template_id, &self.0.id)
-                    .await
-                    .map_err(|_| Error::internal())?
-                    .ok_or_else(Error::internal)
-            })
-            .await
-    }
-    pub fn compatible(value: &domain::ModelTemplateSummary) -> bool {
+    pub fn compatible(value: &domain::ModelTemplate) -> bool {
         !value.operations.is_empty()
             && value.operations.iter().any(|(operation, path)| {
                 let input = super::super::input::ProviderModelConfiguration {
@@ -291,12 +264,11 @@ impl ProviderTemplate {
     }
     async fn models(
         &self,
-        executor: &juniper::Executor<'_, '_, crate::graphql::context::GraphqlContext>,
         #[graphql(context)] repository: &CatalogRepository,
         #[graphql(context)] authority: &AuthorizationContext,
     ) -> Result<Collection<ModelTemplate>, Error> {
         let member = authority.member_permission().await?;
-        let mut nodes: Vec<ModelTemplate> = repository
+        let nodes: Vec<ModelTemplate> = repository
             .models(&self.0.id)
             .await
             .map_err(|_| Error::internal())?
@@ -304,50 +276,6 @@ impl ProviderTemplate {
             .filter(ModelTemplate::compatible)
             .map(Into::into)
             .collect();
-        let selection = executor.look_ahead();
-        let detailed = selection
-            .children()
-            .iter()
-            .filter(|field| field.field_original_name() == "edges")
-            .any(|edge| {
-                edge.children()
-                    .iter()
-                    .filter(|field| field.field_original_name() == "node")
-                    .any(|node| {
-                        node.children().iter().any(|field| {
-                            !matches!(
-                                field.field_original_name(),
-                                "id" | "providerTemplateId"
-                                    | "upstreamModelId"
-                                    | "displayName"
-                                    | "description"
-                                    | "operations"
-                                    | "capabilities"
-                                    | "capabilitySupport"
-                                    | "readiness"
-                                    | "__typename"
-                            )
-                        })
-                    })
-            });
-        if detailed {
-            let details = repository
-                .model_details(
-                    &self.0.id,
-                    nodes.iter().map(|node| node.0.id.clone()).collect(),
-                )
-                .await
-                .map_err(|_| Error::internal())?;
-            let mut details: std::collections::BTreeMap<_, _> = details
-                .into_iter()
-                .map(|model| (model.id.clone(), model))
-                .collect();
-            for node in &mut nodes {
-                if let Some(detail) = details.remove(&node.0.id) {
-                    node.1 = std::sync::Arc::new(tokio::sync::OnceCell::new_with(Some(detail)));
-                }
-            }
-        }
         Collection::complete(
             nodes,
             &format!(
@@ -409,48 +337,32 @@ impl ModelTemplate {
             })
             .collect()
     }
-    async fn max_context_tokens(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Option<super::super::scalar::ContextTokens>, Error> {
-        let detail = self.detail(repository, authority).await?;
+    fn max_context_tokens(&self) -> Result<Option<super::super::scalar::ContextTokens>, Error> {
+        let detail = &self.0;
         detail
             .max_context_tokens
             .map(super::super::scalar::ContextTokens::try_from)
             .transpose()
             .map_err(|_| Error::internal())
     }
-    async fn max_input_tokens(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Option<super::super::scalar::ContextTokens>, Error> {
-        let detail = self.detail(repository, authority).await?;
+    fn max_input_tokens(&self) -> Result<Option<super::super::scalar::ContextTokens>, Error> {
+        let detail = &self.0;
         detail
             .max_input_tokens
             .map(super::super::scalar::ContextTokens::try_from)
             .transpose()
             .map_err(|_| Error::internal())
     }
-    async fn max_output_tokens(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Option<super::super::scalar::ContextTokens>, Error> {
-        let detail = self.detail(repository, authority).await?;
+    fn max_output_tokens(&self) -> Result<Option<super::super::scalar::ContextTokens>, Error> {
+        let detail = &self.0;
         detail
             .max_output_tokens
             .map(super::super::scalar::ContextTokens::try_from)
             .transpose()
             .map_err(|_| Error::internal())
     }
-    async fn effort_mapping(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Vec<TemplateEffort>, Error> {
-        let detail = self.detail(repository, authority).await?;
+    fn effort_mapping(&self) -> Result<Vec<TemplateEffort>, Error> {
+        let detail = &self.0;
         Ok(detail
             .effort_mapping
             .iter()
@@ -460,87 +372,42 @@ impl ModelTemplate {
             })
             .collect())
     }
-    async fn input_price(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Option<String>, Error> {
-        let detail = self.detail(repository, authority).await?;
+    fn input_price(&self) -> Result<Option<String>, Error> {
+        let detail = &self.0;
         Ok(detail.input_price.map(|v| v.to_string()))
     }
-    async fn output_price(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Option<String>, Error> {
-        let detail = self.detail(repository, authority).await?;
+    fn output_price(&self) -> Result<Option<String>, Error> {
+        let detail = &self.0;
         Ok(detail.output_price.map(|v| v.to_string()))
     }
-    async fn cached_price(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Option<String>, Error> {
-        let detail = self.detail(repository, authority).await?;
+    fn cached_price(&self) -> Result<Option<String>, Error> {
+        let detail = &self.0;
         Ok(detail.cached_price.map(|v| v.to_string()))
     }
-    async fn billing_model(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<TemplateBillingModel, Error> {
-        let detail = self.detail(repository, authority).await?;
+    fn billing_model(&self) -> Result<TemplateBillingModel, Error> {
+        let detail = &self.0;
         Ok(detail.billing_model.into())
     }
-    async fn pricing_mode(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<TemplatePricingMode, Error> {
-        let detail = self.detail(repository, authority).await?;
+    fn pricing_mode(&self) -> Result<TemplatePricingMode, Error> {
+        let detail = &self.0;
         Ok(detail.pricing_mode.into())
     }
-    async fn cache_billing(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<TemplateCacheBilling, Error> {
-        let detail = self.detail(repository, authority).await?;
+    fn cache_billing(&self) -> Result<TemplateCacheBilling, Error> {
+        let detail = &self.0;
         Ok(detail.cache_billing.into())
     }
     fn readiness(&self) -> TemplateReadiness {
         TemplateReadiness::Ready
     }
-    async fn service_kind(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<TemplateServiceKind, Error> {
-        Ok(self
-            .detail(repository, authority)
-            .await?
-            .service_kind
-            .into())
+    fn service_kind(&self) -> Result<TemplateServiceKind, Error> {
+        Ok(self.0.service_kind.into())
     }
-    async fn specification_mode(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<TemplateSpecificationMode, Error> {
-        Ok(self
-            .detail(repository, authority)
-            .await?
-            .specification_mode
-            .into())
+    fn specification_mode(&self) -> Result<TemplateSpecificationMode, Error> {
+        Ok(self.0.specification_mode.into())
     }
-    async fn unresolved_fields(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Vec<TemplateUnresolved>, Error> {
+    fn unresolved_fields(&self) -> Result<Vec<TemplateUnresolved>, Error> {
         Ok(self
-            .detail(repository, authority)
-            .await?
+            .0
             .unresolved_fields
             .iter()
             .map(|(field, v)| TemplateUnresolved {

@@ -70,10 +70,6 @@ pub async fn model(
         .model(&provider_template_id, &id)
         .await
         .map_err(|_| Error::internal())?
-        .filter(|v| {
-            ModelTemplate::compatible(
-                &compallm_core::provider_template::ModelTemplateSummary::from(v),
-            )
-        })
+        .filter(ModelTemplate::compatible)
         .map(|node| Payload::from(ModelTemplate::from(node))))
 }

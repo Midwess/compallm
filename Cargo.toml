@@ -1,5 +1,5 @@
 [workspace]
-members = ["geolocation", "libs/db-context", "libs/query-derive", "libs/query", "libs/validation-derive", "api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "libs/storage", "test", "router", "sec"]
+members = ["geolocation", "libs/db-context", "libs/query-derive", "libs/query", "libs/validation-derive", "api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "libs/codec", "libs/storage", "test", "router", "sec"]
 resolver = "3"
 
 [workspace.package]
@@ -11,6 +11,11 @@ license = "Elastic-2.0"
 borrowed_box = "allow"
 
 [workspace.dependencies]
+bytes = { version = "1", default-features = false }
+futures-core = { version = "0.3", default-features = false }
+futures-io = { version = "0.3", default-features = false }
+reqwest = { version = "0.12", default-features = false }
+tokio-util = { version = "0.7", default-features = false }
 compallm-db-context = { path = "libs/db-context" }
 compallm-query-derive = { path = "libs/query-derive" }
 compallm-query = { path = "libs/query", default-features = false }

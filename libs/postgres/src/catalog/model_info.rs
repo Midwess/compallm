@@ -167,7 +167,11 @@ impl TryFrom<serde_json::Value> for ModelInfoSources {
                     }
                 }
                 SourceKind::Repository | SourceKind::Documentation => {
-                    if source.url.as_deref().is_none_or(|value| value.trim().is_empty()) {
+                    if source
+                        .url
+                        .as_deref()
+                        .is_none_or(|value| value.trim().is_empty())
+                    {
                         return Err("source reference is required");
                     }
                     if source.access == SourceAccess::Manual {

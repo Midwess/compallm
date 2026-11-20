@@ -43,6 +43,49 @@ export function modelProtocol(model: Pick<ModelDraft, 'protocol'> & Partial<Pick
 export function modelPath(model: ModelDraft): string {
   return model.path ?? textModelOptions.find((option) => option.value === modelProtocol(model))!.path
 }
+
+export function initializeModelDraft(model: ModelDraft): ModelDraft {
+  const draft: ModelDraft = {
+    ...model,
+    providerContextTokens: model.providerContextTokens ?? model.maxContextTokens,
+    inputPriceEnabled: model.inputPriceEnabled ?? true,
+    outputPriceEnabled: model.outputPriceEnabled ?? true,
+    cachedPriceEnabled: model.cachedPriceEnabled ?? true,
+    templatePrices: model.templatePrices ?? {
+      inputPrice: model.inputPrice,
+      outputPrice: model.outputPrice,
+      cachedPrice: model.cachedPrice,
+    },
+    path: modelPath(model),
+    effortMapping: model.effortMapping ?? Object.fromEntries(model.thinkingLevels.map((level) => [level, level])),
+    contextLimitEnabled: model.contextLimitEnabled ?? true,
+    inputLimitEnabled: model.inputLimitEnabled ?? false,
+    outputLimitEnabled: model.outputLimitEnabled ?? !!model.maxOutputTokens,
+    maxInputTokens: model.maxInputTokens ?? '',
+    maxOutputTokens: model.maxOutputTokens ?? '',
+    capabilities: [...(model.capabilities ?? [])],
+    headers: (model.headers ?? []).map((entry) => ({ ...entry })),
+    bodyDefaults: (model.bodyDefaults ?? []).map((entry) => ({ ...entry })),
+  }
+  if (!draft.defaults) {
+    const { defaults: omitted, ...defaults } = draft
+    void omitted
+    draft.defaults = structuredClone(defaults)
+  }
+  return draft
+}
+export function effectiveContextTokens(model: ModelDraft): string {
+  return model.contextLimitEnabled === false ? (model.providerContextTokens ?? model.maxContextTokens) : model.maxContextTokens
+}
+export const priceEnabledFields = {
+  inputPrice: 'inputPriceEnabled',
+  outputPrice: 'outputPriceEnabled',
+  cachedPrice: 'cachedPriceEnabled',
+} as const
+export type ModelPriceField = keyof typeof priceEnabledFields
+export function effectiveModelPrice(model: ModelDraft, key: ModelPriceField): string {
+  return model[priceEnabledFields[key]] === false ? (model.templatePrices?.[key] ?? '') : model[key]
+}
 export function joinModelEndpoint(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`
 }
@@ -56,7 +99,13 @@ export function modelDraftFingerprint(model: ModelDraft): string {
     protocol: modelProtocol(model),
     path: modelPath(model),
     context: model.maxContextTokens,
+    contextEnabled: model.contextLimitEnabled ?? true,
+    input: model.maxInputTokens ?? '',
+    inputEnabled: model.inputLimitEnabled ?? false,
     output: model.maxOutputTokens ?? '',
+    outputEnabled: model.outputLimitEnabled ?? !!model.maxOutputTokens,
+    headers: model.headers ?? [],
+    body: model.bodyDefaults ?? [],
     efforts: effortLevels.map((level) =>
       model.effortMapping ? (model.effortMapping[level] ?? '') : model.thinkingLevels.includes(level) ? level : '',
     ),
@@ -64,5 +113,6 @@ export function modelDraftFingerprint(model: ModelDraft): string {
       .filter((option) => model.capabilities?.includes(option.value))
       .map((option) => option.value),
     prices: [model.inputPrice, model.outputPrice, model.cachedPrice],
+    priceEnabled: [model.inputPriceEnabled ?? true, model.outputPriceEnabled ?? true, model.cachedPriceEnabled ?? true],
   })
 }

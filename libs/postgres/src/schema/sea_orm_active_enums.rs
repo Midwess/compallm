@@ -64,3 +64,155 @@ pub enum UserStatus {
     #[sea_orm(string_value = "disabled")]
     Disabled,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(
+    rs_type = "Enum",
+    db_type = "Enum",
+    enum_name = "catalog_endpoint_mode"
+)]
+pub enum CatalogEndpointMode {
+    #[sea_orm(string_value = "fixed")]
+    Fixed,
+    #[sea_orm(string_value = "account_specific")]
+    AccountSpecific,
+    #[sea_orm(string_value = "discovered")]
+    Discovered,
+    #[sea_orm(string_value = "unknown")]
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "catalog_service_kind")]
+pub enum CatalogServiceKind {
+    #[sea_orm(string_value = "text")]
+    Text,
+    #[sea_orm(string_value = "embedding")]
+    Embedding,
+    #[sea_orm(string_value = "image")]
+    Image,
+    #[sea_orm(string_value = "audio")]
+    Audio,
+    #[sea_orm(string_value = "video")]
+    Video,
+    #[sea_orm(string_value = "rerank")]
+    Rerank,
+    #[sea_orm(string_value = "unknown")]
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(
+    rs_type = "Enum",
+    db_type = "Enum",
+    enum_name = "catalog_billing_model"
+)]
+pub enum CatalogBillingModel {
+    #[sea_orm(string_value = "metered")]
+    Metered,
+    #[sea_orm(string_value = "subscription")]
+    Subscription,
+    #[sea_orm(string_value = "subscription_with_overage")]
+    SubscriptionWithOverage,
+    #[sea_orm(string_value = "free")]
+    Free,
+    #[sea_orm(string_value = "unknown")]
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "catalog_billing_unit")]
+pub enum CatalogBillingUnit {
+    #[sea_orm(string_value = "tokens")]
+    Tokens,
+    #[sea_orm(string_value = "requests")]
+    Requests,
+    #[sea_orm(string_value = "images")]
+    Images,
+    #[sea_orm(string_value = "seconds")]
+    Seconds,
+    #[sea_orm(string_value = "characters")]
+    Characters,
+    #[sea_orm(string_value = "credits")]
+    Credits,
+    #[sea_orm(string_value = "videos")]
+    Videos,
+    #[sea_orm(string_value = "utf8_bytes")]
+    Utf8Bytes,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "catalog_pricing_mode")]
+pub enum CatalogPricingMode {
+    #[sea_orm(string_value = "fixed")]
+    Fixed,
+    #[sea_orm(string_value = "tiered")]
+    Tiered,
+    #[sea_orm(string_value = "api")]
+    Api,
+    #[sea_orm(string_value = "account_specific")]
+    AccountSpecific,
+    #[sea_orm(string_value = "not_applicable")]
+    NotApplicable,
+    #[sea_orm(string_value = "unpublished")]
+    Unpublished,
+    #[sea_orm(string_value = "unknown")]
+    Unknown,
+    #[sea_orm(string_value = "scheduled")]
+    Scheduled,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(
+    rs_type = "Enum",
+    db_type = "Enum",
+    enum_name = "catalog_cache_billing"
+)]
+pub enum CatalogCacheBilling {
+    #[sea_orm(string_value = "separate_rate")]
+    SeparateRate,
+    #[sea_orm(string_value = "standard_input_rate")]
+    StandardInputRate,
+    #[sea_orm(string_value = "unsupported")]
+    Unsupported,
+    #[sea_orm(string_value = "included")]
+    Included,
+    #[sea_orm(string_value = "not_applicable")]
+    NotApplicable,
+    #[sea_orm(string_value = "per_route")]
+    PerRoute,
+    #[sea_orm(string_value = "unknown")]
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(
+    rs_type = "Enum",
+    db_type = "Enum",
+    enum_name = "catalog_specification_mode"
+)]
+pub enum CatalogSpecificationMode {
+    #[sea_orm(string_value = "stored")]
+    Stored,
+    #[sea_orm(string_value = "api")]
+    Api,
+    #[sea_orm(string_value = "account_specific")]
+    AccountSpecific,
+    #[sea_orm(string_value = "not_applicable")]
+    NotApplicable,
+    #[sea_orm(string_value = "unknown")]
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(rs_type = "Enum", db_type = "Enum", enum_name = "catalog_readiness")]
+pub enum CatalogReadiness {
+    #[sea_orm(string_value = "ready")]
+    Ready,
+    #[sea_orm(string_value = "needs_fetch")]
+    NeedsFetch,
+    #[sea_orm(string_value = "needs_configuration")]
+    NeedsConfiguration,
+    #[sea_orm(string_value = "incomplete")]
+    Incomplete,
+}

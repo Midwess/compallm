@@ -2,30 +2,33 @@ import type { ProviderModelConfiguration as ModelConfiguration } from '@compallm
 import { ProviderModelConfiguration, ProviderCreateInput } from '@compallm/contract/validation'
 import { ProviderFields, ProviderModelFields, ProviderInputRules } from '@compallm/contract/provider'
 import { headersAreValid, acceptsHeaderInput } from '@compallm/contract/provider'
-import { modelPath, modelDraftFingerprint } from './model-options'
+import { modelPath, modelDraftFingerprint, effectiveContextTokens, effectiveModelPrice } from './model-options'
 import type { CreateProviderState, ModelDraft, ProviderSnapshot } from './types'
 import { providerCreateRequest, providerReplaceRequest, modelConfiguration } from './contract'
 
 export { headersAreValid, acceptsHeaderInput }
 export const isValidBaseUrl = (value: string) => ProviderFields.shape.baseUrl.safeParse(value).success
 export function hasValidModelPrices(model: ModelDraft): boolean {
-  return [model.inputPrice, model.outputPrice, model.cachedPrice].every(
-    (price) => ProviderModelFields.shape.inputPrice.safeParse(price).success,
-  )
+  return [
+    effectiveModelPrice(model, 'inputPrice'),
+    effectiveModelPrice(model, 'outputPrice'),
+    effectiveModelPrice(model, 'cachedPrice'),
+  ].every((price) => ProviderModelFields.shape.inputPrice.safeParse(price).success)
 }
 function modelInput(model: ModelDraft) {
   return {
     name: model.name,
     path: modelPath(model),
-    maxContextTokens: Number(model.maxContextTokens),
-    inputPrice: model.inputPrice,
-    outputPrice: model.outputPrice,
-    cachedPrice: model.cachedPrice,
+    maxContextTokens: Number(effectiveContextTokens(model)),
+    inputPrice: effectiveModelPrice(model, 'inputPrice'),
+    outputPrice: effectiveModelPrice(model, 'outputPrice'),
+    cachedPrice: effectiveModelPrice(model, 'cachedPrice'),
   }
 }
 export function isValidModelDraft(model: ModelDraft): boolean {
   return (
-    ProviderInputRules.shape.positiveInteger.safeParse(model.maxContextTokens).success &&
+    ProviderModelConfiguration.safeParse(modelConfiguration({ ...model, enabled: true, modes: [] })).success &&
+    ProviderInputRules.shape.positiveInteger.safeParse(effectiveContextTokens(model)).success &&
     ProviderModelFields.safeParse(modelInput(model)).success &&
     Object.values(model.effortMapping ?? {}).every(
       (value) => !value || ProviderInputRules.shape.effortValue.safeParse(value).success,
@@ -77,9 +80,35 @@ export function parseModelDraft(
   const configuration = draft ? modelConfiguration({ ...draft, enabled: true, modes: [] }) : {}
   const result = ProviderModelConfiguration.safeParse(configuration)
   if (!result.success)
-    return { issues: result.error.issues.map((issue) => ({ ...issue, path: ['modelDraft', ...issue.path] })) }
-  const entries = models.filter((model) => model.id !== editing).map((model) => ({ configuration: modelConfiguration(model) }))
+    return {
+      issues: result.error.issues.flatMap((issue) => {
+        if (issue.path.length || !draft)
+          return [
+            {
+              ...issue,
+              path: [
+                'modelDraft',
+                ...issue.path,
+                ...(['bodyDefaults', 'headers'].includes(String(issue.path[0])) && issue.path.length === 2 ? ['value'] : []),
+              ],
+            },
+          ]
+        const fields = [
+          ...(draft.inputLimitEnabled ? ['maxInputTokens'] : []),
+          ...((draft.outputLimitEnabled ?? !!draft.maxOutputTokens) ? ['maxOutputTokens'] : []),
+        ]
+        return (fields.length ? fields : ['maxContextTokens']).map((field) => ({
+          ...issue,
+          path: ['modelDraft', field],
+        }))
+      }),
+    }
+  const entries = models
+    .filter((model) => model.id !== editing && model.enabled)
+    .map((model) => ({ configuration: modelConfiguration(model) }))
   entries.push({ configuration: result.data })
+  if (models.some((model) => model.id !== editing && !model.enabled && model.name === result.data.name))
+    entries.push({ configuration: result.data })
   const collection = ProviderCreateInput.shape.models.safeParse(entries)
   return collection.success
     ? { data: result.data }

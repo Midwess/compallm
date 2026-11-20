@@ -10,6 +10,10 @@ use std::num::NonZeroU32;
 pub struct ContextTokens(NonZeroU32);
 
 impl ContextTokens {
+    pub fn get(&self) -> u32 {
+        self.0.get()
+    }
+
     fn to_output<S: ScalarValue>(&self) -> S {
         f64::from(self.0.get()).into()
     }

@@ -1792,6 +1792,7 @@ dependencies = [
  "syn 2.0.119",
  "thiserror 2.0.21",
  "tokio",
+ "url",
  "uuid",
  "validify",
 ]
@@ -4598,9 +4599,9 @@ dependencies = [
 
 [[package]]
 name = "midwess-hero"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "420938db3e54d30d7d7f85e8920126d698ed57d6660cfe0b077cd48e64b84d2d"
+checksum = "49ba1b84994e04207d209d36243ae1484e7c5c7c89ce277a4a279537ced38de5"
 dependencies = [
  "aws-sdk-s3",
  "base64 0.22.1",

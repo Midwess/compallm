@@ -1,0 +1,1309 @@
+[
+  {
+    "provider": "alicode-intl",
+    "path": "/assets/providers/alibaba.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/alibaba-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "48ee796c5b1da5f5f11dbd70c5c64a3f7efcb9eeb9022ae687d81fc813e942ee",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "alicode",
+    "path": "/assets/providers/alibaba.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/alibaba-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "48ee796c5b1da5f5f11dbd70c5c64a3f7efcb9eeb9022ae687d81fc813e942ee",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "anthropic",
+    "path": "/assets/providers/anthropic.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/anthropic.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "e833fdfa7e7187a86a05b870925067556a506dcd4239089aed73e1e58c9366a3",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "antigravity",
+    "path": "/assets/providers/antigravity.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/antigravity-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "652128cf55a28bb958563ee372d0bd00208d9e6fd446f523f77aafd811eef8ca",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "assemblyai",
+    "path": "/assets/providers/assemblyai.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/assemblyai-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "77b042c7432be780de00d431e27e1226f08bcc772663bd187fd05783c39fee22",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "aws-polly",
+    "path": "/assets/providers/aws.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/aws-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "b23f044479fe5c80f7df0a9515f969e5ea710c5f40d26dffa08969a0151731f3",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "azure",
+    "path": "/assets/providers/azure.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/azure-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "abc639d094593943c1b201270f4903c74d02d2e26acf26abf592a29c222c5181",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "black-forest-labs",
+    "path": "/assets/providers/black-forest-labs.png",
+    "source": "https://bfl.ai/apple-icon.png?f3e2842f59013de0",
+    "revision": null,
+    "sha256": "68b922273cf6c8aa416b3ec73a9327420d0614eed56dd9e4669a4925967e3f9d",
+    "attribution": "Black Forest Labs website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "blackbox",
+    "path": "/assets/providers/blackbox.png",
+    "source": "https://www.blackbox.ai/apple-icon.png?apple-icon.3-i9b6th79ypa.png",
+    "revision": null,
+    "sha256": "a26fe0d96ccf7ef92faf4423f50e285a6d14fee4904b406661665330e5260fd2",
+    "attribution": "Blackbox AI website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "brave-search",
+    "path": "/assets/providers/brave.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/brave-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "76ec345aefa225be34525da172d62c7a7ae80280bc062dc9776e24187b9d110c",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "byteplus",
+    "path": "/assets/providers/byteplus.png",
+    "source": "https://res.gcloudcache.com/bp-fe/console-ark/ark-new-main/static/image/byteplus-180.png",
+    "revision": null,
+    "sha256": "8b943e32ed0ddc1f33ac46f126782890ee376672f5fb65fc5949c5b214185150",
+    "attribution": "BytePlus ModelArk website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "cartesia",
+    "path": "/assets/providers/cartesia.png",
+    "source": "https://www.cartesia.ai/apple-touch-icon.png",
+    "revision": null,
+    "sha256": "407f08b4c8f7acaf191fa3f414d0c0324c205d1927ec63fada91cb6a73a90bbf",
+    "attribution": "Cartesia website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "cerebras",
+    "path": "/assets/providers/cerebras.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/cerebras-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "355c2225284cd06c9cf4246110b60cb21bc86039872981e1be6bb82deec2ffa7",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "chutes",
+    "path": "/assets/providers/chutes.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/chutes.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "0fe386fe669b0902b97122d370f7031ac52d714f1ec841b3158242a2c341e0ca",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "claude",
+    "path": "/assets/providers/claude.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/claude-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "a3101f3047a119aa11825ad9369510f0c472428c8c52d420e31bc62db44a8364",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "cline",
+    "path": "/assets/providers/cline.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/cline.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "9003d2cdce82b016147b732abb4def60af55c348ba2cea2ba0b69a3c7d159b19",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "clinepass",
+    "path": "/assets/providers/clinepass.png",
+    "source": "https://cline.bot/assets/branding/favicons/apple-touch-icon.png",
+    "revision": null,
+    "sha256": "4493d56cfddc096b40232dfe5d81f4d864f3b358c723126369a2e5478b61e098",
+    "attribution": "ClinePass website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "cloudflare-ai",
+    "path": "/assets/providers/cloudflare.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/cloudflare-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "cee35d3f0ecb7925ce0a89aeaff8b907cadae7c3fe44a23e4001cc8d5ee57502",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "codebuddy-cn",
+    "path": "/assets/providers/codebuddy.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/codebuddy-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "033d5da624460e686046f22b4e242b6b86484ad84ec4877e4efa15a9fb642b97",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "codex",
+    "path": "/assets/providers/codex.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/codex-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "4a2f43ce46b5b6e3722c95088f88d26ef91e6a8c2e598e70642a1c54367386e4",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "cohere",
+    "path": "/assets/providers/cohere.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/cohere-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "84d0ee3cbe66f030e5a18cb2c86da9166ab2137c7a98781693bb1fbf31e392b9",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "comfyui",
+    "path": "/assets/providers/comfyui.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/comfyui-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "2f14161b0c6ce1c314b66cac785ac81948bf2b34b784b114e5df09b6797894c6",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "commandcode",
+    "path": "/assets/providers/commandcode.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/commandcode.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "0b3090f6e9194f32520e5b98ea43c5bc1a0f04644c94d1bade69fab7413e1531",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "coqui",
+    "path": "/assets/providers/coqui.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/coqui-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "f2699d019796b2e96112e3a58cc4e73649457e61e5f17825549acbda0af8007d",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "cursor",
+    "path": "/assets/providers/cursor.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/cursor.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "0cb51bddf264ae108926fd554c063ef40fc1aac3c5c921ddb39ad184e4e5d0ef",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "deepgram",
+    "path": "/assets/providers/deepgram.png",
+    "source": "https://deepgram.com/apple-icon.png",
+    "revision": null,
+    "sha256": "e91773e707690a902ccd633173272cb174f9f8fdf823d524ad19ccfd6b1cea3a",
+    "attribution": "Deepgram brand artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "deepseek",
+    "path": "/assets/providers/deepseek.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/deepseek-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "deba5f98a5c1796e20fcac3149bcd7eb8a32f0bdd04d048819400b1f28bd1439",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "edge-tts",
+    "path": "/assets/providers/microsoft.png",
+    "source": "https://www.microsoft.com/favicon.ico",
+    "revision": null,
+    "sha256": "7a6488d9be5cf4f8c0104864d122c88005747d25560f5189b47201fe15922da1",
+    "attribution": "Microsoft brand artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "elevenlabs",
+    "path": "/assets/providers/elevenlabs.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/elevenlabs.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "152a4a89fd5228924b6ccc91a72675966df35e3b69d1cf93a67b6866cf846584",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "exa",
+    "path": "/assets/providers/exa.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/exa-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "8d8113b2d6796bc680cccba6578a1487e49407adf08bbe20fccd949b59a8371a",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "fal-ai",
+    "path": "/assets/providers/fal.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/fal-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "577d952ac6f863d6b0dd129918597692230b2fe0633cb4ea0e0a5085aa3f8c7d",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "featherless",
+    "path": "/assets/providers/featherless.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/featherless-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "45efbd887b9cfbef1bcef24c202df762ea2fa71a8fa5d96903cdad72a23a0965",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "firecrawl",
+    "path": "/assets/providers/firecrawl.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/firecrawl-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "98993b111d1cb75edd0b1ce3a1e8bd3f85dcf5548072ffb959ac97ffe69ade59",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "fireworks",
+    "path": "/assets/providers/fireworks.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/fireworks-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "f1c4782b86bc03a36323fd68ad6cc376c6b2ebe57b701cc958ebd6b8d37effd6",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "gemini-cli",
+    "path": "/assets/providers/gemini.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/gemini-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "8ab0a9bafec11f7e69bcb9fc4ffd8f1bc927d1ddcbbb6ff36dee5ae8b5a9d602",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "gemini",
+    "path": "/assets/providers/gemini.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/gemini-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "8ab0a9bafec11f7e69bcb9fc4ffd8f1bc927d1ddcbbb6ff36dee5ae8b5a9d602",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "github",
+    "path": "/assets/providers/github.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/github.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "1bd763b5d53ab1618e0afce72aacffc7e93d1249c395f713b3b055c087526625",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "gitlab",
+    "path": "/assets/providers/gitlab.png",
+    "source": "https://about.gitlab.com/images/ico/favicon-192x192.png",
+    "revision": null,
+    "sha256": "d861ddb65853eaf55921be50677cb7403acea0def985498d21dfd24690de1604",
+    "attribution": "GitLab Duo website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "glm-cn",
+    "path": "/assets/providers/zai.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/zai.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "e748cb5108ce37b116d7a5ba97d37e0ae97eadf6849b0de11afb248e244a01e1",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "glm",
+    "path": "/assets/providers/zai.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/zai.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "e748cb5108ce37b116d7a5ba97d37e0ae97eadf6849b0de11afb248e244a01e1",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "google-pse",
+    "path": "/assets/providers/google.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/google-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "4e6aa8892ef15a6b431f40f2c9045979bf7e2357524e7bbb89b353cf4f32a5ac",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "google-tts",
+    "path": "/assets/providers/google.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/google-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "4e6aa8892ef15a6b431f40f2c9045979bf7e2357524e7bbb89b353cf4f32a5ac",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "grok-cli",
+    "path": "/assets/providers/xai.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/xai.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "89eb7de9f0d02a41cfecd9109e253d7fd3529e27467dee4254faa67f3ac21451",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "grok-web",
+    "path": "/assets/providers/xai.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/xai.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "89eb7de9f0d02a41cfecd9109e253d7fd3529e27467dee4254faa67f3ac21451",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "groq",
+    "path": "/assets/providers/groq.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/groq.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "078d5cf6e7a54905040c15ddacf5ea33c13042fe7739e820cedc2096e4406651",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "huggingface",
+    "path": "/assets/providers/huggingface.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/huggingface-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "5d39d66bb6c9b026d3cb5de7bd9978dad3906570df2aca8f00078a6f8a3d0f5e",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "hyperbolic",
+    "path": "/assets/providers/hyperbolic.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/hyperbolic-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "459ebd5a986f2ba3dded01c29b97fb708893064ba64f5aa2131fd9690b32f503",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "iflow",
+    "path": "/assets/providers/iflow.png",
+    "source": "https://img.alicdn.com/imgextra/i4/O1CN01yBfg3x1iNi4YggwIt_!!6000000004401-2-tps-72-72.png",
+    "revision": null,
+    "sha256": "26fc1e22e60fe7ee258367a4fe9cbbe29a2fc567d68832fb80b01d80e6779db1",
+    "attribution": "iFlow AI website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "inworld",
+    "path": "/assets/providers/inworld.png",
+    "source": "https://inworld.ai/apple-icon.png?apple-icon.41lwedso2_34h.png",
+    "revision": null,
+    "sha256": "8c054ef3e492e7986ed122f90193623a7431faa9271a435973e5a70c0f3ac90f",
+    "attribution": "Inworld TTS website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "jina-ai",
+    "path": "/assets/providers/jina.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/jina.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "dbb78d6217774ddde8c57a6f5c94a3294c59e99c4a1e6ec786e409648b9bdb84",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "jina-reader",
+    "path": "/assets/providers/jina.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/jina.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "dbb78d6217774ddde8c57a6f5c94a3294c59e99c4a1e6ec786e409648b9bdb84",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "kilocode",
+    "path": "/assets/providers/kilocode.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/kilocode.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "a2aef0e0bb992ebe768bfb8c3a3ab6ff2c2638448b09dd88db27877de1c07a22",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "kimchi",
+    "path": "/assets/providers/kimchi.png",
+    "source": "https://kimchi.dev/favicon.png",
+    "revision": null,
+    "sha256": "d456caadce33be6af8d1112046b5492fb0d0124840b29a4ede88d94057d75dbf",
+    "attribution": "Kimchi website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "kimi",
+    "path": "/assets/providers/kimi.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/kimi-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "0bdb95375d7c6e90a1850e91cd36770da2bc98fa33ec2d783f4a8fed027da85f",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "kiro",
+    "path": "/assets/providers/kiro.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/kiro-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "4eae4d6e818da7342c32c7d443ab7c97b93c544db9af379d5b5bf7f0a3127d66",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "linkup",
+    "path": "/assets/providers/linkup.png",
+    "source": "https://www.linkup.so/_next/static/immutable/media/favicon.0nnprkm5qsjim.png",
+    "revision": null,
+    "sha256": "fcaba57797f9a6d830e028f18866c7bf0c0cb040573fa1509e06303b39ca7aa3",
+    "attribution": "Linkup website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "local-device",
+    "path": "/assets/providers/local-device.png",
+    "source": "opensource(9)",
+    "revision": "1855aa44473e88feac9d3f131b9c0c5fc9706b68",
+    "sha256": "4f959cbbb933eb5a160d483e1f36764d95a82e5ed215912486fae746d907797d",
+    "attribution": "opensource(9); provider trademarks belong to their owners",
+    "review": "service_artwork"
+  },
+  {
+    "provider": "mimo-free",
+    "path": "/assets/providers/xiaomimimo.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/xiaomimimo.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "b04ad7dad52af2212c4567daf0ee6856f2c4625c92c680a27f9880295d558b71",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "minimax-cn",
+    "path": "/assets/providers/minimax.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/minimax-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "7f7187fa6d9b341ac5f22f6c5a970523afb439dc45566d64eb4f4b9b604d6b01",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "minimax",
+    "path": "/assets/providers/minimax.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/minimax-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "7f7187fa6d9b341ac5f22f6c5a970523afb439dc45566d64eb4f4b9b604d6b01",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "mistral",
+    "path": "/assets/providers/mistral.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/mistral-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "722f74b289d95486b43662fe24fa883b333701296f618406cd0ed502299170b6",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "mmf",
+    "path": "/assets/providers/xiaomimimo.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/xiaomimimo.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "b04ad7dad52af2212c4567daf0ee6856f2c4625c92c680a27f9880295d558b71",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "nanobanana",
+    "path": "/assets/providers/nanobanana.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/nanobanana-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "1fd02b099e6d07d6d4f4281c9c167a0d712ddc2fd4ee52ac4687477c402c254e",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "nebius",
+    "path": "/assets/providers/nebius.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/nebius.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "4213ea25ec4c782688a7dafdad4bb828096151639077001c4df9c10a315f1af1",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "nvidia",
+    "path": "/assets/providers/nvidia.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/nvidia-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "8c941e4eb8b782eccaaea1240c059d20be33ab8eda28d7c9ed9b53ac802fe683",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "ollama-local",
+    "path": "/assets/providers/ollama.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/ollama.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "3a268218fb2e6e81fa31df70f70b51331625047794db81db21d35359428fae7a",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "ollama",
+    "path": "/assets/providers/ollama.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/ollama.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "3a268218fb2e6e81fa31df70f70b51331625047794db81db21d35359428fae7a",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "ollama-search",
+    "path": "/assets/providers/ollama.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/ollama.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "3a268218fb2e6e81fa31df70f70b51331625047794db81db21d35359428fae7a",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "qoder-cn",
+    "path": "/assets/providers/qoder.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/qoder-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "396596d247477e2a036c141a16ec266df7b14c0130b777a68fd04bc89af50bc8",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "openai",
+    "path": "/assets/providers/openai.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/openai.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "a595df6b423920c67a7f8f73c063e4bfb72d415948097b6cac063a2366bb5186",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "opencode-go",
+    "path": "/assets/providers/opencode-go.png",
+    "source": "https://opencode.ai/apple-touch-icon.png",
+    "revision": null,
+    "sha256": "1b1339a3935c2d235561f53950531ac7d78fba77f547ce7413a596440e740ed5",
+    "attribution": "OpenCode Go website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "opencode-zen",
+    "path": "/assets/providers/opencode.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/opencode.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "7cfa6e9d6726f7c9fa26c7d9aef0dfec52d20a137380454340f30f12ccbfd302",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "opencode",
+    "path": "/assets/providers/opencode.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/opencode.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "7cfa6e9d6726f7c9fa26c7d9aef0dfec52d20a137380454340f30f12ccbfd302",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "openrouter",
+    "path": "/assets/providers/openrouter.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/openrouter-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "17bede1b89166f824ee06753dc526a3f5e18b769706deaab09d04a3a98de1a78",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "perplexity-web",
+    "path": "/assets/providers/perplexity.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/perplexity-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "8353f3ab20822f1a933224b0ea32cc39f0c32d5740f4af8c254b0f418e0a3a70",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "perplexity",
+    "path": "/assets/providers/perplexity.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/perplexity-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "8353f3ab20822f1a933224b0ea32cc39f0c32d5740f4af8c254b0f418e0a3a70",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "perplexity-agent",
+    "path": "/assets/providers/perplexity.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/perplexity-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "8353f3ab20822f1a933224b0ea32cc39f0c32d5740f4af8c254b0f418e0a3a70",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "playht",
+    "path": "/assets/providers/playht.png",
+    "source": "https://avatars.githubusercontent.com/u/79188179?v=4",
+    "revision": null,
+    "sha256": "2784d629dd8d06817c64c80e1e2ee86344d49fe49ae9c72888f4a98e5b34382a",
+    "attribution": "PlayHT official GitHub organization avatar",
+    "review": "source_matched"
+  },
+  {
+    "provider": "qoder",
+    "path": "/assets/providers/qoder.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/qoder-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "396596d247477e2a036c141a16ec266df7b14c0130b777a68fd04bc89af50bc8",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "recraft",
+    "path": "/assets/providers/recraft.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/recraft.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "01c8307e78288bb26bba6bbc9b9555380cd79bdaebbbab4260120b6f14752545",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "runwayml",
+    "path": "/assets/providers/runway.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/runway.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "dba3459264af7b4fffb5c4bfc909748e1ec1f122ffcaf0a8fbb626781888eaf2",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "sdwebui",
+    "path": "/assets/providers/sdwebui.png",
+    "source": "https://github.com/apple-touch-icon.png",
+    "revision": null,
+    "sha256": "7567c61c81d6ed9317dd59d660b9582da2bb7919a187fb7d222881663b511ca5",
+    "attribution": "SD WebUI website artwork",
+    "review": "service_artwork",
+    "review_note": "Software project without a verified standalone provider logo; website/project artwork is retained explicitly as service artwork."
+  },
+  {
+    "provider": "searchapi",
+    "path": "/assets/providers/searchapi.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/searchapi.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "23c8ca301e5dd89b931846e6b3fb71a769c99ec16da8ee68552555a4925bf5b5",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "searxng",
+    "path": "/assets/providers/searxng.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/searxng-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "4a2fec312abb559030f07fd53a3b8e6ffcd93d32ec0f8cf7ad12b79a3cead88f",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "serper",
+    "path": "/assets/providers/serper.png",
+    "source": "https://serper.dev/apple-touch-icon.png",
+    "revision": null,
+    "sha256": "e4eda0459a179b3a71f898d52bd1bd50520e3de0a46eb038bc7951beca80bf46",
+    "attribution": "Serper website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "siliconflow",
+    "path": "/assets/providers/siliconcloud.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/siliconcloud-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "a02d8d7ccb81739fbc720e2e5daaf149013dd5088605dc2dce1b71df0784d424",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "sensenova",
+    "path": "/assets/providers/sensenova.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/sensenova-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "bd2e0f8e310ff6a5edcc56a85560221923262767ba76b660a193f45c40c123fa",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "stability-ai",
+    "path": "/assets/providers/stability.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/stability-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "61c4593effe20b4fa1f0811861bb6ac199348d955b21a5c3f719bc07c9d27d3a",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "tavily",
+    "path": "/assets/providers/tavily.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/tavily-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "2dec98b9ce5a9dd1edc52d4f8a4de7bbabe82f710dd224931f19c6bf5e3ccaff",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "together",
+    "path": "/assets/providers/together.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/together-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "27ccaf118a431c386b88418a34a4346afd9638dde10e3f2295db2eec1fa5898a",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "topaz",
+    "path": "/assets/providers/topazlabs.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/topazlabs.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "f02f3efa2649aafb29fe153bdef7091ba78a88218b3e64c4957a045beffda2eb",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "tortoise",
+    "path": "/assets/providers/tortoise.png",
+    "source": "https://github.com/apple-touch-icon.png",
+    "revision": null,
+    "sha256": "7567c61c81d6ed9317dd59d660b9582da2bb7919a187fb7d222881663b511ca5",
+    "attribution": "Tortoise TTS website artwork",
+    "review": "service_artwork",
+    "review_note": "Software project without a verified standalone provider logo; website/project artwork is retained explicitly as service artwork."
+  },
+  {
+    "provider": "venice",
+    "path": "/assets/providers/venice.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/venice-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "a4a909b289b05d3b4cc716452d0c744619b23e110d2853bafd81bfba7c8c165f",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "vercel-ai-gateway",
+    "path": "/assets/providers/vercel.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/vercel.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "4874d52d8b2ce7c309cbd10c424fee123b2c9483e76d76ad0dca41794483eb24",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "vertex-partner",
+    "path": "/assets/providers/googlecloud.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/googlecloud-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "c0faf37b180dfc1efe12440c039047b0e1c60a3c424cca6616e580f6f219a7dc",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "vertex",
+    "path": "/assets/providers/googlecloud.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/googlecloud-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "c0faf37b180dfc1efe12440c039047b0e1c60a3c424cca6616e580f6f219a7dc",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "volcengine-ark",
+    "path": "/assets/providers/volcengine.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/volcengine-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "84f9e2cd1da7e73dc6c9a0f2521745d39cae96c008752cdb1baf57a8c94393a1",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "voyage-ai",
+    "path": "/assets/providers/voyage.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/voyage-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "96423656ee32fb76eba43b9030612c997889b056912ddbc9b249f960adb2e333",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "xai",
+    "path": "/assets/providers/xai.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/xai.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "89eb7de9f0d02a41cfecd9109e253d7fd3529e27467dee4254faa67f3ac21451",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "xiaomi-mimo",
+    "path": "/assets/providers/xiaomimimo.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/xiaomimimo.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "b04ad7dad52af2212c4567daf0ee6856f2c4625c92c680a27f9880295d558b71",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "xiaomi-tokenplan",
+    "path": "/assets/providers/xiaomimimo.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/xiaomimimo.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "b04ad7dad52af2212c4567daf0ee6856f2c4625c92c680a27f9880295d558b71",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "youcom",
+    "path": "/assets/providers/youcom.png",
+    "source": "https://you.com/apple-icon.png?apple-icon.04pft1wem7rx8.png",
+    "revision": null,
+    "sha256": "4318a107e065ae2e5a330b7d120b126107860f615551394f4d91ec42d8081ab7",
+    "attribution": "You.com Search website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "alims-intl",
+    "path": "/assets/providers/alibaba.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/alibaba-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "48ee796c5b1da5f5f11dbd70c5c64a3f7efcb9eeb9022ae687d81fc813e942ee",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "codebuddy-intl",
+    "path": "/assets/providers/codebuddy.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/codebuddy-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "033d5da624460e686046f22b4e242b6b86484ad84ec4877e4efa15a9fb642b97",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "zed",
+    "path": "/assets/providers/zed.png",
+    "source": "https://zed.dev/favicon_white_32.png",
+    "revision": null,
+    "sha256": "206232c815be09fedddf9a4865058c2d6331807432f5d4204ad32bde105791b1",
+    "attribution": "Zed website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "api-airforce",
+    "path": "/assets/providers/api-airforce.png",
+    "source": "https://api.airforce/airforce-logo.png",
+    "revision": null,
+    "sha256": "cbd7e488a011d12f8d3654ffa059c58299ed48ad3735dfe23b943cbd174b7dea",
+    "attribution": "API.airforce website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "baidu",
+    "path": "/assets/providers/baidu.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/baidu-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "1059750a2069aec6080ff48732931e87a99bd3d22db3e8471cebe255b6014b75",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "bazaarlink",
+    "path": "/assets/providers/bazaarlink.svg",
+    "source": "https://bazaarlink.ai/favicon.svg",
+    "revision": null,
+    "sha256": "358c5c81561543052d4f38c24df2ee580f8e378196403a62db6f25cd2d2af411",
+    "attribution": "Bazaarlink website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "bluesminds",
+    "path": "/assets/providers/bluesminds.png",
+    "source": "https://api.bluesminds.com/favicon.ico",
+    "revision": null,
+    "sha256": "8e36f2a5cb1bb51008f26cfd7c685c5bf54a29128dd70d43d25bad7d0197c9bb",
+    "attribution": "BluesMinds API website favicon",
+    "review": "source_matched"
+  },
+  {
+    "provider": "kilo-gateway",
+    "path": "/assets/providers/kilo-gateway.png",
+    "source": "https://kilo.ai/favicon/apple-touch-icon.png?v=3",
+    "revision": null,
+    "sha256": "c0fa3522e4fff81d0577712eb279a3733b9d63e3cfa1fda8b729ed704f5d9f7e",
+    "attribution": "Kilo Gateway website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "llm7",
+    "path": "/assets/providers/llm7.png",
+    "source": "https://llm7.io/favicons/apple-touch-icon.png",
+    "revision": null,
+    "sha256": "b2cda4f1f63c4f3bcc37e7f8af2aa21f7d7dd32660ded436426706412a9baf30",
+    "attribution": "LLM7 website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "sambanova",
+    "path": "/assets/providers/sambanova.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/sambanova-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "411ab881318738b7689e5fc6c4e0879a22913aabb9bc2125e3fc03f24e3214d5",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "tencent",
+    "path": "/assets/providers/tencent.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/tencent-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "7c370ad4b75e3f30d0fa7da71f90466a0ee95a887189479aa9df414079b50eb6",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "morph",
+    "path": "/assets/providers/morph.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/morph-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "994eb5b52da00eca9f4fa4d4c11a7fa1c1fa37dd9f58f9a97b951f0ea23a9f59",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "poolside",
+    "path": "/assets/providers/poolside.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/poolside-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "5df24fb33e364f9762952088b1ffd9b537dd3ddb6d3e1e5fec6893898eb29667",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "tokenrouter",
+    "path": "/assets/providers/tokenrouter.png",
+    "source": "https://www.tokenrouter.com/logo-without-title.png",
+    "revision": null,
+    "sha256": "70e4ff8127af93ff00b45f5059c59ba04ae350d2480c75e24b00528af5876f0b",
+    "attribution": "TokenRouter website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "selfhosted-stt",
+    "path": "/assets/providers/selfhosted-stt.png",
+    "source": "opensource(9)",
+    "revision": "1855aa44473e88feac9d3f131b9c0c5fc9706b68",
+    "sha256": "4f959cbbb933eb5a160d483e1f36764d95a82e5ed215912486fae746d907797d",
+    "attribution": "opensource(9); provider trademarks belong to their owners",
+    "review": "service_artwork"
+  },
+  {
+    "provider": "selfhosted-tts",
+    "path": "/assets/providers/selfhosted-tts.png",
+    "source": "opensource(9)",
+    "revision": "1855aa44473e88feac9d3f131b9c0c5fc9706b68",
+    "sha256": "4f959cbbb933eb5a160d483e1f36764d95a82e5ed215912486fae746d907797d",
+    "attribution": "opensource(9); provider trademarks belong to their owners",
+    "review": "service_artwork"
+  },
+  {
+    "provider": "selfhosted-embedding",
+    "path": "/assets/providers/selfhosted-embedding.png",
+    "source": "opensource(9)",
+    "revision": "1855aa44473e88feac9d3f131b9c0c5fc9706b68",
+    "sha256": "4f959cbbb933eb5a160d483e1f36764d95a82e5ed215912486fae746d907797d",
+    "attribution": "opensource(9); provider trademarks belong to their owners",
+    "review": "service_artwork"
+  },
+  {
+    "provider": "fish-audio",
+    "path": "/assets/providers/fishaudio.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/fishaudio.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "d391cb9bce59f44f99a56347f092922061d4df5ebfc53cec5bd20fc7859521f0",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "alitp-intl",
+    "path": "/assets/providers/alibaba.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/alibaba-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "48ee796c5b1da5f5f11dbd70c5c64a3f7efcb9eeb9022ae687d81fc813e942ee",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "xquik",
+    "path": "/assets/providers/xquik.png",
+    "source": "https://docs.xquik.com/mintlify-assets/_mintlify/favicons/zerct/KtTITS7QVHfgy1Pd/_generated/favicon/android-chrome-192x192.png",
+    "revision": null,
+    "sha256": "a1e5df6c89987077b350873cec4c8ed1e0b001974b70ceddf3a348b43a1a06f6",
+    "attribution": "Xquik website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "tokenharbor",
+    "path": "/assets/providers/tokenharbor.png",
+    "source": "https://tokenharbor.ai/apple-icon.png?apple-icon.04b2ibn-alp9r.png",
+    "revision": null,
+    "sha256": "a3cf4c128ae803153d6a5b78e860a8b253774b56a6664be0cf019929200efdc1",
+    "attribution": "Token Harbor website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "dahl",
+    "path": "/assets/providers/dahl.png",
+    "source": "https://inference.dahl.global/apple-touch-icon.png",
+    "revision": null,
+    "sha256": "5606b7ca922bddcf6933c8f7b28e2fabda69b142279ccb47f57e3a753dfed7d5",
+    "attribution": "Dahl Inference website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "atria",
+    "path": "/assets/providers/atria.png",
+    "source": "https://atria-asi.ai/releases/atria-dawn/atria-dawn-20261024-34b1af8-r24/assets/atria-logo.png?v=20260909",
+    "revision": null,
+    "sha256": "836b518b1e24a71efe77b900ca7f4c6158c4748ec828820649a9121449aac84d",
+    "attribution": "Atria Dawn website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "agnes",
+    "path": "/assets/providers/agnes.png",
+    "source": "https://agnes-ai.com/images/biglogo.png",
+    "revision": null,
+    "sha256": "ff264371cd1a4e77e00f10a6f30f51dac2de2880d016d3fb51c964ce32f45a04",
+    "attribution": "Agnes AI website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "bai",
+    "path": "/assets/providers/bai.png",
+    "source": "https://b.ai/favicon.ico",
+    "revision": null,
+    "sha256": "4aab504675f090d12c435e721b6d510a676f65edff404ed4f641a554d98cf3e5",
+    "attribution": "B.AI website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "tinyfish",
+    "path": "/assets/providers/tinyfish.png",
+    "source": "https://www.tinyfish.ai/favicon-for-app/apple-icon.png",
+    "revision": null,
+    "sha256": "a3f0c2ed466452b2e7bca3bc191ee04acbdf2234596d9a85a9faacec4a1f7cab",
+    "attribution": "TinyFish website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "v1m",
+    "path": "/assets/providers/v1m.svg",
+    "source": "https://v1m.ir",
+    "revision": null,
+    "sha256": "841bae73cb629eb47e0724ae0a5e8dc1c062eeba9389b404ab7adf556e858bd9",
+    "attribution": "v1m official website favicon",
+    "review": "source_matched"
+  },
+  {
+    "provider": "muse",
+    "path": "/assets/providers/muse.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/muse-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "c39c74b14ec4c5be771f75a45bf9d34c2e5fd99fe7aefedcb0fd409c3e6ac621",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "minimax-code",
+    "path": "/assets/providers/minimax.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/minimax-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "7f7187fa6d9b341ac5f22f6c5a970523afb439dc45566d64eb4f4b9b604d6b01",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "minimax-code-global",
+    "path": "/assets/providers/minimax.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/minimax-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "7f7187fa6d9b341ac5f22f6c5a970523afb439dc45566d64eb4f4b9b604d6b01",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "bedrock",
+    "path": "/assets/providers/aws.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/aws-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "b23f044479fe5c80f7df0a9515f969e5ea710c5f40d26dffa08969a0151731f3",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "bedrock-xai",
+    "path": "/assets/providers/xai.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/xai.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "89eb7de9f0d02a41cfecd9109e253d7fd3529e27467dee4254faa67f3ac21451",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "nous",
+    "path": "/assets/providers/nousresearch.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/nousresearch.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "4dc3c7cdf13d2f0bdf16b872d76293f048010a00f580df68a85e1f9c4e500e5d",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "deepseek-web",
+    "path": "/assets/providers/deepseek.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/deepseek-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "deba5f98a5c1796e20fcac3149bcd7eb8a32f0bdd04d048819400b1f28bd1439",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "gemini-web",
+    "path": "/assets/providers/gemini.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/gemini-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "8ab0a9bafec11f7e69bcb9fc4ffd8f1bc927d1ddcbbb6ff36dee5ae8b5a9d602",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "muse-web",
+    "path": "/assets/providers/muse-web.svg",
+    "source": "https://muse.ai/images/favicon/app-squiggle.svg",
+    "revision": null,
+    "sha256": "6373d89d274258a38432f3c3729cd716498b8ded849b174a7998683dcf4aaba5",
+    "attribution": "Muse Web website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "chatgpt-web",
+    "path": "/assets/providers/openai.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/openai.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "a595df6b423920c67a7f8f73c063e4bfb72d415948097b6cac063a2366bb5186",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "veoaifree-web",
+    "path": "/assets/providers/veoaifree-web.png",
+    "source": "https://veoaifree.com/wp-content/uploads/2025/10/cropped-google-veo-ai-free-180x180.jpg",
+    "revision": null,
+    "sha256": "6d82c1576baa86348fb272c641e6952522ff207e71c9eb3e2a23d293d0234d44",
+    "attribution": "Veo AI Free Web website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "uc-web",
+    "path": "/assets/providers/uc-web.png",
+    "source": "https://uncensored.com/apple-icon.png?v=20260602",
+    "revision": null,
+    "sha256": "c2bcde46accd26b96ff5d64993c52770a62a6f7d73459d51a3d98d698f6b1711",
+    "attribution": "UC Web website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "runcrate",
+    "path": "/assets/providers/runcrate.png",
+    "source": "https://www.runcrate.ai/apple-touch-icon.png",
+    "revision": null,
+    "sha256": "207d39ff3cf918f579d657a519c84495461fea39976a517233c53c39aa8203bf",
+    "attribution": "runcrate brand artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "nace",
+    "path": "/assets/providers/nace.png",
+    "source": "https://console.nace.ai/apple-icon.png?apple-icon.385ibu6g2gqty.png",
+    "revision": null,
+    "sha256": "0d89aef2bc3f883c56e9dfde808a1d13f0f4e273726b8825b1052e978fe4f081",
+    "attribution": "Nace Drex website artwork",
+    "review": "source_matched"
+  },
+  {
+    "provider": "sensenova-intl",
+    "path": "/assets/providers/sensenova.svg",
+    "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/34270bc208d7122778dc00b30bd460f97ea03216/packages/static-svg/icons/sensenova-color.svg",
+    "revision": "34270bc208d7122778dc00b30bd460f97ea03216",
+    "sha256": "bd2e0f8e310ff6a5edcc56a85560221923262767ba76b660a193f45c40c123fa",
+    "attribution": "LobeHub icon collection; provider trademarks belong to their owners",
+    "review": "source_matched"
+  },
+  {
+    "provider": "synthetic",
+    "path": "/assets/providers/synthetic.png",
+    "source": "https://synthetic.new/apple-touch-icon.png",
+    "revision": null,
+    "sha256": "92994f1d09cadecf03401be76e36cfc6ec42d631cad370644dcad6573a189780",
+    "attribution": "synthetic brand artwork",
+    "review": "source_matched"
+  }
+]

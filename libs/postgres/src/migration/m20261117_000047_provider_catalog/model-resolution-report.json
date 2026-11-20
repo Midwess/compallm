@@ -1,0 +1,52 @@
+{
+  "counts": {
+    "predefined": 833,
+    "api": 0,
+    "hybrid": 0,
+    "unresolved": 1492,
+    "unresolved_text": 448,
+    "non_selectable": 1044
+  },
+  "selection": "Use complete stored defaults when present. API references alone do not establish resolvability. No current incomplete text row has complete verified representable API coverage.",
+  "evidence": [
+    {
+      "url": "opensource(9)",
+      "finding": "getModelInfo merges generic DEFAULT_MODEL_INFO contextWindow 200000; this is not an exact model limit."
+    },
+    {
+      "url": "opensource(9)",
+      "finding": "Provider/name/pattern lookup can return null; missing price does not establish free usage."
+    },
+    {
+      "url": "opensource(l)",
+      "finding": "get_model_info_helper attempts dynamic provider metadata before normalized static catalog matching; ModelNotMappedError is possible; unset costs can default zero."
+    },
+    {
+      "url": "opensource(l)",
+      "finding": "Model-list discovery can supply limits, return empty data on errors, and does not guarantee complete pricing."
+    }
+  ],
+  "known_api_blockers": [
+    {
+      "provider": "bazaarlink",
+      "model": "gemini-3-flash-preview",
+      "field": "input_price",
+      "reason": "unsupported_precision"
+    },
+    {
+      "provider": "bazaarlink",
+      "model": "gemini-3.1-pro-preview",
+      "field": "input_price",
+      "reason": "unsupported_precision"
+    },
+    {
+      "provider": "venice",
+      "model": "qwen-4-max",
+      "field": "cached_price",
+      "reason": "unsupported_precision"
+    }
+  ],
+  "latest_three_catalog_pass": "three-catalog-investigation.json",
+  "current_applicability_and_readiness": "semantics-backfill-report.json",
+  "count_scope": "Counts in this investigation describe its source-review snapshot before the applicable-requirements schema. Current readiness is derived and reported separately."
+}

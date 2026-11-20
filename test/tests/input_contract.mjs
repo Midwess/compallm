@@ -6,6 +6,7 @@ import {
   ProviderFieldsInput,
   ProviderModelFields,
   ProviderModelFieldsInput,
+  ProviderModelFieldsConstraints,
   ProviderModels,
   ProviderHeader,
   ProviderInputRules,
@@ -14,6 +15,7 @@ import {
 import { EmailCodeInput, EmailInput } from '../../libs/contract/dist/validation.js'
 import { otpCharacters, otpLength, otpRequestSchema } from '../../libs/contract/dist/auth.js'
 import { headersAreValid, acceptsHeaderInput } from '../../libs/contract/dist/provider.js'
+import { inputString } from '../../libs/contract/dist/runtime.js'
 
 const schemas = {
   name: ProviderFields.shape.name,
@@ -21,7 +23,7 @@ const schemas = {
   apiKey: ProviderFields.shape.apiKey,
   modelName: ProviderModelFields.shape.name,
   path: ProviderModelFields.shape.path,
-  price: ProviderModelFields.shape.inputPrice,
+  price: inputString({ ...ProviderModelFieldsConstraints.inputPrice, format: undefined }),
   context: ProviderModelFields.shape.maxContextTokens,
   effort: ProviderInputRules.shape.effortValue,
   authorization: ProviderInputRules.shape.authorization,
@@ -77,7 +79,7 @@ test('generated entry guards reject invalid characters and preserve clearable fi
     assert.equal(guard('invalid value'), false)
     assert.equal(guard('value\n'), false)
   }
-  assert.equal(ProviderModelFieldsInput.name('a'.repeat(41)), false)
+  assert.equal(ProviderModelFieldsInput.name('a'.repeat(513)), false)
   assert.equal(ProviderInputRulesInput.effortValue('a'.repeat(26)), false)
   assert.equal(ProviderFieldsInput.name('😀'.repeat(120)), true)
   assert.equal(ProviderFieldsInput.name('😀'.repeat(121)), false)
@@ -92,7 +94,7 @@ test('generated numeric guards allow partial entry and block characters, precisi
   for (const price of ['', '.', '0.', '12.12345678', '00000000000000001']) {
     assert.equal(ProviderModelFieldsInput.inputPrice(price), true)
   }
-  for (const price of ['0.123456789', '-1', '1e3', '1.2.3', '1\n', '1000000000000']) {
+  for (const price of ['0.1234567890123456789', '-1', '1e3', '1.2.3', '1\n', '1000000000000']) {
     assert.equal(ProviderModelFieldsInput.inputPrice(price), false)
   }
   assert.equal(ProviderModelFields.shape.inputPrice.safeParse('0.').success, false)

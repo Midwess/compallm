@@ -40,6 +40,7 @@ export interface FormOptions<T extends object> {
   resolver?: Resolver<T>
   names?: string[]
   validationNames?(names: string[]): string[]
+  showError?(name: string): boolean
   fields?: Record<string, FormRule>
   validate?(values: T, names: string[]): boolean | Promise<boolean>
   parse?(values: T, names: string[]): { values?: T; issues?: { path: PropertyKey[]; message: string }[] }
@@ -388,6 +389,7 @@ export class FormModel<T extends object> implements FormScope {
           if (!error) continue
           const path = prefix ? `${prefix}.${key}` : key
           if (error.message) {
+            if (this.options.showError && !this.options.showError(path)) continue
             this.api.setError(path, error)
             this.markValidation(path)
             this.notify(path)
@@ -400,6 +402,7 @@ export class FormModel<T extends object> implements FormScope {
     if (parsed?.issues?.length) {
       for (const issue of parsed.issues) {
         const name = issue.path.join('.') || names[0]
+        if (this.options.showError && !this.options.showError(name)) continue
         this.api.setError(name, { type: 'contract', message: issue.message })
         this.markValidation(name)
         this.invalidFields.add(name)
@@ -430,6 +433,7 @@ export class FormModel<T extends object> implements FormScope {
       ),
     )
     if (!changes.size) {
+      if (this.options.showError) await this.validate(selected.map(([name]) => name))
       this.emit()
       if (this.queued.size) await this.flush(explicit)
       return

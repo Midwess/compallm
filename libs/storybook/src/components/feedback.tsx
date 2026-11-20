@@ -231,18 +231,21 @@ export function DisabledTooltip({
 }
 export function FieldHelp({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <Tooltip.Control content={children}>
-      <animated.button
-        type="button"
-        aria-label={label}
-        className={`
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        <animated.button
+          type="button"
+          aria-label={label}
+          className={`
 inline-flex size-5 shrink-0 cursor-help items-center justify-center rounded text-muted-foreground hover:text-foreground
 focus-visible:text-foreground focus-visible:outline-1 focus-visible:outline-muted-foreground
 `}
-      >
-        <QuestionIcon className="size-4" aria-hidden="true" />
-      </animated.button>
-    </Tooltip.Control>
+        >
+          <QuestionIcon className="size-4" aria-hidden="true" />
+        </animated.button>
+      </Tooltip.Trigger>
+      <Tooltip.Content className="rounded-xl text-left leading-5">{children}</Tooltip.Content>
+    </Tooltip.Root>
   )
 }
 export function EmptyState({ title, children, action }: { title: ReactNode; children?: ReactNode; action?: ReactNode }) {

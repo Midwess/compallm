@@ -27,13 +27,13 @@ export const ProviderFields = z
   .strict()
 export const ProviderFieldsInput = ProviderCreateInputInput
 export const ProviderFieldsConstraints = ProviderCreateInputConstraints
-export const ProviderModelFields = ProviderModelConfiguration.pick({
-  name: true,
-  path: true,
-  maxContextTokens: true,
-  inputPrice: true,
-  outputPrice: true,
-  cachedPrice: true,
+export const ProviderModelFields = z.object({
+  name: ProviderModelConfiguration.shape.name,
+  path: ProviderModelConfiguration.shape.path,
+  maxContextTokens: ProviderModelConfiguration.shape.maxContextTokens,
+  inputPrice: ProviderModelConfiguration.shape.inputPrice,
+  outputPrice: ProviderModelConfiguration.shape.outputPrice,
+  cachedPrice: ProviderModelConfiguration.shape.cachedPrice,
 })
 export const ProviderModelFieldsInput = ProviderModelConfigurationInput
 export const ProviderModelFieldsConstraints = ProviderModelConfigurationConstraints

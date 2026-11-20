@@ -30,7 +30,10 @@ async function writeTypescript(path, source) {
   )
 }
 
-await writeTypescript(new URL('./preference.ts', import.meta.url), await readFile(new URL('./preference.ts', import.meta.url), 'utf8'))
+await writeTypescript(
+  new URL('./preference.ts', import.meta.url),
+  await readFile(new URL('./preference.ts', import.meta.url), 'utf8'),
+)
 
 const banner = '// Generated from Rust. Do not edit; run cargo run -p compallm-api -- generate.\n'
 const document = JSON.parse(await readFile(new URL('./validation.schema.json', import.meta.url), 'utf8'))
@@ -100,8 +103,20 @@ function visit(name) {
   ordered.push(name)
 }
 Object.keys(definitions).sort().forEach(visit)
-const formats = new Set(['baseUrl', 'webUrl', 'nonblank', 'authorization', 'emailAddress', 'resourceId'])
+const formats = new Set([
+  'baseUrl',
+  'webUrl',
+  'nonblank',
+  'authorization',
+  'emailAddress',
+  'resourceId',
+  'bodyDefaultKey',
+  'jsonValue',
+  'modelPrice',
+])
 const objectRules = {
+  bodyDefault: 'bodyDefaultObject',
+  modelLimits: 'modelLimitsObject',
   header: 'headerObject',
   headerUpdate: 'headerUpdateObject',
   createProvider: 'createProviderObject',
@@ -109,6 +124,7 @@ const objectRules = {
   providerPatch: 'providerPatchObject',
 }
 const arrayRules = {
+  bodyDefaults: 'bodyDefaultsArray',
   headers: '(entries) => headersObject({entries})',
   modelWrites: 'modelWritesArray',
 }
@@ -268,7 +284,7 @@ function render(schema) {
 const lines = [
   banner,
   "import { z } from 'zod'",
-  "import { inputString, stringInput, integerInput, headerObject, headersObject, headerUpdateObject, modelWritesArray, createProviderObject, createProvidersObject, providerPatchObject } from './runtime.ts'",
+  "import { inputString, stringInput, integerInput, headerObject, headersObject, headerUpdateObject, modelWritesArray, modelLimitsObject, bodyDefaultsArray, bodyDefaultObject, createProviderObject, createProvidersObject, providerPatchObject } from './runtime.ts'",
 ]
 for (const name of ordered) {
   const schema = definitions[name]

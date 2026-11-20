@@ -1,0 +1,1811 @@
+{
+  "sources": [
+    {
+      "name": "llmgateway-models",
+      "url": "https://llmgateway.io/models",
+      "status": 200,
+      "final_url": "https://llmgateway.io/models",
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 4268130,
+      "sha256": "5b4c3dcdb0b308c62202a62a764649341123c24b5affc366d2757b005e62e5c2",
+      "sample": "                                                                   LLM Models List — Compare 250+ AI Models &amp; Live Prices   <link "
+    },
+    {
+      "name": "llmgateway-api",
+      "url": "https://api.llmgateway.io/v1/models",
+      "status": 200,
+      "final_url": "https://api.llmgateway.io/v1/models",
+      "content_type": "application/json",
+      "bytes": 858036,
+      "sha256": "46cd1c119aaca089308943302f3e683b92f37b5d5e4c04b2333796a3d1f7bfd9",
+      "sample": "{\"data\":[{\"id\":\"custom\",\"name\":\"Custom Model\",\"display_name\":\"Custom Model\",\"created\":1704067200,\"description\":\"Custom model endpoint with user-provided base URL.\",\"family\":\"llmgateway\",\"architecture\":{\"input_modalities\":[\"text\",\"image\"],\"output_modalities\":[\"text\"],\"tokenizer\":\"GPT\"},\"top_provider\":{\"is_moderated\":true},\"providers\":[{\"providerId\":\"llmgateway\",\"externalId\":\"custom\",\"streaming\":tru"
+    },
+    {
+      "name": "aa-models",
+      "url": "https://artificialanalysis.ai/models",
+      "status": 200,
+      "final_url": "https://artificialanalysis.ai/models",
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 1271965,
+      "sha256": "1438185ccda6108aaadc24a23cd0174a9f2fb29ed03ec4255852d2b243471a1d",
+      "sample": "                                                            <script src=\"/_next/static/chunks/7278-dfe7b"
+    },
+    {
+      "name": "aa-api-docs",
+      "url": "https://artificialanalysis.ai/documentation",
+      "status": 200,
+      "final_url": "https://artificialanalysis.ai/api-reference",
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 47574,
+      "sha256": "1f611f72f6b49b469ddfa69eb72b01b9ee588a68ab8be221936c6a9e2c2beb77",
+      "sample": "                                                          </scri"
+    },
+    {
+      "name": "opensource(l)-models",
+      "url": "opensource(l)",
+      "status": 200,
+      "final_url": "opensource(l)",
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 15751,
+      "sha256": "2eda8b1f7aa3d0d6df80c7ce0fda41f6fc75699e6dc15eafdd21d69a7a6cdf21",
+      "sample": " \n \n   \n     \n     \n     \n     \n     \n     \n     \n     opensource(l) Model Catalog: AI Model Pricing &amp; Context Windows \n     \n     \n     \n     \n     \n     \n     \n     \n     {\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"Organization\",\"@id\":\"opensource(l)",\"name\":\"opensource(l)\",\"url\":\"opensource(l)",\"sameAs\":[\"opensource(l)",\"https://docs.litel"
+    },
+    {
+      "name": "opensource(l)-prices",
+      "url": "opensource(l)",
+      "status": 200,
+      "bytes": 4265965,
+      "sha256": "596c0b4e15dafdf8d6fac94a264bb60d7bfbd779da8662c779c3072ea1fe6336",
+      "content_type": "text/plain; charset=utf-8"
+    },
+    {
+      "name": "opensource(l)-build",
+      "url": "opensource(l)",
+      "status": 200,
+      "bytes": 316,
+      "sha256": "0223b307ada79385e69974f8d4a5aa0dd863df9efac6db7ba18d6ad7e65b96d4",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "name": "opensource(l)-manifest",
+      "url": "opensource(l)",
+      "status": 200,
+      "bytes": 1626903,
+      "sha256": "4dc50e5658c05394ab1fc068ca6416247d090f893590cbb376b16c66ff94db24",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "name": "aa-api",
+      "url": "https://artificialanalysis.ai/api/v2/data/llms/models",
+      "error": "HTTP Error 410: Gone"
+    },
+    {
+      "name": "llmgateway-docs",
+      "url": "https://docs.llmgateway.io/api-reference/models/list-models",
+      "error": "HTTP Error 404: Not Found"
+    }
+  ],
+  "opensource(l)_revision": "983c7ef20d73954ca150434d347c77c20f4d1a50",
+  "llmgateway_revision": "f49b08cb1867e7599fbbdcb37ea7bdc22d60caab",
+  "public_datasets": {
+    "llmgateway_models": 327,
+    "opensource(l)_entries": 6221,
+    "artificial_analysis_models": 758,
+    "artificial_analysis_provider_endpoints": 988
+  },
+  "source_changes": {
+    "opensource(l)_models_with_imported_fields": 62,
+    "llmgateway_models_with_imported_fields": 3,
+    "artificial_analysis_models_with_review_evidence": 10
+  },
+  "filled_fields": {
+    "max_input_tokens": 19,
+    "max_output_tokens": 5,
+    "max_context_tokens": 3,
+    "input_price": 1,
+    "output_price": 1,
+    "cached_price": 1
+  },
+  "changed_capability_records": 45,
+  "changes": [
+    {
+      "provider": "alims-intl",
+      "model": "qwen3-coder-plus",
+      "field": "max_input_tokens",
+      "value": 997952,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "alims-intl",
+      "model": "qwen3-coder-plus",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "alims-intl",
+      "model": "qwen3.5-plus",
+      "field": "max_input_tokens",
+      "value": 991808,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cerebras",
+      "model": "llama-3.3-70b",
+      "field": "capabilities",
+      "value": [
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cerebras",
+      "model": "qwen-3-32b",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cloudflare-ai",
+      "model": "clef-flash",
+      "field": "capabilities",
+      "value": [
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cloudflare-ai",
+      "model": "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "text"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cloudflare-ai",
+      "model": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+      "field": "capabilities",
+      "value": [
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cloudflare-ai",
+      "model": "@cf/mistralai/mistral-small-3.1-24b-instruct",
+      "field": "capabilities",
+      "value": [
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cloudflare-ai",
+      "model": "@cf/moonshotai/kimi-k2.6",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cloudflare-ai",
+      "model": "@cf/qwen/qwq-32b",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "text"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cloudflare-ai",
+      "model": "@cf/zai-org/glm-4.7-flash",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "c4ai-aya-expanse-32b",
+      "field": "max_input_tokens",
+      "value": 128000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "c4ai-aya-vision-32b",
+      "field": "max_input_tokens",
+      "value": 16384,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-a-03-2025",
+      "field": "max_input_tokens",
+      "value": 256000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-a-plus-05-2026",
+      "field": "max_input_tokens",
+      "value": 128000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-a-reasoning-08-2025",
+      "field": "max_input_tokens",
+      "value": 288768,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-a-translate-08-2025",
+      "field": "max_input_tokens",
+      "value": 8992,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-a-vision-07-2025",
+      "field": "max_input_tokens",
+      "value": 128000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-r-08-2024",
+      "field": "max_input_tokens",
+      "value": 128000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-r-plus-08-2024",
+      "field": "max_input_tokens",
+      "value": 128000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-r7b-12-2024",
+      "field": "max_input_tokens",
+      "value": 128000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-r7b-arabic-02-2025",
+      "field": "max_input_tokens",
+      "value": 128000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-earth",
+      "field": "max_input_tokens",
+      "value": 8192,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-fire",
+      "field": "max_input_tokens",
+      "value": 8192,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-global",
+      "field": "max_input_tokens",
+      "value": 8192,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-water",
+      "field": "max_input_tokens",
+      "value": 8192,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "field": "capabilities",
+      "value": [
+        "structured_output",
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-reasoner",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "structured_output",
+        "text"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "fireworks",
+      "model": "accounts/fireworks/models/deepseek-v3p1",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "structured_output",
+        "text"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-3-pro-image-preview",
+      "field": "capabilities",
+      "value": [
+        "image_generation",
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image-preview",
+      "field": "capabilities",
+      "value": [
+        "image_generation",
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-embedding-2-preview",
+      "field": "capabilities",
+      "value": [
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "NousResearch/Hermes-3-Llama-3.1-70B",
+      "field": "capabilities",
+      "value": [
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "Qwen/QwQ-32B",
+      "field": "capabilities",
+      "value": [
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "Qwen/Qwen2.5-72B-Instruct",
+      "field": "capabilities",
+      "value": [
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "Qwen/Qwen2.5-Coder-32B-Instruct",
+      "field": "capabilities",
+      "value": [
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "deepseek-ai/DeepSeek-R1",
+      "field": "capabilities",
+      "value": [
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "deepseek-ai/DeepSeek-V3",
+      "field": "capabilities",
+      "value": [
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "meta-llama/Llama-3.2-3B-Instruct",
+      "field": "capabilities",
+      "value": [
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "hyperbolic",
+      "model": "meta-llama/Llama-3.3-70B-Instruct",
+      "field": "capabilities",
+      "value": [
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "devstral-latest",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "structured_output",
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "devstral-medium-latest",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "structured_output",
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "magistral-medium-latest",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "structured_output",
+        "text",
+        "tool_call",
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "open-mistral-nemo",
+      "field": "capabilities",
+      "value": [
+        "structured_output",
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nace",
+      "model": "drex-max",
+      "field": "capabilities",
+      "value": [
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nebius",
+      "model": "MiniMaxAI/MiniMax-M3",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "text",
+        "tool_call",
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nebius",
+      "model": "meta-llama/Llama-3.3-70B-Instruct",
+      "field": "capabilities",
+      "value": [
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3.5-bolt-e4b",
+      "field": "max_output_tokens",
+      "value": 65536,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3.5-bolt-e4b",
+      "field": "capabilities",
+      "value": [
+        "structured_output",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "structured_output",
+        "text",
+        "tool_call",
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/riva-translate-4b-instruct-v2",
+      "field": "max_output_tokens",
+      "value": 4096,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-3.5-turbo",
+      "field": "capabilities",
+      "value": [
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-search-api",
+      "field": "capabilities",
+      "value": [
+        "structured_output",
+        "text",
+        "tool_call",
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5.2-pro",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "structured_output",
+        "text",
+        "tool_call",
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "sambanova",
+      "model": "Meta-Llama-3.3-70B-Instruct",
+      "field": "capabilities",
+      "value": [
+        "structured_output",
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "sambanova",
+      "model": "MiniMax-M2.7",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "together",
+      "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+      "field": "capabilities",
+      "value": [
+        "structured_output",
+        "text",
+        "tool_call"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "vertex",
+      "model": "gemini-3-flash-preview",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "structured_output",
+        "text",
+        "tool_call",
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "vertex",
+      "model": "gemini-3.1-pro-preview",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "structured_output",
+        "text",
+        "tool_call",
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "vertex",
+      "model": "gemini-4-argon",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "structured_output",
+        "text",
+        "tool_call",
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-code-fast-1",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "structured_output",
+        "text",
+        "tool_call",
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "xiaomi-mimo",
+      "model": "mimo-v2.6-flash",
+      "field": "max_input_tokens",
+      "value": 1048576,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "xiaomi-mimo",
+      "model": "mimo-v2.6-flash",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "structured_output",
+        "text",
+        "tool_call",
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "xiaomi-mimo",
+      "model": "mimo-v2.6-pro",
+      "field": "max_input_tokens",
+      "value": 1048576,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "xiaomi-mimo",
+      "model": "mimo-v2.6-pro",
+      "field": "capabilities",
+      "value": [
+        "reasoning",
+        "structured_output",
+        "text",
+        "tool_call",
+        "vision"
+      ],
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "alims-intl",
+      "model": "glm-5",
+      "field": "max_context_tokens",
+      "value": 202752,
+      "source": "llmgateway.io"
+    },
+    {
+      "provider": "alims-intl",
+      "model": "glm-5",
+      "field": "max_output_tokens",
+      "value": 16384,
+      "source": "llmgateway.io"
+    },
+    {
+      "provider": "alims-intl",
+      "model": "kimi-k2.5",
+      "field": "max_context_tokens",
+      "value": 262144,
+      "source": "llmgateway.io"
+    },
+    {
+      "provider": "alims-intl",
+      "model": "kimi-k2.5",
+      "field": "max_output_tokens",
+      "value": 98304,
+      "source": "llmgateway.io"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4",
+      "field": "max_context_tokens",
+      "value": 256000,
+      "source": "llmgateway.io"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4",
+      "field": "max_output_tokens",
+      "value": 256000,
+      "source": "llmgateway.io"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4",
+      "field": "input_price",
+      "value": "3.00000000",
+      "source": "llmgateway.io"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4",
+      "field": "output_price",
+      "value": "15.00000000",
+      "source": "llmgateway.io"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4",
+      "field": "cached_price",
+      "value": "0.75000000",
+      "source": "llmgateway.io"
+    }
+  ],
+  "retained_conflicts": [
+    {
+      "provider": "cerebras",
+      "model": "gpt-oss-120b",
+      "field": "max_output_tokens",
+      "retained": 40960,
+      "candidate": 32768,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-r-08-2024",
+      "field": "max_output_tokens",
+      "retained": 4000,
+      "candidate": 4096,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-r-plus-08-2024",
+      "field": "max_output_tokens",
+      "retained": 4000,
+      "candidate": 4096,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "cohere",
+      "model": "command-r7b-12-2024",
+      "field": "max_output_tokens",
+      "retained": 4000,
+      "candidate": 4096,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-3.5-live-translate-preview",
+      "field": "max_output_tokens",
+      "retained": 16384,
+      "candidate": 65536,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-4-argon",
+      "field": "max_output_tokens",
+      "retained": 32768,
+      "candidate": 1048576,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-4-carbon",
+      "field": "max_output_tokens",
+      "retained": 32768,
+      "candidate": 1048576,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-4-hydrogen",
+      "field": "max_output_tokens",
+      "retained": 65536,
+      "candidate": 1048576,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "gemini",
+      "model": "lyria-3-clip-preview",
+      "field": "max_output_tokens",
+      "retained": 65536,
+      "candidate": 8192,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "gemini",
+      "model": "lyria-3-pro-preview",
+      "field": "max_output_tokens",
+      "retained": 65536,
+      "candidate": 8192,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "minimax",
+      "model": "MiniMax-M2",
+      "field": "max_output_tokens",
+      "retained": 131072,
+      "candidate": 8192,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "minimax",
+      "model": "MiniMax-M2.1",
+      "field": "max_output_tokens",
+      "retained": 131072,
+      "candidate": 8192,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "minimax",
+      "model": "MiniMax-M2.5",
+      "field": "max_output_tokens",
+      "retained": 131072,
+      "candidate": 8192,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "minimax",
+      "model": "MiniMax-M3",
+      "field": "max_output_tokens",
+      "retained": 524288,
+      "candidate": 128000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "codestral-2508",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "candidate": 128000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "codestral-latest",
+      "field": "max_output_tokens",
+      "retained": 4096,
+      "candidate": 128000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "deepseek-v4-1-flash-1017",
+      "field": "max_output_tokens",
+      "retained": 128000,
+      "candidate": 131072,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "devstral-latest",
+      "field": "max_output_tokens",
+      "retained": 262144,
+      "candidate": 256000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "devstral-medium-latest",
+      "field": "max_output_tokens",
+      "retained": 262144,
+      "candidate": 256000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "labs-leanstral-1-5-1",
+      "field": "max_output_tokens",
+      "retained": 128000,
+      "candidate": 131072,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "magistral-medium-latest",
+      "field": "max_output_tokens",
+      "retained": 16384,
+      "candidate": 262144,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "ministral-3b-latest",
+      "field": "max_output_tokens",
+      "retained": 128000,
+      "candidate": 131072,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "ministral-8b-latest",
+      "field": "max_output_tokens",
+      "retained": 128000,
+      "candidate": 262144,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "mistral-large-4",
+      "field": "max_output_tokens",
+      "retained": 262144,
+      "candidate": 1048576,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "mistral-small-2603",
+      "field": "max_output_tokens",
+      "retained": 256000,
+      "candidate": 262144,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "mistral-small-latest",
+      "field": "max_output_tokens",
+      "retained": 256000,
+      "candidate": 262144,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "voxtral-small-2507",
+      "field": "max_output_tokens",
+      "retained": 32000,
+      "candidate": 32768,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "mistral",
+      "model": "voxtral-small-latest",
+      "field": "max_output_tokens",
+      "retained": 32000,
+      "candidate": 32768,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "morph",
+      "model": "morph-v3-fast",
+      "field": "max_output_tokens",
+      "retained": 131072,
+      "candidate": 16000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "morph",
+      "model": "morph-v3-large",
+      "field": "max_output_tokens",
+      "retained": 131072,
+      "candidate": 16000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nebius",
+      "model": "NousResearch/Hermes-4-405B",
+      "field": "max_input_tokens",
+      "retained": 120000,
+      "candidate": 131072,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nebius",
+      "model": "NousResearch/Hermes-4-405B",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "candidate": 131072,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nebius",
+      "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "candidate": 262144,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nebius",
+      "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "candidate": 262144,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nebius",
+      "model": "google/gemma-3-27b-it",
+      "field": "max_input_tokens",
+      "retained": 100000,
+      "candidate": 110000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nebius",
+      "model": "google/gemma-3-27b-it",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "candidate": 110000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nebius",
+      "model": "moonshotai/Kimi-K3",
+      "field": "max_output_tokens",
+      "retained": 8000,
+      "candidate": 1024000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nebius",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "field": "max_output_tokens",
+      "retained": 32768,
+      "candidate": 262144,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nebius",
+      "model": "openai/gpt-oss-120b",
+      "field": "max_input_tokens",
+      "retained": 124000,
+      "candidate": 131072,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nebius",
+      "model": "openai/gpt-oss-120b",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "candidate": 131072,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nebius",
+      "model": "reflection/beam",
+      "field": "max_output_tokens",
+      "retained": 131072,
+      "candidate": 1048576,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nvidia",
+      "model": "deepseek-ai/deepseek-v4.1-flash",
+      "field": "max_output_tokens",
+      "retained": 384000,
+      "candidate": 1048576,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nvidia",
+      "model": "meta/muse-glimmer-30b",
+      "field": "max_output_tokens",
+      "retained": 131072,
+      "candidate": 16384,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/cosmos-reason2-8b",
+      "field": "max_output_tokens",
+      "retained": 16384,
+      "candidate": 4096,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b",
+      "field": "max_output_tokens",
+      "retained": 65536,
+      "candidate": 32768,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "field": "max_output_tokens",
+      "retained": 262144,
+      "candidate": 32768,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "candidate": 131072,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "nvidia",
+      "model": "openai/gpt-oss-20b",
+      "field": "max_output_tokens",
+      "retained": 131072,
+      "candidate": 4096,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "openai",
+      "model": "chat-latest",
+      "field": "max_input_tokens",
+      "retained": 272000,
+      "candidate": 400000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "candidate": 4096,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-pro",
+      "field": "max_input_tokens",
+      "retained": 272000,
+      "candidate": 400000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5-search-api",
+      "field": "max_output_tokens",
+      "retained": 100000,
+      "candidate": 128000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5.4",
+      "field": "max_input_tokens",
+      "retained": 922000,
+      "candidate": 1050000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5.4-pro",
+      "field": "max_input_tokens",
+      "retained": 922000,
+      "candidate": 1050000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5.5",
+      "field": "max_input_tokens",
+      "retained": 922000,
+      "candidate": 1050000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-5.5-pro",
+      "field": "max_input_tokens",
+      "retained": 922000,
+      "candidate": 1050000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-realtime-2.1",
+      "field": "max_input_tokens",
+      "retained": 96000,
+      "candidate": 128000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "kimi-k3",
+      "field": "max_output_tokens",
+      "retained": 1048576,
+      "candidate": 131072,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "kimi-k3.1-pro",
+      "field": "max_output_tokens",
+      "retained": 1048576,
+      "candidate": 131072,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "perplexity",
+      "model": "sonar",
+      "field": "max_output_tokens",
+      "retained": 4096,
+      "candidate": 128000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "perplexity",
+      "model": "sonar-deep-research",
+      "field": "max_output_tokens",
+      "retained": 32768,
+      "candidate": 128000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "perplexity",
+      "model": "sonar-pro",
+      "field": "max_output_tokens",
+      "retained": 8192,
+      "candidate": 8000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "perplexity",
+      "model": "sonar-reasoning-pro",
+      "field": "max_output_tokens",
+      "retained": 4096,
+      "candidate": 128000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "sambanova",
+      "model": "Meta-Llama-3.3-70B-Instruct",
+      "field": "max_output_tokens",
+      "retained": 3072,
+      "candidate": 131072,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4.20-0309-non-reasoning",
+      "field": "max_output_tokens",
+      "retained": 30000,
+      "candidate": 1000000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4.20-0309-reasoning",
+      "field": "max_output_tokens",
+      "retained": 30000,
+      "candidate": 1000000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4.20-multi-agent-0309",
+      "field": "max_output_tokens",
+      "retained": 30000,
+      "candidate": 1000000,
+      "source": "models.opensource(l).ai"
+    },
+    {
+      "provider": "xai",
+      "model": "grok-4.3",
+      "field": "max_output_tokens",
+      "retained": 30000,
+      "candidate": 1000000,
+      "source": "models.opensource(l).ai"
+    }
+  ],
+  "rejected_candidates": [
+    {
+      "provider": "morph",
+      "model": "morph-dsv4flash",
+      "field": "input_price",
+      "source": "models.opensource(l).ai",
+      "reason": "Published value does not fit numeric(20,8)",
+      "published_usd_per_million": "0.141953125000000"
+    },
+    {
+      "provider": "alims-intl",
+      "model": "glm-4.7",
+      "source": "llmgateway.io",
+      "reason": "Provider mapping is deactivated; do not promote historical values as current defaults"
+    },
+    {
+      "provider": "baidu",
+      "model": "glm-5.1",
+      "source": "llmgateway.io",
+      "reason": "Gateway Baidu uses api.baiduqianfan.ai (international); template uses qianfan.baidubce.com/v2. USD prices cannot be copied across these products."
+    },
+    {
+      "provider": "baidu",
+      "model": "glm-5.2",
+      "source": "llmgateway.io",
+      "reason": "Gateway Baidu uses api.baiduqianfan.ai (international); template uses qianfan.baidubce.com/v2. USD prices cannot be copied across these products."
+    },
+    {
+      "provider": "baidu",
+      "model": "kimi-k2.6",
+      "source": "llmgateway.io",
+      "reason": "Gateway Baidu uses api.baiduqianfan.ai (international); template uses qianfan.baidubce.com/v2. USD prices cannot be copied across these products."
+    },
+    {
+      "provider": "glm",
+      "model": "glm-4.6v",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "glm",
+      "model": "glm-5",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "glm",
+      "model": "glm-5.1",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "glm",
+      "model": "glm-5.3",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-4.5-air",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-4.6",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-4.7",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5-turbo",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5.1",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5.2",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5.3",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "glm-cn",
+      "model": "glm-5.3-flash",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "kimi",
+      "model": "k3",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-for-coding",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-for-coding-highspeed",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k2.5",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k2.5-thinking",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k2.6",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k2.7-code",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k2.7-code-highspeed",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-k3",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    },
+    {
+      "provider": "kimi",
+      "model": "kimi-latest",
+      "source": "llmgateway.io",
+      "reason": "Template uses a coding-plan endpoint; standard Zai/Moonshot API limits/prices do not establish coding-plan defaults."
+    }
+  ],
+  "artificial_analysis_candidates": [
+    {
+      "provider": "cohere",
+      "model": "tiny-aya-global",
+      "missing": {
+        "input_price": {
+          "status": "unknown",
+          "reason": "No exact verified default has been recorded in the reviewed provider/model sources."
+        },
+        "output_price": {
+          "status": "unknown",
+          "reason": "No exact verified default has been recorded in the reviewed provider/model sources."
+        },
+        "cached_price": {
+          "status": "unpublished",
+          "reason": "The reviewed Cohere pricing and token-billing documentation publish no exact cache-read tariff for this model; trial and production pricing remain distinct."
+        }
+      },
+      "matches": [
+        {
+          "id": "62b12f77-834f-4741-b015-fa774d154f95",
+          "slug": "cohere_tiny-aya-global",
+          "name": "Tiny Aya Global, Cohere",
+          "model": "Tiny Aya Global",
+          "context": 8192,
+          "input": 0,
+          "output": 0,
+          "cache": null
+        }
+      ]
+    },
+    {
+      "provider": "siliconflow",
+      "model": "ByteDance-Seed/Seed-OSS-36B-Instruct",
+      "missing": {
+        "cached_price": {
+          "status": "unknown",
+          "reason": "No exact verified default has been recorded in the reviewed provider/model sources. The official catalog endpoint requires authentication."
+        }
+      },
+      "matches": [
+        {
+          "id": "01b739ec-814f-4ca6-b7d5-eeae5cd93984",
+          "slug": "siliconflow_seed-oss-36b-instruct",
+          "name": "Seed-OSS-36B-Instruct, SiliconFlow",
+          "model": "Seed-OSS-36B-Instruct",
+          "context": 262000,
+          "input": 0.21,
+          "output": 0.57,
+          "cache": null
+        }
+      ]
+    },
+    {
+      "provider": "siliconflow",
+      "model": "Qwen/Qwen2.5-72B-Instruct",
+      "missing": {
+        "cached_price": {
+          "status": "unknown",
+          "reason": "No exact verified default has been recorded in the reviewed provider/model sources. The official catalog endpoint requires authentication."
+        }
+      },
+      "matches": [
+        {
+          "id": "8576f140-f416-41d4-9355-c9b8d034d6fd",
+          "slug": "siliconflow_qwen2-5-72b-instruct_fp8",
+          "name": "Qwen2.5 72B (FP8), SiliconFlow",
+          "model": "Qwen2.5 Instruct 72B",
+          "context": 32000,
+          "input": 0.59,
+          "output": 0.59,
+          "cache": null
+        }
+      ]
+    },
+    {
+      "provider": "siliconflow",
+      "model": "Qwen/Qwen3.5-122B-A10B",
+      "missing": {
+        "cached_price": {
+          "status": "unknown",
+          "reason": "No exact verified default has been recorded in the reviewed provider/model sources. The official catalog endpoint requires authentication."
+        }
+      },
+      "matches": [
+        {
+          "id": "40f4856a-9500-4350-92c1-445a34d63002",
+          "slug": "siliconflow_qwen3-5-122b-a10b_fp8",
+          "name": "Qwen3.5 122B A10B (FP8), SiliconFlow",
+          "model": "Qwen3.5 122B A10B (Reasoning)",
+          "context": 262000,
+          "input": 0.26,
+          "output": 2.08,
+          "cache": null
+        }
+      ]
+    },
+    {
+      "provider": "siliconflow",
+      "model": "Qwen/Qwen3.5-27B",
+      "missing": {
+        "cached_price": {
+          "status": "unknown",
+          "reason": "No exact verified default has been recorded in the reviewed provider/model sources. The official catalog endpoint requires authentication."
+        }
+      },
+      "matches": [
+        {
+          "id": "e729412f-55fa-4487-bcce-23c05830ba28",
+          "slug": "siliconflow_qwen3-5-27b_fp8",
+          "name": "Qwen3.5 27B (FP8), SiliconFlow",
+          "model": "Qwen3.5 27B (Reasoning)",
+          "context": 262000,
+          "input": 0.25,
+          "output": 2,
+          "cache": null
+        }
+      ]
+    },
+    {
+      "provider": "siliconflow",
+      "model": "Qwen/Qwen3.5-9B",
+      "missing": {
+        "cached_price": {
+          "status": "unknown",
+          "reason": "No exact verified default has been recorded in the reviewed provider/model sources. The official catalog endpoint requires authentication."
+        }
+      },
+      "matches": [
+        {
+          "id": "f79853ce-89b4-4bd8-a9d8-910ebd73dba6",
+          "slug": "siliconflow_qwen3-5-9b_fp8",
+          "name": "Qwen3.5 9B (FP8), SiliconFlow",
+          "model": "Qwen3.5 9B (Reasoning)",
+          "context": 262000,
+          "input": 0.1,
+          "output": 0.15,
+          "cache": null
+        }
+      ]
+    },
+    {
+      "provider": "siliconflow",
+      "model": "Qwen/Qwen3.6-27B",
+      "missing": {
+        "cached_price": {
+          "status": "unknown",
+          "reason": "No exact verified default has been recorded in the reviewed provider/model sources. The official catalog endpoint requires authentication."
+        }
+      },
+      "matches": [
+        {
+          "id": "847d1773-debf-498e-8c4c-5eeac6f1187a",
+          "slug": "siliconflow_qwen3-6-27b_fp8",
+          "name": "Qwen3.6 27B (FP8), SiliconFlow",
+          "model": "Qwen3.6 27B (Reasoning)",
+          "context": 262000,
+          "input": 0.3,
+          "output": 3.2,
+          "cache": null
+        }
+      ]
+    },
+    {
+      "provider": "siliconflow",
+      "model": "inclusionAI/Ling-flash-2.0",
+      "missing": {
+        "cached_price": {
+          "status": "unknown",
+          "reason": "No exact verified default has been recorded in the reviewed provider/model sources. The official catalog endpoint requires authentication."
+        }
+      },
+      "matches": [
+        {
+          "id": "246ecaf0-8414-49b6-a5cb-80ed35a1e6aa",
+          "slug": "siliconflow_ling-flash-2-0",
+          "name": "Ling-flash-2.0, SiliconFlow",
+          "model": "Ling-flash-2.0",
+          "context": 131000,
+          "input": 0.14,
+          "output": 0.57,
+          "cache": null
+        }
+      ]
+    },
+    {
+      "provider": "siliconflow",
+      "model": "stepfun-ai/Step-3.5-Flash",
+      "missing": {
+        "cached_price": {
+          "status": "unknown",
+          "reason": "No exact verified default has been recorded in the reviewed provider/model sources. The official catalog endpoint requires authentication."
+        }
+      },
+      "matches": [
+        {
+          "id": "21a82d8f-0fc3-4deb-9a8e-b9cf5d77b5af",
+          "slug": "siliconflow_step-3-5-flash_fp8",
+          "name": "Step 3.5 Flash (FP8), SiliconFlow",
+          "model": "Step 3.5 Flash",
+          "context": 262000,
+          "input": 0.1,
+          "output": 0.3,
+          "cache": null
+        }
+      ]
+    },
+    {
+      "provider": "siliconflow",
+      "model": "zai-org/GLM-4.5-Air",
+      "missing": {
+        "cached_price": {
+          "status": "unknown",
+          "reason": "No exact verified default has been recorded in the reviewed provider/model sources. The official catalog endpoint requires authentication."
+        }
+      },
+      "matches": [
+        {
+          "id": "8669bd0b-1422-4bdb-971f-65935d981e23",
+          "slug": "siliconflow_glm-4-5-air",
+          "name": "GLM-4.5-Air, SiliconFlow",
+          "model": "GLM-4.5-Air",
+          "context": 98304,
+          "input": 0.14,
+          "output": 0.86,
+          "cache": null
+        }
+      ]
+    }
+  ],
+  "resolution_counts": {
+    "unresolved": 1492,
+    "predefined": 833
+  },
+  "unresolved_text": 448,
+  "method": "Public API and the public datasets used by each site. No browser focus or authentication was needed. Store exact same-provider/product facts; preserve source priority, regional/plan distinctions and unknown pricing. Multi-provider API selection remains review-only until two-level selectors are supported. Artificial Analysis datasets were read with the page-published loader parameters; no authenticated API access was used.",
+  "artificial_analysis_public_page_datasets": [
+    {
+      "url": "https://artificialanalysis.ai/data/d90d35643f1066f1.txt",
+      "sha256": "0ca8b4f4e219d3b6251edfb61f53e79573f802084ef597854be9e4735de3c302",
+      "records": 988,
+      "kind": "provider_endpoints",
+      "source_page": "https://artificialanalysis.ai/models",
+      "access": "public_page_loader",
+      "note": "Public page supplies its client-side dataset loader parameters; this is not the deprecated authenticated API."
+    },
+    {
+      "url": "https://artificialanalysis.ai/data/8bcfe416eb9bf19e.txt",
+      "sha256": "3eb5b844414c7bca537aaad838f00ebd12b3be7657ae3190054b4a0bb38c257f",
+      "records": 758,
+      "kind": "models",
+      "source_page": "https://artificialanalysis.ai/models",
+      "access": "public_page_loader",
+      "note": "Public page supplies its client-side dataset loader parameters; this is not the deprecated authenticated API."
+    }
+  ],
+  "upstream_output_evidence": [
+    {
+      "url": "https://github.com/theopenco/llmgateway/blob/f49b08cb1867e7599fbbdcb37ea7bdc22d60caab/apps/gateway/src/models/models.ts",
+      "finding": "buildPricingFields returns string zero when prompt/completion/cache prices are absent."
+    },
+    {
+      "url": "https://github.com/theopenco/llmgateway/blob/f49b08cb1867e7599fbbdcb37ea7bdc22d60caab/packages/actions/src/get-provider-endpoint.ts",
+      "finding": "Alibaba defaults to the Singapore dashscope-intl host; Baidu uses api.baiduqianfan.ai, distinct from the template qianfan.baidubce.com China host."
+    },
+    {
+      "url": "opensource(l)",
+      "finding": "Public website loads the opensource(l) model_prices_and_context_window.json and supplements metadata from models.dev; optional self-hosted catalog mode requests /model_catalog pages."
+    }
+  ],
+  "current_applicability_and_readiness": "semantics-backfill-report.json",
+  "count_scope": "Counts in this investigation describe its source-review snapshot before the applicable-requirements schema. Current readiness is derived and reported separately."
+}

@@ -511,6 +511,7 @@ export interface ProviderTemplate {
   baseUrl: Scalars['String'] | null
   /** Global opaque catalog identity, independent of organization resource IDs. */
   id: Scalars['ID']
+  logoPath: Scalars['String']
   name: Scalars['String']
   /** Family hint only; configured models select their own text operation. */
   protocol: ProviderApiProtocol
@@ -1401,6 +1402,11 @@ export interface ProfileUpdateInput {
   username?: Scalars['String'] | null
 }
 
+export interface ProviderBodyDefault {
+  key: Scalars['String']
+  value: Scalars['String']
+}
+
 /** Opaque registry identity, independent of an edited upstream model name. */
 export interface ProviderCatalogRef {
   model: Scalars['String']
@@ -1440,15 +1446,23 @@ export interface ProviderHeaderUpdate {
 
 /** Complete configured text-model values. Decimal prices are USD per million tokens. */
 export interface ProviderModelConfiguration {
+  bodyDefaults?: ProviderBodyDefault[]
   cachedPrice: Scalars['String']
+  cachedPriceEnabled?: Scalars['Boolean']
   capabilities?: ProviderModelCapability[]
   catalogRef?: ProviderCatalogRef | null
+  contextLimitEnabled?: Scalars['Boolean']
   effortMapping?: ProviderEffortMapping | null
   enabled?: Scalars['Boolean']
+  headers?: ProviderHeader[]
   inputPrice: Scalars['String']
+  inputPriceEnabled?: Scalars['Boolean']
   maxContextTokens: Scalars['ContextTokens']
+  maxInputTokens?: Scalars['ContextTokens'] | null
+  maxOutputTokens?: Scalars['ContextTokens'] | null
   name: Scalars['String']
   outputPrice: Scalars['String']
+  outputPriceEnabled?: Scalars['Boolean']
   path: Scalars['String']
   protocol: TextModelProtocol
 }
@@ -1487,6 +1501,7 @@ export interface ProviderTemplateGenqlSelection {
   baseUrl?: boolean | number
   /** Global opaque catalog identity, independent of organization resource IDs. */
   id?: boolean | number
+  logoPath?: boolean | number
   name?: boolean | number
   /** Family hint only; configured models select their own text operation. */
   protocol?: boolean | number

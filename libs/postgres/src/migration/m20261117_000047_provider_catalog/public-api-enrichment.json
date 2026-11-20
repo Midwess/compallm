@@ -1,0 +1,3564 @@
+{
+  "sources": [
+    {
+      "name": "venice-detail",
+      "url": "https://api.venice.ai/api/v1/models/qwen-3-8-27b",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "bazaarlink-detail",
+      "url": "https://api.bazaarlink.ai/v1/models/gpt-5.4-nano",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "runcrate-detail",
+      "url": "https://api.runcrate.ai/v1/models/Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "status": 200,
+      "sha256": "cfd6cadbf373b7516d3cd071536fb7cba453e0d6cf09c79f486a4be0b2a0a993",
+      "bytes": 786,
+      "shape": [
+        "data"
+      ],
+      "count": 15
+    },
+    {
+      "name": "opencode-go-detail",
+      "url": "https://opencode.ai/zen/go/v1/models/glm-5",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "opencode-zen-detail",
+      "url": "https://opencode.ai/zen/v1/models/union-alpha",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "cerebras-detail",
+      "url": "https://api.cerebras.ai/public/v1/models/zai-glm-4.7",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "nous-detail",
+      "url": "https://inference-api.nousresearch.com/v1/models/stealth/missingno",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "api-airforce-detail",
+      "url": "https://api.airforce/v1/models/grok-4.5",
+      "status": 200,
+      "sha256": "b67f1e4ed10daca6f4f6206cf46916f986e6ec9ca3a5edc0682704689a33d6b6",
+      "bytes": 1354,
+      "shape": [
+        "id",
+        "object",
+        "created",
+        "owned_by",
+        "supports_chat",
+        "supports_images",
+        "moderated",
+        "tier",
+        "access_tiers",
+        "max_tokens",
+        "status",
+        "pricepermilliontokens",
+        "output_pricepermilliontokens",
+        "official_pricepermilliontokens",
+        "official_output_pricepermilliontokens",
+        "from_pricepermilliontokens",
+        "supports_reasoning",
+        "supports_web_search",
+        "last_check",
+        "group",
+        "cache_write_5m_pricepermilliontokens",
+        "cache_write_1h_pricepermilliontokens",
+        "cache_read_pricepermilliontokens",
+        "catalog_id",
+        "customer_price_table"
+      ],
+      "count": 0
+    },
+    {
+      "name": "kilo-detail",
+      "url": "https://api.kilo.ai/api/gateway/models/nvidia/nemotron-3-super-120b-a12b:free",
+      "error": "HTTP Error 405: Method Not Allowed"
+    },
+    {
+      "name": "llm7-detail",
+      "url": "https://api.llm7.io/v1/models/gpt-5.5",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "synthetic-detail",
+      "url": "https://api.synthetic.new/openai/v1/models/hf:deepseek-ai/DeepSeek-V4.1-Flash",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "nvidia-models-all",
+      "url": "https://integrate.api.nvidia.com/v1/models?limit=1000",
+      "status": 200,
+      "sha256": "e2742faf7eaf45fd9f582754334d0d463cc2cc8cd3974b88d87a1f3c1eeda7ff",
+      "bytes": 3106,
+      "shape": [
+        "object",
+        "data"
+      ],
+      "count": 32
+    },
+    {
+      "name": "venice-models-all",
+      "url": "https://api.venice.ai/api/v1/models?type=all",
+      "status": 200,
+      "sha256": "057530579e3573b4a1bbec487e7a438e6a89e80c8334c700536e7e83acff4cd7",
+      "bytes": 407171,
+      "shape": [
+        "data",
+        "object",
+        "type"
+      ],
+      "count": 416
+    },
+    {
+      "name": "featherless-models-all",
+      "url": "https://api.featherless.ai/v1/models?per_page=1000&page=1",
+      "status": 200,
+      "sha256": "d51c2d1ce604bae331e3a41c52447203ab97032231cb5f9f7c04223294e994a1",
+      "bytes": 317157,
+      "shape": [
+        "data",
+        "pagination",
+        "total"
+      ],
+      "count": 1000
+    },
+    {
+      "name": "bazaarlink-models-all",
+      "url": "https://api.bazaarlink.ai/v1/models?category=all",
+      "status": 200,
+      "sha256": "820fc797bdb2256e098355e044fda82d76a97d0178105f86a8f75e6c441cb6fe",
+      "bytes": 91831,
+      "shape": [
+        "object",
+        "data"
+      ],
+      "count": 128
+    },
+    {
+      "name": "nous-all",
+      "url": "https://inference-api.nousresearch.com/v1/models?limit=1000",
+      "status": 200,
+      "sha256": "4f92121e2941d3cb65db0449af33fcbd9de69150ca8968d1e1df948e3bba4ae0",
+      "bytes": 570761,
+      "count": 402
+    },
+    {
+      "name": "openrouter-all",
+      "url": "https://openrouter.ai/api/v1/models?limit=1000",
+      "status": 200,
+      "sha256": "89eb9a4eab0e0eda2eaadf4e7b07d1900f22f52b4508b18e317934bcebe62a2b",
+      "bytes": 853244,
+      "count": 470
+    },
+    {
+      "name": "openrouter-provider",
+      "url": "https://openrouter.ai/api/v1/models?provider=Cerebras",
+      "status": 200,
+      "sha256": "89eb9a4eab0e0eda2eaadf4e7b07d1900f22f52b4508b18e317934bcebe62a2b",
+      "bytes": 853244,
+      "count": 470
+    },
+    {
+      "name": "venice-models-detail-list",
+      "url": "https://api.venice.ai/api/v1/models?type=text",
+      "status": 200,
+      "sha256": "f9be7888d7044f3746ed8859acb2116b205a990537ccbc1e6acba17caae439e9",
+      "bytes": 179321,
+      "count": 144
+    },
+    {
+      "name": "runcrate-all",
+      "url": "https://api.runcrate.ai/v1/models?limit=1000",
+      "status": 200,
+      "sha256": "078902886f35b60093a1697384bab11576c3e3a3b01375f08ee55ddf34fd5237",
+      "bytes": 81684,
+      "count": 121
+    },
+    {
+      "name": "opencode-go-all",
+      "url": "https://opencode.ai/zen/go/v1/models?limit=1000",
+      "status": 200,
+      "sha256": "e5f78159345f2cbac8018dc0e2f9398da1886a1a1af75068e4a667ec671b12e3",
+      "bytes": 42139,
+      "count": 32
+    },
+    {
+      "name": "opencode-zen-all",
+      "url": "https://opencode.ai/zen/v1/models?limit=1000",
+      "status": 200,
+      "sha256": "1e7054a30b02ada3a3dbf997054ab26f8efe3351a05cc59584db0e8db8fceee1",
+      "bytes": 104820,
+      "count": 86
+    },
+    {
+      "name": "llm7-all",
+      "url": "https://api.llm7.io/v1/models?limit=1000",
+      "status": 200,
+      "sha256": "c9d687a287c00fa06d4ea075e9e0f529def35181ac6fe39f67ebe3ad5428927d",
+      "bytes": 82430,
+      "count": 84
+    },
+    {
+      "name": "opencode-model-doc",
+      "url": "https://opencode.ai/docs/console/models",
+      "status": 200,
+      "sha256": "e9e630b01b5c3124e0480e087eb66f460bf8fda0b72a55cda89eff152d5215a4",
+      "bytes": 98080
+    },
+    {
+      "name": "opencode-harness-doc",
+      "url": "https://opencode.ai/docs/console/harnesses",
+      "status": 200,
+      "sha256": "b1e2da01279f71efc868e479dd805db998e5cb7eadd75fba68fec735f17c40bf",
+      "bytes": 45560
+    },
+    {
+      "provider": "openrouter",
+      "model": "aion-labs/aion-rp-llama-3.1-8b",
+      "name": "openrouter-endpoints-b025df5f9760",
+      "url": "https://openrouter.ai/api/v1/models/aion-labs/aion-rp-llama-3.1-8b/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/aion-labs/aion-rp-llama-3.1-8b/endpoints",
+      "status": 200,
+      "sha256": "a86525ec6a8921b59f6ea99ce265a73c8cb27b65b8a2e9b54ecb689934ccdc02",
+      "bytes": 1345
+    },
+    {
+      "provider": "openrouter",
+      "model": "amazon/nova-2-lite-v1",
+      "name": "openrouter-endpoints-447b7b6eec11",
+      "url": "https://openrouter.ai/api/v1/models/amazon/nova-2-lite-v1/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/amazon/nova-2-lite-v1/endpoints",
+      "status": 200,
+      "sha256": "b537faa7953e4c16c4c08c2bcf12879e3fe6ddab7f717fd0c0f1af95df9162c5",
+      "bytes": 2328
+    },
+    {
+      "provider": "openrouter",
+      "model": "amazon/nova-lite-v1",
+      "name": "openrouter-endpoints-0439c0bdccd1",
+      "url": "https://openrouter.ai/api/v1/models/amazon/nova-lite-v1/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/amazon/nova-lite-v1/endpoints",
+      "status": 200,
+      "sha256": "27a8a63b99f60cd7cf3fba4f636fdb0589834a2034325b43e14da596a3cffa2c",
+      "bytes": 2156
+    },
+    {
+      "provider": "openrouter",
+      "model": "amazon/nova-micro-v1",
+      "name": "openrouter-endpoints-6cadea449fc1",
+      "url": "https://openrouter.ai/api/v1/models/amazon/nova-micro-v1/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/amazon/nova-micro-v1/endpoints",
+      "status": 200,
+      "sha256": "f3d6251bb9096d6ec960da4b103eab5a189d3942f76cd778db2eda1731ed2533",
+      "bytes": 2154
+    },
+    {
+      "provider": "openrouter",
+      "model": "amazon/nova-pro-v1",
+      "name": "openrouter-endpoints-67c4e3fcf339",
+      "url": "https://openrouter.ai/api/v1/models/amazon/nova-pro-v1/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/amazon/nova-pro-v1/endpoints",
+      "status": 200,
+      "sha256": "521f349480ad6cea42f240512dd7f723ce20294997a7e1aa1c547623a5cac808",
+      "bytes": 2138
+    },
+    {
+      "provider": "openrouter",
+      "model": "baidu/ernie-5.5-flash-preview:free",
+      "name": "openrouter-endpoints-dd1df413dc67",
+      "url": "https://openrouter.ai/api/v1/models/baidu/ernie-5.5-flash-preview-20261110/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/baidu/ernie-5.5-flash-preview-20261110/endpoints",
+      "status": 200,
+      "sha256": "fe3c126efa9cc007460244be15d914bdd6821d653d845768807e57e642a7ec64",
+      "bytes": 482
+    },
+    {
+      "provider": "openrouter",
+      "model": "bytedance-seed/seed-2-1-turbo",
+      "name": "openrouter-endpoints-2d7fb16abd36",
+      "url": "https://openrouter.ai/api/v1/models/bytedance-seed/seed-2-1-turbo-20260810/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/bytedance-seed/seed-2-1-turbo-20260810/endpoints",
+      "status": 200,
+      "sha256": "3e53832c0e5fb844ea3bcad6d6688f052f8e972fa4f49640ff4b43f78014afae",
+      "bytes": 1469
+    },
+    {
+      "provider": "openrouter",
+      "model": "bytedance-seed/seed-2.0-lite",
+      "name": "openrouter-endpoints-77962f5570ee",
+      "url": "https://openrouter.ai/api/v1/models/bytedance-seed/seed-2.0-lite-20260309/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/bytedance-seed/seed-2.0-lite-20260309/endpoints",
+      "status": 200,
+      "sha256": "3355492fc31db7970b5f0a941131442afd8ffbfa51b17a29339de6a3d277befe",
+      "bytes": 1603
+    },
+    {
+      "provider": "openrouter",
+      "model": "bytedance-seed/seed-2.0-mini",
+      "name": "openrouter-endpoints-bf48c7a032e5",
+      "url": "https://openrouter.ai/api/v1/models/bytedance-seed/seed-2.0-mini-20260224/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/bytedance-seed/seed-2.0-mini-20260224/endpoints",
+      "status": 200,
+      "sha256": "69b5b58df6f58d991dbe41979a4dd262fbb99c0d93e64c7c29ad456061f5fda0",
+      "bytes": 1678
+    },
+    {
+      "provider": "openrouter",
+      "model": "cognitivecomputations/dolphin-mistral-24b-venice-edition",
+      "name": "openrouter-endpoints-9ea9578dc41f",
+      "url": "https://openrouter.ai/api/v1/models/venice/uncensored/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/venice/uncensored/endpoints",
+      "status": 200,
+      "sha256": "2e58c746624bc20d473d41f9dc36d572b7fa21dc59a7e5f03c4ce7f54b446103",
+      "bytes": 1458
+    },
+    {
+      "provider": "openrouter",
+      "model": "cohere/command-a",
+      "name": "openrouter-endpoints-4ba9cd6d759d",
+      "url": "https://openrouter.ai/api/v1/models/cohere/command-a-03-2025/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/cohere/command-a-03-2025/endpoints",
+      "status": 200,
+      "sha256": "67fe70c3bc9f0b4ad93b020b3b56be9d4d106a035c8f03f9843e37548dbc7a13",
+      "bytes": 1383
+    },
+    {
+      "provider": "openrouter",
+      "model": "cohere/command-r-08-2024",
+      "name": "openrouter-endpoints-162ac885d931",
+      "url": "https://openrouter.ai/api/v1/models/cohere/command-r-08-2024/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/cohere/command-r-08-2024/endpoints",
+      "status": 200,
+      "sha256": "50456962a1d37190a5f219688f9c0d6f7c1614f7181f9d336c9e4612f97947b2",
+      "bytes": 1442
+    },
+    {
+      "provider": "openrouter",
+      "model": "cohere/command-r-plus-08-2024",
+      "name": "openrouter-endpoints-843cc5470409",
+      "url": "https://openrouter.ai/api/v1/models/cohere/command-r-plus-08-2024/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/cohere/command-r-plus-08-2024/endpoints",
+      "status": 200,
+      "sha256": "ae57951354c39a84298ba91fa5d6f748cf2b260cc27b9de40e92724107414162",
+      "bytes": 1458
+    },
+    {
+      "provider": "openrouter",
+      "model": "cohere/command-r7b-12-2024",
+      "name": "openrouter-endpoints-f31061543497",
+      "url": "https://openrouter.ai/api/v1/models/cohere/command-r7b-12-2024/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/cohere/command-r7b-12-2024/endpoints",
+      "status": 200,
+      "sha256": "6fa043a84584f83d55b645cf4de0701e229f7bca81db900ec715ebbbc52950f7",
+      "bytes": 1408
+    },
+    {
+      "provider": "openrouter",
+      "model": "cohere/north-mini-code:free",
+      "name": "openrouter-endpoints-9282d84730c7",
+      "url": "https://openrouter.ai/api/v1/models/cohere/north-mini-code-20260617/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/cohere/north-mini-code-20260617/endpoints",
+      "status": 200,
+      "sha256": "24317f6b4a2ff36f238ad3dab10b70576a44a5cad6e7aaf14690f69f504a0731",
+      "bytes": 449
+    },
+    {
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-chat",
+      "name": "openrouter-endpoints-f40a93251482",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-chat-v3/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-chat-v3/endpoints",
+      "status": 200,
+      "sha256": "1156fbc73ede2ba4722e3e17808ea1029ddda59f8fb418dbaf5829133d5185d0",
+      "bytes": 3394
+    },
+    {
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-v3.1-terminus",
+      "name": "openrouter-endpoints-73b19456d335",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v3.1-terminus/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v3.1-terminus/endpoints",
+      "status": 200,
+      "sha256": "4efe2b27fe2e45b2dbc5682c69e9017f70fd9b716e3e0f4fe773174cef13986c",
+      "bytes": 1533
+    },
+    {
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-v3.2-exp",
+      "name": "openrouter-endpoints-5418aa6d1ed2",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v3.2-exp/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v3.2-exp/endpoints",
+      "status": 200,
+      "sha256": "2addbed7621de01a25d290a9352125c22c73d4b3408d05de3897285b48fb4459",
+      "bytes": 1478
+    },
+    {
+      "provider": "openrouter",
+      "model": "dots-studio/dots-3-note-preview:free",
+      "name": "openrouter-endpoints-952e7a96a37e",
+      "url": "https://openrouter.ai/api/v1/models/dots-studio/dots-3-note-preview-20260813/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/dots-studio/dots-3-note-preview-20260813/endpoints",
+      "status": 200,
+      "sha256": "c01e1f6ea60bef09a9b6d80fad71c59a6f7d246e8a2983e994c226b87f9a39a7",
+      "bytes": 477
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.1-flash-image",
+      "name": "openrouter-endpoints-de3e701e07b8",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-3.1-flash-image-20260528/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/google/gemini-3.1-flash-image-20260528/endpoints",
+      "status": 200,
+      "sha256": "633b17428bbc741154c455d4f0efc737dc609539ba8c31150b673e4d1c28911d",
+      "bytes": 3672
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.1-flash-image-preview",
+      "name": "openrouter-endpoints-2912e3c8d0d3",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-3.1-flash-image-preview-20260226/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/google/gemini-3.1-flash-image-preview-20260226/endpoints",
+      "status": 200,
+      "sha256": "1a21f06547cdd9dc6bf6d84f27b11d2b703941b86f4e1cc78edf260922205964",
+      "bytes": 1634
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-3.1-flash-lite-image",
+      "name": "openrouter-endpoints-f77b20404b71",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-3.1-flash-lite-image-20260630/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/google/gemini-3.1-flash-lite-image-20260630/endpoints",
+      "status": 200,
+      "sha256": "cfbab6d7d18940ff0d47993e009f5dfb5fcb78e0865a57abea6675be8cf0ab3c",
+      "bytes": 2617
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-nano-banana-2.1",
+      "name": "openrouter-endpoints-98603134d674",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-nano-banana-2.1-20261006/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/google/gemini-nano-banana-2.1-20261006/endpoints",
+      "status": 200,
+      "sha256": "b6edfd970a3821c740e533dfb1549cf610f4e6a83f989a735da8d3b6d66f28bb",
+      "bytes": 2629
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-omni-1.1-flash",
+      "name": "openrouter-endpoints-c3f148c254ad",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-omni-1.1-flash-20260911/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/google/gemini-omni-1.1-flash-20260911/endpoints",
+      "status": 200,
+      "sha256": "37bb1d575fe27e69b5eb269b7f86a48f9dacaa1b42a415c60dd260829b6673b0",
+      "bytes": 1476
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemini-omni-1.2-flash",
+      "name": "openrouter-endpoints-73a1fc6a220d",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-omni-1.2-flash-20261105/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/google/gemini-omni-1.2-flash-20261105/endpoints",
+      "status": 200,
+      "sha256": "6a235e287ea5daf718d82745567e80be9c99b7a0a930b5bc2404103cc0102ac1",
+      "bytes": 1461
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemma-2-27b-it",
+      "name": "openrouter-endpoints-7e1037539dc0",
+      "url": "https://openrouter.ai/api/v1/models/google/gemma-2-27b-it/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/google/gemma-2-27b-it/endpoints",
+      "status": 200,
+      "sha256": "8ed841cf942c050e523c5254952056ce17cfc9e13a1b6a6d9f44444c266e42af",
+      "bytes": 1369
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemma-3-12b-it",
+      "name": "openrouter-endpoints-4abc260aaf58",
+      "url": "https://openrouter.ai/api/v1/models/google/gemma-3-12b-it/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/google/gemma-3-12b-it/endpoints",
+      "status": 200,
+      "sha256": "d94f54bbbe4c8388f7ccecc80e326b54f327aac9cba621d5fae297fe5185944e",
+      "bytes": 4447
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemma-3-4b-it",
+      "name": "openrouter-endpoints-28910bff891c",
+      "url": "https://openrouter.ai/api/v1/models/google/gemma-3-4b-it/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/google/gemma-3-4b-it/endpoints",
+      "status": 200,
+      "sha256": "765a8414f68ee9718725711439d2019bea2bbaab872f90497dc85f440b88cdc2",
+      "bytes": 4447
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemma-4-26b-a4b-it:free",
+      "name": "openrouter-endpoints-6f0343c2e870",
+      "url": "https://openrouter.ai/api/v1/models/google/gemma-4-26b-a4b-it-20260403/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/google/gemma-4-26b-a4b-it-20260403/endpoints",
+      "status": 200,
+      "sha256": "0e52792739b7b4deacc3fb2d9ecaf8c2ec5f141a3a43ce17ec52c96d0ebb3418",
+      "bytes": 16250
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemma-4-31b-it",
+      "name": "openrouter-endpoints-410fa9a7b034",
+      "url": "https://openrouter.ai/api/v1/models/google/gemma-4-31b-it-20260402/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/google/gemma-4-31b-it-20260402/endpoints",
+      "status": 200,
+      "sha256": "307b91ad6069dfa1090037ce1fec06301945d906d72052e873155a0be1787541",
+      "bytes": 18965
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/gemma-4-31b-it:free",
+      "name": "openrouter-endpoints-f8b3da0d012b",
+      "url": "https://openrouter.ai/api/v1/models/google/gemma-4-31b-it-20260402/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/google/gemma-4-31b-it-20260402/endpoints",
+      "status": 200,
+      "sha256": "307b91ad6069dfa1090037ce1fec06301945d906d72052e873155a0be1787541",
+      "bytes": 18965
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/lyria-3-clip-preview",
+      "name": "openrouter-endpoints-3c51f8f48d09",
+      "url": "https://openrouter.ai/api/v1/models/google/lyria-3-clip-preview-20260330/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/google/lyria-3-clip-preview-20260330/endpoints",
+      "status": 200,
+      "sha256": "ba8494713f49822c982eea673baf0098c9a3ad40eea1f9e5f256ba6c4e793979",
+      "bytes": 1380
+    },
+    {
+      "provider": "openrouter",
+      "model": "google/lyria-3-pro-preview",
+      "name": "openrouter-endpoints-d1194e06591b",
+      "url": "https://openrouter.ai/api/v1/models/google/lyria-3-pro-preview-20260330/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/google/lyria-3-pro-preview-20260330/endpoints",
+      "status": 200,
+      "sha256": "fbf5a4f739e0156e412d238d1c97ffe3b1562ab491b41bedd9b798f622f01a55",
+      "bytes": 1387
+    },
+    {
+      "provider": "openrouter",
+      "model": "gryphe/mythomax-l2-13b",
+      "name": "openrouter-endpoints-fe450b6f3071",
+      "url": "https://openrouter.ai/api/v1/models/gryphe/mythomax-l2-13b/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/gryphe/mythomax-l2-13b/endpoints",
+      "status": 200,
+      "sha256": "668175a1f843e26c743efa29053934db6ab034a6b3e79185a904759f0e8b6a76",
+      "bytes": 2326
+    },
+    {
+      "provider": "openrouter",
+      "model": "inclusionai/ling-3.2-flash:free",
+      "name": "openrouter-endpoints-ff5587cf3020",
+      "url": "https://openrouter.ai/api/v1/models/inclusionai/ling-3.2-flash-20261113/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/inclusionai/ling-3.2-flash-20261113/endpoints",
+      "status": 200,
+      "sha256": "e37d5878add161bbfd4d97e23a23f87a2e955af559bbf919b9c854bb3d6db0e1",
+      "bytes": 462
+    },
+    {
+      "provider": "openrouter",
+      "model": "liquid/lfm-3-1.7b:free",
+      "name": "openrouter-endpoints-9b12dca4dc6a",
+      "url": "https://openrouter.ai/api/v1/models/liquid/lfm-3-1.7b-20261106/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/liquid/lfm-3-1.7b-20261106/endpoints",
+      "status": 200,
+      "sha256": "f4109f63edcf7e658e7b3de3dd333ff0f17e5bf9629f1ccba4507c22da185209",
+      "bytes": 1526
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta-llama/llama-3.1-70b-instruct",
+      "name": "openrouter-endpoints-2150e96075b1",
+      "url": "https://openrouter.ai/api/v1/models/meta-llama/llama-3.1-70b-instruct/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/meta-llama/llama-3.1-70b-instruct/endpoints",
+      "status": 200,
+      "sha256": "39f7794c3cb45ccc5ec2c68f90c2af7d32df27a4155f4c108a64792dfa0d0753",
+      "bytes": 1379
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta-llama/llama-3.1-8b-instruct",
+      "name": "openrouter-endpoints-b2c4d45b1701",
+      "url": "https://openrouter.ai/api/v1/models/meta-llama/llama-3.1-8b-instruct/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/meta-llama/llama-3.1-8b-instruct/endpoints",
+      "status": 200,
+      "sha256": "2b1b667666a104e36f1d20d6d11122e16f463fd6935c241e7c5fe49ea96be32b",
+      "bytes": 4398
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta-llama/llama-3.2-1b-instruct",
+      "name": "openrouter-endpoints-e2b489eca79f",
+      "url": "https://openrouter.ai/api/v1/models/meta-llama/llama-3.2-1b-instruct/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/meta-llama/llama-3.2-1b-instruct/endpoints",
+      "status": 200,
+      "sha256": "0383df54ac6075cd46bac4ef926f05ffde620f69b8f865eb7f1da0cbda3fbf38",
+      "bytes": 1449
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta-llama/llama-3.2-3b-instruct",
+      "name": "openrouter-endpoints-88eef3f3ed4d",
+      "url": "https://openrouter.ai/api/v1/models/meta-llama/llama-3.2-3b-instruct/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/meta-llama/llama-3.2-3b-instruct/endpoints",
+      "status": 200,
+      "sha256": "fc2b390e86c703694188a35b5aa819270f07408f98a4f5aea34ef4c4c9113905",
+      "bytes": 2487
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta-llama/llama-4-scout",
+      "name": "openrouter-endpoints-125f5697d6e0",
+      "url": "https://openrouter.ai/api/v1/models/meta-llama/llama-4-scout-17b-16e-instruct/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/meta-llama/llama-4-scout-17b-16e-instruct/endpoints",
+      "status": 200,
+      "sha256": "38b9c0846ab525cdfc203afcd2c93ec6392cee61da348efdafd3ef6f5a38ffcf",
+      "bytes": 4399
+    },
+    {
+      "provider": "openrouter",
+      "model": "meta-llama/llama-guard-4-12b",
+      "name": "openrouter-endpoints-5613987f0bc3",
+      "url": "https://openrouter.ai/api/v1/models/meta-llama/llama-guard-4-12b/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/meta-llama/llama-guard-4-12b/endpoints",
+      "status": 200,
+      "sha256": "e9eee1b554c560a225d04e5412b61656b191a3d38f7af3bb0d8b9ac616e27ccf",
+      "bytes": 3313
+    },
+    {
+      "provider": "openrouter",
+      "model": "microsoft/phi-4",
+      "name": "openrouter-endpoints-7aceaf6cdc55",
+      "url": "https://openrouter.ai/api/v1/models/microsoft/phi-4/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/microsoft/phi-4/endpoints",
+      "status": 200,
+      "sha256": "e57bfae170410b294df9734672c13bd1237a6f57df1454416021a6cec30f7068",
+      "bytes": 2352
+    },
+    {
+      "provider": "openrouter",
+      "model": "mistralai/mistral-medium-3-5",
+      "name": "openrouter-endpoints-8b7aef7297b5",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/mistral-medium-3.5-20260430/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/mistralai/mistral-medium-3.5-20260430/endpoints",
+      "status": 200,
+      "sha256": "74366872e85aad0f15012b73d5cc58438f24ef2b80ba72af806dd37f6bcbb535",
+      "bytes": 2522
+    },
+    {
+      "provider": "openrouter",
+      "model": "mistralai/mistral-nemo",
+      "name": "openrouter-endpoints-da81c8996fb0",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/mistral-nemo/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/mistralai/mistral-nemo/endpoints",
+      "status": 200,
+      "sha256": "026de41e7039e86fbfa2683e817936c319e998e225f5a5585ba3fcc0dc4de6e4",
+      "bytes": 6363
+    },
+    {
+      "provider": "openrouter",
+      "model": "mistralai/mistral-small-24b-instruct-2501",
+      "name": "openrouter-endpoints-124777b23b4b",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/mistral-small-24b-instruct-2501/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/mistralai/mistral-small-24b-instruct-2501/endpoints",
+      "status": 200,
+      "sha256": "8e2bf468731e79fc7135750d7f830af1370dc8660a18c12159b1878429d67c17",
+      "bytes": 2530
+    },
+    {
+      "provider": "openrouter",
+      "model": "mistralai/mistral-small-3.1-24b-instruct",
+      "name": "openrouter-endpoints-ac68319d5379",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/mistral-small-3.1-24b-instruct-2503/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/mistralai/mistral-small-3.1-24b-instruct-2503/endpoints",
+      "status": 200,
+      "sha256": "63c146dc5d1f65124327384b6869105b4b53c6c1cfe9936da5c952048cd8e17b",
+      "bytes": 1575
+    },
+    {
+      "provider": "openrouter",
+      "model": "moondream/moondream3-preview",
+      "name": "openrouter-endpoints-13b4f308e3d1",
+      "url": "https://openrouter.ai/api/v1/models/moondream/moondream3-preview-20261013/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/moondream/moondream3-preview-20261013/endpoints",
+      "status": 200,
+      "sha256": "634d1052b43f40d7b81fc37ad3613d5c133dcd756ff03df36dbe339072bdf99f",
+      "bytes": 1426
+    },
+    {
+      "provider": "openrouter",
+      "model": "moondream/moondream3.1-9b-a2b",
+      "name": "openrouter-endpoints-25fd20a49902",
+      "url": "https://openrouter.ai/api/v1/models/moondream/moondream3.1-9b-a2b-20261013/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/moondream/moondream3.1-9b-a2b-20261013/endpoints",
+      "status": 200,
+      "sha256": "8f65182ac9789a50b3d037f95406d6ccedf1dda39ccc9dd32e7efe483f0250f2",
+      "bytes": 1414
+    },
+    {
+      "provider": "openrouter",
+      "model": "moonshotai/kimi-k2",
+      "name": "openrouter-endpoints-db4302c13bbe",
+      "url": "https://openrouter.ai/api/v1/models/moonshotai/kimi-k2/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/moonshotai/kimi-k2/endpoints",
+      "status": 200,
+      "sha256": "329f9ef7c80aeb8d2ce7116390ad4a48dad5203e55bd7e1ac543ea101d3b2d0e",
+      "bytes": 1368
+    },
+    {
+      "provider": "openrouter",
+      "model": "moonshotai/kimi-k2-0905",
+      "name": "openrouter-endpoints-1f12253089e6",
+      "url": "https://openrouter.ai/api/v1/models/moonshotai/kimi-k2-0905/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/moonshotai/kimi-k2-0905/endpoints",
+      "status": 200,
+      "sha256": "0d680edf0f4e5957168687be583e012a9c1bef03ce9ed4f9c76474576217e09f",
+      "bytes": 1456
+    },
+    {
+      "provider": "openrouter",
+      "model": "morph/morph-v3-fast",
+      "name": "openrouter-endpoints-a7534d328d2b",
+      "url": "https://openrouter.ai/api/v1/models/morph/morph-v3-fast/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/morph/morph-v3-fast/endpoints",
+      "status": 200,
+      "sha256": "b0ccd1f758bbb2c904bbeb15ea61861e00b84bca9705779d00d84779aea2e35e",
+      "bytes": 1396
+    },
+    {
+      "provider": "openrouter",
+      "model": "morph/morph-v3-large",
+      "name": "openrouter-endpoints-da28b9f16c7f",
+      "url": "https://openrouter.ai/api/v1/models/morph/morph-v3-large/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/morph/morph-v3-large/endpoints",
+      "status": 200,
+      "sha256": "790929780584a79623df33a57dd098886e5fbbda8397b7c2f74a8a5c3c3c2d6a",
+      "bytes": 1386
+    },
+    {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "name": "openrouter-endpoints-0c33da0574e6",
+      "url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning-20260428/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning-20260428/endpoints",
+      "status": 200,
+      "sha256": "0cc225a488f523befd8d5d51fe98dfbf5e95c2b4c30a3543d1077b90eded2563",
+      "bytes": 526
+    },
+    {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "name": "openrouter-endpoints-b358631a69c0",
+      "url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3-super-120b-a12b-20230311/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3-super-120b-a12b-20230311/endpoints",
+      "status": 200,
+      "sha256": "d114bcc2aa3714831d6113e64edea395508817230c015c82a1af2b3b9b836624",
+      "bytes": 4778
+    },
+    {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "name": "openrouter-endpoints-08c7a7c769d4",
+      "url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3-ultra-550b-a55b-20260604/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3-ultra-550b-a55b-20260604/endpoints",
+      "status": 200,
+      "sha256": "bff7efa6db574f99485900a4934211b2df95eb21d42f24212f55eeb883dcfd65",
+      "bytes": 6995
+    },
+    {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3.5-content-safety",
+      "name": "openrouter-endpoints-6d2d611f7bb6",
+      "url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3.5-content-safety-20260604/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3.5-content-safety-20260604/endpoints",
+      "status": 200,
+      "sha256": "9e0a10e1a1dc5ebfe6ec69aaa39f7a0f94161286997c07bbedb2f6757bf71ff2",
+      "bytes": 1514
+    },
+    {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3.5-lightning:free",
+      "name": "openrouter-endpoints-1a129597b1f7",
+      "url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3.5-lightning-20260807/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3.5-lightning-20260807/endpoints",
+      "status": 200,
+      "sha256": "89a3bed760fa2012a996da02e52dac9b9eea191dab29ebf152017638853bf9ec",
+      "bytes": 5885
+    },
+    {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "name": "openrouter-endpoints-f96f1282cfcb",
+      "url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3.5-super-vl-20261015/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3.5-super-vl-20261015/endpoints",
+      "status": 200,
+      "sha256": "4e119557cae5ed0de937f627b9a4f48b38da265c3fa7d31f97f3e96107dc7fa3",
+      "bytes": 11155
+    },
+    {
+      "provider": "openrouter",
+      "model": "nvidia/switchyard",
+      "name": "openrouter-endpoints-37f6656a3e66",
+      "url": "https://openrouter.ai/api/v1/models/nvidia/switchyard/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/nvidia/switchyard/endpoints",
+      "status": 200,
+      "sha256": "62a65b019891fa27517a5c83d7e7b368a8786a4dd99a540d1a5bbcb862a5ab07",
+      "bytes": 445
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-3.5-turbo-0613",
+      "name": "openrouter-endpoints-07a771bb8307",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-3.5-turbo-0613/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openai/gpt-3.5-turbo-0613/endpoints",
+      "status": 200,
+      "sha256": "80386ad2fe6c7b67b1bd97b777b0f473aacd05c29de08d3db3c5d2ece8381b9f",
+      "bytes": 1450
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-3.5-turbo-16k",
+      "name": "openrouter-endpoints-1b0987ca17b4",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-3.5-turbo-16k/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openai/gpt-3.5-turbo-16k/endpoints",
+      "status": 200,
+      "sha256": "62566495f618eee13052a34b28632079914aaac7a49191868e3b6850a28d5278",
+      "bytes": 1417
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-4",
+      "name": "openrouter-endpoints-f245a4d18572",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-4/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openai/gpt-4/endpoints",
+      "status": 200,
+      "sha256": "245c351159a2361083167f0c24b195424056c4a24a32d9648d9b41ce5de86fe1",
+      "bytes": 1371
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-2024-05-13",
+      "name": "openrouter-endpoints-2fd692c2fb9b",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-4o-2024-05-13/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openai/gpt-4o-2024-05-13/endpoints",
+      "status": 200,
+      "sha256": "2da2a15beba3000200e3245584d1f826c9d1ae80950f81a5a0942ee3d12e3ca3",
+      "bytes": 1509
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-5-pro",
+      "name": "openrouter-endpoints-67d9409c195a",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5-pro-2025-10-06/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openai/gpt-5-pro-2025-10-06/endpoints",
+      "status": 200,
+      "sha256": "e22607318485a06f950464860bb3958a9f6fa31acfe21d2442ecec69979e393b",
+      "bytes": 1524
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-5.2-pro",
+      "name": "openrouter-endpoints-8f2f8d8c2fe1",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.2-pro-20251211/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openai/gpt-5.2-pro-20251211/endpoints",
+      "status": 200,
+      "sha256": "4db60aec28e8f08465fa4b6c7f72fc13fe9e813e8238fbd96b1d9e15de4d775f",
+      "bytes": 1521
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-5.4-pro",
+      "name": "openrouter-endpoints-761cd44eb0af",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.4-pro-20260305/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openai/gpt-5.4-pro-20260305/endpoints",
+      "status": 200,
+      "sha256": "8bbb6f565cac6d9ba1d6a59b57f328509a94d8ab5200276c0ed3993acff51030",
+      "bytes": 2686
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-5.5-pro",
+      "name": "openrouter-endpoints-cd647860f38a",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.5-pro-20260423/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openai/gpt-5.5-pro-20260423/endpoints",
+      "status": 200,
+      "sha256": "d2678932c2e0bf95f2993027ba06c4d01d8885191517373452862732ee50a2cd",
+      "bytes": 1603
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-audio",
+      "name": "openrouter-endpoints-8b225ba2a267",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-audio/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openai/gpt-audio/endpoints",
+      "status": 200,
+      "sha256": "ed44d01c2f0d3bd48e7f4aff7d99e722eb60c77100a200a7678aad5a75dca318",
+      "bytes": 1472
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/gpt-audio-mini",
+      "name": "openrouter-endpoints-1e068336123a",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-audio-mini/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openai/gpt-audio-mini/endpoints",
+      "status": 200,
+      "sha256": "a7db43f0690d4c953806aa924d18eafcc968c0112bfd6384622f2a636362c926",
+      "bytes": 1490
+    },
+    {
+      "provider": "openrouter",
+      "model": "openai/o3-pro",
+      "name": "openrouter-endpoints-b000ee018e72",
+      "url": "https://openrouter.ai/api/v1/models/openai/o3-pro-2025-06-10/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openai/o3-pro-2025-06-10/endpoints",
+      "status": 200,
+      "sha256": "e0896ec7deef0edfc328b6a9de6ad503582e2d4fdf52b4db6256b1fe338183e5",
+      "bytes": 1405
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/auto",
+      "name": "openrouter-endpoints-02dec531def0",
+      "url": "https://openrouter.ai/api/v1/models/openrouter/auto/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openrouter/auto/endpoints",
+      "status": 200,
+      "sha256": "e0e187893f7903c716b9b13a3a1e8eab8f68ed7292ff739b39b8a4b3eaf734ff",
+      "bytes": 545
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/auto-beta",
+      "name": "openrouter-endpoints-52f24d7dc196",
+      "url": "https://openrouter.ai/api/v1/models/openrouter/auto-beta/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openrouter/auto-beta/endpoints",
+      "status": 200,
+      "sha256": "2b8284ffae3bfaa8136917ec872ace9efd7f56639396b9cf02cb8579614aa109",
+      "bytes": 503
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/auto-code",
+      "name": "openrouter-endpoints-01eb8ca741f7",
+      "url": "https://openrouter.ai/api/v1/models/openrouter/auto-code/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openrouter/auto-code/endpoints",
+      "status": 200,
+      "sha256": "959f22127efa6940d95eb220d9a4001b779c53b4ce0b5d9492edcfd2563810d2",
+      "bytes": 541
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/bodybuilder",
+      "name": "openrouter-endpoints-7c325fc2ab6f",
+      "url": "https://openrouter.ai/api/v1/models/openrouter/bodybuilder/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openrouter/bodybuilder/endpoints",
+      "status": 200,
+      "sha256": "d6d8ce304c45b193eda9cc726cc8496a6b97af677e5d5c2a7c2f6b43ce4ba2d3",
+      "bytes": 474
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/free",
+      "name": "openrouter-endpoints-3b9040735193",
+      "url": "https://openrouter.ai/api/v1/models/openrouter/free/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openrouter/free/endpoints",
+      "status": 200,
+      "sha256": "8f10034e6b9c62eb2c4f4a83d2f9b27ddfc7a05afc4a43393e2c1a0887d62aa5",
+      "bytes": 457
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/fusion",
+      "name": "openrouter-endpoints-eb990bc7b489",
+      "url": "https://openrouter.ai/api/v1/models/openrouter/fusion/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openrouter/fusion/endpoints",
+      "status": 200,
+      "sha256": "46fcca66624c0f97e64e0df88ec3a4a591ce929249e112994b43181e6a68654c",
+      "bytes": 438
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/pareto-code",
+      "name": "openrouter-endpoints-3659c34b9711",
+      "url": "https://openrouter.ai/api/v1/models/openrouter/pareto-code/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/openrouter/pareto-code/endpoints",
+      "status": 200,
+      "sha256": "c4ea83766fda88b11dae8f8412b46f446d2359b8d7c9eade25d5e92208b304b4",
+      "bytes": 597
+    },
+    {
+      "provider": "openrouter",
+      "model": "particle-ai/particle-1:free",
+      "name": "openrouter-endpoints-9834c7034132",
+      "url": "https://openrouter.ai/api/v1/models/particle-ai/particle-1-20261027/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/particle-ai/particle-1-20261027/endpoints",
+      "status": 200,
+      "sha256": "973073707c28b99ba7a38f56cdcac02d792afc9a60b2bae7b7a4fe41df4f8e14",
+      "bytes": 2707
+    },
+    {
+      "provider": "openrouter",
+      "model": "perceptron/perceptron-mk1",
+      "name": "openrouter-endpoints-3aec7c97179a",
+      "url": "https://openrouter.ai/api/v1/models/perceptron/perceptron-mk1-20260512/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/perceptron/perceptron-mk1-20260512/endpoints",
+      "status": 200,
+      "sha256": "d0de57cdc367829b674a0ffc7aef1f09c4779ae1912dcdef7f653a07a917bbea",
+      "bytes": 1468
+    },
+    {
+      "provider": "openrouter",
+      "model": "perceptron/perceptron-mk1.5",
+      "name": "openrouter-endpoints-dbeb67aaabfa",
+      "url": "https://openrouter.ai/api/v1/models/perceptron/perceptron-mk1.5-20260925/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/perceptron/perceptron-mk1.5-20260925/endpoints",
+      "status": 200,
+      "sha256": "08c87699f396682180f1bcc6841dcdd5ed1fd5c3a1f53acd013f987eb0c383b8",
+      "bytes": 1524
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/sonar",
+      "name": "openrouter-endpoints-4a6db50c280c",
+      "url": "https://openrouter.ai/api/v1/models/perplexity/sonar/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/perplexity/sonar/endpoints",
+      "status": 200,
+      "sha256": "4b812cba0f999b67ab77e38341d35f08546892d391a85e40c78f99d8f15eab2d",
+      "bytes": 1373
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/sonar-deep-research",
+      "name": "openrouter-endpoints-4da7140791c8",
+      "url": "https://openrouter.ai/api/v1/models/perplexity/sonar-deep-research/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/perplexity/sonar-deep-research/endpoints",
+      "status": 200,
+      "sha256": "982d5aa9a8e0c4fb1a4ec7e7314063d600223368240c2dc28776d31288ffd22d",
+      "bytes": 1512
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/sonar-pro",
+      "name": "openrouter-endpoints-52d39de7b9e6",
+      "url": "https://openrouter.ai/api/v1/models/perplexity/sonar-pro/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/perplexity/sonar-pro/endpoints",
+      "status": 200,
+      "sha256": "859767fe65ee52b43809a3e70c16ac524a0a2bcc782c2f1b56837ec619736cf1",
+      "bytes": 1504
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/sonar-pro-search",
+      "name": "openrouter-endpoints-82d8d4ac0b87",
+      "url": "https://openrouter.ai/api/v1/models/perplexity/sonar-pro-search/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/perplexity/sonar-pro-search/endpoints",
+      "status": 200,
+      "sha256": "76f7ee328246452aa8aa7d39cca5bbbc37947e185438eb12158cae71ccaa4ea3",
+      "bytes": 1475
+    },
+    {
+      "provider": "openrouter",
+      "model": "perplexity/sonar-reasoning-pro",
+      "name": "openrouter-endpoints-cb523e392913",
+      "url": "https://openrouter.ai/api/v1/models/perplexity/sonar-reasoning-pro/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/perplexity/sonar-reasoning-pro/endpoints",
+      "status": 200,
+      "sha256": "458feef40e073517d45760335cd4cea7b9bdb57ef1b04c787248be82b659e084",
+      "bytes": 1572
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "name": "openrouter-endpoints-343c357f3ebb",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen-2.5-72b-instruct/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen-2.5-72b-instruct/endpoints",
+      "status": 200,
+      "sha256": "9812296adbe44614252b4ad6dc21c79605d9a88e2b515f9e12537cc3a67c0595",
+      "bytes": 2449
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen-2.5-coder-32b-instruct",
+      "name": "openrouter-endpoints-aa7265f0ba72",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen-2.5-coder-32b-instruct/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen-2.5-coder-32b-instruct/endpoints",
+      "status": 200,
+      "sha256": "c4b6524a212212c2876b4c1e583de5355a70c0e187c1f8cd01ff1a476f174912",
+      "bytes": 1493
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3-14b",
+      "name": "openrouter-endpoints-1e47c24ee094",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3-14b-04-28/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen3-14b-04-28/endpoints",
+      "status": 200,
+      "sha256": "a15c0dff9744de7973ba05c8ca1156874bb1f5d848b582ec5b6454dd731c9789",
+      "bytes": 4422
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3-235b-a22b-thinking-2507",
+      "name": "openrouter-endpoints-5b5c3365ebfb",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3-235b-a22b-thinking-2507/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen3-235b-a22b-thinking-2507/endpoints",
+      "status": 200,
+      "sha256": "47d09ef901d24aaf136e3a3086096c99bfe49f67fcc50a53194e5c502df4d9b0",
+      "bytes": 1485
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3-30b-a3b",
+      "name": "openrouter-endpoints-a5731f0c09b4",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3-30b-a3b-04-28/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen3-30b-a3b-04-28/endpoints",
+      "status": 200,
+      "sha256": "de56419de7b32438b1ba2498fe92506ef36461d87cc71bbe9db275edcd47440a",
+      "bytes": 3474
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3-32b",
+      "name": "openrouter-endpoints-5f9716068f4e",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3-32b-04-28/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen3-32b-04-28/endpoints",
+      "status": 200,
+      "sha256": "53414a79780b3ae2bc017ae8df25875060a30892c5ba4acd4e418cac315e5544",
+      "bytes": 5456
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3-coder-30b-a3b-instruct",
+      "name": "openrouter-endpoints-41357acfe5e5",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3-coder-30b-a3b-instruct/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen3-coder-30b-a3b-instruct/endpoints",
+      "status": 200,
+      "sha256": "ae75909aba1f18a22ce66d3d0447c86c061ce83a99dab527150d8eac6a44c95f",
+      "bytes": 1435
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3-next-80b-a3b-instruct",
+      "name": "openrouter-endpoints-e77bfef3130c",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3-next-80b-a3b-instruct-2509/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen3-next-80b-a3b-instruct-2509/endpoints",
+      "status": 200,
+      "sha256": "e10bbf1801d2579ac91fe547389b3c1a7236ea90e2f0c1d5f7a5529048b2446a",
+      "bytes": 4678
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3-vl-30b-a3b-instruct",
+      "name": "openrouter-endpoints-d23f99f8ee65",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3-vl-30b-a3b-instruct/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen3-vl-30b-a3b-instruct/endpoints",
+      "status": 200,
+      "sha256": "bb2d2e06f19ed4c1d2813187426c4a6e11fec5fbf009f0e62bdbce34c32147c7",
+      "bytes": 3544
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3.5-122b-a10b",
+      "name": "openrouter-endpoints-91a45bd811a1",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.5-122b-a10b-20260224/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen3.5-122b-a10b-20260224/endpoints",
+      "status": 200,
+      "sha256": "8729e25a8eda8abe4910e20a824e014afd928579dd592fdf43b0c334a536b10f",
+      "bytes": 4576
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3.5-27b",
+      "name": "openrouter-endpoints-319354910283",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.5-27b-20260224/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen3.5-27b-20260224/endpoints",
+      "status": 200,
+      "sha256": "92ea6c32b0861e4c4d5a2312c2a0ba9fbf0f8af29ed72d9fbd2e89ec7cbda9a4",
+      "bytes": 6608
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3.5-flash-02-23",
+      "name": "openrouter-endpoints-112eb8ba1f1c",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.5-flash-20260224/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen3.5-flash-20260224/endpoints",
+      "status": 200,
+      "sha256": "d61840bb64872fb8f847fb7c383fb373433a6939c75796344e85e3732a629831",
+      "bytes": 1491
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3.5-plus-02-15",
+      "name": "openrouter-endpoints-b4a69a11f28d",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.5-plus-20260216/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen3.5-plus-20260216/endpoints",
+      "status": 200,
+      "sha256": "1ca679d61181a4687fe7edb94d1546285a817ea32e838d0d45f82bcc2bf1b23c",
+      "bytes": 1627
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3.5-plus-20260420",
+      "name": "openrouter-endpoints-2e126da9b2aa",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.5-plus-20260420/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen3.5-plus-20260420/endpoints",
+      "status": 200,
+      "sha256": "11f464189d6c22a4f4ae5d037ef708a9061194d072824cf56b3d01166244fa1f",
+      "bytes": 1661
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3.6-27b",
+      "name": "openrouter-endpoints-652416cec073",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.6-27b-20260422/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen3.6-27b-20260422/endpoints",
+      "status": 200,
+      "sha256": "6f4ce247ad2fb8b35244afbdc6ebf5ee6a348e5062db550173ea6f238c0ed6c9",
+      "bytes": 8523
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3.6-flash",
+      "name": "openrouter-endpoints-c555c633904c",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.6-flash/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen3.6-flash/endpoints",
+      "status": 200,
+      "sha256": "514678498ffd7159710272194534796b0fcbe4597c36122bba26b03025550329",
+      "bytes": 1631
+    },
+    {
+      "provider": "openrouter",
+      "model": "qwen/qwen3.6-plus",
+      "name": "openrouter-endpoints-ddc90a1ba6e0",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.6-plus-04-02/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/qwen/qwen3.6-plus-04-02/endpoints",
+      "status": 200,
+      "sha256": "4513d003cabe1b624e984c3f16b2890f8dbf0f56c66eb22f560650079a1acc3a",
+      "bytes": 1660
+    },
+    {
+      "provider": "openrouter",
+      "model": "recursive/flint-v1.0:free",
+      "name": "openrouter-endpoints-9f8fbced1ace",
+      "url": "https://openrouter.ai/api/v1/models/recursive/flint-v1.0-20261021/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/recursive/flint-v1.0-20261021/endpoints",
+      "status": 200,
+      "sha256": "8ad78c3f848d98187d94bac79175d6066c999b4ab96f01cad49498da8573ac5e",
+      "bytes": 463
+    },
+    {
+      "provider": "openrouter",
+      "model": "rekaai/reka-edge",
+      "name": "openrouter-endpoints-6910f973921d",
+      "url": "https://openrouter.ai/api/v1/models/rekaai/reka-edge-2603/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/rekaai/reka-edge-2603/endpoints",
+      "status": 200,
+      "sha256": "573ed9bec8ed7610530b39a84662e22e96a19239d1a0428b5e8950ca7b06bbc9",
+      "bytes": 1422
+    },
+    {
+      "provider": "openrouter",
+      "model": "rekaai/reka-flash-3",
+      "name": "openrouter-endpoints-6a3c0edd5ca6",
+      "url": "https://openrouter.ai/api/v1/models/rekaai/reka-flash-3/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/rekaai/reka-flash-3/endpoints",
+      "status": 200,
+      "sha256": "318584ed2b2a3b5f9ef72a8b29b124e4d2d40cb9698cb8cca430c43be164cd69",
+      "bytes": 1397
+    },
+    {
+      "provider": "openrouter",
+      "model": "relace/relace-apply-3",
+      "name": "openrouter-endpoints-ad636dd8ac2a",
+      "url": "https://openrouter.ai/api/v1/models/relace/relace-apply-3/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/relace/relace-apply-3/endpoints",
+      "status": 200,
+      "sha256": "88e1a1976ea1f17adabbdd988476d916243c4c63b0cbe525cf6f2c91d2c74c29",
+      "bytes": 1253
+    },
+    {
+      "provider": "openrouter",
+      "model": "relace/relace-search",
+      "name": "openrouter-endpoints-a1cef2e48f27",
+      "url": "https://openrouter.ai/api/v1/models/relace/relace-search-20251208/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/relace/relace-search-20251208/endpoints",
+      "status": 200,
+      "sha256": "439ae30c2b70bcf9729ce8b5a325ef89dc8b7d081c0186a3e3219dd6df50422c",
+      "bytes": 1326
+    },
+    {
+      "provider": "openrouter",
+      "model": "sao10k/l3-lunaris-8b",
+      "name": "openrouter-endpoints-115bf438a68b",
+      "url": "https://openrouter.ai/api/v1/models/sao10k/l3-lunaris-8b/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/sao10k/l3-lunaris-8b/endpoints",
+      "status": 200,
+      "sha256": "eecde09e69cc65ddaabdeeb13486fe565acbfbaa5534fe90c1059adb71b76923",
+      "bytes": 2386
+    },
+    {
+      "provider": "openrouter",
+      "model": "sao10k/l3.1-euryale-70b",
+      "name": "openrouter-endpoints-a638c06f1c4b",
+      "url": "https://openrouter.ai/api/v1/models/sao10k/l3.1-euryale-70b/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/sao10k/l3.1-euryale-70b/endpoints",
+      "status": 200,
+      "sha256": "e6a8e8621df4871eb506bc2a525f5ae499231af284a8f9eabc12f393ff4461ab",
+      "bytes": 2383
+    },
+    {
+      "provider": "openrouter",
+      "model": "scaledown/extract",
+      "name": "openrouter-endpoints-40cfdc2ef0c9",
+      "url": "https://openrouter.ai/api/v1/models/scaledown/extract-20260928/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/scaledown/extract-20260928/endpoints",
+      "status": 200,
+      "sha256": "c6ee14fe64b98cca89293197a372d9f4516f6e55de26496289972870e5495e2d",
+      "bytes": 1304
+    },
+    {
+      "provider": "openrouter",
+      "model": "scaledown/summarize",
+      "name": "openrouter-endpoints-a0c13d5a97f1",
+      "url": "https://openrouter.ai/api/v1/models/scaledown/summarize-20260928/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/scaledown/summarize-20260928/endpoints",
+      "status": 200,
+      "sha256": "31eba7db508fd2e11302d1aea8b54afe28eff59e6ff4ba975b3c55ddaf3065f0",
+      "bytes": 1288
+    },
+    {
+      "provider": "openrouter",
+      "model": "tencent/hy-mt2-1.8b",
+      "name": "openrouter-endpoints-a183600b18cb",
+      "url": "https://openrouter.ai/api/v1/models/tencent/hy-mt2-1.8b-20260521/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/tencent/hy-mt2-1.8b-20260521/endpoints",
+      "status": 200,
+      "sha256": "633d4b1696d496af2f1f891eeeb0f5af8be7687953a21f8b2d9b4ea9de84cfa8",
+      "bytes": 1344
+    },
+    {
+      "provider": "openrouter",
+      "model": "tencent/hy-mt2-30b-a3b",
+      "name": "openrouter-endpoints-144fb70b6e90",
+      "url": "https://openrouter.ai/api/v1/models/tencent/hy-mt2-30b-a3b-20260521/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/tencent/hy-mt2-30b-a3b-20260521/endpoints",
+      "status": 200,
+      "sha256": "3d0795c1c10fff8ae1bd15abde3c64b3d055a993580f322c04f93e166e6204c7",
+      "bytes": 1390
+    },
+    {
+      "provider": "openrouter",
+      "model": "tencent/hy-mt2-7b",
+      "name": "openrouter-endpoints-2f352df9e6e4",
+      "url": "https://openrouter.ai/api/v1/models/tencent/hy-mt2-7b-20260521/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/tencent/hy-mt2-7b-20260521/endpoints",
+      "status": 200,
+      "sha256": "6211fe933305a65af60686bb77075484287b2e9bff6b26a63a87a9bf750294f9",
+      "bytes": 1384
+    },
+    {
+      "provider": "openrouter",
+      "model": "thedrummer/unslopnemo-12b",
+      "name": "openrouter-endpoints-2792244e25ba",
+      "url": "https://openrouter.ai/api/v1/models/thedrummer/unslopnemo-12b/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/thedrummer/unslopnemo-12b/endpoints",
+      "status": 200,
+      "sha256": "c0d29b2a851d030009b636939dd9757453c385655cc71d23490e0a406ef00c21",
+      "bytes": 1385
+    },
+    {
+      "provider": "openrouter",
+      "model": "thinkingmachines/inkling-2-small:free",
+      "name": "openrouter-endpoints-ea39e8038b3d",
+      "url": "https://openrouter.ai/api/v1/models/thinkingmachines/inkling-2-small-20261107/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/thinkingmachines/inkling-2-small-20261107/endpoints",
+      "status": 200,
+      "sha256": "01d8e44825c215cf460eb55d5842cf70c7a6d07bcea71132f6ae5e2abd1082c1",
+      "bytes": 7182
+    },
+    {
+      "provider": "openrouter",
+      "model": "typesafe/jev-router",
+      "name": "openrouter-endpoints-f99be48523f2",
+      "url": "https://openrouter.ai/api/v1/models/typesafe/jev-router/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/typesafe/jev-router/endpoints",
+      "status": 200,
+      "sha256": "3a41c5af3b296cc140abead00fd93d07fe3f70cde208987aa8e49ed19094d0e0",
+      "bytes": 539
+    },
+    {
+      "provider": "openrouter",
+      "model": "writer/palmyra-x5",
+      "name": "openrouter-endpoints-e9576249b82e",
+      "url": "https://openrouter.ai/api/v1/models/writer/palmyra-x5-20250428/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/writer/palmyra-x5-20250428/endpoints",
+      "status": 200,
+      "sha256": "5ca46e14c5936275d9590f5c0549cb50e4fc1bce900de8e1542c2093978ba45a",
+      "bytes": 1297
+    },
+    {
+      "provider": "openrouter",
+      "model": "z-ai/glm-4.7-flash",
+      "name": "openrouter-endpoints-e2a2e9da8f1e",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-4.7-flash-20260119/endpoints",
+      "resolved_url": "https://openrouter.ai/api/v1/models/z-ai/glm-4.7-flash-20260119/endpoints",
+      "status": 200,
+      "sha256": "411d2b3a01e04a8ac8a92fb3528f43fad65b44ff1fd9d379548995ad5b355535",
+      "bytes": 2545
+    },
+    {
+      "model": "aion-labs/aion-2.0",
+      "name": "openrouter-detail-076c1a3269e7",
+      "url": "https://openrouter.ai/api/v1/models/aion-labs/aion-2.0-20260223/endpoints",
+      "status": 200,
+      "sha256": "d2b281cbf645d0d61042384e589ba470ef5273eb0b3239b008d15504c4fd66a8",
+      "bytes": 1389
+    },
+    {
+      "model": "aion-labs/aion-3.0",
+      "name": "openrouter-detail-ae8c3a0eb1f9",
+      "url": "https://openrouter.ai/api/v1/models/aion-labs/aion-3.0-20260707/endpoints",
+      "status": 200,
+      "sha256": "8531d08db3bb3c3a1055e99aee4b7e05f76118e3ff50798a46f45092a0303945",
+      "bytes": 1394
+    },
+    {
+      "model": "aion-labs/aion-3.0-mini",
+      "name": "openrouter-detail-e69a47bcc266",
+      "url": "https://openrouter.ai/api/v1/models/aion-labs/aion-3.0-mini-20260707/endpoints",
+      "status": 200,
+      "sha256": "b6a812d23c227659d98aad609fd6a606166973cb39913f435aafb75652e3c59b",
+      "bytes": 1406
+    },
+    {
+      "model": "aion-labs/aion-3.5",
+      "name": "openrouter-detail-f8982c4efeb7",
+      "url": "https://openrouter.ai/api/v1/models/aion-labs/aion-3.5-20260923/endpoints",
+      "status": 200,
+      "sha256": "b5c8a3ef7687e4a2f53eaf4a219d609b7bf8cfc219e20bcf17c56c6acdfa9ded",
+      "bytes": 1388
+    },
+    {
+      "model": "aion-labs/aion-3.5-mini",
+      "name": "openrouter-detail-0a61e6954848",
+      "url": "https://openrouter.ai/api/v1/models/aion-labs/aion-3.5-mini-20260923/endpoints",
+      "status": 200,
+      "sha256": "b64f27c39ad32eb1bc028da483ae195e9da1d2d46e37ae5e2eb993cfeee3420c",
+      "bytes": 1406
+    },
+    {
+      "model": "amazon/nova-premier-v1",
+      "name": "openrouter-detail-c72ea842a720",
+      "url": "https://openrouter.ai/api/v1/models/amazon/nova-premier-v1/endpoints",
+      "status": 200,
+      "sha256": "c7278821612ef484427620aca8e0622d5b2de1a57de81ab6a87ff1b34fa39fd3",
+      "bytes": 1328
+    },
+    {
+      "model": "anthracite-org/magnum-v4-72b",
+      "name": "openrouter-detail-2ba7a6fee478",
+      "url": "https://openrouter.ai/api/v1/models/anthracite-org/magnum-v4-72b/endpoints",
+      "status": 200,
+      "sha256": "2572d6788636413e32d31d182e24e3f61f34f6325c60cb5a43f1288371411010",
+      "bytes": 1600
+    },
+    {
+      "model": "anthropic/claude-fable-5",
+      "name": "openrouter-detail-86c0c8bf10aa",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-5-fable-20260609/endpoints",
+      "status": 200,
+      "sha256": "a72b3a45411b5b80cc9786cc69493599b34a39041d9023247db8961d072f4d41",
+      "bytes": 8544
+    },
+    {
+      "model": "anthropic/claude-fable-5.1",
+      "name": "openrouter-detail-52b37df64315",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-fable-5.1-20260831/endpoints",
+      "status": 200,
+      "sha256": "d9fb02251896cd9f97d92fb1b0dbaa4c5d203c21e0910feccb8837d73c6033db",
+      "bytes": 6236
+    },
+    {
+      "model": "anthropic/claude-fable-5.2",
+      "name": "openrouter-detail-7e96f061ceaa",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-fable-5.2-20261109/endpoints",
+      "status": 200,
+      "sha256": "ef1b0b27405602917322a8a4b762289f48f87df00dcbfcfe404e6fe1ca32479a",
+      "bytes": 6371
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "name": "openrouter-detail-9122fecaae12",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-4.5-haiku-20251001/endpoints",
+      "status": 200,
+      "sha256": "7716d8594f59145246f732d785c0a09b5b2a26ba56504d60873f4e9b4ec7d497",
+      "bytes": 9523
+    },
+    {
+      "model": "anthropic/claude-haiku-5.5",
+      "name": "openrouter-detail-a3fa969e9aa1",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-haiku-5.5-20261007/endpoints",
+      "status": 200,
+      "sha256": "bae5fd05a1b34b1231f42c3a5ebdbcfad8c04710b139aacc71d7a64edd051080",
+      "bytes": 13960
+    },
+    {
+      "model": "anthropic/claude-opus-4.1",
+      "name": "openrouter-detail-735279fe6740",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-4.1-opus-20250805/endpoints",
+      "status": 200,
+      "sha256": "0c2caee13064a5c44065563719225f5b0e663af01157ad10f411fd9e8a8ade93",
+      "bytes": 1596
+    },
+    {
+      "model": "anthropic/claude-opus-4.5",
+      "name": "openrouter-detail-c62bec9f817e",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-4.5-opus-20251124/endpoints",
+      "status": 200,
+      "sha256": "db346d8df736af2386034a55d7e723d0fceb2e0af844e16702e77bde98f2a8af",
+      "bytes": 7460
+    },
+    {
+      "model": "anthropic/claude-opus-4.6",
+      "name": "openrouter-detail-15f79ec75cbf",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-4.6-opus-20260205/endpoints",
+      "status": 200,
+      "sha256": "f5c501cc11621e8d6783d4da702adcfe9f84ca488f8333d581efe210fb15a2fe",
+      "bytes": 7566
+    },
+    {
+      "model": "anthropic/claude-opus-4.7",
+      "name": "openrouter-detail-f12e0c16ace4",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-4.7-opus-20260416/endpoints",
+      "status": 200,
+      "sha256": "54bf2ec4644173f1a90affba6a3b8f059ea86743bbc71b9532a96486f79e67c9",
+      "bytes": 9720
+    },
+    {
+      "model": "anthropic/claude-opus-4.8",
+      "name": "openrouter-detail-a2b4f7fc3fa6",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-4.8-opus-20260528/endpoints",
+      "status": 200,
+      "sha256": "99d9e6eb40c5bc7eb27a7dc8a7e063e8a6525c7e8d5f37438981fc034e5ccfb3",
+      "bytes": 13237
+    },
+    {
+      "model": "anthropic/claude-opus-5",
+      "name": "openrouter-detail-568e0eb3a95b",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-opus-5-20260723/endpoints",
+      "status": 200,
+      "sha256": "eb0326e070608038e14b8cbfe8e599f5d1e8a05d0c2e324a962b34fc26d37475",
+      "bytes": 13170
+    },
+    {
+      "model": "anthropic/claude-opus-5.5",
+      "name": "openrouter-detail-0a9d29c4ba3e",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-opus-5.5-20260921/endpoints",
+      "status": 200,
+      "sha256": "899e049aeddf1a44cdbe51d4471f55129e1bd8d0b5fe19999501fa2a4c17a0f8",
+      "bytes": 13241
+    },
+    {
+      "model": "anthropic/claude-sonnet-4.5",
+      "name": "openrouter-detail-291b4d735d46",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-4.5-sonnet-20250929/endpoints",
+      "status": 200,
+      "sha256": "e2afab4c6cc28f8593c76bb7afc6088d5c8803ab6422217bd1af0a15b78bb614",
+      "bytes": 9711
+    },
+    {
+      "model": "anthropic/claude-sonnet-4.6",
+      "name": "openrouter-detail-3e0410078bb4",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-4.6-sonnet-20260217/endpoints",
+      "status": 200,
+      "sha256": "6fc01f0bf02b18e666c05324e31c77d193e9ccb21b441c3a47743ff33c141d7b",
+      "bytes": 11126
+    },
+    {
+      "model": "anthropic/claude-sonnet-5",
+      "name": "openrouter-detail-2cd37409a483",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-sonnet-5-20260630/endpoints",
+      "status": 200,
+      "sha256": "3ff13e8850bb52a0424f1c6611c25615b1b4366dbd996ff5314a5b4f8e570e24",
+      "bytes": 11921
+    },
+    {
+      "model": "anthropic/claude-sonnet-5.5",
+      "name": "openrouter-detail-3215ce67cc8b",
+      "url": "https://openrouter.ai/api/v1/models/anthropic/claude-sonnet-5.5-20260928/endpoints",
+      "status": 200,
+      "sha256": "aed1f05e6baf3472b8b544fe3a773b0d33ca0a1f53ed7204043588605525a221",
+      "bytes": 12004
+    },
+    {
+      "model": "baidu/ernie-light-dt-1.0-intl",
+      "name": "openrouter-detail-4704a1f0bf9d",
+      "url": "https://openrouter.ai/api/v1/models/baidu/ernie-light-dt-1.0-intl-20261110/endpoints",
+      "status": 200,
+      "sha256": "d08ce84e5179411d1029ae2981497daeaa7fad3591e84abf1e35e9170fc43b40",
+      "bytes": 1473
+    },
+    {
+      "model": "bytedance/ui-tars-1.5-7b",
+      "name": "openrouter-detail-545cf4f2d1e1",
+      "url": "https://openrouter.ai/api/v1/models/bytedance/ui-tars-1.5-7b/endpoints",
+      "status": 200,
+      "sha256": "417d3cc19c7d24e38e08d319754c80cee0ea536e9ae8bbe13f41b79bf93f2716",
+      "bytes": 1506
+    },
+    {
+      "model": "cohere/command-a-plus",
+      "name": "openrouter-detail-fb1e08e1a886",
+      "url": "https://openrouter.ai/api/v1/models/cohere/command-a-plus-05-2026/endpoints",
+      "status": 200,
+      "sha256": "3fb403f261262e883018170a104e4e6325a89f856f75d9aee6116f1326fb5b08",
+      "bytes": 1473
+    },
+    {
+      "model": "deepseek/deepseek-chat-v3-0324",
+      "name": "openrouter-detail-cb194cfe4c26",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-chat-v3-0324/endpoints",
+      "status": 200,
+      "sha256": "fbebabe0dd1af6c5c2a8ca7da9bd968624913ea813edd9020bc2966a4bb98d49",
+      "bytes": 2394
+    },
+    {
+      "model": "deepseek/deepseek-chat-v3.1",
+      "name": "openrouter-detail-24d7c5291631",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-chat-v3.1/endpoints",
+      "status": 200,
+      "sha256": "f49d21491dd33d09b43b967e3011ced6c64a6a5d59edbb172c75593be4b25baa",
+      "bytes": 3587
+    },
+    {
+      "model": "deepseek/deepseek-r1-0528",
+      "name": "openrouter-detail-dd17178f8bdf",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-r1-0528/endpoints",
+      "status": 200,
+      "sha256": "1df2f932655daea6edb31d567293971b68b13fcca09c5f7b0de030c46f1caf62",
+      "bytes": 3440
+    },
+    {
+      "model": "deepseek/deepseek-v3.2",
+      "name": "openrouter-detail-6c5884768b2b",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v3.2-20251201/endpoints",
+      "status": 200,
+      "sha256": "c55eabbee4f913f9b599d70bf2fbb5f93f548785b0ead45dbc5c6f1572a91378",
+      "bytes": 6515
+    },
+    {
+      "model": "deepseek/deepseek-v4-flash",
+      "name": "openrouter-detail-6d0dcdfbe2d7",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4-flash-20260423/endpoints",
+      "status": 200,
+      "sha256": "f509b32b693d91224af46e7930b29ff9f0959c426fb1176761d5c401d0b45c8b",
+      "bytes": 16626
+    },
+    {
+      "model": "deepseek/deepseek-v4-flash-0731",
+      "name": "openrouter-detail-3535a3e7891a",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4-flash-20260731/endpoints",
+      "status": 200,
+      "sha256": "9b004ca2b6bcbdb306520d7aba0483217368f0c4c749a7379fe30fedb601b75e",
+      "bytes": 32300
+    },
+    {
+      "model": "deepseek/deepseek-v4-flash-vision-exp",
+      "name": "openrouter-detail-7a9277b5259d",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4-flash-vision-exp-20260821/endpoints",
+      "status": 200,
+      "sha256": "6da3cdc2dd980b8a1fffdc78cf6e25c503fbf3d1c3b0ce3bea136f58106a7ad7",
+      "bytes": 6087
+    },
+    {
+      "model": "deepseek/deepseek-v4-pro",
+      "name": "openrouter-detail-4247e801b57d",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4-pro-20260423/endpoints",
+      "status": 200,
+      "sha256": "727a839199ed7453d91bb4627773b379ca4f422042a5420724fbbe5dc8838a83",
+      "bytes": 16162
+    },
+    {
+      "model": "deepseek/deepseek-v4-pro-0813",
+      "name": "openrouter-detail-f936349cbdb1",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4-pro-20260813/endpoints",
+      "status": 200,
+      "sha256": "c2882c2b5919862038dcea2bcaebc2740f241428465808136be62454e3f3a238",
+      "bytes": 29800
+    },
+    {
+      "model": "deepseek/deepseek-v4.1-flash",
+      "name": "openrouter-detail-99183a5b3b30",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4.1-flash-20260910/endpoints",
+      "status": 200,
+      "sha256": "f0b9fd3c421dc431e65d880830ef76eb09ee4766d7b80b3fe73cf56ce621fd48",
+      "bytes": 40686
+    },
+    {
+      "model": "deepseek/deepseek-v4.1-flash-1017",
+      "name": "openrouter-detail-caf1ef1f3bdf",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4.1-flash-20261017/endpoints",
+      "status": 200,
+      "sha256": "33ca6f7f018d26552f205db9691b72230240ba9a619c642a19f9847acdc57597",
+      "bytes": 56477
+    },
+    {
+      "model": "elorian/glimpse",
+      "name": "openrouter-detail-c568ced72f9f",
+      "url": "https://openrouter.ai/api/v1/models/elorian/glimpse-20261016/endpoints",
+      "status": 200,
+      "sha256": "2cb880b8282ea6b9fec8a8ded0fcb0d43d2917d1f089dcbf02e8c2f89dfb795b",
+      "bytes": 1529
+    },
+    {
+      "model": "fireworks/ember-1",
+      "name": "openrouter-detail-9bbbb70a4dc1",
+      "url": "https://openrouter.ai/api/v1/models/fireworks/ember-1-20260923/endpoints",
+      "status": 200,
+      "sha256": "841fe82af5c22cb009b161a816676d92b0b2177dc9f843d720dbd34a5343d65a",
+      "bytes": 1569
+    },
+    {
+      "model": "google/gemini-2.5-flash",
+      "name": "openrouter-detail-cd62f9d5ea30",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-2.5-flash/endpoints",
+      "status": 200,
+      "sha256": "20147a87bba6aab8ddc40c1cfe4a72317f009c5e0508df8b27d205f0afb353da",
+      "bytes": 4062
+    },
+    {
+      "model": "google/gemini-2.5-flash-image",
+      "name": "openrouter-detail-b6a1c2e3d475",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-2.5-flash-image/endpoints",
+      "status": 200,
+      "sha256": "4d47acfaf277852c365cc9cadde930fe198db4cf10465b8d540c6d7b7ab9d44e",
+      "bytes": 1650
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "name": "openrouter-detail-aa393677798a",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-2.5-flash-lite/endpoints",
+      "status": 200,
+      "sha256": "528caee2599fc8fe47075b98699da89a2987b40f09462199a9d311832752404c",
+      "bytes": 4105
+    },
+    {
+      "model": "google/gemini-2.5-pro",
+      "name": "openrouter-detail-962e7b87ec69",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-2.5-pro/endpoints",
+      "status": 200,
+      "sha256": "d84b200948041afda550f562b96d5d3d81dd1ac4a74d497caf8cf86f0e524c37",
+      "bytes": 4514
+    },
+    {
+      "model": "google/gemini-2.5-pro-preview",
+      "name": "openrouter-detail-a818f669367c",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-2.5-pro-preview-06-05/endpoints",
+      "status": 200,
+      "sha256": "9629d039579a68f37b04a78396b31326ba9c8477768c8e2f4b3f19a9ad0be477",
+      "bytes": 4513
+    },
+    {
+      "model": "google/gemini-3-flash-preview",
+      "name": "openrouter-detail-4cdc636ad0e2",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-3-flash-preview-20251217/endpoints",
+      "status": 200,
+      "sha256": "4b4cffd75580aab583aef213d48c35921da73b12af7b05856a346aaa1dca37a1",
+      "bytes": 8002
+    },
+    {
+      "model": "google/gemini-3-pro-image",
+      "name": "openrouter-detail-0a6b5bd4048f",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-3-pro-image-20260528/endpoints",
+      "status": 200,
+      "sha256": "df130f6ab902f45a679cdbe3ad48f29dd36d85961e76782df4c6e9851f7d08d7",
+      "bytes": 2991
+    },
+    {
+      "model": "google/gemini-3-pro-image-preview",
+      "name": "openrouter-detail-89991908da71",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-3-pro-image-preview-20251120/endpoints",
+      "status": 200,
+      "sha256": "8cd886acd9a2e3452c5216e882eb0eec3a5035f07fdcad50ee9808ec8c0deb65",
+      "bytes": 3056
+    },
+    {
+      "model": "google/gemini-3.1-flash-lite",
+      "name": "openrouter-detail-97279ba6f4f3",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-3.1-flash-lite-20260507/endpoints",
+      "status": 200,
+      "sha256": "404e8deb68066b5ff90353df6177ac0edfee181992d659f8cf355fb8f8de4285",
+      "bytes": 10507
+    },
+    {
+      "model": "google/gemini-3.1-flash-lite-preview",
+      "name": "openrouter-detail-5611e8677673",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-3.1-flash-lite-preview-20260303/endpoints",
+      "status": 200,
+      "sha256": "041746bb6d31dc433edf4ee337bb973449fc788d02fee5903f094301ad38e9ab",
+      "bytes": 4384
+    },
+    {
+      "model": "google/gemini-3.1-pro-preview",
+      "name": "openrouter-detail-793ee6d86cf8",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-3.1-pro-preview-20260219/endpoints",
+      "status": 200,
+      "sha256": "b320e3dd17207f3c106e0bb64449130884bcc55e9555f749587363773a1488a9",
+      "bytes": 9010
+    },
+    {
+      "model": "google/gemini-3.1-pro-preview-customtools",
+      "name": "openrouter-detail-84e88ed3ba14",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-3.1-pro-preview-customtools-20260219/endpoints",
+      "status": 200,
+      "sha256": "d0674a259ce084d892633133813eb8f881bb0d4f98b6de9f9bf4a681876d569a",
+      "bytes": 1924
+    },
+    {
+      "model": "google/gemini-3.5-flash",
+      "name": "openrouter-detail-8d99798a7e24",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-3.5-flash-20260519/endpoints",
+      "status": 200,
+      "sha256": "96453f13ac801eae51c3cd52462133bfdafc05ead98cce3beb1ab18d1f514ef7",
+      "bytes": 9121
+    },
+    {
+      "model": "google/gemini-3.5-flash-lite",
+      "name": "openrouter-detail-e7f69d0dac9f",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-3.5-flash-lite-20260721/endpoints",
+      "status": 200,
+      "sha256": "ce971f64468b7a83d9f4e21e138f33b24b6a084b97b3a02ed230537b7a7f1f68",
+      "bytes": 10352
+    },
+    {
+      "model": "google/gemini-3.6-flash",
+      "name": "openrouter-detail-77b5dbc31707",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-3.6-flash-20260721/endpoints",
+      "status": 200,
+      "sha256": "c804454dbfffabcc282b4f5071abd33fcd2a316309d38c0ad05aad0e4471aec1",
+      "bytes": 9075
+    },
+    {
+      "model": "google/gemini-3.7-flash",
+      "name": "openrouter-detail-16a8dce2a6e7",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-3.7-flash-20260813/endpoints",
+      "status": 200,
+      "sha256": "ac96596f763b5f1c030807b76fc56cbe760b7d2f4817e62c8c9627fad4cc9517",
+      "bytes": 9089
+    },
+    {
+      "model": "google/gemini-3.8-flash",
+      "name": "openrouter-detail-422e5ba87859",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-3.8-flash-20260902/endpoints",
+      "status": 200,
+      "sha256": "8ea50a836a4e4c959d188ae05242f806d59aa74c282a56e90da9fba5dbf698c5",
+      "bytes": 9098
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "name": "openrouter-detail-7ff6a9f995dc",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-4-argon-20261013/endpoints",
+      "status": 200,
+      "sha256": "8ee80792bd9239bd5fdf816d766c373deeb2018a2cfeeba53715fff8a087474f",
+      "bytes": 7826
+    },
+    {
+      "model": "google/gemini-4-carbon",
+      "name": "openrouter-detail-e1cd38a6be2f",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-4-carbon-20261110/endpoints",
+      "status": 200,
+      "sha256": "5afc4255015f73f521565e25d25015f61fb478628c05eea9d9876b63515cccdc",
+      "bytes": 9020
+    },
+    {
+      "model": "google/gemini-4-hydrogen",
+      "name": "openrouter-detail-321f5620b57f",
+      "url": "https://openrouter.ai/api/v1/models/google/gemini-4-hydrogen-20261112/endpoints",
+      "status": 200,
+      "sha256": "5f7c8400fa11ef950c1ab8687a5596d38771930e201a62c9e22cad90f6253947",
+      "bytes": 9148
+    },
+    {
+      "model": "google/gemma-3-27b-it",
+      "name": "openrouter-detail-ff873c19a002",
+      "url": "https://openrouter.ai/api/v1/models/google/gemma-3-27b-it/endpoints",
+      "status": 200,
+      "sha256": "ee0368510a93c5521ab37fe30c7aecd1219130d50548a3a9b38987c0266580e1",
+      "bytes": 6467
+    },
+    {
+      "model": "google/gemma-4-26b-a4b-it",
+      "name": "openrouter-detail-c6079e21213b",
+      "url": "https://openrouter.ai/api/v1/models/google/gemma-4-26b-a4b-it-20260403/endpoints",
+      "status": 200,
+      "sha256": "39145965afd92a375780854408fc8b535ccab401b3de2ef700b741c4ebeffbfc",
+      "bytes": 16250
+    },
+    {
+      "model": "ibm-granite/granite-4.2-8b",
+      "name": "openrouter-detail-d90c16215efd",
+      "url": "https://openrouter.ai/api/v1/models/ibm-granite/granite-4.2-8b-20260831/endpoints",
+      "status": 200,
+      "sha256": "3e65ebbcb8443b02cc09f97eadb8c7d0782f46c35292e857537a91e4f4b98d99",
+      "bytes": 2635
+    },
+    {
+      "model": "inclusionai/ling-3.0-flash",
+      "name": "openrouter-detail-56d2fa9415bd",
+      "url": "https://openrouter.ai/api/v1/models/inclusionai/ling-3.0-flash-20260723/endpoints",
+      "status": 200,
+      "sha256": "84fae38679f0448404bc494fe1982f98ac1fe93c9734ad63a4075ffd5b3119d7",
+      "bytes": 2620
+    },
+    {
+      "model": "inclusionai/ling-3.0-flash-vl",
+      "name": "openrouter-detail-724c2a784624",
+      "url": "https://openrouter.ai/api/v1/models/inclusionai/ling-3.0-flash-vl-20260910/endpoints",
+      "status": 200,
+      "sha256": "b8575d7a104129292d4bd1879e2ad38dd891d7fa3534dc665c762ab93d3bd162",
+      "bytes": 1611
+    },
+    {
+      "model": "inclusionai/ling-3.0-tiny",
+      "name": "openrouter-detail-791bae9c4b31",
+      "url": "https://openrouter.ai/api/v1/models/inclusionai/ling-3.0-tiny-20260806/endpoints",
+      "status": 200,
+      "sha256": "80f06776ea02777c9e4cc93eca428e384fb87d26a95dc655c4fe580fa7e9c19c",
+      "bytes": 1553
+    },
+    {
+      "model": "inclusionai/ling-3.1-flash",
+      "name": "openrouter-detail-f74476b1532b",
+      "url": "https://openrouter.ai/api/v1/models/inclusionai/ling-3.1-flash-20261002/endpoints",
+      "status": 200,
+      "sha256": "b8714a5dbb705de2b45d68cb143592948b7e451b940764a0e1cab26a5748854c",
+      "bytes": 1444
+    },
+    {
+      "model": "inference-net/schematron-v2-small",
+      "name": "openrouter-detail-c93c1d8523a8",
+      "url": "https://openrouter.ai/api/v1/models/inference-net/schematron-v2-small-20260902/endpoints",
+      "status": 200,
+      "sha256": "f9ae7e4eb4e87643597aa7cbec2152703afd86a224b65547ba294309220a2f03",
+      "bytes": 2599
+    },
+    {
+      "model": "inference-net/schematron-v2-turbo",
+      "name": "openrouter-detail-31cb8ee02542",
+      "url": "https://openrouter.ai/api/v1/models/inference-net/schematron-v2-turbo-20260902/endpoints",
+      "status": 200,
+      "sha256": "2afe34227f4473bcc40eab845eb805f46c25d779060e70b70c3d9bc006248715",
+      "bytes": 2621
+    },
+    {
+      "model": "kt/midm-k-3.0-pro",
+      "name": "openrouter-detail-b5605261bd25",
+      "url": "https://openrouter.ai/api/v1/models/kt/midm-k-3.0-pro/endpoints",
+      "status": 200,
+      "sha256": "7415fac0949757d0c915f62291d3979eab8f51056d6adac1cb46ccaa934603a0",
+      "bytes": 1441
+    },
+    {
+      "model": "liquid/lfm-2.5-24b-a2b",
+      "name": "openrouter-detail-4013015f0cbc",
+      "url": "https://openrouter.ai/api/v1/models/liquid/lfm-2.5-24b-a2b-20261012/endpoints",
+      "status": 200,
+      "sha256": "724a4d15e128895a27362df2a83ebac15375df1ca1ca3a7f2ebe0d207a9a0482",
+      "bytes": 1547
+    },
+    {
+      "model": "liquid/lfm-3-1.7b",
+      "name": "openrouter-detail-8ab867bc7977",
+      "url": "https://openrouter.ai/api/v1/models/liquid/lfm-3-1.7b-20261106/endpoints",
+      "status": 200,
+      "sha256": "f4109f63edcf7e658e7b3de3dd333ff0f17e5bf9629f1ccba4507c22da185209",
+      "bytes": 1526
+    },
+    {
+      "model": "mancer/weaver",
+      "name": "openrouter-detail-196f73987345",
+      "url": "https://openrouter.ai/api/v1/models/mancer/weaver/endpoints",
+      "status": 200,
+      "sha256": "35902709eaad81d0581bc152df18564b5c00e6dd5a81dfd80ead9a962dc30682",
+      "bytes": 1386
+    },
+    {
+      "model": "meituan/longcat-2.0",
+      "name": "openrouter-detail-6ac02cf91037",
+      "url": "https://openrouter.ai/api/v1/models/meituan/longcat-2.0-20260720/endpoints",
+      "status": 200,
+      "sha256": "9b171e96b37cc593b1fb8cb146bf5f1ef3967d4a579b4f3b8d176800521a878f",
+      "bytes": 1488
+    },
+    {
+      "model": "meta-llama/llama-3.3-70b-instruct",
+      "name": "openrouter-detail-69ee4bcbaa09",
+      "url": "https://openrouter.ai/api/v1/models/meta-llama/llama-3.3-70b-instruct/endpoints",
+      "status": 200,
+      "sha256": "e89f86ade1b8db84b5aa8a68e8de741d89ddfb2a810a221d59c61fd1d51221e9",
+      "bytes": 9362
+    },
+    {
+      "model": "meta-llama/llama-4-maverick",
+      "name": "openrouter-detail-3d17a1d6f639",
+      "url": "https://openrouter.ai/api/v1/models/meta-llama/llama-4-maverick-17b-128e-instruct/endpoints",
+      "status": 200,
+      "sha256": "09602ecb4d1863d25cf5c4ec50a0f129ae66959e9ada527bfdeffd011a9468ed",
+      "bytes": 2523
+    },
+    {
+      "model": "meta/muse-ember",
+      "name": "openrouter-detail-57b54711faa6",
+      "url": "https://openrouter.ai/api/v1/models/meta/muse-ember-20261109/endpoints",
+      "status": 200,
+      "sha256": "225e40410b4cfa770c07a7feab8a31371dd6221b8da19720011e67619050f22c",
+      "bytes": 2554
+    },
+    {
+      "model": "meta/muse-glimmer-30b",
+      "name": "openrouter-detail-bf7f21a45c57",
+      "url": "https://openrouter.ai/api/v1/models/meta/muse-glimmer-30b-20260810/endpoints",
+      "status": 200,
+      "sha256": "1cf041fcbc8f6f5dbe3f8dab3ee973fdbac1ed87b93d21dd8e478ed99eb0e7ee",
+      "bytes": 3659
+    },
+    {
+      "model": "meta/muse-spark-1.1",
+      "name": "openrouter-detail-78643080de4e",
+      "url": "https://openrouter.ai/api/v1/models/meta/muse-spark-1.1-20260709/endpoints",
+      "status": 200,
+      "sha256": "38b2dd4beeecaf493f1fea6030a12126149691bf9cf68ec765faf8d6e48a7b15",
+      "bytes": 1528
+    },
+    {
+      "model": "meta/muse-spark-1.2",
+      "name": "openrouter-detail-2f22b07da3af",
+      "url": "https://openrouter.ai/api/v1/models/meta/muse-spark-1.2-20260805/endpoints",
+      "status": 200,
+      "sha256": "a718ac29b4c4e5288aaa44ba3854ce3e8fadb6d14e1a345e1ff36f7f99017ae2",
+      "bytes": 1531
+    },
+    {
+      "model": "meta/muse-spark-1.2-contributor",
+      "name": "openrouter-detail-d1e5015dfb06",
+      "url": "https://openrouter.ai/api/v1/models/meta/muse-spark-1.2-contributor-20260805/endpoints",
+      "status": 200,
+      "sha256": "d868dffbec99db10465e780cc7608565b2a7efcec2b025cbc57a68b08dc61d41",
+      "bytes": 1585
+    },
+    {
+      "model": "meta/muse-spark-1.3",
+      "name": "openrouter-detail-c0580b01221e",
+      "url": "https://openrouter.ai/api/v1/models/meta/muse-spark-1.3-20260902/endpoints",
+      "status": 200,
+      "sha256": "4c7d7a0149fa88a8f1ab13e52c29eabed1ce0891084a7960b02dd63355d62fe9",
+      "bytes": 2553
+    },
+    {
+      "model": "meta/muse-spark-1.3-contributor",
+      "name": "openrouter-detail-45c0b2390c60",
+      "url": "https://openrouter.ai/api/v1/models/meta/muse-spark-1.3-contributor-20260902/endpoints",
+      "status": 200,
+      "sha256": "66856b84ff3029c18b3a27e7658550b7a11d0e91e06fb0c2260e5580d0d4269a",
+      "bytes": 1636
+    },
+    {
+      "model": "meta/muse-spark-open",
+      "name": "openrouter-detail-db208dec3103",
+      "url": "https://openrouter.ai/api/v1/models/meta/muse-spark-open-20261015/endpoints",
+      "status": 200,
+      "sha256": "c17f049edf00984b19487e9bd91375fee2a2195e216aa866e6725cd59c46e429",
+      "bytes": 5781
+    },
+    {
+      "model": "meta/muse-wonder",
+      "name": "openrouter-detail-422c1041f722",
+      "url": "https://openrouter.ai/api/v1/models/meta/muse-wonder-20261012/endpoints",
+      "status": 200,
+      "sha256": "b9dc10772590c0b1675642b9d99ce2fd3311da8a47bba3c0f093f25a9a665cd2",
+      "bytes": 2528
+    },
+    {
+      "model": "minimax/minimax-m2.5",
+      "name": "openrouter-detail-a4aa4622b530",
+      "url": "https://openrouter.ai/api/v1/models/minimax/minimax-m2.5-20260211/endpoints",
+      "status": 200,
+      "sha256": "9c866a82cd881caf8916497843df37628a81e8715efa34e33bb0b480a75497b0",
+      "bytes": 4441
+    },
+    {
+      "model": "minimax/minimax-m2.7",
+      "name": "openrouter-detail-a4e34f74d49f",
+      "url": "https://openrouter.ai/api/v1/models/minimax/minimax-m2.7-20260318/endpoints",
+      "status": 200,
+      "sha256": "0b9df3289c93acf0ed03a0df83bc7e22f7977d38ad4a4e9d68d3be67d69bbc08",
+      "bytes": 2339
+    },
+    {
+      "model": "minimax/minimax-m3",
+      "name": "openrouter-detail-b35081334239",
+      "url": "https://openrouter.ai/api/v1/models/minimax/minimax-m3-20260531/endpoints",
+      "status": 200,
+      "sha256": "4854932b27a51cb7f457869bc70276580168208586907a088ad6f13631122534",
+      "bytes": 8575
+    },
+    {
+      "model": "minimax/minimax-m3.1-flash",
+      "name": "openrouter-detail-67e9cc5bf5a8",
+      "url": "https://openrouter.ai/api/v1/models/minimax/minimax-m3.1-flash-20261019/endpoints",
+      "status": 200,
+      "sha256": "bb190d21ebf43d2ff05cff796170b6f695ebda231e2bb22095aa993f575e2d07",
+      "bytes": 16790
+    },
+    {
+      "model": "mistralai/codestral-2508",
+      "name": "openrouter-detail-a5711883cf21",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/codestral-2508/endpoints",
+      "status": 200,
+      "sha256": "a71647ecee281d98d556a103c570eb8c8c51fa8db258633b51886bf6d51624fb",
+      "bytes": 2498
+    },
+    {
+      "model": "mistralai/devstral-2512",
+      "name": "openrouter-detail-03e9ede66aca",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/devstral-2512/endpoints",
+      "status": 200,
+      "sha256": "9eb58d9fbfdf3a6482c3efffc90d4458df5b1a3bd415ce2ae77e618d13beec91",
+      "bytes": 1466
+    },
+    {
+      "model": "mistralai/ministral-14b-2512",
+      "name": "openrouter-detail-42c4868824ef",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/ministral-14b-2512/endpoints",
+      "status": 200,
+      "sha256": "f449eb5d84a0a2b5d67d8be5d0f965dac2065d10b04c1eaa553444203d27aa6c",
+      "bytes": 2482
+    },
+    {
+      "model": "mistralai/ministral-3b-2512",
+      "name": "openrouter-detail-d1a78569e2b7",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/ministral-3b-2512/endpoints",
+      "status": 200,
+      "sha256": "f09ebf9999d492c810555a7c9613c88ff3a6cacd12534e342b20998001bc9a98",
+      "bytes": 2389
+    },
+    {
+      "model": "mistralai/ministral-8b-2512",
+      "name": "openrouter-detail-1eab5d1171b2",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/ministral-8b-2512/endpoints",
+      "status": 200,
+      "sha256": "286ee6cdca2bf1fb5ea56bfb4ecc2a5254655dc6dfdbe0ca2a4252663e24a425",
+      "bytes": 2407
+    },
+    {
+      "model": "mistralai/mistral-large",
+      "name": "openrouter-detail-f811b1557515",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/mistral-large/endpoints",
+      "status": 200,
+      "sha256": "182812b321f3d781cfea44961af52c4cffb1287653ce0de6dfea9dd2f0fd739a",
+      "bytes": 2448
+    },
+    {
+      "model": "mistralai/mistral-large-2407",
+      "name": "openrouter-detail-81de660dc901",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/mistral-large-2407/endpoints",
+      "status": 200,
+      "sha256": "b2d2bb84efb7fab881fae5a1431e58466bc5029b7503f981c38cd1679d4a7517",
+      "bytes": 3442
+    },
+    {
+      "model": "mistralai/mistral-large-2512",
+      "name": "openrouter-detail-a43541fc5972",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/mistral-large-2512/endpoints",
+      "status": 200,
+      "sha256": "c9d7e99db589a496cda3982f930da58ce737a2213551118f46a798cd8563fbe4",
+      "bytes": 2492
+    },
+    {
+      "model": "mistralai/mistral-large-4-0",
+      "name": "openrouter-detail-37c22cc50fe0",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/mistral-large-4-0-20261006/endpoints",
+      "status": 200,
+      "sha256": "dc3b3b635c2d4864ca36417477b1199acb82bd534d65a25311ba1a740142fa1a",
+      "bytes": 2603
+    },
+    {
+      "model": "mistralai/mistral-medium-3",
+      "name": "openrouter-detail-31d4faca975a",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/mistral-medium-3/endpoints",
+      "status": 200,
+      "sha256": "7a3d4b561762a1e38e427bf7d45d407e63cee1dd388b9c1d6481a79ed635b205",
+      "bytes": 1522
+    },
+    {
+      "model": "mistralai/mistral-medium-3.1",
+      "name": "openrouter-detail-281b273adaf6",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/mistral-medium-3.1/endpoints",
+      "status": 200,
+      "sha256": "ad1c742665c328d4c564f0a5a7b421758cd0eb84ae5a0aed4713fdac28e43b98",
+      "bytes": 1522
+    },
+    {
+      "model": "mistralai/mistral-saba",
+      "name": "openrouter-detail-fd29c97c15e1",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/mistral-saba-2502/endpoints",
+      "status": 200,
+      "sha256": "2cd1eae6542b14f2070fc928d448aca345b2cb333808f86c28156bf1c5faf81f",
+      "bytes": 2429
+    },
+    {
+      "model": "mistralai/mistral-small-2603",
+      "name": "openrouter-detail-74919a2c93a8",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/mistral-small-2603/endpoints",
+      "status": 200,
+      "sha256": "4ea53ad9bc4bcad5010fc78a4f2f644dfa7030f184b11d731fce92c003ca15dd",
+      "bytes": 3590
+    },
+    {
+      "model": "mistralai/mistral-small-3.2-24b-instruct",
+      "name": "openrouter-detail-1666238a1843",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/mistral-small-3.2-24b-instruct-2506/endpoints",
+      "status": 200,
+      "sha256": "81bcf8475826da0069ebdb14b56e70458b39eda4fb9f0a23d1a07ba31bb2aee6",
+      "bytes": 5734
+    },
+    {
+      "model": "mistralai/mixtral-8x22b-instruct",
+      "name": "openrouter-detail-5ceadc7a1836",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/mixtral-8x22b-instruct/endpoints",
+      "status": 200,
+      "sha256": "b23a5541656c96729520062493b47106fdb6ad36ccc999085b2985a82d306f17",
+      "bytes": 2515
+    },
+    {
+      "model": "mistralai/voxtral-small-24b-2507",
+      "name": "openrouter-detail-99012bba1277",
+      "url": "https://openrouter.ai/api/v1/models/mistralai/voxtral-small-24b-2507/endpoints",
+      "status": 200,
+      "sha256": "e9f921fd18e722edd3ce146eecd635e587b52134b364ab3f5aeed54e769e0e95",
+      "bytes": 2592
+    },
+    {
+      "model": "moonshotai/kimi-k2-thinking",
+      "name": "openrouter-detail-ff7d6d6d44b0",
+      "url": "https://openrouter.ai/api/v1/models/moonshotai/kimi-k2-thinking-20251106/endpoints",
+      "status": 200,
+      "sha256": "3b40a32e8955d60ab05e898c6abbc64d0e0d478ef95dc0ac9659ad33af9627b9",
+      "bytes": 1543
+    },
+    {
+      "model": "moonshotai/kimi-k2.5",
+      "name": "openrouter-detail-06434604eb1e",
+      "url": "https://openrouter.ai/api/v1/models/moonshotai/kimi-k2.5-0127/endpoints",
+      "status": 200,
+      "sha256": "4b815a5a1a72a1a0cc30c8d6ee6dffc55ad0b16b28c67c9c420350a4f9564222",
+      "bytes": 5520
+    },
+    {
+      "model": "moonshotai/kimi-k2.6",
+      "name": "openrouter-detail-4a476e7ee2c7",
+      "url": "https://openrouter.ai/api/v1/models/moonshotai/kimi-k2.6-20260420/endpoints",
+      "status": 200,
+      "sha256": "d658799f6948fd90f691be1111164b7909ccad775a69a1244745ef2ed2e61c4c",
+      "bytes": 18130
+    },
+    {
+      "model": "moonshotai/kimi-k2.7-code",
+      "name": "openrouter-detail-5ea285ac7903",
+      "url": "https://openrouter.ai/api/v1/models/moonshotai/kimi-k2.7-code-20260612/endpoints",
+      "status": 200,
+      "sha256": "0c4c3493d26ecbfb0c82c995c5445dfd8777719a62e4e181613cdd81fb3df6a4",
+      "bytes": 11853
+    },
+    {
+      "model": "moonshotai/kimi-k3",
+      "name": "openrouter-detail-9e460c49820c",
+      "url": "https://openrouter.ai/api/v1/models/moonshotai/kimi-k3-20260715/endpoints",
+      "status": 200,
+      "sha256": "f7554c4be0e2308f75b2762d8d68d36654dfe7295d696273297bcb8d196ca995",
+      "bytes": 28773
+    },
+    {
+      "model": "moonshotai/kimi-k3.1-pro",
+      "name": "openrouter-detail-66c1aae520b7",
+      "url": "https://openrouter.ai/api/v1/models/moonshotai/kimi-k3.1-pro-20261023/endpoints",
+      "status": 200,
+      "sha256": "074554a338421f8272606d089019bac610140e11e60db6f8627c155ca59c3100",
+      "bytes": 26258
+    },
+    {
+      "model": "motif-technologies/motif-3",
+      "name": "openrouter-detail-9e1e0f605d47",
+      "url": "https://openrouter.ai/api/v1/models/motif-technologies/motif-3/endpoints",
+      "status": 200,
+      "sha256": "85be0278e7f43117af07fa4b1f27444c1989543d41b7bb74de6075102bbf7a0b",
+      "bytes": 1512
+    },
+    {
+      "model": "nex-agi/nex-n2.5-mini",
+      "name": "openrouter-detail-70a7b121d8c3",
+      "url": "https://openrouter.ai/api/v1/models/nex-agi/nex-n2.5-mini-20260908/endpoints",
+      "status": 200,
+      "sha256": "a551a73d464ab3c06159557f63e341aaca331394eb836340baf49bc0526f47c4",
+      "bytes": 1448
+    },
+    {
+      "model": "nex-agi/nex-n2.5-pro",
+      "name": "openrouter-detail-03e9181daaa5",
+      "url": "https://openrouter.ai/api/v1/models/nex-agi/nex-n2.5-pro-20260907/endpoints",
+      "status": 200,
+      "sha256": "8dcf490a50256af17722c1d8dd461e80cc1c5792e570654e6cbdbf7b5b3f9b2a",
+      "bytes": 1452
+    },
+    {
+      "model": "nex-agi/nex-n2.6",
+      "name": "openrouter-detail-6bd94d20b95c",
+      "url": "https://openrouter.ai/api/v1/models/nex-agi/nex-n2.6-20261110/endpoints",
+      "status": 200,
+      "sha256": "36ef9ceaf84dbf107d50129603054218cb1cf63bfa70c833b361dda8e4c2fc66",
+      "bytes": 1495
+    },
+    {
+      "model": "nousresearch/hermes-4-405b",
+      "name": "openrouter-detail-9860c5c20a68",
+      "url": "https://openrouter.ai/api/v1/models/nousresearch/hermes-4-405b/endpoints",
+      "status": 200,
+      "sha256": "e2642bff718335d9b6b7b4d80b14239306522499aa403ebaa302e8cb67e03165",
+      "bytes": 1497
+    },
+    {
+      "model": "nvidia/nemotron-3-nano-30b-a3b",
+      "name": "openrouter-detail-fa24955a1723",
+      "url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3-nano-30b-a3b/endpoints",
+      "status": 200,
+      "sha256": "9cb0501ff577730a5a375a32ed1cdc9bebfd0829eec4ecf3d5be05c3524d251a",
+      "bytes": 1519
+    },
+    {
+      "model": "nvidia/nemotron-3-ultra-550b-a55b",
+      "name": "openrouter-detail-ad7decc9ae94",
+      "url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3-ultra-550b-a55b-20260604/endpoints",
+      "status": 200,
+      "sha256": "cad5861da0996f2e3ed8061809ff093074b0400f3d3c98dca63957525bf1f8b1",
+      "bytes": 6977
+    },
+    {
+      "model": "nvidia/nemotron-3.5-lightning",
+      "name": "openrouter-detail-9ff617007784",
+      "url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3.5-lightning-20260807/endpoints",
+      "status": 200,
+      "sha256": "bd0f85a340777c4fc9924a2e10b346c4d3c53a70ded01d11aa9641a743818272",
+      "bytes": 5882
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl",
+      "name": "openrouter-detail-5075871206dc",
+      "url": "https://openrouter.ai/api/v1/models/nvidia/nemotron-3.5-super-vl-20261015/endpoints",
+      "status": 200,
+      "sha256": "901a805a287ba310d183a83935b98a686cad377a929d06910517f86f5e348605",
+      "bytes": 11171
+    },
+    {
+      "model": "openai/gpt-4.1",
+      "name": "openrouter-detail-c8893463e7ce",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-4.1-2025-04-14/endpoints",
+      "status": 200,
+      "sha256": "9a239fa1380f0df27f275b51df9936ead3f1050c6ced8a6e2b056ee549999bb0",
+      "bytes": 3312
+    },
+    {
+      "model": "openai/gpt-4.1-mini",
+      "name": "openrouter-detail-ebd5240e5f20",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-4.1-mini-2025-04-14/endpoints",
+      "status": 200,
+      "sha256": "c55d140b0532c149e47af5263e1aa44e2c708a1866e1b0dc01fef7397ae532d8",
+      "bytes": 3342
+    },
+    {
+      "model": "openai/gpt-4.1-nano",
+      "name": "openrouter-detail-7bcf05298170",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-4.1-nano-2025-04-14/endpoints",
+      "status": 200,
+      "sha256": "96d389f791fcd706c60f96ac67bfb7c0e9854f51000261ac9a6fd7b3870527ed",
+      "bytes": 2358
+    },
+    {
+      "model": "openai/gpt-4o",
+      "name": "openrouter-detail-abb375db7ecf",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-4o/endpoints",
+      "status": 200,
+      "sha256": "15ef2e3e5f50d3377ce83fbd6235d8ef58bfb3d098bbd8f443e77c4c2acb24c3",
+      "bytes": 2446
+    },
+    {
+      "model": "openai/gpt-4o-2024-08-06",
+      "name": "openrouter-detail-9c6268993870",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-4o-2024-08-06/endpoints",
+      "status": 200,
+      "sha256": "58619708f96fffa21cdc76a92d57cc419b8282866b4fb39452d3b8bc5d4f55ff",
+      "bytes": 2623
+    },
+    {
+      "model": "openai/gpt-4o-2024-11-20",
+      "name": "openrouter-detail-339988518635",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-4o-2024-11-20/endpoints",
+      "status": 200,
+      "sha256": "274e185659b36eadac406b37197c285730746cc16a7f158d430eaa9aa85bebc5",
+      "bytes": 1536
+    },
+    {
+      "model": "openai/gpt-4o-mini",
+      "name": "openrouter-detail-94d9f0da9727",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-4o-mini/endpoints",
+      "status": 200,
+      "sha256": "189703c949778b9e63f21396dfff91d4b52c37a911d6bff5671e97f2f935c040",
+      "bytes": 3503
+    },
+    {
+      "model": "openai/gpt-4o-mini-2024-07-18",
+      "name": "openrouter-detail-c6a932a78315",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-4o-mini-2024-07-18/endpoints",
+      "status": 200,
+      "sha256": "13cb59b1865cc5c2cc712626584e3ea48bbf371a02727d5972902e0a8fb4b638",
+      "bytes": 1567
+    },
+    {
+      "model": "openai/gpt-5",
+      "name": "openrouter-detail-3ada7776822f",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5-2025-08-07/endpoints",
+      "status": 200,
+      "sha256": "92c0cb464274766b0e6dc3eac25263df08baec9f1c0a1e8aba54390bae98297f",
+      "bytes": 3580
+    },
+    {
+      "model": "openai/gpt-5-image",
+      "name": "openrouter-detail-6b9deb0abdec",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5-image/endpoints",
+      "status": 200,
+      "sha256": "3af847940eff3a20adcd3f8fd800d8ccdf0de7f59d4b00f687ff84261eb61499",
+      "bytes": 1606
+    },
+    {
+      "model": "openai/gpt-5-image-mini",
+      "name": "openrouter-detail-afb2acc93acb",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5-image-mini/endpoints",
+      "status": 200,
+      "sha256": "a8b0b600bf45e8a1ac9681d49afa68886465209494c0ece4d7dc38b1a37441af",
+      "bytes": 1621
+    },
+    {
+      "model": "openai/gpt-5-mini",
+      "name": "openrouter-detail-020751dc92eb",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5-mini-2025-08-07/endpoints",
+      "status": 200,
+      "sha256": "f87264a62eecec9b450892d5116547d10931268217948e7917a99651e5df9b6f",
+      "bytes": 4677
+    },
+    {
+      "model": "openai/gpt-5-nano",
+      "name": "openrouter-detail-6c69beeb53eb",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5-nano-2025-08-07/endpoints",
+      "status": 200,
+      "sha256": "899ac93a11a8c2dd151705cabc763054a0b00fbcb1d6826280c775a797752580",
+      "bytes": 4685
+    },
+    {
+      "model": "openai/gpt-5.1",
+      "name": "openrouter-detail-934715f8cd07",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.1-20251113/endpoints",
+      "status": 200,
+      "sha256": "e3cfe64e12932e1d7b9137f609410e5493914f7560f4fd7f21d603016dcdc98d",
+      "bytes": 5711
+    },
+    {
+      "model": "openai/gpt-5.1-codex",
+      "name": "openrouter-detail-946622dcd57c",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.1-codex-20251113/endpoints",
+      "status": 200,
+      "sha256": "c125c68380a51d4b6bfba2277bbf7fa99bf701761146027b3cf523021aaca4a5",
+      "bytes": 1529
+    },
+    {
+      "model": "openai/gpt-5.1-codex-max",
+      "name": "openrouter-detail-1ba5d3cc6811",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.1-codex-max-20251204/endpoints",
+      "status": 200,
+      "sha256": "29a092a83034036ce9c3cb2d56cba140e3ad5079015176e54733c01f0af936f8",
+      "bytes": 1536
+    },
+    {
+      "model": "openai/gpt-5.1-codex-mini",
+      "name": "openrouter-detail-7d6f5b731e41",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.1-codex-mini-20251113/endpoints",
+      "status": 200,
+      "sha256": "2dbbad828c98561d7e4d5f4361ba7b729796d13a256788214f822b6ca3894b56",
+      "bytes": 1393
+    },
+    {
+      "model": "openai/gpt-5.2",
+      "name": "openrouter-detail-6132e68d7f0a",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.2-20251211/endpoints",
+      "status": 200,
+      "sha256": "72d030fafda01bd20132437c500cc4d05097d1e823cdc2984df8c4b7e2bfa236",
+      "bytes": 4680
+    },
+    {
+      "model": "openai/gpt-5.2-chat",
+      "name": "openrouter-detail-995498ff4d79",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.2-chat-20251211/endpoints",
+      "status": 200,
+      "sha256": "35a3f1a0cb74d2008497fa2b9981ea612d5b0dc90a541148c9716188d4b16a06",
+      "bytes": 1472
+    },
+    {
+      "model": "openai/gpt-5.2-codex",
+      "name": "openrouter-detail-9214dacc59e4",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.2-codex-20260114/endpoints",
+      "status": 200,
+      "sha256": "7ce19213faac57ce597cb497a950a8a75c5da227b433419fc2da5957f57df77d",
+      "bytes": 1535
+    },
+    {
+      "model": "openai/gpt-5.3-codex",
+      "name": "openrouter-detail-ab2d0d37c491",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.3-codex-20260224/endpoints",
+      "status": 200,
+      "sha256": "c409630478bde28c9a0be6ee4a0a74d1bdab5afe364e6d48a948c71e58ff0173",
+      "bytes": 3719
+    },
+    {
+      "model": "openai/gpt-5.4",
+      "name": "openrouter-detail-da5f158f5abe",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.4-20260305/endpoints",
+      "status": 200,
+      "sha256": "71a02b52c86a67c975d75dc7ab07e00e6b80bc6582b4d512e2aa848fe669c4cd",
+      "bytes": 8513
+    },
+    {
+      "model": "openai/gpt-5.4-image-2",
+      "name": "openrouter-detail-c61ce0b06963",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.4-image-2-20260421/endpoints",
+      "status": 200,
+      "sha256": "25826a31a17a053b76ed3a5e74d4848cf9b59baa277f26241128126f5f713242",
+      "bytes": 1629
+    },
+    {
+      "model": "openai/gpt-5.4-mini",
+      "name": "openrouter-detail-deed65be08ae",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.4-mini-20260317/endpoints",
+      "status": 200,
+      "sha256": "5e212f9165d5f698bf764be7822f4958d50101b0216102325c23c2fa7312c6a6",
+      "bytes": 5770
+    },
+    {
+      "model": "openai/gpt-5.4-nano",
+      "name": "openrouter-detail-4b5415249103",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.4-nano-20260317/endpoints",
+      "status": 200,
+      "sha256": "fb24966572094c06d80e55d2867608ede080bc244e0fb92267c8ea8ff4f2e752",
+      "bytes": 4684
+    },
+    {
+      "model": "openai/gpt-5.5",
+      "name": "openrouter-detail-9a8f4a62b182",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.5-20260423/endpoints",
+      "status": 200,
+      "sha256": "f20bf6a47d264ec05679278f2bc03992913ae62ab2f6f5fe04b47209fcb13bf4",
+      "bytes": 8658
+    },
+    {
+      "model": "openai/gpt-5.6-luna",
+      "name": "openrouter-detail-65a8fc1dec61",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.6-luna-20260709/endpoints",
+      "status": 200,
+      "sha256": "7899e187c347c918510040e2dfbc75b4a904cb4d767f322538c17416f9dce91f",
+      "bytes": 10471
+    },
+    {
+      "model": "openai/gpt-5.6-luna-pro",
+      "name": "openrouter-detail-68c2bc906fa4",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.6-luna-pro-20260709/endpoints",
+      "status": 200,
+      "sha256": "9ae231f9f96284b4cab5563b8add270ebee9526dd6ce17f60941e836d4fddfb1",
+      "bytes": 6913
+    },
+    {
+      "model": "openai/gpt-5.6-sol",
+      "name": "openrouter-detail-0510680735d3",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.6-sol-20260709/endpoints",
+      "status": 200,
+      "sha256": "4427ed0cc0b8771fe26dcd4abcd49d7546e525dbd4986afb919290ed4c0176b7",
+      "bytes": 10321
+    },
+    {
+      "model": "openai/gpt-5.6-sol-pro",
+      "name": "openrouter-detail-0bf4520bbece",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.6-sol-pro-20260709/endpoints",
+      "status": 200,
+      "sha256": "44f0b2426003307effcee91b18fd8f1c1ca0c8bf695cad1089bfba5802fbe33d",
+      "bytes": 6825
+    },
+    {
+      "model": "openai/gpt-5.6-terra",
+      "name": "openrouter-detail-f8dbf8d16fd3",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.6-terra-20260709/endpoints",
+      "status": 200,
+      "sha256": "9cb735d6a74e1fe5c5f7c7b32077e13fc9fc603033d6559aba8a140f87ed626a",
+      "bytes": 9220
+    },
+    {
+      "model": "openai/gpt-5.6-terra-pro",
+      "name": "openrouter-detail-22db8ce8c779",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-5.6-terra-pro-20260709/endpoints",
+      "status": 200,
+      "sha256": "b6505b01f8bb652ae9cf9f7514fb20aa4cbf6aa8d8be7168616d9cb42c38521d",
+      "bytes": 6884
+    },
+    {
+      "model": "openai/gpt-6-astra",
+      "name": "openrouter-detail-5553b7ca5f3e",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-6-astra-20260903/endpoints",
+      "status": 200,
+      "sha256": "0f9e2c71e8c935afac89faa279b6af59b67e3531a2878a41ff9d912cfacb4b8c",
+      "bytes": 10360
+    },
+    {
+      "model": "openai/gpt-6-astra-pro",
+      "name": "openrouter-detail-4d9df5c5312b",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-6-astra-pro-20260903/endpoints",
+      "status": 200,
+      "sha256": "2cf4d7ea2eed724a9fa272d1bafb948e5eaf224c59a94c27b4abec7cbaf2b8d6",
+      "bytes": 8084
+    },
+    {
+      "model": "openai/gpt-6-luna",
+      "name": "openrouter-detail-e5d076977e95",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-6-luna-20260922/endpoints",
+      "status": 200,
+      "sha256": "9a1be1a1aec9b60fc26932fd61889377e92e188e4f2e8c26ae73bb141b79f4f7",
+      "bytes": 10449
+    },
+    {
+      "model": "openai/gpt-6-luna-pro",
+      "name": "openrouter-detail-df3f7ebbf8b0",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-6-luna-pro-20260922/endpoints",
+      "status": 200,
+      "sha256": "ce72ee722d95e59a887240279b5e13ab3ccf91282cfbcf45ede8bc8525471fd4",
+      "bytes": 8181
+    },
+    {
+      "model": "openai/gpt-6-sol",
+      "name": "openrouter-detail-3b5ea6fdfa94",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-6-sol-20260922/endpoints",
+      "status": 200,
+      "sha256": "9013b256e4e57edc022f1073033eb342698d55a046025ad113e024c3e62d9887",
+      "bytes": 10295
+    },
+    {
+      "model": "openai/gpt-6-sol-pro",
+      "name": "openrouter-detail-d49a928848b5",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-6-sol-pro-20260922/endpoints",
+      "status": 200,
+      "sha256": "cc9bdbb03d6498254218186d8c1a8f58c760141e1dca38b41f586d16fb0e5311",
+      "bytes": 8065
+    },
+    {
+      "model": "openai/gpt-6.1-sol",
+      "name": "openrouter-detail-0f7beea535ab",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-6.1-sol-20260929/endpoints",
+      "status": 200,
+      "sha256": "8acdf0ea7c19df6472077e2d526d402168ea05332464c571fa1edc0eb79a1cc9",
+      "bytes": 11534
+    },
+    {
+      "model": "openai/gpt-6.1-sol-pro",
+      "name": "openrouter-detail-d36a76e165bb",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-6.1-sol-pro-20260929/endpoints",
+      "status": 200,
+      "sha256": "9c3569b9675c894e4ed5a99d96b9ac534ecf2b06b45ead73ebb0b56f2676f0bd",
+      "bytes": 9394
+    },
+    {
+      "model": "openai/gpt-6.1-terra",
+      "name": "openrouter-detail-1dcd13c2fce7",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-6.1-terra-20261026/endpoints",
+      "status": 200,
+      "sha256": "cbd3a1d36c299b0803ee677f4fece79f6e91a406bb0efc26da179eeaeb94228c",
+      "bytes": 9205
+    },
+    {
+      "model": "openai/gpt-6.1-terra-pro",
+      "name": "openrouter-detail-cf1e2c842178",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-6.1-terra-pro-20261026/endpoints",
+      "status": 200,
+      "sha256": "0c0057fc8fd1e66cb7b7122f82f86cabc6c3853a160f843ea7b2d32d1bf25747",
+      "bytes": 8191
+    },
+    {
+      "model": "openai/gpt-chat-latest",
+      "name": "openrouter-detail-78bd5e168ef8",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-chat-latest-20260505/endpoints",
+      "status": 200,
+      "sha256": "400b05121476fb2ea3fbb9bb388925d3efe8567c59dd0c43422516b4a6883764",
+      "bytes": 1431
+    },
+    {
+      "model": "openai/gpt-oss-120b",
+      "name": "openrouter-detail-298e8d39a158",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-oss-120b/endpoints",
+      "status": 200,
+      "sha256": "f8f26fcd0db1bf10d79f615fdb60a7f41831d6a8b2b3b81323664c16664f30b6",
+      "bytes": 24952
+    },
+    {
+      "model": "openai/gpt-oss-20b",
+      "name": "openrouter-detail-a741d960ae90",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-oss-20b/endpoints",
+      "status": 200,
+      "sha256": "4c8855cb5c18da12e3bd6f1e468349779a097586c961eed13545db09f46e9530",
+      "bytes": 12762
+    },
+    {
+      "model": "openai/gpt-oss-safeguard-20b",
+      "name": "openrouter-detail-2d7bb78b49dc",
+      "url": "https://openrouter.ai/api/v1/models/openai/gpt-oss-safeguard-20b/endpoints",
+      "status": 200,
+      "sha256": "fd178e8f5b4f73009b94dc189c92a79c134c1928047d6b0fa3ed56a817e3d787",
+      "bytes": 1508
+    },
+    {
+      "model": "openai/o3",
+      "name": "openrouter-detail-f61f191f9b55",
+      "url": "https://openrouter.ai/api/v1/models/openai/o3-2025-04-16/endpoints",
+      "status": 200,
+      "sha256": "152c898068ea85de409776d7c9b0fe873a1acbb183111ec9441dcf4cfb5babf0",
+      "bytes": 1414
+    },
+    {
+      "model": "particle-ai/particle-1",
+      "name": "openrouter-detail-9b7b85d680f6",
+      "url": "https://openrouter.ai/api/v1/models/particle-ai/particle-1-20261027/endpoints",
+      "status": 200,
+      "sha256": "973073707c28b99ba7a38f56cdcac02d792afc9a60b2bae7b7a4fe41df4f8e14",
+      "bytes": 2707
+    },
+    {
+      "model": "prism-ml/ternary-bonsai-2-27b",
+      "name": "openrouter-detail-4f6800623034",
+      "url": "https://openrouter.ai/api/v1/models/prism-ml/ternary-bonsai-2-27b-20260918/endpoints",
+      "status": 200,
+      "sha256": "ba21c5b6f69be51bf721d4f7a1cf4b88ede2d3bd702d44e566e6bec51f04f455",
+      "bytes": 1617
+    },
+    {
+      "model": "prism-ml/ternary-bonsai-2-9b",
+      "name": "openrouter-detail-e96f4856f21d",
+      "url": "https://openrouter.ai/api/v1/models/prism-ml/ternary-bonsai-2-9b-20261015/endpoints",
+      "status": 200,
+      "sha256": "2fd914fd5695c7b4c73c9a601d2c1d474613e71da2342ca5c5d28c913789348d",
+      "bytes": 1565
+    },
+    {
+      "model": "qwen/qwen-plus",
+      "name": "openrouter-detail-f4b4ee582155",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen-plus-2025-01-25/endpoints",
+      "status": 200,
+      "sha256": "4ed129f011bb91f7454ddd9d6207c58b23f576f4cf84922d9e8d3db133a7dbf6",
+      "bytes": 1583
+    },
+    {
+      "model": "qwen/qwen2.5-vl-72b-instruct",
+      "name": "openrouter-detail-bb08e47b7504",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen2.5-vl-72b-instruct/endpoints",
+      "status": 200,
+      "sha256": "e7a272f7c0eb6296ad86f40ad790bf7e3cb7140202965a20788fdbe8181f62db",
+      "bytes": 1520
+    },
+    {
+      "model": "qwen/qwen3-235b-a22b-2507",
+      "name": "openrouter-detail-42af9df03923",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3-235b-a22b-07-25/endpoints",
+      "status": 200,
+      "sha256": "d03c571b3ae4c53bdb38370e80b273229d5d14f4be1bb499514c918b09a30dd3",
+      "bytes": 6650
+    },
+    {
+      "model": "qwen/qwen3-30b-a3b-instruct-2507",
+      "name": "openrouter-detail-26969166bb23",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3-30b-a3b-instruct-2507/endpoints",
+      "status": 200,
+      "sha256": "df1950a79d41574874101929b6b1d9e95e0c2a64160043fc276684d4f63e358b",
+      "bytes": 3566
+    },
+    {
+      "model": "qwen/qwen3-coder",
+      "name": "openrouter-detail-651f6c34080f",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3-coder-480b-a35b-07-25/endpoints",
+      "status": 200,
+      "sha256": "7ae00fe41ae0fc0b614f471d78bd3ecee2d49dd6dcbd918b032d09a20a89099d",
+      "bytes": 2525
+    },
+    {
+      "model": "qwen/qwen3-coder-flash",
+      "name": "openrouter-detail-43ce1af882f3",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3-coder-flash/endpoints",
+      "status": 200,
+      "sha256": "f78816575870dddf4a154c53516e1f4fe707a5b04c3a883884cfed30d8842386",
+      "bytes": 1791
+    },
+    {
+      "model": "qwen/qwen3-coder-next",
+      "name": "openrouter-detail-a08fd5905ece",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3-coder-next-2025-02-03/endpoints",
+      "status": 200,
+      "sha256": "0241b1b685a1332c314ed46cff433dfca2a14056e023c3af712656d4a933e80b",
+      "bytes": 1514
+    },
+    {
+      "model": "qwen/qwen3-vl-235b-a22b-instruct",
+      "name": "openrouter-detail-2ef24b9cdfd6",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3-vl-235b-a22b-instruct/endpoints",
+      "status": 200,
+      "sha256": "ab80c895e831990bb73111a7e5a187d171861d3d8351ecb88b2709f0ee43d1f1",
+      "bytes": 3670
+    },
+    {
+      "model": "qwen/qwen3-vl-8b-instruct",
+      "name": "openrouter-detail-749554b47437",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3-vl-8b-instruct/endpoints",
+      "status": 200,
+      "sha256": "f031bb6ea2b5924669c5559a3ed206ee3978cb429e83351c0b6a60701743cc2c",
+      "bytes": 1590
+    },
+    {
+      "model": "qwen/qwen3.5-35b-a3b",
+      "name": "openrouter-detail-495e7b0e0cc9",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.5-35b-a3b-20260224/endpoints",
+      "status": 200,
+      "sha256": "908483d87c495536828cc2285a20746ecc14d2c3f291ecb80f0e82d34bc766e3",
+      "bytes": 8865
+    },
+    {
+      "model": "qwen/qwen3.5-397b-a17b",
+      "name": "openrouter-detail-f421d02b292a",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.5-397b-a17b-20260216/endpoints",
+      "status": 200,
+      "sha256": "e8c80cb844ed97da85687f383b201b4da94d39b6d28ff9077fee666d957a44d3",
+      "bytes": 10822
+    },
+    {
+      "model": "qwen/qwen3.5-9b",
+      "name": "openrouter-detail-00fbfb02d898",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.5-9b-20260310/endpoints",
+      "status": 200,
+      "sha256": "54c6edc70eac3872cf1689d42a0b997f8f54d65316007670f687bb22f2a193a3",
+      "bytes": 8678
+    },
+    {
+      "model": "qwen/qwen3.6-35b-a3b",
+      "name": "openrouter-detail-965cbc0c4dc7",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.6-35b-a3b-20260415/endpoints",
+      "status": 200,
+      "sha256": "56b632a92fec12ab220ad391bc801cc60b479e1d1cabce7fd51346c470163e25",
+      "bytes": 11999
+    },
+    {
+      "model": "qwen/qwen3.7-flash",
+      "name": "openrouter-detail-557e105915d2",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.7-flash-20260727/endpoints",
+      "status": 200,
+      "sha256": "a69398d4638c31d54a8b9ad51d9799096e2eb45a4634c2f626710da826de1f28",
+      "bytes": 3045
+    },
+    {
+      "model": "qwen/qwen3.7-max",
+      "name": "openrouter-detail-8f40c485247b",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.7-max-20260520/endpoints",
+      "status": 200,
+      "sha256": "6e1f28e13e5152e8459af61f92dbd2947046dd2a70280243206f5f16ded3b221",
+      "bytes": 2563
+    },
+    {
+      "model": "qwen/qwen3.7-plus",
+      "name": "openrouter-detail-d2115f93d04c",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.7-plus-20260602/endpoints",
+      "status": 200,
+      "sha256": "54bf03e37a27f97d4f00dc810417df17e003c103364e4c556f2066b317a364c5",
+      "bytes": 2928
+    },
+    {
+      "model": "qwen/qwen3.8-2.4t-a95b",
+      "name": "openrouter-detail-ceff21f92ca5",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.8-2.4t-a95b-20260812/endpoints",
+      "status": 200,
+      "sha256": "d4ff27130af1b62c0d7a82a2c32a694196f26c73c6e8d9023487a7d7e69254a1",
+      "bytes": 4639
+    },
+    {
+      "model": "qwen/qwen3.8-27b",
+      "name": "openrouter-detail-401ffb2c754c",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.8-27b-20260814/endpoints",
+      "status": 200,
+      "sha256": "552c9b2d8f20c70054650e8563ae4333ec1fea5bf796f30176f1feecf727aaf4",
+      "bytes": 26590
+    },
+    {
+      "model": "qwen/qwen3.8-flash",
+      "name": "openrouter-detail-1d04f82b2a59",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.8-flash-20260826/endpoints",
+      "status": 200,
+      "sha256": "ad27fe2693215fcd7864a86cac9c808672d05e0ec79a3b0b3f8c846750c8b8dd",
+      "bytes": 2640
+    },
+    {
+      "model": "qwen/qwen3.8-max-0902",
+      "name": "openrouter-detail-74277771bfd2",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.8-max-20260902/endpoints",
+      "status": 200,
+      "sha256": "4b4fd9cbb37346b575111b115450265f686466e53056a58a2bdc1cce93dd1a1a",
+      "bytes": 2644
+    },
+    {
+      "model": "qwen/qwen3.8-max-prime",
+      "name": "openrouter-detail-a6ec865aeab5",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.8-max-prime-20260923/endpoints",
+      "status": 200,
+      "sha256": "47c1019faa2f18bfe1146b35a3d29f7c41034fb0de30bfb0a3f85a0590aca32b",
+      "bytes": 1520
+    },
+    {
+      "model": "qwen/qwen3.8-omni-flash",
+      "name": "openrouter-detail-46f7ae128ae4",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen3.8-omni-flash-20260918/endpoints",
+      "status": 200,
+      "sha256": "659195d21d48374f4c58f7b09773bb83b3496af3b1bfb7885276fb20429be540",
+      "bytes": 1569
+    },
+    {
+      "model": "qwen/qwen4-max",
+      "name": "openrouter-detail-1900d31333a1",
+      "url": "https://openrouter.ai/api/v1/models/qwen/qwen4-max-20261115/endpoints",
+      "status": 200,
+      "sha256": "1f5322f1918558555e684525701882027a02fd49692863c0c8f478e2189cecd7",
+      "bytes": 1531
+    },
+    {
+      "model": "reflection/beam-1.0-501b-a23b",
+      "name": "openrouter-detail-b602e6362f49",
+      "url": "https://openrouter.ai/api/v1/models/reflection/beam-1.0-501b-a23b-20261016/endpoints",
+      "status": 200,
+      "sha256": "84ec682f25b3fc72e7a36235a7c43534f2fbb5210d5494eb62e3ab3913ba0b53",
+      "bytes": 5872
+    },
+    {
+      "model": "ricursiveai/ripple-65b-preview",
+      "name": "openrouter-detail-00f96d1562d7",
+      "url": "https://openrouter.ai/api/v1/models/ricursiveai/ripple-65b-preview-20261104/endpoints",
+      "status": 200,
+      "sha256": "e03942d1571ed393791ea1bc628fee7a707dddcfa2e3115c570c8dd3a8ff4417",
+      "bytes": 3459
+    },
+    {
+      "model": "sakana/fugu-max",
+      "name": "openrouter-detail-72412dce49f8",
+      "url": "https://openrouter.ai/api/v1/models/sakana/fugu-max-20260911/endpoints",
+      "status": 200,
+      "sha256": "c550696da7624d229a19117088d8f318e8a0946d0c5943c25e84e30afac7d40d",
+      "bytes": 1453
+    },
+    {
+      "model": "sakana/fugu-ultra",
+      "name": "openrouter-detail-391ed96fdfa0",
+      "url": "https://openrouter.ai/api/v1/models/sakana/fugu-ultra-20260615/endpoints",
+      "status": 200,
+      "sha256": "9108c849e43c2ed348783bfdc955d5e8b4d9d8fd63a15576a0608475783d6d8b",
+      "bytes": 1569
+    },
+    {
+      "model": "sakana/fugu-ultra-v2",
+      "name": "openrouter-detail-79c9dd49261d",
+      "url": "https://openrouter.ai/api/v1/models/sakana/fugu-ultra-v2-20260911/endpoints",
+      "status": 200,
+      "sha256": "43d13188134327a4e36245bbf52fc4d08f8730fbff3449fdf05eb7938bdf9e89",
+      "bytes": 1593
+    },
+    {
+      "model": "sakana/sakana-namazu",
+      "name": "openrouter-detail-74f7ed956e01",
+      "url": "https://openrouter.ai/api/v1/models/sakana/namazu-20260811/endpoints",
+      "status": 200,
+      "sha256": "22e3750e85431860bd705ed67e69a510149a102375e870890bb6315b14c9a1b4",
+      "bytes": 1487
+    },
+    {
+      "model": "stepfun/step-3.7-flash",
+      "name": "openrouter-detail-7105be09d96d",
+      "url": "https://openrouter.ai/api/v1/models/stepfun/step-3.7-flash-20260528/endpoints",
+      "status": 200,
+      "sha256": "d2db695254c5611ea5371d6100cca14bc953428b2058aede47100abc5fb2fb0d",
+      "bytes": 2614
+    },
+    {
+      "model": "stepfun/step-5-preview",
+      "name": "openrouter-detail-f89262339661",
+      "url": "https://openrouter.ai/api/v1/models/stepfun/step-5-preview-20261008/endpoints",
+      "status": 200,
+      "sha256": "bbfeaa7d5b65af6c6494ac323601f5339123e56c973e9758c598bb38379ceabe",
+      "bytes": 2573
+    },
+    {
+      "model": "tencent/hy3",
+      "name": "openrouter-detail-d23e83fbb1d3",
+      "url": "https://openrouter.ai/api/v1/models/tencent/hy3-20260706/endpoints",
+      "status": 200,
+      "sha256": "da0217f3761ba1b15e002f431c3dea6aa9e507b3e49011d3ab92764e9b0cf53b",
+      "bytes": 3611
+    },
+    {
+      "model": "tencent/hy3-preview",
+      "name": "openrouter-detail-10d7a91a76d7",
+      "url": "https://openrouter.ai/api/v1/models/tencent/hy3-preview-20260421/endpoints",
+      "status": 200,
+      "sha256": "394ab3b708d9dd193c44a2404235e38122f9eb34d889f68d34d73e5c39fe35f3",
+      "bytes": 1406
+    },
+    {
+      "model": "tencent/hy4",
+      "name": "openrouter-detail-a7ef874ff31c",
+      "url": "https://openrouter.ai/api/v1/models/tencent/hy4-20261104/endpoints",
+      "status": 200,
+      "sha256": "9f5d9dcb7f3e4d35f014b7d40007a28e3269b9ff292c8aa503cfa95705ac952a",
+      "bytes": 1452
+    },
+    {
+      "model": "tencent/hy4-flash",
+      "name": "openrouter-detail-a414101e398a",
+      "url": "https://openrouter.ai/api/v1/models/tencent/hy4-flash-20261116/endpoints",
+      "status": 200,
+      "sha256": "0417b56d7face714c444f56065d14f201c380f8116edf98b81a4c70a4855be8f",
+      "bytes": 1456
+    },
+    {
+      "model": "tencent/hy4-preview",
+      "name": "openrouter-detail-383f40728e3e",
+      "url": "https://openrouter.ai/api/v1/models/tencent/hy4-preview-20260827/endpoints",
+      "status": 200,
+      "sha256": "63ecc5546e7d6c32c69a21e2232b519d96eeda4f51d65af8833124aae4b20885",
+      "bytes": 6814
+    },
+    {
+      "model": "thedrummer/cydonia-24b-v4.1",
+      "name": "openrouter-detail-58ef30d8831b",
+      "url": "https://openrouter.ai/api/v1/models/thedrummer/cydonia-24b-v4.1/endpoints",
+      "status": 200,
+      "sha256": "e548750a427af6262411413c7aa4419d0dea2b9f9e4d321ca5e72d83cab6a1d7",
+      "bytes": 1433
+    },
+    {
+      "model": "thedrummer/skyfall-36b-v2",
+      "name": "openrouter-detail-2bfa34e89dd3",
+      "url": "https://openrouter.ai/api/v1/models/thedrummer/skyfall-36b-v2/endpoints",
+      "status": 200,
+      "sha256": "c7abd6b299f6f2b5dd0b5f20001bf2b8f00a0a4f0c93644fa766687de6ee93d0",
+      "bytes": 1481
+    },
+    {
+      "model": "thinkingmachines/inkling",
+      "name": "openrouter-detail-b439c804161f",
+      "url": "https://openrouter.ai/api/v1/models/thinkingmachines/inkling-20260715/endpoints",
+      "status": 200,
+      "sha256": "71da5fc7606446512e54fa715e54a04a2e4a3cc313311ed2475de83369ba0f57",
+      "bytes": 1550
+    },
+    {
+      "model": "thinkingmachines/inkling-2-small",
+      "name": "openrouter-detail-77b73e2ca0e4",
+      "url": "https://openrouter.ai/api/v1/models/thinkingmachines/inkling-2-small-20261107/endpoints",
+      "status": 200,
+      "sha256": "4c2900a0195e4ad99907250c551176f8ca38c6e2624a6c98f9741637e1ac7c81",
+      "bytes": 7168
+    },
+    {
+      "model": "thinkingmachines/inkling-small",
+      "name": "openrouter-detail-35c4f287acc7",
+      "url": "https://openrouter.ai/api/v1/models/thinkingmachines/inkling-small-20260730/endpoints",
+      "status": 200,
+      "sha256": "c39f4b93a83b2dd9d7af63edd610c4504e0dc9d4ad0fbb5bfcead06203964a43",
+      "bytes": 1586
+    },
+    {
+      "model": "unbiased/pareto-26.10",
+      "name": "openrouter-detail-a93a7b28a19c",
+      "url": "https://openrouter.ai/api/v1/models/unbiased/pareto-26.10-20261015/endpoints",
+      "status": 200,
+      "sha256": "f145fd64d716f8212c06aec7be2360d4a4cbd96360f7f33e5d2c9cc6151ed05b",
+      "bytes": 1328
+    },
+    {
+      "model": "unbiased/pareto-26.10-preview",
+      "name": "openrouter-detail-44eb9d5b4f27",
+      "url": "https://openrouter.ai/api/v1/models/unbiased/pareto-26.10-preview-20260929/endpoints",
+      "status": 200,
+      "sha256": "5eb60af20e1610dcc6cac74b5c165ad5d7d23fcb250528144c359caef1f4e62c",
+      "bytes": 1401
+    },
+    {
+      "model": "unbiased/pareto-26.9",
+      "name": "openrouter-detail-79961ff436b0",
+      "url": "https://openrouter.ai/api/v1/models/unbiased/pareto-26.9-20260917/endpoints",
+      "status": 200,
+      "sha256": "6f580740ff627c81a6d8b58635f2f997addee0c73f59cc20919de2cb8e7902b1",
+      "bytes": 1327
+    },
+    {
+      "model": "undi95/remm-slerp-l2-13b",
+      "name": "openrouter-detail-8194a24ebea4",
+      "url": "https://openrouter.ai/api/v1/models/undi95/remm-slerp-l2-13b/endpoints",
+      "status": 200,
+      "sha256": "065de0e0c19178abfa77587aae81c76862433dea867f193689ff530de7f6aa76",
+      "bytes": 1354
+    },
+    {
+      "model": "upstage/solar-mini4",
+      "name": "openrouter-detail-f99cd5ceed3a",
+      "url": "https://openrouter.ai/api/v1/models/upstage/solar-mini4-20260922/endpoints",
+      "status": 200,
+      "sha256": "8aa8d41baf03bd94830c2300e631a82c905b38b776af9d9482e6e956160d9adc",
+      "bytes": 2510
+    },
+    {
+      "model": "upstage/solar-pro4",
+      "name": "openrouter-detail-754df8b5922b",
+      "url": "https://openrouter.ai/api/v1/models/upstage/solar-pro4-20260810/endpoints",
+      "status": 200,
+      "sha256": "102b86ef3ca8903a60f78706c774d767f89cd6fc103a9b74ba09a14ca9f6184b",
+      "bytes": 3580
+    },
+    {
+      "model": "x-ai/grok-4.20",
+      "name": "openrouter-detail-e0ae05c9a8a8",
+      "url": "https://openrouter.ai/api/v1/models/x-ai/grok-4.20-20260309/endpoints",
+      "status": 200,
+      "sha256": "06192d2ddae7229f1b2029670c5c548f8b4dfe9eddba218abe83fad87678bf81",
+      "bytes": 5055
+    },
+    {
+      "model": "x-ai/grok-4.20-multi-agent",
+      "name": "openrouter-detail-09d07095e952",
+      "url": "https://openrouter.ai/api/v1/models/x-ai/grok-4.20-multi-agent-20260309/endpoints",
+      "status": 200,
+      "sha256": "fb4134df7bace4910bbef6c48c1461cb399da32dce132a2b30a6622ba1e1467a",
+      "bytes": 5231
+    },
+    {
+      "model": "x-ai/grok-4.3",
+      "name": "openrouter-detail-d45d261093b4",
+      "url": "https://openrouter.ai/api/v1/models/x-ai/grok-4.3-20260430/endpoints",
+      "status": 200,
+      "sha256": "e7f06c9cc50e9dfadfd262dc28d9b664cb849da4bfc1b8d76f985b8bf24d9331",
+      "bytes": 5124
+    },
+    {
+      "model": "x-ai/grok-4.5",
+      "name": "openrouter-detail-937491819d36",
+      "url": "https://openrouter.ai/api/v1/models/x-ai/grok-4.5-20260708/endpoints",
+      "status": 200,
+      "sha256": "57f29a0b40004c2aab75d9cfd4c1e1eaf1f37e33c1c685cf80968b64bbc6453b",
+      "bytes": 5014
+    },
+    {
+      "model": "x-ai/grok-4.6",
+      "name": "openrouter-detail-1bb208f033c7",
+      "url": "https://openrouter.ai/api/v1/models/x-ai/grok-4.6-20260810/endpoints",
+      "status": 200,
+      "sha256": "99ab0347bccde08cb551a884a7819dd63c79da87b3d1f91cf95eccb5f48d1b52",
+      "bytes": 7318
+    },
+    {
+      "model": "x-ai/grok-4.7",
+      "name": "openrouter-detail-5d9fc1a7243d",
+      "url": "https://openrouter.ai/api/v1/models/x-ai/grok-4.7-20260916/endpoints",
+      "status": 200,
+      "sha256": "a9f43f662b0ce288b0f99a68ed3c6485ca7bed8e83b1167adfbc54e5616862bd",
+      "bytes": 7384
+    },
+    {
+      "model": "x-ai/grok-build-0.1",
+      "name": "openrouter-detail-3ae17c1214a6",
+      "url": "https://openrouter.ai/api/v1/models/x-ai/grok-build-0.1-20260520/endpoints",
+      "status": 200,
+      "sha256": "f3bf07c414c5621cc44df151714f8a9ca6037583e22b216efde986cdbe26d4b3",
+      "bytes": 5121
+    },
+    {
+      "model": "xiaomi/mimo-v2.5",
+      "name": "openrouter-detail-0d00a1ce33dd",
+      "url": "https://openrouter.ai/api/v1/models/xiaomi/mimo-v2.5-20260422/endpoints",
+      "status": 200,
+      "sha256": "b929ac3ceb8cd0cf731f65d7a9acba59ca3552fbfe7e9892b4ab8ade38d3f55a",
+      "bytes": 1507
+    },
+    {
+      "model": "xiaomi/mimo-v2.5-pro",
+      "name": "openrouter-detail-f9fafe886277",
+      "url": "https://openrouter.ai/api/v1/models/xiaomi/mimo-v2.5-pro-20260422/endpoints",
+      "status": 200,
+      "sha256": "1de258d71455db68bccdb74205723d3a2a95aca6a79052621ed5b3b693af8610",
+      "bytes": 2449
+    },
+    {
+      "model": "xiaomi/mimo-v2.6-flash",
+      "name": "openrouter-detail-60cd64beda36",
+      "url": "https://openrouter.ai/api/v1/models/xiaomi/mimo-v2.6-flash-20260921/endpoints",
+      "status": 200,
+      "sha256": "49f2a8c0a03f2d84cc3075d739f0c787dcf0d631a58d546622ac061219784ad5",
+      "bytes": 8839
+    },
+    {
+      "model": "xiaomi/mimo-v2.6-pro",
+      "name": "openrouter-detail-dabee5e3d87d",
+      "url": "https://openrouter.ai/api/v1/models/xiaomi/mimo-v2.6-pro-20260921/endpoints",
+      "status": 200,
+      "sha256": "084bb85c7d2f32a212d44efef23452aa8578505a81f72ffaf5c9b4018e1ab20c",
+      "bytes": 5493
+    },
+    {
+      "model": "xiaomi/mimo-v2.6-pro-ultraspeed",
+      "name": "openrouter-detail-7bbd92027b2f",
+      "url": "https://openrouter.ai/api/v1/models/xiaomi/mimo-v2.6-pro-ultraspeed-20260921/endpoints",
+      "status": 200,
+      "sha256": "65f901f4a89adca76a3cc42548d2e37401941dd4038b40a90b4840847228ca3e",
+      "bytes": 1570
+    },
+    {
+      "model": "z-ai/glm-4.5",
+      "name": "openrouter-detail-841b05687648",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-4.5/endpoints",
+      "status": 200,
+      "sha256": "a2639203c93272938e512b7730d809bb1e4073077466f775258795f2f61a26f0",
+      "bytes": 1361
+    },
+    {
+      "model": "z-ai/glm-4.5-air",
+      "name": "openrouter-detail-f00776082fae",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-4.5-air/endpoints",
+      "status": 200,
+      "sha256": "217bf2adcb3cdb5c975755c4905e582ddc15f378333b49c8805903b434723ab2",
+      "bytes": 3241
+    },
+    {
+      "model": "z-ai/glm-4.5v",
+      "name": "openrouter-detail-b90cbc4d9285",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-4.5v/endpoints",
+      "status": 200,
+      "sha256": "46a20bc68925b91d5cb1be0a402aef7f77d86af01de73b65e8cbc98375498bf0",
+      "bytes": 2386
+    },
+    {
+      "model": "z-ai/glm-4.6",
+      "name": "openrouter-detail-f638a52e926a",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-4.6/endpoints",
+      "status": 200,
+      "sha256": "e164035de0830efb16e264933e7c30108ec5756be9b47e8ce40b22e7da090e13",
+      "bytes": 5266
+    },
+    {
+      "model": "z-ai/glm-4.6v",
+      "name": "openrouter-detail-425251ffdffa",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-4.6-20251208/endpoints",
+      "status": 200,
+      "sha256": "a9e3e516fe04b11649471eb75eed4c4e759165b225e72b86f56b8b9272d31709",
+      "bytes": 2379
+    },
+    {
+      "model": "z-ai/glm-4.7",
+      "name": "openrouter-detail-bce058fcc483",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-4.7-20251222/endpoints",
+      "status": 200,
+      "sha256": "a1cb680e68f1dd9068a7dc7d3f2b2011b94e836b3378f0a35ce56662f270da5b",
+      "bytes": 6403
+    },
+    {
+      "model": "z-ai/glm-5",
+      "name": "openrouter-detail-986bbb35433d",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-5-20260211/endpoints",
+      "status": 200,
+      "sha256": "beeaf4139202d0076b9a74263da3a79dde3be5373b7c0cfba79120cdf42667ff",
+      "bytes": 8939
+    },
+    {
+      "model": "z-ai/glm-5-turbo",
+      "name": "openrouter-detail-7f2e81a45404",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-5-turbo-20260315/endpoints",
+      "status": 200,
+      "sha256": "9f50626d06ab0df53586eee5fc54f3a7c29281ab9f0c4111d822b3b737a35a9d",
+      "bytes": 1360
+    },
+    {
+      "model": "z-ai/glm-5.1",
+      "name": "openrouter-detail-2bf4c98a7478",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-5.1-20260406/endpoints",
+      "status": 200,
+      "sha256": "48a2383df2939522a47bf3c6e253822cac72a9abafb998617e05d45c890ee3e4",
+      "bytes": 11220
+    },
+    {
+      "model": "z-ai/glm-5.2",
+      "name": "openrouter-detail-0c72ffa4e7c0",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-5.2-20260616/endpoints",
+      "status": 200,
+      "sha256": "dc9e864f5133b57df7afb3f3d0eafa004b8c8584282dffbd5b8479bc666fe101",
+      "bytes": 35348
+    },
+    {
+      "model": "z-ai/glm-5.3",
+      "name": "openrouter-detail-0691ed45b103",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-5.3-20260816/endpoints",
+      "status": 200,
+      "sha256": "450d4dba3a08d0e88023683490f8706eb8cb4fdc104b0a73f1d39de4100a5d89",
+      "bytes": 50598
+    },
+    {
+      "model": "z-ai/glm-5.3-flash",
+      "name": "openrouter-detail-26f56e65693b",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-5.3-flash-20260826/endpoints",
+      "status": 200,
+      "sha256": "e81ce854c58f612afae8e10216d9ec10e82d49090d1a55ef14e3c237543896a8",
+      "bytes": 46891
+    },
+    {
+      "model": "z-ai/glm-5.3-flashx",
+      "name": "openrouter-detail-10ade0d1eedd",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-5.3-flashx-20260918/endpoints",
+      "status": 200,
+      "sha256": "87abca22a295d9043b00c93e70bfd1219ac50be3e42e6b59da8e23ea2c2d0fbc",
+      "bytes": 1458
+    },
+    {
+      "model": "z-ai/glm-5.3-flashx-legal",
+      "name": "openrouter-detail-27b7f9eb98cf",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-5.3-flashx-legal-20261102/endpoints",
+      "status": 200,
+      "sha256": "e2a8df42710a4479d74f8b13a9d608c832d855236f67df5a11399423b10ccb0b",
+      "bytes": 1520
+    },
+    {
+      "model": "z-ai/glm-5.3-prime",
+      "name": "openrouter-detail-6409369fd9e9",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-5.3-prime-20260921/endpoints",
+      "status": 200,
+      "sha256": "94645a71f40f662ac031aeead82cadedb05e4e3fa70f2e1d9a3d586c6bff50c4",
+      "bytes": 1519
+    },
+    {
+      "model": "z-ai/glm-5v-turbo",
+      "name": "openrouter-detail-b0828d23a33d",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-5v-turbo-20260401/endpoints",
+      "status": 200,
+      "sha256": "6e257f7eb51bbb82cc9b9e8c3e81d6abd90a1674b9e1ac8ddada0a108962afd4",
+      "bytes": 1421
+    },
+    {
+      "model": "~anthropic/claude-fable-latest",
+      "name": "openrouter-detail-18bd34cc6db3",
+      "url": "https://openrouter.ai/api/v1/models/~anthropic/claude-fable-latest/endpoints",
+      "status": 200,
+      "sha256": "aeec25eee5b0da4f027812793a3c9f7071b7de67ead3be7b389f0d34aa8b5b5b",
+      "bytes": 382
+    },
+    {
+      "model": "~anthropic/claude-haiku-latest",
+      "name": "openrouter-detail-5995211369ff",
+      "url": "https://openrouter.ai/api/v1/models/~anthropic/claude-haiku-latest/endpoints",
+      "status": 200,
+      "sha256": "45dbf5f1dbaf3fa745f37b21815975547b246b6be1ffd69eec78cc3e70cd8d17",
+      "bytes": 370
+    },
+    {
+      "model": "~anthropic/claude-opus-latest",
+      "name": "openrouter-detail-ac2b8ba786f7",
+      "url": "https://openrouter.ai/api/v1/models/~anthropic/claude-opus-latest/endpoints",
+      "status": 200,
+      "sha256": "ab1500c0a2fcad3284abbc3ffd2c25eb5781fef6158671f33ef3a9d7287b1609",
+      "bytes": 367
+    },
+    {
+      "model": "~anthropic/claude-sonnet-latest",
+      "name": "openrouter-detail-577c880b1045",
+      "url": "https://openrouter.ai/api/v1/models/~anthropic/claude-sonnet-latest/endpoints",
+      "status": 200,
+      "sha256": "b9e160b678b2932ecd1b55bcd6d5b40e9dd6bf549b67e04cf6df95f19b6e2bac",
+      "bytes": 373
+    },
+    {
+      "model": "~deepseek/deepseek-flash-latest",
+      "name": "openrouter-detail-49ed4365c1b9",
+      "url": "https://openrouter.ai/api/v1/models/~deepseek/deepseek-flash-latest/endpoints",
+      "status": 200,
+      "sha256": "16b97c36d64c12f7679abd01ab024d131d54bcdd10e7dcb7d4602230e1ab9cfc",
+      "bytes": 374
+    },
+    {
+      "model": "~deepseek/deepseek-pro-latest",
+      "name": "openrouter-detail-1212abeb72d8",
+      "url": "https://openrouter.ai/api/v1/models/~deepseek/deepseek-pro-latest/endpoints",
+      "status": 200,
+      "sha256": "9541aa0fbf79f7ba85fd1d95d6a24aa8d9e48eda23e41635ef61e400562676a5",
+      "bytes": 354
+    },
+    {
+      "model": "~deepseek/deepseek-v4-flash-latest",
+      "name": "openrouter-detail-c18d96bcf620",
+      "url": "https://openrouter.ai/api/v1/models/~deepseek/deepseek-v4-flash-latest/endpoints",
+      "status": 200,
+      "sha256": "b776c29b4799e704beeb5e9bd9b176215f5cf93d551323e1b6372e2e54c9341f",
+      "bytes": 369
+    },
+    {
+      "model": "~google/gemini-flash-latest",
+      "name": "openrouter-detail-6dd72c7a28ad",
+      "url": "https://openrouter.ai/api/v1/models/~google/gemini-flash-latest/endpoints",
+      "status": 200,
+      "sha256": "810210d06c2ded2f3aa337d2310df8bd3ff3a39456c195905dafdf43843f651e",
+      "bytes": 404
+    },
+    {
+      "model": "~google/gemini-pro-latest",
+      "name": "openrouter-detail-7726e9ae38cc",
+      "url": "https://openrouter.ai/api/v1/models/~google/gemini-pro-latest/endpoints",
+      "status": 200,
+      "sha256": "5650785943245ce8551d438bd094653453f09bedceb87c9950c9bbe58168c2a1",
+      "bytes": 398
+    },
+    {
+      "model": "~moonshotai/kimi-latest",
+      "name": "openrouter-detail-c2b6e4886cee",
+      "url": "https://openrouter.ai/api/v1/models/~moonshotai/kimi-latest/endpoints",
+      "status": 200,
+      "sha256": "3b9091ebc0db83bce8a9e4e7c1a86d52530a205e3ae11f6fd144f35ac25f2462",
+      "bytes": 348
+    },
+    {
+      "model": "~openai/gpt-astra-latest",
+      "name": "openrouter-detail-58eb05564420",
+      "url": "https://openrouter.ai/api/v1/models/~openai/gpt-astra-latest/endpoints",
+      "status": 200,
+      "sha256": "ee548bd756d9590c2de8c65c12dd4323b7b542c6f8ebece505605210234fcfda",
+      "bytes": 367
+    },
+    {
+      "model": "~openai/gpt-luna-latest",
+      "name": "openrouter-detail-54031cb4b845",
+      "url": "https://openrouter.ai/api/v1/models/~openai/gpt-luna-latest/endpoints",
+      "status": 200,
+      "sha256": "e450c65c4f2b069f792bb5423a7bb713ba506f89806f161043896749011386ad",
+      "bytes": 364
+    },
+    {
+      "model": "~openai/gpt-mini-latest",
+      "name": "openrouter-detail-b3df59b6b1ce",
+      "url": "https://openrouter.ai/api/v1/models/~openai/gpt-mini-latest/endpoints",
+      "status": 200,
+      "sha256": "e26f708ba5d2ea7ff91ee1854014d80382d06bb7494dd519b539b22de73c1ec2",
+      "bytes": 364
+    },
+    {
+      "model": "~openai/gpt-sol-latest",
+      "name": "openrouter-detail-b02b2dacbbb1",
+      "url": "https://openrouter.ai/api/v1/models/~openai/gpt-sol-latest/endpoints",
+      "status": 200,
+      "sha256": "30c77795f397a547e0144f57c103d287a66f72d61df345de4300b828e8b25183",
+      "bytes": 361
+    },
+    {
+      "model": "~openai/gpt-terra-latest",
+      "name": "openrouter-detail-444173248824",
+      "url": "https://openrouter.ai/api/v1/models/~openai/gpt-terra-latest/endpoints",
+      "status": 200,
+      "sha256": "2888f2b0fc76334a726bba0e2574ba3518c5dfc59de1fc697603d60ce2f2bc63",
+      "bytes": 367
+    },
+    {
+      "model": "~unbiased/pareto-latest",
+      "name": "openrouter-detail-c174de4f8867",
+      "url": "https://openrouter.ai/api/v1/models/~unbiased/pareto-latest/endpoints",
+      "status": 200,
+      "sha256": "1c32ed07ddf0b9299ec57e24a01666486f19a0e36f93b1a80f41b7dfee361c33",
+      "bytes": 340
+    },
+    {
+      "model": "~x-ai/grok-latest",
+      "name": "openrouter-detail-c783e1c9b511",
+      "url": "https://openrouter.ai/api/v1/models/~x-ai/grok-latest/endpoints",
+      "status": 200,
+      "sha256": "42243a66a87976c8b4c4764c3ed2bf61bbcafa5611f2ba42df13ec74345de713",
+      "bytes": 342
+    },
+    {
+      "model": "~z-ai/glm-flash-latest",
+      "name": "openrouter-detail-e59ef9e6beaa",
+      "url": "https://openrouter.ai/api/v1/models/~z-ai/glm-flash-latest/endpoints",
+      "status": 200,
+      "sha256": "9eecd9c278846ee60be980a5a9b486217ff4d14c6a557499ce47376723f06d6e",
+      "bytes": 365
+    },
+    {
+      "model": "~z-ai/glm-latest",
+      "name": "openrouter-detail-fe6e972ba333",
+      "url": "https://openrouter.ai/api/v1/models/~z-ai/glm-latest/endpoints",
+      "status": 200,
+      "sha256": "124dae171adcc89357a65a5d4103a0ac6c1d43127c917204ce621b849b3661c8",
+      "bytes": 315
+    }
+  ],
+  "changes": {
+    "updated_description": 610,
+    "updated_capabilities": 632,
+    "updated_display_name": 154,
+    "filled_max_input_tokens": 24,
+    "filled_protocols": 17,
+    "filled_paths": 17,
+    "updated_protocols": 89,
+    "updated_paths": 110,
+    "updated_effort_mapping": 2,
+    "filled_effort_mapping": 2,
+    "models_with_endpoint_specs": 349,
+    "uniform_max_input_tokens": 21
+  },
+  "changed_models": 681,
+  "scope": "Existing provider/model identities only; no unrelated provider seeding or model-family fallback. Public API defaults remain subject to their explicit account, pricing-tier and client requirements.",
+  "final_delta": {
+    "model_records_changed": 747,
+    "fields_changed": {
+      "description": 610,
+      "capabilities": 632,
+      "display_name": 144,
+      "source_refs": 747,
+      "effort_mapping": 4,
+      "field_metadata": 477,
+      "protocols": 106,
+      "paths": 127,
+      "max_input_tokens": 24
+    },
+    "previously_empty_fields_filled": {
+      "effort_mapping": 2,
+      "protocols": 17,
+      "paths": 17,
+      "field_metadata": 49,
+      "max_input_tokens": 24
+    }
+  }
+}

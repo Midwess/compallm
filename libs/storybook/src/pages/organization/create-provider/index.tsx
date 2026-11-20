@@ -3,8 +3,8 @@ import { DotsThreeIcon } from '@phosphor-icons/react/dist/csr/DotsThree'
 import { Popup } from '../../../components/popup'
 import { PageHeader, Title, Functions } from '../../../components/page-header'
 import { ProviderChooser } from './chooser'
-import { ProviderConfiguration } from './configuration'
-import { ModelDialog } from './model-dialog'
+import { ProviderConfiguration, useProviderForm } from './configuration'
+import { ModelSettingsPage } from './model-settings'
 import { useController, useProvider } from './controller'
 
 export { createCreateProviderStore } from './store'
@@ -77,20 +77,20 @@ function ProviderContent() {
   const step = useProvider((state) => state.step)
   return step === 'choose' ? <ProviderChooser /> : <ProviderConfiguration />
 }
-function ProviderDialog() {
-  const open = useProvider((state) => state.modelDraft !== null, ['modelDraft'])
-  return open ? <ModelDialog /> : null
-}
 export function CreateProviderPage() {
+  useProviderForm()
   const intent = useProvider((state) => state.intent)
+  const modelId = useProvider((state) => state.modelDraft?.id, ['modelDraft.id'])
   return (
     <PermissionRequest actions={intent === 'edit' ? ['provider.read'] : ['provider.create']}>
       {(allowed) =>
         allowed ? (
           <>
-            <ProviderHeader />
-            <ProviderContent />
-            <ProviderDialog />
+            <div className={modelId ? 'hidden' : 'contents'} inert={!!modelId || undefined}>
+              {!modelId ? <ProviderHeader /> : null}
+              <ProviderContent />
+            </div>
+            {modelId ? <ModelSettingsPage key={modelId} /> : null}
           </>
         ) : (
           <p role="status">You do not have access to this page.</p>
@@ -103,5 +103,6 @@ export function CreateProviderPage() {
 export { canCreateProvider, canSaveProvider, hasValidModelPrices, isValidModelDraft, providerSnapshot } from './validation'
 
 export { capabilityOptions } from './model-options'
+export { initializeModelDraft, modelDraftFingerprint } from './model-options'
 
 export { providerCreateRequest, providerReplaceRequest } from './contract'

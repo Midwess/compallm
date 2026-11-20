@@ -257,6 +257,7 @@ export interface ModelTemplate {
   description: Scalars['String'] | null
   displayName: Scalars['String']
   effortMapping: TemplateEffort[]
+  headers: TemplateHeader[]
   id: Scalars['ID']
   inputPrice: Scalars['String'] | null
   maxContextTokens: Scalars['ContextTokens'] | null
@@ -268,8 +269,6 @@ export interface ModelTemplate {
   providerTemplateId: Scalars['ID']
   readiness: TemplateReadiness
   serviceKind: TemplateServiceKind
-  specificationMode: TemplateSpecificationMode
-  unresolvedFields: TemplateUnresolved[]
   upstreamModelId: Scalars['String']
   __typename: 'ModelTemplate'
 }
@@ -815,20 +814,6 @@ export type TemplateReadiness = 'INCOMPLETE' | 'NEEDS_CONFIGURATION' | 'NEEDS_FE
 
 export type TemplateServiceKind = 'AUDIO' | 'EMBEDDING' | 'IMAGE' | 'RERANK' | 'TEXT' | 'UNKNOWN' | 'VIDEO'
 
-export type TemplateSpecificationMode = 'ACCOUNT_SPECIFIC' | 'API' | 'NOT_APPLICABLE' | 'STORED' | 'UNKNOWN'
-
-export interface TemplateUnresolved {
-  field: Scalars['String']
-  requirement: TemplateUnresolvedField
-  __typename: 'TemplateUnresolved'
-}
-
-export interface TemplateUnresolvedField {
-  reason: Scalars['String']
-  status: Scalars['String']
-  __typename: 'TemplateUnresolvedField'
-}
-
 /** Text operation determining the upstream request and response format. */
 export type TextModelProtocol = 'ANTHROPIC_MESSAGES' | 'OPENAI_CHAT_COMPLETIONS' | 'OPENAI_RESPONSES'
 
@@ -1297,6 +1282,7 @@ export interface ModelTemplateGenqlSelection {
   description?: boolean | number
   displayName?: boolean | number
   effortMapping?: TemplateEffortGenqlSelection
+  headers?: TemplateHeaderGenqlSelection
   id?: boolean | number
   inputPrice?: boolean | number
   maxContextTokens?: boolean | number
@@ -1308,8 +1294,6 @@ export interface ModelTemplateGenqlSelection {
   providerTemplateId?: boolean | number
   readiness?: boolean | number
   serviceKind?: boolean | number
-  specificationMode?: boolean | number
-  unresolvedFields?: TemplateUnresolvedGenqlSelection
   upstreamModelId?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -2086,20 +2070,6 @@ export interface TemplateOperationGenqlSelection {
   __scalar?: boolean | number
 }
 
-export interface TemplateUnresolvedGenqlSelection {
-  field?: boolean | number
-  requirement?: TemplateUnresolvedFieldGenqlSelection
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface TemplateUnresolvedFieldGenqlSelection {
-  reason?: boolean | number
-  status?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
 export interface ThemePatchInput {
   mode?: PreferenceAppearanceMode | null
   palettes?: PalettePatchInput | null
@@ -2736,18 +2706,6 @@ export const isTemplateOperation = (obj?: { __typename?: any } | null): obj is T
   return TemplateOperation_possibleTypes.includes(obj.__typename)
 }
 
-const TemplateUnresolved_possibleTypes: string[] = ['TemplateUnresolved']
-export const isTemplateUnresolved = (obj?: { __typename?: any } | null): obj is TemplateUnresolved => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateUnresolved"')
-  return TemplateUnresolved_possibleTypes.includes(obj.__typename)
-}
-
-const TemplateUnresolvedField_possibleTypes: string[] = ['TemplateUnresolvedField']
-export const isTemplateUnresolvedField = (obj?: { __typename?: any } | null): obj is TemplateUnresolvedField => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateUnresolvedField"')
-  return TemplateUnresolvedField_possibleTypes.includes(obj.__typename)
-}
-
 const ThemePreferences_possibleTypes: string[] = ['ThemePreferences']
 export const isThemePreferences = (obj?: { __typename?: any } | null): obj is ThemePreferences => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isThemePreferences"')
@@ -3051,14 +3009,6 @@ export const enumTemplateServiceKind = {
   TEXT: 'TEXT' as const,
   UNKNOWN: 'UNKNOWN' as const,
   VIDEO: 'VIDEO' as const,
-}
-
-export const enumTemplateSpecificationMode = {
-  ACCOUNT_SPECIFIC: 'ACCOUNT_SPECIFIC' as const,
-  API: 'API' as const,
-  NOT_APPLICABLE: 'NOT_APPLICABLE' as const,
-  STORED: 'STORED' as const,
-  UNKNOWN: 'UNKNOWN' as const,
 }
 
 export const enumTextModelProtocol = {

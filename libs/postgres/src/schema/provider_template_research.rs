@@ -11,6 +11,17 @@ pub struct Model {
     pub metadata: Json,
     #[sea_orm(column_type = "JsonBinary")]
     pub authentication_order: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub source_refs: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub field_metadata: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub model_info_sources: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub endpoint_config: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub authentication: Json,
+    pub state: super::sea_orm_active_enums::CatalogResearchProgress,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

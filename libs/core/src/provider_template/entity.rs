@@ -121,13 +121,17 @@ pub struct ProviderTemplate {
     pub name: String,
     pub description: Option<String>,
     pub logo_path: String,
+    pub connection: ProviderTemplateConnection,
+    pub headers: Headers,
+    pub readiness: Readiness,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ProviderTemplateConnection {
     pub protocol: ProtocolFamily,
     pub base_url: Option<String>,
-    pub headers: Headers,
     pub authentication: Authentication,
-    pub endpoint_config: EndpointDefaults,
     pub endpoint_mode: EndpointMode,
-    pub readiness: Readiness,
+    pub endpoint: EndpointDefaults,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ModelTemplate {
@@ -136,52 +140,43 @@ pub struct ModelTemplate {
     pub upstream_model_id: String,
     pub display_name: Option<String>,
     pub description: Option<String>,
-    pub operations: Operations,
+    pub service_kind: ServiceKind,
+    pub connection: ModelTemplateConnection,
+    pub headers: Headers,
     pub capabilities: Capabilities,
+    pub limits: TemplateLimits,
+    pub thinking: TemplateThinking,
+    pub pricing: TemplatePricing,
+    pub readiness: Readiness,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ModelTemplateConnection {
+    pub operations: Operations,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TemplateLimits {
     pub max_context_tokens: Option<u32>,
     pub max_input_tokens: Option<u32>,
     pub max_output_tokens: Option<u32>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TemplateThinking {
     pub effort_mapping: EffortMapping,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TemplatePricing {
+    pub billing_model: BillingModel,
+    pub billing_unit: Option<BillingUnit>,
+    pub mode: PricingMode,
+    pub cache_billing: CacheBilling,
     #[serde(with = "rust_decimal::serde::str_option")]
     pub input_price: Option<Decimal>,
     #[serde(with = "rust_decimal::serde::str_option")]
     pub output_price: Option<Decimal>,
     #[serde(with = "rust_decimal::serde::str_option")]
     pub cached_price: Option<Decimal>,
-    pub service_kind: ServiceKind,
-    pub billing_model: BillingModel,
-    pub billing_unit: Option<BillingUnit>,
-    pub pricing_mode: PricingMode,
-    pub cache_billing: CacheBilling,
-    pub specification_mode: SpecificationMode,
-    pub unresolved_fields: UnresolvedFields,
-    pub readiness: Readiness,
+    pub configuration: super::configuration::PricingConfig,
 }
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ProviderTemplateSummary {
-    pub id: String,
-    pub name: String,
-    pub description: Option<String>,
-    pub logo_path: String,
-    pub protocol: ProtocolFamily,
-    pub base_url: Option<String>,
-    pub readiness: Readiness,
-}
-impl From<&ProviderTemplate> for ProviderTemplateSummary {
-    fn from(v: &ProviderTemplate) -> Self {
-        Self {
-            id: v.id.clone(),
-            name: v.name.clone(),
-            description: v.description.clone(),
-            logo_path: v.logo_path.clone(),
-            protocol: v.protocol,
-            base_url: v.base_url.clone(),
-            readiness: v.readiness,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AuthenticationDefaults {
     pub status: AuthStatus,

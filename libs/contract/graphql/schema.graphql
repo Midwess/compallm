@@ -387,6 +387,7 @@ type ModelTemplate {
   description: String
   displayName: String!
   effortMapping: [TemplateEffort!]!
+  headers: [TemplateHeader!]!
   id: ID!
   inputPrice: String
   maxContextTokens: ContextTokens
@@ -398,8 +399,6 @@ type ModelTemplate {
   providerTemplateId: ID!
   readiness: TemplateReadiness!
   serviceKind: TemplateServiceKind!
-  specificationMode: TemplateSpecificationMode!
-  unresolvedFields: [TemplateUnresolved!]!
   upstreamModelId: String!
 }
 
@@ -1438,24 +1437,6 @@ enum TemplateServiceKind {
   TEXT
   UNKNOWN
   VIDEO
-}
-
-enum TemplateSpecificationMode {
-  ACCOUNT_SPECIFIC
-  API
-  NOT_APPLICABLE
-  STORED
-  UNKNOWN
-}
-
-type TemplateUnresolved {
-  field: String!
-  requirement: TemplateUnresolvedField!
-}
-
-type TemplateUnresolvedField {
-  reason: String!
-  status: String!
 }
 
 """

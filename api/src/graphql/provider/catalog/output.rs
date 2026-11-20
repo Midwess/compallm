@@ -145,25 +145,3 @@ impl From<compallm_core::provider_template::semantics::CredentialLocation>
         }
     }
 }
-
-#[derive(juniper::GraphQLObject)]
-pub struct TemplateUnresolvedField {
-    pub status: String,
-    pub reason: String,
-}
-impl From<compallm_core::provider_template::semantics::UnresolvedField>
-    for TemplateUnresolvedField
-{
-    fn from(value: compallm_core::provider_template::semantics::UnresolvedField) -> Self {
-        use compallm_core::provider_template::semantics::MissingStatus;
-        Self {
-            status: match value.status {
-                MissingStatus::Unknown => "unknown",
-                MissingStatus::Unsupported => "unsupported",
-                MissingStatus::Unpublished => "unpublished",
-            }
-            .into(),
-            reason: value.reason,
-        }
-    }
-}

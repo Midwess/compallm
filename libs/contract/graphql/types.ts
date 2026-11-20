@@ -1,7 +1,7 @@
 export default {
   scalars: [
     5, 8, 18, 20, 25, 26, 33, 34, 37, 39, 73, 74, 77, 78, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114,
-    115, 116, 118, 125, 158, 161, 163, 164, 165, 167, 170, 173, 175, 177, 178, 179, 180, 183, 192,
+    115, 116, 118, 125, 158, 161, 163, 164, 165, 167, 170, 173, 175, 177, 178, 179, 180, 189,
   ],
   types: {
     AccessibilityPatchInput: {
@@ -33,7 +33,7 @@ export default {
     AuthenticationPurpose: {},
     AvatarUpload: {
       expiresAt: [158],
-      fields: [189],
+      fields: [186],
       url: [158],
       __typename: [158],
     },
@@ -93,7 +93,7 @@ export default {
     },
     CredentialDelivery: {},
     EmailChallenge: {
-      lifetime: [186],
+      lifetime: [183],
       token: [158],
       __typename: [158],
     },
@@ -314,6 +314,7 @@ export default {
       description: [158],
       displayName: [158],
       effortMapping: [169],
+      headers: [174],
       id: [34],
       inputPrice: [158],
       maxContextTokens: [18],
@@ -325,8 +326,6 @@ export default {
       providerTemplateId: [34],
       readiness: [178],
       serviceKind: [179],
-      specificationMode: [180],
-      unresolvedFields: [181],
       upstreamModelId: [158],
       __typename: [158],
     },
@@ -518,21 +517,21 @@ export default {
       ],
       sessionRevokeOthers: [9],
       userPreferencesReset: [
-        195,
+        192,
         {
-          groups: [192, '[UserPreferenceGroup!]!'],
+          groups: [189, '[UserPreferenceGroup!]!'],
         },
       ],
       userPreferencesUpdate: [
-        195,
+        192,
         {
-          input: [194, 'UserPreferencesPatchInput!'],
+          input: [191, 'UserPreferencesPatchInput!'],
         },
       ],
       userProfileUpdate: [
-        191,
+        188,
         {
-          input: [196, 'UserProfileUpdateInput!'],
+          input: [193, 'UserProfileUpdateInput!'],
         },
       ],
       __typename: [158],
@@ -807,7 +806,7 @@ export default {
       outputPrice: [158],
       outputPriceEnabled: [8],
       path: [158],
-      protocol: [183],
+      protocol: [180],
       __typename: [158],
     },
     ProviderModelWrite: {
@@ -965,9 +964,9 @@ export default {
           first: [39],
         },
       ],
-      userPreferences: [195],
+      userPreferences: [192],
       userProfile: [
-        191,
+        188,
         {
           id: [34, 'ID!'],
         },
@@ -1033,12 +1032,12 @@ export default {
       __typename: [158],
     },
     SessionCredentials: {
-      accessLifetime: [186],
+      accessLifetime: [183],
       accessToken: [158],
-      passkeyChangeLifetime: [186],
+      passkeyChangeLifetime: [183],
       passkeyChangeToken: [158],
       purpose: [5],
-      refreshLifetime: [186],
+      refreshLifetime: [183],
       refreshToken: [158],
       __typename: [158],
     },
@@ -1169,24 +1168,13 @@ export default {
     },
     TemplateInputKind: {},
     TemplateOperation: {
-      operation: [183],
+      operation: [180],
       path: [158],
       __typename: [158],
     },
     TemplatePricingMode: {},
     TemplateReadiness: {},
     TemplateServiceKind: {},
-    TemplateSpecificationMode: {},
-    TemplateUnresolved: {
-      field: [158],
-      requirement: [182],
-      __typename: [158],
-    },
-    TemplateUnresolvedField: {
-      reason: [158],
-      status: [158],
-      __typename: [158],
-    },
     TextModelProtocol: {},
     ThemePatchInput: {
       mode: [103],
@@ -1229,7 +1217,7 @@ export default {
       __typename: [158],
     },
     UserPayload: {
-      node: [190],
+      node: [187],
       __typename: [158],
     },
     UserPreferenceGroup: {},
@@ -1241,8 +1229,8 @@ export default {
       messageComposition: [63],
       navigation: [70],
       sidebar: [155],
-      theme: [185],
-      typography: [188],
+      theme: [182],
+      typography: [185],
       __typename: [158],
     },
     UserPreferencesPatchInput: {
@@ -1253,12 +1241,12 @@ export default {
       messageComposition: [62],
       navigation: [69],
       sidebar: [154],
-      theme: [184],
-      typography: [187],
+      theme: [181],
+      typography: [184],
       __typename: [158],
     },
     UserPreferencesPayload: {
-      node: [193],
+      node: [190],
       __typename: [158],
     },
     UserProfileUpdateInput: {

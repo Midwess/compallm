@@ -16,17 +16,20 @@ async fn typed_catalog_round_trips_and_preserves_catalog_facts() -> anyhow::Resu
         .iter()
         .find(|v| v.name().ends_with("catalog_types"))
         .unwrap();
+    let research = migrations
+        .iter()
+        .find(|v| v.name().ends_with("catalog_research"))
+        .unwrap();
+    research.down(&SchemaManager::new(&tx)).await?;
     migration.down(&SchemaManager::new(&tx)).await?;
     let before = snapshot(&tx).await?;
     migration.up(&SchemaManager::new(&tx)).await?;
+    research.up(&SchemaManager::new(&tx)).await?;
     let providers = Providers::find().all(&tx).await?;
     let models = Models::find().all(&tx).await?;
     assert_eq!(providers.len(), 145);
     assert_eq!(models.len(), 2348);
-    for mut row in providers {
-        row.source_refs = serde_json::json!("human-reviewed provenance");
-        row.field_metadata = serde_json::json!("human-reviewed notes");
-        row.model_info_sources = serde_json::json!("human-reviewed sources");
+    for row in providers {
         let value = ProviderTemplate::try_from(row)?;
         let encoded = serde_json::to_value(&value)?;
         assert_eq!(
@@ -34,12 +37,7 @@ async fn typed_catalog_round_trips_and_preserves_catalog_facts() -> anyhow::Resu
             serde_json::to_value(serde_json::from_value::<ProviderTemplate>(encoded.clone())?)?
         );
     }
-    for mut row in models {
-        row.source_refs = serde_json::json!("human-reviewed provenance");
-        row.field_metadata = serde_json::json!("human-reviewed notes");
-        row.model_info_sources = serde_json::json!("human-reviewed sources");
-        row.pricing_config = serde_json::json!("human-reviewed price evidence");
-        row.resolution_plan = serde_json::json!("human-reviewed acquisition plan");
+    for row in models {
         let value = ModelTemplate::try_from(row)?;
         let encoded = serde_json::to_value(&value)?;
         assert_eq!(
@@ -47,6 +45,7 @@ async fn typed_catalog_round_trips_and_preserves_catalog_facts() -> anyhow::Resu
             serde_json::to_value(serde_json::from_value::<ModelTemplate>(encoded.clone())?)?
         );
     }
+    research.down(&SchemaManager::new(&tx)).await?;
     migration.down(&SchemaManager::new(&tx)).await?;
     assert_eq!(before, snapshot(&tx).await?);
     tx.rollback().await?;
@@ -78,4 +77,76 @@ async fn snapshot<C: ConnectionTrait>(db: &C) -> anyhow::Result<serde_json::Valu
         snapshot.insert(table.into(), serde_json::Value::Array(rows));
     }
     Ok(serde_json::Value::Object(snapshot))
+}
+
+#[tokio::test]
+#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated database with migrations applied"]
+async fn linked_research_updates_eligibility_and_cannot_be_removed_independently()
+-> anyhow::Result<()> {
+    use sea_orm::{ColumnTrait, QueryFilter, sea_query::Expr};
+    type Research = <compallm_postgres::ProviderModelTemplateResearchSchema as ModelTrait>::Entity;
+    type Column = <Research as EntityTrait>::Column;
+    type Eligibility =
+        <compallm_postgres::ProviderCatalogAuthReadinessSchema as ModelTrait>::Entity;
+    type EligibilityColumn = <Eligibility as EntityTrait>::Column;
+    let db = Database::connect(std::env::var("CATALOG_TYPES_TEST_URL")?).await?;
+    let candidate = Eligibility::find()
+        .filter(EligibilityColumn::Readiness.eq(compallm_postgres::CatalogReadinessSchema::Ready))
+        .filter(EligibilityColumn::AuthMethod.eq("api_key"))
+        .one(&db)
+        .await?
+        .unwrap();
+    let tx = db.begin().await?;
+    Research::update_many().col_expr(Column::UnresolvedFields,Expr::value(serde_json::json!({"execution":{"status":"unknown","reason":"Research requires further review"}}))).filter(Column::ProviderTemplateId.eq(&candidate.provider_template_id)).filter(Column::ModelTemplateId.eq(&candidate.id)).exec(&tx).await?;
+    tx.execute_unprepared("SET CONSTRAINTS ALL IMMEDIATE")
+        .await?;
+    let changed = Eligibility::find_by_id((
+        candidate.provider_template_id.clone(),
+        candidate.id.clone(),
+        "api_key".into(),
+    ))
+    .one(&tx)
+    .await?
+    .unwrap();
+    assert_eq!(
+        changed.readiness,
+        compallm_postgres::CatalogReadinessSchema::Incomplete
+    );
+    tx.rollback().await?;
+    let tx = db.begin().await?;
+    Research::update_many()
+        .col_expr(
+            Column::State,
+            Expr::value(compallm_postgres::CatalogResearchProgressSchema::InProgress),
+        )
+        .filter(Column::ProviderTemplateId.eq(&candidate.provider_template_id))
+        .filter(Column::ModelTemplateId.eq(&candidate.id))
+        .exec(&tx)
+        .await?;
+    tx.execute_unprepared("SET CONSTRAINTS ALL IMMEDIATE")
+        .await?;
+    let unchanged = Eligibility::find_by_id((
+        candidate.provider_template_id.clone(),
+        candidate.id.clone(),
+        "api_key".into(),
+    ))
+    .one(&tx)
+    .await?
+    .unwrap();
+    assert_eq!(
+        unchanged.readiness,
+        compallm_postgres::CatalogReadinessSchema::Ready
+    );
+    tx.rollback().await?;
+    let tx = db.begin().await?;
+    Research::delete_by_id((candidate.provider_template_id.clone(), candidate.id.clone()))
+        .exec(&tx)
+        .await?;
+    assert!(
+        tx.execute_unprepared("SET CONSTRAINTS ALL IMMEDIATE")
+            .await
+            .is_err()
+    );
+    tx.rollback().await?;
+    Ok(())
 }

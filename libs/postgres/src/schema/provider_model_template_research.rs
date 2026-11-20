@@ -16,6 +16,20 @@ pub struct Model {
     pub metadata: Json,
     #[sea_orm(column_type = "JsonBinary")]
     pub operation_order: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub source_refs: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub field_metadata: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub model_info_sources: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub pricing_config: Json,
+    pub specification_mode: super::sea_orm_active_enums::CatalogSpecificationMode,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub resolution_plan: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub unresolved_fields: Json,
+    pub state: super::sea_orm_active_enums::CatalogResearchProgress,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

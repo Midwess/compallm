@@ -15,39 +15,19 @@ pub struct Model {
     pub display_name: Option<String>,
     #[sea_orm(column_type = "Text", nullable)]
     pub description: Option<String>,
+    pub service_kind: super::sea_orm_active_enums::CatalogServiceKind,
     #[sea_orm(column_type = "JsonBinary")]
-    pub operations: Json,
+    pub connection: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub headers: Json,
     #[sea_orm(column_type = "JsonBinary")]
     pub capabilities: Json,
-    pub max_context_tokens: Option<i64>,
-    pub max_input_tokens: Option<i64>,
-    pub max_output_tokens: Option<i64>,
     #[sea_orm(column_type = "JsonBinary")]
-    pub effort_mapping: Json,
-    #[sea_orm(column_type = "Decimal(None)", nullable)]
-    pub input_price: Option<Decimal>,
-    #[sea_orm(column_type = "Decimal(None)", nullable)]
-    pub output_price: Option<Decimal>,
-    #[sea_orm(column_type = "Decimal(None)", nullable)]
-    pub cached_price: Option<Decimal>,
+    pub limits: Json,
     #[sea_orm(column_type = "JsonBinary")]
-    pub source_refs: Json,
+    pub thinking: Json,
     #[sea_orm(column_type = "JsonBinary")]
-    pub field_metadata: Json,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub model_info_sources: Json,
-    pub service_kind: super::sea_orm_active_enums::CatalogServiceKind,
-    pub billing_model: super::sea_orm_active_enums::CatalogBillingModel,
-    pub billing_unit: Option<super::sea_orm_active_enums::CatalogBillingUnit>,
-    pub pricing_mode: super::sea_orm_active_enums::CatalogPricingMode,
-    pub cache_billing: super::sea_orm_active_enums::CatalogCacheBilling,
-    pub specification_mode: super::sea_orm_active_enums::CatalogSpecificationMode,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub pricing_config: Json,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub resolution_plan: Json,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub unresolved_fields: Json,
+    pub pricing: Json,
     pub readiness: super::sea_orm_active_enums::CatalogReadiness,
 }
 
@@ -72,3 +52,9 @@ impl Related<super::provider_templates::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl Related<super::provider_model_template_research::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderModelTemplateResearch.def()
+    }
+}

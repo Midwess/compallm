@@ -11,7 +11,6 @@ use sea_orm::{
     ColumnTrait, DbErr, EntityTrait, ModelTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait,
 };
 
-type Summaries = super::summary::Entity;
 type Providers = <ProviderTemplateSchema as ModelTrait>::Entity;
 type Models = <ProviderModelTemplateSchema as ModelTrait>::Entity;
 type Readiness = <ProviderCatalogAuthReadinessSchema as ModelTrait>::Entity;
@@ -28,25 +27,20 @@ impl CatalogRepository {
         pagination: Pagination,
         ordering: Vec<OrderBy>,
         scope: &str,
-    ) -> Result<
-        compallm_query::Connection<compallm_core::provider_template::ProviderTemplateSummary>,
-        crate::query::QueryCompileError,
-    > {
+    ) -> Result<compallm_query::Connection<ProviderTemplate>, crate::query::QueryCompileError> {
         let context = DbContext::current()
             .map_err(|_| DbErr::Custom("catalog context unavailable".into()))?;
         let db = PostgresConnection::from_context(&context)
             .map_err(|_| DbErr::Custom("catalog connection unavailable".into()))?;
         let result = query
-            .plan_page(Summaries::find(), pagination, ordering, 100, scope)?
+            .plan_page(Providers::find(), pagination, ordering, 100, scope)?
             .fetch(db)
             .await?;
         let mut edges = Vec::with_capacity(result.edges.len());
         for edge in result.edges {
             edges.push(compallm_query::Edge {
                 cursor: edge.cursor,
-                node: compallm_core::provider_template::ProviderTemplateSummary::try_from(
-                    edge.node,
-                )?,
+                node: ProviderTemplate::try_from(edge.node)?,
             });
         }
         Ok(compallm_query::Connection {
@@ -60,7 +54,6 @@ impl CatalogRepository {
         let db = PostgresConnection::from_context(&context)
             .map_err(|_| DbErr::Custom("catalog connection unavailable".into()))?;
         Providers::find_by_id(id)
-            .into_partial_model::<super::defaults::ProviderDefaultsRow>()
             .one(db)
             .await?
             .map(TryInto::try_into)
@@ -83,7 +76,6 @@ impl CatalogRepository {
             .filter(M::Id.in_subquery(eligible))
             .order_by_asc(M::UpstreamModelId)
             .order_by_asc(M::Id)
-            .into_partial_model::<super::defaults::ModelDefaultsRow>()
             .all(db)
             .await?
             .into_iter()
@@ -107,7 +99,6 @@ impl CatalogRepository {
                         .into_query(),
                 ),
             )
-            .into_partial_model::<super::defaults::ModelDefaultsRow>()
             .one(db)
             .await?
             .map(TryInto::try_into)

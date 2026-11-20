@@ -265,14 +265,6 @@ enum TemplateServiceKind {
   UNKNOWN
 }
 
-enum TemplateSpecificationMode {
-  STORED
-  API
-  ACCOUNT_SPECIFIC
-  NOT_APPLICABLE
-  UNKNOWN
-}
-
 "Text operation determining the upstream request and response format."
 enum TextModelProtocol {
   OPENAI_CHAT_COMPLETIONS
@@ -867,6 +859,7 @@ type ModelTemplate {
   upstreamModelId: String!
   displayName: String!
   description: String
+  headers: [TemplateHeader!]!
   operations: [TemplateOperation!]!
   capabilities: [ProviderModelCapability!]!
   capabilitySupport: [TemplateCapabilitySupport!]!
@@ -882,8 +875,6 @@ type ModelTemplate {
   cacheBilling: TemplateCacheBilling!
   readiness: TemplateReadiness!
   serviceKind: TemplateServiceKind!
-  specificationMode: TemplateSpecificationMode!
-  unresolvedFields: [TemplateUnresolved!]!
 }
 
 type ModelTemplateConnection {
@@ -1293,16 +1284,6 @@ type TemplateHeader {
 type TemplateOperation {
   operation: TextModelProtocol!
   path: String!
-}
-
-type TemplateUnresolved {
-  field: String!
-  requirement: TemplateUnresolvedField!
-}
-
-type TemplateUnresolvedField {
-  status: String!
-  reason: String!
 }
 
 type ThemePreferences {

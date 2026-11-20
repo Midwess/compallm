@@ -81,3 +81,5 @@ mod provider_model_template_research;
 mod provider_template_research;
 pub use provider_model_template_research::Model as ProviderModelTemplateResearchSchema;
 pub use provider_template_research::Model as ProviderTemplateResearchSchema;
+
+pub use sea_orm_active_enums::CatalogResearchProgress as CatalogResearchProgressSchema;

@@ -8,39 +8,10 @@ use compallm_postgres::catalog::repository::CatalogRepository;
 use juniper::{GraphQLEnum, GraphQLObject, ID, graphql_object};
 
 #[derive(Clone, Debug)]
-pub struct ProviderTemplate(
-    pub domain::ProviderTemplateSummary,
-    std::sync::Arc<tokio::sync::OnceCell<domain::ProviderTemplate>>,
-);
-impl From<domain::ProviderTemplateSummary> for ProviderTemplate {
-    fn from(v: domain::ProviderTemplateSummary) -> Self {
-        Self(v, Default::default())
-    }
-}
+pub struct ProviderTemplate(pub domain::ProviderTemplate);
 impl From<domain::ProviderTemplate> for ProviderTemplate {
     fn from(value: domain::ProviderTemplate) -> Self {
-        Self(
-            domain::ProviderTemplateSummary::from(&value),
-            std::sync::Arc::new(tokio::sync::OnceCell::new_with(Some(value))),
-        )
-    }
-}
-impl ProviderTemplate {
-    async fn detail(
-        &self,
-        repository: &CatalogRepository,
-        authority: &AuthorizationContext,
-    ) -> Result<&domain::ProviderTemplate, Error> {
-        authority.member_permission().await?;
-        self.1
-            .get_or_try_init(|| async {
-                repository
-                    .provider(&self.0.id)
-                    .await
-                    .map_err(|_| Error::internal())?
-                    .ok_or_else(Error::internal)
-            })
-            .await
+        Self(value)
     }
 }
 #[derive(Clone, Debug)]
@@ -93,11 +64,6 @@ pub struct TemplateEndpoint {
     pub mode: TemplateEndpointMode,
     pub configuration: super::output::TemplateEndpointConfig,
 }
-#[derive(GraphQLObject)]
-pub struct TemplateUnresolved {
-    pub field: String,
-    pub requirement: super::output::TemplateUnresolvedField,
-}
 
 #[derive(GraphQLEnum)]
 pub enum TemplateEffortLevel {
@@ -129,13 +95,14 @@ impl From<domain::TextOperation> for TextModelProtocol {
 }
 impl ModelTemplate {
     pub fn compatible(value: &domain::ModelTemplate) -> bool {
-        !value.operations.is_empty()
-            && value.operations.iter().any(|(operation, path)| {
+        !value.connection.operations.is_empty()
+            && value.connection.operations.iter().any(|(operation, path)| {
                 let input = super::super::input::ProviderModelConfiguration {
                     name: value.upstream_model_id.clone(),
                     protocol: (*operation).into(),
                     path: path.clone(),
                     max_context_tokens: match value
+                        .limits
                         .max_context_tokens
                         .and_then(|v| super::super::scalar::ContextTokens::try_from(v).ok())
                     {
@@ -144,12 +111,14 @@ impl ModelTemplate {
                     },
                     context_limit_enabled: true,
                     max_input_tokens: value
+                        .limits
                         .max_input_tokens
                         .map(super::super::scalar::ContextTokens::try_from)
                         .transpose()
                         .ok()
                         .flatten(),
                     max_output_tokens: value
+                        .limits
                         .max_output_tokens
                         .map(super::super::scalar::ContextTokens::try_from)
                         .transpose()
@@ -159,29 +128,46 @@ impl ModelTemplate {
                     body_defaults: vec![],
                     enabled: true,
                     effort_mapping: Some(super::super::input::ProviderEffortMapping {
-                        low: value.effort_mapping.get(&domain::EffortLevel::Low).cloned(),
+                        low: value
+                            .thinking
+                            .effort_mapping
+                            .get(&domain::EffortLevel::Low)
+                            .cloned(),
                         medium: value
+                            .thinking
                             .effort_mapping
                             .get(&domain::EffortLevel::Medium)
                             .cloned(),
                         high: value
+                            .thinking
                             .effort_mapping
                             .get(&domain::EffortLevel::High)
                             .cloned(),
                         xhigh: value
+                            .thinking
                             .effort_mapping
                             .get(&domain::EffortLevel::Xhigh)
                             .cloned(),
-                        max: value.effort_mapping.get(&domain::EffortLevel::Max).cloned(),
+                        max: value
+                            .thinking
+                            .effort_mapping
+                            .get(&domain::EffortLevel::Max)
+                            .cloned(),
                     }),
                     capabilities: vec![],
                     catalog_ref: None,
-                    input_price: value.input_price.map(|v| v.to_string()).unwrap_or_default(),
+                    input_price: value
+                        .pricing
+                        .input_price
+                        .map(|v| v.to_string())
+                        .unwrap_or_default(),
                     output_price: value
+                        .pricing
                         .output_price
                         .map(|v| v.to_string())
                         .unwrap_or_default(),
                     cached_price: value
+                        .pricing
                         .cached_price
                         .map(|v| v.to_string())
                         .unwrap_or_default(),
@@ -209,21 +195,17 @@ impl ProviderTemplate {
         &self.0.logo_path
     }
     fn protocol(&self) -> ProviderApiProtocol {
-        match self.0.protocol {
+        match self.0.connection.protocol {
             domain::ProtocolFamily::OpenaiCompatible => ProviderApiProtocol::OpenaiCompatible,
             domain::ProtocolFamily::Anthropic => ProviderApiProtocol::Anthropic,
             domain::ProtocolFamily::ProviderSpecific => ProviderApiProtocol::ProviderSpecific,
         }
     }
     fn base_url(&self) -> Option<&str> {
-        self.0.base_url.as_deref()
+        self.0.connection.base_url.as_deref()
     }
-    async fn headers(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Vec<TemplateHeader>, Error> {
-        let detail = self.detail(repository, authority).await?;
+    fn headers(&self) -> Result<Vec<TemplateHeader>, Error> {
+        let detail = &self.0;
         Ok(detail
             .headers
             .iter()
@@ -236,24 +218,17 @@ impl ProviderTemplate {
     fn readiness(&self) -> TemplateReadiness {
         self.0.readiness.into()
     }
-    async fn endpoint(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<TemplateEndpoint, Error> {
-        let detail = self.detail(repository, authority).await?;
+    fn endpoint(&self) -> Result<TemplateEndpoint, Error> {
+        let detail = &self.0;
         Ok(TemplateEndpoint {
-            mode: detail.endpoint_mode.into(),
-            configuration: detail.endpoint_config.clone().into(),
+            mode: detail.connection.endpoint_mode.into(),
+            configuration: detail.connection.endpoint.clone().into(),
         })
     }
-    async fn authentication(
-        &self,
-        #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
-    ) -> Result<Vec<TemplateAuthentication>, Error> {
-        let detail = self.detail(repository, authority).await?;
+    fn authentication(&self) -> Result<Vec<TemplateAuthentication>, Error> {
+        let detail = &self.0;
         Ok(detail
+            .connection
             .authentication
             .iter()
             .map(|(method, v)| TemplateAuthentication {
@@ -309,8 +284,19 @@ impl ModelTemplate {
     fn description(&self) -> Option<&str> {
         self.0.description.as_deref()
     }
+    fn headers(&self) -> Vec<TemplateHeader> {
+        self.0
+            .headers
+            .iter()
+            .map(|(key, value)| TemplateHeader {
+                key: key.clone(),
+                value: value.clone(),
+            })
+            .collect()
+    }
     fn operations(&self) -> Vec<TemplateOperation> {
         self.0
+            .connection
             .operations
             .iter()
             .map(|(op, path)| TemplateOperation {
@@ -340,6 +326,7 @@ impl ModelTemplate {
     fn max_context_tokens(&self) -> Result<Option<super::super::scalar::ContextTokens>, Error> {
         let detail = &self.0;
         detail
+            .limits
             .max_context_tokens
             .map(super::super::scalar::ContextTokens::try_from)
             .transpose()
@@ -348,6 +335,7 @@ impl ModelTemplate {
     fn max_input_tokens(&self) -> Result<Option<super::super::scalar::ContextTokens>, Error> {
         let detail = &self.0;
         detail
+            .limits
             .max_input_tokens
             .map(super::super::scalar::ContextTokens::try_from)
             .transpose()
@@ -356,6 +344,7 @@ impl ModelTemplate {
     fn max_output_tokens(&self) -> Result<Option<super::super::scalar::ContextTokens>, Error> {
         let detail = &self.0;
         detail
+            .limits
             .max_output_tokens
             .map(super::super::scalar::ContextTokens::try_from)
             .transpose()
@@ -364,6 +353,7 @@ impl ModelTemplate {
     fn effort_mapping(&self) -> Result<Vec<TemplateEffort>, Error> {
         let detail = &self.0;
         Ok(detail
+            .thinking
             .effort_mapping
             .iter()
             .map(|(level, value)| TemplateEffort {
@@ -374,47 +364,33 @@ impl ModelTemplate {
     }
     fn input_price(&self) -> Result<Option<String>, Error> {
         let detail = &self.0;
-        Ok(detail.input_price.map(|v| v.to_string()))
+        Ok(detail.pricing.input_price.map(|v| v.to_string()))
     }
     fn output_price(&self) -> Result<Option<String>, Error> {
         let detail = &self.0;
-        Ok(detail.output_price.map(|v| v.to_string()))
+        Ok(detail.pricing.output_price.map(|v| v.to_string()))
     }
     fn cached_price(&self) -> Result<Option<String>, Error> {
         let detail = &self.0;
-        Ok(detail.cached_price.map(|v| v.to_string()))
+        Ok(detail.pricing.cached_price.map(|v| v.to_string()))
     }
     fn billing_model(&self) -> Result<TemplateBillingModel, Error> {
         let detail = &self.0;
-        Ok(detail.billing_model.into())
+        Ok(detail.pricing.billing_model.into())
     }
     fn pricing_mode(&self) -> Result<TemplatePricingMode, Error> {
         let detail = &self.0;
-        Ok(detail.pricing_mode.into())
+        Ok(detail.pricing.mode.into())
     }
     fn cache_billing(&self) -> Result<TemplateCacheBilling, Error> {
         let detail = &self.0;
-        Ok(detail.cache_billing.into())
+        Ok(detail.pricing.cache_billing.into())
     }
     fn readiness(&self) -> TemplateReadiness {
-        TemplateReadiness::Ready
+        self.0.readiness.into()
     }
     fn service_kind(&self) -> Result<TemplateServiceKind, Error> {
         Ok(self.0.service_kind.into())
-    }
-    fn specification_mode(&self) -> Result<TemplateSpecificationMode, Error> {
-        Ok(self.0.specification_mode.into())
-    }
-    fn unresolved_fields(&self) -> Result<Vec<TemplateUnresolved>, Error> {
-        Ok(self
-            .0
-            .unresolved_fields
-            .iter()
-            .map(|(field, v)| TemplateUnresolved {
-                field: field.clone(),
-                requirement: v.clone().into(),
-            })
-            .collect())
     }
 }
 
@@ -524,50 +500,6 @@ impl From<domain::CacheBilling> for TemplateCacheBilling {
     }
 }
 
-#[derive(GraphQLEnum)]
-pub enum TemplateSpecificationMode {
-    Stored,
-    Api,
-    AccountSpecific,
-    NotApplicable,
-    Unknown,
-}
-impl From<domain::SpecificationMode> for TemplateSpecificationMode {
-    fn from(v: domain::SpecificationMode) -> Self {
-        match v {
-            domain::SpecificationMode::Stored => Self::Stored,
-            domain::SpecificationMode::Api => Self::Api,
-            domain::SpecificationMode::AccountSpecific => Self::AccountSpecific,
-            domain::SpecificationMode::NotApplicable => Self::NotApplicable,
-            domain::SpecificationMode::Unknown => Self::Unknown,
-        }
-    }
-}
-
-#[derive(GraphQLEnum)]
-pub enum TemplateServiceKind {
-    Text,
-    Embedding,
-    Image,
-    Audio,
-    Video,
-    Rerank,
-    Unknown,
-}
-impl From<domain::ServiceKind> for TemplateServiceKind {
-    fn from(v: domain::ServiceKind) -> Self {
-        match v {
-            domain::ServiceKind::Text => Self::Text,
-            domain::ServiceKind::Embedding => Self::Embedding,
-            domain::ServiceKind::Image => Self::Image,
-            domain::ServiceKind::Audio => Self::Audio,
-            domain::ServiceKind::Video => Self::Video,
-            domain::ServiceKind::Rerank => Self::Rerank,
-            domain::ServiceKind::Unknown => Self::Unknown,
-        }
-    }
-}
-
 impl From<domain::Capability> for ProviderModelCapability {
     fn from(v: domain::Capability) -> Self {
         match v {
@@ -591,4 +523,28 @@ impl From<domain::Capability> for ProviderModelCapability {
 pub struct TemplateCapabilitySupport {
     pub capability: ProviderModelCapability,
     pub supported: Option<bool>,
+}
+
+#[derive(GraphQLEnum)]
+pub enum TemplateServiceKind {
+    Text,
+    Embedding,
+    Image,
+    Audio,
+    Video,
+    Rerank,
+    Unknown,
+}
+impl From<domain::ServiceKind> for TemplateServiceKind {
+    fn from(value: domain::ServiceKind) -> Self {
+        match value {
+            domain::ServiceKind::Text => Self::Text,
+            domain::ServiceKind::Embedding => Self::Embedding,
+            domain::ServiceKind::Image => Self::Image,
+            domain::ServiceKind::Audio => Self::Audio,
+            domain::ServiceKind::Video => Self::Video,
+            domain::ServiceKind::Rerank => Self::Rerank,
+            domain::ServiceKind::Unknown => Self::Unknown,
+        }
+    }
 }

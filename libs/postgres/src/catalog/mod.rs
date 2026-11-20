@@ -2,7 +2,3 @@ pub mod model_info;
 pub mod semantics;
 
 pub mod repository;
-
-pub(crate) mod summary;
-
-pub(crate) mod defaults;

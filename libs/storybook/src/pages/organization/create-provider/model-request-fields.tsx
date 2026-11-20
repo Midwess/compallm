@@ -120,7 +120,7 @@ supplying its default.
       description={isHeader ? undefined : 'Used when the request leaves these fields unset.'}
     >
       <div className="grid min-w-0 gap-2 rounded-control bg-inset px-6 py-4" data-form-field={name}>
-        <div className="flex min-w-0 items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex min-w-0 items-center gap-6 text-xs text-muted-foreground">
           <span className="w-6 shrink-0">Order</span>
           <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_1.75rem] gap-1 px-1">
             <span className="px-2">Key</span>
@@ -131,7 +131,7 @@ supplying its default.
         {entries.map((entry, index) => (
           <div
             key={entry.id}
-            className="relative flex min-w-0 items-center gap-4"
+            className="relative flex min-w-0 items-center gap-6"
             style={{ transform: `translateY(${reorder.preview?.offsets[entry.id] ?? 0}px)` }}
             ref={(node) => {
               if (node) reorder.rowNodes.current.set(entry.id, node)
@@ -200,11 +200,11 @@ focus-visible:outline-ring
             </div>
           </div>
         ))}
-        <div className="ml-10 grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_1.75rem] gap-1 rounded-lg bg-elevated p-1">
+        <div className="ml-12 grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_1.75rem] gap-1 rounded-lg bg-elevated p-1">
           <div className="min-w-0">{selector()}</div>
         </div>
         {custom ? (
-          <div className="ml-10 flex min-w-0 items-center gap-2">
+          <div className="ml-12 flex min-w-0 items-center gap-2">
             <TextField
               aria-label={`Custom ${label} name`}
               placeholder={`Enter ${label} name`}

@@ -177,7 +177,7 @@ function LimitRow({
     (s) => (s.modelDraft ? effectiveContextTokens(s.modelDraft) : undefined),
     ['modelDraft.maxContextTokens', 'modelDraft.contextLimitEnabled', 'modelDraft.providerContextTokens'],
   )
-  const maximum = kind === 'context' ? Math.max(1000000, Number(context) || 0) : Math.min(1000000, Number(context) || 1000000)
+  const maximum = kind === 'context' ? Math.max(10000000, Number(context) || 0) : Math.min(1000000, Number(context) || 1000000)
   const help = {
     context: `
 The total token budget shared by the request and reply. Uncheck to use the provider’s context value. If you

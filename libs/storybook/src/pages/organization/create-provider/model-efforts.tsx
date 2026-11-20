@@ -12,7 +12,9 @@ effort values accepted by this model. Only one field is edited at a time. Select
 unsupported levels empty; the glow shows the order, not a price or token budget.
 `}
     >
-      <EffortMapping name="modelDraft.effortMapping" variant="compact" />
+      <div className="pt-1">
+        <EffortMapping name="modelDraft.effortMapping" variant="compact" />
+      </div>
       <FormError name="modelDraft.effortMapping" />
     </ModelSection>
   )

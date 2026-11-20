@@ -36,6 +36,7 @@ export function ModelSettingsPage() {
     const draft = controller.store.getState().modelDraft!
     return structuredClone(draft.defaults ?? initializeModelDraft(draft).defaults!)
   })
+  const [editedFields] = useState(() => new Set<string>())
   const [form] = useState(() => controller.store.form.scope(['modelDraft']))
   useEffect(() => {
     const fields = {
@@ -58,7 +59,19 @@ export function ModelSettingsPage() {
       command: true,
       fields,
       validationNames: () => ['modelDraft'],
+      showError: (name) => [...editedFields].some((field) => name === field || name.startsWith(field + '.')),
       changed: (name, value) => {
+        const relatedFields: Record<string, string> = {
+          contextLimitEnabled: 'maxContextTokens',
+          inputLimitEnabled: 'maxInputTokens',
+          outputLimitEnabled: 'maxOutputTokens',
+          inputPriceEnabled: 'inputPrice',
+          outputPriceEnabled: 'outputPrice',
+          cachedPriceEnabled: 'cachedPrice',
+        }
+        editedFields.add(name)
+        const related = relatedFields[name.replace('modelDraft.', '')]
+        if (related) editedFields.add(`modelDraft.${related}`)
         if (name === 'modelDraft.path') controller.onModelDraftChanged({ path: '/' + String(value).replace(/^\/+/, '') })
         else
           controller.onModelDraftChanged({
@@ -103,11 +116,7 @@ export function ModelSettingsPage() {
       },
     }
     for (const [key, value] of Object.entries(defaults)) controller.store.form.set(`modelDraft.${key}`, value)
-    const state = controller.store.getState()
-    const issues = parseModelDraft(state.modelDraft, state.models, state.editingModelId).issues
-    if (issues?.some((issue) => ['maxInputTokens', 'maxOutputTokens'].includes(String(issue.path[1]))))
-      form.blur('modelDraft.maxContextTokens')
-  }, [controller, identity, form])
+  }, [controller, identity, form, editedFields])
   const reset = () => {
     const current = controller.store.getState().modelDraft
     if (!current || !access) return

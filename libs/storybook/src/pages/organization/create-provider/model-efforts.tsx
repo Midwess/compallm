@@ -8,7 +8,7 @@ export function ModelEfforts() {
       title="Thinking efforts"
       help={`
 Reasoning models can spend more time and tokens thinking before they answer. Map Low through Max to the exact
-effort values accepted by this model. Only one field is edited at a time. Fill levels in order and leave
+effort values accepted by this model. Only one field is edited at a time. Select a level to configure it and leave
 unsupported levels empty; the glow shows the order, not a price or token budget.
 `}
     >

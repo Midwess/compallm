@@ -338,7 +338,7 @@ independent of the input price. Uncheck to use the template rate.
               inputMode="decimal"
               required
               placeholder="Enter rate"
-              className="rounded-lg pl-6.5"
+              className="rounded-lg pl-6.5 text-right"
             />
           </>
         ) : (

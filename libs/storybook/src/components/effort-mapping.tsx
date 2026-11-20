@@ -248,9 +248,8 @@ function CompactEffortMapping({
   const [selection, select] = useState(effortLevels.indexOf(defaultFocused ?? defaultSelected))
   const inputs = useRef<Array<HTMLInputElement | null>>([])
   const pendingFocus = useRef(false)
-  const firstEmpty = effortLevels.findIndex((level) => !values[level])
-  const last = firstEmpty < 0 ? effortLevels.length - 1 : firstEmpty
-  const active = Math.min(last, selection)
+  const last = effortLevels.length - 1
+  const active = selection
   useEffect(() => {
     if (!pendingFocus.current) return
     inputs.current[active]?.focus()
@@ -285,7 +284,7 @@ function CompactEffortMapping({
           disabled:text-muted-foreground/40 focus-visible:outline-ring"
         >
           <svg viewBox="0 0 12 30" className="h-full w-full fill-current" aria-hidden="true">
-            <path d="M12 0 0 15 12 30Z" />
+            <path d="M10 1.5Q12 0 12 2.5V27.5Q12 30 10 28.5L1 17Q-0.5 15 1 13Z" />
           </svg>
         </animated.button>
       </DisabledTooltip>
@@ -330,15 +329,16 @@ function CompactEffortMapping({
                 }}
               />
             ) : (
-              <DisabledTooltip disabled={disabled || index > last} reason="Configure the earlier effort levels first.">
+              <DisabledTooltip disabled={disabled} reason="Editing thinking efforts is unavailable.">
                 <animated.button
                   type="button"
-                  disabled={disabled || index > last}
+                  disabled={disabled}
+                  aria-label={`Edit ${level} effort mapping`}
                   onClick={() => choose(index)}
                   className="h-6 w-full min-w-0 truncate rounded-md text-xs text-muted-foreground hover:bg-hover
                 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-ring"
                 >
-                  {values[level] || level}
+                  {values[level] || '\u00a0'}
                 </animated.button>
               </DisabledTooltip>
             )}
@@ -355,7 +355,7 @@ function CompactEffortMapping({
           disabled:text-muted-foreground/40 focus-visible:outline-ring"
         >
           <svg viewBox="0 0 12 30" className="h-full w-full fill-current" aria-hidden="true">
-            <path d="M0 0 12 15 0 30Z" />
+            <path d="M2 1.5Q0 0 0 2.5V27.5Q0 30 2 28.5L11 17Q12.5 15 11 13Z" />
           </svg>
         </animated.button>
       </DisabledTooltip>

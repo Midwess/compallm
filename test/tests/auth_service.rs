@@ -5649,7 +5649,7 @@ async fn preference_graphql_requires_authentication_and_rejects_null_before_writ
 #[ignore = "requires COMPALLM_TEST_DATABASE_URL with all migrations applied; creates a disposable database"]
 async fn preference_graphql_persists_grouped_updates_and_resets_for_current_user()
 -> anyhow::Result<()> {
-    use sea_orm::{ConnectionTrait, Database, EntityTrait, ModelTrait, Set};
+    use sea_orm::{ConnectionTrait, Database, EntityTrait, ModelTrait, Set, TransactionTrait};
     use sea_orm_migration::{MigratorTrait, SchemaManager};
     let url = std::env::var("COMPALLM_TEST_DATABASE_URL")?;
     let name = format!(
@@ -5668,7 +5668,6 @@ async fn preference_graphql_persists_grouped_updates_and_resets_for_current_user
         let (server, _) = base.rsplit_once('/').ok_or_else(|| anyhow::anyhow!("database URL"))?;
         let pool = Arc::new(Database::connect(format!("{server}/{name}?{parameters}")).await?);
         for migration in compallm_postgres::Migrator::migrations() {
-            let manager = SchemaManager::new(pool.as_ref());
             if migration.name().ends_with("restricted_reads") {
                 // Reuse the cluster-wide role installed in the parent test database.
                 let setup = include_str!("../../libs/postgres/src/migration/m20261110_000028_restricted_reads/up.sql");
@@ -5677,7 +5676,9 @@ async fn preference_graphql_persists_grouped_updates_and_resets_for_current_user
                 pool.execute_unprepared(include_str!("../../libs/postgres/src/migration/m20261110_000028_restricted_reads/policies.sql")).await?;
                 pool.execute_unprepared(include_str!("../../libs/postgres/src/migration/m20261110_000028_restricted_reads/guards.sql")).await?;
             } else {
-                migration.up(&manager).await?;
+                let transaction = pool.begin().await?;
+                migration.up(&SchemaManager::new(&transaction)).await?;
+                transaction.commit().await?;
             }
         }
         type Users = <compallm_postgres::UserSchema as ModelTrait>::Entity;

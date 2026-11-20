@@ -2140,7 +2140,7 @@
       "x-compallm-input": true,
       "x-compallm-object-rule": "modelLimits",
       "x-compallm-messages": {
-        "x-compallm-object-rule": "Enabled limits must be between 100 and 1,000,000 tokens and cannot exceed the context window."
+        "x-compallm-object-rule": "Enabled limits must be between 100 and 10,000,000 tokens and cannot exceed the context window."
       }
     },
     "TextModelProtocol": {

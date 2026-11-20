@@ -216,7 +216,7 @@ export function modelLimitsObject(value: {
   maxOutputTokens?: number
 }): boolean {
   return [value.maxInputTokens, value.maxOutputTokens].every(
-    (limit) => limit === undefined || (limit >= 100 && limit <= 1000000 && limit <= value.maxContextTokens),
+    (limit) => limit === undefined || (limit >= 100 && limit <= 10000000 && limit <= value.maxContextTokens),
   )
 }
 export function bodyDefaultsArray(entries: Array<{ key: string }>): boolean {

@@ -151,7 +151,7 @@ export function ProviderModels() {
                   </span>
                 </Table.Cell>
                 <Table.Cell column="capabilities" className="px-1 py-1 text-left">
-                  <div className="flex min-w-0 flex-wrap items-center gap-1">
+                  <div className="flex min-w-0 flex-wrap items-center gap-0.5">
                     {model.capabilities?.length ? (
                       capabilityOptions
                         .filter((option) => model.capabilities?.includes(option.value))

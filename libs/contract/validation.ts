@@ -1158,7 +1158,7 @@ export const ProviderModelConfiguration = z
   })
   .strict()
   .refine(modelLimitsObject, {
-    message: 'Enabled limits must be between 100 and 1,000,000 tokens and cannot exceed the context window.',
+    message: 'Enabled limits must be between 100 and 10,000,000 tokens and cannot exceed the context window.',
   })
   .describe('Complete configured text-model values. Decimal prices are USD per million tokens.')
 export type ProviderModelConfigurationFormInput = z.input<typeof ProviderModelConfiguration>
@@ -1175,7 +1175,7 @@ export const ProviderModelWriteConstraints = {
   configuration: {
     messages: {
       'x-compallm-object-rule':
-        'Enabled limits must be between 100 and 1,000,000 tokens and cannot exceed the context window.',
+        'Enabled limits must be between 100 and 10,000,000 tokens and cannot exceed the context window.',
     },
   },
 } as const

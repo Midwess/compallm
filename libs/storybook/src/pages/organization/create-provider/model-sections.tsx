@@ -177,7 +177,7 @@ function LimitRow({
     (s) => (s.modelDraft ? effectiveContextTokens(s.modelDraft) : undefined),
     ['modelDraft.maxContextTokens', 'modelDraft.contextLimitEnabled', 'modelDraft.providerContextTokens'],
   )
-  const maximum = kind === 'context' ? Math.max(10000000, Number(context) || 0) : Math.min(1000000, Number(context) || 1000000)
+  const maximum = kind === 'context' ? Math.max(10000000, Number(context) || 0) : Math.min(10000000, Number(context) || 10000000)
   const help = {
     context: `
 The total token budget shared by the request and reply. Uncheck to use the provider’s context value. If you
@@ -186,11 +186,11 @@ automatically.
 `,
     input: `
 The largest request you allow, including instructions, messages, and tool definitions. Enable an override from
-100 to 1,000,000 tokens, no greater than context. A long reply may require a shorter actual input. Uncheck to
+100 to 10,000,000 tokens, no greater than context. A long reply may require a shorter actual input. Uncheck to
 use the provider default.
 `,
     output: `
-The most tokens allowed in a reply. Enable an override from 100 to 1,000,000 tokens, no greater than context.
+The most tokens allowed in a reply. Enable an override from 100 to 10,000,000 tokens, no greater than context.
 The reply also has to fit the space left after the actual input. Uncheck to use the provider default.
 `,
   }[kind]

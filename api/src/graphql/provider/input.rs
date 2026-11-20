@@ -224,12 +224,12 @@ fn validate_model_configuration(
         .flatten()
     {
         if limit.get() < 100
-            || limit.get() > 1_000_000
+            || limit.get() > 10_000_000
             || limit.get() > value.max_context_tokens.get()
         {
             let mut errors = ValidationErrors::new();
             errors.add(ValidationError::new_schema("model_limits").with_message(
-                "Enabled limits must be between 100 and 1,000,000 tokens and cannot exceed the context window.".into(),
+                "Enabled limits must be between 100 and 10,000,000 tokens and cannot exceed the context window.".into(),
             ));
             return Err(errors);
         }
@@ -238,7 +238,7 @@ fn validate_model_configuration(
 }
 
 fn validate_model_configuration_contract() -> Value {
-    json!({"x-compallm-object-rule": "modelLimits", "x-compallm-messages": {"x-compallm-object-rule": "Enabled limits must be between 100 and 1,000,000 tokens and cannot exceed the context window."}})
+    json!({"x-compallm-object-rule": "modelLimits", "x-compallm-messages": {"x-compallm-object-rule": "Enabled limits must be between 100 and 10,000,000 tokens and cannot exceed the context window."}})
 }
 
 #[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]

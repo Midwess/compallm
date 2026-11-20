@@ -1517,6 +1517,18 @@ export const ProviderReplaceInput = z
   .describe('Full non-secret replacement. Omitting apiKey preserves the saved credential.')
 export type ProviderReplaceInputFormInput = z.input<typeof ProviderReplaceInput>
 export type ProviderReplaceInputFormOutput = z.output<typeof ProviderReplaceInput>
+export const ProviderTemplateFilterInputConstraints = {} as const
+export const ProviderTemplateFilterInputInput = {}
+export const ProviderTemplateFilterInput = z.object({ name: StringFilter.nullable().optional() }).strict()
+export type ProviderTemplateFilterInputFormInput = z.input<typeof ProviderTemplateFilterInput>
+export type ProviderTemplateFilterInputFormOutput = z.output<typeof ProviderTemplateFilterInput>
+export const ProviderTemplateOrderInputConstraints = {} as const
+export const ProviderTemplateOrderInputInput = {}
+export const ProviderTemplateOrderInput = z
+  .object({ name: OrderByDirection.nullable().optional(), id: OrderByDirection.nullable().optional() })
+  .strict()
+export type ProviderTemplateOrderInputFormInput = z.input<typeof ProviderTemplateOrderInput>
+export type ProviderTemplateOrderInputFormOutput = z.output<typeof ProviderTemplateOrderInput>
 export const ProvidersCreateInputConstraints = {} as const
 export const ProvidersCreateInputInput = {}
 /** Atomic batch of new provider connections for the verified organization. */

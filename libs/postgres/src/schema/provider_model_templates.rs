@@ -16,9 +16,7 @@ pub struct Model {
     #[sea_orm(column_type = "Text", nullable)]
     pub description: Option<String>,
     #[sea_orm(column_type = "JsonBinary")]
-    pub protocols: Json,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub paths: Json,
+    pub operations: Json,
     #[sea_orm(column_type = "JsonBinary")]
     pub capabilities: Json,
     pub max_context_tokens: Option<i64>,
@@ -55,6 +53,8 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_one = "super::provider_model_template_research::Entity")]
+    ProviderModelTemplateResearch,
     #[sea_orm(
         belongs_to = "super::provider_templates::Entity",
         from = "Column::ProviderTemplateId",

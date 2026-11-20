@@ -76,3 +76,8 @@ pub use self::sea_orm_active_enums::CatalogServiceKind as CatalogServiceKindSche
 pub use self::sea_orm_active_enums::CatalogSpecificationMode as CatalogSpecificationModeSchema;
 
 pub use self::provider_catalog_auth_readiness::Model as ProviderCatalogAuthReadinessSchema;
+
+mod provider_model_template_research;
+mod provider_template_research;
+pub use provider_model_template_research::Model as ProviderModelTemplateResearchSchema;
+pub use provider_template_research::Model as ProviderTemplateResearchSchema;

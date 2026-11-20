@@ -54,6 +54,13 @@ type CalendarPreferences {
   firstDay: PreferenceWeekday!
 }
 
+type CatalogRequiredInput {
+  allowedValues: [String!]
+  kind: TemplateInputKind!
+  name: String!
+  required: Boolean!
+}
+
 input ChatCreateInput {
   message: String!
   modelId: String!
@@ -369,6 +376,50 @@ input MessageCompositionPatchInput {
 type MessageCompositionPreferences {
   convertEmoticons: Boolean!
   sendShortcut: PreferenceKeyCombination!
+}
+
+type ModelTemplate {
+  billingModel: TemplateBillingModel!
+  cacheBilling: TemplateCacheBilling!
+  cachedPrice: String
+  capabilities: [ProviderModelCapability!]!
+  capabilitySupport: [TemplateCapabilitySupport!]!
+  description: String
+  displayName: String!
+  effortMapping: [TemplateEffort!]!
+  fieldStatuses: [TemplateFieldStatus!]!
+  id: ID!
+  inputPrice: String
+  maxContextTokens: ContextTokens
+  maxInputTokens: ContextTokens
+  maxOutputTokens: ContextTokens
+  modelInfoSources: [TemplateModelInfoSource!]!
+  operations: [TemplateOperation!]!
+  outputPrice: String
+  pricing: TemplatePricingConfig!
+  pricingMode: TemplatePricingMode!
+  providerTemplateId: ID!
+  readiness: TemplateReadiness!
+  resolutionPlan: [TemplateResolution!]!
+  serviceKind: TemplateServiceKind!
+  sources: [TemplateSource!]!
+  specificationMode: TemplateSpecificationMode!
+  unresolvedFields: [TemplateUnresolved!]!
+  upstreamModelId: String!
+}
+
+type ModelTemplateConnection {
+  edges: [ModelTemplateEdge!]!
+  pageInfo: PageInfo!
+}
+
+type ModelTemplateEdge {
+  cursor: String!
+  node: ModelTemplate!
+}
+
+type ModelTemplatePayload {
+  node: ModelTemplate!
 }
 
 type Mutation {
@@ -954,26 +1005,44 @@ input ProviderReplaceInput {
   name: String!
 }
 
-"""
-Public catalog defaults; selecting a template creates no configured provider.
-"""
 type ProviderTemplate {
-  """
-  Unknown and account-specific addresses remain null.
-  """
+  authentication: [TemplateAuthentication!]!
   baseUrl: String
-
-  """
-  Global opaque catalog identity, independent of organization resource IDs.
-  """
+  description: String
+  endpoint: TemplateEndpoint!
+  fieldStatuses: [TemplateFieldStatus!]!
+  headers: [TemplateHeader!]!
   id: ID!
   logoPath: String!
+  modelInfoSources: [TemplateModelInfoSource!]!
+  models: ModelTemplateConnection!
   name: String!
-
-  """
-  Family hint only; configured models select their own text operation.
-  """
   protocol: ProviderApiProtocol!
+  readiness: TemplateReadiness!
+  sources: [TemplateSource!]!
+}
+
+type ProviderTemplateConnection {
+  edges: [ProviderTemplateEdge!]!
+  pageInfo: PageInfo!
+}
+
+type ProviderTemplateEdge {
+  cursor: String!
+  node: ProviderTemplate!
+}
+
+input ProviderTemplateFilterInput {
+  name: StringFilter
+}
+
+input ProviderTemplateOrderInput {
+  id: OrderByDirection
+  name: OrderByDirection
+}
+
+type ProviderTemplatePayload {
+  node: ProviderTemplate!
 }
 
 """
@@ -1008,6 +1077,7 @@ type Query {
     offset: Int
     orderBy: [MemberOrderInput!]
   ): MemberConnection!
+  modelTemplate(id: ID!, providerTemplateId: ID!): ModelTemplatePayload
   onboardingContext: OnboardingContextPayload
 
   """
@@ -1022,6 +1092,16 @@ type Query {
   organizationPolicyActions: PolicyActionConnection!
   organizationProfile(id: ID!): OrganizationPayload
   passkeys: PasskeySummaryConnection!
+  providerTemplate(id: ID!): ProviderTemplatePayload
+  providerTemplates(
+    after: String
+    before: String
+    filter: ProviderTemplateFilterInput
+    first: Int
+    last: Int
+    offset: Int
+    orderBy: [ProviderTemplateOrderInput!]
+  ): ProviderTemplateConnection!
 
   """
   Find visible role metadata in the active organization.
@@ -1224,6 +1304,479 @@ input StringFilter {
   neq: String
   regex: String
   startsWith: String
+}
+
+type TemplateAuthConfig {
+  adapter: String
+  authorizationUrl: String
+  deviceAuthorizationUrl: String
+  flow: String
+  placements: [TemplateCredentialPlacement!]
+  reason: String
+  requiredInputs: [CatalogRequiredInput!]
+  scopes: [String!]
+  sourceUrls: [String!]
+  status: TemplateAuthStatus!
+  tokenUrl: String
+}
+
+enum TemplateAuthStatus {
+  CONFIGURED
+  UNKNOWN
+}
+
+type TemplateAuthentication {
+  configuration: TemplateAuthConfig!
+  method: TemplateAuthenticationMethod!
+}
+
+enum TemplateAuthenticationMethod {
+  API_KEY
+  CUSTOM
+  NONE
+  OAUTH
+}
+
+enum TemplateBillingModel {
+  FREE
+  METERED
+  SUBSCRIPTION
+  SUBSCRIPTION_WITH_OVERAGE
+  UNKNOWN
+}
+
+enum TemplateCacheBilling {
+  INCLUDED
+  NOT_APPLICABLE
+  PER_ROUTE
+  SEPARATE_RATE
+  STANDARD_INPUT_RATE
+  UNKNOWN
+  UNSUPPORTED
+}
+
+type TemplateCapabilitySupport {
+  capability: ProviderModelCapability!
+  supported: Boolean
+}
+
+enum TemplateCredentialLocation {
+  HEADER
+  QUERY
+}
+
+type TemplateCredentialPlacement {
+  adapterRequirements: [String!]!
+  location: TemplateCredentialLocation!
+  name: String!
+  operations: [String!]!
+  prefix: String!
+}
+
+type TemplateCreditConversion {
+  currency: String!
+  usdPerCredit: String!
+}
+
+type TemplateEffort {
+  level: TemplateEffortLevel!
+  value: String!
+}
+
+enum TemplateEffortLevel {
+  HIGH
+  LOW
+  MAX
+  MEDIUM
+  XHIGH
+}
+
+type TemplateEndpoint {
+  configuration: TemplateEndpointConfig!
+  mode: TemplateEndpointMode!
+}
+
+type TemplateEndpointConfig {
+  reason: String
+  requiredInputs: [CatalogRequiredInput!]
+  sourceIndex: String
+  sourceUrls: [String!]
+}
+
+enum TemplateEndpointMode {
+  ACCOUNT_SPECIFIC
+  DISCOVERED
+  FIXED
+  UNKNOWN
+}
+
+type TemplateEntitlement {
+  overagePolicy: String!
+  period: String!
+  quota: String!
+  unit: String!
+}
+
+enum TemplateEstimateConfidence {
+  HIGH
+  LOW
+  MEDIUM
+}
+
+enum TemplateFallbackBasis {
+  RELATED_MODEL
+  SAME_MODEL_OTHER_PROVIDER
+  TARGET_PROVIDER_ESTIMATE
+}
+
+type TemplateFallbackPricing {
+  basis: TemplateFallbackBasis!
+  cachedPrice: String
+  confidence: TemplateEstimateConfidence!
+  currency: String!
+  inputPrice: String
+  notes: String!
+  outputPrice: String
+  referenceModel: String!
+  referenceProvider: String!
+  sourceUrls: [String!]!
+  unitQuantity: String!
+}
+
+type TemplateFieldLocation {
+  pointer: String!
+  unit: TemplateSourceUnit!
+}
+
+type TemplateFieldStatus {
+  conditionsJson: String
+  field: String!
+  reason: String!
+  sourceReference: String
+  sourceUnitsJson: String
+  status: TemplateFieldStatusKind!
+}
+
+enum TemplateFieldStatusKind {
+  ACCOUNT_SPECIFIC
+  CLIENT_RESTRICTED
+  CONDITIONAL
+  CREDIT_BASED
+  DEPRECATED
+  MIGRATION_REQUIRED
+  NOT_APPLICABLE
+  NO_PUBLIC_ENDPOINT
+  REQUIRES_AUTHENTICATION
+  STANDARD_INPUT_RATE
+  SUBSCRIPTION_BASED
+  UNCONFIGURED
+  UNKNOWN
+  UNPUBLISHED
+  UNSUPPORTED_PRECISION
+  VARIABLE
+}
+
+type TemplateFreeEvidence {
+  reason: String!
+  restrictions: [TemplateFreeEvidenceRestrictionsEntry!]!
+  sourceIndex: String!
+}
+
+type TemplateFreeEvidenceRestrictionsEntry {
+  key: String!
+  value: String!
+}
+
+type TemplateHeader {
+  key: String!
+  value: String!
+}
+
+enum TemplateInputKind {
+  OBJECT
+  POSITIVE_INTEGER
+  PRICE
+  STRING
+  URL
+}
+
+enum TemplateMissingStatus {
+  UNKNOWN
+  UNPUBLISHED
+  UNSUPPORTED
+}
+
+type TemplateModelInfoSource {
+  access: TemplateSourceAccess!
+  fields: [String!]!
+  kind: TemplateSourceKind!
+  notes: String!
+  pagination: TemplatePagePagination
+  reference: String
+  request: TemplateSourceRequest
+  response: TemplateSourceResponse
+  revision: String
+  status: TemplateSourceStatus!
+  url: String
+}
+
+type TemplateOperation {
+  operation: TextModelProtocol!
+  path: String!
+}
+
+type TemplatePagePagination {
+  pageParameter: String!
+  pageSize: Int!
+  pageSizeParameter: String!
+  totalPagesPointer: String!
+}
+
+type TemplatePricingConfig {
+  cacheEvidence: TemplateSourceEvidence
+  conversion: TemplateCreditConversion
+  costProxy: TemplateFallbackPricing
+  currency: String
+  fallback: TemplateFallbackPricing
+  freeEvidence: TemplateFreeEvidence
+  nativeReference: String
+  rates: [TemplateUnitRate!]
+  reason: String
+  requiredInputs: [CatalogRequiredInput!]
+  routeOptions: [TemplateRoutePricing!]
+  routePolicy: TemplateRoutePolicy
+  schedule: TemplatePricingSchedule
+  sourceIndex: String
+  subscription: TemplateSubscription
+  tiers: [TemplateTokenTier!]
+  unitQuantity: String
+  zeroPriceEvidence: [TemplatePricingConfigZeroPriceEvidenceEntry!]
+}
+
+type TemplatePricingConfigZeroPriceEvidenceEntry {
+  key: String!
+  value: TemplateSourceEvidence!
+}
+
+enum TemplatePricingMode {
+  ACCOUNT_SPECIFIC
+  API
+  FIXED
+  NOT_APPLICABLE
+  SCHEDULED
+  TIERED
+  UNKNOWN
+  UNPUBLISHED
+}
+
+type TemplatePricingSchedule {
+  slots: [TemplateTimePriceSlot!]!
+  timezone: String!
+}
+
+enum TemplateReadiness {
+  INCOMPLETE
+  NEEDS_CONFIGURATION
+  NEEDS_FETCH
+  READY
+}
+
+enum TemplateReferenceKind {
+  REPOSITORY
+  WEB
+}
+
+enum TemplateReferenceStatus {
+  ESTIMATE
+  IMPORTED
+  VERIFIED
+}
+
+type TemplateResolution {
+  field: String!
+  method: TemplateResolutionMethod!
+  requiredInputs: [CatalogRequiredInput!]!
+  sourceIndex: String
+}
+
+enum TemplateResolutionMethod {
+  ACCOUNT
+  API
+}
+
+enum TemplateResponseFormat {
+  MODEL_LIST
+  MODEL_OBJECT
+}
+
+enum TemplateRetrievalMethod {
+  GET
+}
+
+type TemplateRoutePolicy {
+  allowFallbacks: Boolean!
+  exactProviderSelection: Boolean!
+}
+
+type TemplateRoutePricing {
+  contextTokens: String!
+  implicitCaching: Boolean
+  maxInputTokens: String
+  maxOutputTokens: String
+  modelId: String!
+  provider: String!
+  rates: TemplateTokenRates!
+  sourceIndex: String!
+  tag: String!
+  tiers: [TemplateTokenTier!]!
+}
+
+enum TemplateServiceKind {
+  AUDIO
+  EMBEDDING
+  IMAGE
+  RERANK
+  TEXT
+  UNKNOWN
+  VIDEO
+}
+
+type TemplateSource {
+  fields: [String!]!
+  kind: TemplateReferenceKind!
+  note: String
+  reference: String!
+  revision: String
+  status: TemplateReferenceStatus!
+}
+
+enum TemplateSourceAccess {
+  MANUAL
+  PROVIDER_CREDENTIAL
+  PUBLIC
+  UNAVAILABLE
+  UNKNOWN
+}
+
+enum TemplateSourceAuthentication {
+  NONE
+  PROVIDER_API_KEY
+  PROVIDER_OAUTH
+  UNKNOWN
+}
+
+type TemplateSourceEvidence {
+  reason: String!
+  sourceIndex: String!
+}
+
+enum TemplateSourceKind {
+  API
+  DOCUMENTATION
+  MANUAL
+  REPOSITORY
+}
+
+type TemplateSourceRequest {
+  authentication: TemplateSourceAuthentication!
+  method: TemplateRetrievalMethod!
+}
+
+type TemplateSourceResponse {
+  fields: [TemplateSourceResponseFieldsEntry!]!
+  format: TemplateResponseFormat!
+  identityPointer: String!
+  identityValue: String
+  objectPointer: String!
+}
+
+type TemplateSourceResponseFieldsEntry {
+  key: String!
+  value: TemplateFieldLocation!
+}
+
+enum TemplateSourceStatus {
+  DOCUMENTED
+  OBSERVED
+  REFERENCE
+  UNAVAILABLE
+}
+
+enum TemplateSourceUnit {
+  IDENTIFIER
+  PROVIDER_NATIVE
+  TEXT
+  TOKENS
+  USD_PER_MILLION_TOKENS
+  USD_PER_TOKEN
+}
+
+enum TemplateSpecificationMode {
+  ACCOUNT_SPECIFIC
+  API
+  NOT_APPLICABLE
+  STORED
+  UNKNOWN
+}
+
+type TemplateSubscription {
+  entitlement: TemplateEntitlement
+  fee: TemplateSubscriptionFee
+  plan: String
+  planMode: TemplateSubscriptionPlanMode!
+  product: String!
+  requiredInputs: [CatalogRequiredInput!]
+  sourceUrls: [String!]!
+}
+
+type TemplateSubscriptionFee {
+  amount: String!
+  currency: String!
+  period: String!
+}
+
+enum TemplateSubscriptionPlanMode {
+  ACCOUNT_SPECIFIC
+  STORED
+}
+
+type TemplateTimePriceSlot {
+  fromHour: Int!
+  rates: TemplateTokenRates!
+  toHour: Int!
+}
+
+type TemplateTokenRates {
+  cachedPrice: String
+  inputPrice: String!
+  outputPrice: String!
+}
+
+type TemplateTokenTier {
+  fromTokens: String!
+  rates: TemplateTokenRates!
+  toTokens: String
+}
+
+type TemplateUnitRate {
+  amount: String!
+  conditions: [TemplateUnitRateConditionsEntry!]!
+  quantity: String!
+}
+
+type TemplateUnitRateConditionsEntry {
+  key: String!
+  value: String!
+}
+
+type TemplateUnresolved {
+  field: String!
+  requirement: TemplateUnresolvedField!
+}
+
+type TemplateUnresolvedField {
+  reason: String!
+  status: TemplateMissingStatus!
 }
 
 """

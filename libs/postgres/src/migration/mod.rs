@@ -1,6 +1,7 @@
 #![allow(elided_lifetimes_in_paths)]
 
 use sea_orm_migration::prelude::*;
+mod m20261120_000048_catalog_types;
 
 mod m20261104_000001_create_users;
 mod m20261104_000002_create_organizations;
@@ -128,6 +129,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261117_000045_drop_session_location::Migration),
             Box::new(m20261117_000046_session_lifetime::Migration),
             Box::new(m20261117_000047_provider_catalog::Migration),
+            Box::new(m20261120_000048_catalog_types::Migration),
             // inject-above (do not remove this comment)
         ]
     }

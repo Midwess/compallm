@@ -20,9 +20,7 @@ pub struct Model {
     #[sea_orm(column_type = "JsonBinary")]
     pub source_refs: Json,
     #[sea_orm(column_type = "JsonBinary")]
-    pub auth_methods: Json,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub auth_config: Json,
+    pub authentication: Json,
     #[sea_orm(column_type = "JsonBinary")]
     pub endpoint_config: Json,
     pub endpoint_mode: super::sea_orm_active_enums::CatalogEndpointMode,

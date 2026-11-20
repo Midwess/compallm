@@ -24,6 +24,53 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
+    async fn provider_templates(
+        filter: Option<super::provider::catalog::input::ProviderTemplateFilterInput>,
+        order_by: Option<Vec<super::provider::catalog::input::ProviderTemplateOrderInput>>,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<String>,
+        after: Option<String>,
+        offset: Option<i32>,
+        #[graphql(context)] repository: &compallm_postgres::catalog::repository::CatalogRepository,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Collection<super::provider::catalog::ProviderTemplate>, Error> {
+        super::provider::catalog::query::list(
+            filter,
+            compallm_query::Pagination {
+                first: if first.is_none() && last.is_none() {
+                    Some(20)
+                } else {
+                    first
+                },
+                last,
+                before: before.map(compallm_query::Cursor),
+                after: after.map(compallm_query::Cursor),
+                offset,
+            },
+            order_by,
+            repository,
+            authority,
+        )
+        .await
+    }
+    async fn provider_template(
+        id: ID,
+        #[graphql(context)] repository: &compallm_postgres::catalog::repository::CatalogRepository,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Option<Payload<super::provider::catalog::ProviderTemplate>>, Error> {
+        super::provider::catalog::query::get(id, repository, authority).await
+    }
+    async fn model_template(
+        provider_template_id: ID,
+        id: ID,
+        #[graphql(context)] repository: &compallm_postgres::catalog::repository::CatalogRepository,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Option<Payload<super::provider::catalog::ModelTemplate>>, Error> {
+        super::provider::catalog::query::model(provider_template_id, id, repository, authority)
+            .await
+    }
+
     async fn passkeys(
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] identity: &AuthenticationContext,
@@ -653,6 +700,8 @@ impl GraphQLValueAsync for RegisteredQuery {
 #[derive(JsonSchema)]
 #[allow(dead_code)]
 struct Inputs {
+    provider_template_filter: super::provider::catalog::input::ProviderTemplateFilterInput,
+    provider_template_order: super::provider::catalog::input::ProviderTemplateOrderInput,
     passkey_registration: authentication::passkey::input::PasskeyRegistrationInput,
     passkey_finish: authentication::passkey::input::PasskeyFinishInput,
     analytic_user_profile_put: super::analytics::input::AnalyticUserProfilePutInput,

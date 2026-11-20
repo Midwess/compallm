@@ -16,3 +16,5 @@ pub mod user;
 
 pub mod analytics;
 pub mod onboarding;
+
+pub mod provider_template;

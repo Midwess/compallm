@@ -55,6 +55,14 @@ export interface CalendarPreferences {
   __typename: 'CalendarPreferences'
 }
 
+export interface CatalogRequiredInput {
+  allowedValues: Scalars['String'][] | null
+  kind: TemplateInputKind
+  name: Scalars['String']
+  required: Scalars['Boolean']
+  __typename: 'CatalogRequiredInput'
+}
+
 export interface CodeAppearancePreferences {
   font: CodeFontPreferences
   theme: PreferenceCodeTheme
@@ -238,6 +246,54 @@ export interface MessageCompositionPreferences {
   convertEmoticons: Scalars['Boolean']
   sendShortcut: PreferenceKeyCombination
   __typename: 'MessageCompositionPreferences'
+}
+
+export interface ModelTemplate {
+  billingModel: TemplateBillingModel
+  cacheBilling: TemplateCacheBilling
+  cachedPrice: Scalars['String'] | null
+  capabilities: ProviderModelCapability[]
+  capabilitySupport: TemplateCapabilitySupport[]
+  description: Scalars['String'] | null
+  displayName: Scalars['String']
+  effortMapping: TemplateEffort[]
+  fieldStatuses: TemplateFieldStatus[]
+  id: Scalars['ID']
+  inputPrice: Scalars['String'] | null
+  maxContextTokens: Scalars['ContextTokens'] | null
+  maxInputTokens: Scalars['ContextTokens'] | null
+  maxOutputTokens: Scalars['ContextTokens'] | null
+  modelInfoSources: TemplateModelInfoSource[]
+  operations: TemplateOperation[]
+  outputPrice: Scalars['String'] | null
+  pricing: TemplatePricingConfig
+  pricingMode: TemplatePricingMode
+  providerTemplateId: Scalars['ID']
+  readiness: TemplateReadiness
+  resolutionPlan: TemplateResolution[]
+  serviceKind: TemplateServiceKind
+  sources: TemplateSource[]
+  specificationMode: TemplateSpecificationMode
+  unresolvedFields: TemplateUnresolved[]
+  upstreamModelId: Scalars['String']
+  __typename: 'ModelTemplate'
+}
+
+export interface ModelTemplateConnection {
+  edges: ModelTemplateEdge[]
+  pageInfo: PageInfo
+  __typename: 'ModelTemplateConnection'
+}
+
+export interface ModelTemplateEdge {
+  cursor: Scalars['String']
+  node: ModelTemplate
+  __typename: 'ModelTemplateEdge'
+}
+
+export interface ModelTemplatePayload {
+  node: ModelTemplate
+  __typename: 'ModelTemplatePayload'
 }
 
 export interface Mutation {
@@ -505,17 +561,39 @@ export type ProviderModelCapability =
   | 'VIDEO'
   | 'VISION'
 
-/** Public catalog defaults; selecting a template creates no configured provider. */
 export interface ProviderTemplate {
-  /** Unknown and account-specific addresses remain null. */
+  authentication: TemplateAuthentication[]
   baseUrl: Scalars['String'] | null
-  /** Global opaque catalog identity, independent of organization resource IDs. */
+  description: Scalars['String'] | null
+  endpoint: TemplateEndpoint
+  fieldStatuses: TemplateFieldStatus[]
+  headers: TemplateHeader[]
   id: Scalars['ID']
   logoPath: Scalars['String']
+  modelInfoSources: TemplateModelInfoSource[]
+  models: ModelTemplateConnection
   name: Scalars['String']
-  /** Family hint only; configured models select their own text operation. */
   protocol: ProviderApiProtocol
+  readiness: TemplateReadiness
+  sources: TemplateSource[]
   __typename: 'ProviderTemplate'
+}
+
+export interface ProviderTemplateConnection {
+  edges: ProviderTemplateEdge[]
+  pageInfo: PageInfo
+  __typename: 'ProviderTemplateConnection'
+}
+
+export interface ProviderTemplateEdge {
+  cursor: Scalars['String']
+  node: ProviderTemplate
+  __typename: 'ProviderTemplateEdge'
+}
+
+export interface ProviderTemplatePayload {
+  node: ProviderTemplate
+  __typename: 'ProviderTemplatePayload'
 }
 
 export interface Query {
@@ -528,6 +606,7 @@ export interface Query {
   invitations: InvitationConnection
   me: MePayload
   members: MemberConnection
+  modelTemplate: ModelTemplatePayload | null
   onboardingContext: OnboardingContextPayload | null
   /** Return the active organization from verified user authority. */
   organization: OrganizationPayload
@@ -536,6 +615,8 @@ export interface Query {
   organizationPolicyActions: PolicyActionConnection
   organizationProfile: OrganizationPayload | null
   passkeys: PasskeySummaryConnection
+  providerTemplate: ProviderTemplatePayload | null
+  providerTemplates: ProviderTemplateConnection
   /** Find visible role metadata in the active organization. */
   role: RolePayload | null
   /** Return the complete visible role metadata collection, ordered by ID. */
@@ -651,6 +732,391 @@ export interface SidebarPreferences {
   entries: SidebarEntry[]
   layout: SidebarLayoutSection[]
   __typename: 'SidebarPreferences'
+}
+
+export interface TemplateAuthConfig {
+  adapter: Scalars['String'] | null
+  authorizationUrl: Scalars['String'] | null
+  deviceAuthorizationUrl: Scalars['String'] | null
+  flow: Scalars['String'] | null
+  placements: TemplateCredentialPlacement[] | null
+  reason: Scalars['String'] | null
+  requiredInputs: CatalogRequiredInput[] | null
+  scopes: Scalars['String'][] | null
+  sourceUrls: Scalars['String'][] | null
+  status: TemplateAuthStatus
+  tokenUrl: Scalars['String'] | null
+  __typename: 'TemplateAuthConfig'
+}
+
+export type TemplateAuthStatus = 'CONFIGURED' | 'UNKNOWN'
+
+export interface TemplateAuthentication {
+  configuration: TemplateAuthConfig
+  method: TemplateAuthenticationMethod
+  __typename: 'TemplateAuthentication'
+}
+
+export type TemplateAuthenticationMethod = 'API_KEY' | 'CUSTOM' | 'NONE' | 'OAUTH'
+
+export type TemplateBillingModel = 'FREE' | 'METERED' | 'SUBSCRIPTION' | 'SUBSCRIPTION_WITH_OVERAGE' | 'UNKNOWN'
+
+export type TemplateCacheBilling =
+  'INCLUDED' | 'NOT_APPLICABLE' | 'PER_ROUTE' | 'SEPARATE_RATE' | 'STANDARD_INPUT_RATE' | 'UNKNOWN' | 'UNSUPPORTED'
+
+export interface TemplateCapabilitySupport {
+  capability: ProviderModelCapability
+  supported: Scalars['Boolean'] | null
+  __typename: 'TemplateCapabilitySupport'
+}
+
+export type TemplateCredentialLocation = 'HEADER' | 'QUERY'
+
+export interface TemplateCredentialPlacement {
+  adapterRequirements: Scalars['String'][]
+  location: TemplateCredentialLocation
+  name: Scalars['String']
+  operations: Scalars['String'][]
+  prefix: Scalars['String']
+  __typename: 'TemplateCredentialPlacement'
+}
+
+export interface TemplateCreditConversion {
+  currency: Scalars['String']
+  usdPerCredit: Scalars['String']
+  __typename: 'TemplateCreditConversion'
+}
+
+export interface TemplateEffort {
+  level: TemplateEffortLevel
+  value: Scalars['String']
+  __typename: 'TemplateEffort'
+}
+
+export type TemplateEffortLevel = 'HIGH' | 'LOW' | 'MAX' | 'MEDIUM' | 'XHIGH'
+
+export interface TemplateEndpoint {
+  configuration: TemplateEndpointConfig
+  mode: TemplateEndpointMode
+  __typename: 'TemplateEndpoint'
+}
+
+export interface TemplateEndpointConfig {
+  reason: Scalars['String'] | null
+  requiredInputs: CatalogRequiredInput[] | null
+  sourceIndex: Scalars['String'] | null
+  sourceUrls: Scalars['String'][] | null
+  __typename: 'TemplateEndpointConfig'
+}
+
+export type TemplateEndpointMode = 'ACCOUNT_SPECIFIC' | 'DISCOVERED' | 'FIXED' | 'UNKNOWN'
+
+export interface TemplateEntitlement {
+  overagePolicy: Scalars['String']
+  period: Scalars['String']
+  quota: Scalars['String']
+  unit: Scalars['String']
+  __typename: 'TemplateEntitlement'
+}
+
+export type TemplateEstimateConfidence = 'HIGH' | 'LOW' | 'MEDIUM'
+
+export type TemplateFallbackBasis = 'RELATED_MODEL' | 'SAME_MODEL_OTHER_PROVIDER' | 'TARGET_PROVIDER_ESTIMATE'
+
+export interface TemplateFallbackPricing {
+  basis: TemplateFallbackBasis
+  cachedPrice: Scalars['String'] | null
+  confidence: TemplateEstimateConfidence
+  currency: Scalars['String']
+  inputPrice: Scalars['String'] | null
+  notes: Scalars['String']
+  outputPrice: Scalars['String'] | null
+  referenceModel: Scalars['String']
+  referenceProvider: Scalars['String']
+  sourceUrls: Scalars['String'][]
+  unitQuantity: Scalars['String']
+  __typename: 'TemplateFallbackPricing'
+}
+
+export interface TemplateFieldLocation {
+  pointer: Scalars['String']
+  unit: TemplateSourceUnit
+  __typename: 'TemplateFieldLocation'
+}
+
+export interface TemplateFieldStatus {
+  conditionsJson: Scalars['String'] | null
+  field: Scalars['String']
+  reason: Scalars['String']
+  sourceReference: Scalars['String'] | null
+  sourceUnitsJson: Scalars['String'] | null
+  status: TemplateFieldStatusKind
+  __typename: 'TemplateFieldStatus'
+}
+
+export type TemplateFieldStatusKind =
+  | 'ACCOUNT_SPECIFIC'
+  | 'CLIENT_RESTRICTED'
+  | 'CONDITIONAL'
+  | 'CREDIT_BASED'
+  | 'DEPRECATED'
+  | 'MIGRATION_REQUIRED'
+  | 'NOT_APPLICABLE'
+  | 'NO_PUBLIC_ENDPOINT'
+  | 'REQUIRES_AUTHENTICATION'
+  | 'STANDARD_INPUT_RATE'
+  | 'SUBSCRIPTION_BASED'
+  | 'UNCONFIGURED'
+  | 'UNKNOWN'
+  | 'UNPUBLISHED'
+  | 'UNSUPPORTED_PRECISION'
+  | 'VARIABLE'
+
+export interface TemplateFreeEvidence {
+  reason: Scalars['String']
+  restrictions: TemplateFreeEvidenceRestrictionsEntry[]
+  sourceIndex: Scalars['String']
+  __typename: 'TemplateFreeEvidence'
+}
+
+export interface TemplateFreeEvidenceRestrictionsEntry {
+  key: Scalars['String']
+  value: Scalars['String']
+  __typename: 'TemplateFreeEvidenceRestrictionsEntry'
+}
+
+export interface TemplateHeader {
+  key: Scalars['String']
+  value: Scalars['String']
+  __typename: 'TemplateHeader'
+}
+
+export type TemplateInputKind = 'OBJECT' | 'POSITIVE_INTEGER' | 'PRICE' | 'STRING' | 'URL'
+
+export type TemplateMissingStatus = 'UNKNOWN' | 'UNPUBLISHED' | 'UNSUPPORTED'
+
+export interface TemplateModelInfoSource {
+  access: TemplateSourceAccess
+  fields: Scalars['String'][]
+  kind: TemplateSourceKind
+  notes: Scalars['String']
+  pagination: TemplatePagePagination | null
+  reference: Scalars['String'] | null
+  request: TemplateSourceRequest | null
+  response: TemplateSourceResponse | null
+  revision: Scalars['String'] | null
+  status: TemplateSourceStatus
+  url: Scalars['String'] | null
+  __typename: 'TemplateModelInfoSource'
+}
+
+export interface TemplateOperation {
+  operation: TextModelProtocol
+  path: Scalars['String']
+  __typename: 'TemplateOperation'
+}
+
+export interface TemplatePagePagination {
+  pageParameter: Scalars['String']
+  pageSize: Scalars['Int']
+  pageSizeParameter: Scalars['String']
+  totalPagesPointer: Scalars['String']
+  __typename: 'TemplatePagePagination'
+}
+
+export interface TemplatePricingConfig {
+  cacheEvidence: TemplateSourceEvidence | null
+  conversion: TemplateCreditConversion | null
+  costProxy: TemplateFallbackPricing | null
+  currency: Scalars['String'] | null
+  fallback: TemplateFallbackPricing | null
+  freeEvidence: TemplateFreeEvidence | null
+  nativeReference: Scalars['String'] | null
+  rates: TemplateUnitRate[] | null
+  reason: Scalars['String'] | null
+  requiredInputs: CatalogRequiredInput[] | null
+  routeOptions: TemplateRoutePricing[] | null
+  routePolicy: TemplateRoutePolicy | null
+  schedule: TemplatePricingSchedule | null
+  sourceIndex: Scalars['String'] | null
+  subscription: TemplateSubscription | null
+  tiers: TemplateTokenTier[] | null
+  unitQuantity: Scalars['String'] | null
+  zeroPriceEvidence: TemplatePricingConfigZeroPriceEvidenceEntry[] | null
+  __typename: 'TemplatePricingConfig'
+}
+
+export interface TemplatePricingConfigZeroPriceEvidenceEntry {
+  key: Scalars['String']
+  value: TemplateSourceEvidence
+  __typename: 'TemplatePricingConfigZeroPriceEvidenceEntry'
+}
+
+export type TemplatePricingMode =
+  'ACCOUNT_SPECIFIC' | 'API' | 'FIXED' | 'NOT_APPLICABLE' | 'SCHEDULED' | 'TIERED' | 'UNKNOWN' | 'UNPUBLISHED'
+
+export interface TemplatePricingSchedule {
+  slots: TemplateTimePriceSlot[]
+  timezone: Scalars['String']
+  __typename: 'TemplatePricingSchedule'
+}
+
+export type TemplateReadiness = 'INCOMPLETE' | 'NEEDS_CONFIGURATION' | 'NEEDS_FETCH' | 'READY'
+
+export type TemplateReferenceKind = 'REPOSITORY' | 'WEB'
+
+export type TemplateReferenceStatus = 'ESTIMATE' | 'IMPORTED' | 'VERIFIED'
+
+export interface TemplateResolution {
+  field: Scalars['String']
+  method: TemplateResolutionMethod
+  requiredInputs: CatalogRequiredInput[]
+  sourceIndex: Scalars['String'] | null
+  __typename: 'TemplateResolution'
+}
+
+export type TemplateResolutionMethod = 'ACCOUNT' | 'API'
+
+export type TemplateResponseFormat = 'MODEL_LIST' | 'MODEL_OBJECT'
+
+export type TemplateRetrievalMethod = 'GET'
+
+export interface TemplateRoutePolicy {
+  allowFallbacks: Scalars['Boolean']
+  exactProviderSelection: Scalars['Boolean']
+  __typename: 'TemplateRoutePolicy'
+}
+
+export interface TemplateRoutePricing {
+  contextTokens: Scalars['String']
+  implicitCaching: Scalars['Boolean'] | null
+  maxInputTokens: Scalars['String'] | null
+  maxOutputTokens: Scalars['String'] | null
+  modelId: Scalars['String']
+  provider: Scalars['String']
+  rates: TemplateTokenRates
+  sourceIndex: Scalars['String']
+  tag: Scalars['String']
+  tiers: TemplateTokenTier[]
+  __typename: 'TemplateRoutePricing'
+}
+
+export type TemplateServiceKind = 'AUDIO' | 'EMBEDDING' | 'IMAGE' | 'RERANK' | 'TEXT' | 'UNKNOWN' | 'VIDEO'
+
+export interface TemplateSource {
+  fields: Scalars['String'][]
+  kind: TemplateReferenceKind
+  note: Scalars['String'] | null
+  reference: Scalars['String']
+  revision: Scalars['String'] | null
+  status: TemplateReferenceStatus
+  __typename: 'TemplateSource'
+}
+
+export type TemplateSourceAccess = 'MANUAL' | 'PROVIDER_CREDENTIAL' | 'PUBLIC' | 'UNAVAILABLE' | 'UNKNOWN'
+
+export type TemplateSourceAuthentication = 'NONE' | 'PROVIDER_API_KEY' | 'PROVIDER_OAUTH' | 'UNKNOWN'
+
+export interface TemplateSourceEvidence {
+  reason: Scalars['String']
+  sourceIndex: Scalars['String']
+  __typename: 'TemplateSourceEvidence'
+}
+
+export type TemplateSourceKind = 'API' | 'DOCUMENTATION' | 'MANUAL' | 'REPOSITORY'
+
+export interface TemplateSourceRequest {
+  authentication: TemplateSourceAuthentication
+  method: TemplateRetrievalMethod
+  __typename: 'TemplateSourceRequest'
+}
+
+export interface TemplateSourceResponse {
+  fields: TemplateSourceResponseFieldsEntry[]
+  format: TemplateResponseFormat
+  identityPointer: Scalars['String']
+  identityValue: Scalars['String'] | null
+  objectPointer: Scalars['String']
+  __typename: 'TemplateSourceResponse'
+}
+
+export interface TemplateSourceResponseFieldsEntry {
+  key: Scalars['String']
+  value: TemplateFieldLocation
+  __typename: 'TemplateSourceResponseFieldsEntry'
+}
+
+export type TemplateSourceStatus = 'DOCUMENTED' | 'OBSERVED' | 'REFERENCE' | 'UNAVAILABLE'
+
+export type TemplateSourceUnit =
+  'IDENTIFIER' | 'PROVIDER_NATIVE' | 'TEXT' | 'TOKENS' | 'USD_PER_MILLION_TOKENS' | 'USD_PER_TOKEN'
+
+export type TemplateSpecificationMode = 'ACCOUNT_SPECIFIC' | 'API' | 'NOT_APPLICABLE' | 'STORED' | 'UNKNOWN'
+
+export interface TemplateSubscription {
+  entitlement: TemplateEntitlement | null
+  fee: TemplateSubscriptionFee | null
+  plan: Scalars['String'] | null
+  planMode: TemplateSubscriptionPlanMode
+  product: Scalars['String']
+  requiredInputs: CatalogRequiredInput[] | null
+  sourceUrls: Scalars['String'][]
+  __typename: 'TemplateSubscription'
+}
+
+export interface TemplateSubscriptionFee {
+  amount: Scalars['String']
+  currency: Scalars['String']
+  period: Scalars['String']
+  __typename: 'TemplateSubscriptionFee'
+}
+
+export type TemplateSubscriptionPlanMode = 'ACCOUNT_SPECIFIC' | 'STORED'
+
+export interface TemplateTimePriceSlot {
+  fromHour: Scalars['Int']
+  rates: TemplateTokenRates
+  toHour: Scalars['Int']
+  __typename: 'TemplateTimePriceSlot'
+}
+
+export interface TemplateTokenRates {
+  cachedPrice: Scalars['String'] | null
+  inputPrice: Scalars['String']
+  outputPrice: Scalars['String']
+  __typename: 'TemplateTokenRates'
+}
+
+export interface TemplateTokenTier {
+  fromTokens: Scalars['String']
+  rates: TemplateTokenRates
+  toTokens: Scalars['String'] | null
+  __typename: 'TemplateTokenTier'
+}
+
+export interface TemplateUnitRate {
+  amount: Scalars['String']
+  conditions: TemplateUnitRateConditionsEntry[]
+  quantity: Scalars['String']
+  __typename: 'TemplateUnitRate'
+}
+
+export interface TemplateUnitRateConditionsEntry {
+  key: Scalars['String']
+  value: Scalars['String']
+  __typename: 'TemplateUnitRateConditionsEntry'
+}
+
+export interface TemplateUnresolved {
+  field: Scalars['String']
+  requirement: TemplateUnresolvedField
+  __typename: 'TemplateUnresolved'
+}
+
+export interface TemplateUnresolvedField {
+  reason: Scalars['String']
+  status: TemplateMissingStatus
+  __typename: 'TemplateUnresolvedField'
 }
 
 /** Text operation determining the upstream request and response format. */
@@ -790,6 +1256,15 @@ export interface CalendarPatchInput {
 
 export interface CalendarPreferencesGenqlSelection {
   firstDay?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface CatalogRequiredInputGenqlSelection {
+  allowedValues?: boolean | number
+  kind?: boolean | number
+  name?: boolean | number
+  required?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -1099,6 +1574,58 @@ export interface MessageCompositionPatchInput {
 export interface MessageCompositionPreferencesGenqlSelection {
   convertEmoticons?: boolean | number
   sendShortcut?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ModelTemplateGenqlSelection {
+  billingModel?: boolean | number
+  cacheBilling?: boolean | number
+  cachedPrice?: boolean | number
+  capabilities?: boolean | number
+  capabilitySupport?: TemplateCapabilitySupportGenqlSelection
+  description?: boolean | number
+  displayName?: boolean | number
+  effortMapping?: TemplateEffortGenqlSelection
+  fieldStatuses?: TemplateFieldStatusGenqlSelection
+  id?: boolean | number
+  inputPrice?: boolean | number
+  maxContextTokens?: boolean | number
+  maxInputTokens?: boolean | number
+  maxOutputTokens?: boolean | number
+  modelInfoSources?: TemplateModelInfoSourceGenqlSelection
+  operations?: TemplateOperationGenqlSelection
+  outputPrice?: boolean | number
+  pricing?: TemplatePricingConfigGenqlSelection
+  pricingMode?: boolean | number
+  providerTemplateId?: boolean | number
+  readiness?: boolean | number
+  resolutionPlan?: TemplateResolutionGenqlSelection
+  serviceKind?: boolean | number
+  sources?: TemplateSourceGenqlSelection
+  specificationMode?: boolean | number
+  unresolvedFields?: TemplateUnresolvedGenqlSelection
+  upstreamModelId?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ModelTemplateConnectionGenqlSelection {
+  edges?: ModelTemplateEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ModelTemplateEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: ModelTemplateGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ModelTemplatePayloadGenqlSelection {
+  node?: ModelTemplateGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -1495,16 +2022,50 @@ export interface ProviderReplaceInput {
   name: Scalars['String']
 }
 
-/** Public catalog defaults; selecting a template creates no configured provider. */
 export interface ProviderTemplateGenqlSelection {
-  /** Unknown and account-specific addresses remain null. */
+  authentication?: TemplateAuthenticationGenqlSelection
   baseUrl?: boolean | number
-  /** Global opaque catalog identity, independent of organization resource IDs. */
+  description?: boolean | number
+  endpoint?: TemplateEndpointGenqlSelection
+  fieldStatuses?: TemplateFieldStatusGenqlSelection
+  headers?: TemplateHeaderGenqlSelection
   id?: boolean | number
   logoPath?: boolean | number
+  modelInfoSources?: TemplateModelInfoSourceGenqlSelection
+  models?: ModelTemplateConnectionGenqlSelection
   name?: boolean | number
-  /** Family hint only; configured models select their own text operation. */
   protocol?: boolean | number
+  readiness?: boolean | number
+  sources?: TemplateSourceGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ProviderTemplateConnectionGenqlSelection {
+  edges?: ProviderTemplateEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ProviderTemplateEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: ProviderTemplateGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ProviderTemplateFilterInput {
+  name?: StringFilter | null
+}
+
+export interface ProviderTemplateOrderInput {
+  id?: OrderByDirection | null
+  name?: OrderByDirection | null
+}
+
+export interface ProviderTemplatePayloadGenqlSelection {
+  node?: ProviderTemplateGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -1537,6 +2098,9 @@ export interface QueryGenqlSelection {
       orderBy?: MemberOrderInput[] | null
     }
   }
+  modelTemplate?: ModelTemplatePayloadGenqlSelection & {
+    __args: { id: Scalars['ID']; providerTemplateId: Scalars['ID'] }
+  }
   onboardingContext?: OnboardingContextPayloadGenqlSelection
   /** Return the active organization from verified user authority. */
   organization?: OrganizationPayloadGenqlSelection
@@ -1545,6 +2109,18 @@ export interface QueryGenqlSelection {
   organizationPolicyActions?: PolicyActionConnectionGenqlSelection
   organizationProfile?: OrganizationPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   passkeys?: PasskeySummaryConnectionGenqlSelection
+  providerTemplate?: ProviderTemplatePayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  providerTemplates?: ProviderTemplateConnectionGenqlSelection & {
+    __args?: {
+      after?: Scalars['String'] | null
+      before?: Scalars['String'] | null
+      filter?: ProviderTemplateFilterInput | null
+      first?: Scalars['Int'] | null
+      last?: Scalars['Int'] | null
+      offset?: Scalars['Int'] | null
+      orderBy?: ProviderTemplateOrderInput[] | null
+    }
+  }
   /** Find visible role metadata in the active organization. */
   role?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; includeUnseen?: Scalars['Boolean'] } }
   /** Return the complete visible role metadata collection, ordered by ID. */
@@ -1734,6 +2310,356 @@ export interface StringFilter {
   startsWith?: Scalars['String'] | null
 }
 
+export interface TemplateAuthConfigGenqlSelection {
+  adapter?: boolean | number
+  authorizationUrl?: boolean | number
+  deviceAuthorizationUrl?: boolean | number
+  flow?: boolean | number
+  placements?: TemplateCredentialPlacementGenqlSelection
+  reason?: boolean | number
+  requiredInputs?: CatalogRequiredInputGenqlSelection
+  scopes?: boolean | number
+  sourceUrls?: boolean | number
+  status?: boolean | number
+  tokenUrl?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateAuthenticationGenqlSelection {
+  configuration?: TemplateAuthConfigGenqlSelection
+  method?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateCapabilitySupportGenqlSelection {
+  capability?: boolean | number
+  supported?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateCredentialPlacementGenqlSelection {
+  adapterRequirements?: boolean | number
+  location?: boolean | number
+  name?: boolean | number
+  operations?: boolean | number
+  prefix?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateCreditConversionGenqlSelection {
+  currency?: boolean | number
+  usdPerCredit?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateEffortGenqlSelection {
+  level?: boolean | number
+  value?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateEndpointGenqlSelection {
+  configuration?: TemplateEndpointConfigGenqlSelection
+  mode?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateEndpointConfigGenqlSelection {
+  reason?: boolean | number
+  requiredInputs?: CatalogRequiredInputGenqlSelection
+  sourceIndex?: boolean | number
+  sourceUrls?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateEntitlementGenqlSelection {
+  overagePolicy?: boolean | number
+  period?: boolean | number
+  quota?: boolean | number
+  unit?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateFallbackPricingGenqlSelection {
+  basis?: boolean | number
+  cachedPrice?: boolean | number
+  confidence?: boolean | number
+  currency?: boolean | number
+  inputPrice?: boolean | number
+  notes?: boolean | number
+  outputPrice?: boolean | number
+  referenceModel?: boolean | number
+  referenceProvider?: boolean | number
+  sourceUrls?: boolean | number
+  unitQuantity?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateFieldLocationGenqlSelection {
+  pointer?: boolean | number
+  unit?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateFieldStatusGenqlSelection {
+  conditionsJson?: boolean | number
+  field?: boolean | number
+  reason?: boolean | number
+  sourceReference?: boolean | number
+  sourceUnitsJson?: boolean | number
+  status?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateFreeEvidenceGenqlSelection {
+  reason?: boolean | number
+  restrictions?: TemplateFreeEvidenceRestrictionsEntryGenqlSelection
+  sourceIndex?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateFreeEvidenceRestrictionsEntryGenqlSelection {
+  key?: boolean | number
+  value?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateHeaderGenqlSelection {
+  key?: boolean | number
+  value?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateModelInfoSourceGenqlSelection {
+  access?: boolean | number
+  fields?: boolean | number
+  kind?: boolean | number
+  notes?: boolean | number
+  pagination?: TemplatePagePaginationGenqlSelection
+  reference?: boolean | number
+  request?: TemplateSourceRequestGenqlSelection
+  response?: TemplateSourceResponseGenqlSelection
+  revision?: boolean | number
+  status?: boolean | number
+  url?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateOperationGenqlSelection {
+  operation?: boolean | number
+  path?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplatePagePaginationGenqlSelection {
+  pageParameter?: boolean | number
+  pageSize?: boolean | number
+  pageSizeParameter?: boolean | number
+  totalPagesPointer?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplatePricingConfigGenqlSelection {
+  cacheEvidence?: TemplateSourceEvidenceGenqlSelection
+  conversion?: TemplateCreditConversionGenqlSelection
+  costProxy?: TemplateFallbackPricingGenqlSelection
+  currency?: boolean | number
+  fallback?: TemplateFallbackPricingGenqlSelection
+  freeEvidence?: TemplateFreeEvidenceGenqlSelection
+  nativeReference?: boolean | number
+  rates?: TemplateUnitRateGenqlSelection
+  reason?: boolean | number
+  requiredInputs?: CatalogRequiredInputGenqlSelection
+  routeOptions?: TemplateRoutePricingGenqlSelection
+  routePolicy?: TemplateRoutePolicyGenqlSelection
+  schedule?: TemplatePricingScheduleGenqlSelection
+  sourceIndex?: boolean | number
+  subscription?: TemplateSubscriptionGenqlSelection
+  tiers?: TemplateTokenTierGenqlSelection
+  unitQuantity?: boolean | number
+  zeroPriceEvidence?: TemplatePricingConfigZeroPriceEvidenceEntryGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplatePricingConfigZeroPriceEvidenceEntryGenqlSelection {
+  key?: boolean | number
+  value?: TemplateSourceEvidenceGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplatePricingScheduleGenqlSelection {
+  slots?: TemplateTimePriceSlotGenqlSelection
+  timezone?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateResolutionGenqlSelection {
+  field?: boolean | number
+  method?: boolean | number
+  requiredInputs?: CatalogRequiredInputGenqlSelection
+  sourceIndex?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateRoutePolicyGenqlSelection {
+  allowFallbacks?: boolean | number
+  exactProviderSelection?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateRoutePricingGenqlSelection {
+  contextTokens?: boolean | number
+  implicitCaching?: boolean | number
+  maxInputTokens?: boolean | number
+  maxOutputTokens?: boolean | number
+  modelId?: boolean | number
+  provider?: boolean | number
+  rates?: TemplateTokenRatesGenqlSelection
+  sourceIndex?: boolean | number
+  tag?: boolean | number
+  tiers?: TemplateTokenTierGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateSourceGenqlSelection {
+  fields?: boolean | number
+  kind?: boolean | number
+  note?: boolean | number
+  reference?: boolean | number
+  revision?: boolean | number
+  status?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateSourceEvidenceGenqlSelection {
+  reason?: boolean | number
+  sourceIndex?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateSourceRequestGenqlSelection {
+  authentication?: boolean | number
+  method?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateSourceResponseGenqlSelection {
+  fields?: TemplateSourceResponseFieldsEntryGenqlSelection
+  format?: boolean | number
+  identityPointer?: boolean | number
+  identityValue?: boolean | number
+  objectPointer?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateSourceResponseFieldsEntryGenqlSelection {
+  key?: boolean | number
+  value?: TemplateFieldLocationGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateSubscriptionGenqlSelection {
+  entitlement?: TemplateEntitlementGenqlSelection
+  fee?: TemplateSubscriptionFeeGenqlSelection
+  plan?: boolean | number
+  planMode?: boolean | number
+  product?: boolean | number
+  requiredInputs?: CatalogRequiredInputGenqlSelection
+  sourceUrls?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateSubscriptionFeeGenqlSelection {
+  amount?: boolean | number
+  currency?: boolean | number
+  period?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateTimePriceSlotGenqlSelection {
+  fromHour?: boolean | number
+  rates?: TemplateTokenRatesGenqlSelection
+  toHour?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateTokenRatesGenqlSelection {
+  cachedPrice?: boolean | number
+  inputPrice?: boolean | number
+  outputPrice?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateTokenTierGenqlSelection {
+  fromTokens?: boolean | number
+  rates?: TemplateTokenRatesGenqlSelection
+  toTokens?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateUnitRateGenqlSelection {
+  amount?: boolean | number
+  conditions?: TemplateUnitRateConditionsEntryGenqlSelection
+  quantity?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateUnitRateConditionsEntryGenqlSelection {
+  key?: boolean | number
+  value?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateUnresolvedGenqlSelection {
+  field?: boolean | number
+  requirement?: TemplateUnresolvedFieldGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateUnresolvedFieldGenqlSelection {
+  reason?: boolean | number
+  status?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface ThemePatchInput {
   mode?: PreferenceAppearanceMode | null
   palettes?: PalettePatchInput | null
@@ -1874,6 +2800,12 @@ const CalendarPreferences_possibleTypes: string[] = ['CalendarPreferences']
 export const isCalendarPreferences = (obj?: { __typename?: any } | null): obj is CalendarPreferences => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isCalendarPreferences"')
   return CalendarPreferences_possibleTypes.includes(obj.__typename)
+}
+
+const CatalogRequiredInput_possibleTypes: string[] = ['CatalogRequiredInput']
+export const isCatalogRequiredInput = (obj?: { __typename?: any } | null): obj is CatalogRequiredInput => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isCatalogRequiredInput"')
+  return CatalogRequiredInput_possibleTypes.includes(obj.__typename)
 }
 
 const CodeAppearancePreferences_possibleTypes: string[] = ['CodeAppearancePreferences']
@@ -2034,6 +2966,30 @@ export const isMessageCompositionPreferences = (
   return MessageCompositionPreferences_possibleTypes.includes(obj.__typename)
 }
 
+const ModelTemplate_possibleTypes: string[] = ['ModelTemplate']
+export const isModelTemplate = (obj?: { __typename?: any } | null): obj is ModelTemplate => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isModelTemplate"')
+  return ModelTemplate_possibleTypes.includes(obj.__typename)
+}
+
+const ModelTemplateConnection_possibleTypes: string[] = ['ModelTemplateConnection']
+export const isModelTemplateConnection = (obj?: { __typename?: any } | null): obj is ModelTemplateConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isModelTemplateConnection"')
+  return ModelTemplateConnection_possibleTypes.includes(obj.__typename)
+}
+
+const ModelTemplateEdge_possibleTypes: string[] = ['ModelTemplateEdge']
+export const isModelTemplateEdge = (obj?: { __typename?: any } | null): obj is ModelTemplateEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isModelTemplateEdge"')
+  return ModelTemplateEdge_possibleTypes.includes(obj.__typename)
+}
+
+const ModelTemplatePayload_possibleTypes: string[] = ['ModelTemplatePayload']
+export const isModelTemplatePayload = (obj?: { __typename?: any } | null): obj is ModelTemplatePayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isModelTemplatePayload"')
+  return ModelTemplatePayload_possibleTypes.includes(obj.__typename)
+}
+
 const Mutation_possibleTypes: string[] = ['Mutation']
 export const isMutation = (obj?: { __typename?: any } | null): obj is Mutation => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isMutation"')
@@ -2182,6 +3138,24 @@ export const isProviderTemplate = (obj?: { __typename?: any } | null): obj is Pr
   return ProviderTemplate_possibleTypes.includes(obj.__typename)
 }
 
+const ProviderTemplateConnection_possibleTypes: string[] = ['ProviderTemplateConnection']
+export const isProviderTemplateConnection = (obj?: { __typename?: any } | null): obj is ProviderTemplateConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isProviderTemplateConnection"')
+  return ProviderTemplateConnection_possibleTypes.includes(obj.__typename)
+}
+
+const ProviderTemplateEdge_possibleTypes: string[] = ['ProviderTemplateEdge']
+export const isProviderTemplateEdge = (obj?: { __typename?: any } | null): obj is ProviderTemplateEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isProviderTemplateEdge"')
+  return ProviderTemplateEdge_possibleTypes.includes(obj.__typename)
+}
+
+const ProviderTemplatePayload_possibleTypes: string[] = ['ProviderTemplatePayload']
+export const isProviderTemplatePayload = (obj?: { __typename?: any } | null): obj is ProviderTemplatePayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isProviderTemplatePayload"')
+  return ProviderTemplatePayload_possibleTypes.includes(obj.__typename)
+}
+
 const Query_possibleTypes: string[] = ['Query']
 export const isQuery = (obj?: { __typename?: any } | null): obj is Query => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isQuery"')
@@ -2264,6 +3238,246 @@ const SidebarPreferences_possibleTypes: string[] = ['SidebarPreferences']
 export const isSidebarPreferences = (obj?: { __typename?: any } | null): obj is SidebarPreferences => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isSidebarPreferences"')
   return SidebarPreferences_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateAuthConfig_possibleTypes: string[] = ['TemplateAuthConfig']
+export const isTemplateAuthConfig = (obj?: { __typename?: any } | null): obj is TemplateAuthConfig => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateAuthConfig"')
+  return TemplateAuthConfig_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateAuthentication_possibleTypes: string[] = ['TemplateAuthentication']
+export const isTemplateAuthentication = (obj?: { __typename?: any } | null): obj is TemplateAuthentication => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateAuthentication"')
+  return TemplateAuthentication_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateCapabilitySupport_possibleTypes: string[] = ['TemplateCapabilitySupport']
+export const isTemplateCapabilitySupport = (obj?: { __typename?: any } | null): obj is TemplateCapabilitySupport => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateCapabilitySupport"')
+  return TemplateCapabilitySupport_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateCredentialPlacement_possibleTypes: string[] = ['TemplateCredentialPlacement']
+export const isTemplateCredentialPlacement = (
+  obj?: { __typename?: any } | null,
+): obj is TemplateCredentialPlacement => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateCredentialPlacement"')
+  return TemplateCredentialPlacement_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateCreditConversion_possibleTypes: string[] = ['TemplateCreditConversion']
+export const isTemplateCreditConversion = (obj?: { __typename?: any } | null): obj is TemplateCreditConversion => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateCreditConversion"')
+  return TemplateCreditConversion_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateEffort_possibleTypes: string[] = ['TemplateEffort']
+export const isTemplateEffort = (obj?: { __typename?: any } | null): obj is TemplateEffort => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateEffort"')
+  return TemplateEffort_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateEndpoint_possibleTypes: string[] = ['TemplateEndpoint']
+export const isTemplateEndpoint = (obj?: { __typename?: any } | null): obj is TemplateEndpoint => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateEndpoint"')
+  return TemplateEndpoint_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateEndpointConfig_possibleTypes: string[] = ['TemplateEndpointConfig']
+export const isTemplateEndpointConfig = (obj?: { __typename?: any } | null): obj is TemplateEndpointConfig => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateEndpointConfig"')
+  return TemplateEndpointConfig_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateEntitlement_possibleTypes: string[] = ['TemplateEntitlement']
+export const isTemplateEntitlement = (obj?: { __typename?: any } | null): obj is TemplateEntitlement => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateEntitlement"')
+  return TemplateEntitlement_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateFallbackPricing_possibleTypes: string[] = ['TemplateFallbackPricing']
+export const isTemplateFallbackPricing = (obj?: { __typename?: any } | null): obj is TemplateFallbackPricing => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateFallbackPricing"')
+  return TemplateFallbackPricing_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateFieldLocation_possibleTypes: string[] = ['TemplateFieldLocation']
+export const isTemplateFieldLocation = (obj?: { __typename?: any } | null): obj is TemplateFieldLocation => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateFieldLocation"')
+  return TemplateFieldLocation_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateFieldStatus_possibleTypes: string[] = ['TemplateFieldStatus']
+export const isTemplateFieldStatus = (obj?: { __typename?: any } | null): obj is TemplateFieldStatus => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateFieldStatus"')
+  return TemplateFieldStatus_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateFreeEvidence_possibleTypes: string[] = ['TemplateFreeEvidence']
+export const isTemplateFreeEvidence = (obj?: { __typename?: any } | null): obj is TemplateFreeEvidence => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateFreeEvidence"')
+  return TemplateFreeEvidence_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateFreeEvidenceRestrictionsEntry_possibleTypes: string[] = ['TemplateFreeEvidenceRestrictionsEntry']
+export const isTemplateFreeEvidenceRestrictionsEntry = (
+  obj?: { __typename?: any } | null,
+): obj is TemplateFreeEvidenceRestrictionsEntry => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateFreeEvidenceRestrictionsEntry"')
+  return TemplateFreeEvidenceRestrictionsEntry_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateHeader_possibleTypes: string[] = ['TemplateHeader']
+export const isTemplateHeader = (obj?: { __typename?: any } | null): obj is TemplateHeader => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateHeader"')
+  return TemplateHeader_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateModelInfoSource_possibleTypes: string[] = ['TemplateModelInfoSource']
+export const isTemplateModelInfoSource = (obj?: { __typename?: any } | null): obj is TemplateModelInfoSource => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateModelInfoSource"')
+  return TemplateModelInfoSource_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateOperation_possibleTypes: string[] = ['TemplateOperation']
+export const isTemplateOperation = (obj?: { __typename?: any } | null): obj is TemplateOperation => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateOperation"')
+  return TemplateOperation_possibleTypes.includes(obj.__typename)
+}
+
+const TemplatePagePagination_possibleTypes: string[] = ['TemplatePagePagination']
+export const isTemplatePagePagination = (obj?: { __typename?: any } | null): obj is TemplatePagePagination => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplatePagePagination"')
+  return TemplatePagePagination_possibleTypes.includes(obj.__typename)
+}
+
+const TemplatePricingConfig_possibleTypes: string[] = ['TemplatePricingConfig']
+export const isTemplatePricingConfig = (obj?: { __typename?: any } | null): obj is TemplatePricingConfig => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplatePricingConfig"')
+  return TemplatePricingConfig_possibleTypes.includes(obj.__typename)
+}
+
+const TemplatePricingConfigZeroPriceEvidenceEntry_possibleTypes: string[] = [
+  'TemplatePricingConfigZeroPriceEvidenceEntry',
+]
+export const isTemplatePricingConfigZeroPriceEvidenceEntry = (
+  obj?: { __typename?: any } | null,
+): obj is TemplatePricingConfigZeroPriceEvidenceEntry => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplatePricingConfigZeroPriceEvidenceEntry"')
+  return TemplatePricingConfigZeroPriceEvidenceEntry_possibleTypes.includes(obj.__typename)
+}
+
+const TemplatePricingSchedule_possibleTypes: string[] = ['TemplatePricingSchedule']
+export const isTemplatePricingSchedule = (obj?: { __typename?: any } | null): obj is TemplatePricingSchedule => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplatePricingSchedule"')
+  return TemplatePricingSchedule_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateResolution_possibleTypes: string[] = ['TemplateResolution']
+export const isTemplateResolution = (obj?: { __typename?: any } | null): obj is TemplateResolution => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateResolution"')
+  return TemplateResolution_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateRoutePolicy_possibleTypes: string[] = ['TemplateRoutePolicy']
+export const isTemplateRoutePolicy = (obj?: { __typename?: any } | null): obj is TemplateRoutePolicy => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateRoutePolicy"')
+  return TemplateRoutePolicy_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateRoutePricing_possibleTypes: string[] = ['TemplateRoutePricing']
+export const isTemplateRoutePricing = (obj?: { __typename?: any } | null): obj is TemplateRoutePricing => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateRoutePricing"')
+  return TemplateRoutePricing_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateSource_possibleTypes: string[] = ['TemplateSource']
+export const isTemplateSource = (obj?: { __typename?: any } | null): obj is TemplateSource => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateSource"')
+  return TemplateSource_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateSourceEvidence_possibleTypes: string[] = ['TemplateSourceEvidence']
+export const isTemplateSourceEvidence = (obj?: { __typename?: any } | null): obj is TemplateSourceEvidence => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateSourceEvidence"')
+  return TemplateSourceEvidence_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateSourceRequest_possibleTypes: string[] = ['TemplateSourceRequest']
+export const isTemplateSourceRequest = (obj?: { __typename?: any } | null): obj is TemplateSourceRequest => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateSourceRequest"')
+  return TemplateSourceRequest_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateSourceResponse_possibleTypes: string[] = ['TemplateSourceResponse']
+export const isTemplateSourceResponse = (obj?: { __typename?: any } | null): obj is TemplateSourceResponse => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateSourceResponse"')
+  return TemplateSourceResponse_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateSourceResponseFieldsEntry_possibleTypes: string[] = ['TemplateSourceResponseFieldsEntry']
+export const isTemplateSourceResponseFieldsEntry = (
+  obj?: { __typename?: any } | null,
+): obj is TemplateSourceResponseFieldsEntry => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateSourceResponseFieldsEntry"')
+  return TemplateSourceResponseFieldsEntry_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateSubscription_possibleTypes: string[] = ['TemplateSubscription']
+export const isTemplateSubscription = (obj?: { __typename?: any } | null): obj is TemplateSubscription => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateSubscription"')
+  return TemplateSubscription_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateSubscriptionFee_possibleTypes: string[] = ['TemplateSubscriptionFee']
+export const isTemplateSubscriptionFee = (obj?: { __typename?: any } | null): obj is TemplateSubscriptionFee => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateSubscriptionFee"')
+  return TemplateSubscriptionFee_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateTimePriceSlot_possibleTypes: string[] = ['TemplateTimePriceSlot']
+export const isTemplateTimePriceSlot = (obj?: { __typename?: any } | null): obj is TemplateTimePriceSlot => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateTimePriceSlot"')
+  return TemplateTimePriceSlot_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateTokenRates_possibleTypes: string[] = ['TemplateTokenRates']
+export const isTemplateTokenRates = (obj?: { __typename?: any } | null): obj is TemplateTokenRates => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateTokenRates"')
+  return TemplateTokenRates_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateTokenTier_possibleTypes: string[] = ['TemplateTokenTier']
+export const isTemplateTokenTier = (obj?: { __typename?: any } | null): obj is TemplateTokenTier => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateTokenTier"')
+  return TemplateTokenTier_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateUnitRate_possibleTypes: string[] = ['TemplateUnitRate']
+export const isTemplateUnitRate = (obj?: { __typename?: any } | null): obj is TemplateUnitRate => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateUnitRate"')
+  return TemplateUnitRate_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateUnitRateConditionsEntry_possibleTypes: string[] = ['TemplateUnitRateConditionsEntry']
+export const isTemplateUnitRateConditionsEntry = (
+  obj?: { __typename?: any } | null,
+): obj is TemplateUnitRateConditionsEntry => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateUnitRateConditionsEntry"')
+  return TemplateUnitRateConditionsEntry_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateUnresolved_possibleTypes: string[] = ['TemplateUnresolved']
+export const isTemplateUnresolved = (obj?: { __typename?: any } | null): obj is TemplateUnresolved => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateUnresolved"')
+  return TemplateUnresolved_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateUnresolvedField_possibleTypes: string[] = ['TemplateUnresolvedField']
+export const isTemplateUnresolvedField = (obj?: { __typename?: any } | null): obj is TemplateUnresolvedField => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateUnresolvedField"')
+  return TemplateUnresolvedField_possibleTypes.includes(obj.__typename)
 }
 
 const ThemePreferences_possibleTypes: string[] = ['ThemePreferences']
@@ -2483,6 +3697,205 @@ export const enumProviderModelCapability = {
   TOOL_CALL: 'TOOL_CALL' as const,
   VIDEO: 'VIDEO' as const,
   VISION: 'VISION' as const,
+}
+
+export const enumTemplateAuthStatus = {
+  CONFIGURED: 'CONFIGURED' as const,
+  UNKNOWN: 'UNKNOWN' as const,
+}
+
+export const enumTemplateAuthenticationMethod = {
+  API_KEY: 'API_KEY' as const,
+  CUSTOM: 'CUSTOM' as const,
+  NONE: 'NONE' as const,
+  OAUTH: 'OAUTH' as const,
+}
+
+export const enumTemplateBillingModel = {
+  FREE: 'FREE' as const,
+  METERED: 'METERED' as const,
+  SUBSCRIPTION: 'SUBSCRIPTION' as const,
+  SUBSCRIPTION_WITH_OVERAGE: 'SUBSCRIPTION_WITH_OVERAGE' as const,
+  UNKNOWN: 'UNKNOWN' as const,
+}
+
+export const enumTemplateCacheBilling = {
+  INCLUDED: 'INCLUDED' as const,
+  NOT_APPLICABLE: 'NOT_APPLICABLE' as const,
+  PER_ROUTE: 'PER_ROUTE' as const,
+  SEPARATE_RATE: 'SEPARATE_RATE' as const,
+  STANDARD_INPUT_RATE: 'STANDARD_INPUT_RATE' as const,
+  UNKNOWN: 'UNKNOWN' as const,
+  UNSUPPORTED: 'UNSUPPORTED' as const,
+}
+
+export const enumTemplateCredentialLocation = {
+  HEADER: 'HEADER' as const,
+  QUERY: 'QUERY' as const,
+}
+
+export const enumTemplateEffortLevel = {
+  HIGH: 'HIGH' as const,
+  LOW: 'LOW' as const,
+  MAX: 'MAX' as const,
+  MEDIUM: 'MEDIUM' as const,
+  XHIGH: 'XHIGH' as const,
+}
+
+export const enumTemplateEndpointMode = {
+  ACCOUNT_SPECIFIC: 'ACCOUNT_SPECIFIC' as const,
+  DISCOVERED: 'DISCOVERED' as const,
+  FIXED: 'FIXED' as const,
+  UNKNOWN: 'UNKNOWN' as const,
+}
+
+export const enumTemplateEstimateConfidence = {
+  HIGH: 'HIGH' as const,
+  LOW: 'LOW' as const,
+  MEDIUM: 'MEDIUM' as const,
+}
+
+export const enumTemplateFallbackBasis = {
+  RELATED_MODEL: 'RELATED_MODEL' as const,
+  SAME_MODEL_OTHER_PROVIDER: 'SAME_MODEL_OTHER_PROVIDER' as const,
+  TARGET_PROVIDER_ESTIMATE: 'TARGET_PROVIDER_ESTIMATE' as const,
+}
+
+export const enumTemplateFieldStatusKind = {
+  ACCOUNT_SPECIFIC: 'ACCOUNT_SPECIFIC' as const,
+  CLIENT_RESTRICTED: 'CLIENT_RESTRICTED' as const,
+  CONDITIONAL: 'CONDITIONAL' as const,
+  CREDIT_BASED: 'CREDIT_BASED' as const,
+  DEPRECATED: 'DEPRECATED' as const,
+  MIGRATION_REQUIRED: 'MIGRATION_REQUIRED' as const,
+  NOT_APPLICABLE: 'NOT_APPLICABLE' as const,
+  NO_PUBLIC_ENDPOINT: 'NO_PUBLIC_ENDPOINT' as const,
+  REQUIRES_AUTHENTICATION: 'REQUIRES_AUTHENTICATION' as const,
+  STANDARD_INPUT_RATE: 'STANDARD_INPUT_RATE' as const,
+  SUBSCRIPTION_BASED: 'SUBSCRIPTION_BASED' as const,
+  UNCONFIGURED: 'UNCONFIGURED' as const,
+  UNKNOWN: 'UNKNOWN' as const,
+  UNPUBLISHED: 'UNPUBLISHED' as const,
+  UNSUPPORTED_PRECISION: 'UNSUPPORTED_PRECISION' as const,
+  VARIABLE: 'VARIABLE' as const,
+}
+
+export const enumTemplateInputKind = {
+  OBJECT: 'OBJECT' as const,
+  POSITIVE_INTEGER: 'POSITIVE_INTEGER' as const,
+  PRICE: 'PRICE' as const,
+  STRING: 'STRING' as const,
+  URL: 'URL' as const,
+}
+
+export const enumTemplateMissingStatus = {
+  UNKNOWN: 'UNKNOWN' as const,
+  UNPUBLISHED: 'UNPUBLISHED' as const,
+  UNSUPPORTED: 'UNSUPPORTED' as const,
+}
+
+export const enumTemplatePricingMode = {
+  ACCOUNT_SPECIFIC: 'ACCOUNT_SPECIFIC' as const,
+  API: 'API' as const,
+  FIXED: 'FIXED' as const,
+  NOT_APPLICABLE: 'NOT_APPLICABLE' as const,
+  SCHEDULED: 'SCHEDULED' as const,
+  TIERED: 'TIERED' as const,
+  UNKNOWN: 'UNKNOWN' as const,
+  UNPUBLISHED: 'UNPUBLISHED' as const,
+}
+
+export const enumTemplateReadiness = {
+  INCOMPLETE: 'INCOMPLETE' as const,
+  NEEDS_CONFIGURATION: 'NEEDS_CONFIGURATION' as const,
+  NEEDS_FETCH: 'NEEDS_FETCH' as const,
+  READY: 'READY' as const,
+}
+
+export const enumTemplateReferenceKind = {
+  REPOSITORY: 'REPOSITORY' as const,
+  WEB: 'WEB' as const,
+}
+
+export const enumTemplateReferenceStatus = {
+  ESTIMATE: 'ESTIMATE' as const,
+  IMPORTED: 'IMPORTED' as const,
+  VERIFIED: 'VERIFIED' as const,
+}
+
+export const enumTemplateResolutionMethod = {
+  ACCOUNT: 'ACCOUNT' as const,
+  API: 'API' as const,
+}
+
+export const enumTemplateResponseFormat = {
+  MODEL_LIST: 'MODEL_LIST' as const,
+  MODEL_OBJECT: 'MODEL_OBJECT' as const,
+}
+
+export const enumTemplateRetrievalMethod = {
+  GET: 'GET' as const,
+}
+
+export const enumTemplateServiceKind = {
+  AUDIO: 'AUDIO' as const,
+  EMBEDDING: 'EMBEDDING' as const,
+  IMAGE: 'IMAGE' as const,
+  RERANK: 'RERANK' as const,
+  TEXT: 'TEXT' as const,
+  UNKNOWN: 'UNKNOWN' as const,
+  VIDEO: 'VIDEO' as const,
+}
+
+export const enumTemplateSourceAccess = {
+  MANUAL: 'MANUAL' as const,
+  PROVIDER_CREDENTIAL: 'PROVIDER_CREDENTIAL' as const,
+  PUBLIC: 'PUBLIC' as const,
+  UNAVAILABLE: 'UNAVAILABLE' as const,
+  UNKNOWN: 'UNKNOWN' as const,
+}
+
+export const enumTemplateSourceAuthentication = {
+  NONE: 'NONE' as const,
+  PROVIDER_API_KEY: 'PROVIDER_API_KEY' as const,
+  PROVIDER_OAUTH: 'PROVIDER_OAUTH' as const,
+  UNKNOWN: 'UNKNOWN' as const,
+}
+
+export const enumTemplateSourceKind = {
+  API: 'API' as const,
+  DOCUMENTATION: 'DOCUMENTATION' as const,
+  MANUAL: 'MANUAL' as const,
+  REPOSITORY: 'REPOSITORY' as const,
+}
+
+export const enumTemplateSourceStatus = {
+  DOCUMENTED: 'DOCUMENTED' as const,
+  OBSERVED: 'OBSERVED' as const,
+  REFERENCE: 'REFERENCE' as const,
+  UNAVAILABLE: 'UNAVAILABLE' as const,
+}
+
+export const enumTemplateSourceUnit = {
+  IDENTIFIER: 'IDENTIFIER' as const,
+  PROVIDER_NATIVE: 'PROVIDER_NATIVE' as const,
+  TEXT: 'TEXT' as const,
+  TOKENS: 'TOKENS' as const,
+  USD_PER_MILLION_TOKENS: 'USD_PER_MILLION_TOKENS' as const,
+  USD_PER_TOKEN: 'USD_PER_TOKEN' as const,
+}
+
+export const enumTemplateSpecificationMode = {
+  ACCOUNT_SPECIFIC: 'ACCOUNT_SPECIFIC' as const,
+  API: 'API' as const,
+  NOT_APPLICABLE: 'NOT_APPLICABLE' as const,
+  STORED: 'STORED' as const,
+  UNKNOWN: 'UNKNOWN' as const,
+}
+
+export const enumTemplateSubscriptionPlanMode = {
+  ACCOUNT_SPECIFIC: 'ACCOUNT_SPECIFIC' as const,
+  STORED: 'STORED' as const,
 }
 
 export const enumTextModelProtocol = {

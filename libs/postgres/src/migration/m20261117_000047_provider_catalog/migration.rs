@@ -108,7 +108,7 @@
 //! ## Reviewed catalog removals
 //!
 //! Remove 39 reviewed identities with no literal/naming-variant mention in the pinned
-//! 9Router/LiteLLM checkouts and missing applicable context, billing, pricing, or cache data.
+//! opensource(9)/opensource(l) checkouts and missing applicable context, billing, pricing, or cache data.
 //! Complete estimated defaults and references in either checkout protect records from this
 //! removal set. Intentional subscription/media nulls are not treated as missing token tariffs.
 //! removed-unreferenced-incomplete-models.json retains full removed rows, source revisions,
@@ -149,8 +149,8 @@
 //! ## Additional public catalogs
 //!
 //! three-catalog-investigation.json records LLM Gateway's public model API, Artificial
-//! Analysis's public page datasets, and the LiteLLM model website's price-file revision.
-//! LiteLLM 983c7ef20d73954ca150434d347c77c20f4d1a50 adds exact same-provider input/output
+//! Analysis's public page datasets, and the opensource(l) model website's price-file revision.
+//! opensource(l) 983c7ef20d73954ca150434d347c77c20f4d1a50 adds exact same-provider input/output
 //! caps and explicit capability flags. Input caps remain separate from context. LLM Gateway
 //! f49b08cb1867e7599fbbdcb37ea7bdc22d60caab confirms Alibaba's default Singapore endpoint;
 //! its international Baidu endpoint is not the China Qianfan product in this catalog.
@@ -203,12 +203,12 @@
 //!
 //! ## Sources and provenance
 //!
-//! Start with the 9Router repository for provider identities, model definitions, adapters,
+//! Start with the opensource(9) repository for provider identities, model definitions, adapters,
 //! endpoint construction, authentication, pricing, capabilities, effort variants, and artwork.
 //! The initial source is https://github.com/decolua/9router at commit
 //! 1855aa44473e88feac9d3f131b9c0c5fc9706b68. Supplemental exact-match metadata comes from
 //! https://github.com/anomalyco/models.dev at 5c40e591a65246bcbf2e6a890d90516086ba72de.
-//! LiteLLM adds exact-match prices and separate input/output limits at
+//! opensource(l) adds exact-match prices and separate input/output limits at
 //! https://github.com/BerriAI/litellm commit 60d05972aeeadc3fb21476f586ce3f4747887c9d.
 //! litellm-comparison.json records candidate providers, source conflicts, and filled fields.
 //! Its gateway endpoint table describes adapter support, not proof of a vendor-native protocol.
@@ -228,20 +228,20 @@
 //!
 //! | Action | Target | Change | Source |
 //! | --- | --- | --- | --- |
-//! | Rename/backfill | provider_templates.icon_key | logo_path: root-relative public asset path | 9Router brand mapping; downloaded authentic artwork |
-//! | Add | Both template tables | Structured source_refs with field-level provenance | Pinned 9Router files; official documentation |
+//! | Rename/backfill | provider_templates.icon_key | logo_path: root-relative public asset path | opensource(9) brand mapping; downloaded authentic artwork |
+//! | Add | Both template tables | Structured source_refs with field-level provenance | Pinned opensource(9) files; official documentation |
 //! | Add | Both template tables | field_metadata explains unavailable and conditional values | Exact official catalogs, plan documentation, and recorded source failures |
-//! | Rename | provider_model_templates.name | upstream_model_id, preserving the exact request identifier | 9Router definitions; official model catalogs |
-//! | Add | Model templates | Optional display_name, falling back to upstream_model_id | 9Router labels; official model names |
-//! | Add | Model templates | Separate nullable positive max_input_tokens and max_output_tokens | Exact models.dev/LiteLLM metadata; never infer total context |
-//! | Add | Provider templates | Typed authentication defaults and supported methods, including operation differences | 9Router adapters; official authentication docs |
-//! | Add | Provider templates | Fixed versus account/deployment-specific endpoint requirements | 9Router URL construction; official deployment docs |
-//! | Correct | URLs, paths, protocols, headers | Verified defaults retaining base-path prefixes | 9Router adapters; official API references |
-//! | Complete | Context limits and three prices | Explicit verified values; unknown remains null | 9Router metadata; official specifications/pricing |
-//! | Correct | Capabilities and effort mappings | Declared supported features and accepted values | 9Router metadata/adapters; official request docs |
-//! | Improve | Provider/model descriptions | Useful descriptions and configuration requirements | 9Router descriptions; official provider/model pages |
-//! | Insert | Missing provider/model coverage | Reviewed supported entries absent from the snapshot | Reviewed 9Router snapshot; official catalogs |
-//! | Merge/delete | Duplicate or obsolete catalog rows | Consolidate settings variants only after verifying meaning | 9Router variant logic; official identifiers/deprecations |
+//! | Rename | provider_model_templates.name | upstream_model_id, preserving the exact request identifier | opensource(9) definitions; official model catalogs |
+//! | Add | Model templates | Optional display_name, falling back to upstream_model_id | opensource(9) labels; official model names |
+//! | Add | Model templates | Separate nullable positive max_input_tokens and max_output_tokens | Exact models.dev/opensource(l) metadata; never infer total context |
+//! | Add | Provider templates | Typed authentication defaults and supported methods, including operation differences | opensource(9) adapters; official authentication docs |
+//! | Add | Provider templates | Fixed versus account/deployment-specific endpoint requirements | opensource(9) URL construction; official deployment docs |
+//! | Correct | URLs, paths, protocols, headers | Verified defaults retaining base-path prefixes | opensource(9) adapters; official API references |
+//! | Complete | Context limits and three prices | Explicit verified values; unknown remains null | opensource(9) metadata; official specifications/pricing |
+//! | Correct | Capabilities and effort mappings | Declared supported features and accepted values | opensource(9) metadata/adapters; official request docs |
+//! | Improve | Provider/model descriptions | Useful descriptions and configuration requirements | opensource(9) descriptions; official provider/model pages |
+//! | Insert | Missing provider/model coverage | Reviewed supported entries absent from the snapshot | Reviewed opensource(9) snapshot; official catalogs |
+//! | Merge/delete | Duplicate or obsolete catalog rows | Consolidate settings variants only after verifying meaning | opensource(9) variant logic; official identifiers/deprecations |
 //! | Grant | Global template reads | Read access through the intended authenticated database path | Compallm authorization and existing restricted-role behavior |
 //! | Keep | Existing schema | Stable catalog IDs, relationships, nullable defaults, exact numeric prices | Existing Compallm contracts |
 //!
@@ -263,7 +263,7 @@
 //!
 //! Download authentic artwork for every catalog provider to portal/public/assets/providers/.
 //! Prefer self-contained SVG; use suitable PNG/WebP when necessary. Brand aliases may share files.
-//! Start with available 9Router assets, then official media kits/sites and established collections
+//! Start with available opensource(9) assets, then official media kits/sites and established collections
 //! such as LobeHub. Review the artwork and inspect SVGs for
 //! executable or external content. Do not fabricate logos or mark generic placeholders complete.
 //! Keep unresolved artwork explicitly incomplete until sourced.
@@ -310,7 +310,7 @@
 //! Once merged or shared for deployment, freeze it and make later corrections in new migrations.
 //!
 //! Embed explicit reviewed rows and reversible changes in Rust. Execution must work offline,
-//! without fetching 9Router, downloading logos, starting an importer, or publishing the Wiki.
+//! without fetching opensource(9), downloading logos, starting an importer, or publishing the Wiki.
 //! up() applies schema changes, catalog corrections, and required access changes atomically.
 //! down() restores prior column names, values, deleted rows, constraints, and grants, and removes
 //! only this migration's inserts. Preserve later/local edits; detect conflicting state and fail
@@ -347,9 +347,9 @@
 //! Repository and official web sources are recorded per field; most catalog facts remain imported,
 //! so this snapshot does not claim universal vendor verification or successful upstream requests.
 //! Runtime discovery/paging and configured-provider loading remain the rest of #176.
-//! Additional LiteLLM provider candidates require identity, logo, endpoint, and adapter review;
+//! Additional opensource(l) provider candidates require identity, logo, endpoint, and adapter review;
 //! they are recorded separately from the seeded providers. Existing verified values retain
-//! precedence over imported LiteLLM estimates. Deprecation metadata removes affected entries
+//! precedence over imported opensource(l) estimates. Deprecation metadata removes affected entries
 //! from selectable text configuration while retaining catalog identities and provenance.
 //! investigation.json records official public-catalog requests and provider alias mappings.
 //! Exact model metadata was recovered for Alibaba coding/token plans, Xiaomi Singapore token

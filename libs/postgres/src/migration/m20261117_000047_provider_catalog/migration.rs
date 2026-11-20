@@ -264,14 +264,14 @@
 //! Download authentic artwork for every catalog provider to portal/public/assets/providers/.
 //! Prefer self-contained SVG; use suitable PNG/WebP when necessary. Brand aliases may share files.
 //! Start with available 9Router assets, then official media kits/sites and established collections
-//! such as LobeHub. Review the artwork, retain attribution/license notices, and inspect SVGs for
+//! such as LobeHub. Review the artwork and inspect SVGs for
 //! executable or external content. Do not fabricate logos or mark generic placeholders complete.
 //! Keep unresolved artwork explicitly incomplete until sourced.
 //!
 //! Store paths such as /assets/providers/openai.svg, without an origin or filesystem prefix.
 //! Consumers resolve new URL(logoPath, origin); assets must work in development and production.
 //! Backfill every existing provider and verify referenced files before requiring logo_path.
-//! Keep a companion asset manifest with exact source URLs/revisions, checksums, attribution,
+//! Keep a companion asset manifest with exact source URLs/revisions, checksums,
 //! and provider mappings. Ensure shared assets render legibly in light and dark themes and are
 //! served in offline Storybook previews. Replace frontend brand-name guessing with supplied paths.
 //! File downloads and manifest updates happen during development, outside migration execution.

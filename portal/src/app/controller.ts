@@ -6,6 +6,13 @@ type Operation = { error?: string; retry?: () => Promise<unknown> }
 
 export class AppController implements Contract {
   readonly store = createStore<AppState>(() => ({ loading: false, error: null }))
+  private readonly minimumVisible: number
+  constructor(minimumVisible = 1000) {
+    this.minimumVisible = minimumVisible
+  }
+
+  createLoadingScope = () => new AppController(0)
+
   private operations = new Map<string, Operation>()
   private shownAt = 0
   private timer?: ReturnType<typeof setTimeout>
@@ -40,7 +47,7 @@ export class AppController implements Contract {
       this.store.setState({ loading: true, error })
       return
     }
-    const remaining = Math.max(0, 1000 - (Date.now() - this.shownAt))
+    const remaining = Math.max(0, this.minimumVisible - (Date.now() - this.shownAt))
     if (remaining) {
       this.store.setState({ loading: true, error: null })
       this.timer = setTimeout(this.synchronize, remaining)

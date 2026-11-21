@@ -74,6 +74,9 @@ export interface ProviderSnapshot {
   avatarUrl?: string | null
 }
 export interface CreateProviderState {
+  providersLoaded?: boolean
+  providerLoaded?: boolean
+  modelLoaded?: boolean
   templatePreview?: boolean
   providersLoading?: boolean
   providersHasMore?: boolean
@@ -112,6 +115,11 @@ export interface CreateProviderState {
 }
 export interface CreateProviderController {
   readonly store: FormStore<CreateProviderState>
+  readonly loading?: {
+    providers: import('../../../app').LoadingController
+    provider: import('../../../app').LoadingController
+    model: import('../../../app').LoadingController
+  }
   onProviderQueryChanged(query: string): void
   onProviderSearch?(): void
   onLoadMoreProviders?(): void

@@ -37,11 +37,13 @@ export class RoleController implements Contract {
     this.request = undefined
   }
   load = async (id: string) => {
+    const retained = this.store.getState().draft?.id === id ? this.store.getState().draft : null
+    if (retained && (this.store.form.dirty || this.store.form.pending)) return
     this.cancel()
     const request = new AbortController()
     this.request = request
-    this.store.setState({ draft: null, loading: true, busy: false })
-    this.settings.setState({ policyActions: [] })
+    this.store.setState({ draft: retained, loading: true, busy: false })
+    if (!retained) this.settings.setState({ policyActions: [] })
     try {
       if (this.permissions) await requirePermissions(this.permissions, [{ action: 'role.read', resourceType: 'Organization' }])
       if (request.signal.aborted || this.request !== request) return
@@ -108,6 +110,7 @@ export class RoleController implements Contract {
         }
       }
       if (request.signal.aborted || this.request !== request) return
+      if (retained && (this.store.form.dirty || this.store.form.pending)) return
       this.openRole({ ...role, source: role.cedarSource }, { projection, diagnostics })
     } catch (error) {
       if (!request.signal.aborted)

@@ -9,8 +9,12 @@ export interface AppLoadingTask {
   cancel(): void
   fail(error: unknown, retry: () => Promise<unknown>): void
 }
-export interface AppController {
+export interface LoadingController {
   beginLoading(key: string): AppLoadingTask
   store: StoreApi<AppState>
   retry(): Promise<void>
+}
+
+export interface AppController extends LoadingController {
+  createLoadingScope(): LoadingController
 }

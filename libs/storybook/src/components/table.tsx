@@ -1,3 +1,4 @@
+import { LoadingScope, Skeleton, useInitialLoading, useRefreshingSkeleton } from './loading'
 import { CollectionContext, CollectionRowContext } from '../context'
 import { CollectionContent, CollectionRecord, useCollectionOwner, useCollectionRows, useCollectionLoadMore } from './collection'
 import type { CollectionPaging } from './collection-types'
@@ -23,6 +24,7 @@ export interface TableColumn {
   id: string
   className?: string
   visibilityClassName?: string
+  loadingWidthClassName?: string
 }
 const emptyColumns: TableColumn[] = []
 const columnDisplays: Record<string, string> = {
@@ -159,20 +161,46 @@ export interface TableItemsProps<T> {
   getKey(item: T): string
   paging?: CollectionPaging
   children(item: T): ReactNode
+  loadingRowClassName?: string
 }
 function Body<T>(
   props: ComponentPropsWithRef<'tbody'> | (Omit<ComponentPropsWithRef<'tbody'>, 'children'> & TableItemsProps<T>),
 ) {
+  const initial = useInitialLoading()
+  if (initial) return <SkeletonBody rowClassName={'loadingRowClassName' in props ? props.loadingRowClassName : undefined} />
   if ('items' in props) return <DataBody {...props} />
   return <tbody data-slot="table-body" {...props} />
+}
+function SkeletonRows({ rowClassName = 'h-12' }: { rowClassName?: string }) {
+  const { columns } = useContext(ColumnsContext)
+  return Array.from({ length: 8 }, (_, index) => (
+    <Row key={index} className={rowClassName} aria-hidden="true">
+      {(columns.length ? columns : [{ id: 'content' }]).map((column) => (
+        <Cell key={column.id} column={column.id}>
+          <Skeleton loading>
+            <span className={cx('block h-4 w-3/4 rounded-md', column.loadingWidthClassName)} />
+          </Skeleton>
+        </Cell>
+      ))}
+    </Row>
+  ))
+}
+function SkeletonBody({ rowClassName }: { rowClassName?: string }) {
+  return (
+    <tbody data-slot="table-body" aria-hidden="true">
+      <SkeletonRows rowClassName={rowClassName} />
+    </tbody>
+  )
 }
 function DataBody<T>({
   items,
   getKey,
   paging,
   children,
+  loadingRowClassName: _loadingRowClassName,
   ...props
 }: Omit<ComponentPropsWithRef<'tbody'>, 'children'> & TableItemsProps<T>) {
+  void _loadingRowClassName
   const rows = useCollectionRows(items, getKey)
   return (
     <tbody {...props} data-slot="table-body" aria-busy={paging?.loading}>
@@ -275,6 +303,7 @@ function Head({ className, column, children, ...props }: ComponentPropsWithRef<'
   )
 }
 function Cell({ className, column, children, ...props }: ComponentPropsWithRef<'td'> & { column?: string }) {
+  const refreshing = useRefreshingSkeleton()
   const visibility = useColumn(column)
   const { visibleCount } = useContext(ColumnsContext)
   const colSpan = props.colSpan && visibleCount ? Math.min(props.colSpan, visibleCount) : props.colSpan
@@ -286,7 +315,9 @@ function Cell({ className, column, children, ...props }: ComponentPropsWithRef<'
       colSpan={colSpan}
       className={cx('min-w-0 overflow-hidden text-left', visibility, className)}
     >
-      <div className="min-w-0 truncate px-2 **:min-w-0 *:max-w-full">{children}</div>
+      <Skeleton loading={refreshing}>
+        <div className="min-w-0 truncate px-2 **:min-w-0 *:max-w-full">{children}</div>
+      </Skeleton>
     </td>
   )
 }
@@ -302,6 +333,7 @@ function Empty({ className, ...props }: ComponentPropsWithRef<'div'>) {
 export interface TableCategoryProps {
   variant?: 'default' | 'directory'
   label: string
+  initialLoading?: boolean
   count?: ReactNode
   action?: ReactNode
   columns?: number
@@ -313,6 +345,7 @@ export interface TableCategoryProps {
 
 function Category<T>({
   variant = 'default',
+  initialLoading = false,
   label,
   count,
   action,
@@ -330,6 +363,8 @@ function Category<T>({
   getKey?: (item: T) => string
   paging?: CollectionPaging
 }) {
+  const inheritedLoading = useInitialLoading()
+  const initial = inheritedLoading || initialLoading
   const { visibleCount } = useContext(ColumnsContext)
   columns = visibleCount || columns
   const directory = variant === 'directory'
@@ -372,66 +407,75 @@ function Category<T>({
     }
   }, [expanded, children, items])
   return (
-    <tbody
-      ref={body}
-      data-state={expanded ? 'open' : 'closed'}
-      data-slot="table-category"
-      className="[&:not(:first-of-type)>tr:first-child]:table-row"
-    >
-      <tr aria-hidden="true" className="hidden h-2">
-        <td colSpan={columns} className="h-2 p-0" />
-      </tr>
-      <tr data-slot="table-category-header" className={directory ? 'h-8 border-0' : 'h-10 border-0'}>
-        <td
-          colSpan={action ? columns - 1 : columns}
-          className={cx(
-            `sticky top-8 z-10 rounded-l-md bg-elevated p-0
-translate-y-(--category-offset,0px)`,
-            !action && 'rounded-r-md',
-            directory && 'rounded-lg bg-inset',
-          )}
-        >
-          <animated.button
-            type="button"
-            aria-expanded={expanded}
-            aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label}`}
-            className={cx(
-              'flex w-full cursor-pointer items-center gap-2 px-2 text-left focus-visible:outline-2 focus-visible:outline-ring',
-              directory ? 'h-8 text-xs text-muted-foreground' : 'min-h-10',
-            )}
-            onClick={() => setExpanded(!expanded)}
-          >
-            <motion.span
-              initial={false}
-              animate={{ rotate: expanded ? 0 : animation.collapsedRotation }}
-              transition={timing}
-              className="inline-flex size-2 shrink-0"
-            >
-              <CaretDownIcon weight="fill" aria-hidden="true" className="size-2" />
-            </motion.span>
-            <span className={directory ? 'min-w-0' : 'min-w-0 text-xsm font-medium'}>{label}</span>
-            {count !== undefined ? <span className="text-xs font-normal text-muted-foreground">{count}</span> : null}
-          </animated.button>
-        </td>
-        {action ? (
+    <LoadingScope ready={!initial}>
+      <tbody
+        ref={body}
+        aria-busy={initial || undefined}
+        inert={initial || undefined}
+        data-state={expanded ? 'open' : 'closed'}
+        data-slot="table-category"
+        className="[&:not(:first-of-type)>tr:first-child]:table-row"
+      >
+        <tr aria-hidden="true" className="hidden h-2">
+          <td colSpan={columns} className="h-2 p-0" />
+        </tr>
+        <tr data-slot="table-category-header" className={directory ? 'h-8 border-0' : 'h-10 border-0'}>
           <td
-            className="sticky top-8 z-10 rounded-r-md bg-elevated px-2 py-0
-translate-y-(--category-offset,0px)"
+            colSpan={action ? columns - 1 : columns}
+            className={cx(
+              `sticky top-8 z-10 rounded-l-md bg-elevated p-0
+translate-y-(--category-offset,0px)`,
+              !action && 'rounded-r-md',
+              directory && 'rounded-lg bg-inset',
+            )}
           >
-            {action}
+            <animated.button
+              type="button"
+              aria-expanded={expanded}
+              aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label}`}
+              className={cx(
+                `flex w-full cursor-pointer items-center gap-2 px-2 text-left
+focus-visible:outline-2 focus-visible:outline-ring`,
+                directory ? 'h-8 text-xs text-muted-foreground' : 'min-h-10',
+              )}
+              onClick={() => setExpanded(!expanded)}
+            >
+              <motion.span
+                initial={false}
+                animate={{ rotate: expanded ? 0 : animation.collapsedRotation }}
+                transition={timing}
+                className="inline-flex size-2 shrink-0"
+              >
+                <CaretDownIcon weight="fill" aria-hidden="true" className="size-2" />
+              </motion.span>
+              <span className={directory ? 'min-w-0' : 'min-w-0 text-xsm font-medium'}>{label}</span>
+              {count !== undefined ? <span className="text-xs font-normal text-muted-foreground">{count}</span> : null}
+            </animated.button>
           </td>
-        ) : null}
-      </tr>
-      {items && getKey && typeof children === 'function' ? (
-        expanded ? (
-          <>
-            <DataRows collection={data} count={items.length} render={children} paging={paging} />
-          </>
-        ) : null
-      ) : (
-        (children as ReactNode)
-      )}
-    </tbody>
+          {action ? (
+            <td
+              className="sticky top-8 z-10 rounded-r-md bg-elevated px-2 py-0
+translate-y-(--category-offset,0px)"
+            >
+              {action}
+            </td>
+          ) : null}
+        </tr>
+        {items && getKey && typeof children === 'function' ? (
+          expanded ? (
+            <>
+              {initial ? (
+                <SkeletonRows />
+              ) : (
+                <DataRows collection={data} count={items.length} render={children} paging={paging} />
+              )}
+            </>
+          ) : null
+        ) : (
+          (children as ReactNode)
+        )}
+      </tbody>
+    </LoadingScope>
   )
 }
 

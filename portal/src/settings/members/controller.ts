@@ -277,6 +277,7 @@ export class MembersController {
         ),
       )
       this.store.setState((state) => ({
+        membersLoaded: true,
         actorIsOwner: result.me?.node.organizationOwner ?? false,
         currentMemberId: result.me?.node.id ?? this.auth.store?.getState().currentUser?.userId,
         ownerMemberIds: result.organization?.node.ownerMemberIds ?? [],
@@ -340,6 +341,7 @@ export class MembersController {
       if (this.invitationsRequest !== request || request.signal.aborted || owner.signal.aborted) return
       this.invitationCursor = result.invitations.pageInfo.endCursor ?? undefined
       this.store.setState((state) => ({
+        invitationsLoaded: true,
         invitations: [
           ...new Map(
             [...(append ? state.invitations : []), ...result.invitations.edges.map(({ node }) => node)].map((row) => [
@@ -433,6 +435,7 @@ export class MembersController {
       const result = await graphql(owner.signal).mutation(selection)
       if (!owner.signal.aborted && this.lifecycle === owner) {
         this.store.setState((state) => ({
+          invitationsLoaded: true,
           invitations: state.invitations.filter((row) => row.id !== result.invitationRevoke.node.id),
           invitationLink: null,
         }))

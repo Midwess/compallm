@@ -236,6 +236,20 @@ export function AccessPanel({ intent = 'login', accountEmail, title, description
             <a
               className="ml-1 text-foreground hover:underline"
               href={signup ? (controller.links?.signin ?? '/login') : (controller.links?.signup ?? '/signup')}
+              onClick={(event) => {
+                if (
+                  !controller.navigate ||
+                  event.defaultPrevented ||
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                )
+                  return
+                event.preventDefault()
+                controller.navigate(event.currentTarget.getAttribute('href')!)
+              }}
             >
               {signup ? 'Log in' : 'Create an account'}
             </a>

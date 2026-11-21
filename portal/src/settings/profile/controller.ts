@@ -47,7 +47,7 @@ export class ProfileController implements Contract {
         profile: { name: '', username: '', email: '', avatar: null },
         profileUpload: null,
       })
-      this.settings.setState({ profileStatus: next ? 'loading' : 'denied', profileSaving: false })
+      this.settings.setState({ profileStatus: next ? 'loading' : 'denied', profileLoaded: false, profileSaving: false })
       if (next) void this.load()
     }
     const unsubscribe = this.auth.store?.subscribe(synchronize)
@@ -95,8 +95,8 @@ export class ProfileController implements Contract {
         email: userProfile.node.email,
         avatar: userProfile.node.avatarUrl,
       }
-      this.settings.form.reset({ ...this.settings.form.values, profile, profileUpload: null })
-      this.settings.setState({ profileStatus: 'ready' })
+      if (!this.settings.form.dirty) this.settings.form.reset({ ...this.settings.form.values, profile, profileUpload: null })
+      this.settings.setState({ profileStatus: 'ready', profileLoaded: true })
     } catch (error) {
       if (scope.signal.aborted || request.signal.aborted || this.read !== request) return
       this.settings.setState({

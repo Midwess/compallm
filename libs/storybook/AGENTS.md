@@ -153,3 +153,39 @@ Follow [Form ownership](https://github.com/Midwess/compallm/wiki/Portal-form) an
   mounting. Shared row reveal uses batches of at most three; processing slices start at four milliseconds.
 - Profile the same loading/scroll interaction. Target no collection task above 50ms and incremental rendering p95 below 5ms;
   these are review budgets, not guarantees that JavaScript can interrupt React commits. Keep profiling UI out of product flows.
+
+## Loading and skeletons
+
+- Keep page headers, breadcrumbs, section surfaces, widths, padding, and the existing scroll owner mounted while data loads. The
+  loaded UI must retain its current design. Loading messages must not insert or remove layout space above content.
+- Use `LoadingRegion` with an explicit confirmed-data `ready` flag and a scoped loading controller. The startup loading
+  controller owns the application overlay; page/section scopes never block the whole application. Preserve confirmed content
+  during refreshes. Empty, zero, null, and empty collections are valid data and never imply loading.
+- Use the shared Radix-backed `Skeleton` from `components/loading`; never import Radix Skeleton directly in pages. Fields and
+  data-driven tables consume their nearest loading region. Prefer component-owned placeholders sharing real geometry over a
+  separate full-page skeleton implementation. Table loading rows use the real columns and row height; content-sized columns
+  provide a representative loading width. Keep placeholders bounded rather than rendering a full catalog.
+- Mount structure early, but never create fake domain records or initialize editable form defaults from placeholders. Wait for
+  authoritative data before configuring validation/autosave/default reconciliation. Skeletons are inert and hidden from
+  assistive technology; announce loading once per region. Keep navigation outside inert regions and retry actions usable.
+- Initial loading uses skeletons; background refresh keeps content, drafts, focus, and scroll. Provider search/pagination may
+  opt into `LoadingRegion.refreshing` to mask existing cells after the shared delay without unmounting rows or controls. Show an
+  empty state only after a successful empty response. Failure retains the layout and exposes explicit retry feedback; never
+  automatically replay writes.
+- Reserve loading geometry immediately. Reveal skeleton decoration after the shared 180 ms delay in `animation.skeleton`; keep
+  one reveal timer per region, with the shared adapter handling standalone skeletons. Fast requests show no skeleton flash. Once
+  revealed, keep the skeleton presentation visible for at least the shared 180 ms minimum to avoid a brief flash. Reads
+  completing before the reveal delay show content immediately. The hold is visual only; do not delay requests.
+- Page/section request state ends as soon as the request settles; the shared presentation owns any remaining visual hold. Keep
+  the shared request-progress bar. Do not add per-page timers, forced waiting periods, spinners on every field, a theme reset,
+  or independent loading animations. Use shared Motion helpers for optional loading motion and respect reduced motion.
+- Provide offline first-load, loaded, refresh, empty, and error previews when changing data-backed UI. Inspect delayed reads,
+  cancellation, failure recovery, keyboard focus, and geometry in Safari/WebKit and Chromium. Follow Portal-rendering for
+  performance traces. Do not add Storybook browser/interaction test suites.
+
+- Apply loading regions to every implemented asynchronous read surface, including Members/invitations, profile, organization,
+  preferences, sessions/passkeys, onboarding settings, role/group details, and both main/settings sidebar catalogs. Unknown
+  permissions remain denied; show neutral `SidebarLoading` placeholders until permission facts arrive, never protected data. Do
+  not invent loading states for destinations without a backend read. Table categories use DOM-free LoadingScope so loading never
+  introduces invalid div/tbody nesting. Initial-load errors expose retry outside inert regions; confirmed refresh errors retain
+  rows and drafts. No empty state before the first successful response.

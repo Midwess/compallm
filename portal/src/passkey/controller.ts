@@ -12,6 +12,7 @@ export class PasskeyController implements Contract {
     enrollment: 'device',
     editingId: null,
     currentPasskeyId: null,
+    loaded: false,
     status: 'loading',
     dialog: null,
     busy: false,
@@ -51,6 +52,7 @@ export class PasskeyController implements Contract {
     this.pendingCredential = undefined
     this.pendingRemoval = undefined
     this.store.setState({
+      loaded: false,
       records: [],
       enrollment: 'device',
       editingId: null,
@@ -81,6 +83,7 @@ export class PasskeyController implements Contract {
       if (!signal.aborted)
         this.store.setState({
           records: result.passkeys.edges.map((e) => e.node),
+          loaded: true,
           status: 'ready',
           currentPasskeyId: result.session.node.passkey?.id ?? null,
         })

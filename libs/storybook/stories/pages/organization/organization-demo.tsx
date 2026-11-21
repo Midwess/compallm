@@ -1,5 +1,6 @@
+import { DemoUserPreferenceController } from '../settings/preferences/user/demo-controller'
 import { useState, type ReactNode } from 'react'
-import { OrganizationControllerContext } from '../../../src/context'
+import { OrganizationControllerContext, UserPreferenceControllerContext } from '../../../src/context'
 import {
   OrganizationPage,
   createOrganizationStore,
@@ -53,16 +54,23 @@ class DemoOrganizationController implements OrganizationController {
 
 export function OrganizationDemo({
   empty = false,
+  sidebarLoading = false,
   children,
   sidebarOrder,
   sidebarLayout,
 }: {
   empty?: boolean
+  sidebarLoading?: boolean
   children?: ReactNode
   sidebarOrder?: OrganizationState['sidebarOrder']
   sidebarLayout?: OrganizationState['sidebarLayout']
 }) {
   const [intent, setIntent] = useState('')
+  const [preferences] = useState(() => {
+    const value = new DemoUserPreferenceController()
+    if (sidebarLoading) value.store.setState({ status: 'loading', saved: null })
+    return value
+  })
   const [controller] = useState(() => {
     const result = new DemoOrganizationController(setIntent)
     if (sidebarOrder)
@@ -79,7 +87,9 @@ export function OrganizationDemo({
   })
   return (
     <OrganizationControllerContext value={controller}>
-      <OrganizationPage>{children}</OrganizationPage>
+      <UserPreferenceControllerContext value={preferences}>
+        <OrganizationPage>{children}</OrganizationPage>
+      </UserPreferenceControllerContext>
       <output aria-label="Controller intent" className="fixed right-8 bottom-12 text-xs text-muted-foreground">
         {intent}
       </output>

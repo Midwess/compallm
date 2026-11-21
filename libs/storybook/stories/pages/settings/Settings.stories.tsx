@@ -61,7 +61,11 @@ function Demo({
       user.store.setState({ saved: savedPreferences })
       user.store.form.reset({ draft: loadedPreferenceDraft(savedPreferences) })
     }
-    if (preferenceStatus) user.store.setState({ status: preferenceStatus })
+    if (preferenceStatus)
+      user.store.setState({
+        status: preferenceStatus,
+        ...(preferenceStatus !== 'ready' && !savedPreferences ? { saved: null } : {}),
+      })
     return controller
   })
   useEffect(() => {
@@ -227,7 +231,9 @@ export const SessionIpFallback: Story = {
     />
   ),
 }
-export const SessionsLoading: Story = { render: () => <Demo page="access" initial={{ sessionsLoading: true }} /> }
+export const SessionsLoading: Story = {
+  render: () => <Demo page="access" initial={{ sessionsLoading: true, sessionsLoaded: false, otherSessions: [] }} />,
+}
 export const SessionsLoadFailure: Story = { render: () => <Demo page="access" initial={{ sessionsError: true }} /> }
 export const SessionsReference: Story = {
   render: () => (
@@ -563,7 +569,9 @@ export const PermissionHiddenPolicies: Story = {
 }
 
 export const MembersEmpty: Story = { render: () => <Demo page="members" initial={{ members: [] }} /> }
-export const MembersLoading: Story = { render: () => <Demo page="members" initial={{ membersLoading: true }} /> }
+export const MembersLoading: Story = {
+  render: () => <Demo page="members" initial={{ membersLoading: true, membersLoaded: false, members: [] }} />,
+}
 export const MembersPaged: Story = {
   render: () => <Demo page="members" initial={{ membersHasNextPage: true, membersComplete: false }} />,
 }
@@ -747,4 +755,17 @@ export const SessionsRecentActivity: Story = {
       />
     )
   },
+}
+
+export const NavigationLoading: Story = {
+  render: () => <Demo initial={{ navigationLoaded: false, navigationLoading: true, roles: [], groups: [] }} />,
+}
+export const NavigationLoadFailure: Story = {
+  render: () => <Demo initial={{ navigationLoaded: false, navigationLoadError: true, roles: [], groups: [] }} />,
+}
+export const MembersRefreshing: Story = {
+  render: () => <Demo page="members" initial={{ membersLoading: true, membersLoaded: true }} />,
+}
+export const InvitationsLoading: Story = {
+  render: () => <Demo page="members" initial={{ invitationsLoaded: false, invitationsLoading: true, invitations: [] }} />,
 }

@@ -1,3 +1,5 @@
+import { LoadingRegion } from '../../../components/loading'
+import { providerPageLayout } from './layout'
 import { useEffect, useState } from 'react'
 import { DotsThreeIcon } from '@phosphor-icons/react/dist/csr/DotsThree'
 import { ArrowCounterClockwiseIcon } from '@phosphor-icons/react/dist/csr/ArrowCounterClockwise'
@@ -26,13 +28,18 @@ export function ModelSettingsPage() {
   const [confirm, setConfirm] = useState(false)
   const navigation = useProvider((s) => s.navigationRequest)
   const access = useModelEditAccess()
-  const [resetDefaults] = useState(() => {
+  const ready = useProvider((s) => !s.templatePreview || !!s.modelLoaded)
+  const loading = useProvider((s) => s.modelLoading || s.providerLoading)
+  const receivedDefaults = useProvider((s) => s.modelDraft?.defaults, ['modelDraft.defaults'])
+  const [initialDefaults] = useState(() => {
     const draft = controller.store.getState().modelDraft!
-    return structuredClone(draft.defaults ?? initializeModelDraft(draft).defaults!)
+    return ready ? structuredClone(draft.defaults ?? initializeModelDraft(draft).defaults!) : undefined
   })
+  const resetDefaults = receivedDefaults ?? initialDefaults
   const [editedFields] = useState(() => new Set<string>())
   const [form] = useState(() => controller.store.form.scope(['modelDraft']))
   useEffect(() => {
+    if (!ready) return
     const fields = {
       ...modelDraftRules,
       ...Object.fromEntries(
@@ -111,10 +118,10 @@ export function ModelSettingsPage() {
       },
     }
     for (const [key, value] of Object.entries(defaults)) controller.store.form.set(`modelDraft.${key}`, value)
-  }, [controller, identity, form, editedFields])
+  }, [controller, identity, form, editedFields, ready])
   const reset = () => {
     const current = controller.store.getState().modelDraft
-    if (!current || !access) return
+    if (!current || !access || !resetDefaults) return
     const next = initializeModelDraft({
       ...structuredClone(resetDefaults),
       id: current.id,
@@ -133,7 +140,7 @@ export function ModelSettingsPage() {
     void (async () => {
       const state = controller.store.getState(),
         draft = state.modelDraft
-      if (!draft) return
+      if (!draft || !resetDefaults) return
       const existing = state.models.find((model) => model.id === state.editingModelId)
       if (
         (existing && modelDraftFingerprint(draft) === modelDraftFingerprint(existing)) ||
@@ -182,44 +189,53 @@ export function ModelSettingsPage() {
             </Popup.Root>
           </Functions>
         </PageHeader>
-        <fieldset disabled={!access} className="mx-auto grid w-full min-w-0 max-w-2xl gap-8 px-4 py-8">
-          <ModelHeading />
-          <CatalogStatus />
-          <ModelSection
-            title="Configuration"
-            help={`
+        <CatalogStatus />
+        <LoadingRegion
+          className="contents"
+          ready={ready}
+          pending={loading}
+          controller={controller.loading?.model}
+          label="Loading model configuration"
+        >
+          <fieldset disabled={!access} className={`${providerPageLayout} gap-8`}>
+            <ModelHeading />
+            <ModelSection
+              title="Configuration"
+              help={`
 Use the model identifier and endpoint accepted by this provider. The provider connection supplies the base URL
 and credential. Valid edits are saved automatically into the provider draft. The provider’s final save is separate.
 `}
-          >
-            <div className="grid gap-3 rounded-control bg-inset p-3">
-              <ModelPathField />
-              <FormField.Root>
-                <div className="flex items-center gap-1">
-                  <FormField.Label className="text-xsm font-normal">Name</FormField.Label>
-                  <FieldHelp label="About the upstream model name">
-                    Enter the exact model identifier the provider expects, including vendor prefixes, slashes, dots, or colons.
-                    This is sent upstream; it is not a friendly display name. Spaces and control characters are not allowed.
-                  </FieldHelp>
-                </div>
-                <FormField.Input
-                  name="modelDraft.name"
-                  required
-                  className="rounded-lg"
-                  placeholder="Enter model name"
-                  maxLength={ProviderModelFieldsConstraints.name.maxLength}
-                />
-                <FormError name="modelDraft.name" />
-              </FormField.Root>
-            </div>
-          </ModelSection>
-          <ModelEfforts />
-          <ModelContext />
-          <ModelPricing />
-          <ModelCapabilities />
-          <ModelRequestFields kind="headers" />
-          <ModelRequestFields kind="bodyDefaults" />
-        </fieldset>
+            >
+              <div className="grid gap-3 rounded-control bg-inset p-3">
+                <ModelPathField />
+                <FormField.Root>
+                  <div className="flex items-center gap-1">
+                    <FormField.Label className="text-xsm font-normal">Name</FormField.Label>
+                    <FieldHelp label="About the upstream model name">
+                      Enter the exact model identifier the provider expects, including vendor prefixes, slashes, dots, or
+                      colons. This is sent upstream; it is not a friendly display name. Spaces and control characters are not
+                      allowed.
+                    </FieldHelp>
+                  </div>
+                  <FormField.Input
+                    name="modelDraft.name"
+                    required
+                    className="rounded-lg"
+                    placeholder="Enter model name"
+                    maxLength={ProviderModelFieldsConstraints.name.maxLength}
+                  />
+                  <FormError name="modelDraft.name" />
+                </FormField.Root>
+              </div>
+            </ModelSection>
+            <ModelEfforts />
+            <ModelContext />
+            <ModelPricing />
+            <ModelCapabilities />
+            <ModelRequestFields kind="headers" />
+            <ModelRequestFields kind="bodyDefaults" />
+          </fieldset>
+        </LoadingRegion>
       </Form.Root>
       <AlertDialog.Root
         open={confirm || !!navigation}
@@ -361,7 +377,7 @@ function ModelHeading() {
 }
 function useModelEditAccess() {
   const preview = useProvider((s) => s.templatePreview)
-  const loading = useProvider((s) => s.modelLoading || !!s.catalogError)
+  const loading = useProvider((s) => !s.modelLoaded && (s.modelLoading || !!s.catalogError))
   const saved = useProvider((s) => s.intent === 'edit')
   const model = useProvider((s) => s.editingModelId)
   const provider = useProvider((s) => s.savedProvider?.id)

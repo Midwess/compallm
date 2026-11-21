@@ -42,11 +42,15 @@ export function usePermission(request: PermissionRequestInput) {
       : values.includes('error')
         ? 'error'
         : 'denied'
-  return { allowed, status, disabled: !allowed }
+  const controller = usePermissionController()
+  const pending = useStore(controller.store, (state) => checks.some((check) => !state.entries[permissionKey(check)]))
+  return { allowed, status, disabled: !allowed, pending }
 }
 export interface PermissionRequestProps extends PermissionRequestInput {
   children: (allowed: boolean) => ReactNode
+  pending?: ReactNode
 }
-export function PermissionRequest({ children, ...request }: PermissionRequestProps) {
-  return children(usePermission(request).allowed)
+export function PermissionRequest({ children, pending, ...request }: PermissionRequestProps) {
+  const permission = usePermission(request)
+  return permission.pending && pending ? pending : children(permission.allowed)
 }

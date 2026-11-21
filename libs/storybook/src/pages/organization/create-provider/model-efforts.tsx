@@ -1,3 +1,4 @@
+import { Skeleton } from '../../../components/loading'
 import { useId } from 'react'
 import { EffortMapping } from '../../../components/effort-mapping'
 import { FormError, useFormField } from '../../../components/form'
@@ -42,7 +43,9 @@ export function ModelEfforts() {
         </div>
         {enabled ? (
           <div>
-            <EffortMapping name="modelDraft.effortMapping" variant="compact" />
+            <Skeleton>
+              <EffortMapping name="modelDraft.effortMapping" variant="compact" />
+            </Skeleton>
             <FormError name="modelDraft.effortMapping" />
           </div>
         ) : null}

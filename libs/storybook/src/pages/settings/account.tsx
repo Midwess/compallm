@@ -1,3 +1,4 @@
+import { LoadingRegion } from '../../components/loading'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import { describeSessionBrowser } from './session-browser'
 import { SessionBrowserIcon } from './session-browser-icon'
@@ -17,7 +18,8 @@ export function ProfileSettings() {
     profile = useSettings((s) => s.profile, ['profile']),
     busy = useSettings((s) => s.profileSaving),
     status = useSettings((s) => s.profileStatus)
-  if (status !== 'ready')
+  const ready = useSettings((s) => s.profileLoaded ?? s.profileStatus === 'ready')
+  if (status === 'denied' || status === 'missing' || (status === 'error' && !ready))
     return (
       <SettingsContent>
         <Heading>Profile</Heading>
@@ -26,23 +28,17 @@ export function ProfileSettings() {
             status === 'error' && c.pages.profile.reload ? <Button onClick={c.pages.profile.reload}>Retry</Button> : undefined
           }
           title={
-            status === 'loading'
-              ? 'Loading profile…'
-              : status === 'denied'
-                ? 'Profile access denied'
-                : status === 'missing'
-                  ? 'Profile not found'
-                  : 'Couldn’t load profile'
+            status === 'denied' ? 'Profile access denied' : status === 'missing' ? 'Profile not found' : 'Couldn’t load profile'
           }
         >
-          {status === 'loading' ? 'Loading your saved profile.' : 'Your profile could not be loaded.'}
+          Your profile could not be loaded.
         </Empty>
       </SettingsContent>
     )
   return (
     <SettingsContent>
       <Heading>Profile</Heading>
-      <div className="grid gap-12">
+      <LoadingRegion ready={ready} pending={status === 'loading'} label="Loading profile" className="grid gap-12">
         <Rows>
           <Row label="Profile picture" description="Choose a photo for your account">
             <AvatarUploadControl
@@ -82,7 +78,7 @@ export function ProfileSettings() {
             </Row>
           </Rows>
         </Section>
-      </div>
+      </LoadingRegion>
     </SettingsContent>
   )
 }
@@ -202,6 +198,7 @@ function SessionSettings() {
   const controller = useContext(AuthControllerContext)
   const settings = useSettingsController()
   const otherSessions = useSettings((state) => state.otherSessions)
+  const ready = useSettings((state) => state.sessionsLoaded ?? !state.sessionsLoading)
   const loading = useSettings((state) => state.sessionsLoading)
   const hasMore = useSettings((state) => state.sessionsHasNextPage)
   const error = useSettings((state) => state.sessionsError)
@@ -226,51 +223,57 @@ function SessionSettings() {
             <SessionItem browser="Unknown browser" location={null} current onRevoke={settings.signOut} />
           )}
         </Rows>
-        {otherSessions.length ? (
-          <Rows className="shadow-control">
-            <div className="flex min-h-16 items-center justify-between gap-4 border-b border-border p-4">
-              <span className="text-xsm font-medium">
-                {otherSessions.length} other {otherSessions.length === 1 ? 'session' : 'sessions'}
-                {hasMore ? ' shown' : ''}
-              </span>
-              <Button variant="ghost" className="px-3" onClick={() => settings.pages.dialogs.openDialog('revoke-sessions')}>
-                Revoke all
-              </Button>
-            </div>
-            <List.Root>
-              <List.Items
-                items={otherSessions}
-                getKey={(session) => session.id}
-                className="m-0 list-none p-0"
-                paging={{ hasMore, loading, error, onLoadMore: () => settings.loadMoreSessions?.() }}
-              >
-                {(session) => (
-                  <div
-                    className={
-                      session.id === otherSessions[0].id
-                        ? undefined
-                        : 'relative before:absolute before:inset-x-4 before:top-0 before:border-t before:border-border'
-                    }
-                  >
-                    <SessionItem
-                      browser={session.browser}
-                      location={session.location}
-                      ipAddress={session.ipAddress}
-                      lastSeenAt={session.lastSeenAt}
-                      signedInAt={session.signedInAt}
-                      onRevoke={settings.revokeSession ? () => settings.revokeSession!(session.id) : undefined}
-                    />
-                  </div>
-                )}
-              </List.Items>
-            </List.Root>
-          </Rows>
-        ) : null}
-        {loading ? (
-          <p role="status" className="px-4 text-xs text-muted-foreground">
-            Loading sessions…
-          </p>
-        ) : null}
+        <LoadingRegion ready={ready} pending={loading} label="Loading sessions">
+          {!ready ? (
+            <Rows>
+              <List.Root>
+                <List.Items items={[]} getKey={() => ''}>
+                  {() => null}
+                </List.Items>
+              </List.Root>
+            </Rows>
+          ) : null}
+          {otherSessions.length ? (
+            <Rows className="shadow-control">
+              <div className="flex min-h-16 items-center justify-between gap-4 border-b border-border p-4">
+                <span className="text-xsm font-medium">
+                  {otherSessions.length} other {otherSessions.length === 1 ? 'session' : 'sessions'}
+                  {hasMore ? ' shown' : ''}
+                </span>
+                <Button variant="ghost" className="px-3" onClick={() => settings.pages.dialogs.openDialog('revoke-sessions')}>
+                  Revoke all
+                </Button>
+              </div>
+              <List.Root>
+                <List.Items
+                  items={otherSessions}
+                  getKey={(session) => session.id}
+                  className="m-0 list-none p-0"
+                  paging={{ hasMore, loading, error, onLoadMore: () => settings.loadMoreSessions?.() }}
+                >
+                  {(session) => (
+                    <div
+                      className={
+                        session.id === otherSessions[0].id
+                          ? undefined
+                          : 'relative before:absolute before:inset-x-4 before:top-0 before:border-t before:border-border'
+                      }
+                    >
+                      <SessionItem
+                        browser={session.browser}
+                        location={session.location}
+                        ipAddress={session.ipAddress}
+                        lastSeenAt={session.lastSeenAt}
+                        signedInAt={session.signedInAt}
+                        onRevoke={settings.revokeSession ? () => settings.revokeSession!(session.id) : undefined}
+                      />
+                    </div>
+                  )}
+                </List.Items>
+              </List.Root>
+            </Rows>
+          ) : null}
+        </LoadingRegion>
         {error ? (
           <div className="flex items-center justify-between gap-3 px-4 text-xs text-muted-foreground">
             Couldn’t load sessions.

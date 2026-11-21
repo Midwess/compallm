@@ -1,3 +1,4 @@
+import { LoadingRegion } from '../../../components/loading'
 import { PermissionRequest, usePermission, usePermissionChecks } from '../../../components/permission'
 import { GroupCreateInput, GroupUpdateInput } from '@compallm/contract/validation'
 import { FormError } from '../../../components/form'
@@ -14,7 +15,7 @@ import { SettingsSectionTitle } from '../../../components/settings'
 import { Table } from '../../../components/table'
 import { useSettings, useSettingsController } from '../controller'
 import { useGroup, useGroupController } from './controller'
-import { SettingsContent, Heading, Section, Rows, Row, Indicator, Empty } from '../shared'
+import { SettingsContent, Heading, Section, Rows, Row, Indicator, Empty, SettingsDetailLoading } from '../shared'
 
 function GroupMembers() {
   const group = useGroupController(),
@@ -25,6 +26,7 @@ function GroupMembers() {
     fallbackMembers = useSettings((s) => s.members),
     pageMembers = useGroup((s) => s.members),
     count = useGroup((s) => s.memberCount),
+    membersReady = useGroup((s) => s.membersLoaded !== false),
     membersLoadError = useGroup((s) => s.membersLoadError),
     hasNextPage = useGroup((s) => s.hasNextPage),
     membersLoading = useGroup((s) => s.membersLoading),
@@ -51,100 +53,102 @@ function GroupMembers() {
         <SettingsSectionTitle>{title}</SettingsSectionTitle>
         <span className="text-xs text-muted-foreground">{count ?? selected.length} selected</span>
       </div>
-      <SectionSurface className="flex min-w-0 flex-col p-0">
-        <div className="shrink-0 p-4">
-          <SearchField
-            aria-label="Search group members"
-            placeholder="Search members…"
-            className="[&>input]:border-border"
-            value={query}
-            onChange={(event) => group.setQuery(event.target.value)}
-          />
-        </div>
-        <div
-          role="region"
-          aria-label={`${title} selection`}
-          tabIndex={0}
-          className="mx-4 min-w-0 overflow-x-auto outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
-        >
-          <Table.Root className="overflow-visible">
-            <Table.Content aria-label="Select group members" className="min-w-0">
-              <colgroup>
-                <col className="w-[42%]" />
-                <col />
-                <col className="w-12" />
-              </colgroup>
-              <Table.Header className="sticky top-0 z-10 bg-inset">
-                <Table.Row>
-                  <Table.Head className="px-0">Name</Table.Head>
-                  <Table.Head className="px-0">Email</Table.Head>
-                  <Table.Head className="px-0">Include</Table.Head>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body
-                items={visible}
-                getKey={(entry) => entry.id}
-                paging={{
-                  hasMore: Boolean(hasNextPage),
-                  loading: Boolean(membersLoading),
-                  error: membersLoadError,
-                  onLoadMore: () => group.loadMore?.(),
-                }}
-              >
-                {(entry) => (
-                  <Table.Row key={entry.id}>
-                    <Table.Cell className="px-0 pr-3">
-                      <span className="flex items-center gap-2 truncate text-xsm leading-4.5">{entry.name}</span>
-                    </Table.Cell>
-                    <Table.Cell className="truncate px-0 pr-3 text-xs text-muted-foreground" title={entry.detail}>
-                      {entry.detail}
-                    </Table.Cell>
-                    <Table.Cell className="px-0">
-                      <DisabledTooltip
-                        disabled={readonly || busy || (!entry.available && !selected.includes(entry.id))}
-                        reason={
-                          readonly
-                            ? 'This group is read-only.'
-                            : busy
-                              ? 'Wait for the current update to finish.'
-                              : 'This member is inactive and cannot be added.'
-                        }
-                      >
-                        <PermissionRequest
-                          actions={[selected.includes(entry.id) ? 'group.member.remove' : 'group.member.add']}
-                          resource={{ type: 'Group', id: draft.id }}
-                          context={{ memberId: entry.id }}
-                        >
-                          {(allowed) => (
-                            <DisabledTooltip disabled={!allowed} reason="You do not have permission to perform this action.">
-                              <Switch
-                                aria-label={`Include ${entry.name}`}
-                                name={`draft.memberSelection.${entry.id}`}
-                                disabled={!allowed || readonly || busy || (!entry.available && !selected.includes(entry.id))}
-                              />
-                            </DisabledTooltip>
-                          )}
-                        </PermissionRequest>
-                      </DisabledTooltip>
-                    </Table.Cell>
-                  </Table.Row>
-                )}
-              </Table.Body>
-
-              {!visible.length ? (
-                <Table.Body>
+      <LoadingRegion ready={membersReady} pending={!!membersLoading} label="Loading group members">
+        <SectionSurface className="flex min-w-0 flex-col p-0">
+          <div className="shrink-0 p-4">
+            <SearchField
+              aria-label="Search group members"
+              placeholder="Search members…"
+              className="[&>input]:border-border"
+              value={query}
+              onChange={(event) => group.setQuery(event.target.value)}
+            />
+          </div>
+          <div
+            role="region"
+            aria-label={`${title} selection`}
+            tabIndex={0}
+            className="mx-4 min-w-0 overflow-x-auto outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <Table.Root className="overflow-visible">
+              <Table.Content aria-label="Select group members" className="min-w-0">
+                <colgroup>
+                  <col className="w-[42%]" />
+                  <col />
+                  <col className="w-12" />
+                </colgroup>
+                <Table.Header className="sticky top-0 z-10 bg-inset">
                   <Table.Row>
-                    <Table.Cell colSpan={3} className="py-6 text-center text-muted-foreground">
-                      No members match your search.
-                    </Table.Cell>
+                    <Table.Head className="px-0">Name</Table.Head>
+                    <Table.Head className="px-0">Email</Table.Head>
+                    <Table.Head className="px-0">Include</Table.Head>
                   </Table.Row>
+                </Table.Header>
+                <Table.Body
+                  items={visible}
+                  getKey={(entry) => entry.id}
+                  paging={{
+                    hasMore: Boolean(hasNextPage),
+                    loading: Boolean(membersLoading),
+                    error: membersLoadError,
+                    onLoadMore: () => group.loadMore?.(),
+                  }}
+                >
+                  {(entry) => (
+                    <Table.Row key={entry.id}>
+                      <Table.Cell className="px-0 pr-3">
+                        <span className="flex items-center gap-2 truncate text-xsm leading-4.5">{entry.name}</span>
+                      </Table.Cell>
+                      <Table.Cell className="truncate px-0 pr-3 text-xs text-muted-foreground" title={entry.detail}>
+                        {entry.detail}
+                      </Table.Cell>
+                      <Table.Cell className="px-0">
+                        <DisabledTooltip
+                          disabled={readonly || busy || (!entry.available && !selected.includes(entry.id))}
+                          reason={
+                            readonly
+                              ? 'This group is read-only.'
+                              : busy
+                                ? 'Wait for the current update to finish.'
+                                : 'This member is inactive and cannot be added.'
+                          }
+                        >
+                          <PermissionRequest
+                            actions={[selected.includes(entry.id) ? 'group.member.remove' : 'group.member.add']}
+                            resource={{ type: 'Group', id: draft.id }}
+                            context={{ memberId: entry.id }}
+                          >
+                            {(allowed) => (
+                              <DisabledTooltip disabled={!allowed} reason="You do not have permission to perform this action.">
+                                <Switch
+                                  aria-label={`Include ${entry.name}`}
+                                  name={`draft.memberSelection.${entry.id}`}
+                                  disabled={!allowed || readonly || busy || (!entry.available && !selected.includes(entry.id))}
+                                />
+                              </DisabledTooltip>
+                            )}
+                          </PermissionRequest>
+                        </DisabledTooltip>
+                      </Table.Cell>
+                    </Table.Row>
+                  )}
                 </Table.Body>
-              ) : null}
-            </Table.Content>
-          </Table.Root>
-        </div>
-        <FormError name="draft.memberSelection" />
-      </SectionSurface>
+
+                {!visible.length ? (
+                  <Table.Body>
+                    <Table.Row>
+                      <Table.Cell colSpan={3} className="py-6 text-center text-muted-foreground">
+                        No members match your search.
+                      </Table.Cell>
+                    </Table.Row>
+                  </Table.Body>
+                ) : null}
+              </Table.Content>
+            </Table.Root>
+          </div>
+          <FormError name="draft.memberSelection" />
+        </SectionSurface>
+      </LoadingRegion>
     </section>
   )
 }
@@ -300,12 +304,14 @@ function GroupEditorContent() {
     draft = useGroup((s) => (s.draft ? { id: s.draft.id } : null), ['draft.id']),
     readonly = useSettings((s) => s.readonly),
     busy = useGroup((s) => s.busy)
+  const confirmedTitle = useSettings((s) => s.groups.find((group) => group.id === s.location.id)?.name ?? 'Group')
   const metadataPermission = usePermission({
     actions: ['group.metadata.update'],
     resource: { type: 'Group', id: draft?.id },
     enabled: !!draft?.id,
   })
-  if (loading) return <SettingsContent aria-busy="true" aria-label="Loading group" />
+  if (loading && !draft)
+    return <SettingsDetailLoading title={confirmedTitle} sections={['Group details', 'Roles', 'Members', 'Danger']} />
   if (!draft)
     return (
       <SettingsContent>
@@ -402,6 +408,7 @@ export function GroupEditorSettings() {
   const form = group.store.form
   const settings = useSettingsController()
   useEffect(() => {
+    if (!group.store.getState().draft) return
     form.configure({
       mode: 'blur',
       names: ['draft.name', 'draft.description', 'draft.roleIds', 'draft.memberSelection'],
